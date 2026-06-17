@@ -359,6 +359,8 @@ Consolida em um único lugar:
 - Eventos
 - Avaliações
 
+> **Decisão de MVP:** O Inbox Unificado não será implementado como superfície independente. O acesso consolidado é gerenciado via estados visíveis dentro de cada superfície (Mensagens, Solicitações, Entregas). A visibilidade de itens pendentes estará disponível via Meu Dia (Membro) e Painel Operacional (Supervisor). Revisão como superfície dedicada na V2.
+
 ---
 
 ## Biblioteca
@@ -437,10 +439,13 @@ Infraestrutura compartilhada — não é um módulo.
 | **Informativo** | Avisos gerais |
 | **Importante** | Alteração de programação, mudança de atividade |
 | **Crítico** | Cancelamento de show, alteração urgente |
+| **Alteração Operacional Persistente** | Mudança na Escala ou Livro do Dia que afeta o Membro diretamente |
+
+**Comportamento da Alteração Operacional Persistente:** diferente dos outros tipos (que são eventos de entrega), este é um **estado** — permanece visível no Meu Dia como elemento destacado até confirmação explícita do Membro. Não desaparece com a passagem do tempo nem com a abertura do app. Só é removido após reconhecimento ativo.
 
 **Canais:** Push Mobile e In-App.
 
-Notificações críticas podem exigir confirmação de leitura.
+Notificações Críticas e Alterações Operacionais Persistentes exigem confirmação de leitura.
 
 ---
 

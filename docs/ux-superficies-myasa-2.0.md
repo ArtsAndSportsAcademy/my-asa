@@ -202,7 +202,7 @@ A IA do Admin tem seu maior momento de valor aqui. Atua como analista organizaci
 Ser a representação oficial de quem faz o quê e quando em cada Operação. A Escala é a fonte de verdade que alimenta todas as outras superfícies operacionais. Tudo que o Membro vê no Meu Dia vem da Escala.
 
 **2. Público principal**
-Supervisor (constrói e publica). Admin (visualiza e monitora). Membro nunca acessa a Escala diretamente — recebe sua fatia via Meu Dia.
+Supervisor (constrói e publica). Admin (visualiza, monitora e pode publicar). Membro nunca acessa a Escala diretamente — recebe sua fatia via Meu Dia.
 
 **3. Frequência de uso**
 Supervisor: diária ou na véspera (construção/revisão). Admin: semanal ou quando investiga.
@@ -215,6 +215,7 @@ Para o Supervisor: *"Quem está alocado onde, existe alguma posição descoberta
 - JS-02 (Análise de Folga) — impacto visível na Escala
 - JS-03 (Substituição) — resultado publicado na Escala
 - JS-08 (Múltiplas Exceções) — visão global via Escala
+- JS-09 (Cancelamento de Show) — remove atividade e recalcula cobertura na Escala
 
 **6. Informações mais importantes**
 Em ordem de prioridade:
@@ -334,6 +335,7 @@ Para Supervisor: *"Existe alguma solicitação que preciso analisar agora? Qual 
 
 **5. Jornadas relacionadas**
 - JM-03 (Criação e Acompanhamento de Solicitação) — jornada principal desta superfície
+- JM-06 (Solicitação Negada) — Membro recebe negativa e entende o motivo operacional
 - JS-02 (Análise e Decisão de Folga) — jornada principal do Supervisor nesta superfície
 - JA-01 (Saúde do Ecossistema) — Solicitações aparecem como indicador para o Admin
 
@@ -379,7 +381,7 @@ Ser o ciclo completo de expectativa → execução → avaliação de tarefas en
 
 **2. Público principal**
 - Supervisor: cria, acompanha, avalia
-- Membro: recebe, executa, envia
+- Membro: recebe e executa Entregas criadas pelo Supervisor/Admin; pode criar Entregas para si mesmo
 
 **3. Frequência de uso**
 Periódica. Pode ser semanal ou mensal dependendo do tipo de Operação.
@@ -445,6 +447,7 @@ Para Supervisor: *"Todos leram o aviso que enviei?"*
 
 **5. Jornadas relacionadas**
 - JS-05 (Comunicação Pós-Alteração) — Avisos são um dos instrumentos desta jornada
+- JS-09 (Cancelamento de Show) — gera Aviso crítico automático para todos os afetados
 - JM-01 (Meu Dia) — Avisos importantes aparecem como elemento do Meu Dia
 
 **6. Informações mais importantes**
@@ -597,6 +600,7 @@ Baixa por perfil. Alta em situações de conflito, investigação ou auditoria.
 
 **5. Jornadas relacionadas**
 - JA-02 (Investigação de Problema) — jornada principal desta superfície para Admin
+- JA-06 (Conflito entre Supervisores) — Histórico é a fonte de evidência para investigar o conflito
 - JS-03 (Substituição) — Supervisor pode verificar histórico de uma substituição
 - JM-03 (Solicitação) — Membro pode ver o histórico de uma solicitação
 
@@ -723,12 +727,16 @@ Baixa. Alta consequência. Mudanças aqui afetam todos os outros pilares.
 Para Admin: *"A estrutura de pessoas e responsabilidades está correta?"*
 Para Supervisor: *"Quais são os membros do meu Grupo e quais funções cada um pode exercer?"*
 
-**4. Decisões que suporta**
+**4. Jornadas relacionadas**
+- JA-03 (Mudança Estrutural) — jornada principal desta superfície
+- JA-06 (Conflito entre Supervisores) — conflito de escopo resolvido ajustando estrutura de Grupos
+
+**5. Decisões que suporta**
 - *"Quem é responsável por este Grupo?"*
 - *"Quem pode exercer esta função?"*
 - *"Existe algum Grupo sem Supervisor ou alguma função sem membro habilitado?"*
 
-**5. Riscos se for mal projetada**
+**6. Riscos se for mal projetada**
 - Mudança estrutural sem visibilidade de impacto → consequências não esperadas aparecem na Escala dias depois
 - Grupo fica sem Supervisor e ninguém percebe imediatamente
 - Membro é removido de Grupo sem que suas solicitações e entregas em andamento sejam transferidas
