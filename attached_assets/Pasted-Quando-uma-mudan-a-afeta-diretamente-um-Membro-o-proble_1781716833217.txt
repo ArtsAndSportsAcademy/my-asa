@@ -1,0 +1,286 @@
+Quando uma mudança afeta diretamente um Membro, o problema raramente é a mudança em si.
+
+O problema é como e quando ele descobre essa mudança.
+
+Na prática, a maioria dos Membros aceita que mudanças acontecem.
+
+O que gera frustração não é a alteração.
+
+É ser surpreendido por ela.
+
+---
+
+Como isso acontece hoje
+
+Normalmente as mudanças chegam através de múltiplos canais.
+
+Por exemplo:
+
+* Grupo de WhatsApp;
+* Mensagem do Supervisor;
+* Conversa de corredor;
+* Colega avisando;
+* Nova Escala publicada;
+* Novo Livro do Dia publicado.
+
+O problema é que não existe necessariamente um único ponto de verdade.
+
+A informação pode estar em vários lugares.
+
+E o Membro precisa descobrir qual deles contém a versão mais atual.
+
+---
+
+Exemplos reais
+
+Mudança de personagem:
+
+"Hoje você fará Mensageira em vez de Astrid."
+
+Mudança de horário:
+
+"Seu ensaio foi antecipado."
+
+Mudança de atividade:
+
+"Você foi incluída em uma aula."
+
+Mudança operacional:
+
+"Você foi retirado de uma cena."
+
+Mudança de cobertura:
+
+"Você precisará substituir alguém."
+
+Todas essas situações são comuns.
+
+O problema não é a mudança.
+
+O problema é garantir que a pessoa saiba da mudança.
+
+---
+
+Quando o Membro descobre cedo
+
+Quando a mudança é recebida com antecedência suficiente, normalmente ele consegue:
+
+* se preparar;
+* organizar figurino;
+* revisar coreografia;
+* reorganizar compromissos;
+* ajustar deslocamentos;
+* se preparar mentalmente.
+
+A mudança gera adaptação.
+
+Não gera crise.
+
+---
+
+Quando o Membro descobre tarde
+
+Aqui começa o verdadeiro problema operacional.
+
+Quando uma alteração chega tarde demais, normalmente surgem consequências em cascata.
+
+Por exemplo:
+
+O membro prepara o personagem errado.
+
+Chega com o figurino errado.
+
+Não revisa a coreografia necessária.
+
+Perde parte do ensaio.
+
+Chega atrasado.
+
+Não comparece a uma atividade porque nem sabia que ela existia.
+
+Ou simplesmente chega acreditando que fará algo diferente.
+
+---
+
+O impacto emocional
+
+Existe uma camada importante que não aparece na operação.
+
+Quando o Membro descobre uma mudança tarde demais, ele frequentemente sente:
+
+* insegurança;
+* culpa;
+* ansiedade;
+* sensação de estar desatualizado.
+
+Mesmo quando a falha não foi dele.
+
+Porque muitas vezes ele não consegue provar facilmente:
+
+"Eu não recebi essa informação."
+
+---
+
+O que gera confiança
+
+O Membro não precisa necessariamente ser avisado primeiro.
+
+Mas ele precisa ter certeza de que saberá quando algo mudar.
+
+Essa diferença é importante.
+
+A confiança nasce quando ele acredita que existe um lugar confiável para consultar.
+
+E que mudanças importantes não passarão despercebidas.
+
+---
+
+O que realmente importa para o Membro
+
+Quando uma alteração acontece, ele quer responder rapidamente:
+
+* O que mudou?
+* Quando mudou?
+* Isso me afeta?
+* O que preciso fazer agora?
+* Preciso confirmar alguma coisa?
+
+Não quer comparar versões.
+
+Não quer procurar mensagens antigas.
+
+Não quer investigar.
+
+Quer entender.
+
+---
+
+Impacto Operacional
+
+Uma mudança não comunicada adequadamente pode gerar o mesmo impacto de uma ausência.
+
+Porque a pessoa está fisicamente presente.
+
+Mas operacionalmente está desinformada.
+
+Em alguns casos isso gera:
+
+* atrasos;
+* erros;
+* retrabalho;
+* substituições de emergência;
+* redução da qualidade artística.
+
+---
+
+Impacto para UX
+
+O sistema não deve apenas mostrar a programação atual.
+
+Ele deve destacar claramente o que mudou.
+
+Essa descoberta é extremamente importante.
+
+O Membro não deveria precisar comparar:
+
+Livro antigo
+↓
+Livro novo
+
+Ou:
+
+Escala antiga
+↓
+Escala nova
+
+O sistema deve fazer essa comparação automaticamente.
+
+---
+
+Impacto para Interface do MyASA
+
+O Meu Dia deve possuir uma camada própria de alterações.
+
+Seguindo a filosofia do MyASA:
+
+Primeira camada:
+
+🟢 O que faço hoje
+
+Segunda camada:
+
+🟣 O que mudou desde a última vez que vi
+
+Exemplos:
+
+* Novo personagem atribuído
+* Horário alterado
+* Novo ensaio
+* Atividade cancelada
+* Mudança de local
+
+Terceira camada:
+
+📋 Meu Dia completo
+
+O objetivo é que o Membro consiga responder em segundos:
+
+"Existe alguma novidade que eu preciso saber?"
+
+Sem procurar.
+
+Sem ler dezenas de mensagens.
+
+Sem abrir várias telas.
+
+---
+
+Riscos
+
+O maior risco seria tratar alterações como simples notificações.
+
+Porque notificações desaparecem.
+
+Mudanças operacionais não.
+
+Uma alteração importante deve permanecer visível até que o Membro a reconheça.
+
+Não basta enviar.
+
+É necessário garantir compreensão.
+
+---
+
+Oportunidade para IA
+
+A IA pode funcionar como uma tradutora de mudanças.
+
+Exemplos:
+
+"O que mudou hoje?"
+
+"Você recebeu um novo ensaio às 16h00 e foi designada para Mensageira no Musical."
+
+Ou:
+
+"Existe alguma alteração desde ontem?"
+
+"Sim. Seu horário de chegada foi antecipado em 30 minutos."
+
+A IA reduz a necessidade de interpretar listas de mudanças.
+
+Ela transforma alterações em entendimento.
+
+---
+
+Insight principal desta entrevista
+
+Para o Supervisor, uma mudança representa um problema a ser gerenciado.
+
+Para o Membro, uma mudança representa uma informação que precisa chegar a tempo.
+
+O valor do MyASA não está apenas em registrar mudanças.
+
+Está em garantir que ninguém seja surpreendido por elas.
+
+A confiança do Membro nasce quando ele sente que sempre saberá o que mudou antes que isso afete sua execução.
