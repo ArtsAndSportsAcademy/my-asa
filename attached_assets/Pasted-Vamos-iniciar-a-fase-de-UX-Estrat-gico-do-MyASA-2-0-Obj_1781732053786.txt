@@ -1,0 +1,100 @@
+Vamos iniciar a fase de UX Estratégico do MyASA 2.0.
+
+Objetivo:
+
+Transformar Arquitetura + Pesquisa + Jornadas em um Mapa de Superfícies do Produto.
+
+Importante:
+
+Ainda NÃO estamos desenhando telas.
+
+Ainda NÃO estamos definindo layout.
+
+Ainda NÃO estamos definindo componentes.
+
+Ainda NÃO estamos criando wireframes.
+
+Estamos definindo quais superfícies existem no produto, por que existem e qual problema resolvem.
+
+Base obrigatória:
+
+* docs/arquitetura-myasa-2.0.md
+* docs/ux-diretrizes-obrigatorias.md
+* docs/ux-pesquisa-supervisor.md
+* docs/ux-pesquisa-membro.md
+* docs/ux-pesquisa-admin.md
+* docs/jornadas-myasa-2.0.md
+
+Atuar como Product Designer Sênior e UX Strategist.
+
+Para cada superfície do produto identificar:
+
+1. Nome da superfície
+2. Objetivo principal
+3. Público principal
+4. Frequência de uso
+5. Pergunta que responde
+6. Jornadas relacionadas
+7. Informações mais importantes
+8. Decisões que suporta
+9. Riscos se for mal projetada
+10. Relação com IA
+11. Relação com outros pilares
+
+Classificar cada superfície em:
+
+* Primária (uso diário)
+* Secundária (uso frequente)
+* Eventual (uso ocasional)
+* Administrativa (configuração/governança)
+
+Esperado identificar pelo menos:
+
+* Meu Dia
+* Home Supervisor
+* Home Admin
+* Escala
+* Livro do Dia
+* Livro do Show
+* Solicitações
+* Entregas
+* Avisos
+* Mensagens
+* Biblioteca
+* Histórico
+* IA
+* Agenda
+* Equipes / Grupos Operacionais
+* Operações
+* Configurações
+
+Após identificar todas as superfícies:
+
+Produzir um mapa hierárquico contendo:
+
+Nível 1 — Superfícies centrais do produto
+Nível 2 — Superfícies de apoio
+Nível 3 — Superfícies administrativas
+
+Depois responder:
+
+1. Quais superfícies representam 80% do uso real?
+2. Quais superfícies definem o sucesso do produto?
+3. Quais superfícies podem ficar para fases futuras sem comprometer o MVP?
+4. Quais superfícies precisam existir obrigatoriamente na versão piloto?
+
+Importante:
+
+Ser extremamente criterioso.
+
+Questionar sobreposição entre superfícies.
+
+Identificar superfícies redundantes.
+
+Identificar pilares que podem estar sendo representados por mais de uma superfície.
+
+Não assumir que todo pilar precisa virar uma tela.
+
+Objetivo final:
+
+Chegar a um Mapa Oficial de Superfícies do MyASA 2.0, que servirá de base para UX, navegação, arquitetura de informação e interface.
