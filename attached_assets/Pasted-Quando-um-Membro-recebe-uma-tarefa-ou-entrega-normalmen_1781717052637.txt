@@ -1,0 +1,362 @@
+Quando um Membro recebe uma tarefa ou entrega, normalmente o processo começa através de comunicação humana.
+
+Pode ser:
+
+* Um Supervisor;
+* Um treinador;
+* Um responsável artístico;
+* Um coordenador;
+* Um aviso;
+* Uma conversa de grupo;
+* Uma mensagem direta.
+
+Exemplos comuns:
+
+* Gravar um vídeo;
+* Enviar um documento;
+* Preparar um figurino;
+* Estudar uma coreografia;
+* Realizar uma avaliação;
+* Participar de uma atividade específica;
+* Entregar algum material solicitado.
+
+Na maioria das vezes, a tarefa chega acompanhada de uma explicação.
+
+Mas essa explicação nem sempre é completa.
+
+---
+
+O verdadeiro problema
+
+Curiosamente, o maior problema normalmente não é esquecer de fazer.
+
+O maior problema é não ter certeza do que significa "fazer certo".
+
+O Membro frequentemente entende que existe uma tarefa.
+
+Mas nem sempre entende exatamente:
+
+* O que é esperado;
+* Qual o objetivo;
+* Qual o formato;
+* Qual o nível de qualidade esperado;
+* Qual o prazo real;
+* Quem irá avaliar.
+
+---
+
+Exemplo simples
+
+Receber:
+
+"Gravar um vídeo."
+
+Parece claro.
+
+Mas imediatamente surgem dúvidas:
+
+* Qual duração?
+* Horizontal ou vertical?
+* Precisa editar?
+* Precisa enviar onde?
+* Qual prazo?
+* É individual ou em grupo?
+* O que será avaliado?
+
+A tarefa existe.
+
+Mas a expectativa ainda não está clara.
+
+---
+
+O que acontece hoje quando existe dúvida
+
+Normalmente o Membro precisa voltar para o canal original.
+
+Pergunta novamente.
+
+Procura o Supervisor.
+
+Pergunta para colegas.
+
+Busca mensagens antigas.
+
+Tenta encontrar o contexto.
+
+Isso gera retrabalho.
+
+Não porque a pessoa não quer executar.
+
+Mas porque ela não quer errar.
+
+---
+
+O que acontece quando o prazo não está claro
+
+Existe uma diferença importante entre:
+
+"Entregar até sexta."
+
+e
+
+"Entregar sexta às 18h."
+
+Quando o prazo não é explícito, cada pessoa interpreta de forma diferente.
+
+Isso gera:
+
+* atrasos involuntários;
+* cobranças inesperadas;
+* sensação de injustiça;
+* conflitos evitáveis.
+
+---
+
+Quando o Membro conclui a entrega
+
+Aqui aparece outro problema muito parecido com o das Solicitações.
+
+Depois de entregar, muitas vezes ele volta para um estado de incerteza.
+
+Perguntas comuns:
+
+* Foi recebido?
+* Está correto?
+* Preciso corrigir algo?
+* Está aprovado?
+* Falta alguma coisa?
+
+Mais uma vez surge o problema do silêncio.
+
+---
+
+O que gera confiança
+
+O Membro normalmente não precisa de resposta instantânea.
+
+Mas precisa enxergar progresso.
+
+Por exemplo:
+
+Entrega criada
+↓
+Visualizada
+↓
+Em análise
+↓
+Aprovada
+
+Ou:
+
+Entrega criada
+↓
+Recebida
+↓
+Necessita ajustes
+
+Ou:
+
+Entrega criada
+↓
+Concluída
+
+O status reduz ansiedade.
+
+---
+
+O que acontece quando existe correção
+
+Uma situação muito comum é:
+
+A entrega não está errada.
+
+Mas também não está finalizada.
+
+Existe necessidade de ajuste.
+
+Por isso, Entregas raramente funcionam como um evento binário.
+
+Não é apenas:
+
+Entregou
+↓
+Fim
+
+Muitas vezes existe:
+
+Entregou
+↓
+Analisado
+↓
+Ajuste solicitado
+↓
+Nova entrega
+↓
+Aprovação
+
+Ou seja:
+
+Entregas são ciclos.
+
+Não eventos isolados.
+
+---
+
+O que realmente importa para o Membro
+
+Quando recebe uma entrega, ele quer responder rapidamente:
+
+* O que preciso fazer?
+* Para quando?
+* Como saberei se está certo?
+* Quem irá analisar?
+* Em que estado está?
+* Existe algum feedback?
+
+Perceba novamente o padrão.
+
+O problema não é executar.
+
+O problema é reduzir incerteza.
+
+---
+
+Impacto Operacional
+
+Entregas mal definidas geram:
+
+* retrabalho;
+* atrasos;
+* dúvidas repetidas;
+* mensagens paralelas;
+* avaliações inconsistentes.
+
+Em muitos casos a operação perde mais tempo esclarecendo expectativas do que executando a tarefa.
+
+---
+
+Impacto para UX
+
+A descoberta principal é:
+
+A parte mais importante de uma Entrega não é o envio.
+
+É a clareza.
+
+Por isso o UX deve priorizar:
+
+Objetivo
+↓
+Prazo
+↓
+Critério
+↓
+Status
+↓
+Feedback
+
+Antes mesmo do botão de enviar.
+
+---
+
+Impacto para Interface do MyASA
+
+A área de Entregas não deve parecer um repositório de arquivos.
+
+Ela deve parecer uma jornada de acompanhamento.
+
+Seguindo a identidade do MyASA:
+
+Primeira camada:
+
+🟣 Minhas Entregas Pendentes
+
+* O que precisa de ação;
+* Prazo;
+* Prioridade.
+
+Segunda camada:
+
+🟢 Em Análise
+
+* Aguardando avaliação;
+* Aguardando resposta.
+
+Terceira camada:
+
+📋 Concluídas
+
+* Aprovadas;
+* Finalizadas.
+
+Quarta camada:
+
+💬 Feedbacks e Ajustes
+
+* Comentários;
+* Correções;
+* Próximos passos.
+
+O foco não é o arquivo.
+
+O foco é a evolução da entrega.
+
+---
+
+Riscos
+
+O maior risco seria transformar Entregas em uma simples área de upload.
+
+Isso resolveria apenas a parte menos importante do problema.
+
+Porque o verdadeiro desafio não é enviar algo.
+
+É saber:
+
+* o que fazer;
+* quando fazer;
+* se foi feito corretamente.
+
+---
+
+Oportunidade para IA
+
+A IA pode atuar como uma intérprete de expectativas.
+
+Exemplos:
+
+"O que exatamente esperam desta entrega?"
+
+"Esta avaliação precisa de vídeo?"
+
+"Meu envio já foi analisado?"
+
+"Existe algum feedback pendente?"
+
+Ou até:
+
+"Resuma o que preciso fazer para concluir esta entrega."
+
+A IA reduz ambiguidades antes que elas se transformem em erros.
+
+---
+
+Insight principal desta entrevista
+
+Uma Entrega não começa quando o arquivo é enviado.
+
+Ela começa quando uma expectativa é criada.
+
+E só termina quando existe clareza de que essa expectativa foi atendida.
+
+O maior valor do MyASA não é armazenar entregas.
+
+É tornar visível todo o caminho entre:
+
+"Preciso fazer algo"
+↓
+e
+↓
+"Foi feito corretamente."
+
+Porque a maior parte da ansiedade do Membro vive exatamente nesse espaço intermediário.
