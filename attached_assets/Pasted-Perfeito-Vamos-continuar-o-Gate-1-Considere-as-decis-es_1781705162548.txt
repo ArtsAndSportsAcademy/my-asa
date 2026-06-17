@@ -1,0 +1,220 @@
+Perfeito.
+
+Vamos continuar o Gate 1.
+
+Considere as decisões abaixo como aprovadas e incorpore-as na arquitetura antes de continuar a auditoria.
+
+Não desenhe telas.
+Não faça UX.
+Não faça implementação.
+
+Apenas atualize a arquitetura e procure novos pontos de risco.
+
+──────────────────────────────
+
+1. GRUPO OPERACIONAL
+
+Substituir o conceito de “Equipe” por “Grupo Operacional”.
+
+Definição:
+
+Grupo Operacional é um conjunto configurável de membros dentro de uma Operação.
+
+Pode representar:
+
+* Elenco de espetáculo
+* Grupo de aula
+* Equipe técnica
+* Equipe artística
+* Supervisão
+* Evento específico
+* Qualquer agrupamento operacional
+
+Regras:
+
+* Uma Operação possui vários Grupos Operacionais.
+* Um Membro pode pertencer a vários Grupos Operacionais.
+* Um Supervisor pode gerenciar um ou mais Grupos Operacionais.
+* Um Admin possui acesso a todos os Grupos Operacionais.
+* O Grupo Operacional define o escopo de atuação do Supervisor.
+* O Grupo Operacional existe dentro da Operação.
+
+──────────────────────────────
+
+2. MEU DIA
+
+Meu Dia é a tela principal do Membro.
+
+Deve mostrar:
+
+* Programação do dia
+* Participações em espetáculos
+* Papéis atribuídos
+* Atividades
+* Entregas pendentes
+* Avisos importantes
+* Próximos compromissos
+
+O Membro vê sua participação.
+
+Não vê a operação inteira.
+
+──────────────────────────────
+
+3. RELAÇÃO ENTRE AGENDA E ESCALA
+
+A Agenda é a fonte de eventos.
+
+A Escala é a visão operacional.
+
+Um item da Agenda aparece na Escala quando possuir:
+
+* Data
+* Horário
+* Participantes
+* Impacto operacional
+
+Itens sem impacto operacional permanecem apenas na Agenda.
+
+──────────────────────────────
+
+4. CICLO DE VIDA DOS LIVROS
+
+Livro do Show:
+
+* Criado pelo Supervisor
+* Editado pelo Supervisor
+* Pode possuir versões
+
+Livro do Dia:
+
+* Gerado a partir do Livro do Show
+* Considera folgas
+* Considera restrições
+* Considera disponibilidade
+
+Mudanças no Livro do Show não alteram automaticamente Livros do Dia já gerados.
+
+Qualquer atualização exige confirmação.
+
+──────────────────────────────
+
+5. PUBLICAÇÃO
+
+A publicação acontece pela Escala.
+
+Quem publica:
+
+* Supervisor
+* Admin
+
+Após publicação:
+
+* Membros recebem atualização do Meu Dia
+* Participações ficam visíveis
+* Atividades ficam visíveis
+
+Alterações posteriores são permitidas.
+
+Os membros afetados recebem atualização automática.
+
+──────────────────────────────
+
+6. INBOX UNIFICADO
+
+Todas as conversas contextuais devem aparecer em um Inbox Unificado.
+
+O usuário não precisa procurar mensagens dentro de vários objetos.
+
+O Inbox deve consolidar:
+
+* Mensagens
+* Entregas
+* Solicitações
+* Eventos
+* Avaliações
+
+──────────────────────────────
+
+7. IA
+
+A IA pode:
+
+* Criar eventos
+* Criar ensaios
+* Criar aulas
+* Criar avisos
+* Criar entregas
+* Propor folgas
+* Atualizar Livros
+* Atualizar Escala
+
+A IA nunca executa ações complexas sem confirmação.
+
+Fluxo obrigatório:
+
+Interpretação
+↓
+Proposta
+↓
+Confirmação
+↓
+Execução
+
+──────────────────────────────
+
+8. HISTÓRICO
+
+Histórico é obrigatório.
+
+Registrar:
+
+* Folgas
+* Restrições
+* Escala
+* Livros
+* Agenda
+* Solicitações
+* Entregas
+* Publicações
+* Ações da IA
+
+Todo registro deve indicar:
+
+* Quem fez
+* Quando fez
+* O que mudou
+
+──────────────────────────────
+
+9. RESTRIÇÕES MÉDICAS
+
+O Membro não cria restrições.
+
+O Membro cria uma solicitação.
+
+Supervisor ou Admin registram a restrição oficial.
+
+Restrições podem possuir:
+
+* Data de início
+* Data de término
+* Revisão
+
+──────────────────────────────
+
+10. NOMENCLATURA
+
+Renomear:
+
+Operação → Rotina Operacional
+
+Administração → Unidades Operacionais
+
+Evitar conceitos com nomes semelhantes.
+
+──────────────────────────────
+
+Agora atualize a arquitetura com essas decisões e continue a auditoria.
+
+Quero descobrir todos os riscos antes de avançar para UX.
