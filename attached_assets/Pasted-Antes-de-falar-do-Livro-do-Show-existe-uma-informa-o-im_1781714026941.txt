@@ -1,0 +1,292 @@
+Antes de falar do Livro do Show, existe uma informação importante:
+
+O Supervisor normalmente não começa pensando no espetáculo.
+
+Ele começa pensando nas exceções que afetam o espetáculo.
+
+Por isso, quando uma operação vai ser montada, as primeiras informações relevantes normalmente são:
+
+* Folgas;
+* Restrições;
+* Ausências;
+* Indisponibilidades;
+* Solicitações aprovadas.
+
+Na prática, a pergunta inicial não é:
+
+"Quem vai fazer o show?"
+
+A pergunta é:
+
+"Quem eu não tenho disponível para o show?"
+
+Isso é importante porque as folgas não são tratadas como uma informação administrativa.
+
+Elas são um dos principais filtros operacionais da construção do dia.
+
+Uma folga aprovada não afeta apenas uma pessoa.
+
+Ela pode afetar:
+
+* Shows;
+* Ensaios;
+* Aulas;
+* Eventos;
+* Cobertura de papéis;
+* Distribuição de carga da equipe.
+
+Por isso, na lógica operacional do MyASA, as folgas aparecem antes da geração da operação.
+
+O fluxo mental do Supervisor é mais próximo de:
+
+Livro do Show
+↓
+Folgas
+↓
+Restrições
+↓
+Livro do Dia
+↓
+Escala
+↓
+Publicação
+
+O Supervisor primeiro entende quem não poderá participar.
+
+Depois constrói a operação possível.
+
+---
+
+Falando especificamente do Livro do Show:
+
+O Livro do Show é provavelmente o conhecimento operacional mais importante de toda a operação.
+
+Ele não é uma lista de pessoas.
+
+Ele é a representação de como o espetáculo funciona.
+
+Na prática, ele responde perguntas como:
+
+* Quais cenas existem?
+* Quais blocos existem?
+* Quais posições precisam ser preenchidas?
+* Quais papéis existem?
+* Quais personagens participam?
+* Quais funções são obrigatórias?
+* Quais regras precisam ser respeitadas?
+* Quais substituições são possíveis?
+
+Sem o Livro do Show, não existe base para gerar o Livro do Dia.
+
+---
+
+Quem conhece o Livro do Show?
+
+Na realidade desta operação, os Supervisores normalmente também são os responsáveis artísticos.
+
+Ou seja, não existe necessariamente uma separação entre:
+
+* Supervisor;
+* Coreógrafo;
+* Responsável artístico.
+
+Muitas vezes a mesma pessoa acumula essas funções.
+
+Por isso, quem cria, ajusta e mantém o Livro do Show costuma ser o próprio Supervisor responsável pelo espetáculo.
+
+Ele conhece:
+
+* a estrutura artística;
+* as necessidades técnicas;
+* as regras operacionais;
+* as limitações do elenco;
+* as possibilidades de substituição.
+
+---
+
+Como o Livro do Show é organizado?
+
+Existem dois modelos principais.
+
+### Modelo Simples
+
+Utilizado quando o espetáculo pode ser representado diretamente por papéis ou funções.
+
+Exemplo:
+
+* Astrid
+* Mensageiro
+* Rainha
+* Guardião
+
+Nesse modelo, o Livro do Dia normalmente precisa apenas decidir quem ocupará cada papel.
+
+---
+
+### Modelo Estruturado
+
+Utilizado quando o espetáculo possui uma estrutura mais complexa.
+
+Nesse caso, o Livro é organizado em:
+
+Cena
+↓
+Bloco
+↓
+Posição
+↓
+Pessoa
+
+Exemplo:
+
+Show de Patinação
+
+Cena: Abertura
+
+Bloco: Backstage Left
+
+* Posição 1
+* Posição 2
+* Posição 3
+
+Bloco: Backstage Right
+
+* Posição 1
+* Posição 2
+* Posição 3
+
+Cada posição possui regras próprias.
+
+Algumas posições possuem pessoas fixas.
+
+Outras trabalham com rodízio.
+
+Outras utilizam titulares e substitutos.
+
+Outras dependem de disponibilidade específica.
+
+Por isso, o Livro do Show não guarda apenas nomes.
+
+Ele guarda a lógica operacional do espetáculo.
+
+---
+
+O Livro do Show é estável?
+
+A estrutura principal normalmente é bastante estável.
+
+As cenas principais costumam permanecer.
+
+Os blocos costumam permanecer.
+
+A lógica do espetáculo costuma permanecer.
+
+Mas o Livro nunca é completamente estático.
+
+Mudanças acontecem constantemente.
+
+Por exemplo:
+
+* Entrada de novos membros;
+* Saída de membros;
+* Novos substitutos;
+* Mudanças de coreografia;
+* Novas posições;
+* Remoção de posições;
+* Ajustes de operação;
+* Evolução artística do espetáculo.
+
+Por isso o Livro do Show deve ser tratado como um documento vivo.
+
+---
+
+O que é o Livro do Dia?
+
+O Livro do Dia é a transformação do Livro do Show em uma operação real para uma data específica.
+
+Ele nasce a partir do Livro do Show.
+
+Mas antes de ser gerado, considera:
+
+* Folgas;
+* Restrições;
+* Disponibilidade;
+* Regras operacionais;
+* Regras do espetáculo.
+
+Depois disso o sistema gera uma proposta operacional.
+
+Mas essa proposta não é definitiva.
+
+O Supervisor pode:
+
+* revisar;
+* editar;
+* ajustar;
+* reorganizar;
+* substituir pessoas;
+* corrigir exceções.
+
+Ou seja, o Livro do Dia é automático, mas continua sendo uma ferramenta operacional controlada pelo Supervisor.
+
+---
+
+O que pode dar errado?
+
+Um erro comum é acreditar que o Livro do Show é apenas uma lista de personagens.
+
+Na prática, ele é muito mais do que isso.
+
+Ele contém conhecimento operacional acumulado.
+
+Outro erro comum é acreditar que o Livro do Dia deve ser montado completamente do zero todos os dias.
+
+Na realidade, o Supervisor trabalha muito mais validando e ajustando do que construindo.
+
+A operação já possui uma base.
+
+O desafio é garantir que ela continue funcionando apesar das folgas, restrições e mudanças que acontecem diariamente.
+
+---
+
+O que o Supervisor realmente precisa saber?
+
+Quando olha para um Livro do Show ou para um Livro do Dia, ele normalmente quer responder:
+
+* O espetáculo está coberto?
+* Existem posições sem cobertura?
+* Existem riscos?
+* Existem conflitos?
+* Existe alguém sobrecarregado?
+* Existe alguma posição crítica sem substituto?
+* O que acontece se alguém faltar?
+
+Perceba que novamente o foco não está na pessoa.
+
+O foco está na continuidade da operação.
+
+---
+
+Impacto para UX
+
+O Livro do Show não deve ser tratado como um cadastro.
+
+O Livro do Dia não deve ser tratado como uma planilha.
+
+Os Livros são o coração operacional do sistema.
+
+Eles representam o conhecimento acumulado de como transformar um espetáculo artístico em uma operação executável.
+
+A principal função do Supervisor não é preencher os Livros.
+
+É confiar que os Livros representam corretamente a realidade da operação e permitem tomar decisões rápidas quando surgem exceções.
+
+---
+
+Insight principal desta entrevista
+
+O Livro do Show descreve como o espetáculo funciona.
+
+O Livro do Dia transforma essa estrutura em uma operação real.
+
+E as folgas e restrições são os primeiros filtros que determinam se essa operação será viável ou não.
