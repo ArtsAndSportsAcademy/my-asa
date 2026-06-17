@@ -1,0 +1,389 @@
+Estou iniciando oficialmente o projeto MyASA 2.0.
+
+IMPORTANTE:
+
+Considere que não existe nenhum MyASA anterior.
+
+Não utilize nenhuma arquitetura anterior, nenhuma navegação anterior e nenhuma tela anterior como referência.
+
+Estamos criando o produto correto do zero.
+
+Seu papel é atuar como:
+
+* Product Designer
+* UX Designer
+* Arquiteto de Produto
+* Especialista Mobile First
+* Auditor de Produto
+
+NÃO desenhe telas.
+
+NÃO proponha implementação.
+
+NÃO proponha código.
+
+NÃO proponha menus.
+
+NÃO proponha navegação.
+
+NÃO proponha wireframes.
+
+Primeiro quero validar a arquitetura.
+
+Sua missão inicial é atuar como um comitê de arquitetura e tentar encontrar problemas neste documento.
+
+Procure:
+
+* Contradições
+* Lacunas
+* Fluxos incompletos
+* Conflitos entre pilares
+* Casos operacionais não cobertos
+* Problemas de escalabilidade
+* Problemas de experiência
+* Problemas de governança
+* Problemas de mobile
+* Problemas de permissões
+* Problemas futuros que possam gerar caos operacional
+
+Não tente melhorar a interface.
+
+Não tente desenhar telas.
+
+Primeiro valide a fundação.
+
+Somente depois iremos para UX.
+
+──────────────────────────────
+
+MYASA 2.0
+
+O MyASA é uma plataforma operacional para operações artísticas, espetáculos e equipes.
+
+Seu objetivo é transformar comunicação operacional em operação organizada.
+
+O sistema deve se adaptar à operação.
+
+A operação não deve se adaptar ao sistema.
+
+A IA deve reduzir trabalho manual.
+
+O Supervisor deve revisar e aprovar.
+
+O sistema deve fazer o trabalho pesado.
+
+──────────────────────────────
+
+PRINCÍPIOS
+
+1. Mobile e Web possuem a mesma importância.
+2. Nenhuma funcionalidade é considerada pronta sem experiência mobile.
+3. Características não viram módulos.
+4. Apenas pilares viram módulos.
+5. O sistema deve parecer um produto premium.
+6. O sistema deve ser simples mesmo em dias caóticos.
+7. A IA ajuda a operar.
+8. A IA não substitui pessoas.
+
+──────────────────────────────
+
+PÚBLICOS
+
+Administrador
+
+Supervisor
+
+Membro
+
+──────────────────────────────
+
+PILARES
+
+Operação
+
+* Escala
+* Agenda
+* Livros
+
+Pessoas
+
+* Equipe
+* Folgas
+* Restrições
+* Solicitações
+* Entregas
+
+Comunicação
+
+* Avisos
+* Mensagens
+
+Conhecimento
+
+* Biblioteca
+* Manuais
+* Diretrizes
+* Procedimentos
+
+Assistência
+
+* IA
+
+Administração
+
+* Operações
+* Configurações
+
+──────────────────────────────
+
+FLUXO PRINCIPAL
+
+Livro do Show
+↓
+Folgas e Restrições
+↓
+Livro do Dia
+↓
+Escala
+↓
+Publicação
+↓
+Meu Dia
+
+──────────────────────────────
+
+LIVROS
+
+Todo espetáculo utiliza Livros.
+
+Existem:
+
+* Livro do Show
+* Livro do Dia
+
+Os espetáculos possuem internamente um modelo operacional.
+
+Modelo Simples:
+
+Papel → Pessoa
+
+Modelo Estruturado:
+
+Cena → Bloco → Posição → Pessoa
+
+Modelos não são módulos.
+
+São configurações internas do espetáculo.
+
+──────────────────────────────
+
+ESCALA
+
+A Escala é o centro operacional do sistema.
+
+Ela responde:
+
+* Quem eu tenho hoje?
+* O que cada pessoa faz?
+* Existem conflitos?
+* Quem está disponível?
+* A operação está pronta?
+
+A Escala é o local oficial de publicação do dia.
+
+A Escala nasce das atividades.
+
+A operação é construída nesta ordem:
+
+1. Shows
+2. Ensaios e aulas
+3. Eventos
+4. Produção e administrativo
+5. Disponibilidades restantes
+
+A jornada não é configurada por perfil.
+
+Ela nasce da própria Escala:
+
+Entrada = primeira atividade do dia
+
+Saída = última atividade do dia
+
+──────────────────────────────
+
+FOLGAS
+
+Criadas por:
+
+* Admin
+* Supervisor
+
+Membro pode solicitar:
+
+* Troca de folga
+* Dia específico
+* Solicitações excepcionais
+
+Supervisor aprova.
+
+──────────────────────────────
+
+RESTRIÇÕES
+
+Criadas por:
+
+* Admin
+* Supervisor
+
+Nunca pelo membro.
+
+Exemplos:
+
+* Sem acrobacia
+* Não pode entrar no gelo
+* Restrição médica
+* Restrição operacional
+
+──────────────────────────────
+
+AGENDA
+
+Calendário central da operação.
+
+Contém:
+
+* Ensaios
+* Aulas
+* Reuniões
+* Eventos
+* Avaliações
+* Prazos
+* Entregas
+
+Itens com horário e impacto operacional aparecem também na Escala.
+
+──────────────────────────────
+
+ENTREGAS
+
+Tipos:
+
+* Tarefa simples
+* Projeto
+* Entrega digital
+* Avaliação presencial
+
+Admin pode criar para todos.
+
+Supervisor pode criar para seu grupo.
+
+Membro pode criar para si mesmo.
+
+──────────────────────────────
+
+COMUNICAÇÃO
+
+Avisos
+
+Mensagens
+
+Mensagens funcionam como WhatsApp interno.
+
+Conversas contextuais podem existir dentro de entregas, solicitações e eventos.
+
+──────────────────────────────
+
+BIBLIOTECA
+
+Contém:
+
+* Manual do Elenco
+* Diretriz do Gelo
+* Procedimentos
+* Regulamentos
+* Treinamentos
+
+A IA pode responder perguntas usando os documentos da Biblioteca.
+
+──────────────────────────────
+
+IA
+
+A IA transforma comunicação operacional em ações.
+
+Fluxo:
+
+Mensagem
+↓
+Interpretação
+↓
+Proposta
+↓
+Confirmação
+↓
+Execução
+
+──────────────────────────────
+
+MOBILE
+
+Mobile é obrigatório.
+
+Web e Mobile devem ser desenhados simultaneamente.
+
+Nenhuma funcionalidade pode ser aprovada sem experiência mobile.
+
+──────────────────────────────
+
+IDENTIDADE VISUAL
+
+Inspiração:
+
+* iOS
+* Apple Calendar
+* Apple Reminders
+* Apple Health
+
+Não parecer:
+
+* ERP
+* RH
+* Sistema corporativo
+
+Visual:
+
+* Modo claro como padrão
+* Muito espaço em branco
+* Bordas arredondadas
+* Glassmorphism leve
+* Transparências suaves
+* Poucas cores
+
+A asa do MyASA é o principal elemento visual.
+
+Utilizar apenas a asa.
+
+Não utilizar o fundo escuro do ícone dentro da interface.
+
+Criar versões:
+
+* Asa Glass
+* Asa Outline
+* Asa Marca-d’água
+
+A asa deve funcionar como elemento visual elegante e não competir com o conteúdo.
+
+──────────────────────────────
+
+Sua tarefa é auditar esta arquitetura.
+
+Não desenhe telas.
+
+Não proponha implementação.
+
+Primeiro me diga:
+
+1. O que está sólido.
+2. O que está incompleto.
+3. O que pode gerar problemas no futuro.
+4. O que ainda precisa ser decidido antes de iniciar UX e Design.
