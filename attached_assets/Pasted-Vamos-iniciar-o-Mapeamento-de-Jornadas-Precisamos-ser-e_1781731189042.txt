@@ -1,0 +1,105 @@
+Vamos iniciar o Mapeamento de Jornadas.
+
+Precisamos ser extremamente criteriosos e detalhados.
+
+O objetivo não é fazer um resumo superficial.
+
+O objetivo é transformar a arquitetura validada e as pesquisas dos três perfis em jornadas operacionais completas, para evitar retrabalho futuro.
+
+Base obrigatória:
+
+* docs/arquitetura-myasa-2.0.md
+* docs/ux-diretrizes-obrigatorias.md
+* docs/ux-pesquisa-supervisor.md
+* docs/ux-pesquisa-membro.md
+* docs/ux-pesquisa-admin.md
+
+Regras:
+
+* Não criar telas.
+* Não criar componentes.
+* Não propor interface visual.
+* Não propor layout.
+* Não simplificar demais.
+* Não pular exceções.
+* Não ignorar casos críticos.
+* Não transformar jornada em lista genérica.
+
+Atuar apenas como arquiteto de jornadas.
+
+Para cada perfil — Membro, Supervisor e Admin — mapear com profundidade:
+
+1. Objetivo principal
+2. Pergunta central
+3. Estado mental do usuário
+4. Início do ciclo
+5. Ações frequentes
+6. Decisões principais
+7. Informações necessárias
+8. Riscos e ansiedades
+9. Momentos de comunicação
+10. Uso da IA
+11. Estados de sucesso
+12. Estados de falha
+13. Exceções comuns
+14. Pontos de contato com outros perfis
+15. O que o sistema precisa garantir
+
+Estrutura obrigatória:
+
+* Jornada Principal
+* Jornadas Secundárias
+* Jornadas Eventuais
+* Jornadas Críticas
+
+Para cada jornada, incluir:
+
+* Gatilho
+* Contexto
+* Passo a passo
+* Informação necessária em cada etapa
+* Decisão necessária em cada etapa
+* Possíveis falhas
+* Como o MyASA reduz risco
+* Como a IA pode ajudar
+* Resultado esperado
+* Critério de sucesso
+
+Ao final, produzir:
+
+* Mapa consolidado das jornadas dos três perfis
+* Dependências entre jornadas
+* Pontos de contato entre Membro, Supervisor e Admin
+* Eventos que conectam os perfis
+* Momentos mais frequentes do produto
+* Momentos mais críticos do produto
+* Jornadas que representam 80% do uso real
+* Jornadas que podem ser deixadas para depois
+
+Importante:
+
+Use as descobertas das pesquisas como base.
+
+Especialmente:
+
+Supervisor:
+
+* busca clareza para decidir;
+* trabalha com exceções;
+* precisa enxergar consequências invisíveis.
+
+Membro:
+
+* busca certeza para executar;
+* sofre com silêncio sem significado;
+* precisa saber o que mudou, o que fazer e qual é o status.
+
+Admin:
+
+* busca saúde organizacional;
+* procura padrões e reincidências;
+* precisa entender o que aconteceu e por quê.
+
+Objetivo final:
+
+Chegar em um conjunto de jornadas suficientemente detalhado para iniciar UX sem risco relevante de retrabalho estrutural.
