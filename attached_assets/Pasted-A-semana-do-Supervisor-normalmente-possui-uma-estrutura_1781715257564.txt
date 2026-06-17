@@ -1,0 +1,406 @@
+A semana do Supervisor normalmente possui uma estrutura planejada, mas raramente segue exatamente como foi planejada.
+
+Existe planejamento.
+
+Existe organização.
+
+Existe preparação.
+
+Mas também existe uma necessidade constante de adaptação.
+
+Por isso, a rotina do Supervisor não é totalmente estratégica nem totalmente reativa.
+
+Ela funciona em camadas simultâneas.
+
+O Supervisor precisa olhar para:
+
+* O que está acontecendo agora;
+* O que acontecerá nas próximas horas;
+* O que acontecerá amanhã;
+* O que pode se tornar um problema na próxima semana.
+
+Na prática, ele vive em vários horizontes ao mesmo tempo.
+
+---
+
+Como a semana normalmente começa
+
+Existe um momento onde o Supervisor procura enxergar a operação de forma ampla.
+
+Ele tenta responder:
+
+* Quais shows acontecerão nesta semana?
+* Existem eventos especiais?
+* Existem ensaios importantes?
+* Existem aulas programadas?
+* Existem datas críticas?
+* Existem membros indisponíveis?
+* Existem folgas aprovadas?
+* Existem restrições ativas?
+* Existem funções com pouca cobertura?
+
+Nesse momento ele não está resolvendo problemas específicos.
+
+Ele está procurando riscos futuros.
+
+A pergunta principal é:
+
+"A operação desta semana parece viável?"
+
+Antes mesmo de pensar em detalhes.
+
+---
+
+O papel das folgas no planejamento semanal
+
+As folgas costumam ser uma das primeiras informações analisadas.
+
+Porque elas definem quem estará disponível para a operação.
+
+Na prática, o Supervisor normalmente pensa:
+
+"Antes de saber quem eu tenho, preciso saber quem eu não tenho."
+
+Por isso, as folgas são analisadas antes da construção operacional.
+
+Ele procura identificar:
+
+* Concentração de folgas;
+* Dias críticos;
+* Funções sem cobertura;
+* Riscos futuros;
+* Possíveis gargalos.
+
+Muitas vezes os maiores problemas da semana aparecem aqui.
+
+Não durante a montagem.
+
+Mas durante a análise de disponibilidade.
+
+---
+
+O papel das restrições
+
+As restrições funcionam de forma semelhante.
+
+Nem toda pessoa disponível está realmente disponível para todas as atividades.
+
+Por exemplo:
+
+* Pode estar apta para um show;
+* Mas não para determinada cena;
+* Pode participar de ensaio;
+* Mas não realizar atividade física específica.
+
+Por isso, disponibilidade e capacidade operacional não são a mesma coisa.
+
+O Supervisor precisa enxergar ambas.
+
+---
+
+Como os Livros entram na semana
+
+O Livro do Show normalmente já existe.
+
+Ele representa o conhecimento operacional acumulado do espetáculo.
+
+Ele contém:
+
+* Estrutura do espetáculo;
+* Cenas;
+* Blocos;
+* Posições;
+* Papéis;
+* Regras;
+* Coberturas;
+* Possibilidades de substituição.
+
+A partir dele nasce o Livro do Dia.
+
+Mas o Livro do Dia não é uma simples cópia.
+
+Ele considera:
+
+Livro do Show
+↓
+Folgas
+↓
+Restrições
+↓
+Disponibilidade
+↓
+Livro do Dia
+
+O resultado é uma versão operacional daquele espetáculo para uma data específica.
+
+---
+
+Importante: o Livro do Dia não é definitivo
+
+Mesmo depois de gerado, ele continua sendo uma ferramenta operacional.
+
+O Supervisor pode:
+
+* ajustar;
+* reorganizar;
+* substituir;
+* remover;
+* acrescentar;
+* adaptar.
+
+Isso acontece porque a realidade muda constantemente.
+
+O objetivo não é preservar o planejamento original.
+
+O objetivo é preservar a operação.
+
+---
+
+A Escala da semana
+
+A Escala nasce do Livro do Dia.
+
+Mas ela também não é um documento final.
+
+Ela representa a melhor versão conhecida da operação naquele momento.
+
+Por isso, a Escala é constantemente validada.
+
+Uma semana inteira pode ser planejada.
+
+Mas cada dia continua sendo revisado.
+
+---
+
+Existe um dia de planejamento pesado?
+
+Normalmente sim.
+
+Existe um momento da semana onde o Supervisor dedica mais energia para:
+
+* revisar folgas;
+* revisar restrições;
+* revisar cobertura;
+* identificar riscos;
+* validar funções críticas;
+* preparar os próximos dias.
+
+Mas isso não elimina o trabalho diário.
+
+Na verdade, esse planejamento existe justamente para reduzir a quantidade de decisões urgentes depois.
+
+---
+
+O que acontece conforme a semana avança
+
+A natureza do trabalho muda.
+
+No início existe mais planejamento.
+
+Próximo da execução existe mais supervisão.
+
+Quando o dia chega, o Supervisor passa a trabalhar principalmente com:
+
+* validação;
+* monitoramento;
+* exceções;
+* ajustes;
+* comunicação;
+* resolução de conflitos.
+
+Ou seja:
+
+Planejamento não substitui supervisão.
+
+Planejamento apenas melhora a supervisão.
+
+---
+
+O que diferencia um Supervisor experiente
+
+Não é a velocidade para apagar incêndios.
+
+É a capacidade de enxergar incêndios antes que eles aconteçam.
+
+Os Supervisores mais experientes normalmente identificam:
+
+* funções críticas;
+* dias vulneráveis;
+* excesso de carga;
+* falta de substitutos;
+* riscos futuros.
+
+Antes que esses problemas se transformem em crises.
+
+Na prática, eles passam menos tempo reagindo porque passaram mais tempo antecipando.
+
+---
+
+O que pode dar errado
+
+Um erro comum é acreditar que uma semana planejada está resolvida.
+
+Na operação artística isso quase nunca acontece.
+
+Mesmo semanas muito bem planejadas sofrem:
+
+* ausências;
+* mudanças;
+* ajustes;
+* restrições;
+* alterações operacionais;
+* necessidades inesperadas.
+
+O planejamento reduz o caos.
+
+Mas não elimina o caos.
+
+---
+
+Impacto Operacional
+
+A descoberta mais importante é que o Supervisor trabalha em múltiplos horizontes simultaneamente.
+
+Ele precisa enxergar:
+
+Agora
+↓
+Próximas horas
+↓
+Próximos dias
+↓
+Próxima semana
+
+Ao mesmo tempo.
+
+Se ele perder qualquer um desses horizontes, a qualidade das decisões cai.
+
+---
+
+Impacto para UX
+
+O sistema não deve separar artificialmente planejamento e execução.
+
+Porque para o Supervisor eles coexistem.
+
+Enquanto resolve um problema de hoje, ele já está pensando no impacto de amanhã.
+
+Enquanto monta amanhã, ele já está observando os riscos do fim de semana.
+
+Por isso o UX deve permitir transitar naturalmente entre:
+
+* Hoje;
+* Amanhã;
+* Próximos dias;
+* Próxima semana.
+
+Sem trocar de contexto.
+
+Sem navegar por dezenas de telas.
+
+Sem reconstruir mentalmente a operação toda vez.
+
+---
+
+Impacto para Interface do MyASA
+
+Esta descoberta influencia diretamente a Home do Supervisor.
+
+A Home não deve ser apenas uma tela de hoje.
+
+Mas também não deve ser uma agenda semanal pesada.
+
+Ela deve equilibrar os dois mundos.
+
+Seguindo a identidade visual do MyASA:
+
+Primeira camada:
+
+🟢 Status da Operação Hoje
+
+* Operação pronta;
+* Exceções ativas;
+* Pendências críticas;
+* Alertas imediatos.
+
+Segunda camada:
+
+🟣 Próximos Riscos
+
+* Folgas críticas;
+* Coberturas frágeis;
+* Funções sem substituto;
+* Conflitos previstos.
+
+Terceira camada:
+
+🪽 Visão Semanal
+
+* Tendências;
+* Eventos importantes;
+* Dias críticos;
+* Pontos de atenção.
+
+Tudo apresentado em cards leves.
+
+Com bastante espaço em branco.
+
+Com hierarquia visual clara.
+
+Com o resumo antes dos detalhes.
+
+Sem tabelas gigantes.
+
+Sem cronogramas densos.
+
+Sem aparência de ERP.
+
+A sensação deve ser:
+
+"Eu consigo enxergar a operação inteira sem me sentir sobrecarregado."
+
+Exatamente como a filosofia da asa.
+
+---
+
+Oportunidade para IA
+
+Esta é uma das maiores oportunidades para a IA dentro do MyASA.
+
+A IA não deve apenas reagir aos problemas.
+
+Ela deve antecipá-los.
+
+Exemplos:
+
+"Na sexta-feira existe risco elevado de cobertura."
+
+"Domingo possui apenas um substituto disponível para função crítica."
+
+"Há três folgas concentradas no mesmo período."
+
+"Existe risco de efeito cascata caso ocorra uma ausência no Musical."
+
+A IA deixa de ser corretiva.
+
+Ela se torna preventiva.
+
+---
+
+Insight principal desta entrevista
+
+O Supervisor não vive apenas no presente.
+
+Mas também não vive apenas no planejamento.
+
+Ele opera constantemente entre dois mundos:
+
+Planejar o que ainda não aconteceu.
+↓
+Proteger o que está prestes a acontecer.
+
+O verdadeiro valor do MyASA é conectar esses horizontes e transformar uma operação complexa em decisões claras, antecipadas e confiáveis.
+
+O objetivo final não é organizar atividades.
+
+É dar ao Supervisor a sensação de que ele continua enxergando o todo, mesmo quando a operação está em movimento.
