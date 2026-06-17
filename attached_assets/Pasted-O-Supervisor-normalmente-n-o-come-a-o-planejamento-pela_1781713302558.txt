@@ -1,0 +1,171 @@
+O Supervisor normalmente não começa o planejamento pelas pessoas.
+
+Ele começa pela operação.
+
+Essa é uma diferença importante porque muitos sistemas assumem que a escala é construída distribuindo pessoas. Na prática, o Supervisor primeiro entende tudo o que precisa acontecer e só depois procura quem irá executar cada atividade.
+
+A lógica mental normalmente é:
+
+"O que precisa acontecer neste dia ou nesta semana para que a operação funcione?"
+
+A partir dessa resposta ele começa a montar a operação.
+
+A ordem geralmente é:
+
+Shows
+↓
+Ensaios
+↓
+Aulas
+↓
+Eventos especiais
+↓
+Atividades de apoio
+↓
+Distribuição das pessoas
+
+Os shows normalmente são a prioridade máxima porque possuem horários fixos, papéis obrigatórios e impacto direto na experiência do público.
+
+Por exemplo, se existe um Musical às 12h30, o Supervisor primeiro garante que todos os papéis necessários para aquele espetáculo possam ser executados.
+
+Somente depois ele pensa nos ensaios, aulas e demais atividades.
+
+O raciocínio não costuma ser:
+
+"Tenho a Carolina disponível, onde vou colocá-la?"
+
+O raciocínio costuma ser:
+
+"Preciso de uma Astrid às 12h30. Quem consegue assumir esse papel hoje?"
+
+Ou:
+
+"Preciso de alguém nesta posição do show de patinação. Quem atende os requisitos?"
+
+A necessidade operacional vem antes da pessoa.
+
+As pessoas são utilizadas para atender uma necessidade da operação.
+
+Outro ponto importante é que o Supervisor raramente trabalha criando tudo do zero.
+
+Grande parte da estrutura já existe.
+
+Normalmente já existem:
+
+* Shows definidos;
+* Horários definidos;
+* Papéis definidos;
+* Regras definidas;
+* Livro do Show definido.
+
+Por isso, o trabalho do Supervisor não é simplesmente construir uma escala.
+
+O trabalho principal é validar se o planejamento continua viável.
+
+Na prática, o fluxo costuma ser:
+
+Livro do Show
+↓
+Folgas
+↓
+Restrições
+↓
+Livro do Dia
+↓
+Escala
+↓
+Publicação
+↓
+Execução
+↓
+Correção de desvios
+
+Existe um planejamento inicial que pode ser feito dias ou semanas antes.
+
+Mas conforme o dia se aproxima, o trabalho muda.
+
+O Supervisor deixa de planejar e passa a gerenciar exceções.
+
+Por exemplo:
+
+* Um membro entra de folga;
+* Surge um no-show;
+* Alguém apresenta uma restrição médica;
+* Um ensaio é adicionado;
+* Um evento é cancelado;
+* Uma atividade muda de horário.
+
+Nesses momentos, o Supervisor precisa verificar se o planejamento continua funcionando.
+
+Quando surge uma exceção, o processo normalmente é:
+
+Problema identificado
+↓
+Análise de impacto
+↓
+Identificação das atividades afetadas
+↓
+Busca por alternativas
+↓
+Avaliação de risco
+↓
+Decisão
+↓
+Atualização da operação
+↓
+Comunicação aos envolvidos
+
+Um ponto importante é que uma substituição raramente afeta apenas uma pessoa.
+
+Muitas vezes existe efeito cascata.
+
+Exemplo:
+
+A pessoa responsável por um personagem principal falta.
+
+O Supervisor encontra um substituto.
+
+Mas esse substituto já estava alocado em outra atividade.
+
+Agora aquela outra atividade também precisa ser coberta.
+
+Isso gera uma nova substituição.
+
+E essa nova substituição pode gerar outro ajuste.
+
+Por isso, a decisão mais importante não é encontrar alguém disponível.
+
+É encontrar a solução com menor risco operacional.
+
+O Supervisor normalmente avalia:
+
+* Disponibilidade;
+* Conhecimento do papel;
+* Experiência;
+* Restrições;
+* Carga de trabalho do dia;
+* Tempo para preparação;
+* Impacto em outras atividades;
+* Segurança da substituição.
+
+O objetivo final não é criar uma escala perfeita.
+
+O objetivo final é garantir que a operação continue funcionando mesmo quando surgem mudanças, imprevistos e exceções.
+
+Insight importante para UX:
+
+O Supervisor não trabalha principalmente com cadastros.
+
+O Supervisor trabalha com validação, análise de impacto, tomada de decisão e resolução de problemas.
+
+A experiência ideal não deve ser construída em torno de formulários e preenchimentos.
+
+Ela deve ser construída em torno de:
+
+* identificar exceções;
+* entender impactos;
+* comparar alternativas;
+* avaliar riscos;
+* tomar decisões rapidamente.
+
+Quanto mais o sistema ajudar nessas decisões, mais valor ele gera para o Supervisor.
