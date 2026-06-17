@@ -1,0 +1,103 @@
+Vamos iniciar os Wireframes do Bloco 1.
+
+Começar exclusivamente por:
+
+S-01 — Meu Dia
+
+Importante:
+
+Não desenhar ainda S-02 nem S-04.
+
+Vamos validar primeiro a principal superfície do Membro.
+
+Base obrigatória:
+
+* docs/arquitetura-myasa-2.0.md
+* docs/ux-diretrizes-obrigatorias.md
+* docs/ux-pesquisa-membro.md
+* docs/jornadas-myasa-2.0.md
+* docs/ux-superficies-myasa-2.0.md
+* docs/especificacao-bloco1-myasa-2.0.md
+* docs/design-visual-bloco1-myasa-2.0.md
+
+Objetivo:
+
+Produzir wireframes estruturais completos para S-01 Meu Dia.
+
+Atuar como Senior Product Designer.
+
+Importante:
+
+Ainda não criar mockups visuais finais.
+
+Ainda não aplicar detalhes gráficos.
+
+Ainda não focar em estética.
+
+O objetivo é validar estrutura, hierarquia e fluxo.
+
+Produzir:
+
+1. Wireframe — Estado Normal
+
+Quando não existe nenhuma alteração crítica.
+
+Validar:
+
+* IA narrativa do dia
+* Próxima atividade
+* Linha do tempo
+* Solicitações
+* Entregas
+* Mensagens relevantes
+
+2. Wireframe — Estado de Atenção
+
+Quando existe uma alteração operacional importante.
+
+Validar:
+
+* Hierarquia dinâmica
+* Reorganização automática do conteúdo
+* Priorização visual
+
+3. Wireframe — Estado Crítico
+
+Quando existe Alteração Operacional Persistente não confirmada.
+
+Validar especialmente:
+
+D1 — O bloco deve ser impossível de ignorar.
+
+Responder:
+
+* O que aparece primeiro?
+* O que desaparece?
+* O que é empurrado para baixo?
+* O que exige confirmação?
+
+4. Fluxos
+
+Mapear:
+
+* Entrada normal
+* Recebimento de alteração
+* Confirmação da alteração
+* Abertura da próxima atividade
+* Consulta à IA
+* Acompanhamento de solicitação
+* Acompanhamento de entrega
+
+5. Auditoria do Wireframe
+
+Verificar:
+
+* Coerência com pesquisas
+* Coerência com jornadas
+* Coerência com navegação
+* Coerência com identidade da asa
+* Coerência com a filosofia "o membro busca certeza"
+
+Objetivo final:
+
+Chegar ao wireframe estrutural definitivo do Meu Dia antes de iniciar qualquer detalhe visual.
