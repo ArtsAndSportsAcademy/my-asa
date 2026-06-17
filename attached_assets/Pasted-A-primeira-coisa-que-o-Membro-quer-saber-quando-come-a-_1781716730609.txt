@@ -1,0 +1,278 @@
+A primeira coisa que o Membro quer saber quando começa o dia não é a programação completa da operação.
+
+É algo muito mais simples:
+
+"O que eu preciso fazer hoje?"
+
+Essa diferença é importante.
+
+O Supervisor pensa na operação.
+
+O Membro pensa na própria jornada dentro da operação.
+
+---
+
+Como acontece hoje na prática
+
+Na maioria das vezes, o Membro não acorda pensando em todos os shows, ensaios e atividades do dia.
+
+Ele pensa:
+
+* Tenho show hoje?
+* Que personagem vou fazer?
+* Houve alguma mudança?
+* Preciso chegar mais cedo?
+* Tenho ensaio?
+* Tenho aula?
+* Preciso levar alguma coisa específica?
+* Alguém alterou minha programação?
+
+O foco é individual.
+
+Ele quer entender rapidamente qual é o seu papel dentro do dia.
+
+---
+
+O dia começa com certeza ou com dúvida?
+
+Depende muito da estabilidade da operação.
+
+Em dias normais, existe uma expectativa de certeza.
+
+O Membro normalmente acredita que já sabe o que vai acontecer.
+
+Mas existe sempre uma dúvida silenciosa:
+
+"Será que mudou alguma coisa?"
+
+Essa dúvida é extremamente comum em operações artísticas.
+
+Porque mudanças acontecem.
+
+* Substituições;
+* Ajustes de última hora;
+* Trocas;
+* Ensaios extras;
+* Alterações de personagem;
+* Mudanças de horário.
+
+Por isso, mesmo quando acredita saber sua programação, o Membro frequentemente procura uma confirmação.
+
+Na prática ele não procura novidades.
+
+Ele procura segurança.
+
+---
+
+Como ele obtém essa confirmação hoje
+
+Normalmente através de múltiplos canais.
+
+Por exemplo:
+
+* Grupo de WhatsApp;
+* Supervisor;
+* Escala publicada;
+* Livro do Dia;
+* Conversas informais;
+* Colegas de equipe.
+
+Isso cria um problema.
+
+A mesma informação pode existir em vários lugares.
+
+E às vezes o Membro precisa descobrir qual deles contém a versão mais atual.
+
+---
+
+O que gera ansiedade
+
+A maior ansiedade normalmente não é ter uma programação cheia.
+
+É não saber se a programação mudou.
+
+Exemplos:
+
+* Será que continuo fazendo Astrid hoje?
+* Será que mudaram meu horário?
+* Será que apareceu um ensaio?
+* Será que alguém me marcou em alguma atividade?
+* Será que publicaram um novo Livro do Dia?
+
+A dúvida gera mais ansiedade do que a atividade.
+
+---
+
+O que gera confiança
+
+O que gera confiança é abrir um único lugar e entender imediatamente:
+
+* O que eu faço hoje;
+* Em que horário;
+* Onde;
+* Em qual função;
+* O que mudou desde a última vez que vi.
+
+Sem precisar procurar.
+
+Sem precisar perguntar.
+
+Sem precisar comparar mensagens.
+
+---
+
+O que pode dar errado
+
+Um dos maiores riscos acontece quando o Membro acredita que já sabe sua programação.
+
+Se uma mudança acontece e ela não fica evidente, existe grande chance de:
+
+* chegar no horário errado;
+* preparar o personagem errado;
+* perder um ensaio;
+* não perceber uma substituição;
+* gerar impacto operacional sem intenção.
+
+Por isso, para o Membro, mudanças são mais importantes do que a programação em si.
+
+---
+
+Impacto Operacional
+
+A principal necessidade do Membro não é construir a operação.
+
+É executar corretamente a sua parte da operação.
+
+Quanto mais rapidamente ele entende:
+
+* o que fazer;
+* quando fazer;
+* o que mudou;
+
+menor a chance de erro operacional.
+
+---
+
+Impacto para UX
+
+O Meu Dia não deve começar mostrando tudo.
+
+Deve começar respondendo imediatamente:
+
+"O que eu preciso fazer hoje?"
+
+E logo depois:
+
+"O que mudou?"
+
+Essa ordem é crítica.
+
+Porque reflete exatamente o processo mental do Membro.
+
+Primeiro ele busca orientação.
+
+Depois ele busca confirmação.
+
+---
+
+Impacto para Interface do MyASA
+
+A tela Meu Dia provavelmente será a tela mais acessada de todo o produto.
+
+Por isso ela deve ser extremamente simples.
+
+Seguindo a identidade do MyASA:
+
+Primeira camada:
+
+🟢 Meu Próximo Compromisso
+
+* Show;
+* Ensaio;
+* Aula;
+* Reunião.
+
+Segunda camada:
+
+🟣 Alterações Recentes
+
+* Mudanças de horário;
+* Mudanças de personagem;
+* Novas atividades;
+* Atualizações importantes.
+
+Terceira camada:
+
+📋 Meu Dia Completo
+
+* Linha do tempo;
+* Horários;
+* Local;
+* Função;
+* Personagem.
+
+Tudo em cards leves.
+
+Sem excesso de informação.
+
+Sem parecer agenda corporativa.
+
+Sem parecer escala administrativa.
+
+A sensação deve ser:
+
+"Eu sei exatamente o que preciso fazer."
+
+---
+
+Riscos
+
+O maior risco de UX seria transformar o Meu Dia em uma mini versão da Escala do Supervisor.
+
+O Membro não quer enxergar a operação inteira.
+
+Ele quer enxergar a parte da operação que depende dele.
+
+Mostrar informação demais aumenta ansiedade.
+
+Não aumenta confiança.
+
+---
+
+Oportunidade para IA
+
+A IA do Membro não precisa ser igual à IA do Supervisor.
+
+O Supervisor pergunta:
+
+"Quem pode cobrir a Astrid?"
+
+O Membro provavelmente pergunta:
+
+"O que mudou hoje?"
+
+"Tenho alguma atividade extra?"
+
+"Que personagem faço no show das 14h?"
+
+"Preciso chegar mais cedo?"
+
+A IA pode funcionar como um intérprete pessoal da operação.
+
+Traduzindo toda a complexidade para algo simples:
+
+"Hoje você tem Musical às 12h30 como Astrid, Show de Patinação às 14h00 e não houve alterações desde a última publicação."
+
+---
+
+Insight principal desta entrevista
+
+O Supervisor começa o dia perguntando:
+
+"O que mudou na operação?"
+
+O Membro começa o dia perguntando:
+
+"O que eu preciso fazer hoje?"
+
+O Meu Dia deve ser construído para responder essa pergunta em poucos segundos e transmitir uma sensação imediata de segurança e clareza.
