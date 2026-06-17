@@ -1,0 +1,224 @@
+As folgas não são apenas uma ausência na escala.
+
+Elas são uma das primeiras informações utilizadas para construir a operação.
+
+Na prática, antes de pensar em quem vai trabalhar, o Supervisor precisa saber quem não estará disponível.
+
+Por isso, as folgas influenciam diretamente:
+
+* Livro do Dia;
+* Escala;
+* Ensaios;
+* Aulas;
+* Eventos;
+* Cobertura de papéis;
+* Distribuição de carga entre os membros.
+
+Em uma operação artística, uma única folga pode alterar diversas decisões operacionais.
+
+---
+
+Como as folgas funcionam na prática
+
+A resposta depende da operação.
+
+Não existe necessariamente uma única regra para todas as operações.
+
+O sistema precisa permitir modelos diferentes.
+
+Por exemplo:
+
+Algumas operações trabalham com folgas mais previsíveis.
+
+Outras trabalham com rodízios.
+
+Outras dependem de necessidades operacionais específicas.
+
+Na prática, costumam existir três origens principais para uma folga:
+
+### Folga planejada
+
+É conhecida com antecedência.
+
+Exemplos:
+
+* Escala mensal;
+* Escala semanal;
+* Calendário operacional.
+
+O Supervisor já considera essas folgas ao montar a operação.
+
+Essas são as folgas mais fáceis de administrar.
+
+---
+
+### Folga solicitada
+
+O membro solicita um dia específico.
+
+Exemplos:
+
+* Consulta médica;
+* Compromisso pessoal;
+* Viagem;
+* Evento familiar;
+* Necessidade particular.
+
+Nesse caso o Supervisor precisa avaliar o impacto antes de aprovar.
+
+A pergunta não é apenas:
+
+"Posso liberar?"
+
+A pergunta é:
+
+"Se eu liberar, a operação continua funcionando?"
+
+---
+
+### Folga operacional
+
+Em algumas situações a própria operação define quem ficará de folga.
+
+Exemplos:
+
+* Baixa demanda;
+* Excesso de pessoas disponíveis;
+* Necessidade de equilibrar carga de trabalho;
+* Rodízios internos.
+
+Nesse caso a decisão parte da operação e não do membro.
+
+---
+
+O que acontece quando alguém solicita folga em um dia crítico
+
+Esse é um dos momentos mais delicados para um Supervisor.
+
+Porque nem todos os dias possuem o mesmo peso operacional.
+
+Existem dias em que a ausência de uma pessoa gera pouco impacto.
+
+Mas existem dias em que uma única folga pode comprometer diversos elementos da operação.
+
+Por exemplo:
+
+* Eventos especiais;
+* Feriados;
+* Apresentações importantes;
+* Ensaios estratégicos;
+* Dias com equipe reduzida;
+* Dias com poucos substitutos disponíveis.
+
+Nesses casos, o Supervisor normalmente precisa analisar:
+
+### Cobertura
+
+Existe alguém capaz de assumir as funções dessa pessoa?
+
+### Risco
+
+A substituição aumenta o risco operacional?
+
+### Efeito cascata
+
+A substituição criará novos vazios em outras atividades?
+
+### Carga
+
+Outras pessoas ficarão sobrecarregadas?
+
+### Qualidade
+
+A operação continuará entregando o padrão esperado?
+
+Muitas vezes a resposta não é simplesmente sim ou não.
+
+O Supervisor pode:
+
+* aprovar;
+* negar;
+* negociar outra data;
+* aprovar parcialmente;
+* buscar alternativas antes de decidir.
+
+---
+
+O que pode dar errado
+
+Uma das situações mais comuns é aprovar uma folga olhando apenas para uma atividade específica.
+
+Exemplo:
+
+A pessoa pode ser facilmente substituída no Show A.
+
+Mas também participa:
+
+* do Show B;
+* de um ensaio;
+* de uma aula;
+* de uma atividade especial.
+
+A folga parecia simples.
+
+Mas gera impactos em vários lugares ao mesmo tempo.
+
+Outro problema comum é a soma de pequenas decisões.
+
+Uma folga isolada pode ser administrável.
+
+Cinco folgas aprovadas separadamente podem criar um problema operacional enorme.
+
+Por isso, o Supervisor precisa analisar o contexto completo antes de decidir.
+
+---
+
+O que o Supervisor realmente precisa saber
+
+Quando recebe uma solicitação de folga, ele normalmente quer responder rapidamente:
+
+* Quem está pedindo?
+* Quando?
+* Quais atividades serão afetadas?
+* Existe cobertura?
+* Qual o nível de risco?
+* Essa decisão gera efeito cascata?
+* Existem datas alternativas melhores?
+
+A decisão não gira em torno da folga.
+
+Ela gira em torno do impacto operacional da folga.
+
+---
+
+Insight importante para UX
+
+O Supervisor não deveria analisar uma solicitação de folga isoladamente.
+
+A experiência ideal mostra automaticamente:
+
+* atividades impactadas;
+* pessoas afetadas;
+* opções de cobertura;
+* nível de risco;
+* possíveis conflitos.
+
+A pergunta principal não é:
+
+"Fulano pediu folga."
+
+A pergunta principal é:
+
+"O que acontece com a operação se eu aprovar esta folga?"
+
+Quanto mais rapidamente o sistema responder essa pergunta, mais valor ele entrega ao Supervisor.
+
+---
+
+Insight principal desta entrevista
+
+Folgas não são um problema de agenda.
+
+Folgas são uma variável operacional que influencia toda a construção da operação.
+
+Por isso, para o Supervisor, aprovar uma folga é uma decisão operacional, não apenas administrativa.
