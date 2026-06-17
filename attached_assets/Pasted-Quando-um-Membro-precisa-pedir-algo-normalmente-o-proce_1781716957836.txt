@@ -1,0 +1,300 @@
+Quando um Membro precisa pedir algo, normalmente o processo é muito mais informal do que estruturado.
+
+Na prática, ele costuma:
+
+* mandar mensagem para o Supervisor;
+* falar pessoalmente;
+* enviar mensagem em grupo;
+* procurar alguém responsável;
+* avisar verbalmente durante um ensaio ou show.
+
+O pedido normalmente acontece através de pessoas, não através de processos.
+
+---
+
+Exemplos comuns
+
+Solicitação de folga:
+
+"Posso folgar dia 15?"
+
+Troca:
+
+"Será que alguém consegue trocar comigo?"
+
+Restrição:
+
+"Machuquei o tornozelo."
+
+Ajuste operacional:
+
+"Não consigo chegar nesse horário."
+
+Ausência:
+
+"Vou me atrasar."
+
+Todos esses pedidos costumam nascer como uma conversa.
+
+Não como um formulário.
+
+---
+
+O que acontece depois do pedido
+
+Aqui normalmente começa a maior fonte de insegurança para o Membro.
+
+Porque muitas vezes ele não sabe exatamente em qual estado o pedido está.
+
+Perguntas comuns:
+
+* O Supervisor viu?
+* O Supervisor leu?
+* Está analisando?
+* Esqueceu?
+* Já foi aprovado?
+* Já foi negado?
+* Preciso fazer mais alguma coisa?
+
+Na prática, existe um período de incerteza.
+
+E muitas vezes o Membro precisa perguntar novamente.
+
+---
+
+O problema do "limbo"
+
+Existe uma situação extremamente comum.
+
+O Membro envia uma solicitação.
+
+Recebe silêncio.
+
+E não sabe interpretar esse silêncio.
+
+O silêncio significa:
+
+* Ainda não foi lido?
+* Está sendo analisado?
+* Foi esquecido?
+* Foi recusado?
+* Está aguardando outra aprovação?
+
+A ausência de informação gera ansiedade.
+
+Mesmo quando ninguém fez nada errado.
+
+---
+
+O que gera confiança
+
+O Membro não precisa necessariamente receber uma resposta imediata.
+
+Mas ele precisa saber onde sua solicitação está.
+
+Por exemplo:
+
+Solicitação enviada
+↓
+Recebida
+↓
+Em análise
+↓
+Aprovada
+
+Ou:
+
+Solicitação enviada
+↓
+Recebida
+↓
+Em análise
+↓
+Necessita mais informações
+
+Ou:
+
+Solicitação enviada
+↓
+Recebida
+↓
+Negada
+
+O estado gera confiança.
+
+O silêncio gera insegurança.
+
+---
+
+O que acontece quando a resposta demora
+
+O comportamento mais comum é o Membro criar mecanismos paralelos de acompanhamento.
+
+Por exemplo:
+
+* perguntar novamente;
+* mandar outra mensagem;
+* perguntar para colegas;
+* procurar o Supervisor pessoalmente;
+* buscar confirmação informal.
+
+Isso gera retrabalho para todos.
+
+---
+
+Quando uma solicitação é negada
+
+Curiosamente, muitas vezes a negativa não é o maior problema.
+
+O problema é não entender o motivo.
+
+O Membro costuma aceitar decisões mais facilmente quando compreende:
+
+* por que foi negada;
+* qual impacto existia;
+* quais alternativas existem.
+
+A sensação de justiça normalmente está ligada à explicação.
+
+Não apenas ao resultado.
+
+---
+
+O que realmente importa para o Membro
+
+Quando faz uma solicitação, ele quer responder rapidamente:
+
+* Ela chegou?
+* Está sendo analisada?
+* Preciso fazer algo?
+* Já existe uma decisão?
+* Qual foi a decisão?
+* Existe alguma observação?
+
+O foco não está no formulário.
+
+O foco está no acompanhamento.
+
+---
+
+Impacto Operacional
+
+Solicitações mal acompanhadas geram:
+
+* mensagens duplicadas;
+* dúvidas;
+* interrupções;
+* retrabalho para Supervisores;
+* perda de confiança no processo.
+
+Em alguns casos o Membro passa a evitar o sistema e volta para o WhatsApp.
+
+---
+
+Impacto para UX
+
+A descoberta mais importante é:
+
+O valor da Solicitação não termina quando ela é criada.
+
+Na verdade, ela começa aí.
+
+O UX deve dar mais atenção ao acompanhamento do que ao preenchimento.
+
+Criar uma solicitação normalmente leva segundos.
+
+Esperar uma resposta pode levar dias.
+
+---
+
+Impacto para Interface do MyASA
+
+A área de Solicitações não deve parecer uma caixa de formulários enviados.
+
+Ela deve parecer um painel de acompanhamento.
+
+Seguindo a filosofia do MyASA:
+
+Primeira camada:
+
+🟢 Solicitações em andamento
+
+* Em análise;
+* Aguardando resposta;
+* Necessita ação.
+
+Segunda camada:
+
+🟣 Decisões recentes
+
+* Aprovadas;
+* Negadas;
+* Alteradas.
+
+Terceira camada:
+
+📋 Histórico completo.
+
+O Membro deve conseguir entender imediatamente:
+
+"Qual é a situação atual dos meus pedidos?"
+
+Sem abrir cada item individualmente.
+
+---
+
+Riscos
+
+O maior risco seria reproduzir dentro do sistema o mesmo problema do WhatsApp.
+
+Ou seja:
+
+Mensagem enviada.
+↓
+Silêncio.
+
+Se isso acontecer, o produto não resolveu nada.
+
+Apenas mudou de canal.
+
+---
+
+Oportunidade para IA
+
+A IA pode ajudar principalmente na clareza.
+
+Por exemplo:
+
+"Qual o status da minha solicitação de folga?"
+
+Resposta:
+
+"Sua solicitação para o dia 15 está em análise pelo Supervisor responsável."
+
+Ou:
+
+"Por que minha solicitação foi negada?"
+
+Resposta:
+
+"A folga foi negada porque existem apenas dois membros habilitados para essa função e ambos são necessários para a operação daquele dia."
+
+A IA ajuda a transformar processos em entendimento.
+
+---
+
+Insight principal desta entrevista
+
+O maior problema das solicitações não é pedir.
+
+É não saber o que aconteceu depois de pedir.
+
+Para o Membro, confiança não significa aprovação.
+
+Confiança significa visibilidade.
+
+Mesmo quando a resposta é negativa, ele quer sentir que o pedido foi recebido, analisado e decidido de forma clara.
+
+A pior experiência não é ouvir "não".
+
+É não saber se alguém está ouvindo.
