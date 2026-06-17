@@ -1,0 +1,335 @@
+No dia a dia, o Membro normalmente não pensa em canais.
+
+Ele pensa em resolver uma necessidade.
+
+A decisão de onde procurar ajuda acontece depois.
+
+Na prática, quando surge uma dúvida, o comportamento mais comum é procurar o caminho mais rápido para obter uma resposta confiável.
+
+---
+
+Como a comunicação acontece hoje
+
+Normalmente existem vários canais coexistindo ao mesmo tempo.
+
+Por exemplo:
+
+* WhatsApp;
+* Grupos;
+* Supervisores;
+* Colegas;
+* Conversas presenciais;
+* Avisos;
+* Escalas;
+* Livros.
+
+E muitas vezes o Membro não escolhe o canal mais correto.
+
+Ele escolhe o canal que acredita que responderá mais rápido.
+
+---
+
+Quando o Membro recebe um Aviso
+
+Na percepção do Membro, um Aviso possui um significado diferente de uma Mensagem.
+
+Um Aviso normalmente significa:
+
+"Isso é importante para várias pessoas."
+
+Exemplos:
+
+* Mudança operacional;
+* Evento;
+* Comunicado geral;
+* Diretriz;
+* Procedimento;
+* Alteração de rotina.
+
+O Aviso não espera conversa.
+
+Ele espera conhecimento.
+
+---
+
+Quando o Membro recebe uma Mensagem
+
+A Mensagem possui outro significado.
+
+Normalmente representa:
+
+"Isso tem relação comigo."
+
+Exemplos:
+
+* Dúvida;
+* Orientação;
+* Solicitação;
+* Conversa;
+* Feedback;
+* Ajuste específico.
+
+A Mensagem espera interação.
+
+O Aviso espera compreensão.
+
+Essa diferença é importante.
+
+---
+
+Quando surge uma dúvida rápida
+
+Aqui aparece um comportamento extremamente interessante.
+
+Quando o Membro tem uma dúvida, ele raramente procura primeiro o documento oficial.
+
+Ele procura primeiro a resposta mais rápida.
+
+Exemplos:
+
+"Que personagem faço hoje?"
+
+"Qual é meu horário?"
+
+"Preciso participar desse ensaio?"
+
+"O vídeo é para quando?"
+
+"Qual figurino uso?"
+
+Na maioria das vezes ele tenta:
+
+1. Perguntar para alguém.
+2. Consultar uma conversa.
+3. Procurar uma mensagem.
+4. Perguntar novamente.
+
+Ou seja:
+
+Ele procura pessoas antes de procurar informação.
+
+---
+
+Por quê?
+
+Porque encontrar a informação muitas vezes é mais difícil do que encontrar alguém.
+
+Essa é uma descoberta importante.
+
+O problema não é falta de informação.
+
+O problema é acessibilidade da informação.
+
+---
+
+O que gera confiança
+
+O Membro sente confiança quando sabe que existe um lugar único para encontrar respostas.
+
+Não necessariamente porque ele vai usar esse lugar o tempo todo.
+
+Mas porque sabe que, se precisar, ele existe.
+
+A confiança vem de não depender exclusivamente da memória dos colegas ou da disponibilidade do Supervisor.
+
+---
+
+O que acontece hoje quando existe dúvida
+
+Normalmente uma das seguintes situações:
+
+Pergunta para um colega.
+↓
+Recebe uma resposta.
+
+Ou:
+
+Pergunta para um colega.
+↓
+Recebe uma resposta diferente.
+
+Ou:
+
+Pergunta para três pessoas.
+↓
+Recebe três versões.
+
+Esse cenário é mais comum do que parece.
+
+Especialmente em operações artísticas dinâmicas.
+
+---
+
+O verdadeiro problema
+
+O problema não é comunicação.
+
+O problema é fonte de verdade.
+
+Quando existem muitos canais, surge uma dúvida silenciosa:
+
+"Qual informação está certa?"
+
+Essa pergunta aparece constantemente.
+
+---
+
+O que realmente importa para o Membro
+
+Quando surge uma dúvida, ele quer responder rapidamente:
+
+* Onde encontro essa informação?
+* Posso confiar nela?
+* Está atualizada?
+* Preciso perguntar para alguém?
+* Existe uma versão mais recente?
+
+Mais uma vez, o padrão se repete.
+
+O problema não é obter informação.
+
+É reduzir incerteza.
+
+---
+
+Impacto Operacional
+
+Quanto mais o Membro depende de comunicação informal, maior o risco de:
+
+* interpretações diferentes;
+* informações desatualizadas;
+* retrabalho;
+* dúvidas repetidas;
+* dependência excessiva dos Supervisores.
+
+A operação se torna mais lenta.
+
+Não por falta de informação.
+
+Mas porque a informação não está centralizada.
+
+---
+
+Impacto para UX
+
+O produto não deve competir com a comunicação humana.
+
+Isso seria um erro.
+
+O objetivo não é impedir que as pessoas conversem.
+
+O objetivo é reduzir a necessidade de conversar para descobrir fatos.
+
+As pessoas devem conversar para colaborar.
+
+Não para descobrir qual é a programação correta.
+
+---
+
+Impacto para Interface do MyASA
+
+Essa descoberta afeta diretamente vários pilares.
+
+Meu Dia:
+
+Deve responder rapidamente dúvidas sobre hoje.
+
+Biblioteca:
+
+Deve responder rapidamente dúvidas sobre conhecimento.
+
+Entregas:
+
+Deve responder rapidamente dúvidas sobre expectativas.
+
+Solicitações:
+
+Deve responder rapidamente dúvidas sobre status.
+
+IA:
+
+Deve responder rapidamente dúvidas contextuais.
+
+A experiência ideal é:
+
+Antes de abrir uma conversa,
+o Membro consegue encontrar a resposta sozinho.
+
+---
+
+Mensagens vs Avisos
+
+A distinção descoberta é importante:
+
+📢 Avisos
+
+* Informação para grupos;
+* Comunicação unidirecional;
+* Foco em conhecimento;
+* Não exigem conversa.
+
+💬 Mensagens
+
+* Informação contextual;
+* Comunicação entre pessoas;
+* Foco em interação;
+* Permitem conversa.
+
+Isso evita que ambos os canais pareçam iguais.
+
+---
+
+Riscos
+
+O maior risco seria transformar o MyASA em apenas mais um lugar para trocar mensagens.
+
+Se isso acontecer, ele se torna uma versão pior do WhatsApp.
+
+O produto gera valor quando reduz perguntas repetidas.
+
+Não quando cria novos canais para fazê-las.
+
+---
+
+Oportunidade para IA
+
+A IA pode se tornar o primeiro lugar onde o Membro procura respostas.
+
+Em vez de perguntar para colegas:
+
+"Que personagem faço hoje?"
+
+"Preciso participar desse ensaio?"
+
+"Qual o prazo da entrega?"
+
+O Membro pode perguntar diretamente para a IA.
+
+Mas para isso a IA precisa estar conectada:
+
+* ao Meu Dia;
+* às Entregas;
+* às Solicitações;
+* aos Livros;
+* à Biblioteca;
+* à Escala.
+
+A IA deixa de ser apenas uma ferramenta.
+
+Ela se torna o ponto único de consulta da operação.
+
+---
+
+Insight principal desta entrevista
+
+O Membro não procura comunicação.
+
+Ele procura certeza.
+
+Hoje essa certeza normalmente vem das pessoas.
+
+O maior valor do MyASA é transformar conhecimento disperso em respostas confiáveis e acessíveis.
+
+Quando isso acontece, a comunicação deixa de ser o lugar onde se busca informação.
+
+E volta a ser o lugar onde se constroem relações e colaboração.
