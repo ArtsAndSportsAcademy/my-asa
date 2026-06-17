@@ -1,6 +1,6 @@
 # MyASA 2.0 — Documento de Arquitetura
 
-> Versão: Gate 1 — Decisões incorporadas em 17/06/2026
+> Versão: Gate 1 — Fase Final — 17/06/2026
 > Status: Em auditoria — pré-UX
 
 ---
@@ -41,8 +41,10 @@ Seu objetivo é transformar comunicação operacional em operação organizada.
 ### Supervisor
 - Gerencia um ou mais Grupos Operacionais.
 - Seu escopo de atuação é definido pelos Grupos Operacionais aos quais está vinculado.
-- Pode publicar Escalas dentro de seu escopo.
+- Trabalha sobre a Escala única da Operação, alocando membros de seu(s) Grupo(s).
+- Pode publicar a Escala da Operação.
 - Aprova solicitações dos Membros de seu grupo.
+- Visualiza indisponibilidade de membros de outros grupos sem acessar dados confidenciais desses grupos.
 
 ### Membro
 - Visualiza sua própria participação.
@@ -57,6 +59,8 @@ Seu objetivo é transformar comunicação operacional em operação organizada.
 ### Operação
 
 Uma Operação é a unidade principal do sistema. Ela representa a empresa, a companhia ou o projeto que utiliza o MyASA.
+
+Exemplos: Snowland, Acquamotion.
 
 ### Grupo Operacional
 
@@ -77,6 +81,7 @@ Regras:
 - Um Supervisor pode gerenciar um ou mais Grupos Operacionais.
 - Um Admin possui acesso a todos os Grupos Operacionais.
 - O Grupo Operacional define o escopo de atuação do Supervisor.
+- O Grupo Operacional existe dentro da Operação.
 
 ---
 
@@ -121,9 +126,9 @@ Livro do Show
 ↓
 Folgas e Restrições
 ↓
-Livro do Dia
+Livro do Dia  ← gerado automaticamente pelo sistema
 ↓
-Escala
+Escala  ← única por Operação
 ↓
 Publicação
 ↓
@@ -151,18 +156,42 @@ Existem dois tipos:
 
 ### Livro do Dia
 
-- Gerado a partir do Livro do Show.
-- Considera folgas aprovadas.
-- Considera restrições ativas.
-- Considera disponibilidade dos membros.
-- Mudanças no Livro do Show **não alteram automaticamente** Livros do Dia já gerados.
-- Qualquer atualização que afete um Livro do Dia já gerado exige confirmação explícita.
+O Livro do Dia é gerado automaticamente pelo sistema.
+
+**Fluxo de geração:**
+
+```
+Supervisor escolhe a data
+↓
+Sistema gera proposta considerando:
+  - Livro do Show
+  - Folgas aprovadas
+  - Restrições ativas
+  - Disponibilidade dos membros
+  - Regras do espetáculo
+↓
+Supervisor revisa a proposta
+↓
+Supervisor aprova
+↓
+Livro do Dia pronto
+```
+
+O Supervisor não reconstrói o Livro do Dia manualmente do zero.
+
+**Regras de versionamento:**
+
+- Mudanças no Livro do Show **não alteram automaticamente** Livros do Dia já gerados (datas passadas ou presentes).
+- Livros do Dia de **datas futuras ainda não gerados** utilizarão sempre a versão mais recente do Livro do Show no momento da geração.
+- Qualquer atualização que afete um Livro do Dia já aprovado exige confirmação explícita do Supervisor.
 
 ---
 
 ## Escala
 
-A Escala é o centro operacional do sistema.
+A Escala é o centro operacional do sistema e pertence à **Operação**, não a grupos individuais.
+
+Existe **uma única Escala por Operação** (ex: Escala Snowland, Escala Acquamotion).
 
 Ela responde:
 - Quem eu tenho hoje?
@@ -173,7 +202,7 @@ Ela responde:
 
 A Escala é o local oficial de publicação do dia.
 
-A Escala nasce das atividades. A operação é construída nesta ordem:
+**Construção da Escala — ordem de prioridade:**
 1. Shows
 2. Ensaios e aulas
 3. Eventos
@@ -184,17 +213,32 @@ A Escala nasce das atividades. A operação é construída nesta ordem:
 - Entrada = primeira atividade do dia
 - Saída = última atividade do dia
 
+**Gestão de conflitos:**
+- Ao tentar alocar uma pessoa, o sistema consulta toda a Escala da Operação.
+- Se existir conflito, o sistema alerta imediatamente.
+- Conflitos devem ser resolvidos antes da publicação.
+- Supervisores visualizam indisponibilidade de membros de outros grupos, sem acesso a informações confidenciais desses grupos.
+
 **Publicação:**
 - Pode ser publicada por Supervisor ou Admin.
-- Após publicação, os Membros afetados recebem atualização automática do Meu Dia.
+- Após publicação, os Membros afetados recebem atualização automática no Meu Dia.
 - Alterações posteriores à publicação são permitidas.
-- Membros afetados por qualquer alteração pós-publicação recebem notificação automática.
+- Membros afetados por qualquer alteração pós-publicação recebem notificação automática via Central de Notificações.
+
+**Cancelamento de show:**
+
+Cancelamentos são eventos críticos. Ao cancelar um show, o sistema pergunta: *"Impactar Escala?"*
+
+- **Se sim:** remove a atividade da Escala, recalcula disponibilidade, atualiza o Meu Dia de todos os membros afetados, envia notificação crítica via Central de Notificações.
+- **Se não:** registra apenas o cancelamento operacional no histórico.
+
+Toda alteração gera registro obrigatório no histórico.
 
 ---
 
 ## Agenda
 
-Calendário central da operação.
+Calendário central da operação. É a fonte primária de eventos.
 
 Contém:
 - Ensaios
@@ -205,15 +249,24 @@ Contém:
 - Prazos
 - Entregas
 
-**Regra Agenda → Escala:**
+**Regra Agenda → Escala (baseada no tipo do evento):**
 
-Um item da Agenda aparece na Escala quando possuir simultaneamente:
-- Data
-- Horário
-- Participantes definidos
-- Impacto operacional
+Eventos que **aparecem na Escala** (impacto operacional definido pelo tipo):
+- Shows
+- Ensaios
+- Aulas
+- Avaliações presenciais
+- Reuniões operacionais
+- Eventos operacionais
 
-Itens sem impacto operacional permanecem apenas na Agenda.
+Eventos que **permanecem apenas na Agenda** (sem impacto operacional):
+- Lembretes
+- Prazos
+- Aniversários
+- Datas comemorativas
+- Entregas sem horário operacional
+
+O impacto operacional não é uma escolha manual do criador. É determinado automaticamente pelo tipo do evento.
 
 ---
 
@@ -232,7 +285,10 @@ Conteúdo:
 
 O Membro vê sua participação. Não vê a operação inteira.
 
-Meu Dia é atualizado automaticamente quando a Escala é publicada ou alterada.
+Meu Dia é atualizado automaticamente quando:
+- A Escala é publicada
+- A Escala é alterada após publicação
+- Um show é cancelado com impacto na Escala
 
 ---
 
@@ -240,7 +296,7 @@ Meu Dia é atualizado automaticamente quando a Escala é publicada ou alterada.
 
 Criadas por: Admin ou Supervisor.
 
-O Membro pode solicitar:
+O Membro pode solicitar via Solicitação:
 - Troca de folga
 - Dia específico
 - Solicitações excepcionais
@@ -253,17 +309,24 @@ O Supervisor aprova solicitações dentro de seu Grupo Operacional.
 
 Criadas por: Admin ou Supervisor. **Nunca diretamente pelo Membro.**
 
-**Fluxo para restrições médicas:**
+**Fluxo para restrições de origem do membro (ex: médicas):**
 
-O Membro cria uma **Solicitação** informando a necessidade.
-O Supervisor ou Admin analisa e registra a **Restrição oficial**.
+```
+Membro cria Solicitação informando a necessidade
+↓
+Supervisor ou Admin analisa
+↓
+Supervisor ou Admin registra a Restrição oficial
+```
 
-Restrições podem possuir:
+Restrições possuem:
 - Data de início
-- Data de término
-- Data de revisão
+- Data de término (opcional)
+- Data de revisão (opcional)
 
-Exemplos de restrições:
+Ao expirar ou atingir a data de revisão, o Supervisor responsável recebe notificação automática.
+
+Exemplos:
 - Sem acrobacia
 - Não pode entrar no gelo
 - Restrição médica
@@ -289,22 +352,44 @@ Permissões de criação:
 ## Comunicação
 
 ### Avisos
-Comunicados de broadcast operacional.
+Comunicados de broadcast operacional. Aparecem no Inbox Unificado.
 
 ### Mensagens
-Funcionam como comunicação direta interna.
+Comunicação direta interna entre usuários.
 
 ### Inbox Unificado
-Todas as conversas contextuais são consolidadas em um Inbox Unificado.
+
+Todas as conversas e comunicados são consolidados em um Inbox Unificado.
 
 O usuário não precisa procurar mensagens dentro de objetos separados.
 
 O Inbox consolida:
+- Avisos
 - Mensagens diretas
 - Conversas vinculadas a Entregas
 - Conversas vinculadas a Solicitações
 - Conversas vinculadas a Eventos
 - Conversas vinculadas a Avaliações
+
+---
+
+## Central de Notificações
+
+A Central de Notificações é uma infraestrutura compartilhada, não um módulo.
+
+**Tipos de notificação:**
+
+| Tipo | Exemplos |
+|---|---|
+| **Informativo** | Avisos gerais |
+| **Importante** | Alteração de programação, mudança de atividade |
+| **Crítico** | Cancelamento de show, alteração urgente |
+
+Notificações críticas podem exigir **confirmação de leitura** pelo destinatário.
+
+**Canais suportados:**
+- Push mobile
+- In-app
 
 ---
 
@@ -347,9 +432,19 @@ Proposta (exibida ao usuário)
 Confirmação (obrigatória)
 ↓
 Execução
+↓
+Opção de desfazer disponível imediatamente após execução
 ```
 
-A IA nunca executa ações complexas sem confirmação explícita.
+A IA nunca executa ações sem confirmação explícita.
+
+**Reversibilidade:**
+
+Toda ação executada pela IA possui:
+- Registro no histórico
+- Autor identificado
+- Data e hora
+- Opção de reversão disponível após execução
 
 ---
 
@@ -367,8 +462,9 @@ Entidades com registro obrigatório:
 - Entregas
 - Publicações
 - Ações da IA
+- Cancelamentos
 
-Cada registro deve indicar:
+Cada registro indica:
 - Quem fez
 - Quando fez
 - O que mudou

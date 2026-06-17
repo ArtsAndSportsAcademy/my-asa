@@ -1,0 +1,195 @@
+Perfeito.
+
+Vamos continuar o Gate 1.
+
+Ainda não quero UX.
+Ainda não quero telas.
+Ainda não quero implementação.
+Ainda não quero wireframes.
+
+Quero finalizar a arquitetura.
+
+Considere que a arquitetura principal já foi validada e que estamos resolvendo os últimos bloqueadores antes de avançar para experiência e design.
+
+Atualize a arquitetura considerando as decisões abaixo como aprovadas:
+
+──────────────────────────────
+
+1. ESCALA É ÚNICA POR OPERAÇÃO
+
+A Escala pertence à Operação.
+
+Não existem Escalas separadas por Supervisor.
+
+Exemplos:
+
+* Escala Snowland
+* Escala Acquamotion
+
+Os Supervisores trabalham em seus Grupos Operacionais, mas todas as alocações são feitas sobre a mesma Escala da Operação.
+
+Ao tentar alocar uma pessoa, o sistema consulta toda a Escala da Operação.
+
+Se existir conflito:
+
+* o sistema alerta;
+* o conflito deve ser resolvido antes da publicação.
+
+O Supervisor pode visualizar indisponibilidade.
+
+Não precisa visualizar informações confidenciais de outros grupos.
+
+──────────────────────────────
+
+2. IMPACTO OPERACIONAL
+
+Impacto Operacional não é uma escolha manual.
+
+Ele é definido pelo tipo do evento.
+
+Eventos que aparecem na Escala:
+
+* Shows
+* Ensaios
+* Aulas
+* Avaliações presenciais
+* Reuniões operacionais
+* Eventos operacionais
+
+Eventos que não aparecem na Escala:
+
+* Lembretes
+* Prazos
+* Aniversários
+* Datas comemorativas
+* Entregas sem horário operacional
+
+A Agenda continua sendo a fonte principal.
+
+A Escala mostra apenas eventos com impacto operacional.
+
+──────────────────────────────
+
+3. GERAÇÃO DO LIVRO DO DIA
+
+O Livro do Dia é gerado automaticamente.
+
+Fluxo:
+
+Supervisor escolhe a data
+↓
+Sistema gera proposta
+↓
+Considera:
+
+* Livro do Show
+* Folgas
+* Restrições
+* Disponibilidade
+* Regras do espetáculo
+
+↓
+Supervisor revisa
+↓
+Supervisor aprova
+↓
+Livro do Dia pronto
+
+O Supervisor não deve reconstruir manualmente um Livro do Dia do zero.
+
+──────────────────────────────
+
+4. CANCELAMENTO DE SHOW
+
+Cancelamentos são eventos críticos.
+
+Ao cancelar um show:
+
+O sistema pergunta:
+
+“Impactar Escala?”
+
+Se sim:
+
+* remove atividade
+* recalcula disponibilidade
+* atualiza Meu Dia
+* envia notificações
+
+Se não:
+
+* registra apenas cancelamento operacional
+
+Toda alteração deve gerar histórico.
+
+──────────────────────────────
+
+5. CENTRAL DE NOTIFICAÇÕES
+
+Criar o conceito arquitetural de Central de Notificações.
+
+Não é um módulo.
+
+É uma infraestrutura compartilhada.
+
+Tipos:
+
+Informativo
+
+* Avisos gerais
+
+Importante
+
+* Alteração de programação
+* Mudança de atividade
+
+Crítico
+
+* Cancelamento de show
+* Alteração urgente
+
+Notificações críticas podem exigir confirmação de leitura.
+
+Suportar:
+
+* Push mobile
+* In-app
+
+──────────────────────────────
+
+6. DESFAZER AÇÕES DA IA
+
+Toda ação executada pela IA deve possuir:
+
+* Histórico
+* Autor
+* Data
+* Possibilidade de reversão
+
+Após execução:
+
+Ação executada
+↓
+Disponibilizar opção de desfazer
+
+A IA deve gerar confiança operacional.
+
+──────────────────────────────
+
+Agora atualize a arquitetura novamente.
+
+Após atualizar:
+
+1. Procure novos conflitos arquiteturais.
+2. Procure novos riscos operacionais.
+3. Procure novos riscos de permissões.
+4. Procure novos riscos de escalabilidade.
+5. Identifique quais pontos ainda bloqueiam o início do UX.
+
+Não desenhe telas.
+
+Não proponha interface.
+
+Não proponha navegação.
+
+Quero encerrar a fase de arquitetura antes de avançar para UX e Design.
