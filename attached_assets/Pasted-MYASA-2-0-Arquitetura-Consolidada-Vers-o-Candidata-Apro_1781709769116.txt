@@ -1,0 +1,544 @@
+MYASA 2.0
+
+Arquitetura Consolidada — Versão Candidata à Aprovação
+
+Visão
+
+O MyASA é uma plataforma operacional para operações artísticas, espetáculos e equipes.
+
+Seu objetivo é transformar comunicação operacional em operação organizada.
+
+O sistema deve se adaptar à operação.
+
+A operação não deve se adaptar ao sistema.
+
+A IA deve reduzir trabalho manual.
+
+O Supervisor continua sendo o responsável pelas decisões operacionais.
+
+⸻
+
+Princípios
+
+1. Mobile e Web possuem a mesma importância.
+2. Nenhuma funcionalidade é considerada pronta sem experiência mobile.
+3. Características não viram módulos.
+4. Apenas pilares viram módulos.
+5. O sistema deve parecer um produto premium.
+6. O sistema deve ser simples mesmo em dias caóticos.
+7. A IA ajuda a operar.
+8. A IA não substitui pessoas.
+
+⸻
+
+Públicos
+
+Administrador
+
+Possui visão completa da operação.
+
+Supervisor
+
+Gerencia grupos operacionais dentro da operação.
+
+Membro
+
+Visualiza sua programação, tarefas, entregas e comunicação.
+
+⸻
+
+Estrutura Principal
+
+Rotina Operacional
+
+* Escala
+* Agenda
+* Livros
+
+Pessoas
+
+* Equipe
+* Folgas
+* Restrições
+* Solicitações
+* Entregas
+
+Comunicação
+
+* Avisos
+* Mensagens
+
+Conhecimento
+
+* Biblioteca
+* Manuais
+* Diretrizes
+* Procedimentos
+
+Assistência
+
+* IA
+
+Unidades Operacionais
+
+* Operações
+* Configurações
+
+⸻
+
+Operações
+
+Exemplos:
+
+* Snowland
+* Acquamotion
+* Hotelaria
+* Eventos futuros
+
+Cada operação possui:
+
+* membros
+* grupos operacionais
+* escala
+* agenda
+* livros
+
+⸻
+
+Grupos Operacionais
+
+Grupo Operacional é um agrupamento configurável dentro de uma Operação.
+
+Exemplos:
+
+* Elenco Musical
+* Equipe Patinação
+* Grupo A
+* Grupo B
+* Supervisores
+* Evento Especial
+
+Regras:
+
+* Uma Operação possui vários Grupos Operacionais.
+* Um Membro pode pertencer a vários Grupos Operacionais.
+* Um Supervisor pode gerenciar vários Grupos Operacionais.
+* Admin possui acesso a todos os grupos.
+
+⸻
+
+Fluxo Principal
+
+Livro do Show
+↓
+Folgas
+↓
+Restrições
+↓
+Livro do Dia
+↓
+Escala
+↓
+Publicação
+↓
+Meu Dia
+
+⸻
+
+Livros
+
+Livro do Show
+
+Define a estrutura permanente do espetáculo.
+
+Modelos:
+
+Simples
+
+Papel → Pessoa
+
+Estruturado
+
+Cena → Bloco → Posição → Pessoa
+
+Os modelos não são módulos.
+
+São configurações internas do espetáculo.
+
+⸻
+
+Livro do Dia
+
+Gerado automaticamente.
+
+Fluxo:
+
+Supervisor escolhe a data
+↓
+Sistema gera proposta
+↓
+Considera:
+
+* Livro do Show
+* Folgas
+* Restrições
+* Disponibilidade
+* Regras do espetáculo
+    ↓
+    Supervisor revisa
+    ↓
+    Supervisor aprova
+
+Mudanças no Livro do Show não alteram automaticamente Livros do Dia já gerados.
+
+⸻
+
+Agenda
+
+A Agenda é a fonte oficial dos eventos.
+
+Admin:
+
+* criar
+* editar
+* excluir
+
+Supervisor:
+
+* criar
+* editar
+* excluir dentro do seu escopo
+
+Membro:
+
+* visualizar agenda operacional
+* criar lembretes pessoais
+* criar compromissos pessoais
+
+Compromissos pessoais:
+
+* não entram na Escala
+* não possuem impacto operacional
+* são privados
+
+⸻
+
+Impacto Operacional
+
+Eventos com impacto operacional aparecem na Escala.
+
+Exemplos:
+
+* Show
+* Ensaio
+* Aula
+* Avaliação presencial
+* Reunião operacional
+* Evento operacional
+
+Eventos sem impacto operacional permanecem apenas na Agenda.
+
+⸻
+
+Escala
+
+Existe uma única Escala por Operação.
+
+Exemplos:
+
+* Escala Snowland
+* Escala Acquamotion
+
+A Escala responde:
+
+* Quem eu tenho hoje?
+* O que cada pessoa faz?
+* Existem conflitos?
+* Quem está disponível?
+* A operação está pronta?
+
+Os Supervisores trabalham em seus Grupos Operacionais.
+
+Mas toda alocação ocorre sobre a Escala única da Operação.
+
+O sistema detecta conflitos de horário antes da publicação.
+
+⸻
+
+Publicação
+
+A publicação pertence à Operação.
+
+Podem publicar:
+
+* Admin
+* Supervisor
+
+Antes da publicação:
+
+O sistema executa validações.
+
+Exemplos:
+
+* conflitos
+* pendências
+* membros não alocados
+
+O responsável decide se publica mesmo assim.
+
+Após publicação:
+
+* Meu Dia é atualizado
+* membros recebem notificações
+* alterações futuras geram novas notificações
+
+⸻
+
+Folgas
+
+Criadas por:
+
+* Admin
+* Supervisor
+
+Membro pode solicitar:
+
+* Folga
+* Troca de folga
+* Solicitação excepcional
+
+A aprovação pertence ao Supervisor/Admin.
+
+⸻
+
+Restrições
+
+Criadas por:
+
+* Admin
+* Supervisor
+
+Membro cria solicitação.
+
+Admin ou Supervisor registram a restrição oficial.
+
+Restrições podem possuir:
+
+* início
+* término
+* revisão
+
+Exemplos:
+
+* Médica
+* Operacional
+* Física
+* Técnica
+
+⸻
+
+Solicitações
+
+Tipos oficiais:
+
+* Solicitação de folga
+* Troca de folga
+* Solicitação excepcional
+* Solicitação de restrição
+* Solicitação de ajuste de escala
+* Solicitação de saída antecipada
+* Solicitação de chegada tardia
+* Solicitação administrativa
+
+⸻
+
+Entregas
+
+Tipos:
+
+* Tarefa simples
+* Projeto
+* Entrega digital
+* Avaliação presencial
+
+Admin pode criar para todos.
+
+Supervisor pode criar dentro do seu escopo.
+
+Membro pode criar para si mesmo.
+
+⸻
+
+Meu Dia
+
+Tela principal do Membro.
+
+Apresenta:
+
+* programação do dia
+* participações
+* papéis atribuídos
+* atividades
+* entregas pendentes
+* avisos
+* próximos compromissos
+
+O Membro vê apenas sua realidade operacional.
+
+⸻
+
+Comunicação
+
+Avisos
+
+Comunicação oficial.
+
+Mensagens
+
+Comunicação conversacional.
+
+Conversas contextuais podem existir em:
+
+* entregas
+* solicitações
+* eventos
+* avaliações
+
+⸻
+
+Inbox Unificado
+
+Consolida:
+
+* mensagens
+* avisos
+* entregas
+* solicitações
+* eventos
+* avaliações
+
+⸻
+
+Biblioteca
+
+Contém:
+
+* Manual do Elenco
+* Diretriz do Gelo
+* Procedimentos
+* Regulamentos
+* Treinamentos
+
+A IA pode consultar a Biblioteca para responder perguntas.
+
+⸻
+
+IA
+
+A IA transforma comunicação operacional em ações.
+
+Fluxo:
+
+Mensagem
+↓
+Interpretação
+↓
+Proposta
+↓
+Confirmação
+↓
+Execução
+
+A IA atua dentro das permissões do usuário que a acionou.
+
+Toda ação executada deve possuir:
+
+* histórico
+* autor
+* data
+* reversão
+
+⸻
+
+Histórico
+
+Obrigatório para:
+
+* Escala
+* Agenda
+* Livros
+* Folgas
+* Restrições
+* Solicitações
+* Entregas
+* Publicações
+* Ações da IA
+
+Todo histórico registra:
+
+* quem fez
+* quando fez
+* o que mudou
+
+⸻
+
+Central de Notificações
+
+Infraestrutura compartilhada.
+
+Tipos:
+
+Informativo
+Importante
+Crítico
+
+Canais:
+
+* Push Mobile
+* In-App
+
+Notificações críticas podem exigir confirmação de leitura.
+
+⸻
+
+Identidade Visual
+
+Inspiração:
+
+* iOS
+* Apple Calendar
+* Apple Reminders
+* Apple Health
+
+Não parecer:
+
+* ERP
+* RH
+* Sistema corporativo
+
+Visual:
+
+* modo claro padrão
+* muito espaço em branco
+* bordas arredondadas
+* transparências suaves
+* glassmorphism leve
+* poucas cores
+
+⸻
+
+Marca
+
+A asa do MyASA é o principal elemento visual.
+
+Utilizar apenas a asa.
+
+Não utilizar o fundo escuro do ícone dentro da interface.
+
+Versões:
+
+* Asa Glass
+* Asa Outline
+* Asa Marca-d’água
+
+A asa deve reforçar identidade sem competir com o conteúdo.
