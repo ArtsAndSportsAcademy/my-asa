@@ -1,0 +1,147 @@
+A comunicação é a última etapa do processo, mas muitas vezes é o que determina se a solução realmente funcionou.
+
+Resolver o problema operacional não é suficiente.
+
+O Supervisor precisa garantir que as pessoas certas saibam da mudança e tenham tempo para agir.
+
+Na prática, quando uma exceção é resolvida, o Supervisor normalmente precisa comunicar diferentes grupos de pessoas dependendo do impacto da decisão.
+
+Por exemplo:
+
+Se uma substituição acontece em um show, normalmente podem estar envolvidos:
+
+* A pessoa substituída;
+* A pessoa que assumirá a nova função;
+* Outros membros afetados pela mudança;
+* Supervisores envolvidos;
+* Responsáveis artísticos;
+* Treinadores ou coreógrafos, quando necessário.
+
+Hoje, em muitas operações, essa comunicação acontece por mensagens, grupos de WhatsApp, comunicação verbal, rádio ou conversa presencial.
+
+O problema é que comunicar não significa garantir que a informação foi recebida.
+
+Uma das maiores preocupações do Supervisor não é enviar a mensagem.
+
+É saber se a pessoa viu, entendeu e vai agir corretamente.
+
+Por exemplo:
+
+O Supervisor altera uma posição no show.
+
+A mensagem é enviada.
+
+Mas a pessoa:
+
+* não viu;
+* estava em outra atividade;
+* estava longe do celular;
+* leu rapidamente e entendeu errado;
+* acreditou que a mudança não era para ela.
+
+Nesses casos, a operação pode sofrer impacto mesmo que a decisão tomada tenha sido correta.
+
+Por isso, uma comunicação falha pode gerar problemas operacionais reais.
+
+Exemplos:
+
+* Pessoa aparece no local errado;
+* Pessoa entra na cena errada;
+* Pessoa não comparece ao ensaio;
+* Figurino não é preparado;
+* Papel fica sem cobertura;
+* Membros diferentes trabalham com versões diferentes da mesma informação.
+
+Outro ponto importante é que nem todas as comunicações possuem a mesma urgência.
+
+Existem comunicações que podem ser lidas mais tarde.
+
+Exemplo:
+
+* Aviso geral;
+* Atualização de procedimento;
+* Lembrete.
+
+Mas existem comunicações que exigem ação imediata.
+
+Exemplo:
+
+* Mudança de elenco;
+* Substituição de papel;
+* Alteração de horário;
+* Cancelamento de atividade;
+* Mudança operacional de última hora.
+
+Nesses casos, o Supervisor precisa ter confiança de que a mensagem chegou à pessoa correta.
+
+Em algumas situações, quando não existe confirmação, o Supervisor acaba fazendo um segundo ciclo de comunicação:
+
+Mensagem enviada
+↓
+Sem confirmação
+↓
+Nova mensagem
+↓
+Ligação
+↓
+Contato presencial
+↓
+Confirmação manual
+
+Ou seja, parte do trabalho operacional acaba sendo consumida apenas para garantir que a informação chegou.
+
+Uma falha de comunicação pode transformar uma decisão correta em um problema operacional.
+
+Por isso, para o Supervisor, comunicar não é apenas informar.
+
+Comunicar é garantir alinhamento operacional.
+
+---
+
+Exemplo real de fluxo:
+
+No-show identificado
+↓
+Impacto analisado
+↓
+Substituição definida
+↓
+Escala atualizada
+↓
+Pessoas afetadas notificadas
+↓
+Confirmação de recebimento
+↓
+Confirmação de entendimento
+↓
+Operação segue
+
+Se a confirmação não acontece, o problema continua parcialmente aberto.
+
+---
+
+Insight importante para UX:
+
+O Supervisor não precisa apenas de uma ferramenta para enviar mensagens.
+
+Ele precisa de confiança operacional.
+
+A pergunta que ele quer responder não é:
+
+"Eu avisei?"
+
+A pergunta é:
+
+"Eles sabem o que precisam fazer?"
+
+Por isso, o sistema deve ajudar o Supervisor a identificar rapidamente:
+
+* quem foi impactado;
+* quem foi avisado;
+* quem visualizou;
+* quem ainda não respondeu;
+* quais mudanças ainda representam risco operacional por falta de confirmação.
+
+O objetivo da comunicação não é transmitir informação.
+
+O objetivo é garantir execução alinhada da operação.
