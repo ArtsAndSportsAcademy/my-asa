@@ -1,0 +1,306 @@
+Vamos iniciar o Mockup Visual de S-04 — Escala.
+
+Esta é a superfície operacional mais importante do MyASA.
+
+Objetivo:
+
+Criar o mockup visual definitivo da Escala validando não apenas estética, mas também tomada de decisão, análise de risco, impacto operacional, confiança do Supervisor e integração da IA.
+
+A Escala deve ser analisada como se fosse o coração do produto.
+
+Base obrigatória:
+
+* docs/arquitetura-myasa-2.0.md
+* docs/ux-diretrizes-obrigatorias.md
+* docs/ux-pesquisa-supervisor.md
+* docs/jornadas-myasa-2.0.md
+* docs/ux-superficies-myasa-2.0.md
+* docs/arquitetura-navegacao-myasa.md
+* docs/especificacao-bloco1-myasa-2.0.md
+* docs/design-visual-bloco1-myasa-2.0.md
+* docs/wireframe-s04-escala.md
+
+Atuar como:
+
+* Product Designer Sênior
+* UX Designer Sênior
+* Product Architect
+* Supervisor Operacional experiente
+
+Importante:
+
+Não alterar a estrutura aprovada.
+
+Não alterar os fluxos aprovados.
+
+Não alterar a lógica de cascata.
+
+Não alterar a lógica de candidatos.
+
+Não alterar as decisões arquiteturais.
+
+O objetivo é validar visualmente aquilo que já foi aprovado.
+
+═══════════════════════
+PARTE 1 — MOCKUPS
+═══════════════════════
+
+Produzir mockups completos para:
+
+1. Modo Construção
+
+Cenário:
+
+* Escala sendo montada
+* 90% coberta
+* 1 posição em aberto
+* Sem exceções
+
+Validar:
+
+* leitura rápida da cobertura;
+* clareza dos blocos;
+* entendimento da estrutura do show.
+
+2. Construção com Alertas
+
+Cenário:
+
+* restrição ativa;
+* conflito de horário;
+* múltiplas folgas aprovadas;
+* risco operacional.
+
+Validar:
+
+* o Supervisor entende os riscos sem abrir detalhes?
+* os alertas competem com o conteúdo ou ajudam?
+
+3. Modo Exceção
+
+Cenário:
+
+* no-show crítico;
+* show próximo;
+* notificação acabou de ser tocada.
+
+Validar:
+
+* aterrissagem imediata;
+* foco absoluto na resolução;
+* IA já pronta.
+
+4. Substituição Assistida
+
+Cenário:
+
+* candidatos classificados por risco.
+
+Validar:
+
+* recomendação visualmente óbvia;
+* diferenças claras entre níveis de risco;
+* tomada de decisão em menos de 10 segundos.
+
+5. Simulação de Cascata
+
+Cenário:
+
+* Supervisor analisa substituição.
+
+Validar:
+
+* impactos positivos;
+* impactos negativos;
+* linguagem operacional;
+* clareza da consequência.
+
+6. Publicação
+
+Cenário:
+
+* escala pronta para publicação.
+
+Validar:
+
+* confiança;
+* consciência dos alertas;
+* ausência de medo de publicar.
+
+7. Pós-Publicação
+
+Cenário:
+
+* notificações enviadas;
+* confirmações chegando.
+
+Validar:
+
+* rastreamento;
+* percepção de progresso.
+
+8. Visão Admin
+
+Cenário:
+
+* análise de múltiplos grupos.
+
+Validar:
+
+* saúde da escala;
+* monitoramento;
+* ausência de ações operacionais.
+
+═══════════════════════
+PARTE 2 — AUDITORIA DOS CANDIDATOS
+═══════════════════════
+
+Validar profundamente D3.
+
+Responder:
+
+Como o Supervisor identifica:
+
+* candidato ideal;
+* candidato aceitável;
+* candidato de alto impacto;
+* candidato emergencial.
+
+Sem ler textos.
+
+Apenas pela hierarquia visual.
+
+Explicar exatamente:
+
+* cor;
+* forma;
+* tamanho;
+* posicionamento;
+* densidade.
+
+═══════════════════════
+PARTE 3 — AUDITORIA DA CASCATA
+═══════════════════════
+
+Validar profundamente D4.
+
+Responder:
+
+Quanto tempo leva para entender a cascata?
+
+A cascata parece:
+
+* operacional?
+* humana?
+* intuitiva?
+
+Ou parece:
+
+* técnica?
+* sistêmica?
+* difícil?
+
+Mostrar exemplos.
+
+Exemplo correto:
+
+"Astrid continua coberta"
+
+"Beatriz perde função de backup"
+
+"Carolina cobre o Bloco 3"
+
+Exemplo incorreto:
+
+"Conflito detectado"
+
+"Dependência inválida"
+
+"Erro de cobertura"
+
+═══════════════════════
+PARTE 4 — AUDITORIA DA IA
+═══════════════════════
+
+Validar profundamente D5.
+
+Responder:
+
+A IA parece:
+
+* instantânea?
+* integrada?
+* operacional?
+
+Ou parece:
+
+* chatbot?
+* assistente externo?
+* funcionalidade separada?
+
+Explicar.
+
+═══════════════════════
+PARTE 5 — TESTE DE REALIDADE
+═══════════════════════
+
+Executar três cenários reais.
+
+Cenário 1
+
+Amanda deu no-show 40 minutos antes do show.
+
+O Supervisor consegue resolver?
+
+Quanto tempo leva?
+
+O que ele vê?
+
+Cenário 2
+
+Três folgas aprovadas criaram uma posição crítica descoberta.
+
+O Supervisor percebe antes de publicar?
+
+Como?
+
+Cenário 3
+
+Carolina substitui Astrid.
+
+A cascata é compreendida?
+
+O impacto é evidente?
+
+═══════════════════════
+PARTE 6 — VALIDAÇÃO FINAL
+═══════════════════════
+
+Auditar:
+
+* pesquisa do Supervisor;
+* jornadas;
+* arquitetura;
+* navegação;
+* identidade da Asa;
+* filosofia operacional.
+
+Responder objetivamente:
+
+1. A Escala entrega clareza de decisão?
+2. A Escala reduz carga cognitiva?
+3. A Escala permite agir rápido?
+4. A Escala transmite confiança?
+5. A Escala parece o coração operacional do MyASA?
+
+Classificar:
+
+🟢 Aprovado
+
+🟡 Aprovado com ajustes
+
+🔴 Reprovado
+
+Objetivo final:
+
+Concluir o mockup visual definitivo da Escala e validar a superfície mais importante do MyASA antes de avançar para o Bloco 2.
