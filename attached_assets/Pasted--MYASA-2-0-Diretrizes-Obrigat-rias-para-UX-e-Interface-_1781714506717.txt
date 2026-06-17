@@ -1,0 +1,301 @@
+# MYASA 2.0
+
+## Diretrizes Obrigatórias para UX e Interface
+
+Antes de continuar a entrevista, considere estas diretrizes como requisitos obrigatórios do produto.
+
+Estas diretrizes devem influenciar TODAS as análises, perguntas, jornadas, fluxos, telas e componentes futuros.
+
+Não são sugestões.
+
+São princípios do produto.
+
+---
+
+# FILOSOFIA PRINCIPAL
+
+O MyASA não é um sistema administrativo.
+
+O MyASA não é um ERP.
+
+O MyASA não é um sistema de RH.
+
+O MyASA é uma ferramenta operacional para equipes artísticas.
+
+O objetivo principal não é registrar informações.
+
+O objetivo principal é ajudar pessoas a tomar decisões operacionais.
+
+Sempre que existir conflito entre:
+
+* cadastro;
+* formulário;
+* burocracia;
+
+e
+
+* tomada de decisão;
+* operação;
+* resolução de problemas;
+
+a operação deve vencer.
+
+---
+
+# FILOSOFIA DO SUPERVISOR
+
+O Supervisor não trabalha preenchendo dados.
+
+O Supervisor trabalha:
+
+* validando;
+* analisando;
+* decidindo;
+* ajustando;
+* resolvendo problemas.
+
+O sistema deve reduzir trabalho administrativo.
+
+O sistema deve aumentar clareza operacional.
+
+---
+
+# FILOSOFIA DA IA
+
+A IA não é um chatbot.
+
+A IA é um assistente operacional.
+
+A IA deve ajudar o Supervisor a responder:
+
+* O que mudou?
+* Qual o impacto?
+* Quais são os riscos?
+* Quais alternativas existem?
+* Qual é a melhor decisão?
+
+A IA deve explicar.
+
+A IA deve justificar.
+
+A IA deve apresentar alternativas.
+
+A IA não deve apenas executar.
+
+---
+
+# MOBILE FIRST REAL
+
+Mobile não é uma adaptação da Web.
+
+O Mobile é tão importante quanto a Web.
+
+O Supervisor frequentemente está:
+
+* no backstage;
+* próximo ao gelo;
+* acompanhando ensaios;
+* acompanhando shows;
+* caminhando pela operação.
+
+Por isso:
+
+Toda tarefa crítica deve ser possível pelo celular.
+
+Nenhuma atividade essencial deve depender exclusivamente da Web.
+
+---
+
+# FILOSOFIA DE COMPLEXIDADE
+
+A operação é complexa.
+
+A interface não deve ser.
+
+O sistema deve esconder complexidade até que ela seja necessária.
+
+Primeiro:
+
+* resumo;
+* status;
+* problemas.
+
+Depois:
+
+* detalhes;
+* configurações;
+* edição.
+
+Nunca o contrário.
+
+---
+
+# FILOSOFIA DOS LIVROS
+
+Os Livros são o coração do MyASA.
+
+Eles não são formulários.
+
+Eles não são tabelas.
+
+Eles não são cadastros.
+
+Eles representam conhecimento operacional.
+
+O Supervisor deve entender rapidamente:
+
+* se existe problema;
+* onde existe problema;
+* qual é o impacto;
+* qual é o risco.
+
+A edição é secundária.
+
+A compreensão é primária.
+
+---
+
+# FILOSOFIA DA ESCALA
+
+A Escala não é um cadastro de pessoas.
+
+A Escala é uma ferramenta de validação operacional.
+
+A principal pergunta da Escala é:
+
+"A operação está pronta?"
+
+Não:
+
+"Quem está cadastrado?"
+
+---
+
+# FILOSOFIA DAS FOLGAS
+
+Folga não é um evento administrativo.
+
+Folga é um evento operacional.
+
+Sempre que uma folga for analisada, o sistema deve priorizar:
+
+* impacto;
+* cobertura;
+* risco;
+* alternativas.
+
+Antes de mostrar aprovar ou negar.
+
+---
+
+# FILOSOFIA DAS SUBSTITUIÇÕES
+
+O Supervisor não procura pessoas.
+
+O Supervisor procura soluções.
+
+O sistema deve apresentar:
+
+* impacto;
+* risco;
+* alternativas;
+* consequências.
+
+Não apenas nomes.
+
+---
+
+# FILOSOFIA DA COMUNICAÇÃO
+
+O Supervisor não procura enviar mensagens.
+
+O Supervisor procura alinhamento operacional.
+
+A pergunta principal não é:
+
+"Enviei?"
+
+A pergunta principal é:
+
+"Eles sabem o que precisam fazer?"
+
+A interface deve priorizar:
+
+* confirmação;
+* visualização;
+* entendimento;
+* execução.
+
+---
+
+# FILOSOFIA VISUAL
+
+Inspirado em:
+
+* iOS
+* Apple Calendar
+* Apple Reminders
+* Apple Health
+
+Não inspirado em:
+
+* ERP
+* RH
+* Sistemas corporativos
+* Sistemas administrativos antigos
+
+---
+
+# SENSAÇÃO DE USO
+
+O usuário deve sentir:
+
+* clareza;
+* calma;
+* organização;
+* confiança.
+
+Mesmo quando a operação estiver caótica.
+
+---
+
+# IDENTIDADE VISUAL
+
+Modo claro como padrão.
+
+Muito espaço em branco.
+
+Cards arredondados.
+
+Glassmorphism leve.
+
+Poucas cores.
+
+Poucos elementos visuais competindo.
+
+A asa do MyASA é o principal elemento visual.
+
+Utilizar:
+
+* Asa Glass
+* Asa Outline
+* Asa Marca-d'água
+
+Nunca utilizar o antigo fundo escuro do ícone dentro da interface.
+
+---
+
+# REGRA FINAL
+
+Toda descoberta futura da entrevista deve conter:
+
+1. Resposta Operacional
+2. Impacto Operacional
+3. Impacto para UX
+4. Impacto para Interface
+5. Riscos
+6. Oportunidades para IA
+
+Não continuar analisando apenas a operação.
+
+Toda descoberta deve influenciar diretamente a construção do produto.
