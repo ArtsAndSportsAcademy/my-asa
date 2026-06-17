@@ -1,0 +1,133 @@
+Vamos iniciar a fase de Arquitetura de Interface do MyASA 2.0.
+
+Objetivo:
+
+Transformar o Mapa Oficial de Superfícies em uma Arquitetura de Navegação completa para os três produtos identificados:
+
+* Produto do Membro
+* Produto do Supervisor
+* Produto do Admin
+
+Importante:
+
+NÃO criar telas.
+NÃO criar wireframes.
+NÃO criar layouts.
+NÃO criar componentes.
+NÃO criar design visual.
+
+Estamos definindo apenas a arquitetura de navegação e a arquitetura da informação.
+
+Base obrigatória:
+
+* docs/arquitetura-myasa-2.0.md
+* docs/ux-diretrizes-obrigatorias.md
+* docs/ux-pesquisa-supervisor.md
+* docs/ux-pesquisa-membro.md
+* docs/ux-pesquisa-admin.md
+* docs/jornadas-myasa-2.0.md
+* docs/ux-superficies-myasa-2.0.md
+* Resultado da Auditoria Final de Consistência
+
+Atuar como UX Architect, Product Architect e Information Architect.
+
+Objetivo principal:
+
+Definir como o usuário navega pelo produto sem ainda definir como as telas serão desenhadas.
+
+Para cada perfil (Membro, Supervisor e Admin), responder detalhadamente:
+
+1. Qual é o ponto de entrada principal?
+2. Qual é a primeira informação que precisa ver?
+3. Quais superfícies acessa diariamente?
+4. Quais superfícies acessa semanalmente?
+5. Quais superfícies acessa eventualmente?
+6. Quais superfícies precisam estar sempre acessíveis?
+7. Quais superfícies podem ficar em navegação secundária?
+8. Quais superfícies nunca devem competir pela atenção?
+9. Quais fluxos exigem troca frequente entre superfícies?
+10. Quais superfícies funcionam como destino final de uma jornada?
+11. Quais superfícies funcionam apenas como apoio?
+12. Qual é o caminho mais curto para executar as tarefas mais frequentes?
+
+Produzir:
+
+PARTE 1 — Arquitetura de Navegação do Membro
+
+* Fluxos principais
+* Fluxos secundários
+* Superfícies permanentes
+* Superfícies ocasionais
+* Relação com IA
+
+PARTE 2 — Arquitetura de Navegação do Supervisor
+
+* Fluxos principais
+* Fluxos secundários
+* Superfícies permanentes
+* Superfícies ocasionais
+* Relação com IA
+
+PARTE 3 — Arquitetura de Navegação do Admin
+
+* Fluxos principais
+* Fluxos secundários
+* Superfícies permanentes
+* Superfícies ocasionais
+* Relação com IA
+
+PARTE 4 — Mapa Global de Navegação
+
+Identificar:
+
+* Fluxos mais frequentes do sistema
+* Fluxos mais críticos do sistema
+* Fluxos mais raros
+* Superfícies centrais
+* Superfícies de apoio
+* Superfícies administrativas
+
+PARTE 5 — Validação
+
+Verificar:
+
+* Coerência com a Arquitetura
+* Coerência com as Pesquisas
+* Coerência com as Jornadas
+* Coerência com o Mapa de Superfícies
+* Coerência com a identidade do MyASA
+
+Importante:
+
+Lembrar continuamente das descobertas centrais:
+
+Membro:
+
+* Busca certeza para executar.
+* Sofre com silêncio sem significado.
+* Quer saber o que mudou, o que precisa fazer e o estado das coisas.
+
+Supervisor:
+
+* Busca clareza para decidir.
+* Trabalha com exceções.
+* Precisa enxergar consequências invisíveis.
+
+Admin:
+
+* Busca saúde organizacional.
+* Procura padrões e tendências.
+* Precisa entender o que aconteceu e por quê.
+
+Princípios obrigatórios:
+
+* Não transformar os três perfis na mesma navegação.
+* Respeitar que o MyASA são três produtos com dados compartilhados.
+* Priorizar frequência de uso acima de completude.
+* Priorizar clareza acima de quantidade de opções.
+* Garantir que as superfícies mais utilizadas estejam sempre próximas.
+* Evitar estruturas herdadas de ERP ou sistemas corporativos tradicionais.
+
+Objetivo final:
+
+Chegar à Arquitetura Oficial de Navegação do MyASA 2.0, validada e pronta para servir de base ao Design de Interface.

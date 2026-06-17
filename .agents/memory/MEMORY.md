@@ -1,0 +1,1 @@
+- [MyASA 2.0 — Estado do Projeto](myasa-estado-projeto.md) — produto em fase de Arquitetura de Navegação concluída; próxima fase é Design de Interface (Bloco 1)
