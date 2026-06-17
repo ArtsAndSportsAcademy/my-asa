@@ -1,0 +1,95 @@
+Saber a habilidade técnica não é suficiente.
+
+Quando o Supervisor procura uma alternativa viável, ele precisa cruzar vários critérios em ordem de prioridade.
+
+A primeira camada é eliminatória:
+
+* A pessoa está disponível naquele horário?
+* A pessoa não está de folga?
+* A pessoa não possui restrições?
+* A pessoa não está em outra atividade incompatível?
+* A pessoa pode assumir aquela atividade?
+
+Depois vem a camada artística/técnica:
+
+* Conhece o show?
+* Conhece o papel?
+* Já executou aquela função?
+* É titular?
+* É substituto?
+* Participa do rodízio?
+* Possui experiência suficiente?
+
+Depois vem a camada operacional:
+
+* A troca gera novos conflitos?
+* A pessoa já possui muitas atividades no dia?
+* Existe tempo para preparação?
+* Existe tempo para deslocamento?
+* Existe tempo para troca de figurino ou aquecimento?
+
+Depois vem a camada de segurança:
+
+* É uma opção segura?
+* Existe risco para a qualidade do espetáculo?
+* Existe risco físico?
+* Existe necessidade de ensaio prévio?
+
+O processo real do Supervisor é:
+
+Exceção detectada
+↓
+Analisar impacto
+↓
+Encontrar candidatos
+↓
+Comparar risco das alternativas
+↓
+Escolher solução
+↓
+Atualizar operação
+↓
+Comunicar envolvidos
+
+O objetivo não é encontrar alguém disponível.
+
+O objetivo é encontrar a solução de menor risco operacional.
+
+---
+
+Insight importante para UX:
+
+O Supervisor não pensa em listas de pessoas.
+
+O Supervisor pensa em alternativas.
+
+Por isso, quando existir necessidade de substituição, a experiência não deve apresentar apenas nomes.
+
+Ela deve apresentar candidatos classificados por viabilidade operacional.
+
+Exemplo:
+
+🟢 Melhor opção
+
+* Conhece o papel
+* Está disponível
+* Sem conflitos
+* Baixo risco
+
+🟡 Opção segura
+
+* Conhece parcialmente
+* Pequeno impacto operacional
+
+🟠 Opção possível
+
+* Requer ajuste
+* Requer preparação adicional
+
+🔴 Não recomendado
+
+* Possui conflitos
+* Possui restrições
+* Alto risco operacional
+
+A IA deve ajudar o Supervisor a entender rapidamente o risco de cada alternativa, mas a decisão final continua sendo humana.
