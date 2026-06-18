@@ -23,17 +23,34 @@ import type {
   AddGroupMember201,
   AddGroupSupervisor201,
   AddUserRole201,
+  AgendaEventCreate,
+  AgendaEventUpdate,
+  AssignUserTag201,
   BadRequestResponse,
+  BlockCreate,
+  BlockUpdate,
+  CancelAgendaEvent200,
+  CompleteAgendaEvent200,
+  ConfirmAgendaEvent200,
   ConflictResponse,
+  CreateAgendaEvent201,
   CreateOperation201,
+  CreateOperationTag201,
   CreateOperationalGroup201,
+  CreateShowBook201,
+  CreateShowBookBlock201,
+  CreateShowBookLine201,
+  CreateShowBookPosition201,
+  CreateShowBookScene201,
   CreateUser201,
   CurrentOrganization,
   ForbiddenResponse,
+  GetAgendaEvent200,
   GetOperation200,
   GetOperationalGroup200,
   GetOperationalGroups200,
   GetOperations200,
+  GetShowBook200,
   GetUser200,
   GroupCreate,
   GroupMemberAdd,
@@ -41,7 +58,16 @@ import type {
   GroupSupervisorAdd,
   GroupUpdate,
   HealthStatus,
+  LineCreate,
+  LineUpdate,
+  ListAgendaEvents200,
+  ListAgendaEventsParams,
+  ListOperationTags200,
+  ListShowBookVersions200,
+  ListShowBooks200,
+  ListShowBooksParams,
   ListUserRoles200,
+  ListUserTags200,
   ListUsers200,
   LoginRequest,
   LoginResult,
@@ -50,21 +76,39 @@ import type {
   OperationCreate,
   OperationStatusUpdate,
   OperationUpdate,
+  PositionCreate,
+  PositionUpdate,
+  ReasonPayload,
   RefreshTokenRequest,
   RemoveGroupSupervisor200,
   RoleCreate,
+  SceneCreate,
+  SceneUpdate,
+  ShowBookCreate,
+  ShowBookStatusUpdate,
+  ShowBookUpdate,
+  SuspendAgendaEvent200,
+  TagCreate,
   TokensResponse,
   UnauthorizedResponse,
   UnprocessableEntityResponse,
+  UpdateAgendaEvent200,
   UpdateOperation200,
   UpdateOperationStatus200,
   UpdateOperationalGroup200,
   UpdateOperationalGroupStatus200,
+  UpdateShowBook200,
+  UpdateShowBookBlock200,
+  UpdateShowBookLine200,
+  UpdateShowBookPosition200,
+  UpdateShowBookScene200,
+  UpdateShowBookStatus200,
   UpdateUser200,
   UpdateUserStatus200,
   UserContext,
   UserCreate,
   UserStatusUpdate,
+  UserTagAssign,
   UserUpdate
 } from './api.schemas';
 
@@ -2215,5 +2259,2440 @@ export const useRemoveUserRole = <TError = ErrorType<UnauthorizedResponse | Forb
         TContext
       > => {
       return useMutation(getRemoveUserRoleMutationOptions(options));
+    }
+
+export const getListShowBooksUrl = (params?: ListShowBooksParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/show-books?${stringifiedParams}` : `/api/show-books`
+}
+
+/**
+ * @summary Listar livros do show
+ */
+export const listShowBooks = async (params?: ListShowBooksParams, options?: RequestInit): Promise<ListShowBooks200> => {
+
+  return customFetch<ListShowBooks200>(getListShowBooksUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListShowBooksQueryKey = (params?: ListShowBooksParams,) => {
+    return [
+    `/api/show-books`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListShowBooksQueryOptions = <TData = Awaited<ReturnType<typeof listShowBooks>>, TError = ErrorType<UnauthorizedResponse>>(params?: ListShowBooksParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listShowBooks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListShowBooksQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listShowBooks>>> = ({ signal }) => listShowBooks(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listShowBooks>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListShowBooksQueryResult = NonNullable<Awaited<ReturnType<typeof listShowBooks>>>
+export type ListShowBooksQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Listar livros do show
+ */
+
+export function useListShowBooks<TData = Awaited<ReturnType<typeof listShowBooks>>, TError = ErrorType<UnauthorizedResponse>>(
+ params?: ListShowBooksParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listShowBooks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListShowBooksQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateShowBookUrl = () => {
+
+
+
+
+  return `/api/show-books`
+}
+
+/**
+ * @summary Criar novo livro do show
+ */
+export const createShowBook = async (showBookCreate: ShowBookCreate, options?: RequestInit): Promise<CreateShowBook201> => {
+
+  return customFetch<CreateShowBook201>(getCreateShowBookUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      showBookCreate,)
+  }
+);}
+
+
+
+
+export const getCreateShowBookMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createShowBook>>, TError,{data: BodyType<ShowBookCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createShowBook>>, TError,{data: BodyType<ShowBookCreate>}, TContext> => {
+
+const mutationKey = ['createShowBook'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createShowBook>>, {data: BodyType<ShowBookCreate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createShowBook(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateShowBookMutationResult = NonNullable<Awaited<ReturnType<typeof createShowBook>>>
+    export type CreateShowBookMutationBody = BodyType<ShowBookCreate>
+    export type CreateShowBookMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+
+    /**
+ * @summary Criar novo livro do show
+ */
+export const useCreateShowBook = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createShowBook>>, TError,{data: BodyType<ShowBookCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createShowBook>>,
+        TError,
+        {data: BodyType<ShowBookCreate>},
+        TContext
+      > => {
+      return useMutation(getCreateShowBookMutationOptions(options));
+    }
+
+export const getGetShowBookUrl = (id: string,) => {
+
+
+
+
+  return `/api/show-books/${id}`
+}
+
+/**
+ * @summary Buscar livro do show com hierarquia completa
+ */
+export const getShowBook = async (id: string, options?: RequestInit): Promise<GetShowBook200> => {
+
+  return customFetch<GetShowBook200>(getGetShowBookUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetShowBookQueryKey = (id: string,) => {
+    return [
+    `/api/show-books/${id}`
+    ] as const;
+    }
+
+
+export const getGetShowBookQueryOptions = <TData = Awaited<ReturnType<typeof getShowBook>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getShowBook>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetShowBookQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getShowBook>>> = ({ signal }) => getShowBook(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getShowBook>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetShowBookQueryResult = NonNullable<Awaited<ReturnType<typeof getShowBook>>>
+export type GetShowBookQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary Buscar livro do show com hierarquia completa
+ */
+
+export function useGetShowBook<TData = Awaited<ReturnType<typeof getShowBook>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getShowBook>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetShowBookQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpdateShowBookUrl = (id: string,) => {
+
+
+
+
+  return `/api/show-books/${id}`
+}
+
+/**
+ * @summary Atualizar metadados do livro
+ */
+export const updateShowBook = async (id: string,
+    showBookUpdate: ShowBookUpdate, options?: RequestInit): Promise<UpdateShowBook200> => {
+
+  return customFetch<UpdateShowBook200>(getUpdateShowBookUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      showBookUpdate,)
+  }
+);}
+
+
+
+
+export const getUpdateShowBookMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateShowBook>>, TError,{id: string;data: BodyType<ShowBookUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateShowBook>>, TError,{id: string;data: BodyType<ShowBookUpdate>}, TContext> => {
+
+const mutationKey = ['updateShowBook'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateShowBook>>, {id: string;data: BodyType<ShowBookUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateShowBook(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateShowBookMutationResult = NonNullable<Awaited<ReturnType<typeof updateShowBook>>>
+    export type UpdateShowBookMutationBody = BodyType<ShowBookUpdate>
+    export type UpdateShowBookMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Atualizar metadados do livro
+ */
+export const useUpdateShowBook = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateShowBook>>, TError,{id: string;data: BodyType<ShowBookUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateShowBook>>,
+        TError,
+        {id: string;data: BodyType<ShowBookUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateShowBookMutationOptions(options));
+    }
+
+export const getUpdateShowBookStatusUrl = (id: string,) => {
+
+
+
+
+  return `/api/show-books/${id}/status`
+}
+
+/**
+ * @summary Publicar ou arquivar livro do show
+ */
+export const updateShowBookStatus = async (id: string,
+    showBookStatusUpdate: ShowBookStatusUpdate, options?: RequestInit): Promise<UpdateShowBookStatus200> => {
+
+  return customFetch<UpdateShowBookStatus200>(getUpdateShowBookStatusUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      showBookStatusUpdate,)
+  }
+);}
+
+
+
+
+export const getUpdateShowBookStatusMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateShowBookStatus>>, TError,{id: string;data: BodyType<ShowBookStatusUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateShowBookStatus>>, TError,{id: string;data: BodyType<ShowBookStatusUpdate>}, TContext> => {
+
+const mutationKey = ['updateShowBookStatus'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateShowBookStatus>>, {id: string;data: BodyType<ShowBookStatusUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateShowBookStatus(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateShowBookStatusMutationResult = NonNullable<Awaited<ReturnType<typeof updateShowBookStatus>>>
+    export type UpdateShowBookStatusMutationBody = BodyType<ShowBookStatusUpdate>
+    export type UpdateShowBookStatusMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Publicar ou arquivar livro do show
+ */
+export const useUpdateShowBookStatus = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateShowBookStatus>>, TError,{id: string;data: BodyType<ShowBookStatusUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateShowBookStatus>>,
+        TError,
+        {id: string;data: BodyType<ShowBookStatusUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateShowBookStatusMutationOptions(options));
+    }
+
+export const getListShowBookVersionsUrl = (id: string,) => {
+
+
+
+
+  return `/api/show-books/${id}/versions`
+}
+
+/**
+ * @summary Histórico de versões do livro
+ */
+export const listShowBookVersions = async (id: string, options?: RequestInit): Promise<ListShowBookVersions200> => {
+
+  return customFetch<ListShowBookVersions200>(getListShowBookVersionsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListShowBookVersionsQueryKey = (id: string,) => {
+    return [
+    `/api/show-books/${id}/versions`
+    ] as const;
+    }
+
+
+export const getListShowBookVersionsQueryOptions = <TData = Awaited<ReturnType<typeof listShowBookVersions>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listShowBookVersions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListShowBookVersionsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listShowBookVersions>>> = ({ signal }) => listShowBookVersions(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listShowBookVersions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListShowBookVersionsQueryResult = NonNullable<Awaited<ReturnType<typeof listShowBookVersions>>>
+export type ListShowBookVersionsQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary Histórico de versões do livro
+ */
+
+export function useListShowBookVersions<TData = Awaited<ReturnType<typeof listShowBookVersions>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listShowBookVersions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListShowBookVersionsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateShowBookSceneUrl = (id: string,) => {
+
+
+
+
+  return `/api/show-books/${id}/scenes`
+}
+
+/**
+ * @summary Adicionar cena ao livro (mudança estrutural)
+ */
+export const createShowBookScene = async (id: string,
+    sceneCreate: SceneCreate, options?: RequestInit): Promise<CreateShowBookScene201> => {
+
+  return customFetch<CreateShowBookScene201>(getCreateShowBookSceneUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      sceneCreate,)
+  }
+);}
+
+
+
+
+export const getCreateShowBookSceneMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createShowBookScene>>, TError,{id: string;data: BodyType<SceneCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createShowBookScene>>, TError,{id: string;data: BodyType<SceneCreate>}, TContext> => {
+
+const mutationKey = ['createShowBookScene'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createShowBookScene>>, {id: string;data: BodyType<SceneCreate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  createShowBookScene(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateShowBookSceneMutationResult = NonNullable<Awaited<ReturnType<typeof createShowBookScene>>>
+    export type CreateShowBookSceneMutationBody = BodyType<SceneCreate>
+    export type CreateShowBookSceneMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+
+    /**
+ * @summary Adicionar cena ao livro (mudança estrutural)
+ */
+export const useCreateShowBookScene = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createShowBookScene>>, TError,{id: string;data: BodyType<SceneCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createShowBookScene>>,
+        TError,
+        {id: string;data: BodyType<SceneCreate>},
+        TContext
+      > => {
+      return useMutation(getCreateShowBookSceneMutationOptions(options));
+    }
+
+export const getUpdateShowBookSceneUrl = (id: string,
+    sceneId: string,) => {
+
+
+
+
+  return `/api/show-books/${id}/scenes/${sceneId}`
+}
+
+/**
+ * @summary Atualizar cena
+ */
+export const updateShowBookScene = async (id: string,
+    sceneId: string,
+    sceneUpdate: SceneUpdate, options?: RequestInit): Promise<UpdateShowBookScene200> => {
+
+  return customFetch<UpdateShowBookScene200>(getUpdateShowBookSceneUrl(id,sceneId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      sceneUpdate,)
+  }
+);}
+
+
+
+
+export const getUpdateShowBookSceneMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateShowBookScene>>, TError,{id: string;sceneId: string;data: BodyType<SceneUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateShowBookScene>>, TError,{id: string;sceneId: string;data: BodyType<SceneUpdate>}, TContext> => {
+
+const mutationKey = ['updateShowBookScene'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateShowBookScene>>, {id: string;sceneId: string;data: BodyType<SceneUpdate>}> = (props) => {
+          const {id,sceneId,data} = props ?? {};
+
+          return  updateShowBookScene(id,sceneId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateShowBookSceneMutationResult = NonNullable<Awaited<ReturnType<typeof updateShowBookScene>>>
+    export type UpdateShowBookSceneMutationBody = BodyType<SceneUpdate>
+    export type UpdateShowBookSceneMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Atualizar cena
+ */
+export const useUpdateShowBookScene = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateShowBookScene>>, TError,{id: string;sceneId: string;data: BodyType<SceneUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateShowBookScene>>,
+        TError,
+        {id: string;sceneId: string;data: BodyType<SceneUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateShowBookSceneMutationOptions(options));
+    }
+
+export const getDeleteShowBookSceneUrl = (id: string,
+    sceneId: string,) => {
+
+
+
+
+  return `/api/show-books/${id}/scenes/${sceneId}`
+}
+
+/**
+ * @summary Remover cena (mudança estrutural)
+ */
+export const deleteShowBookScene = async (id: string,
+    sceneId: string,
+    reasonPayload: ReasonPayload, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteShowBookSceneUrl(id,sceneId),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      reasonPayload,)
+  }
+);}
+
+
+
+
+export const getDeleteShowBookSceneMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookScene>>, TError,{id: string;sceneId: string;data: BodyType<ReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookScene>>, TError,{id: string;sceneId: string;data: BodyType<ReasonPayload>}, TContext> => {
+
+const mutationKey = ['deleteShowBookScene'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteShowBookScene>>, {id: string;sceneId: string;data: BodyType<ReasonPayload>}> = (props) => {
+          const {id,sceneId,data} = props ?? {};
+
+          return  deleteShowBookScene(id,sceneId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteShowBookSceneMutationResult = NonNullable<Awaited<ReturnType<typeof deleteShowBookScene>>>
+    export type DeleteShowBookSceneMutationBody = BodyType<ReasonPayload>
+    export type DeleteShowBookSceneMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Remover cena (mudança estrutural)
+ */
+export const useDeleteShowBookScene = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookScene>>, TError,{id: string;sceneId: string;data: BodyType<ReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteShowBookScene>>,
+        TError,
+        {id: string;sceneId: string;data: BodyType<ReasonPayload>},
+        TContext
+      > => {
+      return useMutation(getDeleteShowBookSceneMutationOptions(options));
+    }
+
+export const getCreateShowBookBlockUrl = (id: string,) => {
+
+
+
+
+  return `/api/show-books/${id}/blocks`
+}
+
+/**
+ * @summary Adicionar bloco ao livro
+ */
+export const createShowBookBlock = async (id: string,
+    blockCreate: BlockCreate, options?: RequestInit): Promise<CreateShowBookBlock201> => {
+
+  return customFetch<CreateShowBookBlock201>(getCreateShowBookBlockUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      blockCreate,)
+  }
+);}
+
+
+
+
+export const getCreateShowBookBlockMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createShowBookBlock>>, TError,{id: string;data: BodyType<BlockCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createShowBookBlock>>, TError,{id: string;data: BodyType<BlockCreate>}, TContext> => {
+
+const mutationKey = ['createShowBookBlock'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createShowBookBlock>>, {id: string;data: BodyType<BlockCreate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  createShowBookBlock(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateShowBookBlockMutationResult = NonNullable<Awaited<ReturnType<typeof createShowBookBlock>>>
+    export type CreateShowBookBlockMutationBody = BodyType<BlockCreate>
+    export type CreateShowBookBlockMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+
+    /**
+ * @summary Adicionar bloco ao livro
+ */
+export const useCreateShowBookBlock = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createShowBookBlock>>, TError,{id: string;data: BodyType<BlockCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createShowBookBlock>>,
+        TError,
+        {id: string;data: BodyType<BlockCreate>},
+        TContext
+      > => {
+      return useMutation(getCreateShowBookBlockMutationOptions(options));
+    }
+
+export const getUpdateShowBookBlockUrl = (id: string,
+    blockId: string,) => {
+
+
+
+
+  return `/api/show-books/${id}/blocks/${blockId}`
+}
+
+/**
+ * @summary Atualizar bloco
+ */
+export const updateShowBookBlock = async (id: string,
+    blockId: string,
+    blockUpdate: BlockUpdate, options?: RequestInit): Promise<UpdateShowBookBlock200> => {
+
+  return customFetch<UpdateShowBookBlock200>(getUpdateShowBookBlockUrl(id,blockId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      blockUpdate,)
+  }
+);}
+
+
+
+
+export const getUpdateShowBookBlockMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateShowBookBlock>>, TError,{id: string;blockId: string;data: BodyType<BlockUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateShowBookBlock>>, TError,{id: string;blockId: string;data: BodyType<BlockUpdate>}, TContext> => {
+
+const mutationKey = ['updateShowBookBlock'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateShowBookBlock>>, {id: string;blockId: string;data: BodyType<BlockUpdate>}> = (props) => {
+          const {id,blockId,data} = props ?? {};
+
+          return  updateShowBookBlock(id,blockId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateShowBookBlockMutationResult = NonNullable<Awaited<ReturnType<typeof updateShowBookBlock>>>
+    export type UpdateShowBookBlockMutationBody = BodyType<BlockUpdate>
+    export type UpdateShowBookBlockMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Atualizar bloco
+ */
+export const useUpdateShowBookBlock = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateShowBookBlock>>, TError,{id: string;blockId: string;data: BodyType<BlockUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateShowBookBlock>>,
+        TError,
+        {id: string;blockId: string;data: BodyType<BlockUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateShowBookBlockMutationOptions(options));
+    }
+
+export const getDeleteShowBookBlockUrl = (id: string,
+    blockId: string,) => {
+
+
+
+
+  return `/api/show-books/${id}/blocks/${blockId}`
+}
+
+/**
+ * @summary Remover bloco
+ */
+export const deleteShowBookBlock = async (id: string,
+    blockId: string,
+    reasonPayload: ReasonPayload, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteShowBookBlockUrl(id,blockId),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      reasonPayload,)
+  }
+);}
+
+
+
+
+export const getDeleteShowBookBlockMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookBlock>>, TError,{id: string;blockId: string;data: BodyType<ReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookBlock>>, TError,{id: string;blockId: string;data: BodyType<ReasonPayload>}, TContext> => {
+
+const mutationKey = ['deleteShowBookBlock'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteShowBookBlock>>, {id: string;blockId: string;data: BodyType<ReasonPayload>}> = (props) => {
+          const {id,blockId,data} = props ?? {};
+
+          return  deleteShowBookBlock(id,blockId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteShowBookBlockMutationResult = NonNullable<Awaited<ReturnType<typeof deleteShowBookBlock>>>
+    export type DeleteShowBookBlockMutationBody = BodyType<ReasonPayload>
+    export type DeleteShowBookBlockMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+
+    /**
+ * @summary Remover bloco
+ */
+export const useDeleteShowBookBlock = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookBlock>>, TError,{id: string;blockId: string;data: BodyType<ReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteShowBookBlock>>,
+        TError,
+        {id: string;blockId: string;data: BodyType<ReasonPayload>},
+        TContext
+      > => {
+      return useMutation(getDeleteShowBookBlockMutationOptions(options));
+    }
+
+export const getCreateShowBookPositionUrl = (id: string,) => {
+
+
+
+
+  return `/api/show-books/${id}/positions`
+}
+
+/**
+ * @summary Adicionar posição ao livro
+ */
+export const createShowBookPosition = async (id: string,
+    positionCreate: PositionCreate, options?: RequestInit): Promise<CreateShowBookPosition201> => {
+
+  return customFetch<CreateShowBookPosition201>(getCreateShowBookPositionUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      positionCreate,)
+  }
+);}
+
+
+
+
+export const getCreateShowBookPositionMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createShowBookPosition>>, TError,{id: string;data: BodyType<PositionCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createShowBookPosition>>, TError,{id: string;data: BodyType<PositionCreate>}, TContext> => {
+
+const mutationKey = ['createShowBookPosition'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createShowBookPosition>>, {id: string;data: BodyType<PositionCreate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  createShowBookPosition(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateShowBookPositionMutationResult = NonNullable<Awaited<ReturnType<typeof createShowBookPosition>>>
+    export type CreateShowBookPositionMutationBody = BodyType<PositionCreate>
+    export type CreateShowBookPositionMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+
+    /**
+ * @summary Adicionar posição ao livro
+ */
+export const useCreateShowBookPosition = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createShowBookPosition>>, TError,{id: string;data: BodyType<PositionCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createShowBookPosition>>,
+        TError,
+        {id: string;data: BodyType<PositionCreate>},
+        TContext
+      > => {
+      return useMutation(getCreateShowBookPositionMutationOptions(options));
+    }
+
+export const getUpdateShowBookPositionUrl = (id: string,
+    positionId: string,) => {
+
+
+
+
+  return `/api/show-books/${id}/positions/${positionId}`
+}
+
+/**
+ * @summary Atualizar posição
+ */
+export const updateShowBookPosition = async (id: string,
+    positionId: string,
+    positionUpdate: PositionUpdate, options?: RequestInit): Promise<UpdateShowBookPosition200> => {
+
+  return customFetch<UpdateShowBookPosition200>(getUpdateShowBookPositionUrl(id,positionId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      positionUpdate,)
+  }
+);}
+
+
+
+
+export const getUpdateShowBookPositionMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateShowBookPosition>>, TError,{id: string;positionId: string;data: BodyType<PositionUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateShowBookPosition>>, TError,{id: string;positionId: string;data: BodyType<PositionUpdate>}, TContext> => {
+
+const mutationKey = ['updateShowBookPosition'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateShowBookPosition>>, {id: string;positionId: string;data: BodyType<PositionUpdate>}> = (props) => {
+          const {id,positionId,data} = props ?? {};
+
+          return  updateShowBookPosition(id,positionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateShowBookPositionMutationResult = NonNullable<Awaited<ReturnType<typeof updateShowBookPosition>>>
+    export type UpdateShowBookPositionMutationBody = BodyType<PositionUpdate>
+    export type UpdateShowBookPositionMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Atualizar posição
+ */
+export const useUpdateShowBookPosition = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateShowBookPosition>>, TError,{id: string;positionId: string;data: BodyType<PositionUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateShowBookPosition>>,
+        TError,
+        {id: string;positionId: string;data: BodyType<PositionUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateShowBookPositionMutationOptions(options));
+    }
+
+export const getDeleteShowBookPositionUrl = (id: string,
+    positionId: string,) => {
+
+
+
+
+  return `/api/show-books/${id}/positions/${positionId}`
+}
+
+/**
+ * @summary Remover posição
+ */
+export const deleteShowBookPosition = async (id: string,
+    positionId: string,
+    reasonPayload: ReasonPayload, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteShowBookPositionUrl(id,positionId),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      reasonPayload,)
+  }
+);}
+
+
+
+
+export const getDeleteShowBookPositionMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookPosition>>, TError,{id: string;positionId: string;data: BodyType<ReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookPosition>>, TError,{id: string;positionId: string;data: BodyType<ReasonPayload>}, TContext> => {
+
+const mutationKey = ['deleteShowBookPosition'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteShowBookPosition>>, {id: string;positionId: string;data: BodyType<ReasonPayload>}> = (props) => {
+          const {id,positionId,data} = props ?? {};
+
+          return  deleteShowBookPosition(id,positionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteShowBookPositionMutationResult = NonNullable<Awaited<ReturnType<typeof deleteShowBookPosition>>>
+    export type DeleteShowBookPositionMutationBody = BodyType<ReasonPayload>
+    export type DeleteShowBookPositionMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+
+    /**
+ * @summary Remover posição
+ */
+export const useDeleteShowBookPosition = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookPosition>>, TError,{id: string;positionId: string;data: BodyType<ReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteShowBookPosition>>,
+        TError,
+        {id: string;positionId: string;data: BodyType<ReasonPayload>},
+        TContext
+      > => {
+      return useMutation(getDeleteShowBookPositionMutationOptions(options));
+    }
+
+export const getCreateShowBookLineUrl = (id: string,
+    positionId: string,) => {
+
+
+
+
+  return `/api/show-books/${id}/positions/${positionId}/lines`
+}
+
+/**
+ * @summary Adicionar linha à posição
+ */
+export const createShowBookLine = async (id: string,
+    positionId: string,
+    lineCreate: LineCreate, options?: RequestInit): Promise<CreateShowBookLine201> => {
+
+  return customFetch<CreateShowBookLine201>(getCreateShowBookLineUrl(id,positionId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      lineCreate,)
+  }
+);}
+
+
+
+
+export const getCreateShowBookLineMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createShowBookLine>>, TError,{id: string;positionId: string;data: BodyType<LineCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createShowBookLine>>, TError,{id: string;positionId: string;data: BodyType<LineCreate>}, TContext> => {
+
+const mutationKey = ['createShowBookLine'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createShowBookLine>>, {id: string;positionId: string;data: BodyType<LineCreate>}> = (props) => {
+          const {id,positionId,data} = props ?? {};
+
+          return  createShowBookLine(id,positionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateShowBookLineMutationResult = NonNullable<Awaited<ReturnType<typeof createShowBookLine>>>
+    export type CreateShowBookLineMutationBody = BodyType<LineCreate>
+    export type CreateShowBookLineMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+
+    /**
+ * @summary Adicionar linha à posição
+ */
+export const useCreateShowBookLine = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createShowBookLine>>, TError,{id: string;positionId: string;data: BodyType<LineCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createShowBookLine>>,
+        TError,
+        {id: string;positionId: string;data: BodyType<LineCreate>},
+        TContext
+      > => {
+      return useMutation(getCreateShowBookLineMutationOptions(options));
+    }
+
+export const getUpdateShowBookLineUrl = (id: string,
+    lineId: string,) => {
+
+
+
+
+  return `/api/show-books/${id}/lines/${lineId}`
+}
+
+/**
+ * @summary Atualizar linha
+ */
+export const updateShowBookLine = async (id: string,
+    lineId: string,
+    lineUpdate: LineUpdate, options?: RequestInit): Promise<UpdateShowBookLine200> => {
+
+  return customFetch<UpdateShowBookLine200>(getUpdateShowBookLineUrl(id,lineId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      lineUpdate,)
+  }
+);}
+
+
+
+
+export const getUpdateShowBookLineMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateShowBookLine>>, TError,{id: string;lineId: string;data: BodyType<LineUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateShowBookLine>>, TError,{id: string;lineId: string;data: BodyType<LineUpdate>}, TContext> => {
+
+const mutationKey = ['updateShowBookLine'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateShowBookLine>>, {id: string;lineId: string;data: BodyType<LineUpdate>}> = (props) => {
+          const {id,lineId,data} = props ?? {};
+
+          return  updateShowBookLine(id,lineId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateShowBookLineMutationResult = NonNullable<Awaited<ReturnType<typeof updateShowBookLine>>>
+    export type UpdateShowBookLineMutationBody = BodyType<LineUpdate>
+    export type UpdateShowBookLineMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Atualizar linha
+ */
+export const useUpdateShowBookLine = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateShowBookLine>>, TError,{id: string;lineId: string;data: BodyType<LineUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateShowBookLine>>,
+        TError,
+        {id: string;lineId: string;data: BodyType<LineUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateShowBookLineMutationOptions(options));
+    }
+
+export const getDeleteShowBookLineUrl = (id: string,
+    lineId: string,) => {
+
+
+
+
+  return `/api/show-books/${id}/lines/${lineId}`
+}
+
+/**
+ * @summary Remover linha
+ */
+export const deleteShowBookLine = async (id: string,
+    lineId: string,
+    reasonPayload: ReasonPayload, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteShowBookLineUrl(id,lineId),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      reasonPayload,)
+  }
+);}
+
+
+
+
+export const getDeleteShowBookLineMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookLine>>, TError,{id: string;lineId: string;data: BodyType<ReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookLine>>, TError,{id: string;lineId: string;data: BodyType<ReasonPayload>}, TContext> => {
+
+const mutationKey = ['deleteShowBookLine'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteShowBookLine>>, {id: string;lineId: string;data: BodyType<ReasonPayload>}> = (props) => {
+          const {id,lineId,data} = props ?? {};
+
+          return  deleteShowBookLine(id,lineId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteShowBookLineMutationResult = NonNullable<Awaited<ReturnType<typeof deleteShowBookLine>>>
+    export type DeleteShowBookLineMutationBody = BodyType<ReasonPayload>
+    export type DeleteShowBookLineMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+
+    /**
+ * @summary Remover linha
+ */
+export const useDeleteShowBookLine = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookLine>>, TError,{id: string;lineId: string;data: BodyType<ReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteShowBookLine>>,
+        TError,
+        {id: string;lineId: string;data: BodyType<ReasonPayload>},
+        TContext
+      > => {
+      return useMutation(getDeleteShowBookLineMutationOptions(options));
+    }
+
+export const getListOperationTagsUrl = (operationId: string,) => {
+
+
+
+
+  return `/api/operations/${operationId}/tags`
+}
+
+/**
+ * @summary Listar tags de qualificação da operação
+ */
+export const listOperationTags = async (operationId: string, options?: RequestInit): Promise<ListOperationTags200> => {
+
+  return customFetch<ListOperationTags200>(getListOperationTagsUrl(operationId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListOperationTagsQueryKey = (operationId: string,) => {
+    return [
+    `/api/operations/${operationId}/tags`
+    ] as const;
+    }
+
+
+export const getListOperationTagsQueryOptions = <TData = Awaited<ReturnType<typeof listOperationTags>>, TError = ErrorType<UnauthorizedResponse>>(operationId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOperationTags>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListOperationTagsQueryKey(operationId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOperationTags>>> = ({ signal }) => listOperationTags(operationId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(operationId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listOperationTags>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListOperationTagsQueryResult = NonNullable<Awaited<ReturnType<typeof listOperationTags>>>
+export type ListOperationTagsQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Listar tags de qualificação da operação
+ */
+
+export function useListOperationTags<TData = Awaited<ReturnType<typeof listOperationTags>>, TError = ErrorType<UnauthorizedResponse>>(
+ operationId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOperationTags>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListOperationTagsQueryOptions(operationId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateOperationTagUrl = (operationId: string,) => {
+
+
+
+
+  return `/api/operations/${operationId}/tags`
+}
+
+/**
+ * @summary Criar tag de qualificação
+ */
+export const createOperationTag = async (operationId: string,
+    tagCreate: TagCreate, options?: RequestInit): Promise<CreateOperationTag201> => {
+
+  return customFetch<CreateOperationTag201>(getCreateOperationTagUrl(operationId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      tagCreate,)
+  }
+);}
+
+
+
+
+export const getCreateOperationTagMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOperationTag>>, TError,{operationId: string;data: BodyType<TagCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createOperationTag>>, TError,{operationId: string;data: BodyType<TagCreate>}, TContext> => {
+
+const mutationKey = ['createOperationTag'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createOperationTag>>, {operationId: string;data: BodyType<TagCreate>}> = (props) => {
+          const {operationId,data} = props ?? {};
+
+          return  createOperationTag(operationId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateOperationTagMutationResult = NonNullable<Awaited<ReturnType<typeof createOperationTag>>>
+    export type CreateOperationTagMutationBody = BodyType<TagCreate>
+    export type CreateOperationTagMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+
+    /**
+ * @summary Criar tag de qualificação
+ */
+export const useCreateOperationTag = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOperationTag>>, TError,{operationId: string;data: BodyType<TagCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createOperationTag>>,
+        TError,
+        {operationId: string;data: BodyType<TagCreate>},
+        TContext
+      > => {
+      return useMutation(getCreateOperationTagMutationOptions(options));
+    }
+
+export const getDeleteOperationTagUrl = (operationId: string,
+    tagId: string,) => {
+
+
+
+
+  return `/api/operations/${operationId}/tags/${tagId}`
+}
+
+/**
+ * @summary Remover tag de qualificação
+ */
+export const deleteOperationTag = async (operationId: string,
+    tagId: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteOperationTagUrl(operationId,tagId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteOperationTagMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteOperationTag>>, TError,{operationId: string;tagId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteOperationTag>>, TError,{operationId: string;tagId: string}, TContext> => {
+
+const mutationKey = ['deleteOperationTag'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteOperationTag>>, {operationId: string;tagId: string}> = (props) => {
+          const {operationId,tagId} = props ?? {};
+
+          return  deleteOperationTag(operationId,tagId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteOperationTagMutationResult = NonNullable<Awaited<ReturnType<typeof deleteOperationTag>>>
+
+    export type DeleteOperationTagMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Remover tag de qualificação
+ */
+export const useDeleteOperationTag = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteOperationTag>>, TError,{operationId: string;tagId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteOperationTag>>,
+        TError,
+        {operationId: string;tagId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteOperationTagMutationOptions(options));
+    }
+
+export const getListUserTagsUrl = (userId: string,) => {
+
+
+
+
+  return `/api/users/${userId}/tags`
+}
+
+/**
+ * @summary Listar tags de qualificação do usuário
+ */
+export const listUserTags = async (userId: string, options?: RequestInit): Promise<ListUserTags200> => {
+
+  return customFetch<ListUserTags200>(getListUserTagsUrl(userId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListUserTagsQueryKey = (userId: string,) => {
+    return [
+    `/api/users/${userId}/tags`
+    ] as const;
+    }
+
+
+export const getListUserTagsQueryOptions = <TData = Awaited<ReturnType<typeof listUserTags>>, TError = ErrorType<UnauthorizedResponse>>(userId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listUserTags>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListUserTagsQueryKey(userId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listUserTags>>> = ({ signal }) => listUserTags(userId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(userId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listUserTags>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListUserTagsQueryResult = NonNullable<Awaited<ReturnType<typeof listUserTags>>>
+export type ListUserTagsQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Listar tags de qualificação do usuário
+ */
+
+export function useListUserTags<TData = Awaited<ReturnType<typeof listUserTags>>, TError = ErrorType<UnauthorizedResponse>>(
+ userId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listUserTags>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListUserTagsQueryOptions(userId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getAssignUserTagUrl = (userId: string,) => {
+
+
+
+
+  return `/api/users/${userId}/tags`
+}
+
+/**
+ * @summary Atribuir tag de qualificação ao usuário
+ */
+export const assignUserTag = async (userId: string,
+    userTagAssign: UserTagAssign, options?: RequestInit): Promise<AssignUserTag201> => {
+
+  return customFetch<AssignUserTag201>(getAssignUserTagUrl(userId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      userTagAssign,)
+  }
+);}
+
+
+
+
+export const getAssignUserTagMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignUserTag>>, TError,{userId: string;data: BodyType<UserTagAssign>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof assignUserTag>>, TError,{userId: string;data: BodyType<UserTagAssign>}, TContext> => {
+
+const mutationKey = ['assignUserTag'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assignUserTag>>, {userId: string;data: BodyType<UserTagAssign>}> = (props) => {
+          const {userId,data} = props ?? {};
+
+          return  assignUserTag(userId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AssignUserTagMutationResult = NonNullable<Awaited<ReturnType<typeof assignUserTag>>>
+    export type AssignUserTagMutationBody = BodyType<UserTagAssign>
+    export type AssignUserTagMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+
+    /**
+ * @summary Atribuir tag de qualificação ao usuário
+ */
+export const useAssignUserTag = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignUserTag>>, TError,{userId: string;data: BodyType<UserTagAssign>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof assignUserTag>>,
+        TError,
+        {userId: string;data: BodyType<UserTagAssign>},
+        TContext
+      > => {
+      return useMutation(getAssignUserTagMutationOptions(options));
+    }
+
+export const getRemoveUserTagUrl = (userId: string,
+    tagId: string,) => {
+
+
+
+
+  return `/api/users/${userId}/tags/${tagId}`
+}
+
+/**
+ * @summary Remover tag de qualificação do usuário
+ */
+export const removeUserTag = async (userId: string,
+    tagId: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getRemoveUserTagUrl(userId,tagId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getRemoveUserTagMutationOptions = <TError = ErrorType<UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeUserTag>>, TError,{userId: string;tagId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeUserTag>>, TError,{userId: string;tagId: string}, TContext> => {
+
+const mutationKey = ['removeUserTag'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeUserTag>>, {userId: string;tagId: string}> = (props) => {
+          const {userId,tagId} = props ?? {};
+
+          return  removeUserTag(userId,tagId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveUserTagMutationResult = NonNullable<Awaited<ReturnType<typeof removeUserTag>>>
+
+    export type RemoveUserTagMutationError = ErrorType<UnauthorizedResponse>
+
+    /**
+ * @summary Remover tag de qualificação do usuário
+ */
+export const useRemoveUserTag = <TError = ErrorType<UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeUserTag>>, TError,{userId: string;tagId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof removeUserTag>>,
+        TError,
+        {userId: string;tagId: string},
+        TContext
+      > => {
+      return useMutation(getRemoveUserTagMutationOptions(options));
+    }
+
+export const getListAgendaEventsUrl = (params?: ListAgendaEventsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/agenda/events?${stringifiedParams}` : `/api/agenda/events`
+}
+
+/**
+ * @summary Listar eventos da agenda
+ */
+export const listAgendaEvents = async (params?: ListAgendaEventsParams, options?: RequestInit): Promise<ListAgendaEvents200> => {
+
+  return customFetch<ListAgendaEvents200>(getListAgendaEventsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAgendaEventsQueryKey = (params?: ListAgendaEventsParams,) => {
+    return [
+    `/api/agenda/events`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAgendaEventsQueryOptions = <TData = Awaited<ReturnType<typeof listAgendaEvents>>, TError = ErrorType<UnauthorizedResponse>>(params?: ListAgendaEventsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAgendaEvents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAgendaEventsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAgendaEvents>>> = ({ signal }) => listAgendaEvents(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAgendaEvents>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAgendaEventsQueryResult = NonNullable<Awaited<ReturnType<typeof listAgendaEvents>>>
+export type ListAgendaEventsQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Listar eventos da agenda
+ */
+
+export function useListAgendaEvents<TData = Awaited<ReturnType<typeof listAgendaEvents>>, TError = ErrorType<UnauthorizedResponse>>(
+ params?: ListAgendaEventsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAgendaEvents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAgendaEventsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateAgendaEventUrl = () => {
+
+
+
+
+  return `/api/agenda/events`
+}
+
+/**
+ * @summary Criar evento na agenda
+ */
+export const createAgendaEvent = async (agendaEventCreate: AgendaEventCreate, options?: RequestInit): Promise<CreateAgendaEvent201> => {
+
+  return customFetch<CreateAgendaEvent201>(getCreateAgendaEventUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      agendaEventCreate,)
+  }
+);}
+
+
+
+
+export const getCreateAgendaEventMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAgendaEvent>>, TError,{data: BodyType<AgendaEventCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAgendaEvent>>, TError,{data: BodyType<AgendaEventCreate>}, TContext> => {
+
+const mutationKey = ['createAgendaEvent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAgendaEvent>>, {data: BodyType<AgendaEventCreate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAgendaEvent(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAgendaEventMutationResult = NonNullable<Awaited<ReturnType<typeof createAgendaEvent>>>
+    export type CreateAgendaEventMutationBody = BodyType<AgendaEventCreate>
+    export type CreateAgendaEventMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+
+    /**
+ * @summary Criar evento na agenda
+ */
+export const useCreateAgendaEvent = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAgendaEvent>>, TError,{data: BodyType<AgendaEventCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAgendaEvent>>,
+        TError,
+        {data: BodyType<AgendaEventCreate>},
+        TContext
+      > => {
+      return useMutation(getCreateAgendaEventMutationOptions(options));
+    }
+
+export const getGetAgendaEventUrl = (id: string,) => {
+
+
+
+
+  return `/api/agenda/events/${id}`
+}
+
+/**
+ * @summary Buscar evento por ID
+ */
+export const getAgendaEvent = async (id: string, options?: RequestInit): Promise<GetAgendaEvent200> => {
+
+  return customFetch<GetAgendaEvent200>(getGetAgendaEventUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAgendaEventQueryKey = (id: string,) => {
+    return [
+    `/api/agenda/events/${id}`
+    ] as const;
+    }
+
+
+export const getGetAgendaEventQueryOptions = <TData = Awaited<ReturnType<typeof getAgendaEvent>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAgendaEvent>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAgendaEventQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAgendaEvent>>> = ({ signal }) => getAgendaEvent(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAgendaEvent>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAgendaEventQueryResult = NonNullable<Awaited<ReturnType<typeof getAgendaEvent>>>
+export type GetAgendaEventQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary Buscar evento por ID
+ */
+
+export function useGetAgendaEvent<TData = Awaited<ReturnType<typeof getAgendaEvent>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAgendaEvent>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAgendaEventQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpdateAgendaEventUrl = (id: string,) => {
+
+
+
+
+  return `/api/agenda/events/${id}`
+}
+
+/**
+ * @summary Atualizar evento da agenda
+ */
+export const updateAgendaEvent = async (id: string,
+    agendaEventUpdate: AgendaEventUpdate, options?: RequestInit): Promise<UpdateAgendaEvent200> => {
+
+  return customFetch<UpdateAgendaEvent200>(getUpdateAgendaEventUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      agendaEventUpdate,)
+  }
+);}
+
+
+
+
+export const getUpdateAgendaEventMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAgendaEvent>>, TError,{id: string;data: BodyType<AgendaEventUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAgendaEvent>>, TError,{id: string;data: BodyType<AgendaEventUpdate>}, TContext> => {
+
+const mutationKey = ['updateAgendaEvent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAgendaEvent>>, {id: string;data: BodyType<AgendaEventUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateAgendaEvent(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAgendaEventMutationResult = NonNullable<Awaited<ReturnType<typeof updateAgendaEvent>>>
+    export type UpdateAgendaEventMutationBody = BodyType<AgendaEventUpdate>
+    export type UpdateAgendaEventMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Atualizar evento da agenda
+ */
+export const useUpdateAgendaEvent = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAgendaEvent>>, TError,{id: string;data: BodyType<AgendaEventUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAgendaEvent>>,
+        TError,
+        {id: string;data: BodyType<AgendaEventUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateAgendaEventMutationOptions(options));
+    }
+
+export const getDeleteAgendaEventUrl = (id: string,) => {
+
+
+
+
+  return `/api/agenda/events/${id}`
+}
+
+/**
+ * @summary Deletar evento (somente RASCUNHO)
+ */
+export const deleteAgendaEvent = async (id: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteAgendaEventUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteAgendaEventMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAgendaEvent>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAgendaEvent>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteAgendaEvent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAgendaEvent>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteAgendaEvent(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAgendaEventMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAgendaEvent>>>
+
+    export type DeleteAgendaEventMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Deletar evento (somente RASCUNHO)
+ */
+export const useDeleteAgendaEvent = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAgendaEvent>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAgendaEvent>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteAgendaEventMutationOptions(options));
+    }
+
+export const getConfirmAgendaEventUrl = (id: string,) => {
+
+
+
+
+  return `/api/agenda/events/${id}/confirm`
+}
+
+/**
+ * @summary Confirmar evento
+ */
+export const confirmAgendaEvent = async (id: string, options?: RequestInit): Promise<ConfirmAgendaEvent200> => {
+
+  return customFetch<ConfirmAgendaEvent200>(getConfirmAgendaEventUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getConfirmAgendaEventMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmAgendaEvent>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmAgendaEvent>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['confirmAgendaEvent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmAgendaEvent>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  confirmAgendaEvent(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmAgendaEventMutationResult = NonNullable<Awaited<ReturnType<typeof confirmAgendaEvent>>>
+
+    export type ConfirmAgendaEventMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Confirmar evento
+ */
+export const useConfirmAgendaEvent = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmAgendaEvent>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmAgendaEvent>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getConfirmAgendaEventMutationOptions(options));
+    }
+
+export const getSuspendAgendaEventUrl = (id: string,) => {
+
+
+
+
+  return `/api/agenda/events/${id}/suspend`
+}
+
+/**
+ * @summary Suspender evento confirmado
+ */
+export const suspendAgendaEvent = async (id: string,
+    reasonPayload: ReasonPayload, options?: RequestInit): Promise<SuspendAgendaEvent200> => {
+
+  return customFetch<SuspendAgendaEvent200>(getSuspendAgendaEventUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      reasonPayload,)
+  }
+);}
+
+
+
+
+export const getSuspendAgendaEventMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof suspendAgendaEvent>>, TError,{id: string;data: BodyType<ReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof suspendAgendaEvent>>, TError,{id: string;data: BodyType<ReasonPayload>}, TContext> => {
+
+const mutationKey = ['suspendAgendaEvent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof suspendAgendaEvent>>, {id: string;data: BodyType<ReasonPayload>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  suspendAgendaEvent(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SuspendAgendaEventMutationResult = NonNullable<Awaited<ReturnType<typeof suspendAgendaEvent>>>
+    export type SuspendAgendaEventMutationBody = BodyType<ReasonPayload>
+    export type SuspendAgendaEventMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Suspender evento confirmado
+ */
+export const useSuspendAgendaEvent = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof suspendAgendaEvent>>, TError,{id: string;data: BodyType<ReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof suspendAgendaEvent>>,
+        TError,
+        {id: string;data: BodyType<ReasonPayload>},
+        TContext
+      > => {
+      return useMutation(getSuspendAgendaEventMutationOptions(options));
+    }
+
+export const getCancelAgendaEventUrl = (id: string,) => {
+
+
+
+
+  return `/api/agenda/events/${id}/cancel`
+}
+
+/**
+ * @summary Cancelar evento
+ */
+export const cancelAgendaEvent = async (id: string,
+    reasonPayload: ReasonPayload, options?: RequestInit): Promise<CancelAgendaEvent200> => {
+
+  return customFetch<CancelAgendaEvent200>(getCancelAgendaEventUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      reasonPayload,)
+  }
+);}
+
+
+
+
+export const getCancelAgendaEventMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelAgendaEvent>>, TError,{id: string;data: BodyType<ReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelAgendaEvent>>, TError,{id: string;data: BodyType<ReasonPayload>}, TContext> => {
+
+const mutationKey = ['cancelAgendaEvent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelAgendaEvent>>, {id: string;data: BodyType<ReasonPayload>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  cancelAgendaEvent(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelAgendaEventMutationResult = NonNullable<Awaited<ReturnType<typeof cancelAgendaEvent>>>
+    export type CancelAgendaEventMutationBody = BodyType<ReasonPayload>
+    export type CancelAgendaEventMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Cancelar evento
+ */
+export const useCancelAgendaEvent = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelAgendaEvent>>, TError,{id: string;data: BodyType<ReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof cancelAgendaEvent>>,
+        TError,
+        {id: string;data: BodyType<ReasonPayload>},
+        TContext
+      > => {
+      return useMutation(getCancelAgendaEventMutationOptions(options));
+    }
+
+export const getCompleteAgendaEventUrl = (id: string,) => {
+
+
+
+
+  return `/api/agenda/events/${id}/complete`
+}
+
+/**
+ * @summary Marcar evento como realizado
+ */
+export const completeAgendaEvent = async (id: string, options?: RequestInit): Promise<CompleteAgendaEvent200> => {
+
+  return customFetch<CompleteAgendaEvent200>(getCompleteAgendaEventUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getCompleteAgendaEventMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeAgendaEvent>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof completeAgendaEvent>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['completeAgendaEvent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof completeAgendaEvent>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  completeAgendaEvent(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CompleteAgendaEventMutationResult = NonNullable<Awaited<ReturnType<typeof completeAgendaEvent>>>
+
+    export type CompleteAgendaEventMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Marcar evento como realizado
+ */
+export const useCompleteAgendaEvent = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeAgendaEvent>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof completeAgendaEvent>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getCompleteAgendaEventMutationOptions(options));
     }
 

@@ -1,0 +1,256 @@
+# MyASA 2.0 — Sprint 3: Livro do Show + Agenda + Gestão Web
+
+Utilizar obrigatoriamente:
+
+* Sprint 0 concluída
+* Sprint 1 concluída
+* Sprint 2 concluída
+* Arquitetura Técnica
+* Blueprint Executivo
+* Fundação S-12 Agenda
+* Fundação S-13 Livro do Show
+* Gate Final de Construção
+
+Importante:
+
+Não implementar Escala ainda.
+
+Não implementar Livro do Dia ainda.
+
+Não implementar IA.
+
+Respeitar a decisão oficial:
+
+Web = Gestão primeiro
+
+Mobile = Operação primeiro
+
+Objetivo:
+
+Construir os dois pilares que alimentam toda a operação futura:
+
+Livro do Show
+Agenda
+
+E disponibilizar suas interfaces reais de gestão no Web Admin.
+
+═══════════════════════
+PARTE 1 — LIVRO DO SHOW (BACKEND)
+═══════════════════════
+
+Implementar domínio completo:
+
+Show
+→ Cena
+→ Bloco
+→ Posição
+→ Linha
+
+Tipos de Linha MVP:
+
+* Pessoa Fixa
+* Titular + Substituto
+* Rodízio
+* Dia da Semana
+* Função
+* Personagem
+* Manual
+
+Implementar:
+
+* CRUD completo
+* versionamento
+* histórico de versões
+* distinção Estrutural vs Configuração
+* motivo obrigatório quando aplicável
+
+Critérios de aceite:
+
+* Admin cria Show completo
+* Supervisor edita configurações permitidas
+* Versionamento gera histórico rastreável
+* Nenhuma alteração silenciosa
+
+═══════════════════════
+PARTE 2 — TAGS E ELEGIBILIDADE
+═══════════════════════
+
+Implementar:
+
+11 categorias oficiais
+
+Categorias invioláveis
+
+Validação de elegibilidade
+
+Permissões:
+
+Admin
+Supervisor
+
+Critérios de aceite:
+
+* Sistema identifica elegíveis
+* Sistema identifica inelegíveis
+* Razão da inelegibilidade é visível
+
+═══════════════════════
+PARTE 3 — AGENDA (BACKEND)
+═══════════════════════
+
+Implementar:
+
+CRUD completo
+
+Tipos MVP:
+
+* Show
+* Ensaio
+* Reunião
+* Bloqueio Operacional
+* Férias Coletivas
+
+Estados:
+
+* Draft
+* Confirmado
+* Suspenso
+* Cancelado
+* Realizado
+
+Critérios de aceite:
+
+* Eventos possuem ciclo completo
+* Alterações são auditáveis
+* Escopo respeitado
+
+═══════════════════════
+PARTE 4 — WEB ADMIN
+═══════════════════════
+
+Criar interfaces reais de gestão.
+
+Rotas:
+
+/admin/show-book
+
+/admin/agenda
+
+Importante:
+
+Não copiar o layout do mobile.
+
+Utilizar espaço adicional do web para:
+
+* árvore hierárquica
+* filtros
+* navegação lateral
+* histórico
+* comparação de versões
+* edição contextual
+
+Livro do Show:
+
+* árvore Show → Cena → Bloco → Posição → Linha
+* edição estrutural
+* edição de configuração
+* histórico de versões
+* visualização de tags
+
+Agenda:
+
+* calendário
+* lista
+* filtros
+* criação e edição de eventos
+* estados visíveis
+
+Critérios de aceite:
+
+* Admin consegue operar sem curl
+* Supervisor consegue operar dentro do escopo
+* Fluxos completos pela interface web
+
+═══════════════════════
+PARTE 5 — MOBILE
+═══════════════════════
+
+Somente consulta.
+
+Criar visualização simples de:
+
+Agenda
+
+Livro do Show
+
+Sem:
+
+* edição estrutural
+* criação
+* versionamento
+
+Objetivo:
+
+Preparar o mobile para futuras integrações.
+
+═══════════════════════
+PARTE 6 — EVENT BUS
+═══════════════════════
+
+Implementar eventos:
+
+show-book.created
+
+show-book.updated
+
+show-book.version.created
+
+agenda.event.created
+
+agenda.event.updated
+
+agenda.event.suspended
+
+agenda.event.cancelled
+
+═══════════════════════
+PARTE 7 — AUDITORIA
+═══════════════════════
+
+Validar:
+
+* Versionamento funcionando
+* Histórico funcionando
+* Estrutural ≠ Configuração
+* Supervisor respeita escopo
+* Mobile apenas consulta
+* Web realiza gestão completa
+
+Responder:
+
+A Sprint 4 (Escala) pode começar sem SQL manual?
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Classificar:
+
+🟢 Sprint 3 concluída
+
+🟡 Ajustes necessários
+
+🔴 Bloqueado
+
+Objetivo final:
+
+Ao final da Sprint 3:
+
+Uma Operação real possui:
+
+* Livro do Show configurado
+* Agenda configurada
+* Gestão completa via Web
+* Consulta disponível no Mobile
+
+Pronto para alimentar a Sprint 4 (Escala).

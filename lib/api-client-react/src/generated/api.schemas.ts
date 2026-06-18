@@ -252,6 +252,422 @@ export interface GroupSupervisorAdd {
   userId: string;
 }
 
+export type ShowBookType = typeof ShowBookType[keyof typeof ShowBookType];
+
+
+export const ShowBookType = {
+  SIMPLE: 'SIMPLE',
+  STRUCTURED: 'STRUCTURED',
+} as const;
+
+export type ShowBookStatus = typeof ShowBookStatus[keyof typeof ShowBookStatus];
+
+
+export const ShowBookStatus = {
+  DRAFT: 'DRAFT',
+  PUBLISHED: 'PUBLISHED',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export interface ShowBook {
+  id: string;
+  operationId: string;
+  title: string;
+  description?: string | null;
+  type: ShowBookType;
+  version: number;
+  status: ShowBookStatus;
+  createdBy: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ShowBookScene {
+  id: string;
+  showBookId: string;
+  name: string;
+  order: number;
+  isOptional: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ShowBookBlock {
+  id: string;
+  showBookId: string;
+  sceneId?: string | null;
+  name: string;
+  order: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ShowBookPosition {
+  id: string;
+  showBookId: string;
+  blockId?: string | null;
+  name: string;
+  minimumCoverage: number;
+  tagsJson?: string[] | null;
+  order: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type ShowBookLineType = typeof ShowBookLineType[keyof typeof ShowBookLineType];
+
+
+export const ShowBookLineType = {
+  FIXED_PERSON: 'FIXED_PERSON',
+  TITULAR_SUBSTITUTE: 'TITULAR_SUBSTITUTE',
+  ROTATION: 'ROTATION',
+  DAY_OF_WEEK: 'DAY_OF_WEEK',
+  FUNCTION: 'FUNCTION',
+  CHARACTER: 'CHARACTER',
+  MANUAL: 'MANUAL',
+} as const;
+
+export type ShowBookLineConfig = { [key: string]: unknown };
+
+export interface ShowBookLine {
+  id: string;
+  positionId: string;
+  type: ShowBookLineType;
+  config: ShowBookLineConfig;
+  order: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type ShowBookPositionWithLines = ShowBookPosition & {
+  lines: ShowBookLine[];
+};
+
+export type ShowBookBlockWithPositions = ShowBookBlock & {
+  positions: ShowBookPositionWithLines[];
+};
+
+export type ShowBookSceneWithBlocks = ShowBookScene & {
+  blocks: ShowBookBlockWithPositions[];
+};
+
+export type ShowBookWithTree = ShowBook & {
+  scenes: ShowBookSceneWithBlocks[];
+};
+
+export type ShowBookVersionChangeType = typeof ShowBookVersionChangeType[keyof typeof ShowBookVersionChangeType];
+
+
+export const ShowBookVersionChangeType = {
+  STRUCTURAL: 'STRUCTURAL',
+  CONFIG: 'CONFIG',
+} as const;
+
+export interface ShowBookVersion {
+  id: string;
+  showBookId: string;
+  version: number;
+  changeType: ShowBookVersionChangeType;
+  reason: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export type ShowBookTagCategory = typeof ShowBookTagCategory[keyof typeof ShowBookTagCategory];
+
+
+export const ShowBookTagCategory = {
+  ARTISTIC_SKILL: 'ARTISTIC_SKILL',
+  TECHNICAL_SKILL: 'TECHNICAL_SKILL',
+  PHYSICAL_REQUIREMENT: 'PHYSICAL_REQUIREMENT',
+  MEDICAL_REQUIREMENT: 'MEDICAL_REQUIREMENT',
+  SAFETY: 'SAFETY',
+  PROFESSIONAL_CERTIFICATION: 'PROFESSIONAL_CERTIFICATION',
+  CHARACTER: 'CHARACTER',
+  COSTUME: 'COSTUME',
+  EQUIPMENT: 'EQUIPMENT',
+  SPACE: 'SPACE',
+  ADMINISTRATIVE: 'ADMINISTRATIVE',
+} as const;
+
+export interface ShowBookTag {
+  id: string;
+  operationId: string;
+  category: ShowBookTagCategory;
+  label: string;
+  createdBy: string;
+  createdAt?: string;
+}
+
+export interface UserTag {
+  id: string;
+  userId: string;
+  tagId: string;
+  assignedBy: string;
+  createdAt?: string;
+}
+
+export type ShowBookCreateType = typeof ShowBookCreateType[keyof typeof ShowBookCreateType];
+
+
+export const ShowBookCreateType = {
+  SIMPLE: 'SIMPLE',
+  STRUCTURED: 'STRUCTURED',
+} as const;
+
+export interface ShowBookCreate {
+  operationId: string;
+  title: string;
+  description?: string | null;
+  type?: ShowBookCreateType;
+}
+
+export interface ShowBookUpdate {
+  title?: string;
+  description?: string | null;
+  reason: string;
+}
+
+export type ShowBookStatusUpdateStatus = typeof ShowBookStatusUpdateStatus[keyof typeof ShowBookStatusUpdateStatus];
+
+
+export const ShowBookStatusUpdateStatus = {
+  DRAFT: 'DRAFT',
+  PUBLISHED: 'PUBLISHED',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export interface ShowBookStatusUpdate {
+  status: ShowBookStatusUpdateStatus;
+  reason: string;
+}
+
+export interface SceneCreate {
+  name: string;
+  order: number;
+  isOptional?: boolean;
+  reason: string;
+}
+
+export type SceneUpdateChangeType = typeof SceneUpdateChangeType[keyof typeof SceneUpdateChangeType];
+
+
+export const SceneUpdateChangeType = {
+  STRUCTURAL: 'STRUCTURAL',
+  CONFIG: 'CONFIG',
+} as const;
+
+export interface SceneUpdate {
+  name?: string;
+  order?: number;
+  isOptional?: boolean;
+  changeType?: SceneUpdateChangeType;
+  reason: string;
+}
+
+export interface BlockCreate {
+  name: string;
+  order: number;
+  sceneId?: string | null;
+  reason: string;
+}
+
+export type BlockUpdateChangeType = typeof BlockUpdateChangeType[keyof typeof BlockUpdateChangeType];
+
+
+export const BlockUpdateChangeType = {
+  STRUCTURAL: 'STRUCTURAL',
+  CONFIG: 'CONFIG',
+} as const;
+
+export interface BlockUpdate {
+  name?: string;
+  order?: number;
+  changeType?: BlockUpdateChangeType;
+  reason: string;
+}
+
+export interface PositionCreate {
+  name: string;
+  order: number;
+  blockId?: string | null;
+  minimumCoverage?: number;
+  tagsJson?: string[];
+  reason: string;
+}
+
+export type PositionUpdateChangeType = typeof PositionUpdateChangeType[keyof typeof PositionUpdateChangeType];
+
+
+export const PositionUpdateChangeType = {
+  STRUCTURAL: 'STRUCTURAL',
+  CONFIG: 'CONFIG',
+} as const;
+
+export interface PositionUpdate {
+  name?: string;
+  order?: number;
+  minimumCoverage?: number;
+  tagsJson?: string[];
+  changeType?: PositionUpdateChangeType;
+  reason: string;
+}
+
+export type LineCreateType = typeof LineCreateType[keyof typeof LineCreateType];
+
+
+export const LineCreateType = {
+  FIXED_PERSON: 'FIXED_PERSON',
+  TITULAR_SUBSTITUTE: 'TITULAR_SUBSTITUTE',
+  ROTATION: 'ROTATION',
+  DAY_OF_WEEK: 'DAY_OF_WEEK',
+  FUNCTION: 'FUNCTION',
+  CHARACTER: 'CHARACTER',
+  MANUAL: 'MANUAL',
+} as const;
+
+export type LineCreateConfig = { [key: string]: unknown };
+
+export interface LineCreate {
+  type: LineCreateType;
+  config?: LineCreateConfig;
+  order?: number;
+  reason: string;
+}
+
+export type LineUpdateConfig = { [key: string]: unknown };
+
+export type LineUpdateChangeType = typeof LineUpdateChangeType[keyof typeof LineUpdateChangeType];
+
+
+export const LineUpdateChangeType = {
+  STRUCTURAL: 'STRUCTURAL',
+  CONFIG: 'CONFIG',
+} as const;
+
+export interface LineUpdate {
+  config?: LineUpdateConfig;
+  order?: number;
+  changeType?: LineUpdateChangeType;
+  reason: string;
+}
+
+export type TagCreateCategory = typeof TagCreateCategory[keyof typeof TagCreateCategory];
+
+
+export const TagCreateCategory = {
+  ARTISTIC_SKILL: 'ARTISTIC_SKILL',
+  TECHNICAL_SKILL: 'TECHNICAL_SKILL',
+  PHYSICAL_REQUIREMENT: 'PHYSICAL_REQUIREMENT',
+  MEDICAL_REQUIREMENT: 'MEDICAL_REQUIREMENT',
+  SAFETY: 'SAFETY',
+  PROFESSIONAL_CERTIFICATION: 'PROFESSIONAL_CERTIFICATION',
+  CHARACTER: 'CHARACTER',
+  COSTUME: 'COSTUME',
+  EQUIPMENT: 'EQUIPMENT',
+  SPACE: 'SPACE',
+  ADMINISTRATIVE: 'ADMINISTRATIVE',
+} as const;
+
+export interface TagCreate {
+  category: TagCreateCategory;
+  label: string;
+}
+
+export interface UserTagAssign {
+  tagId: string;
+}
+
+export interface ReasonPayload {
+  reason: string;
+}
+
+export type AgendaEventType = typeof AgendaEventType[keyof typeof AgendaEventType];
+
+
+export const AgendaEventType = {
+  SHOW: 'SHOW',
+  REHEARSAL: 'REHEARSAL',
+  MEETING: 'MEETING',
+  OPERATIONAL_BLOCK: 'OPERATIONAL_BLOCK',
+  COLLECTIVE_VACATION: 'COLLECTIVE_VACATION',
+} as const;
+
+export type AgendaEventStatus = typeof AgendaEventStatus[keyof typeof AgendaEventStatus];
+
+
+export const AgendaEventStatus = {
+  DRAFT: 'DRAFT',
+  CONFIRMED: 'CONFIRMED',
+  SUSPENDED: 'SUSPENDED',
+  CANCELLED: 'CANCELLED',
+  COMPLETED: 'COMPLETED',
+} as const;
+
+export interface AgendaEvent {
+  id: string;
+  operationId: string;
+  showBookId?: string | null;
+  groupId?: string | null;
+  type: AgendaEventType;
+  title: string;
+  date: string;
+  endDate?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  location?: string | null;
+  notes?: string | null;
+  status: AgendaEventStatus;
+  reason?: string | null;
+  createdBy: string;
+  confirmedBy?: string | null;
+  confirmedAt?: string | null;
+  suspendedBy?: string | null;
+  suspendedAt?: string | null;
+  canceledBy?: string | null;
+  canceledAt?: string | null;
+  completedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type AgendaEventCreateType = typeof AgendaEventCreateType[keyof typeof AgendaEventCreateType];
+
+
+export const AgendaEventCreateType = {
+  SHOW: 'SHOW',
+  REHEARSAL: 'REHEARSAL',
+  MEETING: 'MEETING',
+  OPERATIONAL_BLOCK: 'OPERATIONAL_BLOCK',
+  COLLECTIVE_VACATION: 'COLLECTIVE_VACATION',
+} as const;
+
+export interface AgendaEventCreate {
+  operationId: string;
+  showBookId?: string | null;
+  groupId?: string | null;
+  type: AgendaEventCreateType;
+  title: string;
+  date: string;
+  endDate?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  location?: string | null;
+  notes?: string | null;
+}
+
+export interface AgendaEventUpdate {
+  title?: string;
+  date?: string;
+  endDate?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  location?: string | null;
+  notes?: string | null;
+  showBookId?: string | null;
+  groupId?: string | null;
+}
+
 /**
  * Bad request
  */
@@ -361,5 +777,148 @@ export type ListUserRoles200 = {
 
 export type AddUserRole201 = {
   role: UserRole;
+};
+
+export type ListShowBooksParams = {
+operationId?: string;
+};
+
+export type ListShowBooks200 = {
+  showBooks: ShowBook[];
+};
+
+export type CreateShowBook201 = {
+  showBook: ShowBook;
+};
+
+export type GetShowBook200 = {
+  showBook: ShowBookWithTree;
+};
+
+export type UpdateShowBook200 = {
+  showBook: ShowBook;
+};
+
+export type UpdateShowBookStatus200 = {
+  showBook: ShowBook;
+};
+
+export type ListShowBookVersions200 = {
+  versions: ShowBookVersion[];
+};
+
+export type CreateShowBookScene201 = {
+  scene: ShowBookScene;
+};
+
+export type UpdateShowBookScene200 = {
+  scene: ShowBookScene;
+};
+
+export type CreateShowBookBlock201 = {
+  block: ShowBookBlock;
+};
+
+export type UpdateShowBookBlock200 = {
+  block: ShowBookBlock;
+};
+
+export type CreateShowBookPosition201 = {
+  position: ShowBookPosition;
+};
+
+export type UpdateShowBookPosition200 = {
+  position: ShowBookPosition;
+};
+
+export type CreateShowBookLine201 = {
+  line: ShowBookLine;
+};
+
+export type UpdateShowBookLine200 = {
+  line: ShowBookLine;
+};
+
+export type ListOperationTags200 = {
+  tags: ShowBookTag[];
+};
+
+export type CreateOperationTag201 = {
+  tag: ShowBookTag;
+};
+
+export type ListUserTags200TagsItem = {
+  userTag: UserTag;
+  tag: ShowBookTag;
+};
+
+export type ListUserTags200 = {
+  tags: ListUserTags200TagsItem[];
+};
+
+export type AssignUserTag201 = {
+  userTag: UserTag;
+};
+
+export type ListAgendaEventsParams = {
+operationId?: string;
+type?: ListAgendaEventsType;
+status?: ListAgendaEventsStatus;
+from?: string;
+to?: string;
+};
+
+export type ListAgendaEventsType = typeof ListAgendaEventsType[keyof typeof ListAgendaEventsType];
+
+
+export const ListAgendaEventsType = {
+  SHOW: 'SHOW',
+  REHEARSAL: 'REHEARSAL',
+  MEETING: 'MEETING',
+  OPERATIONAL_BLOCK: 'OPERATIONAL_BLOCK',
+  COLLECTIVE_VACATION: 'COLLECTIVE_VACATION',
+} as const;
+
+export type ListAgendaEventsStatus = typeof ListAgendaEventsStatus[keyof typeof ListAgendaEventsStatus];
+
+
+export const ListAgendaEventsStatus = {
+  DRAFT: 'DRAFT',
+  CONFIRMED: 'CONFIRMED',
+  SUSPENDED: 'SUSPENDED',
+  CANCELLED: 'CANCELLED',
+  COMPLETED: 'COMPLETED',
+} as const;
+
+export type ListAgendaEvents200 = {
+  events: AgendaEvent[];
+};
+
+export type CreateAgendaEvent201 = {
+  event: AgendaEvent;
+};
+
+export type GetAgendaEvent200 = {
+  event: AgendaEvent;
+};
+
+export type UpdateAgendaEvent200 = {
+  event: AgendaEvent;
+};
+
+export type ConfirmAgendaEvent200 = {
+  event: AgendaEvent;
+};
+
+export type SuspendAgendaEvent200 = {
+  event: AgendaEvent;
+};
+
+export type CancelAgendaEvent200 = {
+  event: AgendaEvent;
+};
+
+export type CompleteAgendaEvent200 = {
+  event: AgendaEvent;
 };
 

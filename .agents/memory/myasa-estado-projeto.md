@@ -8,7 +8,7 @@ MyASA 2.0 — plataforma operacional para operações artísticas, shows e equip
 Comunicação e documentação em Português Brasileiro.
 
 ## Fase atual
-**Sprint 2 CONCLUÍDO** — CRUD completo de Usuários, Papéis, Operações e Grupos implementado e funcionando.
+**Sprint 3 CONCLUÍDO** — Livro do Show (hierarquia completa + versionamento) + Agenda (CRUD + estados) + Web Admin pages + Mobile read-only views + Auditoria.
 Próxima fase: Design de Interface (Bloco 1 — S-01 Meu Dia, S-02 Painel Operacional, S-04 Escala).
 
 ## Stack técnica
@@ -28,23 +28,43 @@ Próxima fase: Design de Interface (Bloco 1 — S-01 Meu Dia, S-02 Painel Operac
 - Exemplo resolvido: `LoginResponse` → renomeado para `LoginResult`
 - **Why**: Orval gera esses nomes internamente; duplicata causa erro TS "duplicate identifier"
 
-## Endpoints Sprint 1
-- `POST /api/auth/login` → LoginResult
-- `POST /api/auth/refresh` → TokensResponse
-- `POST /api/auth/logout` → 204
-- `GET /api/auth/me` → MeResponse
-- `GET /api/organizations/current` → CurrentOrganization
-- `GET /api/operations` → { operations }
-- `GET /api/operational-groups` → { groups }
-- `GET /api/users/me/context` → UserContext
+## YAML OpenAPI — REGRA IMPORTANTE
+- Summaries com `: ` dentro precisam estar entre aspas no openapi.yaml
+- **Why**: parser YAML interpreta `: ` como início de chave
 
-## Endpoints Sprint 2 (novos)
-- `GET/POST /api/users` + `GET/PATCH /api/users/:id` + `PATCH /api/users/:id/status`
-- `GET/POST /api/users/:id/roles` + `DELETE /api/users/:id/roles/:roleId`
-- `GET/POST /api/operations` + `GET/PATCH /api/operations/:id` + `PATCH /api/operations/:id/status`
-- `GET/POST /api/operational-groups` + `GET/PATCH /api/operational-groups/:id` + `PATCH /api/operational-groups/:id/status`
-- `POST/DELETE /api/operational-groups/:id/members/:userId`
-- `POST/DELETE /api/operational-groups/:id/supervisors/:userId`
+## Radix Select — REGRA IMPORTANTE
+- `<SelectItem value="">` lança erro em runtime: "value prop must not be empty string"
+- Sempre use sentinela como `"ALL"` para a opção "Todos" e normalize ao ler: `value === "ALL" ? undefined : value`
+
+## Endpoints Sprint 3 (novos)
+- `GET/POST /api/show-books` + `GET /api/show-books/:id` + `PATCH /api/show-books/:id` + `PATCH /api/show-books/:id/status`
+- `GET /api/show-books/:id/versions`
+- `POST /api/show-books/:id/scenes` + `PATCH/DELETE /api/show-books/:id/scenes/:sceneId`
+- `POST /api/show-books/:id/blocks` + `PATCH/DELETE /api/show-books/:id/blocks/:blockId`
+- `POST /api/show-books/:id/positions` + `PATCH/DELETE /api/show-books/:id/positions/:positionId`
+- `POST /api/show-books/:id/scenes/:sceneId/lines` + `PATCH/DELETE` por lineId
+- `GET/POST /api/operations/:operationId/tags` + `DELETE /api/operations/:operationId/tags/:tagId`
+- `POST /api/users/:userId/tags` + `DELETE /api/users/:userId/tags/:tagId`
+- `GET/POST /api/agenda/events` + `GET /api/agenda/events/:id` + `PATCH /api/agenda/events/:id`
+- `DELETE /api/agenda/events/:id` + confirm/suspend/cancel/complete
+
+## Páginas Web Admin (Sprint 3)
+- `/admin/show-book` — painel duplo: lista de livros à esquerda + árvore Cenas>Blocos>Posições>Linhas à direita, ações CRUD, histórico de versões em Sheet
+- `/admin/agenda` — tabela com filtros por tipo/status/data, CRUD completo, transitions de estado via DropdownMenu
+- `/admin/auditoria` — tabela read-only de versões do livro (v1, v2, v3...) com Motivo e Data
+
+## Tabs Mobile (Sprint 3)
+- `(tabs)/agenda.tsx` — read-only: lista de eventos com filtro por status, badges coloridas
+- `(tabs)/show-book.tsx` — read-only: seletor de livro + árvore hierárquica Cenas>Blocos>Posições>Linhas
+
+## Schema Sprint 3 (lib/db/src/schema/)
+- `showbook.ts`: ShowBooks, ShowBookScenes, ShowBookBlocks (sceneId FK), ShowBookRoles/Positions (tagsJson JSONB), ShowBookLines (7 tipos), ShowBookVersions, ShowBookTags, UserTags
+- `agenda.ts`: AgendaEvents (5 tipos, 5 estados + auditoria confirmedBy/suspendedBy/cancelledBy/completedBy)
+- Versionamento automático: toda mutação estrutural chama `bumpVersion(id, changeType, reason, userId)`
+
+## Seed
+- Seed detecta usuários existentes mas livros ausentes → cria show book + hierarquia + 3 eventos automaticamente
+- **Why**: banco pode ter usuários de sprint anterior sem dados do Sprint 3
 
 ## Credenciais Demo
 - `admin@myasa.demo` / `myasa123` (ADMIN)

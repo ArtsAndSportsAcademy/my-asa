@@ -547,3 +547,810 @@ export const RemoveUserRoleParams = zod.object({
 })
 
 
+/**
+ * @summary Listar livros do show
+ */
+export const ListShowBooksQueryParams = zod.object({
+  "operationId": zod.coerce.string().optional()
+})
+
+export const ListShowBooksResponse = zod.object({
+  "showBooks": zod.array(zod.object({
+  "id": zod.string(),
+  "operationId": zod.string(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "type": zod.enum(['SIMPLE', 'STRUCTURED']),
+  "version": zod.number(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
+  "createdBy": zod.string(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+}))
+})
+
+
+/**
+ * @summary Criar novo livro do show
+ */
+export const CreateShowBookBody = zod.object({
+  "operationId": zod.string(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "type": zod.enum(['SIMPLE', 'STRUCTURED']).optional()
+})
+
+
+/**
+ * @summary Buscar livro do show com hierarquia completa
+ */
+export const GetShowBookParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetShowBookResponse = zod.object({
+  "showBook": zod.object({
+  "id": zod.string(),
+  "operationId": zod.string(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "type": zod.enum(['SIMPLE', 'STRUCTURED']),
+  "version": zod.number(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
+  "createdBy": zod.string(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+}).and(zod.object({
+  "scenes": zod.array(zod.object({
+  "id": zod.string(),
+  "showBookId": zod.string(),
+  "name": zod.string(),
+  "order": zod.number(),
+  "isOptional": zod.boolean(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+}).and(zod.object({
+  "blocks": zod.array(zod.object({
+  "id": zod.string(),
+  "showBookId": zod.string(),
+  "sceneId": zod.string().nullish(),
+  "name": zod.string(),
+  "order": zod.number(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+}).and(zod.object({
+  "positions": zod.array(zod.object({
+  "id": zod.string(),
+  "showBookId": zod.string(),
+  "blockId": zod.string().nullish(),
+  "name": zod.string(),
+  "minimumCoverage": zod.number(),
+  "tagsJson": zod.array(zod.string()).nullish(),
+  "order": zod.number(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+}).and(zod.object({
+  "lines": zod.array(zod.object({
+  "id": zod.string(),
+  "positionId": zod.string(),
+  "type": zod.enum(['FIXED_PERSON', 'TITULAR_SUBSTITUTE', 'ROTATION', 'DAY_OF_WEEK', 'FUNCTION', 'CHARACTER', 'MANUAL']),
+  "config": zod.record(zod.string(), zod.unknown()),
+  "order": zod.number(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+}))
+})))
+})))
+})))
+}))
+})
+
+
+/**
+ * @summary Atualizar metadados do livro
+ */
+export const UpdateShowBookParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateShowBookBody = zod.object({
+  "title": zod.string().optional(),
+  "description": zod.string().nullish(),
+  "reason": zod.string()
+})
+
+export const UpdateShowBookResponse = zod.object({
+  "showBook": zod.object({
+  "id": zod.string(),
+  "operationId": zod.string(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "type": zod.enum(['SIMPLE', 'STRUCTURED']),
+  "version": zod.number(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
+  "createdBy": zod.string(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})
+})
+
+
+/**
+ * @summary Publicar ou arquivar livro do show
+ */
+export const UpdateShowBookStatusParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateShowBookStatusBody = zod.object({
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
+  "reason": zod.string()
+})
+
+export const UpdateShowBookStatusResponse = zod.object({
+  "showBook": zod.object({
+  "id": zod.string(),
+  "operationId": zod.string(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "type": zod.enum(['SIMPLE', 'STRUCTURED']),
+  "version": zod.number(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
+  "createdBy": zod.string(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})
+})
+
+
+/**
+ * @summary Histórico de versões do livro
+ */
+export const ListShowBookVersionsParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const ListShowBookVersionsResponse = zod.object({
+  "versions": zod.array(zod.object({
+  "id": zod.string(),
+  "showBookId": zod.string(),
+  "version": zod.number(),
+  "changeType": zod.enum(['STRUCTURAL', 'CONFIG']),
+  "reason": zod.string(),
+  "createdBy": zod.string(),
+  "createdAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Adicionar cena ao livro (mudança estrutural)
+ */
+export const CreateShowBookSceneParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const CreateShowBookSceneBody = zod.object({
+  "name": zod.string(),
+  "order": zod.number(),
+  "isOptional": zod.boolean().optional(),
+  "reason": zod.string()
+})
+
+
+/**
+ * @summary Atualizar cena
+ */
+export const UpdateShowBookSceneParams = zod.object({
+  "id": zod.coerce.string(),
+  "sceneId": zod.coerce.string()
+})
+
+export const UpdateShowBookSceneBody = zod.object({
+  "name": zod.string().optional(),
+  "order": zod.number().optional(),
+  "isOptional": zod.boolean().optional(),
+  "changeType": zod.enum(['STRUCTURAL', 'CONFIG']).optional(),
+  "reason": zod.string()
+})
+
+export const UpdateShowBookSceneResponse = zod.object({
+  "scene": zod.object({
+  "id": zod.string(),
+  "showBookId": zod.string(),
+  "name": zod.string(),
+  "order": zod.number(),
+  "isOptional": zod.boolean(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})
+})
+
+
+/**
+ * @summary Remover cena (mudança estrutural)
+ */
+export const DeleteShowBookSceneParams = zod.object({
+  "id": zod.coerce.string(),
+  "sceneId": zod.coerce.string()
+})
+
+export const DeleteShowBookSceneBody = zod.object({
+  "reason": zod.string()
+})
+
+
+/**
+ * @summary Adicionar bloco ao livro
+ */
+export const CreateShowBookBlockParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const CreateShowBookBlockBody = zod.object({
+  "name": zod.string(),
+  "order": zod.number(),
+  "sceneId": zod.string().nullish(),
+  "reason": zod.string()
+})
+
+
+/**
+ * @summary Atualizar bloco
+ */
+export const UpdateShowBookBlockParams = zod.object({
+  "id": zod.coerce.string(),
+  "blockId": zod.coerce.string()
+})
+
+export const UpdateShowBookBlockBody = zod.object({
+  "name": zod.string().optional(),
+  "order": zod.number().optional(),
+  "changeType": zod.enum(['STRUCTURAL', 'CONFIG']).optional(),
+  "reason": zod.string()
+})
+
+export const UpdateShowBookBlockResponse = zod.object({
+  "block": zod.object({
+  "id": zod.string(),
+  "showBookId": zod.string(),
+  "sceneId": zod.string().nullish(),
+  "name": zod.string(),
+  "order": zod.number(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})
+})
+
+
+/**
+ * @summary Remover bloco
+ */
+export const DeleteShowBookBlockParams = zod.object({
+  "id": zod.coerce.string(),
+  "blockId": zod.coerce.string()
+})
+
+export const DeleteShowBookBlockBody = zod.object({
+  "reason": zod.string()
+})
+
+
+/**
+ * @summary Adicionar posição ao livro
+ */
+export const CreateShowBookPositionParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const CreateShowBookPositionBody = zod.object({
+  "name": zod.string(),
+  "order": zod.number(),
+  "blockId": zod.string().nullish(),
+  "minimumCoverage": zod.number().optional(),
+  "tagsJson": zod.array(zod.string()).optional(),
+  "reason": zod.string()
+})
+
+
+/**
+ * @summary Atualizar posição
+ */
+export const UpdateShowBookPositionParams = zod.object({
+  "id": zod.coerce.string(),
+  "positionId": zod.coerce.string()
+})
+
+export const UpdateShowBookPositionBody = zod.object({
+  "name": zod.string().optional(),
+  "order": zod.number().optional(),
+  "minimumCoverage": zod.number().optional(),
+  "tagsJson": zod.array(zod.string()).optional(),
+  "changeType": zod.enum(['STRUCTURAL', 'CONFIG']).optional(),
+  "reason": zod.string()
+})
+
+export const UpdateShowBookPositionResponse = zod.object({
+  "position": zod.object({
+  "id": zod.string(),
+  "showBookId": zod.string(),
+  "blockId": zod.string().nullish(),
+  "name": zod.string(),
+  "minimumCoverage": zod.number(),
+  "tagsJson": zod.array(zod.string()).nullish(),
+  "order": zod.number(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})
+})
+
+
+/**
+ * @summary Remover posição
+ */
+export const DeleteShowBookPositionParams = zod.object({
+  "id": zod.coerce.string(),
+  "positionId": zod.coerce.string()
+})
+
+export const DeleteShowBookPositionBody = zod.object({
+  "reason": zod.string()
+})
+
+
+/**
+ * @summary Adicionar linha à posição
+ */
+export const CreateShowBookLineParams = zod.object({
+  "id": zod.coerce.string(),
+  "positionId": zod.coerce.string()
+})
+
+export const CreateShowBookLineBody = zod.object({
+  "type": zod.enum(['FIXED_PERSON', 'TITULAR_SUBSTITUTE', 'ROTATION', 'DAY_OF_WEEK', 'FUNCTION', 'CHARACTER', 'MANUAL']),
+  "config": zod.record(zod.string(), zod.unknown()).optional(),
+  "order": zod.number().optional(),
+  "reason": zod.string()
+})
+
+
+/**
+ * @summary Atualizar linha
+ */
+export const UpdateShowBookLineParams = zod.object({
+  "id": zod.coerce.string(),
+  "lineId": zod.coerce.string()
+})
+
+export const UpdateShowBookLineBody = zod.object({
+  "config": zod.record(zod.string(), zod.unknown()).optional(),
+  "order": zod.number().optional(),
+  "changeType": zod.enum(['STRUCTURAL', 'CONFIG']).optional(),
+  "reason": zod.string()
+})
+
+export const UpdateShowBookLineResponse = zod.object({
+  "line": zod.object({
+  "id": zod.string(),
+  "positionId": zod.string(),
+  "type": zod.enum(['FIXED_PERSON', 'TITULAR_SUBSTITUTE', 'ROTATION', 'DAY_OF_WEEK', 'FUNCTION', 'CHARACTER', 'MANUAL']),
+  "config": zod.record(zod.string(), zod.unknown()),
+  "order": zod.number(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})
+})
+
+
+/**
+ * @summary Remover linha
+ */
+export const DeleteShowBookLineParams = zod.object({
+  "id": zod.coerce.string(),
+  "lineId": zod.coerce.string()
+})
+
+export const DeleteShowBookLineBody = zod.object({
+  "reason": zod.string()
+})
+
+
+/**
+ * @summary Listar tags de qualificação da operação
+ */
+export const ListOperationTagsParams = zod.object({
+  "operationId": zod.coerce.string()
+})
+
+export const ListOperationTagsResponse = zod.object({
+  "tags": zod.array(zod.object({
+  "id": zod.string(),
+  "operationId": zod.string(),
+  "category": zod.enum(['ARTISTIC_SKILL', 'TECHNICAL_SKILL', 'PHYSICAL_REQUIREMENT', 'MEDICAL_REQUIREMENT', 'SAFETY', 'PROFESSIONAL_CERTIFICATION', 'CHARACTER', 'COSTUME', 'EQUIPMENT', 'SPACE', 'ADMINISTRATIVE']),
+  "label": zod.string(),
+  "createdBy": zod.string(),
+  "createdAt": zod.string().optional()
+}))
+})
+
+
+/**
+ * @summary Criar tag de qualificação
+ */
+export const CreateOperationTagParams = zod.object({
+  "operationId": zod.coerce.string()
+})
+
+export const CreateOperationTagBody = zod.object({
+  "category": zod.enum(['ARTISTIC_SKILL', 'TECHNICAL_SKILL', 'PHYSICAL_REQUIREMENT', 'MEDICAL_REQUIREMENT', 'SAFETY', 'PROFESSIONAL_CERTIFICATION', 'CHARACTER', 'COSTUME', 'EQUIPMENT', 'SPACE', 'ADMINISTRATIVE']),
+  "label": zod.string()
+})
+
+
+/**
+ * @summary Remover tag de qualificação
+ */
+export const DeleteOperationTagParams = zod.object({
+  "operationId": zod.coerce.string(),
+  "tagId": zod.coerce.string()
+})
+
+
+/**
+ * @summary Listar tags de qualificação do usuário
+ */
+export const ListUserTagsParams = zod.object({
+  "userId": zod.coerce.string()
+})
+
+export const ListUserTagsResponse = zod.object({
+  "tags": zod.array(zod.object({
+  "userTag": zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "tagId": zod.string(),
+  "assignedBy": zod.string(),
+  "createdAt": zod.string().optional()
+}),
+  "tag": zod.object({
+  "id": zod.string(),
+  "operationId": zod.string(),
+  "category": zod.enum(['ARTISTIC_SKILL', 'TECHNICAL_SKILL', 'PHYSICAL_REQUIREMENT', 'MEDICAL_REQUIREMENT', 'SAFETY', 'PROFESSIONAL_CERTIFICATION', 'CHARACTER', 'COSTUME', 'EQUIPMENT', 'SPACE', 'ADMINISTRATIVE']),
+  "label": zod.string(),
+  "createdBy": zod.string(),
+  "createdAt": zod.string().optional()
+})
+}))
+})
+
+
+/**
+ * @summary Atribuir tag de qualificação ao usuário
+ */
+export const AssignUserTagParams = zod.object({
+  "userId": zod.coerce.string()
+})
+
+export const AssignUserTagBody = zod.object({
+  "tagId": zod.string()
+})
+
+
+/**
+ * @summary Remover tag de qualificação do usuário
+ */
+export const RemoveUserTagParams = zod.object({
+  "userId": zod.coerce.string(),
+  "tagId": zod.coerce.string()
+})
+
+
+/**
+ * @summary Listar eventos da agenda
+ */
+export const ListAgendaEventsQueryParams = zod.object({
+  "operationId": zod.coerce.string().optional(),
+  "type": zod.enum(['SHOW', 'REHEARSAL', 'MEETING', 'OPERATIONAL_BLOCK', 'COLLECTIVE_VACATION']).optional(),
+  "status": zod.enum(['DRAFT', 'CONFIRMED', 'SUSPENDED', 'CANCELLED', 'COMPLETED']).optional(),
+  "from": zod.date().optional(),
+  "to": zod.date().optional()
+})
+
+export const ListAgendaEventsResponse = zod.object({
+  "events": zod.array(zod.object({
+  "id": zod.string(),
+  "operationId": zod.string(),
+  "showBookId": zod.string().nullish(),
+  "groupId": zod.string().nullish(),
+  "type": zod.enum(['SHOW', 'REHEARSAL', 'MEETING', 'OPERATIONAL_BLOCK', 'COLLECTIVE_VACATION']),
+  "title": zod.string(),
+  "date": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullish(),
+  "startTime": zod.string().nullish(),
+  "endTime": zod.string().nullish(),
+  "location": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "status": zod.enum(['DRAFT', 'CONFIRMED', 'SUSPENDED', 'CANCELLED', 'COMPLETED']),
+  "reason": zod.string().nullish(),
+  "createdBy": zod.string(),
+  "confirmedBy": zod.string().nullish(),
+  "confirmedAt": zod.string().nullish(),
+  "suspendedBy": zod.string().nullish(),
+  "suspendedAt": zod.string().nullish(),
+  "canceledBy": zod.string().nullish(),
+  "canceledAt": zod.string().nullish(),
+  "completedAt": zod.string().nullish(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+}))
+})
+
+
+/**
+ * @summary Criar evento na agenda
+ */
+export const CreateAgendaEventBody = zod.object({
+  "operationId": zod.string(),
+  "showBookId": zod.string().nullish(),
+  "groupId": zod.string().nullish(),
+  "type": zod.enum(['SHOW', 'REHEARSAL', 'MEETING', 'OPERATIONAL_BLOCK', 'COLLECTIVE_VACATION']),
+  "title": zod.string(),
+  "date": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullish(),
+  "startTime": zod.string().nullish(),
+  "endTime": zod.string().nullish(),
+  "location": zod.string().nullish(),
+  "notes": zod.string().nullish()
+})
+
+
+/**
+ * @summary Buscar evento por ID
+ */
+export const GetAgendaEventParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetAgendaEventResponse = zod.object({
+  "event": zod.object({
+  "id": zod.string(),
+  "operationId": zod.string(),
+  "showBookId": zod.string().nullish(),
+  "groupId": zod.string().nullish(),
+  "type": zod.enum(['SHOW', 'REHEARSAL', 'MEETING', 'OPERATIONAL_BLOCK', 'COLLECTIVE_VACATION']),
+  "title": zod.string(),
+  "date": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullish(),
+  "startTime": zod.string().nullish(),
+  "endTime": zod.string().nullish(),
+  "location": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "status": zod.enum(['DRAFT', 'CONFIRMED', 'SUSPENDED', 'CANCELLED', 'COMPLETED']),
+  "reason": zod.string().nullish(),
+  "createdBy": zod.string(),
+  "confirmedBy": zod.string().nullish(),
+  "confirmedAt": zod.string().nullish(),
+  "suspendedBy": zod.string().nullish(),
+  "suspendedAt": zod.string().nullish(),
+  "canceledBy": zod.string().nullish(),
+  "canceledAt": zod.string().nullish(),
+  "completedAt": zod.string().nullish(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})
+})
+
+
+/**
+ * @summary Atualizar evento da agenda
+ */
+export const UpdateAgendaEventParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateAgendaEventBody = zod.object({
+  "title": zod.string().optional(),
+  "date": zod.coerce.date().optional(),
+  "endDate": zod.coerce.date().nullish(),
+  "startTime": zod.string().nullish(),
+  "endTime": zod.string().nullish(),
+  "location": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "showBookId": zod.string().nullish(),
+  "groupId": zod.string().nullish()
+})
+
+export const UpdateAgendaEventResponse = zod.object({
+  "event": zod.object({
+  "id": zod.string(),
+  "operationId": zod.string(),
+  "showBookId": zod.string().nullish(),
+  "groupId": zod.string().nullish(),
+  "type": zod.enum(['SHOW', 'REHEARSAL', 'MEETING', 'OPERATIONAL_BLOCK', 'COLLECTIVE_VACATION']),
+  "title": zod.string(),
+  "date": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullish(),
+  "startTime": zod.string().nullish(),
+  "endTime": zod.string().nullish(),
+  "location": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "status": zod.enum(['DRAFT', 'CONFIRMED', 'SUSPENDED', 'CANCELLED', 'COMPLETED']),
+  "reason": zod.string().nullish(),
+  "createdBy": zod.string(),
+  "confirmedBy": zod.string().nullish(),
+  "confirmedAt": zod.string().nullish(),
+  "suspendedBy": zod.string().nullish(),
+  "suspendedAt": zod.string().nullish(),
+  "canceledBy": zod.string().nullish(),
+  "canceledAt": zod.string().nullish(),
+  "completedAt": zod.string().nullish(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})
+})
+
+
+/**
+ * @summary Deletar evento (somente RASCUNHO)
+ */
+export const DeleteAgendaEventParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+
+/**
+ * @summary Confirmar evento
+ */
+export const ConfirmAgendaEventParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const ConfirmAgendaEventResponse = zod.object({
+  "event": zod.object({
+  "id": zod.string(),
+  "operationId": zod.string(),
+  "showBookId": zod.string().nullish(),
+  "groupId": zod.string().nullish(),
+  "type": zod.enum(['SHOW', 'REHEARSAL', 'MEETING', 'OPERATIONAL_BLOCK', 'COLLECTIVE_VACATION']),
+  "title": zod.string(),
+  "date": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullish(),
+  "startTime": zod.string().nullish(),
+  "endTime": zod.string().nullish(),
+  "location": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "status": zod.enum(['DRAFT', 'CONFIRMED', 'SUSPENDED', 'CANCELLED', 'COMPLETED']),
+  "reason": zod.string().nullish(),
+  "createdBy": zod.string(),
+  "confirmedBy": zod.string().nullish(),
+  "confirmedAt": zod.string().nullish(),
+  "suspendedBy": zod.string().nullish(),
+  "suspendedAt": zod.string().nullish(),
+  "canceledBy": zod.string().nullish(),
+  "canceledAt": zod.string().nullish(),
+  "completedAt": zod.string().nullish(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})
+})
+
+
+/**
+ * @summary Suspender evento confirmado
+ */
+export const SuspendAgendaEventParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const SuspendAgendaEventBody = zod.object({
+  "reason": zod.string()
+})
+
+export const SuspendAgendaEventResponse = zod.object({
+  "event": zod.object({
+  "id": zod.string(),
+  "operationId": zod.string(),
+  "showBookId": zod.string().nullish(),
+  "groupId": zod.string().nullish(),
+  "type": zod.enum(['SHOW', 'REHEARSAL', 'MEETING', 'OPERATIONAL_BLOCK', 'COLLECTIVE_VACATION']),
+  "title": zod.string(),
+  "date": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullish(),
+  "startTime": zod.string().nullish(),
+  "endTime": zod.string().nullish(),
+  "location": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "status": zod.enum(['DRAFT', 'CONFIRMED', 'SUSPENDED', 'CANCELLED', 'COMPLETED']),
+  "reason": zod.string().nullish(),
+  "createdBy": zod.string(),
+  "confirmedBy": zod.string().nullish(),
+  "confirmedAt": zod.string().nullish(),
+  "suspendedBy": zod.string().nullish(),
+  "suspendedAt": zod.string().nullish(),
+  "canceledBy": zod.string().nullish(),
+  "canceledAt": zod.string().nullish(),
+  "completedAt": zod.string().nullish(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})
+})
+
+
+/**
+ * @summary Cancelar evento
+ */
+export const CancelAgendaEventParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const CancelAgendaEventBody = zod.object({
+  "reason": zod.string()
+})
+
+export const CancelAgendaEventResponse = zod.object({
+  "event": zod.object({
+  "id": zod.string(),
+  "operationId": zod.string(),
+  "showBookId": zod.string().nullish(),
+  "groupId": zod.string().nullish(),
+  "type": zod.enum(['SHOW', 'REHEARSAL', 'MEETING', 'OPERATIONAL_BLOCK', 'COLLECTIVE_VACATION']),
+  "title": zod.string(),
+  "date": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullish(),
+  "startTime": zod.string().nullish(),
+  "endTime": zod.string().nullish(),
+  "location": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "status": zod.enum(['DRAFT', 'CONFIRMED', 'SUSPENDED', 'CANCELLED', 'COMPLETED']),
+  "reason": zod.string().nullish(),
+  "createdBy": zod.string(),
+  "confirmedBy": zod.string().nullish(),
+  "confirmedAt": zod.string().nullish(),
+  "suspendedBy": zod.string().nullish(),
+  "suspendedAt": zod.string().nullish(),
+  "canceledBy": zod.string().nullish(),
+  "canceledAt": zod.string().nullish(),
+  "completedAt": zod.string().nullish(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})
+})
+
+
+/**
+ * @summary Marcar evento como realizado
+ */
+export const CompleteAgendaEventParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const CompleteAgendaEventResponse = zod.object({
+  "event": zod.object({
+  "id": zod.string(),
+  "operationId": zod.string(),
+  "showBookId": zod.string().nullish(),
+  "groupId": zod.string().nullish(),
+  "type": zod.enum(['SHOW', 'REHEARSAL', 'MEETING', 'OPERATIONAL_BLOCK', 'COLLECTIVE_VACATION']),
+  "title": zod.string(),
+  "date": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullish(),
+  "startTime": zod.string().nullish(),
+  "endTime": zod.string().nullish(),
+  "location": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "status": zod.enum(['DRAFT', 'CONFIRMED', 'SUSPENDED', 'CANCELLED', 'COMPLETED']),
+  "reason": zod.string().nullish(),
+  "createdBy": zod.string(),
+  "confirmedBy": zod.string().nullish(),
+  "confirmedAt": zod.string().nullish(),
+  "suspendedBy": zod.string().nullish(),
+  "suspendedAt": zod.string().nullish(),
+  "canceledBy": zod.string().nullish(),
+  "canceledAt": zod.string().nullish(),
+  "completedAt": zod.string().nullish(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})
+})
+
+

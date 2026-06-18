@@ -6,6 +6,8 @@ import usersRouter from "./users";
 import rolesRouter from "./roles";
 import operationsRouter from "./operations";
 import groupsRouter from "./groups";
+import showBookRouter from "./show-book";
+import agendaRouter from "./agenda";
 
 const router: IRouter = Router();
 
@@ -16,5 +18,7 @@ router.use(usersRouter);
 router.use(rolesRouter);
 router.use(operationsRouter);
 router.use(groupsRouter);
+router.use(showBookRouter);
+router.use(agendaRouter);
 
 export default router;

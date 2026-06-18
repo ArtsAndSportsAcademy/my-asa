@@ -9,6 +9,9 @@ import AdminHome from "@/pages/admin/home";
 import UsersPage from "@/pages/admin/users";
 import OperationsPage from "@/pages/admin/operations";
 import GroupsPage from "@/pages/admin/groups";
+import ShowBookPage from "@/pages/admin/show-book";
+import AgendaPage from "@/pages/admin/agenda";
+import AuditoriaPage from "@/pages/admin/auditoria";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +42,9 @@ function Router() {
       <ProtectedRoute path="/admin/users" component={UsersPage} />
       <ProtectedRoute path="/admin/operations" component={OperationsPage} />
       <ProtectedRoute path="/admin/groups" component={GroupsPage} />
+      <ProtectedRoute path="/admin/show-book" component={ShowBookPage} />
+      <ProtectedRoute path="/admin/agenda" component={AgendaPage} />
+      <ProtectedRoute path="/admin/auditoria" component={AuditoriaPage} />
       <Route component={NotFound} />
     </Switch>
   );

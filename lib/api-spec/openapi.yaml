@@ -18,6 +18,10 @@ tags:
     description: User management
   - name: roles
     description: Role management
+  - name: show-book
+    description: Livro do Show — hierarquia e versionamento
+  - name: agenda
+    description: Agenda de eventos
 
 security:
   - bearerAuth: []
@@ -832,6 +836,1048 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
+  # ── Livro do Show ──────────────────────────────────────────────────────────
+
+  /show-books:
+    get:
+      operationId: listShowBooks
+      tags: [show-book]
+      summary: Listar livros do show
+      parameters:
+        - name: operationId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lista de livros
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  showBooks:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ShowBook"
+                required: [showBooks]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createShowBook
+      tags: [show-book]
+      summary: Criar novo livro do show
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShowBookCreate"
+      responses:
+        "201":
+          description: Livro criado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  showBook:
+                    $ref: "#/components/schemas/ShowBook"
+                required: [showBook]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /show-books/{id}:
+    get:
+      operationId: getShowBook
+      tags: [show-book]
+      summary: Buscar livro do show com hierarquia completa
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Livro com hierarquia
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  showBook:
+                    $ref: "#/components/schemas/ShowBookWithTree"
+                required: [showBook]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateShowBook
+      tags: [show-book]
+      summary: Atualizar metadados do livro
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShowBookUpdate"
+      responses:
+        "200":
+          description: Livro atualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  showBook:
+                    $ref: "#/components/schemas/ShowBook"
+                required: [showBook]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /show-books/{id}/status:
+    patch:
+      operationId: updateShowBookStatus
+      tags: [show-book]
+      summary: Publicar ou arquivar livro do show
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShowBookStatusUpdate"
+      responses:
+        "200":
+          description: Status atualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  showBook:
+                    $ref: "#/components/schemas/ShowBook"
+                required: [showBook]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /show-books/{id}/versions:
+    get:
+      operationId: listShowBookVersions
+      tags: [show-book]
+      summary: Histórico de versões do livro
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lista de versões
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  versions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ShowBookVersion"
+                required: [versions]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /show-books/{id}/scenes:
+    post:
+      operationId: createShowBookScene
+      tags: [show-book]
+      summary: Adicionar cena ao livro (mudança estrutural)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SceneCreate"
+      responses:
+        "201":
+          description: Cena criada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scene:
+                    $ref: "#/components/schemas/ShowBookScene"
+                required: [scene]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /show-books/{id}/scenes/{sceneId}:
+    patch:
+      operationId: updateShowBookScene
+      tags: [show-book]
+      summary: Atualizar cena
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sceneId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SceneUpdate"
+      responses:
+        "200":
+          description: Cena atualizada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scene:
+                    $ref: "#/components/schemas/ShowBookScene"
+                required: [scene]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteShowBookScene
+      tags: [show-book]
+      summary: Remover cena (mudança estrutural)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sceneId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReasonPayload"
+      responses:
+        "204":
+          description: Cena removida
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /show-books/{id}/blocks:
+    post:
+      operationId: createShowBookBlock
+      tags: [show-book]
+      summary: Adicionar bloco ao livro
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BlockCreate"
+      responses:
+        "201":
+          description: Bloco criado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  block:
+                    $ref: "#/components/schemas/ShowBookBlock"
+                required: [block]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /show-books/{id}/blocks/{blockId}:
+    patch:
+      operationId: updateShowBookBlock
+      tags: [show-book]
+      summary: Atualizar bloco
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: blockId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BlockUpdate"
+      responses:
+        "200":
+          description: Bloco atualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  block:
+                    $ref: "#/components/schemas/ShowBookBlock"
+                required: [block]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteShowBookBlock
+      tags: [show-book]
+      summary: Remover bloco
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: blockId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReasonPayload"
+      responses:
+        "204":
+          description: Bloco removido
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /show-books/{id}/positions:
+    post:
+      operationId: createShowBookPosition
+      tags: [show-book]
+      summary: Adicionar posição ao livro
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PositionCreate"
+      responses:
+        "201":
+          description: Posição criada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  position:
+                    $ref: "#/components/schemas/ShowBookPosition"
+                required: [position]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /show-books/{id}/positions/{positionId}:
+    patch:
+      operationId: updateShowBookPosition
+      tags: [show-book]
+      summary: Atualizar posição
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: positionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PositionUpdate"
+      responses:
+        "200":
+          description: Posição atualizada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  position:
+                    $ref: "#/components/schemas/ShowBookPosition"
+                required: [position]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteShowBookPosition
+      tags: [show-book]
+      summary: Remover posição
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: positionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReasonPayload"
+      responses:
+        "204":
+          description: Posição removida
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /show-books/{id}/positions/{positionId}/lines:
+    post:
+      operationId: createShowBookLine
+      tags: [show-book]
+      summary: Adicionar linha à posição
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: positionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LineCreate"
+      responses:
+        "201":
+          description: Linha criada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  line:
+                    $ref: "#/components/schemas/ShowBookLine"
+                required: [line]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /show-books/{id}/lines/{lineId}:
+    patch:
+      operationId: updateShowBookLine
+      tags: [show-book]
+      summary: Atualizar linha
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: lineId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LineUpdate"
+      responses:
+        "200":
+          description: Linha atualizada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  line:
+                    $ref: "#/components/schemas/ShowBookLine"
+                required: [line]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteShowBookLine
+      tags: [show-book]
+      summary: Remover linha
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: lineId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReasonPayload"
+      responses:
+        "204":
+          description: Linha removida
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /operations/{operationId}/tags:
+    get:
+      operationId: listOperationTags
+      tags: [show-book]
+      summary: Listar tags de qualificação da operação
+      parameters:
+        - name: operationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lista de tags
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tags:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ShowBookTag"
+                required: [tags]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createOperationTag
+      tags: [show-book]
+      summary: Criar tag de qualificação
+      parameters:
+        - name: operationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TagCreate"
+      responses:
+        "201":
+          description: Tag criada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tag:
+                    $ref: "#/components/schemas/ShowBookTag"
+                required: [tag]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /operations/{operationId}/tags/{tagId}:
+    delete:
+      operationId: deleteOperationTag
+      tags: [show-book]
+      summary: Remover tag de qualificação
+      parameters:
+        - name: operationId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tagId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Tag removida
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /users/{userId}/tags:
+    get:
+      operationId: listUserTags
+      tags: [show-book]
+      summary: Listar tags de qualificação do usuário
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Tags do usuário
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tags:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        userTag:
+                          $ref: "#/components/schemas/UserTag"
+                        tag:
+                          $ref: "#/components/schemas/ShowBookTag"
+                      required: [userTag, tag]
+                required: [tags]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: assignUserTag
+      tags: [show-book]
+      summary: Atribuir tag de qualificação ao usuário
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserTagAssign"
+      responses:
+        "201":
+          description: Tag atribuída
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userTag:
+                    $ref: "#/components/schemas/UserTag"
+                required: [userTag]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /users/{userId}/tags/{tagId}:
+    delete:
+      operationId: removeUserTag
+      tags: [show-book]
+      summary: Remover tag de qualificação do usuário
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tagId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Tag removida
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ── Agenda ─────────────────────────────────────────────────────────────────
+
+  /agenda/events:
+    get:
+      operationId: listAgendaEvents
+      tags: [agenda]
+      summary: Listar eventos da agenda
+      parameters:
+        - name: operationId
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [SHOW, REHEARSAL, MEETING, OPERATIONAL_BLOCK, COLLECTIVE_VACATION]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [DRAFT, CONFIRMED, SUSPENDED, CANCELLED, COMPLETED]
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Lista de eventos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AgendaEvent"
+                required: [events]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createAgendaEvent
+      tags: [agenda]
+      summary: Criar evento na agenda
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgendaEventCreate"
+      responses:
+        "201":
+          description: Evento criado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  event:
+                    $ref: "#/components/schemas/AgendaEvent"
+                required: [event]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /agenda/events/{id}:
+    get:
+      operationId: getAgendaEvent
+      tags: [agenda]
+      summary: Buscar evento por ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Evento encontrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  event:
+                    $ref: "#/components/schemas/AgendaEvent"
+                required: [event]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateAgendaEvent
+      tags: [agenda]
+      summary: Atualizar evento da agenda
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgendaEventUpdate"
+      responses:
+        "200":
+          description: Evento atualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  event:
+                    $ref: "#/components/schemas/AgendaEvent"
+                required: [event]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      operationId: deleteAgendaEvent
+      tags: [agenda]
+      summary: "Deletar evento (somente RASCUNHO)"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Evento deletado
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /agenda/events/{id}/confirm:
+    post:
+      operationId: confirmAgendaEvent
+      tags: [agenda]
+      summary: Confirmar evento
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Evento confirmado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  event:
+                    $ref: "#/components/schemas/AgendaEvent"
+                required: [event]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /agenda/events/{id}/suspend:
+    post:
+      operationId: suspendAgendaEvent
+      tags: [agenda]
+      summary: Suspender evento confirmado
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReasonPayload"
+      responses:
+        "200":
+          description: Evento suspenso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  event:
+                    $ref: "#/components/schemas/AgendaEvent"
+                required: [event]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /agenda/events/{id}/cancel:
+    post:
+      operationId: cancelAgendaEvent
+      tags: [agenda]
+      summary: Cancelar evento
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReasonPayload"
+      responses:
+        "200":
+          description: Evento cancelado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  event:
+                    $ref: "#/components/schemas/AgendaEvent"
+                required: [event]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /agenda/events/{id}/complete:
+    post:
+      operationId: completeAgendaEvent
+      tags: [agenda]
+      summary: Marcar evento como realizado
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Evento concluído
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  event:
+                    $ref: "#/components/schemas/AgendaEvent"
+                required: [event]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1186,3 +2232,547 @@ components:
         userId:
           type: string
       required: [userId]
+
+    # ── Livro do Show — Schemas ───────────────────────────────────────────────
+
+    ShowBook:
+      type: object
+      properties:
+        id:
+          type: string
+        operationId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        type:
+          type: string
+          enum: [SIMPLE, STRUCTURED]
+        version:
+          type: integer
+        status:
+          type: string
+          enum: [DRAFT, PUBLISHED, ARCHIVED]
+        createdBy:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, operationId, title, type, version, status, createdBy]
+
+    ShowBookWithTree:
+      allOf:
+        - $ref: "#/components/schemas/ShowBook"
+        - type: object
+          properties:
+            scenes:
+              type: array
+              items:
+                $ref: "#/components/schemas/ShowBookSceneWithBlocks"
+          required: [scenes]
+
+    ShowBookScene:
+      type: object
+      properties:
+        id:
+          type: string
+        showBookId:
+          type: string
+        name:
+          type: string
+        order:
+          type: integer
+        isOptional:
+          type: boolean
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, showBookId, name, order, isOptional]
+
+    ShowBookSceneWithBlocks:
+      allOf:
+        - $ref: "#/components/schemas/ShowBookScene"
+        - type: object
+          properties:
+            blocks:
+              type: array
+              items:
+                $ref: "#/components/schemas/ShowBookBlockWithPositions"
+          required: [blocks]
+
+    ShowBookBlock:
+      type: object
+      properties:
+        id:
+          type: string
+        showBookId:
+          type: string
+        sceneId:
+          type: string
+          nullable: true
+        name:
+          type: string
+        order:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, showBookId, name, order]
+
+    ShowBookBlockWithPositions:
+      allOf:
+        - $ref: "#/components/schemas/ShowBookBlock"
+        - type: object
+          properties:
+            positions:
+              type: array
+              items:
+                $ref: "#/components/schemas/ShowBookPositionWithLines"
+          required: [positions]
+
+    ShowBookPosition:
+      type: object
+      properties:
+        id:
+          type: string
+        showBookId:
+          type: string
+        blockId:
+          type: string
+          nullable: true
+        name:
+          type: string
+        minimumCoverage:
+          type: integer
+        tagsJson:
+          type: array
+          items:
+            type: string
+          nullable: true
+        order:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, showBookId, name, minimumCoverage, order]
+
+    ShowBookPositionWithLines:
+      allOf:
+        - $ref: "#/components/schemas/ShowBookPosition"
+        - type: object
+          properties:
+            lines:
+              type: array
+              items:
+                $ref: "#/components/schemas/ShowBookLine"
+          required: [lines]
+
+    ShowBookLine:
+      type: object
+      properties:
+        id:
+          type: string
+        positionId:
+          type: string
+        type:
+          type: string
+          enum: [FIXED_PERSON, TITULAR_SUBSTITUTE, ROTATION, DAY_OF_WEEK, FUNCTION, CHARACTER, MANUAL]
+        config:
+          type: object
+          additionalProperties: true
+        order:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, positionId, type, config, order]
+
+    ShowBookVersion:
+      type: object
+      properties:
+        id:
+          type: string
+        showBookId:
+          type: string
+        version:
+          type: integer
+        changeType:
+          type: string
+          enum: [STRUCTURAL, CONFIG]
+        reason:
+          type: string
+        createdBy:
+          type: string
+        createdAt:
+          type: string
+      required: [id, showBookId, version, changeType, reason, createdBy, createdAt]
+
+    ShowBookTag:
+      type: object
+      properties:
+        id:
+          type: string
+        operationId:
+          type: string
+        category:
+          type: string
+          enum: [ARTISTIC_SKILL, TECHNICAL_SKILL, PHYSICAL_REQUIREMENT, MEDICAL_REQUIREMENT, SAFETY, PROFESSIONAL_CERTIFICATION, CHARACTER, COSTUME, EQUIPMENT, SPACE, ADMINISTRATIVE]
+        label:
+          type: string
+        createdBy:
+          type: string
+        createdAt:
+          type: string
+      required: [id, operationId, category, label, createdBy]
+
+    UserTag:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        tagId:
+          type: string
+        assignedBy:
+          type: string
+        createdAt:
+          type: string
+      required: [id, userId, tagId, assignedBy]
+
+    ShowBookCreate:
+      type: object
+      properties:
+        operationId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        type:
+          type: string
+          enum: [SIMPLE, STRUCTURED]
+      required: [operationId, title]
+
+    ShowBookUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        reason:
+          type: string
+      required: [reason]
+
+    ShowBookStatusUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [DRAFT, PUBLISHED, ARCHIVED]
+        reason:
+          type: string
+      required: [status, reason]
+
+    SceneCreate:
+      type: object
+      properties:
+        name:
+          type: string
+        order:
+          type: integer
+        isOptional:
+          type: boolean
+        reason:
+          type: string
+      required: [name, order, reason]
+
+    SceneUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        order:
+          type: integer
+        isOptional:
+          type: boolean
+        changeType:
+          type: string
+          enum: [STRUCTURAL, CONFIG]
+        reason:
+          type: string
+      required: [reason]
+
+    BlockCreate:
+      type: object
+      properties:
+        name:
+          type: string
+        order:
+          type: integer
+        sceneId:
+          type: string
+          nullable: true
+        reason:
+          type: string
+      required: [name, order, reason]
+
+    BlockUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        order:
+          type: integer
+        changeType:
+          type: string
+          enum: [STRUCTURAL, CONFIG]
+        reason:
+          type: string
+      required: [reason]
+
+    PositionCreate:
+      type: object
+      properties:
+        name:
+          type: string
+        order:
+          type: integer
+        blockId:
+          type: string
+          nullable: true
+        minimumCoverage:
+          type: integer
+        tagsJson:
+          type: array
+          items:
+            type: string
+        reason:
+          type: string
+      required: [name, order, reason]
+
+    PositionUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        order:
+          type: integer
+        minimumCoverage:
+          type: integer
+        tagsJson:
+          type: array
+          items:
+            type: string
+        changeType:
+          type: string
+          enum: [STRUCTURAL, CONFIG]
+        reason:
+          type: string
+      required: [reason]
+
+    LineCreate:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [FIXED_PERSON, TITULAR_SUBSTITUTE, ROTATION, DAY_OF_WEEK, FUNCTION, CHARACTER, MANUAL]
+        config:
+          type: object
+          additionalProperties: true
+        order:
+          type: integer
+        reason:
+          type: string
+      required: [type, reason]
+
+    LineUpdate:
+      type: object
+      properties:
+        config:
+          type: object
+          additionalProperties: true
+        order:
+          type: integer
+        changeType:
+          type: string
+          enum: [STRUCTURAL, CONFIG]
+        reason:
+          type: string
+      required: [reason]
+
+    TagCreate:
+      type: object
+      properties:
+        category:
+          type: string
+          enum: [ARTISTIC_SKILL, TECHNICAL_SKILL, PHYSICAL_REQUIREMENT, MEDICAL_REQUIREMENT, SAFETY, PROFESSIONAL_CERTIFICATION, CHARACTER, COSTUME, EQUIPMENT, SPACE, ADMINISTRATIVE]
+        label:
+          type: string
+      required: [category, label]
+
+    UserTagAssign:
+      type: object
+      properties:
+        tagId:
+          type: string
+      required: [tagId]
+
+    ReasonPayload:
+      type: object
+      properties:
+        reason:
+          type: string
+      required: [reason]
+
+    # ── Agenda — Schemas ──────────────────────────────────────────────────────
+
+    AgendaEvent:
+      type: object
+      properties:
+        id:
+          type: string
+        operationId:
+          type: string
+        showBookId:
+          type: string
+          nullable: true
+        groupId:
+          type: string
+          nullable: true
+        type:
+          type: string
+          enum: [SHOW, REHEARSAL, MEETING, OPERATIONAL_BLOCK, COLLECTIVE_VACATION]
+        title:
+          type: string
+        date:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+          nullable: true
+        startTime:
+          type: string
+          nullable: true
+        endTime:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [DRAFT, CONFIRMED, SUSPENDED, CANCELLED, COMPLETED]
+        reason:
+          type: string
+          nullable: true
+        createdBy:
+          type: string
+        confirmedBy:
+          type: string
+          nullable: true
+        confirmedAt:
+          type: string
+          nullable: true
+        suspendedBy:
+          type: string
+          nullable: true
+        suspendedAt:
+          type: string
+          nullable: true
+        canceledBy:
+          type: string
+          nullable: true
+        canceledAt:
+          type: string
+          nullable: true
+        completedAt:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, operationId, type, title, date, status, createdBy]
+
+    AgendaEventCreate:
+      type: object
+      properties:
+        operationId:
+          type: string
+        showBookId:
+          type: string
+          nullable: true
+        groupId:
+          type: string
+          nullable: true
+        type:
+          type: string
+          enum: [SHOW, REHEARSAL, MEETING, OPERATIONAL_BLOCK, COLLECTIVE_VACATION]
+        title:
+          type: string
+        date:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+          nullable: true
+        startTime:
+          type: string
+          nullable: true
+        endTime:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+      required: [operationId, type, title, date]
+
+    AgendaEventUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        date:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+          nullable: true
+        startTime:
+          type: string
+          nullable: true
+        endTime:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        showBookId:
+          type: string
+          nullable: true
+        groupId:
+          type: string
+          nullable: true
