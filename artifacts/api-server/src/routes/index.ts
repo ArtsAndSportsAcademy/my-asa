@@ -14,6 +14,7 @@ import operationalPanelRouter from "./operational-panel";
 import myDayRouter from "./my-day";
 import noticesRouter from "./notices";
 import historyRouter from "./history";
+import messagesRouter from "./messages";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(operationalPanelRouter);
 router.use(myDayRouter);
 router.use(noticesRouter);
 router.use(historyRouter);
+router.use(messagesRouter);
 
 export default router;

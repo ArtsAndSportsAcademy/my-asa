@@ -48,6 +48,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "clock.arrow.trianglehead.counterclockwise.rotate.90", selected: "clock.fill" }} />
         <Label>Histórico</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="mensagens">
+        <Icon sf={{ default: "message", selected: "message.fill" }} />
+        <Label>Mensagens</Label>
+      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }
@@ -195,6 +199,18 @@ function ClassicTabLayout() {
               <SymbolView name="clock" tintColor={color} size={24} />
             ) : (
               <Feather name="clock" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="mensagens"
+        options={{
+          title: "Mensagens",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="message" tintColor={color} size={24} />
+            ) : (
+              <Feather name="message-square" size={22} color={color} />
             ),
         }}
       />

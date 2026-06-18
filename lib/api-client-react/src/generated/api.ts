@@ -39,6 +39,7 @@ import type {
   ConflictResponse,
   CreateAgendaEvent201,
   CreateHistoryNarrativeRequest,
+  CreateMessageThreadRequest,
   CreateNoticeRequest,
   CreateOperation201,
   CreateOperationTag201,
@@ -108,7 +109,13 @@ import type {
   ListUsers200,
   LoginRequest,
   LoginResult,
+  MarkThreadAsRead200,
   MeResponse,
+  MessageRecipientListResponse,
+  MessageSingleResponse,
+  MessageThreadDetailResponse,
+  MessageThreadListResponse,
+  MessageThreadSingleResponse,
   MyDayResponse,
   MyNoticeItem,
   NotFoundResponse,
@@ -139,6 +146,7 @@ import type {
   ScalePatchRequest,
   SceneCreate,
   SceneUpdate,
+  SendMessageRequest,
   ShowBookCreate,
   ShowBookStatusUpdate,
   ShowBookUpdate,
@@ -8186,4 +8194,518 @@ export function useGetMyHistory<TData = Awaited<ReturnType<typeof getMyHistory>>
 
 
 
+
+export const getListMessageRecipientsUrl = () => {
+
+
+
+
+  return `/api/messages/recipients`
+}
+
+/**
+ * @summary Listar destinatários disponíveis
+ */
+export const listMessageRecipients = async ( options?: RequestInit): Promise<MessageRecipientListResponse> => {
+
+  return customFetch<MessageRecipientListResponse>(getListMessageRecipientsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMessageRecipientsQueryKey = () => {
+    return [
+    `/api/messages/recipients`
+    ] as const;
+    }
+
+
+export const getListMessageRecipientsQueryOptions = <TData = Awaited<ReturnType<typeof listMessageRecipients>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMessageRecipients>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMessageRecipientsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMessageRecipients>>> = ({ signal }) => listMessageRecipients({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMessageRecipients>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMessageRecipientsQueryResult = NonNullable<Awaited<ReturnType<typeof listMessageRecipients>>>
+export type ListMessageRecipientsQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Listar destinatários disponíveis
+ */
+
+export function useListMessageRecipients<TData = Awaited<ReturnType<typeof listMessageRecipients>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMessageRecipients>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMessageRecipientsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListMessageThreadsUrl = () => {
+
+
+
+
+  return `/api/messages/threads`
+}
+
+/**
+ * @summary Listar conversas (inbox)
+ */
+export const listMessageThreads = async ( options?: RequestInit): Promise<MessageThreadListResponse> => {
+
+  return customFetch<MessageThreadListResponse>(getListMessageThreadsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMessageThreadsQueryKey = () => {
+    return [
+    `/api/messages/threads`
+    ] as const;
+    }
+
+
+export const getListMessageThreadsQueryOptions = <TData = Awaited<ReturnType<typeof listMessageThreads>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMessageThreads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMessageThreadsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMessageThreads>>> = ({ signal }) => listMessageThreads({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMessageThreads>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMessageThreadsQueryResult = NonNullable<Awaited<ReturnType<typeof listMessageThreads>>>
+export type ListMessageThreadsQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Listar conversas (inbox)
+ */
+
+export function useListMessageThreads<TData = Awaited<ReturnType<typeof listMessageThreads>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMessageThreads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMessageThreadsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateMessageThreadUrl = () => {
+
+
+
+
+  return `/api/messages/threads`
+}
+
+/**
+ * @summary Criar nova conversa
+ */
+export const createMessageThread = async (createMessageThreadRequest: CreateMessageThreadRequest, options?: RequestInit): Promise<MessageThreadSingleResponse> => {
+
+  return customFetch<MessageThreadSingleResponse>(getCreateMessageThreadUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createMessageThreadRequest,)
+  }
+);}
+
+
+
+
+export const getCreateMessageThreadMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMessageThread>>, TError,{data: BodyType<CreateMessageThreadRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createMessageThread>>, TError,{data: BodyType<CreateMessageThreadRequest>}, TContext> => {
+
+const mutationKey = ['createMessageThread'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createMessageThread>>, {data: BodyType<CreateMessageThreadRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createMessageThread(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateMessageThreadMutationResult = NonNullable<Awaited<ReturnType<typeof createMessageThread>>>
+    export type CreateMessageThreadMutationBody = BodyType<CreateMessageThreadRequest>
+    export type CreateMessageThreadMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>
+
+    /**
+ * @summary Criar nova conversa
+ */
+export const useCreateMessageThread = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMessageThread>>, TError,{data: BodyType<CreateMessageThreadRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createMessageThread>>,
+        TError,
+        {data: BodyType<CreateMessageThreadRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateMessageThreadMutationOptions(options));
+    }
+
+export const getGetMessageThreadUrl = (threadId: string,) => {
+
+
+
+
+  return `/api/messages/threads/${threadId}`
+}
+
+/**
+ * @summary Buscar conversa com mensagens
+ */
+export const getMessageThread = async (threadId: string, options?: RequestInit): Promise<MessageThreadDetailResponse> => {
+
+  return customFetch<MessageThreadDetailResponse>(getGetMessageThreadUrl(threadId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMessageThreadQueryKey = (threadId: string,) => {
+    return [
+    `/api/messages/threads/${threadId}`
+    ] as const;
+    }
+
+
+export const getGetMessageThreadQueryOptions = <TData = Awaited<ReturnType<typeof getMessageThread>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(threadId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMessageThread>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMessageThreadQueryKey(threadId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMessageThread>>> = ({ signal }) => getMessageThread(threadId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(threadId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMessageThread>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMessageThreadQueryResult = NonNullable<Awaited<ReturnType<typeof getMessageThread>>>
+export type GetMessageThreadQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+
+/**
+ * @summary Buscar conversa com mensagens
+ */
+
+export function useGetMessageThread<TData = Awaited<ReturnType<typeof getMessageThread>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(
+ threadId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMessageThread>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMessageThreadQueryOptions(threadId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getSendMessageUrl = (threadId: string,) => {
+
+
+
+
+  return `/api/messages/threads/${threadId}/messages`
+}
+
+/**
+ * @summary Enviar mensagem em uma conversa
+ */
+export const sendMessage = async (threadId: string,
+    sendMessageRequest: SendMessageRequest, options?: RequestInit): Promise<MessageSingleResponse> => {
+
+  return customFetch<MessageSingleResponse>(getSendMessageUrl(threadId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      sendMessageRequest,)
+  }
+);}
+
+
+
+
+export const getSendMessageMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendMessage>>, TError,{threadId: string;data: BodyType<SendMessageRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendMessage>>, TError,{threadId: string;data: BodyType<SendMessageRequest>}, TContext> => {
+
+const mutationKey = ['sendMessage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendMessage>>, {threadId: string;data: BodyType<SendMessageRequest>}> = (props) => {
+          const {threadId,data} = props ?? {};
+
+          return  sendMessage(threadId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendMessageMutationResult = NonNullable<Awaited<ReturnType<typeof sendMessage>>>
+    export type SendMessageMutationBody = BodyType<SendMessageRequest>
+    export type SendMessageMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>
+
+    /**
+ * @summary Enviar mensagem em uma conversa
+ */
+export const useSendMessage = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendMessage>>, TError,{threadId: string;data: BodyType<SendMessageRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendMessage>>,
+        TError,
+        {threadId: string;data: BodyType<SendMessageRequest>},
+        TContext
+      > => {
+      return useMutation(getSendMessageMutationOptions(options));
+    }
+
+export const getMarkThreadAsReadUrl = (threadId: string,) => {
+
+
+
+
+  return `/api/messages/threads/${threadId}/read`
+}
+
+/**
+ * @summary Marcar conversa como lida
+ */
+export const markThreadAsRead = async (threadId: string, options?: RequestInit): Promise<MarkThreadAsRead200> => {
+
+  return customFetch<MarkThreadAsRead200>(getMarkThreadAsReadUrl(threadId),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+export const getMarkThreadAsReadMutationOptions = <TError = ErrorType<UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markThreadAsRead>>, TError,{threadId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markThreadAsRead>>, TError,{threadId: string}, TContext> => {
+
+const mutationKey = ['markThreadAsRead'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markThreadAsRead>>, {threadId: string}> = (props) => {
+          const {threadId} = props ?? {};
+
+          return  markThreadAsRead(threadId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkThreadAsReadMutationResult = NonNullable<Awaited<ReturnType<typeof markThreadAsRead>>>
+
+    export type MarkThreadAsReadMutationError = ErrorType<UnauthorizedResponse>
+
+    /**
+ * @summary Marcar conversa como lida
+ */
+export const useMarkThreadAsRead = <TError = ErrorType<UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markThreadAsRead>>, TError,{threadId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof markThreadAsRead>>,
+        TError,
+        {threadId: string},
+        TContext
+      > => {
+      return useMutation(getMarkThreadAsReadMutationOptions(options));
+    }
+
+export const getCloseMessageThreadUrl = (threadId: string,) => {
+
+
+
+
+  return `/api/messages/threads/${threadId}/close`
+}
+
+/**
+ * @summary Encerrar conversa
+ */
+export const closeMessageThread = async (threadId: string, options?: RequestInit): Promise<MessageThreadSingleResponse> => {
+
+  return customFetch<MessageThreadSingleResponse>(getCloseMessageThreadUrl(threadId),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+export const getCloseMessageThreadMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof closeMessageThread>>, TError,{threadId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof closeMessageThread>>, TError,{threadId: string}, TContext> => {
+
+const mutationKey = ['closeMessageThread'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof closeMessageThread>>, {threadId: string}> = (props) => {
+          const {threadId} = props ?? {};
+
+          return  closeMessageThread(threadId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CloseMessageThreadMutationResult = NonNullable<Awaited<ReturnType<typeof closeMessageThread>>>
+
+    export type CloseMessageThreadMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>
+
+    /**
+ * @summary Encerrar conversa
+ */
+export const useCloseMessageThread = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof closeMessageThread>>, TError,{threadId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof closeMessageThread>>,
+        TError,
+        {threadId: string},
+        TContext
+      > => {
+      return useMutation(getCloseMessageThreadMutationOptions(options));
+    }
 

@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, boolean, jsonb, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, boolean, jsonb, pgEnum, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./identity.js";
@@ -93,11 +93,45 @@ export const noticeConfirmationsTable = pgTable("notice_confirmations", {
   confirmedAt: timestamp("confirmed_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// ─── Message Threads ──────────────────────────────────────────────────────────
+// Container for a conversation. Created by a user, linked to an operational context.
+// context_type: SCALE | DAILY_BOOK | AGENDA | NOTICE | REQUEST | OPERATIONAL_CHANGE | DIRECT
+
+export const messageThreadStatusEnum = pgEnum("message_thread_status", ["OPEN", "CLOSED"]);
+export const messageParticipantRoleEnum = pgEnum("message_participant_role", ["INITIATOR", "PARTICIPANT"]);
+
+export const messageThreadsTable = pgTable("message_threads", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id"),
+  title: text("title").notNull(),
+  contextType: text("context_type"),
+  contextId: text("context_id"),
+  contextTitle: text("context_title"),
+  createdBy: uuid("created_by").references(() => usersTable.id),
+  status: messageThreadStatusEnum("status").notNull().default("OPEN"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  closedAt: timestamp("closed_at", { withTimezone: true }),
+});
+
+// ─── Message Thread Participants ──────────────────────────────────────────────
+
+export const messageThreadParticipantsTable = pgTable("message_thread_participants", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  threadId: uuid("thread_id").notNull().references(() => messageThreadsTable.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => usersTable.id),
+  role: messageParticipantRoleEnum("role").notNull().default("PARTICIPANT"),
+  lastReadAt: timestamp("last_read_at", { withTimezone: true }),
+  joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [unique("uniq_thread_user").on(t.threadId, t.userId)]);
+
 // ─── Messages ─────────────────────────────────────────────────────────────────
+// Individual messages within a thread. Immutable — no edit, no delete (MSG-D04).
 
 export const messagesTable = pgTable("messages", {
   id: uuid("id").primaryKey().defaultRandom(),
+  threadId: uuid("thread_id").references(() => messageThreadsTable.id),
   senderId: uuid("sender_id").notNull().references(() => usersTable.id),
+  senderName: text("sender_name"),
   recipientId: uuid("recipient_id").references(() => usersTable.id),
   groupId: uuid("group_id").references(() => operationalGroupsTable.id),
   contextType: messageContextTypeEnum("context_type"),
@@ -127,3 +161,11 @@ export type NoticeConfirmation = typeof noticeConfirmationsTable.$inferSelect;
 export const insertMessageSchema = createInsertSchema(messagesTable).omit({ id: true, createdAt: true });
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messagesTable.$inferSelect;
+
+export const insertMessageThreadSchema = createInsertSchema(messageThreadsTable).omit({ id: true, createdAt: true });
+export type InsertMessageThread = z.infer<typeof insertMessageThreadSchema>;
+export type MessageThread = typeof messageThreadsTable.$inferSelect;
+
+export const insertMessageThreadParticipantSchema = createInsertSchema(messageThreadParticipantsTable).omit({ id: true, joinedAt: true });
+export type InsertMessageThreadParticipant = z.infer<typeof insertMessageThreadParticipantSchema>;
+export type MessageThreadParticipant = typeof messageThreadParticipantsTable.$inferSelect;

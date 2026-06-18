@@ -1596,6 +1596,104 @@ export interface UpdateHistoryNarrativeRequest {
   status?: UpdateHistoryNarrativeRequestStatus;
 }
 
+export type MessageThreadStatus = typeof MessageThreadStatus[keyof typeof MessageThreadStatus];
+
+
+export const MessageThreadStatus = {
+  OPEN: 'OPEN',
+  CLOSED: 'CLOSED',
+} as const;
+
+export type MessageParticipantRole = typeof MessageParticipantRole[keyof typeof MessageParticipantRole];
+
+
+export const MessageParticipantRole = {
+  INITIATOR: 'INITIATOR',
+  PARTICIPANT: 'PARTICIPANT',
+} as const;
+
+export interface MessageParticipant {
+  userId: string;
+  name?: string | null;
+  role: MessageParticipantRole;
+  lastReadAt?: string | null;
+}
+
+export interface MessageItem {
+  id: string;
+  content: string;
+  senderId: string;
+  senderName?: string | null;
+  createdAt: string;
+}
+
+export interface MessageLastMessage {
+  id: string;
+  content: string;
+  senderName?: string | null;
+  createdAt: string;
+}
+
+export interface MessageThread {
+  id: string;
+  title: string;
+  contextType?: string | null;
+  contextId?: string | null;
+  contextTitle?: string | null;
+  createdBy?: string | null;
+  status: MessageThreadStatus;
+  createdAt: string;
+  closedAt?: string | null;
+}
+
+export type MessageThreadListItem = MessageThread & ({
+  myRole?: MessageParticipantRole;
+  lastMessage?: MessageLastMessage | null;
+  participants?: MessageParticipant[];
+  unreadCount?: number;
+});
+
+export interface MessageRecipient {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  role: string;
+}
+
+export interface MessageRecipientListResponse {
+  recipients: MessageRecipient[];
+}
+
+export interface MessageThreadListResponse {
+  threads: MessageThreadListItem[];
+}
+
+export interface MessageThreadSingleResponse {
+  thread: MessageThread;
+}
+
+export interface MessageThreadDetailResponse {
+  thread: MessageThread;
+  messages: MessageItem[];
+  participants: MessageParticipant[];
+}
+
+export interface MessageSingleResponse {
+  message: MessageItem;
+}
+
+export interface CreateMessageThreadRequest {
+  title: string;
+  participantIds: string[];
+  contextType?: string;
+  contextId?: string;
+  contextTitle?: string;
+}
+
+export interface SendMessageRequest {
+  content: string;
+}
+
 /**
  * Bad request
  */
@@ -2027,5 +2125,9 @@ offset?: number;
 export type GetMyHistoryParams = {
 limit?: number;
 offset?: number;
+};
+
+export type MarkThreadAsRead200 = {
+  ok?: boolean;
 };
 

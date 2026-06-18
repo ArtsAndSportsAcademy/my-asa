@@ -3188,6 +3188,171 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /messages/recipients:
+    get:
+      operationId: listMessageRecipients
+      summary: Listar destinatários disponíveis
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Lista de destinatários
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageRecipientListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /messages/threads:
+    get:
+      operationId: listMessageThreads
+      summary: Listar conversas (inbox)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Inbox do usuário
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageThreadListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createMessageThread
+      summary: Criar nova conversa
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMessageThreadRequest"
+      responses:
+        "201":
+          description: Conversa criada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageThreadSingleResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /messages/threads/{threadId}:
+    get:
+      operationId: getMessageThread
+      summary: Buscar conversa com mensagens
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: threadId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Conversa com mensagens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageThreadDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /messages/threads/{threadId}/messages:
+    post:
+      operationId: sendMessage
+      summary: Enviar mensagem em uma conversa
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: threadId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageRequest"
+      responses:
+        "201":
+          description: Mensagem enviada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageSingleResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /messages/threads/{threadId}/read:
+    patch:
+      operationId: markThreadAsRead
+      summary: Marcar conversa como lida
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: threadId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Marcado como lido
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /messages/threads/{threadId}/close:
+    patch:
+      operationId: closeMessageThread
+      summary: Encerrar conversa
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: threadId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Conversa encerrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageThreadSingleResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -5441,3 +5606,194 @@ components:
         status:
           type: string
           enum: [OPEN, RESOLVED, CLOSED]
+
+    # ── Messages ──────────────────────────────────────────────────────────────
+
+    MessageThreadStatus:
+      type: string
+      enum: [OPEN, CLOSED]
+
+    MessageParticipantRole:
+      type: string
+      enum: [INITIATOR, PARTICIPANT]
+
+    MessageParticipant:
+      type: object
+      required: [userId, role]
+      properties:
+        userId:
+          type: string
+        name:
+          type: string
+          nullable: true
+        role:
+          $ref: "#/components/schemas/MessageParticipantRole"
+        lastReadAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    MessageItem:
+      type: object
+      required: [id, content, senderId, createdAt]
+      properties:
+        id:
+          type: string
+        content:
+          type: string
+        senderId:
+          type: string
+        senderName:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    MessageLastMessage:
+      type: object
+      required: [id, content, createdAt]
+      properties:
+        id:
+          type: string
+        content:
+          type: string
+        senderName:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    MessageThread:
+      type: object
+      required: [id, title, status, createdAt]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        contextType:
+          type: string
+          nullable: true
+        contextId:
+          type: string
+          nullable: true
+        contextTitle:
+          type: string
+          nullable: true
+        createdBy:
+          type: string
+          nullable: true
+        status:
+          $ref: "#/components/schemas/MessageThreadStatus"
+        createdAt:
+          type: string
+          format: date-time
+        closedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    MessageThreadListItem:
+      allOf:
+        - $ref: "#/components/schemas/MessageThread"
+        - type: object
+          properties:
+            myRole:
+              $ref: "#/components/schemas/MessageParticipantRole"
+            lastMessage:
+              $ref: "#/components/schemas/MessageLastMessage"
+              nullable: true
+            participants:
+              type: array
+              items:
+                $ref: "#/components/schemas/MessageParticipant"
+            unreadCount:
+              type: integer
+
+    MessageRecipient:
+      type: object
+      required: [id, role]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        role:
+          type: string
+
+    MessageRecipientListResponse:
+      type: object
+      required: [recipients]
+      properties:
+        recipients:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessageRecipient"
+
+    MessageThreadListResponse:
+      type: object
+      required: [threads]
+      properties:
+        threads:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessageThreadListItem"
+
+    MessageThreadSingleResponse:
+      type: object
+      required: [thread]
+      properties:
+        thread:
+          $ref: "#/components/schemas/MessageThread"
+
+    MessageThreadDetailResponse:
+      type: object
+      required: [thread, messages, participants]
+      properties:
+        thread:
+          $ref: "#/components/schemas/MessageThread"
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessageItem"
+        participants:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessageParticipant"
+
+    MessageSingleResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          $ref: "#/components/schemas/MessageItem"
+
+    CreateMessageThreadRequest:
+      type: object
+      required: [title, participantIds]
+      properties:
+        title:
+          type: string
+        participantIds:
+          type: array
+          items:
+            type: string
+        contextType:
+          type: string
+        contextId:
+          type: string
+        contextTitle:
+          type: string
+
+    SendMessageRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string

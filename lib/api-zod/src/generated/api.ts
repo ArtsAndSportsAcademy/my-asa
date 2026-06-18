@@ -3044,3 +3044,142 @@ export const GetMyHistoryResponse = zod.object({
 })
 
 
+/**
+ * @summary Listar destinatários disponíveis
+ */
+export const ListMessageRecipientsResponse = zod.object({
+  "recipients": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "role": zod.string()
+}))
+})
+
+
+/**
+ * @summary Listar conversas (inbox)
+ */
+export const ListMessageThreadsResponse = zod.object({
+  "threads": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "contextType": zod.string().nullish(),
+  "contextId": zod.string().nullish(),
+  "contextTitle": zod.string().nullish(),
+  "createdBy": zod.string().nullish(),
+  "status": zod.enum(['OPEN', 'CLOSED']),
+  "createdAt": zod.coerce.date(),
+  "closedAt": zod.coerce.date().nullish()
+}).and(zod.object({
+  "myRole": zod.enum(['INITIATOR', 'PARTICIPANT']).optional(),
+  "lastMessage": zod.object({
+  "id": zod.string(),
+  "content": zod.string(),
+  "senderName": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+}).nullish(),
+  "participants": zod.array(zod.object({
+  "userId": zod.string(),
+  "name": zod.string().nullish(),
+  "role": zod.enum(['INITIATOR', 'PARTICIPANT']),
+  "lastReadAt": zod.coerce.date().nullish()
+})).optional(),
+  "unreadCount": zod.number().optional()
+})))
+})
+
+
+/**
+ * @summary Criar nova conversa
+ */
+export const CreateMessageThreadBody = zod.object({
+  "title": zod.string(),
+  "participantIds": zod.array(zod.string()),
+  "contextType": zod.string().optional(),
+  "contextId": zod.string().optional(),
+  "contextTitle": zod.string().optional()
+})
+
+
+/**
+ * @summary Buscar conversa com mensagens
+ */
+export const GetMessageThreadParams = zod.object({
+  "threadId": zod.coerce.string()
+})
+
+export const GetMessageThreadResponse = zod.object({
+  "thread": zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "contextType": zod.string().nullish(),
+  "contextId": zod.string().nullish(),
+  "contextTitle": zod.string().nullish(),
+  "createdBy": zod.string().nullish(),
+  "status": zod.enum(['OPEN', 'CLOSED']),
+  "createdAt": zod.coerce.date(),
+  "closedAt": zod.coerce.date().nullish()
+}),
+  "messages": zod.array(zod.object({
+  "id": zod.string(),
+  "content": zod.string(),
+  "senderId": zod.string(),
+  "senderName": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})),
+  "participants": zod.array(zod.object({
+  "userId": zod.string(),
+  "name": zod.string().nullish(),
+  "role": zod.enum(['INITIATOR', 'PARTICIPANT']),
+  "lastReadAt": zod.coerce.date().nullish()
+}))
+})
+
+
+/**
+ * @summary Enviar mensagem em uma conversa
+ */
+export const SendMessageParams = zod.object({
+  "threadId": zod.coerce.string()
+})
+
+export const SendMessageBody = zod.object({
+  "content": zod.string()
+})
+
+
+/**
+ * @summary Marcar conversa como lida
+ */
+export const MarkThreadAsReadParams = zod.object({
+  "threadId": zod.coerce.string()
+})
+
+export const MarkThreadAsReadResponse = zod.object({
+  "ok": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Encerrar conversa
+ */
+export const CloseMessageThreadParams = zod.object({
+  "threadId": zod.coerce.string()
+})
+
+export const CloseMessageThreadResponse = zod.object({
+  "thread": zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "contextType": zod.string().nullish(),
+  "contextId": zod.string().nullish(),
+  "contextTitle": zod.string().nullish(),
+  "createdBy": zod.string().nullish(),
+  "status": zod.enum(['OPEN', 'CLOSED']),
+  "createdAt": zod.coerce.date(),
+  "closedAt": zod.coerce.date().nullish()
+})
+})
+
+

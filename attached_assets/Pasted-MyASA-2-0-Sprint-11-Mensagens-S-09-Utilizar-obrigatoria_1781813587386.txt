@@ -1,0 +1,265 @@
+MyASA 2.0 — Sprint 11: Mensagens (S-09)
+
+Utilizar obrigatoriamente:
+
+* Sprint 0 a Sprint 10 concluídas
+* Fundação S-09 Mensagens
+* Blueprint Executivo
+* Gate Final de Construção
+* Arquitetura Técnica Consolidada
+* Decisões MSG-D01 a MSG-D10
+
+Importante:
+
+Não implementar IA nesta sprint.
+
+Não implementar Biblioteca nesta sprint.
+
+Não implementar Tarefas nesta sprint.
+
+Não implementar grupos de conversa livres.
+
+Respeitar decisões oficiais:
+
+MSG-D03
+Membro → Membro proibido no MVP
+
+MSG-D04
+Mensagens são imutáveis
+
+MSG-D06
+IA não participa das conversas
+
+MSG-D10
+Admin → Organização é Aviso, não Mensagem
+
+Objetivo:
+
+Construir o canal oficial de esclarecimento e coordenação operacional do MyASA.
+
+Pergunta respondida:
+
+“Como as pessoas se coordenam sem sair do sistema?”
+
+═══════════════════════
+PARTE 1 — PRINCÍPIO FUNDADOR
+═══════════════════════
+
+Mensagem NÃO é:
+
+* WhatsApp
+* Chat social
+* Canal informal
+* Canal de avisos
+* Sistema de tarefas
+
+Mensagem É:
+
+* esclarecimento
+* coordenação
+* contexto operacional
+* comunicação rastreável
+
+═══════════════════════
+PARTE 2 — DOMÍNIO
+═══════════════════════
+
+Implementar:
+
+Message
+
+MessageThread
+
+MessageParticipant
+
+MessageContext
+
+Estados:
+
+* Enviada
+* Entregue
+* Visualizada
+
+Importante:
+
+Não existe edição.
+
+Não existe exclusão.
+
+Não existe apagamento.
+
+Mensagens são permanentes.
+
+═══════════════════════
+PARTE 3 — PERMISSÕES
+═══════════════════════
+
+Permitir:
+
+Membro → Supervisor
+
+Supervisor → Membro
+
+Supervisor → Supervisor
+
+Admin → Supervisor
+
+Admin → Admin
+
+Bloquear:
+
+Membro → Membro
+
+Admin → Organização
+
+Critério:
+
+Nenhuma mensagem deve transformar o sistema em rede social.
+
+═══════════════════════
+PARTE 4 — CONTEXTO
+═══════════════════════
+
+Toda mensagem pode estar ligada a:
+
+* Escala
+* Livro do Dia
+* Agenda
+* Aviso
+* Solicitação
+* Mudança Operacional
+
+Exemplo:
+
+Livro do Dia
+↓
+Mensagem
+↓
+Supervisor
+
+Critério:
+
+Conversas devem nascer do trabalho.
+
+Não do usuário.
+
+═══════════════════════
+PARTE 5 — WEB
+═══════════════════════
+
+Criar:
+
+/admin/messages
+
+/supervisor/messages
+
+Funcionalidades:
+
+* Caixa de entrada
+* Conversas abertas
+* Filtros
+* Busca
+* Contexto associado
+
+Web = coordenação e acompanhamento.
+
+═══════════════════════
+PARTE 6 — MOBILE
+═══════════════════════
+
+Criar aba:
+
+Mensagens
+
+Mostrar:
+
+* Conversas ativas
+* Não lidas
+* Contexto relacionado
+
+Critério:
+
+Membro consegue esclarecer dúvidas sem sair do MyASA.
+
+═══════════════════════
+PARTE 7 — HISTÓRICO
+═══════════════════════
+
+Integrar com S-11.
+
+Registrar:
+
+* conversa criada
+* contexto associado
+* encerramento
+
+Não registrar:
+
+conteúdo integral das mensagens no Histórico narrativo.
+
+Critério:
+
+Histórico registra acontecimentos.
+
+Mensagens permanecem em Mensagens.
+
+═══════════════════════
+PARTE 8 — EVENT BUS
+═══════════════════════
+
+Produzir:
+
+message.created
+
+message.sent
+
+message.viewed
+
+message.thread.created
+
+message.thread.closed
+
+Consumir:
+
+request.created
+
+notice.created
+
+operational-change.created
+
+(opcionalmente para criação de contexto)
+
+═══════════════════════
+PARTE 9 — AUDITORIA
+═══════════════════════
+
+Validar:
+
+* Não virou WhatsApp
+* Não virou rede social
+* Não substitui Avisos
+* Não substitui Solicitações
+* Não substitui Entregas
+* Não substitui Histórico
+
+Responder:
+
+Mensagens estão cumprindo o papel de coordenação operacional sem criar comunicação paralela descontrolada?
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Classificar:
+
+🟢 Sprint 11 concluída
+
+🟡 Ajustes necessários
+
+🔴 Bloqueado
+
+Objetivo final:
+
+Ao final da Sprint 11:
+
+Membros, Supervisores e Admins conseguem esclarecer dúvidas e coordenar atividades operacionais diretamente no MyASA, sem depender do WhatsApp e sem transformar o sistema em uma rede social interna.
