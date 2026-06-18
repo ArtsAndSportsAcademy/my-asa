@@ -1,0 +1,154 @@
+# MyASA 2.0 — FC-02 Ajuste de Consolidação: Check-in Operacional
+
+Utilizar obrigatoriamente:
+
+* Sprint 15 concluída
+* Auditoria FC-02
+* Blueprint Executivo
+* Gate Arquitetural
+* Fundação de Operações (S-16)
+* Fundação de Escalas (S-04)
+
+Importante:
+
+Não criar nova superfície.
+
+Não alterar o conceito de Check-in.
+
+Não transformar o sistema em controle de ponto corporativo.
+
+Objetivo:
+
+Corrigir e consolidar o comportamento operacional do Check-in antes do início da Sprint 16.
+
+═══════════════════════
+PARTE 1 — TOLERÂNCIA CONFIGURÁVEL
+═══════════════════════
+
+Problema atual:
+
+LATE_THRESHOLD_MINUTES = 15
+
+hardcoded no backend.
+
+Implementar:
+
+lateThresholdMinutes
+
+configurável por Operação.
+
+Exemplos:
+
+Snowland
+→ 15 minutos
+
+Acquamotion
+→ 10 minutos
+
+Operação Especial
+→ 0 minutos
+
+Critérios:
+
+* campo configurável na Operação
+* valor inteiro em minutos
+* fallback padrão = 15
+* utilizado em todos os cálculos de atraso
+
+═══════════════════════
+PARTE 2 — FUSO HORÁRIO
+═══════════════════════
+
+Problema atual:
+
+startTime local
+
+comparado com
+
+nowUTC
+
+Risco:
+
+Marcação incorreta de atraso.
+
+Implementar:
+
+timezone por Operação
+
+ou
+
+timezone por Organização
+
+Utilizar sempre horário local da operação para:
+
+* cálculo de atraso
+* cálculo de presença
+* comparação de horários
+
+Critério:
+
+09:00 local
+
+09:10 local
+→ CHECKED_IN
+
+09:16 local
+→ LATE
+
+independentemente do UTC.
+
+═══════════════════════
+PARTE 3 — OPERAÇÕES
+═══════════════════════
+
+Adicionar configuração:
+
+Check-in
+
+* tolerância de atraso
+* timezone operacional
+
+Exibir claramente para Admin.
+
+Não permitir valores negativos.
+
+═══════════════════════
+PARTE 4 — HISTÓRICO
+═══════════════════════
+
+Registrar:
+
+* alteração da tolerância
+* alteração de timezone
+
+Motivo:
+
+Rastreabilidade operacional.
+
+═══════════════════════
+PARTE 5 — AUDITORIA
+═══════════════════════
+
+Validar:
+
+* check-in continua diário
+* check-in continua por operação
+* continua baseado no primeiro compromisso escalado
+* continua utilizando apenas escalas publicadas
+* sem escala → sem check-in
+* tolerância configurável funcionando
+* timezone funcionando
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Responder:
+
+1. O atraso continua calculado corretamente em qualquer fuso?
+2. Operações diferentes conseguem ter tolerâncias diferentes?
+3. O comportamento permanece consistente com a operação real da ASA?
+
+Objetivo final:
+
+O Check-in Operacional deve refletir a realidade operacional de cada operação, respeitando seu fuso horário e sua própria política de tolerância de atraso.

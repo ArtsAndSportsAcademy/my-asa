@@ -72,6 +72,8 @@ export interface Operation {
   name: string;
   organizationId: string;
   status: OperationStatus;
+  lateThresholdMinutes?: number | null;
+  timezone?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -196,6 +198,8 @@ export type OperationUpdateHealthThresholds = { [key: string]: unknown } | null;
 export interface OperationUpdate {
   name?: string;
   healthThresholds?: OperationUpdateHealthThresholds;
+  lateThresholdMinutes?: number;
+  timezone?: string;
 }
 
 export type OperationStatusUpdateStatus = typeof OperationStatusUpdateStatus[keyof typeof OperationStatusUpdateStatus];

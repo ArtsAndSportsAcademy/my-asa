@@ -17,7 +17,27 @@ import { writeHistoryEvent } from "../lib/history-helper.js";
 const router: IRouter = Router();
 
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
-const LATE_THRESHOLD_MINUTES = 15;
+const LATE_THRESHOLD_MINUTES_DEFAULT = 15;
+const DEFAULT_TIMEZONE = "America/Sao_Paulo";
+
+// ─── Helper: minutes since midnight in a given timezone ──────────────────────
+
+function getLocalMinutes(date: Date, tz: string): number {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      hour: "numeric",
+      minute: "numeric",
+      hour12: false,
+    }).formatToParts(date);
+    const h = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
+    const m = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
+    return h * 60 + m;
+  } catch {
+    // Fallback to UTC if timezone is invalid
+    return date.getUTCHours() * 60 + date.getUTCMinutes();
+  }
+}
 
 // ─── Helper: get users expected today in an operation ────────────────────────
 
@@ -260,25 +280,31 @@ router.post("/check-ins/my", requireAuth, requireOrganization, async (req, res) 
 
     const { operationId, startTime } = allocRows[0]!;
 
-    // Determine if late
-    let status: "CHECKED_IN" | "LATE" = "CHECKED_IN";
-    if (startTime) {
-      const [h, m] = startTime.split(":").map(Number) as [number, number];
-      const eventMinutes = h * 60 + m;
-      const nowMinutes = nowUTC.getUTCHours() * 60 + nowUTC.getUTCMinutes();
-      if (nowMinutes > eventMinutes + LATE_THRESHOLD_MINUTES) {
-        status = "LATE";
-      }
-    }
-
-    // Get orgId from operation
+    // Fetch operation config (orgId + check-in policy)
     const [opRow] = await db
-      .select({ organizationId: operationsTable.organizationId })
+      .select({
+        organizationId: operationsTable.organizationId,
+        lateThresholdMinutes: operationsTable.lateThresholdMinutes,
+        timezone: operationsTable.timezone,
+      })
       .from(operationsTable)
       .where(eq(operationsTable.id, operationId))
       .limit(1);
 
     const resolvedOrgId = opRow?.organizationId ?? orgId;
+    const thresholdMinutes = opRow?.lateThresholdMinutes ?? LATE_THRESHOLD_MINUTES_DEFAULT;
+    const opTimezone = opRow?.timezone ?? DEFAULT_TIMEZONE;
+
+    // Determine if late using operation's local timezone and configurable threshold
+    let status: "CHECKED_IN" | "LATE" = "CHECKED_IN";
+    if (startTime) {
+      const [h, m] = startTime.split(":").map(Number) as [number, number];
+      const eventMinutes = h * 60 + m;
+      const localNowMinutes = getLocalMinutes(nowUTC, opTimezone);
+      if (localNowMinutes > eventMinutes + thresholdMinutes) {
+        status = "LATE";
+      }
+    }
 
     // Upsert check-in
     const [record] = await db

@@ -5,6 +5,8 @@ import { operationsTable } from "@workspace/db";
 import { requireAuth, requireOrganization, requireRole } from "../middlewares/auth.js";
 import { recordAudit } from "../lib/audit.service.js";
 import { requestLogger } from "../lib/logger.js";
+import { writeHistoryEvent } from "../lib/history-helper.js";
+import { LOG_DOMAIN } from "@workspace/shared";
 
 const router: IRouter = Router();
 
@@ -79,9 +81,14 @@ router.post("/operations", requireAuth, requireOrganization, requireRole("ADMIN"
 });
 
 router.patch("/operations/:id", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
-  const log = requestLogger("organization", req.requestId, req.correlationId);
+  const log = requestLogger(LOG_DOMAIN.ORGANIZATION, req.requestId, req.correlationId);
   const id = req.params.id as string;
-  const { name, healthThresholds } = req.body;
+  const { name, healthThresholds, lateThresholdMinutes, timezone } = req.body as {
+    name?: string;
+    healthThresholds?: unknown;
+    lateThresholdMinutes?: number;
+    timezone?: string;
+  };
 
   try {
     const operation = await db.query.operationsTable.findFirst({
@@ -92,15 +99,17 @@ router.patch("/operations/:id", requireAuth, requireOrganization, requireRole("A
       return;
     }
 
-    const updates: Partial<{ name: string; healthThresholds: unknown; updatedAt: Date }> = {
-      updatedAt: new Date(),
-    };
-    if (name?.trim()) updates.name = (name as string).trim();
-    if (healthThresholds !== undefined) updates.healthThresholds = healthThresholds;
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (name?.trim()) updates["name"] = (name as string).trim();
+    if (healthThresholds !== undefined) updates["healthThresholds"] = healthThresholds;
+    if (typeof lateThresholdMinutes === "number" && lateThresholdMinutes >= 0) {
+      updates["lateThresholdMinutes"] = lateThresholdMinutes;
+    }
+    if (timezone?.trim()) updates["timezone"] = timezone.trim();
 
     const [updated] = await db
       .update(operationsTable)
-      .set(updates)
+      .set(updates as any)
       .where(eq(operationsTable.id, id))
       .returning();
 
@@ -108,8 +117,40 @@ router.patch("/operations/:id", requireAuth, requireOrganization, requireRole("A
       actorId: req.user!.sub,
       action: "OPERATION_UPDATED",
       targetResource: `operation:${id}`,
+      metadata: { changedFields: Object.keys(updates).filter((k) => k !== "updatedAt") },
     });
 
+    // Histórico: tolerância de atraso alterada
+    if (typeof lateThresholdMinutes === "number" && lateThresholdMinutes !== operation.lateThresholdMinutes) {
+      void writeHistoryEvent({
+        category: "OPERATIONAL_CHANGE",
+        action: "operation.config.threshold_updated",
+        title: "Tolerância de atraso alterada",
+        narrative: `Tolerância de atraso atualizada de ${operation.lateThresholdMinutes} min para ${lateThresholdMinutes} min`,
+        entityType: "operation",
+        entityId: id,
+        actorId: req.user!.sub,
+        operationId: id,
+        orgId: req.user!.organizationId,
+      });
+    }
+
+    // Histórico: fuso horário alterado
+    if (timezone?.trim() && timezone.trim() !== operation.timezone) {
+      void writeHistoryEvent({
+        category: "OPERATIONAL_CHANGE",
+        action: "operation.config.timezone_updated",
+        title: "Fuso horário alterado",
+        narrative: `Fuso horário atualizado de "${operation.timezone}" para "${timezone.trim()}"`,
+        entityType: "operation",
+        entityId: id,
+        actorId: req.user!.sub,
+        operationId: id,
+        orgId: req.user!.organizationId,
+      });
+    }
+
+    log.info({ operationId: id }, "Operation updated");
     res.json({ operation: updated });
   } catch (err) {
     log.error({ err }, "Error updating operation");

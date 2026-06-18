@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, jsonb, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, jsonb, pgEnum, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./identity.js";
@@ -19,6 +19,8 @@ export const operationsTable = pgTable("operations", {
   name: text("name").notNull(),
   status: operationStatusEnum("status").notNull().default("ACTIVE"),
   healthThresholds: jsonb("health_thresholds"),
+  lateThresholdMinutes: integer("late_threshold_minutes").notNull().default(15),
+  timezone: text("timezone").notNull().default("America/Sao_Paulo"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
