@@ -1694,6 +1694,152 @@ export interface SendMessageRequest {
   content: string;
 }
 
+export interface DeliveryItem {
+  id: string;
+  title: string;
+  description?: string | null;
+  type: string;
+  status: string;
+  dueDate: string;
+  maxDueDate: string;
+  contentRef?: string | null;
+  publishedAt?: string | null;
+  cancelledAt?: string | null;
+  createdAt: string;
+  creatorId: string;
+}
+
+export type DeliveryDetailContent = { [key: string]: unknown };
+
+export type DeliveryDetailChecklistItemsItem = {
+  id: string;
+  label: string;
+};
+
+export interface DeliveryDetail {
+  id: string;
+  title: string;
+  description?: string | null;
+  type: string;
+  status: string;
+  content: DeliveryDetailContent;
+  contentRef?: string | null;
+  checklistItems?: DeliveryDetailChecklistItemsItem[] | null;
+  dueDate: string;
+  maxDueDate: string;
+  publishedAt?: string | null;
+  cancelledAt?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+  creatorId: string;
+  operationId?: string;
+}
+
+export type DeliveryAssignmentItemChecklistProgress = {[key: string]: boolean} | null;
+
+export interface DeliveryAssignmentItem {
+  id: string;
+  deliveryId: string;
+  userId: string;
+  status: string;
+  receivedAt?: string | null;
+  viewedAt?: string | null;
+  completedAt?: string | null;
+  expiredAt?: string | null;
+  checklistProgress?: DeliveryAssignmentItemChecklistProgress;
+  createdAt: string;
+  userName?: string | null;
+  userEmail?: string | null;
+}
+
+export type MyDeliveryAssignmentItemChecklistProgress = {[key: string]: boolean} | null;
+
+export type MyDeliveryAssignmentItemDeliveryChecklistItemsItem = {
+  id: string;
+  label: string;
+};
+
+export interface MyDeliveryAssignmentItem {
+  id: string;
+  deliveryId: string;
+  status: string;
+  receivedAt?: string | null;
+  viewedAt?: string | null;
+  completedAt?: string | null;
+  expiredAt?: string | null;
+  checklistProgress?: MyDeliveryAssignmentItemChecklistProgress;
+  createdAt: string;
+  deliveryTitle: string;
+  deliveryType: string;
+  deliveryDescription?: string | null;
+  deliveryDueDate: string;
+  deliveryMaxDueDate: string;
+  deliveryStatus: string;
+  deliveryContentRef?: string | null;
+  deliveryChecklistItems?: MyDeliveryAssignmentItemDeliveryChecklistItemsItem[] | null;
+  deliveryPublishedAt?: string | null;
+}
+
+export interface DeliveryMember {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  role: string;
+}
+
+export type CreateDeliveryRequestContent = { [key: string]: unknown };
+
+export type CreateDeliveryRequestChecklistItemsItem = {
+  id: string;
+  label: string;
+};
+
+export interface CreateDeliveryRequest {
+  title: string;
+  description?: string;
+  type: string;
+  content?: CreateDeliveryRequestContent;
+  contentRef?: string;
+  checklistItems?: CreateDeliveryRequestChecklistItemsItem[];
+  dueDate: string;
+  maxDueDate: string;
+}
+
+export interface PublishDeliveryRequest {
+  targetUserIds: string[];
+}
+
+export type UpdateChecklistRequestProgress = {[key: string]: boolean};
+
+export interface UpdateChecklistRequest {
+  progress: UpdateChecklistRequestProgress;
+}
+
+export interface DeliverySingleResponse {
+  delivery: DeliveryDetail;
+}
+
+export interface DeliveryListResponse {
+  deliveries: DeliveryItem[];
+}
+
+export interface DeliveryDetailResponse {
+  delivery: DeliveryDetail;
+  assignments: DeliveryAssignmentItem[];
+}
+
+export interface MyDeliveriesResponse {
+  assignments: MyDeliveryAssignmentItem[];
+}
+
+export interface DeliveryMembersResponse {
+  members: DeliveryMember[];
+}
+
+export interface AssignmentSingleResponse {
+  assignment: DeliveryAssignmentItem;
+}
+
 /**
  * Bad request
  */

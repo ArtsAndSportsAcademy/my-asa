@@ -3183,3 +3183,303 @@ export const CloseMessageThreadResponse = zod.object({
 })
 
 
+/**
+ * @summary Criar entrega
+ */
+export const CreateDeliveryBody = zod.object({
+  "title": zod.string(),
+  "description": zod.string().optional(),
+  "type": zod.string(),
+  "content": zod.record(zod.string(), zod.unknown()).optional(),
+  "contentRef": zod.string().optional(),
+  "checklistItems": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string()
+})).optional(),
+  "dueDate": zod.string(),
+  "maxDueDate": zod.string()
+})
+
+
+/**
+ * @summary Listar entregas (admin/supervisor)
+ */
+export const ListDeliveriesResponse = zod.object({
+  "deliveries": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "type": zod.string(),
+  "status": zod.string(),
+  "dueDate": zod.string(),
+  "maxDueDate": zod.string(),
+  "contentRef": zod.string().nullish(),
+  "publishedAt": zod.string().nullish(),
+  "cancelledAt": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "creatorId": zod.string()
+}))
+})
+
+
+/**
+ * @summary Minhas entregas (destinatário)
+ */
+export const GetMyDeliveriesResponse = zod.object({
+  "assignments": zod.array(zod.object({
+  "id": zod.string(),
+  "deliveryId": zod.string(),
+  "status": zod.string(),
+  "receivedAt": zod.string().nullish(),
+  "viewedAt": zod.string().nullish(),
+  "completedAt": zod.string().nullish(),
+  "expiredAt": zod.string().nullish(),
+  "checklistProgress": zod.record(zod.string(), zod.boolean()).nullish(),
+  "createdAt": zod.string(),
+  "deliveryTitle": zod.string(),
+  "deliveryType": zod.string(),
+  "deliveryDescription": zod.string().nullish(),
+  "deliveryDueDate": zod.string(),
+  "deliveryMaxDueDate": zod.string(),
+  "deliveryStatus": zod.string(),
+  "deliveryContentRef": zod.string().nullish(),
+  "deliveryChecklistItems": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string()
+})).nullish(),
+  "deliveryPublishedAt": zod.string().nullish()
+}))
+})
+
+
+/**
+ * @summary Listar membros disponíveis para atribuição
+ */
+export const ListDeliveryMembersResponse = zod.object({
+  "members": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "role": zod.string()
+}))
+})
+
+
+/**
+ * @summary Detalhe + progresso da entrega
+ */
+export const GetDeliveryParams = zod.object({
+  "deliveryId": zod.coerce.string()
+})
+
+export const GetDeliveryResponse = zod.object({
+  "delivery": zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "type": zod.string(),
+  "status": zod.string(),
+  "content": zod.record(zod.string(), zod.unknown()),
+  "contentRef": zod.string().nullish(),
+  "checklistItems": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string()
+})).nullish(),
+  "dueDate": zod.string(),
+  "maxDueDate": zod.string(),
+  "publishedAt": zod.string().nullish(),
+  "cancelledAt": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string().optional(),
+  "creatorId": zod.string(),
+  "operationId": zod.string().optional()
+}),
+  "assignments": zod.array(zod.object({
+  "id": zod.string(),
+  "deliveryId": zod.string(),
+  "userId": zod.string(),
+  "status": zod.string(),
+  "receivedAt": zod.string().nullish(),
+  "viewedAt": zod.string().nullish(),
+  "completedAt": zod.string().nullish(),
+  "expiredAt": zod.string().nullish(),
+  "checklistProgress": zod.record(zod.string(), zod.boolean()).nullish(),
+  "createdAt": zod.string(),
+  "userName": zod.string().nullish(),
+  "userEmail": zod.string().nullish()
+}))
+})
+
+
+/**
+ * @summary Publicar entrega
+ */
+export const PublishDeliveryParams = zod.object({
+  "deliveryId": zod.coerce.string()
+})
+
+export const PublishDeliveryBody = zod.object({
+  "targetUserIds": zod.array(zod.string())
+})
+
+export const PublishDeliveryResponse = zod.object({
+  "delivery": zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "type": zod.string(),
+  "status": zod.string(),
+  "content": zod.record(zod.string(), zod.unknown()),
+  "contentRef": zod.string().nullish(),
+  "checklistItems": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string()
+})).nullish(),
+  "dueDate": zod.string(),
+  "maxDueDate": zod.string(),
+  "publishedAt": zod.string().nullish(),
+  "cancelledAt": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string().optional(),
+  "creatorId": zod.string(),
+  "operationId": zod.string().optional()
+})
+})
+
+
+/**
+ * @summary Cancelar entrega
+ */
+export const CancelDeliveryParams = zod.object({
+  "deliveryId": zod.coerce.string()
+})
+
+export const CancelDeliveryResponse = zod.object({
+  "delivery": zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "type": zod.string(),
+  "status": zod.string(),
+  "content": zod.record(zod.string(), zod.unknown()),
+  "contentRef": zod.string().nullish(),
+  "checklistItems": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string()
+})).nullish(),
+  "dueDate": zod.string(),
+  "maxDueDate": zod.string(),
+  "publishedAt": zod.string().nullish(),
+  "cancelledAt": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string().optional(),
+  "creatorId": zod.string(),
+  "operationId": zod.string().optional()
+})
+})
+
+
+/**
+ * @summary Marcar entrega como recebida
+ */
+export const ReceiveDeliveryParams = zod.object({
+  "deliveryId": zod.coerce.string()
+})
+
+export const ReceiveDeliveryResponse = zod.object({
+  "assignment": zod.object({
+  "id": zod.string(),
+  "deliveryId": zod.string(),
+  "userId": zod.string(),
+  "status": zod.string(),
+  "receivedAt": zod.string().nullish(),
+  "viewedAt": zod.string().nullish(),
+  "completedAt": zod.string().nullish(),
+  "expiredAt": zod.string().nullish(),
+  "checklistProgress": zod.record(zod.string(), zod.boolean()).nullish(),
+  "createdAt": zod.string(),
+  "userName": zod.string().nullish(),
+  "userEmail": zod.string().nullish()
+})
+})
+
+
+/**
+ * @summary Marcar entrega como visualizada
+ */
+export const ViewDeliveryParams = zod.object({
+  "deliveryId": zod.coerce.string()
+})
+
+export const ViewDeliveryResponse = zod.object({
+  "assignment": zod.object({
+  "id": zod.string(),
+  "deliveryId": zod.string(),
+  "userId": zod.string(),
+  "status": zod.string(),
+  "receivedAt": zod.string().nullish(),
+  "viewedAt": zod.string().nullish(),
+  "completedAt": zod.string().nullish(),
+  "expiredAt": zod.string().nullish(),
+  "checklistProgress": zod.record(zod.string(), zod.boolean()).nullish(),
+  "createdAt": zod.string(),
+  "userName": zod.string().nullish(),
+  "userEmail": zod.string().nullish()
+})
+})
+
+
+/**
+ * @summary Concluir entrega
+ */
+export const CompleteDeliveryParams = zod.object({
+  "deliveryId": zod.coerce.string()
+})
+
+export const CompleteDeliveryResponse = zod.object({
+  "assignment": zod.object({
+  "id": zod.string(),
+  "deliveryId": zod.string(),
+  "userId": zod.string(),
+  "status": zod.string(),
+  "receivedAt": zod.string().nullish(),
+  "viewedAt": zod.string().nullish(),
+  "completedAt": zod.string().nullish(),
+  "expiredAt": zod.string().nullish(),
+  "checklistProgress": zod.record(zod.string(), zod.boolean()).nullish(),
+  "createdAt": zod.string(),
+  "userName": zod.string().nullish(),
+  "userEmail": zod.string().nullish()
+})
+})
+
+
+/**
+ * @summary Atualizar progresso do checklist
+ */
+export const UpdateDeliveryChecklistParams = zod.object({
+  "deliveryId": zod.coerce.string()
+})
+
+export const UpdateDeliveryChecklistBody = zod.object({
+  "progress": zod.record(zod.string(), zod.boolean())
+})
+
+export const UpdateDeliveryChecklistResponse = zod.object({
+  "assignment": zod.object({
+  "id": zod.string(),
+  "deliveryId": zod.string(),
+  "userId": zod.string(),
+  "status": zod.string(),
+  "receivedAt": zod.string().nullish(),
+  "viewedAt": zod.string().nullish(),
+  "completedAt": zod.string().nullish(),
+  "expiredAt": zod.string().nullish(),
+  "checklistProgress": zod.record(zod.string(), zod.boolean()).nullish(),
+  "createdAt": zod.string(),
+  "userName": zod.string().nullish(),
+  "userEmail": zod.string().nullish()
+})
+})
+
+

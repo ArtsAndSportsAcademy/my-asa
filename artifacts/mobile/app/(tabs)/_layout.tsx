@@ -52,6 +52,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "message", selected: "message.fill" }} />
         <Label>Mensagens</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="entregas">
+        <Icon sf={{ default: "shippingbox", selected: "shippingbox.fill" }} />
+        <Label>Entregas</Label>
+      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }
@@ -211,6 +215,18 @@ function ClassicTabLayout() {
               <SymbolView name="message" tintColor={color} size={24} />
             ) : (
               <Feather name="message-square" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="entregas"
+        options={{
+          title: "Entregas",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="shippingbox" tintColor={color} size={24} />
+            ) : (
+              <Feather name="package" size={22} color={color} />
             ),
         }}
       />

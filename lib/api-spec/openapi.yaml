@@ -3353,6 +3353,272 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /deliveries:
+    post:
+      operationId: createDelivery
+      summary: Criar entrega
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDeliveryRequest"
+      responses:
+        "201":
+          description: Entrega criada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliverySingleResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    get:
+      operationId: listDeliveries
+      summary: Listar entregas (admin/supervisor)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Lista de entregas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliveryListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /deliveries/my:
+    get:
+      operationId: getMyDeliveries
+      summary: Minhas entregas (destinatário)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Minhas atribuições de entrega
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyDeliveriesResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /deliveries/members:
+    get:
+      operationId: listDeliveryMembers
+      summary: Listar membros disponíveis para atribuição
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Lista de membros
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliveryMembersResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /deliveries/{deliveryId}:
+    get:
+      operationId: getDelivery
+      summary: Detalhe + progresso da entrega
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: deliveryId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Detalhe da entrega
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliveryDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /deliveries/{deliveryId}/publish:
+    post:
+      operationId: publishDelivery
+      summary: Publicar entrega
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: deliveryId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublishDeliveryRequest"
+      responses:
+        "200":
+          description: Entrega publicada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliverySingleResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /deliveries/{deliveryId}/cancel:
+    patch:
+      operationId: cancelDelivery
+      summary: Cancelar entrega
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: deliveryId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Entrega cancelada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliverySingleResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /deliveries/{deliveryId}/receive:
+    post:
+      operationId: receiveDelivery
+      summary: Marcar entrega como recebida
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: deliveryId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Entrega marcada como recebida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssignmentSingleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /deliveries/{deliveryId}/view:
+    post:
+      operationId: viewDelivery
+      summary: Marcar entrega como visualizada
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: deliveryId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Entrega marcada como visualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssignmentSingleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /deliveries/{deliveryId}/complete:
+    post:
+      operationId: completeDelivery
+      summary: Concluir entrega
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: deliveryId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Entrega concluída
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssignmentSingleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /deliveries/{deliveryId}/checklist:
+    patch:
+      operationId: updateDeliveryChecklist
+      summary: Atualizar progresso do checklist
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: deliveryId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateChecklistRequest"
+      responses:
+        "200":
+          description: Progresso atualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssignmentSingleResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -5797,3 +6063,300 @@ components:
       properties:
         content:
           type: string
+
+    DeliveryItem:
+      type: object
+      required: [id, title, type, status, dueDate, maxDueDate, createdAt, creatorId]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        type:
+          type: string
+        status:
+          type: string
+        dueDate:
+          type: string
+        maxDueDate:
+          type: string
+        contentRef:
+          type: string
+          nullable: true
+        publishedAt:
+          type: string
+          nullable: true
+        cancelledAt:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+        creatorId:
+          type: string
+
+    DeliveryDetail:
+      type: object
+      required: [id, title, type, status, dueDate, maxDueDate, createdAt, creatorId, content]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        type:
+          type: string
+        status:
+          type: string
+        content:
+          type: object
+          additionalProperties: true
+        contentRef:
+          type: string
+          nullable: true
+        checklistItems:
+          type: array
+          nullable: true
+          items:
+            type: object
+            required: [id, label]
+            properties:
+              id:
+                type: string
+              label:
+                type: string
+        dueDate:
+          type: string
+        maxDueDate:
+          type: string
+        publishedAt:
+          type: string
+          nullable: true
+        cancelledAt:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+        creatorId:
+          type: string
+        operationId:
+          type: string
+
+    DeliveryAssignmentItem:
+      type: object
+      required: [id, deliveryId, userId, status, createdAt]
+      properties:
+        id:
+          type: string
+        deliveryId:
+          type: string
+        userId:
+          type: string
+        status:
+          type: string
+        receivedAt:
+          type: string
+          nullable: true
+        viewedAt:
+          type: string
+          nullable: true
+        completedAt:
+          type: string
+          nullable: true
+        expiredAt:
+          type: string
+          nullable: true
+        checklistProgress:
+          type: object
+          nullable: true
+          additionalProperties:
+            type: boolean
+        createdAt:
+          type: string
+        userName:
+          type: string
+          nullable: true
+        userEmail:
+          type: string
+          nullable: true
+
+    MyDeliveryAssignmentItem:
+      type: object
+      required: [id, deliveryId, status, createdAt, deliveryTitle, deliveryType, deliveryDueDate, deliveryMaxDueDate, deliveryStatus]
+      properties:
+        id:
+          type: string
+        deliveryId:
+          type: string
+        status:
+          type: string
+        receivedAt:
+          type: string
+          nullable: true
+        viewedAt:
+          type: string
+          nullable: true
+        completedAt:
+          type: string
+          nullable: true
+        expiredAt:
+          type: string
+          nullable: true
+        checklistProgress:
+          type: object
+          nullable: true
+          additionalProperties:
+            type: boolean
+        createdAt:
+          type: string
+        deliveryTitle:
+          type: string
+        deliveryType:
+          type: string
+        deliveryDescription:
+          type: string
+          nullable: true
+        deliveryDueDate:
+          type: string
+        deliveryMaxDueDate:
+          type: string
+        deliveryStatus:
+          type: string
+        deliveryContentRef:
+          type: string
+          nullable: true
+        deliveryChecklistItems:
+          type: array
+          nullable: true
+          items:
+            type: object
+            required: [id, label]
+            properties:
+              id:
+                type: string
+              label:
+                type: string
+        deliveryPublishedAt:
+          type: string
+          nullable: true
+
+    DeliveryMember:
+      type: object
+      required: [id, role]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        role:
+          type: string
+
+    CreateDeliveryRequest:
+      type: object
+      required: [title, type, dueDate, maxDueDate]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+        content:
+          type: object
+          additionalProperties: true
+        contentRef:
+          type: string
+        checklistItems:
+          type: array
+          items:
+            type: object
+            required: [id, label]
+            properties:
+              id:
+                type: string
+              label:
+                type: string
+        dueDate:
+          type: string
+        maxDueDate:
+          type: string
+
+    PublishDeliveryRequest:
+      type: object
+      required: [targetUserIds]
+      properties:
+        targetUserIds:
+          type: array
+          items:
+            type: string
+
+    UpdateChecklistRequest:
+      type: object
+      required: [progress]
+      properties:
+        progress:
+          type: object
+          additionalProperties:
+            type: boolean
+
+    DeliverySingleResponse:
+      type: object
+      required: [delivery]
+      properties:
+        delivery:
+          $ref: "#/components/schemas/DeliveryDetail"
+
+    DeliveryListResponse:
+      type: object
+      required: [deliveries]
+      properties:
+        deliveries:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeliveryItem"
+
+    DeliveryDetailResponse:
+      type: object
+      required: [delivery, assignments]
+      properties:
+        delivery:
+          $ref: "#/components/schemas/DeliveryDetail"
+        assignments:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeliveryAssignmentItem"
+
+    MyDeliveriesResponse:
+      type: object
+      required: [assignments]
+      properties:
+        assignments:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyDeliveryAssignmentItem"
+
+    DeliveryMembersResponse:
+      type: object
+      required: [members]
+      properties:
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeliveryMember"
+
+    AssignmentSingleResponse:
+      type: object
+      required: [assignment]
+      properties:
+        assignment:
+          $ref: "#/components/schemas/DeliveryAssignmentItem"

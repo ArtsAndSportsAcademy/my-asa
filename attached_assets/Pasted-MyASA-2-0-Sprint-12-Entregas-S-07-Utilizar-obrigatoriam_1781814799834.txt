@@ -1,0 +1,192 @@
+MyASA 2.0 — Sprint 12: Entregas (S-07)
+
+Utilizar obrigatoriamente:
+
+* Sprint 0 a Sprint 11 concluídas
+* Fundação S-07 Entregas
+* Blueprint Executivo
+* Gate Final de Construção
+* Arquitetura Técnica Consolidada
+* Resultado da Auditoria A-01
+
+═══════════════════════
+DECISÃO OFICIAL
+═══════════════════════
+
+Formalizar:
+
+S-07 = Compliance de Conteúdo
+
+Não implementar:
+
+* tarefas operacionais
+* avaliações de desempenho
+* workflow de aprovação de trabalho
+* gerenciamento de projetos
+
+Esses conceitos pertencem ao futuro S-18 Tarefas.
+
+═══════════════════════
+OBJETIVO
+═══════════════════════
+
+Construir o sistema de confirmação obrigatória de conteúdo do MyASA.
+
+Pergunta respondida:
+
+“Quem recebeu, visualizou e confirmou?”
+
+═══════════════════════
+PARTE 1 — DOMÍNIO
+═══════════════════════
+
+Implementar:
+
+Delivery
+
+DeliveryAssignment
+
+DeliveryProgress
+
+Tipos MVP:
+
+* Leitura Obrigatória
+* Vídeo Obrigatório
+* Atualização Operacional
+* Checklist
+
+═══════════════════════
+PARTE 2 — CICLO DE VIDA
+═══════════════════════
+
+Estados:
+
+CRIADA
+↓
+PUBLICADA
+↓
+RECEBIDA
+↓
+VISUALIZADA
+↓
+CONCLUÍDA
+
+Estados especiais:
+
+ATRASADA
+
+EXPIRADA
+
+CANCELADA
+
+Critério:
+
+VISUALIZADA ≠ CONCLUÍDA
+
+ATRASADA ≠ EXPIRADA
+
+═══════════════════════
+PARTE 3 — WEB
+═══════════════════════
+
+Criar:
+
+/admin/deliveries
+
+/supervisor/deliveries
+
+Funcionalidades:
+
+* criar
+* publicar
+* acompanhar progresso
+* acompanhar pendências
+* cancelar
+
+═══════════════════════
+PARTE 4 — MOBILE
+═══════════════════════
+
+Criar aba:
+
+Entregas
+
+Mostrar:
+
+* pendentes
+* concluídas
+* atrasadas
+
+Permitir:
+
+* visualizar
+* confirmar
+* concluir checklist
+
+═══════════════════════
+PARTE 5 — BIBLIOTECA
+═══════════════════════
+
+Preparar integração.
+
+Entrega referencia conteúdo.
+
+Entrega não duplica conteúdo.
+
+Biblioteca será a fonte única.
+
+═══════════════════════
+PARTE 6 — HISTÓRICO
+═══════════════════════
+
+Registrar:
+
+* publicada
+* visualizada
+* concluída
+* atrasada
+* expirada
+* cancelada
+
+═══════════════════════
+PARTE 7 — EVENT BUS
+═══════════════════════
+
+Produzir:
+
+delivery.created
+
+delivery.published
+
+delivery.viewed
+
+delivery.completed
+
+delivery.expired
+
+delivery.cancelled
+
+═══════════════════════
+PARTE 8 — AUDITORIA
+═══════════════════════
+
+Validar:
+
+* Não virou sistema de tarefas
+* Não virou Jira/Trello
+* Não virou avaliação de desempenho
+* Mantém compliance de conteúdo
+
+Responder:
+
+S-18 Tarefas Operacionais poderá existir futuramente sem conflito com S-07?
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Objetivo final:
+
+Ao final da Sprint 12:
+
+Admins e Supervisores conseguem garantir que conteúdos obrigatórios foram efetivamente recebidos e confirmados pelos membros.

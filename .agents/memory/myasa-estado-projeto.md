@@ -3,6 +3,50 @@ name: MyASA 2.0 — Estado do Projeto
 description: Sprint progress, architectural decisions, and key conventions for the MyASA 2.0 system
 ---
 
+## Sprint 12 — Entregas / S-07 (COMPLETO)
+**Objetivo:** Sistema de confirmação obrigatória de conteúdo — "Quem recebeu, visualizou e confirmou?"
+NÃO é sistema de tarefas. NÃO é Jira/Trello. NÃO é avaliação de desempenho.
+
+### Decisões (respeitar em sprints futuros)
+- VISUALIZADA ≠ CONCLUÍDA (estados distintos)
+- ATRASADA ≠ EXPIRADA (estados distintos)
+- S-18 Tarefas Operacionais poderá existir futuramente sem conflito com S-07
+- Entrega referencia conteúdo (contentRef), NÃO duplica conteúdo — Biblioteca será fonte única
+
+### T001 — DB Migration ✅
+- ENUMs: `delivery_type` (+ MANDATORY_READ, MANDATORY_VIDEO), `delivery_status` (+ RECEIVED, VIEWED, COMPLETED, LATE, EXPIRED)
+- Tabelas existentes alteradas: `deliveries` (+description, content_ref, checklist_items, published_at, cancelled_at), `delivery_assignments` (+received_at, viewed_at, checklist_progress)
+
+### T002 — lib/db schema ✅
+- `lib/db/src/schema/deliveries.ts` atualizado com novos campos e tipos
+
+### T003 — routes/deliveries.ts ✅
+- 10 endpoints: criar, listar, minhas, detalhe, publicar, cancelar, receber, visualizar, concluir, checklist
+- Histórico: writeHistoryEvent em criar, publicar, cancelar, receber, visualizar, concluir
+- `routes/index.ts` atualizado
+
+### T004 — OpenAPI + Codegen ✅
+- 10 paths + 14 schemas adicionados
+- Hooks: `useCreateDelivery`, `useListDeliveries`, `useGetMyDeliveries`, `useListDeliveryMembers`, `useGetDelivery(deliveryId)`, `usePublishDelivery`, `useCancelDelivery`, `useReceiveDelivery`, `useViewDelivery`, `useCompleteDelivery`, `useUpdateDeliveryChecklist`
+- Query keys: `getListDeliveriesQueryKey()`, `getGetMyDeliveriesQueryKey()`, `getGetDeliveryQueryKey(deliveryId)`, `getListDeliveryMembersQueryKey()`
+
+### T005 — Web Admin ✅
+- `pages/admin/deliveries.tsx`: criar, publicar (seleção de membros), acompanhar progresso, cancelar, lista + panel 2 colunas
+- `pages/supervisor/deliveries.tsx`: acompanhar pendências, stats por status, tabela de destinatários
+- Rotas em `App.tsx` + Package icon no sidebar `admin-layout.tsx`
+
+### T006 — Mobile ✅
+- `app/(tabs)/entregas.tsx`: tabs Pendentes/Concluídas/Atrasadas, modal de detalhe, checklist interativo, auto-mark viewed, botão de conclusão
+- `_layout.tsx`: tab "Entregas" em NativeTabs (sf: "shippingbox"/"shippingbox.fill") + ClassicTabLayout (Feather "package")
+
+### Convenções estabelecidas no Sprint 12
+- `useGetDelivery(deliveryId)` — recebe `string` direta
+- `getGetDeliveryQueryKey(deliveryId)` — idem
+- Checklist auto-salva via `useUpdateDeliveryChecklist` a cada toggle; conclusão requer todos os itens marcados
+- `userRolesTable` NÃO tem `organizationId` — filtrar por org usando `usersTable.organizationId`
+
+---
+
 ## Sprint 11 — Mensagens / S-09 (COMPLETO)
 **Objetivo:** Canal oficial de coordenação operacional — "Como as pessoas se coordenam sem sair do sistema?"
 

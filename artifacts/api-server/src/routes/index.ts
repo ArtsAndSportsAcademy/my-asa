@@ -15,6 +15,7 @@ import myDayRouter from "./my-day";
 import noticesRouter from "./notices";
 import historyRouter from "./history";
 import messagesRouter from "./messages";
+import deliveriesRouter from "./deliveries";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(myDayRouter);
 router.use(noticesRouter);
 router.use(historyRouter);
 router.use(messagesRouter);
+router.use(deliveriesRouter);
 
 export default router;

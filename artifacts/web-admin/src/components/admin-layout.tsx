@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Theater, Home, Users, Briefcase, Users2, LogOut, ChevronRight, BookOpen, CalendarDays, ShieldCheck, ClipboardList, BookMarked, Eye, LayoutDashboard, Bell, Clock, MessageSquare } from "lucide-react";
+import { Theater, Home, Users, Briefcase, Users2, LogOut, ChevronRight, BookOpen, CalendarDays, ShieldCheck, ClipboardList, BookMarked, Eye, LayoutDashboard, Bell, Clock, MessageSquare, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,6 +23,8 @@ const navItems = [
   { href: "/supervisor/history", icon: Clock, label: "Histórico (Sup.)" },
   { href: "/admin/messages", icon: MessageSquare, label: "Mensagens" },
   { href: "/supervisor/messages", icon: MessageSquare, label: "Mensagens (Sup.)" },
+  { href: "/admin/deliveries", icon: Package, label: "Entregas" },
+  { href: "/supervisor/deliveries", icon: Package, label: "Entregas (Sup.)" },
   { href: "/admin/auditoria", icon: ShieldCheck, label: "Auditoria" },
 ];
 

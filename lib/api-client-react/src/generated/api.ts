@@ -28,6 +28,7 @@ import type {
   AllocationOverrideRequest,
   ArchiveScale200,
   AssignUserTag201,
+  AssignmentSingleResponse,
   BadRequestResponse,
   BlockCreate,
   BlockUpdate,
@@ -38,6 +39,7 @@ import type {
   ConfirmAgendaEvent200,
   ConflictResponse,
   CreateAgendaEvent201,
+  CreateDeliveryRequest,
   CreateHistoryNarrativeRequest,
   CreateMessageThreadRequest,
   CreateNoticeRequest,
@@ -57,6 +59,10 @@ import type {
   DeleteDailyBookBlock200,
   DeleteDailyBookPosition200,
   DeleteDailyBookScene200,
+  DeliveryDetailResponse,
+  DeliveryListResponse,
+  DeliveryMembersResponse,
+  DeliverySingleResponse,
   EscalateNoticeRequest,
   ExecuteDailyBook200,
   ForbiddenResponse,
@@ -117,6 +123,7 @@ import type {
   MessageThreadListResponse,
   MessageThreadSingleResponse,
   MyDayResponse,
+  MyDeliveriesResponse,
   MyNoticeItem,
   NotFoundResponse,
   NoticeDetail,
@@ -131,6 +138,7 @@ import type {
   PositionCreate,
   PositionUpdate,
   PublishDailyBook200,
+  PublishDeliveryRequest,
   PublishScale200,
   ReasonPayload,
   RefreshTokenRequest,
@@ -156,6 +164,7 @@ import type {
   UnauthorizedResponse,
   UnprocessableEntityResponse,
   UpdateAgendaEvent200,
+  UpdateChecklistRequest,
   UpdateHistoryNarrativeRequest,
   UpdateNoticeRequest,
   UpdateOperation200,
@@ -8707,5 +8716,808 @@ export const useCloseMessageThread = <TError = ErrorType<BadRequestResponse | Un
         TContext
       > => {
       return useMutation(getCloseMessageThreadMutationOptions(options));
+    }
+
+export const getCreateDeliveryUrl = () => {
+
+
+
+
+  return `/api/deliveries`
+}
+
+/**
+ * @summary Criar entrega
+ */
+export const createDelivery = async (createDeliveryRequest: CreateDeliveryRequest, options?: RequestInit): Promise<DeliverySingleResponse> => {
+
+  return customFetch<DeliverySingleResponse>(getCreateDeliveryUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createDeliveryRequest,)
+  }
+);}
+
+
+
+
+export const getCreateDeliveryMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDelivery>>, TError,{data: BodyType<CreateDeliveryRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createDelivery>>, TError,{data: BodyType<CreateDeliveryRequest>}, TContext> => {
+
+const mutationKey = ['createDelivery'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createDelivery>>, {data: BodyType<CreateDeliveryRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createDelivery(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateDeliveryMutationResult = NonNullable<Awaited<ReturnType<typeof createDelivery>>>
+    export type CreateDeliveryMutationBody = BodyType<CreateDeliveryRequest>
+    export type CreateDeliveryMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>
+
+    /**
+ * @summary Criar entrega
+ */
+export const useCreateDelivery = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDelivery>>, TError,{data: BodyType<CreateDeliveryRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createDelivery>>,
+        TError,
+        {data: BodyType<CreateDeliveryRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateDeliveryMutationOptions(options));
+    }
+
+export const getListDeliveriesUrl = () => {
+
+
+
+
+  return `/api/deliveries`
+}
+
+/**
+ * @summary Listar entregas (admin/supervisor)
+ */
+export const listDeliveries = async ( options?: RequestInit): Promise<DeliveryListResponse> => {
+
+  return customFetch<DeliveryListResponse>(getListDeliveriesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDeliveriesQueryKey = () => {
+    return [
+    `/api/deliveries`
+    ] as const;
+    }
+
+
+export const getListDeliveriesQueryOptions = <TData = Awaited<ReturnType<typeof listDeliveries>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDeliveries>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDeliveriesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDeliveries>>> = ({ signal }) => listDeliveries({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDeliveries>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListDeliveriesQueryResult = NonNullable<Awaited<ReturnType<typeof listDeliveries>>>
+export type ListDeliveriesQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary Listar entregas (admin/supervisor)
+ */
+
+export function useListDeliveries<TData = Awaited<ReturnType<typeof listDeliveries>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDeliveries>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListDeliveriesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetMyDeliveriesUrl = () => {
+
+
+
+
+  return `/api/deliveries/my`
+}
+
+/**
+ * @summary Minhas entregas (destinatário)
+ */
+export const getMyDeliveries = async ( options?: RequestInit): Promise<MyDeliveriesResponse> => {
+
+  return customFetch<MyDeliveriesResponse>(getGetMyDeliveriesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyDeliveriesQueryKey = () => {
+    return [
+    `/api/deliveries/my`
+    ] as const;
+    }
+
+
+export const getGetMyDeliveriesQueryOptions = <TData = Awaited<ReturnType<typeof getMyDeliveries>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyDeliveries>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyDeliveriesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyDeliveries>>> = ({ signal }) => getMyDeliveries({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyDeliveries>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyDeliveriesQueryResult = NonNullable<Awaited<ReturnType<typeof getMyDeliveries>>>
+export type GetMyDeliveriesQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Minhas entregas (destinatário)
+ */
+
+export function useGetMyDeliveries<TData = Awaited<ReturnType<typeof getMyDeliveries>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyDeliveries>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyDeliveriesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListDeliveryMembersUrl = () => {
+
+
+
+
+  return `/api/deliveries/members`
+}
+
+/**
+ * @summary Listar membros disponíveis para atribuição
+ */
+export const listDeliveryMembers = async ( options?: RequestInit): Promise<DeliveryMembersResponse> => {
+
+  return customFetch<DeliveryMembersResponse>(getListDeliveryMembersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDeliveryMembersQueryKey = () => {
+    return [
+    `/api/deliveries/members`
+    ] as const;
+    }
+
+
+export const getListDeliveryMembersQueryOptions = <TData = Awaited<ReturnType<typeof listDeliveryMembers>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDeliveryMembers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDeliveryMembersQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDeliveryMembers>>> = ({ signal }) => listDeliveryMembers({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDeliveryMembers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListDeliveryMembersQueryResult = NonNullable<Awaited<ReturnType<typeof listDeliveryMembers>>>
+export type ListDeliveryMembersQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary Listar membros disponíveis para atribuição
+ */
+
+export function useListDeliveryMembers<TData = Awaited<ReturnType<typeof listDeliveryMembers>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDeliveryMembers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListDeliveryMembersQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetDeliveryUrl = (deliveryId: string,) => {
+
+
+
+
+  return `/api/deliveries/${deliveryId}`
+}
+
+/**
+ * @summary Detalhe + progresso da entrega
+ */
+export const getDelivery = async (deliveryId: string, options?: RequestInit): Promise<DeliveryDetailResponse> => {
+
+  return customFetch<DeliveryDetailResponse>(getGetDeliveryUrl(deliveryId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDeliveryQueryKey = (deliveryId: string,) => {
+    return [
+    `/api/deliveries/${deliveryId}`
+    ] as const;
+    }
+
+
+export const getGetDeliveryQueryOptions = <TData = Awaited<ReturnType<typeof getDelivery>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(deliveryId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDelivery>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDeliveryQueryKey(deliveryId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDelivery>>> = ({ signal }) => getDelivery(deliveryId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(deliveryId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDelivery>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDeliveryQueryResult = NonNullable<Awaited<ReturnType<typeof getDelivery>>>
+export type GetDeliveryQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary Detalhe + progresso da entrega
+ */
+
+export function useGetDelivery<TData = Awaited<ReturnType<typeof getDelivery>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ deliveryId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDelivery>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDeliveryQueryOptions(deliveryId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getPublishDeliveryUrl = (deliveryId: string,) => {
+
+
+
+
+  return `/api/deliveries/${deliveryId}/publish`
+}
+
+/**
+ * @summary Publicar entrega
+ */
+export const publishDelivery = async (deliveryId: string,
+    publishDeliveryRequest: PublishDeliveryRequest, options?: RequestInit): Promise<DeliverySingleResponse> => {
+
+  return customFetch<DeliverySingleResponse>(getPublishDeliveryUrl(deliveryId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      publishDeliveryRequest,)
+  }
+);}
+
+
+
+
+export const getPublishDeliveryMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishDelivery>>, TError,{deliveryId: string;data: BodyType<PublishDeliveryRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof publishDelivery>>, TError,{deliveryId: string;data: BodyType<PublishDeliveryRequest>}, TContext> => {
+
+const mutationKey = ['publishDelivery'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof publishDelivery>>, {deliveryId: string;data: BodyType<PublishDeliveryRequest>}> = (props) => {
+          const {deliveryId,data} = props ?? {};
+
+          return  publishDelivery(deliveryId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PublishDeliveryMutationResult = NonNullable<Awaited<ReturnType<typeof publishDelivery>>>
+    export type PublishDeliveryMutationBody = BodyType<PublishDeliveryRequest>
+    export type PublishDeliveryMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Publicar entrega
+ */
+export const usePublishDelivery = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishDelivery>>, TError,{deliveryId: string;data: BodyType<PublishDeliveryRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof publishDelivery>>,
+        TError,
+        {deliveryId: string;data: BodyType<PublishDeliveryRequest>},
+        TContext
+      > => {
+      return useMutation(getPublishDeliveryMutationOptions(options));
+    }
+
+export const getCancelDeliveryUrl = (deliveryId: string,) => {
+
+
+
+
+  return `/api/deliveries/${deliveryId}/cancel`
+}
+
+/**
+ * @summary Cancelar entrega
+ */
+export const cancelDelivery = async (deliveryId: string, options?: RequestInit): Promise<DeliverySingleResponse> => {
+
+  return customFetch<DeliverySingleResponse>(getCancelDeliveryUrl(deliveryId),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+export const getCancelDeliveryMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelDelivery>>, TError,{deliveryId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelDelivery>>, TError,{deliveryId: string}, TContext> => {
+
+const mutationKey = ['cancelDelivery'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelDelivery>>, {deliveryId: string}> = (props) => {
+          const {deliveryId} = props ?? {};
+
+          return  cancelDelivery(deliveryId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelDeliveryMutationResult = NonNullable<Awaited<ReturnType<typeof cancelDelivery>>>
+
+    export type CancelDeliveryMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Cancelar entrega
+ */
+export const useCancelDelivery = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelDelivery>>, TError,{deliveryId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof cancelDelivery>>,
+        TError,
+        {deliveryId: string},
+        TContext
+      > => {
+      return useMutation(getCancelDeliveryMutationOptions(options));
+    }
+
+export const getReceiveDeliveryUrl = (deliveryId: string,) => {
+
+
+
+
+  return `/api/deliveries/${deliveryId}/receive`
+}
+
+/**
+ * @summary Marcar entrega como recebida
+ */
+export const receiveDelivery = async (deliveryId: string, options?: RequestInit): Promise<AssignmentSingleResponse> => {
+
+  return customFetch<AssignmentSingleResponse>(getReceiveDeliveryUrl(deliveryId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getReceiveDeliveryMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiveDelivery>>, TError,{deliveryId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof receiveDelivery>>, TError,{deliveryId: string}, TContext> => {
+
+const mutationKey = ['receiveDelivery'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof receiveDelivery>>, {deliveryId: string}> = (props) => {
+          const {deliveryId} = props ?? {};
+
+          return  receiveDelivery(deliveryId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReceiveDeliveryMutationResult = NonNullable<Awaited<ReturnType<typeof receiveDelivery>>>
+
+    export type ReceiveDeliveryMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Marcar entrega como recebida
+ */
+export const useReceiveDelivery = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiveDelivery>>, TError,{deliveryId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof receiveDelivery>>,
+        TError,
+        {deliveryId: string},
+        TContext
+      > => {
+      return useMutation(getReceiveDeliveryMutationOptions(options));
+    }
+
+export const getViewDeliveryUrl = (deliveryId: string,) => {
+
+
+
+
+  return `/api/deliveries/${deliveryId}/view`
+}
+
+/**
+ * @summary Marcar entrega como visualizada
+ */
+export const viewDelivery = async (deliveryId: string, options?: RequestInit): Promise<AssignmentSingleResponse> => {
+
+  return customFetch<AssignmentSingleResponse>(getViewDeliveryUrl(deliveryId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getViewDeliveryMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof viewDelivery>>, TError,{deliveryId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof viewDelivery>>, TError,{deliveryId: string}, TContext> => {
+
+const mutationKey = ['viewDelivery'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof viewDelivery>>, {deliveryId: string}> = (props) => {
+          const {deliveryId} = props ?? {};
+
+          return  viewDelivery(deliveryId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ViewDeliveryMutationResult = NonNullable<Awaited<ReturnType<typeof viewDelivery>>>
+
+    export type ViewDeliveryMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Marcar entrega como visualizada
+ */
+export const useViewDelivery = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof viewDelivery>>, TError,{deliveryId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof viewDelivery>>,
+        TError,
+        {deliveryId: string},
+        TContext
+      > => {
+      return useMutation(getViewDeliveryMutationOptions(options));
+    }
+
+export const getCompleteDeliveryUrl = (deliveryId: string,) => {
+
+
+
+
+  return `/api/deliveries/${deliveryId}/complete`
+}
+
+/**
+ * @summary Concluir entrega
+ */
+export const completeDelivery = async (deliveryId: string, options?: RequestInit): Promise<AssignmentSingleResponse> => {
+
+  return customFetch<AssignmentSingleResponse>(getCompleteDeliveryUrl(deliveryId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getCompleteDeliveryMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeDelivery>>, TError,{deliveryId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof completeDelivery>>, TError,{deliveryId: string}, TContext> => {
+
+const mutationKey = ['completeDelivery'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof completeDelivery>>, {deliveryId: string}> = (props) => {
+          const {deliveryId} = props ?? {};
+
+          return  completeDelivery(deliveryId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CompleteDeliveryMutationResult = NonNullable<Awaited<ReturnType<typeof completeDelivery>>>
+
+    export type CompleteDeliveryMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Concluir entrega
+ */
+export const useCompleteDelivery = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeDelivery>>, TError,{deliveryId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof completeDelivery>>,
+        TError,
+        {deliveryId: string},
+        TContext
+      > => {
+      return useMutation(getCompleteDeliveryMutationOptions(options));
+    }
+
+export const getUpdateDeliveryChecklistUrl = (deliveryId: string,) => {
+
+
+
+
+  return `/api/deliveries/${deliveryId}/checklist`
+}
+
+/**
+ * @summary Atualizar progresso do checklist
+ */
+export const updateDeliveryChecklist = async (deliveryId: string,
+    updateChecklistRequest: UpdateChecklistRequest, options?: RequestInit): Promise<AssignmentSingleResponse> => {
+
+  return customFetch<AssignmentSingleResponse>(getUpdateDeliveryChecklistUrl(deliveryId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateChecklistRequest,)
+  }
+);}
+
+
+
+
+export const getUpdateDeliveryChecklistMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDeliveryChecklist>>, TError,{deliveryId: string;data: BodyType<UpdateChecklistRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateDeliveryChecklist>>, TError,{deliveryId: string;data: BodyType<UpdateChecklistRequest>}, TContext> => {
+
+const mutationKey = ['updateDeliveryChecklist'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateDeliveryChecklist>>, {deliveryId: string;data: BodyType<UpdateChecklistRequest>}> = (props) => {
+          const {deliveryId,data} = props ?? {};
+
+          return  updateDeliveryChecklist(deliveryId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateDeliveryChecklistMutationResult = NonNullable<Awaited<ReturnType<typeof updateDeliveryChecklist>>>
+    export type UpdateDeliveryChecklistMutationBody = BodyType<UpdateChecklistRequest>
+    export type UpdateDeliveryChecklistMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Atualizar progresso do checklist
+ */
+export const useUpdateDeliveryChecklist = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDeliveryChecklist>>, TError,{deliveryId: string;data: BodyType<UpdateChecklistRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateDeliveryChecklist>>,
+        TError,
+        {deliveryId: string;data: BodyType<UpdateChecklistRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateDeliveryChecklistMutationOptions(options));
     }
 
