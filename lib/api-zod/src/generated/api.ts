@@ -1783,3 +1783,479 @@ export const ResolveScaleExceptionResponse = zod.object({
 })
 
 
+/**
+ * @summary Listar Livros do Dia
+ */
+export const ListDailyBookQueryParams = zod.object({
+  "agendaEventId": zod.coerce.string().optional(),
+  "status": zod.coerce.string().optional(),
+  "groupId": zod.coerce.string().optional()
+})
+
+export const ListDailyBookResponse = zod.object({
+  "dailyBooks": zod.array(zod.object({
+  "id": zod.string(),
+  "agendaEventId": zod.string(),
+  "scaleId": zod.string().nullish(),
+  "showBookId": zod.string().nullish(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'REPUBLISHED', 'EXECUTED', 'CANCELLED']),
+  "version": zod.number(),
+  "snapshotJson": zod.object({
+
+}).passthrough().nullish(),
+  "republishDeltaJson": zod.object({
+
+}).passthrough().nullish(),
+  "publishedAt": zod.string().nullish(),
+  "publishedBy": zod.string().nullish(),
+  "generatedAt": zod.string().nullish(),
+  "generatedBy": zod.string().nullish(),
+  "executedAt": zod.string().nullish(),
+  "executedBy": zod.string().nullish(),
+  "cancelledAt": zod.string().nullish(),
+  "cancelledBy": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Gerar Livro do Dia a partir de evento e escala
+ */
+export const GenerateDailyBookBody = zod.object({
+  "agendaEventId": zod.string(),
+  "scaleId": zod.string().nullish()
+})
+
+
+/**
+ * @summary Buscar Livro do Dia com árvore completa
+ */
+export const GetDailyBookParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetDailyBookResponse = zod.object({
+  "dailyBook": zod.object({
+  "id": zod.string(),
+  "agendaEventId": zod.string(),
+  "scaleId": zod.string().nullish(),
+  "showBookId": zod.string().nullish(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'REPUBLISHED', 'EXECUTED', 'CANCELLED']),
+  "version": zod.number(),
+  "snapshotJson": zod.object({
+
+}).passthrough().nullish(),
+  "republishDeltaJson": zod.object({
+
+}).passthrough().nullish(),
+  "publishedAt": zod.string().nullish(),
+  "publishedBy": zod.string().nullish(),
+  "generatedAt": zod.string().nullish(),
+  "generatedBy": zod.string().nullish(),
+  "executedAt": zod.string().nullish(),
+  "executedBy": zod.string().nullish(),
+  "cancelledAt": zod.string().nullish(),
+  "cancelledBy": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}).and(zod.object({
+  "scenes": zod.array(zod.object({
+  "id": zod.string(),
+  "dailyBookId": zod.string(),
+  "name": zod.string(),
+  "order": zod.number(),
+  "sourceSceneId": zod.string().nullish(),
+  "isRemoved": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}).and(zod.object({
+  "blocks": zod.array(zod.object({
+  "id": zod.string(),
+  "dailyBookId": zod.string(),
+  "sceneId": zod.string().nullish(),
+  "name": zod.string(),
+  "order": zod.number(),
+  "sourceBlockId": zod.string().nullish(),
+  "isRemoved": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}).and(zod.object({
+  "positions": zod.array(zod.object({
+  "id": zod.string(),
+  "dailyBookId": zod.string(),
+  "blockId": zod.string().nullish(),
+  "name": zod.string(),
+  "minimumCoverage": zod.number(),
+  "sourceRoleId": zod.string().nullish(),
+  "isRemoved": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}).and(zod.object({
+  "assignments": zod.array(zod.object({
+  "id": zod.string(),
+  "dailyBookId": zod.string(),
+  "positionId": zod.string(),
+  "userId": zod.string().nullish(),
+  "status": zod.enum(['ASSIGNED', 'AT_RISK', 'OPEN', 'REMOVED']),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}))
+})))
+})))
+})))
+}))
+})
+
+
+/**
+ * @summary Publicar Livro do Dia (DRAFT → PUBLISHED)
+ */
+export const PublishDailyBookParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const PublishDailyBookResponse = zod.object({
+  "dailyBook": zod.object({
+  "id": zod.string(),
+  "agendaEventId": zod.string(),
+  "scaleId": zod.string().nullish(),
+  "showBookId": zod.string().nullish(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'REPUBLISHED', 'EXECUTED', 'CANCELLED']),
+  "version": zod.number(),
+  "snapshotJson": zod.object({
+
+}).passthrough().nullish(),
+  "republishDeltaJson": zod.object({
+
+}).passthrough().nullish(),
+  "publishedAt": zod.string().nullish(),
+  "publishedBy": zod.string().nullish(),
+  "generatedAt": zod.string().nullish(),
+  "generatedBy": zod.string().nullish(),
+  "executedAt": zod.string().nullish(),
+  "executedBy": zod.string().nullish(),
+  "cancelledAt": zod.string().nullish(),
+  "cancelledBy": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Republicar Livro do Dia com diff/delta
+ */
+export const RepublishDailyBookParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const RepublishDailyBookResponse = zod.object({
+  "dailyBook": zod.object({
+  "id": zod.string(),
+  "agendaEventId": zod.string(),
+  "scaleId": zod.string().nullish(),
+  "showBookId": zod.string().nullish(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'REPUBLISHED', 'EXECUTED', 'CANCELLED']),
+  "version": zod.number(),
+  "snapshotJson": zod.object({
+
+}).passthrough().nullish(),
+  "republishDeltaJson": zod.object({
+
+}).passthrough().nullish(),
+  "publishedAt": zod.string().nullish(),
+  "publishedBy": zod.string().nullish(),
+  "generatedAt": zod.string().nullish(),
+  "generatedBy": zod.string().nullish(),
+  "executedAt": zod.string().nullish(),
+  "executedBy": zod.string().nullish(),
+  "cancelledAt": zod.string().nullish(),
+  "cancelledBy": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}),
+  "delta": zod.object({
+  "additions": zod.array(zod.object({
+
+}).passthrough()),
+  "removals": zod.array(zod.object({
+
+}).passthrough()),
+  "swaps": zod.array(zod.object({
+
+}).passthrough()),
+  "structural": zod.array(zod.object({
+
+}).passthrough()),
+  "isEmpty": zod.boolean()
+})
+})
+
+
+/**
+ * @summary Marcar Livro do Dia como executado
+ */
+export const ExecuteDailyBookParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const ExecuteDailyBookResponse = zod.object({
+  "dailyBook": zod.object({
+  "id": zod.string(),
+  "agendaEventId": zod.string(),
+  "scaleId": zod.string().nullish(),
+  "showBookId": zod.string().nullish(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'REPUBLISHED', 'EXECUTED', 'CANCELLED']),
+  "version": zod.number(),
+  "snapshotJson": zod.object({
+
+}).passthrough().nullish(),
+  "republishDeltaJson": zod.object({
+
+}).passthrough().nullish(),
+  "publishedAt": zod.string().nullish(),
+  "publishedBy": zod.string().nullish(),
+  "generatedAt": zod.string().nullish(),
+  "generatedBy": zod.string().nullish(),
+  "executedAt": zod.string().nullish(),
+  "executedBy": zod.string().nullish(),
+  "cancelledAt": zod.string().nullish(),
+  "cancelledBy": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Cancelar Livro do Dia
+ */
+export const CancelDailyBookParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const CancelDailyBookBody = zod.object({
+  "reason": zod.string()
+})
+
+export const CancelDailyBookResponse = zod.object({
+  "dailyBook": zod.object({
+  "id": zod.string(),
+  "agendaEventId": zod.string(),
+  "scaleId": zod.string().nullish(),
+  "showBookId": zod.string().nullish(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'REPUBLISHED', 'EXECUTED', 'CANCELLED']),
+  "version": zod.number(),
+  "snapshotJson": zod.object({
+
+}).passthrough().nullish(),
+  "republishDeltaJson": zod.object({
+
+}).passthrough().nullish(),
+  "publishedAt": zod.string().nullish(),
+  "publishedBy": zod.string().nullish(),
+  "generatedAt": zod.string().nullish(),
+  "generatedBy": zod.string().nullish(),
+  "executedAt": zod.string().nullish(),
+  "executedBy": zod.string().nullish(),
+  "cancelledAt": zod.string().nullish(),
+  "cancelledBy": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Regenerar Livro do Dia em DRAFT
+ */
+export const RegenerateDailyBookParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const RegenerateDailyBookResponse = zod.object({
+  "dailyBook": zod.object({
+  "id": zod.string(),
+  "agendaEventId": zod.string(),
+  "scaleId": zod.string().nullish(),
+  "showBookId": zod.string().nullish(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'REPUBLISHED', 'EXECUTED', 'CANCELLED']),
+  "version": zod.number(),
+  "snapshotJson": zod.object({
+
+}).passthrough().nullish(),
+  "republishDeltaJson": zod.object({
+
+}).passthrough().nullish(),
+  "publishedAt": zod.string().nullish(),
+  "publishedBy": zod.string().nullish(),
+  "generatedAt": zod.string().nullish(),
+  "generatedBy": zod.string().nullish(),
+  "executedAt": zod.string().nullish(),
+  "executedBy": zod.string().nullish(),
+  "cancelledAt": zod.string().nullish(),
+  "cancelledBy": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Buscar delta da última republicação
+ */
+export const GetDailyBookDeltaParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetDailyBookDeltaResponse = zod.object({
+  "version": zod.number(),
+  "status": zod.string(),
+  "hasLiveChanges": zod.boolean(),
+  "liveDelta": zod.object({
+  "additions": zod.array(zod.object({
+
+}).passthrough()),
+  "removals": zod.array(zod.object({
+
+}).passthrough()),
+  "swaps": zod.array(zod.object({
+
+}).passthrough()),
+  "structural": zod.array(zod.object({
+
+}).passthrough()),
+  "isEmpty": zod.boolean()
+}).nullish(),
+  "lastRepublishDelta": zod.object({
+  "additions": zod.array(zod.object({
+
+}).passthrough()),
+  "removals": zod.array(zod.object({
+
+}).passthrough()),
+  "swaps": zod.array(zod.object({
+
+}).passthrough()),
+  "structural": zod.array(zod.object({
+
+}).passthrough()),
+  "isEmpty": zod.boolean()
+}).nullish()
+})
+
+
+/**
+ * @summary Remover cena do Livro do Dia (soft delete)
+ */
+export const DeleteDailyBookSceneParams = zod.object({
+  "id": zod.coerce.string(),
+  "sceneId": zod.coerce.string()
+})
+
+export const DeleteDailyBookSceneResponse = zod.object({
+  "scene": zod.object({
+  "id": zod.string(),
+  "dailyBookId": zod.string(),
+  "name": zod.string(),
+  "order": zod.number(),
+  "sourceSceneId": zod.string().nullish(),
+  "isRemoved": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Remover bloco do Livro do Dia (soft delete)
+ */
+export const DeleteDailyBookBlockParams = zod.object({
+  "id": zod.coerce.string(),
+  "blockId": zod.coerce.string()
+})
+
+export const DeleteDailyBookBlockResponse = zod.object({
+  "block": zod.object({
+  "id": zod.string(),
+  "dailyBookId": zod.string(),
+  "sceneId": zod.string().nullish(),
+  "name": zod.string(),
+  "order": zod.number(),
+  "sourceBlockId": zod.string().nullish(),
+  "isRemoved": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Remover posição do Livro do Dia (soft delete)
+ */
+export const DeleteDailyBookPositionParams = zod.object({
+  "id": zod.coerce.string(),
+  "positionId": zod.coerce.string()
+})
+
+export const DeleteDailyBookPositionResponse = zod.object({
+  "position": zod.object({
+  "id": zod.string(),
+  "dailyBookId": zod.string(),
+  "blockId": zod.string().nullish(),
+  "name": zod.string(),
+  "minimumCoverage": zod.number(),
+  "sourceRoleId": zod.string().nullish(),
+  "isRemoved": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Trocar escalado de uma posição
+ */
+export const PatchDailyBookAssignmentParams = zod.object({
+  "id": zod.coerce.string(),
+  "assignmentId": zod.coerce.string()
+})
+
+export const PatchDailyBookAssignmentBody = zod.object({
+  "userId": zod.string().nullish()
+})
+
+export const PatchDailyBookAssignmentResponse = zod.object({
+  "assignment": zod.object({
+  "id": zod.string(),
+  "dailyBookId": zod.string(),
+  "positionId": zod.string(),
+  "userId": zod.string().nullish(),
+  "status": zod.enum(['ASSIGNED', 'AT_RISK', 'OPEN', 'REMOVED']),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Reordenar cenas do Livro do Dia
+ */
+export const ReorderDailyBookScenesParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const ReorderDailyBookScenesBody = zod.object({
+  "scenes": zod.array(zod.object({
+  "id": zod.string(),
+  "order": zod.number()
+}))
+})
+
+export const ReorderDailyBookScenesResponse = zod.object({
+  "success": zod.boolean()
+})
+
+

@@ -22,6 +22,10 @@ tags:
     description: Livro do Show — hierarquia e versionamento
   - name: agenda
     description: Agenda de eventos
+  - name: scales
+    description: "Escala de alocacao automatica"
+  - name: daily-book
+    description: "Livro do Dia — execucao operacional derivada da Escala"
 
 security:
   - bearerAuth: []
@@ -2284,6 +2288,451 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /daily-book:
+    get:
+      operationId: listDailyBook
+      tags: [daily-book]
+      summary: "Listar Livros do Dia"
+      parameters:
+        - name: agendaEventId
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lista de Livros do Dia
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dailyBooks:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DailyBook"
+                required: [dailyBooks]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /daily-book/generate:
+    post:
+      operationId: generateDailyBook
+      tags: [daily-book]
+      summary: "Gerar Livro do Dia a partir de evento e escala"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DailyBookGenerateRequest"
+      responses:
+        "201":
+          description: Livro do Dia gerado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dailyBook:
+                    $ref: "#/components/schemas/DailyBook"
+                required: [dailyBook]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /daily-book/{id}:
+    get:
+      operationId: getDailyBook
+      tags: [daily-book]
+      summary: "Buscar Livro do Dia com árvore completa"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Livro do Dia com cenas, blocos e posições
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dailyBook:
+                    $ref: "#/components/schemas/DailyBookWithScenes"
+                required: [dailyBook]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /daily-book/{id}/publish:
+    post:
+      operationId: publishDailyBook
+      tags: [daily-book]
+      summary: "Publicar Livro do Dia (DRAFT → PUBLISHED)"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Livro publicado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dailyBook:
+                    $ref: "#/components/schemas/DailyBook"
+                required: [dailyBook]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /daily-book/{id}/republish:
+    post:
+      operationId: republishDailyBook
+      tags: [daily-book]
+      summary: "Republicar Livro do Dia com diff/delta"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Livro republicado com delta
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dailyBook:
+                    $ref: "#/components/schemas/DailyBook"
+                  delta:
+                    $ref: "#/components/schemas/DailyBookDelta"
+                required: [dailyBook, delta]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /daily-book/{id}/execute:
+    post:
+      operationId: executeDailyBook
+      tags: [daily-book]
+      summary: "Marcar Livro do Dia como executado"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Livro executado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dailyBook:
+                    $ref: "#/components/schemas/DailyBook"
+                required: [dailyBook]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /daily-book/{id}/cancel:
+    post:
+      operationId: cancelDailyBook
+      tags: [daily-book]
+      summary: "Cancelar Livro do Dia"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelDailyBookRequest"
+      responses:
+        "200":
+          description: Livro cancelado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dailyBook:
+                    $ref: "#/components/schemas/DailyBook"
+                required: [dailyBook]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /daily-book/{id}/regenerate:
+    post:
+      operationId: regenerateDailyBook
+      tags: [daily-book]
+      summary: "Regenerar Livro do Dia em DRAFT"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Livro regenerado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dailyBook:
+                    $ref: "#/components/schemas/DailyBook"
+                required: [dailyBook]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /daily-book/{id}/delta:
+    get:
+      operationId: getDailyBookDelta
+      tags: [daily-book]
+      summary: "Buscar delta da última republicação"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Delta da republicação
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version:
+                    type: integer
+                  status:
+                    type: string
+                  hasLiveChanges:
+                    type: boolean
+                  liveDelta:
+                    $ref: "#/components/schemas/DailyBookDelta"
+                    nullable: true
+                  lastRepublishDelta:
+                    $ref: "#/components/schemas/DailyBookDelta"
+                    nullable: true
+                required: [version, status, hasLiveChanges]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /daily-book/{id}/scenes/{sceneId}:
+    delete:
+      operationId: deleteDailyBookScene
+      tags: [daily-book]
+      summary: "Remover cena do Livro do Dia (soft delete)"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sceneId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Cena removida
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scene:
+                    $ref: "#/components/schemas/DailyBookScene"
+                required: [scene]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /daily-book/{id}/blocks/{blockId}:
+    delete:
+      operationId: deleteDailyBookBlock
+      tags: [daily-book]
+      summary: "Remover bloco do Livro do Dia (soft delete)"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: blockId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Bloco removido
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  block:
+                    $ref: "#/components/schemas/DailyBookBlock"
+                required: [block]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /daily-book/{id}/positions/{positionId}:
+    delete:
+      operationId: deleteDailyBookPosition
+      tags: [daily-book]
+      summary: "Remover posição do Livro do Dia (soft delete)"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: positionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Posição removida
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  position:
+                    $ref: "#/components/schemas/DailyBookPosition"
+                required: [position]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /daily-book/{id}/assignments/{assignmentId}:
+    patch:
+      operationId: patchDailyBookAssignment
+      tags: [daily-book]
+      summary: "Trocar escalado de uma posição"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: assignmentId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DailyBookAssignmentPatchRequest"
+      responses:
+        "200":
+          description: Alocação atualizada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assignment:
+                    $ref: "#/components/schemas/DailyBookAssignment"
+                required: [assignment]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /daily-book/{id}/scenes/reorder:
+    patch:
+      operationId: reorderDailyBookScenes
+      tags: [daily-book]
+      summary: "Reordenar cenas do Livro do Dia"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DailyBookScenesReorderRequest"
+      responses:
+        "200":
+          description: Cenas reordenadas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                required: [success]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -3455,3 +3904,256 @@ components:
       properties:
         title:
           type: string
+
+    DailyBook:
+      type: object
+      properties:
+        id:
+          type: string
+        agendaEventId:
+          type: string
+        scaleId:
+          type: string
+          nullable: true
+        showBookId:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [DRAFT, PUBLISHED, REPUBLISHED, EXECUTED, CANCELLED]
+        version:
+          type: integer
+        snapshotJson:
+          type: object
+          nullable: true
+        republishDeltaJson:
+          type: object
+          nullable: true
+        publishedAt:
+          type: string
+          nullable: true
+        publishedBy:
+          type: string
+          nullable: true
+        generatedAt:
+          type: string
+          nullable: true
+        generatedBy:
+          type: string
+          nullable: true
+        executedAt:
+          type: string
+          nullable: true
+        executedBy:
+          type: string
+          nullable: true
+        cancelledAt:
+          type: string
+          nullable: true
+        cancelledBy:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, agendaEventId, status, version, createdAt, updatedAt]
+
+    DailyBookScene:
+      type: object
+      properties:
+        id:
+          type: string
+        dailyBookId:
+          type: string
+        name:
+          type: string
+        order:
+          type: integer
+        sourceSceneId:
+          type: string
+          nullable: true
+        isRemoved:
+          type: boolean
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, dailyBookId, name, order, isRemoved, createdAt, updatedAt]
+
+    DailyBookBlock:
+      type: object
+      properties:
+        id:
+          type: string
+        dailyBookId:
+          type: string
+        sceneId:
+          type: string
+          nullable: true
+        name:
+          type: string
+        order:
+          type: integer
+        sourceBlockId:
+          type: string
+          nullable: true
+        isRemoved:
+          type: boolean
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, dailyBookId, name, order, isRemoved, createdAt, updatedAt]
+
+    DailyBookPosition:
+      type: object
+      properties:
+        id:
+          type: string
+        dailyBookId:
+          type: string
+        blockId:
+          type: string
+          nullable: true
+        name:
+          type: string
+        minimumCoverage:
+          type: integer
+        sourceRoleId:
+          type: string
+          nullable: true
+        isRemoved:
+          type: boolean
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, dailyBookId, name, minimumCoverage, isRemoved, createdAt, updatedAt]
+
+    DailyBookAssignment:
+      type: object
+      properties:
+        id:
+          type: string
+        dailyBookId:
+          type: string
+        positionId:
+          type: string
+        userId:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [ASSIGNED, AT_RISK, OPEN, REMOVED]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, dailyBookId, positionId, status, createdAt, updatedAt]
+
+    DailyBookPositionWithAssignments:
+      allOf:
+        - $ref: "#/components/schemas/DailyBookPosition"
+        - type: object
+          properties:
+            assignments:
+              type: array
+              items:
+                $ref: "#/components/schemas/DailyBookAssignment"
+          required: [assignments]
+
+    DailyBookBlockWithPositions:
+      allOf:
+        - $ref: "#/components/schemas/DailyBookBlock"
+        - type: object
+          properties:
+            positions:
+              type: array
+              items:
+                $ref: "#/components/schemas/DailyBookPositionWithAssignments"
+          required: [positions]
+
+    DailyBookSceneWithBlocks:
+      allOf:
+        - $ref: "#/components/schemas/DailyBookScene"
+        - type: object
+          properties:
+            blocks:
+              type: array
+              items:
+                $ref: "#/components/schemas/DailyBookBlockWithPositions"
+          required: [blocks]
+
+    DailyBookWithScenes:
+      allOf:
+        - $ref: "#/components/schemas/DailyBook"
+        - type: object
+          properties:
+            scenes:
+              type: array
+              items:
+                $ref: "#/components/schemas/DailyBookSceneWithBlocks"
+          required: [scenes]
+
+    DailyBookGenerateRequest:
+      type: object
+      properties:
+        agendaEventId:
+          type: string
+        scaleId:
+          type: string
+          nullable: true
+      required: [agendaEventId]
+
+    CancelDailyBookRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+      required: [reason]
+
+    DailyBookAssignmentPatchRequest:
+      type: object
+      properties:
+        userId:
+          type: string
+          nullable: true
+
+    DailyBookScenesReorderRequest:
+      type: object
+      properties:
+        scenes:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              order:
+                type: integer
+            required: [id, order]
+      required: [scenes]
+
+    DailyBookDelta:
+      type: object
+      properties:
+        additions:
+          type: array
+          items:
+            type: object
+        removals:
+          type: array
+          items:
+            type: object
+        swaps:
+          type: array
+          items:
+            type: object
+        structural:
+          type: array
+          items:
+            type: object
+        isEmpty:
+          type: boolean
+      required: [additions, removals, swaps, structural, isEmpty]

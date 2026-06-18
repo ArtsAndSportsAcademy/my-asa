@@ -32,6 +32,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "list.clipboard", selected: "list.clipboard.fill" }} />
         <Label>Escala</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="daily-book">
+        <Icon sf={{ default: "doc.text", selected: "doc.text.fill" }} />
+        <Label>Livro</Label>
+      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }
@@ -119,6 +123,18 @@ function ClassicTabLayout() {
               <SymbolView name="list.clipboard" tintColor={color} size={24} />
             ) : (
               <Feather name="clipboard" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="daily-book"
+        options={{
+          title: "Livro",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="doc.text" tintColor={color} size={24} />
+            ) : (
+              <Feather name="file-text" size={22} color={color} />
             ),
         }}
       />

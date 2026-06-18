@@ -32,6 +32,8 @@ import type {
   BlockCreate,
   BlockUpdate,
   CancelAgendaEvent200,
+  CancelDailyBook200,
+  CancelDailyBookRequest,
   CompleteAgendaEvent200,
   ConfirmAgendaEvent200,
   ConflictResponse,
@@ -46,9 +48,19 @@ import type {
   CreateShowBookScene201,
   CreateUser201,
   CurrentOrganization,
+  DailyBookAssignmentPatchRequest,
+  DailyBookGenerateRequest,
+  DailyBookScenesReorderRequest,
+  DeleteDailyBookBlock200,
+  DeleteDailyBookPosition200,
+  DeleteDailyBookScene200,
+  ExecuteDailyBook200,
   ForbiddenResponse,
+  GenerateDailyBook201,
   GenerateScale201,
   GetAgendaEvent200,
+  GetDailyBook200,
+  GetDailyBookDelta200,
   GetOperation200,
   GetOperationalGroup200,
   GetOperationalGroups200,
@@ -66,6 +78,8 @@ import type {
   LineUpdate,
   ListAgendaEvents200,
   ListAgendaEventsParams,
+  ListDailyBook200,
+  ListDailyBookParams,
   ListMyAllocations200,
   ListMyAllocationsParams,
   ListOperationTags200,
@@ -87,14 +101,19 @@ import type {
   OperationStatusUpdate,
   OperationUpdate,
   OverrideAllocation200,
+  PatchDailyBookAssignment200,
   PatchScaleMeta200,
   PositionCreate,
   PositionUpdate,
+  PublishDailyBook200,
   PublishScale200,
   ReasonPayload,
   RefreshTokenRequest,
+  RegenerateDailyBook200,
   RegenerateScale200,
   RemoveGroupSupervisor200,
+  ReorderDailyBookScenes200,
+  RepublishDailyBook200,
   RepublishScale200,
   ResolveScaleException200,
   RoleCreate,
@@ -5680,5 +5699,1028 @@ export const useResolveScaleException = <TError = ErrorType<UnauthorizedResponse
         TContext
       > => {
       return useMutation(getResolveScaleExceptionMutationOptions(options));
+    }
+
+export const getListDailyBookUrl = (params?: ListDailyBookParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/daily-book?${stringifiedParams}` : `/api/daily-book`
+}
+
+/**
+ * @summary Listar Livros do Dia
+ */
+export const listDailyBook = async (params?: ListDailyBookParams, options?: RequestInit): Promise<ListDailyBook200> => {
+
+  return customFetch<ListDailyBook200>(getListDailyBookUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDailyBookQueryKey = (params?: ListDailyBookParams,) => {
+    return [
+    `/api/daily-book`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListDailyBookQueryOptions = <TData = Awaited<ReturnType<typeof listDailyBook>>, TError = ErrorType<UnauthorizedResponse>>(params?: ListDailyBookParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDailyBook>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDailyBookQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDailyBook>>> = ({ signal }) => listDailyBook(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDailyBook>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListDailyBookQueryResult = NonNullable<Awaited<ReturnType<typeof listDailyBook>>>
+export type ListDailyBookQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Listar Livros do Dia
+ */
+
+export function useListDailyBook<TData = Awaited<ReturnType<typeof listDailyBook>>, TError = ErrorType<UnauthorizedResponse>>(
+ params?: ListDailyBookParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDailyBook>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListDailyBookQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGenerateDailyBookUrl = () => {
+
+
+
+
+  return `/api/daily-book/generate`
+}
+
+/**
+ * @summary Gerar Livro do Dia a partir de evento e escala
+ */
+export const generateDailyBook = async (dailyBookGenerateRequest: DailyBookGenerateRequest, options?: RequestInit): Promise<GenerateDailyBook201> => {
+
+  return customFetch<GenerateDailyBook201>(getGenerateDailyBookUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      dailyBookGenerateRequest,)
+  }
+);}
+
+
+
+
+export const getGenerateDailyBookMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateDailyBook>>, TError,{data: BodyType<DailyBookGenerateRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateDailyBook>>, TError,{data: BodyType<DailyBookGenerateRequest>}, TContext> => {
+
+const mutationKey = ['generateDailyBook'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateDailyBook>>, {data: BodyType<DailyBookGenerateRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  generateDailyBook(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateDailyBookMutationResult = NonNullable<Awaited<ReturnType<typeof generateDailyBook>>>
+    export type GenerateDailyBookMutationBody = BodyType<DailyBookGenerateRequest>
+    export type GenerateDailyBookMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+
+    /**
+ * @summary Gerar Livro do Dia a partir de evento e escala
+ */
+export const useGenerateDailyBook = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateDailyBook>>, TError,{data: BodyType<DailyBookGenerateRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof generateDailyBook>>,
+        TError,
+        {data: BodyType<DailyBookGenerateRequest>},
+        TContext
+      > => {
+      return useMutation(getGenerateDailyBookMutationOptions(options));
+    }
+
+export const getGetDailyBookUrl = (id: string,) => {
+
+
+
+
+  return `/api/daily-book/${id}`
+}
+
+/**
+ * @summary Buscar Livro do Dia com árvore completa
+ */
+export const getDailyBook = async (id: string, options?: RequestInit): Promise<GetDailyBook200> => {
+
+  return customFetch<GetDailyBook200>(getGetDailyBookUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDailyBookQueryKey = (id: string,) => {
+    return [
+    `/api/daily-book/${id}`
+    ] as const;
+    }
+
+
+export const getGetDailyBookQueryOptions = <TData = Awaited<ReturnType<typeof getDailyBook>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDailyBook>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDailyBookQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDailyBook>>> = ({ signal }) => getDailyBook(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDailyBook>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDailyBookQueryResult = NonNullable<Awaited<ReturnType<typeof getDailyBook>>>
+export type GetDailyBookQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary Buscar Livro do Dia com árvore completa
+ */
+
+export function useGetDailyBook<TData = Awaited<ReturnType<typeof getDailyBook>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDailyBook>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDailyBookQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getPublishDailyBookUrl = (id: string,) => {
+
+
+
+
+  return `/api/daily-book/${id}/publish`
+}
+
+/**
+ * @summary Publicar Livro do Dia (DRAFT → PUBLISHED)
+ */
+export const publishDailyBook = async (id: string, options?: RequestInit): Promise<PublishDailyBook200> => {
+
+  return customFetch<PublishDailyBook200>(getPublishDailyBookUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getPublishDailyBookMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishDailyBook>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof publishDailyBook>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['publishDailyBook'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof publishDailyBook>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  publishDailyBook(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PublishDailyBookMutationResult = NonNullable<Awaited<ReturnType<typeof publishDailyBook>>>
+
+    export type PublishDailyBookMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Publicar Livro do Dia (DRAFT → PUBLISHED)
+ */
+export const usePublishDailyBook = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishDailyBook>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof publishDailyBook>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getPublishDailyBookMutationOptions(options));
+    }
+
+export const getRepublishDailyBookUrl = (id: string,) => {
+
+
+
+
+  return `/api/daily-book/${id}/republish`
+}
+
+/**
+ * @summary Republicar Livro do Dia com diff/delta
+ */
+export const republishDailyBook = async (id: string, options?: RequestInit): Promise<RepublishDailyBook200> => {
+
+  return customFetch<RepublishDailyBook200>(getRepublishDailyBookUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRepublishDailyBookMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof republishDailyBook>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof republishDailyBook>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['republishDailyBook'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof republishDailyBook>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  republishDailyBook(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RepublishDailyBookMutationResult = NonNullable<Awaited<ReturnType<typeof republishDailyBook>>>
+
+    export type RepublishDailyBookMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Republicar Livro do Dia com diff/delta
+ */
+export const useRepublishDailyBook = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof republishDailyBook>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof republishDailyBook>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getRepublishDailyBookMutationOptions(options));
+    }
+
+export const getExecuteDailyBookUrl = (id: string,) => {
+
+
+
+
+  return `/api/daily-book/${id}/execute`
+}
+
+/**
+ * @summary Marcar Livro do Dia como executado
+ */
+export const executeDailyBook = async (id: string, options?: RequestInit): Promise<ExecuteDailyBook200> => {
+
+  return customFetch<ExecuteDailyBook200>(getExecuteDailyBookUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getExecuteDailyBookMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof executeDailyBook>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof executeDailyBook>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['executeDailyBook'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof executeDailyBook>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  executeDailyBook(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ExecuteDailyBookMutationResult = NonNullable<Awaited<ReturnType<typeof executeDailyBook>>>
+
+    export type ExecuteDailyBookMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Marcar Livro do Dia como executado
+ */
+export const useExecuteDailyBook = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof executeDailyBook>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof executeDailyBook>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getExecuteDailyBookMutationOptions(options));
+    }
+
+export const getCancelDailyBookUrl = (id: string,) => {
+
+
+
+
+  return `/api/daily-book/${id}/cancel`
+}
+
+/**
+ * @summary Cancelar Livro do Dia
+ */
+export const cancelDailyBook = async (id: string,
+    cancelDailyBookRequest: CancelDailyBookRequest, options?: RequestInit): Promise<CancelDailyBook200> => {
+
+  return customFetch<CancelDailyBook200>(getCancelDailyBookUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      cancelDailyBookRequest,)
+  }
+);}
+
+
+
+
+export const getCancelDailyBookMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelDailyBook>>, TError,{id: string;data: BodyType<CancelDailyBookRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelDailyBook>>, TError,{id: string;data: BodyType<CancelDailyBookRequest>}, TContext> => {
+
+const mutationKey = ['cancelDailyBook'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelDailyBook>>, {id: string;data: BodyType<CancelDailyBookRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  cancelDailyBook(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelDailyBookMutationResult = NonNullable<Awaited<ReturnType<typeof cancelDailyBook>>>
+    export type CancelDailyBookMutationBody = BodyType<CancelDailyBookRequest>
+    export type CancelDailyBookMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Cancelar Livro do Dia
+ */
+export const useCancelDailyBook = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelDailyBook>>, TError,{id: string;data: BodyType<CancelDailyBookRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof cancelDailyBook>>,
+        TError,
+        {id: string;data: BodyType<CancelDailyBookRequest>},
+        TContext
+      > => {
+      return useMutation(getCancelDailyBookMutationOptions(options));
+    }
+
+export const getRegenerateDailyBookUrl = (id: string,) => {
+
+
+
+
+  return `/api/daily-book/${id}/regenerate`
+}
+
+/**
+ * @summary Regenerar Livro do Dia em DRAFT
+ */
+export const regenerateDailyBook = async (id: string, options?: RequestInit): Promise<RegenerateDailyBook200> => {
+
+  return customFetch<RegenerateDailyBook200>(getRegenerateDailyBookUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRegenerateDailyBookMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof regenerateDailyBook>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof regenerateDailyBook>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['regenerateDailyBook'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof regenerateDailyBook>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  regenerateDailyBook(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RegenerateDailyBookMutationResult = NonNullable<Awaited<ReturnType<typeof regenerateDailyBook>>>
+
+    export type RegenerateDailyBookMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Regenerar Livro do Dia em DRAFT
+ */
+export const useRegenerateDailyBook = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof regenerateDailyBook>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof regenerateDailyBook>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getRegenerateDailyBookMutationOptions(options));
+    }
+
+export const getGetDailyBookDeltaUrl = (id: string,) => {
+
+
+
+
+  return `/api/daily-book/${id}/delta`
+}
+
+/**
+ * @summary Buscar delta da última republicação
+ */
+export const getDailyBookDelta = async (id: string, options?: RequestInit): Promise<GetDailyBookDelta200> => {
+
+  return customFetch<GetDailyBookDelta200>(getGetDailyBookDeltaUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDailyBookDeltaQueryKey = (id: string,) => {
+    return [
+    `/api/daily-book/${id}/delta`
+    ] as const;
+    }
+
+
+export const getGetDailyBookDeltaQueryOptions = <TData = Awaited<ReturnType<typeof getDailyBookDelta>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDailyBookDelta>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDailyBookDeltaQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDailyBookDelta>>> = ({ signal }) => getDailyBookDelta(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDailyBookDelta>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDailyBookDeltaQueryResult = NonNullable<Awaited<ReturnType<typeof getDailyBookDelta>>>
+export type GetDailyBookDeltaQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary Buscar delta da última republicação
+ */
+
+export function useGetDailyBookDelta<TData = Awaited<ReturnType<typeof getDailyBookDelta>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDailyBookDelta>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDailyBookDeltaQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getDeleteDailyBookSceneUrl = (id: string,
+    sceneId: string,) => {
+
+
+
+
+  return `/api/daily-book/${id}/scenes/${sceneId}`
+}
+
+/**
+ * @summary Remover cena do Livro do Dia (soft delete)
+ */
+export const deleteDailyBookScene = async (id: string,
+    sceneId: string, options?: RequestInit): Promise<DeleteDailyBookScene200> => {
+
+  return customFetch<DeleteDailyBookScene200>(getDeleteDailyBookSceneUrl(id,sceneId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteDailyBookSceneMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDailyBookScene>>, TError,{id: string;sceneId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteDailyBookScene>>, TError,{id: string;sceneId: string}, TContext> => {
+
+const mutationKey = ['deleteDailyBookScene'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteDailyBookScene>>, {id: string;sceneId: string}> = (props) => {
+          const {id,sceneId} = props ?? {};
+
+          return  deleteDailyBookScene(id,sceneId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteDailyBookSceneMutationResult = NonNullable<Awaited<ReturnType<typeof deleteDailyBookScene>>>
+
+    export type DeleteDailyBookSceneMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Remover cena do Livro do Dia (soft delete)
+ */
+export const useDeleteDailyBookScene = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDailyBookScene>>, TError,{id: string;sceneId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteDailyBookScene>>,
+        TError,
+        {id: string;sceneId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteDailyBookSceneMutationOptions(options));
+    }
+
+export const getDeleteDailyBookBlockUrl = (id: string,
+    blockId: string,) => {
+
+
+
+
+  return `/api/daily-book/${id}/blocks/${blockId}`
+}
+
+/**
+ * @summary Remover bloco do Livro do Dia (soft delete)
+ */
+export const deleteDailyBookBlock = async (id: string,
+    blockId: string, options?: RequestInit): Promise<DeleteDailyBookBlock200> => {
+
+  return customFetch<DeleteDailyBookBlock200>(getDeleteDailyBookBlockUrl(id,blockId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteDailyBookBlockMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDailyBookBlock>>, TError,{id: string;blockId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteDailyBookBlock>>, TError,{id: string;blockId: string}, TContext> => {
+
+const mutationKey = ['deleteDailyBookBlock'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteDailyBookBlock>>, {id: string;blockId: string}> = (props) => {
+          const {id,blockId} = props ?? {};
+
+          return  deleteDailyBookBlock(id,blockId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteDailyBookBlockMutationResult = NonNullable<Awaited<ReturnType<typeof deleteDailyBookBlock>>>
+
+    export type DeleteDailyBookBlockMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Remover bloco do Livro do Dia (soft delete)
+ */
+export const useDeleteDailyBookBlock = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDailyBookBlock>>, TError,{id: string;blockId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteDailyBookBlock>>,
+        TError,
+        {id: string;blockId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteDailyBookBlockMutationOptions(options));
+    }
+
+export const getDeleteDailyBookPositionUrl = (id: string,
+    positionId: string,) => {
+
+
+
+
+  return `/api/daily-book/${id}/positions/${positionId}`
+}
+
+/**
+ * @summary Remover posição do Livro do Dia (soft delete)
+ */
+export const deleteDailyBookPosition = async (id: string,
+    positionId: string, options?: RequestInit): Promise<DeleteDailyBookPosition200> => {
+
+  return customFetch<DeleteDailyBookPosition200>(getDeleteDailyBookPositionUrl(id,positionId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteDailyBookPositionMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDailyBookPosition>>, TError,{id: string;positionId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteDailyBookPosition>>, TError,{id: string;positionId: string}, TContext> => {
+
+const mutationKey = ['deleteDailyBookPosition'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteDailyBookPosition>>, {id: string;positionId: string}> = (props) => {
+          const {id,positionId} = props ?? {};
+
+          return  deleteDailyBookPosition(id,positionId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteDailyBookPositionMutationResult = NonNullable<Awaited<ReturnType<typeof deleteDailyBookPosition>>>
+
+    export type DeleteDailyBookPositionMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Remover posição do Livro do Dia (soft delete)
+ */
+export const useDeleteDailyBookPosition = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDailyBookPosition>>, TError,{id: string;positionId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteDailyBookPosition>>,
+        TError,
+        {id: string;positionId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteDailyBookPositionMutationOptions(options));
+    }
+
+export const getPatchDailyBookAssignmentUrl = (id: string,
+    assignmentId: string,) => {
+
+
+
+
+  return `/api/daily-book/${id}/assignments/${assignmentId}`
+}
+
+/**
+ * @summary Trocar escalado de uma posição
+ */
+export const patchDailyBookAssignment = async (id: string,
+    assignmentId: string,
+    dailyBookAssignmentPatchRequest: DailyBookAssignmentPatchRequest, options?: RequestInit): Promise<PatchDailyBookAssignment200> => {
+
+  return customFetch<PatchDailyBookAssignment200>(getPatchDailyBookAssignmentUrl(id,assignmentId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      dailyBookAssignmentPatchRequest,)
+  }
+);}
+
+
+
+
+export const getPatchDailyBookAssignmentMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchDailyBookAssignment>>, TError,{id: string;assignmentId: string;data: BodyType<DailyBookAssignmentPatchRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof patchDailyBookAssignment>>, TError,{id: string;assignmentId: string;data: BodyType<DailyBookAssignmentPatchRequest>}, TContext> => {
+
+const mutationKey = ['patchDailyBookAssignment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof patchDailyBookAssignment>>, {id: string;assignmentId: string;data: BodyType<DailyBookAssignmentPatchRequest>}> = (props) => {
+          const {id,assignmentId,data} = props ?? {};
+
+          return  patchDailyBookAssignment(id,assignmentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PatchDailyBookAssignmentMutationResult = NonNullable<Awaited<ReturnType<typeof patchDailyBookAssignment>>>
+    export type PatchDailyBookAssignmentMutationBody = BodyType<DailyBookAssignmentPatchRequest>
+    export type PatchDailyBookAssignmentMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Trocar escalado de uma posição
+ */
+export const usePatchDailyBookAssignment = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchDailyBookAssignment>>, TError,{id: string;assignmentId: string;data: BodyType<DailyBookAssignmentPatchRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof patchDailyBookAssignment>>,
+        TError,
+        {id: string;assignmentId: string;data: BodyType<DailyBookAssignmentPatchRequest>},
+        TContext
+      > => {
+      return useMutation(getPatchDailyBookAssignmentMutationOptions(options));
+    }
+
+export const getReorderDailyBookScenesUrl = (id: string,) => {
+
+
+
+
+  return `/api/daily-book/${id}/scenes/reorder`
+}
+
+/**
+ * @summary Reordenar cenas do Livro do Dia
+ */
+export const reorderDailyBookScenes = async (id: string,
+    dailyBookScenesReorderRequest: DailyBookScenesReorderRequest, options?: RequestInit): Promise<ReorderDailyBookScenes200> => {
+
+  return customFetch<ReorderDailyBookScenes200>(getReorderDailyBookScenesUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      dailyBookScenesReorderRequest,)
+  }
+);}
+
+
+
+
+export const getReorderDailyBookScenesMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reorderDailyBookScenes>>, TError,{id: string;data: BodyType<DailyBookScenesReorderRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reorderDailyBookScenes>>, TError,{id: string;data: BodyType<DailyBookScenesReorderRequest>}, TContext> => {
+
+const mutationKey = ['reorderDailyBookScenes'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reorderDailyBookScenes>>, {id: string;data: BodyType<DailyBookScenesReorderRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  reorderDailyBookScenes(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReorderDailyBookScenesMutationResult = NonNullable<Awaited<ReturnType<typeof reorderDailyBookScenes>>>
+    export type ReorderDailyBookScenesMutationBody = BodyType<DailyBookScenesReorderRequest>
+    export type ReorderDailyBookScenesMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Reordenar cenas do Livro do Dia
+ */
+export const useReorderDailyBookScenes = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reorderDailyBookScenes>>, TError,{id: string;data: BodyType<DailyBookScenesReorderRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reorderDailyBookScenes>>,
+        TError,
+        {id: string;data: BodyType<DailyBookScenesReorderRequest>},
+        TContext
+      > => {
+      return useMutation(getReorderDailyBookScenesMutationOptions(options));
     }
 

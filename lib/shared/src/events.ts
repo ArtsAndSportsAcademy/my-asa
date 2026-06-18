@@ -155,6 +155,41 @@ export type EventPayloadMap = {
     overriddenBy: string;
   };
 
+  "daily-book.created": {
+    dailyBookId: string;
+    agendaEventId: string;
+    scaleId: string | null;
+    version: number;
+  };
+  "daily-book.generated": {
+    dailyBookId: string;
+    agendaEventId: string;
+    version: number;
+    scenesCount: number;
+    positionsCount: number;
+  };
+  "daily-book.updated": {
+    dailyBookId: string;
+    changeType: string;
+    changedBy: string;
+  };
+  "daily-book.published": {
+    dailyBookId: string;
+    version: number;
+    publishedBy: string;
+  };
+  "daily-book.republished": {
+    dailyBookId: string;
+    previousVersion: number;
+    newVersion: number;
+    delta: Record<string, unknown>;
+    republishedBy: string;
+  };
+  "daily-book.executed": {
+    dailyBookId: string;
+    version: number;
+    executedBy: string;
+  };
   "dailybook.generated": {
     dailyBookId: string;
     eventId: string;

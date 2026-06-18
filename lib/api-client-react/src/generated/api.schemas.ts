@@ -829,6 +829,151 @@ export interface ScalePatchRequest {
   title?: string;
 }
 
+export type DailyBookStatus = typeof DailyBookStatus[keyof typeof DailyBookStatus];
+
+
+export const DailyBookStatus = {
+  DRAFT: 'DRAFT',
+  PUBLISHED: 'PUBLISHED',
+  REPUBLISHED: 'REPUBLISHED',
+  EXECUTED: 'EXECUTED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export type DailyBookSnapshotJson = { [key: string]: unknown } | null;
+
+export type DailyBookRepublishDeltaJson = { [key: string]: unknown } | null;
+
+export interface DailyBook {
+  id: string;
+  agendaEventId: string;
+  scaleId?: string | null;
+  showBookId?: string | null;
+  status: DailyBookStatus;
+  version: number;
+  snapshotJson?: DailyBookSnapshotJson;
+  republishDeltaJson?: DailyBookRepublishDeltaJson;
+  publishedAt?: string | null;
+  publishedBy?: string | null;
+  generatedAt?: string | null;
+  generatedBy?: string | null;
+  executedAt?: string | null;
+  executedBy?: string | null;
+  cancelledAt?: string | null;
+  cancelledBy?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DailyBookScene {
+  id: string;
+  dailyBookId: string;
+  name: string;
+  order: number;
+  sourceSceneId?: string | null;
+  isRemoved: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DailyBookBlock {
+  id: string;
+  dailyBookId: string;
+  sceneId?: string | null;
+  name: string;
+  order: number;
+  sourceBlockId?: string | null;
+  isRemoved: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DailyBookPosition {
+  id: string;
+  dailyBookId: string;
+  blockId?: string | null;
+  name: string;
+  minimumCoverage: number;
+  sourceRoleId?: string | null;
+  isRemoved: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type DailyBookAssignmentStatus = typeof DailyBookAssignmentStatus[keyof typeof DailyBookAssignmentStatus];
+
+
+export const DailyBookAssignmentStatus = {
+  ASSIGNED: 'ASSIGNED',
+  AT_RISK: 'AT_RISK',
+  OPEN: 'OPEN',
+  REMOVED: 'REMOVED',
+} as const;
+
+export interface DailyBookAssignment {
+  id: string;
+  dailyBookId: string;
+  positionId: string;
+  userId?: string | null;
+  status: DailyBookAssignmentStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type DailyBookPositionWithAssignments = DailyBookPosition & {
+  assignments: DailyBookAssignment[];
+};
+
+export type DailyBookBlockWithPositions = DailyBookBlock & {
+  positions: DailyBookPositionWithAssignments[];
+};
+
+export type DailyBookSceneWithBlocks = DailyBookScene & {
+  blocks: DailyBookBlockWithPositions[];
+};
+
+export type DailyBookWithScenes = DailyBook & {
+  scenes: DailyBookSceneWithBlocks[];
+};
+
+export interface DailyBookGenerateRequest {
+  agendaEventId: string;
+  scaleId?: string | null;
+}
+
+export interface CancelDailyBookRequest {
+  reason: string;
+}
+
+export interface DailyBookAssignmentPatchRequest {
+  userId?: string | null;
+}
+
+export type DailyBookScenesReorderRequestScenesItem = {
+  id: string;
+  order: number;
+};
+
+export interface DailyBookScenesReorderRequest {
+  scenes: DailyBookScenesReorderRequestScenesItem[];
+}
+
+export type DailyBookDeltaAdditionsItem = { [key: string]: unknown };
+
+export type DailyBookDeltaRemovalsItem = { [key: string]: unknown };
+
+export type DailyBookDeltaSwapsItem = { [key: string]: unknown };
+
+export type DailyBookDeltaStructuralItem = { [key: string]: unknown };
+
+export interface DailyBookDelta {
+  additions: DailyBookDeltaAdditionsItem[];
+  removals: DailyBookDeltaRemovalsItem[];
+  swaps: DailyBookDeltaSwapsItem[];
+  structural: DailyBookDeltaStructuralItem[];
+  isEmpty: boolean;
+}
+
 /**
  * Bad request
  */
@@ -1157,5 +1302,72 @@ export type ListScaleExceptions200 = {
 
 export type ResolveScaleException200 = {
   exception: AllocationException;
+};
+
+export type ListDailyBookParams = {
+agendaEventId?: string;
+status?: string;
+groupId?: string;
+};
+
+export type ListDailyBook200 = {
+  dailyBooks: DailyBook[];
+};
+
+export type GenerateDailyBook201 = {
+  dailyBook: DailyBook;
+};
+
+export type GetDailyBook200 = {
+  dailyBook: DailyBookWithScenes;
+};
+
+export type PublishDailyBook200 = {
+  dailyBook: DailyBook;
+};
+
+export type RepublishDailyBook200 = {
+  dailyBook: DailyBook;
+  delta: DailyBookDelta;
+};
+
+export type ExecuteDailyBook200 = {
+  dailyBook: DailyBook;
+};
+
+export type CancelDailyBook200 = {
+  dailyBook: DailyBook;
+};
+
+export type RegenerateDailyBook200 = {
+  dailyBook: DailyBook;
+};
+
+export type GetDailyBookDelta200 = {
+  version: number;
+  status: string;
+  hasLiveChanges: boolean;
+  liveDelta?: DailyBookDelta | null;
+  lastRepublishDelta?: DailyBookDelta | null;
+};
+
+export type DeleteDailyBookScene200 = {
+  scene: DailyBookScene;
+};
+
+export type DeleteDailyBookBlock200 = {
+  block: DailyBookBlock;
+};
+
+export type DeleteDailyBookPosition200 = {
+  position: DailyBookPosition;
+};
+
+export type PatchDailyBookAssignment200 = {
+  assignment: DailyBookAssignment;
+};
+
+export type ReorderDailyBookScenes200 = {
+  success: boolean;
 };
 

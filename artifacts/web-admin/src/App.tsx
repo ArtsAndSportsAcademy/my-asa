@@ -13,6 +13,8 @@ import ShowBookPage from "@/pages/admin/show-book";
 import AgendaPage from "@/pages/admin/agenda";
 import AuditoriaPage from "@/pages/admin/auditoria";
 import ScalesPage from "@/pages/admin/scales";
+import DailyBookPage from "@/pages/admin/daily-book";
+import SupervisorDailyBookPage from "@/pages/supervisor/daily-book";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +26,19 @@ function ProtectedRoute({ component: Component, path }: { component: React.Compo
   if (!isAuthenticated) {
     return <Redirect to="/login" />;
   }
+
+  return <Route path={path} component={Component} />;
+}
+
+function RoleRoute({ component: Component, path, roles }: { component: React.ComponentType<any>, path: string, roles: string[] }) {
+  const { isAuthenticated, isLoading, roles: userRoles } = useAuth();
+  
+  if (isLoading) return <div className="min-h-screen bg-muted/20 flex items-center justify-center"><div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" /></div>;
+  
+  if (!isAuthenticated) return <Redirect to="/login" />;
+  
+  const hasRole = userRoles.some((r) => roles.includes(r.role));
+  if (!hasRole) return <Redirect to="/admin/home" />;
 
   return <Route path={path} component={Component} />;
 }
@@ -47,6 +62,8 @@ function Router() {
       <ProtectedRoute path="/admin/agenda" component={AgendaPage} />
       <ProtectedRoute path="/admin/auditoria" component={AuditoriaPage} />
       <ProtectedRoute path="/admin/scales" component={ScalesPage} />
+      <RoleRoute path="/admin/daily-book" component={DailyBookPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
+      <RoleRoute path="/supervisor/daily-book" component={SupervisorDailyBookPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
       <Route component={NotFound} />
     </Switch>
   );
