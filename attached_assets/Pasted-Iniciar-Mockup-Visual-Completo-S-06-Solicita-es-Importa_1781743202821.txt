@@ -1,0 +1,356 @@
+Iniciar Mockup Visual Completo — S-06 Solicitações.
+
+Importante:
+
+S-06 já passou por:
+
+* Especificação Funcional v2
+* Auditoria de Cenários Limite
+* Revisão de Lacunas
+* Wireframe Estrutural
+* Auditoria de Wireframe
+
+A superfície está considerada estruturalmente encerrada.
+
+Não alterar:
+
+* estados;
+* fluxos;
+* responsabilidades;
+* regras de negócio;
+* arquitetura.
+
+O objetivo agora é exclusivamente visual.
+
+═══════════════════════
+BASE OBRIGATÓRIA
+═══════════════════════
+
+Aplicar integralmente:
+
+* docs/design-visual-bloco1-myasa-2.0.md
+* docs/ux-diretrizes-obrigatorias.md
+* docs/arquitetura-myasa-2.0.md
+* docs/wireframe-s01-meu-dia.md
+* docs/wireframe-s02-painel-operacional.md
+* docs/wireframe-s04-escala.md
+* docs/wireframe-s06-solicitacoes.md
+
+Honrar integralmente a identidade da Asa:
+
+Transformar complexidade operacional em clareza de decisão.
+
+═══════════════════════
+PRINCÍPIOS VISUAIS OBRIGATÓRIOS
+═══════════════════════
+
+Branco = calma.
+
+Espaço em branco comunica estabilidade.
+
+Não preencher espaços apenas porque existem.
+
+---
+
+Gradiente roxo → azul
+
+Reservado para:
+
+* CTA principal;
+* IA;
+* elementos de identidade;
+* estados de sucesso especiais.
+
+Nunca decorativo.
+
+Nunca em fundos de tela.
+
+---
+
+Vermelho
+
+Exclusivamente para:
+
+* Crítico;
+* ação obrigatória;
+* risco operacional imediato.
+
+Uso mínimo.
+
+---
+
+Âmbar
+
+Atenção.
+
+Pendências.
+
+Prazo próximo.
+
+Situações que exigem acompanhamento.
+
+---
+
+Verde
+
+Confirmado.
+
+Resolvido.
+
+Aprovado.
+
+Coberto.
+
+---
+
+Bordas arredondadas.
+
+Sem cantos agressivos.
+
+Sem aparência de ERP.
+
+Sem aparência de planilha.
+
+═══════════════════════
+TELA 1 — W1 LISTA DE SOLICITAÇÕES (MEMBRO)
+═══════════════════════
+
+Produzir mockup completo.
+
+Validar:
+
+* Ação Necessária domina visualmente.
+* Proposta Alternativa é impossível de ignorar.
+* Prazo visualmente forte.
+* Estados decididos visualmente silenciosos.
+* APROVADA, NEGADA e REVOGADA claramente distinguíveis.
+
+Responder:
+
+O que o usuário percebe nos primeiros 2 segundos?
+
+═══════════════════════
+TELA 2 — W2 CRIAR SOLICITAÇÃO
+═══════════════════════
+
+Produzir mockup das 3 etapas:
+
+1. Escolha do tipo
+2. Formulário
+3. Confirmação
+
+Validar:
+
+* simplicidade;
+* clareza;
+* sensação de segurança.
+
+A criação não pode parecer burocrática.
+
+═══════════════════════
+TELA 3 — W3 ACOMPANHAMENTO
+═══════════════════════
+
+Produzir:
+
+* versão aprovada;
+* versão negada;
+* versão revogada.
+
+Validar:
+
+A decisão precisa ser compreendida sem esforço.
+
+O motivo precisa ser visível.
+
+A linha do tempo precisa parecer narrativa.
+
+Não log técnico.
+
+═══════════════════════
+TELA 4 — W4 PROPOSTA ALTERNATIVA
+═══════════════════════
+
+Tela crítica.
+
+Validar:
+
+* prazo domina;
+* comparação visual clara entre:
+
+  * o que pedi;
+  * o que foi proposto.
+
+Aceitar, Recusar e Negociar devem ter pesos visuais adequados.
+
+Nenhuma ação pode parecer escondida.
+
+═══════════════════════
+TELA 5 — W5 AGUARDANDO INFORMAÇÃO
+═══════════════════════
+
+Validar:
+
+* pergunta do Supervisor é o centro da tela;
+* contexto original permanece visível;
+* responder é imediato.
+
+O usuário não pode esquecer qual era seu pedido original.
+
+═══════════════════════
+TELA 6 — W6 LISTA DO SUPERVISOR
+═══════════════════════
+
+Validar:
+
+* urgência percebida sem leitura;
+* agrupamentos evidentes;
+* visão consolidada convidativa.
+
+Crítico → Alto → Médio → Baixo
+
+deve ser percebido visualmente.
+
+Não apenas lido.
+
+═══════════════════════
+TELA 7 — W7 ANÁLISE INDIVIDUAL
+═══════════════════════
+
+Tela mais importante de S-06.
+
+Dedicar atenção máxima.
+
+Validar:
+
+Pedido
+↓
+Impacto Operacional
+↓
+Impacto Acumulado
+↓
+Decisão
+
+visualmente inevitável.
+
+Nenhum botão pode competir com os blocos anteriores.
+
+A tela deve transmitir:
+
+"Entenda primeiro. Decida depois."
+
+═══════════════════════
+TELA 8 — W8 VISÃO CONSOLIDADA
+═══════════════════════
+
+Validar:
+
+* impacto coletivo;
+* cobertura;
+* simulações.
+
+A IA deve ajudar.
+
+Não dominar.
+
+O Supervisor deve perceber rapidamente:
+
+"aprovar todas gera problema."
+
+═══════════════════════
+TELA 9 — W9 REVOGAÇÃO
+═══════════════════════
+
+Validar:
+
+* impacto da revogação antes da ação;
+* motivo obrigatório visualmente claro;
+* consequência operacional evidente.
+
+A tela deve gerar reflexão.
+
+Não clique impulsivo.
+
+═══════════════════════
+TELA 10 — W10 MONITORAMENTO ADMIN
+═══════════════════════
+
+Cuidado máximo.
+
+Não parecer:
+
+* dashboard corporativo;
+* supervisor ampliado.
+
+Deve parecer:
+
+Painel de Saúde Organizacional.
+
+Validar:
+
+* sinais;
+* tendências;
+* proximidade de escaladas;
+* reincidência.
+
+═══════════════════════
+TELA 11 — W11 INVESTIGAÇÃO ADMIN
+═══════════════════════
+
+Validar:
+
+Histórico narrativo.
+
+Não log.
+
+Não tabela.
+
+Não auditoria técnica.
+
+O Admin deve conseguir responder:
+
+"O que aconteceu?"
+
+sem precisar reconstruir mentalmente a história.
+
+═══════════════════════
+AUDITORIA VISUAL FINAL
+═══════════════════════
+
+Após todos os mockups responder:
+
+1. Qual tela é a mais forte visualmente?
+
+2. Qual tela corre risco de excesso de densidade?
+
+3. Existe alguma tela parecendo ERP?
+
+4. Existe alguma tela parecendo WhatsApp?
+
+5. Existe alguma tela parecendo dashboard corporativo?
+
+6. Existe alguma tela que não parece MyASA?
+
+7. A identidade da Asa está presente sem competir com a informação?
+
+8. O membro sente certeza?
+
+9. O supervisor sente controle?
+
+10. O admin sente saúde organizacional?
+
+═══════════════════════
+VEREDITO FINAL
+═══════════════════════
+
+Classificar:
+
+🟢 Pronto para protótipo navegável
+
+🟡 Ajustes visuais necessários
+
+🔴 Revisão de mockup necessária
+
+Objetivo:
+
+Encerrar definitivamente S-06 e elevá-la ao mesmo nível de maturidade visual de S-01, S-02 e S-04.
