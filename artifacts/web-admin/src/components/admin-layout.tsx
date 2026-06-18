@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { Theater, Home, Users, Briefcase, Users2, LogOut, ChevronRight, BookOpen, CalendarDays, ShieldCheck, ClipboardList, BookMarked, Eye, LayoutDashboard, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { useLogout } from "@workspace/api-client-react";
 
 const navItems = [
