@@ -1,0 +1,244 @@
+Vamos iniciar o primeiro ciclo operacional completo do MyASA.
+
+Nome do ciclo:
+
+Ciclo de Planejamento Operacional
+
+Importante:
+
+A partir deste ponto, não trabalhar superfícies isoladamente.
+
+O objetivo é modelar o comportamento completo da operação atravessando múltiplas superfícies.
+
+Não iniciar wireframes.
+
+Não iniciar mockups.
+
+Primeiro entender o ciclo completo.
+
+═══════════════════════
+BASE OBRIGATÓRIA
+═══════════════════════
+
+Utilizar obrigatoriamente:
+
+* Arquitetura MyASA 2.0
+* Pesquisas do Supervisor
+* Pesquisas do Membro
+* Pesquisas do Admin
+* Jornadas
+* Arquitetura de Navegação
+* Mapa de Superfícies
+* Bloco 1 completo
+* S-06 Solicitações (encerrada)
+
+═══════════════════════
+OBJETIVO
+═══════════════════════
+
+Modelar o fluxo completo que começa em uma Solicitação aprovada e termina quando toda a operação foi atualizada e todos os envolvidos possuem a informação correta.
+
+Não analisar telas.
+
+Analisar comportamento.
+
+═══════════════════════
+SUPERFÍCIES ENVOLVIDAS
+═══════════════════════
+
+S-06 Solicitações
+S-04 Escala
+S-05 Livro do Dia
+S-08 Avisos
+S-01 Meu Dia
+S-11 Histórico
+S-10 IA
+
+═══════════════════════
+PARTE 1 — MAPA DO CICLO
+═══════════════════════
+
+Mapear o fluxo completo para:
+
+1. Folga aprovada
+2. Restrição aprovada
+3. Troca aprovada
+4. Ajuste operacional aprovado
+5. Solicitação administrativa aprovada
+
+Para cada caso responder:
+
+* O que acontece primeiro?
+* O que muda na Escala?
+* O que muda no Livro do Dia?
+* O que gera Aviso?
+* O que aparece no Meu Dia?
+* O que vai para o Histórico?
+* Como a IA participa?
+
+═══════════════════════
+PARTE 2 — RESPONSABILIDADES
+═══════════════════════
+
+Para cada etapa responder:
+
+Quem inicia?
+
+Quem valida?
+
+Quem executa?
+
+Quem é informado?
+
+Quem confirma?
+
+Quem audita?
+
+Identificar qualquer momento sem responsável.
+
+═══════════════════════
+PARTE 3 — LIVRO DO DIA
+═══════════════════════
+
+Ainda não modelar interface.
+
+Definir apenas:
+
+* Quando o Livro do Dia precisa ser atualizado.
+* O que atualiza automaticamente.
+* O que exige validação do Supervisor.
+* O que exige republicação.
+* O que gera confirmação para membros.
+
+Validar contra todas as decisões já tomadas sobre:
+
+* blocos;
+* posições;
+* linhas;
+* substituições;
+* publicação;
+* republicação.
+
+═══════════════════════
+PARTE 4 — AVISOS
+═══════════════════════
+
+Definir:
+
+Quando um evento gera Aviso.
+
+Quando NÃO gera Aviso.
+
+Quem recebe.
+
+Quem precisa confirmar.
+
+Quando uma alteração deve aparecer como:
+
+* aviso simples;
+* aviso importante;
+* alteração operacional persistente.
+
+═══════════════════════
+PARTE 5 — MEU DIA
+═══════════════════════
+
+Definir:
+
+Como a alteração chega ao Membro.
+
+O que muda visualmente.
+
+Quando aparece no topo.
+
+Quando exige confirmação.
+
+Quando desaparece.
+
+Como garantir que o Membro não entre em operação com informação desatualizada.
+
+═══════════════════════
+PARTE 6 — HISTÓRICO
+═══════════════════════
+
+Lembrar:
+
+Histórico não é log.
+
+Histórico é narrativa.
+
+Para cada evento responder:
+
+Como o Histórico contaria a história completa?
+
+Exemplo:
+
+"Carolina solicitou folga.
+Fernanda analisou.
+A IA identificou impacto.
+Beatriz foi selecionada como substituta.
+Livro do Dia republicado.
+Aviso enviado.
+8 membros confirmaram."
+
+Validar o conceito narrativo.
+
+═══════════════════════
+PARTE 7 — IA
+═══════════════════════
+
+Definir participação da IA em cada etapa.
+
+A IA deve responder:
+
+* O que mudou?
+* Quem foi impactado?
+* Existe risco?
+* Quem ainda não confirmou?
+* A operação continua coberta?
+
+A IA nunca toma a decisão.
+
+A IA explica consequências.
+
+═══════════════════════
+PARTE 8 — AUDITORIA DE INTEGRAÇÃO
+═══════════════════════
+
+Responder:
+
+1. Existe informação duplicada?
+
+2. Existe atualização manual desnecessária?
+
+3. Existe risco de inconsistência entre superfícies?
+
+4. Existe silêncio operacional?
+
+5. Existe alguma etapa sem dono?
+
+6. Existe alguma confirmação perdida?
+
+7. Existe algum ponto onde o membro pode ficar desatualizado?
+
+8. Existe algum ponto onde o supervisor perde visibilidade?
+
+═══════════════════════
+PARTE 9 — VEREDITO
+═══════════════════════
+
+Produzir:
+
+Mapa Oficial do Ciclo de Planejamento Operacional.
+
+Classificar:
+
+🟢 Ciclo consistente
+
+🟡 Ajustes necessários
+
+🔴 Revisão estrutural necessária
+
+Objetivo final:
+
+Definir completamente como Solicitações, Escala, Livro do Dia, Avisos, Meu Dia, Histórico e IA funcionam juntos antes de iniciar o design das próximas superfícies.
