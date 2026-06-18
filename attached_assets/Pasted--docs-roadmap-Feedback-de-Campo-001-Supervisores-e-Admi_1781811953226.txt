@@ -1,0 +1,128 @@
+# docs(roadmap): Feedback de Campo #001 — Supervisores e Admins
+
+Origem:
+Primeira apresentação operacional do MyASA para Supervisores e Admins.
+
+Objetivo:
+Registrar feedbacks validados por usuários reais para evolução futura do produto.
+
+Importante:
+
+* Nenhum item altera a arquitetura atual.
+* Nenhum item modifica as prioridades das Sprints em andamento.
+* Todos os itens foram classificados como evolução do roadmap.
+
+## FC-01 — Livro do Show como Bíblia Operacional
+
+Feedback:
+
+O Livro do Show deve se tornar a principal fonte de conhecimento operacional dos Supervisores.
+
+Necessidades identificadas:
+
+* vídeos por cena
+* músicas por cena
+* imagens
+* PDFs
+* referências de figurino
+* referências de personagem
+* observações operacionais
+
+Direção:
+
+Expandir S-13 Livro do Show sem criar nova superfície.
+
+Prioridade:
+Alta
+
+---
+
+## FC-02 — Check-in Operacional
+
+Feedback:
+
+A operação precisa saber quem deveria estar e quem realmente chegou.
+
+Necessidade:
+
+Controle de presença operacional em tempo real.
+
+Estados sugeridos:
+
+* Esperado
+* Presente
+* Atrasado
+* Ausente
+* Justificado
+
+Integrações futuras:
+
+* Escala
+* Meu Dia
+* Painel Operacional
+* Histórico
+
+Prioridade:
+Alta
+
+---
+
+## FC-03 — Insights da Biblioteca
+
+Feedback:
+
+Supervisores desejam identificar conteúdos que geram dúvidas recorrentes.
+
+Objetivo:
+
+Melhorar procedimentos, treinamentos e documentação.
+
+Importante:
+
+Não exibir perguntas individuais dos membros.
+
+Exibir apenas métricas agregadas.
+
+Exemplos:
+
+* documentos mais consultados
+* documentos com maior volume de dúvidas
+* tópicos mais perguntados
+* documentos pouco acessados
+
+Integrações futuras:
+
+* Biblioteca (S-14)
+* IA (S-10)
+
+Prioridade:
+Média
+
+---
+
+## FC-04 — Integração Google Calendar
+
+Feedback:
+
+Eventos relevantes da Agenda deveriam poder ser sincronizados com calendários externos.
+
+Possibilidades futuras:
+
+* exportação de eventos
+* assinatura de calendário
+* sincronização bidirecional
+
+Integrações futuras:
+
+* Agenda (S-12)
+
+Prioridade:
+Baixa
+
+---
+
+## Veredito
+
+Nenhum feedback invalida decisões arquiteturais existentes.
+
+Todos os itens reforçam a direção atual do produto e foram incorporados ao roadmap como evoluções futuras validadas em campo.
