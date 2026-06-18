@@ -1,0 +1,262 @@
+# MyASA — Sprint 16 — S-06 Solicitações
+
+Utilizar obrigatoriamente:
+
+* Blueprint Executivo
+* Gate Arquitetural
+* Catálogo Oficial das 17 Superfícies
+* AUD-D01 concluída
+* Sprint 0 → Sprint 15 concluídas
+* Fundação existente em requests.ts
+
+Importante:
+
+A fundação já existe.
+
+Não recriar tabelas.
+
+Não alterar enums existentes.
+
+Não alterar requestsTable.
+
+Não alterar requestDecisionsTable.
+
+Não alterar FC-02 Check-in.
+
+Não alterar Motor de Escala.
+
+Objetivo:
+
+Transformar a fundação existente da S-06 em uma superfície operacional completa para Membro, Supervisor e Admin.
+
+Pergunta respondida:
+
+"Como um membro solicita algo e como a organização responde?"
+
+═══════════════════════
+T001 — Auditoria da Fundação
+═══════════════════════
+
+Validar utilização da fundação existente:
+
+* requests
+* request_decisions
+* request_type
+* request_status
+* request_decision
+
+Nenhuma alteração estrutural.
+
+═══════════════════════
+T002 — API
+═══════════════════════
+
+Implementar:
+
+GET /requests
+
+GET /requests/:id
+
+POST /requests
+
+PATCH /requests/:id
+
+POST /requests/:id/decision
+
+GET /requests/pending
+
+Permissões:
+
+Membro
+
+* cria
+* visualiza próprias
+
+Supervisor
+
+* visualiza da operação
+* decide
+
+Admin
+
+* visualiza todas
+
+═══════════════════════
+T003 — OpenAPI + Codegen
+═══════════════════════
+
+Gerar:
+
+* useListRequests
+* useGetRequest
+* useCreateRequest
+* useUpdateRequest
+* useDecideRequest
+* useListPendingRequests
+
+═══════════════════════
+T004 — Mobile (Membro)
+═══════════════════════
+
+Nova superfície:
+
+Minhas Solicitações
+
+Permitir:
+
+* criar solicitação
+* visualizar histórico
+* acompanhar status
+* aceitar alternativa proposta
+* rejeitar alternativa proposta
+
+Tipos já existentes:
+
+* LEAVE
+* ROLE_RESTRICTION
+* PHYSICAL_RESTRICTION
+* HEALTH_RESTRICTION
+* SCHEDULE_CHANGE
+* SWAP
+* OTHER
+
+═══════════════════════
+T005 — Supervisor
+═══════════════════════
+
+Nova página:
+
+Solicitações
+
+Filtros:
+
+* Pendentes
+* Aprovadas
+* Negadas
+* Alternativas
+
+Permitir:
+
+* Aprovar
+* Negar
+* Propor alternativa
+
+Exemplos:
+
+Folga
+
+Troca
+
+Restrição física
+
+Mudança de escala
+
+═══════════════════════
+T006 — Admin
+═══════════════════════
+
+Página de consulta global.
+
+Permitir:
+
+* visualizar todas as solicitações
+* filtrar por operação
+* filtrar por status
+* consultar decisões
+
+Admin não participa da aprovação diária.
+
+═══════════════════════
+T007 — Histórico
+═══════════════════════
+
+Registrar:
+
+* request.created
+* request.approved
+* request.denied
+* request.alternative_proposed
+* request.alternative_accepted
+* request.alternative_rejected
+
+═══════════════════════
+T008 — Meu Dia
+═══════════════════════
+
+Aproveitar a estrutura existente.
+
+Melhorar:
+
+* solicitações pendentes
+* alternativas aguardando resposta
+* solicitações recentemente aprovadas
+
+═══════════════════════
+T009 — Compatibilidade Arquitetural
+═══════════════════════
+
+Apenas validar compatibilidade futura.
+
+Não alterar:
+
+* Check-in
+* Escala
+* Livro do Dia
+
+Responder:
+
+1. Solicitações poderão futuramente justificar EXCUSED?
+2. Solicitações poderão futuramente influenciar a Escala?
+3. A arquitetura atual suporta essas integrações?
+
+Sem implementar automações nesta sprint.
+
+═══════════════════════
+FORA DE ESCOPO
+═══════════════════════
+
+Não implementar:
+
+* Tarefas Operacionais
+* Aprovação multinível
+* Fluxos de RH
+* Controle médico
+* Alterações no Check-in
+* Alterações no Livro do Dia
+* Alterações no Motor de Escala
+* IA
+
+═══════════════════════
+AUDITORIA FINAL
+═══════════════════════
+
+Responder:
+
+1. Membro consegue criar solicitação?
+2. Supervisor consegue decidir?
+3. Alternativas funcionam?
+4. Histórico registra decisões?
+5. Meu Dia exibe solicitações corretamente?
+6. S-06 está acessível para todos os papéis?
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Objetivo final:
+
+Completar oficialmente a S-06 Solicitações utilizando a fundação já existente.
+
+Fluxo esperado:
+
+Membro
+↓
+Solicitação
+↓
+Supervisor
+↓
+Decisão
+↓
+Histórico
+
+Mantendo FC-02 Check-in, Escala e Livro do Dia como módulos independentes.
