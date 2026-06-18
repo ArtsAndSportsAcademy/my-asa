@@ -31,6 +31,13 @@ const ADMIN_NAV: NavGroup[] = [
     ],
   },
   {
+    label: "OPERAÇÃO",
+    items: [
+      { href: "/admin/scales",     icon: ClipboardList, label: "Escalas"      },
+      { href: "/admin/daily-book", icon: BookMarked,    label: "Livro do Dia" },
+    ],
+  },
+  {
     label: "ORGANIZAÇÃO",
     items: [
       { href: "/admin/operations", icon: Briefcase, label: "Operações"   },
@@ -49,6 +56,14 @@ const ADMIN_NAV: NavGroup[] = [
     label: "PLANEJAMENTO",
     items: [
       { href: "/admin/agenda", icon: CalendarDays, label: "Agenda" },
+    ],
+  },
+  {
+    label: "COMUNICAÇÃO",
+    items: [
+      { href: "/admin/avisos",     icon: Bell,          label: "Avisos"    },
+      { href: "/admin/messages",   icon: MessageSquare, label: "Mensagens" },
+      { href: "/admin/deliveries", icon: Package,       label: "Entregas"  },
     ],
   },
   {
