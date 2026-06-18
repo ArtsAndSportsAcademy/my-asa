@@ -1,0 +1,193 @@
+Vamos realizar uma Auditoria de Cenários Limite de S-06 — Solicitações.
+
+Objetivo:
+
+Tentar quebrar a especificação atual antes de iniciar wireframes.
+
+Não validar o fluxo normal.
+
+Procurar exceções, estados ausentes, responsabilidades indefinidas e riscos de retrabalho.
+
+Assumir postura crítica.
+
+Assumir que qualquer lacuna encontrada agora custa pouco.
+Qualquer lacuna encontrada após wireframes ou desenvolvimento custa caro.
+
+Base obrigatória:
+
+* Especificação Funcional S-06
+* Arquitetura MyASA 2.0
+* Pesquisas (Supervisor, Membro e Admin)
+* Jornadas
+* Auditoria de Consistência
+* Navegação
+* Superfícies
+
+═══════════════════════
+PARTE 1 — CICLO DE VIDA
+═══════════════════════
+
+Auditar os estados atuais:
+
+* ENVIADA
+* EM ANÁLISE
+* AGUARDANDO INFORMAÇÃO
+* APROVADA
+* NEGADA
+* PROPOSTA ALTERNATIVA
+* CANCELADA
+
+Responder:
+
+1. Existe algum estado ausente?
+2. Existe algum estado redundante?
+3. Existe algum cenário real que não encontra um estado adequado?
+4. Existe necessidade de RASCUNHO?
+5. Existe necessidade de EXPIRADA?
+6. Existe necessidade de REVOGADA?
+7. Existe necessidade de REABERTA?
+
+Explicar cada conclusão.
+
+═══════════════════════
+PARTE 2 — SOLICITAÇÃO APROVADA QUE SE TORNA INVIÁVEL
+═══════════════════════
+
+Executar cenários:
+
+* Folga aprovada e depois perda de cobertura
+* Mudança estrutural da operação
+* Cancelamento de show
+* Restrição nova que afeta a decisão anterior
+
+Responder:
+
+O que acontece?
+
+A aprovação continua válida?
+
+Existe renegociação?
+
+Existe revogação?
+
+Quem decide?
+
+Como o Histórico registra?
+
+Como o Membro é informado?
+
+═══════════════════════
+PARTE 3 — AUSÊNCIA DO SUPERVISOR
+═══════════════════════
+
+Executar cenários:
+
+* Supervisor de férias
+* Supervisor afastado
+* Supervisor desligado
+* Supervisor sem acesso ao sistema
+
+Responder:
+
+Quem assume?
+
+Existe Supervisor substituto?
+
+Existe escalada automática?
+
+Existe configuração operacional para isso?
+
+Qual o comportamento esperado?
+
+═══════════════════════
+PARTE 4 — SOLICITAÇÕES RELACIONADAS
+═══════════════════════
+
+Executar cenário:
+
+Carolina
+Amanda
+Arthur
+Débora
+
+Todos pedem folga para o mesmo dia.
+
+Responder:
+
+O Supervisor analisa individualmente?
+
+O Supervisor consegue visualizar impacto conjunto?
+
+Existe visão consolidada?
+
+Existe risco de aprovar individualmente algo que deveria ser analisado em grupo?
+
+Existe necessidade de ferramenta específica para análise coletiva?
+
+═══════════════════════
+PARTE 5 — RESPONSABILIDADE E GOVERNANÇA
+═══════════════════════
+
+Responder:
+
+Existe algum momento sem responsável definido?
+
+Existe algum estado em que a solicitação pode ficar abandonada?
+
+Existe algum momento onde o sistema não sabe quem deve agir?
+
+Existe algum cenário onde Membro, Supervisor e Admin acreditam que a responsabilidade é de outro?
+
+═══════════════════════
+PARTE 6 — TESTE DE REALIDADE
+═══════════════════════
+
+Executar pelo menos 10 cenários reais da ASA.
+
+Exemplos:
+
+* Folga de última hora
+* Múltiplas folgas
+* Restrição médica
+* Troca de folga
+* Ajuste de escala
+* Supervisor ausente
+* Solicitação esquecida
+* Pedido administrativo urgente
+* Solicitação negada e contestada
+* Proposta alternativa sem resposta
+
+Para cada cenário responder:
+
+* Fluxo funciona?
+* Existe ambiguidade?
+* Existe risco operacional?
+* Existe risco de UX?
+* Existe risco de retrabalho?
+
+═══════════════════════
+PARTE 7 — VEREDITO
+═══════════════════════
+
+Responder objetivamente:
+
+1. A especificação está pronta para wireframes?
+2. Existem lacunas estruturais?
+3. Existem riscos relevantes?
+4. Existem cenários não cobertos?
+
+Classificar:
+
+🟢 Pronta para Wireframe
+
+🟡 Pronta com ajustes obrigatórios
+
+🔴 Requer revisão estrutural
+
+Importante:
+
+Se encontrar qualquer lacuna estrutural, apontar agora.
+
+O objetivo desta auditoria não é aprovar.
+
+É tentar encontrar problemas antes do design de interface.
