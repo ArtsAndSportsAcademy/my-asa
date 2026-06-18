@@ -1,0 +1,260 @@
+MyASA 2.0 — Fundação da Superfície S-09 Mensagens
+
+Utilizar obrigatoriamente:
+
+* Arquitetura MyASA 2.0 completa
+* Auditoria Final da Arquitetura Funcional
+* Núcleo Operacional completo
+* Ecossistema de IA
+* Governança Organizacional
+* Agenda
+* Biblioteca
+* Entregas
+* Todas as decisões formais acumuladas
+
+Importante:
+
+Não criar wireframes.
+
+Não criar mockups.
+
+Não criar componentes.
+
+Não assumir que Mensagens é um chat.
+
+Primeiro descobrir qual problema operacional Mensagens resolve.
+
+═══════════════════════
+OBJETIVO
+═══════════════════════
+
+Definir oficialmente o papel de S-09 Mensagens.
+
+Responder:
+
+O que é Mensagens?
+
+O que NÃO é Mensagens?
+
+Por que ela existe se já existem:
+
+* Avisos
+* Solicitações
+* Entregas
+* IA
+
+Qual lacuna operacional ela fecha?
+
+═══════════════════════
+PARTE 1 — DEFINIÇÃO
+═══════════════════════
+
+Construir definição oficial.
+
+Responder:
+
+Mensagens é:
+
+* conversa?
+* colaboração?
+* esclarecimento?
+* coordenação?
+* registro?
+
+Ou uma combinação?
+
+Produzir definição formal.
+
+═══════════════════════
+PARTE 2 — FRONTEIRAS
+═══════════════════════
+
+Comparar diretamente:
+
+Mensagem × Aviso
+
+Mensagem × Solicitação
+
+Mensagem × Entrega
+
+Mensagem × IA
+
+Mensagem × Histórico
+
+Para cada par responder:
+
+* sobreposição?
+* diferença?
+* risco de duplicação?
+
+═══════════════════════
+PARTE 3 — QUEM PODE FALAR COM QUEM
+═══════════════════════
+
+Modelar oficialmente.
+
+Responder:
+
+Membro → Supervisor
+
+Supervisor → Membro
+
+Supervisor → Grupo
+
+Admin → Supervisor
+
+Admin → Grupo
+
+Admin → Organização
+
+Membro → Membro
+
+Supervisor → Supervisor
+
+Definir:
+
+permitido
+proibido
+condicional
+
+com justificativa.
+
+═══════════════════════
+PARTE 4 — TIPOS DE CONVERSA
+═══════════════════════
+
+Identificar os tipos necessários.
+
+Exemplos:
+
+* esclarecimento operacional
+* acompanhamento de solicitação
+* coordenação de atividade
+* comunicação administrativa
+* conversa contextual de exceção
+
+Classificar:
+
+MVP
+Pós-MVP
+Nunca
+
+═══════════════════════
+PARTE 5 — CONTEXTO
+═══════════════════════
+
+Responder:
+
+Uma mensagem pode nascer de:
+
+* Solicitação?
+* Aviso?
+* Entrega?
+* Escala?
+* Livro do Dia?
+* Mudança Operacional?
+
+Definir:
+
+mensagem contextual
+mensagem livre
+
+Explicar diferenças.
+
+═══════════════════════
+PARTE 6 — HISTÓRICO
+═══════════════════════
+
+Definir:
+
+O que permanece?
+
+O que é apagável?
+
+O que precisa ser auditável?
+
+Quando uma conversa deixa de ser apenas conversa e vira parte da narrativa operacional?
+
+═══════════════════════
+PARTE 7 — IA
+═══════════════════════
+
+Responder:
+
+A IA participa de Mensagens?
+
+Como?
+
+Pode resumir conversas?
+
+Pode sugerir respostas?
+
+Pode contextualizar?
+
+Pode responder em nome de alguém?
+
+Pode iniciar mensagens?
+
+Definir limites formais.
+
+═══════════════════════
+PARTE 8 — CASOS LIMITE
+═══════════════════════
+
+Modelar:
+
+Supervisor desligado durante conversa
+
+Solicitação encerrada com conversa aberta
+
+Mensagem ligada a MO encerrada
+
+Grupo arquivado
+
+Membro desligado
+
+Operação arquivada
+
+Admin ausente
+
+═══════════════════════
+PARTE 9 — AUDITORIA
+═══════════════════════
+
+Responder:
+
+Existe risco de virar WhatsApp?
+
+Existe risco de virar e-mail interno?
+
+Existe risco de duplicar Avisos?
+
+Existe risco de duplicar Solicitações?
+
+Existe risco de virar canal social?
+
+Existe risco de gerar ruído operacional?
+
+═══════════════════════
+PARTE 10 — VEREDITO
+═══════════════════════
+
+Produzir:
+
+Fundação Oficial de S-09 Mensagens.
+
+Classificar:
+
+🟢 Pronto para UX
+
+🟡 Ajustes necessários
+
+🔴 Revisão estrutural necessária
+
+Responder explicitamente:
+
+Após esta modelagem, existe alguma superfície principal do MyASA sem fundação comportamental formal?
+
+Objetivo final:
+
+Encerrar a última superfície pendente da arquitetura funcional do MyASA e validar se o produto está estruturalmente completo antes de iniciar UX global, wireframes finais e mockups.
