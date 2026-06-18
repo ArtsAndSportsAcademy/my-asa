@@ -1,0 +1,249 @@
+MyASA 2.0 — Fundação do Ecossistema de IA
+
+Utilizar obrigatoriamente:
+
+* Arquitetura MyASA 2.0
+* Pesquisas Supervisor, Membro e Admin
+* Jornadas aprovadas
+* Bloco 1 completo
+* S-06 Solicitações
+* Entidade Mudança Operacional
+* Ciclo de Planejamento Operacional
+* Ciclo de Comunicação Operacional
+* S-13 Livro do Show
+* Todas as decisões D-01 a D-20
+* UX-01 a UX-10
+* WF-01 a WF-10
+* AU-01 a AU-04
+* LS-C01 a LS-C12
+* LS-D01 a LS-D05
+* WLS-D01 a WLS-D10
+
+Importante:
+
+Não desenhar interface.
+
+Não desenhar chat.
+
+Não desenhar componentes.
+
+Não criar wireframes.
+
+Primeiro modelar o comportamento completo da IA.
+
+═══════════════════════
+OBJETIVO
+═══════════════════════
+
+Definir oficialmente o Ecossistema de IA do MyASA.
+
+A IA não é uma funcionalidade.
+
+É uma camada transversal presente em todo o sistema.
+
+Responder:
+
+Qual é o papel da IA para:
+
+* Membro
+* Supervisor
+* Admin
+
+═══════════════════════
+PARTE 1 — IDENTIDADE
+═══════════════════════
+
+Definir:
+
+Quem é a IA do MyASA?
+
+O que ela faz?
+
+O que ela não faz?
+
+Quando ela orienta?
+
+Quando ela decide?
+
+Quando ela apenas explica?
+
+Criar definição oficial.
+
+═══════════════════════
+PARTE 2 — IA DO MEMBRO
+═══════════════════════
+
+Pergunta central:
+
+“O que eu preciso fazer?”
+
+Mapear:
+
+* dúvidas frequentes;
+* consultas rápidas;
+* interpretação da operação;
+* explicação de mudanças;
+* acompanhamento de solicitações;
+* acompanhamento de entregas.
+
+Responder:
+
+O que a IA pode responder?
+
+O que ela nunca responde?
+
+═══════════════════════
+PARTE 3 — IA DO SUPERVISOR
+═══════════════════════
+
+Pergunta central:
+
+“O que mudou?”
+
+Mapear:
+
+* exceções;
+* cobertura;
+* candidatos;
+* impacto;
+* riscos;
+* planejamento.
+
+Responder:
+
+Quando a IA sugere?
+
+Quando a IA recomenda?
+
+Quando a IA apenas apresenta dados?
+
+═══════════════════════
+PARTE 4 — IA DO ADMIN
+═══════════════════════
+
+Pergunta central:
+
+“A operação está saudável?”
+
+Mapear:
+
+* tendências;
+* reincidências;
+* gargalos;
+* supervisores sobrecarregados;
+* padrões organizacionais;
+* degradação operacional.
+
+═══════════════════════
+PARTE 5 — CONTEXTO
+═══════════════════════
+
+Mapear exatamente quais dados cada IA pode acessar.
+
+Separar:
+
+Membro
+
+Supervisor
+
+Admin
+
+Responder:
+
+Quais informações são visíveis?
+
+Quais são ocultas?
+
+Quais exigem justificativa?
+
+═══════════════════════
+PARTE 6 — AÇÕES
+═══════════════════════
+
+Classificar:
+
+Somente consulta
+
+Sugestão
+
+Preparação de ação
+
+Execução
+
+Para cada categoria:
+
+Quais ações são permitidas?
+
+Quais são proibidas?
+
+═══════════════════════
+PARTE 7 — EXPLICABILIDADE
+═══════════════════════
+
+Definir padrão obrigatório.
+
+Toda recomendação da IA deve responder:
+
+Conclusão
+
+Dados analisados
+
+Motivos
+
+Alternativas
+
+Riscos
+
+Validar se esse padrão continua suficiente.
+
+═══════════════════════
+PARTE 8 — CONFIANÇA
+═══════════════════════
+
+Responder:
+
+Quando a IA pode errar?
+
+Como comunica incerteza?
+
+Como pede confirmação?
+
+Como evita falsa autoridade?
+
+Como evita parecer uma supervisora?
+
+═══════════════════════
+PARTE 9 — AUDITORIA
+═══════════════════════
+
+Responder:
+
+Existe conflito entre IA e Supervisor?
+
+Existe conflito entre IA e Admin?
+
+Existe risco de vazamento de informação?
+
+Existe risco de dependência excessiva?
+
+Existe risco de decisões sem contexto?
+
+═══════════════════════
+PARTE 10 — VEREDITO
+═══════════════════════
+
+Produzir:
+
+Fundação Oficial do Ecossistema de IA do MyASA.
+
+Classificar:
+
+🟢 Pronto para UX
+
+🟡 Ajustes necessários
+
+🔴 Revisão estrutural necessária
+
+Objetivo final:
+
+Definir completamente o papel, limites, permissões, contexto e responsabilidade da IA antes de qualquer wireframe ou mockup.
