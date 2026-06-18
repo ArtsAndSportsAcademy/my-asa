@@ -1,4 +1,5 @@
 import pino from "pino";
+import { LOG_DOMAIN } from "@workspace/shared";
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -18,3 +19,15 @@ export const logger = pino({
         },
       }),
 });
+
+export function domainLogger(domain: (typeof LOG_DOMAIN)[keyof typeof LOG_DOMAIN]) {
+  return logger.child({ domain });
+}
+
+export function requestLogger(
+  domain: (typeof LOG_DOMAIN)[keyof typeof LOG_DOMAIN],
+  requestId: string,
+  correlationId: string,
+) {
+  return logger.child({ domain, requestId, correlationId });
+}

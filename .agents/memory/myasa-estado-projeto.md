@@ -8,7 +8,7 @@ MyASA 2.0 — plataforma operacional para operações artísticas, shows e equip
 Comunicação e documentação em Português Brasileiro.
 
 ## Fase atual
-Arquitetura de Navegação concluída. Próxima fase: Design de Interface — Bloco 1.
+**Sprint 0 CONCLUÍDO** — ambiente técnico pronto. Próxima fase: Sprint 1 (autenticação + estrutura base).
 
 ## Documentos base
 - docs/arquitetura-myasa-2.0.md
