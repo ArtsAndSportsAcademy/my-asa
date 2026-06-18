@@ -17,7 +17,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, Pencil, RefreshCw, AlertCircle } from "lucide-react";
+import { useLocation } from "wouter";
+import { Plus, MoreHorizontal, Pencil, RefreshCw, AlertCircle, Users2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -39,6 +40,7 @@ const STATUS_OPTIONS = ["DRAFT", "ACTIVE", "PAUSED", "ARCHIVED"] as const;
 export default function OperationsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
   const { data, isLoading, error } = useGetOperations();
   const operations: Operation[] = data?.operations ?? [];
@@ -170,6 +172,11 @@ export default function OperationsPage() {
                           <DropdownMenuItem onClick={() => { setStatusOp(op); setNewStatus(op.status); }}>
                             <RefreshCw className="w-4 h-4 mr-2" />
                             Mudar status
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => setLocation("/admin/groups")}>
+                            <Users2 className="w-4 h-4 mr-2" />
+                            Ver Grupos
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

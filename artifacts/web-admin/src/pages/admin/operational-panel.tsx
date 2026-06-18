@@ -18,19 +18,26 @@ import {
   TrendingUp, RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  HEALTH_CONFIG,
+  EVENT_TYPE_LABELS,
+  EVENT_TYPE_BADGES,
+  EXCEPTION_TYPE_LABELS,
+  EXCEPTION_TYPE_BADGES,
+} from "@/lib/operational-constants";
 
-// ─── Health ───────────────────────────────────────────────────────────────────
+// ─── Health icon map (icons are not in shared constants) ──────────────────────
 
-const HEALTH_CONFIG = {
-  HEALTHY:  { label: "Saudável",  icon: CheckCircle2,  bg: "bg-green-50",  border: "border-green-200",  text: "text-green-700",  badge: "bg-green-100 text-green-800" },
-  ATTENTION:{ label: "Atenção",   icon: AlertCircle,   bg: "bg-amber-50",  border: "border-amber-200",  text: "text-amber-700",  badge: "bg-amber-100 text-amber-800" },
-  RISK:     { label: "Risco",     icon: AlertTriangle, bg: "bg-orange-50", border: "border-orange-200", text: "text-orange-700", badge: "bg-orange-100 text-orange-800" },
-  CRITICAL: { label: "Crítico",   icon: XCircle,       bg: "bg-red-50",    border: "border-red-200",    text: "text-red-700",    badge: "bg-red-100 text-red-800" },
+const HEALTH_ICONS = {
+  HEALTHY:   CheckCircle2,
+  ATTENTION: AlertCircle,
+  RISK:      AlertTriangle,
+  CRITICAL:  XCircle,
 } as const;
 
 function HealthCard({ health }: { health: OperationalHealth }) {
   const cfg = HEALTH_CONFIG[health.status as keyof typeof HEALTH_CONFIG] ?? HEALTH_CONFIG.ATTENTION;
-  const Icon = cfg.icon;
+  const Icon = HEALTH_ICONS[health.status as keyof typeof HEALTH_ICONS] ?? HEALTH_ICONS.ATTENTION;
   return (
     <Card className={`${cfg.border} border-2`}>
       <CardHeader className="pb-3">
@@ -71,33 +78,6 @@ const COVERAGE_LABELS: Record<string, string> = {
 };
 const COVERAGE_BADGE: Record<string, string> = {
   COMPLETE: "bg-green-100 text-green-800", PARTIAL: "bg-amber-100 text-amber-800", INSUFFICIENT: "bg-red-100 text-red-800",
-};
-
-// ─── Exception type labels ─────────────────────────────────────────────────────
-
-const EX_TYPE_LABELS: Record<string, string> = {
-  ALLOCATION_EXCEPTION: "Exceção de Alocação",
-  OPEN_POSITION: "Posição em Aberto",
-  CONFLICT: "Conflito",
-  MANUAL_OVERRIDE: "Substituição Manual",
-};
-const EX_TYPE_BADGE: Record<string, string> = {
-  ALLOCATION_EXCEPTION: "bg-violet-100 text-violet-800",
-  OPEN_POSITION: "bg-red-100 text-red-800",
-  CONFLICT: "bg-orange-100 text-orange-800",
-  MANUAL_OVERRIDE: "bg-blue-100 text-blue-800",
-};
-
-// ─── Event type labels ─────────────────────────────────────────────────────────
-
-const EVENT_TYPE_LABELS: Record<string, string> = {
-  SHOW: "Apresentação", REHEARSAL: "Ensaio", MEETING: "Reunião",
-  OPERATIONAL_BLOCK: "Bloco Operacional", COLLECTIVE_VACATION: "Férias Coletivas",
-};
-const EVENT_TYPE_BADGE: Record<string, string> = {
-  SHOW: "bg-violet-100 text-violet-800", REHEARSAL: "bg-blue-100 text-blue-800",
-  MEETING: "bg-amber-100 text-amber-800", OPERATIONAL_BLOCK: "bg-indigo-100 text-indigo-800",
-  COLLECTIVE_VACATION: "bg-green-100 text-green-800",
 };
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
@@ -227,7 +207,7 @@ export default function AdminOperationalPanel() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-medium truncate">{ev.title}</span>
-                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${EVENT_TYPE_BADGE[ev.type] ?? "bg-muted text-muted-foreground"}`}>
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${EVENT_TYPE_BADGES[ev.type] ?? "bg-muted text-muted-foreground"}`}>
                           {EVENT_TYPE_LABELS[ev.type] ?? ev.type}
                         </span>
                       </div>
@@ -378,8 +358,8 @@ export default function AdminOperationalPanel() {
                 {exceptions.map((ex: OperationalException) => (
                   <div key={ex.id} className="px-6 py-3">
                     <div className="flex items-start gap-2">
-                      <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0 mt-0.5 ${EX_TYPE_BADGE[ex.type] ?? "bg-muted text-muted-foreground"}`}>
-                        {EX_TYPE_LABELS[ex.type] ?? ex.type}
+                      <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0 mt-0.5 ${EXCEPTION_TYPE_BADGES[ex.type] ?? "bg-muted text-muted-foreground"}`}>
+                        {EXCEPTION_TYPE_LABELS[ex.type] ?? ex.type}
                       </span>
                     </div>
                     <p className="text-sm mt-1">{ex.reason}</p>

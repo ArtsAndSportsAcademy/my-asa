@@ -24,7 +24,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, Pencil, Users, AlertCircle, Trash2, Shield, UserPlus, RefreshCw } from "lucide-react";
+import { useLocation } from "wouter";
+import { Plus, MoreHorizontal, Pencil, Users, AlertCircle, Trash2, Shield, UserPlus, RefreshCw, Briefcase } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const GROUP_STATUS_LABELS: Record<string, string> = {
@@ -38,6 +39,7 @@ const GROUP_STATUS_OPTIONS = ["ACTIVE", "INACTIVE", "ARCHIVED"] as const;
 export default function GroupsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
   const { data: opsData } = useGetOperations();
   const { data: groupsData, isLoading, error } = useGetOperationalGroups();
@@ -207,6 +209,11 @@ export default function GroupsPage() {
                           <DropdownMenuItem onClick={() => setMembersGroup(group)}>
                             <Users className="w-4 h-4 mr-2" />
                             Gerenciar equipe
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => setLocation("/admin/operations")}>
+                            <Briefcase className="w-4 h-4 mr-2" />
+                            Ver Operação
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

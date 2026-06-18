@@ -17,23 +17,12 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 
-// ─── Health config ─────────────────────────────────────────────────────────────
-
-const HEALTH_ICON: Record<string, string> = {
-  HEALTHY: "check-circle", ATTENTION: "alert-circle", RISK: "alert-triangle", CRITICAL: "x-circle",
-};
-const HEALTH_LABEL: Record<string, string> = {
-  HEALTHY: "Saudável", ATTENTION: "Atenção", RISK: "Risco", CRITICAL: "Crítico",
-};
-
-const EVENT_TYPE_LABELS: Record<string, string> = {
-  SHOW: "Apresentação", REHEARSAL: "Ensaio", MEETING: "Reunião",
-  OPERATIONAL_BLOCK: "Bloco", COLLECTIVE_VACATION: "Férias",
-};
-const EX_TYPE_LABELS: Record<string, string> = {
-  ALLOCATION_EXCEPTION: "Exceção", OPEN_POSITION: "Aberto",
-  CONFLICT: "Conflito", MANUAL_OVERRIDE: "Substituição",
-};
+import {
+  HEALTH_ICON,
+  HEALTH_LABEL,
+  EVENT_TYPE_LABELS,
+  EXCEPTION_TYPE_LABELS,
+} from "@/lib/operational-constants";
 
 export default function PanelScreen() {
   const colors = useColors();
@@ -220,7 +209,7 @@ export default function PanelScreen() {
                       <Text style={[s.badgeText, {
                         color: ex.type === "CONFLICT" ? "#EA580C" : "#DC2626"
                       }]}>
-                        {EX_TYPE_LABELS[ex.type] ?? ex.type}
+                        {EXCEPTION_TYPE_LABELS[ex.type] ?? ex.type}
                       </Text>
                     </View>
                     {ex.positionName && (

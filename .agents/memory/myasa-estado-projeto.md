@@ -3,6 +3,41 @@ name: MyASA 2.0 — Estado do Projeto
 description: Sprint progress, architectural decisions, and key conventions for the MyASA 2.0 system
 ---
 
+## Release 13.1 — Navegação por Perfil e UX Cleanup (COMPLETO)
+**Objetivo:** Reorganizar experiência por papel (Admin / Supervisor / Membro) sem novas entidades, APIs ou regras de negócio.
+
+### Tarefas concluídas
+- **T1 & T2:** Design System constants centralizados — `web-admin/src/lib/operational-constants.ts` e `mobile/lib/operational-constants.ts`
+- **T3:** admin-layout.tsx com sidebar por papel e grupos (Admin: PAINÉIS|ORGANIZAÇÃO|CONHECIMENTO|PLANEJAMENTO|GOVERNANÇA; Supervisor: OPERAÇÃO|PLANEJAMENTO|COMUNICAÇÃO|CONHECIMENTO|CONTROLE)
+- **T4:** home.tsx role-aware dentro do AdminLayout (Admin: Saúde+Ops; Supervisor: Exceções+Eventos; Membro: simplificado)
+- **T5:** Mobile `_layout.tsx` com 5 tabs principais + Mais; rotas secundárias preservadas mas ocultas do tab bar
+- **T6:** Mobile `mais.tsx` — tela de navegação secundária (Biblioteca, Agenda, Histórico, Livro do Show, Home)
+- **T7:** Cross-surface links — Escalas→LivroDoDia, LivroDoDia(supervisor)→Avisos, Operação↔Grupos (dropdown), ShowBook→Biblioteca(placeholder)
+- **T8:** Constantes centralizadas aplicadas em operational-panel(admin+supervisor), meu-dia(web), panel/scale/meu-dia(mobile) — sem duplicação
+
+### Convenções de navegação (web)
+- Admin sidebar: usa grupos de label maiúscula sem ver rotas /supervisor/
+- Supervisor sidebar: usa grupos distintos, sem ver rotas /admin/ (exceto as compartilhadas como Escalas/MeuDia/Avisos)
+- home.tsx detecta role via `auth.roles.some(r => r.role === "ADMIN")`
+
+### Constantes: o que ficou centralizado vs local
+- **Centralizado (web):** HEALTH_CONFIG, EVENT_TYPE_LABELS, EVENT_TYPE_BADGES, EXCEPTION_TYPE_LABELS, EXCEPTION_TYPE_BADGES, SCALE_STATUS_LABELS, DOC_STATUS_LABELS, ALLOCATION_STATUS_LABELS
+- **Local (web):** ícones Lucide (não ficam em módulo compartilhado), COVERAGE_LABELS, ALLOCATION_STATUS_COLORS (TailwindCSS), status labels de daily-book (REPUBLISHED/EXECUTED/CANCELLED — não mapeiam para centralizados)
+- **Centralizado (mobile):** HEALTH_ICON, HEALTH_LABEL, EVENT_TYPE_LABELS, EVENT_TYPE_ICONS, ALLOCATION_STATUS_LABELS, ALLOCATION_STATUS_COLORS, SCALE_STATUS_LABELS, EXCEPTION_TYPE_LABELS, REQUEST_TYPE_LABELS, REQUEST_STATUS_LABELS
+- **Local (mobile):** REQUEST_TYPE_LABELS em meu-dia.tsx tem chaves distintas (LEAVE, ROLE_RESTRICTION) — NÃO substituir pelo centralizado
+
+### admin/operational-panel.tsx — padrão HEALTH_ICONS separado
+O HEALTH_CONFIG centralizado NÃO contém ícones Lucide. Páginas que precisam de ícone devem declarar:
+```ts
+const HEALTH_ICONS = { HEALTHY: CheckCircle2, ATTENTION: AlertCircle, RISK: AlertTriangle, CRITICAL: XCircle } as const;
+const Icon = HEALTH_ICONS[health.status as keyof typeof HEALTH_ICONS] ?? HEALTH_ICONS.ATTENTION;
+```
+
+### supervisor/operational-panel.tsx — `borderL` não `border`
+O banner de saúde usa `border-l-4` → usar `cfg.borderL` (não `cfg.border`) do HEALTH_CONFIG centralizado.
+
+---
+
 ## Sprint 13 — Biblioteca / S-14 (COMPLETO)
 **Objetivo:** Fonte oficial de conhecimento da organização — "Qual é a referência oficial?"
 NÃO é Google Drive. NÃO é chat. NÃO é aviso. NÃO é entrega.
@@ -13,34 +48,6 @@ NÃO é Google Drive. NÃO é chat. NÃO é aviso. NÃO é entrega.
 - FC-01 (Livro do Show Bíblia) poderá referenciar Biblioteca futuramente sem duplicar conteúdo
 - FC-03 (Insights da Biblioteca) NÃO implementado nesta sprint
 
-### T001 — DB Migration ✅
-- ENUMs: `library_doc_type` (OPERATIONAL_PROCEDURE, RULES_AND_POLICIES, CHARACTER_REFERENCE, COSTUME_REFERENCE, ONBOARDING_MATERIAL, SAFETY_PROCEDURE), `library_doc_status` (DRAFT, PUBLISHED, UPDATED, ARCHIVED)
-- Tabelas: `library_categories`, `library_documents`, `library_document_versions`
-- Arquivado ≠ Excluído — não há DELETE em documentos
-
-### T002 — lib/db schema ✅
-- `lib/db/src/schema/library.ts` criado + index atualizado
-
-### T003 — routes/library.ts ✅
-- 9 endpoints: listar cats, criar cat, listar docs, criar doc, detalhe, editar, publicar, versionar, arquivar, listar versões
-- Histórico em: publicar, versionar, arquivar, mudar responsável
-- Apenas ADMIN pode arquivar; MANAGER_ROLES podem criar/editar/publicar/versionar
-
-### T004 — OpenAPI + Codegen ✅
-- IMPORTANTE: schemas de Biblioteca devem ser em block-style YAML puro (não flow-style `{ type: string, nullable: true }`)
-- 8 paths + 14 schemas adicionados
-- Hooks: `useListLibraryCategories`, `useCreateLibraryCategory`, `useListLibraryDocuments`, `useCreateLibraryDocument`, `useGetLibraryDocument`, `useUpdateLibraryDocument`, `usePublishLibraryDocument`, `useNewLibraryDocumentVersion`, `useArchiveLibraryDocument`
-- `lib/api-client-react` DEVE ser rebuilt após codegen: `cd lib/api-client-react && pnpm tsc --build tsconfig.json`
-
-### T005 — Web Admin ✅
-- `/admin/library`: painel 2 colunas — lista com filtros + detalhe com ações (editar, publicar, versionar, arquivar), histórico de versões
-- `/supervisor/library`: navegação + leitura somente (stats, filtros por tipo/cat)
-- admin-layout.tsx + App.tsx atualizados com ícone `Library` (lucide-react)
-
-### T006 — Mobile ✅
-- `app/(tabs)/biblioteca.tsx`: chips de filtro por tipo, pesquisa, lista, modal de leitura somente
-- NativeTabs: sf "books.vertical"/"books.vertical.fill"; ClassicTabLayout: Feather "book-open"
-
 ### Convenções estabelecidas no Sprint 13
 - `useGetLibraryDocument(id, { query: { queryKey: getGetLibraryDocumentQueryKey(id), enabled: !!id } })` — queryKey obrigatório após rebuild do api-client-react
 - Flow-style YAML `{ type: string, nullable: true }` QUEBRA o orval codegen — usar block-style sempre
@@ -50,39 +57,12 @@ NÃO é Google Drive. NÃO é chat. NÃO é aviso. NÃO é entrega.
 
 ## Sprint 12 — Entregas / S-07 (COMPLETO)
 **Objetivo:** Sistema de confirmação obrigatória de conteúdo — "Quem recebeu, visualizou e confirmou?"
-NÃO é sistema de tarefas. NÃO é Jira/Trello. NÃO é avaliação de desempenho.
 
 ### Decisões (respeitar em sprints futuros)
 - VISUALIZADA ≠ CONCLUÍDA (estados distintos)
 - ATRASADA ≠ EXPIRADA (estados distintos)
 - S-18 Tarefas Operacionais poderá existir futuramente sem conflito com S-07
 - Entrega referencia conteúdo (contentRef), NÃO duplica conteúdo — Biblioteca será fonte única
-
-### T001 — DB Migration ✅
-- ENUMs: `delivery_type` (+ MANDATORY_READ, MANDATORY_VIDEO), `delivery_status` (+ RECEIVED, VIEWED, COMPLETED, LATE, EXPIRED)
-- Tabelas existentes alteradas: `deliveries` (+description, content_ref, checklist_items, published_at, cancelled_at), `delivery_assignments` (+received_at, viewed_at, checklist_progress)
-
-### T002 — lib/db schema ✅
-- `lib/db/src/schema/deliveries.ts` atualizado com novos campos e tipos
-
-### T003 — routes/deliveries.ts ✅
-- 10 endpoints: criar, listar, minhas, detalhe, publicar, cancelar, receber, visualizar, concluir, checklist
-- Histórico: writeHistoryEvent em criar, publicar, cancelar, receber, visualizar, concluir
-- `routes/index.ts` atualizado
-
-### T004 — OpenAPI + Codegen ✅
-- 10 paths + 14 schemas adicionados
-- Hooks: `useCreateDelivery`, `useListDeliveries`, `useGetMyDeliveries`, `useListDeliveryMembers`, `useGetDelivery(deliveryId)`, `usePublishDelivery`, `useCancelDelivery`, `useReceiveDelivery`, `useViewDelivery`, `useCompleteDelivery`, `useUpdateDeliveryChecklist`
-- Query keys: `getListDeliveriesQueryKey()`, `getGetMyDeliveriesQueryKey()`, `getGetDeliveryQueryKey(deliveryId)`, `getListDeliveryMembersQueryKey()`
-
-### T005 — Web Admin ✅
-- `pages/admin/deliveries.tsx`: criar, publicar (seleção de membros), acompanhar progresso, cancelar, lista + panel 2 colunas
-- `pages/supervisor/deliveries.tsx`: acompanhar pendências, stats por status, tabela de destinatários
-- Rotas em `App.tsx` + Package icon no sidebar `admin-layout.tsx`
-
-### T006 — Mobile ✅
-- `app/(tabs)/entregas.tsx`: tabs Pendentes/Concluídas/Atrasadas, modal de detalhe, checklist interativo, auto-mark viewed, botão de conclusão
-- `_layout.tsx`: tab "Entregas" em NativeTabs (sf: "shippingbox"/"shippingbox.fill") + ClassicTabLayout (Feather "package")
 
 ### Convenções estabelecidas no Sprint 12
 - `useGetDelivery(deliveryId)` — recebe `string` direta
@@ -93,41 +73,6 @@ NÃO é sistema de tarefas. NÃO é Jira/Trello. NÃO é avaliação de desempen
 ---
 
 ## Sprint 11 — Mensagens / S-09 (COMPLETO)
-**Objetivo:** Canal oficial de coordenação operacional — "Como as pessoas se coordenam sem sair do sistema?"
-
-### Decisões de design (respeitar em sprints futuros)
-- **MSG-D03:** MEMBER → MEMBER bloqueado (API retorna 403)
-- **MSG-D04:** Mensagens imutáveis — sem edição/exclusão
-- **MSG-D06:** IA NÃO participa de threads
-- **MSG-D10:** Admin → Organização = Aviso, não Mensagem
-- **Matrix de permissões:** MEMBER→[SUP_A,SUP_B], SUPERVISOR_A/B→[MEMBER,SUP_A,SUP_B,ADMIN], ADMIN→[SUP_A,SUP_B,ADMIN]
-
-### T001 — DB Migration ✅
-- ENUMs: `message_thread_status` (OPEN, CLOSED), `message_participant_role` (INITIATOR, PARTICIPANT)
-- Tables: `message_threads`, `message_thread_participants`
-- `messages` table altered: `thread_id UUID REFERENCES message_threads(id)`, `sender_name TEXT`
-
-### T002 — lib/db schema ✅
-- `lib/db/src/schema/communication.ts` — `messageThreadsTable`, `messageThreadParticipantsTable`, `messagesTable` estendida
-- rebuild: `cd lib/db && pnpm tsc --build tsconfig.json`
-
-### T003 — routes/messages.ts ✅
-- 7 endpoints: POST/GET /messages/threads, GET/POST/PATCH(close/read) /messages/threads/:id(/messages), GET /messages/recipients
-- Registrado em `routes/index.ts`
-
-### T004 — OpenAPI + Codegen ✅
-- 6 paths + 13 schemas no spec
-- Hooks gerados: `useListMessageThreads`, `useGetMessageThread`, `useCreateMessageThread`, `useSendMessage`, `useCloseMessageThread`, `useListMessageRecipients`
-- Query keys: `getListMessageThreadsQueryKey()`, `getGetMessageThreadQueryKey(threadId)` — recebe `string` direta, NÃO objeto `{threadId}`
-
-### T005 — Web Admin ✅
-- `pages/admin/messages.tsx`: layout 2 colunas, lista threads + thread panel com bolhas, criar conversa, encerrar, busca
-- `pages/supervisor/messages.tsx`: idem, sem botão "Encerrar"
-- Rotas em `App.tsx` + links no sidebar `admin-layout.tsx` (MessageSquare de lucide-react)
-
-### T006 — Mobile ✅
-- `app/(tabs)/mensagens.tsx`: FlatList de threads + Modal de conversa (bolhas) + Modal de criação
-- `_layout.tsx`: tab "Mensagens" em NativeTabs (sf: "message"/"message.fill") + ClassicTabLayout (Feather "message-square")
 
 ### Convenções estabelecidas no Sprint 11
 - **`useGetMessageThread(threadId)`** — assinatura gerada recebe `string` direta (não `{ threadId }`)
@@ -137,33 +82,6 @@ NÃO é sistema de tarefas. NÃO é Jira/Trello. NÃO é avaliação de desempen
 ---
 
 ## Sprint 10 — Histórico / S-11 (COMPLETO)
-**Objetivo:** Memória operacional oficial — "O que aconteceu, por que aconteceu e como terminou?"
-
-### T001 — DB Schema ✅
-- `history_events`: alterada para `mo_id` nullable + novas colunas `actor_name`, `entity_label`, `meta`.
-- `history_relations`: tabela de relações N:N entre eventos e entidades.
-- `history_narratives`: investigações estruturadas com `cause`/`decision`/`impact`/`resolution`/`status` (OPEN/RESOLVED/CLOSED).
-- Aplicadas manualmente via psql (drizzle-kit push não funciona sem TTY).
-
-### T002 — API ✅
-- `lib/history-helper.ts`: `writeHistoryEvent()` fire-and-forget; nunca lança.
-- `routes/history.ts`: 7 endpoints — GET /history, GET /my-history, GET+POST /history/narratives, GET+PATCH /history/narratives/:id, GET /history/:eventId.
-
-### T003 — Event Bus ✅
-- 4 rotas wired: `notices.ts` (publish/escalate/confirm), `scales.ts` (publish/republish), `daily-book.ts` (publish/republish), `agenda.ts` (suspend/cancel).
-- Todas fire-and-forget com `.catch(() => {})`.
-
-### T004 — OpenAPI + Codegen ✅
-- 7 paths + 8 schemas adicionados ao spec.
-- Hooks gerados: `useListHistory`, `useGetMyHistory`, `useListHistoryNarratives`, `useCreateHistoryNarrative`, `useUpdateHistoryNarrative`, `useGetHistoryEvent`.
-
-### T005 — Web Admin ✅
-- `pages/admin/history.tsx`: tabs "Linha do Tempo" + "Investigações".
-- `pages/supervisor/history.tsx`: timeline visual com quick stats.
-
-### T006 — Mobile ✅
-- `app/(tabs)/historico.tsx`: Meu Histórico pessoal com modal de detalhe.
-- `_layout.tsx`: tab "Histórico" adicionada em NativeTabs + ClassicTabLayout.
 
 ### Convenções estabelecidas no Sprint 10
 - **`HistoryNarrativeStatus` cast:** `v as HistoryNarrativeStatus` nos Selects.
@@ -172,8 +90,7 @@ NÃO é sistema de tarefas. NÃO é Jira/Trello. NÃO é avaliação de desempen
 
 ---
 
-## Sprint 9 — Avisos / S-08 (COMPLETO, todos os 4 blocos entregues)
-**Objetivo:** "O que mudou e quem precisa saber?" — canal oficial de comunicação operacional.
+## Sprint 9 — Avisos / S-08 (COMPLETO)
 
 ### Convenções estabelecidas no Sprint 9
 - **Convenção (TS7030):** Express async handlers devem ter tipo `: Promise<void>` explícito.

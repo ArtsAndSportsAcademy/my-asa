@@ -12,35 +12,22 @@ import {
   CheckCircle2, XCircle, AlertCircle, Clock, RefreshCw, Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  HEALTH_CONFIG,
+  EVENT_TYPE_LABELS,
+  EVENT_TYPE_BADGES,
+  EXCEPTION_TYPE_LABELS,
+  EXCEPTION_TYPE_BADGES,
+} from "@/lib/operational-constants";
 
-// ─── Health config ─────────────────────────────────────────────────────────────
+// ─── Health icon map ───────────────────────────────────────────────────────────
 
-const HEALTH_CONFIG = {
-  HEALTHY:  { label: "Saudável",  Icon: CheckCircle2,  bg: "bg-green-50",  border: "border-l-green-500",  text: "text-green-700" },
-  ATTENTION:{ label: "Atenção",   Icon: AlertCircle,   bg: "bg-amber-50",  border: "border-l-amber-500",  text: "text-amber-700" },
-  RISK:     { label: "Risco",     Icon: AlertTriangle, bg: "bg-orange-50", border: "border-l-orange-500", text: "text-orange-700" },
-  CRITICAL: { label: "Crítico",   Icon: XCircle,       bg: "bg-red-50",    border: "border-l-red-500",    text: "text-red-700" },
+const HEALTH_ICONS = {
+  HEALTHY:   CheckCircle2,
+  ATTENTION: AlertCircle,
+  RISK:      AlertTriangle,
+  CRITICAL:  XCircle,
 } as const;
-
-const EX_TYPE_BADGE: Record<string, string> = {
-  ALLOCATION_EXCEPTION: "bg-violet-100 text-violet-800",
-  OPEN_POSITION: "bg-red-100 text-red-800",
-  CONFLICT: "bg-orange-100 text-orange-800",
-  MANUAL_OVERRIDE: "bg-blue-100 text-blue-800",
-};
-const EX_TYPE_LABELS: Record<string, string> = {
-  ALLOCATION_EXCEPTION: "Exceção", OPEN_POSITION: "Aberto",
-  CONFLICT: "Conflito", MANUAL_OVERRIDE: "Substituição",
-};
-const EVENT_TYPE_BADGE: Record<string, string> = {
-  SHOW: "bg-violet-100 text-violet-800", REHEARSAL: "bg-blue-100 text-blue-800",
-  MEETING: "bg-amber-100 text-amber-800", OPERATIONAL_BLOCK: "bg-indigo-100 text-indigo-800",
-  COLLECTIVE_VACATION: "bg-green-100 text-green-800",
-};
-const EVENT_TYPE_LABELS: Record<string, string> = {
-  SHOW: "Apresentação", REHEARSAL: "Ensaio", MEETING: "Reunião",
-  OPERATIONAL_BLOCK: "Bloco", COLLECTIVE_VACATION: "Férias",
-};
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
@@ -67,7 +54,7 @@ export default function SupervisorOperationalPanel() {
 
   const { health, exceptions, pendingBooks, upcomingEvents, generatedAt } = data;
   const cfg = HEALTH_CONFIG[health.status as keyof typeof HEALTH_CONFIG] ?? HEALTH_CONFIG.ATTENTION;
-  const HealthIcon = cfg.Icon;
+  const HealthIcon = HEALTH_ICONS[health.status as keyof typeof HEALTH_ICONS] ?? HEALTH_ICONS.ATTENTION;
 
   const criticalItems = exceptions.filter(
     (e) => e.type === "OPEN_POSITION" || e.type === "CONFLICT"
@@ -94,7 +81,7 @@ export default function SupervisorOperationalPanel() {
       </div>
 
       {/* ── Saúde — banner proeminente ── */}
-      <div className={`rounded-xl border-l-4 ${cfg.border} ${cfg.bg} p-5 mb-6 flex items-start gap-4`}>
+      <div className={`rounded-xl border-l-4 ${cfg.borderL} ${cfg.bg} p-5 mb-6 flex items-start gap-4`}>
         <HealthIcon className={`h-10 w-10 ${cfg.text} shrink-0 mt-0.5`} />
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
@@ -208,8 +195,8 @@ export default function SupervisorOperationalPanel() {
                 {criticalItems.map((ex: OperationalException) => (
                   <div key={ex.id} className="px-6 py-3">
                     <div className="flex items-start gap-2 mb-1">
-                      <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0 mt-0.5 ${EX_TYPE_BADGE[ex.type]}`}>
-                        {EX_TYPE_LABELS[ex.type]}
+                      <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0 mt-0.5 ${EXCEPTION_TYPE_BADGES[ex.type] ?? "bg-muted text-muted-foreground"}`}>
+                        {EXCEPTION_TYPE_LABELS[ex.type] ?? ex.type}
                       </span>
                       {ex.positionName && (
                         <span className="text-sm font-medium truncate">{ex.positionName}</span>
@@ -249,7 +236,7 @@ export default function SupervisorOperationalPanel() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-medium truncate">{ev.title}</span>
-                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${EVENT_TYPE_BADGE[ev.type] ?? "bg-muted text-muted-foreground"}`}>
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${EVENT_TYPE_BADGES[ev.type] ?? "bg-muted text-muted-foreground"}`}>
                           {EVENT_TYPE_LABELS[ev.type] ?? ev.type}
                         </span>
                       </div>

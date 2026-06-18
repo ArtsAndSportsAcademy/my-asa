@@ -15,37 +15,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const EVENT_TYPE_LABELS: Record<string, string> = {
-  SHOW: "Espetáculo",
-  REHEARSAL: "Ensaio",
-  MEETING: "Reunião",
-  OPERATIONAL_BLOCK: "Bloco Op.",
-  COLLECTIVE_VACATION: "Férias",
-};
-
-const EVENT_TYPE_ICONS: Record<string, string> = {
-  SHOW: "star",
-  REHEARSAL: "music",
-  MEETING: "users",
-  OPERATIONAL_BLOCK: "briefcase",
-  COLLECTIVE_VACATION: "sun",
-};
-
-const ALLOCATION_STATUS_LABELS: Record<string, string> = {
-  ASSIGNED: "Alocado",
-  OPEN: "Em Aberto",
-  CONFLICT: "Conflito",
-  MANUAL_OVERRIDE: "Override",
-};
-
-const ALLOCATION_STATUS_COLORS: Record<string, string> = {
-  ASSIGNED: "#16A34A",
-  OPEN: "#6B7280",
-  CONFLICT: "#D97706",
-  MANUAL_OVERRIDE: "#7C3AED",
-};
+import {
+  EVENT_TYPE_LABELS,
+  EVENT_TYPE_ICONS,
+  ALLOCATION_STATUS_LABELS,
+  ALLOCATION_STATUS_COLORS,
+} from "@/lib/operational-constants";
 
 const REQUEST_TYPE_LABELS: Record<string, string> = {
   LEAVE: "Folga",

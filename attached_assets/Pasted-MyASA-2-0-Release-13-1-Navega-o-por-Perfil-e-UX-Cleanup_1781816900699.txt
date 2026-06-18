@@ -1,0 +1,270 @@
+MyASA 2.0 — Release 13.1: Navegação por Perfil e UX Cleanup
+
+Utilizar obrigatoriamente:
+
+* Gate de Revisão Geral Pós Sprint 13
+* Blueprint Executivo
+* Arquitetura Funcional Congelada
+* Sprint 0 → Sprint 13 concluídas
+
+Importante:
+
+Esta NÃO é uma sprint funcional.
+
+Não criar novas entidades.
+
+Não criar novas tabelas.
+
+Não alterar APIs.
+
+Não alterar regras de negócio.
+
+Objetivo:
+
+Reorganizar a experiência do produto por perfil.
+
+Pergunta respondida:
+
+“Cada usuário está vendo apenas o que realmente importa para ele?”
+
+═══════════════════════
+PARTE 1 — AUDITORIA POR PERFIL
+═══════════════════════
+
+Analisar separadamente:
+
+Admin
+
+Supervisor
+
+Membro
+
+Responder:
+
+* quais telas usa diariamente?
+* quais telas usa ocasionalmente?
+* quais telas nunca deveria ver?
+* quais telas devem ser destaque?
+
+Objetivo:
+
+Parar de tratar o MyASA como um único sistema.
+
+═══════════════════════
+PARTE 2 — ADMIN
+═══════════════════════
+
+Pergunta central:
+
+“A operação está saudável?”
+
+Reorganizar navegação:
+
+PAINÉIS
+
+* Painel de Saúde
+* Painel Operacional
+
+ORGANIZAÇÃO
+
+* Operações
+* Grupos
+* Usuários
+
+CONHECIMENTO
+
+* Livro do Show
+* Biblioteca
+
+PLANEJAMENTO
+
+* Agenda
+
+GOVERNANÇA
+
+* Histórico
+* Auditoria
+
+Critério:
+
+Admin não deve ver rotas duplicadas de Supervisor.
+
+═══════════════════════
+PARTE 3 — SUPERVISOR
+═══════════════════════
+
+Pergunta central:
+
+“O que precisa da minha atenção agora?”
+
+Reorganizar navegação:
+
+OPERAÇÃO
+
+* Painel Operacional
+* Escalas
+* Livro do Dia
+
+PLANEJAMENTO
+
+* Agenda
+* Livro do Show
+
+COMUNICAÇÃO
+
+* Avisos
+* Mensagens
+* Entregas
+
+CONHECIMENTO
+
+* Biblioteca
+
+CONTROLE
+
+* Histórico
+
+Critério:
+
+Supervisor não deve navegar por telas administrativas irrelevantes.
+
+═══════════════════════
+PARTE 4 — MEMBRO
+═══════════════════════
+
+Pergunta central:
+
+“O que eu preciso fazer hoje?”
+
+Reorganizar tabs principais:
+
+1. Meu Dia
+2. Avisos
+3. Mensagens
+4. Escala
+5. Entregas
+
+Menu “Mais”:
+
+* Biblioteca
+* Agenda
+* Histórico
+* Livro do Show
+
+Critério:
+
+As tarefas diárias devem estar acessíveis sem rolagem horizontal excessiva.
+
+═══════════════════════
+PARTE 5 — HOME
+═══════════════════════
+
+Problema identificado:
+
+Home não reflete o perfil.
+
+Implementar:
+
+Home Admin
+
+Saúde + Operação
+
+Home Supervisor
+
+Ação Imediata + Alertas
+
+Home Membro
+
+Meu Dia
+
+Critério:
+
+Cada perfil inicia no seu contexto natural.
+
+═══════════════════════
+PARTE 6 — DESIGN SYSTEM
+═══════════════════════
+
+Centralizar:
+
+* HEALTH_LABEL
+* HEALTH_ICON
+* HEALTH_CONFIG
+* STATUS_COLORS
+* EVENT_TYPE_LABELS
+* EVENT_TYPE_ICONS
+
+Eliminar duplicação.
+
+═══════════════════════
+PARTE 7 — COMPONENTES
+═══════════════════════
+
+Padronizar:
+
+* Badge
+* Card
+* Header
+* Empty State
+* Filters
+* Detail Modal
+
+Critério:
+
+Mesmo comportamento em todo o sistema.
+
+═══════════════════════
+PARTE 8 — LINKS ENTRE SUPERFÍCIES
+═══════════════════════
+
+Adicionar navegação contextual:
+
+Escala
+→ Livro do Dia
+
+Livro do Dia
+→ Avisos
+
+Operação
+→ Grupos
+
+Grupo
+→ Operação
+
+Biblioteca
+→ Entregas relacionadas
+
+Livro do Show
+→ Biblioteca (placeholder para FC-01)
+
+═══════════════════════
+PARTE 9 — AUDITORIA
+═══════════════════════
+
+Validar:
+
+* cada perfil vê menos opções
+* cada perfil encontra mais rápido suas ações
+* mobile reflete a jornada real do membro
+* web reflete a jornada real do supervisor
+* admin trabalha com visão organizacional
+
+Responder:
+
+A experiência do MyASA está organizada por papel ou continua organizada por módulos?
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Classificar:
+
+🟢 Release 13.1 concluída
+
+🟡 Ajustes necessários
+
+🔴 Bloqueado
+
+Objetivo final:
+
+Ao final da Release 13.1, Admins, Supervisores e Membros devem sentir que estão usando produtos diferentes construídos para suas responsabilidades específicas, mesmo compartilhando a mesma plataforma.

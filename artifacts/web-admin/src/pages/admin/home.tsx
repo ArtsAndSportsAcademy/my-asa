@@ -1,238 +1,353 @@
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { 
-  useGetUserContext, 
+import {
+  useGetOperationalPanel,
+  useGetUserContext,
   getGetUserContextQueryKey,
-  useLogout
 } from "@workspace/api-client-react";
-import { 
-  LogOut, 
-  Theater, 
-  Building2, 
-  Briefcase, 
-  Users, 
-  User as UserIcon,
-  ShieldCheck,
-  ChevronRight
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import type {
+  OperationalException,
+  OperationalPendingBook,
+  OperationalUpcomingEvent,
+} from "@workspace/api-client-react";
+import AdminLayout from "@/components/admin-layout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  HEALTH_CONFIG,
+  EVENT_TYPE_LABELS,
+  EXCEPTION_TYPE_LABELS,
+} from "@/lib/operational-constants";
+import {
+  Activity,
+  AlertCircle,
+  AlertTriangle,
+  Bell,
+  BookMarked,
+  Briefcase,
+  CheckCircle2,
+  ChevronRight,
+  Users2,
+  XCircle,
+} from "lucide-react";
 
-export default function AdminHome() {
+// ─── Admin view ───────────────────────────────────────────────────────────────
+
+function AdminHomeContent() {
   const [, setLocation] = useLocation();
-  const { logout: clearAuth } = useAuth();
-  
-  const { data: context, isLoading } = useGetUserContext({
-    query: {
-      queryKey: getGetUserContextQueryKey()
-    }
+  const { data: panelData } = useGetOperationalPanel({});
+  const { data: context } = useGetUserContext({
+    query: { queryKey: getGetUserContextQueryKey() },
   });
 
-  const logoutMutation = useLogout();
+  const health = panelData?.health;
+  const exceptions = (panelData?.exceptions ?? []) as OperationalException[];
+  const upcomingEvents = (panelData?.upcomingEvents ?? []) as OperationalUpcomingEvent[];
+  const operations = context?.operations ?? [];
 
-  const handleLogout = () => {
-    const refreshToken = localStorage.getItem("myasa_refresh_token") || "";
-    logoutMutation.mutate(
-      { data: { refreshToken } },
-      {
-        onSettled: () => {
-          clearAuth();
-          setLocation("/login");
-        }
-      }
-    );
+  const cfg = health
+    ? (HEALTH_CONFIG[health.status as keyof typeof HEALTH_CONFIG] ?? HEALTH_CONFIG.ATTENTION)
+    : null;
+
+  const HEALTH_ICONS = {
+    HEALTHY: CheckCircle2,
+    ATTENTION: AlertCircle,
+    RISK: AlertTriangle,
+    CRITICAL: XCircle,
   };
-
-  const getRoleLabel = (role: string) => {
-    switch (role) {
-      case "ADMIN": return "Administrador";
-      case "SUPERVISOR_A": return "Supervisor Sênior";
-      case "SUPERVISOR_B": return "Supervisor";
-      case "MEMBER": return "Membro";
-      default: return role;
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-muted/20 flex flex-col">
-        <header className="h-16 border-b bg-card flex items-center px-6">
-          <div className="w-8 h-8 bg-muted rounded-md animate-pulse" />
-          <div className="ml-4 w-32 h-6 bg-muted rounded animate-pulse" />
-        </header>
-        <main className="flex-1 p-8 max-w-6xl mx-auto w-full space-y-6">
-          <div className="w-64 h-10 bg-muted rounded animate-pulse" />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="h-48 bg-muted rounded-xl animate-pulse" />
-            <div className="h-48 bg-muted rounded-xl animate-pulse md:col-span-2" />
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  if (!context) return null;
+  const HealthIcon = health
+    ? (HEALTH_ICONS[health.status as keyof typeof HEALTH_ICONS] ?? AlertCircle)
+    : Activity;
 
   return (
-    <div className="min-h-screen bg-muted/20 flex flex-col font-sans">
-      {/* Topbar */}
-      <header className="h-16 border-b bg-card flex items-center justify-between px-6 sticky top-0 z-10">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 rounded text-primary">
-            <Theater className="w-5 h-5" />
-          </div>
-          <span className="font-serif font-bold text-lg tracking-tight">MyASA 2.0</span>
-          <div className="hidden md:flex items-center text-muted-foreground ml-4">
-            <ChevronRight className="w-4 h-4 mx-2" />
-            <span className="text-sm font-medium">Painel Operacional</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="hidden md:flex flex-col items-end mr-2">
-            <span className="text-sm font-medium leading-none">{context.user.name}</span>
-            <span className="text-xs text-muted-foreground mt-1">{context.organization.name}</span>
-          </div>
-          <Avatar className="h-9 w-9 border border-border">
-            <AvatarImage src={context.user.photoUrl || undefined} />
-            <AvatarFallback className="bg-primary/10 text-primary font-medium">
-              {context.user.name.substring(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div className="h-6 w-px bg-border mx-2" />
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={handleLogout}
-            disabled={logoutMutation.isPending}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Sair
-          </Button>
-        </div>
-      </header>
+    <div className="space-y-6">
+      <div className="flex gap-3 flex-wrap">
+        <Button variant="outline" size="sm" onClick={() => setLocation("/admin/operational-panel")}>
+          <Activity className="w-4 h-4 mr-2" />
+          Painel Completo
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => setLocation("/admin/operations")}>
+          <Briefcase className="w-4 h-4 mr-2" />
+          Operações
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => setLocation("/admin/groups")}>
+          <Users2 className="w-4 h-4 mr-2" />
+          Grupos
+        </Button>
+      </div>
 
-      <main className="flex-1 p-6 md:p-10 max-w-7xl mx-auto w-full space-y-8">
-        <div>
-          <h1 className="text-3xl font-serif font-bold tracking-tight text-foreground">
-            Olá, {context.user.name.split(' ')[0]}
-          </h1>
-          <p className="text-muted-foreground mt-2 text-lg">
-            Visão geral da sua organização e operações.
-          </p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="md:col-span-1">
+          <Card className={cfg ? `${cfg.border} border-2` : ""}>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Activity className="h-4 w-4" />
+                Saúde Operacional
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!health ? (
+                <div className="h-14 bg-muted rounded animate-pulse" />
+              ) : (
+                <div className={`flex items-center gap-3 p-3 rounded-lg ${cfg!.bg}`}>
+                  <HealthIcon className={`h-8 w-8 ${cfg!.text} shrink-0`} />
+                  <div>
+                    <p className={`text-xl font-bold ${cfg!.text}`}>{cfg!.label}</p>
+                    <p className={`text-xs mt-0.5 ${cfg!.text}`}>
+                      {exceptions.length} exceção(ões)
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-          
-          {/* Perfil & Organização */}
-          <div className="md:col-span-4 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center text-lg">
-                  <UserIcon className="w-5 h-5 mr-2 text-primary" />
-                  Identidade
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Nome Completo</p>
-                  <p className="text-base font-medium">{context.user.name}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">E-mail</p>
-                  <p className="text-base">{context.user.email}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-2">Papéis Ativos</p>
-                  <div className="flex flex-wrap gap-2">
-                    {context.roles.map(role => (
-                      <Badge key={role.id} variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20">
-                        <ShieldCheck className="w-3 h-3 mr-1" />
-                        {getRoleLabel(role.role)}
+        <div className="md:col-span-2">
+          <Card className="h-full">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Briefcase className="h-4 w-4" />
+                Operações Ativas
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {operations.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Nenhuma operação ativa
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {operations.map((op) => (
+                    <div
+                      key={op.id}
+                      className="flex items-center justify-between p-3 rounded-lg border hover:border-primary/50 transition-colors"
+                    >
+                      <span className="font-medium text-sm">{op.name}</span>
+                      <Badge
+                        variant="outline"
+                        className={
+                          op.status === "ACTIVE"
+                            ? "border-green-500/30 text-green-600 bg-green-500/10"
+                            : ""
+                        }
+                      >
+                        {op.status === "ACTIVE" ? "Ativa" : "Arquivada"}
                       </Badge>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center text-lg">
-                  <Building2 className="w-5 h-5 mr-2 text-primary" />
-                  Organização Atual
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="p-4 rounded-lg bg-muted/50 border">
-                  <p className="font-medium text-lg">{context.organization.name}</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    ID: {context.organization.id.split('-')[0]}...
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Operações & Grupos */}
-          <div className="md:col-span-8 space-y-6">
-            <Card className="h-full">
-              <CardHeader>
-                <CardTitle className="flex items-center text-xl">
-                  <Briefcase className="w-5 h-5 mr-2 text-primary" />
-                  Operações Ativas
-                </CardTitle>
-                <CardDescription>
-                  Produções e espetáculos que você tem acesso
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {context.operations.length === 0 ? (
-                  <div className="text-center p-8 border border-dashed rounded-lg bg-muted/30">
-                    <p className="text-muted-foreground">Nenhuma operação associada ao seu perfil.</p>
-                  </div>
-                ) : (
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    {context.operations.map(op => (
-                      <div key={op.id} className="p-5 rounded-xl border bg-card hover:border-primary/50 transition-colors shadow-sm">
-                        <div className="flex justify-between items-start mb-3">
-                          <h3 className="font-semibold text-lg leading-tight">{op.name}</h3>
-                          <Badge variant="outline" className={op.status === 'ACTIVE' ? "border-green-500/30 text-green-600 bg-green-500/10" : ""}>
-                            {op.status === 'ACTIVE' ? 'Ativa' : 'Arquivada'}
-                          </Badge>
-                        </div>
-                        
-                        <div className="mt-4 pt-4 border-t border-border/50">
-                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 flex items-center">
-                            <Users className="w-3 h-3 mr-1" />
-                            Grupos Operacionais
-                          </p>
-                          <div className="space-y-2">
-                            {context.groups
-                              .filter(g => g.operationId === op.id)
-                              .map(group => (
-                                <div key={group.id} className="text-sm flex items-center bg-muted/50 px-2 py-1.5 rounded">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-primary mr-2" />
-                                  {group.name}
-                                </div>
-                              ))}
-                            {context.groups.filter(g => g.operationId === op.id).length === 0 && (
-                              <p className="text-sm text-muted-foreground italic">Sem grupos designados</p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
+              )}
+            </CardContent>
+          </Card>
         </div>
-      </main>
+      </div>
+
+      {upcomingEvents.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Próximos Eventos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {upcomingEvents.slice(0, 3).map((ev) => (
+                <div key={ev.id} className="flex items-center justify-between text-sm">
+                  <span className="font-medium">{ev.title}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground text-xs">{ev.date}</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-muted">
+                      {EVENT_TYPE_LABELS[ev.type] ?? ev.type}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
+  );
+}
+
+// ─── Supervisor view ──────────────────────────────────────────────────────────
+
+function SupervisorHomeContent() {
+  const [, setLocation] = useLocation();
+  const { data: panelData } = useGetOperationalPanel({});
+
+  const exceptions = (panelData?.exceptions ?? []) as OperationalException[];
+  const upcomingEvents = (panelData?.upcomingEvents ?? []) as OperationalUpcomingEvent[];
+  const pendingBooks = (panelData?.pendingBooks ?? []) as OperationalPendingBook[];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex gap-3 flex-wrap">
+        <Button size="sm" onClick={() => setLocation("/supervisor/daily-book")}>
+          <BookMarked className="w-4 h-4 mr-2" />
+          Livro do Dia
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => setLocation("/supervisor/avisos")}>
+          <Bell className="w-4 h-4 mr-2" />
+          Avisos
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => setLocation("/supervisor/operational-panel")}>
+          <Activity className="w-4 h-4 mr-2" />
+          Painel Completo
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              Exceções Pendentes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {exceptions.length === 0 ? (
+              <div className="flex items-center gap-2 text-sm text-green-600">
+                <CheckCircle2 className="w-4 h-4" />
+                Nenhuma exceção pendente
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {exceptions.slice(0, 5).map((ex) => (
+                  <div
+                    key={ex.id}
+                    className="flex items-center justify-between text-sm p-2 rounded-lg bg-muted/50"
+                  >
+                    <span className="text-muted-foreground truncate flex-1 mr-2">
+                      {ex.reason}
+                    </span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 shrink-0">
+                      {EXCEPTION_TYPE_LABELS[ex.type] ?? ex.type}
+                    </span>
+                  </div>
+                ))}
+                {exceptions.length > 5 && (
+                  <button
+                    className="text-xs text-primary flex items-center gap-1 hover:underline"
+                    onClick={() => setLocation("/supervisor/operational-panel")}
+                  >
+                    +{exceptions.length - 5} mais{" "}
+                    <ChevronRight className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <BookMarked className="h-4 w-4" />
+              Livros Pendentes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {pendingBooks.length === 0 ? (
+              <div className="flex items-center gap-2 text-sm text-green-600">
+                <CheckCircle2 className="w-4 h-4" />
+                Nenhum livro pendente
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {pendingBooks.slice(0, 4).map((book) => (
+                  <div
+                    key={book.id}
+                    className="flex items-center justify-between text-sm p-2 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => setLocation("/supervisor/daily-book")}
+                  >
+                    <span className="font-medium truncate flex-1">{book.eventTitle}</span>
+                    <span className="text-xs text-muted-foreground shrink-0 ml-2">
+                      {book.eventDate}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {upcomingEvents.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Próximos Eventos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {upcomingEvents.slice(0, 4).map((ev) => (
+                <div key={ev.id} className="flex items-center justify-between text-sm">
+                  <span className="font-medium">{ev.title}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground text-xs">{ev.date}</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-muted">
+                      {EVENT_TYPE_LABELS[ev.type] ?? ev.type}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─── Member view (web) ────────────────────────────────────────────────────────
+
+function MemberHomeContent() {
+  const { user } = useAuth();
+  return (
+    <div className="max-w-md">
+      <Card>
+        <CardContent className="pt-6 space-y-3">
+          <p className="text-base font-medium">
+            Olá, {user?.name?.split(" ")[0] ?? ""}.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Para acompanhar sua rotina operacional, use o app MyASA no seu
+            celular — a experiência completa do Membro está disponível lá.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Entry point ──────────────────────────────────────────────────────────────
+
+export default function AdminHome() {
+  const { roles: userRoles } = useAuth();
+  const isAdmin = userRoles.some((r) => r.role === "ADMIN");
+  const isSupervisor = userRoles.some(
+    (r) => r.role === "SUPERVISOR_A" || r.role === "SUPERVISOR_B"
+  );
+
+  const subtitle = isAdmin
+    ? "Visão organizacional — saúde da operação"
+    : isSupervisor
+    ? "O que precisa da sua atenção agora"
+    : "Bem-vindo ao MyASA 2.0";
+
+  return (
+    <AdminLayout title="Início" subtitle={subtitle}>
+      {isAdmin ? (
+        <AdminHomeContent />
+      ) : isSupervisor ? (
+        <SupervisorHomeContent />
+      ) : (
+        <MemberHomeContent />
+      )}
+    </AdminLayout>
   );
 }

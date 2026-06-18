@@ -27,28 +27,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+import {
+  EVENT_TYPE_LABELS,
+  EVENT_TYPE_BADGES,
+  ALLOCATION_STATUS_LABELS,
+} from "@/lib/operational-constants";
 
-const EVENT_TYPE_LABELS: Record<string, string> = {
-  SHOW: "Espetáculo",
-  REHEARSAL: "Ensaio",
-  MEETING: "Reunião",
-  OPERATIONAL_BLOCK: "Bloco Operacional",
-  COLLECTIVE_VACATION: "Férias Coletivas",
-};
+// ─── Constants (local only — not in shared constants) ─────────────────────────
 
 const ALLOCATION_STATUS_COLORS: Record<string, string> = {
   ASSIGNED: "bg-green-100 text-green-700 border-green-200",
   OPEN: "bg-gray-100 text-gray-600 border-gray-200",
   CONFLICT: "bg-amber-100 text-amber-700 border-amber-200",
   MANUAL_OVERRIDE: "bg-purple-100 text-purple-700 border-purple-200",
-};
-
-const ALLOCATION_STATUS_LABELS: Record<string, string> = {
-  ASSIGNED: "Alocado",
-  OPEN: "Em Aberto",
-  CONFLICT: "Conflito",
-  MANUAL_OVERRIDE: "Override",
 };
 
 const REQUEST_TYPE_LABELS: Record<string, string> = {

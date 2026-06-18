@@ -13,6 +13,10 @@ import { useColors } from "@/hooks/useColors";
 // NativeTabs intentionally does NOT use custom design tokens — liquid glass
 // is a system-level appearance provided by iOS and cannot be overridden.
 // Custom brand colors are applied only on the ClassicTabLayout path (older iOS / Android / web).
+
+// ─── Native (iOS 26+) ─────────────────────────────────────────────────────────
+// Shows 5 primary tabs + Mais. All other screens remain routable but hidden.
+
 function NativeTabLayout() {
   return (
     <NativeTabs>
@@ -24,45 +28,27 @@ function NativeTabLayout() {
         <Icon sf={{ default: "bell", selected: "bell.fill" }} />
         <Label>Avisos</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: "house", selected: "house.fill" }} />
-        <Label>Home</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="panel">
-        <Icon sf={{ default: "chart.bar.doc.horizontal", selected: "chart.bar.doc.horizontal.fill" }} />
-        <Label>Painel</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="agenda">
-        <Icon sf={{ default: "calendar", selected: "calendar.badge.checkmark" }} />
-        <Label>Agenda</Label>
+      <NativeTabs.Trigger name="mensagens">
+        <Icon sf={{ default: "message", selected: "message.fill" }} />
+        <Label>Mensagens</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="scale">
         <Icon sf={{ default: "list.clipboard", selected: "list.clipboard.fill" }} />
         <Label>Escala</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="daily-book">
-        <Icon sf={{ default: "doc.text", selected: "doc.text.fill" }} />
-        <Label>Livro</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="historico">
-        <Icon sf={{ default: "clock.arrow.trianglehead.counterclockwise.rotate.90", selected: "clock.fill" }} />
-        <Label>Histórico</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="mensagens">
-        <Icon sf={{ default: "message", selected: "message.fill" }} />
-        <Label>Mensagens</Label>
-      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="entregas">
         <Icon sf={{ default: "shippingbox", selected: "shippingbox.fill" }} />
         <Label>Entregas</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="biblioteca">
-        <Icon sf={{ default: "books.vertical", selected: "books.vertical.fill" }} />
-        <Label>Biblioteca</Label>
+      <NativeTabs.Trigger name="mais">
+        <Icon sf={{ default: "ellipsis", selected: "ellipsis.circle.fill" }} />
+        <Label>Mais</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
 }
+
+// ─── Classic (older iOS / Android / web) ──────────────────────────────────────
 
 function ClassicTabLayout() {
   const colors = useColors();
@@ -70,6 +56,19 @@ function ClassicTabLayout() {
   const isDark = colorScheme === "dark";
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
+
+  const tabBarBackground = () =>
+    isIOS ? (
+      <BlurView
+        intensity={100}
+        tint={isDark ? "dark" : "light"}
+        style={StyleSheet.absoluteFill}
+      />
+    ) : isWeb ? (
+      <View
+        style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]}
+      />
+    ) : null;
 
   return (
     <Tabs
@@ -85,23 +84,10 @@ function ClassicTabLayout() {
           elevation: 0,
           ...(isWeb ? { height: 84 } : {}),
         },
-        tabBarBackground: () =>
-          isIOS ? (
-            <BlurView
-              intensity={100}
-              tint={isDark ? "dark" : "light"}
-              style={StyleSheet.absoluteFill}
-            />
-          ) : isWeb ? (
-            <View
-              style={[
-                StyleSheet.absoluteFill,
-                { backgroundColor: colors.background },
-              ]}
-            />
-          ) : null,
+        tabBarBackground,
       }}
     >
+      {/* ── Primary 5 tabs ── */}
       <Tabs.Screen
         name="meu-dia"
         options={{
@@ -127,50 +113,14 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="index"
+        name="mensagens"
         options={{
-          title: "Home",
+          title: "Mensagens",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="house" tintColor={color} size={24} />
+              <SymbolView name="message" tintColor={color} size={24} />
             ) : (
-              <Feather name="home" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
-        name="panel"
-        options={{
-          title: "Painel",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="chart.bar.doc.horizontal" tintColor={color} size={24} />
-            ) : (
-              <Feather name="activity" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
-        name="agenda"
-        options={{
-          title: "Agenda",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="calendar" tintColor={color} size={24} />
-            ) : (
-              <Feather name="calendar" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
-        name="show-book"
-        options={{
-          title: "Show",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="book" tintColor={color} size={24} />
-            ) : (
-              <Feather name="book-open" size={22} color={color} />
+              <Feather name="message-square" size={22} color={color} />
             ),
         }}
       />
@@ -187,42 +137,6 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="daily-book"
-        options={{
-          title: "Livro",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="doc.text" tintColor={color} size={24} />
-            ) : (
-              <Feather name="file-text" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
-        name="historico"
-        options={{
-          title: "Histórico",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="clock" tintColor={color} size={24} />
-            ) : (
-              <Feather name="clock" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
-        name="mensagens"
-        options={{
-          title: "Mensagens",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="message" tintColor={color} size={24} />
-            ) : (
-              <Feather name="message-square" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
         name="entregas"
         options={{
           title: "Entregas",
@@ -235,20 +149,31 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="biblioteca"
+        name="mais"
         options={{
-          title: "Biblioteca",
+          title: "Mais",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="books.vertical" tintColor={color} size={24} />
+              <SymbolView name="ellipsis.circle" tintColor={color} size={24} />
             ) : (
-              <Feather name="book-open" size={22} color={color} />
+              <Feather name="more-horizontal" size={22} color={color} />
             ),
         }}
       />
+
+      {/* ── Secondary screens — roteáveis mas ocultos da tab bar ── */}
+      <Tabs.Screen name="index"      options={{ tabBarButton: () => null, title: "Home"         }} />
+      <Tabs.Screen name="panel"      options={{ tabBarButton: () => null, title: "Painel"       }} />
+      <Tabs.Screen name="agenda"     options={{ tabBarButton: () => null, title: "Agenda"       }} />
+      <Tabs.Screen name="show-book"  options={{ tabBarButton: () => null, title: "Livro do Show"}} />
+      <Tabs.Screen name="daily-book" options={{ tabBarButton: () => null, title: "Livro do Dia" }} />
+      <Tabs.Screen name="historico"  options={{ tabBarButton: () => null, title: "Histórico"    }} />
+      <Tabs.Screen name="biblioteca" options={{ tabBarButton: () => null, title: "Biblioteca"   }} />
     </Tabs>
   );
 }
+
+// ─── Entry point ──────────────────────────────────────────────────────────────
 
 export default function TabLayout() {
   if (isLiquidGlassAvailable()) {

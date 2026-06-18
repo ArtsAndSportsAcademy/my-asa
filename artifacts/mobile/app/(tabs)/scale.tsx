@@ -19,36 +19,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const STATUS_LABELS: Record<string, string> = {
-  ASSIGNED: "Alocado",
-  OPEN: "Em Aberto",
-  CONFLICT: "Conflito",
-  MANUAL_OVERRIDE: "Override",
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  ASSIGNED: "#16A34A",
-  OPEN: "#6B7280",
-  CONFLICT: "#D97706",
-  MANUAL_OVERRIDE: "#7C3AED",
-};
-
-const SCALE_STATUS_LABELS: Record<string, string> = {
-  DRAFT: "Rascunho",
-  PUBLISHED: "Publicada",
-  REPUBLISHED: "Republicada",
-  ARCHIVED: "Arquivada",
-};
-
-const EVENT_TYPE_ICONS: Record<string, string> = {
-  SHOW: "star",
-  REHEARSAL: "music",
-  MEETING: "users",
-  OPERATIONAL_BLOCK: "briefcase",
-  COLLECTIVE_VACATION: "sun",
-};
+import {
+  ALLOCATION_STATUS_LABELS,
+  ALLOCATION_STATUS_COLORS,
+  SCALE_STATUS_LABELS,
+  EVENT_TYPE_ICONS,
+} from "@/lib/operational-constants";
 
 type FilterValue = "upcoming" | "all";
 
@@ -82,7 +58,7 @@ function isUpcoming(dateStr: string | null | undefined): boolean {
 
 function AllocationCard({ alloc, colors }: { alloc: MyAllocation; colors: ReturnType<typeof useColors> }) {
   const iconName = EVENT_TYPE_ICONS[alloc.eventType ?? ""] ?? "calendar";
-  const statusColor = STATUS_COLORS[alloc.status] ?? "#6B7280";
+  const statusColor = ALLOCATION_STATUS_COLORS[alloc.status] ?? "#6B7280";
 
   return (
     <View
@@ -100,7 +76,7 @@ function AllocationCard({ alloc, colors }: { alloc: MyAllocation; colors: Return
         </View>
         <View style={[styles.statusBadge, { backgroundColor: statusColor + "20" }]}>
           <Text style={[styles.statusText, { color: statusColor }]}>
-            {STATUS_LABELS[alloc.status] ?? alloc.status}
+            {ALLOCATION_STATUS_LABELS[alloc.status] ?? alloc.status}
           </Text>
         </View>
       </View>

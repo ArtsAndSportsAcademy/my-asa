@@ -27,9 +27,10 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useListUsers } from "@workspace/api-client-react";
+import { useLocation } from "wouter";
 import {
   BookOpen, Layers, Layout, User, CheckCircle, AlertTriangle, XCircle,
-  ChevronRight, ChevronDown, Play, RotateCcw, Eye,
+  ChevronRight, ChevronDown, Play, RotateCcw, Eye, Bell,
 } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -218,6 +219,7 @@ function DeltaViewer({ delta }: { delta: any }) {
 export default function SupervisorDailyBookPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   const auth = useAuth();
   const operationId = auth.roles.find((r) => r.operationId)?.operationId;
   const isSupervisor = auth.roles.some((r) => ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"].includes(r.role));
@@ -298,6 +300,12 @@ export default function SupervisorDailyBookPage() {
 
   return (
     <AdminLayout title="Livro do Dia — Supervisor">
+      <div className="flex items-center justify-end mb-4">
+        <Button variant="outline" size="sm" onClick={() => setLocation("/supervisor/avisos")}>
+          <Bell className="w-4 h-4 mr-2" />
+          Avisos
+        </Button>
+      </div>
       <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
         {/* Panel 1 — Lista */}
         <div className="w-64 border-r flex flex-col shrink-0">

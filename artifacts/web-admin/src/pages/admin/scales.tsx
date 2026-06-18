@@ -34,11 +34,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Plus, RefreshCw, Send, AlertTriangle, CheckCircle,
-  Clock, Users, MoreHorizontal, Archive, Zap, ChevronRight,
+  Clock, Users, MoreHorizontal, Archive, Zap, ChevronRight, BookMarked,
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
@@ -78,11 +79,13 @@ interface OverrideFormState {
 export default function ScalesPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   const auth = useAuth();
   const operationId = auth.roles.find((r) => r.operationId)?.operationId;
   const isSupervisor = auth.roles.some((r) =>
     ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"].includes(r.role)
   );
+  const isAdminRole = auth.roles.some((r) => r.role === "ADMIN");
 
   // List filters
   const [filterStatus, setFilterStatus] = useState<string>("");
@@ -376,6 +379,15 @@ export default function ScalesPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground text-xs"
+                    onClick={() => setLocation(isAdminRole ? "/admin/daily-book" : "/supervisor/daily-book")}
+                  >
+                    <BookMarked className="h-4 w-4 mr-1.5" />
+                    Livro do Dia
+                  </Button>
                   {isSupervisor && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

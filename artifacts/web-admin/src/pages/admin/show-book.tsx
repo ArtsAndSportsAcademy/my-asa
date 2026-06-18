@@ -29,8 +29,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useLocation } from "wouter";
 import {
-  Plus, ChevronRight, ChevronDown, History, BookOpen, Layers, Layout, AlignLeft, Settings, Trash2,
+  Plus, ChevronRight, ChevronDown, History, BookOpen, Layers, Layout, AlignLeft, Settings, Trash2, Library,
 } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = { DRAFT: "Rascunho", PUBLISHED: "Publicado", ARCHIVED: "Arquivado" };
@@ -78,6 +79,7 @@ function TreeNode({ label, icon: Icon, depth = 0, onDelete, deleteLabel, childre
 export default function ShowBookPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   const auth = useAuth();
   const isAdmin = auth.roles.some((r) => r.role === "ADMIN" || r.role === "SUPERVISOR_A");
 
@@ -239,6 +241,13 @@ export default function ShowBookPage() {
 
   return (
     <AdminLayout title="Livro do Show" subtitle="Gerencie a hierarquia do espetáculo">
+      <div className="flex items-center justify-between mb-4 p-3 rounded-lg bg-muted/30 border border-dashed text-sm">
+        <span className="text-muted-foreground">Posições do Livro do Show poderão referenciar documentos da Biblioteca</span>
+        <Button variant="outline" size="sm" onClick={() => setLocation("/admin/library")}>
+          <Library className="w-4 h-4 mr-2" />
+          Biblioteca
+        </Button>
+      </div>
       <div className="flex gap-4 h-full">
         {/* Lista de livros */}
         <div className="w-72 shrink-0 flex flex-col gap-2">
