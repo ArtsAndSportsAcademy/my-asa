@@ -1,0 +1,266 @@
+MyASA 2.0 — Wireframe Estrutural do S-13 Livro do Show
+
+Utilizar obrigatoriamente:
+
+* Arquitetura MyASA 2.0
+* Recuperação Arquitetural do Livro do Show
+* Fechamento das Lacunas Críticas (LS-D01 a LS-D05)
+* Entidade Mudança Operacional
+* Ciclo de Planejamento Operacional
+* Ciclo de Comunicação Operacional
+* Wireframes aprovados do Bloco 1
+* Todas as decisões D-01 a D-20
+* UX-01 a UX-10
+* WF-01 a WF-10
+* AU-01 a AU-04
+* LS-C01 a LS-C12
+* LS-D01 a LS-D05
+
+Importante:
+
+Não produzir mockups.
+
+Não aplicar visual.
+
+Não aplicar cores.
+
+Não desenhar componentes finais.
+
+Foco exclusivo em:
+
+* estrutura;
+* hierarquia;
+* navegação;
+* contexto;
+* edição;
+* geração.
+
+═══════════════════════
+OBJETIVO
+═══════════════════════
+
+Transformar o Livro do Show em wireframes estruturais completos.
+
+Lembrar:
+
+Livro do Show ≠ Livro do Dia.
+
+Livro do Show é o template permanente.
+
+Livro do Dia é a instância operacional.
+
+═══════════════════════
+PARTE 1 — CENÁRIOS OBRIGATÓRIOS
+═══════════════════════
+
+Criar wireframes utilizando:
+
+WS-01
+Consulta simples de Show
+
+WS-02
+Navegação Show → Cena → Bloco → Posição → Linha
+
+WS-03
+Edição de configuração permitida
+
+WS-04
+Tentativa de alteração estrutural
+
+WS-05
+Mudança em tags operacionais
+
+WS-06
+Mudança de versão do Livro do Show
+
+WS-07
+Livros futuros impactados
+
+WS-08
+Linha Em Aberto por design
+
+WS-09
+Linha Em Aberto por configuração ausente
+
+WS-10
+Auditoria de histórico do Show
+
+═══════════════════════
+PARTE 2 — VISÃO GERAL DO SHOW
+═══════════════════════
+
+Produzir wireframe:
+
+WLV-01
+
+Responder:
+
+O que aparece primeiro?
+
+Como o Supervisor entende rapidamente a estrutura do Show?
+
+Como visualizar:
+
+* quantidade de cenas;
+* quantidade de blocos;
+* posições;
+* linhas;
+* versão atual.
+
+Como identificar:
+
+* alertas;
+* linhas abertas;
+* impactos futuros.
+
+═══════════════════════
+PARTE 3 — NAVEGAÇÃO HIERÁRQUICA
+═══════════════════════
+
+Produzir wireframes para:
+
+Show
+
+Cena
+
+Bloco
+
+Posição
+
+Linha
+
+Responder:
+
+Qual é a menor unidade editável?
+
+Como preservar contexto?
+
+Como evitar que o usuário se perca na hierarquia?
+
+═══════════════════════
+PARTE 4 — EDIÇÃO
+═══════════════════════
+
+Produzir wireframes para:
+
+Configuração permitida
+
+Solicitação de alteração estrutural
+
+Responder:
+
+Como diferenciar visualmente:
+
+* permitido editar;
+* permitido solicitar;
+* proibido alterar.
+
+Como mostrar:
+
+Admin exclusivo
+Supervisor permitido
+Supervisor somente leitura
+
+═══════════════════════
+PARTE 5 — TAGS OPERACIONAIS
+═══════════════════════
+
+Produzir wireframes para:
+
+Consulta de tags
+
+Edição de tags
+
+Auditoria de tags
+
+Responder:
+
+Como visualizar:
+
+CAT-01 a CAT-11
+
+Como entender rapidamente:
+
+* quais são invioláveis;
+* quais podem ser sobrescritas;
+* quais impactam cobertura.
+
+═══════════════════════
+PARTE 6 — VERSIONAMENTO
+═══════════════════════
+
+Produzir wireframes para:
+
+Versão atual
+
+Comparação de versões
+
+Template Desatualizado
+
+Responder:
+
+Como mostrar:
+
+ERA → AGORA
+
+Como mostrar:
+
+Livros futuros impactados
+
+Como mostrar:
+
+necessidade de regeneração ou revisão.
+
+═══════════════════════
+PARTE 7 — AUDITORIA
+═══════════════════════
+
+Produzir wireframe para:
+
+Histórico do Livro do Show
+
+Responder:
+
+Quem alterou?
+
+Quando alterou?
+
+O que alterou?
+
+Qual versão foi criada?
+
+Quais Livros futuros foram afetados?
+
+═══════════════════════
+PARTE 8 — AUDITORIA DE CONSISTÊNCIA
+═══════════════════════
+
+Responder:
+
+1. O Livro do Show continua distinto do Livro do Dia?
+2. Existe risco de confusão entre estrutura e operação?
+3. Existe risco de o Supervisor alterar algo estrutural sem perceber?
+4. Existe risco de perda de rastreabilidade?
+5. Existe risco para o motor de cobertura?
+6. Existe risco para as tags operacionais?
+7. Existe risco para os Livros futuros?
+
+═══════════════════════
+PARTE 9 — VEREDITO
+═══════════════════════
+
+Produzir:
+
+Wireframes estruturais completos do S-13.
+
+Classificar:
+
+🟢 Pronto para Mockup
+
+🟡 Ajustes necessários
+
+🔴 Revisão estrutural necessária
+
+Objetivo final:
+
+Encerrar estruturalmente o Livro do Show antes dos mockups visuais e garantir total consistência com Escala, Livro do Dia e Motor de Cobertura.
