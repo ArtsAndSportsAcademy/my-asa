@@ -1,10 +1,14 @@
 # S-06 SOLICITAÇÕES — Especificação Funcional Completa
 ## MyASA 2.0 — Bloco 2
 
-> **Versão:** 17/06/2026
+> **Versão:** 17/06/2026 — v2 (Pós-Auditoria de Cenários Limite)
 > **Fase:** Especificação Funcional — anterior a wireframes e componentes de interface
-> **Status:** Pronto para revisão com Product Owner antes do design de interface
+> **Status:** 🟢 Pronta para Wireframe
 > **Princípio fundador:** *"O pior não é ouvir não. O pior é não saber se alguém viu."*
+>
+> **Histórico de versões:**
+> - v1 — Especificação inicial (17/06/2026)
+> - v2 — Incorporação das 13 lacunas identificadas na Auditoria de Cenários Limite (17/06/2026)
 
 ---
 
@@ -43,26 +47,20 @@ S-06 é **uma única superfície** com três visões distintas por perfil, **nã
 ```
 [ Meu Dia ] [ Solicitações ] [ Entregas ] [ Mensagens ]
 ```
-S-06 está na barra de navegação permanente do Membro porque é o canal de criação de pedidos formais e de acompanhamento de estado — uso recorrente o suficiente para merecer acesso de um toque.
 
-**Posição na navegação — Supervisor:** Camada 2 (contextual). O Supervisor acessa S-06 a partir do Painel Operacional, onde as solicitações pendentes aparecem como item de atenção. Acesso direto também disponível via nav secundária.
+**Posição na navegação — Supervisor:** Camada 2 (contextual). Acesso via Painel Operacional onde as solicitações pendentes aparecem como item de atenção. Acesso direto também disponível via nav secundária.
 
-**Posição na navegação — Admin:** Camada 3 (profunda). O Admin acessa dados de Solicitações como indicador dentro do Painel Administrativo (S-03), não como destino primário. Acesso direto via nav profunda para investigação quando necessário.
+**Posição na navegação — Admin:** Camada 3 (profunda). Dados de Solicitações como indicador dentro do Painel Administrativo (S-03). Acesso direto via nav profunda para investigação.
 
 ---
 
 ### 1.4 O problema que S-06 existe para resolver
 
-A pesquisa de usuário identificou que o **silêncio após o envio** de uma solicitação é a experiência mais corrosiva para a confiança do Membro no sistema operacional. Não é a negativa — é o vácuo.
+A pesquisa de usuário identificou que o **silêncio após o envio** de uma solicitação é a experiência mais corrosiva para a confiança do Membro. Não é a negativa — é o vácuo.
 
-O Membro envia. E então não sabe se:
-- A solicitação chegou
-- O Supervisor viu
-- Está sendo analisada
-- Foi esquecida
-- Uma resposta está chegando
+O Membro envia. E então não sabe se a solicitação chegou, se o Supervisor viu, se está sendo analisada, se foi esquecida, se uma resposta está chegando.
 
-Esse silêncio sem significado (D3 — Pesquisa de Membro) foi a motivação principal para o design de S-06 como **processo com estado visível em tempo real**, não como formulário de envio.
+Esse silêncio sem significado (D3 — Pesquisa de Membro) é a motivação principal para o design de S-06 como **processo com estado visível em tempo real**, não como formulário de envio.
 
 ---
 
@@ -84,14 +82,14 @@ Oito tipos oficiais definidos na arquitetura do sistema. Cada tipo tem caracter�
 
 **Campos obrigatórios do Membro:**
 - Data(s) solicitadas
-- Motivo (texto livre, campo obrigatório — mas não validado: qualquer texto é aceito)
+- Motivo (texto livre obrigatório — qualquer texto é aceito sem validação de conteúdo)
 
 **Campos opcionais:**
 - Observação adicional (ex: posso fazer show da manhã, mas não o da tarde)
 
 **Impacto operacional:** Alto. O sistema calcula automaticamente todas as atividades afetadas antes de apresentar opções de decisão ao Supervisor.
 
-**Análise automática que o sistema deve fornecer ao Supervisor:**
+**Análise automática para o Supervisor:**
 - Quais atividades da data solicitada esse Membro cobre
 - Quais papéis são exclusivos (sem substituto disponível)
 - Quais papéis têm alternativa disponível (e quem são os candidatos)
@@ -104,7 +102,7 @@ Oito tipos oficiais definidos na arquitetura do sistema. Cada tipo tem caracter�
 
 #### TIPO 2 — Troca de Folga
 
-**O que é:** Pedido de trocar uma folga já agendada por outra data — geralmente porque o Membro precisa trabalhar na data da folga original e folgar em outro dia.
+**O que é:** Pedido de trocar uma folga já agendada por outra data.
 
 **Quando usar:** Membro tem folga programada na data X e prefere trabalhar nela, folga na data Y.
 
@@ -113,7 +111,13 @@ Oito tipos oficiais definidos na arquitetura do sistema. Cada tipo tem caracter�
 - Data alternativa proposta (onde deseja folgar)
 - Motivo
 
-**Impacto operacional:** Médio. O sistema valida as duas datas — a original e a alternativa — para verificar cobertura em ambas.
+**Impacto operacional:** Médio. O sistema valida as duas datas para verificar cobertura em ambas.
+
+**Comportamento ao aprovar (L-10):** Quando a Troca de Folga é aprovada, o sistema executa automaticamente duas atualizações na Escala:
+1. Data original (X): disponibilidade do Membro **restaurada** — ele volta a estar disponível para atividades naquela data
+2. Data nova (Y): disponibilidade do Membro **bloqueada** — folga registrada
+
+Ambas as atualizações acontecem simultaneamente, sem ação adicional do Supervisor.
 
 **Opções de decisão do Supervisor:** Aprovar / Negar (motivo obrigatório) / Propor combinação alternativa
 
@@ -123,20 +127,22 @@ Oito tipos oficiais definidos na arquitetura do sistema. Cada tipo tem caracter�
 
 **O que é:** Pedido que não se enquadra nas categorias padronizadas. Requer avaliação case-by-case pelo Supervisor.
 
-**Quando usar:** Situações incomuns que precisam de análise individualizada — ex: participar de um evento externo numa data de trabalho, necessidade de saída emergencial não programada, pedido de reposição especial.
+**Quando usar:** Situações incomuns — ex: participar de evento externo em data de trabalho, saída emergencial não programada, pedido de reposição especial.
 
 **Campos obrigatórios do Membro:**
-- Descrição da exceção (texto livre com mínimo de caracteres — o suficiente para o Supervisor entender o pedido sem precisar pedir mais informações)
+- Descrição da exceção (mínimo de caracteres suficiente para o Supervisor entender sem precisar pedir mais informações)
 - Data(s) impactadas
 
 **Campos opcionais:**
 - Proposta de compensação ou alternativa pelo próprio Membro
 
-**Análise automática:** Limitada — o sistema verifica apenas disponibilidade e cobertura básica nas datas indicadas. A decisão depende da análise qualitativa do Supervisor.
+**Análise automática:** Limitada — verifica disponibilidade e cobertura básica. Decisão depende de análise qualitativa do Supervisor.
 
 **Opções de decisão do Supervisor:** Aprovar / Negar (motivo obrigatório) / Solicitar mais informação / Propor alternativa
 
-**Nota:** Este é o único tipo que inclui o estado intermediário "Aguardando informação do Membro" como estado de decisão ativa.
+**Nota:** Este é o único tipo que ativa o estado AGUARDANDO INFORMAÇÃO DO MEMBRO como estado de decisão intermediária regular. Outros tipos podem atingir este estado em casos excepcionais.
+
+**Limite de ciclos (L-11):** Máximo de 2 rodadas de pedido de informação. Na terceira necessidade, o Supervisor deve tomar uma decisão (Aprovar / Negar / Propor Alternativa) ou abrir conversa via S-09 Mensagens. O sistema bloqueia a opção "Solicitar mais informação" após 2 usos na mesma solicitação.
 
 ---
 
@@ -144,20 +150,22 @@ Oito tipos oficiais definidos na arquitetura do sistema. Cada tipo tem caracter�
 
 **O que é:** Comunicação formal de uma limitação de disponibilidade ou capacidade física/médica/técnica que afeta a escala por um período.
 
-**Quando usar:** Membro tem uma limitação que impede ou condiciona determinados papéis ou atividades. Exemplos: lesão que impede elementos de risco, impossibilidade de trabalhar em determinados horários por período determinado, limitação técnica específica.
-
 **Campos obrigatórios do Membro:**
 - Tipo de restrição: Médica / Operacional / Física / Técnica
 - Descrição da limitação
 - Data de início
-- Data de término (ou "indefinido")
-- Data de revisão (opcional — quando a condição pode mudar)
+- Data de término (ou "Indefinido")
 
-**Impacto operacional:** Variável e duradouro. Uma restrição ativa afeta todas as escalas futuras enquanto estiver vigente. O sistema deve aplicar a restrição automaticamente nas gerações de Escala e Livro do Dia após aprovação.
+**Data de revisão (L-12):**
+- Para Restrições Médicas: **obrigatória**. O sistema não aceita submeter uma Restrição Médica sem data de revisão.
+- Para demais tipos (Operacional, Física, Técnica): opcional.
+- Quando a data de revisão de uma Restrição Médica é atingida sem que o Supervisor tenha revisado e encerrado ou renovado a restrição, o sistema envia alerta ao Supervisor: *"Restrição Médica de [Membro] atingiu a data de revisão em [data]. Revisar e confirmar continuidade ou encerrar."*
 
-**Decisão do Supervisor:** Registrar como aprovado (reconhecer a restrição) / Solicitar documento de suporte / Negar (com motivo — raro, mas possível em contextos operacionais)
+**Impacto operacional:** Variável e duradouro. Uma restrição ativa afeta todas as escalas futuras enquanto vigente. O sistema aplica automaticamente nas gerações de Escala e Livro do Dia após aprovação.
 
-**Nota arquitetural:** Restrições aprovadas alimentam diretamente o motor de candidatos da Escala (S-04), impactando a camada eliminatória da hierarquia de 4 camadas de candidatos.
+**Nota arquitetural:** Restrições aprovadas alimentam diretamente o motor de candidatos da Escala (S-04), impactando a camada eliminatória da hierarquia de 4 camadas.
+
+**Decisão do Supervisor:** Registrar como aprovado / Solicitar documento de suporte / Negar (com motivo)
 
 ---
 
@@ -165,29 +173,25 @@ Oito tipos oficiais definidos na arquitetura do sistema. Cada tipo tem caracter�
 
 **O que é:** Pedido do Membro para que sua posição em uma atividade específica seja revisada — troca de papel, troca de horário de entrada, ou qualquer modificação pontual na escala já publicada.
 
-**Quando usar:** Membro identificou um erro, tem uma sugestão fundamentada, ou precisa de uma mudança específica em sua posição numa atividade já definida.
-
 **Campos obrigatórios do Membro:**
 - Atividade específica (qual show/ensaio/evento)
 - O que está publicado atualmente para ele
 - O que solicita que seja alterado
 - Motivo
 
-**Impacto operacional:** Específico e imediato. O sistema verifica impacto apenas na atividade indicada e nas posições interdependentes.
+**Impacto operacional:** Específico e imediato. Verificado apenas na atividade indicada e posições interdependentes.
 
-**Decisão do Supervisor:** Aprovar (e alterar a Escala automaticamente) / Negar (com motivo) / Aprovar parcialmente com modificação
+**Decisão do Supervisor:** Aprovar (Escala alterada automaticamente) / Negar (com motivo) / Aprovar parcialmente com modificação
 
 ---
 
 #### TIPO 6 — Solicitação de Saída Antecipada
 
-**O que é:** Pedido para encerrar a jornada de trabalho antes do horário previsto na data indicada.
-
-**Quando usar:** Membro precisa sair antes do fim do horário previsto por motivo pessoal ou profissional.
+**O que é:** Pedido para encerrar a jornada antes do horário previsto na data indicada.
 
 **Campos obrigatórios do Membro:**
 - Data
-- Horário de saída solicitado (vs. horário previsto — o sistema preenche o horário previsto automaticamente)
+- Horário de saída solicitado (horário previsto preenchido automaticamente pelo sistema)
 - Motivo
 
 **Impacto operacional:** Baixo a médio. O sistema verifica se o Membro tem atividades previstas após o horário de saída solicitado.
@@ -200,11 +204,9 @@ Oito tipos oficiais definidos na arquitetura do sistema. Cada tipo tem caracter�
 
 **O que é:** Pedido para iniciar a jornada mais tarde que o horário previsto na data indicada.
 
-**Quando usar:** Membro não consegue chegar no horário previsto por motivo específico.
-
 **Campos obrigatórios do Membro:**
 - Data
-- Horário de chegada previsto (preenchido automaticamente pelo sistema)
+- Horário de chegada previsto (preenchido automaticamente)
 - Horário de chegada solicitado
 - Motivo
 
@@ -216,25 +218,26 @@ Oito tipos oficiais definidos na arquitetura do sistema. Cada tipo tem caracter�
 
 #### TIPO 8 — Solicitação Administrativa
 
-**O que é:** Canal para pedidos de natureza administrativa não operacional — atualização de dados cadastrais, solicitação de documentos, pedidos relacionados a pagamentos, benefícios, informações de contrato.
-
-**Quando usar:** Pedido que não afeta a escala ou a operação diretamente.
+**O que é:** Canal para pedidos de natureza administrativa não operacional — atualização de dados cadastrais, documentos, pagamentos, benefícios, informações de contrato.
 
 **Campos obrigatórios do Membro:**
 - Descrição do pedido
-- Urgência percebida (Baixa / Normal / Alta) — informativa, não vinculante
+- Urgência percebida: Baixa / Normal / Alta
 
-**Impacto operacional:** Nenhum. O sistema não executa análise de impacto de escala.
+**Comportamento da urgência (L-13):** A marcação de urgência **não é apenas informativa** — tem efeito operacional no sistema:
+- **Urgência Baixa:** aparece na lista do Supervisor sem destaque adicional
+- **Urgência Normal:** badge padrão na lista
+- **Urgência Alta:** push notification enviado ao Supervisor + item aparece no topo dentro da categoria Administrativa + label de urgência visível na lista
+
+A urgência Alta não altera os limiares de escalada automática para o Admin — apenas acelera a visibilidade para o Supervisor.
+
+**Impacto operacional:** Nenhum sobre a Escala. O sistema não executa análise de impacto operacional.
 
 **Decisão do Supervisor:** Resolver / Encaminhar para Admin / Negar (com motivo)
-
-**Nota:** Solicitações Administrativas podem ser encaminhadas ao Admin pelo Supervisor quando o assunto ultrapassa seu escopo de decisão.
 
 ---
 
 ### 2.2 Linguagem para o Membro
-
-Os tipos oficiais têm nomes técnicos para o sistema. Para o Membro, a interface deve apresentar linguagem compreensível:
 
 | Nome técnico | Como aparece para o Membro |
 |---|---|
@@ -253,13 +256,11 @@ Os tipos oficiais têm nomes técnicos para o sistema. Para o Membro, a interfac
 
 ### 2.3 Frequência esperada por tipo
 
-Por frequência de uso, da mais frequente para a menos frequente:
-
-1. **Solicitação de Folga** — núcleo funcional de S-06, maior volume
-2. **Solicitação de Restrição** — frequência sazonal mas impacto duradouro
-3. **Solicitação de Chegada Tardia / Saída Antecipada** — frequentes, geralmente de baixo impacto
+1. **Solicitação de Folga** — maior volume
+2. **Solicitação de Restrição** — frequência sazonal, impacto duradouro
+3. **Chegada Tardia / Saída Antecipada** — frequentes, baixo impacto médio
 4. **Troca de Folga** — menos frequente que folga simples
-5. **Solicitação de Ajuste de Escala** — pontual, reativa a publicação
+5. **Ajuste de Escala** — pontual, reativo a publicação
 6. **Solicitação Excepcional** — esporádica
 7. **Solicitação Administrativa** — independente do calendário operacional
 
@@ -271,28 +272,35 @@ Por frequência de uso, da mais frequente para a menos frequente:
 
 ### 3.1 Estados oficiais de uma Solicitação
 
-Toda Solicitação passa por estados claramente definidos. O estado é sempre visível para o Membro **sem precisar abrir o item** — esta é uma regra inegociável de S-06.
+Toda Solicitação passa por estados claramente definidos. O estado é sempre visível para o Membro **sem precisar abrir o item** — regra inegociável de S-06.
 
 ```
 ENVIADA
    │
    ▼
-EM ANÁLISE ────────────────────────────────────────────────┐
-   │                                                        │
-   ├──► AGUARDANDO INFORMAÇÃO DO MEMBRO ────────────────────┤
-   │         (Membro responde → volta a EM ANÁLISE)         │
-   │                                                        │
-   ├──► APROVADA ──────────────────────────────────────── [FIM]
-   │                                                        │
-   ├──► NEGADA (motivo obrigatório) ───────────────────── [FIM]
-   │                                                        │
-   └──► PROPOSTA ALTERNATIVA                                │
+EM ANÁLISE
+   │
+   ├──► AGUARDANDO INFORMAÇÃO DO MEMBRO
+   │         │
+   │         └──► (Membro responde) → EM ANÁLISE
+   │              (max 2 rodadas — Tipo 3; max 1 — demais tipos)
+   │
+   ├──► APROVADA ────────────────────────────────────── [FIM]
+   │
+   ├──► NEGADA (motivo obrigatório) ─────────────────── [FIM]
+   │
+   └──► PROPOSTA ALTERNATIVA
              │
-             ├──► Membro aceita → APROVADA (nova versão)
-             ├──► Membro recusa → NEGADA (motivo visível)
-             └──► Membro contra-propõe → volta a EM ANÁLISE
+             ├──► Membro aceita → APROVADA ──────────── [FIM]
+             ├──► Membro recusa → NEGADA ─────────────── [FIM]
+             ├──► Membro contra-propõe → EM ANÁLISE
+             └──► Prazo vence → EXPIRADA
+                       │
+                       └──► Supervisor age → EM ANÁLISE
 
-CANCELADA (pelo Membro, antes de decisão) ──────────────── [FIM]
+APROVADA ──► (nova circunstância) ──► REVOGADA ──────── [FIM]
+
+CANCELADA (pelo Membro, antes de decisão) ───────────── [FIM]
 ```
 
 ---
@@ -300,44 +308,73 @@ CANCELADA (pelo Membro, antes de decisão) ────────────�
 ### 3.2 Definição detalhada de cada estado
 
 **ENVIADA**
-- O que significa: Solicitação recebida pelo sistema. Supervisor ainda não a visualizou ou ainda não iniciou análise.
-- O que o Membro vê: "Enviada — aguardando análise"
-- O que o Membro sabe: para quem foi encaminhada (nome do Supervisor), data e hora do envio
-- Tempo máximo esperado sem transição: 24h úteis. Após isso, o sistema sinaliza silêncio prolongado para o Admin.
+- O que significa: Solicitação recebida pelo sistema. Supervisor ainda não a visualizou.
+- O que o Membro vê: *"Enviada — aguardando análise pelo Supervisor [Nome] desde [hora/data]"*
+- Ação do Membro: pode cancelar
 
 **EM ANÁLISE**
 - O que significa: Supervisor visualizou e está analisando. Ainda não tomou decisão.
-- O que o Membro vê: "Em análise pelo Supervisor [Nome] desde [hora/data]"
-- Valor desta informação: elimina o silêncio — o Membro sabe que alguém viu.
-- O que o Membro sabe: há quanto tempo está nesse estado
+- O que o Membro vê: *"Em análise pelo Supervisor [Nome] desde [hora/data]"*
+- Valor: elimina o silêncio — o Membro sabe que foi visto
+- Transição automática: acontece quando o Supervisor abre a solicitação
 
 **AGUARDANDO INFORMAÇÃO DO MEMBRO**
-- O que significa: Supervisor precisa de mais dados antes de decidir. Exclusivo de Solicitação Excepcional e casos especiais.
-- O que o Membro vê: "Supervisor solicitou informação — ação necessária"
-- O que o Membro precisa fazer: responder à pergunta específica do Supervisor (exibida diretamente na solicitação)
-- Urgência: alta — a solicitação fica bloqueada até o Membro responder
+- O que significa: Supervisor precisa de mais dados antes de decidir.
+- O que o Membro vê: *"Supervisor solicitou informação — ação necessária"* + texto da pergunta do Supervisor
+- Ação do Membro: responder (botão [Responder agora])
+- Limite de ciclos: máximo 2 rodadas. Sistema bloqueia terceiro pedido de informação.
 
 **APROVADA**
-- O que significa: Decisão tomada a favor. Escala atualizada automaticamente (quando aplicável).
-- O que o Membro vê: "Aprovada em [data] por [Supervisor]"
-- Consequências automáticas: para Folga, Troca e Ajuste de Escala — a Escala é atualizada sem ação adicional do Supervisor. O Membro vê a mudança refletida no Meu Dia (S-01).
+- O que significa: Decisão favorável. Escala atualizada automaticamente quando aplicável.
+- O que o Membro vê: *"Aprovada em [data] por Supervisor [Nome]"*
+- Consequências automáticas: para Folga, Troca e Ajuste de Escala — Escala e Meu Dia atualizados sem ação adicional
 
 **NEGADA**
-- O que significa: Decisão tomada contra. **Motivo é obrigatório — o sistema não permite negar sem explicação.**
-- O que o Membro vê: "Negada em [data] — Motivo: [texto do Supervisor]"
-- Opções após negativa: iniciar conversa via Mensagens / aceitar e encerrar
-- O que a IA pode fazer: explicar o contexto operacional da decisão quando solicitado
+- O que significa: Decisão contrária. **Motivo é obrigatório — bloqueio técnico, não aviso.**
+- O que o Membro vê: *"Negada em [data] — Motivo: [texto do Supervisor]"*
+- Opções após negativa: abrir conversa via S-09 / criar nova solicitação se contexto mudou
 
 **PROPOSTA ALTERNATIVA**
-- O que significa: Supervisor não aprova na forma solicitada, mas sugere uma alternativa.
-- O que o Membro vê: "Proposta alternativa — resposta necessária até [prazo]"
-- O que o Membro precisa fazer: aceitar / recusar / contra-propor (abre conversa via Mensagens)
-- Se o Membro não responder no prazo: o sistema notifica o Membro e o Supervisor
+- O que significa: Supervisor não aprova na forma original mas sugere alternativa.
+- O que o Membro vê: *"Proposta alternativa — resposta necessária até [prazo]"*
+- Ações: [Aceitar] [Recusar] [Contra-propor via Mensagem]
+- Prazo: definido pelo Supervisor ao criar a proposta (padrão sugerido: 48h)
+
+**EXPIRADA (L-01)**
+- O que significa: O Membro não respondeu à Proposta Alternativa dentro do prazo definido pelo Supervisor.
+- Quando ocorre: automaticamente ao término do prazo da Proposta Alternativa sem resposta do Membro
+- **Não é estado terminal.** A expiração reabre a responsabilidade no lado do Supervisor.
+- O que o Membro vê: *"Proposta alternativa expirada — aguardando nova decisão do Supervisor"*
+- O que o Supervisor vê: *"Proposta alternativa não respondida pelo Membro — ação necessária"* + notificação push
+- Quem pode agir após: exclusivamente o Supervisor (pode: propor nova alternativa, aprovar a solicitação original, ou negar com motivo)
+- Quando o Supervisor age: estado retorna a EM ANÁLISE, e novo fluxo de decisão se inicia
+- O que o Admin monitora: Solicitações em EXPIRADA aparecem no painel como "aguardando nova ação do Supervisor" e entram na contagem de tempo de resposta
+- Como o Histórico registra: *"Proposta alternativa expirada em [data] após [X] dias sem resposta do Membro."* + nova entrada quando Supervisor age
+- Prazo de nova ação pelo Supervisor após EXPIRADA: sujeito à mesma tabela de escalada proporcional (seção 3.5) contada a partir da data de expiração
+
+**REVOGADA (L-02)**
+- O que significa: Uma aprovação previamente emitida foi desfeita por circunstância superveniente ou por erro identificado.
+- **Quem pode revogar:** o Supervisor responsável pela aprovação original, ou o Admin
+- **O Membro não pode revogar** uma aprovação já emitida — pode apenas cancelar antes da decisão
+- **Cenários válidos para revogação:**
+  - Nova Restrição de outro Membro elimina a cobertura que sustentava a aprovação
+  - Mudança estrutural torna a folga operacionalmente inviável
+  - Cancelamento de show impacta diretamente o contexto da aprovação
+  - Supervisor identificou erro na análise antes da data efetiva
+- **Cenários inválidos:** Supervisor simplesmente mudou de ideia sem contexto operacional novo — neste caso, deve abrir conversa com o Membro antes de revogar
+- **Justificativa obrigatória:** mesma regra da negativa — bloqueio técnico sem preenchimento do motivo
+- **Impacto na Escala:** automático — a Escala é revertida imediatamente ao estado anterior à aprovação
+- **Impacto no Livro do Dia:** se o Livro do Dia da data afetada já foi gerado, o sistema emite alerta ao Supervisor para revisão manual do Livro
+- **Notificação ao Membro:** nível Importante (não Crítico se a data ainda está distante; Crítico se a atividade afetada começa em menos de 24h) + motivo da revogação visível
+- **Como o Histórico registra:** nova entrada imutável — *"Aprovação revogada em [data] por [Supervisor/Admin] — Motivo: [texto]. Estado anterior da Escala restaurado automaticamente."*
+- REVOGADA é **estado terminal** — a solicitação encerra. Se o Membro quiser pedir novamente, cria nova Solicitação com novo contexto.
+- O Membro pode abrir conversa via S-09 após receber notificação de revogação
 
 **CANCELADA**
-- O que significa: Membro desistiu do pedido antes de uma decisão.
-- Quando disponível: apenas nos estados ENVIADA e EM ANÁLISE
-- Não disponível em: AGUARDANDO INFORMAÇÃO, PROPOSTA ALTERNATIVA (já há interação ativa do Supervisor)
+- O que significa: Membro desistiu antes de uma decisão.
+- Quando disponível: apenas em ENVIADA e EM ANÁLISE
+- Não disponível em: AGUARDANDO INFORMAÇÃO, PROPOSTA ALTERNATIVA (há interação ativa do Supervisor)
+- Estado terminal
 
 ---
 
@@ -346,15 +383,18 @@ CANCELADA (pelo Membro, antes de decisão) ────────────�
 | Transição | Quem aciona |
 |---|---|
 | Criada → ENVIADA | Membro (ao submeter) |
-| ENVIADA → EM ANÁLISE | Supervisor (ao abrir/visualizar — automático) |
-| EM ANÁLISE → AGUARDANDO INFORMAÇÃO | Supervisor (ação explícita) |
+| ENVIADA → EM ANÁLISE | Sistema (automático quando Supervisor abre) |
+| EM ANÁLISE → AGUARDANDO INFORMAÇÃO | Supervisor (ação explícita — máx. 2x) |
 | AGUARDANDO INFORMAÇÃO → EM ANÁLISE | Membro (ao responder) |
 | EM ANÁLISE → APROVADA | Supervisor |
-| EM ANÁLISE → NEGADA | Supervisor (com motivo obrigatório) |
+| EM ANÁLISE → NEGADA | Supervisor (motivo obrigatório) |
 | EM ANÁLISE → PROPOSTA ALTERNATIVA | Supervisor |
-| PROPOSTA ALTERNATIVA → APROVADA | Membro (ao aceitar proposta) |
-| PROPOSTA ALTERNATIVA → NEGADA | Membro (ao recusar) ou expiração de prazo |
+| PROPOSTA ALTERNATIVA → APROVADA | Membro (ao aceitar) |
+| PROPOSTA ALTERNATIVA → NEGADA | Membro (ao recusar) |
 | PROPOSTA ALTERNATIVA → EM ANÁLISE | Membro (ao contra-propor) |
+| PROPOSTA ALTERNATIVA → EXPIRADA | Sistema (automático ao vencer o prazo) |
+| EXPIRADA → EM ANÁLISE | Supervisor (ao agir novamente) |
+| APROVADA → REVOGADA | Supervisor ou Admin (motivo obrigatório) |
 | ENVIADA → CANCELADA | Membro |
 | EM ANÁLISE → CANCELADA | Membro |
 
@@ -362,25 +402,64 @@ CANCELADA (pelo Membro, antes de decisão) ────────────�
 
 ### 3.4 Visibilidade de tempo em cada estado
 
-Para cada Solicitação, o tempo decorrido no estado atual é sempre visível. Este dado serve três propósitos:
-
+Para cada Solicitação, o tempo decorrido no estado atual é sempre visível:
 1. **Para o Membro:** confirma que o sistema não esqueceu
 2. **Para o Supervisor:** sinaliza o que está envelhecendo na fila
-3. **Para o Admin:** é o dado bruto para o indicador "tempo médio de resposta" por Supervisor
+3. **Para o Admin:** dado bruto para o indicador "tempo médio de resposta" por Supervisor
 
 ---
 
-### 3.5 Escalada automática para o Admin
+### 3.5 Escalada proporcional por urgência de impacto (L-03 + L-09)
 
-**Limiar 1 — Silêncio de 48h:**
-Se uma Solicitação permanece no estado ENVIADA por mais de 48 horas úteis sem transição para EM ANÁLISE:
-- Admin recebe alerta de "solicitação sem visibilidade"
-- Admin pode intervir diretamente: visualizar, encaminhar para outro Supervisor ou aprovar/negar
+A escalada automática **não é fixa em 48h/72h para todos os casos.** Os limiares são proporcionais à urgência do impacto operacional da solicitação.
 
-**Limiar 2 — Análise de 72h:**
-Se uma Solicitação permanece no estado EM ANÁLISE por mais de 72 horas úteis sem decisão:
-- Admin vê a solicitação como "pendência de alta idade" no painel de monitoramento
-- Não é bloqueio — é visibilidade para o Admin agir preventivamente
+#### Tabela oficial de escalada
+
+| Nível de impacto | Definição | Limiar de escalada para Admin | Alerta de proximidade para Supervisor |
+|---|---|---|---|
+| **Crítico** | Atividade afetada começa em menos de 24h | **6 horas** sem resposta | 3 horas (50% do limiar) |
+| **Alto** | Atividade afetada em 1 a 7 dias | **24 horas** sem resposta | 12 horas (50% do limiar) |
+| **Médio** | Atividade afetada em 7 a 30 dias | **48 horas** sem resposta | 24 horas (50% do limiar) |
+| **Baixo** | Atividade em > 30 dias ou sem impacto operacional direto (ex: Administrativa) | **72 horas** sem resposta | 36 horas (50% do limiar) |
+
+#### Justificativa de cada limiar
+
+**Crítico — 6 horas:**
+Uma solicitação Crítica afeta atividade que começa em menos de 24h. Se o Supervisor não age em 6h, o Admin precisa ter tempo hábil para intervir antes da atividade. Com escalada em 6h, o Admin recebe o caso com pelo menos 18h de antecedência — tempo suficiente para tomar decisão e comunicar o Membro.
+
+**Alto — 24 horas:**
+Atividade em até 7 dias. O Supervisor precisa de tempo para analisar o impacto e, se necessário, reorganizar a cobertura. 24h de silêncio é o sinal de que a análise está travada e o Admin deve estar ciente.
+
+**Médio — 48 horas:**
+Atividade distante o suficiente para não ser emergência imediata, mas próxima o suficiente para não ser ignorada. 48h é o limiar adequado para uso normal.
+
+**Baixo — 72 horas:**
+Sem urgência operacional direta. O Admin monitora como indicador de gestão, não como risco imediato.
+
+#### Alertas de proximidade (L-09)
+
+O sistema não espera o limiar ser atingido para alertar. Dois alertas progressivos:
+
+**Alerta 1 — 50% do limiar:** Supervisor recebe lembrete in-app: *"Solicitação de [Membro] aguarda análise há [X] horas. Limiar de escalada em [Y] horas."* Não é push — é notificação in-app visível ao abrir o painel.
+
+**Alerta 2 — 80% do limiar:** Supervisor recebe push notification urgente + Admin recebe prévia da pendência: *"Solicitação de [Membro] pode escalar para você em [X] horas se não for analisada."* O Admin não precisa agir ainda, mas está informado antecipadamente.
+
+**Escalada no limiar (100%):** Admin recebe push com responsabilidade formal transferida. Supervisor recebe notificação de que o Admin assumiu.
+
+#### Aplicação da tabela por tipo de solicitação
+
+| Tipo de Solicitação | Nível de impacto padrão | Observação |
+|---|---|---|
+| Folga (data próxima < 24h) | Crítico | Calculado pela data de impacto, não pela data de envio |
+| Folga (data em 1-7 dias) | Alto | |
+| Folga (data em 7-30 dias) | Médio | |
+| Troca de Folga | Alto ou Médio | Conforme data de impacto |
+| Restrição | Alto | Impacto duradouro justifica escalada mais rápida |
+| Ajuste de Escala | Calculado pela data da atividade | |
+| Chegada Tardia / Saída Antecipada | Calculado pela data da atividade | |
+| Excepcional | Calculado pela data de impacto declarada | |
+| Administrativa — Urgência Alta | Baixo (sobreposto por push direto ao Supervisor) | A urgência Alta não muda a tabela de escalada |
+| Administrativa — Normal/Baixa | Baixo | |
 
 ---
 
@@ -390,80 +469,69 @@ Se uma Solicitação permanece no estado EM ANÁLISE por mais de 72 horas úteis
 
 ### 4.1 O que o Membro precisa desta superfície
 
-O Membro usa S-06 em dois modos distintos:
+O Membro usa S-06 em dois modos:
 
-**Modo Criação:** Quando tem um pedido a fazer. Precisa escolher o tipo certo, preencher o mínimo necessário e ter confirmação imediata de que foi recebido.
+**Modo Criação:** Quando tem um pedido a fazer. Precisa escolher o tipo certo, preencher o mínimo necessário e ter confirmação imediata.
 
-**Modo Acompanhamento:** Quando quer saber o que está acontecendo com pedidos já enviados. Precisa ver o estado de cada solicitação sem abrir uma por uma.
+**Modo Acompanhamento:** Quando quer saber o que está acontecendo. Precisa ver o estado de cada solicitação sem abrir uma por uma.
 
-A pesquisa aponta que **Acompanhamento é mais importante que o ato de criar** (D4 — Pesquisa de Membro). O formulário é apenas o início. O que o Membro realmente quer é a resposta: está sendo visto? Está sendo analisado? O que decidiu?
+A pesquisa aponta que **Acompanhamento é mais importante que o ato de criar** (D4 — Pesquisa de Membro). O formulário é apenas o início. O que o Membro realmente quer é a resposta: está sendo visto? Está sendo analisado? O que foi decidido?
 
 ---
 
 ### 4.2 Lista de Solicitações — visão do Membro
 
 **O que aparece na lista (sem precisar abrir):**
-- Tipo de solicitação (em linguagem amigável, não técnica)
+- Tipo de solicitação (em linguagem amigável)
 - Data(s) impactadas
 - **Estado atual** — sempre visível, sempre legível
 - Tempo no estado atual ("há 2 dias", "há 3 horas")
-- Indicador de ação necessária (quando o Membro precisa agir: responder, aceitar proposta)
+- Indicador de ação necessária quando o Membro precisa agir
 
-**Ordenação da lista para o Membro:**
-1. **Ação necessária do Membro** (topo absoluto — badge de destaque)
-2. **Em andamento** — por data de impacto (a mais próxima primeiro)
+**Ordenação:**
+1. **Ação necessária do Membro** (topo — badge de destaque)
+2. **Em andamento** — por data de impacto (mais próxima primeiro)
 3. **Decididas recentemente** — últimos 7 dias
-4. **Histórico** — acessível via "ver mais antigas"
+4. **Histórico** — via "ver mais antigas"
 
 ---
 
 ### 4.3 Fluxo de criação de uma Solicitação
 
-**Passo 1 — Escolha do tipo**
+**Passo 1 — Escolha do tipo:** Apresentado em linguagem natural. O sistema pode sugerir o tipo com base em descrição livre, ou o Membro escolhe diretamente.
 
-Apresentado em linguagem natural. O sistema pode oferecer entrada por pergunta — *"O que você precisa pedir?"* — e sugerir o tipo mais adequado. Ou o Membro escolhe diretamente da lista de tipos (em linguagem amigável).
+**Prevenção de duplicata:** antes de apresentar o formulário, o sistema verifica solicitação similar em aberto e exibe aviso: *"Você já tem uma solicitação de folga para o dia 21 em análise. Quer abrir mesmo assim?"*
 
-**Prevenção de duplicata:** antes de apresentar o formulário, o sistema verifica se existe solicitação similar já em aberto (mesmo tipo + data sobreposta) e exibe aviso: *"Você já tem uma solicitação de folga para o dia 21 em análise. Quer abrir mesmo assim?"*
+**Passo 2 — Preenchimento:** Campos mínimos necessários por tipo. O sistema não exige mais do que o necessário para análise.
 
-**Passo 2 — Preenchimento**
+**Cache local:** o formulário em preenchimento é salvo temporariamente em memória local do dispositivo. Se o app for fechado acidentalmente durante o preenchimento, o rascunho é recuperado na próxima abertura. Não existe estado RASCUNHO no backend — apenas cache local que expira em 24h.
 
-Campos mínimos necessários por tipo (definidos na Parte 2). O sistema não deve exigir mais do que o necessário para que o Supervisor consiga analisar.
-
-**Passo 3 — Envio e confirmação imediata**
-
-Após enviar, o Membro vê confirmação explícita:
-- "Solicitação enviada e encaminhada para [Nome do Supervisor]"
+**Passo 3 — Envio e confirmação imediata:** confirmação visual + informacional:
+- *"Solicitação enviada e encaminhada para Supervisor [Nome]"*
 - Data e hora do envio
 - Estado inicial: "Enviada — aguardando análise"
-
-A tela retorna para a lista com o novo item visível no topo.
 
 ---
 
 ### 4.4 Visualização de uma Solicitação individual
 
-Ao abrir uma solicitação, o Membro vê:
-
-**Cabeçalho fixo:**
-- Tipo (amigável) + Estado atual com ícone de cor + Data(s) impactadas
+**Cabeçalho fixo:** Tipo (amigável) + Estado atual com ícone de cor + Data(s) impactadas
 
 **Linha do tempo simplificada:**
 - Enviada em [data/hora]
 - Visualizada pelo Supervisor em [data/hora] (quando disponível)
-- [Estado atual]
+- [Transições subsequentes com timestamps]
 
-**Conteúdo do pedido:** o que foi solicitado (resumo do preenchimento)
+**Conteúdo do pedido:** o que foi solicitado
 
-**Decisão (quando decidida):**
-- Resultado: Aprovada / Negada / Proposta alternativa
-- **Motivo** (quando negada — sempre presente, nunca vazio)
-- Data da decisão + Nome do Supervisor que decidiu
+**Decisão (quando decidida):** resultado + motivo (negativa e revogação: sempre presente) + data + nome do decisor
 
-**Ações disponíveis por estado:**
+**Ações por estado:**
 - ENVIADA ou EM ANÁLISE → [Cancelar solicitação]
 - PROPOSTA ALTERNATIVA → [Aceitar] [Recusar] [Enviar mensagem]
 - AGUARDANDO INFORMAÇÃO → [Responder agora]
-- APROVADA ou NEGADA → [Abrir conversa] (vai para S-09 com contexto da solicitação pré-carregado)
+- EXPIRADA → apenas leitura — Membro aguarda nova ação do Supervisor
+- APROVADA, NEGADA, REVOGADA → [Abrir conversa] (→ S-09 com contexto pré-carregado)
 
 ---
 
@@ -472,8 +540,8 @@ Ao abrir uma solicitação, o Membro vê:
 - Abrir cada solicitação para descobrir o estado
 - Perguntar ao Supervisor "você viu meu pedido?"
 - Enviar solicitação duplicada por não saber que a primeira estava em análise
-- Receber uma negativa sem entender o motivo
-- Ficar sem resposta por dias sem nenhum sinal de que algo está acontecendo
+- Receber negativa ou revogação sem entender o motivo
+- Ficar sem qualquer sinal por mais de [limiar proporcional] horas
 
 ---
 
@@ -483,106 +551,131 @@ Ao abrir uma solicitação, o Membro vê:
 
 ### 5.1 O que o Supervisor precisa desta superfície
 
-O Supervisor usa S-06 em dois modos:
+**Modo Análise Ativa:** processar solicitações pendentes.
+**Modo Monitoramento:** passivo — solicitações aparecem no Painel Operacional (S-02) quando existem pendências.
 
-**Modo Análise Ativa:** Quando precisa processar solicitações pendentes. Pode ser diário ou em lote.
-
-**Modo Monitoramento:** Passivo — as solicitações aparecem no Painel Operacional (S-02) como item de atenção quando existem pendências.
-
-A **análise de impacto** é o elemento central da visão do Supervisor. Antes de ver qualquer botão de decisão, o Supervisor vê o que esta solicitação significa operacionalmente.
+A **análise de impacto** é o elemento central. Antes de ver qualquer botão de decisão, o Supervisor vê o que esta solicitação significa operacionalmente.
 
 ---
 
 ### 5.2 Lista de Solicitações — visão do Supervisor
 
 **O que aparece na lista (sem precisar abrir):**
-- Nome do Membro + Tipo de solicitação + Data(s) solicitadas
-- **Nível de impacto operacional:** Baixo / Médio / Alto / Crítico (calculado automaticamente)
-- Tempo desde o envio (sinaliza urgência de resposta)
-- Estado atual (Enviada / Em análise)
+- Nome do Membro + Tipo + Data(s) solicitadas
+- **Nível de impacto operacional:** Baixo / Médio / Alto / Crítico
+- Tempo desde o envio
+- Estado atual
 
-**Ordenação da lista para o Supervisor (fundamental):**
-
-A lista **NÃO é ordenada por data de criação.** É ordenada por impacto e urgência operacional:
-
-1. **Crítico — data de impacto nas próximas 48h** (topo absoluto)
-2. **Alto — data de impacto em até 7 dias**
-3. **Médio — data de impacto além de 7 dias**
-4. **Baixo — impacto operacional reduzido**
-
-Dentro de cada nível, ordenação por data de impacto (a mais próxima primeiro).
-
-**Justificativa:** A folga que começa amanhã é mais urgente que a folga de daqui a três semanas, independentemente de qual foi enviada primeiro.
+**Ordenação:** por urgência e impacto operacional — nunca por data de criação:
+1. Crítico — atividade em < 24h (topo absoluto)
+2. Alto — atividade em até 7 dias
+3. Médio — atividade em até 30 dias
+4. Baixo — atividade distante ou sem impacto operacional direto
 
 ---
 
-### 5.3 Análise de uma Solicitação pelo Supervisor
+### 5.3 Visão consolidada de solicitações relacionadas (L-05)
 
-Ao abrir uma solicitação, o Supervisor **NÃO vê primeiro os botões de decisão.** Vê primeiro o diagnóstico:
+Quando existem **2 ou mais Solicitações para a mesma data**, a interface do Supervisor apresenta agrupamento visual com alerta:
 
-**Bloco 1 — O Pedido**
-Quem solicitou, o que pediu, para quando, motivo declarado.
+> *"3 solicitações para o dia 21/06 — recomendamos analisar o impacto consolidado antes de decidir individualmente."*
 
-**Bloco 2 — Impacto Operacional (calculado pela IA)**
-- Atividades afetadas naquelas datas
+**O Supervisor pode:**
+- Ignorar o alerta e analisar individualmente (permitido — não é bloqueio)
+- Acessar a **Visão de Impacto Consolidado** antes de abrir qualquer solicitação individual
+
+**Visão de Impacto Consolidado:**
+- Lista de todos os Membros com solicitação para aquela data (pendentes e já decididas)
+- Papéis cobertos por cada um
+- Percentual de cobertura do grupo **se todas as pendentes forem aprovadas**
+- Papéis que ficariam descobertos no cenário de aprovação total
+- Papéis que ficariam descobertos com aprovação parcial (simulação com N aprovadas)
+
+**Atualização em tempo real:** À medida que o Supervisor aprova individualmente, o Bloco 3 (acumulado) de cada próxima solicitação reflete as aprovações já feitas. A Visão Consolidada também se atualiza.
+
+**Agrupamento adicional:** Quando múltiplas solicitações afetam o mesmo papel ou função, o sistema pode agrupar por papel além de por data: *"2 solicitações afetam o papel de Astrid no Musical das 14h."*
+
+---
+
+### 5.4 Análise de uma Solicitação individual
+
+**Bloco 1 — O Pedido:** quem, o que, para quando, motivo declarado.
+
+**Bloco 2 — Impacto Operacional (IA):**
+- Atividades afetadas nas datas solicitadas
 - Papéis que este Membro cobre → nível de risco de cada um
-- Candidatos disponíveis para cobertura (quando aplicável)
+- Candidatos disponíveis para cobertura
 
-**Bloco 3 — Acumulado de Folgas nas Mesmas Datas**
-- Quantas outras folgas já foram aprovadas para as mesmas datas dentro do grupo
-- Percentual de cobertura restante do grupo se esta folga for aprovada
-- Nomes dos outros Membros já de folga nas mesmas datas
+**Bloco 3 — Acumulado de Folgas nas Mesmas Datas:**
+- Folgas já aprovadas para as mesmas datas no grupo (atualizado em tempo real)
+- Percentual de cobertura restante do grupo se esta solicitação for aprovada
+- Nomes dos outros Membros já com ausência aprovada para as mesmas datas
 
-Este bloco é **mandatório e não pode ser omitido ou minimizado.** É a proteção contra decisões que individualmente parecem corretas mas coletivamente criam crise de cobertura (D7 — Pesquisa de Supervisor).
+Estes três blocos são **mandatórios e não podem ser omitidos ou minimizados** antes das opções de decisão.
 
-**Bloco 4 — Decisão**
-Apenas após os três blocos acima:
+**Bloco 4 — Decisão:**
 - [Aprovar]
-- [Negar] → abre campo de motivo obrigatório
-- [Propor alternativa] → abre campo para proposta com data(s) alternativas e justificativa
-- [Solicitar informação] → disponível para Solicitação Excepcional e casos específicos
+- [Negar] → campo de motivo obrigatório (bloqueio técnico)
+- [Propor alternativa] → campo de data(s) alternativas + justificativa + prazo de resposta
+- [Solicitar informação] → disponível apenas para Tipo 3, máx. 2x por solicitação
 
 ---
 
-### 5.4 Regra inegociável: motivo de negativa obrigatório
+### 5.5 Regra inegociável: motivo obrigatório em toda decisão contrária
 
-O sistema **bloqueia o envio da negativa** enquanto o campo de motivo estiver vazio.
+O sistema **bloqueia o envio** de:
+- Negativa sem motivo preenchido
+- Revogação sem motivo preenchido
 
-Não é um aviso. Não é um lembrete. É um bloqueio técnico.
+Aplica-se ao Supervisor e ao Admin. Sem exceção.
 
-O campo deve ter prompt de exemplo: *"Ex: Você é a única titular de Astrid disponível nesta data"* ou *"Ex: Cobertura do grupo já está no limite mínimo."*
+Prompt de exemplo no campo: *"Ex: Você é a única titular de Astrid disponível nesta data"* ou *"Ex: Cobertura do grupo já está no limite mínimo."*
 
 ---
 
-### 5.5 Fluxo de proposta alternativa
+### 5.6 Fluxo de proposta alternativa
 
 1. Supervisor seleciona "Propor alternativa"
-2. Informa a(s) data(s) alternativas disponíveis
-3. Escreve breve justificativa
-4. Envia → Membro recebe notificação com estado "Proposta alternativa — resposta necessária"
-
-O Supervisor vê na lista: *"Proposta enviada — aguardando resposta do Membro [há X horas]"*
+2. Informa data(s) alternativas disponíveis + justificativa + prazo de resposta (padrão sugerido: 48h)
+3. Envia → Membro recebe notificação + estado PROPOSTA ALTERNATIVA
+4. Se prazo vence sem resposta → estado EXPIRADA → Supervisor recebe notificação para nova ação
 
 ---
 
-### 5.6 Análise em lote pelo Supervisor
+### 5.7 Fluxo de revogação de aprovação (L-02)
 
-Quando o Supervisor tem múltiplas solicitações pendentes:
-- Ao decidir uma, o sistema avança automaticamente para a próxima na fila de prioridade
-- Não precisa voltar para a lista entre cada decisão
+1. Supervisor acessa a solicitação em estado APROVADA
+2. Botão [Revogar aprovação] disponível apenas se a data efetiva da folga ainda não ocorreu
+3. Sistema exibe aviso com impacto: *"Revogar esta aprovação irá restaurar [Membro] como disponível em [data] e reverter a Escala. Confirme o motivo da revogação."*
+4. Supervisor preenche motivo obrigatório + confirma
+5. Estado → REVOGADA. Escala revertida. Membro notificado.
+6. Se Livro do Dia da data afetada já foi gerado: alerta adicional ao Supervisor para revisão do Livro.
+
+**O botão [Revogar aprovação] não está disponível** se a data efetiva da folga já passou — a decisão histórica é imutável.
+
+---
+
+### 5.8 Análise em lote pelo Supervisor
+
+- Ao decidir uma solicitação, o sistema avança automaticamente para a próxima na fila de prioridade
 - Progresso visível: "3 de 7 solicitações analisadas"
+- O Supervisor pode interromper a sequência a qualquer momento
 
 ---
 
-### 5.7 Notificações recebidas pelo Supervisor
+### 5.9 Notificações recebidas pelo Supervisor
 
-| Evento | Tipo de notificação |
+| Evento | Tipo |
 |---|---|
-| Nova solicitação recebida | Informativa (badge no painel) |
-| Solicitação de impacto Alto ou Crítico | Importante (push + badge) |
-| Membro respondeu proposta alternativa | Informativa |
-| Membro respondeu solicitação de informação | Informativa |
-| Solicitação sem análise há 48h | Importante (alerta de envelhecimento) |
+| Nova solicitação — impacto Crítico ou Alto | Push + badge |
+| Nova solicitação — impacto Médio ou Baixo | Badge no painel |
+| Solicitação Administrativa — Urgência Alta | Push + destaque na lista |
+| Membro respondeu proposta alternativa | In-app |
+| Membro respondeu pedido de informação | In-app |
+| Alerta de proximidade (50% do limiar) | In-app |
+| Alerta de proximidade (80% do limiar) | Push |
+| Proposta alternativa expirada (EXPIRADA) | Push — ação necessária |
+| Restrição Médica atingiu data de revisão | In-app |
 
 ---
 
@@ -592,53 +685,67 @@ Quando o Supervisor tem múltiplas solicitações pendentes:
 
 ### 6.1 O Admin não é aprovador primário
 
-O Admin **não participa do fluxo normal de aprovação** de Solicitações. Entra em S-06 em duas situações específicas:
+O Admin entra em S-06 em situações específicas:
 
-**Situação A — Escalada de tempo:** Solicitação ficou sem resposta por mais de 48h úteis. Admin pode aprovar/negar no lugar do Supervisor como medida de contingência.
+**A — Escalada por limiar:** Solicitação atingiu o limiar proporcional sem resposta. Admin recebe responsabilidade formal e pode aprovar/negar.
 
-**Situação B — Investigação de padrão:** Admin usa dados de Solicitações como indicador de saúde operacional — para identificar tendências, não para analisar itens individuais.
+**B — Investigação de padrão:** Usa dados de Solicitações como indicador de saúde operacional.
+
+**C — Supervisão de continuidade:** Admin atua quando Supervisor está ausente ou foi desligado (seção 7 — Governança).
 
 ---
 
 ### 6.2 O que o Admin monitora em S-06
 
-Dados disponíveis no Painel do Admin (S-03):
-
 **Indicadores de tempo:**
-- Tempo médio de resposta por Supervisor (esta semana vs. média histórica)
-- Solicitações com mais de 48h sem resposta (e qual Supervisor é responsável)
-- Volume de solicitações por período (crescendo? estável?)
+- Tempo médio de resposta por Supervisor (semana atual vs. média histórica)
+- Solicitações em estado ENVIADA ou EM ANÁLISE próximas do limiar (alerta de proximidade)
+- Solicitações em EXPIRADA aguardando nova ação do Supervisor
+- Volume de solicitações por período
 
 **Indicadores de padrão:**
-- Tipos de solicitação mais frequentes por operação
+- Tipos mais frequentes por operação
 - Taxa de aprovação vs. negação por Supervisor
-- Reincidência: Membros que repetem o mesmo tipo de solicitação seguidas vezes
-- Concentração: operação ou grupo com volume anormalmente alto de solicitações de folga
+- Reincidência: Membros que repetem o mesmo tipo de solicitação (sinal de problema estrutural)
+- Concentração: grupo com volume anormalmente alto para uma mesma data
 
 **Indicadores de saúde:**
 - Solicitações sem responsável (grupo sem Supervisor ativo)
-- Volume de escaladas para Admin por período
+- Volume de escaladas para Admin por período (crescendo = sinal de gestão ineficaz)
+- Revogações: frequência indica instabilidade de decisão
 
 ---
 
-### 6.3 Acesso direto do Admin a uma Solicitação individual
+### 6.3 Alertas de proximidade — visão do Admin (L-09)
 
-O Admin pode abrir qualquer Solicitação de qualquer operação para investigação. Ao abrir, vê:
-- Todo o histórico de estados com timestamps
-- Linha do tempo completa (incluindo se o Supervisor visualizou e quando)
-- Decisão tomada e motivo (ou ausência de decisão)
-- Metadados de padrão: é a Nth solicitação deste tipo deste Membro nos últimos 30 dias?
+O Admin não aguarda o limiar ser atingido para ser informado. Recebe prévia progressiva:
 
-Este acesso é investigativo, não operacional.
+**80% do limiar:** Admin recebe notificação in-app de pendência iminente, com contexto: *"Solicitação de [Membro] sob responsabilidade de [Supervisor] atingirá o limiar de escalada em [X] horas."* O Admin está informado mas a responsabilidade ainda é do Supervisor.
+
+**100% do limiar:** Admin recebe push. Responsabilidade formal transferida. Supervisor notificado de que o Admin assumiu.
+
+Esse modelo garante que o Admin **nunca seja surpreendido** por uma escalada sem contexto prévio.
 
 ---
 
-### 6.4 Quando o Admin intervém como aprovador
+### 6.4 Acesso direto do Admin a Solicitações individuais
 
-Se a solicitação chega ao limiar de escalada:
-- Admin recebe alerta específico com contexto completo
-- Admin pode aprovar/negar com os mesmos campos do Supervisor (incluindo motivo obrigatório em negativas)
-- A ação do Admin é registrada com indicador: "aprovado pelo Admin após X dias sem resposta do Supervisor"
+O Admin pode abrir qualquer Solicitação de qualquer operação. Vê:
+- Histórico completo de estados com timestamps
+- Se e quando o Supervisor visualizou
+- Decisões tomadas e motivos
+- Metadados de padrão: Nth solicitação deste tipo deste Membro nos últimos 30 dias
+
+Acesso investigativo — não operacional rotineiro.
+
+---
+
+### 6.5 Quando o Admin intervém como aprovador
+
+Ao receber uma solicitação via escalada:
+- Aprova/nega com os mesmos campos do Supervisor (motivo obrigatório em decisões contrárias)
+- Pode revogar uma aprovação anterior (incluindo de outro Supervisor) se circunstância justificar
+- A ação do Admin é registrada com indicador: *"Decidida pelo Admin em [data] após [X] horas sem resposta do Supervisor [Nome]."*
 
 ---
 
@@ -648,274 +755,514 @@ Se a solicitação chega ao limiar de escalada:
 
 ### 7.1 Regras absolutas (não negociáveis)
 
-**R01 — Motivo de negativa obrigatório**
-O sistema não permite enviar uma negativa sem motivo preenchido. É bloqueio técnico, não aviso. Aplica-se a Supervisor e Admin.
+**R01 — Motivo obrigatório em toda decisão contrária**
+Sistema bloqueia envio de: Negativa sem motivo, Revogação sem motivo. Aplica-se a Supervisor e Admin. Sem exceção.
 
 **R02 — Estado sempre visível sem abrir o item**
-Para o Membro, o estado de cada solicitação é sempre legível na lista sem nenhuma interação adicional.
+Para o Membro, o estado de cada solicitação é legível na lista sem clique adicional.
 
 **R03 — Análise de impacto antes dos botões de decisão**
-Para o Supervisor, o sistema calcula e exibe o impacto operacional **antes** de tornar as opções de aprovação/negação disponíveis.
+O Supervisor vê impacto operacional (Blocos 1, 2, 3) antes de qualquer opção de aprovação/negação.
 
 **R04 — Acumulado de folgas na mesma tela de análise**
-Para folgas e trocas de folga, o acumulado de aprovações nas mesmas datas dentro do grupo é sempre visível na tela de análise. Não exige clique adicional.
+Para Folgas e Trocas de Folga, o acumulado de aprovações nas mesmas datas está visível sem clique adicional. Atualizado em tempo real à medida que aprovações são feitas na fila.
 
 **R05 — Ordenação por urgência de impacto para o Supervisor**
-A lista de solicitações pendentes do Supervisor é ordenada por urgência de impacto operacional, nunca por data de criação.
+Lista de solicitações pendentes do Supervisor: sempre ordenada por urgência de impacto, nunca por data de criação.
 
 **R06 — Prevenção de duplicata**
-Antes de criar uma solicitação, o sistema verifica e alerta sobre solicitações similares já em aberto. O Membro pode prosseguir, mas precisa confirmar.
+Antes de criar, o sistema verifica e alerta sobre solicitações similares em aberto. O Membro pode prosseguir confirmando.
 
-**R07 — Escalada automática de silêncio para o Admin**
-Solicitações sem resposta por mais de 48h úteis geram alerta automático para o Admin.
+**R07 — Escalada proporcional automática**
+Os limiares da seção 3.5 são aplicados automaticamente. Não exigem configuração manual por operação.
+
+**R08 — EXPIRADA não é terminal**
+Estado EXPIRADA reabre a responsabilidade no Supervisor — não encerra a solicitação sem decisão.
+
+**R09 — REVOGADA exige motivo e impacta Escala automaticamente**
+Revogação sem motivo é bloqueada. Revogação aprovada reverte a Escala imediatamente.
+
+**R10 — Limite de rodadas em AGUARDANDO INFORMAÇÃO**
+Máximo de 2 pedidos de informação por solicitação. Sistema bloqueia o terceiro.
 
 ---
 
 ### 7.2 Regras de comportamento do sistema
 
-**R08 — Confirmação imediata de recebimento**
-Ao submeter, o Membro recebe confirmação visual e informacional imediata: recebida, encaminhada para [nome], estado inicial ENVIADA.
+**R11 — Confirmação imediata de recebimento**
+Ao submeter, o Membro vê: nome do Supervisor, timestamp, estado inicial ENVIADA.
 
-**R09 — Transição automática ENVIADA → EM ANÁLISE**
-Quando o Supervisor abre uma solicitação, a transição de estado acontece automaticamente.
+**R12 — Transição automática ENVIADA → EM ANÁLISE**
+Quando o Supervisor abre a solicitação, a transição acontece automaticamente.
 
-**R10 — Cancelamento bloqueado após interação ativa do Supervisor**
-Membro não pode cancelar uma solicitação em AGUARDANDO INFORMAÇÃO ou PROPOSTA ALTERNATIVA.
+**R13 — Cache local de formulário em preenchimento**
+Formulário em progresso salvo localmente por 24h. Recuperável ao reabrir o app. Não gera estado backend.
 
-**R11 — Aprovação reflete automaticamente na Escala**
-Para Folga, Troca de Folga e Ajuste de Escala, a aprovação desencadeia atualização automática da Escala sem ação adicional do Supervisor.
+**R14 — Aprovação reflete automaticamente na Escala e Meu Dia**
+Para Folga, Troca (ambas as datas, seção 2.2) e Ajuste de Escala.
 
-**R12 — Prazo visível em Proposta Alternativa**
-Toda proposta alternativa tem um prazo de resposta. O Supervisor define ao criar (sugestão padrão de 48h).
+**R15 — Revogação disponível apenas antes da data efetiva**
+Botão [Revogar aprovação] indisponível se a data efetiva da folga/ausência já ocorreu.
 
-**R13 — Registro permanente no Histórico**
-Toda solicitação e todas as suas transições de estado são registradas em S-11 como dado imutável e auditável.
+**R16 — Contexto pré-carregado em Mensagens**
+Conversa iniciada a partir de Solicitação carrega contexto completo no S-09.
 
----
-
-### 7.3 O que o sistema NÃO faz em S-06
-
-- **Não aprova automaticamente** — nenhum tipo pode ser aprovado sem decisão humana
-- **Não bloqueia criação** — o Membro sempre pode criar, mesmo com conflito detectado (apenas alerta)
-- **Não oculta solicitações negadas** — histórico completo sempre visível para o Membro, incluindo motivos
-- **Não permite reclassificar tipo após envio** — o tipo é definitivo no envio
+**R17 — Registro permanente no Histórico**
+Toda solicitação e todas as transições — incluindo EXPIRADA e REVOGADA — registradas em S-11 como dados imutáveis.
 
 ---
 
-## PARTE 8 — INTEGRAÇÕES COM OUTRAS SUPERFÍCIES
+### 7.3 Verificação retroativa — impacto de mudanças supervenientes (L-06)
+
+O sistema realiza verificação retroativa automaticamente nos seguintes eventos:
+
+**Evento: nova Restrição aprovada**
+O sistema verifica: existe alguma Folga aprovada para datas futuras que dependia deste Membro como cobertura?
+- Se sim: alerta ao Supervisor responsável pelas folgas afetadas
+- Texto do alerta: *"A nova restrição de [Membro A] pode ter impacto em folgas já aprovadas: [lista de Membros com folgas aprovadas nas datas afetadas] dependiam de [Membro A] como cobertura. Revisar?"*
+- O sistema não revoga automaticamente — alerta apenas
+
+**Evento: cancelamento de show**
+O sistema verifica: existem Folgas aprovadas para a data do show cancelado?
+- Alerta ao Supervisor: *"[N] folgas aprovadas para [data do show cancelado]. Com o cancelamento, estas folgas continuam afetando: [outras atividades do dia, se existirem]. Deseja rever alguma delas?"*
+- O sistema não revoga automaticamente
+
+**Evento: mudança estrutural (grupo/Supervisor)**
+Coberto na seção 8 — Governança.
+
+**Princípio invariante:** O sistema nunca decide. O sistema informa com contexto. O Supervisor decide.
 
 ---
 
-### 8.1 Mapa de dependências
+### 7.4 O que o sistema NÃO faz em S-06
+
+- Não aprova nem nega automaticamente — sem exceção
+- Não bloqueia criação — o Membro sempre pode criar (apenas alerta sobre duplicatas)
+- Não oculta solicitações negadas ou revogadas — histórico completo sempre visível ao Membro
+- Não permite reclassificar tipo após envio
+- Não revoga aprovações cuja data efetiva já ocorreu
+- Não decide pelo Supervisor quando uma verificação retroativa gera alerta
+
+---
+
+### 7.5 Encaminhamento de Solicitação Administrativa para Admin (L-08)
+
+Quando o Supervisor encaminha uma Solicitação Administrativa para o Admin:
+
+**Transferência de responsabilidade:** O Admin passa a ser o responsável formal. O Supervisor deixa de ser.
+
+**Notificação ao Membro:** automática — *"Sua solicitação foi encaminhada pelo Supervisor [Nome] para o Admin em [data]."*
+
+**Registro no Histórico:** *"Encaminhada por Supervisor [Nome] para Admin em [data/hora]. Motivo do encaminhamento: [texto opcional do Supervisor]."*
+
+**Reinício dos prazos:** os limiares de escalada são reiniciados a partir do momento do encaminhamento. O Admin tem o mesmo janela proporcional (tabela 3.5) a partir da data de recebimento, não da data de criação original.
+
+**Acesso do Supervisor após encaminhamento:** o Supervisor ainda pode ver a solicitação em modo leitura, mas não pode mais tomar decisão sobre ela.
+
+---
+
+## PARTE 8 — GOVERNANÇA E CONTINUIDADE (L-04 + L-07)
+
+---
+
+### 8.1 Ausência planejada do Supervisor (férias, afastamento)
+
+O Supervisor deve designar um **Supervisor substituto** antes de entrar em período de ausência planejada. O sistema apresenta prompt ao Supervisor quando registra ausência futura: *"Você tem Solicitações pendentes e está de saída. Deseja designar um Supervisor substituto para este período?"*
+
+**Quando substituto é designado:**
+- Todas as Solicitações em aberto do grupo são **reatribuídas** para o substituto
+- Novas Solicitações criadas durante o período são direcionadas ao substituto
+- O Membro recebe notificação: *"Sua solicitação será analisada pelo Supervisor substituto [Nome] durante a ausência de [Supervisor original]."*
+- Histórico registra: *"Reatribuída para Supervisor substituto [Nome] por ausência planejada de [Supervisor original] de [data] a [data]."*
+
+**Quando substituto não é designado:**
+- O sistema aplica a tabela de escalada normalmente — Solicitações escalam para o Admin conforme os limiares proporcionais
+- Admin recebe contexto adicional: *"Supervisor [Nome] está em período de ausência. [N] solicitações pendentes sem substituto designado."*
+
+---
+
+### 8.2 Ausência emergencial do Supervisor
+
+**Quando identificada** (o Supervisor para de acessar o sistema sem aviso e solicitações começam a escalar):
+- Admin recebe alerta consolidado: *"Supervisor [Nome] não acessou o sistema há [X] horas. [N] Solicitações em processo de escalada."*
+- Admin pode:
+  - Assumir diretamente como aprovador temporário
+  - Designar outro Supervisor como responsável temporário pelo grupo
+
+**Reatribuição pelo Admin:**
+- Admin seleciona o Supervisor temporário
+- Todas as Solicitações em aberto são reatribuídas
+- Membros notificados da mudança
+- Histórico registra: *"Reatribuída pelo Admin por ausência emergencial do Supervisor [Nome] em [data]."*
+
+---
+
+### 8.3 Desligamento do Supervisor (L-07)
+
+Quando um Supervisor é desligado da operação:
+
+**Solicitações em aberto (ENVIADA, EM ANÁLISE, AGUARDANDO INFORMAÇÃO, PROPOSTA ALTERNATIVA, EXPIRADA):**
+- Reatribuídas **automaticamente** para o Admin ou para o Supervisor substituto designado pelo Admin
+- Membros notificados: *"Sua solicitação foi reatribuída para [novo responsável]."*
+- Histórico: *"Reatribuída por desligamento do Supervisor [Nome] em [data]."*
+
+**Solicitações em estado terminal (APROVADA, NEGADA, REVOGADA, CANCELADA):**
+- Mantidas no histórico sem alteração
+- Nome do Supervisor aparece como "[Nome] (desligado)" no histórico — nunca apagado
+
+**Aprovações com efeitos futuros:**
+- Permanecem válidas — não há motivo para revogar decisões corretas de um Supervisor desligado
+- Se o Admin identificar que alguma aprovação específica precisa ser revista, usa o fluxo de Revogação (R09)
+
+**Gap de responsabilidade:** O período entre o desligamento e a designação do substituto é coberto pelo Admin automaticamente. O sistema não permite que Solicitações fiquem sem responsável definido por mais de 24h após um desligamento.
+
+---
+
+### 8.4 Delegação em situações de conflito de autoridade
+
+Quando dois Supervisores reivindicam responsabilidade sobre a mesma Solicitação (ex: Membro pertencia a dois grupos), o Admin é o árbitro. A Solicitação fica em estado de espera com alerta ao Admin. Não é situação comum mas deve ter responsável definido.
+
+---
+
+## PARTE 9 — INTEGRAÇÕES COM OUTRAS SUPERFÍCIES
+
+---
+
+### 9.1 Mapa de dependências
 
 ```
                     S-04 ESCALA
-                    (calcula impacto
-                    e candidatos)
+                    (calcula impacto,
+                    candidatos,
+                    verifica retroativamente)
                          │
                          ▼
 S-01 MEU DIA ◄──── S-06 SOLICITAÇÕES ────► S-11 HISTÓRICO
-(badge, estado                              (registra cada
-resumido, reflexo                           decisão como dado
-de aprovações)                              permanente)
+(badge, reflexo                             (imutável, auditável,
+de aprovações e                             inclui EXPIRADA e
+revogações)                                 REVOGADA)
                          │
-                    ┌────┴─────┐
-                    ▼          ▼
-               S-09 MSG    S-02/S-03
-               (quando      PAINEIS
-               exige        (indicadores
-               conversa)    de saúde)
+                    ┌────┴──────┐
+                    ▼           ▼
+               S-09 MSG     S-02/S-03
+               (contexto     PAINEIS
+               pré-carregado) (indicadores +
+                              alertas de
+                              proximidade)
 ```
 
 ---
 
-### 8.2 Relação com S-04 — Escala
+### 9.2 Relação com S-04 — Escala
 
-**Leitura:** S-06 depende de S-04 para calcular o impacto de cada solicitação.
+**Leitura:** S-06 depende de S-04 para calcular impacto de cada solicitação e para a verificação retroativa quando novas Restrições são aprovadas.
 
-**Escrita:** Quando Folga, Troca ou Ajuste de Escala é aprovado, S-06 escreve na Escala automaticamente.
+**Escrita:** Aprovações de Folga, Troca (ambas as datas) e Ajuste de Escala escrevem na Escala automaticamente. Revogações revertem a Escala automaticamente.
 
-**Consequência de aprovação:**
-1. Disponibilidade do Membro nas datas aprovadas (Escala)
-2. Livro do Dia afetado (se já gerado)
-3. Meu Dia do Membro (S-01)
+**Verificação retroativa:** quando nova Restrição é aprovada, S-06 consulta S-04 para identificar folgas aprovadas cuja cobertura dependia do Membro agora restrito.
 
 ---
 
-### 8.3 Relação com S-01 — Meu Dia
+### 9.3 Relação com S-01 — Meu Dia
 
-- **Badge de pendências:** indicador quando existe solicitação aguardando ação do Membro
-- **Reflexo de aprovações:** Meu Dia reflete mudança automaticamente após aprovação com impacto na Escala
-- **Estado resumido:** Meu Dia pode exibir "1 solicitação em análise" com link direto para S-06
-
----
-
-### 8.4 Relação com S-09 — Mensagens
-
-S-06 não é superfície de conversação. Quando a negociação exige conversa, ela acontece em S-09.
-
-**Vínculo de contexto:** Conversa iniciada a partir de uma Solicitação carrega o contexto da solicitação pré-carregado — tipo, data, estado, decisão.
-
-**Gatilho automático:** "Abrir conversa" a partir de solicitação negada ou proposta recusada abre S-09 com contexto já presente.
+- Badge quando existe solicitação aguardando ação do Membro (PROPOSTA ALTERNATIVA, AGUARDANDO INFORMAÇÃO)
+- Reflexo de aprovações e revogações sem necessidade de atualização manual
+- Estado resumido: *"1 solicitação em análise"* com link direto para S-06
 
 ---
 
-### 8.5 Relação com S-11 — Histórico
+### 9.4 Relação com S-09 — Mensagens
 
-O Histórico preserva por solicitação:
+- Conversa iniciada a partir de qualquer Solicitação carrega contexto completo pré-carregado
+- Ativado por: Membro após negativa ou revogação, Membro para contra-propor após proposta alternativa, qualquer parte para negociação adicional
+
+---
+
+### 9.5 Relação com S-11 — Histórico
+
+O Histórico preserva para cada Solicitação:
 - Tipo, data de criação, datas solicitadas
 - Cada transição de estado com timestamp e responsável
-- Motivos de negativa (texto completo)
-- Propostas alternativas e respostas
-- Referências às mensagens trocadas
-
-Uso pelo Admin: reconstrução de narrativa completa para investigação de padrões (JA-02).
-
----
-
-### 8.6 Relação com S-02 — Painel Operacional (Supervisor)
-
-S-02 é o ponto de entrada natural do Supervisor para S-06:
-- Número de solicitações pendentes visível no painel
-- Destaque visual se existir alguma de urgência alta ou crítica
-- Link direto para a fila de análise em S-06
+- Motivos de todas as decisões contrárias (negativa, revogação)
+- Propostas alternativas, respostas, expirações
+- Encaminhamentos e reatribuições com contexto
+- Ações de delegação de Supervisores
 
 ---
 
-### 8.7 Relação com S-03 — Painel Administrativo
+### 9.6 Relação com S-02 — Painel Operacional (Supervisor)
 
-S-03 consome dados agregados de S-06:
+- Volume de solicitações pendentes + destaque visual para urgência Alta/Crítica
+- Link direto para fila de análise
+- Alerta de proximidade (80% do limiar) exibido no painel
+
+---
+
+### 9.7 Relação com S-03 — Painel Administrativo
+
 - Tempo médio de resposta por Supervisor
-- Volume de solicitações por período e operação
-- Solicitações em estado de escalada
-- Taxa de aprovação/negação como indicador de padrão de gestão
+- Solicitações em escalada (atingiram limiar)
+- Solicitações em EXPIRADA aguardando ação do Supervisor
+- Pré-alertas de proximidade (80% do limiar)
+- Solicitações reatribuídas por ausência ou desligamento de Supervisor
+- Taxa de revogação como indicador de instabilidade de decisão
 
 ---
 
-## PARTE 9 — IA EM S-06
+## PARTE 10 — IA EM S-06
 
 ---
 
-### 9.1 Princípio de uso da IA em S-06
+### 10.1 Princípio de uso
 
 A IA opera em duas direções opostas:
-
-- **Para o Supervisor:** analisa **antes** de qualquer ação. Informa o impacto antes de apresentar as opções de decisão.
-- **Para o Membro:** explica **depois** da decisão. Responde "por que?" quando o Membro precisa entender o que aconteceu.
+- **Para o Supervisor:** analisa **antes** da ação — informa o impacto antes de apresentar opções de decisão
+- **Para o Membro:** explica **depois** da decisão — responde "por que?" com contexto operacional
 
 ---
 
-### 9.2 IA para o Supervisor — análise de impacto
+### 10.2 IA para o Supervisor — análise de impacto
 
-Antes de apresentar as opções de aprovação/negação, a IA calcula e exibe:
-
-Para Solicitação de Folga:
-- Atividades afetadas nas datas solicitadas
-- Papéis críticos sem cobertura disponível
-- Candidatos recomendados para cobertura
-- Nível de risco operacional resultante da aprovação
-
-**Exemplo de output:**
+Output antes das opções de decisão para Folga:
 > *"Amanda solicitou folga no sábado 21. Ela cobre Astrid no Musical das 14h (papel único — sem substituto confirmado) e Bloco 3 do Ensaio das 16h (Beatriz pode cobrir). Carlos e Fernanda já têm folga aprovada nesse dia — o grupo estará com 60% da cobertura se esta folga for aprovada. Recomendo negociar data alternativa ou confirmar cobertura para Astrid antes de aprovar."*
 
-A IA não decide. Recomenda. O Supervisor decide.
+A IA recomenda. O Supervisor decide.
 
 ---
 
-### 9.3 IA para o Membro — explicação contextual pós-decisão
+### 10.3 IA para o Membro — explicação pós-decisão
 
-Casos de uso:
-- *"Por que minha folga foi negada?"* → IA explica o contexto operacional da data
-- *"O que acontece com minha escala agora que minha folga foi aprovada?"* → IA lista as mudanças automáticas
-- *"Em que estado está minha solicitação?"* → IA retorna estado atual com contexto de tempo
+- *"Por que minha folga foi negada?"* → IA explica contexto operacional da data
+- *"Por que minha folga foi revogada?"* → IA explica a circunstância superveniente que motivou a revogação
+- *"O que acontece com minha escala agora que minha folga foi aprovada?"* → lista mudanças automáticas
+- *"Em que estado está minha solicitação?"* → estado atual com contexto de tempo
 
-**Limite:** A IA pode explicar o contexto operacional, mas não contesta nem recomenda que o Membro questione a decisão do Supervisor.
+**Limite:** A IA clarifica o contexto operacional. Não contesta decisões do Supervisor nem recomenda que o Membro questione.
 
 ---
 
-### 9.4 IA para o Admin — detecção de padrões
+### 10.4 IA para o Admin — detecção de padrões
 
 - *"Quais Supervisores têm maior tempo médio de resposta esta semana?"*
 - *"Existem Membros com padrão recorrente de mesmo tipo de solicitação?"*
 - *"Resuma o que aconteceu com esta solicitação específica."*
-
-A IA transforma registros brutos de S-11 em narrativa compreensível — crítico para investigações de padrão (JA-02).
-
----
-
-### 9.5 O que a IA não faz em S-06
-
-- Não aprova nem nega solicitações — sem exceção
-- Não notifica o Supervisor sobre urgência (notificações são do sistema)
-- Não sugere ao Membro qual pedido tem mais chance de ser aprovado
-- Não altera o estado de qualquer solicitação
+- *"Existe algum Supervisor com taxa de revogação anormalmente alta?"*
 
 ---
 
-## PARTE 10 — CRITÉRIOS DE ACEITAÇÃO
+### 10.5 O que a IA não faz em S-06
+
+- Não aprova, nega nem revoga — sem exceção
+- Não gera as notificações automáticas (responsabilidade do sistema, não da IA)
+- Não sugere ao Membro qual pedido tem mais chance de aprovação
+- Não altera estado de qualquer solicitação
 
 ---
 
-### 10.1 Critérios para o Membro
+## PARTE 11 — CRITÉRIOS DE ACEITAÇÃO
+
+---
+
+### 11.1 Critérios para o Membro
 
 | # | Critério | Como verificar |
 |---|---|---|
-| CM-01 | Estado de cada solicitação legível na lista sem abrir o item | Lista com 5 solicitações em estados diferentes — todos legíveis sem clique |
-| CM-02 | Ao enviar, confirmação imediata com nome do Supervisor e timestamp | Criar solicitação e verificar tela de confirmação |
-| CM-03 | Transição ENVIADA → EM ANÁLISE acontece quando Supervisor abre, sem ação do Membro | Supervisor abre; Membro atualiza lista e vê "Em análise" |
-| CM-04 | Negativa sempre contém motivo visível — nunca campo vazio | Tentar negar sem motivo; sistema deve bloquear |
-| CM-05 | Aviso de duplicata antes de criar solicitação sobreposta | Criar folga dia 21; tentar criar segunda folga dia 21; sistema alerta |
+| CM-01 | Estado legível na lista sem abrir o item | Lista com 7 solicitações em estados diferentes — todos legíveis sem clique |
+| CM-02 | Confirmação imediata com nome do Supervisor e timestamp | Criar solicitação e verificar tela de confirmação |
+| CM-03 | Transição ENVIADA → EM ANÁLISE ao Supervisor abrir | Supervisor abre; Membro atualiza lista e vê "Em análise" |
+| CM-04 | Negativa sempre com motivo — campo vazio bloqueia envio | Tentar negar sem motivo; sistema impede |
+| CM-05 | Aviso de duplicata antes de criar solicitação sobreposta | Criar folga dia 21; tentar criar segunda folga dia 21; alerta aparece |
 | CM-06 | Proposta alternativa exibe prazo de resposta | Supervisor cria proposta; Membro vê prazo na lista |
-| CM-07 | Aprovação de folga reflete automaticamente em Meu Dia | Aprovar folga; verificar que Meu Dia mostra atualização |
-| CM-08 | IA responde corretamente "por que minha folga foi negada?" | Perguntar à IA após negativa; verificar coerência com contexto |
+| CM-07 | Aprovação de folga reflete automaticamente em Meu Dia | Aprovar folga; Meu Dia atualizado sem ação do Membro |
+| CM-08 | Troca de folga aprovada restaura data original E bloqueia nova data | Aprovar Troca; verificar Escala em ambas as datas |
+| CM-09 | Estado EXPIRADA visível quando proposta vence sem resposta | Simular vencimento de prazo; Membro vê EXPIRADA na lista |
+| CM-10 | Revogação sempre com motivo visível | Supervisor revoga; Membro vê motivo na solicitação |
+| CM-11 | Formulário recuperado após fechamento acidental do app | Iniciar preenchimento; fechar app; reabrir; rascunho disponível |
 
 ---
 
-### 10.2 Critérios para o Supervisor
+### 11.2 Critérios para o Supervisor
 
 | # | Critério | Como verificar |
 |---|---|---|
-| CS-01 | Lista ordenada por urgência de impacto, não por data de criação | Criar folga amanhã e folga daqui 3 semanas; folga de amanhã aparece primeiro |
-| CS-02 | Análise de impacto visível antes dos botões de decisão | Abrir solicitação de folga; impacto aparece antes de qualquer botão |
-| CS-03 | Acumulado de folgas visível sem clique adicional | Abrir solicitação para dia com outras folgas aprovadas; bloco de acumulado visível |
-| CS-04 | Campo de motivo bloqueia envio de negativa quando vazio | Tentar negar sem preencher motivo; sistema impede envio |
-| CS-05 | Notificação de nova solicitação de impacto alto chega como push | Membro cria folga de impacto alto; Supervisor recebe push |
-| CS-06 | Aprovação atualiza Escala sem ação adicional | Aprovar folga; verificar S-04 com data bloqueada para o Membro |
-| CS-07 | Navegação sequencial entre solicitações sem voltar para lista | Decidir 3 solicitações em sequência; verificar avanço automático |
-| CS-08 | Alerta de solicitação sem resposta após 48h | Criar solicitação; simular 48h sem resposta; Admin recebe alerta |
+| CS-01 | Lista ordenada por urgência de impacto, não por data de criação | Criar folga amanhã e folga em 3 semanas; folga de amanhã aparece primeiro |
+| CS-02 | Análise de impacto visível antes dos botões de decisão | Abrir folga; Blocos 1, 2, 3 aparecem antes de qualquer botão |
+| CS-03 | Acumulado de folgas visível sem clique adicional | Abrir folga para dia com outras folgas aprovadas; bloco de acumulado na mesma tela |
+| CS-04 | Acumulado atualiza em tempo real a cada aprovação na fila | Aprovar folga de Carolina; abrir folga de Amanda para mesma data; acumulado mostra Carolina aprovada |
+| CS-05 | Visão consolidada apresentada quando 2+ solicitações para mesma data | Criar 2 folgas para dia 21; Supervisor vê agrupamento e opção de ver impacto consolidado |
+| CS-06 | Negativa bloqueia sem motivo | Tentar negar sem preencher motivo; sistema impede |
+| CS-07 | Proposta alternativa expira e gera estado EXPIRADA + notificação ao Supervisor | Simular vencimento; verificar EXPIRADA + push ao Supervisor |
+| CS-08 | Supervisor age após EXPIRADA; estado retorna a EM ANÁLISE | Supervisor propõe nova alternativa; estado atualizado corretamente |
+| CS-09 | Revogação reverte Escala automaticamente | Revogar aprovação; verificar S-04 com disponibilidade restaurada |
+| CS-10 | Alerta de proximidade em 50% e 80% do limiar | Simular solicitação sem resposta; verificar alertas progressivos |
+| CS-11 | Terceiro pedido de informação bloqueado | Usar "Solicitar informação" 2x; verificar bloqueio da terceira tentativa |
+| CS-12 | Supervisão em lote avança automaticamente entre solicitações | Decidir 3 solicitações em sequência; verificar avanço automático |
 
 ---
 
-### 10.3 Critérios para o Admin
+### 11.3 Critérios para o Admin
 
 | # | Critério | Como verificar |
 |---|---|---|
-| CA-01 | Tempo médio de resposta por Supervisor visível no painel | Acessar S-03 com múltiplas solicitações decididas; verificar indicador |
-| CA-02 | Solicitações em escalada aparecem como alerta no painel | Simular 48h sem resposta; verificar alerta em S-03 |
-| CA-03 | Admin pode aprovar/negar solicitação em estado de escalada | Admin abre solicitação escalada; verifica opções de decisão |
-| CA-04 | Histórico de qualquer solicitação reconstruível cronologicamente | Abrir solicitação via S-11; verificar linha do tempo completa |
-| CA-05 | IA responde corretamente sobre padrões de solicitação | Perguntar sobre tempo médio de resposta; verificar coerência |
+| CA-01 | Tempo médio de resposta por Supervisor visível em S-03 | Múltiplas solicitações decididas; verificar indicador por Supervisor |
+| CA-02 | Alerta de proximidade em 80% do limiar antes da escalada | Simular 80% do limiar; Admin recebe prévia |
+| CA-03 | Escalada ao limiar gera push ao Admin com responsabilidade formal | Simular 100% do limiar; verificar push + transferência de responsabilidade |
+| CA-04 | Admin pode aprovar/negar/revogar em solicitações escaladas | Admin abre solicitação escalada; opções de decisão disponíveis |
+| CA-05 | Solicitações em EXPIRADA aparecem no painel do Admin | Simular expiração; verificar item no painel de S-03 |
+| CA-06 | Desligamento de Supervisor reatribui solicitações em aberto | Desligar Supervisor; verificar reatribuição automática e notificação aos Membros |
+| CA-07 | Encaminhamento de Administrativa para Admin reinicia prazos | Supervisor encaminha; verificar novo prazo a partir da data de encaminhamento |
+| CA-08 | Histórico de Supervisor desligado preservado com indicador | Verificar solicitação de Supervisor desligado em S-11; nome marcado, não apagado |
 
 ---
 
-### 10.4 Critérios de sistema
+### 11.4 Critérios de sistema
 
 | # | Critério |
 |---|---|
-| CD-01 | Toda transição de estado registrada em S-11 com timestamp e responsável |
-| CD-02 | Aprovação de folga não exige ação em S-04 — propagação automática |
+| CD-01 | Toda transição registrada em S-11 com timestamp e responsável — incluindo EXPIRADA, REVOGADA, reatribuições |
+| CD-02 | Aprovação de Folga e Troca não exige ação em S-04 — propagação automática, ambas as datas para Troca |
 | CD-03 | Restrição aprovada impacta motor de candidatos de S-04 imediatamente |
-| CD-04 | Conversa aberta a partir de Solicitação carrega contexto pré-carregado em S-09 |
-| CD-05 | Escalada automática de 48h/72h funciona independente de ação manual |
+| CD-04 | Verificação retroativa executada automaticamente quando nova Restrição é aprovada |
+| CD-05 | Tabela de escalada proporcional aplicada automaticamente por tipo e urgência de impacto |
+| CD-06 | Alertas de proximidade (50% e 80%) disparados automaticamente sem ação manual |
+| CD-07 | Cache local do formulário expira em 24h |
 
 ---
 
-### 10.5 Critérios de qualidade de experiência
+### 11.5 Critérios de qualidade de experiência
 
 | # | Critério |
 |---|---|
-| CX-01 | Nenhuma solicitação em limbo sem estado visível por mais de 24h úteis |
+| CX-01 | Nenhuma solicitação em limbo sem estado visível por mais de [limiar proporcional] |
 | CX-02 | O Membro nunca precisa abrir uma solicitação individual para saber se precisa agir |
 | CX-03 | O Supervisor nunca decide sobre impacto que o sistema poderia ter calculado |
-| CX-04 | Toda negativa contém motivo — este critério nunca tem exceção |
-| CX-05 | Aprovação reflete no Meu Dia sem que o Membro precise atualizar manualmente |
+| CX-04 | Toda decisão contrária (negativa, revogação) contém motivo — sem exceção |
+| CX-05 | Aprovação e revogação refletem em Meu Dia sem atualização manual do Membro |
+| CX-06 | O Admin nunca é surpreendido por uma escalada sem prévia de 80% |
+| CX-07 | Nenhuma solicitação fica sem responsável definido após saída de Supervisor |
+
+---
+
+## PARTE 12 — MINI-AUDITORIA FINAL
+
+---
+
+### 12.1 Existe algum estado sem responsável definido?
+
+**Não.**
+
+| Estado | Responsável pela próxima ação |
+|---|---|
+| ENVIADA | Supervisor (ou Admin após limiar proporcional) |
+| EM ANÁLISE | Supervisor (ou Admin após limiar proporcional) |
+| AGUARDANDO INFORMAÇÃO | Membro |
+| PROPOSTA ALTERNATIVA | Membro (ou Supervisor se prazo vencer → EXPIRADA) |
+| EXPIRADA | Supervisor (notificado imediatamente via push) |
+| APROVADA | Nenhum — estado estável. Se circunstância mudar: Supervisor age via Revogação |
+| NEGADA | Nenhum — estado terminal |
+| REVOGADA | Nenhum — estado terminal |
+| CANCELADA | Nenhum — estado terminal |
+
+---
+
+### 12.2 Existe algum estado sem saída definida?
+
+**Não.**
+
+Todo estado tem saídas explícitas mapeadas na tabela 3.3. EXPIRADA — que na v1 era lacuna — agora tem saída definida: Supervisor age → EM ANÁLISE.
+
+---
+
+### 12.3 Existe algum cenário sem dono?
+
+**Não.** Cenários anteriormente sem dono, agora cobertos:
+
+| Cenário | Dono definido |
+|---|---|
+| Proposta alternativa não respondida | EXPIRADA → Supervisor (push obrigatório) |
+| Aprovação que se torna inviável | Verificação retroativa alerta o Supervisor; Supervisor decide sobre Revogação |
+| Supervisor de férias sem substituto | Admin assume via escalada proporcional com contexto de ausência |
+| Supervisor desligado | Admin reatribui automaticamente em até 24h |
+| Solicitação Administrativa encaminhada | Admin assume formalmente; prazos reiniciam |
+| Conflito de autoridade entre Supervisores | Admin é árbitro definido |
+
+---
+
+### 12.4 Existe algum limbo operacional?
+
+**Não.**
+
+Definição de limbo: estado em que a solicitação existe no sistema sem nenhum agente responsável e sem saída definida.
+
+Todos os estados têm responsável e saída. A escalada proporcional garante que nenhum estado de responsabilidade do Supervisor pode durar indefinidamente sem o Admin ser acionado. O estado EXPIRADA tem saída e responsável. Reatribuições por ausência ou desligamento cobrem o gap entre Supervisores.
+
+---
+
+### 12.5 Existe alguma solicitação que possa ficar esquecida indefinidamente?
+
+**Não.**
+
+O sistema de alertas progressivos (50% + 80% + 100% de cada limiar proporcional) garante que qualquer solicitação sem resposta gera alertas progressivos ao Supervisor e, no limiar, escalada formal ao Admin. EXPIRADA também gera push ao Supervisor imediatamente.
+
+Não existe estado em que a solicitação pode envelhecer sem que nenhum agente seja notificado.
+
+---
+
+### 12.6 Existe alguma aprovação que não possa ser revisada quando o contexto muda?
+
+**Não** — com a ressalva correta.
+
+A Revogação (L-02) cobre todos os cenários de revisão de aprovações. A única limitação é que Revogação não está disponível após a data efetiva da folga/ausência já ter ocorrido — o que é correto: uma decisão histórica é imutável.
+
+Se o contexto mudou e a data ainda não ocorreu: Supervisor pode revogar.
+Se a data já ocorreu: a decisão é histórica e não revisável — comportamento correto.
+
+---
+
+### 12.7 Existe algum caso onde o sistema perde rastreabilidade?
+
+**Não.**
+
+Todos os eventos com impacto no ciclo de vida de uma Solicitação são registrados em S-11:
+- Transições de estado com timestamps e responsáveis
+- Motivos de todas as decisões contrárias
+- Reatribuições por ausência, desligamento ou encaminhamento — com contexto
+- Estado EXPIRADA com data e hora do vencimento
+- Ações do Admin distinguidas de ações do Supervisor no histórico
+- Nome do Supervisor desligado preservado (nunca apagado)
+
+---
+
+## PARTE 13 — VEREDITO FINAL
+
+---
+
+### Resultado da mini-auditoria
+
+Todas as 7 perguntas da mini-auditoria resultaram em **Não** para lacunas. Nenhum estado sem responsável, nenhum estado sem saída, nenhum cenário sem dono, nenhum limbo operacional, nenhuma solicitação que possa ser esquecida, nenhuma aprovação irreviável dentro do prazo, rastreabilidade completa em todos os fluxos.
+
+### Lacunas resolvidas
+
+| Lacuna | Status |
+|---|---|
+| L-01 Estado EXPIRADA | ✅ Incorporado — seção 3.2, 3.3, 3.5, 7.1 |
+| L-02 Estado REVOGADA | ✅ Incorporado — seção 3.2, 3.3, 5.7, 7.1 |
+| L-03 Escalada proporcional | ✅ Incorporado — seção 3.5 com tabela oficial e justificativas |
+| L-04 Delegação temporária de Supervisor | ✅ Incorporado — seção 8.1 e 8.2 |
+| L-05 Visão consolidada de solicitações relacionadas | ✅ Incorporado — seção 5.3 |
+| L-06 Verificação retroativa | ✅ Incorporado — seção 7.3 |
+| L-07 Solicitações de Supervisor desligado | ✅ Incorporado — seção 8.3 |
+| L-08 Encaminhamento para Admin | ✅ Incorporado — seção 7.5 |
+| L-09 Alertas de proximidade | ✅ Incorporado — seção 3.5 e 6.3 |
+| L-10 Restauração de disponibilidade em Troca de Folga | ✅ Incorporado — seção 2.2 (Tipo 2) |
+| L-11 Limite de ciclos em AGUARDANDO INFORMAÇÃO | ✅ Incorporado — seção 2.3 (Tipo 3) e R10 |
+| L-12 Data de revisão obrigatória para Restrições Médicas | ✅ Incorporado — seção 2.4 (Tipo 4) |
+| L-13 Comportamento da urgência em Solicitação Administrativa | ✅ Incorporado — seção 2.8 (Tipo 8) |
+
+---
+
+# 🟢 PRONTA PARA WIREFRAME
+
+A especificação funcional de S-06 Solicitações está encerrada. Todas as lacunas estruturais identificadas pela Auditoria de Cenários Limite foram incorporadas formalmente. A mini-auditoria final não encontrou novas lacunas estruturais.
+
+A superfície pode avançar para a fase de wireframe sem pendências em aberto.

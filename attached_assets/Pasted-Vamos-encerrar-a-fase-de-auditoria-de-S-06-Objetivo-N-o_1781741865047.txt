@@ -1,0 +1,210 @@
+Vamos encerrar a fase de auditoria de S-06.
+
+Objetivo:
+
+Não procurar novas lacunas.
+
+Incorporar formalmente as lacunas identificadas pela Auditoria de Cenários Limite e atualizar a especificação oficial.
+
+Após a atualização, executar apenas uma validação final para confirmar que todas as lacunas foram resolvidas.
+
+Importante:
+
+Não criar wireframes.
+
+Não criar mockups.
+
+Não abrir novas frentes de pesquisa.
+
+Não redesenhar a superfície.
+
+A tarefa agora é consolidar a especificação.
+
+═══════════════════════
+PARTE 1 — ATUALIZAÇÃO DA ESPECIFICAÇÃO
+═══════════════════════
+
+Incorporar formalmente as seguintes correções:
+
+L-01 — Estado EXPIRADA
+
+Definir:
+
+* quando ocorre;
+* quem é notificado;
+* quem pode agir após a expiração;
+* como aparece para o Membro;
+* como aparece para o Supervisor;
+* como aparece para o Admin;
+* como o Histórico registra;
+* se é estado terminal ou reativável.
+
+---
+
+L-02 — Estado REVOGADA
+
+Definir:
+
+* quem pode revogar;
+* em quais cenários;
+* se exige justificativa obrigatória;
+* impacto na Escala;
+* impacto no Livro do Dia;
+* impacto em notificações;
+* impacto no Histórico.
+
+---
+
+L-03 — Escalada por urgência de impacto
+
+Construir tabela oficial.
+
+Exemplo:
+
+Impacto Crítico
+→ escalada em X horas
+
+Impacto Alto
+→ escalada em X horas
+
+Impacto Médio
+→ escalada em X horas
+
+Impacto Baixo
+→ escalada em X horas
+
+Justificar cada limiar.
+
+Validar contra a realidade operacional da ASA.
+
+═══════════════════════
+PARTE 2 — CORREÇÕES IMPORTANTES
+═══════════════════════
+
+Incorporar:
+
+L-04 — Delegação temporária de Supervisor
+
+Definir:
+
+* férias;
+* afastamento;
+* ausência planejada;
+* ausência emergencial;
+* desligamento.
+
+---
+
+L-05 — Visão consolidada de solicitações relacionadas
+
+Definir:
+
+* agrupamento por data;
+* agrupamento por função;
+* agrupamento por impacto operacional;
+* análise coletiva antes da decisão individual.
+
+---
+
+L-06 — Verificação retroativa
+
+Definir:
+
+O que acontece quando:
+
+* nova restrição afeta aprovações antigas;
+* nova folga afeta aprovações antigas;
+* nova mudança estrutural afeta decisões anteriores.
+
+O sistema nunca decide.
+
+O sistema alerta.
+
+O Supervisor decide.
+
+---
+
+L-07 — Solicitações associadas a Supervisor desligado
+
+Definir:
+
+* reatribuição;
+* responsabilidade;
+* histórico;
+* continuidade do processo.
+
+---
+
+L-08 — Encaminhamento para Admin
+
+Definir:
+
+* quem passa a ser responsável;
+* como o Membro é informado;
+* como o Histórico registra;
+* como ficam os prazos.
+
+---
+
+L-09 — Alertas de proximidade
+
+Definir:
+
+* quando o Admin é avisado antes do limite;
+* quando o Supervisor é lembrado;
+* como evitar escaladas surpresa.
+
+═══════════════════════
+PARTE 3 — AJUSTES MENORES
+═══════════════════════
+
+Avaliar e incorporar, se fizer sentido:
+
+* limite de ciclos em AGUARDANDO INFORMAÇÃO;
+* revisão de Restrições Médicas;
+* restauração automática de disponibilidade em Troca de Folga;
+* comportamento da urgência em Solicitações Administrativas.
+
+═══════════════════════
+PARTE 4 — MINI AUDITORIA FINAL
+═══════════════════════
+
+Após atualizar a especificação, responder objetivamente:
+
+1. Existe algum estado sem responsável?
+
+2. Existe algum estado sem saída definida?
+
+3. Existe algum cenário sem dono?
+
+4. Existe algum limbo operacional?
+
+5. Existe alguma solicitação que possa ficar esquecida indefinidamente?
+
+6. Existe alguma aprovação que não possa ser revisada quando o contexto muda?
+
+7. Existe algum caso onde o sistema perde rastreabilidade?
+
+═══════════════════════
+PARTE 5 — VEREDITO FINAL
+═══════════════════════
+
+Classificar novamente:
+
+🟢 Pronta para Wireframe
+
+🟡 Pronta com pendências
+
+🔴 Requer revisão estrutural
+
+Importante:
+
+Só manter 🟡 ou 🔴 se existir uma lacuna estrutural real.
+
+Se todas as lacunas identificadas pela auditoria tiverem sido resolvidas de forma consistente, atualizar formalmente a classificação para:
+
+🟢 Pronta para Wireframe
+
+Objetivo final:
+
+Encerrar definitivamente a especificação funcional de S-06 Solicitações e preparar a superfície para a fase de wireframe sem pendências estruturais abertas.
