@@ -3,6 +3,23 @@ name: MyASA 2.0 — Estado do Projeto
 description: Sprint progress, architectural decisions, and key conventions for the MyASA 2.0 system
 ---
 
+## Sprint 15 — FC-02: Check-in Operacional (COMPLETO)
+**Objetivo:** Fechar a lacuna entre quem deveria estar (Escala) e quem chegou (Check-in). Sem IA, geolocalização, biometria ou QR Code.
+
+### O que foi entregue
+- **DB:** `lib/db/src/schema/checkin.ts` — enum `checkInStatusEnum` + tabela `operational_check_ins`. Aplicado via psql.
+- **API:** 5 endpoints em `/check-ins` — lista do dia, resumo de totais, status do membro, check-in próprio (1 toque), correção pelo supervisor (id="new" cria, id real atualiza).
+- **api-client-react:** 5 hooks: `useListCheckIns`, `useGetCheckInSummary`, `useGetMyCheckInStatus`, `usePerformMyCheckIn`, `useUpdateCheckIn`.
+- **Web Admin (admin + supervisor):** Seção "Check-ins do Dia" no Painel Operacional — pills de resumo + lista com botões de ação rápida (✓/⏰/✗).
+- **Mobile:** `CheckInCard` no topo de `meu-dia.tsx` — 1 toque para check-in quando EXPECTED; mostra horário quando CHECKED_IN/LATE.
+
+### Convenções estabelecidas
+- `req.user!.organizationId` (não `orgId`) em rotas do api-server — o campo no AccessTokenPayload é `organizationId`.
+- PATCH `/check-ins/:id` com id="new" → cria registro novo para o userId informado no body; com UUID real → atualiza existente.
+- MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"] definido localmente na rota (não em shared constants).
+
+---
+
 ## Release 13.1 — Navegação por Perfil e UX Cleanup (COMPLETO)
 **Objetivo:** Reorganizar experiência por papel (Admin / Supervisor / Membro) sem novas entidades, APIs ou regras de negócio.
 

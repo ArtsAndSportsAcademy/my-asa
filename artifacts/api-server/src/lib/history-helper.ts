@@ -11,7 +11,8 @@ export type HistoryCategory =
   | "REQUEST"
   | "DELIVERY"
   | "MESSAGE"
-  | "OPERATIONAL_CHANGE";
+  | "OPERATIONAL_CHANGE"
+  | "CHECK_IN";
 
 export interface WriteHistoryEventInput {
   category: HistoryCategory;

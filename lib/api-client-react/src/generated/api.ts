@@ -199,7 +199,16 @@ import type {
   ListShowBookPositionRefs200,
   ListShowBookRefs200,
   ShowBookPositionRefCreate,
-  ShowBookPositionRefWithDoc
+  ShowBookPositionRefWithDoc,
+  CheckInListResponse,
+  CheckInSummaryResponse,
+  CheckInMyStatusResponse,
+  PerformCheckInResponse,
+  UpdateCheckInRequest,
+  ListCheckInsParams,
+  GetCheckInSummaryParams,
+  GetMyCheckInStatusParams,
+  CheckInRecord,
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -10399,6 +10408,160 @@ export function useListShowBookRefs<TData = Awaited<ReturnType<typeof listShowBo
 
 // Unused import suppressor
 void (null as unknown as ShowBookPositionRefWithDoc);
+
+// ─── Check-in Operacional ─────────────────────────────────────────────────────
+
+export const listCheckIns = async (params: ListCheckInsParams, options?: RequestInit): Promise<CheckInListResponse> =>
+  customFetch<CheckInListResponse>(`/api/check-ins?date=${params.date}&operationId=${params.operationId}`, { ...options });
+
+export const getListCheckInsQueryKey = (params: ListCheckInsParams) =>
+  [`/api/check-ins`, params] as const;
+
+export const getListCheckInsQueryOptions = <TData = Awaited<ReturnType<typeof listCheckIns>>, TError = ErrorType<UnauthorizedResponse>>(
+  params: ListCheckInsParams,
+  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof listCheckIns>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? getListCheckInsQueryKey(params);
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listCheckIns>>> = ({ signal }) =>
+    listCheckIns(params, { signal, ...requestOptions });
+  return { queryKey, queryFn, enabled: !!(params.date && params.operationId), ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof listCheckIns>>, TError, TData> & { queryKey: QueryKey };
+};
+
+export type ListCheckInsQueryResult = NonNullable<Awaited<ReturnType<typeof listCheckIns>>>;
+export type ListCheckInsQueryError = ErrorType<UnauthorizedResponse>;
+
+export function useListCheckIns<TData = Awaited<ReturnType<typeof listCheckIns>>, TError = ErrorType<UnauthorizedResponse>>(
+  params: ListCheckInsParams,
+  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof listCheckIns>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCheckInsQueryOptions(params, options);
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+// summary
+
+export const getCheckInSummaryFn = async (params: GetCheckInSummaryParams, options?: RequestInit): Promise<CheckInSummaryResponse> =>
+  customFetch<CheckInSummaryResponse>(`/api/check-ins/summary?date=${params.date}&operationId=${params.operationId}`, { ...options });
+
+export const getGetCheckInSummaryQueryKey = (params: GetCheckInSummaryParams) =>
+  [`/api/check-ins/summary`, params] as const;
+
+export const getGetCheckInSummaryQueryOptions = <TData = Awaited<ReturnType<typeof getCheckInSummaryFn>>, TError = ErrorType<UnauthorizedResponse>>(
+  params: GetCheckInSummaryParams,
+  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getCheckInSummaryFn>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? getGetCheckInSummaryQueryKey(params);
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getCheckInSummaryFn>>> = ({ signal }) =>
+    getCheckInSummaryFn(params, { signal, ...requestOptions });
+  return { queryKey, queryFn, enabled: !!(params.date && params.operationId), ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof getCheckInSummaryFn>>, TError, TData> & { queryKey: QueryKey };
+};
+
+export type GetCheckInSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof getCheckInSummaryFn>>>;
+export type GetCheckInSummaryQueryError = ErrorType<UnauthorizedResponse>;
+
+export function useGetCheckInSummary<TData = Awaited<ReturnType<typeof getCheckInSummaryFn>>, TError = ErrorType<UnauthorizedResponse>>(
+  params: GetCheckInSummaryParams,
+  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getCheckInSummaryFn>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCheckInSummaryQueryOptions(params, options);
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+// my-status
+
+export const getMyCheckInStatusFn = async (params?: GetMyCheckInStatusParams, options?: RequestInit): Promise<CheckInMyStatusResponse> => {
+  const qs = params?.date ? `?date=${params.date}` : '';
+  return customFetch<CheckInMyStatusResponse>(`/api/check-ins/my-status${qs}`, { ...options });
+};
+
+export const getGetMyCheckInStatusQueryKey = (params?: GetMyCheckInStatusParams) =>
+  [`/api/check-ins/my-status`, params] as const;
+
+export const getGetMyCheckInStatusQueryOptions = <TData = Awaited<ReturnType<typeof getMyCheckInStatusFn>>, TError = ErrorType<UnauthorizedResponse>>(
+  params?: GetMyCheckInStatusParams,
+  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getMyCheckInStatusFn>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? getGetMyCheckInStatusQueryKey(params);
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyCheckInStatusFn>>> = ({ signal }) =>
+    getMyCheckInStatusFn(params, { signal, ...requestOptions });
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof getMyCheckInStatusFn>>, TError, TData> & { queryKey: QueryKey };
+};
+
+export type GetMyCheckInStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getMyCheckInStatusFn>>>;
+export type GetMyCheckInStatusQueryError = ErrorType<UnauthorizedResponse>;
+
+export function useGetMyCheckInStatus<TData = Awaited<ReturnType<typeof getMyCheckInStatusFn>>, TError = ErrorType<UnauthorizedResponse>>(
+  params?: GetMyCheckInStatusParams,
+  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getMyCheckInStatusFn>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMyCheckInStatusQueryOptions(params, options);
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+// perform my check-in (POST)
+
+export const performMyCheckIn = async (options?: RequestInit): Promise<PerformCheckInResponse> =>
+  customFetch<PerformCheckInResponse>('/api/check-ins/my', {
+    ...options, method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+  });
+
+export const getPerformMyCheckInMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>, TContext = unknown>(
+  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof performMyCheckIn>>, TError, void, TContext>; request?: SecondParameter<typeof customFetch> }
+): UseMutationOptions<Awaited<ReturnType<typeof performMyCheckIn>>, TError, void, TContext> => {
+  const mutationKey = ['performMyCheckIn'];
+  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof performMyCheckIn>>, void> = () =>
+    performMyCheckIn(requestOptions);
+  return { mutationKey, mutationFn, ...mutationOptions };
+};
+
+export type PerformMyCheckInMutationResult = NonNullable<Awaited<ReturnType<typeof performMyCheckIn>>>;
+export type PerformMyCheckInMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>;
+
+export const usePerformMyCheckIn = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>, TContext = unknown>(
+  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof performMyCheckIn>>, TError, void, TContext>; request?: SecondParameter<typeof customFetch> }
+): UseMutationResult<Awaited<ReturnType<typeof performMyCheckIn>>, TError, void, TContext> => {
+  const mutationOptions = getPerformMyCheckInMutationOptions(options);
+  return useMutation(mutationOptions);
+};
+
+// update check-in (PATCH by supervisor)
+
+export const updateCheckIn = async (id: string, data: UpdateCheckInRequest, options?: RequestInit): Promise<{ checkIn: CheckInRecord }> =>
+  customFetch<{ checkIn: CheckInRecord }>(`/api/check-ins/${id}`, {
+    ...options, method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(data),
+  });
+
+export const getUpdateCheckInMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>, TContext = unknown>(
+  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateCheckIn>>, TError, { id: string; data: BodyType<UpdateCheckInRequest> }, TContext>; request?: SecondParameter<typeof customFetch> }
+): UseMutationOptions<Awaited<ReturnType<typeof updateCheckIn>>, TError, { id: string; data: BodyType<UpdateCheckInRequest> }, TContext> => {
+  const mutationKey = ['updateCheckIn'];
+  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCheckIn>>, { id: string; data: BodyType<UpdateCheckInRequest> }> = (props) => {
+    const { id, data } = props;
+    return updateCheckIn(id, data, requestOptions);
+  };
+  return { mutationKey, mutationFn, ...mutationOptions };
+};
+
+export type UpdateCheckInMutationResult = NonNullable<Awaited<ReturnType<typeof updateCheckIn>>>;
+export type UpdateCheckInMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>;
+
+export const useUpdateCheckIn = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>, TContext = unknown>(
+  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateCheckIn>>, TError, { id: string; data: BodyType<UpdateCheckInRequest> }, TContext>; request?: SecondParameter<typeof customFetch> }
+): UseMutationResult<Awaited<ReturnType<typeof updateCheckIn>>, TError, { id: string; data: BodyType<UpdateCheckInRequest> }, TContext> => {
+  const mutationOptions = getUpdateCheckInMutationOptions(options);
+  return useMutation(mutationOptions);
+};
 
 
 

@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { useGetOperationalPanel } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useGetOperationalPanel,
+  useListCheckIns,
+  useGetCheckInSummary,
+  useUpdateCheckIn,
+  getListCheckInsQueryKey,
+  getGetCheckInSummaryQueryKey,
+} from "@workspace/api-client-react";
 import type {
   OperationalHealth,
   OperationalException,
@@ -7,17 +15,20 @@ import type {
   OperationalUpcomingEvent,
   GroupCoverage,
   EventCoverage,
+  CheckInItem,
+  CheckInSummary,
 } from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Activity, AlertTriangle, BookMarked, CalendarDays,
   CheckCircle2, XCircle, AlertCircle, Clock, Layers,
-  TrendingUp, RefreshCw,
+  TrendingUp, RefreshCw, UserCheck, Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import {
   HEALTH_CONFIG,
   EVENT_TYPE_LABELS,
@@ -25,6 +36,79 @@ import {
   EXCEPTION_TYPE_LABELS,
   EXCEPTION_TYPE_BADGES,
 } from "@/lib/operational-constants";
+
+// ─── Check-in status config ───────────────────────────────────────────────────
+
+const CHECK_IN_STATUS_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
+  EXPECTED:   { label: "Esperado",    color: "bg-gray-100 text-gray-600",    dot: "bg-gray-400"   },
+  CHECKED_IN: { label: "Presente",    color: "bg-green-100 text-green-800",  dot: "bg-green-500"  },
+  LATE:       { label: "Atrasado",    color: "bg-amber-100 text-amber-800",  dot: "bg-amber-500"  },
+  ABSENT:     { label: "Ausente",     color: "bg-red-100 text-red-800",      dot: "bg-red-500"    },
+  EXCUSED:    { label: "Justificado", color: "bg-blue-100 text-blue-700",    dot: "bg-blue-400"   },
+};
+
+// ─── CheckInRow ───────────────────────────────────────────────────────────────
+
+function CheckInRow({
+  item,
+  onUpdate,
+  isUpdating,
+}: {
+  item: CheckInItem;
+  onUpdate: (userId: string, checkInId: string | null, status: string) => void;
+  isUpdating: boolean;
+}) {
+  const cfg = CHECK_IN_STATUS_CONFIG[item.status] ?? CHECK_IN_STATUS_CONFIG.EXPECTED;
+  return (
+    <div className="px-6 py-3 flex items-center gap-3">
+      <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${cfg.dot}`} />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium truncate">{item.userName}</p>
+        <div className="flex gap-3 mt-0.5">
+          {item.earliestStart && (
+            <span className="text-xs text-muted-foreground">Escala {item.earliestStart.slice(0, 5)}</span>
+          )}
+          {item.checkedInAt && (
+            <span className="text-xs text-muted-foreground">
+              ✓ {new Date(item.checkedInAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          )}
+          {item.excuseReason && (
+            <span className="text-xs text-blue-600 truncate max-w-[120px]">{item.excuseReason}</span>
+          )}
+        </div>
+      </div>
+      <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0 ${cfg.color}`}>
+        {cfg.label}
+      </span>
+      {item.userId && (
+        <div className="flex gap-1 shrink-0">
+          {item.status !== "CHECKED_IN" && (
+            <Button variant="ghost" size="icon" className="h-7 w-7" title="Marcar Presente"
+              disabled={isUpdating}
+              onClick={() => onUpdate(item.userId!, item.checkInId, "CHECKED_IN")}>
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+            </Button>
+          )}
+          {item.status !== "LATE" && item.status !== "CHECKED_IN" && (
+            <Button variant="ghost" size="icon" className="h-7 w-7" title="Marcar Atrasado"
+              disabled={isUpdating}
+              onClick={() => onUpdate(item.userId!, item.checkInId, "LATE")}>
+              <Clock className="h-4 w-4 text-amber-500" />
+            </Button>
+          )}
+          {item.status !== "ABSENT" && item.status !== "EXCUSED" && (
+            <Button variant="ghost" size="icon" className="h-7 w-7" title="Marcar Ausente"
+              disabled={isUpdating}
+              onClick={() => onUpdate(item.userId!, item.checkInId, "ABSENT")}>
+              <XCircle className="h-4 w-4 text-red-500" />
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Health icon map (icons are not in shared constants) ──────────────────────
 
@@ -84,8 +168,44 @@ const COVERAGE_BADGE: Record<string, string> = {
 
 export default function AdminOperationalPanel() {
   const [coverageTab, setCoverageTab] = useState("byGroup");
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const auth = useAuth();
+  const today = new Date().toISOString().slice(0, 10);
+  const operationId = auth.roles.find((r: { operationId?: string }) => r.operationId)?.operationId ?? "";
 
   const { data, isLoading, refetch, isFetching } = useGetOperationalPanel({});
+
+  const checkInParams = { date: today, operationId };
+  const { data: checkInsData, isLoading: checkInsLoading } = useListCheckIns(
+    checkInParams,
+    { query: { enabled: !!operationId, queryKey: getListCheckInsQueryKey(checkInParams) } }
+  );
+  const { data: summaryData } = useGetCheckInSummary(
+    checkInParams,
+    { query: { enabled: !!operationId, queryKey: getGetCheckInSummaryQueryKey(checkInParams) } }
+  );
+  const checkIns: CheckInItem[] = checkInsData?.checkIns ?? [];
+  const summary: CheckInSummary | null = summaryData?.summary ?? null;
+
+  const updateMutation = useUpdateCheckIn();
+
+  function handleUpdateStatus(userId: string, checkInId: string | null, status: string) {
+    updateMutation.mutate(
+      {
+        id: checkInId ?? "new",
+        data: { status, userId, operationId, date: today },
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListCheckInsQueryKey({ date: today, operationId }) });
+          queryClient.invalidateQueries({ queryKey: getGetCheckInSummaryQueryKey({ date: today, operationId }) });
+          toast({ title: "Status atualizado" });
+        },
+        onError: () => toast({ title: "Erro ao atualizar status", variant: "destructive" }),
+      }
+    );
+  }
 
   if (isLoading) {
     return (
@@ -268,7 +388,80 @@ export default function AdminOperationalPanel() {
         </Card>
       </div>
 
-      {/* ── Linha 3: Cobertura Detalhada + Exceções ── */}
+      {/* ── Linha 3: Check-ins do Dia ── */}
+      <div className="mb-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <UserCheck className="h-4 w-4" /> Check-ins do Dia
+              <span className="ml-auto text-xs font-normal text-muted-foreground">
+                {today.split("-").reverse().join("/")}
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {/* Summary pills */}
+            {summary && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                <span className="text-xs px-2.5 py-1 rounded-full bg-muted text-muted-foreground font-medium">
+                  <Users className="h-3 w-3 inline mr-1" />{summary.total} total
+                </span>
+                <span className="text-xs px-2.5 py-1 rounded-full bg-green-100 text-green-800 font-medium">
+                  <CheckCircle2 className="h-3 w-3 inline mr-1" />{summary.checkedIn} presentes
+                </span>
+                {summary.late > 0 && (
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 font-medium">
+                    <Clock className="h-3 w-3 inline mr-1" />{summary.late} atrasados
+                  </span>
+                )}
+                {summary.absent > 0 && (
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-red-100 text-red-800 font-medium">
+                    <XCircle className="h-3 w-3 inline mr-1" />{summary.absent} ausentes
+                  </span>
+                )}
+                {summary.excused > 0 && (
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 font-medium">
+                    {summary.excused} justificados
+                  </span>
+                )}
+                {summary.expected > 0 && (
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 font-medium">
+                    {summary.expected} esperados
+                  </span>
+                )}
+              </div>
+            )}
+            {/* List */}
+            {checkInsLoading ? (
+              <div className="flex items-center justify-center py-6">
+                <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : !operationId ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                Nenhuma operação vinculada ao seu perfil.
+              </p>
+            ) : checkIns.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-6">
+                <Users className="h-8 w-8 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">Nenhum membro esperado para hoje.</p>
+              </div>
+            ) : (
+              <div className="-mx-6 divide-y max-h-72 overflow-y-auto">
+                {checkIns.map((item) => (
+                  <CheckInRow
+                    key={item.userId ?? item.checkInId ?? item.userName}
+                    item={item}
+                    onUpdate={handleUpdateStatus}
+                    isUpdating={updateMutation.isPending}
+                  />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Linha 4: Cobertura Detalhada + Exceções ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Coverage detail */}
         <Card>

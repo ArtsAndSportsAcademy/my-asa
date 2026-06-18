@@ -1,0 +1,253 @@
+# MyASA 2.0 — Sprint 15: FC-02 Check-in Operacional
+
+Utilizar obrigatoriamente:
+
+* Sprint 0 → Sprint 14 concluídas
+* Feedback de Campo #001 (FC-02)
+* Blueprint Executivo
+* Gate Arquitetural
+* Fundação de Escala (S-04)
+* Fundação de Meu Dia (S-01)
+* Fundação de Painel Operacional (S-02)
+* Fundação de Histórico (S-11)
+
+Importante:
+
+Não implementar IA.
+
+Não implementar geolocalização.
+
+Não implementar biometria.
+
+Não implementar QR Code.
+
+Objetivo:
+
+Fechar a diferença entre:
+
+Quem deveria estar
+(Escala)
+
+e
+
+Quem realmente está
+(Operação)
+
+Pergunta respondida:
+
+"Quem já chegou?"
+
+═══════════════════════
+PARTE 1 — PRINCÍPIO FUNDADOR
+═══════════════════════
+
+Escala responde:
+
+Quem deveria estar?
+
+Check-in responde:
+
+Quem realmente chegou?
+
+O Check-in não substitui:
+
+* Escala
+* Livro do Dia
+* Folgas
+* Solicitações
+
+É uma camada operacional adicional.
+
+═══════════════════════
+PARTE 2 — DOMÍNIO
+═══════════════════════
+
+Implementar:
+
+OperationalCheckIn
+
+CheckInStatus
+
+CheckInEvent
+
+Estados:
+
+EXPECTED
+CHECKED_IN
+LATE
+ABSENT
+EXCUSED
+
+Critério:
+
+Todo membro escalado inicia como EXPECTED.
+
+═══════════════════════
+PARTE 3 — WEB SUPERVISOR
+═══════════════════════
+
+Adicionar ao Painel Operacional:
+
+Check-ins do dia
+
+Exibir:
+
+🟢 Presente
+
+🟡 Atrasado
+
+🔴 Ausente
+
+⚪ Esperado
+
+Permitir:
+
+Registrar presença
+
+Registrar atraso
+
+Registrar ausência
+
+Justificar ausência
+
+Critério:
+
+Atualização em tempo real.
+
+═══════════════════════
+PARTE 4 — MOBILE MEMBRO
+═══════════════════════
+
+Adicionar ao Meu Dia:
+
+Botão:
+
+"Realizar Check-in"
+
+Fluxo:
+
+Meu Dia
+↓
+Check-in
+↓
+Confirmado
+
+Exibir horário registrado.
+
+Critério:
+
+Processo simples.
+
+1 toque.
+
+═══════════════════════
+PARTE 5 — PAINEL OPERACIONAL
+═══════════════════════
+
+Adicionar indicadores:
+
+Presentes
+
+Esperados
+
+Ausentes
+
+Atrasados
+
+Exemplo:
+
+32 / 35 presentes
+
+1 atrasado
+
+2 ausentes
+
+Critério:
+
+Supervisor entende a situação em segundos.
+
+═══════════════════════
+PARTE 6 — HISTÓRICO
+═══════════════════════
+
+Registrar:
+
+checkin.created
+
+checkin.late
+
+checkin.absent
+
+checkin.excused
+
+checkin.corrected
+
+Critério:
+
+Rastreabilidade completa.
+
+═══════════════════════
+PARTE 7 — GOVERNANÇA
+═══════════════════════
+
+Preparar integração com GOV-D11.
+
+Quando Supervisor estiver ausente:
+
+Supervisor Substituto poderá registrar check-ins.
+
+Não implementar GOV-D11 ainda.
+
+Somente preparar compatibilidade.
+
+═══════════════════════
+PARTE 8 — MOBILE UX
+═══════════════════════
+
+Exibir no Meu Dia:
+
+Status operacional
+
+Exemplo:
+
+🟢 Check-in realizado às 09:42
+
+ou
+
+⚪ Check-in pendente
+
+Critério:
+
+Membro sabe imediatamente sua situação.
+
+═══════════════════════
+PARTE 9 — AUDITORIA
+═══════════════════════
+
+Validar:
+
+* Não virou controle de ponto corporativo
+* Não substitui Escala
+* Não substitui Folgas
+* Não substitui Solicitações
+* Funciona para operações reais
+
+Responder:
+
+Supervisor consegue saber quem deveria estar e quem realmente chegou utilizando apenas o Painel Operacional?
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Classificar:
+
+🟢 Sprint 15 concluída
+
+🟡 Ajustes necessários
+
+🔴 Bloqueado
+
+Objetivo final:
+
+Ao final da Sprint 15, Supervisores conseguem visualizar a presença operacional em tempo real e Membros conseguem registrar sua chegada diretamente pelo MyASA.

@@ -31,6 +31,7 @@ export const LOG_DOMAIN = {
   AUDIT: "audit",
   OPERATIONAL_PANEL: "operational_panel",
   MY_DAY: "my_day",
+  CHECK_IN: "check_in",
 } as const;
 
 export const REQUEST_ID_HEADER = "x-request-id";

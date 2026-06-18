@@ -1,4 +1,4 @@
-- [MyASA 2.0 — Estado do Projeto](myasa-estado-projeto.md) — Sprint 14 (FC-01: Livro do Show ↔ Biblioteca) concluída; próxima sprint a definir
+- [MyASA 2.0 — Estado do Projeto](myasa-estado-projeto.md) — Sprint 15 (FC-02: Check-in Operacional) concluída; próxima sprint a definir
 - [LOG_DOMAIN extension pattern](log-domain-pattern.md) — ao criar nova rota, adicionar entrada no LOG_DOMAIN de lib/shared/src/constants.ts antes de usar requestLogger
 - [YAML plain scalar colon bug](yaml-colon-bug.md) — summary com ": " em YAML não-quoted quebra orval silenciosamente
 - [Express params cast pattern](express-params-cast.md) — req.params.id tipado como string|string[] no Express; sempre usar `const id = req.params.id as string`

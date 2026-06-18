@@ -17,6 +17,7 @@ import historyRouter from "./history";
 import messagesRouter from "./messages";
 import deliveriesRouter from "./deliveries";
 import libraryRouter from "./library";
+import checkInsRouter from "./check-ins";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(historyRouter);
 router.use(messagesRouter);
 router.use(deliveriesRouter);
 router.use(libraryRouter);
+router.use(checkInsRouter);
 
 export default router;

@@ -1,0 +1,260 @@
+MyASA — Release 13.2: Branding & Identity
+
+Utilizar obrigatoriamente:
+
+Sprint 0 → Sprint 14 concluídas
+Release 13.1 concluída
+Identidade Visual Oficial MyASA
+Logo oficial (Asinha)
+
+Importante:
+
+Esta NÃO é uma sprint funcional.
+
+Não alterar banco de dados.
+
+Não alterar APIs.
+
+Não alterar regras de negócio.
+
+Não alterar permissões.
+
+Objetivo:
+
+Fazer o produto parecer o MyASA.
+
+Pergunta respondida:
+
+"Ao abrir o sistema, o usuário reconhece imediatamente que está usando o MyASA?"
+
+═══════════════════════
+IDENTIDADE OFICIAL
+═══════════════════════
+
+Nome oficial do produto:
+
+MyASA
+
+Remover completamente:
+
+MyASA 2.0
+
+de:
+
+Login
+Sidebar
+Home
+Mobile
+Headers
+Títulos institucionais
+
+═══════════════════════
+LOGO OFICIAL
+═══════════════════════
+
+Utilizar a ASINHA OFICIAL enviada pela Product Owner.
+
+Prioridade visual:
+
+ASINHA > TEXTO
+
+A asinha é o principal elemento de reconhecimento da marca.
+
+Regras:
+
+✅ SVG transparente
+
+✅ Sem fundo
+
+✅ Sem quadrado
+
+✅ Sem moldura
+
+✅ Sem container decorativo
+
+✅ Muito espaço visual ao redor
+
+Proibido:
+
+❌ fundo roxo atrás da asinha
+
+❌ fundo escuro atrás da asinha
+
+❌ caixa colorida
+
+❌ aparência de ícone corporativo genérico
+
+═══════════════════════
+WEB — SIDEBAR
+═══════════════════════
+
+Substituir cabeçalho atual.
+
+Estrutura desejada:
+
+[ASINHA]
+
+MyASA
+
+ou
+
+[ASINHA] MyASA
+
+Visual limpo.
+
+Sem "2.0".
+
+Sem slogan permanente.
+
+═══════════════════════
+WEB — LOGIN
+═══════════════════════
+
+A tela de login deve ser a principal vitrine da marca.
+
+Adicionar:
+
+[ASINHA]
+
+MyASA
+
+Tudo da ASA em um só lugar
+
+A asinha deve aparecer em destaque.
+
+Visual moderno.
+
+Visual premium.
+
+Visual elegante.
+
+═══════════════════════
+WEB — HOME
+═══════════════════════
+
+Substituir aparência genérica.
+
+Adicionar identidade MyASA.
+
+Exemplo:
+
+🪽 MyASA
+
+Olá, Carolina
+
+ou
+
+[ASINHA]
+
+Olá, Carolina
+
+Critério:
+
+A Home deve parecer um produto da ASA.
+
+Não um sistema administrativo genérico.
+
+═══════════════════════
+MOBILE — HOME
+═══════════════════════
+
+Adicionar a asinha no topo.
+
+Estrutura sugerida:
+
+[ASINHA]
+
+Olá, Carolina
+
+ou
+
+[ASINHA] MyASA
+
+Remover sensação de aplicativo administrativo.
+
+═══════════════════════
+EMPTY STATES
+═══════════════════════
+
+Revisar estados vazios.
+
+Evitar mensagens genéricas.
+
+Exemplo:
+
+Antes:
+
+Nenhuma operação encontrada
+
+Depois:
+
+Nenhuma operação configurada ainda.
+
+Crie sua primeira operação para começar a organizar sua equipe.
+
+═══════════════════════
+TOM VISUAL
+═══════════════════════
+
+O sistema deve transmitir:
+
+✅ organização
+
+✅ operação
+
+✅ confiança
+
+✅ equipe
+
+✅ pertencimento
+
+✅ profissionalismo
+
+Evitar aparência de:
+
+❌ ERP
+
+❌ RH corporativo
+
+❌ sistema financeiro
+
+❌ painel administrativo genérico
+
+═══════════════════════
+AUDITORIA
+═══════════════════════
+
+Validar:
+
+Não existe mais "MyASA 2.0"
+A asinha aparece nos pontos principais
+Login possui identidade própria
+Home possui identidade própria
+Mobile possui identidade própria
+O sistema parece o MyASA
+
+Responder:
+
+Se alguém abrir o produto sem conhecer o projeto, ele consegue perceber que este sistema foi criado especificamente para a ASA?
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Classificar:
+
+🟢 Release 13.2 concluída
+
+🟡 Ajustes necessários
+
+🔴 Bloqueado
+
+Objetivo final:
+
+Ao final da Release 13.2, a identidade visual do produto deve estar alinhada com a marca MyASA, utilizando a asinha oficial como principal elemento de reconhecimento da plataforma.
+
+Observação da Product Owner
+
+A asinha é mais importante que o texto.
+
+Se houver conflito entre destacar o nome ou destacar a asinha, priorizar a asinha como elemento principal da marca MyASA. 🪽💜

@@ -2453,3 +2453,76 @@ export type ListShowBookRefs200 = {
   refs: ShowBookPositionRefWithDoc[];
 };
 
+// ─── Check-in Operacional ─────────────────────────────────────────────────────
+
+export interface CheckInRecord {
+  id: string;
+  status: string;
+  checkedInAt?: string | null;
+  excuseReason?: string | null;
+  date: string;
+  operationId: string;
+}
+
+export interface CheckInItem {
+  userId: string | null;
+  userName: string;
+  userPhotoUrl?: string | null;
+  earliestStart?: string | null;
+  checkInId: string | null;
+  status: string;
+  checkedInAt?: string | null;
+  excuseReason?: string | null;
+  registeredBy?: string | null;
+}
+
+export interface CheckInListResponse {
+  checkIns: CheckInItem[];
+}
+
+export interface CheckInSummary {
+  total: number;
+  checkedIn: number;
+  late: number;
+  absent: number;
+  excused: number;
+  expected: number;
+}
+
+export interface CheckInSummaryResponse {
+  summary: CheckInSummary;
+}
+
+export interface CheckInMyStatusResponse {
+  status: string | null;
+  checkIn: CheckInRecord | null;
+  operationId?: string | null;
+  message?: string | null;
+}
+
+export interface PerformCheckInResponse {
+  checkIn: CheckInRecord;
+}
+
+export interface UpdateCheckInRequest {
+  status?: string;
+  excuseReason?: string;
+  userId?: string;
+  operationId?: string;
+  date?: string;
+}
+
+export interface ListCheckInsParams {
+  date: string;
+  operationId: string;
+}
+
+export interface GetCheckInSummaryParams {
+  date: string;
+  operationId: string;
+}
+
+export interface GetMyCheckInStatusParams {
+  date?: string;
+}
+

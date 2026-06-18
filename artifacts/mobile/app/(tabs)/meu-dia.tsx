@@ -1,14 +1,27 @@
 import { Feather } from "@expo/vector-icons";
-import { useGetMyDay, getGetMyDayQueryKey } from "@workspace/api-client-react";
-import type { MyDayActivity, MyDayResponse, MyDayNoticeItem } from "@workspace/api-client-react";
+import {
+  useGetMyDay,
+  getGetMyDayQueryKey,
+  useGetMyCheckInStatus,
+  usePerformMyCheckIn,
+  getGetMyCheckInStatusQueryKey,
+} from "@workspace/api-client-react";
+import type {
+  MyDayActivity,
+  MyDayResponse,
+  MyDayNoticeItem,
+  CheckInMyStatusResponse,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -60,6 +73,78 @@ function formatTime(timeStr: string | null | undefined): string {
 function isToday(dateStr: string): boolean {
   const today = new Date().toISOString().slice(0, 10);
   return dateStr === today;
+}
+
+// ─── Check-in Card ────────────────────────────────────────────────────────────
+
+const CHECK_IN_STATUS_MOBILE: Record<string, { label: string; bg: string; text: string; icon: string }> = {
+  EXPECTED:   { label: "Aguardando check-in", bg: "#F3F4F6", text: "#374151", icon: "clock"          },
+  CHECKED_IN: { label: "Presente",            bg: "#DCFCE7", text: "#166534", icon: "check-circle"   },
+  LATE:       { label: "Atrasado",            bg: "#FEF3C7", text: "#92400E", icon: "alert-circle"   },
+  ABSENT:     { label: "Ausente",             bg: "#FEE2E2", text: "#991B1B", icon: "x-circle"       },
+  EXCUSED:    { label: "Justificado",         bg: "#DBEAFE", text: "#1E40AF", icon: "info"           },
+};
+
+function CheckInCard({
+  colors,
+  checkInData,
+  onCheckIn,
+  isLoading,
+}: {
+  colors: ReturnType<typeof useColors>;
+  checkInData: CheckInMyStatusResponse | undefined;
+  onCheckIn: () => void;
+  isLoading: boolean;
+}) {
+  const status = checkInData?.status ?? "EXPECTED";
+  const cfg = CHECK_IN_STATUS_MOBILE[status] ?? CHECK_IN_STATUS_MOBILE.EXPECTED;
+  const checkIn = checkInData?.checkIn;
+  const canCheckIn = status === "EXPECTED";
+
+  return (
+    <View
+      style={[
+        styles.checkInCard,
+        { backgroundColor: cfg.bg, borderColor: colors.border },
+      ]}
+    >
+      <View style={styles.checkInRow}>
+        <View style={styles.checkInLeft}>
+          <Feather name={cfg.icon as any} size={18} color={cfg.text} />
+          <View style={{ marginLeft: 8 }}>
+            <Text style={[styles.checkInLabel, { color: cfg.text }]}>{cfg.label}</Text>
+            {checkIn?.checkedInAt && (
+              <Text style={[styles.checkInMeta, { color: cfg.text + "CC" }]}>
+                {new Date(checkIn.checkedInAt).toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </Text>
+            )}
+            {checkIn?.excuseReason && (
+              <Text style={[styles.checkInMeta, { color: cfg.text + "CC" }]} numberOfLines={1}>
+                {checkIn.excuseReason}
+              </Text>
+            )}
+          </View>
+        </View>
+        {canCheckIn && (
+          <TouchableOpacity
+            style={[styles.checkInButton, { backgroundColor: colors.primary }]}
+            onPress={onCheckIn}
+            disabled={isLoading}
+            activeOpacity={0.8}
+          >
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.checkInButtonText}>Realizar Check-in</Text>
+            )}
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
 }
 
 // ─── RepublishDelta Banner ─────────────────────────────────────────────────────
@@ -283,9 +368,28 @@ export default function MeuDiaScreen() {
     },
   });
 
+  const { data: checkInStatusData, isLoading: checkInLoading } = useGetMyCheckInStatus(
+    undefined,
+    { query: { queryKey: getGetMyCheckInStatusQueryKey() } }
+  );
+
+  const performCheckInMutation = usePerformMyCheckIn();
+
+  function handleCheckIn() {
+    performCheckInMutation.mutate(undefined, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetMyCheckInStatusQueryKey() });
+      },
+      onError: () => {
+        Alert.alert("Erro", "Não foi possível realizar o check-in. Tente novamente.");
+      },
+    });
+  }
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await queryClient.invalidateQueries({ queryKey: getGetMyDayQueryKey() });
+    await queryClient.invalidateQueries({ queryKey: getGetMyCheckInStatusQueryKey() });
     await refetch();
     setRefreshing(false);
   }, [queryClient, refetch]);
@@ -341,6 +445,14 @@ export default function MeuDiaScreen() {
           </View>
         ) : (
           <>
+            {/* ── Check-in ── */}
+            <CheckInCard
+              colors={colors}
+              checkInData={checkInStatusData}
+              onCheckIn={handleCheckIn}
+              isLoading={performCheckInMutation.isPending || checkInLoading}
+            />
+
             {/* ── Avisos Pendentes ── */}
             {(data as any).pendingNotices && (data as any).pendingNotices.length > 0 && (
               <>
@@ -591,4 +703,42 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   complementaryTitle: { fontSize: 14, fontWeight: "600", flex: 1, marginRight: 8 },
+
+  // ── Check-in Card ──
+  checkInCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 14,
+  },
+  checkInRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  checkInLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  checkInLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  checkInMeta: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  checkInButton: {
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    minWidth: 140,
+    alignItems: "center",
+  },
+  checkInButtonText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "700",
+  },
 });
