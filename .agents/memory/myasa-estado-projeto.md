@@ -72,3 +72,20 @@ ALWAYS fails without TTY — apply schema changes manually via psql. post-merge.
 
 ### Vite Fast Refresh
 Never mix components + non-components in the same file (causes "hooks called outside component" warning).
+
+## Roadmap / Feedback de Campo
+
+Itens validados por usuários reais (Supervisores e Admins) documentados em `.local/roadmap/feedback-campo-001.md`.
+
+### feedback-campo-001 — 4 itens identificados
+1. **Livro do Show como Bíblia Operacional** — expandir S-13 com anotações operacionais, alertas recorrentes e histórico versionado; sem nova rota.
+2. **Check-in Operacional** — registro de presença por Supervisor no dia do evento; vinculado à Escala; dados individuais não expostos publicamente.
+3. **Insights da Biblioteca** — dashboards agregados (cobertura, exceções, uso Livro do Dia, avisos); nova superfície `/admin/insights`; somente Admin/Supervisor.
+4. **Google Calendar** — iniciar por exportação iCal (sem OAuth); OAuth Google em ciclo posterior; somente MyASA → Google (não bidirecional).
+
+**Ordem sugerida:** Google Calendar (iCal) → Check-in → Livro Show Bíblia → Insights.
+**Restrição transversal:** nunca expor dados individuais de desempenho a outros membros.
+
+## Sprints anteriores
+- Sprint 2: CRUD completo usuários/operações/grupos no web-admin, mobile atualizado
+- Sprint 3–4: Show Book, Agenda, Escalas
