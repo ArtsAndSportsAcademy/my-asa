@@ -1,0 +1,267 @@
+# MyASA 2.0 — Sprint 7: Painel Operacional
+
+Utilizar obrigatoriamente:
+
+* Sprint 0 concluída
+* Sprint 1 concluída
+* Sprint 2 concluída
+* Sprint 3 concluída
+* Sprint 4 concluída
+* Sprint 5 concluída
+* Sprint 6 concluída
+* Fundação S-02 Painel Operacional
+* Blueprint Executivo
+* Gate Final de Construção
+
+Importante:
+
+Não implementar Meu Dia ainda.
+
+Não implementar Avisos ainda.
+
+Não implementar IA ainda.
+
+Respeitar decisão oficial:
+
+WEB = Gestão primeiro
+
+MOBILE = Operação primeiro
+
+Objetivo:
+
+Construir a superfície principal do Supervisor.
+
+O Painel Operacional deve responder:
+
+"O que exige minha atenção neste momento?"
+
+═══════════════════════
+PARTE 1 — DOMÍNIO
+═══════════════════════
+
+Criar endpoint composto:
+
+GET /operational-panel
+
+Consolidar:
+
+* Agenda
+* Escalas
+* Livro do Dia
+* Exceções
+* Cobertura
+* Publicações pendentes
+
+Retornar visão consolidada por:
+
+* Operação
+* Grupo
+* Data
+
+═══════════════════════
+PARTE 2 — SAÚDE OPERACIONAL
+═══════════════════════
+
+Implementar estados:
+
+🟢 Saudável
+
+🟡 Atenção
+
+🟠 Risco
+
+🔴 Crítico
+
+Critérios iniciais:
+
+Cobertura
+Publicação
+Exceções
+Em Aberto
+
+Critérios de aceite:
+
+* Estado calculado automaticamente
+* Justificativa sempre visível
+* Nenhum estado sem explicação
+
+═══════════════════════
+PARTE 3 — EXCEÇÕES
+═══════════════════════
+
+Consolidar:
+
+* AllocationException
+* Open Positions
+* Conflicts
+* Manual Overrides
+
+Cada item deve exibir:
+
+* motivo
+* impacto
+* data
+* origem
+
+Critérios:
+
+Supervisor entende o problema sem abrir 5 telas.
+
+═══════════════════════
+PARTE 4 — COBERTURA
+═══════════════════════
+
+Exibir:
+
+* Cobertura por grupo
+* Cobertura por evento
+* Cobertura por data
+
+Indicadores:
+
+* Completa
+* Parcial
+* Insuficiente
+
+Critérios:
+
+Situação operacional compreendida em segundos.
+
+═══════════════════════
+PARTE 5 — LIVRO DO DIA
+═══════════════════════
+
+Exibir:
+
+* Não publicado
+* Publicado
+* Republicado
+* Alterado recentemente
+
+Critérios:
+
+Supervisor identifica rapidamente:
+
+"O que ainda precisa ser publicado?"
+
+═══════════════════════
+PARTE 6 — WEB
+═══════════════════════
+
+Implementação principal.
+
+Criar:
+
+/admin/operational-panel
+
+/supervisor/operational-panel
+
+Estrutura sugerida:
+
+Linha 1:
+
+* Saúde Operacional
+* Cobertura
+* Exceções
+
+Linha 2:
+
+* Agenda Próxima
+* Livros Pendentes
+
+Linha 3:
+
+* Atividade Recente
+
+IMPORTANTE:
+
+Web = Gestão.
+
+Pode usar:
+
+* cards
+* filtros
+* agrupamentos
+* indicadores
+
+Não transformar em dashboard corporativo.
+
+O painel deve parecer um centro operacional.
+
+═══════════════════════
+PARTE 7 — MOBILE
+═══════════════════════
+
+Implementação simplificada.
+
+Mostrar apenas:
+
+* Alertas críticos
+* Cobertura resumida
+* Próximos eventos
+
+Sem gestão completa.
+
+Sem edição.
+
+═══════════════════════
+PARTE 8 — EVENT BUS
+═══════════════════════
+
+Consumir:
+
+scale.published
+
+scale.republished
+
+allocation.open
+
+allocation.conflict
+
+daily-book.published
+
+daily-book.republished
+
+agenda.event.updated
+
+═══════════════════════
+PARTE 9 — AUDITORIA
+═══════════════════════
+
+Validar:
+
+* Supervisor encontra problemas rapidamente
+* Cobertura é compreensível
+* Exceções são rastreáveis
+* Nenhum indicador sem explicação
+* Mobile permanece simples
+* Web permanece ferramenta de gestão
+
+Responder:
+
+Meu Dia pode ser alimentado exclusivamente pelos dados já existentes?
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Classificar:
+
+🟢 Sprint 7 concluída
+
+🟡 Ajustes necessários
+
+🔴 Bloqueado
+
+Objetivo final:
+
+Ao final da Sprint 7:
+
+O Supervisor abre uma única tela e entende:
+
+* O que está saudável
+* O que está em risco
+* O que está pendente
+* O que exige ação imediata
+
+Sem precisar navegar por Agenda, Escala e Livro do Dia separadamente.

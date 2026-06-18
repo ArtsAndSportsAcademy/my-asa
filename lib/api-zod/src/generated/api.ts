@@ -2259,3 +2259,81 @@ export const ReorderDailyBookScenesResponse = zod.object({
 })
 
 
+/**
+ * @summary Get consolidated operational panel
+ */
+export const GetOperationalPanelQueryParams = zod.object({
+  "from": zod.date().optional(),
+  "to": zod.date().optional(),
+  "operationId": zod.coerce.string().optional(),
+  "groupId": zod.coerce.string().optional()
+})
+
+export const GetOperationalPanelResponse = zod.object({
+  "generatedAt": zod.coerce.date(),
+  "health": zod.object({
+  "status": zod.enum(['HEALTHY', 'ATTENTION', 'RISK', 'CRITICAL']),
+  "reasons": zod.array(zod.string())
+}),
+  "coverage": zod.object({
+  "overall": zod.object({
+  "total": zod.number(),
+  "covered": zod.number(),
+  "pct": zod.number(),
+  "status": zod.enum(['COMPLETE', 'PARTIAL', 'INSUFFICIENT'])
+}),
+  "byGroup": zod.array(zod.object({
+  "groupId": zod.string(),
+  "groupName": zod.string(),
+  "total": zod.number(),
+  "covered": zod.number(),
+  "pct": zod.number(),
+  "status": zod.enum(['COMPLETE', 'PARTIAL', 'INSUFFICIENT'])
+})),
+  "byEvent": zod.array(zod.object({
+  "eventId": zod.string(),
+  "eventTitle": zod.string(),
+  "eventDate": zod.string(),
+  "total": zod.number(),
+  "covered": zod.number(),
+  "pct": zod.number(),
+  "status": zod.enum(['COMPLETE', 'PARTIAL', 'INSUFFICIENT'])
+}))
+}),
+  "exceptions": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['ALLOCATION_EXCEPTION', 'OPEN_POSITION', 'CONFLICT', 'MANUAL_OVERRIDE']),
+  "reason": zod.string(),
+  "impact": zod.string().nullish(),
+  "date": zod.string(),
+  "origin": zod.string(),
+  "scaleTitle": zod.string().nullish(),
+  "positionName": zod.string().nullish(),
+  "eventTitle": zod.string().nullish(),
+  "operationId": zod.string()
+})),
+  "pendingBooks": zod.array(zod.object({
+  "id": zod.string(),
+  "eventTitle": zod.string(),
+  "eventDate": zod.string(),
+  "status": zod.string(),
+  "version": zod.number(),
+  "operationId": zod.string(),
+  "scaleId": zod.string().nullish()
+})),
+  "upcomingEvents": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "type": zod.string(),
+  "date": zod.string(),
+  "startTime": zod.string().nullish(),
+  "endTime": zod.string().nullish(),
+  "status": zod.string(),
+  "operationId": zod.string(),
+  "hasScale": zod.boolean(),
+  "hasDailyBook": zod.boolean(),
+  "coveragePct": zod.number().nullish()
+}))
+})
+
+

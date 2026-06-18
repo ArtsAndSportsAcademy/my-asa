@@ -20,13 +20,13 @@ function NativeTabLayout() {
         <Icon sf={{ default: "house", selected: "house.fill" }} />
         <Label>Home</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="panel">
+        <Icon sf={{ default: "chart.bar.doc.horizontal", selected: "chart.bar.doc.horizontal.fill" }} />
+        <Label>Painel</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="agenda">
         <Icon sf={{ default: "calendar", selected: "calendar.badge.checkmark" }} />
         <Label>Agenda</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="show-book">
-        <Icon sf={{ default: "book", selected: "book.closed.fill" }} />
-        <Label>Show</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="scale">
         <Icon sf={{ default: "list.clipboard", selected: "list.clipboard.fill" }} />
@@ -87,6 +87,18 @@ function ClassicTabLayout() {
               <SymbolView name="house" tintColor={color} size={24} />
             ) : (
               <Feather name="home" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="panel"
+        options={{
+          title: "Painel",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="chart.bar.doc.horizontal" tintColor={color} size={24} />
+            ) : (
+              <Feather name="activity" size={22} color={color} />
             ),
         }}
       />

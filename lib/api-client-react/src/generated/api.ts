@@ -64,6 +64,7 @@ import type {
   GetOperation200,
   GetOperationalGroup200,
   GetOperationalGroups200,
+  GetOperationalPanelParams,
   GetOperations200,
   GetScale200,
   GetShowBook200,
@@ -100,6 +101,7 @@ import type {
   OperationCreate,
   OperationStatusUpdate,
   OperationUpdate,
+  OperationalPanel,
   OverrideAllocation200,
   PatchDailyBookAssignment200,
   PatchScaleMeta200,
@@ -6723,4 +6725,88 @@ export const useReorderDailyBookScenes = <TError = ErrorType<UnauthorizedRespons
       > => {
       return useMutation(getReorderDailyBookScenesMutationOptions(options));
     }
+
+export const getGetOperationalPanelUrl = (params?: GetOperationalPanelParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/operational-panel?${stringifiedParams}` : `/api/operational-panel`
+}
+
+/**
+ * @summary Get consolidated operational panel
+ */
+export const getOperationalPanel = async (params?: GetOperationalPanelParams, options?: RequestInit): Promise<OperationalPanel> => {
+
+  return customFetch<OperationalPanel>(getGetOperationalPanelUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOperationalPanelQueryKey = (params?: GetOperationalPanelParams,) => {
+    return [
+    `/api/operational-panel`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetOperationalPanelQueryOptions = <TData = Awaited<ReturnType<typeof getOperationalPanel>>, TError = ErrorType<UnauthorizedResponse>>(params?: GetOperationalPanelParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOperationalPanel>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOperationalPanelQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOperationalPanel>>> = ({ signal }) => getOperationalPanel(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOperationalPanel>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOperationalPanelQueryResult = NonNullable<Awaited<ReturnType<typeof getOperationalPanel>>>
+export type GetOperationalPanelQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Get consolidated operational panel
+ */
+
+export function useGetOperationalPanel<TData = Awaited<ReturnType<typeof getOperationalPanel>>, TError = ErrorType<UnauthorizedResponse>>(
+ params?: GetOperationalPanelParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOperationalPanel>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOperationalPanelQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 

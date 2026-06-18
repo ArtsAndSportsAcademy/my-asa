@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Theater, Home, Users, Briefcase, Users2, LogOut, ChevronRight, BookOpen, CalendarDays, ShieldCheck, ClipboardList, BookMarked, Eye } from "lucide-react";
+import { Theater, Home, Users, Briefcase, Users2, LogOut, ChevronRight, BookOpen, CalendarDays, ShieldCheck, ClipboardList, BookMarked, Eye, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -7,6 +7,8 @@ import { useLogout } from "@workspace/api-client-react";
 
 const navItems = [
   { href: "/admin/home", icon: Home, label: "Dashboard" },
+  { href: "/admin/operational-panel", icon: LayoutDashboard, label: "Painel Operacional" },
+  { href: "/supervisor/operational-panel", icon: Eye, label: "Painel (Supervisor)" },
   { href: "/admin/users", icon: Users, label: "Usuários" },
   { href: "/admin/operations", icon: Briefcase, label: "Operações" },
   { href: "/admin/groups", icon: Users2, label: "Grupos" },
@@ -14,7 +16,7 @@ const navItems = [
   { href: "/admin/agenda", icon: CalendarDays, label: "Agenda" },
   { href: "/admin/scales", icon: ClipboardList, label: "Escalas" },
   { href: "/admin/daily-book", icon: BookMarked, label: "Livro do Dia" },
-  { href: "/supervisor/daily-book", icon: Eye, label: "Livro (Supervisor)" },
+  { href: "/supervisor/daily-book", icon: BookMarked, label: "Livro (Supervisor)" },
   { href: "/admin/auditoria", icon: ShieldCheck, label: "Auditoria" },
 ];
 

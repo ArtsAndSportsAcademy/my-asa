@@ -1,0 +1,218 @@
+# MyASA 2.0 — Sprint 8: Meu Dia
+
+Utilizar obrigatoriamente:
+
+* Sprint 0 concluída
+* Sprint 1 concluída
+* Sprint 2 concluída
+* Sprint 3 concluída
+* Sprint 4 concluída
+* Sprint 5 concluída
+* Sprint 6 concluída
+* Sprint 7 em andamento ou concluída
+* Fundação S-01 Meu Dia
+* Blueprint Executivo
+* Gate Final de Construção
+
+Importante:
+
+Não implementar Avisos ainda.
+
+Não implementar Histórico ainda.
+
+Não implementar IA ainda.
+
+Respeitar decisão oficial:
+
+WEB = Gestão primeiro
+
+MOBILE = Operação primeiro
+
+Objetivo:
+
+Construir a superfície principal do Membro.
+
+Meu Dia deve responder:
+
+"O que eu preciso fazer agora?"
+
+═══════════════════════
+PARTE 1 — ENDPOINT COMPOSTO
+═══════════════════════
+
+Criar:
+
+GET /my-day
+
+Consolidar:
+
+* Agenda
+* Escala
+* Livro do Dia
+* Solicitações
+* Entregas futuras
+
+Retornar apenas informações do usuário autenticado.
+
+Jamais retornar:
+
+* dados de outros membros
+* cobertura da operação
+* informações administrativas
+
+═══════════════════════
+PARTE 2 — HIERARQUIA
+═══════════════════════
+
+Organizar:
+
+Nível 1
+AÇÃO IMEDIATA
+
+Nível 2
+PRÓXIMA ATIVIDADE
+
+Nível 3
+MEU DIA
+
+Nível 4
+INFORMAÇÕES COMPLEMENTARES
+
+Critério:
+
+O membro entende seu próximo compromisso em menos de 10 segundos.
+
+═══════════════════════
+PARTE 3 — MOBILE (IMPLEMENTAÇÃO PRINCIPAL)
+═══════════════════════
+
+Criar aba:
+
+Meu Dia
+
+Exibir:
+
+* Próxima atividade
+* Horário
+* Papel/Função
+* Operação
+* Grupo
+* Mudanças recentes
+* Solicitações em andamento
+
+Se houver republicação:
+
+Mostrar destaque visual:
+
+ERA
+↓
+AGORA
+
+com explicação clara.
+
+═══════════════════════
+PARTE 4 — MUDANÇAS OPERACIONAIS
+═══════════════════════
+
+Consumir:
+
+* Escala publicada
+* Escala republicada
+* Livro do Dia publicado
+* Livro do Dia republicado
+
+Mostrar:
+
+* O que mudou
+* Quando mudou
+* Como impacta o membro
+
+Não mostrar:
+
+* detalhes de outros membros
+* lógica interna de cobertura
+
+═══════════════════════
+PARTE 5 — WEB
+═══════════════════════
+
+Versão simplificada.
+
+Objetivo:
+
+Consulta.
+
+Não gestão.
+
+Não planejamento.
+
+Não administração.
+
+═══════════════════════
+PARTE 6 — EVENT BUS
+═══════════════════════
+
+Consumir:
+
+scale.published
+
+scale.republished
+
+daily-book.published
+
+daily-book.republished
+
+request.approved
+
+request.denied
+
+═══════════════════════
+PARTE 7 — SEGURANÇA
+═══════════════════════
+
+Validar:
+
+* Somente dados próprios
+* Sem vazamento de contexto
+* Sem dados médicos
+* Sem dados de outros grupos
+
+═══════════════════════
+PARTE 8 — AUDITORIA
+═══════════════════════
+
+Validar:
+
+* Membro entende sua próxima ação rapidamente
+* Mudanças são compreensíveis
+* Informações críticas aparecem primeiro
+* Nenhum dado irrelevante compete com a operação
+
+Responder:
+
+Avisos pode consumir Meu Dia sem criar duplicação de informação?
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Classificar:
+
+🟢 Sprint 8 concluída
+
+🟡 Ajustes necessários
+
+🔴 Bloqueado
+
+Objetivo final:
+
+Ao final da Sprint 8:
+
+Um membro abre o aplicativo e entende imediatamente:
+
+* Onde precisa estar
+* Quando precisa estar
+* O que precisa fazer
+* O que mudou desde a última consulta
+
+Sem precisar navegar por múltiplas telas.

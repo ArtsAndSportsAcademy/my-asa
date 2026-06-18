@@ -1,0 +1,405 @@
+import { useState } from "react";
+import { useGetOperationalPanel } from "@workspace/api-client-react";
+import type {
+  OperationalHealth,
+  OperationalException,
+  OperationalPendingBook,
+  OperationalUpcomingEvent,
+  GroupCoverage,
+  EventCoverage,
+} from "@workspace/api-client-react";
+import AdminLayout from "@/components/admin-layout";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Activity, AlertTriangle, BookMarked, CalendarDays,
+  CheckCircle2, XCircle, AlertCircle, Clock, Layers,
+  TrendingUp, RefreshCw,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+// ─── Health ───────────────────────────────────────────────────────────────────
+
+const HEALTH_CONFIG = {
+  HEALTHY:  { label: "Saudável",  icon: CheckCircle2,  bg: "bg-green-50",  border: "border-green-200",  text: "text-green-700",  badge: "bg-green-100 text-green-800" },
+  ATTENTION:{ label: "Atenção",   icon: AlertCircle,   bg: "bg-amber-50",  border: "border-amber-200",  text: "text-amber-700",  badge: "bg-amber-100 text-amber-800" },
+  RISK:     { label: "Risco",     icon: AlertTriangle, bg: "bg-orange-50", border: "border-orange-200", text: "text-orange-700", badge: "bg-orange-100 text-orange-800" },
+  CRITICAL: { label: "Crítico",   icon: XCircle,       bg: "bg-red-50",    border: "border-red-200",    text: "text-red-700",    badge: "bg-red-100 text-red-800" },
+} as const;
+
+function HealthCard({ health }: { health: OperationalHealth }) {
+  const cfg = HEALTH_CONFIG[health.status as keyof typeof HEALTH_CONFIG] ?? HEALTH_CONFIG.ATTENTION;
+  const Icon = cfg.icon;
+  return (
+    <Card className={`${cfg.border} border-2`}>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+          <Activity className="h-4 w-4" /> Saúde Operacional
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className={`flex items-center gap-3 p-3 rounded-lg ${cfg.bg}`}>
+          <Icon className={`h-8 w-8 ${cfg.text} shrink-0`} />
+          <div>
+            <p className={`text-xl font-bold ${cfg.text}`}>{cfg.label}</p>
+            <ul className="mt-1 space-y-0.5">
+              {health.reasons.map((r, i) => (
+                <li key={i} className={`text-xs ${cfg.text}/80`}>• {r}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Coverage ─────────────────────────────────────────────────────────────────
+
+function CoverageBar({ pct, status }: { pct: number; status: string }) {
+  const color = status === "COMPLETE" ? "bg-green-500" : status === "PARTIAL" ? "bg-amber-500" : "bg-red-500";
+  return (
+    <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+      <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${Math.min(pct, 100)}%` }} />
+    </div>
+  );
+}
+
+const COVERAGE_LABELS: Record<string, string> = {
+  COMPLETE: "Completa", PARTIAL: "Parcial", INSUFFICIENT: "Insuficiente",
+};
+const COVERAGE_BADGE: Record<string, string> = {
+  COMPLETE: "bg-green-100 text-green-800", PARTIAL: "bg-amber-100 text-amber-800", INSUFFICIENT: "bg-red-100 text-red-800",
+};
+
+// ─── Exception type labels ─────────────────────────────────────────────────────
+
+const EX_TYPE_LABELS: Record<string, string> = {
+  ALLOCATION_EXCEPTION: "Exceção de Alocação",
+  OPEN_POSITION: "Posição em Aberto",
+  CONFLICT: "Conflito",
+  MANUAL_OVERRIDE: "Substituição Manual",
+};
+const EX_TYPE_BADGE: Record<string, string> = {
+  ALLOCATION_EXCEPTION: "bg-violet-100 text-violet-800",
+  OPEN_POSITION: "bg-red-100 text-red-800",
+  CONFLICT: "bg-orange-100 text-orange-800",
+  MANUAL_OVERRIDE: "bg-blue-100 text-blue-800",
+};
+
+// ─── Event type labels ─────────────────────────────────────────────────────────
+
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  SHOW: "Apresentação", REHEARSAL: "Ensaio", MEETING: "Reunião",
+  OPERATIONAL_BLOCK: "Bloco Operacional", COLLECTIVE_VACATION: "Férias Coletivas",
+};
+const EVENT_TYPE_BADGE: Record<string, string> = {
+  SHOW: "bg-violet-100 text-violet-800", REHEARSAL: "bg-blue-100 text-blue-800",
+  MEETING: "bg-amber-100 text-amber-800", OPERATIONAL_BLOCK: "bg-indigo-100 text-indigo-800",
+  COLLECTIVE_VACATION: "bg-green-100 text-green-800",
+};
+
+// ─── Main Page ─────────────────────────────────────────────────────────────────
+
+export default function AdminOperationalPanel() {
+  const [coverageTab, setCoverageTab] = useState("byGroup");
+
+  const { data, isLoading, refetch, isFetching } = useGetOperationalPanel({});
+
+  if (isLoading) {
+    return (
+      <AdminLayout title="Painel Operacional">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <RefreshCw className="h-8 w-8 text-muted-foreground animate-spin mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">Consolidando dados operacionais…</p>
+          </div>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  if (!data) {
+    return (
+      <AdminLayout title="Painel Operacional">
+        <div className="text-center py-12 text-muted-foreground text-sm">Nenhum dado disponível.</div>
+      </AdminLayout>
+    );
+  }
+
+  const { health, coverage, exceptions, pendingBooks, upcomingEvents, generatedAt } = data;
+
+  const criticalExceptions = exceptions.filter((e) =>
+    e.type === "OPEN_POSITION" || e.type === "CONFLICT"
+  );
+
+  return (
+    <AdminLayout
+      title="Painel Operacional"
+      subtitle="Visão consolidada da saúde operacional em tempo real"
+    >
+      {/* Header bar */}
+      <div className="flex items-center justify-between mb-6">
+        <p className="text-xs text-muted-foreground">
+          Atualizado em {new Date(generatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+        </p>
+        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+          <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isFetching ? "animate-spin" : ""}`} />
+          Atualizar
+        </Button>
+      </div>
+
+      {/* ── Linha 1: Saúde / Cobertura / Exceções ── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <HealthCard health={health} />
+
+        {/* Coverage summary */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" /> Cobertura Geral
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold mb-1">
+              {coverage.overall.pct.toFixed(0)}%
+            </div>
+            <CoverageBar pct={coverage.overall.pct} status={coverage.overall.status} />
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-xs text-muted-foreground">
+                {coverage.overall.covered}/{coverage.overall.total} posições cobertas
+              </span>
+              <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${COVERAGE_BADGE[coverage.overall.status]}`}>
+                {COVERAGE_LABELS[coverage.overall.status]}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Exceptions summary */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" /> Exceções Ativas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold mb-2">{exceptions.length}</div>
+            <div className="space-y-1.5">
+              {criticalExceptions.length > 0 && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-red-600 font-medium">Críticas (conflitos + abertos)</span>
+                  <span className="bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-medium">{criticalExceptions.length}</span>
+                </div>
+              )}
+              {pendingBooks.length > 0 && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-amber-600 font-medium">Livros não publicados</span>
+                  <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">{pendingBooks.length}</span>
+                </div>
+              )}
+              {exceptions.length === 0 && pendingBooks.length === 0 && (
+                <p className="text-xs text-green-600">Nenhuma exceção ativa</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Linha 2: Agenda Próxima + Livros Pendentes ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        {/* Upcoming Events */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <CalendarDays className="h-4 w-4" /> Agenda Próxima
+              <span className="ml-auto text-xs font-normal">próximos 14 dias</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {upcomingEvents.length === 0 ? (
+              <p className="px-6 py-4 text-sm text-muted-foreground">Nenhum evento próximo</p>
+            ) : (
+              <div className="divide-y max-h-72 overflow-y-auto">
+                {upcomingEvents.map((ev: OperationalUpcomingEvent) => (
+                  <div key={ev.id} className="px-6 py-3 flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium truncate">{ev.title}</span>
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${EVENT_TYPE_BADGE[ev.type] ?? "bg-muted text-muted-foreground"}`}>
+                          {EVENT_TYPE_LABELS[ev.type] ?? ev.type}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {new Date(ev.date + "T00:00:00").toLocaleDateString("pt-BR")}
+                        {ev.startTime && ` • ${ev.startTime.slice(0, 5)}`}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      {ev.coveragePct !== null && ev.coveragePct !== undefined && (
+                        <span className={`text-xs font-medium ${ev.coveragePct >= 100 ? "text-green-600" : ev.coveragePct >= 60 ? "text-amber-600" : "text-red-600"}`}>
+                          {ev.coveragePct.toFixed(0)}%
+                        </span>
+                      )}
+                      <div className="flex gap-1">
+                        <span title="Escala" className={`text-xs px-1 rounded ${ev.hasScale ? "bg-violet-100 text-violet-700" : "bg-muted text-muted-foreground"}`}>E</span>
+                        <span title="Livro do Dia" className={`text-xs px-1 rounded ${ev.hasDailyBook ? "bg-blue-100 text-blue-700" : "bg-muted text-muted-foreground"}`}>L</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Pending Books */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <BookMarked className="h-4 w-4" /> Livros Pendentes
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {pendingBooks.length === 0 ? (
+              <div className="px-6 py-6 flex flex-col items-center gap-2">
+                <CheckCircle2 className="h-8 w-8 text-green-500" />
+                <p className="text-sm text-green-600 font-medium">Todos os Livros publicados</p>
+              </div>
+            ) : (
+              <div className="divide-y max-h-72 overflow-y-auto">
+                {pendingBooks.map((book: OperationalPendingBook) => (
+                  <div key={book.id} className="px-6 py-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium truncate flex-1 mr-2">{book.eventTitle}</span>
+                      <span className="bg-amber-100 text-amber-800 text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0">
+                        Rascunho
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {new Date(book.eventDate + "T00:00:00").toLocaleDateString("pt-BR")} • v{book.version}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Linha 3: Cobertura Detalhada + Exceções ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Coverage detail */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Layers className="h-4 w-4" /> Cobertura Detalhada
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Tabs value={coverageTab} onValueChange={setCoverageTab}>
+              <TabsList className="w-full rounded-none border-b bg-transparent h-auto px-6 py-0 gap-4">
+                <TabsTrigger value="byGroup" className="text-xs py-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary">
+                  Por Grupo
+                </TabsTrigger>
+                <TabsTrigger value="byEvent" className="text-xs py-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary">
+                  Por Evento
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="byGroup" className="mt-0">
+                {coverage.byGroup.length === 0 ? (
+                  <p className="px-6 py-4 text-sm text-muted-foreground">Sem dados de grupo</p>
+                ) : (
+                  <div className="divide-y max-h-56 overflow-y-auto">
+                    {coverage.byGroup.map((g: GroupCoverage) => (
+                      <div key={g.groupId} className="px-6 py-3">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-sm font-medium truncate flex-1 mr-2">{g.groupName}</span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-xs text-muted-foreground">{g.covered}/{g.total}</span>
+                            <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${COVERAGE_BADGE[g.status]}`}>
+                              {g.pct.toFixed(0)}%
+                            </span>
+                          </div>
+                        </div>
+                        <CoverageBar pct={g.pct} status={g.status} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+              <TabsContent value="byEvent" className="mt-0">
+                {coverage.byEvent.length === 0 ? (
+                  <p className="px-6 py-4 text-sm text-muted-foreground">Sem dados de evento</p>
+                ) : (
+                  <div className="divide-y max-h-56 overflow-y-auto">
+                    {coverage.byEvent.map((e: EventCoverage) => (
+                      <div key={e.eventId} className="px-6 py-3">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex-1 mr-2 min-w-0">
+                            <p className="text-sm font-medium truncate">{e.eventTitle}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(e.eventDate + "T00:00:00").toLocaleDateString("pt-BR")}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-xs text-muted-foreground">{e.covered}/{e.total}</span>
+                            <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${COVERAGE_BADGE[e.status]}`}>
+                              {e.pct.toFixed(0)}%
+                            </span>
+                          </div>
+                        </div>
+                        <CoverageBar pct={e.pct} status={e.status} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+
+        {/* Exceptions list */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" /> Exceções ({exceptions.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {exceptions.length === 0 ? (
+              <div className="px-6 py-6 flex flex-col items-center gap-2">
+                <CheckCircle2 className="h-8 w-8 text-green-500" />
+                <p className="text-sm text-green-600 font-medium">Nenhuma exceção ativa</p>
+              </div>
+            ) : (
+              <div className="divide-y max-h-72 overflow-y-auto">
+                {exceptions.map((ex: OperationalException) => (
+                  <div key={ex.id} className="px-6 py-3">
+                    <div className="flex items-start gap-2">
+                      <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0 mt-0.5 ${EX_TYPE_BADGE[ex.type] ?? "bg-muted text-muted-foreground"}`}>
+                        {EX_TYPE_LABELS[ex.type] ?? ex.type}
+                      </span>
+                    </div>
+                    <p className="text-sm mt-1">{ex.reason}</p>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                      {ex.eventTitle && <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3" />{ex.eventTitle}</span>}
+                      {ex.positionName && <span className="flex items-center gap-1"><Layers className="h-3 w-3" />{ex.positionName}</span>}
+                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" />
+                        {new Date(ex.date + "T00:00:00").toLocaleDateString("pt-BR")}
+                      </span>
+                    </div>
+                    {ex.impact && (
+                      <p className="text-xs text-amber-600 mt-1">Impacto: {ex.impact}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </AdminLayout>
+  );
+}

@@ -974,6 +974,136 @@ export interface DailyBookDelta {
   isEmpty: boolean;
 }
 
+export type OperationalHealthStatus = typeof OperationalHealthStatus[keyof typeof OperationalHealthStatus];
+
+
+export const OperationalHealthStatus = {
+  HEALTHY: 'HEALTHY',
+  ATTENTION: 'ATTENTION',
+  RISK: 'RISK',
+  CRITICAL: 'CRITICAL',
+} as const;
+
+export interface OperationalHealth {
+  status: OperationalHealthStatus;
+  reasons: string[];
+}
+
+export type CoverageMetricStatus = typeof CoverageMetricStatus[keyof typeof CoverageMetricStatus];
+
+
+export const CoverageMetricStatus = {
+  COMPLETE: 'COMPLETE',
+  PARTIAL: 'PARTIAL',
+  INSUFFICIENT: 'INSUFFICIENT',
+} as const;
+
+export interface CoverageMetric {
+  total: number;
+  covered: number;
+  pct: number;
+  status: CoverageMetricStatus;
+}
+
+export type GroupCoverageStatus = typeof GroupCoverageStatus[keyof typeof GroupCoverageStatus];
+
+
+export const GroupCoverageStatus = {
+  COMPLETE: 'COMPLETE',
+  PARTIAL: 'PARTIAL',
+  INSUFFICIENT: 'INSUFFICIENT',
+} as const;
+
+export interface GroupCoverage {
+  groupId: string;
+  groupName: string;
+  total: number;
+  covered: number;
+  pct: number;
+  status: GroupCoverageStatus;
+}
+
+export type EventCoverageStatus = typeof EventCoverageStatus[keyof typeof EventCoverageStatus];
+
+
+export const EventCoverageStatus = {
+  COMPLETE: 'COMPLETE',
+  PARTIAL: 'PARTIAL',
+  INSUFFICIENT: 'INSUFFICIENT',
+} as const;
+
+export interface EventCoverage {
+  eventId: string;
+  eventTitle: string;
+  eventDate: string;
+  total: number;
+  covered: number;
+  pct: number;
+  status: EventCoverageStatus;
+}
+
+export interface OperationalCoverage {
+  overall: CoverageMetric;
+  byGroup: GroupCoverage[];
+  byEvent: EventCoverage[];
+}
+
+export type OperationalExceptionType = typeof OperationalExceptionType[keyof typeof OperationalExceptionType];
+
+
+export const OperationalExceptionType = {
+  ALLOCATION_EXCEPTION: 'ALLOCATION_EXCEPTION',
+  OPEN_POSITION: 'OPEN_POSITION',
+  CONFLICT: 'CONFLICT',
+  MANUAL_OVERRIDE: 'MANUAL_OVERRIDE',
+} as const;
+
+export interface OperationalException {
+  id: string;
+  type: OperationalExceptionType;
+  reason: string;
+  impact?: string | null;
+  date: string;
+  origin: string;
+  scaleTitle?: string | null;
+  positionName?: string | null;
+  eventTitle?: string | null;
+  operationId: string;
+}
+
+export interface OperationalPendingBook {
+  id: string;
+  eventTitle: string;
+  eventDate: string;
+  status: string;
+  version: number;
+  operationId: string;
+  scaleId?: string | null;
+}
+
+export interface OperationalUpcomingEvent {
+  id: string;
+  title: string;
+  type: string;
+  date: string;
+  startTime?: string | null;
+  endTime?: string | null;
+  status: string;
+  operationId: string;
+  hasScale: boolean;
+  hasDailyBook: boolean;
+  coveragePct?: number | null;
+}
+
+export interface OperationalPanel {
+  generatedAt: string;
+  health: OperationalHealth;
+  coverage: OperationalCoverage;
+  exceptions: OperationalException[];
+  pendingBooks: OperationalPendingBook[];
+  upcomingEvents: OperationalUpcomingEvent[];
+}
+
 /**
  * Bad request
  */
@@ -1369,5 +1499,12 @@ export type PatchDailyBookAssignment200 = {
 
 export type ReorderDailyBookScenes200 = {
   success: boolean;
+};
+
+export type GetOperationalPanelParams = {
+from?: string;
+to?: string;
+operationId?: string;
+groupId?: string;
 };
 

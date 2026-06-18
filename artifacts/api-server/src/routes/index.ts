@@ -10,6 +10,7 @@ import showBookRouter from "./show-book";
 import agendaRouter from "./agenda";
 import scalesRouter from "./scales";
 import dailyBookRouter from "./daily-book";
+import operationalPanelRouter from "./operational-panel";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(showBookRouter);
 router.use(agendaRouter);
 router.use(scalesRouter);
 router.use(dailyBookRouter);
+router.use(operationalPanelRouter);
 
 export default router;

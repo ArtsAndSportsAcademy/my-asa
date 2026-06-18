@@ -3,6 +3,16 @@ name: MyASA 2.0 — Estado do Projeto
 description: Sprint progress, architectural decisions, and key conventions for the MyASA 2.0 system
 ---
 
+## Sprint 7 — Painel Operacional (COMPLETO)
+**Objetivo:** "O que exige minha atenção neste momento?" para Supervisores.
+- Backend: `GET /operational-panel` em operational-panel.ts — consolida agenda/escalas/alocações/exceções/livros, computa HEALTHY/ATTENTION/RISK/CRITICAL, cobertura geral+grupo+evento.
+- LOG_DOMAIN.OPERATIONAL_PANEL adicionado em lib/shared/src/constants.ts.
+- 9 schemas OpenAPI; codegen + api-client-react rebuild concluídos.
+- Web Admin: `/admin/operational-panel` (grid saúde/cobertura/exceções + tabs cobertura detalhada) e `/supervisor/operational-panel` (foco em ação imediata, alertas 48h). Nav registrado em admin-layout.tsx.
+- Mobile: Tab "Painel" (`app/(tabs)/panel.tsx`) com pull-to-refresh. Registrado em NativeTabLayout + ClassicTabLayout.
+- **Convenção:** `refetchInterval` não funciona em `query: { refetchInterval }` no orval gerado (exige `queryKey`). Usar botão manual ou useEffect separado.
+- **Convenção:** showBookRolesTable só tem `id` e `name` — sem campo `label` (esse existe em showBookTagsTable).
+
 ## Sprint 6 — Padronização Visual Oficial (concluído)
 - Paleta oficial MyASA aplicada em todas as superfícies Web e Mobile
 - Primary: #7C3AED (violet), gradiente from #7C3AED to #2563EB

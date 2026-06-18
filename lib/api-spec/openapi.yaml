@@ -26,6 +26,8 @@ tags:
     description: "Escala de alocacao automatica"
   - name: daily-book
     description: "Livro do Dia — execucao operacional derivada da Escala"
+  - name: operational-panel
+    description: "Painel Operacional — visao consolidada de saude operacional"
 
 security:
   - bearerAuth: []
@@ -2733,6 +2735,40 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /operational-panel:
+    get:
+      operationId: getOperationalPanel
+      tags: [operational-panel]
+      summary: "Get consolidated operational panel"
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: operationId
+          in: query
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Painel operacional consolidado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperationalPanel"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -4157,3 +4193,186 @@ components:
         isEmpty:
           type: boolean
       required: [additions, removals, swaps, structural, isEmpty]
+
+    OperationalPanel:
+      type: object
+      required: [generatedAt, health, coverage, exceptions, pendingBooks, upcomingEvents]
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        health:
+          $ref: "#/components/schemas/OperationalHealth"
+        coverage:
+          $ref: "#/components/schemas/OperationalCoverage"
+        exceptions:
+          type: array
+          items:
+            $ref: "#/components/schemas/OperationalException"
+        pendingBooks:
+          type: array
+          items:
+            $ref: "#/components/schemas/OperationalPendingBook"
+        upcomingEvents:
+          type: array
+          items:
+            $ref: "#/components/schemas/OperationalUpcomingEvent"
+
+    OperationalHealth:
+      type: object
+      required: [status, reasons]
+      properties:
+        status:
+          type: string
+          enum: [HEALTHY, ATTENTION, RISK, CRITICAL]
+        reasons:
+          type: array
+          items:
+            type: string
+
+    OperationalCoverage:
+      type: object
+      required: [overall, byGroup, byEvent]
+      properties:
+        overall:
+          $ref: "#/components/schemas/CoverageMetric"
+        byGroup:
+          type: array
+          items:
+            $ref: "#/components/schemas/GroupCoverage"
+        byEvent:
+          type: array
+          items:
+            $ref: "#/components/schemas/EventCoverage"
+
+    CoverageMetric:
+      type: object
+      required: [total, covered, pct, status]
+      properties:
+        total:
+          type: integer
+        covered:
+          type: integer
+        pct:
+          type: number
+        status:
+          type: string
+          enum: [COMPLETE, PARTIAL, INSUFFICIENT]
+
+    GroupCoverage:
+      type: object
+      required: [groupId, groupName, total, covered, pct, status]
+      properties:
+        groupId:
+          type: string
+        groupName:
+          type: string
+        total:
+          type: integer
+        covered:
+          type: integer
+        pct:
+          type: number
+        status:
+          type: string
+          enum: [COMPLETE, PARTIAL, INSUFFICIENT]
+
+    EventCoverage:
+      type: object
+      required: [eventId, eventTitle, eventDate, total, covered, pct, status]
+      properties:
+        eventId:
+          type: string
+        eventTitle:
+          type: string
+        eventDate:
+          type: string
+        total:
+          type: integer
+        covered:
+          type: integer
+        pct:
+          type: number
+        status:
+          type: string
+          enum: [COMPLETE, PARTIAL, INSUFFICIENT]
+
+    OperationalException:
+      type: object
+      required: [id, type, reason, date, origin, operationId]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [ALLOCATION_EXCEPTION, OPEN_POSITION, CONFLICT, MANUAL_OVERRIDE]
+        reason:
+          type: string
+        impact:
+          type: string
+          nullable: true
+        date:
+          type: string
+        origin:
+          type: string
+        scaleTitle:
+          type: string
+          nullable: true
+        positionName:
+          type: string
+          nullable: true
+        eventTitle:
+          type: string
+          nullable: true
+        operationId:
+          type: string
+
+    OperationalPendingBook:
+      type: object
+      required: [id, eventTitle, eventDate, status, version, operationId]
+      properties:
+        id:
+          type: string
+        eventTitle:
+          type: string
+        eventDate:
+          type: string
+        status:
+          type: string
+        version:
+          type: integer
+        operationId:
+          type: string
+        scaleId:
+          type: string
+          nullable: true
+
+    OperationalUpcomingEvent:
+      type: object
+      required: [id, title, type, date, status, operationId, hasScale, hasDailyBook]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        type:
+          type: string
+        date:
+          type: string
+        startTime:
+          type: string
+          nullable: true
+        endTime:
+          type: string
+          nullable: true
+        status:
+          type: string
+        operationId:
+          type: string
+        hasScale:
+          type: boolean
+        hasDailyBook:
+          type: boolean
+        coveragePct:
+          type: number
+          nullable: true
