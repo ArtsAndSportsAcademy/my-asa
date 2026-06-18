@@ -1,0 +1,292 @@
+Vamos iniciar oficialmente o Bloco 2.
+
+Superfície:
+
+S-06 — Solicitações
+
+Objetivo:
+
+Produzir a especificação funcional definitiva da superfície antes de qualquer wireframe ou mockup.
+
+Esta análise deve seguir o mesmo rigor aplicado ao Bloco 1.
+
+Importante:
+
+Não criar wireframes.
+
+Não criar mockups.
+
+Não criar componentes visuais.
+
+Não assumir comportamentos implícitos.
+
+Questionar tudo.
+
+Identificar lacunas.
+
+Apontar inconsistências.
+
+Validar contra toda a documentação existente.
+
+═══════════════════════
+BASE OBRIGATÓRIA
+═══════════════════════
+
+Cruzar obrigatoriamente:
+
+* Arquitetura MyASA 2.0
+* Diretrizes UX
+* Pesquisa do Supervisor
+* Pesquisa do Membro
+* Pesquisa do Admin
+* Jornadas
+* Mapa de Superfícies
+* Arquitetura de Navegação
+* Especificação do Bloco 1
+* Auditoria Final de Consistência
+
+Nenhuma decisão pode contradizer documentação anterior.
+
+═══════════════════════
+PRINCÍPIO CENTRAL
+═══════════════════════
+
+A pesquisa do Membro revelou:
+
+"O pior não é ouvir não.
+O pior é não saber se alguém viu."
+
+Toda a superfície deve ser construída para eliminar completamente o silêncio sem significado.
+
+═══════════════════════
+PARTE 1 — PAPEL DA SUPERFÍCIE
+═══════════════════════
+
+Responder detalhadamente:
+
+* Qual problema a superfície resolve?
+* Que problema existiria sem ela?
+* Qual a relação dela com Escala?
+* Qual a relação dela com Livro do Dia?
+* Qual a relação dela com Avisos?
+* Qual a relação dela com Histórico?
+* Qual a relação dela com IA?
+* Qual a relação dela com Admin?
+
+Explicar:
+
+* por que Solicitações é uma superfície própria;
+* por que não é apenas uma conversa;
+* por que não é apenas um formulário.
+
+═══════════════════════
+PARTE 2 — TAXONOMIA COMPLETA
+═══════════════════════
+
+Validar todos os tipos oficiais de Solicitação definidos na arquitetura.
+
+Para cada tipo documentar:
+
+* finalidade;
+* quem pode criar;
+* quem pode aprovar;
+* quem pode visualizar;
+* quem pode cancelar;
+* impacto operacional;
+* impacto em Escala;
+* impacto em Livro do Dia;
+* impacto em Agenda;
+* impacto em Histórico.
+
+Identificar:
+
+* tipos redundantes;
+* tipos ambíguos;
+* tipos faltantes.
+
+═══════════════════════
+PARTE 3 — CICLO DE VIDA
+═══════════════════════
+
+Definir todos os estados possíveis.
+
+Exemplo:
+
+* Rascunho
+* Enviada
+* Recebida
+* Em análise
+* Aguardando informação
+* Aprovada
+* Negada
+* Cancelada
+* Expirada
+* Arquivada
+
+Não assumir estados.
+
+Validar criticamente se todos são necessários.
+
+Para cada estado responder:
+
+* quem pode colocá-la nesse estado;
+* o que o usuário vê;
+* o que a IA vê;
+* quais ações ficam disponíveis;
+* quais notificações são disparadas.
+
+═══════════════════════
+PARTE 4 — JORNADA DO MEMBRO
+═══════════════════════
+
+Mapear detalhadamente:
+
+1. Criação
+2. Envio
+3. Acompanhamento
+4. Solicitação de informação complementar
+5. Aprovação
+6. Negativa
+7. Cancelamento
+8. Reenvio
+9. Histórico pessoal
+
+Perguntas obrigatórias:
+
+* O Membro sempre sabe onde sua solicitação está?
+* Existe algum momento de silêncio?
+* Existe algum momento de dúvida?
+* Existe algum momento sem responsável?
+
+Se existir, registrar como falha de UX.
+
+═══════════════════════
+PARTE 5 — JORNADA DO SUPERVISOR
+═══════════════════════
+
+Mapear:
+
+1. Recebimento
+2. Priorização
+3. Análise
+4. Avaliação de impacto
+5. Decisão
+6. Comunicação
+7. Revisão posterior
+
+Perguntas obrigatórias:
+
+* Como ele identifica o que precisa analisar primeiro?
+* Como ele identifica impacto acumulado?
+* Como ele identifica função crítica descoberta?
+* Como ele diferencia urgência de importância?
+* Como evita aprovar solicitações que juntas geram risco?
+
+═══════════════════════
+PARTE 6 — PAPEL DO ADMIN
+═══════════════════════
+
+Mapear:
+
+* auditoria;
+* gargalos;
+* tendências;
+* reincidência;
+* solicitações sem resposta;
+* tempos de análise;
+* operações problemáticas.
+
+Responder:
+
+* quando o Admin deve intervir?
+* quando não deve intervir?
+* quais sinais indicam degradação do processo?
+
+═══════════════════════
+PARTE 7 — IA
+═══════════════════════
+
+Definir claramente:
+
+IA do Membro:
+
+* o que ajuda;
+* o que não pode decidir.
+
+IA do Supervisor:
+
+* o que analisa;
+* o que recomenda;
+* o que nunca aprova.
+
+IA do Admin:
+
+* quais padrões detecta;
+* quais tendências identifica.
+
+Validar limites.
+
+Nenhuma aprovação ou negativa pode acontecer sem responsabilidade humana.
+
+═══════════════════════
+PARTE 8 — CENÁRIOS CRÍTICOS
+═══════════════════════
+
+Executar testes de realidade.
+
+Exemplo:
+
+1. Folga em dia crítico
+2. Três folgas para a mesma função
+3. Restrição médica conflitante
+4. Solicitação esquecida por 7 dias
+5. Supervisor ausente
+6. Solicitação aprovada e depois inviabilizada
+7. Solicitação criada perto do evento
+8. Operação sem cobertura suficiente
+
+Para cada cenário responder:
+
+* o que acontece;
+* quem é responsável;
+* como o sistema reage;
+* como a IA reage;
+* como o Histórico registra.
+
+═══════════════════════
+PARTE 9 — AUDITORIA DE COBERTURA
+═══════════════════════
+
+Perguntar explicitamente:
+
+Existe alguma descoberta das pesquisas que não está representada?
+
+Existe alguma jornada sem suporte?
+
+Existe alguma decisão da arquitetura que não aparece aqui?
+
+Existe alguma dependência oculta?
+
+Existe algum risco de retrabalho futuro?
+
+═══════════════════════
+PARTE 10 — VEREDITO
+═══════════════════════
+
+Responder:
+
+A superfície está pronta para wireframe?
+
+Classificar:
+
+🟢 Aprovada
+
+🟡 Aprovada com pendências
+
+🔴 Requer revisão estrutural
+
+Se existir qualquer lacuna estrutural, apontar antes de permitir avanço.
+
+Objetivo final:
+
+Chegar à especificação funcional definitiva de S-06 Solicitações com o mesmo nível de profundidade, criticidade e rastreabilidade utilizado no Bloco 1.

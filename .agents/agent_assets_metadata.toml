@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "p4smcVvC1s2jpGbfGPYU8"
+uri = "file://docs/especificacao-s06-solicitacoes.md"
+type = "text"
+title = "S-06 Solicitações — Especificação Funcional Completa"
