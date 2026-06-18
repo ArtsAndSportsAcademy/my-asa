@@ -1,0 +1,265 @@
+MyASA 2.0 — Auditoria Final da Arquitetura Funcional
+
+Utilizar obrigatoriamente:
+
+* Arquitetura MyASA 2.0
+* Pesquisas Supervisor, Membro e Admin
+* Jornadas
+* Arquitetura de Navegação
+* UX Estratégico
+* Bloco 1
+* S-05 Livro do Dia
+* S-06 Solicitações
+* S-07 Entregas
+* S-08 Avisos
+* S-10 IA
+* S-11 Histórico
+* S-12 Agenda
+* S-13 Livro do Show
+* S-14 Biblioteca
+* S-15 Equipes
+* S-16 Operações
+* S-17 Administração
+* Entidade Mudança Operacional
+* Ciclo de Planejamento Operacional
+* Ciclo de Comunicação Operacional
+* Todas as decisões formais acumuladas (D, UX, WF, AU, LS, IA, GOV, ENT)
+
+Importante:
+
+Não criar wireframes.
+
+Não criar mockups.
+
+Não criar novas funcionalidades.
+
+Não assumir que a arquitetura está correta.
+
+O objetivo é encontrar falhas.
+
+Agir como auditor externo tentando quebrar o produto.
+
+═══════════════════════
+OBJETIVO
+═══════════════════════
+
+Responder:
+
+A arquitetura funcional do MyASA está realmente encerrada?
+
+Ou ainda existem:
+
+* contradições;
+* lacunas;
+* dependências ocultas;
+* fluxos sem dono;
+* decisões incompatíveis.
+
+═══════════════════════
+PARTE 1 — AUDITORIA DE COBERTURA
+═══════════════════════
+
+Responder:
+
+Existe alguma atividade operacional importante da ASA que não tenha representação formal?
+
+Existe alguma entidade sem responsável?
+
+Existe alguma decisão sem superfície?
+
+Existe alguma superfície sem propósito claro?
+
+═══════════════════════
+PARTE 2 — AUDITORIA DE FRONTEIRAS
+═══════════════════════
+
+Validar:
+
+Agenda × Escala
+
+Escala × Livro do Dia
+
+Livro do Dia × Avisos
+
+Avisos × Meu Dia
+
+Meu Dia × Histórico
+
+Entregas × Biblioteca
+
+Livro do Show × Biblioteca
+
+IA × Todas as superfícies
+
+Para cada par responder:
+
+* sobreposição?
+* lacuna?
+* duplicação?
+* conflito?
+
+═══════════════════════
+PARTE 3 — AUDITORIA DE CICLOS
+═══════════════════════
+
+Auditar:
+
+Planejamento Operacional
+
+Comunicação Operacional
+
+Entregas
+
+Agenda
+
+Livro do Show
+
+Governança
+
+Responder:
+
+Existe algum ciclo incompleto?
+
+Algum estado sem saída?
+
+Algum evento sem consequência?
+
+═══════════════════════
+PARTE 4 — AUDITORIA DE RESPONSABILIDADE
+═══════════════════════
+
+Para cada ação importante responder:
+
+Quem inicia?
+
+Quem valida?
+
+Quem executa?
+
+Quem confirma?
+
+Quem audita?
+
+Identificar:
+
+Momentos sem dono.
+
+Momentos com múltiplos donos.
+
+═══════════════════════
+PARTE 5 — AUDITORIA DE IA
+═══════════════════════
+
+Responder:
+
+A IA possui contexto suficiente?
+
+Existe informação que deveria existir e não existe?
+
+Existe informação que a IA recebe mas não deveria?
+
+Existe conflito entre explicabilidade e privacidade?
+
+═══════════════════════
+PARTE 6 — AUDITORIA DE GOVERNANÇA
+═══════════════════════
+
+Responder:
+
+A organização consegue operar por anos sem degradar a arquitetura?
+
+Existe dependência excessiva do Admin?
+
+Existe gargalo estrutural?
+
+Existe entidade sem governança?
+
+═══════════════════════
+PARTE 7 — AUDITORIA DE ESCALABILIDADE
+═══════════════════════
+
+Simular:
+
+1 operação
+
+3 operações
+
+10 operações
+
+50 supervisores
+
+500 membros
+
+Responder:
+
+O modelo continua coerente?
+
+Quais pilares sofrem primeiro?
+
+═══════════════════════
+PARTE 8 — AUDITORIA DE FALHA
+═══════════════════════
+
+Simular:
+
+Supervisor ausente
+
+Admin ausente
+
+Equipe sem Supervisor
+
+Operação suspensa
+
+Livro desatualizado
+
+Biblioteca sem responsável
+
+Membro que nunca confirma
+
+IA indisponível
+
+Responder:
+
+O produto continua operando?
+
+═══════════════════════
+PARTE 9 — AUDITORIA FILOSÓFICA
+═══════════════════════
+
+Validar as descobertas originais:
+
+Supervisor:
+“O que mudou?”
+
+Membro:
+“O que preciso fazer?”
+
+Admin:
+“A operação está saudável?”
+
+Responder:
+
+O produto ainda responde essas três perguntas sem exigir conhecimento técnico?
+
+═══════════════════════
+PARTE 10 — VEREDITO FINAL
+═══════════════════════
+
+Produzir:
+
+1. Lista de lacunas críticas (se existirem)
+2. Lista de lacunas importantes
+3. Lista de melhorias desejáveis
+4. Lista do que está definitivamente encerrado
+
+Classificar:
+
+🟢 Arquitetura funcional encerrada
+
+🟡 Pequenos ajustes restantes
+
+🔴 Revisão estrutural necessária
+
+Responder explicitamente:
+
+“Se eu fosse iniciar UX, wireframes, mockups e desenvolvimento amanhã, eu me sentiria seguro para fazê-lo?”
