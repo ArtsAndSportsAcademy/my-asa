@@ -1,0 +1,213 @@
+MyASA 2.0 — Fechamento das Lacunas Críticas do Livro do Show
+
+Utilizar obrigatoriamente:
+
+* Recuperação Arquitetural do Livro do Show
+* Arquitetura MyASA 2.0
+* Ciclo de Planejamento Operacional
+* Ciclo de Comunicação Operacional
+* Entidade Mudança Operacional
+* S-04 Escala
+* S-05 Livro do Dia
+* S-06 Solicitações
+* Decisões D-01 a D-20
+* Decisões UX-01 a UX-10
+* Decisões WF-01 a WF-10
+* Decisões AU-01 a AU-04
+
+Objetivo:
+
+Fechar as 5 lacunas críticas identificadas na Recuperação Arquitetural do Livro do Show antes de iniciar wireframes de S-13.
+
+Não criar wireframes.
+
+Não criar mockups.
+
+Não criar componentes.
+
+A tarefa é decisão de produto e arquitetura operacional.
+
+═══════════════════════
+LC-01 — ALGORITMO DE RODÍZIO
+═══════════════════════
+
+Definir oficialmente:
+
+Como o sistema calcula “de quem é a vez”.
+
+Considerar:
+
+* histórico de execuções;
+* última pessoa usada;
+* disponibilidade;
+* folgas;
+* restrições;
+* carga recente;
+* prioridade manual;
+* exceções do Supervisor.
+
+Responder:
+
+O rodízio é:
+
+* por show?
+* por cena?
+* por bloco?
+* por posição?
+* por linha?
+
+Definir:
+
+* regra principal;
+* critério de desempate;
+* fallback quando ninguém elegível;
+* como o Supervisor sobrescreve;
+* como o Histórico registra.
+
+═══════════════════════
+LC-02 — FALLBACK DE DIA DA SEMANA
+═══════════════════════
+
+Definir oficialmente:
+
+O que acontece quando uma Linha tipo Dia da Semana não tem regra para o dia atual.
+
+Exemplo:
+
+Segunda → Amanda
+Terça → Beatriz
+Quarta → Carlos
+
+Mas hoje é Quinta.
+
+Responder:
+
+* Fica Em Aberto?
+* Usa fallback manual?
+* Usa rodízio?
+* Usa titular padrão?
+* Gera alerta?
+
+Definir comportamento obrigatório.
+
+═══════════════════════
+LC-03 — APROVAÇÃO DE MUDANÇA ESTRUTURAL NO LIVRO DO SHOW
+═══════════════════════
+
+Definir:
+
+Quem pode alterar o Livro do Show.
+
+Quem pode aprovar.
+
+Quando uma alteração é considerada estrutural.
+
+Quando é apenas edição local no Livro do Dia.
+
+Responder:
+
+Alterações em:
+
+* Show
+* Cena
+* Bloco
+* Posição
+* Linha
+* Tipo de Linha
+* Tags de exigência
+* Regras de substituição
+
+Quem aprova cada uma?
+
+Admin?
+
+Supervisor?
+
+Coreógrafo?
+
+Registrar modelo de governança.
+
+═══════════════════════
+LC-04 — SINALIZAÇÃO DE LIVROS DO DIA FUTUROS
+═══════════════════════
+
+Definir:
+
+O que acontece quando o Livro do Show muda depois que já existem Livros do Dia futuros gerados.
+
+Responder:
+
+* Eles são invalidados?
+* Ficam desatualizados?
+* Recebem alerta?
+* Precisam ser regenerados?
+* O Supervisor decide?
+* O sistema compara versão antiga vs nova?
+
+Criar regra oficial de versionamento.
+
+Obrigatório:
+
+Preservar qual versão do Livro do Show gerou cada Livro do Dia.
+
+═══════════════════════
+LC-05 — TAXONOMIA DE TAGS DE EXIGÊNCIA OPERACIONAL
+═══════════════════════
+
+Definir oficialmente as categorias de tags.
+
+Decidir:
+
+Tags livres ou categorias pré-definidas?
+
+Definir pelo menos:
+
+* habilidade artística;
+* habilidade técnica;
+* exigência física;
+* exigência médica;
+* segurança;
+* certificação;
+* personagem;
+* figurino;
+* equipamento;
+* substituição;
+* cobertura crítica.
+
+Para cada tag responder:
+
+* quem cria;
+* quem aplica;
+* quem valida;
+* como afeta o motor de candidatos;
+* como afeta restrições;
+* como aparece na IA.
+
+═══════════════════════
+AUDITORIA FINAL
+═══════════════════════
+
+Responder:
+
+1. O motor de geração do Livro do Dia está completo?
+2. O motor de restrições consegue operar com segurança?
+3. A IA tem dados suficientes para explicar escolhas?
+4. O Supervisor consegue entender por que uma linha ficou em aberto?
+5. Mudanças futuras no Livro do Show são rastreáveis?
+6. Existe algum risco estrutural restante?
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Classificar:
+
+🟢 S-13 pronto para wireframe
+
+🟡 Ajustes necessários
+
+🔴 Requer revisão estrutural
+
+Objetivo final:
+
+Encerrar as lacunas críticas do Livro do Show e preparar S-13 para wireframes sem reconstruir decisões já tomadas.
