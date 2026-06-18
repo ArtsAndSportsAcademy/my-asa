@@ -209,6 +209,15 @@ import type {
   GetCheckInSummaryParams,
   GetMyCheckInStatusParams,
   CheckInRecord,
+  CreateRequestBody,
+  UpdateRequestBody,
+  DecideRequestBody,
+  RequestItem,
+  RequestDecisionItem,
+  ListRequestsResponse,
+  GetRequestResponse,
+  ListRequestsParams,
+  ListPendingRequestsParams,
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -10560,6 +10569,194 @@ export const useUpdateCheckIn = <TError = ErrorType<BadRequestResponse | Unautho
   options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateCheckIn>>, TError, { id: string; data: BodyType<UpdateCheckInRequest> }, TContext>; request?: SecondParameter<typeof customFetch> }
 ): UseMutationResult<Awaited<ReturnType<typeof updateCheckIn>>, TError, { id: string; data: BodyType<UpdateCheckInRequest> }, TContext> => {
   const mutationOptions = getUpdateCheckInMutationOptions(options);
+  return useMutation(mutationOptions);
+};
+
+// ─── S-06 Solicitações ────────────────────────────────────────────────────────
+
+// list requests
+
+export const listRequestsFn = async (params?: ListRequestsParams, options?: RequestInit): Promise<ListRequestsResponse> => {
+  const q = new URLSearchParams();
+  if (params?.operationId) q.set('operationId', params.operationId);
+  if (params?.status) q.set('status', params.status);
+  const qs = q.toString() ? `?${q.toString()}` : '';
+  return customFetch<ListRequestsResponse>(`/api/requests${qs}`, { ...options, method: 'GET' });
+};
+
+export const getListRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listRequestsFn>>, TError = ErrorType<UnauthorizedResponse>>(
+  params?: ListRequestsParams,
+  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof listRequestsFn>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
+): UseQueryOptions<Awaited<ReturnType<typeof listRequestsFn>>, TError, TData> & { queryKey: QueryKey } => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? ['listRequests', ...(params ? [params] : [])];
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listRequestsFn>>> = ({ signal }) =>
+    listRequestsFn(params, signal ? { signal } : requestOptions);
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof listRequestsFn>>, TError, TData> & { queryKey: QueryKey };
+};
+
+export type ListRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof listRequestsFn>>>;
+export type ListRequestsQueryError = ErrorType<UnauthorizedResponse>;
+
+export function useListRequests<TData = Awaited<ReturnType<typeof listRequestsFn>>, TError = ErrorType<UnauthorizedResponse>>(
+  params?: ListRequestsParams,
+  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof listRequestsFn>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListRequestsQueryOptions(params, options);
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+// list pending requests
+
+export const listPendingRequestsFn = async (params?: ListPendingRequestsParams, options?: RequestInit): Promise<ListRequestsResponse> => {
+  const q = new URLSearchParams();
+  if (params?.operationId) q.set('operationId', params.operationId);
+  const qs = q.toString() ? `?${q.toString()}` : '';
+  return customFetch<ListRequestsResponse>(`/api/requests/pending${qs}`, { ...options, method: 'GET' });
+};
+
+export const getListPendingRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listPendingRequestsFn>>, TError = ErrorType<UnauthorizedResponse>>(
+  params?: ListPendingRequestsParams,
+  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof listPendingRequestsFn>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
+): UseQueryOptions<Awaited<ReturnType<typeof listPendingRequestsFn>>, TError, TData> & { queryKey: QueryKey } => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? ['listPendingRequests', ...(params ? [params] : [])];
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listPendingRequestsFn>>> = ({ signal }) =>
+    listPendingRequestsFn(params, signal ? { signal } : requestOptions);
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof listPendingRequestsFn>>, TError, TData> & { queryKey: QueryKey };
+};
+
+export type ListPendingRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof listPendingRequestsFn>>>;
+export type ListPendingRequestsQueryError = ErrorType<UnauthorizedResponse>;
+
+export function useListPendingRequests<TData = Awaited<ReturnType<typeof listPendingRequestsFn>>, TError = ErrorType<UnauthorizedResponse>>(
+  params?: ListPendingRequestsParams,
+  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof listPendingRequestsFn>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPendingRequestsQueryOptions(params, options);
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+// get single request
+
+export const getRequestFn = async (id: string, options?: RequestInit): Promise<GetRequestResponse> =>
+  customFetch<GetRequestResponse>(`/api/requests/${id}`, { ...options, method: 'GET' });
+
+export const getGetRequestQueryOptions = <TData = Awaited<ReturnType<typeof getRequestFn>>, TError = ErrorType<UnauthorizedResponse>>(
+  id: string,
+  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getRequestFn>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
+): UseQueryOptions<Awaited<ReturnType<typeof getRequestFn>>, TError, TData> & { queryKey: QueryKey } => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? ['getRequest', id];
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getRequestFn>>> = ({ signal }) =>
+    getRequestFn(id, signal ? { signal } : requestOptions);
+  return { queryKey, queryFn, enabled: !!id, ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof getRequestFn>>, TError, TData> & { queryKey: QueryKey };
+};
+
+export type GetRequestQueryResult = NonNullable<Awaited<ReturnType<typeof getRequestFn>>>;
+export type GetRequestQueryError = ErrorType<UnauthorizedResponse>;
+
+export function useGetRequest<TData = Awaited<ReturnType<typeof getRequestFn>>, TError = ErrorType<UnauthorizedResponse>>(
+  id: string,
+  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getRequestFn>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRequestQueryOptions(id, options);
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+// create request (member)
+
+export const createRequest = async (data: CreateRequestBody, options?: RequestInit): Promise<{ request: RequestItem }> =>
+  customFetch<{ request: RequestItem }>('/api/requests', {
+    ...options, method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(data),
+  });
+
+export const getCreateRequestMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>, TContext = unknown>(
+  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof createRequest>>, TError, { data: BodyType<CreateRequestBody> }, TContext>; request?: SecondParameter<typeof customFetch> }
+): UseMutationOptions<Awaited<ReturnType<typeof createRequest>>, TError, { data: BodyType<CreateRequestBody> }, TContext> => {
+  const mutationKey = ['createRequest'];
+  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof createRequest>>, { data: BodyType<CreateRequestBody> }> = (props) => {
+    const { data } = props;
+    return createRequest(data, requestOptions);
+  };
+  return { mutationKey, mutationFn, ...mutationOptions };
+};
+
+export type CreateRequestMutationResult = NonNullable<Awaited<ReturnType<typeof createRequest>>>;
+export type CreateRequestMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>;
+
+export const useCreateRequest = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>, TContext = unknown>(
+  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof createRequest>>, TError, { data: BodyType<CreateRequestBody> }, TContext>; request?: SecondParameter<typeof customFetch> }
+): UseMutationResult<Awaited<ReturnType<typeof createRequest>>, TError, { data: BodyType<CreateRequestBody> }, TContext> => {
+  const mutationOptions = getCreateRequestMutationOptions(options);
+  return useMutation(mutationOptions);
+};
+
+// update request — member responds to alternative
+
+export const updateRequest = async (id: string, data: UpdateRequestBody, options?: RequestInit): Promise<{ request: RequestItem }> =>
+  customFetch<{ request: RequestItem }>(`/api/requests/${id}`, {
+    ...options, method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(data),
+  });
+
+export const getUpdateRequestMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>, TContext = unknown>(
+  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateRequest>>, TError, { id: string; data: BodyType<UpdateRequestBody> }, TContext>; request?: SecondParameter<typeof customFetch> }
+): UseMutationOptions<Awaited<ReturnType<typeof updateRequest>>, TError, { id: string; data: BodyType<UpdateRequestBody> }, TContext> => {
+  const mutationKey = ['updateRequest'];
+  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateRequest>>, { id: string; data: BodyType<UpdateRequestBody> }> = (props) => {
+    const { id, data } = props;
+    return updateRequest(id, data, requestOptions);
+  };
+  return { mutationKey, mutationFn, ...mutationOptions };
+};
+
+export type UpdateRequestMutationResult = NonNullable<Awaited<ReturnType<typeof updateRequest>>>;
+export type UpdateRequestMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>;
+
+export const useUpdateRequest = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>, TContext = unknown>(
+  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateRequest>>, TError, { id: string; data: BodyType<UpdateRequestBody> }, TContext>; request?: SecondParameter<typeof customFetch> }
+): UseMutationResult<Awaited<ReturnType<typeof updateRequest>>, TError, { id: string; data: BodyType<UpdateRequestBody> }, TContext> => {
+  const mutationOptions = getUpdateRequestMutationOptions(options);
+  return useMutation(mutationOptions);
+};
+
+// decide request (supervisor)
+
+export const decideRequest = async (id: string, data: DecideRequestBody, options?: RequestInit): Promise<{ decision: RequestDecisionItem }> =>
+  customFetch<{ decision: RequestDecisionItem }>(`/api/requests/${id}/decision`, {
+    ...options, method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(data),
+  });
+
+export const getDecideRequestMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>, TContext = unknown>(
+  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof decideRequest>>, TError, { id: string; data: BodyType<DecideRequestBody> }, TContext>; request?: SecondParameter<typeof customFetch> }
+): UseMutationOptions<Awaited<ReturnType<typeof decideRequest>>, TError, { id: string; data: BodyType<DecideRequestBody> }, TContext> => {
+  const mutationKey = ['decideRequest'];
+  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof decideRequest>>, { id: string; data: BodyType<DecideRequestBody> }> = (props) => {
+    const { id, data } = props;
+    return decideRequest(id, data, requestOptions);
+  };
+  return { mutationKey, mutationFn, ...mutationOptions };
+};
+
+export type DecideRequestMutationResult = NonNullable<Awaited<ReturnType<typeof decideRequest>>>;
+export type DecideRequestMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>;
+
+export const useDecideRequest = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>, TContext = unknown>(
+  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof decideRequest>>, TError, { id: string; data: BodyType<DecideRequestBody> }, TContext>; request?: SecondParameter<typeof customFetch> }
+): UseMutationResult<Awaited<ReturnType<typeof decideRequest>>, TError, { id: string; data: BodyType<DecideRequestBody> }, TContext> => {
+  const mutationOptions = getDecideRequestMutationOptions(options);
   return useMutation(mutationOptions);
 };
 

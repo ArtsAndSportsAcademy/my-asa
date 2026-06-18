@@ -3,6 +3,7 @@ import {
   Home, Users, Briefcase, Users2, LogOut, ChevronRight,
   BookOpen, CalendarDays, ShieldCheck, ClipboardList, BookMarked,
   LayoutDashboard, Bell, Clock, MessageSquare, Package, Library,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -33,8 +34,9 @@ const ADMIN_NAV: NavGroup[] = [
   {
     label: "OPERAÇÃO",
     items: [
-      { href: "/admin/scales",     icon: ClipboardList, label: "Escalas"      },
-      { href: "/admin/daily-book", icon: BookMarked,    label: "Livro do Dia" },
+      { href: "/admin/scales",        icon: ClipboardList, label: "Escalas"       },
+      { href: "/admin/daily-book",    icon: BookMarked,    label: "Livro do Dia"  },
+      { href: "/admin/requests",      icon: FileText,      label: "Solicitações"  },
     ],
   },
   {
@@ -79,9 +81,10 @@ const SUPERVISOR_NAV: NavGroup[] = [
   {
     label: "OPERAÇÃO",
     items: [
-      { href: "/supervisor/operational-panel", icon: LayoutDashboard, label: "Painel"       },
-      { href: "/admin/scales",                 icon: ClipboardList,   label: "Escalas"      },
-      { href: "/supervisor/daily-book",        icon: BookMarked,      label: "Livro do Dia" },
+      { href: "/supervisor/operational-panel", icon: LayoutDashboard, label: "Painel"        },
+      { href: "/admin/scales",                 icon: ClipboardList,   label: "Escalas"       },
+      { href: "/supervisor/daily-book",        icon: BookMarked,      label: "Livro do Dia"  },
+      { href: "/supervisor/requests",          icon: FileText,        label: "Solicitações"  },
     ],
   },
   {

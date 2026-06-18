@@ -2530,3 +2530,80 @@ export interface GetMyCheckInStatusParams {
   date?: string;
 }
 
+// ─── S-06 Solicitações ────────────────────────────────────────────────────────
+
+export type RequestType =
+  | "LEAVE" | "ROLE_RESTRICTION" | "PHYSICAL_RESTRICTION"
+  | "HEALTH_RESTRICTION" | "SCHEDULE_CHANGE" | "SWAP" | "OTHER";
+
+export type RequestStatus =
+  | "PENDING" | "APPROVED" | "DENIED"
+  | "ALTERNATIVE_PROPOSED" | "ALTERNATIVE_ACCEPTED" | "ALTERNATIVE_REJECTED" | "EXPIRED";
+
+export type RequestDecisionType = "APPROVED" | "DENIED" | "ALTERNATIVE_PROPOSED";
+
+export interface RequestDecisionItem {
+  id: string;
+  requestId: string;
+  supervisorId: string;
+  supervisorName: string;
+  decision: RequestDecisionType;
+  reason?: string | null;
+  alternativeDetails?: string | null;
+  deadline?: string | null;
+  createdAt: string;
+}
+
+export interface RequestItem {
+  id: string;
+  requesterId: string;
+  requesterName: string;
+  operationId: string;
+  operationName: string;
+  type: RequestType;
+  status: RequestStatus;
+  targetDates: string[];
+  reason?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RequestDetail extends RequestItem {
+  decisions: RequestDecisionItem[];
+}
+
+export interface CreateRequestBody {
+  type: RequestType;
+  operationId: string;
+  targetDates: string[];
+  reason?: string;
+}
+
+export interface DecideRequestBody {
+  decision: RequestDecisionType;
+  reason?: string;
+  alternativeDetails?: string;
+  deadline?: string;
+}
+
+export interface UpdateRequestBody {
+  status: "ALTERNATIVE_ACCEPTED" | "ALTERNATIVE_REJECTED";
+}
+
+export interface ListRequestsResponse {
+  requests: RequestItem[];
+}
+
+export interface GetRequestResponse {
+  request: RequestDetail;
+}
+
+export interface ListRequestsParams {
+  operationId?: string;
+  status?: string;
+}
+
+export interface ListPendingRequestsParams {
+  operationId?: string;
+}
+

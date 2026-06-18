@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import {
   useGetMyDay,
   getGetMyDayQueryKey,
@@ -17,6 +18,7 @@ import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -46,8 +48,23 @@ const REQUEST_TYPE_LABELS: Record<string, string> = {
 };
 
 const REQUEST_STATUS_LABELS: Record<string, string> = {
-  PENDING: "Pendente",
+  PENDING:              "Aguardando",
   ALTERNATIVE_PROPOSED: "Alternativa Proposta",
+  APPROVED:             "Aprovada",
+  DENIED:               "Negada",
+  ALTERNATIVE_ACCEPTED: "Alternativa Aceita",
+  ALTERNATIVE_REJECTED: "Alternativa Rejeitada",
+  EXPIRED:              "Expirada",
+};
+
+const REQUEST_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+  PENDING:              { bg: "#FEF3C7", text: "#B45309" },
+  ALTERNATIVE_PROPOSED: { bg: "#DBEAFE", text: "#1E40AF" },
+  APPROVED:             { bg: "#D1FAE5", text: "#065F46" },
+  DENIED:               { bg: "#FEE2E2", text: "#991B1B" },
+  ALTERNATIVE_ACCEPTED: { bg: "#D1FAE5", text: "#065F46" },
+  ALTERNATIVE_REJECTED: { bg: "#FEE2E2", text: "#991B1B" },
+  EXPIRED:              { bg: "#F3F4F6", text: "#6B7280" },
 };
 
 const DELIVERY_TYPE_ICONS: Record<string, string> = {
@@ -358,6 +375,7 @@ function EmptyState({ message, colors }: { message: string; colors: ReturnType<t
 
 export default function MeuDiaScreen() {
   const colors = useColors();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
@@ -502,37 +520,52 @@ export default function MeuDiaScreen() {
             {/* ── Nível 4: Informações Complementares ── */}
             <SectionHeader title="Informações Complementares" icon="info" colors={colors} />
 
-            {/* Pending requests */}
+            {/* Solicitações */}
             {data.complementaryInfo.pendingRequests.length > 0 && (
               <>
-                <Text style={[styles.subSectionTitle, { color: colors.mutedForeground }]}>
-                  Solicitações em andamento
-                </Text>
-                {data.complementaryInfo.pendingRequests.map((req) => (
-                  <View
-                    key={req.requestId}
-                    style={[styles.complementaryCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-                  >
-                    <View style={styles.complementaryHeader}>
-                      <Text style={[styles.complementaryTitle, { color: colors.foreground }]}>
-                        {REQUEST_TYPE_LABELS[req.type] ?? req.type}
-                      </Text>
-                      <View style={[styles.statusBadge, { backgroundColor: "#FEF3C7" }]}>
-                        <Text style={[styles.statusText, { color: "#B45309" }]}>
-                          {REQUEST_STATUS_LABELS[req.status] ?? req.status}
-                        </Text>
-                      </View>
-                    </View>
-                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
-                      {req.targetDates.map(formatDate).join(", ")}
+                <View style={styles.subSectionRow}>
+                  <Text style={[styles.subSectionTitle, { color: colors.mutedForeground }]}>
+                    Solicitações
+                  </Text>
+                  <Pressable onPress={() => router.push("/(tabs)/solicitacoes")}>
+                    <Text style={[styles.subSectionLink, { color: colors.primary }]}>
+                      Ver todas
                     </Text>
-                    {req.reason && (
-                      <Text style={[styles.metaText, { color: colors.mutedForeground }]} numberOfLines={2}>
-                        {req.reason}
+                  </Pressable>
+                </View>
+                {data.complementaryInfo.pendingRequests.map((req) => {
+                  const statusColor = REQUEST_STATUS_COLORS[req.status] ?? { bg: "#F3F4F6", text: "#6B7280" };
+                  return (
+                    <View
+                      key={req.requestId}
+                      style={[styles.complementaryCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                    >
+                      <View style={styles.complementaryHeader}>
+                        <Text style={[styles.complementaryTitle, { color: colors.foreground }]}>
+                          {REQUEST_TYPE_LABELS[req.type] ?? req.type}
+                        </Text>
+                        <View style={[styles.statusBadge, { backgroundColor: statusColor.bg }]}>
+                          <Text style={[styles.statusText, { color: statusColor.text }]}>
+                            {REQUEST_STATUS_LABELS[req.status] ?? req.status}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
+                        {req.targetDates.map(formatDate).join(", ")}
                       </Text>
-                    )}
-                  </View>
-                ))}
+                      {req.reason && (
+                        <Text style={[styles.metaText, { color: colors.mutedForeground }]} numberOfLines={2}>
+                          {req.reason}
+                        </Text>
+                      )}
+                      {req.status === "ALTERNATIVE_PROPOSED" && (
+                        <Text style={[styles.alertHint, { color: "#1E40AF" }]}>
+                          Supervisão propôs uma alternativa — toque para responder
+                        </Text>
+                      )}
+                    </View>
+                  );
+                })}
               </>
             )}
 
@@ -605,6 +638,9 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 13, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5 },
   subSectionTitle: { fontSize: 12, fontWeight: "600", marginTop: 4, marginBottom: 2 },
+  subSectionRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 4, marginBottom: 2 },
+  subSectionLink: { fontSize: 12, fontWeight: "600" },
+  alertHint: { fontSize: 11, fontWeight: "500", marginTop: 4 },
   card: {
     borderRadius: 12,
     overflow: "hidden",

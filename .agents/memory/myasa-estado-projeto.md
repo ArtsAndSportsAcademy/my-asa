@@ -3,6 +3,23 @@ name: MyASA 2.0 — Estado do Projeto
 description: Sprint progress, architectural decisions, and key conventions for the MyASA 2.0 system
 ---
 
+## Sprint 16 — S-06: Solicitações (COMPLETO)
+**Objetivo:** Transformar tabelas requests + request_decisions em superfície operacional completa (Membro cria, Supervisor decide, Admin visualiza).
+
+### O que foi entregue
+- **API:** 6 endpoints em `/requests` — lista (admin/supervisor), pendentes (supervisor), detalhe, criar (membro), patch alternativa (membro), decisão (supervisor). writeHistoryEvent em todas as transições de estado.
+- **api-client-react:** 7 schemas S-06 + 6 hooks (`useListRequests`, `useListPendingRequests`, `useGetRequest`, `useCreateRequest`, `useUpdateRequest`, `useDecideRequest`) adicionados manualmente ao api.schemas.ts e api.ts.
+- **Mobile:** `solicitacoes.tsx` — lista com filtro de status, modal criar, aceitar/rejeitar alternativa.
+- **Web Admin:** `supervisor/requests.tsx` — selector de operação, abas de filtro, modal de decisão. `admin/requests.tsx` — visão global somente leitura.
+- **Meu Dia:** query expandida para incluir resolvidas nos últimos 7 dias; badge dinâmico por status; link "Ver todas" → solicitacoes; hint azul para ALTERNATIVE_PROPOSED.
+
+### Convenções estabelecidas no Sprint 16
+- `req.params as { id: string }` — SEMPRE usar cast explícito para evitar `string | string[]` (mesmo padrão do Sprint 9 `String(req.params.x)`, mas forma mais limpa).
+- `UseQueryOptions` do tanstack v5 requer `queryKey` quando passado explicitamente — usar `{ ... } as any` quando só se quer `enabled` sem queryKey (já documentado em Sprint 13 linha 71, agora reforçado).
+- Hooks S-06 adicionados MANUALMENTE (não via orval codegen) — mesmo padrão do Sprint 15.
+
+---
+
 ## Sprint 15 — FC-02: Check-in Operacional (COMPLETO)
 **Objetivo:** Fechar a lacuna entre quem deveria estar (Escala) e quem chegou (Check-in). Sem IA, geolocalização, biometria ou QR Code.
 

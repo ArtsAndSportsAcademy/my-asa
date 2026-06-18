@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, inArray, not, gte, asc, desc } from "drizzle-orm";
+import { eq, and, inArray, not, gte, asc, desc, or } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   scaleAllocationsTable,
@@ -71,14 +71,20 @@ router.get("/my-day", requireAuth, requireOrganization, async (req, res) => {
         )
         .orderBy(asc(agendaEventsTable.date), asc(agendaEventsTable.startTime)),
 
-      // 2. Pending requests for this user
+      // 2. Active + recently resolved requests for this user (last 7 days)
       db
         .select()
         .from(requestsTable)
         .where(
           and(
             eq(requestsTable.requesterId, userId),
-            inArray(requestsTable.status, ["PENDING", "ALTERNATIVE_PROPOSED"]),
+            or(
+              inArray(requestsTable.status, ["PENDING", "ALTERNATIVE_PROPOSED"]),
+              and(
+                inArray(requestsTable.status, ["APPROVED", "DENIED", "ALTERNATIVE_ACCEPTED", "ALTERNATIVE_REJECTED"]),
+                gte(requestsTable.updatedAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)),
+              ),
+            ),
           )
         )
         .orderBy(desc(requestsTable.createdAt)),
