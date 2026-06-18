@@ -1,0 +1,240 @@
+MyASA 2.0 — Ciclo de Comunicação Operacional
+
+Utilizar obrigatoriamente:
+
+* Arquitetura MyASA 2.0
+* Entidade Mudança Operacional
+* Ciclo de Planejamento Operacional
+* Bloco 1 completo
+* S-06 completo
+* Pesquisas dos três perfis
+* Jornadas aprovadas
+
+Importante:
+
+Não iniciar wireframes.
+
+Não iniciar mockups.
+
+Não desenhar componentes.
+
+Primeiro modelar completamente o comportamento integrado de:
+
+S-05 Livro do Dia
+S-08 Avisos
+S-11 Histórico
+
+O objetivo é garantir que as três superfícies contem exatamente a mesma história, cada uma pela sua perspectiva.
+
+═══════════════════════
+PARTE 1 — PAPEL DE CADA SUPERFÍCIE
+═══════════════════════
+
+Responder:
+
+Qual pergunta cada superfície responde?
+
+Livro do Dia responde qual pergunta?
+
+Avisos responde qual pergunta?
+
+Histórico responde qual pergunta?
+
+Identificar sobreposição.
+
+Identificar lacunas.
+
+Identificar riscos de duplicação.
+
+Produzir definição oficial de cada superfície.
+
+═══════════════════════
+PARTE 2 — LIVRO DO DIA
+═══════════════════════
+
+Sem interface.
+
+Somente comportamento.
+
+Responder:
+
+Quando um Livro do Dia nasce?
+
+Quando fica desatualizado?
+
+Quando exige revisão?
+
+Quando exige republicação?
+
+Quando uma mudança afeta apenas parte do Livro?
+
+Quando uma mudança afeta múltiplos Livros?
+
+Quando um Livro deixa de ser confiável?
+
+Quem é responsável por restaurar a confiabilidade?
+
+Definir estados formais.
+
+═══════════════════════
+PARTE 3 — AVISOS
+═══════════════════════
+
+Sem interface.
+
+Definir comportamento.
+
+Responder:
+
+Quando um Aviso nasce?
+
+Quando um Aviso é obrigatório?
+
+Quando um Aviso não deve existir?
+
+Quando um Aviso deve exigir confirmação?
+
+Quando um Aviso desaparece?
+
+Quando permanece histórico?
+
+Quando escala?
+
+Quando deixa de ser relevante?
+
+Criar ciclo de vida completo.
+
+═══════════════════════
+PARTE 4 — HISTÓRICO
+═══════════════════════
+
+Sem interface.
+
+Definir comportamento.
+
+Responder:
+
+O que merece virar narrativa?
+
+O que não merece?
+
+Como múltiplas Mudanças Operacionais são agrupadas?
+
+Como o Histórico conecta:
+
+* Solicitações
+* Escala
+* Livro do Dia
+* Avisos
+* Confirmações
+
+Como uma pessoa investiga um problema semanas depois?
+
+Definir a lógica completa de investigação narrativa.
+
+═══════════════════════
+PARTE 5 — PROPAGAÇÃO
+═══════════════════════
+
+Para cada tipo de Mudança Operacional:
+
+* Pessoa
+* Papel
+* Horário
+* Cobertura
+* Estrutura
+* Show
+* Livro
+* Restrição
+* Escala
+
+Responder:
+
+O que muda no Livro?
+
+O que gera Aviso?
+
+O que vai para o Histórico?
+
+Quem precisa confirmar?
+
+Quem é informado?
+
+═══════════════════════
+PARTE 6 — CASOS LIMITE
+═══════════════════════
+
+Analisar detalhadamente:
+
+Folga aprovada e depois revogada.
+
+Livro publicado e depois republicado três vezes.
+
+Show cancelado no mesmo dia.
+
+Mudança que afeta 30 membros.
+
+Supervisor publica informação incorreta.
+
+Membro nunca confirma.
+
+Mudança de Estrutura feita pelo Admin.
+
+Identificar comportamentos obrigatórios.
+
+═══════════════════════
+PARTE 7 — AUDITORIA DE CONSISTÊNCIA
+═══════════════════════
+
+Responder:
+
+Existe informação duplicada?
+
+Existe narrativa quebrada?
+
+Existe evento sem rastreabilidade?
+
+Existe mudança sem comunicação?
+
+Existe comunicação sem histórico?
+
+Existe histórico sem contexto?
+
+Existe risco de divergência entre Livro e Escala?
+
+Existe risco de um membro operar com informação incorreta?
+
+═══════════════════════
+PARTE 8 — DECISÕES ESTRATÉGICAS
+═══════════════════════
+
+Produzir decisões oficiais.
+
+Exemplo:
+
+D-11
+D-12
+D-13
+…
+
+Todas as decisões que deverão ser respeitadas posteriormente por UX, interface e desenvolvimento.
+
+═══════════════════════
+PARTE 9 — VEREDITO
+═══════════════════════
+
+Produzir:
+
+Mapa Oficial do Ciclo de Comunicação Operacional.
+
+Classificar:
+
+🟢 Consistente
+
+🟡 Ajustes necessários
+
+🔴 Revisão estrutural necessária
+
+Objetivo final:
+
+Definir completamente como Livro do Dia, Avisos e Histórico funcionam juntos antes de iniciar qualquer wireframe ou mockup dessas superfícies.
