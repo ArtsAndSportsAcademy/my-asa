@@ -1,0 +1,254 @@
+# MyASA 2.0 — Sprint 9: Avisos (S-08)
+
+Utilizar obrigatoriamente:
+
+* Sprint 0 a Sprint 8 concluídas
+* Fundação S-08 Avisos
+* Blueprint Executivo
+* Gate Final de Construção
+* Arquitetura Técnica
+* Decisões D-01 a D-20
+* UX-01 a UX-10
+* WF-01 a WF-10
+
+Importante:
+
+Não implementar Histórico ainda.
+
+Não implementar IA ainda.
+
+Respeitar decisão oficial:
+
+WEB = Gestão primeiro
+
+MOBILE = Operação primeiro
+
+Objetivo:
+
+Construir o canal oficial de comunicação operacional do MyASA.
+
+Pergunta respondida:
+
+"O que mudou e quem precisa saber?"
+
+═══════════════════════
+PARTE 1 — DOMÍNIO
+═══════════════════════
+
+Implementar:
+
+Notice
+
+NoticeRecipient
+
+NoticeConfirmation
+
+NoticeEscalation
+
+Tipos:
+
+* Informativo
+* Importante
+* Persistente
+* Escalado
+
+Estados:
+
+* Criado
+* Enviado
+* Visualizado
+* Confirmado
+* Escalado
+* Expirado
+
+Critérios:
+
+* Aviso é entidade própria
+* Rastreável
+* Auditável
+* Não depende de Mensagens
+
+═══════════════════════
+PARTE 2 — ORIGENS AUTOMÁTICAS
+═══════════════════════
+
+Gerar avisos automaticamente para:
+
+* Escala republicada
+* Livro do Dia republicado
+* Alteração relevante de Agenda
+* Mudança Operacional
+* Cancelamento de evento
+* Suspensão de evento
+
+Critérios:
+
+Nenhuma mudança importante ocorre silenciosamente.
+
+═══════════════════════
+PARTE 3 — CONFIRMAÇÕES
+═══════════════════════
+
+Implementar:
+
+Sem confirmação
+
+Confirmação obrigatória
+
+Para avisos importantes:
+
+Mostrar obrigatoriamente:
+
+ERA
+↓
+AGORA
+
+antes do botão de confirmação.
+
+Critérios:
+
+Usuário entende exatamente o que mudou.
+
+═══════════════════════
+PARTE 4 — WEB ADMIN / SUPERVISOR
+═══════════════════════
+
+Criar:
+
+/admin/notices
+
+/supervisor/notices
+
+Funcionalidades:
+
+* Criar aviso
+* Editar rascunho
+* Publicar
+* Ver destinatários
+* Ver visualizações
+* Ver confirmações
+* Escalar
+
+Web = Gestão.
+
+Utilizar:
+
+* filtros
+* agrupamentos
+* status
+* acompanhamento
+
+Sem aparência de dashboard corporativo.
+
+═══════════════════════
+PARTE 5 — MOBILE
+═══════════════════════
+
+Implementação principal.
+
+Criar aba:
+
+Avisos
+
+Exibir:
+
+* Pendentes
+* Confirmados
+* Importantes
+* Persistentes
+* Escalados
+
+Destaque visual para:
+
+* ação necessária
+* mudança recente
+* urgência
+
+Critério:
+
+O membro sabe imediatamente se precisa agir.
+
+═══════════════════════
+PARTE 6 — EVENT BUS
+═══════════════════════
+
+Consumir:
+
+scale.republished
+
+daily-book.republished
+
+agenda.event.updated
+
+agenda.event.cancelled
+
+agenda.event.suspended
+
+operational-change.created
+
+Produzir:
+
+notice.created
+
+notice.sent
+
+notice.viewed
+
+notice.confirmed
+
+notice.escalated
+
+notice.expired
+
+═══════════════════════
+PARTE 7 — INTEGRAÇÃO COM MEU DIA
+═══════════════════════
+
+Meu Dia deve consumir:
+
+* avisos importantes
+* avisos persistentes
+* avisos escalados
+
+Regra:
+
+Informação não deve aparecer duplicada.
+
+Meu Dia mostra prioridade.
+
+Avisos mantém histórico e confirmação.
+
+═══════════════════════
+PARTE 8 — AUDITORIA
+═══════════════════════
+
+Validar:
+
+* Nenhuma mudança importante fica invisível
+* Supervisor acompanha quem confirmou
+* Escalada funciona
+* Mobile permanece simples
+* Web permanece gestão
+* Delta ERA/AGORA aparece corretamente
+
+Responder:
+
+Histórico consegue consumir Avisos sem duplicação narrativa?
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Classificar:
+
+🟢 Sprint 9 concluída
+
+🟡 Ajustes necessários
+
+🔴 Bloqueado
+
+Objetivo final:
+
+Ao final da Sprint 9:
+
+Qualquer mudança operacional relevante gera comunicação oficial, rastreável, confirmável e integrada ao Meu Dia.
