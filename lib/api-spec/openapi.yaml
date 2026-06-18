@@ -1432,6 +1432,136 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /show-books/{id}/positions/{positionId}/refs:
+    get:
+      operationId: listShowBookPositionRefs
+      tags: [show-book]
+      summary: Listar referências oficiais da posição
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: positionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lista de referências
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  refs:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ShowBookPositionRefWithDoc"
+                required: [refs]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: addShowBookPositionRef
+      tags: [show-book]
+      summary: Vincular documento da Biblioteca à posição
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: positionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShowBookPositionRefCreate"
+      responses:
+        "201":
+          description: Referência criada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ref:
+                    $ref: "#/components/schemas/ShowBookPositionRef"
+                required: [ref]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /show-books/{id}/positions/{positionId}/refs/{refId}:
+    delete:
+      operationId: deleteShowBookPositionRef
+      tags: [show-book]
+      summary: Remover referência oficial da posição
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: positionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: refId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Referência removida
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /show-books/{id}/refs:
+    get:
+      operationId: listShowBookRefs
+      tags: [show-book]
+      summary: Listar todas as referências de um Livro do Show
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lista de referências do livro
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  refs:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ShowBookPositionRefWithDoc"
+                required: [refs]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /operations/{operationId}/tags:
     get:
       operationId: listOperationTags
@@ -4382,6 +4512,64 @@ components:
               items:
                 $ref: "#/components/schemas/ShowBookLine"
           required: [lines]
+
+    ShowBookPositionRef:
+      type: object
+      properties:
+        id:
+          type: string
+        positionId:
+          type: string
+        showBookId:
+          type: string
+        documentId:
+          type: string
+        label:
+          type: string
+          nullable: true
+        addedBy:
+          type: string
+        createdAt:
+          type: string
+      required: [id, positionId, showBookId, documentId, addedBy, createdAt]
+
+    ShowBookPositionRefCreate:
+      type: object
+      properties:
+        documentId:
+          type: string
+        label:
+          type: string
+      required: [documentId]
+
+    ShowBookLibraryDocSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        type:
+          type: string
+          enum: [OPERATIONAL_PROCEDURE, RULES_AND_POLICIES, CHARACTER_REFERENCE, COSTUME_REFERENCE, ONBOARDING_MATERIAL, SAFETY_PROCEDURE]
+        status:
+          type: string
+          enum: [DRAFT, PUBLISHED, UPDATED, ARCHIVED]
+        summary:
+          type: string
+          nullable: true
+        version:
+          type: integer
+      required: [id, title, type, status, version]
+
+    ShowBookPositionRefWithDoc:
+      allOf:
+        - $ref: "#/components/schemas/ShowBookPositionRef"
+        - type: object
+          properties:
+            document:
+              $ref: "#/components/schemas/ShowBookLibraryDocSummary"
+          required: [document]
 
     ShowBookLine:
       type: object

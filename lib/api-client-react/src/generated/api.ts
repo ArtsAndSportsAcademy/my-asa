@@ -194,7 +194,12 @@ import type {
   UserCreate,
   UserStatusUpdate,
   UserTagAssign,
-  UserUpdate
+  UserUpdate,
+  AddShowBookPositionRef201,
+  ListShowBookPositionRefs200,
+  ListShowBookRefs200,
+  ShowBookPositionRefCreate,
+  ShowBookPositionRefWithDoc
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -10266,6 +10271,134 @@ export function useListLibraryDocumentVersions<TData = Awaited<ReturnType<typeof
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+// ─── Referências oficiais da Biblioteca por posição ───────────────────────────
+
+export const getListShowBookPositionRefsUrl = (id: string, positionId: string) =>
+  `/api/show-books/${id}/positions/${positionId}/refs`;
+
+export const listShowBookPositionRefs = async (id: string, positionId: string, options?: RequestInit): Promise<ListShowBookPositionRefs200> =>
+  customFetch<ListShowBookPositionRefs200>(getListShowBookPositionRefsUrl(id, positionId), { ...options });
+
+export const getListShowBookPositionRefsQueryKey = (id: string, positionId: string) =>
+  [`/api/show-books/${id}/positions/${positionId}/refs`] as const;
+
+export const getListShowBookPositionRefsQueryOptions = <TData = Awaited<ReturnType<typeof listShowBookPositionRefs>>, TError = ErrorType<UnauthorizedResponse>>(
+  id: string, positionId: string, options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof listShowBookPositionRefs>>, TError, TData>, request?: SecondParameter<typeof customFetch> }
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? getListShowBookPositionRefsQueryKey(id, positionId);
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listShowBookPositionRefs>>> = ({ signal }) =>
+    listShowBookPositionRefs(id, positionId, { signal, ...requestOptions });
+  return { queryKey, queryFn, enabled: !!(id && positionId), ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof listShowBookPositionRefs>>, TError, TData> & { queryKey: QueryKey };
+};
+
+export type ListShowBookPositionRefsQueryResult = NonNullable<Awaited<ReturnType<typeof listShowBookPositionRefs>>>;
+export type ListShowBookPositionRefsQueryError = ErrorType<UnauthorizedResponse>;
+
+export function useListShowBookPositionRefs<TData = Awaited<ReturnType<typeof listShowBookPositionRefs>>, TError = ErrorType<UnauthorizedResponse>>(
+  id: string, positionId: string, options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof listShowBookPositionRefs>>, TError, TData>, request?: SecondParameter<typeof customFetch> }
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListShowBookPositionRefsQueryOptions(id, positionId, options);
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getAddShowBookPositionRefUrl = (id: string, positionId: string) =>
+  `/api/show-books/${id}/positions/${positionId}/refs`;
+
+export const addShowBookPositionRef = async (id: string, positionId: string, showBookPositionRefCreate: ShowBookPositionRefCreate, options?: RequestInit): Promise<AddShowBookPositionRef201> =>
+  customFetch<AddShowBookPositionRef201>(getAddShowBookPositionRefUrl(id, positionId), {
+    ...options, method: 'POST', headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(showBookPositionRefCreate),
+  });
+
+export const getAddShowBookPositionRefMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>, TContext = unknown>(
+  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof addShowBookPositionRef>>, TError, { id: string; positionId: string; data: BodyType<ShowBookPositionRefCreate> }, TContext>, request?: SecondParameter<typeof customFetch> }
+): UseMutationOptions<Awaited<ReturnType<typeof addShowBookPositionRef>>, TError, { id: string; positionId: string; data: BodyType<ShowBookPositionRefCreate> }, TContext> => {
+  const mutationKey = ['addShowBookPositionRef'];
+  const { mutation: mutationOptions, request: requestOptions } = options ?
+    options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof addShowBookPositionRef>>, { id: string; positionId: string; data: BodyType<ShowBookPositionRefCreate> }> = (props) => {
+    const { id, positionId, data } = props ?? {};
+    return addShowBookPositionRef(id, positionId, data, requestOptions);
+  };
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AddShowBookPositionRefMutationResult = NonNullable<Awaited<ReturnType<typeof addShowBookPositionRef>>>;
+export type AddShowBookPositionRefMutationBody = BodyType<ShowBookPositionRefCreate>;
+export type AddShowBookPositionRefMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>;
+
+export const useAddShowBookPositionRef = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>, TContext = unknown>(
+  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof addShowBookPositionRef>>, TError, { id: string; positionId: string; data: BodyType<ShowBookPositionRefCreate> }, TContext>, request?: SecondParameter<typeof customFetch> }
+): UseMutationResult<Awaited<ReturnType<typeof addShowBookPositionRef>>, TError, { id: string; positionId: string; data: BodyType<ShowBookPositionRefCreate> }, TContext> => {
+  return useMutation(getAddShowBookPositionRefMutationOptions(options));
+};
+
+export const getDeleteShowBookPositionRefUrl = (id: string, positionId: string, refId: string) =>
+  `/api/show-books/${id}/positions/${positionId}/refs/${refId}`;
+
+export const deleteShowBookPositionRef = async (id: string, positionId: string, refId: string, options?: RequestInit): Promise<void> =>
+  customFetch<void>(getDeleteShowBookPositionRefUrl(id, positionId, refId), { ...options, method: 'DELETE' });
+
+export const getDeleteShowBookPositionRefMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>, TContext = unknown>(
+  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookPositionRef>>, TError, { id: string; positionId: string; refId: string }, TContext>, request?: SecondParameter<typeof customFetch> }
+): UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookPositionRef>>, TError, { id: string; positionId: string; refId: string }, TContext> => {
+  const mutationKey = ['deleteShowBookPositionRef'];
+  const { mutation: mutationOptions, request: requestOptions } = options ?
+    options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteShowBookPositionRef>>, { id: string; positionId: string; refId: string }> = (props) => {
+    const { id, positionId, refId } = props ?? {};
+    return deleteShowBookPositionRef(id, positionId, refId, requestOptions);
+  };
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteShowBookPositionRefMutationResult = NonNullable<Awaited<ReturnType<typeof deleteShowBookPositionRef>>>;
+export type DeleteShowBookPositionRefMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>;
+
+export const useDeleteShowBookPositionRef = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>, TContext = unknown>(
+  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookPositionRef>>, TError, { id: string; positionId: string; refId: string }, TContext>, request?: SecondParameter<typeof customFetch> }
+): UseMutationResult<Awaited<ReturnType<typeof deleteShowBookPositionRef>>, TError, { id: string; positionId: string; refId: string }, TContext> => {
+  return useMutation(getDeleteShowBookPositionRefMutationOptions(options));
+};
+
+export const getListShowBookRefsUrl = (id: string) => `/api/show-books/${id}/refs`;
+
+export const listShowBookRefs = async (id: string, options?: RequestInit): Promise<ListShowBookRefs200> =>
+  customFetch<ListShowBookRefs200>(getListShowBookRefsUrl(id), { ...options });
+
+export const getListShowBookRefsQueryKey = (id: string) =>
+  [`/api/show-books/${id}/refs`] as const;
+
+export const getListShowBookRefsQueryOptions = <TData = Awaited<ReturnType<typeof listShowBookRefs>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+  id: string, options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof listShowBookRefs>>, TError, TData>, request?: SecondParameter<typeof customFetch> }
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? getListShowBookRefsQueryKey(id);
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listShowBookRefs>>> = ({ signal }) =>
+    listShowBookRefs(id, { signal, ...requestOptions });
+  return { queryKey, queryFn, enabled: !!(id), ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof listShowBookRefs>>, TError, TData> & { queryKey: QueryKey };
+};
+
+export type ListShowBookRefsQueryResult = NonNullable<Awaited<ReturnType<typeof listShowBookRefs>>>;
+export type ListShowBookRefsQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>;
+
+export function useListShowBookRefs<TData = Awaited<ReturnType<typeof listShowBookRefs>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+  id: string, options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof listShowBookRefs>>, TError, TData>, request?: SecondParameter<typeof customFetch> }
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListShowBookRefsQueryOptions(id, options);
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+// Unused import suppressor
+void (null as unknown as ShowBookPositionRefWithDoc);
 
 
 

@@ -3,6 +3,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { operationsTable } from "./organization.js";
 import { usersTable } from "./identity.js";
+import { libraryDocumentsTable } from "./library.js";
 
 export const showBookStatusEnum = pgEnum("show_book_status", ["DRAFT", "PUBLISHED", "ARCHIVED"]);
 export const showBookTypeEnum = pgEnum("show_book_type", ["SIMPLE", "STRUCTURED"]);
@@ -129,3 +130,15 @@ export type ShowBookTag = typeof showBookTagsTable.$inferSelect;
 export const insertUserTagSchema = createInsertSchema(userTagsTable).omit({ id: true, createdAt: true });
 export type InsertUserTag = z.infer<typeof insertUserTagSchema>;
 export type UserTag = typeof userTagsTable.$inferSelect;
+
+export const showBookPositionLibraryRefsTable = pgTable("show_book_position_library_refs", {
+  id:         uuid("id").primaryKey().defaultRandom(),
+  positionId: uuid("position_id").notNull().references(() => showBookRolesTable.id, { onDelete: "cascade" }),
+  showBookId: uuid("show_book_id").notNull().references(() => showBooksTable.id,    { onDelete: "cascade" }),
+  documentId: uuid("document_id").notNull().references(() => libraryDocumentsTable.id),
+  label:      text("label"),
+  addedBy:    uuid("added_by").notNull().references(() => usersTable.id),
+  createdAt:  timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type ShowBookPositionLibraryRef = typeof showBookPositionLibraryRefsTable.$inferSelect;

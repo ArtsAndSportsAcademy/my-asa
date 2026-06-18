@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   showBooksTable,
@@ -10,10 +10,15 @@ import {
   showBookVersionsTable,
   showBookTagsTable,
   userTagsTable,
+  showBookPositionLibraryRefsTable,
+  libraryDocumentsTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
 import { eventBus } from "../lib/event-bus.js";
+import { writeHistoryEvent } from "../lib/history-helper.js";
+
+const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"] as const;
 
 const router: IRouter = Router();
 
@@ -527,6 +532,150 @@ router.delete("/users/:userId/tags/:tagId", requireAuth, requireOrganization, as
     res.status(204).send();
   } catch (err) {
     res.status(500).json({ error: "Erro ao remover tag do usuário" });
+  }
+});
+
+// ─── Referências oficiais da Biblioteca por posição ───────────────────────────
+
+router.get("/show-books/:id/positions/:positionId/refs", requireAuth, requireOrganization, async (req, res) => {
+  const showBookId = req.params.id as string;
+  const positionId = req.params.positionId as string;
+  const role = req.user!.role as string;
+  const isManager = MANAGER_ROLES.includes(role as any);
+  try {
+    const baseWhere = and(
+      eq(showBookPositionLibraryRefsTable.positionId, positionId),
+      eq(showBookPositionLibraryRefsTable.showBookId, showBookId)
+    );
+    const rows = await db
+      .select({
+        ref: showBookPositionLibraryRefsTable,
+        doc: {
+          id:      libraryDocumentsTable.id,
+          title:   libraryDocumentsTable.title,
+          type:    libraryDocumentsTable.type,
+          status:  libraryDocumentsTable.status,
+          summary: libraryDocumentsTable.summary,
+          version: libraryDocumentsTable.version,
+        },
+      })
+      .from(showBookPositionLibraryRefsTable)
+      .innerJoin(libraryDocumentsTable, eq(showBookPositionLibraryRefsTable.documentId, libraryDocumentsTable.id))
+      .where(
+        isManager
+          ? baseWhere
+          : and(baseWhere, inArray(libraryDocumentsTable.status, ["PUBLISHED", "UPDATED"]))
+      );
+    res.json({ refs: rows.map((r) => ({ ...r.ref, document: r.doc })) });
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao buscar referências" });
+  }
+});
+
+router.post("/show-books/:id/positions/:positionId/refs", requireAuth, requireOrganization, async (req, res) => {
+  const showBookId = req.params.id as string;
+  const positionId = req.params.positionId as string;
+  const { documentId, label } = req.body;
+  const role = req.user!.role as string;
+  if (!MANAGER_ROLES.includes(role as any)) {
+    res.status(403).json({ error: "Sem permissão" }); return;
+  }
+  if (!documentId) {
+    res.status(400).json({ error: "documentId é obrigatório" }); return;
+  }
+  try {
+    const book = await getShowBookOrFail(showBookId, res);
+    if (!book) return;
+    const [doc] = await db.select().from(libraryDocumentsTable).where(eq(libraryDocumentsTable.id, documentId)).limit(1);
+    if (!doc) { res.status(404).json({ error: "Documento não encontrado" }); return; }
+    if (doc.status === "ARCHIVED") { res.status(400).json({ error: "Documento arquivado não pode ser referenciado" }); return; }
+    const [ref] = await db
+      .insert(showBookPositionLibraryRefsTable)
+      .values({ positionId, showBookId, documentId, label: label ?? null, addedBy: req.user!.sub })
+      .returning();
+    await writeHistoryEvent({
+      category: "OPERATIONAL_CHANGE",
+      action: "ref_added",
+      title: "Referência adicionada à posição",
+      narrative: `Documento "${doc.title}" vinculado à posição no Livro do Show`,
+      entityType: "show_book_position",
+      entityId: positionId,
+      actorId: req.user!.sub,
+      operationId: book.operationId,
+      metadata: { showBookId, documentId, refId: ref!.id },
+    });
+    res.status(201).json({ ref });
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao adicionar referência" });
+  }
+});
+
+router.delete("/show-books/:id/positions/:positionId/refs/:refId", requireAuth, requireOrganization, async (req, res) => {
+  const showBookId = req.params.id as string;
+  const positionId = req.params.positionId as string;
+  const refId = req.params.refId as string;
+  const role = req.user!.role as string;
+  if (!MANAGER_ROLES.includes(role as any)) {
+    res.status(403).json({ error: "Sem permissão" }); return;
+  }
+  try {
+    const book = await getShowBookOrFail(showBookId, res);
+    if (!book) return;
+    const [ref] = await db
+      .select()
+      .from(showBookPositionLibraryRefsTable)
+      .where(and(eq(showBookPositionLibraryRefsTable.id, refId), eq(showBookPositionLibraryRefsTable.positionId, positionId)))
+      .limit(1);
+    if (!ref) { res.status(404).json({ error: "Referência não encontrada" }); return; }
+    await db.delete(showBookPositionLibraryRefsTable)
+      .where(and(eq(showBookPositionLibraryRefsTable.id, refId), eq(showBookPositionLibraryRefsTable.positionId, positionId)));
+    await writeHistoryEvent({
+      category: "OPERATIONAL_CHANGE",
+      action: "ref_removed",
+      title: "Referência removida da posição",
+      narrative: `Vínculo de documento removido da posição no Livro do Show`,
+      entityType: "show_book_position",
+      entityId: positionId,
+      actorId: req.user!.sub,
+      operationId: book.operationId,
+      metadata: { showBookId, documentId: ref.documentId, refId },
+    });
+    res.status(204).send();
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao remover referência" });
+  }
+});
+
+router.get("/show-books/:id/refs", requireAuth, requireOrganization, async (req, res) => {
+  const showBookId = req.params.id as string;
+  const role = req.user!.role as string;
+  const isManager = MANAGER_ROLES.includes(role as any);
+  try {
+    const book = await getShowBookOrFail(showBookId, res);
+    if (!book) return;
+    const baseWhere = eq(showBookPositionLibraryRefsTable.showBookId, showBookId);
+    const rows = await db
+      .select({
+        ref: showBookPositionLibraryRefsTable,
+        doc: {
+          id:      libraryDocumentsTable.id,
+          title:   libraryDocumentsTable.title,
+          type:    libraryDocumentsTable.type,
+          status:  libraryDocumentsTable.status,
+          summary: libraryDocumentsTable.summary,
+          version: libraryDocumentsTable.version,
+        },
+      })
+      .from(showBookPositionLibraryRefsTable)
+      .innerJoin(libraryDocumentsTable, eq(showBookPositionLibraryRefsTable.documentId, libraryDocumentsTable.id))
+      .where(
+        isManager
+          ? baseWhere
+          : and(baseWhere, inArray(libraryDocumentsTable.status, ["PUBLISHED", "UPDATED"]))
+      );
+    res.json({ refs: rows.map((r) => ({ ...r.ref, document: r.doc })) });
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao buscar referências do livro" });
   }
 });
 

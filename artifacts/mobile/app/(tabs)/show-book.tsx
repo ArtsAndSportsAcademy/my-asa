@@ -2,13 +2,22 @@ import { Feather } from "@expo/vector-icons";
 import {
   useListShowBooks,
   useGetShowBook,
+  useListShowBookRefs,
   getListShowBooksQueryKey,
   getGetShowBookQueryKey,
+  getListShowBookRefsQueryKey,
 } from "@workspace/api-client-react";
-import type { ShowBook, ShowBookSceneWithBlocks, ShowBookBlockWithPositions, ShowBookPositionWithLines } from "@workspace/api-client-react";
-import React, { useState, useCallback } from "react";
+import type {
+  ShowBook,
+  ShowBookSceneWithBlocks,
+  ShowBookBlockWithPositions,
+  ShowBookPositionWithLines,
+  ShowBookPositionRefWithDoc,
+} from "@workspace/api-client-react";
+import React, { useState, useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -38,12 +47,38 @@ const LINE_TYPE_LABELS: Record<string, string> = {
   MANUAL: "Manual",
 };
 
+const DOC_TYPE_LABELS: Record<string, string> = {
+  OPERATIONAL_PROCEDURE: "Procedimento",
+  RULES_AND_POLICIES: "Normas",
+  CHARACTER_REFERENCE: "Personagem",
+  COSTUME_REFERENCE: "Figurino",
+  ONBOARDING_MATERIAL: "Onboarding",
+  SAFETY_PROCEDURE: "Segurança",
+};
+
+const DOC_TYPE_ICONS: Record<string, React.ComponentProps<typeof Feather>["name"]> = {
+  OPERATIONAL_PROCEDURE: "settings",
+  RULES_AND_POLICIES: "file-text",
+  CHARACTER_REFERENCE: "book",
+  COSTUME_REFERENCE: "tag",
+  ONBOARDING_MATERIAL: "book-open",
+  SAFETY_PROCEDURE: "shield",
+};
+
+const DOC_STATUS_COLORS: Record<string, string> = {
+  DRAFT: "#6B7280",
+  PUBLISHED: "#16A34A",
+  UPDATED: "#2563EB",
+  ARCHIVED: "#9CA3AF",
+};
+
 export default function ShowBookScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const auth = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
+  const [docModal, setDocModal] = useState<ShowBookPositionRefWithDoc | null>(null);
 
   const operationId = auth.roles.find((r) => r.operationId)?.operationId;
 
@@ -51,9 +86,7 @@ export default function ShowBookScreen() {
     { operationId },
     { query: { queryKey: getListShowBooksQueryKey({ operationId }), enabled: !!operationId } }
   );
-
   const books: ShowBook[] = listData?.showBooks ?? [];
-  const publishedBooks = books.filter((b) => b.status === "PUBLISHED");
 
   const { data: bookData, isLoading: bookLoading, refetch: refetchBook } = useGetShowBook(
     selectedBookId ?? "",
@@ -61,15 +94,33 @@ export default function ShowBookScreen() {
   );
   const selectedBook = bookData?.showBook;
 
+  const { data: refsData, refetch: refetchRefs } = useListShowBookRefs(
+    selectedBookId ?? "",
+    { query: { queryKey: getListShowBookRefsQueryKey(selectedBookId ?? ""), enabled: !!selectedBookId } }
+  );
+  const allRefs: ShowBookPositionRefWithDoc[] = refsData?.refs ?? [];
+
+  const refsByPosition = useMemo(() => {
+    const map: Record<string, ShowBookPositionRefWithDoc[]> = {};
+    allRefs.forEach((r) => {
+      if (!map[r.positionId]) map[r.positionId] = [];
+      map[r.positionId]!.push(r);
+    });
+    return map;
+  }, [allRefs]);
+
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
       await refetchList();
-      if (selectedBookId) await refetchBook();
+      if (selectedBookId) {
+        await refetchBook();
+        await refetchRefs();
+      }
     } finally {
       setRefreshing(false);
     }
-  }, [refetchList, refetchBook, selectedBookId]);
+  }, [refetchList, refetchBook, refetchRefs, selectedBookId]);
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -100,7 +151,10 @@ export default function ShowBookScreen() {
     statusBadge: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 8, alignSelf: "flex-start", marginTop: 4 },
     statusText: { fontSize: 10, fontWeight: "600", color: "#FFFFFF" },
     treePadding: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: insets.bottom + 90 },
-    sectionLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5, color: colors.mutedForeground, textTransform: "uppercase", marginBottom: 6, marginTop: 12 },
+    sectionLabel: {
+      fontSize: 11, fontWeight: "700", letterSpacing: 0.5, color: colors.mutedForeground,
+      textTransform: "uppercase", marginBottom: 6, marginTop: 12,
+    },
     treeCard: {
       borderRadius: 8,
       borderWidth: 1,
@@ -141,9 +195,74 @@ export default function ShowBookScreen() {
       gap: 6,
     },
     lineType: { fontSize: 11, color: colors.mutedForeground, fontStyle: "italic" },
+    refRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: 5,
+      paddingHorizontal: 10,
+      paddingLeft: 36,
+      gap: 6,
+      borderTopWidth: 1,
+      borderTopColor: colors.border + "50",
+    },
+    refLabel: { fontSize: 11, color: colors.primary, flex: 1 },
+    refTypeBadge: {
+      paddingHorizontal: 5,
+      paddingVertical: 1,
+      borderRadius: 4,
+      backgroundColor: colors.primary + "15",
+    },
+    refTypeBadgeText: { fontSize: 9, color: colors.primary, fontWeight: "600" },
     empty: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 80, gap: 8 },
     emptyText: { fontSize: 15, color: colors.mutedForeground },
     selectHint: { fontSize: 13, color: colors.mutedForeground, textAlign: "center", marginTop: 12, paddingHorizontal: 32 },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.55)",
+      justifyContent: "flex-end",
+    },
+    modalCard: {
+      backgroundColor: colors.card,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      paddingBottom: insets.bottom + 16,
+      maxHeight: "80%",
+    },
+    modalHandle: {
+      width: 36,
+      height: 4,
+      backgroundColor: colors.border,
+      borderRadius: 2,
+      alignSelf: "center",
+      marginTop: 10,
+      marginBottom: 6,
+    },
+    modalHeader: {
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      gap: 4,
+    },
+    modalTitle: { fontSize: 16, fontWeight: "700", color: colors.foreground },
+    modalSubtitle: { fontSize: 12, color: colors.mutedForeground },
+    modalBadgeRow: { flexDirection: "row", gap: 6, marginTop: 4, flexWrap: "wrap" },
+    modalBody: { paddingHorizontal: 20, paddingTop: 12 },
+    modalBodyText: { fontSize: 14, color: colors.foreground, lineHeight: 21 },
+    modalSummary: { fontSize: 13, color: colors.mutedForeground, marginBottom: 8, lineHeight: 19 },
+    modalClose: {
+      margin: 16,
+      marginBottom: 4,
+      padding: 12,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: "center",
+    },
+    modalCloseText: { fontSize: 14, fontWeight: "600", color: colors.foreground },
+    docStatusDot: {
+      width: 8, height: 8, borderRadius: 4,
+    },
   });
 
   if (!operationId) {
@@ -172,7 +291,6 @@ export default function ShowBookScreen() {
           </View>
         ) : (
           <>
-            {/* Seletor de livro */}
             {books.length > 0 && (
               <View style={styles.bookList}>
                 <Text style={[styles.sectionLabel, { marginTop: 8 }]}>Selecione o livro</Text>
@@ -199,7 +317,6 @@ export default function ShowBookScreen() {
               </View>
             )}
 
-            {/* Árvore do livro selecionado */}
             {selectedBookId && (
               <View style={styles.treePadding}>
                 <Text style={styles.sectionLabel}>Hierarquia do espetáculo</Text>
@@ -223,21 +340,53 @@ export default function ShowBookScreen() {
                             <Feather name="layout" size={12} color={colors.mutedForeground} />
                             <Text style={styles.blockTitle}>{block.name}</Text>
                           </View>
-                          {block.positions?.map((pos: ShowBookPositionWithLines) => (
-                            <View key={pos.id}>
-                              <View style={styles.positionRow}>
-                                <Feather name="user" size={11} color={colors.mutedForeground} />
-                                <Text style={styles.positionName}>{pos.name}</Text>
-                                <Text style={styles.coverage}>min {pos.minimumCoverage}</Text>
-                              </View>
-                              {pos.lines?.map((line) => (
-                                <View key={line.id} style={styles.lineRow}>
-                                  <Feather name="arrow-right" size={10} color={colors.mutedForeground} />
-                                  <Text style={styles.lineType}>{LINE_TYPE_LABELS[line.type] ?? line.type}</Text>
+                          {block.positions?.map((pos: ShowBookPositionWithLines) => {
+                            const posRefs = refsByPosition[pos.id] ?? [];
+                            return (
+                              <View key={pos.id}>
+                                <View style={styles.positionRow}>
+                                  <Feather name="user" size={11} color={colors.mutedForeground} />
+                                  <Text style={styles.positionName}>{pos.name}</Text>
+                                  <Text style={styles.coverage}>min {pos.minimumCoverage}</Text>
+                                  {posRefs.length > 0 && (
+                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                                      <Feather name="book-open" size={10} color={colors.primary} />
+                                      <Text style={{ fontSize: 10, color: colors.primary, fontWeight: "600" }}>
+                                        {posRefs.length}
+                                      </Text>
+                                    </View>
+                                  )}
                                 </View>
-                              ))}
-                            </View>
-                          ))}
+                                {pos.lines?.map((line) => (
+                                  <View key={line.id} style={styles.lineRow}>
+                                    <Feather name="arrow-right" size={10} color={colors.mutedForeground} />
+                                    <Text style={styles.lineType}>{LINE_TYPE_LABELS[line.type] ?? line.type}</Text>
+                                  </View>
+                                ))}
+                                {posRefs.map((ref) => (
+                                  <Pressable
+                                    key={ref.id}
+                                    style={({ pressed }) => [styles.refRow, pressed && { opacity: 0.7 }]}
+                                    onPress={() => setDocModal(ref)}
+                                  >
+                                    <Feather
+                                      name={DOC_TYPE_ICONS[ref.document.type] ?? "file-text"}
+                                      size={11}
+                                      color={colors.primary}
+                                    />
+                                    <Text style={styles.refLabel} numberOfLines={1}>
+                                      {ref.document.title}
+                                    </Text>
+                                    <View style={styles.refTypeBadge}>
+                                      <Text style={styles.refTypeBadgeText}>
+                                        {DOC_TYPE_LABELS[ref.document.type] ?? ref.document.type}
+                                      </Text>
+                                    </View>
+                                  </Pressable>
+                                ))}
+                              </View>
+                            );
+                          })}
                         </View>
                       ))}
                     </View>
@@ -252,6 +401,47 @@ export default function ShowBookScreen() {
           </>
         )}
       </ScrollView>
+
+      {/* Modal de leitura do documento */}
+      <Modal
+        visible={!!docModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setDocModal(null)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setDocModal(null)}>
+          <Pressable style={styles.modalCard} onPress={() => {}}>
+            <View style={styles.modalHandle} />
+            {docModal && (
+              <>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle} numberOfLines={2}>{docModal.document.title}</Text>
+                  <View style={styles.modalBadgeRow}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      <View style={[styles.docStatusDot, { backgroundColor: DOC_STATUS_COLORS[docModal.document.status] ?? "#6B7280" }]} />
+                      <Text style={styles.modalSubtitle}>
+                        {DOC_TYPE_LABELS[docModal.document.type] ?? docModal.document.type}
+                        {" · "}v{docModal.document.version}
+                      </Text>
+                    </View>
+                  </View>
+                  {docModal.label && (
+                    <Text style={[styles.modalSubtitle, { fontStyle: "italic" }]}>"{docModal.label}"</Text>
+                  )}
+                </View>
+                <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+                  {docModal.document.summary ? (
+                    <Text style={styles.modalSummary}>{docModal.document.summary}</Text>
+                  ) : null}
+                </ScrollView>
+                <Pressable style={styles.modalClose} onPress={() => setDocModal(null)}>
+                  <Text style={styles.modalCloseText}>Fechar</Text>
+                </Pressable>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }

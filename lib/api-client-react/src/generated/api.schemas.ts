@@ -2393,3 +2393,63 @@ categoryId?: string;
 status?: string;
 };
 
+export type ShowBookLibraryDocType = typeof ShowBookLibraryDocType[keyof typeof ShowBookLibraryDocType];
+
+export const ShowBookLibraryDocType = {
+  OPERATIONAL_PROCEDURE: 'OPERATIONAL_PROCEDURE',
+  RULES_AND_POLICIES: 'RULES_AND_POLICIES',
+  CHARACTER_REFERENCE: 'CHARACTER_REFERENCE',
+  COSTUME_REFERENCE: 'COSTUME_REFERENCE',
+  ONBOARDING_MATERIAL: 'ONBOARDING_MATERIAL',
+  SAFETY_PROCEDURE: 'SAFETY_PROCEDURE',
+} as const;
+
+export type ShowBookLibraryDocStatus = typeof ShowBookLibraryDocStatus[keyof typeof ShowBookLibraryDocStatus];
+
+export const ShowBookLibraryDocStatus = {
+  DRAFT: 'DRAFT',
+  PUBLISHED: 'PUBLISHED',
+  UPDATED: 'UPDATED',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export interface ShowBookLibraryDocSummary {
+  id: string;
+  title: string;
+  type: ShowBookLibraryDocType;
+  status: ShowBookLibraryDocStatus;
+  summary?: string | null;
+  version: number;
+}
+
+export interface ShowBookPositionRef {
+  id: string;
+  positionId: string;
+  showBookId: string;
+  documentId: string;
+  label?: string | null;
+  addedBy: string;
+  createdAt: string;
+}
+
+export interface ShowBookPositionRefCreate {
+  documentId: string;
+  label?: string;
+}
+
+export type ShowBookPositionRefWithDoc = ShowBookPositionRef & {
+  document: ShowBookLibraryDocSummary;
+};
+
+export type ListShowBookPositionRefs200 = {
+  refs: ShowBookPositionRefWithDoc[];
+};
+
+export type AddShowBookPositionRef201 = {
+  ref: ShowBookPositionRef;
+};
+
+export type ListShowBookRefs200 = {
+  refs: ShowBookPositionRefWithDoc[];
+};
+

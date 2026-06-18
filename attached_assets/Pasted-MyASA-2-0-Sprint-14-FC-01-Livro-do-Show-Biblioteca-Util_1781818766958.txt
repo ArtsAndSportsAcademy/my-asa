@@ -1,0 +1,248 @@
+MyASA 2.0 — Sprint 14: FC-01 Livro do Show ↔ Biblioteca
+
+Utilizar obrigatoriamente:
+
+* Sprint 0 → Sprint 13 concluídas
+* Release 13.1 concluída
+* Fundação S-13 Livro do Show
+* Fundação S-14 Biblioteca
+* Blueprint Executivo
+* Gate Arquitetural
+* Feedback de Campo #001 (FC-01)
+
+Importante:
+
+Não criar novo módulo.
+
+Não criar nova superfície.
+
+Não duplicar conteúdo.
+
+Não transformar Biblioteca em armazenamento de arquivos genérico.
+
+Objetivo:
+
+Transformar a Biblioteca na fonte oficial de conhecimento operacional do Livro do Show.
+
+Pergunta respondida:
+
+“Qual é a referência oficial desta posição, personagem, figurino ou procedimento?”
+
+═══════════════════════
+PARTE 1 — PRINCÍPIO FUNDADOR
+═══════════════════════
+
+Hoje existem:
+
+Livro do Show
+↓
+Estrutura operacional
+
+Biblioteca
+↓
+Conhecimento
+
+Sprint 14 deve conectá-los.
+
+A regra é:
+
+Biblioteca = Fonte
+
+Livro do Show = Consumidor
+
+Livro do Dia = Executor
+
+Nenhuma informação deve existir duplicada.
+
+═══════════════════════
+PARTE 2 — REFERÊNCIAS
+═══════════════════════
+
+Permitir que:
+
+Posições
+
+Linhas
+
+Blocos
+
+Cenas
+
+possam referenciar documentos da Biblioteca.
+
+Tipos esperados:
+
+CHARACTER_REFERENCE
+
+COSTUME_REFERENCE
+
+OPERATIONAL_PROCEDURE
+
+SAFETY_PROCEDURE
+
+ONBOARDING_MATERIAL
+
+Critério:
+
+Referência por ID.
+
+Nunca copiar conteúdo.
+
+═══════════════════════
+PARTE 3 — BANCO DE DADOS
+═══════════════════════
+
+Criar relacionamentos necessários.
+
+Exemplos:
+
+show_book_position_library_refs
+
+ou equivalente.
+
+Objetivo:
+
+Permitir múltiplas referências por posição.
+
+Exemplo:
+
+Astrid
+
+→ Referência Personagem
+→ Referência Figurino
+→ Procedimento Troca Rápida
+
+═══════════════════════
+PARTE 4 — API
+═══════════════════════
+
+Implementar endpoints para:
+
+listar referências
+
+associar referência
+
+remover referência
+
+consultar referências
+
+Critério:
+
+Sempre retornar documentos publicados.
+
+Nunca exibir rascunhos para Membros.
+
+═══════════════════════
+PARTE 5 — WEB ADMIN
+═══════════════════════
+
+Livro do Show:
+
+Adicionar seção:
+
+Referências Oficiais
+
+Permitir:
+
+* vincular documento existente
+* visualizar documento vinculado
+* remover vínculo
+
+Fluxo:
+
+Livro do Show
+↓
+Posição
+↓
+Referências Oficiais
+↓
+Biblioteca
+
+═══════════════════════
+PARTE 6 — WEB SUPERVISOR
+═══════════════════════
+
+Supervisor deve conseguir:
+
+* abrir referências
+* pesquisar referências
+* navegar entre Show e Biblioteca
+
+Não deve criar documentos.
+
+Não deve editar documentos globais.
+
+═══════════════════════
+PARTE 7 — MOBILE
+═══════════════════════
+
+Ao visualizar:
+
+Livro do Show
+
+ou
+
+Livro do Dia
+
+mostrar:
+
+Referências Oficiais
+
+Exemplo:
+
+Astrid
+
+📖 Referência de Personagem
+
+👗 Referência de Figurino
+
+⚙ Procedimento Operacional
+
+Abrir documento em leitura.
+
+═══════════════════════
+PARTE 8 — HISTÓRICO
+═══════════════════════
+
+Registrar:
+
+* referência vinculada
+* referência removida
+* documento alterado
+* documento arquivado
+
+Critério:
+
+Rastreabilidade completa.
+
+═══════════════════════
+PARTE 9 — AUDITORIA
+═══════════════════════
+
+Validar:
+
+* Não existe duplicação de conteúdo
+* Biblioteca continua fonte única
+* Livro do Show não armazena cópias
+* Mobile acessa conhecimento oficial
+* Supervisor encontra referências facilmente
+
+Responder:
+
+A Biblioteca deixou de ser uma ilha e passou a fazer parte da operação diária?
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Classificar:
+
+🟢 Sprint 14 concluída
+
+🟡 Ajustes necessários
+
+🔴 Bloqueado
+
+Objetivo final:
+
+Ao final da Sprint 14, qualquer personagem, figurino, procedimento ou referência operacional utilizada no espetáculo pode ser acessada diretamente a partir do Livro do Show e, futuramente, do Livro do Dia, utilizando a Biblioteca como única fonte de verdade.

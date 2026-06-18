@@ -13,11 +13,22 @@ import {
   useDeleteShowBookBlock,
   useCreateShowBookPosition,
   useDeleteShowBookPosition,
+  useListShowBookPositionRefs,
+  useAddShowBookPositionRef,
+  useDeleteShowBookPositionRef,
+  useListLibraryDocuments,
   getListShowBooksQueryKey,
   getGetShowBookQueryKey,
   getListShowBookVersionsQueryKey,
+  getListShowBookPositionRefsQueryKey,
+  getListLibraryDocumentsQueryKey,
 } from "@workspace/api-client-react";
-import type { ShowBook, ShowBookVersion } from "@workspace/api-client-react";
+import type {
+  ShowBook,
+  ShowBookVersion,
+  ShowBookPositionRefWithDoc,
+  LibraryDocumentItem,
+} from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +42,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import {
-  Plus, ChevronRight, ChevronDown, History, BookOpen, Layers, Layout, AlignLeft, Settings, Trash2, Library,
+  Plus, ChevronRight, ChevronDown, History, BookOpen, Layers, Layout,
+  AlignLeft, Settings, Trash2, Library,
 } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = { DRAFT: "Rascunho", PUBLISHED: "Publicado", ARCHIVED: "Arquivado" };
@@ -40,18 +52,33 @@ const STATUS_VARIANTS: Record<string, "default" | "secondary" | "outline"> = {
 };
 const CHANGE_TYPE_LABELS: Record<string, string> = { STRUCTURAL: "Estrutural", CONFIG: "Configuração" };
 
-interface ExpandedState { [key: string]: boolean }
+const DOC_TYPE_LABELS: Record<string, string> = {
+  OPERATIONAL_PROCEDURE: "Procedimento",
+  RULES_AND_POLICIES: "Normas",
+  CHARACTER_REFERENCE: "Personagem",
+  COSTUME_REFERENCE: "Figurino",
+  ONBOARDING_MATERIAL: "Onboarding",
+  SAFETY_PROCEDURE: "Segurança",
+};
+const DOC_STATUS_LABELS: Record<string, string> = {
+  DRAFT: "Rascunho", PUBLISHED: "Publicado", UPDATED: "Atualizado", ARCHIVED: "Arquivado",
+};
+const DOC_STATUS_VARIANTS: Record<string, "default" | "secondary" | "outline"> = {
+  DRAFT: "secondary", PUBLISHED: "default", UPDATED: "default", ARCHIVED: "outline",
+};
 
-function TreeNode({ label, icon: Icon, depth = 0, onDelete, deleteLabel, children, badge }: {
+function TreeNode({
+  label, icon: Icon, depth = 0, onDelete, deleteLabel, onRefs, children, badge,
+}: {
   label: string; icon: React.ElementType; depth?: number; onDelete?: () => void;
-  deleteLabel?: string; children?: React.ReactNode; badge?: string;
+  deleteLabel?: string; onRefs?: () => void; children?: React.ReactNode; badge?: string;
 }) {
   const [open, setOpen] = useState(true);
   const hasChildren = !!children;
   return (
     <div>
       <div
-        className={`flex items-center gap-1 py-1 px-2 rounded hover:bg-muted/50 group cursor-pointer`}
+        className="flex items-center gap-1 py-1 px-2 rounded hover:bg-muted/50 group cursor-pointer"
         style={{ paddingLeft: `${8 + depth * 16}px` }}
         onClick={() => hasChildren && setOpen((o) => !o)}
       >
@@ -61,6 +88,15 @@ function TreeNode({ label, icon: Icon, depth = 0, onDelete, deleteLabel, childre
         <Icon className="h-3.5 w-3.5 text-muted-foreground" />
         <span className="text-sm flex-1 truncate">{label}</span>
         {badge && <span className="text-xs text-muted-foreground">cob.{badge}</span>}
+        {onRefs && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onRefs(); }}
+            className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-primary rounded"
+            title="Referências oficiais"
+          >
+            <Library className="h-3 w-3" />
+          </button>
+        )}
         {onDelete && (
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(); }}
@@ -97,6 +133,10 @@ export default function ShowBookPage() {
   const [addPositionOpen, setAddPositionOpen] = useState(false);
   const [activeSceneId, setActiveSceneId] = useState<string | null>(null);
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
+  const [selectedPositionId, setSelectedPositionId] = useState<string | null>(null);
+  const [selectedPositionName, setSelectedPositionName] = useState<string>("");
+  const [refsSheetOpen, setRefsSheetOpen] = useState(false);
+  const [refSearchQuery, setRefSearchQuery] = useState("");
 
   const { data: bookData } = useGetShowBook(selectedId ?? "", {
     query: { enabled: !!selectedId, queryKey: getGetShowBookQueryKey(selectedId ?? "") },
@@ -108,6 +148,29 @@ export default function ShowBookPage() {
   });
   const versions: ShowBookVersion[] = versionsData?.versions ?? [];
 
+  const { data: refsData, isLoading: refsLoading } = useListShowBookPositionRefs(
+    selectedId ?? "",
+    selectedPositionId ?? "",
+    {
+      query: {
+        enabled: !!selectedId && !!selectedPositionId && refsSheetOpen,
+        queryKey: getListShowBookPositionRefsQueryKey(selectedId ?? "", selectedPositionId ?? ""),
+      },
+    }
+  );
+  const refs: ShowBookPositionRefWithDoc[] = refsData?.refs ?? [];
+  const linkedDocIds = new Set(refs.map((r) => r.documentId));
+
+  const libDocsParams = { q: refSearchQuery || undefined };
+  const { data: libDocsData } = useListLibraryDocuments(
+    libDocsParams,
+    { query: { enabled: refsSheetOpen && isAdmin, queryKey: getListLibraryDocumentsQueryKey(libDocsParams) } }
+  );
+  const libDocs: LibraryDocumentItem[] = libDocsData?.documents ?? [];
+  const availableDocs = libDocs.filter(
+    (d) => !linkedDocIds.has(d.id) && (d.status === "PUBLISHED" || d.status === "UPDATED")
+  );
+
   const createMutation = useCreateShowBook();
   const statusMutation = useUpdateShowBookStatus();
   const createSceneMutation = useCreateShowBookScene();
@@ -116,10 +179,22 @@ export default function ShowBookPage() {
   const deleteBlockMutation = useDeleteShowBookBlock();
   const createPositionMutation = useCreateShowBookPosition();
   const deletePositionMutation = useDeleteShowBookPosition();
+  const addRefMutation = useAddShowBookPositionRef();
+  const deleteRefMutation = useDeleteShowBookPositionRef();
+
+  void useUpdateShowBook;
 
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: getListShowBooksQueryKey({ operationId }) });
     if (selectedId) queryClient.invalidateQueries({ queryKey: getGetShowBookQueryKey(selectedId) });
+  };
+
+  const invalidateRefs = () => {
+    if (selectedId && selectedPositionId) {
+      queryClient.invalidateQueries({
+        queryKey: getListShowBookPositionRefsQueryKey(selectedId, selectedPositionId),
+      });
+    }
   };
 
   const [createForm, setCreateForm] = useState({ title: "", description: "" });
@@ -151,11 +226,7 @@ export default function ShowBookPage() {
     statusMutation.mutate(
       { id: selectedId, data: { status: statusForm.status as any, reason: statusForm.reason } },
       {
-        onSuccess: () => {
-          toast({ title: "Status atualizado" });
-          setStatusOpen(false);
-          invalidateAll();
-        },
+        onSuccess: () => { toast({ title: "Status atualizado" }); setStatusOpen(false); invalidateAll(); },
         onError: () => toast({ title: "Erro ao atualizar status", variant: "destructive" }),
       }
     );
@@ -239,6 +310,35 @@ export default function ShowBookPage() {
     );
   };
 
+  const handleOpenRefs = (posId: string, posName: string) => {
+    setSelectedPositionId(posId);
+    setSelectedPositionName(posName);
+    setRefSearchQuery("");
+    setRefsSheetOpen(true);
+  };
+
+  const handleAddRef = (documentId: string) => {
+    if (!selectedId || !selectedPositionId) return;
+    addRefMutation.mutate(
+      { id: selectedId, positionId: selectedPositionId, data: { documentId } },
+      {
+        onSuccess: () => { toast({ title: "Referência adicionada" }); invalidateRefs(); },
+        onError: () => toast({ title: "Erro ao adicionar referência", variant: "destructive" }),
+      }
+    );
+  };
+
+  const handleRemoveRef = (refId: string) => {
+    if (!selectedId || !selectedPositionId) return;
+    deleteRefMutation.mutate(
+      { id: selectedId, positionId: selectedPositionId, refId },
+      {
+        onSuccess: () => { toast({ title: "Referência removida" }); invalidateRefs(); },
+        onError: () => toast({ title: "Erro ao remover referência", variant: "destructive" }),
+      }
+    );
+  };
+
   return (
     <AdminLayout title="Livro do Show" subtitle="Gerencie a hierarquia do espetáculo">
       <div className="flex items-center justify-between mb-4 p-3 rounded-lg bg-muted/30 border border-dashed text-sm">
@@ -248,6 +348,7 @@ export default function ShowBookPage() {
           Biblioteca
         </Button>
       </div>
+
       <div className="flex gap-4 h-full">
         {/* Lista de livros */}
         <div className="w-72 shrink-0 flex flex-col gap-2">
@@ -300,7 +401,6 @@ export default function ShowBookPage() {
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              {/* Header do livro */}
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h2 className="text-lg font-semibold">{selectedBook.title}</h2>
@@ -325,7 +425,6 @@ export default function ShowBookPage() {
 
               <Separator />
 
-              {/* Ações de estrutura */}
               {isAdmin && (
                 <div className="flex gap-2 flex-wrap">
                   <Button size="sm" variant="outline" onClick={() => setAddSceneOpen(true)}>
@@ -340,7 +439,6 @@ export default function ShowBookPage() {
                 </div>
               )}
 
-              {/* Árvore hierárquica */}
               <div className="border rounded-lg p-2 bg-muted/10">
                 {selectedBook.scenes && selectedBook.scenes.length > 0 ? (
                   selectedBook.scenes.map((scene: any) => (
@@ -385,6 +483,7 @@ export default function ShowBookPage() {
                               badge={String(pos.minimumCoverage)}
                               onDelete={isAdmin ? () => handleDeletePosition(pos.id) : undefined}
                               deleteLabel="Remover posição"
+                              onRefs={() => handleOpenRefs(pos.id, pos.name)}
                             >
                               {pos.lines?.map((line: any) => (
                                 <TreeNode key={line.id} label={line.type} icon={AlignLeft} depth={3} />
@@ -406,12 +505,10 @@ export default function ShowBookPage() {
         </div>
       </div>
 
-      {/* Histórico de versões */}
+      {/* Sheet: histórico de versões */}
       <Sheet open={versionsOpen} onOpenChange={setVersionsOpen}>
         <SheetContent>
-          <SheetHeader>
-            <SheetTitle>Histórico de Versões</SheetTitle>
-          </SheetHeader>
+          <SheetHeader><SheetTitle>Histórico de Versões</SheetTitle></SheetHeader>
           <div className="mt-4 flex flex-col gap-3">
             {versions.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nenhuma versão registrada.</p>
@@ -433,13 +530,138 @@ export default function ShowBookPage() {
         </SheetContent>
       </Sheet>
 
+      {/* Sheet: referências oficiais da posição */}
+      <Sheet open={refsSheetOpen} onOpenChange={setRefsSheetOpen}>
+        <SheetContent className="w-[480px] sm:max-w-[480px] overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <Library className="h-4 w-4 text-primary" />
+              Referências Oficiais
+            </SheetTitle>
+            {selectedPositionName && (
+              <p className="text-sm text-muted-foreground">{selectedPositionName}</p>
+            )}
+          </SheetHeader>
+          <div className="mt-4 flex flex-col gap-4">
+            {/* Documentos vinculados */}
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                Documentos vinculados
+              </p>
+              {refsLoading ? (
+                <div className="flex justify-center py-4">
+                  <div className="w-5 h-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                </div>
+              ) : refs.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-3 text-center border rounded-lg bg-muted/10">
+                  Nenhum documento vinculado
+                </p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {refs.map((ref) => (
+                    <div key={ref.id} className="flex items-start gap-2 p-2.5 rounded-lg border bg-muted/20">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <Badge variant="outline" className="text-[10px]">
+                            {DOC_TYPE_LABELS[ref.document.type] ?? ref.document.type}
+                          </Badge>
+                          <Badge
+                            variant={DOC_STATUS_VARIANTS[ref.document.status] ?? "secondary"}
+                            className="text-[10px]"
+                          >
+                            {DOC_STATUS_LABELS[ref.document.status] ?? ref.document.status}
+                          </Badge>
+                          <span className="text-[10px] text-muted-foreground">v{ref.document.version}</span>
+                        </div>
+                        <p className="text-sm font-medium mt-0.5 truncate">{ref.document.title}</p>
+                        {ref.label && (
+                          <p className="text-xs text-muted-foreground mt-0.5 italic">"{ref.label}"</p>
+                        )}
+                        {ref.document.summary && (
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                            {ref.document.summary}
+                          </p>
+                        )}
+                      </div>
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleRemoveRef(ref.id)}
+                          className="p-1 text-muted-foreground hover:text-destructive rounded shrink-0 mt-0.5"
+                          title="Remover referência"
+                          disabled={deleteRefMutation.isPending}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Vincular novo documento (somente admin) */}
+            {isAdmin && (
+              <>
+                <Separator />
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                    Vincular documento da Biblioteca
+                  </p>
+                  <Input
+                    placeholder="Pesquisar documentos publicados..."
+                    value={refSearchQuery}
+                    onChange={(e) => setRefSearchQuery(e.target.value)}
+                    className="mb-3"
+                  />
+                  <div className="flex flex-col gap-1.5 max-h-64 overflow-y-auto pr-0.5">
+                    {availableDocs.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-3 border rounded-lg bg-muted/10">
+                        {refSearchQuery ? "Nenhum resultado para a busca" : "Nenhum documento publicado disponível"}
+                      </p>
+                    ) : (
+                      availableDocs.map((doc) => (
+                        <button
+                          key={doc.id}
+                          className="flex items-center gap-2 p-2.5 rounded-lg border hover:bg-muted/30 text-left w-full group transition-colors"
+                          onClick={() => handleAddRef(doc.id)}
+                          disabled={addRefMutation.isPending}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <Badge variant="outline" className="text-[10px]">
+                                {DOC_TYPE_LABELS[doc.type] ?? doc.type}
+                              </Badge>
+                            </div>
+                            <p className="text-sm font-medium mt-0.5 truncate">{doc.title}</p>
+                            {doc.summary && (
+                              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{doc.summary}</p>
+                            )}
+                          </div>
+                          <Plus className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-primary shrink-0" />
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
       {/* Dialog: criar livro */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Novo Livro do Show</DialogTitle></DialogHeader>
           <div className="flex flex-col gap-3">
-            <div><Label>Título *</Label><Input value={createForm.title} onChange={(e) => setCreateForm((f) => ({ ...f, title: e.target.value }))} placeholder="Nome do espetáculo" /></div>
-            <div><Label>Descrição</Label><Input value={createForm.description} onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))} placeholder="Descrição opcional" /></div>
+            <div>
+              <Label>Título *</Label>
+              <Input value={createForm.title} onChange={(e) => setCreateForm((f) => ({ ...f, title: e.target.value }))} placeholder="Nome do espetáculo" />
+            </div>
+            <div>
+              <Label>Descrição</Label>
+              <Input value={createForm.description} onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))} placeholder="Descrição opcional" />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
@@ -464,7 +686,10 @@ export default function ShowBookPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div><Label>Motivo *</Label><Input value={statusForm.reason} onChange={(e) => setStatusForm((f) => ({ ...f, reason: e.target.value }))} placeholder="Justificativa da mudança" /></div>
+            <div>
+              <Label>Motivo *</Label>
+              <Input value={statusForm.reason} onChange={(e) => setStatusForm((f) => ({ ...f, reason: e.target.value }))} placeholder="Justificativa da mudança" />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setStatusOpen(false)}>Cancelar</Button>
