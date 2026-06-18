@@ -1,0 +1,218 @@
+MyASA 2.0 — Fundação da Biblioteca (S-14)
+
+Utilizar obrigatoriamente:
+
+* Arquitetura MyASA 2.0
+* Núcleo Operacional completo
+* Ecossistema de IA
+* Governança Organizacional
+* Agenda (S-12)
+* Entregas (S-07)
+* Livro do Show (S-13)
+* Todas as decisões formais acumuladas
+
+Importante:
+
+Não criar wireframes.
+
+Não criar mockups.
+
+Não criar componentes.
+
+Primeiro modelar comportamento.
+
+═══════════════════════
+OBJETIVO
+═══════════════════════
+
+Definir oficialmente o papel da Biblioteca dentro do MyASA.
+
+Responder:
+
+O que é Biblioteca?
+
+O que NÃO é Biblioteca?
+
+Qual problema ela resolve?
+
+Por que ela existe se já existem:
+
+* Livro do Show
+* Entregas
+* Avisos
+* Histórico
+* IA
+
+═══════════════════════
+PARTE 1 — DEFINIÇÃO
+═══════════════════════
+
+Construir definição oficial.
+
+Responder:
+
+A Biblioteca é:
+
+* conhecimento permanente?
+* documentação operacional?
+* treinamento?
+* referência?
+
+Ou uma combinação?
+
+Definir claramente.
+
+═══════════════════════
+PARTE 2 — TIPOS DE CONTEÚDO
+═══════════════════════
+
+Mapear tudo que pode existir.
+
+Exemplos:
+
+* manuais operacionais
+* procedimentos
+* documentos institucionais
+* vídeos de treinamento
+* regras de operação
+* materiais de onboarding
+* figurinos
+* personagens
+* procedimentos de segurança
+
+Classificar:
+
+MVP
+Pós-MVP
+Nunca
+
+═══════════════════════
+PARTE 3 — RELAÇÃO COM IA
+═══════════════════════
+
+Responder:
+
+Quando a IA consulta a Biblioteca?
+
+Quando a IA prefere responder diretamente?
+
+Quando a IA referencia documentos?
+
+Quando a IA precisa citar a fonte?
+
+Definir comportamento oficial.
+
+═══════════════════════
+PARTE 4 — RELAÇÃO COM ENTREGAS
+═══════════════════════
+
+Definir:
+
+Quando um item da Biblioteca vira uma Entrega?
+
+Quando uma Entrega aponta para a Biblioteca?
+
+Como evitar duplicação?
+
+═══════════════════════
+PARTE 5 — RELAÇÃO COM LIVRO DO SHOW
+═══════════════════════
+
+Responder:
+
+O Livro do Show pertence à Biblioteca?
+
+Ou apenas referencia a Biblioteca?
+
+Como personagens, figurinos, procedimentos e materiais se conectam?
+
+═══════════════════════
+PARTE 6 — GOVERNANÇA
+═══════════════════════
+
+Definir:
+
+Quem cria?
+
+Quem edita?
+
+Quem publica?
+
+Quem arquiva?
+
+Quem audita?
+
+Separar:
+
+Admin
+Supervisor
+Membro
+
+═══════════════════════
+PARTE 7 — CICLO DE VIDA
+═══════════════════════
+
+Modelar estados formais.
+
+Exemplo:
+
+Rascunho
+Publicado
+Atualizado
+Arquivado
+
+Validar se são suficientes.
+
+═══════════════════════
+PARTE 8 — CASOS LIMITE
+═══════════════════════
+
+Modelar:
+
+Documento substituído
+
+Documento contraditório
+
+Material obsoleto
+
+Vídeo removido
+
+Conteúdo obrigatório que deixou de ser válido
+
+Biblioteca sem responsável
+
+═══════════════════════
+PARTE 9 — AUDITORIA
+═══════════════════════
+
+Responder:
+
+Existe sobreposição com Entregas?
+
+Existe sobreposição com Livro do Show?
+
+Existe sobreposição com IA?
+
+Existe risco de virar um repositório morto?
+
+Existe risco de conteúdo sem responsável?
+
+═══════════════════════
+PARTE 10 — VEREDITO
+═══════════════════════
+
+Produzir:
+
+Fundação Oficial da Biblioteca.
+
+Classificar:
+
+🟢 Pronto para UX
+
+🟡 Ajustes necessários
+
+🔴 Revisão estrutural necessária
+
+Objetivo final:
+
+Encerrar a fundação comportamental do último grande pilar do MyASA antes da auditoria final da arquitetura funcional completa.
