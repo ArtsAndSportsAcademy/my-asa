@@ -1,0 +1,234 @@
+MyASA 2.0 — Fundação do Ciclo de Entregas (S-07)
+
+Utilizar obrigatoriamente:
+
+* Arquitetura MyASA 2.0
+* Pesquisas Supervisor, Membro e Admin
+* Jornadas aprovadas
+* Navegação aprovada
+* S-01 Meu Dia
+* S-06 Solicitações
+* S-10 IA
+* S-11 Histórico
+* Governança Organizacional
+* Todas as decisões formais acumuladas do projeto
+
+Importante:
+
+Não criar wireframes.
+
+Não criar mockups.
+
+Não criar componentes.
+
+Primeiro modelar o comportamento completo do ciclo de Entregas.
+
+═══════════════════════
+OBJETIVO
+═══════════════════════
+
+Definir oficialmente o papel de S-07 Entregas dentro do MyASA.
+
+Responder:
+
+O que é uma Entrega?
+
+O que NÃO é uma Entrega?
+
+Qual problema ela resolve?
+
+Por que ela não pode ser substituída por:
+
+* Solicitações
+* Avisos
+* Mensagens
+* Biblioteca
+
+═══════════════════════
+PARTE 1 — DEFINIÇÃO
+═══════════════════════
+
+Construir definição oficial da entidade Entrega.
+
+Responder:
+
+Qual a diferença entre:
+
+Solicitação
+Aviso
+Mensagem
+Entrega
+
+Criar tabela comparativa.
+
+═══════════════════════
+PARTE 2 — TIPOS DE ENTREGA
+═══════════════════════
+
+Identificar todos os tipos possíveis.
+
+Exemplos:
+
+* leitura obrigatória
+* vídeo obrigatório
+* documento obrigatório
+* treinamento
+* atualização operacional
+* checklist
+* validação de conhecimento
+
+Validar quais entram no MVP.
+
+Classificar:
+
+MVP
+Pós-MVP
+Nunca
+
+═══════════════════════
+PARTE 3 — CICLO DE VIDA
+═══════════════════════
+
+Modelar estados formais.
+
+Exemplo:
+
+Criada
+Publicada
+Recebida
+Visualizada
+Em andamento
+Concluída
+Atrasada
+Expirada
+Cancelada
+
+Validar se esses estados são suficientes.
+
+═══════════════════════
+PARTE 4 — RESPONSABILIDADES
+═══════════════════════
+
+Responder:
+
+Quem cria?
+
+Quem atribui?
+
+Quem acompanha?
+
+Quem confirma?
+
+Quem audita?
+
+Separar:
+
+Supervisor
+Admin
+Membro
+
+═══════════════════════
+PARTE 5 — RELAÇÃO COM MEU DIA
+═══════════════════════
+
+Responder:
+
+Como uma Entrega aparece no Meu Dia?
+
+Quando sobe para o topo?
+
+Quando desaparece?
+
+Quando gera atenção?
+
+Quando gera risco?
+
+═══════════════════════
+PARTE 6 — RELAÇÃO COM IA
+═══════════════════════
+
+Responder:
+
+Como a IA participa?
+
+O que ela explica?
+
+O que ela acompanha?
+
+O que ela nunca faz?
+
+Pode resumir uma Entrega?
+
+Pode responder dúvidas sobre uma Entrega?
+
+Pode validar entendimento?
+
+═══════════════════════
+PARTE 7 — RELAÇÃO COM HISTÓRICO
+═══════════════════════
+
+Responder:
+
+O que vai para o Histórico?
+
+O que merece narrativa?
+
+O que não merece?
+
+Quando uma Entrega vira algo relevante para investigação?
+
+═══════════════════════
+PARTE 8 — CASOS LIMITE
+═══════════════════════
+
+Modelar pelo menos:
+
+Entrega nunca aberta
+
+Entrega aberta e não concluída
+
+Entrega concluída após prazo
+
+Entrega cancelada
+
+Entrega substituída por outra
+
+Membro desligado com Entregas pendentes
+
+Supervisor removido durante acompanhamento
+
+═══════════════════════
+PARTE 9 — AUDITORIA
+═══════════════════════
+
+Responder:
+
+Existe sobreposição com Solicitações?
+
+Existe sobreposição com Avisos?
+
+Existe sobreposição com Biblioteca?
+
+Existe risco de virar um gerenciador de tarefas genérico?
+
+Existe risco de gerar carga administrativa desnecessária?
+
+═══════════════════════
+PARTE 10 — VEREDITO
+═══════════════════════
+
+Produzir:
+
+Fundação Oficial do Ciclo de Entregas.
+
+Classificar:
+
+🟢 Pronto para UX
+
+🟡 Ajustes necessários
+
+🔴 Revisão estrutural necessária
+
+Objetivo final:
+
+Encerrar comportamentalmente S-07 antes de iniciar UX, wireframes e mockups.
