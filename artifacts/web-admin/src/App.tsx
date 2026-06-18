@@ -21,6 +21,8 @@ import SupervisorOperationalPanel from "@/pages/supervisor/operational-panel";
 import MeuDiaPage from "@/pages/admin/meu-dia";
 import AdminAvisosPage from "@/pages/admin/avisos";
 import SupervisorAvisosPage from "@/pages/supervisor/avisos";
+import AdminHistoryPage from "@/pages/admin/history";
+import SupervisorHistoryPage from "@/pages/supervisor/history";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +77,8 @@ function Router() {
       <ProtectedRoute path="/admin/meu-dia" component={MeuDiaPage} />
       <ProtectedRoute path="/admin/avisos" component={AdminAvisosPage} />
       <RoleRoute path="/supervisor/avisos" component={SupervisorAvisosPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
+      <RoleRoute path="/admin/history" component={AdminHistoryPage} roles={["ADMIN"]} />
+      <RoleRoute path="/supervisor/history" component={SupervisorHistoryPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
       <Route component={NotFound} />
     </Switch>
   );

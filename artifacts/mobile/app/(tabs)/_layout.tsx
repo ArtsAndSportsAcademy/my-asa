@@ -44,6 +44,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "doc.text", selected: "doc.text.fill" }} />
         <Label>Livro</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="historico">
+        <Icon sf={{ default: "clock.arrow.trianglehead.counterclockwise.rotate.90", selected: "clock.fill" }} />
+        <Label>Histórico</Label>
+      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }
@@ -179,6 +183,18 @@ function ClassicTabLayout() {
               <SymbolView name="doc.text" tintColor={color} size={24} />
             ) : (
               <Feather name="file-text" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="historico"
+        options={{
+          title: "Histórico",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="clock" tintColor={color} size={24} />
+            ) : (
+              <Feather name="clock" size={22} color={color} />
             ),
         }}
       />

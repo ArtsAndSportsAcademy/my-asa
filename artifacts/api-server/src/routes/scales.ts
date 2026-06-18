@@ -14,6 +14,7 @@ import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
 import { eventBus } from "../lib/event-bus.js";
 import { runCoverageEngine, persistEngineResult } from "../services/coverage-engine.js";
+import { writeHistoryEvent } from "../lib/history-helper.js";
 
 const router: IRouter = Router();
 
@@ -344,6 +345,14 @@ router.post("/scales/:id/publish", requireAuth, requireOrganization, async (req,
       .returning();
 
     eventBus.emit("scale.published", { scaleId: id, operationId: scale.operationId });
+    writeHistoryEvent({
+      category: "SCALE", action: "published",
+      title: "Escala publicada",
+      narrative: "Escala publicada e disponível para os membros.",
+      entityType: "scale", entityId: id,
+      actorId: userId, actorType: "HUMAN",
+      operationId: scale.operationId,
+    }).catch(() => {});
     res.json({ scale: updated });
   } catch (err) {
     log.error({ err }, "erro ao publicar escala");
@@ -372,6 +381,14 @@ router.post("/scales/:id/republish", requireAuth, requireOrganization, async (re
       .returning();
 
     eventBus.emit("scale.republished", { scaleId: id, operationId: scale.operationId });
+    writeHistoryEvent({
+      category: "SCALE", action: "republished",
+      title: "Escala republicada",
+      narrative: "Escala republicada com alterações.",
+      entityType: "scale", entityId: id,
+      actorId: userId, actorType: "HUMAN",
+      operationId: scale.operationId,
+    }).catch(() => {});
     res.json({ scale: updated });
   } catch (err) {
     log.error({ err }, "erro ao republicar escala");

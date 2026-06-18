@@ -2781,3 +2781,266 @@ export const EscalateNoticeBody = zod.object({
 })
 
 
+/**
+ * @summary Listar eventos de histórico (Admin/Supervisor)
+ */
+export const listHistoryQueryLimitDefault = 50;
+export const listHistoryQueryOffsetDefault = 0;
+
+export const ListHistoryQueryParams = zod.object({
+  "category": zod.coerce.string().optional(),
+  "entityType": zod.coerce.string().optional(),
+  "actorId": zod.coerce.string().optional(),
+  "operationId": zod.coerce.string().optional(),
+  "groupId": zod.coerce.string().optional(),
+  "dateFrom": zod.date().optional(),
+  "dateTo": zod.date().optional(),
+  "limit": zod.coerce.number().default(listHistoryQueryLimitDefault),
+  "offset": zod.coerce.number().default(listHistoryQueryOffsetDefault)
+})
+
+export const ListHistoryResponse = zod.object({
+  "events": zod.array(zod.object({
+  "id": zod.string(),
+  "moId": zod.string().nullish(),
+  "orgId": zod.string().nullish(),
+  "category": zod.enum(['SCALE', 'DAILY_BOOK', 'NOTICE', 'AGENDA', 'REQUEST', 'DELIVERY', 'MESSAGE', 'OPERATIONAL_CHANGE']),
+  "action": zod.string(),
+  "title": zod.string(),
+  "narrative": zod.string(),
+  "entityType": zod.string(),
+  "entityId": zod.string(),
+  "actorId": zod.string().nullish(),
+  "actorType": zod.enum(['HUMAN', 'DETERMINISTIC_ENGINE', 'LLM_CONFIRMED']),
+  "actorName": zod.string().nullish(),
+  "operationId": zod.string().nullish(),
+  "groupId": zod.string().nullish(),
+  "status": zod.string(),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional(),
+  "occurredAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})),
+  "count": zod.number()
+})
+
+
+/**
+ * @summary Listar narrativas de investigação (Admin/Supervisor)
+ */
+export const listHistoryNarrativesQueryLimitDefault = 50;
+export const listHistoryNarrativesQueryOffsetDefault = 0;
+
+export const ListHistoryNarrativesQueryParams = zod.object({
+  "status": zod.coerce.string().optional(),
+  "operationId": zod.coerce.string().optional(),
+  "limit": zod.coerce.number().default(listHistoryNarrativesQueryLimitDefault),
+  "offset": zod.coerce.number().default(listHistoryNarrativesQueryOffsetDefault)
+})
+
+export const ListHistoryNarrativesResponse = zod.object({
+  "narratives": zod.array(zod.object({
+  "id": zod.string(),
+  "orgId": zod.string().nullish(),
+  "operationId": zod.string().nullish(),
+  "title": zod.string(),
+  "category": zod.string(),
+  "cause": zod.string().nullish(),
+  "decision": zod.string().nullish(),
+  "impact": zod.string().nullish(),
+  "resolution": zod.string().nullish(),
+  "status": zod.enum(['OPEN', 'RESOLVED', 'CLOSED']),
+  "createdBy": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Criar narrativa de investigação (Admin/Supervisor)
+ */
+export const CreateHistoryNarrativeBody = zod.object({
+  "title": zod.string(),
+  "category": zod.string().optional(),
+  "operationId": zod.string().optional(),
+  "cause": zod.string().optional(),
+  "decision": zod.string().optional(),
+  "impact": zod.string().optional(),
+  "resolution": zod.string().optional()
+})
+
+
+/**
+ * @summary Detalhe da narrativa com eventos relacionados
+ */
+export const GetHistoryNarrativeParams = zod.object({
+  "narrativeId": zod.coerce.string()
+})
+
+export const GetHistoryNarrativeResponse = zod.object({
+  "narrative": zod.object({
+  "id": zod.string(),
+  "orgId": zod.string().nullish(),
+  "operationId": zod.string().nullish(),
+  "title": zod.string(),
+  "category": zod.string(),
+  "cause": zod.string().nullish(),
+  "decision": zod.string().nullish(),
+  "impact": zod.string().nullish(),
+  "resolution": zod.string().nullish(),
+  "status": zod.enum(['OPEN', 'RESOLVED', 'CLOSED']),
+  "createdBy": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}),
+  "events": zod.array(zod.object({
+  "id": zod.string(),
+  "moId": zod.string().nullish(),
+  "orgId": zod.string().nullish(),
+  "category": zod.enum(['SCALE', 'DAILY_BOOK', 'NOTICE', 'AGENDA', 'REQUEST', 'DELIVERY', 'MESSAGE', 'OPERATIONAL_CHANGE']),
+  "action": zod.string(),
+  "title": zod.string(),
+  "narrative": zod.string(),
+  "entityType": zod.string(),
+  "entityId": zod.string(),
+  "actorId": zod.string().nullish(),
+  "actorType": zod.enum(['HUMAN', 'DETERMINISTIC_ENGINE', 'LLM_CONFIRMED']),
+  "actorName": zod.string().nullish(),
+  "operationId": zod.string().nullish(),
+  "groupId": zod.string().nullish(),
+  "status": zod.string(),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional(),
+  "occurredAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Atualizar narrativa (causa/decisão/impacto/resolução)
+ */
+export const UpdateHistoryNarrativeParams = zod.object({
+  "narrativeId": zod.coerce.string()
+})
+
+export const UpdateHistoryNarrativeBody = zod.object({
+  "title": zod.string().optional(),
+  "cause": zod.string().optional(),
+  "decision": zod.string().optional(),
+  "impact": zod.string().optional(),
+  "resolution": zod.string().optional(),
+  "status": zod.enum(['OPEN', 'RESOLVED', 'CLOSED']).optional()
+})
+
+export const UpdateHistoryNarrativeResponse = zod.object({
+  "narrative": zod.object({
+  "id": zod.string(),
+  "orgId": zod.string().nullish(),
+  "operationId": zod.string().nullish(),
+  "title": zod.string(),
+  "category": zod.string(),
+  "cause": zod.string().nullish(),
+  "decision": zod.string().nullish(),
+  "impact": zod.string().nullish(),
+  "resolution": zod.string().nullish(),
+  "status": zod.enum(['OPEN', 'RESOLVED', 'CLOSED']),
+  "createdBy": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+})
+
+
+/**
+ * @summary Detalhe de evento de histórico com relações
+ */
+export const GetHistoryEventParams = zod.object({
+  "eventId": zod.coerce.string()
+})
+
+export const GetHistoryEventResponse = zod.object({
+  "event": zod.object({
+  "id": zod.string(),
+  "moId": zod.string().nullish(),
+  "orgId": zod.string().nullish(),
+  "category": zod.enum(['SCALE', 'DAILY_BOOK', 'NOTICE', 'AGENDA', 'REQUEST', 'DELIVERY', 'MESSAGE', 'OPERATIONAL_CHANGE']),
+  "action": zod.string(),
+  "title": zod.string(),
+  "narrative": zod.string(),
+  "entityType": zod.string(),
+  "entityId": zod.string(),
+  "actorId": zod.string().nullish(),
+  "actorType": zod.enum(['HUMAN', 'DETERMINISTIC_ENGINE', 'LLM_CONFIRMED']),
+  "actorName": zod.string().nullish(),
+  "operationId": zod.string().nullish(),
+  "groupId": zod.string().nullish(),
+  "status": zod.string(),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional(),
+  "occurredAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+}),
+  "outgoing": zod.array(zod.object({
+
+}).passthrough()),
+  "incoming": zod.array(zod.object({
+
+}).passthrough()),
+  "linkedEvents": zod.array(zod.object({
+  "id": zod.string(),
+  "moId": zod.string().nullish(),
+  "orgId": zod.string().nullish(),
+  "category": zod.enum(['SCALE', 'DAILY_BOOK', 'NOTICE', 'AGENDA', 'REQUEST', 'DELIVERY', 'MESSAGE', 'OPERATIONAL_CHANGE']),
+  "action": zod.string(),
+  "title": zod.string(),
+  "narrative": zod.string(),
+  "entityType": zod.string(),
+  "entityId": zod.string(),
+  "actorId": zod.string().nullish(),
+  "actorType": zod.enum(['HUMAN', 'DETERMINISTIC_ENGINE', 'LLM_CONFIRMED']),
+  "actorName": zod.string().nullish(),
+  "operationId": zod.string().nullish(),
+  "groupId": zod.string().nullish(),
+  "status": zod.string(),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional(),
+  "occurredAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Histórico pessoal do membro autenticado
+ */
+export const getMyHistoryQueryLimitDefault = 30;
+export const getMyHistoryQueryOffsetDefault = 0;
+
+export const GetMyHistoryQueryParams = zod.object({
+  "limit": zod.coerce.number().default(getMyHistoryQueryLimitDefault),
+  "offset": zod.coerce.number().default(getMyHistoryQueryOffsetDefault)
+})
+
+export const GetMyHistoryResponse = zod.object({
+  "events": zod.array(zod.object({
+  "id": zod.string(),
+  "moId": zod.string().nullish(),
+  "orgId": zod.string().nullish(),
+  "category": zod.enum(['SCALE', 'DAILY_BOOK', 'NOTICE', 'AGENDA', 'REQUEST', 'DELIVERY', 'MESSAGE', 'OPERATIONAL_CHANGE']),
+  "action": zod.string(),
+  "title": zod.string(),
+  "narrative": zod.string(),
+  "entityType": zod.string(),
+  "entityId": zod.string(),
+  "actorId": zod.string().nullish(),
+  "actorType": zod.enum(['HUMAN', 'DETERMINISTIC_ENGINE', 'LLM_CONFIRMED']),
+  "actorName": zod.string().nullish(),
+  "operationId": zod.string().nullish(),
+  "groupId": zod.string().nullish(),
+  "status": zod.string(),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional(),
+  "occurredAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})),
+  "count": zod.number()
+})
+
+

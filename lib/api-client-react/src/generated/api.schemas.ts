@@ -1468,6 +1468,134 @@ export interface EscalateNoticeRequest {
   reason?: string;
 }
 
+export type HistoryEventCategory = typeof HistoryEventCategory[keyof typeof HistoryEventCategory];
+
+
+export const HistoryEventCategory = {
+  SCALE: 'SCALE',
+  DAILY_BOOK: 'DAILY_BOOK',
+  NOTICE: 'NOTICE',
+  AGENDA: 'AGENDA',
+  REQUEST: 'REQUEST',
+  DELIVERY: 'DELIVERY',
+  MESSAGE: 'MESSAGE',
+  OPERATIONAL_CHANGE: 'OPERATIONAL_CHANGE',
+} as const;
+
+export type HistoryEventActorType = typeof HistoryEventActorType[keyof typeof HistoryEventActorType];
+
+
+export const HistoryEventActorType = {
+  HUMAN: 'HUMAN',
+  DETERMINISTIC_ENGINE: 'DETERMINISTIC_ENGINE',
+  LLM_CONFIRMED: 'LLM_CONFIRMED',
+} as const;
+
+export type HistoryEventMetadata = { [key: string]: unknown };
+
+export interface HistoryEvent {
+  id: string;
+  moId?: string | null;
+  orgId?: string | null;
+  category: HistoryEventCategory;
+  action: string;
+  title: string;
+  narrative: string;
+  entityType: string;
+  entityId: string;
+  actorId?: string | null;
+  actorType: HistoryEventActorType;
+  actorName?: string | null;
+  operationId?: string | null;
+  groupId?: string | null;
+  status: string;
+  metadata?: HistoryEventMetadata;
+  occurredAt: string;
+  createdAt: string;
+}
+
+export type HistoryNarrativeStatus = typeof HistoryNarrativeStatus[keyof typeof HistoryNarrativeStatus];
+
+
+export const HistoryNarrativeStatus = {
+  OPEN: 'OPEN',
+  RESOLVED: 'RESOLVED',
+  CLOSED: 'CLOSED',
+} as const;
+
+export interface HistoryNarrative {
+  id: string;
+  orgId?: string | null;
+  operationId?: string | null;
+  title: string;
+  category: string;
+  cause?: string | null;
+  decision?: string | null;
+  impact?: string | null;
+  resolution?: string | null;
+  status: HistoryNarrativeStatus;
+  createdBy?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HistoryEventListResponse {
+  events: HistoryEvent[];
+  count: number;
+}
+
+export type HistoryEventDetailResponseOutgoingItem = { [key: string]: unknown };
+
+export type HistoryEventDetailResponseIncomingItem = { [key: string]: unknown };
+
+export interface HistoryEventDetailResponse {
+  event: HistoryEvent;
+  outgoing: HistoryEventDetailResponseOutgoingItem[];
+  incoming: HistoryEventDetailResponseIncomingItem[];
+  linkedEvents: HistoryEvent[];
+}
+
+export interface HistoryNarrativeListResponse {
+  narratives: HistoryNarrative[];
+}
+
+export interface HistoryNarrativeSingleResponse {
+  narrative: HistoryNarrative;
+}
+
+export interface HistoryNarrativeDetailResponse {
+  narrative: HistoryNarrative;
+  events: HistoryEvent[];
+}
+
+export interface CreateHistoryNarrativeRequest {
+  title: string;
+  category?: string;
+  operationId?: string;
+  cause?: string;
+  decision?: string;
+  impact?: string;
+  resolution?: string;
+}
+
+export type UpdateHistoryNarrativeRequestStatus = typeof UpdateHistoryNarrativeRequestStatus[keyof typeof UpdateHistoryNarrativeRequestStatus];
+
+
+export const UpdateHistoryNarrativeRequestStatus = {
+  OPEN: 'OPEN',
+  RESOLVED: 'RESOLVED',
+  CLOSED: 'CLOSED',
+} as const;
+
+export interface UpdateHistoryNarrativeRequest {
+  title?: string;
+  cause?: string;
+  decision?: string;
+  impact?: string;
+  resolution?: string;
+  status?: UpdateHistoryNarrativeRequestStatus;
+}
+
 /**
  * Bad request
  */
@@ -1875,5 +2003,29 @@ groupId?: string;
 export type ListNoticesParams = {
 operationId?: string;
 status?: string;
+};
+
+export type ListHistoryParams = {
+category?: string;
+entityType?: string;
+actorId?: string;
+operationId?: string;
+groupId?: string;
+dateFrom?: string;
+dateTo?: string;
+limit?: number;
+offset?: number;
+};
+
+export type ListHistoryNarrativesParams = {
+status?: string;
+operationId?: string;
+limit?: number;
+offset?: number;
+};
+
+export type GetMyHistoryParams = {
+limit?: number;
+offset?: number;
 };
 

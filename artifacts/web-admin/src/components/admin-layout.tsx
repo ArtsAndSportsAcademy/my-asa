@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Theater, Home, Users, Briefcase, Users2, LogOut, ChevronRight, BookOpen, CalendarDays, ShieldCheck, ClipboardList, BookMarked, Eye, LayoutDashboard, Bell } from "lucide-react";
+import { Theater, Home, Users, Briefcase, Users2, LogOut, ChevronRight, BookOpen, CalendarDays, ShieldCheck, ClipboardList, BookMarked, Eye, LayoutDashboard, Bell, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,6 +19,8 @@ const navItems = [
   { href: "/supervisor/daily-book", icon: BookMarked, label: "Livro (Supervisor)" },
   { href: "/admin/avisos", icon: Bell, label: "Avisos" },
   { href: "/supervisor/avisos", icon: Bell, label: "Avisos (Sup.)" },
+  { href: "/admin/history", icon: Clock, label: "Histórico" },
+  { href: "/supervisor/history", icon: Clock, label: "Histórico (Sup.)" },
   { href: "/admin/auditoria", icon: ShieldCheck, label: "Auditoria" },
 ];
 

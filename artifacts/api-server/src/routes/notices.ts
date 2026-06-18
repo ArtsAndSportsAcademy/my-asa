@@ -11,6 +11,7 @@ import {
 import { requireAuth } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
+import { writeHistoryEvent } from "../lib/history-helper.js";
 
 const router: IRouter = Router();
 
@@ -346,6 +347,13 @@ router.post("/notices/:noticeId/publish", requireAuth, async (req, res): Promise
       );
 
     const detail = await buildNoticeDetail(noticeId);
+    writeHistoryEvent({
+      category: "NOTICE", action: "published",
+      title: `Aviso publicado${(detail as any).title ? ": " + (detail as any).title : ""}`,
+      narrative: `Aviso publicado e enviado para ${(detail as any).recipients?.length ?? 0} destinatário(s).`,
+      entityType: "notice", entityId: noticeId,
+      actorId: req.user!.sub, actorType: "HUMAN",
+    }).catch(() => {});
     res.json(detail);
   } catch (err) {
     log.error({ err }, "erro ao publicar aviso");
@@ -442,6 +450,14 @@ router.post("/notices/:noticeId/escalate", requireAuth, async (req, res): Promis
       );
     }
 
+    writeHistoryEvent({
+      category: "NOTICE", action: "escalated",
+      title: "Aviso escalado",
+      narrative: `Aviso escalado. ${unconfirmedRecipients.length} destinatário(s) ainda não confirmaram.`,
+      entityType: "notice", entityId: noticeId,
+      actorId: escalatedBy, actorType: "HUMAN",
+      metadata: { reason: reason ?? null },
+    }).catch(() => {});
     log.info({ noticeId, escalatedBy, count: unconfirmedRecipients.length }, "aviso escalado");
     res.status(204).send();
   } catch (err) {
@@ -540,6 +556,13 @@ router.post("/notices/:noticeId/confirm", requireAuth, async (req, res): Promise
           eq(noticeRecipientsTable.userId, userId)
         )
       );
+    writeHistoryEvent({
+      category: "NOTICE", action: "confirmed",
+      title: "Aviso confirmado",
+      narrative: "Membro confirmou a leitura do aviso.",
+      entityType: "notice", entityId: noticeId,
+      actorId: userId, actorType: "HUMAN",
+    }).catch(() => {});
     res.status(204).send();
   } catch (err) {
     log.error({ err }, "erro ao confirmar aviso");

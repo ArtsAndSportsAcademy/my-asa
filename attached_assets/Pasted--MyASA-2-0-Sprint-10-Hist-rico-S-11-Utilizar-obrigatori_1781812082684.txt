@@ -1,0 +1,276 @@
+# MyASA 2.0 — Sprint 10: Histórico (S-11)
+
+Utilizar obrigatoriamente:
+
+* Sprint 0 a Sprint 9 concluídas
+* Fundação S-11 Histórico
+* Blueprint Executivo
+* Gate Final de Construção
+* Arquitetura Técnica Consolidada
+* Entidade Mudança Operacional (MO)
+
+Importante:
+
+Não iniciar FC-01, FC-02, FC-03 ou FC-04.
+
+Os Feedbacks de Campo permanecem registrados apenas no roadmap.
+
+Não implementar IA nesta sprint.
+
+Não implementar Biblioteca nesta sprint.
+
+Objetivo:
+
+Construir a memória operacional oficial do MyASA.
+
+Pergunta respondida:
+
+"O que aconteceu, por que aconteceu e como terminou?"
+
+═══════════════════════
+PARTE 1 — PRINCÍPIO FUNDADOR
+═══════════════════════
+
+Histórico NÃO é:
+
+* log técnico
+* tabela cronológica
+* auditoria de banco
+
+Histórico É:
+
+* narrativa operacional
+* investigação
+* rastreabilidade
+* memória organizacional
+
+Toda entrada deve ser compreensível por um Supervisor sem conhecimento técnico.
+
+═══════════════════════
+PARTE 2 — DOMÍNIO
+═══════════════════════
+
+Implementar:
+
+HistoryEvent
+
+HistoryRelation
+
+HistoryNarrative
+
+Categorias iniciais:
+
+* Mudança Operacional
+* Escala
+* Livro do Dia
+* Aviso
+* Agenda
+* Solicitação
+* Entrega
+* Mensagem
+
+Critério:
+
+Histórico não duplica dados.
+
+Histórico referencia acontecimentos.
+
+═══════════════════════
+PARTE 3 — NARRATIVA
+═══════════════════════
+
+Toda narrativa deve responder:
+
+1. O que aconteceu?
+2. Quando aconteceu?
+3. Quem participou?
+4. O que mudou?
+5. Como foi resolvido?
+
+Exemplo:
+
+Solicitação de folga aprovada.
+A escala foi recalculada.
+O Livro do Dia foi republicado.
+Um aviso foi enviado.
+Todos os membros confirmaram.
+
+Critério:
+
+Linguagem humana.
+
+Jamais exibir logs internos.
+
+═══════════════════════
+PARTE 4 — CONSULTAS
+═══════════════════════
+
+Implementar visualizações:
+
+Por Mudança Operacional
+
+Por Membro
+
+Por Grupo
+
+Por Operação
+
+Por Período
+
+Filtros:
+
+* data
+* operação
+* grupo
+* categoria
+* status
+
+═══════════════════════
+PARTE 5 — WEB ADMIN / SUPERVISOR
+═══════════════════════
+
+Criar:
+
+/admin/history
+
+/supervisor/history
+
+Modos:
+
+WH-01 Consulta Rápida
+
+WH-02 Investigação de MO
+
+WH-03 Histórico por Membro
+
+WH-04 Histórico por Operação
+
+WH-05 Histórico por Período
+
+Critério:
+
+Supervisor consegue reconstruir um acontecimento sem abrir múltiplas telas.
+
+═══════════════════════
+PARTE 6 — MOBILE
+═══════════════════════
+
+Implementação simplificada.
+
+Mostrar:
+
+* histórico pessoal
+* mudanças recentes
+* solicitações concluídas
+* avisos confirmados
+
+Objetivo:
+
+Contexto.
+
+Não investigação profunda.
+
+═══════════════════════
+PARTE 7 — EVENT BUS
+═══════════════════════
+
+Consumir:
+
+request.approved
+
+request.denied
+
+scale.published
+
+scale.republished
+
+daily-book.published
+
+daily-book.republished
+
+notice.created
+
+notice.confirmed
+
+notice.escalated
+
+agenda.event.updated
+
+agenda.event.cancelled
+
+agenda.event.suspended
+
+operational-change.created
+
+Critério:
+
+Todo acontecimento relevante deve ser capaz de gerar narrativa histórica.
+
+═══════════════════════
+PARTE 8 — INVESTIGAÇÃO
+═══════════════════════
+
+Implementar fluxo oficial:
+
+Mudança Operacional
+↓
+Causa
+↓
+Decisão
+↓
+Impacto
+↓
+Resolução
+
+Objetivo:
+
+Permitir auditoria operacional completa.
+
+═══════════════════════
+PARTE 9 — AUDITORIA
+═══════════════════════
+
+Validar:
+
+* Histórico não virou log técnico
+* Narrativas são compreensíveis
+* Relações são rastreáveis
+* Não existe duplicação de informação
+* Investigações são possíveis
+* Mobile permanece simples
+* Web permanece ferramenta de gestão
+
+Responder:
+
+Mensagens, Entregas e Biblioteca conseguem integrar-se ao Histórico sem alterar sua filosofia narrativa?
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Classificar:
+
+🟢 Sprint 10 concluída
+
+🟡 Ajustes necessários
+
+🔴 Bloqueado
+
+Objetivo final:
+
+Ao final da Sprint 10:
+
+Admins e Supervisores conseguem investigar qualquer acontecimento operacional relevante utilizando apenas o Histórico do MyASA.
+
+═══════════════════════
+OBSERVAÇÃO
+═══════════════════════
+
+Feedbacks de Campo registrados:
+
+FC-01 Livro do Show Bíblia Operacional
+FC-02 Check-in Operacional
+FC-03 Insights da Biblioteca
+FC-04 Google Calendar
+
+Permanecem no roadmap futuro e não fazem parte do escopo desta sprint.

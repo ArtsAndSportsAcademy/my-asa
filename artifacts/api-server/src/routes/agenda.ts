@@ -5,6 +5,7 @@ import { agendaEventsTable } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
 import { eventBus } from "../lib/event-bus.js";
+import { writeHistoryEvent } from "../lib/history-helper.js";
 
 const router: IRouter = Router();
 
@@ -170,6 +171,15 @@ router.post("/agenda/events/:id/suspend", requireAuth, requireOrganization, asyn
       .where(eq(agendaEventsTable.id, id))
       .returning();
     eventBus.emit("agenda.event.changed", { eventId: id, changedFields: ["status", "reason"] });
+    writeHistoryEvent({
+      category: "AGENDA", action: "suspended",
+      title: "Evento de agenda suspenso",
+      narrative: `Evento suspenso. Motivo: ${reason}`,
+      entityType: "agenda_event", entityId: id,
+      actorId: userId, actorType: "HUMAN",
+      operationId: updated?.operationId ?? undefined,
+      metadata: { reason },
+    }).catch(() => {});
     const log = requestLogger("agenda", req.requestId, req.correlationId);
     log.info({ eventId: id, reason }, "Evento suspenso");
     res.json({ event: updated });
@@ -200,6 +210,15 @@ router.post("/agenda/events/:id/cancel", requireAuth, requireOrganization, async
       operationId: event.operationId,
       affectedAllocationIds: [],
     });
+    writeHistoryEvent({
+      category: "AGENDA", action: "cancelled",
+      title: "Evento de agenda cancelado",
+      narrative: `Evento cancelado. Motivo: ${reason}`,
+      entityType: "agenda_event", entityId: id,
+      actorId: userId, actorType: "HUMAN",
+      operationId: event.operationId,
+      metadata: { reason },
+    }).catch(() => {});
     const log = requestLogger("agenda", req.requestId, req.correlationId);
     log.info({ eventId: id, reason }, "Evento cancelado");
     res.json({ event: updated });

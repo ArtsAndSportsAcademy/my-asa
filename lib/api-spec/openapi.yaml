@@ -3004,6 +3004,190 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /history:
+    get:
+      operationId: listHistory
+      tags: [history]
+      summary: "Listar eventos de histórico (Admin/Supervisor)"
+      parameters:
+        - name: category
+          in: query
+          schema: { type: string }
+        - name: entityType
+          in: query
+          schema: { type: string }
+        - name: actorId
+          in: query
+          schema: { type: string }
+        - name: operationId
+          in: query
+          schema: { type: string }
+        - name: groupId
+          in: query
+          schema: { type: string }
+        - name: dateFrom
+          in: query
+          schema: { type: string, format: date-time }
+        - name: dateTo
+          in: query
+          schema: { type: string, format: date-time }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50 }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        "200":
+          description: Lista de eventos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoryEventListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /history/narratives:
+    get:
+      operationId: listHistoryNarratives
+      tags: [history]
+      summary: "Listar narrativas de investigação (Admin/Supervisor)"
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: operationId
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50 }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        "200":
+          description: Lista de narrativas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoryNarrativeListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createHistoryNarrative
+      tags: [history]
+      summary: "Criar narrativa de investigação (Admin/Supervisor)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateHistoryNarrativeRequest"
+      responses:
+        "201":
+          description: Narrativa criada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoryNarrativeSingleResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /history/narratives/{narrativeId}:
+    get:
+      operationId: getHistoryNarrative
+      tags: [history]
+      summary: "Detalhe da narrativa com eventos relacionados"
+      parameters:
+        - name: narrativeId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Narrativa com eventos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoryNarrativeDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateHistoryNarrative
+      tags: [history]
+      summary: "Atualizar narrativa (causa/decisão/impacto/resolução)"
+      parameters:
+        - name: narrativeId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateHistoryNarrativeRequest"
+      responses:
+        "200":
+          description: Narrativa atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoryNarrativeSingleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /history/{eventId}:
+    get:
+      operationId: getHistoryEvent
+      tags: [history]
+      summary: "Detalhe de evento de histórico com relações"
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Evento com relações
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoryEventDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /my-history:
+    get:
+      operationId: getMyHistory
+      tags: [history]
+      summary: "Histórico pessoal do membro autenticado"
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 30 }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        "200":
+          description: Histórico pessoal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoryEventListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -5071,3 +5255,189 @@ components:
         changeAfter:
           type: string
           nullable: true
+
+    HistoryEvent:
+      type: object
+      required: [id, category, action, title, narrative, entityType, entityId, actorType, status, occurredAt, createdAt]
+      properties:
+        id:
+          type: string
+        moId:
+          type: string
+          nullable: true
+        orgId:
+          type: string
+          nullable: true
+        category:
+          type: string
+          enum: [SCALE, DAILY_BOOK, NOTICE, AGENDA, REQUEST, DELIVERY, MESSAGE, OPERATIONAL_CHANGE]
+        action:
+          type: string
+        title:
+          type: string
+        narrative:
+          type: string
+        entityType:
+          type: string
+        entityId:
+          type: string
+        actorId:
+          type: string
+          nullable: true
+        actorType:
+          type: string
+          enum: [HUMAN, DETERMINISTIC_ENGINE, LLM_CONFIRMED]
+        actorName:
+          type: string
+          nullable: true
+        operationId:
+          type: string
+          nullable: true
+        groupId:
+          type: string
+          nullable: true
+        status:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        occurredAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    HistoryNarrative:
+      type: object
+      required: [id, title, category, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        orgId:
+          type: string
+          nullable: true
+        operationId:
+          type: string
+          nullable: true
+        title:
+          type: string
+        category:
+          type: string
+        cause:
+          type: string
+          nullable: true
+        decision:
+          type: string
+          nullable: true
+        impact:
+          type: string
+          nullable: true
+        resolution:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [OPEN, RESOLVED, CLOSED]
+        createdBy:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    HistoryEventListResponse:
+      type: object
+      required: [events, count]
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/HistoryEvent"
+        count:
+          type: integer
+
+    HistoryEventDetailResponse:
+      type: object
+      required: [event, outgoing, incoming, linkedEvents]
+      properties:
+        event:
+          $ref: "#/components/schemas/HistoryEvent"
+        outgoing:
+          type: array
+          items:
+            type: object
+        incoming:
+          type: array
+          items:
+            type: object
+        linkedEvents:
+          type: array
+          items:
+            $ref: "#/components/schemas/HistoryEvent"
+
+    HistoryNarrativeListResponse:
+      type: object
+      required: [narratives]
+      properties:
+        narratives:
+          type: array
+          items:
+            $ref: "#/components/schemas/HistoryNarrative"
+
+    HistoryNarrativeSingleResponse:
+      type: object
+      required: [narrative]
+      properties:
+        narrative:
+          $ref: "#/components/schemas/HistoryNarrative"
+
+    HistoryNarrativeDetailResponse:
+      type: object
+      required: [narrative, events]
+      properties:
+        narrative:
+          $ref: "#/components/schemas/HistoryNarrative"
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/HistoryEvent"
+
+    CreateHistoryNarrativeRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+        category:
+          type: string
+        operationId:
+          type: string
+        cause:
+          type: string
+        decision:
+          type: string
+        impact:
+          type: string
+        resolution:
+          type: string
+
+    UpdateHistoryNarrativeRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        cause:
+          type: string
+        decision:
+          type: string
+        impact:
+          type: string
+        resolution:
+          type: string
+        status:
+          type: string
+          enum: [OPEN, RESOLVED, CLOSED]

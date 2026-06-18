@@ -18,6 +18,7 @@ import {
   historyEventsTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization, requireRole } from "../middlewares/auth.js";
+import { writeHistoryEvent } from "../lib/history-helper.js";
 import { eventBus } from "../lib/event-bus.js";
 
 const router: IRouter = Router();
@@ -453,6 +454,13 @@ router.post("/daily-book/:id/publish", requireAuth, requireOrganization, require
       .where(eq(dailyBooksTable.id, id))
       .returning();
     eventBus.emit("daily-book.published", { dailyBookId: id, version: updated!.version, publishedBy: userId });
+    writeHistoryEvent({
+      category: "DAILY_BOOK", action: "published",
+      title: `Livro do Dia publicado (v${updated!.version})`,
+      narrative: `Livro do Dia publicado e disponível para a equipe.`,
+      entityType: "daily_book", entityId: id,
+      actorId: userId, actorType: "HUMAN",
+    }).catch(() => {});
     await writeDailyBookAudit(id, userId, "publish", { status: book.status }, { status: "PUBLISHED", reason: reason ?? null });
     res.json({ dailyBook: updated });
   } catch (err) {
@@ -500,6 +508,13 @@ router.post("/daily-book/:id/republish", requireAuth, requireOrganization, requi
       .returning();
 
     eventBus.emit("daily-book.republished", { dailyBookId: id, previousVersion, newVersion, delta, republishedBy: userId });
+    writeHistoryEvent({
+      category: "DAILY_BOOK", action: "republished",
+      title: `Livro do Dia republicado (v${previousVersion} → v${newVersion})`,
+      narrative: `Livro do Dia republicado com alterações. Versão ${previousVersion} → ${newVersion}.`,
+      entityType: "daily_book", entityId: id,
+      actorId: userId, actorType: "HUMAN",
+    }).catch(() => {});
     await writeDailyBookAudit(id, userId, "republish", { version: previousVersion, snapshot: prevSnapshot }, { version: newVersion, delta, reason: reason ?? null });
     res.json({ dailyBook: updated, delta });
   } catch (err) {

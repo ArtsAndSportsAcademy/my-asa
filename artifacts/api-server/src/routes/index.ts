@@ -13,6 +13,7 @@ import dailyBookRouter from "./daily-book";
 import operationalPanelRouter from "./operational-panel";
 import myDayRouter from "./my-day";
 import noticesRouter from "./notices";
+import historyRouter from "./history";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(dailyBookRouter);
 router.use(operationalPanelRouter);
 router.use(myDayRouter);
 router.use(noticesRouter);
+router.use(historyRouter);
 
 export default router;

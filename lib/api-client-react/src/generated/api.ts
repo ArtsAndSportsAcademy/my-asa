@@ -38,6 +38,7 @@ import type {
   ConfirmAgendaEvent200,
   ConflictResponse,
   CreateAgendaEvent201,
+  CreateHistoryNarrativeRequest,
   CreateNoticeRequest,
   CreateOperation201,
   CreateOperationTag201,
@@ -63,6 +64,7 @@ import type {
   GetAgendaEvent200,
   GetDailyBook200,
   GetDailyBookDelta200,
+  GetMyHistoryParams,
   GetOperation200,
   GetOperationalGroup200,
   GetOperationalGroups200,
@@ -77,12 +79,19 @@ import type {
   GroupSupervisorAdd,
   GroupUpdate,
   HealthStatus,
+  HistoryEventDetailResponse,
+  HistoryEventListResponse,
+  HistoryNarrativeDetailResponse,
+  HistoryNarrativeListResponse,
+  HistoryNarrativeSingleResponse,
   LineCreate,
   LineUpdate,
   ListAgendaEvents200,
   ListAgendaEventsParams,
   ListDailyBook200,
   ListDailyBookParams,
+  ListHistoryNarrativesParams,
+  ListHistoryParams,
   ListMyAllocations200,
   ListMyAllocationsParams,
   ListNoticesParams,
@@ -139,6 +148,7 @@ import type {
   UnauthorizedResponse,
   UnprocessableEntityResponse,
   UpdateAgendaEvent200,
+  UpdateHistoryNarrativeRequest,
   UpdateNoticeRequest,
   UpdateOperation200,
   UpdateOperationStatus200,
@@ -7627,4 +7637,553 @@ export const useEscalateNotice = <TError = ErrorType<UnauthorizedResponse | NotF
       > => {
       return useMutation(getEscalateNoticeMutationOptions(options));
     }
+
+export const getListHistoryUrl = (params?: ListHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/history?${stringifiedParams}` : `/api/history`
+}
+
+/**
+ * @summary Listar eventos de histórico (Admin/Supervisor)
+ */
+export const listHistory = async (params?: ListHistoryParams, options?: RequestInit): Promise<HistoryEventListResponse> => {
+
+  return customFetch<HistoryEventListResponse>(getListHistoryUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListHistoryQueryKey = (params?: ListHistoryParams,) => {
+    return [
+    `/api/history`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListHistoryQueryOptions = <TData = Awaited<ReturnType<typeof listHistory>>, TError = ErrorType<UnauthorizedResponse>>(params?: ListHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListHistoryQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listHistory>>> = ({ signal }) => listHistory(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof listHistory>>>
+export type ListHistoryQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Listar eventos de histórico (Admin/Supervisor)
+ */
+
+export function useListHistory<TData = Awaited<ReturnType<typeof listHistory>>, TError = ErrorType<UnauthorizedResponse>>(
+ params?: ListHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListHistoryQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListHistoryNarrativesUrl = (params?: ListHistoryNarrativesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/history/narratives?${stringifiedParams}` : `/api/history/narratives`
+}
+
+/**
+ * @summary Listar narrativas de investigação (Admin/Supervisor)
+ */
+export const listHistoryNarratives = async (params?: ListHistoryNarrativesParams, options?: RequestInit): Promise<HistoryNarrativeListResponse> => {
+
+  return customFetch<HistoryNarrativeListResponse>(getListHistoryNarrativesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListHistoryNarrativesQueryKey = (params?: ListHistoryNarrativesParams,) => {
+    return [
+    `/api/history/narratives`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListHistoryNarrativesQueryOptions = <TData = Awaited<ReturnType<typeof listHistoryNarratives>>, TError = ErrorType<UnauthorizedResponse>>(params?: ListHistoryNarrativesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listHistoryNarratives>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListHistoryNarrativesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listHistoryNarratives>>> = ({ signal }) => listHistoryNarratives(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listHistoryNarratives>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListHistoryNarrativesQueryResult = NonNullable<Awaited<ReturnType<typeof listHistoryNarratives>>>
+export type ListHistoryNarrativesQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Listar narrativas de investigação (Admin/Supervisor)
+ */
+
+export function useListHistoryNarratives<TData = Awaited<ReturnType<typeof listHistoryNarratives>>, TError = ErrorType<UnauthorizedResponse>>(
+ params?: ListHistoryNarrativesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listHistoryNarratives>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListHistoryNarrativesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateHistoryNarrativeUrl = () => {
+
+
+
+
+  return `/api/history/narratives`
+}
+
+/**
+ * @summary Criar narrativa de investigação (Admin/Supervisor)
+ */
+export const createHistoryNarrative = async (createHistoryNarrativeRequest: CreateHistoryNarrativeRequest, options?: RequestInit): Promise<HistoryNarrativeSingleResponse> => {
+
+  return customFetch<HistoryNarrativeSingleResponse>(getCreateHistoryNarrativeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createHistoryNarrativeRequest,)
+  }
+);}
+
+
+
+
+export const getCreateHistoryNarrativeMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createHistoryNarrative>>, TError,{data: BodyType<CreateHistoryNarrativeRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createHistoryNarrative>>, TError,{data: BodyType<CreateHistoryNarrativeRequest>}, TContext> => {
+
+const mutationKey = ['createHistoryNarrative'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createHistoryNarrative>>, {data: BodyType<CreateHistoryNarrativeRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createHistoryNarrative(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateHistoryNarrativeMutationResult = NonNullable<Awaited<ReturnType<typeof createHistoryNarrative>>>
+    export type CreateHistoryNarrativeMutationBody = BodyType<CreateHistoryNarrativeRequest>
+    export type CreateHistoryNarrativeMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+
+    /**
+ * @summary Criar narrativa de investigação (Admin/Supervisor)
+ */
+export const useCreateHistoryNarrative = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createHistoryNarrative>>, TError,{data: BodyType<CreateHistoryNarrativeRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createHistoryNarrative>>,
+        TError,
+        {data: BodyType<CreateHistoryNarrativeRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateHistoryNarrativeMutationOptions(options));
+    }
+
+export const getGetHistoryNarrativeUrl = (narrativeId: string,) => {
+
+
+
+
+  return `/api/history/narratives/${narrativeId}`
+}
+
+/**
+ * @summary Detalhe da narrativa com eventos relacionados
+ */
+export const getHistoryNarrative = async (narrativeId: string, options?: RequestInit): Promise<HistoryNarrativeDetailResponse> => {
+
+  return customFetch<HistoryNarrativeDetailResponse>(getGetHistoryNarrativeUrl(narrativeId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetHistoryNarrativeQueryKey = (narrativeId: string,) => {
+    return [
+    `/api/history/narratives/${narrativeId}`
+    ] as const;
+    }
+
+
+export const getGetHistoryNarrativeQueryOptions = <TData = Awaited<ReturnType<typeof getHistoryNarrative>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(narrativeId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getHistoryNarrative>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetHistoryNarrativeQueryKey(narrativeId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getHistoryNarrative>>> = ({ signal }) => getHistoryNarrative(narrativeId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(narrativeId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getHistoryNarrative>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetHistoryNarrativeQueryResult = NonNullable<Awaited<ReturnType<typeof getHistoryNarrative>>>
+export type GetHistoryNarrativeQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary Detalhe da narrativa com eventos relacionados
+ */
+
+export function useGetHistoryNarrative<TData = Awaited<ReturnType<typeof getHistoryNarrative>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ narrativeId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getHistoryNarrative>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetHistoryNarrativeQueryOptions(narrativeId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpdateHistoryNarrativeUrl = (narrativeId: string,) => {
+
+
+
+
+  return `/api/history/narratives/${narrativeId}`
+}
+
+/**
+ * @summary Atualizar narrativa (causa/decisão/impacto/resolução)
+ */
+export const updateHistoryNarrative = async (narrativeId: string,
+    updateHistoryNarrativeRequest: UpdateHistoryNarrativeRequest, options?: RequestInit): Promise<HistoryNarrativeSingleResponse> => {
+
+  return customFetch<HistoryNarrativeSingleResponse>(getUpdateHistoryNarrativeUrl(narrativeId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateHistoryNarrativeRequest,)
+  }
+);}
+
+
+
+
+export const getUpdateHistoryNarrativeMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateHistoryNarrative>>, TError,{narrativeId: string;data: BodyType<UpdateHistoryNarrativeRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateHistoryNarrative>>, TError,{narrativeId: string;data: BodyType<UpdateHistoryNarrativeRequest>}, TContext> => {
+
+const mutationKey = ['updateHistoryNarrative'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateHistoryNarrative>>, {narrativeId: string;data: BodyType<UpdateHistoryNarrativeRequest>}> = (props) => {
+          const {narrativeId,data} = props ?? {};
+
+          return  updateHistoryNarrative(narrativeId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateHistoryNarrativeMutationResult = NonNullable<Awaited<ReturnType<typeof updateHistoryNarrative>>>
+    export type UpdateHistoryNarrativeMutationBody = BodyType<UpdateHistoryNarrativeRequest>
+    export type UpdateHistoryNarrativeMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Atualizar narrativa (causa/decisão/impacto/resolução)
+ */
+export const useUpdateHistoryNarrative = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateHistoryNarrative>>, TError,{narrativeId: string;data: BodyType<UpdateHistoryNarrativeRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateHistoryNarrative>>,
+        TError,
+        {narrativeId: string;data: BodyType<UpdateHistoryNarrativeRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateHistoryNarrativeMutationOptions(options));
+    }
+
+export const getGetHistoryEventUrl = (eventId: string,) => {
+
+
+
+
+  return `/api/history/${eventId}`
+}
+
+/**
+ * @summary Detalhe de evento de histórico com relações
+ */
+export const getHistoryEvent = async (eventId: string, options?: RequestInit): Promise<HistoryEventDetailResponse> => {
+
+  return customFetch<HistoryEventDetailResponse>(getGetHistoryEventUrl(eventId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetHistoryEventQueryKey = (eventId: string,) => {
+    return [
+    `/api/history/${eventId}`
+    ] as const;
+    }
+
+
+export const getGetHistoryEventQueryOptions = <TData = Awaited<ReturnType<typeof getHistoryEvent>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(eventId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getHistoryEvent>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetHistoryEventQueryKey(eventId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getHistoryEvent>>> = ({ signal }) => getHistoryEvent(eventId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(eventId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getHistoryEvent>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetHistoryEventQueryResult = NonNullable<Awaited<ReturnType<typeof getHistoryEvent>>>
+export type GetHistoryEventQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary Detalhe de evento de histórico com relações
+ */
+
+export function useGetHistoryEvent<TData = Awaited<ReturnType<typeof getHistoryEvent>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ eventId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getHistoryEvent>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetHistoryEventQueryOptions(eventId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetMyHistoryUrl = (params?: GetMyHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/my-history?${stringifiedParams}` : `/api/my-history`
+}
+
+/**
+ * @summary Histórico pessoal do membro autenticado
+ */
+export const getMyHistory = async (params?: GetMyHistoryParams, options?: RequestInit): Promise<HistoryEventListResponse> => {
+
+  return customFetch<HistoryEventListResponse>(getGetMyHistoryUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyHistoryQueryKey = (params?: GetMyHistoryParams,) => {
+    return [
+    `/api/my-history`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetMyHistoryQueryOptions = <TData = Awaited<ReturnType<typeof getMyHistory>>, TError = ErrorType<UnauthorizedResponse>>(params?: GetMyHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyHistoryQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyHistory>>> = ({ signal }) => getMyHistory(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof getMyHistory>>>
+export type GetMyHistoryQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Histórico pessoal do membro autenticado
+ */
+
+export function useGetMyHistory<TData = Awaited<ReturnType<typeof getMyHistory>>, TError = ErrorType<UnauthorizedResponse>>(
+ params?: GetMyHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyHistoryQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 

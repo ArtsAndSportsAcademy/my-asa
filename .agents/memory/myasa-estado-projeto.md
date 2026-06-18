@@ -3,6 +3,44 @@ name: MyASA 2.0 — Estado do Projeto
 description: Sprint progress, architectural decisions, and key conventions for the MyASA 2.0 system
 ---
 
+## Sprint 10 — Histórico / S-11 (COMPLETO)
+**Objetivo:** Memória operacional oficial — "O que aconteceu, por que aconteceu e como terminou?"
+
+### T001 — DB Schema ✅
+- `history_events`: alterada para `mo_id` nullable + novas colunas `actor_name`, `entity_label`, `meta`.
+- `history_relations`: tabela de relações N:N entre eventos e entidades.
+- `history_narratives`: investigações estruturadas com `cause`/`decision`/`impact`/`resolution`/`status` (OPEN/RESOLVED/CLOSED).
+- Aplicadas manualmente via psql (drizzle-kit push não funciona sem TTY).
+
+### T002 — API ✅
+- `lib/history-helper.ts`: `writeHistoryEvent()` fire-and-forget; nunca lança.
+- `routes/history.ts`: 7 endpoints — GET /history, GET /my-history, GET+POST /history/narratives, GET+PATCH /history/narratives/:id, GET /history/:eventId.
+
+### T003 — Event Bus ✅
+- 4 rotas wired: `notices.ts` (publish/escalate/confirm), `scales.ts` (publish/republish), `daily-book.ts` (publish/republish), `agenda.ts` (suspend/cancel).
+- Todas fire-and-forget com `.catch(() => {})`.
+
+### T004 — OpenAPI + Codegen ✅
+- 7 paths + 8 schemas adicionados ao spec.
+- Hooks gerados: `useListHistory`, `useGetMyHistory`, `useListHistoryNarratives`, `useCreateHistoryNarrative`, `useUpdateHistoryNarrative`, `useGetHistoryEvent`.
+- Query keys: `getListHistoryQueryKey`, `getGetMyHistoryQueryKey`, `getListHistoryNarrativesQueryKey`.
+
+### T005 — Web Admin ✅
+- `pages/admin/history.tsx`: tabs "Linha do Tempo" (filtros categoria/data) + "Investigações" (CRUD narrativas com dialog).
+- `pages/supervisor/history.tsx`: timeline visual com quick stats por categoria.
+- Rotas em `App.tsx` + links no sidebar de `admin-layout.tsx`.
+
+### T006 — Mobile ✅
+- `app/(tabs)/historico.tsx`: Meu Histórico pessoal (`useGetMyHistory`), EventRow com modal de detalhe.
+- `_layout.tsx`: tab "Histórico" adicionada em NativeTabs (iOS 26) + ClassicTabLayout (Tabs).
+
+### Convenções estabelecidas no Sprint 10
+- **`HistoryNarrativeStatus` cast:** `onValueChange={(v) => setForm(p => ({ ...p, status: v as HistoryNarrativeStatus }))}` — Selects retornam `string`, status exige o enum tipo.
+- **`AdminLayout` exige `title` prop** — sempre fornecer ao usar o componente.
+- **FC-01/FC-02/FC-03/FC-04** (IA + Biblioteca): NÃO implementar ainda.
+
+---
+
 ## Sprint 9 — Avisos / S-08 (COMPLETO, todos os 4 blocos entregues)
 **Objetivo:** "O que mudou e quem precisa saber?" — canal oficial de comunicação operacional.
 
