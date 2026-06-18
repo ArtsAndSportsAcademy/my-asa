@@ -1,10 +1,12 @@
 import { Feather } from "@expo/vector-icons";
 import { useGetUserContext, getGetUserContextQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useState, useCallback } from "react";
 import {
   ActivityIndicator,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,9 +19,16 @@ import { useColors } from "@/hooks/useColors";
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: "Administrador",
-  SUPERVISOR_A: "Supervisor A",
-  SUPERVISOR_B: "Supervisor B",
+  SUPERVISOR_A: "Supervisor Sênior",
+  SUPERVISOR_B: "Supervisor",
   MEMBER: "Membro",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  ACTIVE: "Ativa",
+  DRAFT: "Rascunho",
+  PAUSED: "Pausada",
+  ARCHIVED: "Arquivada",
 };
 
 export default function HomeScreen() {
@@ -27,15 +36,36 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const auth = useAuth();
+  const queryClient = useQueryClient();
 
-  const { data: context, isLoading } = useGetUserContext({
+  const [refreshing, setRefreshing] = useState(false);
+
+  const { data: context, isLoading, refetch } = useGetUserContext({
     query: { queryKey: getGetUserContextQueryKey() },
   });
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch]);
 
   const handleLogout = async () => {
     await auth.signOut();
     router.replace("/login");
   };
+
+  const activeRoles = context?.roles?.filter((r) => r.active) ?? [];
+  const primaryRole = activeRoles[0];
+  const primaryOperation = primaryRole
+    ? context?.operations?.find((op) => op.id === primaryRole.operationId)
+    : null;
+  const primaryGroup = primaryRole?.groupId
+    ? context?.groups?.find((g) => g.id === primaryRole.groupId)
+    : null;
 
   const styles = StyleSheet.create({
     container: {
@@ -66,7 +96,12 @@ export default function HomeScreen() {
       color: colors.foreground,
       marginTop: 4,
     },
-    logoutButton: {
+    headerActions: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    iconButton: {
       padding: 8,
       borderRadius: 8,
       backgroundColor: colors.secondary,
@@ -78,10 +113,25 @@ export default function HomeScreen() {
       borderWidth: 1,
       borderColor: colors.border,
     },
+    activeCard: {
+      backgroundColor: colors.card,
+      borderRadius: 14,
+      padding: 16,
+      borderWidth: 1.5,
+      borderColor: colors.primary,
+    },
     cardTitle: {
       fontSize: 11,
       fontWeight: "700" as const,
       color: colors.mutedForeground,
+      letterSpacing: 1.2,
+      textTransform: "uppercase",
+      marginBottom: 12,
+    },
+    activeCardTitle: {
+      fontSize: 11,
+      fontWeight: "700" as const,
+      color: colors.primary,
       letterSpacing: 1.2,
       textTransform: "uppercase",
       marginBottom: 12,
@@ -111,6 +161,14 @@ export default function HomeScreen() {
       borderRadius: 6,
       paddingHorizontal: 10,
       paddingVertical: 4,
+    },
+    roleBadgePrimary: {
+      backgroundColor: colors.primary + "22",
+      borderRadius: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderWidth: 1,
+      borderColor: colors.primary + "44",
     },
     roleBadgeText: {
       fontSize: 12,
@@ -151,9 +209,26 @@ export default function HomeScreen() {
       alignItems: "center",
       justifyContent: "center",
     },
+    activeContextRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingVertical: 4,
+    },
+    activeContextLabel: {
+      fontSize: 12,
+      color: colors.mutedForeground,
+      width: 80,
+    },
+    activeContextValue: {
+      fontSize: 13,
+      fontWeight: "600" as const,
+      color: colors.foreground,
+      flex: 1,
+    },
   });
 
-  if (isLoading) {
+  if (isLoading && !context) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
         <ActivityIndicator color={colors.primary} size="large" />
@@ -161,11 +236,21 @@ export default function HomeScreen() {
     );
   }
 
-  const primaryRole = context?.roles?.[0];
   const roleLabel = primaryRole ? ROLE_LABELS[primaryRole.role] ?? primaryRole.role : "—";
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor={colors.primary}
+          colors={[colors.primary]}
+        />
+      }
+    >
       <View style={styles.header}>
         <View>
           <Text style={styles.appName}>MyASA</Text>
@@ -173,10 +258,45 @@ export default function HomeScreen() {
             Olá, {context?.user?.name?.split(" ")[0] ?? auth.user?.name?.split(" ")[0] ?? "Usuário"}
           </Text>
         </View>
-        <Pressable style={styles.logoutButton} onPress={handleLogout} testID="button-logout">
-          <Feather name="log-out" size={18} color={colors.mutedForeground} />
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable style={styles.iconButton} onPress={handleRefresh} disabled={refreshing}>
+            <Feather name="refresh-cw" size={16} color={colors.mutedForeground} />
+          </Pressable>
+          <Pressable style={styles.iconButton} onPress={handleLogout} testID="button-logout">
+            <Feather name="log-out" size={16} color={colors.mutedForeground} />
+          </Pressable>
+        </View>
       </View>
+
+      {primaryRole && (
+        <View style={styles.activeCard}>
+          <Text style={styles.activeCardTitle}>Contexto Ativo</Text>
+          <View style={styles.activeContextRow}>
+            <Text style={styles.activeContextLabel}>Papel</Text>
+            <View style={styles.roleBadgePrimary}>
+              <Text style={styles.roleBadgeText}>{roleLabel}</Text>
+            </View>
+          </View>
+          {primaryOperation && (
+            <>
+              <View style={styles.divider} />
+              <View style={styles.activeContextRow}>
+                <Text style={styles.activeContextLabel}>Operação</Text>
+                <Text style={styles.activeContextValue}>{primaryOperation.name}</Text>
+              </View>
+            </>
+          )}
+          {primaryGroup && (
+            <>
+              <View style={styles.divider} />
+              <View style={styles.activeContextRow}>
+                <Text style={styles.activeContextLabel}>Grupo</Text>
+                <Text style={styles.activeContextValue}>{primaryGroup.name}</Text>
+              </View>
+            </>
+          )}
+        </View>
+      )}
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Perfil</Text>
@@ -186,13 +306,28 @@ export default function HomeScreen() {
             {context?.user?.email ?? auth.user?.email ?? "—"}
           </Text>
         </View>
-        <View style={styles.divider} />
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Papel</Text>
-          <View style={styles.roleBadge}>
-            <Text style={styles.roleBadgeText} testID="text-role">{roleLabel}</Text>
-          </View>
-        </View>
+        {activeRoles.length > 0 && (
+          <>
+            <View style={styles.divider} />
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Papéis ({activeRoles.length})</Text>
+              <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                {activeRoles.slice(0, 2).map((r) => (
+                  <View key={r.id} style={styles.roleBadge}>
+                    <Text style={styles.roleBadgeText} testID="text-role">
+                      {ROLE_LABELS[r.role] ?? r.role}
+                    </Text>
+                  </View>
+                ))}
+                {activeRoles.length > 2 && (
+                  <View style={styles.roleBadge}>
+                    <Text style={styles.roleBadgeText}>+{activeRoles.length - 2}</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          </>
+        )}
         {context?.organization && (
           <>
             <View style={styles.divider} />
@@ -215,7 +350,7 @@ export default function HomeScreen() {
             <View key={op.id} style={styles.operationItem} testID={`card-operation-${op.id}`}>
               <Text style={styles.operationName}>{op.name}</Text>
               <Text style={styles.operationStatus}>
-                {op.status === "ACTIVE" ? "Ativa" : "Arquivada"}
+                {STATUS_LABELS[op.status] ?? op.status}
               </Text>
             </View>
           ))

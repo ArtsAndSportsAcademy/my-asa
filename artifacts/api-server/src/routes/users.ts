@@ -1,0 +1,221 @@
+import { Router, type IRouter } from "express";
+import { eq, and, inArray } from "drizzle-orm";
+import bcrypt from "bcryptjs";
+import { db } from "@workspace/db";
+import { usersTable, userRolesTable } from "@workspace/db";
+import { requireAuth, requireOrganization, requireRole } from "../middlewares/auth.js";
+import { recordAudit } from "../lib/audit.service.js";
+import { requestLogger } from "../lib/logger.js";
+
+const router: IRouter = Router();
+
+function safeUser(user: typeof usersTable.$inferSelect) {
+  const { passwordHash: _pw, ...safe } = user;
+  return safe;
+}
+
+router.get("/users", requireAuth, requireOrganization, async (req, res) => {
+  const log = requestLogger("teams", req.requestId, req.correlationId);
+  const { role, sub, organizationId } = req.user!;
+
+  if (role === "MEMBER") {
+    res.status(403).json({ error: "FORBIDDEN", message: "Membros não podem listar usuários" });
+    return;
+  }
+
+  try {
+    if (role === "ADMIN") {
+      const users = await db.query.usersTable.findMany({
+        where: eq(usersTable.organizationId, organizationId),
+      });
+      res.json({ users: users.map(safeUser) });
+      return;
+    }
+
+    const myRoles = await db.query.userRolesTable.findMany({
+      where: and(eq(userRolesTable.userId, sub), eq(userRolesTable.active, true)),
+    });
+    const myGroupIds = myRoles.map((r) => r.groupId).filter(Boolean) as string[];
+
+    if (myGroupIds.length === 0) {
+      res.json({ users: [] });
+      return;
+    }
+
+    const memberRoles = await db.query.userRolesTable.findMany({
+      where: and(eq(userRolesTable.active, true), inArray(userRolesTable.groupId, myGroupIds)),
+    });
+    const memberUserIds = [...new Set(memberRoles.map((r) => r.userId))];
+
+    if (memberUserIds.length === 0) {
+      res.json({ users: [] });
+      return;
+    }
+
+    const users = await db.query.usersTable.findMany({
+      where: and(eq(usersTable.organizationId, organizationId), inArray(usersTable.id, memberUserIds)),
+    });
+    res.json({ users: users.map(safeUser) });
+  } catch (err) {
+    log.error({ err }, "Error listing users");
+    res.status(500).json({ error: "INTERNAL_ERROR" });
+  }
+});
+
+router.get("/users/:id", requireAuth, requireOrganization, async (req, res) => {
+  const log = requestLogger("teams", req.requestId, req.correlationId);
+  const { role, sub, organizationId } = req.user!;
+  const id = req.params.id as string;
+
+  if (role === "MEMBER" && id !== sub) {
+    res.status(403).json({ error: "FORBIDDEN", message: "Membros só podem ver o próprio perfil" });
+    return;
+  }
+
+  try {
+    const user = await db.query.usersTable.findFirst({
+      where: and(eq(usersTable.id, id), eq(usersTable.organizationId, organizationId)),
+    });
+    if (!user) {
+      res.status(404).json({ error: "NOT_FOUND", message: "Usuário não encontrado" });
+      return;
+    }
+    res.json({ user: safeUser(user) });
+  } catch (err) {
+    log.error({ err }, "Error getting user");
+    res.status(500).json({ error: "INTERNAL_ERROR" });
+  }
+});
+
+router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
+  const log = requestLogger("teams", req.requestId, req.correlationId);
+  const { name, email, password } = req.body;
+
+  if (!name?.trim() || !email?.trim() || !password) {
+    res.status(400).json({ error: "BAD_REQUEST", message: "name, email e password são obrigatórios" });
+    return;
+  }
+
+  try {
+    const normalizedEmail = (email as string).toLowerCase().trim();
+    const existing = await db.query.usersTable.findFirst({
+      where: eq(usersTable.email, normalizedEmail),
+    });
+    if (existing) {
+      res.status(409).json({ error: "CONFLICT", message: "E-mail já cadastrado" });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(password as string, 12);
+    const [newUser] = await db
+      .insert(usersTable)
+      .values({
+        organizationId: req.user!.organizationId,
+        name: (name as string).trim(),
+        email: normalizedEmail,
+        passwordHash,
+        status: "ACTIVE",
+      })
+      .returning();
+
+    await recordAudit({
+      actorId: req.user!.sub,
+      action: "USER_CREATED",
+      targetResource: `user:${newUser!.id}`,
+      metadata: { email: normalizedEmail },
+    });
+
+    log.info({ userId: newUser!.id }, "User created");
+    res.status(201).json({ user: safeUser(newUser!) });
+  } catch (err) {
+    log.error({ err }, "Error creating user");
+    res.status(500).json({ error: "INTERNAL_ERROR" });
+  }
+});
+
+router.patch("/users/:id", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
+  const log = requestLogger("teams", req.requestId, req.correlationId);
+  const id = req.params.id as string;
+  const { name, email } = req.body;
+
+  try {
+    const user = await db.query.usersTable.findFirst({
+      where: and(eq(usersTable.id, id), eq(usersTable.organizationId, req.user!.organizationId)),
+    });
+    if (!user) {
+      res.status(404).json({ error: "NOT_FOUND", message: "Usuário não encontrado" });
+      return;
+    }
+
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (name?.trim()) updates.name = (name as string).trim();
+    if (email?.trim()) {
+      const normalizedEmail = (email as string).toLowerCase().trim();
+      const existing = await db.query.usersTable.findFirst({ where: eq(usersTable.email, normalizedEmail) });
+      if (existing && existing.id !== id) {
+        res.status(409).json({ error: "CONFLICT", message: "E-mail já cadastrado" });
+        return;
+      }
+      updates.email = normalizedEmail;
+    }
+
+    const [updated] = await db
+      .update(usersTable)
+      .set(updates as { name?: string; email?: string; updatedAt?: Date })
+      .where(eq(usersTable.id, id))
+      .returning();
+
+    await recordAudit({ actorId: req.user!.sub, action: "USER_UPDATED", targetResource: `user:${id}` });
+    res.json({ user: safeUser(updated!) });
+  } catch (err) {
+    log.error({ err }, "Error updating user");
+    res.status(500).json({ error: "INTERNAL_ERROR" });
+  }
+});
+
+router.patch("/users/:id/status", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
+  const log = requestLogger("teams", req.requestId, req.correlationId);
+  const id = req.params.id as string;
+  const { status } = req.body;
+  const VALID = ["ACTIVE", "INACTIVE"] as const;
+
+  if (!VALID.includes(status)) {
+    res.status(400).json({ error: "BAD_REQUEST", message: `status deve ser: ${VALID.join(", ")}` });
+    return;
+  }
+  if (id === req.user!.sub) {
+    res.status(400).json({ error: "BAD_REQUEST", message: "Não é possível alterar o próprio status" });
+    return;
+  }
+
+  try {
+    const user = await db.query.usersTable.findFirst({
+      where: and(eq(usersTable.id, id), eq(usersTable.organizationId, req.user!.organizationId)),
+    });
+    if (!user) {
+      res.status(404).json({ error: "NOT_FOUND" });
+      return;
+    }
+
+    const [updated] = await db
+      .update(usersTable)
+      .set({ status: status as "ACTIVE" | "INACTIVE", updatedAt: new Date() })
+      .where(eq(usersTable.id, id))
+      .returning();
+
+    await recordAudit({
+      actorId: req.user!.sub,
+      action: "USER_STATUS_CHANGED",
+      targetResource: `user:${id}`,
+      metadata: { from: user.status, to: status },
+    });
+
+    log.info({ userId: id, from: user.status, to: status }, "User status changed");
+    res.json({ user: safeUser(updated!) });
+  } catch (err) {
+    log.error({ err }, "Error updating user status");
+    res.status(500).json({ error: "INTERNAL_ERROR" });
+  }
+});
+
+export default router;

@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * MyASA 2.0 API
- * OpenAPI spec version: 0.2.0
+ * OpenAPI spec version: 0.3.0
  */
 export interface HealthStatus {
   status: string;
@@ -29,6 +29,8 @@ export interface User {
   photoUrl?: string | null;
   status: UserStatus;
   organizationId: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export type UserRoleRole = typeof UserRoleRole[keyof typeof UserRoleRole];
@@ -59,7 +61,9 @@ export type OperationStatus = typeof OperationStatus[keyof typeof OperationStatu
 
 
 export const OperationStatus = {
+  DRAFT: 'DRAFT',
   ACTIVE: 'ACTIVE',
+  PAUSED: 'PAUSED',
   ARCHIVED: 'ARCHIVED',
 } as const;
 
@@ -68,13 +72,27 @@ export interface Operation {
   name: string;
   organizationId: string;
   status: OperationStatus;
+  createdAt?: string;
+  updatedAt?: string;
 }
+
+export type OperationalGroupStatus = typeof OperationalGroupStatus[keyof typeof OperationalGroupStatus];
+
+
+export const OperationalGroupStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  ARCHIVED: 'ARCHIVED',
+} as const;
 
 export interface OperationalGroup {
   id: string;
   name: string;
   operationId: string;
+  status: OperationalGroupStatus;
   supervisorId?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface LoginRequest {
@@ -118,6 +136,122 @@ export interface UserContext {
   groups: OperationalGroup[];
 }
 
+export interface UserCreate {
+  name: string;
+  email: string;
+  /** @minLength 6 */
+  password: string;
+}
+
+export interface UserUpdate {
+  name?: string;
+  email?: string;
+}
+
+export type UserStatusUpdateStatus = typeof UserStatusUpdateStatus[keyof typeof UserStatusUpdateStatus];
+
+
+export const UserStatusUpdateStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface UserStatusUpdate {
+  status: UserStatusUpdateStatus;
+}
+
+export type RoleCreateRole = typeof RoleCreateRole[keyof typeof RoleCreateRole];
+
+
+export const RoleCreateRole = {
+  ADMIN: 'ADMIN',
+  SUPERVISOR_A: 'SUPERVISOR_A',
+  SUPERVISOR_B: 'SUPERVISOR_B',
+  MEMBER: 'MEMBER',
+} as const;
+
+export interface RoleCreate {
+  operationId: string;
+  groupId?: string | null;
+  role: RoleCreateRole;
+}
+
+export type OperationCreateStatus = typeof OperationCreateStatus[keyof typeof OperationCreateStatus];
+
+
+export const OperationCreateStatus = {
+  DRAFT: 'DRAFT',
+  ACTIVE: 'ACTIVE',
+  PAUSED: 'PAUSED',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export interface OperationCreate {
+  name: string;
+  status?: OperationCreateStatus;
+}
+
+export type OperationUpdateHealthThresholds = { [key: string]: unknown } | null;
+
+export interface OperationUpdate {
+  name?: string;
+  healthThresholds?: OperationUpdateHealthThresholds;
+}
+
+export type OperationStatusUpdateStatus = typeof OperationStatusUpdateStatus[keyof typeof OperationStatusUpdateStatus];
+
+
+export const OperationStatusUpdateStatus = {
+  DRAFT: 'DRAFT',
+  ACTIVE: 'ACTIVE',
+  PAUSED: 'PAUSED',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export interface OperationStatusUpdate {
+  status: OperationStatusUpdateStatus;
+}
+
+export type GroupCreateStatus = typeof GroupCreateStatus[keyof typeof GroupCreateStatus];
+
+
+export const GroupCreateStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export interface GroupCreate {
+  name: string;
+  operationId: string;
+  status?: GroupCreateStatus;
+}
+
+export interface GroupUpdate {
+  name?: string;
+}
+
+export type GroupStatusUpdateStatus = typeof GroupStatusUpdateStatus[keyof typeof GroupStatusUpdateStatus];
+
+
+export const GroupStatusUpdateStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export interface GroupStatusUpdate {
+  status: GroupStatusUpdateStatus;
+}
+
+export interface GroupMemberAdd {
+  userId: string;
+}
+
+export interface GroupSupervisorAdd {
+  userId: string;
+}
+
 /**
  * Bad request
  */
@@ -133,11 +267,99 @@ export type UnauthorizedResponse = ErrorResponse;
  */
 export type ForbiddenResponse = ErrorResponse;
 
+/**
+ * Not found
+ */
+export type NotFoundResponse = ErrorResponse;
+
+/**
+ * Conflict
+ */
+export type ConflictResponse = ErrorResponse;
+
+/**
+ * Unprocessable entity
+ */
+export type UnprocessableEntityResponse = ErrorResponse;
+
 export type GetOperations200 = {
   operations: Operation[];
 };
 
+export type CreateOperation201 = {
+  operation: Operation;
+};
+
+export type GetOperation200 = {
+  operation: Operation;
+};
+
+export type UpdateOperation200 = {
+  operation: Operation;
+};
+
+export type UpdateOperationStatus200 = {
+  operation: Operation;
+};
+
 export type GetOperationalGroups200 = {
   groups: OperationalGroup[];
+};
+
+export type CreateOperationalGroup201 = {
+  group: OperationalGroup;
+};
+
+export type GetOperationalGroup200 = {
+  group: OperationalGroup;
+};
+
+export type UpdateOperationalGroup200 = {
+  group: OperationalGroup;
+};
+
+export type UpdateOperationalGroupStatus200 = {
+  group: OperationalGroup;
+};
+
+export type AddGroupMember201 = {
+  role: UserRole;
+};
+
+export type AddGroupSupervisor201 = {
+  role: UserRole;
+};
+
+export type RemoveGroupSupervisor200 = {
+  success: boolean;
+  warning?: string;
+};
+
+export type ListUsers200 = {
+  users: User[];
+};
+
+export type CreateUser201 = {
+  user: User;
+};
+
+export type GetUser200 = {
+  user: User;
+};
+
+export type UpdateUser200 = {
+  user: User;
+};
+
+export type UpdateUserStatus200 = {
+  user: User;
+};
+
+export type ListUserRoles200 = {
+  roles: UserRole[];
+};
+
+export type AddUserRole201 = {
+  role: UserRole;
 };
 

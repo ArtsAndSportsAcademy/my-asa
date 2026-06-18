@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * MyASA 2.0 API
- * OpenAPI spec version: 0.2.0
+ * OpenAPI spec version: 0.3.0
  */
 
 export interface Organization {

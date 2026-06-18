@@ -3,13 +3,15 @@
  * Do not edit manually.
  * Api
  * MyASA 2.0 API
- * OpenAPI spec version: 0.2.0
+ * OpenAPI spec version: 0.3.0
  */
 
 export type OperationStatus = typeof OperationStatus[keyof typeof OperationStatus];
 
 
 export const OperationStatus = {
+  DRAFT: 'DRAFT',
   ACTIVE: 'ACTIVE',
+  PAUSED: 'PAUSED',
   ARCHIVED: 'ARCHIVED',
 } as const;

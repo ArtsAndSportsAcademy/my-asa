@@ -3,7 +3,8 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./identity.js";
 
-export const operationStatusEnum = pgEnum("operation_status", ["ACTIVE", "ARCHIVED"]);
+export const operationStatusEnum = pgEnum("operation_status", ["DRAFT", "ACTIVE", "PAUSED", "ARCHIVED"]);
+export const groupStatusEnum = pgEnum("group_status", ["ACTIVE", "INACTIVE", "ARCHIVED"]);
 
 export const organizationsTable = pgTable("organizations", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -26,6 +27,7 @@ export const operationalGroupsTable = pgTable("operational_groups", {
   id: uuid("id").primaryKey().defaultRandom(),
   operationId: uuid("operation_id").notNull().references(() => operationsTable.id),
   name: text("name").notNull(),
+  status: groupStatusEnum("status").notNull().default("ACTIVE"),
   supervisorId: uuid("supervisor_id").references(() => usersTable.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

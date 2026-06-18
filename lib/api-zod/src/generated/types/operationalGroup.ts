@@ -3,12 +3,16 @@
  * Do not edit manually.
  * Api
  * MyASA 2.0 API
- * OpenAPI spec version: 0.2.0
+ * OpenAPI spec version: 0.3.0
  */
+import type { OperationalGroupStatus } from './operationalGroupStatus';
 
 export interface OperationalGroup {
   id: string;
   name: string;
   operationId: string;
+  status: OperationalGroupStatus;
   supervisorId?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }

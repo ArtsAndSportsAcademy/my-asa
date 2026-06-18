@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * MyASA 2.0 API
- * OpenAPI spec version: 0.2.0
+ * OpenAPI spec version: 0.3.0
  */
 import * as zod from 'zod';
 
@@ -33,7 +33,9 @@ export const LoginResponse = zod.object({
   "email": zod.string(),
   "photoUrl": zod.string().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
-  "organizationId": zod.string()
+  "organizationId": zod.string(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
 }),
   "roles": zod.array(zod.object({
   "id": zod.string(),
@@ -77,7 +79,9 @@ export const GetMeResponse = zod.object({
   "email": zod.string(),
   "photoUrl": zod.string().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
-  "organizationId": zod.string()
+  "organizationId": zod.string(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
 }),
   "roles": zod.array(zod.object({
   "id": zod.string(),
@@ -103,13 +107,18 @@ export const GetCurrentOrganizationResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "organizationId": zod.string(),
-  "status": zod.enum(['ACTIVE', 'ARCHIVED'])
+  "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
 })),
   "groups": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "operationId": zod.string(),
-  "supervisorId": zod.string().nullish()
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED']),
+  "supervisorId": zod.string().nullish(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
 }))
 })
 
@@ -122,8 +131,87 @@ export const GetOperationsResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "organizationId": zod.string(),
-  "status": zod.enum(['ACTIVE', 'ARCHIVED'])
+  "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
 }))
+})
+
+
+/**
+ * @summary Create a new operation (Admin only)
+ */
+export const CreateOperationBody = zod.object({
+  "name": zod.string(),
+  "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']).optional()
+})
+
+
+/**
+ * @summary Get a single operation
+ */
+export const GetOperationParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetOperationResponse = zod.object({
+  "operation": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "organizationId": zod.string(),
+  "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})
+})
+
+
+/**
+ * @summary Update operation name or health thresholds (Admin only)
+ */
+export const UpdateOperationParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateOperationBody = zod.object({
+  "name": zod.string().optional(),
+  "healthThresholds": zod.object({
+
+}).passthrough().nullish()
+})
+
+export const UpdateOperationResponse = zod.object({
+  "operation": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "organizationId": zod.string(),
+  "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})
+})
+
+
+/**
+ * @summary Change operation status (Admin only)
+ */
+export const UpdateOperationStatusParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateOperationStatusBody = zod.object({
+  "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED'])
+})
+
+export const UpdateOperationStatusResponse = zod.object({
+  "operation": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "organizationId": zod.string(),
+  "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})
 })
 
 
@@ -135,8 +223,136 @@ export const GetOperationalGroupsResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "operationId": zod.string(),
-  "supervisorId": zod.string().nullish()
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED']),
+  "supervisorId": zod.string().nullish(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
 }))
+})
+
+
+/**
+ * @summary Create a new group (Admin only)
+ */
+export const CreateOperationalGroupBody = zod.object({
+  "name": zod.string(),
+  "operationId": zod.string(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED']).optional()
+})
+
+
+/**
+ * @summary Get a single group
+ */
+export const GetOperationalGroupParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetOperationalGroupResponse = zod.object({
+  "group": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "operationId": zod.string(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED']),
+  "supervisorId": zod.string().nullish(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})
+})
+
+
+/**
+ * @summary Update group name (Admin only)
+ */
+export const UpdateOperationalGroupParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateOperationalGroupBody = zod.object({
+  "name": zod.string().optional()
+})
+
+export const UpdateOperationalGroupResponse = zod.object({
+  "group": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "operationId": zod.string(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED']),
+  "supervisorId": zod.string().nullish(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})
+})
+
+
+/**
+ * @summary Change group status (Admin only)
+ */
+export const UpdateOperationalGroupStatusParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateOperationalGroupStatusBody = zod.object({
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED'])
+})
+
+export const UpdateOperationalGroupStatusResponse = zod.object({
+  "group": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "operationId": zod.string(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED']),
+  "supervisorId": zod.string().nullish(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})
+})
+
+
+/**
+ * @summary Add a member to a group (Admin only)
+ */
+export const AddGroupMemberParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const AddGroupMemberBody = zod.object({
+  "userId": zod.string()
+})
+
+
+/**
+ * @summary Remove a member from a group (Admin only)
+ */
+export const RemoveGroupMemberParams = zod.object({
+  "id": zod.coerce.string(),
+  "userId": zod.coerce.string()
+})
+
+
+/**
+ * @summary Add a supervisor to a group (Admin only)
+ */
+export const AddGroupSupervisorParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const AddGroupSupervisorBody = zod.object({
+  "userId": zod.string()
+})
+
+
+/**
+ * @summary Remove a supervisor from a group (Admin only)
+ */
+export const RemoveGroupSupervisorParams = zod.object({
+  "id": zod.coerce.string(),
+  "userId": zod.coerce.string()
+})
+
+export const RemoveGroupSupervisorResponse = zod.object({
+  "success": zod.boolean(),
+  "warning": zod.string().optional()
 })
 
 
@@ -150,7 +366,9 @@ export const GetUserContextResponse = zod.object({
   "email": zod.string(),
   "photoUrl": zod.string().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
-  "organizationId": zod.string()
+  "organizationId": zod.string(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
 }),
   "roles": zod.array(zod.object({
   "id": zod.string(),
@@ -168,14 +386,164 @@ export const GetUserContextResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "organizationId": zod.string(),
-  "status": zod.enum(['ACTIVE', 'ARCHIVED'])
+  "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
 })),
   "groups": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "operationId": zod.string(),
-  "supervisorId": zod.string().nullish()
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED']),
+  "supervisorId": zod.string().nullish(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
 }))
+})
+
+
+/**
+ * @summary List users (Admin only: all in org; Supervisor only: scoped to groups)
+ */
+export const ListUsersResponse = zod.object({
+  "users": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "photoUrl": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "organizationId": zod.string(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+}))
+})
+
+
+/**
+ * @summary Create a new user (Admin only)
+ */
+export const createUserBodyPasswordMin = 6;
+
+
+
+export const CreateUserBody = zod.object({
+  "name": zod.string(),
+  "email": zod.string().email(),
+  "password": zod.string().min(createUserBodyPasswordMin)
+})
+
+
+/**
+ * @summary Get a single user
+ */
+export const GetUserParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetUserResponse = zod.object({
+  "user": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "photoUrl": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "organizationId": zod.string(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})
+})
+
+
+/**
+ * @summary Update user name or email (Admin only)
+ */
+export const UpdateUserParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateUserBody = zod.object({
+  "name": zod.string().optional(),
+  "email": zod.string().email().optional()
+})
+
+export const UpdateUserResponse = zod.object({
+  "user": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "photoUrl": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "organizationId": zod.string(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})
+})
+
+
+/**
+ * @summary Change user status (Admin only)
+ */
+export const UpdateUserStatusParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateUserStatusBody = zod.object({
+  "status": zod.enum(['ACTIVE', 'INACTIVE'])
+})
+
+export const UpdateUserStatusResponse = zod.object({
+  "user": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "photoUrl": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "organizationId": zod.string(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})
+})
+
+
+/**
+ * @summary List active roles for a user
+ */
+export const ListUserRolesParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const ListUserRolesResponse = zod.object({
+  "roles": zod.array(zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "operationId": zod.string(),
+  "groupId": zod.string().nullish(),
+  "role": zod.enum(['ADMIN', 'SUPERVISOR_A', 'SUPERVISOR_B', 'MEMBER']),
+  "active": zod.boolean()
+}))
+})
+
+
+/**
+ * @summary Assign a role to a user (Admin only)
+ */
+export const AddUserRoleParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const AddUserRoleBody = zod.object({
+  "operationId": zod.string(),
+  "groupId": zod.string().nullish(),
+  "role": zod.enum(['ADMIN', 'SUPERVISOR_A', 'SUPERVISOR_B', 'MEMBER'])
+})
+
+
+/**
+ * @summary Remove a role from a user (Admin only)
+ */
+export const RemoveUserRoleParams = zod.object({
+  "id": zod.coerce.string(),
+  "roleId": zod.coerce.string()
 })
 
 

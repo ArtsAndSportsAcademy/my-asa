@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * MyASA 2.0 API
- * OpenAPI spec version: 0.2.0
+ * OpenAPI spec version: 0.3.0
  */
 import {
   useMutation,
@@ -20,18 +20,52 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AddGroupMember201,
+  AddGroupSupervisor201,
+  AddUserRole201,
   BadRequestResponse,
+  ConflictResponse,
+  CreateOperation201,
+  CreateOperationalGroup201,
+  CreateUser201,
   CurrentOrganization,
+  ForbiddenResponse,
+  GetOperation200,
+  GetOperationalGroup200,
   GetOperationalGroups200,
   GetOperations200,
+  GetUser200,
+  GroupCreate,
+  GroupMemberAdd,
+  GroupStatusUpdate,
+  GroupSupervisorAdd,
+  GroupUpdate,
   HealthStatus,
+  ListUserRoles200,
+  ListUsers200,
   LoginRequest,
   LoginResult,
   MeResponse,
+  NotFoundResponse,
+  OperationCreate,
+  OperationStatusUpdate,
+  OperationUpdate,
   RefreshTokenRequest,
+  RemoveGroupSupervisor200,
+  RoleCreate,
   TokensResponse,
   UnauthorizedResponse,
-  UserContext
+  UnprocessableEntityResponse,
+  UpdateOperation200,
+  UpdateOperationStatus200,
+  UpdateOperationalGroup200,
+  UpdateOperationalGroupStatus200,
+  UpdateUser200,
+  UpdateUserStatus200,
+  UserContext,
+  UserCreate,
+  UserStatusUpdate,
+  UserUpdate
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -567,6 +601,298 @@ export function useGetOperations<TData = Awaited<ReturnType<typeof getOperations
 
 
 
+export const getCreateOperationUrl = () => {
+
+
+
+
+  return `/api/operations`
+}
+
+/**
+ * @summary Create a new operation (Admin only)
+ */
+export const createOperation = async (operationCreate: OperationCreate, options?: RequestInit): Promise<CreateOperation201> => {
+
+  return customFetch<CreateOperation201>(getCreateOperationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      operationCreate,)
+  }
+);}
+
+
+
+
+export const getCreateOperationMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOperation>>, TError,{data: BodyType<OperationCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createOperation>>, TError,{data: BodyType<OperationCreate>}, TContext> => {
+
+const mutationKey = ['createOperation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createOperation>>, {data: BodyType<OperationCreate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createOperation(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateOperationMutationResult = NonNullable<Awaited<ReturnType<typeof createOperation>>>
+    export type CreateOperationMutationBody = BodyType<OperationCreate>
+    export type CreateOperationMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>
+
+    /**
+ * @summary Create a new operation (Admin only)
+ */
+export const useCreateOperation = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOperation>>, TError,{data: BodyType<OperationCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createOperation>>,
+        TError,
+        {data: BodyType<OperationCreate>},
+        TContext
+      > => {
+      return useMutation(getCreateOperationMutationOptions(options));
+    }
+
+export const getGetOperationUrl = (id: string,) => {
+
+
+
+
+  return `/api/operations/${id}`
+}
+
+/**
+ * @summary Get a single operation
+ */
+export const getOperation = async (id: string, options?: RequestInit): Promise<GetOperation200> => {
+
+  return customFetch<GetOperation200>(getGetOperationUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOperationQueryKey = (id: string,) => {
+    return [
+    `/api/operations/${id}`
+    ] as const;
+    }
+
+
+export const getGetOperationQueryOptions = <TData = Awaited<ReturnType<typeof getOperation>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOperation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOperationQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOperation>>> = ({ signal }) => getOperation(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOperation>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOperationQueryResult = NonNullable<Awaited<ReturnType<typeof getOperation>>>
+export type GetOperationQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+
+/**
+ * @summary Get a single operation
+ */
+
+export function useGetOperation<TData = Awaited<ReturnType<typeof getOperation>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOperation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOperationQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpdateOperationUrl = (id: string,) => {
+
+
+
+
+  return `/api/operations/${id}`
+}
+
+/**
+ * @summary Update operation name or health thresholds (Admin only)
+ */
+export const updateOperation = async (id: string,
+    operationUpdate: OperationUpdate, options?: RequestInit): Promise<UpdateOperation200> => {
+
+  return customFetch<UpdateOperation200>(getUpdateOperationUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      operationUpdate,)
+  }
+);}
+
+
+
+
+export const getUpdateOperationMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOperation>>, TError,{id: string;data: BodyType<OperationUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateOperation>>, TError,{id: string;data: BodyType<OperationUpdate>}, TContext> => {
+
+const mutationKey = ['updateOperation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateOperation>>, {id: string;data: BodyType<OperationUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateOperation(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateOperationMutationResult = NonNullable<Awaited<ReturnType<typeof updateOperation>>>
+    export type UpdateOperationMutationBody = BodyType<OperationUpdate>
+    export type UpdateOperationMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Update operation name or health thresholds (Admin only)
+ */
+export const useUpdateOperation = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOperation>>, TError,{id: string;data: BodyType<OperationUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateOperation>>,
+        TError,
+        {id: string;data: BodyType<OperationUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateOperationMutationOptions(options));
+    }
+
+export const getUpdateOperationStatusUrl = (id: string,) => {
+
+
+
+
+  return `/api/operations/${id}/status`
+}
+
+/**
+ * @summary Change operation status (Admin only)
+ */
+export const updateOperationStatus = async (id: string,
+    operationStatusUpdate: OperationStatusUpdate, options?: RequestInit): Promise<UpdateOperationStatus200> => {
+
+  return customFetch<UpdateOperationStatus200>(getUpdateOperationStatusUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      operationStatusUpdate,)
+  }
+);}
+
+
+
+
+export const getUpdateOperationStatusMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOperationStatus>>, TError,{id: string;data: BodyType<OperationStatusUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateOperationStatus>>, TError,{id: string;data: BodyType<OperationStatusUpdate>}, TContext> => {
+
+const mutationKey = ['updateOperationStatus'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateOperationStatus>>, {id: string;data: BodyType<OperationStatusUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateOperationStatus(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateOperationStatusMutationResult = NonNullable<Awaited<ReturnType<typeof updateOperationStatus>>>
+    export type UpdateOperationStatusMutationBody = BodyType<OperationStatusUpdate>
+    export type UpdateOperationStatusMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Change operation status (Admin only)
+ */
+export const useUpdateOperationStatus = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOperationStatus>>, TError,{id: string;data: BodyType<OperationStatusUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateOperationStatus>>,
+        TError,
+        {id: string;data: BodyType<OperationStatusUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateOperationStatusMutationOptions(options));
+    }
+
 export const getGetOperationalGroupsUrl = () => {
 
 
@@ -644,6 +970,586 @@ export function useGetOperationalGroups<TData = Awaited<ReturnType<typeof getOpe
 
 
 
+export const getCreateOperationalGroupUrl = () => {
+
+
+
+
+  return `/api/operational-groups`
+}
+
+/**
+ * @summary Create a new group (Admin only)
+ */
+export const createOperationalGroup = async (groupCreate: GroupCreate, options?: RequestInit): Promise<CreateOperationalGroup201> => {
+
+  return customFetch<CreateOperationalGroup201>(getCreateOperationalGroupUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      groupCreate,)
+  }
+);}
+
+
+
+
+export const getCreateOperationalGroupMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | UnprocessableEntityResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOperationalGroup>>, TError,{data: BodyType<GroupCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createOperationalGroup>>, TError,{data: BodyType<GroupCreate>}, TContext> => {
+
+const mutationKey = ['createOperationalGroup'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createOperationalGroup>>, {data: BodyType<GroupCreate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createOperationalGroup(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateOperationalGroupMutationResult = NonNullable<Awaited<ReturnType<typeof createOperationalGroup>>>
+    export type CreateOperationalGroupMutationBody = BodyType<GroupCreate>
+    export type CreateOperationalGroupMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | UnprocessableEntityResponse>
+
+    /**
+ * @summary Create a new group (Admin only)
+ */
+export const useCreateOperationalGroup = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | UnprocessableEntityResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOperationalGroup>>, TError,{data: BodyType<GroupCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createOperationalGroup>>,
+        TError,
+        {data: BodyType<GroupCreate>},
+        TContext
+      > => {
+      return useMutation(getCreateOperationalGroupMutationOptions(options));
+    }
+
+export const getGetOperationalGroupUrl = (id: string,) => {
+
+
+
+
+  return `/api/operational-groups/${id}`
+}
+
+/**
+ * @summary Get a single group
+ */
+export const getOperationalGroup = async (id: string, options?: RequestInit): Promise<GetOperationalGroup200> => {
+
+  return customFetch<GetOperationalGroup200>(getGetOperationalGroupUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOperationalGroupQueryKey = (id: string,) => {
+    return [
+    `/api/operational-groups/${id}`
+    ] as const;
+    }
+
+
+export const getGetOperationalGroupQueryOptions = <TData = Awaited<ReturnType<typeof getOperationalGroup>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOperationalGroup>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOperationalGroupQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOperationalGroup>>> = ({ signal }) => getOperationalGroup(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOperationalGroup>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOperationalGroupQueryResult = NonNullable<Awaited<ReturnType<typeof getOperationalGroup>>>
+export type GetOperationalGroupQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+
+/**
+ * @summary Get a single group
+ */
+
+export function useGetOperationalGroup<TData = Awaited<ReturnType<typeof getOperationalGroup>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOperationalGroup>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOperationalGroupQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpdateOperationalGroupUrl = (id: string,) => {
+
+
+
+
+  return `/api/operational-groups/${id}`
+}
+
+/**
+ * @summary Update group name (Admin only)
+ */
+export const updateOperationalGroup = async (id: string,
+    groupUpdate: GroupUpdate, options?: RequestInit): Promise<UpdateOperationalGroup200> => {
+
+  return customFetch<UpdateOperationalGroup200>(getUpdateOperationalGroupUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      groupUpdate,)
+  }
+);}
+
+
+
+
+export const getUpdateOperationalGroupMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOperationalGroup>>, TError,{id: string;data: BodyType<GroupUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateOperationalGroup>>, TError,{id: string;data: BodyType<GroupUpdate>}, TContext> => {
+
+const mutationKey = ['updateOperationalGroup'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateOperationalGroup>>, {id: string;data: BodyType<GroupUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateOperationalGroup(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateOperationalGroupMutationResult = NonNullable<Awaited<ReturnType<typeof updateOperationalGroup>>>
+    export type UpdateOperationalGroupMutationBody = BodyType<GroupUpdate>
+    export type UpdateOperationalGroupMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Update group name (Admin only)
+ */
+export const useUpdateOperationalGroup = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOperationalGroup>>, TError,{id: string;data: BodyType<GroupUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateOperationalGroup>>,
+        TError,
+        {id: string;data: BodyType<GroupUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateOperationalGroupMutationOptions(options));
+    }
+
+export const getUpdateOperationalGroupStatusUrl = (id: string,) => {
+
+
+
+
+  return `/api/operational-groups/${id}/status`
+}
+
+/**
+ * @summary Change group status (Admin only)
+ */
+export const updateOperationalGroupStatus = async (id: string,
+    groupStatusUpdate: GroupStatusUpdate, options?: RequestInit): Promise<UpdateOperationalGroupStatus200> => {
+
+  return customFetch<UpdateOperationalGroupStatus200>(getUpdateOperationalGroupStatusUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      groupStatusUpdate,)
+  }
+);}
+
+
+
+
+export const getUpdateOperationalGroupStatusMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOperationalGroupStatus>>, TError,{id: string;data: BodyType<GroupStatusUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateOperationalGroupStatus>>, TError,{id: string;data: BodyType<GroupStatusUpdate>}, TContext> => {
+
+const mutationKey = ['updateOperationalGroupStatus'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateOperationalGroupStatus>>, {id: string;data: BodyType<GroupStatusUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateOperationalGroupStatus(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateOperationalGroupStatusMutationResult = NonNullable<Awaited<ReturnType<typeof updateOperationalGroupStatus>>>
+    export type UpdateOperationalGroupStatusMutationBody = BodyType<GroupStatusUpdate>
+    export type UpdateOperationalGroupStatusMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse>
+
+    /**
+ * @summary Change group status (Admin only)
+ */
+export const useUpdateOperationalGroupStatus = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | UnprocessableEntityResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOperationalGroupStatus>>, TError,{id: string;data: BodyType<GroupStatusUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateOperationalGroupStatus>>,
+        TError,
+        {id: string;data: BodyType<GroupStatusUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateOperationalGroupStatusMutationOptions(options));
+    }
+
+export const getAddGroupMemberUrl = (id: string,) => {
+
+
+
+
+  return `/api/operational-groups/${id}/members`
+}
+
+/**
+ * @summary Add a member to a group (Admin only)
+ */
+export const addGroupMember = async (id: string,
+    groupMemberAdd: GroupMemberAdd, options?: RequestInit): Promise<AddGroupMember201> => {
+
+  return customFetch<AddGroupMember201>(getAddGroupMemberUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      groupMemberAdd,)
+  }
+);}
+
+
+
+
+export const getAddGroupMemberMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addGroupMember>>, TError,{id: string;data: BodyType<GroupMemberAdd>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addGroupMember>>, TError,{id: string;data: BodyType<GroupMemberAdd>}, TContext> => {
+
+const mutationKey = ['addGroupMember'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addGroupMember>>, {id: string;data: BodyType<GroupMemberAdd>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  addGroupMember(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddGroupMemberMutationResult = NonNullable<Awaited<ReturnType<typeof addGroupMember>>>
+    export type AddGroupMemberMutationBody = BodyType<GroupMemberAdd>
+    export type AddGroupMemberMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Add a member to a group (Admin only)
+ */
+export const useAddGroupMember = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addGroupMember>>, TError,{id: string;data: BodyType<GroupMemberAdd>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addGroupMember>>,
+        TError,
+        {id: string;data: BodyType<GroupMemberAdd>},
+        TContext
+      > => {
+      return useMutation(getAddGroupMemberMutationOptions(options));
+    }
+
+export const getRemoveGroupMemberUrl = (id: string,
+    userId: string,) => {
+
+
+
+
+  return `/api/operational-groups/${id}/members/${userId}`
+}
+
+/**
+ * @summary Remove a member from a group (Admin only)
+ */
+export const removeGroupMember = async (id: string,
+    userId: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getRemoveGroupMemberUrl(id,userId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getRemoveGroupMemberMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeGroupMember>>, TError,{id: string;userId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeGroupMember>>, TError,{id: string;userId: string}, TContext> => {
+
+const mutationKey = ['removeGroupMember'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeGroupMember>>, {id: string;userId: string}> = (props) => {
+          const {id,userId} = props ?? {};
+
+          return  removeGroupMember(id,userId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveGroupMemberMutationResult = NonNullable<Awaited<ReturnType<typeof removeGroupMember>>>
+
+    export type RemoveGroupMemberMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Remove a member from a group (Admin only)
+ */
+export const useRemoveGroupMember = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeGroupMember>>, TError,{id: string;userId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof removeGroupMember>>,
+        TError,
+        {id: string;userId: string},
+        TContext
+      > => {
+      return useMutation(getRemoveGroupMemberMutationOptions(options));
+    }
+
+export const getAddGroupSupervisorUrl = (id: string,) => {
+
+
+
+
+  return `/api/operational-groups/${id}/supervisors`
+}
+
+/**
+ * @summary Add a supervisor to a group (Admin only)
+ */
+export const addGroupSupervisor = async (id: string,
+    groupSupervisorAdd: GroupSupervisorAdd, options?: RequestInit): Promise<AddGroupSupervisor201> => {
+
+  return customFetch<AddGroupSupervisor201>(getAddGroupSupervisorUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      groupSupervisorAdd,)
+  }
+);}
+
+
+
+
+export const getAddGroupSupervisorMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addGroupSupervisor>>, TError,{id: string;data: BodyType<GroupSupervisorAdd>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addGroupSupervisor>>, TError,{id: string;data: BodyType<GroupSupervisorAdd>}, TContext> => {
+
+const mutationKey = ['addGroupSupervisor'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addGroupSupervisor>>, {id: string;data: BodyType<GroupSupervisorAdd>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  addGroupSupervisor(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddGroupSupervisorMutationResult = NonNullable<Awaited<ReturnType<typeof addGroupSupervisor>>>
+    export type AddGroupSupervisorMutationBody = BodyType<GroupSupervisorAdd>
+    export type AddGroupSupervisorMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Add a supervisor to a group (Admin only)
+ */
+export const useAddGroupSupervisor = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addGroupSupervisor>>, TError,{id: string;data: BodyType<GroupSupervisorAdd>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addGroupSupervisor>>,
+        TError,
+        {id: string;data: BodyType<GroupSupervisorAdd>},
+        TContext
+      > => {
+      return useMutation(getAddGroupSupervisorMutationOptions(options));
+    }
+
+export const getRemoveGroupSupervisorUrl = (id: string,
+    userId: string,) => {
+
+
+
+
+  return `/api/operational-groups/${id}/supervisors/${userId}`
+}
+
+/**
+ * @summary Remove a supervisor from a group (Admin only)
+ */
+export const removeGroupSupervisor = async (id: string,
+    userId: string, options?: RequestInit): Promise<RemoveGroupSupervisor200> => {
+
+  return customFetch<RemoveGroupSupervisor200>(getRemoveGroupSupervisorUrl(id,userId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getRemoveGroupSupervisorMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeGroupSupervisor>>, TError,{id: string;userId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeGroupSupervisor>>, TError,{id: string;userId: string}, TContext> => {
+
+const mutationKey = ['removeGroupSupervisor'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeGroupSupervisor>>, {id: string;userId: string}> = (props) => {
+          const {id,userId} = props ?? {};
+
+          return  removeGroupSupervisor(id,userId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveGroupSupervisorMutationResult = NonNullable<Awaited<ReturnType<typeof removeGroupSupervisor>>>
+
+    export type RemoveGroupSupervisorMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Remove a supervisor from a group (Admin only)
+ */
+export const useRemoveGroupSupervisor = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeGroupSupervisor>>, TError,{id: string;userId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof removeGroupSupervisor>>,
+        TError,
+        {id: string;userId: string},
+        TContext
+      > => {
+      return useMutation(getRemoveGroupSupervisorMutationOptions(options));
+    }
+
 export const getGetUserContextUrl = () => {
 
 
@@ -720,4 +1626,594 @@ export function useGetUserContext<TData = Awaited<ReturnType<typeof getUserConte
 
 
 
+
+export const getListUsersUrl = () => {
+
+
+
+
+  return `/api/users`
+}
+
+/**
+ * @summary List users (Admin only: all in org; Supervisor only: scoped to groups)
+ */
+export const listUsers = async ( options?: RequestInit): Promise<ListUsers200> => {
+
+  return customFetch<ListUsers200>(getListUsersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListUsersQueryKey = () => {
+    return [
+    `/api/users`
+    ] as const;
+    }
+
+
+export const getListUsersQueryOptions = <TData = Awaited<ReturnType<typeof listUsers>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listUsers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListUsersQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listUsers>>> = ({ signal }) => listUsers({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listUsers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListUsersQueryResult = NonNullable<Awaited<ReturnType<typeof listUsers>>>
+export type ListUsersQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary List users (Admin only: all in org; Supervisor only: scoped to groups)
+ */
+
+export function useListUsers<TData = Awaited<ReturnType<typeof listUsers>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listUsers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListUsersQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateUserUrl = () => {
+
+
+
+
+  return `/api/users`
+}
+
+/**
+ * @summary Create a new user (Admin only)
+ */
+export const createUser = async (userCreate: UserCreate, options?: RequestInit): Promise<CreateUser201> => {
+
+  return customFetch<CreateUser201>(getCreateUserUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      userCreate,)
+  }
+);}
+
+
+
+
+export const getCreateUserMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createUser>>, TError,{data: BodyType<UserCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createUser>>, TError,{data: BodyType<UserCreate>}, TContext> => {
+
+const mutationKey = ['createUser'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createUser>>, {data: BodyType<UserCreate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createUser(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateUserMutationResult = NonNullable<Awaited<ReturnType<typeof createUser>>>
+    export type CreateUserMutationBody = BodyType<UserCreate>
+    export type CreateUserMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Create a new user (Admin only)
+ */
+export const useCreateUser = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createUser>>, TError,{data: BodyType<UserCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createUser>>,
+        TError,
+        {data: BodyType<UserCreate>},
+        TContext
+      > => {
+      return useMutation(getCreateUserMutationOptions(options));
+    }
+
+export const getGetUserUrl = (id: string,) => {
+
+
+
+
+  return `/api/users/${id}`
+}
+
+/**
+ * @summary Get a single user
+ */
+export const getUser = async (id: string, options?: RequestInit): Promise<GetUser200> => {
+
+  return customFetch<GetUser200>(getGetUserUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetUserQueryKey = (id: string,) => {
+    return [
+    `/api/users/${id}`
+    ] as const;
+    }
+
+
+export const getGetUserQueryOptions = <TData = Awaited<ReturnType<typeof getUser>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getUser>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetUserQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getUser>>> = ({ signal }) => getUser(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getUser>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetUserQueryResult = NonNullable<Awaited<ReturnType<typeof getUser>>>
+export type GetUserQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+
+/**
+ * @summary Get a single user
+ */
+
+export function useGetUser<TData = Awaited<ReturnType<typeof getUser>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getUser>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetUserQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpdateUserUrl = (id: string,) => {
+
+
+
+
+  return `/api/users/${id}`
+}
+
+/**
+ * @summary Update user name or email (Admin only)
+ */
+export const updateUser = async (id: string,
+    userUpdate: UserUpdate, options?: RequestInit): Promise<UpdateUser200> => {
+
+  return customFetch<UpdateUser200>(getUpdateUserUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      userUpdate,)
+  }
+);}
+
+
+
+
+export const getUpdateUserMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateUser>>, TError,{id: string;data: BodyType<UserUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateUser>>, TError,{id: string;data: BodyType<UserUpdate>}, TContext> => {
+
+const mutationKey = ['updateUser'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateUser>>, {id: string;data: BodyType<UserUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateUser(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateUserMutationResult = NonNullable<Awaited<ReturnType<typeof updateUser>>>
+    export type UpdateUserMutationBody = BodyType<UserUpdate>
+    export type UpdateUserMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Update user name or email (Admin only)
+ */
+export const useUpdateUser = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateUser>>, TError,{id: string;data: BodyType<UserUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateUser>>,
+        TError,
+        {id: string;data: BodyType<UserUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateUserMutationOptions(options));
+    }
+
+export const getUpdateUserStatusUrl = (id: string,) => {
+
+
+
+
+  return `/api/users/${id}/status`
+}
+
+/**
+ * @summary Change user status (Admin only)
+ */
+export const updateUserStatus = async (id: string,
+    userStatusUpdate: UserStatusUpdate, options?: RequestInit): Promise<UpdateUserStatus200> => {
+
+  return customFetch<UpdateUserStatus200>(getUpdateUserStatusUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      userStatusUpdate,)
+  }
+);}
+
+
+
+
+export const getUpdateUserStatusMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateUserStatus>>, TError,{id: string;data: BodyType<UserStatusUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateUserStatus>>, TError,{id: string;data: BodyType<UserStatusUpdate>}, TContext> => {
+
+const mutationKey = ['updateUserStatus'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateUserStatus>>, {id: string;data: BodyType<UserStatusUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateUserStatus(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateUserStatusMutationResult = NonNullable<Awaited<ReturnType<typeof updateUserStatus>>>
+    export type UpdateUserStatusMutationBody = BodyType<UserStatusUpdate>
+    export type UpdateUserStatusMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Change user status (Admin only)
+ */
+export const useUpdateUserStatus = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateUserStatus>>, TError,{id: string;data: BodyType<UserStatusUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateUserStatus>>,
+        TError,
+        {id: string;data: BodyType<UserStatusUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateUserStatusMutationOptions(options));
+    }
+
+export const getListUserRolesUrl = (id: string,) => {
+
+
+
+
+  return `/api/users/${id}/roles`
+}
+
+/**
+ * @summary List active roles for a user
+ */
+export const listUserRoles = async (id: string, options?: RequestInit): Promise<ListUserRoles200> => {
+
+  return customFetch<ListUserRoles200>(getListUserRolesUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListUserRolesQueryKey = (id: string,) => {
+    return [
+    `/api/users/${id}/roles`
+    ] as const;
+    }
+
+
+export const getListUserRolesQueryOptions = <TData = Awaited<ReturnType<typeof listUserRoles>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listUserRoles>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListUserRolesQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listUserRoles>>> = ({ signal }) => listUserRoles(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listUserRoles>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListUserRolesQueryResult = NonNullable<Awaited<ReturnType<typeof listUserRoles>>>
+export type ListUserRolesQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+
+/**
+ * @summary List active roles for a user
+ */
+
+export function useListUserRoles<TData = Awaited<ReturnType<typeof listUserRoles>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listUserRoles>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListUserRolesQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getAddUserRoleUrl = (id: string,) => {
+
+
+
+
+  return `/api/users/${id}/roles`
+}
+
+/**
+ * @summary Assign a role to a user (Admin only)
+ */
+export const addUserRole = async (id: string,
+    roleCreate: RoleCreate, options?: RequestInit): Promise<AddUserRole201> => {
+
+  return customFetch<AddUserRole201>(getAddUserRoleUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      roleCreate,)
+  }
+);}
+
+
+
+
+export const getAddUserRoleMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addUserRole>>, TError,{id: string;data: BodyType<RoleCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addUserRole>>, TError,{id: string;data: BodyType<RoleCreate>}, TContext> => {
+
+const mutationKey = ['addUserRole'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addUserRole>>, {id: string;data: BodyType<RoleCreate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  addUserRole(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddUserRoleMutationResult = NonNullable<Awaited<ReturnType<typeof addUserRole>>>
+    export type AddUserRoleMutationBody = BodyType<RoleCreate>
+    export type AddUserRoleMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Assign a role to a user (Admin only)
+ */
+export const useAddUserRole = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addUserRole>>, TError,{id: string;data: BodyType<RoleCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addUserRole>>,
+        TError,
+        {id: string;data: BodyType<RoleCreate>},
+        TContext
+      > => {
+      return useMutation(getAddUserRoleMutationOptions(options));
+    }
+
+export const getRemoveUserRoleUrl = (id: string,
+    roleId: string,) => {
+
+
+
+
+  return `/api/users/${id}/roles/${roleId}`
+}
+
+/**
+ * @summary Remove a role from a user (Admin only)
+ */
+export const removeUserRole = async (id: string,
+    roleId: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getRemoveUserRoleUrl(id,roleId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getRemoveUserRoleMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeUserRole>>, TError,{id: string;roleId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeUserRole>>, TError,{id: string;roleId: string}, TContext> => {
+
+const mutationKey = ['removeUserRole'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeUserRole>>, {id: string;roleId: string}> = (props) => {
+          const {id,roleId} = props ?? {};
+
+          return  removeUserRole(id,roleId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveUserRoleMutationResult = NonNullable<Awaited<ReturnType<typeof removeUserRole>>>
+
+    export type RemoveUserRoleMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Remove a role from a user (Admin only)
+ */
+export const useRemoveUserRole = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeUserRole>>, TError,{id: string;roleId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof removeUserRole>>,
+        TError,
+        {id: string;roleId: string},
+        TContext
+      > => {
+      return useMutation(getRemoveUserRoleMutationOptions(options));
+    }
 

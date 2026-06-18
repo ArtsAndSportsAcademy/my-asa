@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * MyASA 2.0 API
- * OpenAPI spec version: 0.2.0
+ * OpenAPI spec version: 0.3.0
  */
 import type { UserStatus } from './userStatus';
 
@@ -14,4 +14,6 @@ export interface User {
   photoUrl?: string | null;
   status: UserStatus;
   organizationId: string;
+  createdAt?: string;
+  updatedAt?: string;
 }

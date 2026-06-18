@@ -6,6 +6,9 @@ import NotFound from "@/pages/not-found";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Login from "@/pages/login";
 import AdminHome from "@/pages/admin/home";
+import UsersPage from "@/pages/admin/users";
+import OperationsPage from "@/pages/admin/operations";
+import GroupsPage from "@/pages/admin/groups";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +36,9 @@ function Router() {
       <Route path="/" component={RootRoute} />
       <Route path="/login" component={Login} />
       <ProtectedRoute path="/admin/home" component={AdminHome} />
+      <ProtectedRoute path="/admin/users" component={UsersPage} />
+      <ProtectedRoute path="/admin/operations" component={OperationsPage} />
+      <ProtectedRoute path="/admin/groups" component={GroupsPage} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -1,1 +1,4 @@
-- [MyASA 2.0 — Estado do Projeto](myasa-estado-projeto.md) — produto em fase de Arquitetura de Navegação concluída; próxima fase é Design de Interface (Bloco 1)
+- [MyASA 2.0 — Estado do Projeto](myasa-estado-projeto.md) — Sprint 2 concluído: CRUD completo usuários/operações/grupos no web-admin e mobile atualizado
+- [YAML plain scalar colon bug](yaml-colon-bug.md) — summary com ": " em YAML não-quoted quebra orval silenciosamente
+- [Express params cast pattern](express-params-cast.md) — req.params.id tipado como string|string[] no Express; sempre usar `const id = req.params.id as string`
+- [api-client-react build requerido](api-client-react-build.md) — lib usa composite + declarationOnly; deve rodar `tsc -p tsconfig.json` na lib antes do typecheck do web-admin

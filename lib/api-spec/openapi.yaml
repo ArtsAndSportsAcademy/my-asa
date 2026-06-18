@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.2.0
+  version: 0.3.0
   description: MyASA 2.0 API
 servers:
   - url: /api
@@ -15,7 +15,9 @@ tags:
   - name: organization
     description: Organization and operations
   - name: users
-    description: User context
+    description: User management
+  - name: roles
+    description: Role management
 
 security:
   - bearerAuth: []
@@ -148,6 +150,132 @@ paths:
                 required: [operations]
         "401":
           $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createOperation
+      tags: [organization]
+      summary: Create a new operation (Admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OperationCreate"
+      responses:
+        "201":
+          description: Operation created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  operation:
+                    $ref: "#/components/schemas/Operation"
+                required: [operation]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /operations/{id}:
+    get:
+      operationId: getOperation
+      tags: [organization]
+      summary: Get a single operation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Operation detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  operation:
+                    $ref: "#/components/schemas/Operation"
+                required: [operation]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateOperation
+      tags: [organization]
+      summary: Update operation name or health thresholds (Admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OperationUpdate"
+      responses:
+        "200":
+          description: Operation updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  operation:
+                    $ref: "#/components/schemas/Operation"
+                required: [operation]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /operations/{id}/status:
+    patch:
+      operationId: updateOperationStatus
+      tags: [organization]
+      summary: Change operation status (Admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OperationStatusUpdate"
+      responses:
+        "200":
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  operation:
+                    $ref: "#/components/schemas/Operation"
+                required: [operation]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /operational-groups:
     get:
@@ -169,6 +297,276 @@ paths:
                 required: [groups]
         "401":
           $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createOperationalGroup
+      tags: [organization]
+      summary: Create a new group (Admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupCreate"
+      responses:
+        "201":
+          description: Group created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  group:
+                    $ref: "#/components/schemas/OperationalGroup"
+                required: [group]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /operational-groups/{id}:
+    get:
+      operationId: getOperationalGroup
+      tags: [organization]
+      summary: Get a single group
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Group detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  group:
+                    $ref: "#/components/schemas/OperationalGroup"
+                required: [group]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateOperationalGroup
+      tags: [organization]
+      summary: Update group name (Admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupUpdate"
+      responses:
+        "200":
+          description: Group updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  group:
+                    $ref: "#/components/schemas/OperationalGroup"
+                required: [group]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /operational-groups/{id}/status:
+    patch:
+      operationId: updateOperationalGroupStatus
+      tags: [organization]
+      summary: Change group status (Admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupStatusUpdate"
+      responses:
+        "200":
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  group:
+                    $ref: "#/components/schemas/OperationalGroup"
+                required: [group]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /operational-groups/{id}/members:
+    post:
+      operationId: addGroupMember
+      tags: [organization]
+      summary: Add a member to a group (Admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupMemberAdd"
+      responses:
+        "201":
+          description: Member added
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  role:
+                    $ref: "#/components/schemas/UserRole"
+                required: [role]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /operational-groups/{id}/members/{userId}:
+    delete:
+      operationId: removeGroupMember
+      tags: [organization]
+      summary: Remove a member from a group (Admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Member removed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /operational-groups/{id}/supervisors:
+    post:
+      operationId: addGroupSupervisor
+      tags: [organization]
+      summary: Add a supervisor to a group (Admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupSupervisorAdd"
+      responses:
+        "201":
+          description: Supervisor added
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  role:
+                    $ref: "#/components/schemas/UserRole"
+                required: [role]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /operational-groups/{id}/supervisors/{userId}:
+    delete:
+      operationId: removeGroupSupervisor
+      tags: [organization]
+      summary: Remove a supervisor from a group (Admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Supervisor removed (may include a warning if group has no remaining supervisors)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  warning:
+                    type: string
+                required: [success]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /users/me/context:
     get:
@@ -184,6 +582,255 @@ paths:
                 $ref: "#/components/schemas/UserContext"
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: "List users (Admin only: all in org; Supervisor only: scoped to groups)"
+      responses:
+        "200":
+          description: Users list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/User"
+                required: [users]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create a new user (Admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCreate"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: "#/components/schemas/User"
+                required: [user]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /users/{id}:
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Get a single user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: "#/components/schemas/User"
+                required: [user]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateUser
+      tags: [users]
+      summary: Update user name or email (Admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: User updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: "#/components/schemas/User"
+                required: [user]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /users/{id}/status:
+    patch:
+      operationId: updateUserStatus
+      tags: [users]
+      summary: Change user status (Admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserStatusUpdate"
+      responses:
+        "200":
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: "#/components/schemas/User"
+                required: [user]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /users/{id}/roles:
+    get:
+      operationId: listUserRoles
+      tags: [roles]
+      summary: List active roles for a user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Roles list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  roles:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/UserRole"
+                required: [roles]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: addUserRole
+      tags: [roles]
+      summary: Assign a role to a user (Admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleCreate"
+      responses:
+        "201":
+          description: Role assigned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  role:
+                    $ref: "#/components/schemas/UserRole"
+                required: [role]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /users/{id}/roles/{roleId}:
+    delete:
+      operationId: removeUserRole
+      tags: [roles]
+      summary: Remove a role from a user (Admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: roleId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Role removed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
 components:
   securitySchemes:
@@ -207,6 +854,24 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
     Forbidden:
       description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    UnprocessableEntity:
+      description: Unprocessable entity
       content:
         application/json:
           schema:
@@ -247,6 +912,10 @@ components:
           type: string
           enum: [ACTIVE, INACTIVE]
         organizationId:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
           type: string
       required: [id, name, email, status, organizationId]
 
@@ -289,7 +958,11 @@ components:
           type: string
         status:
           type: string
-          enum: [ACTIVE, ARCHIVED]
+          enum: [DRAFT, ACTIVE, PAUSED, ARCHIVED]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
       required: [id, name, organizationId, status]
 
     OperationalGroup:
@@ -301,10 +974,17 @@ components:
           type: string
         operationId:
           type: string
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE, ARCHIVED]
         supervisorId:
           type: string
           nullable: true
-      required: [id, name, operationId]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, name, operationId, status]
 
     LoginRequest:
       type: object
@@ -396,3 +1076,113 @@ components:
           items:
             $ref: "#/components/schemas/OperationalGroup"
       required: [user, roles, organization, operations, groups]
+
+    UserCreate:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+      required: [name, email, password]
+
+    UserUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+
+    UserStatusUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+      required: [status]
+
+    RoleCreate:
+      type: object
+      properties:
+        operationId:
+          type: string
+        groupId:
+          type: string
+          nullable: true
+        role:
+          type: string
+          enum: [ADMIN, SUPERVISOR_A, SUPERVISOR_B, MEMBER]
+      required: [operationId, role]
+
+    OperationCreate:
+      type: object
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+          enum: [DRAFT, ACTIVE, PAUSED, ARCHIVED]
+      required: [name]
+
+    OperationUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        healthThresholds:
+          type: object
+          nullable: true
+
+    OperationStatusUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [DRAFT, ACTIVE, PAUSED, ARCHIVED]
+      required: [status]
+
+    GroupCreate:
+      type: object
+      properties:
+        name:
+          type: string
+        operationId:
+          type: string
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE, ARCHIVED]
+      required: [name, operationId]
+
+    GroupUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+
+    GroupStatusUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE, ARCHIVED]
+      required: [status]
+
+    GroupMemberAdd:
+      type: object
+      properties:
+        userId:
+          type: string
+      required: [userId]
+
+    GroupSupervisorAdd:
+      type: object
+      properties:
+        userId:
+          type: string
+      required: [userId]

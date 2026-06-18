@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * MyASA 2.0 API
- * OpenAPI spec version: 0.2.0
+ * OpenAPI spec version: 0.3.0
  */
 import type { OperationStatus } from './operationStatus';
 
@@ -12,4 +12,6 @@ export interface Operation {
   name: string;
   organizationId: string;
   status: OperationStatus;
+  createdAt?: string;
+  updatedAt?: string;
 }

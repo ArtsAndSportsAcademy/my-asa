@@ -11,6 +11,17 @@ export const securityAuditActionEnum = pgEnum("security_audit_action", [
   "INVALID_ACCESS_ATTEMPT",
   "TOKEN_REFRESHED",
   "DEVICE_REGISTERED",
+  "USER_CREATED",
+  "USER_UPDATED",
+  "USER_STATUS_CHANGED",
+  "ROLE_ASSIGNED",
+  "ROLE_REMOVED",
+  "OPERATION_CREATED",
+  "OPERATION_UPDATED",
+  "GROUP_CREATED",
+  "GROUP_UPDATED",
+  "MEMBER_ADDED",
+  "MEMBER_REMOVED",
 ]);
 
 export const securityAuditLogTable = pgTable("security_audit_log", {

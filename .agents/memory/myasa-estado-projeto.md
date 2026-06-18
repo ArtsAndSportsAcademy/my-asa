@@ -8,16 +8,16 @@ MyASA 2.0 — plataforma operacional para operações artísticas, shows e equip
 Comunicação e documentação em Português Brasileiro.
 
 ## Fase atual
-**Sprint 1 CONCLUÍDO** — Auth + Organização Base implementados e funcionando.
-Próxima fase: Sprint 2 (Gerenciamento de Usuários e Operações — CRUD completo).
+**Sprint 2 CONCLUÍDO** — CRUD completo de Usuários, Papéis, Operações e Grupos implementado e funcionando.
+Próxima fase: Design de Interface (Bloco 1 — S-01 Meu Dia, S-02 Painel Operacional, S-04 Escala).
 
 ## Stack técnica
-- **API**: Express + TypeScript, Drizzle ORM + PostgreSQL (`artifacts/api-server`, porta `$PORT`)
+- **API**: Express + TypeScript, Drizzle ORM + PostgreSQL (`artifacts/api-server`, porta 8080 em dev)
 - **Web Admin**: React + Vite + wouter + shadcn/ui (`artifacts/web-admin`, path `/`)
 - **Mobile**: Expo Router + React Native (`artifacts/mobile`, path `/mobile`)
 - **Monorepo**: pnpm workspace; codegen via Orval (OpenAPI → hooks React Query + tipos Zod)
 
-## Auth Pattern (Sprint 1)
+## Auth Pattern
 - JWT: ACCESS 15min, REFRESH 30 dias (hash SHA-256 em `refresh_tokens` table)
 - Web admin: tokens em `localStorage` (`myasa_access_token`, `myasa_refresh_token`) + `setAuthTokenGetter`
 - Mobile: tokens em `AsyncStorage` + `setAuthTokenGetter`; `setBaseUrl` com `EXPO_PUBLIC_DOMAIN`
@@ -25,18 +25,26 @@ Próxima fase: Sprint 2 (Gerenciamento de Usuários e Operações — CRUD compl
 
 ## Colisão Orval — REGRA IMPORTANTE
 - Nunca nomeie schema de componente `<OperationIdPascal>Response` ou `<OperationIdPascal>Body`
-- Exemplo resolvido: `LoginResponse` → renomeado para `LoginResult` (colide com auto-gerado pelo Orval)
-- **Why**: Orval gera `<OperationId>Response` e `<OperationId>Body` como Zod validators internos; se o componente tiver o mesmo nome, ambos são exportados pelo barrel e TypeScript falha com "duplicate identifier"
+- Exemplo resolvido: `LoginResponse` → renomeado para `LoginResult`
+- **Why**: Orval gera esses nomes internamente; duplicata causa erro TS "duplicate identifier"
 
-## Endpoints implementados (Sprint 1)
-- `POST /api/auth/login` → LoginResult (accessToken, refreshToken, user, roles)
+## Endpoints Sprint 1
+- `POST /api/auth/login` → LoginResult
 - `POST /api/auth/refresh` → TokensResponse
 - `POST /api/auth/logout` → 204
 - `GET /api/auth/me` → MeResponse
-- `GET /api/organizations/current` → CurrentOrganization (+ operations, groups)
+- `GET /api/organizations/current` → CurrentOrganization
 - `GET /api/operations` → { operations }
 - `GET /api/operational-groups` → { groups }
 - `GET /api/users/me/context` → UserContext
+
+## Endpoints Sprint 2 (novos)
+- `GET/POST /api/users` + `GET/PATCH /api/users/:id` + `PATCH /api/users/:id/status`
+- `GET/POST /api/users/:id/roles` + `DELETE /api/users/:id/roles/:roleId`
+- `GET/POST /api/operations` + `GET/PATCH /api/operations/:id` + `PATCH /api/operations/:id/status`
+- `GET/POST /api/operational-groups` + `GET/PATCH /api/operational-groups/:id` + `PATCH /api/operational-groups/:id/status`
+- `POST/DELETE /api/operational-groups/:id/members/:userId`
+- `POST/DELETE /api/operational-groups/:id/supervisors/:userId`
 
 ## Credenciais Demo
 - `admin@myasa.demo` / `myasa123` (ADMIN)
@@ -47,6 +55,7 @@ Próxima fase: Sprint 2 (Gerenciamento de Usuários e Operações — CRUD compl
 - `pnpm --filter @workspace/db run seed` — upsert de senhas se dados já existem, seed completo se DB vazio
 - `pnpm --filter @workspace/db run push-force` — aplica schema ao DB sem migration
 - `pnpm --filter @workspace/api-spec run codegen` — gera hooks + tipos do OpenAPI
+- `pnpm --filter @workspace/api-client-react exec tsc -p tsconfig.json` — compilar lib antes do typecheck web-admin
 
 ## Documentos de produto (docs/)
 - docs/arquitetura-myasa-2.0.md
@@ -83,3 +92,4 @@ Próxima fase: Sprint 2 (Gerenciamento de Usuários e Operações — CRUD compl
 - iOS-inspired, modo claro, glassmorphism leve, bordas arredondadas, espaço branco
 - Logo: asa gradiente roxo→azul em docs/myasa-asa-logo.png
 - PROIBIDO: fundo escuro dentro da interface, estética ERP/RH
+- Web admin: acentos roxo/índigo (NOT laranja/cobre)

@@ -13,10 +13,19 @@ export const UserStatus = {
 export type UserStatus = (typeof UserStatus)[keyof typeof UserStatus];
 
 export const OperationStatus = {
+  DRAFT: "DRAFT",
   ACTIVE: "ACTIVE",
+  PAUSED: "PAUSED",
   ARCHIVED: "ARCHIVED",
 } as const;
 export type OperationStatus = (typeof OperationStatus)[keyof typeof OperationStatus];
+
+export const GroupStatus = {
+  ACTIVE: "ACTIVE",
+  INACTIVE: "INACTIVE",
+  ARCHIVED: "ARCHIVED",
+} as const;
+export type GroupStatus = (typeof GroupStatus)[keyof typeof GroupStatus];
 
 export const RestrictionType = {
   PHYSICAL: "PHYSICAL",
@@ -206,5 +215,16 @@ export const SecurityAuditAction = {
   INVALID_ACCESS_ATTEMPT: "INVALID_ACCESS_ATTEMPT",
   TOKEN_REFRESHED: "TOKEN_REFRESHED",
   DEVICE_REGISTERED: "DEVICE_REGISTERED",
+  USER_CREATED: "USER_CREATED",
+  USER_UPDATED: "USER_UPDATED",
+  USER_STATUS_CHANGED: "USER_STATUS_CHANGED",
+  ROLE_ASSIGNED: "ROLE_ASSIGNED",
+  ROLE_REMOVED: "ROLE_REMOVED",
+  OPERATION_CREATED: "OPERATION_CREATED",
+  OPERATION_UPDATED: "OPERATION_UPDATED",
+  GROUP_CREATED: "GROUP_CREATED",
+  GROUP_UPDATED: "GROUP_UPDATED",
+  MEMBER_ADDED: "MEMBER_ADDED",
+  MEMBER_REMOVED: "MEMBER_REMOVED",
 } as const;
 export type SecurityAuditAction = (typeof SecurityAuditAction)[keyof typeof SecurityAuditAction];

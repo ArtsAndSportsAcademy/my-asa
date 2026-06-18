@@ -1,0 +1,259 @@
+# MyASA 2.0 — Sprint 2: Organização, Usuários, Operações e Grupos
+
+Utilizar obrigatoriamente:
+
+* Sprint 0 entregue
+* Sprint 1 entregue
+* Arquitetura Técnica MyASA 2.0
+* Blueprint Executivo Oficial
+* Gate Final de Construção
+* Backlog Mestre
+* Schema v1 aplicado
+* Seed demo existente
+
+Importante:
+
+Não criar novas superfícies.
+
+Não alterar arquitetura funcional.
+
+Não alterar identidade visual oficial.
+
+Não avançar para Escala ainda.
+
+Objetivo:
+
+Construir a administração básica necessária para configurar uma organização real antes de criar Livro do Show, Agenda e Escala.
+
+═══════════════════════
+ESCOPO DA SPRINT 2
+═══════════════════════
+
+Implementar CRUD funcional para:
+
+1. Usuários
+2. Papéis / vínculos
+3. Operações
+4. Grupos Operacionais
+5. Vinculação membro ↔ grupo
+6. Vinculação supervisor ↔ grupo
+7. Contexto organizacional atualizado
+
+═══════════════════════
+PARTE 1 — BACKEND USUÁRIOS
+═══════════════════════
+
+Criar endpoints:
+
+GET /api/users
+GET /api/users/:id
+POST /api/users
+PATCH /api/users/:id
+PATCH /api/users/:id/status
+
+Requisitos:
+
+* Admin pode listar todos os usuários da organização.
+* Supervisor só pode listar membros dos grupos sob seu escopo.
+* Membro não pode listar usuários.
+* Criar usuário com nome, e-mail, papel inicial e senha temporária.
+* Não permitir e-mail duplicado.
+* Status: active, inactive, archived.
+* Toda alteração relevante gera SecurityAuditLog ou HistoryEvent conforme o caso.
+
+Critérios de aceite:
+
+* Admin cria Supervisor e Membro.
+* Supervisor não cria usuário.
+* Membro recebe 403.
+* Usuário inativo não consegue logar.
+* Typecheck passa.
+
+═══════════════════════
+PARTE 2 — PAPÉIS E ESCOPO
+═══════════════════════
+
+Criar endpoints:
+
+GET /api/users/:id/roles
+POST /api/users/:id/roles
+DELETE /api/users/:id/roles/:roleId
+
+Requisitos:
+
+* Papel sempre vinculado à organização.
+* Supervisor pode ter escopo de grupo.
+* Membro pode estar em múltiplos grupos.
+* Admin pode atribuir/remover papéis.
+* Não permitir remover o último Admin ativo da organização.
+
+Critérios de aceite:
+
+* Admin atribui Supervisor a um grupo.
+* Admin atribui Membro a dois grupos.
+* Sistema bloqueia remoção do último Admin ativo.
+* /api/users/me/context reflete alterações.
+
+═══════════════════════
+PARTE 3 — OPERAÇÕES
+═══════════════════════
+
+Criar endpoints:
+
+GET /api/operations
+GET /api/operations/:id
+POST /api/operations
+PATCH /api/operations/:id
+PATCH /api/operations/:id/status
+
+Estados:
+
+* draft
+* active
+* paused
+* archived
+
+Requisitos:
+
+* Admin cria e edita Operações.
+* Supervisor visualiza apenas Operações ligadas ao seu escopo.
+* Membro visualiza apenas Operações nas quais participa.
+* Não arquivar Operação ativa com Agenda ou Escala futura sem aviso/validação.
+
+Critérios de aceite:
+
+* Admin cria operação nova.
+* Admin ativa/pausa operação.
+* Supervisor fora do escopo não visualiza.
+* Membro fora da operação não visualiza.
+
+═══════════════════════
+PARTE 4 — GRUPOS OPERACIONAIS
+═══════════════════════
+
+Criar endpoints:
+
+GET /api/operational-groups
+GET /api/operational-groups/:id
+POST /api/operational-groups
+PATCH /api/operational-groups/:id
+PATCH /api/operational-groups/:id/status
+
+Requisitos:
+
+* Grupo pertence a uma Operação.
+* Grupo precisa ter nome, operação e estado.
+* Estados: active, inactive, archived.
+* Equipe sem Supervisor ativo deve aparecer como risco no contexto Admin, mas ainda sem Painel de Saúde completo.
+* Não permitir grupo ativo sem operação ativa.
+
+Critérios de aceite:
+
+* Admin cria grupo dentro de operação ativa.
+* Sistema bloqueia grupo ativo em operação pausada/arquivada.
+* Supervisor vê grupo atribuído.
+* Membro vê grupo atribuído.
+
+═══════════════════════
+PARTE 5 — VÍNCULOS DE GRUPO
+═══════════════════════
+
+Criar endpoints:
+
+POST /api/operational-groups/:id/members
+DELETE /api/operational-groups/:id/members/:userId
+POST /api/operational-groups/:id/supervisors
+DELETE /api/operational-groups/:id/supervisors/:userId
+
+Requisitos:
+
+* Admin gerencia vínculos.
+* Membro pode estar em múltiplos grupos.
+* Grupo ativo sem Supervisor ativo gera alerta no retorno do contexto Admin.
+* Remover Supervisor de grupo ativo exige confirmação se não houver outro Supervisor.
+
+Critérios de aceite:
+
+* Admin adiciona/remover membro.
+* Admin adiciona/remover supervisor.
+* Sistema alerta ao deixar grupo sem supervisor.
+* /api/users/me/context atualiza sem novo login.
+
+═══════════════════════
+PARTE 6 — WEB ADMIN
+═══════════════════════
+
+Adicionar telas funcionais:
+
+/admin/users
+/admin/operations
+/admin/groups
+
+Cada tela deve ter:
+
+* lista
+* criação
+* edição básica
+* status
+* mensagens de erro claras
+
+Sem mockup final.
+
+Mas respeitar minimamente a identidade MyASA:
+
+* fundo claro
+* acentos roxo→azul
+* evitar laranja/cobre como identidade principal
+
+Critérios de aceite:
+
+* Admin consegue configurar organização real pela web.
+* Não precisa usar curl.
+* Erros de permissão aparecem claramente.
+
+═══════════════════════
+PARTE 7 — MOBILE
+═══════════════════════
+
+Atualizar home autenticada para refletir:
+
+* mudanças de papel
+* grupos
+* operação ativa
+* status do usuário
+
+Sem CRUD mobile.
+
+Critérios de aceite:
+
+* Membro vê novo grupo após Admin vincular.
+* Supervisor vê grupo atribuído.
+* Logout/login não necessário para atualizar contexto.
+
+═══════════════════════
+PARTE 8 — AUDITORIA DA SPRINT
+═══════════════════════
+
+Ao finalizar, responder:
+
+1. Alguma regra do Gate Final foi violada?
+2. Existe risco de remover último Admin?
+3. Existe grupo ativo sem Supervisor sem alerta?
+4. Existe Operação ativa sem grupo?
+5. Supervisor consegue acessar dados fora do escopo?
+6. Membro consegue acessar dados de outro membro?
+7. Sprint 3 pode começar sem usar SQL manual?
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Classificar:
+
+🟢 Sprint 2 concluída — pronto para Sprint 3
+🟡 Ajustes necessários
+🔴 Bloqueado
+
+Objetivo final:
+
+Ao final da Sprint 2, uma organização real pode ser configurada pela web com usuários, operações, grupos, papéis e escopos corretos.
