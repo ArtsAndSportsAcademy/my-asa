@@ -189,7 +189,7 @@ export default function OperationsPage() {
               ) : operations.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
-                    Nenhuma operação cadastrada. Crie a primeira!
+                    Nenhuma operação cadastrada ainda. Crie a primeira operação para começar a estruturar sua produção na ASA.
                   </TableCell>
                 </TableRow>
               ) : (

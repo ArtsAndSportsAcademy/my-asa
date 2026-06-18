@@ -153,7 +153,7 @@ export default function BibliotecaTab() {
           {documents.length === 0 ? (
             <View style={s.empty}>
               <Feather name="book-open" size={32} color={colors.mutedForeground} style={{ marginBottom: 8, opacity: 0.4 }} />
-              <Text style={s.emptyText}>Nenhum documento encontrado</Text>
+              <Text style={s.emptyText}>Nenhum documento na biblioteca ainda. O administrador adicionará materiais em breve.</Text>
             </View>
           ) : (
             documents.map((doc) => (

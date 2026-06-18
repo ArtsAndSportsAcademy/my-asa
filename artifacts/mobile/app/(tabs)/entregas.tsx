@@ -385,9 +385,9 @@ export default function EntregasScreen() {
               style={{ opacity: 0.3, marginBottom: 12 }}
             />
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-              {tab === "pending" ? "Nenhuma entrega pendente" :
-               tab === "completed" ? "Nenhuma entrega concluída" :
-               "Nenhuma entrega atrasada"}
+              {tab === "pending" ? "Nenhuma entrega pendente no momento" :
+               tab === "completed" ? "Nenhuma entrega concluída ainda" :
+               "Nenhuma entrega em atraso — tudo em dia!"}
             </Text>
             <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>
               {tab === "pending" ? "Você está em dia!" :

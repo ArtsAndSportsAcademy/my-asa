@@ -176,7 +176,7 @@ export default function GroupsPage() {
               ) : groups.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center py-10 text-muted-foreground">
-                    Nenhum grupo criado. Crie o primeiro!
+                    Nenhum grupo criado ainda. Crie o primeiro grupo para organizar sua equipe na operação.
                   </TableCell>
                 </TableRow>
               ) : (

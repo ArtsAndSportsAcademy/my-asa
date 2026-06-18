@@ -12,10 +12,32 @@ import {
   Text,
   View,
 } from "react-native";
+import { SvgXml } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
+
+const ASINHA_SVG = `<svg viewBox="0 0 100 112" xmlns="http://www.w3.org/2000/svg" fill="none">
+  <defs>
+    <linearGradient id="ga" x1="72" y1="6" x2="18" y2="108" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#9333EA"/>
+      <stop offset="55%" stop-color="#6D28D9"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="gb" x1="78" y1="22" x2="20" y2="108" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#7C3AED"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+    <linearGradient id="gc" x1="80" y1="42" x2="22" y2="108" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#6D28D9"/>
+      <stop offset="100%" stop-color="#1E40AF"/>
+    </linearGradient>
+  </defs>
+  <path d="M 16,106 C 10,80 8,50 18,22 C 28,2 56,-2 76,10 C 62,18 46,34 36,58 C 28,76 22,92 16,106 Z" fill="url(#ga)" stroke="#0f0a2e" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M 20,106 C 16,84 18,60 28,40 C 40,18 64,10 82,20 C 68,28 54,46 46,66 C 36,84 28,96 20,106 Z" fill="url(#gb)" stroke="#0f0a2e" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M 24,106 C 20,88 22,70 32,54 C 44,36 68,28 84,38 C 72,46 60,60 52,78 C 44,92 34,100 24,106 Z" fill="url(#gc)" stroke="#0f0a2e" stroke-width="1.5" stroke-linejoin="round"/>
+</svg>`;
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: "Administrador",
@@ -81,20 +103,25 @@ export default function HomeScreen() {
     header: {
       flexDirection: "row",
       justifyContent: "space-between",
-      alignItems: "flex-start",
+      alignItems: "center",
     },
-    appName: {
-      fontSize: 13,
-      fontWeight: "700" as const,
-      color: colors.primary,
-      letterSpacing: 1.5,
-      textTransform: "uppercase",
+    brandRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    greetingBlock: {
+      flex: 1,
     },
     greeting: {
       fontSize: 22,
       fontWeight: "700" as const,
       color: colors.foreground,
-      marginTop: 4,
+    },
+    greetingSub: {
+      fontSize: 13,
+      color: colors.mutedForeground,
+      marginTop: 2,
     },
     headerActions: {
       flexDirection: "row",
@@ -237,6 +264,7 @@ export default function HomeScreen() {
   }
 
   const roleLabel = primaryRole ? ROLE_LABELS[primaryRole.role] ?? primaryRole.role : "—";
+  const firstName = context?.user?.name?.split(" ")[0] ?? auth.user?.name?.split(" ")[0] ?? "Usuário";
 
   return (
     <ScrollView
@@ -252,11 +280,14 @@ export default function HomeScreen() {
       }
     >
       <View style={styles.header}>
-        <View>
-          <Text style={styles.appName}>MyASA</Text>
-          <Text style={styles.greeting} testID="text-greeting">
-            Olá, {context?.user?.name?.split(" ")[0] ?? auth.user?.name?.split(" ")[0] ?? "Usuário"}
-          </Text>
+        <View style={styles.brandRow}>
+          <SvgXml xml={ASINHA_SVG} width={36} height={40} />
+          <View style={styles.greetingBlock}>
+            <Text style={styles.greeting} testID="text-greeting">
+              Olá, {firstName}
+            </Text>
+            <Text style={styles.greetingSub}>Tudo da ASA em um só lugar</Text>
+          </View>
         </View>
         <View style={styles.headerActions}>
           <Pressable style={styles.iconButton} onPress={handleRefresh} disabled={refreshing}>
@@ -355,7 +386,9 @@ export default function HomeScreen() {
             </View>
           ))
         ) : (
-          <Text style={styles.emptyText}>Nenhuma operação atribuída</Text>
+          <Text style={styles.emptyText}>
+            Nenhuma operação atribuída ao seu perfil ainda.
+          </Text>
         )}
       </View>
 
@@ -370,7 +403,9 @@ export default function HomeScreen() {
             </View>
           ))
         ) : (
-          <Text style={styles.emptyText}>Nenhum grupo atribuído</Text>
+          <Text style={styles.emptyText}>
+            Nenhum grupo operacional atribuído ao seu perfil ainda.
+          </Text>
         )}
       </View>
     </ScrollView>

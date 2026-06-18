@@ -239,7 +239,7 @@ export default function ScaleScreen() {
           <View style={styles.emptyState}>
             <Feather name="calendar" size={36} color={colors.mutedForeground} style={{ opacity: 0.4 }} />
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-              {activeFilter === "upcoming" ? "Nenhuma alocação futura" : "Sem alocações"}
+              {activeFilter === "upcoming" ? "Nenhuma alocação futura na sua escala" : "Nenhuma alocação registrada ainda"}
             </Text>
             <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>
               {activeFilter === "upcoming"

@@ -248,7 +248,7 @@ function ThreadViewModal({
             ListEmptyComponent={
               <View style={styles.emptyMessages}>
                 <Feather name="message-square" size={32} color={colors.mutedForeground} style={{ opacity: 0.3, marginBottom: 10 }} />
-                <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>Nenhuma mensagem ainda</Text>
+                <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>Nenhuma mensagem nesta conversa ainda. Envie a primeira mensagem para começar.</Text>
               </View>
             }
             renderItem={({ item }) => (
@@ -354,7 +354,7 @@ function CreateThreadModal({
         <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Participantes</Text>
         {recipients.length === 0 ? (
           <Text style={[styles.emptyText, { color: colors.mutedForeground, marginBottom: 16 }]}>
-            Nenhum destinatário disponível
+            Nenhum membro da equipe disponível para nova conversa.
           </Text>
         ) : (
           <View style={[styles.recipientList, { borderColor: colors.border }]}>
@@ -478,9 +478,9 @@ export default function MensagensScreen() {
         {!isLoading && threads.length === 0 && (
           <View style={styles.emptyState}>
             <Feather name="message-square" size={36} color={colors.mutedForeground} style={{ opacity: 0.3, marginBottom: 12 }} />
-            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Nenhuma conversa ainda</Text>
+            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Nenhuma conversa iniciada ainda</Text>
             <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>
-              Toque em "Nova" para iniciar uma conversa com seu supervisor
+              Toque em "Nova" para se comunicar com sua equipe na ASA.
             </Text>
           </View>
         )}

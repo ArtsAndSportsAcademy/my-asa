@@ -219,7 +219,7 @@ export default function AgendaPage() {
         ) : sortedEvents.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-muted-foreground gap-2">
             <CalendarDays className="h-10 w-10 opacity-20" />
-            <p className="text-sm">Nenhum evento encontrado</p>
+            <p className="text-sm">Nenhum evento na agenda ainda. Crie o primeiro evento para organizar a programação da operação.</p>
           </div>
         ) : (
           <Table>

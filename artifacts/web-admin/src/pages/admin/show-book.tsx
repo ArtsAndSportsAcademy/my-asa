@@ -367,7 +367,7 @@ export default function ShowBookPage() {
           ) : books.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-2 text-muted-foreground">
               <BookOpen className="h-8 w-8 opacity-30" />
-              <p className="text-sm">Nenhum livro criado</p>
+              <p className="text-sm">Nenhum Livro do Show criado ainda. Crie o primeiro livro para estruturar a produção da sua operação.</p>
             </div>
           ) : (
             <div className="flex flex-col gap-1">
@@ -496,7 +496,7 @@ export default function ShowBookPage() {
                   ))
                 ) : (
                   <div className="text-sm text-muted-foreground text-center py-6">
-                    Nenhuma cena — use os botões acima para estruturar o livro
+                    Nenhuma cena criada ainda — use os botões acima para estruturar o Livro do Show
                   </div>
                 )}
               </div>
@@ -554,7 +554,7 @@ export default function ShowBookPage() {
                 </div>
               ) : refs.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-3 text-center border rounded-lg bg-muted/10">
-                  Nenhum documento vinculado
+                  Nenhum documento vinculado a esta posição ainda
                 </p>
               ) : (
                 <div className="flex flex-col gap-2">
@@ -616,7 +616,7 @@ export default function ShowBookPage() {
                   <div className="flex flex-col gap-1.5 max-h-64 overflow-y-auto pr-0.5">
                     {availableDocs.length === 0 ? (
                       <p className="text-sm text-muted-foreground text-center py-3 border rounded-lg bg-muted/10">
-                        {refSearchQuery ? "Nenhum resultado para a busca" : "Nenhum documento publicado disponível"}
+                        {refSearchQuery ? "Nenhum documento encontrado para esta busca" : "Nenhum documento publicado na Biblioteca ainda"}
                       </p>
                     ) : (
                       availableDocs.map((doc) => (

@@ -177,7 +177,7 @@ function CreateThreadDialog({ onClose }: { onClose: () => void }) {
             <Label>Participantes</Label>
             <div className="mt-1 max-h-40 overflow-y-auto border rounded-md divide-y">
               {recipients.length === 0 && (
-                <p className="text-xs text-gray-400 p-3 text-center">Nenhum destinatário disponível</p>
+                <p className="text-xs text-gray-400 p-3 text-center">Nenhum membro da equipe disponível para adicionar à conversa.</p>
               )}
               {recipients.map((r) => (
                 <label key={r.id} className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50">
@@ -295,7 +295,7 @@ function ThreadPanel({ threadId, myId }: { threadId: string; myId: string }) {
           <div className="flex items-center justify-center h-full text-gray-400">
             <div className="text-center">
               <MessageSquare size={28} className="mx-auto mb-2 opacity-30" />
-              <p className="text-sm">Nenhuma mensagem ainda</p>
+              <p className="text-sm">Nenhuma mensagem nesta conversa ainda. Envie a primeira mensagem para começar.</p>
             </div>
           </div>
         )}
@@ -374,7 +374,7 @@ export default function SupervisorMessagesPage() {
             {!isLoading && filtered.length === 0 && (
               <div className="text-center py-10 text-gray-400">
                 <MessageSquare size={28} className="mx-auto mb-2 opacity-30" />
-                <p className="text-xs">Nenhuma conversa</p>
+                <p className="text-xs">Nenhuma conversa iniciada ainda. As mensagens da sua equipe aparecerão aqui.</p>
               </div>
             )}
             {filtered.map((t) => (

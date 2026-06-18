@@ -301,7 +301,7 @@ export default function DailyBookScreen() {
         {publishedBooks.length === 0 ? (
           <View style={styles.emptyCard}>
             <Feather name="book-open" size={28} color={colors.mutedForeground} />
-            <Text style={styles.emptyText}>Nenhum Livro do Dia publicado</Text>
+            <Text style={styles.emptyText}>Nenhum Livro do Dia publicado ainda. Aguarde o supervisor gerar o livro do próximo evento.</Text>
           </View>
         ) : (
           publishedBooks.map((book) => {
@@ -355,7 +355,7 @@ export default function DailyBookScreen() {
                 </Text>
                 {scenes.length === 0 ? (
                   <View style={styles.emptyCard}>
-                    <Text style={styles.emptyText}>Nenhuma cena ativa</Text>
+                    <Text style={styles.emptyText}>Nenhuma cena ativa neste Livro do Dia. O supervisor ainda não estruturou as cenas do evento.</Text>
                   </View>
                 ) : (
                   scenes.map((scene: DailyBookSceneWithBlocks) => {

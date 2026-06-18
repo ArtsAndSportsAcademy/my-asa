@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Info, Theater } from "lucide-react";
+import { Info } from "lucide-react";
 
 const loginSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -52,21 +52,19 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex bg-muted/30">
-      {/* Left side - Visual/Brand */}
+      {/* Left side - Brand */}
       <div className="hidden lg:flex w-1/2 bg-myasa-gradient items-center justify-center p-12 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507676184212-d0330a151522?auto=format&fit=crop&q=80')] mix-blend-overlay opacity-20 bg-cover bg-center" />
-        <div className="relative z-10 text-primary-foreground max-w-lg">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-3 bg-primary-foreground/10 rounded-xl backdrop-blur-md border border-primary-foreground/20">
-              <Theater className="w-10 h-10" />
-            </div>
-            <h1 className="text-4xl font-bold tracking-tight">MyASA 2.0</h1>
-          </div>
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507676184212-d0330a151522?auto=format&fit=crop&q=80')] mix-blend-overlay opacity-10 bg-cover bg-center" />
+        <div className="relative z-10 text-primary-foreground max-w-sm flex flex-col items-center text-center">
+          <img
+            src="/asinha.svg"
+            alt="Asinha MyASA"
+            className="w-36 h-40 mb-8"
+            style={{ filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.4))" }}
+          />
+          <h1 className="text-5xl font-serif font-bold tracking-tight mb-4">MyASA</h1>
           <p className="text-xl text-primary-foreground/90 font-medium font-sans">
-            Plataforma Operacional
-          </p>
-          <p className="mt-4 text-primary-foreground/70 text-lg leading-relaxed font-sans">
-            A ferramenta de gestão confiável para coordenar produções teatrais e equipes artísticas com precisão técnica.
+            Tudo da ASA em um só lugar
           </p>
         </div>
       </div>
@@ -74,11 +72,14 @@ export default function Login() {
       {/* Right side - Login Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md space-y-8">
-          <div className="lg:hidden flex items-center gap-3 mb-8">
-            <div className="p-2 bg-primary/10 rounded-lg text-primary">
-              <Theater className="w-8 h-8" />
-            </div>
-            <h1 className="text-2xl font-bold text-foreground">MyASA 2.0</h1>
+          <div className="lg:hidden flex flex-col items-center gap-3 mb-8">
+            <img
+              src="/asinha.svg"
+              alt="Asinha MyASA"
+              className="w-16 h-18"
+            />
+            <h1 className="text-2xl font-bold text-foreground">MyASA</h1>
+            <p className="text-sm text-muted-foreground">Tudo da ASA em um só lugar</p>
           </div>
 
           <Card className="border-none shadow-xl bg-card">

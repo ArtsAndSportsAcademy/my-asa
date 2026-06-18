@@ -465,8 +465,8 @@ export default function AdminHistoryPage() {
                 ) : events.length === 0 ? (
                   <div className="text-center py-10 text-gray-400">
                     <Clock size={32} className="mx-auto mb-2 opacity-30" />
-                    <p className="text-sm">Nenhum evento encontrado</p>
-                    <p className="text-xs mt-1">Ajuste os filtros ou aguarde novas ações operacionais</p>
+                    <p className="text-sm">Nenhum registro no histórico ainda.</p>
+                    <p className="text-xs mt-1">As ações operacionais da sua equipe serão registradas aqui automaticamente.</p>
                   </div>
                 ) : (
                   <div>

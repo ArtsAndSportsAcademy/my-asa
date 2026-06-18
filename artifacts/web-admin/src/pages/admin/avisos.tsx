@@ -208,7 +208,7 @@ export default function AdminAvisosPage() {
       ) : (notices as NoticeListItem[]).length === 0 ? (
         <div className="text-center py-16">
           <Bell className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">Nenhum aviso encontrado</p>
+          <p className="text-sm text-muted-foreground">Nenhum aviso publicado ainda. Os avisos da sua operação aparecerão aqui.</p>
         </div>
       ) : (
         <div className="space-y-3">

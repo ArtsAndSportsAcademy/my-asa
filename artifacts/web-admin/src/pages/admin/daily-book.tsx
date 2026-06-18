@@ -445,7 +445,7 @@ export default function AdminDailyBookPage() {
             {isLoading ? (
               <div className="p-4 text-center text-sm text-muted-foreground">Carregando...</div>
             ) : books.length === 0 ? (
-              <div className="p-4 text-center text-sm text-muted-foreground">Nenhum Livro do Dia</div>
+              <div className="p-4 text-center text-sm text-muted-foreground">Nenhum Livro do Dia gerado ainda. Gere o primeiro livro a partir de um evento da Agenda.</div>
             ) : (
               books.map((book) => {
                 const eventLabel = book.agendaEventId.slice(0, 8);

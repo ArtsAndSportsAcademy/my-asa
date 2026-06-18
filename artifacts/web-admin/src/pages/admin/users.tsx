@@ -145,7 +145,7 @@ export default function UsersPage() {
               ) : users.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={isAdmin ? 4 : 3} className="text-center py-10 text-muted-foreground">
-                    Nenhum usuário encontrado
+                    Nenhum usuário cadastrado ainda. Adicione membros para começar a organizar sua equipe na ASA.
                   </TableCell>
                 </TableRow>
               ) : (

@@ -204,8 +204,8 @@ export default function AgendaScreen() {
           {events.length === 0 ? (
             <View style={styles.empty}>
               <Feather name="calendar" size={40} color={colors.mutedForeground} />
-              <Text style={styles.emptyText}>Nenhum evento encontrado</Text>
-              <Text style={styles.emptySubText}>Ajuste o filtro acima</Text>
+              <Text style={styles.emptyText}>Nenhum evento na agenda ainda.</Text>
+              <Text style={styles.emptySubText}>Tente outro filtro ou aguarde novos eventos da operação.</Text>
             </View>
           ) : (
             events.map((event) => (

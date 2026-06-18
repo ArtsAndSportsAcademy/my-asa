@@ -94,7 +94,7 @@ export default function AuditoriaPage() {
           ) : !targetId ? (
             <div className="flex flex-col items-center justify-center h-32 text-muted-foreground gap-2">
               <BookOpen className="h-8 w-8 opacity-20" />
-              <p className="text-sm">Nenhum livro disponível para auditar</p>
+              <p className="text-sm">Nenhum Livro do Show disponível para auditar. Crie e publique um livro para iniciar o controle de versões.</p>
             </div>
           ) : versions.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-muted-foreground gap-2">

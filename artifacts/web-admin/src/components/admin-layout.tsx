@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import {
-  Theater, Home, Users, Briefcase, Users2, LogOut, ChevronRight,
+  Home, Users, Briefcase, Users2, LogOut, ChevronRight,
   BookOpen, CalendarDays, ShieldCheck, ClipboardList, BookMarked,
   LayoutDashboard, Bell, Clock, MessageSquare, Package, Library,
 } from "lucide-react";
@@ -144,11 +144,13 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
     <div className="min-h-screen flex bg-muted/20">
       {/* ── Sidebar ── */}
       <aside className="w-56 shrink-0 border-r bg-card flex flex-col sticky top-0 h-screen overflow-y-auto">
-        <div className="h-16 flex items-center gap-3 px-4 border-b shrink-0">
-          <div className="p-1.5 bg-primary/10 rounded text-primary">
-            <Theater className="w-4 h-4" />
-          </div>
-          <span className="font-serif font-bold text-base tracking-tight">MyASA 2.0</span>
+        <div className="h-16 flex items-center gap-2.5 px-4 border-b shrink-0">
+          <img
+            src="/asinha.svg"
+            alt="Asinha MyASA"
+            className="w-7 h-8 shrink-0"
+          />
+          <span className="font-serif font-bold text-base tracking-tight">MyASA</span>
         </div>
 
         <nav className="flex-1 p-3 space-y-4">

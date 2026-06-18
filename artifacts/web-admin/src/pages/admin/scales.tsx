@@ -305,7 +305,7 @@ export default function ScalesPage() {
             ) : scales.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground text-sm">
                 <Zap className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                <p>Nenhuma escala encontrada.</p>
+                <p>Nenhuma escala gerada ainda. Crie a primeira escala para organizar sua equipe no próximo evento.</p>
                 {isSupervisor && (
                   <Button variant="outline" size="sm" className="mt-3" onClick={() => setShowGenerate(true)}>
                     Gerar primeira escala
@@ -465,7 +465,7 @@ export default function ScalesPage() {
                   {allocLoading ? (
                     <p className="text-center text-sm text-muted-foreground py-8">Carregando alocações...</p>
                   ) : allocations.length === 0 ? (
-                    <p className="text-center text-sm text-muted-foreground py-8">Nenhuma alocação encontrada.</p>
+                    <p className="text-center text-sm text-muted-foreground py-8">Nenhuma alocação nesta escala ainda. Publique a escala para visualizar as alocações da equipe.</p>
                   ) : (
                     <Table>
                       <TableHeader>

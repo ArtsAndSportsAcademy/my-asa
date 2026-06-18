@@ -241,12 +241,12 @@ export default function SupervisorOperationalPanel() {
             </div>
           ) : !operationId ? (
             <p className="text-sm text-muted-foreground py-4 text-center">
-              Nenhuma operação vinculada ao seu perfil.
+              Nenhuma operação vinculada ao seu perfil ainda. Peça ao administrador para configurar sua operação na ASA.
             </p>
           ) : checkIns.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-6">
               <Users className="h-8 w-8 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Nenhum membro esperado para hoje.</p>
+              <p className="text-sm text-muted-foreground">Nenhum membro escalado para hoje.</p>
             </div>
           ) : (
             <div className="-mx-6 divide-y max-h-64 overflow-y-auto">
@@ -407,7 +407,7 @@ export default function SupervisorOperationalPanel() {
         </CardHeader>
         <CardContent className="p-0">
           {upcomingEvents.length === 0 ? (
-            <p className="px-6 py-4 text-sm text-muted-foreground">Nenhum evento próximo</p>
+            <p className="px-6 py-4 text-sm text-muted-foreground">Nenhum evento próximo na agenda da operação.</p>
           ) : (
             <div className="divide-y max-h-72 overflow-y-auto">
               {upcomingEvents.map((ev: OperationalUpcomingEvent) => {

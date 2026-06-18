@@ -241,7 +241,7 @@ export default function PanelScreen() {
         <Text style={s.sectionTitle}>Próximos Eventos</Text>
         {upcomingEvents.length === 0 ? (
           <View style={s.card}>
-            <Text style={s.emptyText}>Nenhum evento próximo</Text>
+            <Text style={s.emptyText}>Nenhum evento próximo na agenda da operação.</Text>
           </View>
         ) : (
           <View style={s.card}>

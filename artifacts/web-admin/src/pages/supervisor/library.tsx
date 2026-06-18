@@ -166,7 +166,7 @@ export default function SupervisorLibraryPage() {
             ) : documents.length === 0 ? (
               <div className="text-center py-10 text-muted-foreground text-sm">
                 <Library className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                Nenhum documento encontrado
+                Nenhum documento na biblioteca ainda. Aguarde o administrador adicionar materiais.
               </div>
             ) : (
               documents.map((doc) => (

@@ -503,7 +503,7 @@ export default function AdminDeliveriesPage() {
             {!isLoading && filtered.length === 0 && (
               <div className="text-center py-10 text-gray-400">
                 <Package size={28} className="mx-auto mb-2 opacity-30" />
-                <p className="text-xs">Nenhuma entrega encontrada</p>
+                <p className="text-xs">Nenhuma entrega registrada ainda. As entregas da operação aparecerão aqui.</p>
               </div>
             )}
             {filtered.map((d) => (

@@ -313,7 +313,7 @@ export default function ShowBookScreen() {
             {books.length === 0 && (
               <View style={styles.empty}>
                 <Feather name="book-open" size={40} color={colors.mutedForeground} />
-                <Text style={styles.emptyText}>Nenhum livro disponível</Text>
+                <Text style={styles.emptyText}>Nenhum Livro do Show disponível ainda. O administrador criará o livro assim que a operação for configurada.</Text>
               </View>
             )}
 

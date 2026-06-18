@@ -214,7 +214,7 @@ function CreateThreadDialog({ onClose }: { onClose: () => void }) {
             <Label>Participantes</Label>
             <div className="mt-1 max-h-40 overflow-y-auto border rounded-md divide-y">
               {recipients.length === 0 && (
-                <p className="text-xs text-gray-400 p-3 text-center">Nenhum destinatário disponível</p>
+                <p className="text-xs text-gray-400 p-3 text-center">Nenhum membro da equipe disponível para adicionar à conversa.</p>
               )}
               {recipients.map((r) => (
                 <label
@@ -387,8 +387,8 @@ function ThreadPanel({
           <div className="flex items-center justify-center h-full text-gray-400">
             <div className="text-center">
               <MessageSquare size={28} className="mx-auto mb-2 opacity-30" />
-              <p className="text-sm">Nenhuma mensagem ainda</p>
-              <p className="text-xs mt-1">Envie a primeira mensagem para iniciar a conversa</p>
+              <p className="text-sm">Nenhuma mensagem nesta conversa ainda.</p>
+              <p className="text-xs mt-1">Envie a primeira mensagem para iniciar a troca com sua equipe.</p>
             </div>
           </div>
         )}
@@ -483,7 +483,7 @@ export default function AdminMessagesPage() {
             {!isLoading && filtered.length === 0 && (
               <div className="text-center py-10 text-gray-400">
                 <MessageSquare size={28} className="mx-auto mb-2 opacity-30" />
-                <p className="text-xs">Nenhuma conversa encontrada</p>
+                <p className="text-xs">Nenhuma conversa iniciada ainda. As mensagens da sua equipe aparecerão aqui.</p>
               </div>
             )}
             {filtered.map((t) => (

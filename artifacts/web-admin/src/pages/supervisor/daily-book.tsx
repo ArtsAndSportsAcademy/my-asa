@@ -80,7 +80,7 @@ function ReadOnlyTree({ scenes, users }: { scenes: DailyBookSceneWithBlocks[]; u
   const activeScenes = scenes.filter((s) => !s.isRemoved);
 
   if (activeScenes.length === 0) {
-    return <div className="p-6 text-center text-sm text-muted-foreground">Nenhuma cena ativa neste Livro do Dia</div>;
+    return <div className="p-6 text-center text-sm text-muted-foreground">Nenhuma cena ativa neste Livro do Dia. O supervisor ainda não estruturou as cenas do evento.</div>;
   }
 
   return (
@@ -319,7 +319,7 @@ export default function SupervisorDailyBookPage() {
             {isLoading ? (
               <div className="p-4 text-center text-sm text-muted-foreground">Carregando...</div>
             ) : publishedBooks.length === 0 ? (
-              <div className="p-4 text-center text-sm text-muted-foreground">Nenhum Livro do Dia publicado</div>
+              <div className="p-4 text-center text-sm text-muted-foreground">Nenhum Livro do Dia publicado ainda. Aguarde o supervisor gerar e publicar o livro do próximo evento.</div>
             ) : (
               publishedBooks.map((book) => (
                 <button

@@ -232,8 +232,8 @@ export default function SupervisorHistoryPage() {
               ) : events.length === 0 ? (
                 <div className="text-center py-12 text-gray-400">
                   <Clock size={36} className="mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">Nenhum evento encontrado</p>
-                  <p className="text-xs mt-1">Ajuste os filtros ou aguarde novas ações</p>
+                  <p className="text-sm">Nenhum registro no histórico ainda.</p>
+                  <p className="text-xs mt-1">As ações da sua operação serão registradas aqui automaticamente.</p>
                 </div>
               ) : (
                 <div className="pl-2">

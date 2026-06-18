@@ -32,10 +32,31 @@ import {
   XCircle,
 } from "lucide-react";
 
+// ─── Shared branded greeting ──────────────────────────────────────────────────
+
+function BrandedGreeting({ name }: { name: string }) {
+  return (
+    <div className="flex items-center gap-4 mb-6 p-5 rounded-xl bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/10">
+      <img
+        src="/asinha.svg"
+        alt="Asinha MyASA"
+        className="w-12 h-14 shrink-0"
+      />
+      <div>
+        <p className="text-xl font-serif font-bold text-foreground">
+          Olá, {name}
+        </p>
+        <p className="text-sm text-muted-foreground mt-0.5">Tudo da ASA em um só lugar</p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Admin view ───────────────────────────────────────────────────────────────
 
 function AdminHomeContent() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
   const { data: panelData } = useGetOperationalPanel({});
   const { data: context } = useGetUserContext({
     query: { queryKey: getGetUserContextQueryKey() },
@@ -62,6 +83,8 @@ function AdminHomeContent() {
 
   return (
     <div className="space-y-6">
+      <BrandedGreeting name={user?.name?.split(" ")[0] ?? "Admin"} />
+
       <div className="flex gap-3 flex-wrap">
         <Button variant="outline" size="sm" onClick={() => setLocation("/admin/operational-panel")}>
           <Activity className="w-4 h-4 mr-2" />
@@ -115,7 +138,7 @@ function AdminHomeContent() {
             <CardContent>
               {operations.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
-                  Nenhuma operação ativa
+                  Nenhuma operação configurada ainda. Crie sua primeira operação para começar a organizar sua equipe.
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -176,6 +199,7 @@ function AdminHomeContent() {
 
 function SupervisorHomeContent() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
   const { data: panelData } = useGetOperationalPanel({});
 
   const exceptions = (panelData?.exceptions ?? []) as OperationalException[];
@@ -184,6 +208,8 @@ function SupervisorHomeContent() {
 
   return (
     <div className="space-y-6">
+      <BrandedGreeting name={user?.name?.split(" ")[0] ?? "Supervisor"} />
+
       <div className="flex gap-3 flex-wrap">
         <Button size="sm" onClick={() => setLocation("/supervisor/daily-book")}>
           <BookMarked className="w-4 h-4 mr-2" />
@@ -211,7 +237,7 @@ function SupervisorHomeContent() {
             {exceptions.length === 0 ? (
               <div className="flex items-center gap-2 text-sm text-green-600">
                 <CheckCircle2 className="w-4 h-4" />
-                Nenhuma exceção pendente
+                Tudo em ordem — nenhuma exceção pendente
               </div>
             ) : (
               <div className="space-y-2">
@@ -253,7 +279,7 @@ function SupervisorHomeContent() {
             {pendingBooks.length === 0 ? (
               <div className="flex items-center gap-2 text-sm text-green-600">
                 <CheckCircle2 className="w-4 h-4" />
-                Nenhum livro pendente
+                Nenhum livro aguardando preenchimento
               </div>
             ) : (
               <div className="space-y-2">
@@ -308,12 +334,10 @@ function SupervisorHomeContent() {
 function MemberHomeContent() {
   const { user } = useAuth();
   return (
-    <div className="max-w-md">
+    <div className="max-w-md space-y-4">
+      <BrandedGreeting name={user?.name?.split(" ")[0] ?? ""} />
       <Card>
         <CardContent className="pt-6 space-y-3">
-          <p className="text-base font-medium">
-            Olá, {user?.name?.split(" ")[0] ?? ""}.
-          </p>
           <p className="text-sm text-muted-foreground">
             Para acompanhar sua rotina operacional, use o app MyASA no seu
             celular — a experiência completa do Membro está disponível lá.
@@ -337,7 +361,7 @@ export default function AdminHome() {
     ? "Visão organizacional — saúde da operação"
     : isSupervisor
     ? "O que precisa da sua atenção agora"
-    : "Bem-vindo ao MyASA 2.0";
+    : "Sua central de operações";
 
   return (
     <AdminLayout title="Início" subtitle={subtitle}>

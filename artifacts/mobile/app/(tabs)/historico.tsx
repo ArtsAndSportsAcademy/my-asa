@@ -224,9 +224,9 @@ export default function HistoricoScreen() {
         {!isLoading && events.length === 0 && (
           <View style={styles.center}>
             <Feather name="clock" size={36} color={colors.mutedForeground} style={{ opacity: 0.3, marginBottom: 12 }} />
-            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Nenhuma ação registrada</Text>
+            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Histórico vazio por enquanto</Text>
             <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>
-              Seu histórico de ações operacionais aparecerá aqui
+              Suas ações operacionais na ASA serão registradas aqui automaticamente.
             </Text>
           </View>
         )}
