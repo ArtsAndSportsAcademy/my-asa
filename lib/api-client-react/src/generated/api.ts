@@ -41,6 +41,8 @@ import type {
   CreateAgendaEvent201,
   CreateDeliveryRequest,
   CreateHistoryNarrativeRequest,
+  CreateLibraryCategoryRequest,
+  CreateLibraryDocumentRequest,
   CreateMessageThreadRequest,
   CreateNoticeRequest,
   CreateOperation201,
@@ -91,6 +93,12 @@ import type {
   HistoryNarrativeDetailResponse,
   HistoryNarrativeListResponse,
   HistoryNarrativeSingleResponse,
+  LibraryCategoriesResponse,
+  LibraryCategorySingleResponse,
+  LibraryDocumentDetailResponse,
+  LibraryDocumentSingleResponse,
+  LibraryDocumentVersionsResponse,
+  LibraryDocumentsResponse,
   LineCreate,
   LineUpdate,
   ListAgendaEvents200,
@@ -99,6 +107,7 @@ import type {
   ListDailyBookParams,
   ListHistoryNarrativesParams,
   ListHistoryParams,
+  ListLibraryDocumentsParams,
   ListMyAllocations200,
   ListMyAllocationsParams,
   ListNoticesParams,
@@ -125,6 +134,7 @@ import type {
   MyDayResponse,
   MyDeliveriesResponse,
   MyNoticeItem,
+  NewLibraryDocumentVersionRequest,
   NotFoundResponse,
   NoticeDetail,
   NoticeListItem,
@@ -166,6 +176,7 @@ import type {
   UpdateAgendaEvent200,
   UpdateChecklistRequest,
   UpdateHistoryNarrativeRequest,
+  UpdateLibraryDocumentRequest,
   UpdateNoticeRequest,
   UpdateOperation200,
   UpdateOperationStatus200,
@@ -9520,4 +9531,745 @@ export const useUpdateDeliveryChecklist = <TError = ErrorType<BadRequestResponse
       > => {
       return useMutation(getUpdateDeliveryChecklistMutationOptions(options));
     }
+
+export const getListLibraryCategoriesUrl = () => {
+
+
+
+
+  return `/api/library/categories`
+}
+
+/**
+ * @summary Listar categorias da Biblioteca
+ */
+export const listLibraryCategories = async ( options?: RequestInit): Promise<LibraryCategoriesResponse> => {
+
+  return customFetch<LibraryCategoriesResponse>(getListLibraryCategoriesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListLibraryCategoriesQueryKey = () => {
+    return [
+    `/api/library/categories`
+    ] as const;
+    }
+
+
+export const getListLibraryCategoriesQueryOptions = <TData = Awaited<ReturnType<typeof listLibraryCategories>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLibraryCategories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListLibraryCategoriesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listLibraryCategories>>> = ({ signal }) => listLibraryCategories({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listLibraryCategories>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListLibraryCategoriesQueryResult = NonNullable<Awaited<ReturnType<typeof listLibraryCategories>>>
+export type ListLibraryCategoriesQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Listar categorias da Biblioteca
+ */
+
+export function useListLibraryCategories<TData = Awaited<ReturnType<typeof listLibraryCategories>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLibraryCategories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListLibraryCategoriesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateLibraryCategoryUrl = () => {
+
+
+
+
+  return `/api/library/categories`
+}
+
+/**
+ * @summary Criar categoria
+ */
+export const createLibraryCategory = async (createLibraryCategoryRequest: CreateLibraryCategoryRequest, options?: RequestInit): Promise<LibraryCategorySingleResponse> => {
+
+  return customFetch<LibraryCategorySingleResponse>(getCreateLibraryCategoryUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createLibraryCategoryRequest,)
+  }
+);}
+
+
+
+
+export const getCreateLibraryCategoryMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLibraryCategory>>, TError,{data: BodyType<CreateLibraryCategoryRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createLibraryCategory>>, TError,{data: BodyType<CreateLibraryCategoryRequest>}, TContext> => {
+
+const mutationKey = ['createLibraryCategory'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createLibraryCategory>>, {data: BodyType<CreateLibraryCategoryRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createLibraryCategory(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateLibraryCategoryMutationResult = NonNullable<Awaited<ReturnType<typeof createLibraryCategory>>>
+    export type CreateLibraryCategoryMutationBody = BodyType<CreateLibraryCategoryRequest>
+    export type CreateLibraryCategoryMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>
+
+    /**
+ * @summary Criar categoria
+ */
+export const useCreateLibraryCategory = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLibraryCategory>>, TError,{data: BodyType<CreateLibraryCategoryRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createLibraryCategory>>,
+        TError,
+        {data: BodyType<CreateLibraryCategoryRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateLibraryCategoryMutationOptions(options));
+    }
+
+export const getListLibraryDocumentsUrl = (params?: ListLibraryDocumentsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/library/documents?${stringifiedParams}` : `/api/library/documents`
+}
+
+/**
+ * @summary Listar documentos da Biblioteca
+ */
+export const listLibraryDocuments = async (params?: ListLibraryDocumentsParams, options?: RequestInit): Promise<LibraryDocumentsResponse> => {
+
+  return customFetch<LibraryDocumentsResponse>(getListLibraryDocumentsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListLibraryDocumentsQueryKey = (params?: ListLibraryDocumentsParams,) => {
+    return [
+    `/api/library/documents`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListLibraryDocumentsQueryOptions = <TData = Awaited<ReturnType<typeof listLibraryDocuments>>, TError = ErrorType<UnauthorizedResponse>>(params?: ListLibraryDocumentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLibraryDocuments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListLibraryDocumentsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listLibraryDocuments>>> = ({ signal }) => listLibraryDocuments(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listLibraryDocuments>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListLibraryDocumentsQueryResult = NonNullable<Awaited<ReturnType<typeof listLibraryDocuments>>>
+export type ListLibraryDocumentsQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Listar documentos da Biblioteca
+ */
+
+export function useListLibraryDocuments<TData = Awaited<ReturnType<typeof listLibraryDocuments>>, TError = ErrorType<UnauthorizedResponse>>(
+ params?: ListLibraryDocumentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLibraryDocuments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListLibraryDocumentsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateLibraryDocumentUrl = () => {
+
+
+
+
+  return `/api/library/documents`
+}
+
+/**
+ * @summary Criar documento
+ */
+export const createLibraryDocument = async (createLibraryDocumentRequest: CreateLibraryDocumentRequest, options?: RequestInit): Promise<LibraryDocumentSingleResponse> => {
+
+  return customFetch<LibraryDocumentSingleResponse>(getCreateLibraryDocumentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createLibraryDocumentRequest,)
+  }
+);}
+
+
+
+
+export const getCreateLibraryDocumentMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLibraryDocument>>, TError,{data: BodyType<CreateLibraryDocumentRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createLibraryDocument>>, TError,{data: BodyType<CreateLibraryDocumentRequest>}, TContext> => {
+
+const mutationKey = ['createLibraryDocument'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createLibraryDocument>>, {data: BodyType<CreateLibraryDocumentRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createLibraryDocument(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateLibraryDocumentMutationResult = NonNullable<Awaited<ReturnType<typeof createLibraryDocument>>>
+    export type CreateLibraryDocumentMutationBody = BodyType<CreateLibraryDocumentRequest>
+    export type CreateLibraryDocumentMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>
+
+    /**
+ * @summary Criar documento
+ */
+export const useCreateLibraryDocument = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLibraryDocument>>, TError,{data: BodyType<CreateLibraryDocumentRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createLibraryDocument>>,
+        TError,
+        {data: BodyType<CreateLibraryDocumentRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateLibraryDocumentMutationOptions(options));
+    }
+
+export const getGetLibraryDocumentUrl = (documentId: string,) => {
+
+
+
+
+  return `/api/library/documents/${documentId}`
+}
+
+/**
+ * @summary Detalhe do documento
+ */
+export const getLibraryDocument = async (documentId: string, options?: RequestInit): Promise<LibraryDocumentDetailResponse> => {
+
+  return customFetch<LibraryDocumentDetailResponse>(getGetLibraryDocumentUrl(documentId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLibraryDocumentQueryKey = (documentId: string,) => {
+    return [
+    `/api/library/documents/${documentId}`
+    ] as const;
+    }
+
+
+export const getGetLibraryDocumentQueryOptions = <TData = Awaited<ReturnType<typeof getLibraryDocument>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(documentId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLibraryDocument>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLibraryDocumentQueryKey(documentId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLibraryDocument>>> = ({ signal }) => getLibraryDocument(documentId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(documentId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLibraryDocument>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLibraryDocumentQueryResult = NonNullable<Awaited<ReturnType<typeof getLibraryDocument>>>
+export type GetLibraryDocumentQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+
+/**
+ * @summary Detalhe do documento
+ */
+
+export function useGetLibraryDocument<TData = Awaited<ReturnType<typeof getLibraryDocument>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(
+ documentId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLibraryDocument>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLibraryDocumentQueryOptions(documentId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpdateLibraryDocumentUrl = (documentId: string,) => {
+
+
+
+
+  return `/api/library/documents/${documentId}`
+}
+
+/**
+ * @summary Editar documento
+ */
+export const updateLibraryDocument = async (documentId: string,
+    updateLibraryDocumentRequest: UpdateLibraryDocumentRequest, options?: RequestInit): Promise<LibraryDocumentSingleResponse> => {
+
+  return customFetch<LibraryDocumentSingleResponse>(getUpdateLibraryDocumentUrl(documentId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateLibraryDocumentRequest,)
+  }
+);}
+
+
+
+
+export const getUpdateLibraryDocumentMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLibraryDocument>>, TError,{documentId: string;data: BodyType<UpdateLibraryDocumentRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateLibraryDocument>>, TError,{documentId: string;data: BodyType<UpdateLibraryDocumentRequest>}, TContext> => {
+
+const mutationKey = ['updateLibraryDocument'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateLibraryDocument>>, {documentId: string;data: BodyType<UpdateLibraryDocumentRequest>}> = (props) => {
+          const {documentId,data} = props ?? {};
+
+          return  updateLibraryDocument(documentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateLibraryDocumentMutationResult = NonNullable<Awaited<ReturnType<typeof updateLibraryDocument>>>
+    export type UpdateLibraryDocumentMutationBody = BodyType<UpdateLibraryDocumentRequest>
+    export type UpdateLibraryDocumentMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Editar documento
+ */
+export const useUpdateLibraryDocument = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLibraryDocument>>, TError,{documentId: string;data: BodyType<UpdateLibraryDocumentRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateLibraryDocument>>,
+        TError,
+        {documentId: string;data: BodyType<UpdateLibraryDocumentRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateLibraryDocumentMutationOptions(options));
+    }
+
+export const getPublishLibraryDocumentUrl = (documentId: string,) => {
+
+
+
+
+  return `/api/library/documents/${documentId}/publish`
+}
+
+/**
+ * @summary Publicar documento
+ */
+export const publishLibraryDocument = async (documentId: string, options?: RequestInit): Promise<LibraryDocumentSingleResponse> => {
+
+  return customFetch<LibraryDocumentSingleResponse>(getPublishLibraryDocumentUrl(documentId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getPublishLibraryDocumentMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishLibraryDocument>>, TError,{documentId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof publishLibraryDocument>>, TError,{documentId: string}, TContext> => {
+
+const mutationKey = ['publishLibraryDocument'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof publishLibraryDocument>>, {documentId: string}> = (props) => {
+          const {documentId} = props ?? {};
+
+          return  publishLibraryDocument(documentId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PublishLibraryDocumentMutationResult = NonNullable<Awaited<ReturnType<typeof publishLibraryDocument>>>
+
+    export type PublishLibraryDocumentMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Publicar documento
+ */
+export const usePublishLibraryDocument = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishLibraryDocument>>, TError,{documentId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof publishLibraryDocument>>,
+        TError,
+        {documentId: string},
+        TContext
+      > => {
+      return useMutation(getPublishLibraryDocumentMutationOptions(options));
+    }
+
+export const getNewLibraryDocumentVersionUrl = (documentId: string,) => {
+
+
+
+
+  return `/api/library/documents/${documentId}/version`
+}
+
+/**
+ * @summary Criar nova versão do documento
+ */
+export const newLibraryDocumentVersion = async (documentId: string,
+    newLibraryDocumentVersionRequest: NewLibraryDocumentVersionRequest, options?: RequestInit): Promise<LibraryDocumentSingleResponse> => {
+
+  return customFetch<LibraryDocumentSingleResponse>(getNewLibraryDocumentVersionUrl(documentId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      newLibraryDocumentVersionRequest,)
+  }
+);}
+
+
+
+
+export const getNewLibraryDocumentVersionMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof newLibraryDocumentVersion>>, TError,{documentId: string;data: BodyType<NewLibraryDocumentVersionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof newLibraryDocumentVersion>>, TError,{documentId: string;data: BodyType<NewLibraryDocumentVersionRequest>}, TContext> => {
+
+const mutationKey = ['newLibraryDocumentVersion'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof newLibraryDocumentVersion>>, {documentId: string;data: BodyType<NewLibraryDocumentVersionRequest>}> = (props) => {
+          const {documentId,data} = props ?? {};
+
+          return  newLibraryDocumentVersion(documentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type NewLibraryDocumentVersionMutationResult = NonNullable<Awaited<ReturnType<typeof newLibraryDocumentVersion>>>
+    export type NewLibraryDocumentVersionMutationBody = BodyType<NewLibraryDocumentVersionRequest>
+    export type NewLibraryDocumentVersionMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Criar nova versão do documento
+ */
+export const useNewLibraryDocumentVersion = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof newLibraryDocumentVersion>>, TError,{documentId: string;data: BodyType<NewLibraryDocumentVersionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof newLibraryDocumentVersion>>,
+        TError,
+        {documentId: string;data: BodyType<NewLibraryDocumentVersionRequest>},
+        TContext
+      > => {
+      return useMutation(getNewLibraryDocumentVersionMutationOptions(options));
+    }
+
+export const getArchiveLibraryDocumentUrl = (documentId: string,) => {
+
+
+
+
+  return `/api/library/documents/${documentId}/archive`
+}
+
+/**
+ * @summary Arquivar documento
+ */
+export const archiveLibraryDocument = async (documentId: string, options?: RequestInit): Promise<LibraryDocumentSingleResponse> => {
+
+  return customFetch<LibraryDocumentSingleResponse>(getArchiveLibraryDocumentUrl(documentId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getArchiveLibraryDocumentMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof archiveLibraryDocument>>, TError,{documentId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof archiveLibraryDocument>>, TError,{documentId: string}, TContext> => {
+
+const mutationKey = ['archiveLibraryDocument'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof archiveLibraryDocument>>, {documentId: string}> = (props) => {
+          const {documentId} = props ?? {};
+
+          return  archiveLibraryDocument(documentId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ArchiveLibraryDocumentMutationResult = NonNullable<Awaited<ReturnType<typeof archiveLibraryDocument>>>
+
+    export type ArchiveLibraryDocumentMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Arquivar documento
+ */
+export const useArchiveLibraryDocument = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof archiveLibraryDocument>>, TError,{documentId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof archiveLibraryDocument>>,
+        TError,
+        {documentId: string},
+        TContext
+      > => {
+      return useMutation(getArchiveLibraryDocumentMutationOptions(options));
+    }
+
+export const getListLibraryDocumentVersionsUrl = (documentId: string,) => {
+
+
+
+
+  return `/api/library/documents/${documentId}/versions`
+}
+
+/**
+ * @summary Histórico de versões do documento
+ */
+export const listLibraryDocumentVersions = async (documentId: string, options?: RequestInit): Promise<LibraryDocumentVersionsResponse> => {
+
+  return customFetch<LibraryDocumentVersionsResponse>(getListLibraryDocumentVersionsUrl(documentId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListLibraryDocumentVersionsQueryKey = (documentId: string,) => {
+    return [
+    `/api/library/documents/${documentId}/versions`
+    ] as const;
+    }
+
+
+export const getListLibraryDocumentVersionsQueryOptions = <TData = Awaited<ReturnType<typeof listLibraryDocumentVersions>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(documentId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLibraryDocumentVersions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListLibraryDocumentVersionsQueryKey(documentId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listLibraryDocumentVersions>>> = ({ signal }) => listLibraryDocumentVersions(documentId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(documentId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listLibraryDocumentVersions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListLibraryDocumentVersionsQueryResult = NonNullable<Awaited<ReturnType<typeof listLibraryDocumentVersions>>>
+export type ListLibraryDocumentVersionsQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+
+/**
+ * @summary Histórico de versões do documento
+ */
+
+export function useListLibraryDocumentVersions<TData = Awaited<ReturnType<typeof listLibraryDocumentVersions>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(
+ documentId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLibraryDocumentVersions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListLibraryDocumentVersionsQueryOptions(documentId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 

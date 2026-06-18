@@ -13,3 +13,4 @@ export * from "./history.js";
 export * from "./audit.js";
 export * from "./notifications.js";
 export * from "./refresh-tokens.js";
+export * from "./library.js";

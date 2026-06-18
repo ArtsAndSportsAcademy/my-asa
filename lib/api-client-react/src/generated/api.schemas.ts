@@ -1840,6 +1840,115 @@ export interface AssignmentSingleResponse {
   assignment: DeliveryAssignmentItem;
 }
 
+export interface LibraryCategory {
+  id: string;
+  orgId: string;
+  name: string;
+  description?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LibraryCategoriesResponse {
+  categories: LibraryCategory[];
+}
+
+export interface LibraryCategorySingleResponse {
+  category: LibraryCategory;
+}
+
+export interface CreateLibraryCategoryRequest {
+  name: string;
+  description?: string;
+}
+
+export interface LibraryDocumentItem {
+  id: string;
+  orgId: string;
+  categoryId?: string | null;
+  type: string;
+  title: string;
+  summary?: string | null;
+  status: string;
+  version: number;
+  responsibleId?: string | null;
+  responsibleName?: string | null;
+  publishedAt?: string | null;
+  archivedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LibraryDocumentDetail {
+  id: string;
+  orgId: string;
+  categoryId?: string | null;
+  type: string;
+  title: string;
+  summary?: string | null;
+  body: string;
+  status: string;
+  version: number;
+  responsibleId?: string | null;
+  responsibleName?: string | null;
+  publishedAt?: string | null;
+  archivedAt?: string | null;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LibraryDocumentVersion {
+  id: string;
+  documentId: string;
+  version: number;
+  title: string;
+  body: string;
+  summary?: string | null;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface LibraryDocumentsResponse {
+  documents: LibraryDocumentItem[];
+}
+
+export interface LibraryDocumentSingleResponse {
+  document: LibraryDocumentDetail;
+}
+
+export interface LibraryDocumentDetailResponse {
+  document: LibraryDocumentDetail;
+  versions: LibraryDocumentVersion[];
+}
+
+export interface LibraryDocumentVersionsResponse {
+  versions: LibraryDocumentVersion[];
+}
+
+export interface CreateLibraryDocumentRequest {
+  title: string;
+  type: string;
+  summary?: string;
+  body?: string;
+  categoryId?: string;
+  responsibleId?: string;
+}
+
+export interface UpdateLibraryDocumentRequest {
+  title?: string;
+  summary?: string;
+  body?: string;
+  categoryId?: string;
+  responsibleId?: string;
+}
+
+export interface NewLibraryDocumentVersionRequest {
+  title: string;
+  body: string;
+  summary?: string;
+}
+
 /**
  * Bad request
  */
@@ -2275,5 +2384,12 @@ offset?: number;
 
 export type MarkThreadAsRead200 = {
   ok?: boolean;
+};
+
+export type ListLibraryDocumentsParams = {
+q?: string;
+type?: string;
+categoryId?: string;
+status?: string;
 };
 

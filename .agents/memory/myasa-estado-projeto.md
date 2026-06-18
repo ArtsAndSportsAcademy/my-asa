@@ -3,6 +3,51 @@ name: MyASA 2.0 — Estado do Projeto
 description: Sprint progress, architectural decisions, and key conventions for the MyASA 2.0 system
 ---
 
+## Sprint 13 — Biblioteca / S-14 (COMPLETO)
+**Objetivo:** Fonte oficial de conhecimento da organização — "Qual é a referência oficial?"
+NÃO é Google Drive. NÃO é chat. NÃO é aviso. NÃO é entrega.
+
+### Princípio Fundador
+- Biblioteca = conhecimento permanente, documentação operacional, onboarding, procedimentos oficiais
+- Entrega referencia documento da Biblioteca — Biblioteca permanece fonte única (sem duplicação)
+- FC-01 (Livro do Show Bíblia) poderá referenciar Biblioteca futuramente sem duplicar conteúdo
+- FC-03 (Insights da Biblioteca) NÃO implementado nesta sprint
+
+### T001 — DB Migration ✅
+- ENUMs: `library_doc_type` (OPERATIONAL_PROCEDURE, RULES_AND_POLICIES, CHARACTER_REFERENCE, COSTUME_REFERENCE, ONBOARDING_MATERIAL, SAFETY_PROCEDURE), `library_doc_status` (DRAFT, PUBLISHED, UPDATED, ARCHIVED)
+- Tabelas: `library_categories`, `library_documents`, `library_document_versions`
+- Arquivado ≠ Excluído — não há DELETE em documentos
+
+### T002 — lib/db schema ✅
+- `lib/db/src/schema/library.ts` criado + index atualizado
+
+### T003 — routes/library.ts ✅
+- 9 endpoints: listar cats, criar cat, listar docs, criar doc, detalhe, editar, publicar, versionar, arquivar, listar versões
+- Histórico em: publicar, versionar, arquivar, mudar responsável
+- Apenas ADMIN pode arquivar; MANAGER_ROLES podem criar/editar/publicar/versionar
+
+### T004 — OpenAPI + Codegen ✅
+- IMPORTANTE: schemas de Biblioteca devem ser em block-style YAML puro (não flow-style `{ type: string, nullable: true }`)
+- 8 paths + 14 schemas adicionados
+- Hooks: `useListLibraryCategories`, `useCreateLibraryCategory`, `useListLibraryDocuments`, `useCreateLibraryDocument`, `useGetLibraryDocument`, `useUpdateLibraryDocument`, `usePublishLibraryDocument`, `useNewLibraryDocumentVersion`, `useArchiveLibraryDocument`
+- `lib/api-client-react` DEVE ser rebuilt após codegen: `cd lib/api-client-react && pnpm tsc --build tsconfig.json`
+
+### T005 — Web Admin ✅
+- `/admin/library`: painel 2 colunas — lista com filtros + detalhe com ações (editar, publicar, versionar, arquivar), histórico de versões
+- `/supervisor/library`: navegação + leitura somente (stats, filtros por tipo/cat)
+- admin-layout.tsx + App.tsx atualizados com ícone `Library` (lucide-react)
+
+### T006 — Mobile ✅
+- `app/(tabs)/biblioteca.tsx`: chips de filtro por tipo, pesquisa, lista, modal de leitura somente
+- NativeTabs: sf "books.vertical"/"books.vertical.fill"; ClassicTabLayout: Feather "book-open"
+
+### Convenções estabelecidas no Sprint 13
+- `useGetLibraryDocument(id, { query: { queryKey: getGetLibraryDocumentQueryKey(id), enabled: !!id } })` — queryKey obrigatório após rebuild do api-client-react
+- Flow-style YAML `{ type: string, nullable: true }` QUEBRA o orval codegen — usar block-style sempre
+- useGetDelivery não exige queryKey explícito (dist antigo); useGetLibraryDocument sim (dist novo) — para consistência futura, SEMPRE passar queryKey explicitamente
+
+---
+
 ## Sprint 12 — Entregas / S-07 (COMPLETO)
 **Objetivo:** Sistema de confirmação obrigatória de conteúdo — "Quem recebeu, visualizou e confirmou?"
 NÃO é sistema de tarefas. NÃO é Jira/Trello. NÃO é avaliação de desempenho.

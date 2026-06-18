@@ -27,6 +27,8 @@ import AdminMessagesPage from "@/pages/admin/messages";
 import SupervisorMessagesPage from "@/pages/supervisor/messages";
 import AdminDeliveriesPage from "@/pages/admin/deliveries";
 import SupervisorDeliveriesPage from "@/pages/supervisor/deliveries";
+import AdminLibraryPage from "@/pages/admin/library";
+import SupervisorLibraryPage from "@/pages/supervisor/library";
 
 const queryClient = new QueryClient();
 
@@ -87,6 +89,8 @@ function Router() {
       <RoleRoute path="/supervisor/messages" component={SupervisorMessagesPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/admin/deliveries" component={AdminDeliveriesPage} roles={["ADMIN"]} />
       <RoleRoute path="/supervisor/deliveries" component={SupervisorDeliveriesPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
+      <RoleRoute path="/admin/library" component={AdminLibraryPage} roles={["ADMIN"]} />
+      <RoleRoute path="/supervisor/library" component={SupervisorLibraryPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
       <Route component={NotFound} />
     </Switch>
   );

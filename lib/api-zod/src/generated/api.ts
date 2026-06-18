@@ -3483,3 +3483,260 @@ export const UpdateDeliveryChecklistResponse = zod.object({
 })
 
 
+/**
+ * @summary Listar categorias da Biblioteca
+ */
+export const ListLibraryCategoriesResponse = zod.object({
+  "categories": zod.array(zod.object({
+  "id": zod.string(),
+  "orgId": zod.string(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Criar categoria
+ */
+export const CreateLibraryCategoryBody = zod.object({
+  "name": zod.string(),
+  "description": zod.string().optional()
+})
+
+
+/**
+ * @summary Listar documentos da Biblioteca
+ */
+export const ListLibraryDocumentsQueryParams = zod.object({
+  "q": zod.coerce.string().optional(),
+  "type": zod.coerce.string().optional(),
+  "categoryId": zod.coerce.string().optional(),
+  "status": zod.coerce.string().optional()
+})
+
+export const ListLibraryDocumentsResponse = zod.object({
+  "documents": zod.array(zod.object({
+  "id": zod.string(),
+  "orgId": zod.string(),
+  "categoryId": zod.string().nullish(),
+  "type": zod.string(),
+  "title": zod.string(),
+  "summary": zod.string().nullish(),
+  "status": zod.string(),
+  "version": zod.number(),
+  "responsibleId": zod.string().nullish(),
+  "responsibleName": zod.string().nullish(),
+  "publishedAt": zod.string().nullish(),
+  "archivedAt": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Criar documento
+ */
+export const CreateLibraryDocumentBody = zod.object({
+  "title": zod.string(),
+  "type": zod.string(),
+  "summary": zod.string().optional(),
+  "body": zod.string().optional(),
+  "categoryId": zod.string().optional(),
+  "responsibleId": zod.string().optional()
+})
+
+
+/**
+ * @summary Detalhe do documento
+ */
+export const GetLibraryDocumentParams = zod.object({
+  "documentId": zod.coerce.string()
+})
+
+export const GetLibraryDocumentResponse = zod.object({
+  "document": zod.object({
+  "id": zod.string(),
+  "orgId": zod.string(),
+  "categoryId": zod.string().nullish(),
+  "type": zod.string(),
+  "title": zod.string(),
+  "summary": zod.string().nullish(),
+  "body": zod.string(),
+  "status": zod.string(),
+  "version": zod.number(),
+  "responsibleId": zod.string().nullish(),
+  "responsibleName": zod.string().nullish(),
+  "publishedAt": zod.string().nullish(),
+  "archivedAt": zod.string().nullish(),
+  "createdBy": zod.string().optional(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}),
+  "versions": zod.array(zod.object({
+  "id": zod.string(),
+  "documentId": zod.string(),
+  "version": zod.number(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "summary": zod.string().nullish(),
+  "createdBy": zod.string(),
+  "createdAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Editar documento
+ */
+export const UpdateLibraryDocumentParams = zod.object({
+  "documentId": zod.coerce.string()
+})
+
+export const UpdateLibraryDocumentBody = zod.object({
+  "title": zod.string().optional(),
+  "summary": zod.string().optional(),
+  "body": zod.string().optional(),
+  "categoryId": zod.string().optional(),
+  "responsibleId": zod.string().optional()
+})
+
+export const UpdateLibraryDocumentResponse = zod.object({
+  "document": zod.object({
+  "id": zod.string(),
+  "orgId": zod.string(),
+  "categoryId": zod.string().nullish(),
+  "type": zod.string(),
+  "title": zod.string(),
+  "summary": zod.string().nullish(),
+  "body": zod.string(),
+  "status": zod.string(),
+  "version": zod.number(),
+  "responsibleId": zod.string().nullish(),
+  "responsibleName": zod.string().nullish(),
+  "publishedAt": zod.string().nullish(),
+  "archivedAt": zod.string().nullish(),
+  "createdBy": zod.string().optional(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Publicar documento
+ */
+export const PublishLibraryDocumentParams = zod.object({
+  "documentId": zod.coerce.string()
+})
+
+export const PublishLibraryDocumentResponse = zod.object({
+  "document": zod.object({
+  "id": zod.string(),
+  "orgId": zod.string(),
+  "categoryId": zod.string().nullish(),
+  "type": zod.string(),
+  "title": zod.string(),
+  "summary": zod.string().nullish(),
+  "body": zod.string(),
+  "status": zod.string(),
+  "version": zod.number(),
+  "responsibleId": zod.string().nullish(),
+  "responsibleName": zod.string().nullish(),
+  "publishedAt": zod.string().nullish(),
+  "archivedAt": zod.string().nullish(),
+  "createdBy": zod.string().optional(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Criar nova versão do documento
+ */
+export const NewLibraryDocumentVersionParams = zod.object({
+  "documentId": zod.coerce.string()
+})
+
+export const NewLibraryDocumentVersionBody = zod.object({
+  "title": zod.string(),
+  "body": zod.string(),
+  "summary": zod.string().optional()
+})
+
+export const NewLibraryDocumentVersionResponse = zod.object({
+  "document": zod.object({
+  "id": zod.string(),
+  "orgId": zod.string(),
+  "categoryId": zod.string().nullish(),
+  "type": zod.string(),
+  "title": zod.string(),
+  "summary": zod.string().nullish(),
+  "body": zod.string(),
+  "status": zod.string(),
+  "version": zod.number(),
+  "responsibleId": zod.string().nullish(),
+  "responsibleName": zod.string().nullish(),
+  "publishedAt": zod.string().nullish(),
+  "archivedAt": zod.string().nullish(),
+  "createdBy": zod.string().optional(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Arquivar documento
+ */
+export const ArchiveLibraryDocumentParams = zod.object({
+  "documentId": zod.coerce.string()
+})
+
+export const ArchiveLibraryDocumentResponse = zod.object({
+  "document": zod.object({
+  "id": zod.string(),
+  "orgId": zod.string(),
+  "categoryId": zod.string().nullish(),
+  "type": zod.string(),
+  "title": zod.string(),
+  "summary": zod.string().nullish(),
+  "body": zod.string(),
+  "status": zod.string(),
+  "version": zod.number(),
+  "responsibleId": zod.string().nullish(),
+  "responsibleName": zod.string().nullish(),
+  "publishedAt": zod.string().nullish(),
+  "archivedAt": zod.string().nullish(),
+  "createdBy": zod.string().optional(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Histórico de versões do documento
+ */
+export const ListLibraryDocumentVersionsParams = zod.object({
+  "documentId": zod.coerce.string()
+})
+
+export const ListLibraryDocumentVersionsResponse = zod.object({
+  "versions": zod.array(zod.object({
+  "id": zod.string(),
+  "documentId": zod.string(),
+  "version": zod.number(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "summary": zod.string().nullish(),
+  "createdBy": zod.string(),
+  "createdAt": zod.string()
+}))
+})
+
+

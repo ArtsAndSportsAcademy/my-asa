@@ -1,0 +1,180 @@
+MyASA 2.0 — Sprint 13: Biblioteca (S-14)
+
+Utilizar obrigatoriamente:
+
+* Sprint 0 a Sprint 12 concluídas
+* Fundação S-14 Biblioteca
+* Blueprint Executivo
+* Gate Final de Construção
+* Arquitetura Técnica Consolidada
+
+Importante:
+
+Não implementar IA nesta sprint.
+
+Não implementar Insights da Biblioteca (FC-03) nesta sprint.
+
+Não implementar armazenamento avançado de mídia ainda.
+
+Objetivo:
+
+Construir a fonte oficial de conhecimento do MyASA.
+
+Pergunta respondida:
+
+“Qual é a referência oficial da organização?”
+
+═══════════════════════
+PARTE 1 — PRINCÍPIO FUNDADOR
+═══════════════════════
+
+Biblioteca NÃO é:
+
+* Google Drive
+* Chat
+* Aviso
+* Entrega
+
+Biblioteca É:
+
+* conhecimento permanente
+* documentação operacional
+* onboarding
+* procedimentos oficiais
+
+═══════════════════════
+PARTE 2 — DOMÍNIO
+═══════════════════════
+
+Implementar:
+
+LibraryDocument
+
+LibraryCategory
+
+LibraryVersion
+
+LibraryResponsibility
+
+Tipos MVP:
+
+* Procedimentos Operacionais
+* Regras e Políticas
+* Referência de Personagens
+* Referência de Figurinos
+* Materiais de Onboarding
+* Procedimentos de Segurança
+
+═══════════════════════
+PARTE 3 — CICLO DE VIDA
+═══════════════════════
+
+Estados:
+
+Rascunho
+↓
+Publicado
+↓
+Atualizado
+↓
+Arquivado
+
+Importante:
+
+Arquivado ≠ Excluído
+
+Versionamento obrigatório.
+
+═══════════════════════
+PARTE 4 — WEB
+═══════════════════════
+
+Criar:
+
+/admin/library
+
+/supervisor/library
+
+Permitir:
+
+* criar documento
+* editar
+* publicar
+* versionar
+* arquivar
+* pesquisar
+
+═══════════════════════
+PARTE 5 — MOBILE
+═══════════════════════
+
+Criar aba:
+
+Biblioteca
+
+Permitir:
+
+* navegar categorias
+* pesquisar
+* visualizar documentos
+
+Somente leitura.
+
+═══════════════════════
+PARTE 6 — ENTREGAS
+═══════════════════════
+
+Preparar integração.
+
+Entrega referencia Biblioteca.
+
+Biblioteca permanece fonte única.
+
+Não duplicar conteúdo.
+
+═══════════════════════
+PARTE 7 — LIVRO DO SHOW
+═══════════════════════
+
+Preparar integração.
+
+Posições e cenas poderão futuramente referenciar documentos da Biblioteca.
+
+Não duplicar conteúdo.
+
+═══════════════════════
+PARTE 8 — HISTÓRICO
+═══════════════════════
+
+Registrar:
+
+* publicação
+* atualização
+* arquivamento
+* mudança de responsável
+
+═══════════════════════
+PARTE 9 — AUDITORIA
+═══════════════════════
+
+Validar:
+
+* Não virou Google Drive genérico
+* Existe responsável por documento
+* Existe versionamento
+* Existe rastreabilidade
+* Biblioteca é fonte única de verdade
+
+Responder:
+
+FC-01 (Livro do Show Bíblia) poderá evoluir usando a Biblioteca sem duplicação de conteúdo?
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Objetivo final:
+
+Ao final da Sprint 13:
+
+Toda regra, procedimento, personagem, figurino ou material de onboarding possui uma fonte oficial, versionada e rastreável dentro do MyASA.

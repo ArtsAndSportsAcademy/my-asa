@@ -16,6 +16,7 @@ import noticesRouter from "./notices";
 import historyRouter from "./history";
 import messagesRouter from "./messages";
 import deliveriesRouter from "./deliveries";
+import libraryRouter from "./library";
 
 const router: IRouter = Router();
 
@@ -36,5 +37,6 @@ router.use(noticesRouter);
 router.use(historyRouter);
 router.use(messagesRouter);
 router.use(deliveriesRouter);
+router.use(libraryRouter);
 
 export default router;
