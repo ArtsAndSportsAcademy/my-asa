@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { setAuthTokenGetter } from "@workspace/api-client-react";
+import { setAuthTokenGetter, getMe } from "@workspace/api-client-react";
 import type { User, UserRole } from "@workspace/api-client-react";
 
 interface AuthState {
@@ -16,6 +16,14 @@ interface AuthContextType extends AuthState {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function clearStorage() {
+  localStorage.removeItem("myasa_access_token");
+  localStorage.removeItem("myasa_refresh_token");
+  localStorage.removeItem("myasa_user");
+  localStorage.removeItem("myasa_roles");
+  setAuthTokenGetter(null);
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     user: null,
@@ -28,23 +36,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token = localStorage.getItem("myasa_access_token");
     const userStr = localStorage.getItem("myasa_user");
     const rolesStr = localStorage.getItem("myasa_roles");
-    
+
+    if (!token || !userStr || !rolesStr) {
+      setState(s => ({ ...s, isLoading: false }));
+      return;
+    }
+
     setAuthTokenGetter(() => localStorage.getItem("myasa_access_token"));
 
-    if (token && userStr && rolesStr) {
-      try {
-        setState({
-          user: JSON.parse(userStr),
-          roles: JSON.parse(rolesStr),
-          isAuthenticated: true,
-          isLoading: false,
-        });
-      } catch (e) {
-        setState(s => ({ ...s, isLoading: false }));
-      }
-    } else {
-      setState(s => ({ ...s, isLoading: false }));
-    }
+    getMe()
+      .then(() => {
+        try {
+          setState({
+            user: JSON.parse(userStr),
+            roles: JSON.parse(rolesStr),
+            isAuthenticated: true,
+            isLoading: false,
+          });
+        } catch {
+          clearStorage();
+          setState({ user: null, roles: [], isAuthenticated: false, isLoading: false });
+        }
+      })
+      .catch(() => {
+        clearStorage();
+        setState({ user: null, roles: [], isAuthenticated: false, isLoading: false });
+      });
   }, []);
 
   const login = (accessToken: string, refreshToken: string, user: User, roles: UserRole[]) => {
@@ -57,11 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    localStorage.removeItem("myasa_access_token");
-    localStorage.removeItem("myasa_refresh_token");
-    localStorage.removeItem("myasa_user");
-    localStorage.removeItem("myasa_roles");
-    setAuthTokenGetter(null);
+    clearStorage();
     setState({ user: null, roles: [], isAuthenticated: false, isLoading: false });
   };
 
