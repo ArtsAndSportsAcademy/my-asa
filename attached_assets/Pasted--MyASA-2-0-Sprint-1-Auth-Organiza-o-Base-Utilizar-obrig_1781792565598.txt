@@ -1,0 +1,224 @@
+# MyASA 2.0 — Sprint 1: Auth + Organização Base
+
+Utilizar obrigatoriamente:
+
+* Arquitetura Técnica MyASA 2.0
+* Sprint 0 entregue
+* Blueprint Executivo
+* Gate Final de Construção
+* Backlog Mestre
+* Schema v1 aplicado
+* Seed de demonstração
+
+Objetivo:
+
+Construir a base real de acesso e organização para o MVP piloto.
+
+Não criar novas funcionalidades.
+
+Não alterar arquitetura.
+
+Não criar telas fora do escopo.
+
+═══════════════════════
+ESCOPO DA SPRINT 1
+═══════════════════════
+
+Implementar:
+
+1. Autenticação
+2. Sessão/JWT
+3. Usuário atual
+4. Organização atual
+5. Operações básicas
+6. Grupos operacionais básicos
+7. Papéis do usuário
+8. Guards de permissão
+9. Web mínima de Admin
+10. Mobile mínimo autenticado
+
+═══════════════════════
+PARTE 1 — BACKEND AUTH
+═══════════════════════
+
+Criar:
+
+artifacts/api-server/src/routes/auth.ts
+
+Endpoints obrigatórios:
+
+POST /auth/login
+POST /auth/logout
+GET /auth/me
+POST /auth/refresh
+
+Requisitos:
+
+* login por e-mail e senha
+* senha com hash seguro
+* JWT access token
+* refresh token
+* sessão revogável
+* logs com requestId e correlationId
+* SecurityAuditLog para login, logout, falha de login e refresh
+
+Critérios de aceite:
+
+* usuário seed consegue logar
+* senha errada retorna erro seguro
+* token inválido retorna 401
+* logout invalida sessão
+* /auth/me retorna usuário + papéis + organização
+
+═══════════════════════
+PARTE 2 — GUARDS E PERMISSÕES
+═══════════════════════
+
+Implementar guards:
+
+* requireAuth
+* requireRole
+* requireOrganization
+* requireOperationScope
+
+Regras:
+
+Admin vê organização inteira.
+Supervisor vê apenas seus grupos/operações.
+Membro vê apenas seus próprios dados.
+
+Critérios de aceite:
+
+* Admin acessa endpoints organizacionais
+* Supervisor não acessa dados fora do escopo
+* Membro não acessa dados de outro membro
+
+═══════════════════════
+PARTE 3 — ORGANIZAÇÃO
+═══════════════════════
+
+Endpoints básicos:
+
+GET /organizations/current
+GET /operations
+GET /operational-groups
+GET /users/me/context
+
+Retornar:
+
+* organização
+* operações ativas
+* grupos
+* papel do usuário
+* escopo operacional
+
+Critérios de aceite:
+
+* Admin recebe visão completa
+* Supervisor recebe apenas seus grupos
+* Membro recebe apenas contexto próprio
+
+═══════════════════════
+PARTE 4 — WEB ADMIN MÍNIMA
+═══════════════════════
+
+Criar telas mínimas:
+
+/login
+/admin/home
+
+Admin home deve mostrar:
+
+* nome da organização
+* operações ativas
+* grupos operacionais
+* usuários seed
+* status “Configuração inicial carregada”
+
+Sem design final.
+
+Apenas estrutura funcional.
+
+Critérios de aceite:
+
+* Admin consegue logar pela web
+* Admin vê dados da seed
+* Logout funciona
+
+═══════════════════════
+PARTE 5 — MOBILE MÍNIMO
+═══════════════════════
+
+Criar fluxo mínimo:
+
+Login
+Sessão persistida
+Tela inicial autenticada
+
+A tela inicial pode exibir:
+
+* nome do usuário
+* papel
+* organização
+* operação/grupo
+
+Sem Meu Dia ainda.
+
+Critérios de aceite:
+
+* Membro seed consegue logar no mobile
+* Sessão persiste após fechar app
+* Logout funciona
+
+═══════════════════════
+PARTE 6 — OBSERVABILIDADE
+═══════════════════════
+
+Garantir:
+
+* todos endpoints com requestId
+* todos eventos críticos com correlationId
+* login/logout registrados em SecurityAuditLog
+* erros de auth logados sem vazar senha/token
+
+═══════════════════════
+PARTE 7 — TESTES
+═══════════════════════
+
+Criar testes para:
+
+* login válido
+* login inválido
+* refresh válido
+* refresh inválido
+* logout
+* /auth/me
+* guard Admin
+* guard Supervisor
+* guard Membro
+
+═══════════════════════
+PARTE 8 — AUDITORIA DA SPRINT
+═══════════════════════
+
+Ao finalizar, responder:
+
+1. Alguma decisão do Gate Final foi violada?
+2. Algum dado de outro usuário vazou por permissão?
+3. Algum endpoint crítico ficou sem correlationId?
+4. Auth está pronto para sustentar Sprint 2?
+5. Existe débito técnico bloqueante?
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Classificar:
+
+🟢 Sprint 1 concluída — pronto para Sprint 2
+🟡 Ajustes necessários
+🔴 Bloqueado
+
+Objetivo final:
+
+Ao final da Sprint 1, Admin, Supervisor e Membro conseguem autenticar, carregar seu contexto correto e respeitar escopo de permissão.

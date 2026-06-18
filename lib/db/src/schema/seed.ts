@@ -1,3 +1,5 @@
+import bcrypt from "bcryptjs";
+import { like, eq } from "drizzle-orm";
 import { db } from "../index.js";
 import {
   organizationsTable,
@@ -10,8 +12,34 @@ import {
   showBookRolesTable,
 } from "./index.js";
 
+const DEFAULT_PASSWORD = "myasa123";
+
 async function seed() {
   console.log("🌱 Iniciando seed do banco de dados...");
+
+  const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 12);
+
+  const existingAdmin = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.email, "admin@myasa.demo"))
+    .limit(1);
+
+  if (existingAdmin.length > 0) {
+    console.log("🔄 Dados já existem — atualizando password_hash de todos os usuários demo...");
+    const updated = await db
+      .update(usersTable)
+      .set({ passwordHash })
+      .where(like(usersTable.email, "%@myasa.demo"))
+      .returning({ id: usersTable.id });
+    console.log(`✅ ${updated.length} senhas atualizadas para "${DEFAULT_PASSWORD}"`);
+    console.log("\nCredenciais de acesso (dev):");
+    console.log(`  Senha (todos): ${DEFAULT_PASSWORD}`);
+    console.log(`  Admin:         admin@myasa.demo`);
+    console.log(`  Supervisor:    supervisor@myasa.demo`);
+    console.log(`  Membros:       membro01..05@myasa.demo`);
+    return;
+  }
 
   const [org] = await db.insert(organizationsTable).values({
     name: "Companhia MyASA Demo",
@@ -24,6 +52,7 @@ async function seed() {
     name: "Admin Demo",
     email: "admin@myasa.demo",
     status: "ACTIVE",
+    passwordHash,
   }).returning();
 
   const [supervisorUser] = await db.insert(usersTable).values({
@@ -31,14 +60,15 @@ async function seed() {
     name: "Supervisor Demo",
     email: "supervisor@myasa.demo",
     status: "ACTIVE",
+    passwordHash,
   }).returning();
 
   const memberUsers = await db.insert(usersTable).values([
-    { organizationId: org!.id, name: "Membro 01", email: "membro01@myasa.demo" },
-    { organizationId: org!.id, name: "Membro 02", email: "membro02@myasa.demo" },
-    { organizationId: org!.id, name: "Membro 03", email: "membro03@myasa.demo" },
-    { organizationId: org!.id, name: "Membro 04", email: "membro04@myasa.demo" },
-    { organizationId: org!.id, name: "Membro 05", email: "membro05@myasa.demo" },
+    { organizationId: org!.id, name: "Membro 01", email: "membro01@myasa.demo", passwordHash },
+    { organizationId: org!.id, name: "Membro 02", email: "membro02@myasa.demo", passwordHash },
+    { organizationId: org!.id, name: "Membro 03", email: "membro03@myasa.demo", passwordHash },
+    { organizationId: org!.id, name: "Membro 04", email: "membro04@myasa.demo", passwordHash },
+    { organizationId: org!.id, name: "Membro 05", email: "membro05@myasa.demo", passwordHash },
   ]).returning();
 
   console.log(`✅ ${2 + memberUsers.length} usuários criados`);
@@ -100,9 +130,10 @@ async function seed() {
   console.log(`✅ Livro do Show criado com 2 blocos e 4 papéis`);
   console.log("\n🎉 Seed concluído com sucesso!");
   console.log("\nCredenciais de acesso (dev):");
-  console.log(`  Admin:      admin@myasa.demo`);
-  console.log(`  Supervisor: supervisor@myasa.demo`);
-  console.log(`  Membros:    membro01..05@myasa.demo`);
+  console.log(`  Senha (todos): ${DEFAULT_PASSWORD}`);
+  console.log(`  Admin:         admin@myasa.demo`);
+  console.log(`  Supervisor:    supervisor@myasa.demo`);
+  console.log(`  Membros:       membro01..05@myasa.demo`);
 }
 
 seed().catch((err) => {

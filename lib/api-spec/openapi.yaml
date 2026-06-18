@@ -2,21 +2,31 @@ openapi: 3.1.0
 info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
-  description: API specification
+  version: 0.2.0
+  description: MyASA 2.0 API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: organization
+    description: Organization and operations
+  - name: users
+    description: User context
+
+security:
+  - bearerAuth: []
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
+      security: []
       responses:
         "200":
           description: Healthy
@@ -24,7 +34,184 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with email and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/refresh:
+    post:
+      operationId: refreshToken
+      tags: [auth]
+      summary: Refresh access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshTokenRequest"
+      responses:
+        "200":
+          description: Tokens refreshed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokensResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout and revoke refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshTokenRequest"
+      responses:
+        "204":
+          description: Logged out
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /organizations/current:
+    get:
+      operationId: getCurrentOrganization
+      tags: [organization]
+      summary: Get current organization with operations and groups
+      responses:
+        "200":
+          description: Current organization
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentOrganization"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /operations:
+    get:
+      operationId: getOperations
+      tags: [organization]
+      summary: Get operations accessible to the current user
+      responses:
+        "200":
+          description: Operations list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  operations:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Operation"
+                required: [operations]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /operational-groups:
+    get:
+      operationId: getOperationalGroups
+      tags: [organization]
+      summary: Get operational groups accessible to the current user
+      responses:
+        "200":
+          description: Groups list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  groups:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OperationalGroup"
+                required: [groups]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /users/me/context:
+    get:
+      operationId: getUserContext
+      tags: [users]
+      summary: Get full context for the current user
+      responses:
+        "200":
+          description: User context
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserContext"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +221,178 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required:
+        - error
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        photoUrl:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+        organizationId:
+          type: string
+      required: [id, name, email, status, organizationId]
+
+    UserRole:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        operationId:
+          type: string
+        groupId:
+          type: string
+          nullable: true
+        role:
+          type: string
+          enum: [ADMIN, SUPERVISOR_A, SUPERVISOR_B, MEMBER]
+        active:
+          type: boolean
+      required: [id, userId, operationId, role, active]
+
+    Organization:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+      required: [id, name]
+
+    Operation:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        organizationId:
+          type: string
+        status:
+          type: string
+          enum: [ACTIVE, ARCHIVED]
+      required: [id, name, organizationId, status]
+
+    OperationalGroup:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        operationId:
+          type: string
+        supervisorId:
+          type: string
+          nullable: true
+      required: [id, name, operationId]
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+      required: [email, password]
+
+    LoginResult:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserRole"
+      required: [accessToken, refreshToken, user, roles]
+
+    RefreshTokenRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+      required: [refreshToken]
+
+    TokensResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+      required: [accessToken, refreshToken]
+
+    MeResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserRole"
+        operationIds:
+          type: array
+          items:
+            type: string
+      required: [user, roles, operationIds]
+
+    CurrentOrganization:
+      type: object
+      properties:
+        organization:
+          $ref: "#/components/schemas/Organization"
+        operations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Operation"
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/OperationalGroup"
+      required: [organization, operations, groups]
+
+    UserContext:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserRole"
+        organization:
+          $ref: "#/components/schemas/Organization"
+        operations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Operation"
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/OperationalGroup"
+      required: [user, roles, organization, operations, groups]
