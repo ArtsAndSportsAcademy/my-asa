@@ -1,0 +1,123 @@
+MyASA 2.0 — Gate Final de Construção
+
+Utilizar obrigatoriamente:
+
+* Blueprint Executivo Oficial
+* Backlog Mestre
+* Plano MVP Piloto
+* Todas as decisões formais acumuladas
+* Todas as auditorias realizadas
+
+Importante:
+
+Não criar funcionalidades.
+
+Não alterar arquitetura.
+
+Não alterar backlog.
+
+Não alterar escopo.
+
+Assumir que o produto está congelado.
+
+Objetivo:
+
+Definir as regras de proteção da arquitetura durante o desenvolvimento.
+
+═══════════════════════
+PARTE 1 — O QUE ESTÁ CONGELADO
+═══════════════════════
+
+Listar:
+
+* superfícies
+* entidades
+* ciclos
+* decisões fundadoras
+* princípios inegociáveis
+
+Definir:
+
+O que não pode mudar sem revisão formal.
+
+═══════════════════════
+PARTE 2 — CRITÉRIOS DE ACEITE ARQUITETURAIS
+═══════════════════════
+
+Para cada pilar principal:
+
+* o que caracteriza implementação correta
+* o que caracteriza implementação incorreta
+
+Exemplos:
+
+IA não decide.
+Livro do Dia não é editado silenciosamente.
+Mensagem não vira WhatsApp.
+Entrega não vira gestor de tarefas.
+
+═══════════════════════
+PARTE 3 — RED FLAGS
+═══════════════════════
+
+Listar sinais de degradação arquitetural.
+
+Exemplos:
+
+* nova tela sem propósito claro
+* nova entidade duplicando outra
+* lógica operacional migrando para IA
+* comunicação oficial fora do fluxo rastreável
+
+═══════════════════════
+PARTE 4 — MUDANÇAS FUTURAS
+═══════════════════════
+
+Definir:
+
+Quando uma mudança é:
+
+* bug
+* melhoria
+* evolução
+* mudança arquitetural
+
+Quem aprova cada tipo.
+
+═══════════════════════
+PARTE 5 — AUDITORIA DE SPRINT
+═══════════════════════
+
+Criar checklist que deve ser executado ao final de cada sprint.
+
+Validar:
+
+* aderência ao blueprint
+* aderência aos princípios
+* aderência ao backlog
+
+═══════════════════════
+PARTE 6 — GO LIVE
+═══════════════════════
+
+Definir:
+
+Quais condições precisam ser verdadeiras para liberar:
+
+Pré-piloto
+
+Piloto
+
+Produção
+
+═══════════════════════
+PARTE 7 — VEREDITO
+═══════════════════════
+
+Produzir:
+
+Gate Final Oficial de Construção do MyASA 2.0
+
+Responder:
+
+Se uma nova equipe assumir o projeto daqui a 12 meses, como garantir que o produto continue fiel à visão original?
