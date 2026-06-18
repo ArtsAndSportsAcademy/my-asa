@@ -27,5 +27,7 @@ export interface NoticeDetail {
   createdAt: Date;
   authorId: string;
   authorName?: string | null;
+  changeBefore?: string | null;
+  changeAfter?: string | null;
   recipients: NoticeRecipientItem[];
 }

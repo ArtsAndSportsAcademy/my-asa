@@ -1,14 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   useListNotices,
   useCreateNotice,
+  useUpdateNotice,
   usePublishNotice,
   useCancelNotice,
+  useEscalateNotice,
   useGetNotice,
   getGetNoticeQueryKey,
   useGetOperations,
 } from "@workspace/api-client-react";
-import type { NoticeListItem, NoticeDetail, CreateNoticeRequest } from "@workspace/api-client-react";
+import type { NoticeListItem, NoticeDetail, CreateNoticeRequest, UpdateNoticeRequest } from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,6 +43,8 @@ import {
   AlertTriangle,
   Info,
   AlertCircle,
+  Pencil,
+  ArrowRightCircle,
 } from "lucide-react";
 
 const URGENCY_CFG = {
@@ -65,14 +69,15 @@ const TYPE_LABELS: Record<string, string> = {
 
 export default function SupervisorAvisosPage() {
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
-  const [createOpen, setCreateOpen]   = useState(false);
-  const [selectedId, setSelectedId]   = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editOpen, setEditOpen]     = useState(false);
+  const [editId, setEditId]         = useState<string | null>(null);
+  const [editFormReady, setEditFormReady] = useState(false);
+  const [editForm, setEditForm]     = useState<Partial<UpdateNoticeRequest>>({});
   const [form, setForm] = useState<Partial<CreateNoticeRequest>>({
-    operationId: "",
-    title: "",
-    content: "",
-    urgency: "INFORMATIVE",
-    type: "INFORMATIVE",
+    operationId: "", title: "", content: "",
+    urgency: "INFORMATIVE", type: "INFORMATIVE",
     requiresConfirmation: false,
   });
 
@@ -83,35 +88,68 @@ export default function SupervisorAvisosPage() {
   const { data: detail, refetch: refetchDetail } = useGetNotice(selectedId ?? "", {
     query: { enabled: !!selectedId, queryKey: getGetNoticeQueryKey(selectedId ?? "") },
   });
+  const { data: editDetail } = useGetNotice(editId ?? "", {
+    query: { enabled: !!editId && editOpen, queryKey: getGetNoticeQueryKey(editId ?? "") },
+  });
 
-  const createMutation  = useCreateNotice();
-  const publishMutation = usePublishNotice();
-  const cancelMutation  = useCancelNotice();
+  useEffect(() => {
+    if (!editOpen || editFormReady) return;
+    const src = editDetail as (NoticeDetail & { changeBefore?: string; changeAfter?: string }) | undefined;
+    if (!src) return;
+    setEditForm({
+      title: src.title ?? "",
+      content: src.content,
+      urgency: src.urgency as any,
+      type: src.type as any,
+      requiresConfirmation: src.requiresConfirmation,
+      changeBefore: src.changeBefore ?? "",
+      changeAfter:  src.changeAfter  ?? "",
+    });
+    setEditFormReady(true);
+  }, [editDetail, editOpen, editFormReady]);
+
+  const createMutation   = useCreateNotice();
+  const updateMutation   = useUpdateNotice();
+  const publishMutation  = usePublishNotice();
+  const cancelMutation   = useCancelNotice();
+  const escalateMutation = useEscalateNotice();
+
+  const openEdit = (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setEditId(id);
+    setEditForm({});
+    setEditFormReady(false);
+    setEditOpen(true);
+  };
+  const closeEdit = () => { setEditOpen(false); setEditId(null); setEditForm({}); setEditFormReady(false); };
 
   const handleCreate = () => {
     if (!form.operationId || !form.content) return;
-    createMutation.mutate(
-      { data: form as CreateNoticeRequest },
-      {
-        onSuccess: () => {
-          setCreateOpen(false);
-          setForm({ operationId: "", title: "", content: "", urgency: "INFORMATIVE", type: "INFORMATIVE", requiresConfirmation: false });
-          refetch();
-        },
-      }
-    );
+    createMutation.mutate({ data: form as CreateNoticeRequest }, {
+      onSuccess: () => {
+        setCreateOpen(false);
+        setForm({ operationId: "", title: "", content: "", urgency: "INFORMATIVE", type: "INFORMATIVE", requiresConfirmation: false });
+        refetch();
+      },
+    });
   };
 
-  const handlePublish = (id: string) => {
-    publishMutation.mutate({ noticeId: id }, { onSuccess: () => { refetch(); if (selectedId === id) refetchDetail(); } });
+  const handleSaveEdit = () => {
+    if (!editId || !editForm.content) return;
+    updateMutation.mutate({ noticeId: editId, data: editForm as UpdateNoticeRequest }, {
+      onSuccess: () => { closeEdit(); refetch(); if (selectedId) refetchDetail(); },
+    });
   };
 
-  const handleCancel = (id: string) => {
-    cancelMutation.mutate({ noticeId: id }, { onSuccess: () => { refetch(); if (selectedId === id) refetchDetail(); } });
+  const handlePublish  = (id: string) => { publishMutation.mutate({ noticeId: id },  { onSuccess: () => { refetch(); if (selectedId === id) refetchDetail(); } }); };
+  const handleCancel   = (id: string) => { cancelMutation.mutate({ noticeId: id },   { onSuccess: () => { refetch(); if (selectedId === id) refetchDetail(); } }); };
+  const handleEscalate = (id: string) => {
+    if (!window.confirm("Escalar este aviso? Todos os destinatários não-confirmados serão marcados como escalados.")) return;
+    escalateMutation.mutate({ noticeId: id }, { onSuccess: () => { refetch(); if (selectedId === id) refetchDetail(); } });
   };
 
   const FILTER_TABS = [
-    { value: undefined, label: "Todos" },
+    { value: undefined,   label: "Todos" },
     { value: "DRAFT",     label: "Rascunho" },
     { value: "PUBLISHED", label: "Publicados" },
     { value: "CANCELLED", label: "Cancelados" },
@@ -174,6 +212,7 @@ export default function SupervisorAvisosPage() {
                       {n.title && <span className="text-sm font-semibold truncate">{n.title}</span>}
                       <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${urg.badge}`}>{urg.label}</span>
                       <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${stat.badge}`}>{stat.label}</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">{TYPE_LABELS[n.type] ?? n.type}</span>
                       {n.requiresConfirmation && (
                         <span className="text-xs px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 font-medium">Confirmação</span>
                       )}
@@ -188,8 +227,18 @@ export default function SupervisorAvisosPage() {
                   </div>
                   <div className="flex gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                     {n.status === "DRAFT" && (
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={(e) => openEdit(n.id, e)}>
+                        <Pencil className="h-3 w-3 mr-1" /> Editar
+                      </Button>
+                    )}
+                    {n.status === "DRAFT" && (
                       <Button size="sm" className="h-7 text-xs" disabled={publishMutation.isPending} onClick={() => handlePublish(n.id)}>
                         <Send className="h-3 w-3 mr-1" /> Publicar
+                      </Button>
+                    )}
+                    {n.status === "PUBLISHED" && n.requiresConfirmation && (
+                      <Button size="sm" variant="outline" className="h-7 text-xs text-orange-600 border-orange-200" disabled={escalateMutation.isPending} onClick={() => handleEscalate(n.id)}>
+                        <ArrowRightCircle className="h-3 w-3 mr-1" /> Escalar
                       </Button>
                     )}
                     {(n.status === "DRAFT" || n.status === "PUBLISHED") && (
@@ -268,11 +317,83 @@ export default function SupervisorAvisosPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={(o) => { if (!o) closeEdit(); }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Editar Rascunho</DialogTitle></DialogHeader>
+          {!editFormReady ? (
+            <div className="py-8 flex justify-center">
+              <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label>Título</Label>
+                <Input value={editForm.title ?? ""} onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Conteúdo *</Label>
+                <Textarea rows={4} value={editForm.content ?? ""} onChange={(e) => setEditForm((f) => ({ ...f, content: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Urgência</Label>
+                  <Select value={editForm.urgency ?? "INFORMATIVE"} onValueChange={(v) => setEditForm((f) => ({ ...f, urgency: v as any }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="INFORMATIVE">Informativo</SelectItem>
+                      <SelectItem value="IMPORTANT">Importante</SelectItem>
+                      <SelectItem value="CRITICAL">Crítico</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Tipo</Label>
+                  <Select value={editForm.type ?? "INFORMATIVE"} onValueChange={(v) => setEditForm((f) => ({ ...f, type: v as any }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="INFORMATIVE">Informativo</SelectItem>
+                      <SelectItem value="IMPORTANT">Importante</SelectItem>
+                      <SelectItem value="PERSISTENT">Persistente</SelectItem>
+                      <SelectItem value="ESCALATED">Escalado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="sedit-req-confirm" checked={editForm.requiresConfirmation ?? false} onChange={(e) => setEditForm((f) => ({ ...f, requiresConfirmation: e.target.checked }))} className="rounded" />
+                <Label htmlFor="sedit-req-confirm" className="font-normal cursor-pointer">Exigir confirmação de leitura</Label>
+              </div>
+              <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50/50 p-3 space-y-3">
+                <p className="text-xs font-semibold text-amber-700 flex items-center gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  ERA → AGORA <span className="font-normal text-amber-600">(opcional)</span>
+                </p>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-red-600">ERA (situação anterior)</Label>
+                  <Textarea placeholder="Como era antes..." rows={2} value={editForm.changeBefore ?? ""} onChange={(e) => setEditForm((f) => ({ ...f, changeBefore: e.target.value }))} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-green-700">AGORA (nova situação)</Label>
+                  <Textarea placeholder="Como é agora..." rows={2} value={editForm.changeAfter ?? ""} onChange={(e) => setEditForm((f) => ({ ...f, changeAfter: e.target.value }))} />
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={closeEdit}>Cancelar</Button>
+            <Button onClick={handleSaveEdit} disabled={!editForm.content || updateMutation.isPending}>
+              {updateMutation.isPending ? "Salvando..." : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Detail Dialog */}
       <Dialog open={!!selectedId} onOpenChange={(o) => !o && setSelectedId(null)}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           {detail && (() => {
-            const d = detail as NoticeDetail;
+            const d = detail as NoticeDetail & { changeBefore?: string; changeAfter?: string };
             const urg  = URGENCY_CFG[d.urgency as keyof typeof URGENCY_CFG] ?? URGENCY_CFG.INFORMATIVE;
             const stat = STATUS_CFG[d.status  as keyof typeof STATUS_CFG]   ?? STATUS_CFG.DRAFT;
             return (
@@ -286,6 +407,28 @@ export default function SupervisorAvisosPage() {
                 </DialogHeader>
                 <div className="space-y-4 py-2">
                   <p className="text-sm">{d.content}</p>
+
+                  {(d.changeBefore || d.changeAfter) && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-amber-600" />
+                        <span className="text-xs font-bold text-amber-700 uppercase tracking-wide">O que mudou</span>
+                      </div>
+                      {d.changeBefore && (
+                        <div className="rounded bg-red-50 border border-red-100 px-3 py-2">
+                          <span className="text-[10px] font-bold text-red-500 uppercase tracking-wider">ERA</span>
+                          <p className="text-sm text-red-800 mt-0.5">{d.changeBefore}</p>
+                        </div>
+                      )}
+                      {d.changeAfter && (
+                        <div className="rounded bg-green-50 border border-green-100 px-3 py-2">
+                          <span className="text-[10px] font-bold text-green-600 uppercase tracking-wider">AGORA</span>
+                          <p className="text-sm text-green-800 mt-0.5">{d.changeAfter}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {d.recipients && d.recipients.length > 0 && (
                     <Card>
                       <CardHeader className="pb-2">
@@ -303,8 +446,9 @@ export default function SupervisorAvisosPage() {
                               <p className="flex-1 text-sm truncate">{r.userName ?? r.userId}</p>
                               <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
                                 r.status === "CONFIRMED" ? "bg-green-100 text-green-700"
-                                : r.status === "VIEWED" ? "bg-indigo-100 text-indigo-700"
-                                : r.status === "SENT"    ? "bg-blue-100 text-blue-700"
+                                : r.status === "ESCALATED" ? "bg-red-100 text-red-700"
+                                : r.status === "VIEWED"    ? "bg-indigo-100 text-indigo-700"
+                                : r.status === "SENT"      ? "bg-blue-100 text-blue-700"
                                 : "bg-gray-100 text-gray-600"
                               }`}>{r.status}</span>
                             </div>
@@ -316,8 +460,18 @@ export default function SupervisorAvisosPage() {
                 </div>
                 <DialogFooter>
                   {d.status === "DRAFT" && (
+                    <Button size="sm" variant="outline" onClick={() => { setSelectedId(null); openEdit(d.id); }}>
+                      <Pencil className="h-3.5 w-3.5 mr-1.5" /> Editar
+                    </Button>
+                  )}
+                  {d.status === "DRAFT" && (
                     <Button size="sm" disabled={publishMutation.isPending} onClick={() => handlePublish(d.id)}>
                       <Send className="h-3.5 w-3.5 mr-1.5" /> Publicar
+                    </Button>
+                  )}
+                  {d.status === "PUBLISHED" && d.requiresConfirmation && (
+                    <Button size="sm" variant="outline" className="text-orange-600 border-orange-200 hover:bg-orange-50" disabled={escalateMutation.isPending} onClick={() => handleEscalate(d.id)}>
+                      <ArrowRightCircle className="h-3.5 w-3.5 mr-1.5" /> Escalar
                     </Button>
                   )}
                   {(d.status === "DRAFT" || d.status === "PUBLISHED") && (

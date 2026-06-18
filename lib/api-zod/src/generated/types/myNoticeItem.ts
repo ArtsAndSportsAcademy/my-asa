@@ -26,4 +26,6 @@ export interface MyNoticeItem {
   confirmedAt?: Date | null;
   createdAt: Date;
   authorName?: string | null;
+  changeBefore?: string | null;
+  changeAfter?: string | null;
 }

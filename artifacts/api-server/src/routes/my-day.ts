@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, inArray, gte, asc, desc } from "drizzle-orm";
+import { eq, and, inArray, not, gte, asc, desc } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   scaleAllocationsTable,
@@ -16,6 +16,8 @@ import {
   deliveryAssignmentsTable,
   operationsTable,
   operationalGroupsTable,
+  noticesTable,
+  noticeRecipientsTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
@@ -32,7 +34,7 @@ router.get("/my-day", requireAuth, requireOrganization, async (req, res) => {
   const today = new Date().toISOString().slice(0, 10);
 
   try {
-    const [allocations, pendingRequests, deliveryAssignments] = await Promise.all([
+    const [allocations, pendingRequests, deliveryAssignments, pendingNoticesRaw] = await Promise.all([
       // 1. Upcoming allocations for this user in published/republished scales
       db
         .select({
@@ -103,6 +105,31 @@ router.get("/my-day", requireAuth, requireOrganization, async (req, res) => {
           )
         )
         .orderBy(asc(deliveriesTable.dueDate)),
+
+      // 4. Pending notices (IMPORTANT / PERSISTENT / ESCALATED) not yet confirmed
+      db
+        .select({
+          id: noticesTable.id,
+          title: noticesTable.title,
+          content: noticesTable.content,
+          urgency: noticesTable.urgency,
+          type: noticesTable.type,
+          requiresConfirmation: noticesTable.requiresConfirmation,
+          deltaJson: noticesTable.deltaJson,
+          publishedAt: noticesTable.publishedAt,
+          recipientStatus: noticeRecipientsTable.status,
+        })
+        .from(noticeRecipientsTable)
+        .innerJoin(noticesTable, eq(noticeRecipientsTable.noticeId, noticesTable.id))
+        .where(
+          and(
+            eq(noticeRecipientsTable.userId, userId),
+            eq(noticesTable.status, "PUBLISHED"),
+            inArray(noticesTable.type, ["IMPORTANT", "PERSISTENT", "ESCALATED"]),
+            not(eq(noticeRecipientsTable.status, "CONFIRMED")),
+          )
+        )
+        .orderBy(desc(noticesTable.publishedAt)),
     ]);
 
     // Collect unique operationIds and groupIds to resolve names
@@ -244,6 +271,21 @@ router.get("/my-day", requireAuth, requireOrganization, async (req, res) => {
       nextActivity,
       todayActivities,
       futureActivities: futureActivities.slice(0, 5),
+      pendingNotices: pendingNoticesRaw.map((n) => {
+        const delta = n.deltaJson as { before?: string; after?: string } | null;
+        return {
+          id: n.id,
+          title: n.title ?? null,
+          content: n.content,
+          urgency: n.urgency,
+          type: n.type,
+          requiresConfirmation: n.requiresConfirmation,
+          recipientStatus: n.recipientStatus,
+          publishedAt: n.publishedAt,
+          changeBefore: delta?.before ?? null,
+          changeAfter: delta?.after ?? null,
+        };
+      }),
       complementaryInfo: {
         pendingRequests: pendingRequests.map((r) => ({
           requestId: r.id,

@@ -55,6 +55,7 @@ import type {
   DeleteDailyBookBlock200,
   DeleteDailyBookPosition200,
   DeleteDailyBookScene200,
+  EscalateNoticeRequest,
   ExecuteDailyBook200,
   ForbiddenResponse,
   GenerateDailyBook201,
@@ -7553,5 +7554,77 @@ export const useConfirmNotice = <TError = ErrorType<UnauthorizedResponse>,
         TContext
       > => {
       return useMutation(getConfirmNoticeMutationOptions(options));
+    }
+
+export const getEscalateNoticeUrl = (noticeId: string,) => {
+
+
+
+
+  return `/api/notices/${noticeId}/escalate`
+}
+
+/**
+ * @summary Escalar aviso (Supervisor)
+ */
+export const escalateNotice = async (noticeId: string,
+    escalateNoticeRequest?: EscalateNoticeRequest, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getEscalateNoticeUrl(noticeId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      escalateNoticeRequest,)
+  }
+);}
+
+
+
+
+export const getEscalateNoticeMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof escalateNotice>>, TError,{noticeId: string;data?: BodyType<EscalateNoticeRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof escalateNotice>>, TError,{noticeId: string;data?: BodyType<EscalateNoticeRequest>}, TContext> => {
+
+const mutationKey = ['escalateNotice'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof escalateNotice>>, {noticeId: string;data?: BodyType<EscalateNoticeRequest>}> = (props) => {
+          const {noticeId,data} = props ?? {};
+
+          return  escalateNotice(noticeId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EscalateNoticeMutationResult = NonNullable<Awaited<ReturnType<typeof escalateNotice>>>
+    export type EscalateNoticeMutationBody = BodyType<EscalateNoticeRequest> | undefined
+    export type EscalateNoticeMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Escalar aviso (Supervisor)
+ */
+export const useEscalateNotice = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof escalateNotice>>, TError,{noticeId: string;data?: BodyType<EscalateNoticeRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof escalateNotice>>,
+        TError,
+        {noticeId: string;data?: BodyType<EscalateNoticeRequest>},
+        TContext
+      > => {
+      return useMutation(getEscalateNoticeMutationOptions(options));
     }
 

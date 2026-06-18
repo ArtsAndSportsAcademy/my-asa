@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { useGetMyDay, getGetMyDayQueryKey } from "@workspace/api-client-react";
-import type { MyDayActivity, MyDayResponse } from "@workspace/api-client-react";
+import type { MyDayActivity, MyDayResponse, MyDayNoticeItem } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useState } from "react";
 import {
@@ -248,6 +248,44 @@ function SectionHeader({ title, icon, colors }: { title: string; icon: string; c
 
 // ─── Empty State ──────────────────────────────────────────────────────────────
 
+function PendingNoticeCard({ notice, colors }: { notice: MyDayNoticeItem; colors: ReturnType<typeof useColors> }) {
+  const urgColors: Record<string, { border: string; bg: string; text: string }> = {
+    INFORMATIVE: { border: "#BFDBFE", bg: "#EFF6FF", text: "#1D4ED8" },
+    IMPORTANT:   { border: "#FDE68A", bg: "#FFFBEB", text: "#B45309" },
+    CRITICAL:    { border: "#FECACA", bg: "#FEF2F2", text: "#DC2626" },
+  };
+  const uc = urgColors[notice.urgency] ?? urgColors.INFORMATIVE;
+  const isUnread = notice.recipientStatus !== "CONFIRMED" && notice.recipientStatus !== "VIEWED";
+  return (
+    <View style={[
+      styles.pendingNoticeCard,
+      { backgroundColor: uc.bg, borderColor: uc.border, borderLeftColor: uc.text },
+    ]}>
+      <View style={styles.pendingNoticeRow}>
+        <View style={styles.pendingNoticeBadges}>
+          {notice.type === "ESCALATED" && (
+            <View style={{ backgroundColor: "#FEF2F2", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+              <Text style={{ fontSize: 10, fontWeight: "700", color: "#DC2626" }}>ESCALADO</Text>
+            </View>
+          )}
+          {notice.requiresConfirmation && isUnread && (
+            <View style={{ backgroundColor: "#EDE9FE", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+              <Text style={{ fontSize: 10, fontWeight: "700", color: "#7C3AED" }}>CONFIRMAR</Text>
+            </View>
+          )}
+        </View>
+        <Text style={{ fontSize: 11, color: uc.text, fontWeight: "600" }}>
+          {notice.urgency === "INFORMATIVE" ? "Info" : notice.urgency === "IMPORTANT" ? "Importante" : "Crítico"}
+        </Text>
+      </View>
+      {notice.title ? (
+        <Text style={[styles.pendingNoticeTitle, { color: colors.foreground }]} numberOfLines={1}>{notice.title}</Text>
+      ) : null}
+      <Text style={[styles.pendingNoticeContent, { color: colors.mutedForeground }]} numberOfLines={2}>{notice.content}</Text>
+    </View>
+  );
+}
+
 function EmptyState({ message, colors }: { message: string; colors: ReturnType<typeof useColors> }) {
   return (
     <View style={[styles.emptyCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
@@ -328,6 +366,16 @@ export default function MeuDiaScreen() {
           </View>
         ) : (
           <>
+            {/* ── Avisos Pendentes ── */}
+            {(data as any).pendingNotices && (data as any).pendingNotices.length > 0 && (
+              <>
+                <SectionHeader title="Avisos Pendentes" icon="bell" colors={colors} />
+                {((data as any).pendingNotices as MyDayNoticeItem[]).map((n) => (
+                  <PendingNoticeCard key={n.id} notice={n} colors={colors} />
+                ))}
+              </>
+            )}
+
             {/* ── Nível 1: Ação Imediata ── */}
             <SectionHeader title="Ação Imediata" icon="zap" colors={colors} />
             {data.immediateAction ? (
@@ -542,6 +590,13 @@ const styles = StyleSheet.create({
   deltaRow: { flexDirection: "row", gap: 4 },
   deltaKey: { fontSize: 11, fontWeight: "600", color: "#92400E" },
   deltaVal: { fontSize: 11, color: "#92400E", flex: 1 },
+  pendingNoticeCard: {
+    borderWidth: 1, borderLeftWidth: 4, borderRadius: 12, padding: 12, marginBottom: 6,
+  },
+  pendingNoticeRow: { flexDirection: "row" as const, alignItems: "center" as const, justifyContent: "space-between" as const, marginBottom: 6 },
+  pendingNoticeBadges: { flexDirection: "row" as const, gap: 4 },
+  pendingNoticeTitle: { fontSize: 14, fontWeight: "600" as const, marginBottom: 2 },
+  pendingNoticeContent: { fontSize: 13, lineHeight: 18 },
   emptyCard: {
     borderRadius: 10,
     borderWidth: 1,

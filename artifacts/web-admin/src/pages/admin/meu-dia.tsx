@@ -13,12 +13,14 @@ import {
   Briefcase,
   RefreshCw,
   AlertTriangle,
+  Bell,
   BookOpen,
   Video,
   CheckSquare,
   Package,
   Theater,
   ChevronRight,
+  AlertCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -209,6 +211,40 @@ function EmptyState({ message }: { message: string }) {
   );
 }
 
+// ─── Pending Notice Card ───────────────────────────────────────────────────────
+
+function PendingNoticeCard({ notice }: { notice: any }) {
+  const urgCfg: Record<string, { border: string; bg: string; badge: string; label: string; Icon: React.ComponentType<any> }> = {
+    INFORMATIVE: { border: "border-l-blue-400",  bg: "bg-blue-50/60",  badge: "bg-blue-100 text-blue-800",   label: "Informativo", Icon: Info },
+    IMPORTANT:   { border: "border-l-amber-400", bg: "bg-amber-50/60", badge: "bg-amber-100 text-amber-800", label: "Importante",  Icon: AlertCircle },
+    CRITICAL:    { border: "border-l-red-500",   bg: "bg-red-50/60",   badge: "bg-red-100 text-red-800",     label: "Crítico",     Icon: AlertTriangle },
+  };
+  const uc = urgCfg[notice.urgency] ?? urgCfg.INFORMATIVE;
+  const UrgIcon = uc.Icon;
+  const isUnread = notice.recipientStatus !== "CONFIRMED" && notice.recipientStatus !== "VIEWED";
+
+  return (
+    <Card className={`border-l-4 ${uc.border} ${uc.bg}`}>
+      <CardContent className="p-3 flex items-start gap-3">
+        <UrgIcon className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+        <div className="flex-1 min-w-0">
+          {notice.title && <p className="text-sm font-semibold truncate mb-0.5">{notice.title}</p>}
+          <p className="text-sm text-muted-foreground line-clamp-2">{notice.content}</p>
+        </div>
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${uc.badge}`}>{uc.label}</span>
+          {notice.type === "ESCALATED" && (
+            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-red-100 text-red-700">Escalado</span>
+          )}
+          {notice.requiresConfirmation && isUnread && (
+            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-violet-100 text-violet-700">Confirmar</span>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MeuDiaPage() {
@@ -275,6 +311,18 @@ export default function MeuDiaPage() {
           </Card>
         ) : (
           <div className="space-y-4">
+            {/* ── Avisos Pendentes ── */}
+            {(data as any).pendingNotices && (data as any).pendingNotices.length > 0 && (
+              <>
+                <SectionHeader title="Avisos Pendentes" icon={Bell} />
+                <div className="space-y-2">
+                  {((data as any).pendingNotices as any[]).map((n) => (
+                    <PendingNoticeCard key={n.id} notice={n} />
+                  ))}
+                </div>
+              </>
+            )}
+
             {/* ── Nível 1: Ação Imediata ── */}
             <SectionHeader title="Ação Imediata" icon={Zap} />
             {data.immediateAction ? (

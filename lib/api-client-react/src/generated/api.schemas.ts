@@ -1169,6 +1169,49 @@ export interface MyDayComplementaryInfo {
   upcomingDeliveries: MyDayUpcomingDelivery[];
 }
 
+export type MyDayNoticeItemUrgency = typeof MyDayNoticeItemUrgency[keyof typeof MyDayNoticeItemUrgency];
+
+
+export const MyDayNoticeItemUrgency = {
+  INFORMATIVE: 'INFORMATIVE',
+  IMPORTANT: 'IMPORTANT',
+  CRITICAL: 'CRITICAL',
+} as const;
+
+export type MyDayNoticeItemType = typeof MyDayNoticeItemType[keyof typeof MyDayNoticeItemType];
+
+
+export const MyDayNoticeItemType = {
+  INFORMATIVE: 'INFORMATIVE',
+  IMPORTANT: 'IMPORTANT',
+  PERSISTENT: 'PERSISTENT',
+  ESCALATED: 'ESCALATED',
+} as const;
+
+export type MyDayNoticeItemRecipientStatus = typeof MyDayNoticeItemRecipientStatus[keyof typeof MyDayNoticeItemRecipientStatus];
+
+
+export const MyDayNoticeItemRecipientStatus = {
+  PENDING: 'PENDING',
+  SENT: 'SENT',
+  VIEWED: 'VIEWED',
+  CONFIRMED: 'CONFIRMED',
+  ESCALATED: 'ESCALATED',
+} as const;
+
+export interface MyDayNoticeItem {
+  id: string;
+  title?: string | null;
+  content: string;
+  urgency: MyDayNoticeItemUrgency;
+  type: MyDayNoticeItemType;
+  requiresConfirmation: boolean;
+  recipientStatus: MyDayNoticeItemRecipientStatus;
+  publishedAt?: string | null;
+  changeBefore?: string | null;
+  changeAfter?: string | null;
+}
+
 export interface MyDayResponse {
   generatedAt: string;
   immediateAction: MyDayActivity | null;
@@ -1176,6 +1219,7 @@ export interface MyDayResponse {
   todayActivities: MyDayActivity[];
   futureActivities: MyDayActivity[];
   complementaryInfo: MyDayComplementaryInfo;
+  pendingNotices: MyDayNoticeItem[];
 }
 
 export type NoticeListItemUrgency = typeof NoticeListItemUrgency[keyof typeof NoticeListItemUrgency];
@@ -1293,6 +1337,8 @@ export interface NoticeDetail {
   createdAt: string;
   authorId: string;
   authorName?: string | null;
+  changeBefore?: string | null;
+  changeAfter?: string | null;
   recipients: NoticeRecipientItem[];
 }
 
@@ -1352,6 +1398,8 @@ export interface MyNoticeItem {
   confirmedAt?: string | null;
   createdAt: string;
   authorName?: string | null;
+  changeBefore?: string | null;
+  changeAfter?: string | null;
 }
 
 export type CreateNoticeRequestUrgency = typeof CreateNoticeRequestUrgency[keyof typeof CreateNoticeRequestUrgency];
@@ -1382,6 +1430,8 @@ export interface CreateNoticeRequest {
   requiresConfirmation?: boolean;
   expiresAt?: string;
   recipientUserIds?: string[];
+  changeBefore?: string;
+  changeAfter?: string;
 }
 
 export type UpdateNoticeRequestUrgency = typeof UpdateNoticeRequestUrgency[keyof typeof UpdateNoticeRequestUrgency];
@@ -1410,6 +1460,12 @@ export interface UpdateNoticeRequest {
   type?: UpdateNoticeRequestType;
   requiresConfirmation?: boolean;
   expiresAt?: string;
+  changeBefore?: string;
+  changeAfter?: string;
+}
+
+export interface EscalateNoticeRequest {
+  reason?: string;
 }
 
 /**

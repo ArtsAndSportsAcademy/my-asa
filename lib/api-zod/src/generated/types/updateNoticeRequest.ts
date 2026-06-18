@@ -15,4 +15,6 @@ export interface UpdateNoticeRequest {
   type?: UpdateNoticeRequestType;
   requiresConfirmation?: boolean;
   expiresAt?: Date;
+  changeBefore?: string;
+  changeAfter?: string;
 }

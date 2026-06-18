@@ -2496,7 +2496,19 @@ export const GetMyDayResponse = zod.object({
   "status": zod.string(),
   "operationId": zod.string()
 }))
-})
+}),
+  "pendingNotices": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string().nullish(),
+  "content": zod.string(),
+  "urgency": zod.enum(['INFORMATIVE', 'IMPORTANT', 'CRITICAL']),
+  "type": zod.enum(['INFORMATIVE', 'IMPORTANT', 'PERSISTENT', 'ESCALATED']),
+  "requiresConfirmation": zod.boolean(),
+  "recipientStatus": zod.enum(['PENDING', 'SENT', 'VIEWED', 'CONFIRMED', 'ESCALATED']),
+  "publishedAt": zod.coerce.date().nullish(),
+  "changeBefore": zod.string().nullish(),
+  "changeAfter": zod.string().nullish()
+}))
 })
 
 
@@ -2543,7 +2555,9 @@ export const CreateNoticeBody = zod.object({
   "type": zod.enum(['INFORMATIVE', 'IMPORTANT', 'PERSISTENT', 'ESCALATED']).default(createNoticeBodyTypeDefault),
   "requiresConfirmation": zod.boolean().default(createNoticeBodyRequiresConfirmationDefault),
   "expiresAt": zod.coerce.date().optional(),
-  "recipientUserIds": zod.array(zod.string()).optional()
+  "recipientUserIds": zod.array(zod.string()).optional(),
+  "changeBefore": zod.string().optional(),
+  "changeAfter": zod.string().optional()
 })
 
 
@@ -2571,6 +2585,8 @@ export const GetNoticeResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "authorId": zod.string(),
   "authorName": zod.string().nullish(),
+  "changeBefore": zod.string().nullish(),
+  "changeAfter": zod.string().nullish(),
   "recipients": zod.array(zod.object({
   "id": zod.string(),
   "userId": zod.string(),
@@ -2597,7 +2613,9 @@ export const UpdateNoticeBody = zod.object({
   "urgency": zod.enum(['INFORMATIVE', 'IMPORTANT', 'CRITICAL']).optional(),
   "type": zod.enum(['INFORMATIVE', 'IMPORTANT', 'PERSISTENT', 'ESCALATED']).optional(),
   "requiresConfirmation": zod.boolean().optional(),
-  "expiresAt": zod.coerce.date().optional()
+  "expiresAt": zod.coerce.date().optional(),
+  "changeBefore": zod.string().optional(),
+  "changeAfter": zod.string().optional()
 })
 
 export const UpdateNoticeResponse = zod.object({
@@ -2617,6 +2635,8 @@ export const UpdateNoticeResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "authorId": zod.string(),
   "authorName": zod.string().nullish(),
+  "changeBefore": zod.string().nullish(),
+  "changeAfter": zod.string().nullish(),
   "recipients": zod.array(zod.object({
   "id": zod.string(),
   "userId": zod.string(),
@@ -2654,6 +2674,8 @@ export const PublishNoticeResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "authorId": zod.string(),
   "authorName": zod.string().nullish(),
+  "changeBefore": zod.string().nullish(),
+  "changeAfter": zod.string().nullish(),
   "recipients": zod.array(zod.object({
   "id": zod.string(),
   "userId": zod.string(),
@@ -2691,6 +2713,8 @@ export const CancelNoticeResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "authorId": zod.string(),
   "authorName": zod.string().nullish(),
+  "changeBefore": zod.string().nullish(),
+  "changeAfter": zod.string().nullish(),
   "recipients": zod.array(zod.object({
   "id": zod.string(),
   "userId": zod.string(),
@@ -2722,7 +2746,9 @@ export const GetMyNoticesResponseItem = zod.object({
   "viewedAt": zod.coerce.date().nullish(),
   "confirmedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
-  "authorName": zod.string().nullish()
+  "authorName": zod.string().nullish(),
+  "changeBefore": zod.string().nullish(),
+  "changeAfter": zod.string().nullish()
 })
 export const GetMyNoticesResponse = zod.array(GetMyNoticesResponseItem)
 
@@ -2740,6 +2766,18 @@ export const MarkNoticeViewedParams = zod.object({
  */
 export const ConfirmNoticeParams = zod.object({
   "noticeId": zod.coerce.string()
+})
+
+
+/**
+ * @summary Escalar aviso (Supervisor)
+ */
+export const EscalateNoticeParams = zod.object({
+  "noticeId": zod.coerce.string()
+})
+
+export const EscalateNoticeBody = zod.object({
+  "reason": zod.string().optional()
 })
 
 

@@ -167,6 +167,11 @@ export default function AvisosScreen() {
                             <Text style={[styles.confirmBadgeText, { color: "#7C3AED" }]}>Confirmar</Text>
                           </View>
                         )}
+                        {notice.type === "ESCALATED" && (
+                          <View style={[styles.confirmBadge, { backgroundColor: "#FEF2F2", borderColor: "#FCA5A530" }]}>
+                            <Text style={[styles.confirmBadgeText, { color: "#DC2626" }]}>Escalado</Text>
+                          </View>
+                        )}
                       </View>
                     </View>
                   </View>
@@ -211,6 +216,28 @@ export default function AvisosScreen() {
                 <Text style={[styles.modalContent, { color: colors.foreground }]}>
                   {selectedNotice.content}
                 </Text>
+
+                {/* ERA → AGORA delta */}
+                {((selectedNotice as any).changeBefore || (selectedNotice as any).changeAfter) && (
+                  <View style={[styles.deltaBox, { backgroundColor: "#FFFBEB", borderColor: "#F59E0B" }]}>
+                    <View style={styles.deltaBoxHeader}>
+                      <Feather name="alert-triangle" size={13} color="#B45309" />
+                      <Text style={styles.deltaBoxTitle}>O que mudou</Text>
+                    </View>
+                    {(selectedNotice as any).changeBefore ? (
+                      <View style={[styles.deltaItem, { backgroundColor: "#FEF2F2", borderColor: "#FCA5A5" }]}>
+                        <Text style={[styles.deltaLabel, { color: "#DC2626" }]}>ERA</Text>
+                        <Text style={[styles.deltaText, { color: "#7F1D1D" }]}>{(selectedNotice as any).changeBefore}</Text>
+                      </View>
+                    ) : null}
+                    {(selectedNotice as any).changeAfter ? (
+                      <View style={[styles.deltaItem, { backgroundColor: "#F0FDF4", borderColor: "#86EFAC" }]}>
+                        <Text style={[styles.deltaLabel, { color: "#15803D" }]}>AGORA</Text>
+                        <Text style={[styles.deltaText, { color: "#166534" }]}>{(selectedNotice as any).changeAfter}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                )}
 
                 {/* Meta */}
                 <View style={[styles.metaDivider, { borderTopColor: colors.border }]}>
@@ -337,4 +364,10 @@ const styles = StyleSheet.create({
   },
   confirmBtnText:{ color: "#fff", fontSize: 15, fontWeight: "700" },
   confirmedRow:{ flexDirection: "row", alignItems: "center", justifyContent: "center", paddingHorizontal: 20, paddingTop: 16, borderTopWidth: 1 },
+  deltaBox: { borderWidth: 1, borderRadius: 10, padding: 12, marginBottom: 16, gap: 8 },
+  deltaBoxHeader: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 },
+  deltaBoxTitle: { fontSize: 12, fontWeight: "700", color: "#B45309" },
+  deltaItem: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8 },
+  deltaLabel: { fontSize: 10, fontWeight: "800", letterSpacing: 0.5, marginBottom: 3 },
+  deltaText:  { fontSize: 13, lineHeight: 18 },
 });

@@ -17,4 +17,6 @@ export interface CreateNoticeRequest {
   requiresConfirmation?: boolean;
   expiresAt?: Date;
   recipientUserIds?: string[];
+  changeBefore?: string;
+  changeAfter?: string;
 }

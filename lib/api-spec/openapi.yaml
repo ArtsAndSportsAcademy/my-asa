@@ -2980,6 +2980,30 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /notices/{noticeId}/escalate:
+    post:
+      operationId: escalateNotice
+      tags: [notices]
+      summary: "Escalar aviso (Supervisor)"
+      parameters:
+        - name: noticeId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EscalateNoticeRequest"
+      responses:
+        "204":
+          description: Aviso escalado
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -4590,7 +4614,7 @@ components:
 
     MyDayResponse:
       type: object
-      required: [generatedAt, immediateAction, nextActivity, todayActivities, futureActivities, complementaryInfo]
+      required: [generatedAt, immediateAction, nextActivity, todayActivities, futureActivities, complementaryInfo, pendingNotices]
       properties:
         generatedAt:
           type: string
@@ -4611,6 +4635,10 @@ components:
             $ref: "#/components/schemas/MyDayActivity"
         complementaryInfo:
           $ref: "#/components/schemas/MyDayComplementaryInfo"
+        pendingNotices:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyDayNoticeItem"
 
     MyDayActivity:
       type: object
@@ -4852,6 +4880,12 @@ components:
         authorName:
           type: string
           nullable: true
+        changeBefore:
+          type: string
+          nullable: true
+        changeAfter:
+          type: string
+          nullable: true
         recipients:
           type: array
           items:
@@ -4936,6 +4970,12 @@ components:
         authorName:
           type: string
           nullable: true
+        changeBefore:
+          type: string
+          nullable: true
+        changeAfter:
+          type: string
+          nullable: true
 
     CreateNoticeRequest:
       type: object
@@ -4965,6 +5005,10 @@ components:
           type: array
           items:
             type: string
+        changeBefore:
+          type: string
+        changeAfter:
+          type: string
 
     UpdateNoticeRequest:
       type: object
@@ -4984,3 +5028,46 @@ components:
         expiresAt:
           type: string
           format: date-time
+        changeBefore:
+          type: string
+        changeAfter:
+          type: string
+
+    EscalateNoticeRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+
+    MyDayNoticeItem:
+      type: object
+      required: [id, urgency, type, content, requiresConfirmation, recipientStatus]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+          nullable: true
+        content:
+          type: string
+        urgency:
+          type: string
+          enum: [INFORMATIVE, IMPORTANT, CRITICAL]
+        type:
+          type: string
+          enum: [INFORMATIVE, IMPORTANT, PERSISTENT, ESCALATED]
+        requiresConfirmation:
+          type: boolean
+        recipientStatus:
+          type: string
+          enum: [PENDING, SENT, VIEWED, CONFIRMED, ESCALATED]
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        changeBefore:
+          type: string
+          nullable: true
+        changeAfter:
+          type: string
+          nullable: true

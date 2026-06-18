@@ -7,6 +7,7 @@
  */
 import type { MyDayActivity } from './myDayActivity';
 import type { MyDayComplementaryInfo } from './myDayComplementaryInfo';
+import type { MyDayNoticeItem } from './myDayNoticeItem';
 
 export interface MyDayResponse {
   generatedAt: Date;
@@ -15,4 +16,5 @@ export interface MyDayResponse {
   todayActivities: MyDayActivity[];
   futureActivities: MyDayActivity[];
   complementaryInfo: MyDayComplementaryInfo;
+  pendingNotices: MyDayNoticeItem[];
 }
