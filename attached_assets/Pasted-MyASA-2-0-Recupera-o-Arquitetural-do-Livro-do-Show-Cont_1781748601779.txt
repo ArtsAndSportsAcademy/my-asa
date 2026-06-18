@@ -1,0 +1,184 @@
+MyASA 2.0 — Recuperação Arquitetural do Livro do Show
+
+Contexto:
+
+Ao longo do projeto já foram tomadas diversas decisões sobre Livro do Show e Livro do Dia em conversas anteriores.
+
+O objetivo desta etapa NÃO é criar um novo Livro do Show.
+
+O objetivo é reconstruir e consolidar tudo o que provavelmente já foi decidido.
+
+Trabalhar como uma auditoria de recuperação arquitetural.
+
+═══════════════════════
+PARTE 1 — O QUE JÁ SABEMOS
+═══════════════════════
+
+Partir das seguintes premissas já conhecidas:
+
+1. Livro do Show ≠ Livro do Dia.
+
+Livro do Show:
+como o espetáculo foi concebido.
+
+Livro do Dia:
+como será executado hoje.
+
+⸻
+
+2. O Livro do Show é estrutural.
+
+Ele contém:
+
+* Shows
+* Cenas
+* Blocos
+* Posições
+* Linhas
+
+⸻
+
+3. As linhas podem representar:
+
+* Pessoa fixa
+* Personagem
+* Função
+* Rodízio
+* Dia da semana
+* Titular + substituto
+* Manual
+
+⸻
+
+4. O Livro do Dia é gerado a partir do Livro do Show.
+
+Mas pode ser editado.
+
+⸻
+
+5. O Supervisor pode:
+
+* remover cena
+* remover bloco
+* remover posição
+* remover linha
+* adicionar linha
+* adicionar posição
+* adicionar bloco
+* reordenar elementos
+
+sem alterar a estrutura principal do Livro do Show.
+
+⸻
+
+6. Uma cena pode existir no Livro do Show e não existir naquele dia.
+
+⸻
+
+7. O comportamento precisa funcionar igualmente em mobile e web.
+
+═══════════════════════
+PARTE 2 — RECUPERAÇÃO DE DECISÕES
+═══════════════════════
+
+Reconstruir todas as decisões que provavelmente já foram tomadas.
+
+Separar:
+
+CONFIRMADAS
+
+PROVÁVEIS
+
+AINDA INCERTAS
+
+═══════════════════════
+PARTE 3 — ESTRUTURA DO LIVRO DO SHOW
+═══════════════════════
+
+Responder:
+
+Qual é a menor unidade?
+
+Linha?
+
+Posição?
+
+Bloco?
+
+Cena?
+
+Show?
+
+Mapear a hierarquia completa.
+
+═══════════════════════
+PARTE 4 — GERAÇÃO DO LIVRO DO DIA
+═══════════════════════
+
+Reconstruir:
+
+Como o Livro do Dia nasce.
+
+O que é automático.
+
+O que é manual.
+
+O que gera alertas.
+
+O que gera revisão.
+
+═══════════════════════
+PARTE 5 — EDIÇÃO OPERACIONAL
+═══════════════════════
+
+Responder:
+
+Quais alterações podem ser feitas apenas no Livro do Dia?
+
+Quais obrigam alteração no Livro do Show?
+
+Quais nunca podem ser feitas diretamente?
+
+═══════════════════════
+PARTE 6 — RELAÇÃO COM A ESCALA
+═══════════════════════
+
+Como o Livro conversa com:
+
+* Escala
+* Mudança Operacional
+* Solicitações
+* Avisos
+* Meu Dia
+
+═══════════════════════
+PARTE 7 — LACUNAS
+═══════════════════════
+
+Listar tudo que ainda não possui definição suficiente.
+
+Separar:
+
+Críticas
+
+Importantes
+
+Desejáveis
+
+═══════════════════════
+PARTE 8 — VEREDITO
+═══════════════════════
+
+Responder:
+
+Quanto do Livro do Show já estava implicitamente definido pelo projeto?
+
+Quanto realmente precisa ser modelado do zero?
+
+Classificar:
+
+🟢 Majoritariamente definido
+
+🟡 Parcialmente definido
+
+🔴 Precisa ser reconstruído
