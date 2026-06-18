@@ -2786,6 +2786,200 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /notices:
+    get:
+      operationId: listNotices
+      tags: [notices]
+      summary: "Listar avisos da operação (Admin/Supervisor)"
+      parameters:
+        - name: operationId
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lista de avisos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NoticeListItem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createNotice
+      tags: [notices]
+      summary: "Criar aviso"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNoticeRequest"
+      responses:
+        "201":
+          description: Aviso criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoticeDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /notices/{noticeId}:
+    get:
+      operationId: getNotice
+      tags: [notices]
+      summary: "Detalhe do aviso"
+      parameters:
+        - name: noticeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Detalhe do aviso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoticeDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateNotice
+      tags: [notices]
+      summary: "Atualizar aviso (apenas rascunho)"
+      parameters:
+        - name: noticeId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateNoticeRequest"
+      responses:
+        "200":
+          description: Aviso atualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoticeDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /notices/{noticeId}/publish:
+    post:
+      operationId: publishNotice
+      tags: [notices]
+      summary: "Publicar aviso"
+      parameters:
+        - name: noticeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Aviso publicado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoticeDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /notices/{noticeId}/cancel:
+    post:
+      operationId: cancelNotice
+      tags: [notices]
+      summary: "Cancelar aviso"
+      parameters:
+        - name: noticeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Aviso cancelado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoticeDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /my-notices:
+    get:
+      operationId: getMyNotices
+      tags: [notices]
+      summary: "Avisos do membro autenticado"
+      responses:
+        "200":
+          description: Avisos do membro
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MyNoticeItem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /notices/{noticeId}/view:
+    post:
+      operationId: markNoticeViewed
+      tags: [notices]
+      summary: "Marcar aviso como visualizado"
+      parameters:
+        - name: noticeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Marcado como visualizado
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /notices/{noticeId}/confirm:
+    post:
+      operationId: confirmNotice
+      tags: [notices]
+      summary: "Confirmar recebimento do aviso"
+      parameters:
+        - name: noticeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Confirmado
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -4562,3 +4756,231 @@ components:
           type: string
         operationId:
           type: string
+
+    NoticeListItem:
+      type: object
+      required: [id, urgency, type, status, content, requiresConfirmation, autoGenerated, createdAt, recipientCount, confirmedCount]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+          nullable: true
+        content:
+          type: string
+        urgency:
+          type: string
+          enum: [INFORMATIVE, IMPORTANT, CRITICAL]
+        type:
+          type: string
+          enum: [INFORMATIVE, IMPORTANT, PERSISTENT, ESCALATED]
+        status:
+          type: string
+          enum: [DRAFT, PUBLISHED, EXPIRED, CANCELLED]
+        requiresConfirmation:
+          type: boolean
+        autoGenerated:
+          type: boolean
+        recipientCount:
+          type: integer
+        confirmedCount:
+          type: integer
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        authorId:
+          type: string
+        authorName:
+          type: string
+          nullable: true
+
+    NoticeDetail:
+      type: object
+      required: [id, urgency, type, status, content, requiresConfirmation, autoGenerated, createdAt, authorId, recipients]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+          nullable: true
+        content:
+          type: string
+        urgency:
+          type: string
+          enum: [INFORMATIVE, IMPORTANT, CRITICAL]
+        type:
+          type: string
+          enum: [INFORMATIVE, IMPORTANT, PERSISTENT, ESCALATED]
+        status:
+          type: string
+          enum: [DRAFT, PUBLISHED, EXPIRED, CANCELLED]
+        requiresConfirmation:
+          type: boolean
+        autoGenerated:
+          type: boolean
+        sourceType:
+          type: string
+          nullable: true
+        sourceId:
+          type: string
+          nullable: true
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        cancelledAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        authorId:
+          type: string
+        authorName:
+          type: string
+          nullable: true
+        recipients:
+          type: array
+          items:
+            $ref: "#/components/schemas/NoticeRecipientItem"
+
+    NoticeRecipientItem:
+      type: object
+      required: [id, userId, status]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        userName:
+          type: string
+          nullable: true
+        groupId:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [PENDING, SENT, VIEWED, CONFIRMED, ESCALATED]
+        sentAt:
+          type: string
+          format: date-time
+          nullable: true
+        viewedAt:
+          type: string
+          format: date-time
+          nullable: true
+        confirmedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    MyNoticeItem:
+      type: object
+      required: [id, urgency, type, status, content, requiresConfirmation, recipientId, recipientStatus, createdAt]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+          nullable: true
+        content:
+          type: string
+        urgency:
+          type: string
+          enum: [INFORMATIVE, IMPORTANT, CRITICAL]
+        type:
+          type: string
+          enum: [INFORMATIVE, IMPORTANT, PERSISTENT, ESCALATED]
+        status:
+          type: string
+          enum: [DRAFT, PUBLISHED, EXPIRED, CANCELLED]
+        requiresConfirmation:
+          type: boolean
+        recipientId:
+          type: string
+        recipientStatus:
+          type: string
+          enum: [PENDING, SENT, VIEWED, CONFIRMED, ESCALATED]
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        viewedAt:
+          type: string
+          format: date-time
+          nullable: true
+        confirmedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        authorName:
+          type: string
+          nullable: true
+
+    CreateNoticeRequest:
+      type: object
+      required: [operationId, content]
+      properties:
+        operationId:
+          type: string
+        title:
+          type: string
+        content:
+          type: string
+        urgency:
+          type: string
+          enum: [INFORMATIVE, IMPORTANT, CRITICAL]
+          default: INFORMATIVE
+        type:
+          type: string
+          enum: [INFORMATIVE, IMPORTANT, PERSISTENT, ESCALATED]
+          default: INFORMATIVE
+        requiresConfirmation:
+          type: boolean
+          default: false
+        expiresAt:
+          type: string
+          format: date-time
+        recipientUserIds:
+          type: array
+          items:
+            type: string
+
+    UpdateNoticeRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+        urgency:
+          type: string
+          enum: [INFORMATIVE, IMPORTANT, CRITICAL]
+        type:
+          type: string
+          enum: [INFORMATIVE, IMPORTANT, PERSISTENT, ESCALATED]
+        requiresConfirmation:
+          type: boolean
+        expiresAt:
+          type: string
+          format: date-time

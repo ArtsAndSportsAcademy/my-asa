@@ -79,6 +79,31 @@ export const NoticeUrgency = {
 } as const;
 export type NoticeUrgency = (typeof NoticeUrgency)[keyof typeof NoticeUrgency];
 
+export const NoticeType = {
+  INFORMATIVE: "INFORMATIVE",
+  IMPORTANT: "IMPORTANT",
+  PERSISTENT: "PERSISTENT",
+  ESCALATED: "ESCALATED",
+} as const;
+export type NoticeType = (typeof NoticeType)[keyof typeof NoticeType];
+
+export const NoticeStatus = {
+  DRAFT: "DRAFT",
+  PUBLISHED: "PUBLISHED",
+  EXPIRED: "EXPIRED",
+  CANCELLED: "CANCELLED",
+} as const;
+export type NoticeStatus = (typeof NoticeStatus)[keyof typeof NoticeStatus];
+
+export const NoticeRecipientStatus = {
+  PENDING: "PENDING",
+  SENT: "SENT",
+  VIEWED: "VIEWED",
+  CONFIRMED: "CONFIRMED",
+  ESCALATED: "ESCALATED",
+} as const;
+export type NoticeRecipientStatus = (typeof NoticeRecipientStatus)[keyof typeof NoticeRecipientStatus];
+
 export const DeliveryType = {
   READING: "READING",
   VIDEO: "VIDEO",

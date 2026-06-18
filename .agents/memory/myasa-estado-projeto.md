@@ -3,6 +3,22 @@ name: MyASA 2.0 — Estado do Projeto
 description: Sprint progress, architectural decisions, and key conventions for the MyASA 2.0 system
 ---
 
+## Sprint 9 — Avisos / S-08 (COMPLETO)
+**Objetivo:** "O que mudou e quem precisa saber?" — canal oficial de comunicação operacional.
+- DB: tabelas `notices` + `notice_recipients` + `notice_escalations`; enums `notice_type`, `notice_status`, `notice_recipient_status` aplicados via psql.
+- `cancelled_at` adicionado em notices (com coluna no DB).
+- 9 endpoints REST: GET/POST /notices, GET/PATCH /notices/:id, POST /notices/:id/publish, POST /notices/:id/cancel, GET /my-notices, POST /notices/:id/view, POST /notices/:id/confirm.
+- OpenAPI: 8 paths + 6 schemas (NoticeListItem, NoticeDetail, NoticeRecipientItem, MyNoticeItem, CreateNoticeRequest, UpdateNoticeRequest).
+- Codegen: 9 hooks gerados (useListNotices, useCreateNotice, useGetNotice, useUpdateNotice, usePublishNotice, useCancelNotice, useGetMyNotices, useMarkNoticeViewed, useConfirmNotice).
+- Web Admin: `/admin/avisos` (AdminAvisosPage) + `/supervisor/avisos` (SupervisorAvisosPage) — list+filter, create dialog, publish/cancel, detail modal com recipients.
+- Mobile: tab `avisos.tsx` — useGetMyNotices, auto-mark viewed on open, confirm modal.
+- Nav: Bell icon adicionado em admin-layout.tsx; Avisos tab adicionado em NativeTabLayout + ClassicTabLayout.
+- **Convenção (TS7030):** Express async handlers devem ter tipo `: Promise<void>` explícito para evitar "not all code paths return".
+- **Convenção (req.params):** Usar `String(req.params.noticeId)` para evitar `string | string[]` no TypeScript.
+- **Convenção (drizzle .set spread):** `...(condition && { field })` causa TS2769. Usar objeto explícito `const updates: Record<string, unknown> = {}` + `.set(updates as any)`.
+- **Convenção (useGetNotice enabled):** passar `queryKey: getGetNoticeQueryKey(id)` junto com `enabled` porque react-query v5 exige queryKey em UseQueryOptions.
+- Histórico e IA de Avisos: **NÃO implementar** no Sprint 9.
+
 ## Sprint 7 — Painel Operacional (COMPLETO)
 **Objetivo:** "O que exige minha atenção neste momento?" para Supervisores.
 - Backend: `GET /operational-panel` em operational-panel.ts — consolida agenda/escalas/alocações/exceções/livros, computa HEALTHY/ATTENTION/RISK/CRITICAL, cobertura geral+grupo+evento.

@@ -20,6 +20,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "sun.max", selected: "sun.max.fill" }} />
         <Label>Meu Dia</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="avisos">
+        <Icon sf={{ default: "bell", selected: "bell.fill" }} />
+        <Label>Avisos</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="index">
         <Icon sf={{ default: "house", selected: "house.fill" }} />
         <Label>Home</Label>
@@ -91,6 +95,18 @@ function ClassicTabLayout() {
               <SymbolView name="sun.max" tintColor={color} size={24} />
             ) : (
               <Feather name="sun" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="avisos"
+        options={{
+          title: "Avisos",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="bell" tintColor={color} size={24} />
+            ) : (
+              <Feather name="bell" size={22} color={color} />
             ),
         }}
       />
