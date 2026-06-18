@@ -1,0 +1,211 @@
+MyASA 2.0 — Arquitetura Técnica de Implementação
+
+Utilizar obrigatoriamente:
+
+* Blueprint Executivo Oficial
+* Backlog Mestre
+* Plano MVP Piloto
+* Gate Final de Construção
+* Todas as decisões formais acumuladas
+
+Importante:
+
+Não alterar funcionalidades.
+
+Não alterar arquitetura funcional.
+
+Não alterar backlog.
+
+Assumir que o produto está congelado.
+
+Objetivo:
+
+Definir a arquitetura técnica necessária para implementar o MyASA 2.0.
+
+═══════════════════════
+PARTE 1 — VISÃO TÉCNICA
+═══════════════════════
+
+Responder:
+
+Qual arquitetura geral será utilizada?
+
+Monólito modular?
+Microsserviços?
+Híbrida?
+
+Justificar.
+
+Produzir diagrama de alto nível.
+
+═══════════════════════
+PARTE 2 — DOMÍNIOS
+═══════════════════════
+
+Mapear domínios técnicos.
+
+Exemplos:
+
+Identidade
+
+Organização
+
+Equipes
+
+Operações
+
+Agenda
+
+Escala
+
+Livro do Show
+
+Livro do Dia
+
+Solicitações
+
+Avisos
+
+Mensagens
+
+Entregas
+
+Histórico
+
+IA
+
+Biblioteca
+
+Para cada domínio:
+
+* responsabilidades
+* eventos produzidos
+* eventos consumidos
+
+═══════════════════════
+PARTE 3 — ENTIDADES
+═══════════════════════
+
+Transformar entidades funcionais em entidades técnicas.
+
+Definir:
+
+* chave primária
+* relacionamentos
+* regras de integridade
+
+Identificar:
+
+entidades raiz
+
+entidades dependentes
+
+═══════════════════════
+PARTE 4 — EVENTOS
+═══════════════════════
+
+Modelar os eventos do sistema.
+
+Exemplos:
+
+Solicitação aprovada
+
+Livro publicado
+
+MO criada
+
+Aviso enviado
+
+Mensagem criada
+
+Entrega concluída
+
+Definir:
+
+quem produz
+
+quem consome
+
+efeitos colaterais
+
+═══════════════════════
+PARTE 5 — MOTOR DE REGRAS
+═══════════════════════
+
+Definir tecnicamente:
+
+Motor determinístico.
+
+Separar:
+
+Regras de cobertura
+
+Regras de restrição
+
+Regras de propagação
+
+Regras de priorização
+
+═══════════════════════
+PARTE 6 — IA
+═══════════════════════
+
+Definir tecnicamente:
+
+O que é motor local.
+
+O que é LLM.
+
+O que acontece se IA estiver indisponível.
+
+═══════════════════════
+PARTE 7 — API
+═══════════════════════
+
+Mapear principais APIs.
+
+Sem detalhar endpoints.
+
+Apenas contratos principais.
+
+═══════════════════════
+PARTE 8 — MOBILE E WEB
+═══════════════════════
+
+Definir:
+
+o que é compartilhado.
+
+o que é específico.
+
+estratégia de sincronização.
+
+═══════════════════════
+PARTE 9 — OBSERVABILIDADE
+═══════════════════════
+
+Definir:
+
+logs
+
+auditoria
+
+telemetria
+
+rastreamento de eventos
+
+═══════════════════════
+PARTE 10 — VEREDITO
+═══════════════════════
+
+Responder:
+
+Uma equipe técnica consegue iniciar o Sprint 1 apenas com este documento e os documentos funcionais já aprovados?
+
+Classificar:
+
+🟢 Sim
+
+🟡 Parcialmente
+
+🔴 Não
