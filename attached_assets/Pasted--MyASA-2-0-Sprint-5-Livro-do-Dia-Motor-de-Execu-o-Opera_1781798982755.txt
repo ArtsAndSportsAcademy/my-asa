@@ -1,0 +1,248 @@
+# MyASA 2.0 — Sprint 5: Livro do Dia (Motor de Execução Operacional)
+
+Utilizar obrigatoriamente:
+
+* Sprint 0 concluída
+* Sprint 1 concluída
+* Sprint 2 concluída
+* Sprint 3 concluída
+* Fundação S-05 Livro do Dia
+* Livro do Show implementado
+* Agenda implementada
+* Arquitetura Técnica
+* Blueprint Executivo
+* Gate Final de Construção
+
+Importante:
+
+Assumir que a Sprint 4 (Escala) está em andamento.
+
+Não implementar Meu Dia.
+
+Não implementar Avisos.
+
+Não implementar IA.
+
+Objetivo:
+
+Construir o Livro do Dia como instância operacional derivada da Escala.
+
+═══════════════════════
+PARTE 1 — DOMÍNIO LIVRO DO DIA
+═══════════════════════
+
+Implementar:
+
+DailyBook
+
+DailyBookScene
+
+DailyBookBlock
+
+DailyBookPosition
+
+DailyBookAssignment
+
+Estados:
+
+* Draft
+* Published
+* Republished
+* Executed
+* Cancelled
+
+Critérios de aceite:
+
+* Livro do Dia é independente do Livro do Show
+* Guarda snapshot da geração
+* Possui rastreabilidade completa
+
+═══════════════════════
+PARTE 2 — GERAÇÃO
+═══════════════════════
+
+Fluxo:
+
+Agenda
+↓
+Livro do Show
+↓
+Escala
+↓
+Livro do Dia
+
+Implementar:
+
+GenerateDailyBook
+
+RegenerateDailyBook
+
+RepublishDailyBook
+
+Critérios:
+
+* Snapshot completo
+* Sem dependência em tempo real do Show Book
+* Sem dependência em tempo real da Escala após publicação
+
+═══════════════════════
+PARTE 3 — EDIÇÃO LOCAL
+═══════════════════════
+
+Implementar:
+
+Alterações permitidas apenas no Livro do Dia.
+
+Exemplos:
+
+* trocar pessoa
+* remover posição
+* remover cena
+* remover bloco
+* alterar ordem
+
+Importante:
+
+Não alterar Livro do Show.
+
+Critérios de aceite:
+
+* Alteração local não afeta template
+* Histórico preservado
+
+═══════════════════════
+PARTE 4 — DELTA
+═══════════════════════
+
+Implementar:
+
+ERA
+↓
+AGORA
+
+Comparação obrigatória entre versões.
+
+Exibir:
+
+* adições
+* remoções
+* trocas
+* mudanças estruturais
+
+Critérios:
+
+* Nenhuma republicação sem delta visível
+
+═══════════════════════
+PARTE 5 — WEB
+═══════════════════════
+
+Criar:
+
+/admin/daily-book
+
+/supervisor/daily-book
+
+IMPORTANTE:
+
+Web = Gestão.
+
+Utilizar:
+
+* visão por cena
+* visão por bloco
+* visão por posição
+* histórico
+* delta
+* republicação
+
+Estrutura sugerida:
+
+Esquerda:
+
+* livros
+
+Centro:
+
+* execução
+
+Direita:
+
+* impacto
+* alterações
+* histórico
+
+Critérios:
+
+* Supervisor opera sem suporte externo
+
+═══════════════════════
+PARTE 6 — MOBILE
+═══════════════════════
+
+Criar:
+
+Livro do Dia (consulta)
+
+Visualizar:
+
+* minhas posições
+* minhas cenas
+* meus horários
+
+Sem edição.
+
+Sem gestão.
+
+═══════════════════════
+PARTE 7 — EVENT BUS
+═══════════════════════
+
+Implementar:
+
+daily-book.created
+
+daily-book.generated
+
+daily-book.updated
+
+daily-book.published
+
+daily-book.republished
+
+daily-book.executed
+
+═══════════════════════
+PARTE 8 — AUDITORIA
+═══════════════════════
+
+Validar:
+
+* Snapshot preservado
+* Alteração local preservada
+* Delta funcionando
+* Histórico funcionando
+* Web focado em gestão
+* Mobile focado em execução
+
+Responder:
+
+Meu Dia pode consumir exclusivamente o Livro do Dia publicado?
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Classificar:
+
+🟢 Sprint 5 concluída
+
+🟡 Ajustes necessários
+
+🔴 Bloqueado
+
+Objetivo final:
+
+Ao final da Sprint 5:
+
+Uma Escala publicada gera um Livro do Dia operacional completo, editável localmente, rastreável e pronto para alimentar Meu Dia, Avisos e Histórico.

@@ -12,6 +12,7 @@ import GroupsPage from "@/pages/admin/groups";
 import ShowBookPage from "@/pages/admin/show-book";
 import AgendaPage from "@/pages/admin/agenda";
 import AuditoriaPage from "@/pages/admin/auditoria";
+import ScalesPage from "@/pages/admin/scales";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,7 @@ function Router() {
       <ProtectedRoute path="/admin/show-book" component={ShowBookPage} />
       <ProtectedRoute path="/admin/agenda" component={AgendaPage} />
       <ProtectedRoute path="/admin/auditoria" component={AuditoriaPage} />
+      <ProtectedRoute path="/admin/scales" component={ScalesPage} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -1878,6 +1878,412 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
+  /scales:
+    get:
+      operationId: listScales
+      tags: [scales]
+      summary: "Listar escalas"
+      parameters:
+        - name: operationId
+          in: query
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [DRAFT, PUBLISHED, REPUBLISHED, ARCHIVED]
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Lista de escalas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scales:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ScaleSummary"
+                required: [scales]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /scales/generate:
+    post:
+      operationId: generateScale
+      tags: [scales]
+      summary: "Gerar escala via Motor de Cobertura"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScaleGenerateRequest"
+      responses:
+        "201":
+          description: Escala gerada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scale:
+                    $ref: "#/components/schemas/ScaleSummary"
+                  engine:
+                    $ref: "#/components/schemas/EngineResult"
+                required: [scale, engine]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /scales/my-allocations:
+    get:
+      operationId: listMyAllocations
+      tags: [scales]
+      summary: "Minhas alocações (mobile)"
+      parameters:
+        - name: operationId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Alocações do usuário autenticado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  allocations:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/MyAllocation"
+                required: [allocations]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /scales/{id}:
+    get:
+      operationId: getScale
+      tags: [scales]
+      summary: "Buscar escala por ID"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Escala encontrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scale:
+                    $ref: "#/components/schemas/ScaleDetail"
+                required: [scale]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: patchScaleMeta
+      tags: [scales]
+      summary: "Atualizar metadados da escala"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScalePatchRequest"
+      responses:
+        "200":
+          description: Escala atualizada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scale:
+                    $ref: "#/components/schemas/ScaleSummary"
+                required: [scale]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /scales/{id}/regenerate:
+    post:
+      operationId: regenerateScale
+      tags: [scales]
+      summary: "Regenerar escala (Rascunho)"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Escala regenerada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scale:
+                    $ref: "#/components/schemas/ScaleSummary"
+                  engine:
+                    $ref: "#/components/schemas/EngineResult"
+                required: [scale, engine]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /scales/{id}/publish:
+    post:
+      operationId: publishScale
+      tags: [scales]
+      summary: "Publicar escala"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Escala publicada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scale:
+                    $ref: "#/components/schemas/ScaleSummary"
+                required: [scale]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /scales/{id}/republish:
+    post:
+      operationId: republishScale
+      tags: [scales]
+      summary: "Republicar escala"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Escala republicada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scale:
+                    $ref: "#/components/schemas/ScaleSummary"
+                required: [scale]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /scales/{id}/archive:
+    post:
+      operationId: archiveScale
+      tags: [scales]
+      summary: "Arquivar escala"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Escala arquivada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scale:
+                    $ref: "#/components/schemas/ScaleSummary"
+                required: [scale]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /scales/{id}/allocations:
+    get:
+      operationId: listScaleAllocations
+      tags: [scales]
+      summary: "Listar alocações com candidatos"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Alocações da escala
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  allocations:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ScaleAllocationWithCandidates"
+                required: [allocations]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /scales/{id}/allocations/{allocationId}:
+    patch:
+      operationId: overrideAllocation
+      tags: [scales]
+      summary: "Override manual de alocação (Supervisor)"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: allocationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AllocationOverrideRequest"
+      responses:
+        "200":
+          description: Alocação substituída
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  allocation:
+                    $ref: "#/components/schemas/ScaleAllocation"
+                required: [allocation]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /scales/{id}/exceptions:
+    get:
+      operationId: listScaleExceptions
+      tags: [scales]
+      summary: "Listar exceções da escala"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Exceções da escala
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  exceptions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AllocationException"
+                required: [exceptions]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /scales/{id}/exceptions/{exceptionId}/resolve:
+    patch:
+      operationId: resolveScaleException
+      tags: [scales]
+      summary: "Resolver exceção da escala"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: exceptionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Exceção resolvida
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  exception:
+                    $ref: "#/components/schemas/AllocationException"
+                required: [exception]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -2776,3 +3182,276 @@ components:
         groupId:
           type: string
           nullable: true
+
+    # ── Scale — Schemas ───────────────────────────────────────────────────────
+
+    ScaleSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        operationId:
+          type: string
+        groupId:
+          type: string
+          nullable: true
+        agendaEventId:
+          type: string
+          nullable: true
+        showBookId:
+          type: string
+          nullable: true
+        title:
+          type: string
+        periodStart:
+          type: string
+          format: date
+        periodEnd:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [DRAFT, PUBLISHED, REPUBLISHED, ARCHIVED]
+        generatedAt:
+          type: string
+          nullable: true
+        publishedAt:
+          type: string
+          nullable: true
+        totalAllocations:
+          type: integer
+        assignedCount:
+          type: integer
+        openCount:
+          type: integer
+        conflictCount:
+          type: integer
+        exceptionCount:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, operationId, title, periodStart, periodEnd, status, totalAllocations, assignedCount, openCount, conflictCount, exceptionCount, createdAt, updatedAt]
+
+    ScaleDetail:
+      allOf:
+        - $ref: "#/components/schemas/ScaleSummary"
+        - type: object
+          properties:
+            allocations:
+              type: array
+              items:
+                $ref: "#/components/schemas/ScaleAllocation"
+            exceptions:
+              type: array
+              items:
+                $ref: "#/components/schemas/AllocationException"
+          required: [allocations, exceptions]
+
+    ScaleAllocation:
+      type: object
+      properties:
+        id:
+          type: string
+        scaleId:
+          type: string
+        agendaEventId:
+          type: string
+        positionId:
+          type: string
+          nullable: true
+        positionName:
+          type: string
+          nullable: true
+        userId:
+          type: string
+          nullable: true
+        userName:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [ASSIGNED, OPEN, CONFLICT, MANUAL_OVERRIDE]
+        overrideReason:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, scaleId, agendaEventId, status, createdAt, updatedAt]
+
+    ScaleAllocationWithCandidates:
+      allOf:
+        - $ref: "#/components/schemas/ScaleAllocation"
+        - type: object
+          properties:
+            candidates:
+              type: array
+              items:
+                $ref: "#/components/schemas/AllocationCandidate"
+          required: [candidates]
+
+    AllocationCandidate:
+      type: object
+      properties:
+        id:
+          type: string
+        allocationId:
+          type: string
+        userId:
+          type: string
+        userName:
+          type: string
+          nullable: true
+        rank:
+          type: integer
+        eligible:
+          type: boolean
+        compatible:
+          type: boolean
+        priorityScore:
+          type: integer
+        rejectionReason:
+          type: string
+          nullable: true
+        candidateData:
+          type: object
+          nullable: true
+        createdAt:
+          type: string
+      required: [id, allocationId, userId, rank, eligible, compatible, priorityScore, createdAt]
+
+    AllocationException:
+      type: object
+      properties:
+        id:
+          type: string
+        scaleId:
+          type: string
+        agendaEventId:
+          type: string
+          nullable: true
+        positionId:
+          type: string
+          nullable: true
+        positionName:
+          type: string
+          nullable: true
+        type:
+          type: string
+          enum: [NO_CANDIDATE, RESTRICTION, CONFLICT, INSUFFICIENT_COVERAGE, SUPERVISOR_OVERRIDE]
+        reason:
+          type: string
+        impact:
+          type: string
+          nullable: true
+        candidatesAnalyzed:
+          type: array
+          items:
+            type: object
+        resolvedBy:
+          type: string
+          nullable: true
+        resolvedAt:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required: [id, scaleId, type, reason, createdAt]
+
+    MyAllocation:
+      type: object
+      properties:
+        id:
+          type: string
+        scaleId:
+          type: string
+        agendaEventId:
+          type: string
+        positionId:
+          type: string
+          nullable: true
+        positionName:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [ASSIGNED, OPEN, CONFLICT, MANUAL_OVERRIDE]
+        eventTitle:
+          type: string
+          nullable: true
+        eventDate:
+          type: string
+          nullable: true
+        eventStartTime:
+          type: string
+          nullable: true
+        eventEndTime:
+          type: string
+          nullable: true
+        eventLocation:
+          type: string
+          nullable: true
+        eventType:
+          type: string
+          nullable: true
+        scaleTitle:
+          type: string
+          nullable: true
+        scaleStatus:
+          type: string
+          nullable: true
+      required: [id, scaleId, agendaEventId, status]
+
+    EngineResult:
+      type: object
+      properties:
+        totalPositions:
+          type: integer
+        assignedPositions:
+          type: integer
+        openPositions:
+          type: integer
+        conflictPositions:
+          type: integer
+      required: [totalPositions, assignedPositions, openPositions, conflictPositions]
+
+    ScaleGenerateRequest:
+      type: object
+      properties:
+        agendaEventId:
+          type: string
+        showBookId:
+          type: string
+        operationId:
+          type: string
+        groupId:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+      required: [agendaEventId, showBookId, operationId]
+
+    AllocationOverrideRequest:
+      type: object
+      properties:
+        userId:
+          type: string
+        reason:
+          type: string
+        notes:
+          type: string
+          nullable: true
+      required: [userId, reason]
+
+    ScalePatchRequest:
+      type: object
+      properties:
+        title:
+          type: string

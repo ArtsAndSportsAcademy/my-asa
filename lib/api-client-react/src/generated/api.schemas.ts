@@ -668,6 +668,167 @@ export interface AgendaEventUpdate {
   groupId?: string | null;
 }
 
+export type ScaleSummaryStatus = typeof ScaleSummaryStatus[keyof typeof ScaleSummaryStatus];
+
+
+export const ScaleSummaryStatus = {
+  DRAFT: 'DRAFT',
+  PUBLISHED: 'PUBLISHED',
+  REPUBLISHED: 'REPUBLISHED',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export interface ScaleSummary {
+  id: string;
+  operationId: string;
+  groupId?: string | null;
+  agendaEventId?: string | null;
+  showBookId?: string | null;
+  title: string;
+  periodStart: string;
+  periodEnd: string;
+  status: ScaleSummaryStatus;
+  generatedAt?: string | null;
+  publishedAt?: string | null;
+  totalAllocations: number;
+  assignedCount: number;
+  openCount: number;
+  conflictCount: number;
+  exceptionCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ScaleAllocationStatus = typeof ScaleAllocationStatus[keyof typeof ScaleAllocationStatus];
+
+
+export const ScaleAllocationStatus = {
+  ASSIGNED: 'ASSIGNED',
+  OPEN: 'OPEN',
+  CONFLICT: 'CONFLICT',
+  MANUAL_OVERRIDE: 'MANUAL_OVERRIDE',
+} as const;
+
+export interface ScaleAllocation {
+  id: string;
+  scaleId: string;
+  agendaEventId: string;
+  positionId?: string | null;
+  positionName?: string | null;
+  userId?: string | null;
+  userName?: string | null;
+  status: ScaleAllocationStatus;
+  overrideReason?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type AllocationExceptionType = typeof AllocationExceptionType[keyof typeof AllocationExceptionType];
+
+
+export const AllocationExceptionType = {
+  NO_CANDIDATE: 'NO_CANDIDATE',
+  RESTRICTION: 'RESTRICTION',
+  CONFLICT: 'CONFLICT',
+  INSUFFICIENT_COVERAGE: 'INSUFFICIENT_COVERAGE',
+  SUPERVISOR_OVERRIDE: 'SUPERVISOR_OVERRIDE',
+} as const;
+
+export type AllocationExceptionCandidatesAnalyzedItem = { [key: string]: unknown };
+
+export interface AllocationException {
+  id: string;
+  scaleId: string;
+  agendaEventId?: string | null;
+  positionId?: string | null;
+  positionName?: string | null;
+  type: AllocationExceptionType;
+  reason: string;
+  impact?: string | null;
+  candidatesAnalyzed?: AllocationExceptionCandidatesAnalyzedItem[];
+  resolvedBy?: string | null;
+  resolvedAt?: string | null;
+  createdAt: string;
+}
+
+export type ScaleDetail = ScaleSummary & {
+  allocations: ScaleAllocation[];
+  exceptions: AllocationException[];
+};
+
+export type AllocationCandidateCandidateData = { [key: string]: unknown } | null;
+
+export interface AllocationCandidate {
+  id: string;
+  allocationId: string;
+  userId: string;
+  userName?: string | null;
+  rank: number;
+  eligible: boolean;
+  compatible: boolean;
+  priorityScore: number;
+  rejectionReason?: string | null;
+  candidateData?: AllocationCandidateCandidateData;
+  createdAt: string;
+}
+
+export type ScaleAllocationWithCandidates = ScaleAllocation & {
+  candidates: AllocationCandidate[];
+};
+
+export type MyAllocationStatus = typeof MyAllocationStatus[keyof typeof MyAllocationStatus];
+
+
+export const MyAllocationStatus = {
+  ASSIGNED: 'ASSIGNED',
+  OPEN: 'OPEN',
+  CONFLICT: 'CONFLICT',
+  MANUAL_OVERRIDE: 'MANUAL_OVERRIDE',
+} as const;
+
+export interface MyAllocation {
+  id: string;
+  scaleId: string;
+  agendaEventId: string;
+  positionId?: string | null;
+  positionName?: string | null;
+  status: MyAllocationStatus;
+  eventTitle?: string | null;
+  eventDate?: string | null;
+  eventStartTime?: string | null;
+  eventEndTime?: string | null;
+  eventLocation?: string | null;
+  eventType?: string | null;
+  scaleTitle?: string | null;
+  scaleStatus?: string | null;
+}
+
+export interface EngineResult {
+  totalPositions: number;
+  assignedPositions: number;
+  openPositions: number;
+  conflictPositions: number;
+}
+
+export interface ScaleGenerateRequest {
+  agendaEventId: string;
+  showBookId: string;
+  operationId: string;
+  groupId?: string | null;
+  title?: string | null;
+}
+
+export interface AllocationOverrideRequest {
+  userId: string;
+  reason: string;
+  notes?: string | null;
+}
+
+export interface ScalePatchRequest {
+  title?: string;
+}
+
 /**
  * Bad request
  */
@@ -920,5 +1081,81 @@ export type CancelAgendaEvent200 = {
 
 export type CompleteAgendaEvent200 = {
   event: AgendaEvent;
+};
+
+export type ListScalesParams = {
+operationId?: string;
+groupId?: string;
+status?: ListScalesStatus;
+from?: string;
+to?: string;
+};
+
+export type ListScalesStatus = typeof ListScalesStatus[keyof typeof ListScalesStatus];
+
+
+export const ListScalesStatus = {
+  DRAFT: 'DRAFT',
+  PUBLISHED: 'PUBLISHED',
+  REPUBLISHED: 'REPUBLISHED',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export type ListScales200 = {
+  scales: ScaleSummary[];
+};
+
+export type GenerateScale201 = {
+  scale: ScaleSummary;
+  engine: EngineResult;
+};
+
+export type ListMyAllocationsParams = {
+operationId?: string;
+};
+
+export type ListMyAllocations200 = {
+  allocations: MyAllocation[];
+};
+
+export type GetScale200 = {
+  scale: ScaleDetail;
+};
+
+export type PatchScaleMeta200 = {
+  scale: ScaleSummary;
+};
+
+export type RegenerateScale200 = {
+  scale: ScaleSummary;
+  engine: EngineResult;
+};
+
+export type PublishScale200 = {
+  scale: ScaleSummary;
+};
+
+export type RepublishScale200 = {
+  scale: ScaleSummary;
+};
+
+export type ArchiveScale200 = {
+  scale: ScaleSummary;
+};
+
+export type ListScaleAllocations200 = {
+  allocations: ScaleAllocationWithCandidates[];
+};
+
+export type OverrideAllocation200 = {
+  allocation: ScaleAllocation;
+};
+
+export type ListScaleExceptions200 = {
+  exceptions: AllocationException[];
+};
+
+export type ResolveScaleException200 = {
+  exception: AllocationException;
 };
 

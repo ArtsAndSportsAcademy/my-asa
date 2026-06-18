@@ -1354,3 +1354,432 @@ export const CompleteAgendaEventResponse = zod.object({
 })
 
 
+/**
+ * @summary Listar escalas
+ */
+export const ListScalesQueryParams = zod.object({
+  "operationId": zod.coerce.string().optional(),
+  "groupId": zod.coerce.string().optional(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'REPUBLISHED', 'ARCHIVED']).optional(),
+  "from": zod.date().optional(),
+  "to": zod.date().optional()
+})
+
+export const ListScalesResponse = zod.object({
+  "scales": zod.array(zod.object({
+  "id": zod.string(),
+  "operationId": zod.string(),
+  "groupId": zod.string().nullish(),
+  "agendaEventId": zod.string().nullish(),
+  "showBookId": zod.string().nullish(),
+  "title": zod.string(),
+  "periodStart": zod.coerce.date(),
+  "periodEnd": zod.coerce.date(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'REPUBLISHED', 'ARCHIVED']),
+  "generatedAt": zod.string().nullish(),
+  "publishedAt": zod.string().nullish(),
+  "totalAllocations": zod.number(),
+  "assignedCount": zod.number(),
+  "openCount": zod.number(),
+  "conflictCount": zod.number(),
+  "exceptionCount": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Gerar escala via Motor de Cobertura
+ */
+export const GenerateScaleBody = zod.object({
+  "agendaEventId": zod.string(),
+  "showBookId": zod.string(),
+  "operationId": zod.string(),
+  "groupId": zod.string().nullish(),
+  "title": zod.string().nullish()
+})
+
+
+/**
+ * @summary Minhas alocações (mobile)
+ */
+export const ListMyAllocationsQueryParams = zod.object({
+  "operationId": zod.coerce.string().optional()
+})
+
+export const ListMyAllocationsResponse = zod.object({
+  "allocations": zod.array(zod.object({
+  "id": zod.string(),
+  "scaleId": zod.string(),
+  "agendaEventId": zod.string(),
+  "positionId": zod.string().nullish(),
+  "positionName": zod.string().nullish(),
+  "status": zod.enum(['ASSIGNED', 'OPEN', 'CONFLICT', 'MANUAL_OVERRIDE']),
+  "eventTitle": zod.string().nullish(),
+  "eventDate": zod.string().nullish(),
+  "eventStartTime": zod.string().nullish(),
+  "eventEndTime": zod.string().nullish(),
+  "eventLocation": zod.string().nullish(),
+  "eventType": zod.string().nullish(),
+  "scaleTitle": zod.string().nullish(),
+  "scaleStatus": zod.string().nullish()
+}))
+})
+
+
+/**
+ * @summary Buscar escala por ID
+ */
+export const GetScaleParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetScaleResponse = zod.object({
+  "scale": zod.object({
+  "id": zod.string(),
+  "operationId": zod.string(),
+  "groupId": zod.string().nullish(),
+  "agendaEventId": zod.string().nullish(),
+  "showBookId": zod.string().nullish(),
+  "title": zod.string(),
+  "periodStart": zod.coerce.date(),
+  "periodEnd": zod.coerce.date(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'REPUBLISHED', 'ARCHIVED']),
+  "generatedAt": zod.string().nullish(),
+  "publishedAt": zod.string().nullish(),
+  "totalAllocations": zod.number(),
+  "assignedCount": zod.number(),
+  "openCount": zod.number(),
+  "conflictCount": zod.number(),
+  "exceptionCount": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}).and(zod.object({
+  "allocations": zod.array(zod.object({
+  "id": zod.string(),
+  "scaleId": zod.string(),
+  "agendaEventId": zod.string(),
+  "positionId": zod.string().nullish(),
+  "positionName": zod.string().nullish(),
+  "userId": zod.string().nullish(),
+  "userName": zod.string().nullish(),
+  "status": zod.enum(['ASSIGNED', 'OPEN', 'CONFLICT', 'MANUAL_OVERRIDE']),
+  "overrideReason": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})),
+  "exceptions": zod.array(zod.object({
+  "id": zod.string(),
+  "scaleId": zod.string(),
+  "agendaEventId": zod.string().nullish(),
+  "positionId": zod.string().nullish(),
+  "positionName": zod.string().nullish(),
+  "type": zod.enum(['NO_CANDIDATE', 'RESTRICTION', 'CONFLICT', 'INSUFFICIENT_COVERAGE', 'SUPERVISOR_OVERRIDE']),
+  "reason": zod.string(),
+  "impact": zod.string().nullish(),
+  "candidatesAnalyzed": zod.array(zod.object({
+
+}).passthrough()).optional(),
+  "resolvedBy": zod.string().nullish(),
+  "resolvedAt": zod.string().nullish(),
+  "createdAt": zod.string()
+}))
+}))
+})
+
+
+/**
+ * @summary Atualizar metadados da escala
+ */
+export const PatchScaleMetaParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const PatchScaleMetaBody = zod.object({
+  "title": zod.string().optional()
+})
+
+export const PatchScaleMetaResponse = zod.object({
+  "scale": zod.object({
+  "id": zod.string(),
+  "operationId": zod.string(),
+  "groupId": zod.string().nullish(),
+  "agendaEventId": zod.string().nullish(),
+  "showBookId": zod.string().nullish(),
+  "title": zod.string(),
+  "periodStart": zod.coerce.date(),
+  "periodEnd": zod.coerce.date(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'REPUBLISHED', 'ARCHIVED']),
+  "generatedAt": zod.string().nullish(),
+  "publishedAt": zod.string().nullish(),
+  "totalAllocations": zod.number(),
+  "assignedCount": zod.number(),
+  "openCount": zod.number(),
+  "conflictCount": zod.number(),
+  "exceptionCount": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Regenerar escala (Rascunho)
+ */
+export const RegenerateScaleParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const RegenerateScaleResponse = zod.object({
+  "scale": zod.object({
+  "id": zod.string(),
+  "operationId": zod.string(),
+  "groupId": zod.string().nullish(),
+  "agendaEventId": zod.string().nullish(),
+  "showBookId": zod.string().nullish(),
+  "title": zod.string(),
+  "periodStart": zod.coerce.date(),
+  "periodEnd": zod.coerce.date(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'REPUBLISHED', 'ARCHIVED']),
+  "generatedAt": zod.string().nullish(),
+  "publishedAt": zod.string().nullish(),
+  "totalAllocations": zod.number(),
+  "assignedCount": zod.number(),
+  "openCount": zod.number(),
+  "conflictCount": zod.number(),
+  "exceptionCount": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}),
+  "engine": zod.object({
+  "totalPositions": zod.number(),
+  "assignedPositions": zod.number(),
+  "openPositions": zod.number(),
+  "conflictPositions": zod.number()
+})
+})
+
+
+/**
+ * @summary Publicar escala
+ */
+export const PublishScaleParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const PublishScaleResponse = zod.object({
+  "scale": zod.object({
+  "id": zod.string(),
+  "operationId": zod.string(),
+  "groupId": zod.string().nullish(),
+  "agendaEventId": zod.string().nullish(),
+  "showBookId": zod.string().nullish(),
+  "title": zod.string(),
+  "periodStart": zod.coerce.date(),
+  "periodEnd": zod.coerce.date(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'REPUBLISHED', 'ARCHIVED']),
+  "generatedAt": zod.string().nullish(),
+  "publishedAt": zod.string().nullish(),
+  "totalAllocations": zod.number(),
+  "assignedCount": zod.number(),
+  "openCount": zod.number(),
+  "conflictCount": zod.number(),
+  "exceptionCount": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Republicar escala
+ */
+export const RepublishScaleParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const RepublishScaleResponse = zod.object({
+  "scale": zod.object({
+  "id": zod.string(),
+  "operationId": zod.string(),
+  "groupId": zod.string().nullish(),
+  "agendaEventId": zod.string().nullish(),
+  "showBookId": zod.string().nullish(),
+  "title": zod.string(),
+  "periodStart": zod.coerce.date(),
+  "periodEnd": zod.coerce.date(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'REPUBLISHED', 'ARCHIVED']),
+  "generatedAt": zod.string().nullish(),
+  "publishedAt": zod.string().nullish(),
+  "totalAllocations": zod.number(),
+  "assignedCount": zod.number(),
+  "openCount": zod.number(),
+  "conflictCount": zod.number(),
+  "exceptionCount": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Arquivar escala
+ */
+export const ArchiveScaleParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const ArchiveScaleResponse = zod.object({
+  "scale": zod.object({
+  "id": zod.string(),
+  "operationId": zod.string(),
+  "groupId": zod.string().nullish(),
+  "agendaEventId": zod.string().nullish(),
+  "showBookId": zod.string().nullish(),
+  "title": zod.string(),
+  "periodStart": zod.coerce.date(),
+  "periodEnd": zod.coerce.date(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'REPUBLISHED', 'ARCHIVED']),
+  "generatedAt": zod.string().nullish(),
+  "publishedAt": zod.string().nullish(),
+  "totalAllocations": zod.number(),
+  "assignedCount": zod.number(),
+  "openCount": zod.number(),
+  "conflictCount": zod.number(),
+  "exceptionCount": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Listar alocações com candidatos
+ */
+export const ListScaleAllocationsParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const ListScaleAllocationsResponse = zod.object({
+  "allocations": zod.array(zod.object({
+  "id": zod.string(),
+  "scaleId": zod.string(),
+  "agendaEventId": zod.string(),
+  "positionId": zod.string().nullish(),
+  "positionName": zod.string().nullish(),
+  "userId": zod.string().nullish(),
+  "userName": zod.string().nullish(),
+  "status": zod.enum(['ASSIGNED', 'OPEN', 'CONFLICT', 'MANUAL_OVERRIDE']),
+  "overrideReason": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}).and(zod.object({
+  "candidates": zod.array(zod.object({
+  "id": zod.string(),
+  "allocationId": zod.string(),
+  "userId": zod.string(),
+  "userName": zod.string().nullish(),
+  "rank": zod.number(),
+  "eligible": zod.boolean(),
+  "compatible": zod.boolean(),
+  "priorityScore": zod.number(),
+  "rejectionReason": zod.string().nullish(),
+  "candidateData": zod.object({
+
+}).passthrough().nullish(),
+  "createdAt": zod.string()
+}))
+})))
+})
+
+
+/**
+ * @summary Override manual de alocação (Supervisor)
+ */
+export const OverrideAllocationParams = zod.object({
+  "id": zod.coerce.string(),
+  "allocationId": zod.coerce.string()
+})
+
+export const OverrideAllocationBody = zod.object({
+  "userId": zod.string(),
+  "reason": zod.string(),
+  "notes": zod.string().nullish()
+})
+
+export const OverrideAllocationResponse = zod.object({
+  "allocation": zod.object({
+  "id": zod.string(),
+  "scaleId": zod.string(),
+  "agendaEventId": zod.string(),
+  "positionId": zod.string().nullish(),
+  "positionName": zod.string().nullish(),
+  "userId": zod.string().nullish(),
+  "userName": zod.string().nullish(),
+  "status": zod.enum(['ASSIGNED', 'OPEN', 'CONFLICT', 'MANUAL_OVERRIDE']),
+  "overrideReason": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Listar exceções da escala
+ */
+export const ListScaleExceptionsParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const ListScaleExceptionsResponse = zod.object({
+  "exceptions": zod.array(zod.object({
+  "id": zod.string(),
+  "scaleId": zod.string(),
+  "agendaEventId": zod.string().nullish(),
+  "positionId": zod.string().nullish(),
+  "positionName": zod.string().nullish(),
+  "type": zod.enum(['NO_CANDIDATE', 'RESTRICTION', 'CONFLICT', 'INSUFFICIENT_COVERAGE', 'SUPERVISOR_OVERRIDE']),
+  "reason": zod.string(),
+  "impact": zod.string().nullish(),
+  "candidatesAnalyzed": zod.array(zod.object({
+
+}).passthrough()).optional(),
+  "resolvedBy": zod.string().nullish(),
+  "resolvedAt": zod.string().nullish(),
+  "createdAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Resolver exceção da escala
+ */
+export const ResolveScaleExceptionParams = zod.object({
+  "id": zod.coerce.string(),
+  "exceptionId": zod.coerce.string()
+})
+
+export const ResolveScaleExceptionResponse = zod.object({
+  "exception": zod.object({
+  "id": zod.string(),
+  "scaleId": zod.string(),
+  "agendaEventId": zod.string().nullish(),
+  "positionId": zod.string().nullish(),
+  "positionName": zod.string().nullish(),
+  "type": zod.enum(['NO_CANDIDATE', 'RESTRICTION', 'CONFLICT', 'INSUFFICIENT_COVERAGE', 'SUPERVISOR_OVERRIDE']),
+  "reason": zod.string(),
+  "impact": zod.string().nullish(),
+  "candidatesAnalyzed": zod.array(zod.object({
+
+}).passthrough()).optional(),
+  "resolvedBy": zod.string().nullish(),
+  "resolvedAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+})
+
+

@@ -28,6 +28,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "book", selected: "book.closed.fill" }} />
         <Label>Show</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="scale">
+        <Icon sf={{ default: "list.clipboard", selected: "list.clipboard.fill" }} />
+        <Label>Escala</Label>
+      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }
@@ -103,6 +107,18 @@ function ClassicTabLayout() {
               <SymbolView name="book" tintColor={color} size={24} />
             ) : (
               <Feather name="book-open" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="scale"
+        options={{
+          title: "Escala",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="list.clipboard" tintColor={color} size={24} />
+            ) : (
+              <Feather name="clipboard" size={22} color={color} />
             ),
         }}
       />

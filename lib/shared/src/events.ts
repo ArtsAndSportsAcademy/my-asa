@@ -104,10 +104,10 @@ export type EventPayloadMap = {
 
   "scale.published": {
     scaleId: string;
-    groupId: string;
     operationId: string;
-    changes: Array<{ allocationId: string; userId: string; previousState: string; newState: string }>;
-    timestamp: Date;
+    groupId?: string;
+    changes?: Array<{ allocationId: string; userId: string; previousState: string; newState: string }>;
+    timestamp?: Date;
   };
   "scale.allocation.changed": {
     allocationId: string;
@@ -127,6 +127,32 @@ export type EventPayloadMap = {
     allocationId: string;
     userId: string;
     confirmedAt: Date;
+  };
+  "scale.generated": {
+    scaleId: string;
+    operationId: string;
+    agendaEventId: string;
+    assignedPositions: number;
+    openPositions: number;
+  };
+  "scale.regenerated": {
+    scaleId: string;
+    operationId: string;
+  };
+  "scale.republished": {
+    scaleId: string;
+    operationId: string;
+  };
+  "scale.archived": {
+    scaleId: string;
+  };
+  "scale.updated": {
+    scaleId: string;
+  };
+  "scale.allocation.overridden": {
+    scaleId: string;
+    allocationId: string;
+    overriddenBy: string;
   };
 
   "dailybook.generated": {

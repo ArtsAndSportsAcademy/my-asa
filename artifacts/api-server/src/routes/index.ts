@@ -8,6 +8,7 @@ import operationsRouter from "./operations";
 import groupsRouter from "./groups";
 import showBookRouter from "./show-book";
 import agendaRouter from "./agenda";
+import scalesRouter from "./scales";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(operationsRouter);
 router.use(groupsRouter);
 router.use(showBookRouter);
 router.use(agendaRouter);
+router.use(scalesRouter);
 
 export default router;

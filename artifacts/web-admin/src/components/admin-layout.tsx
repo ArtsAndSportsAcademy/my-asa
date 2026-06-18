@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Theater, Home, Users, Briefcase, Users2, LogOut, ChevronRight, BookOpen, CalendarDays, ShieldCheck } from "lucide-react";
+import { Theater, Home, Users, Briefcase, Users2, LogOut, ChevronRight, BookOpen, CalendarDays, ShieldCheck, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,6 +12,7 @@ const navItems = [
   { href: "/admin/groups", icon: Users2, label: "Grupos" },
   { href: "/admin/show-book", icon: BookOpen, label: "Livro do Show" },
   { href: "/admin/agenda", icon: CalendarDays, label: "Agenda" },
+  { href: "/admin/scales", icon: ClipboardList, label: "Escalas" },
   { href: "/admin/auditoria", icon: ShieldCheck, label: "Auditoria" },
 ];
 

@@ -25,6 +25,8 @@ import type {
   AddUserRole201,
   AgendaEventCreate,
   AgendaEventUpdate,
+  AllocationOverrideRequest,
+  ArchiveScale200,
   AssignUserTag201,
   BadRequestResponse,
   BlockCreate,
@@ -45,11 +47,13 @@ import type {
   CreateUser201,
   CurrentOrganization,
   ForbiddenResponse,
+  GenerateScale201,
   GetAgendaEvent200,
   GetOperation200,
   GetOperationalGroup200,
   GetOperationalGroups200,
   GetOperations200,
+  GetScale200,
   GetShowBook200,
   GetUser200,
   GroupCreate,
@@ -62,7 +66,13 @@ import type {
   LineUpdate,
   ListAgendaEvents200,
   ListAgendaEventsParams,
+  ListMyAllocations200,
+  ListMyAllocationsParams,
   ListOperationTags200,
+  ListScaleAllocations200,
+  ListScaleExceptions200,
+  ListScales200,
+  ListScalesParams,
   ListShowBookVersions200,
   ListShowBooks200,
   ListShowBooksParams,
@@ -76,12 +86,20 @@ import type {
   OperationCreate,
   OperationStatusUpdate,
   OperationUpdate,
+  OverrideAllocation200,
+  PatchScaleMeta200,
   PositionCreate,
   PositionUpdate,
+  PublishScale200,
   ReasonPayload,
   RefreshTokenRequest,
+  RegenerateScale200,
   RemoveGroupSupervisor200,
+  RepublishScale200,
+  ResolveScaleException200,
   RoleCreate,
+  ScaleGenerateRequest,
+  ScalePatchRequest,
   SceneCreate,
   SceneUpdate,
   ShowBookCreate,
@@ -4694,5 +4712,973 @@ export const useCompleteAgendaEvent = <TError = ErrorType<UnauthorizedResponse |
         TContext
       > => {
       return useMutation(getCompleteAgendaEventMutationOptions(options));
+    }
+
+export const getListScalesUrl = (params?: ListScalesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/scales?${stringifiedParams}` : `/api/scales`
+}
+
+/**
+ * @summary Listar escalas
+ */
+export const listScales = async (params?: ListScalesParams, options?: RequestInit): Promise<ListScales200> => {
+
+  return customFetch<ListScales200>(getListScalesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListScalesQueryKey = (params?: ListScalesParams,) => {
+    return [
+    `/api/scales`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListScalesQueryOptions = <TData = Awaited<ReturnType<typeof listScales>>, TError = ErrorType<UnauthorizedResponse>>(params?: ListScalesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listScales>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListScalesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listScales>>> = ({ signal }) => listScales(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listScales>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListScalesQueryResult = NonNullable<Awaited<ReturnType<typeof listScales>>>
+export type ListScalesQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Listar escalas
+ */
+
+export function useListScales<TData = Awaited<ReturnType<typeof listScales>>, TError = ErrorType<UnauthorizedResponse>>(
+ params?: ListScalesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listScales>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListScalesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGenerateScaleUrl = () => {
+
+
+
+
+  return `/api/scales/generate`
+}
+
+/**
+ * @summary Gerar escala via Motor de Cobertura
+ */
+export const generateScale = async (scaleGenerateRequest: ScaleGenerateRequest, options?: RequestInit): Promise<GenerateScale201> => {
+
+  return customFetch<GenerateScale201>(getGenerateScaleUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      scaleGenerateRequest,)
+  }
+);}
+
+
+
+
+export const getGenerateScaleMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateScale>>, TError,{data: BodyType<ScaleGenerateRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateScale>>, TError,{data: BodyType<ScaleGenerateRequest>}, TContext> => {
+
+const mutationKey = ['generateScale'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateScale>>, {data: BodyType<ScaleGenerateRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  generateScale(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateScaleMutationResult = NonNullable<Awaited<ReturnType<typeof generateScale>>>
+    export type GenerateScaleMutationBody = BodyType<ScaleGenerateRequest>
+    export type GenerateScaleMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Gerar escala via Motor de Cobertura
+ */
+export const useGenerateScale = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateScale>>, TError,{data: BodyType<ScaleGenerateRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof generateScale>>,
+        TError,
+        {data: BodyType<ScaleGenerateRequest>},
+        TContext
+      > => {
+      return useMutation(getGenerateScaleMutationOptions(options));
+    }
+
+export const getListMyAllocationsUrl = (params?: ListMyAllocationsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/scales/my-allocations?${stringifiedParams}` : `/api/scales/my-allocations`
+}
+
+/**
+ * @summary Minhas alocações (mobile)
+ */
+export const listMyAllocations = async (params?: ListMyAllocationsParams, options?: RequestInit): Promise<ListMyAllocations200> => {
+
+  return customFetch<ListMyAllocations200>(getListMyAllocationsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMyAllocationsQueryKey = (params?: ListMyAllocationsParams,) => {
+    return [
+    `/api/scales/my-allocations`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListMyAllocationsQueryOptions = <TData = Awaited<ReturnType<typeof listMyAllocations>>, TError = ErrorType<UnauthorizedResponse>>(params?: ListMyAllocationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMyAllocations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMyAllocationsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMyAllocations>>> = ({ signal }) => listMyAllocations(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMyAllocations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMyAllocationsQueryResult = NonNullable<Awaited<ReturnType<typeof listMyAllocations>>>
+export type ListMyAllocationsQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Minhas alocações (mobile)
+ */
+
+export function useListMyAllocations<TData = Awaited<ReturnType<typeof listMyAllocations>>, TError = ErrorType<UnauthorizedResponse>>(
+ params?: ListMyAllocationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMyAllocations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMyAllocationsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetScaleUrl = (id: string,) => {
+
+
+
+
+  return `/api/scales/${id}`
+}
+
+/**
+ * @summary Buscar escala por ID
+ */
+export const getScale = async (id: string, options?: RequestInit): Promise<GetScale200> => {
+
+  return customFetch<GetScale200>(getGetScaleUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetScaleQueryKey = (id: string,) => {
+    return [
+    `/api/scales/${id}`
+    ] as const;
+    }
+
+
+export const getGetScaleQueryOptions = <TData = Awaited<ReturnType<typeof getScale>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getScale>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetScaleQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getScale>>> = ({ signal }) => getScale(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getScale>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetScaleQueryResult = NonNullable<Awaited<ReturnType<typeof getScale>>>
+export type GetScaleQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary Buscar escala por ID
+ */
+
+export function useGetScale<TData = Awaited<ReturnType<typeof getScale>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getScale>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetScaleQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getPatchScaleMetaUrl = (id: string,) => {
+
+
+
+
+  return `/api/scales/${id}`
+}
+
+/**
+ * @summary Atualizar metadados da escala
+ */
+export const patchScaleMeta = async (id: string,
+    scalePatchRequest: ScalePatchRequest, options?: RequestInit): Promise<PatchScaleMeta200> => {
+
+  return customFetch<PatchScaleMeta200>(getPatchScaleMetaUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      scalePatchRequest,)
+  }
+);}
+
+
+
+
+export const getPatchScaleMetaMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchScaleMeta>>, TError,{id: string;data: BodyType<ScalePatchRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof patchScaleMeta>>, TError,{id: string;data: BodyType<ScalePatchRequest>}, TContext> => {
+
+const mutationKey = ['patchScaleMeta'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof patchScaleMeta>>, {id: string;data: BodyType<ScalePatchRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  patchScaleMeta(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PatchScaleMetaMutationResult = NonNullable<Awaited<ReturnType<typeof patchScaleMeta>>>
+    export type PatchScaleMetaMutationBody = BodyType<ScalePatchRequest>
+    export type PatchScaleMetaMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Atualizar metadados da escala
+ */
+export const usePatchScaleMeta = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchScaleMeta>>, TError,{id: string;data: BodyType<ScalePatchRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof patchScaleMeta>>,
+        TError,
+        {id: string;data: BodyType<ScalePatchRequest>},
+        TContext
+      > => {
+      return useMutation(getPatchScaleMetaMutationOptions(options));
+    }
+
+export const getRegenerateScaleUrl = (id: string,) => {
+
+
+
+
+  return `/api/scales/${id}/regenerate`
+}
+
+/**
+ * @summary Regenerar escala (Rascunho)
+ */
+export const regenerateScale = async (id: string, options?: RequestInit): Promise<RegenerateScale200> => {
+
+  return customFetch<RegenerateScale200>(getRegenerateScaleUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRegenerateScaleMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof regenerateScale>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof regenerateScale>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['regenerateScale'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof regenerateScale>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  regenerateScale(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RegenerateScaleMutationResult = NonNullable<Awaited<ReturnType<typeof regenerateScale>>>
+
+    export type RegenerateScaleMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Regenerar escala (Rascunho)
+ */
+export const useRegenerateScale = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof regenerateScale>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof regenerateScale>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getRegenerateScaleMutationOptions(options));
+    }
+
+export const getPublishScaleUrl = (id: string,) => {
+
+
+
+
+  return `/api/scales/${id}/publish`
+}
+
+/**
+ * @summary Publicar escala
+ */
+export const publishScale = async (id: string, options?: RequestInit): Promise<PublishScale200> => {
+
+  return customFetch<PublishScale200>(getPublishScaleUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getPublishScaleMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishScale>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof publishScale>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['publishScale'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof publishScale>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  publishScale(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PublishScaleMutationResult = NonNullable<Awaited<ReturnType<typeof publishScale>>>
+
+    export type PublishScaleMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Publicar escala
+ */
+export const usePublishScale = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishScale>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof publishScale>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getPublishScaleMutationOptions(options));
+    }
+
+export const getRepublishScaleUrl = (id: string,) => {
+
+
+
+
+  return `/api/scales/${id}/republish`
+}
+
+/**
+ * @summary Republicar escala
+ */
+export const republishScale = async (id: string, options?: RequestInit): Promise<RepublishScale200> => {
+
+  return customFetch<RepublishScale200>(getRepublishScaleUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRepublishScaleMutationOptions = <TError = ErrorType<UnauthorizedResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof republishScale>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof republishScale>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['republishScale'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof republishScale>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  republishScale(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RepublishScaleMutationResult = NonNullable<Awaited<ReturnType<typeof republishScale>>>
+
+    export type RepublishScaleMutationError = ErrorType<UnauthorizedResponse | ConflictResponse>
+
+    /**
+ * @summary Republicar escala
+ */
+export const useRepublishScale = <TError = ErrorType<UnauthorizedResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof republishScale>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof republishScale>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getRepublishScaleMutationOptions(options));
+    }
+
+export const getArchiveScaleUrl = (id: string,) => {
+
+
+
+
+  return `/api/scales/${id}/archive`
+}
+
+/**
+ * @summary Arquivar escala
+ */
+export const archiveScale = async (id: string, options?: RequestInit): Promise<ArchiveScale200> => {
+
+  return customFetch<ArchiveScale200>(getArchiveScaleUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getArchiveScaleMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof archiveScale>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof archiveScale>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['archiveScale'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof archiveScale>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  archiveScale(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ArchiveScaleMutationResult = NonNullable<Awaited<ReturnType<typeof archiveScale>>>
+
+    export type ArchiveScaleMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Arquivar escala
+ */
+export const useArchiveScale = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof archiveScale>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof archiveScale>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getArchiveScaleMutationOptions(options));
+    }
+
+export const getListScaleAllocationsUrl = (id: string,) => {
+
+
+
+
+  return `/api/scales/${id}/allocations`
+}
+
+/**
+ * @summary Listar alocações com candidatos
+ */
+export const listScaleAllocations = async (id: string, options?: RequestInit): Promise<ListScaleAllocations200> => {
+
+  return customFetch<ListScaleAllocations200>(getListScaleAllocationsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListScaleAllocationsQueryKey = (id: string,) => {
+    return [
+    `/api/scales/${id}/allocations`
+    ] as const;
+    }
+
+
+export const getListScaleAllocationsQueryOptions = <TData = Awaited<ReturnType<typeof listScaleAllocations>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listScaleAllocations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListScaleAllocationsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listScaleAllocations>>> = ({ signal }) => listScaleAllocations(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listScaleAllocations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListScaleAllocationsQueryResult = NonNullable<Awaited<ReturnType<typeof listScaleAllocations>>>
+export type ListScaleAllocationsQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary Listar alocações com candidatos
+ */
+
+export function useListScaleAllocations<TData = Awaited<ReturnType<typeof listScaleAllocations>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listScaleAllocations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListScaleAllocationsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getOverrideAllocationUrl = (id: string,
+    allocationId: string,) => {
+
+
+
+
+  return `/api/scales/${id}/allocations/${allocationId}`
+}
+
+/**
+ * @summary Override manual de alocação (Supervisor)
+ */
+export const overrideAllocation = async (id: string,
+    allocationId: string,
+    allocationOverrideRequest: AllocationOverrideRequest, options?: RequestInit): Promise<OverrideAllocation200> => {
+
+  return customFetch<OverrideAllocation200>(getOverrideAllocationUrl(id,allocationId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      allocationOverrideRequest,)
+  }
+);}
+
+
+
+
+export const getOverrideAllocationMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof overrideAllocation>>, TError,{id: string;allocationId: string;data: BodyType<AllocationOverrideRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof overrideAllocation>>, TError,{id: string;allocationId: string;data: BodyType<AllocationOverrideRequest>}, TContext> => {
+
+const mutationKey = ['overrideAllocation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof overrideAllocation>>, {id: string;allocationId: string;data: BodyType<AllocationOverrideRequest>}> = (props) => {
+          const {id,allocationId,data} = props ?? {};
+
+          return  overrideAllocation(id,allocationId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type OverrideAllocationMutationResult = NonNullable<Awaited<ReturnType<typeof overrideAllocation>>>
+    export type OverrideAllocationMutationBody = BodyType<AllocationOverrideRequest>
+    export type OverrideAllocationMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Override manual de alocação (Supervisor)
+ */
+export const useOverrideAllocation = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof overrideAllocation>>, TError,{id: string;allocationId: string;data: BodyType<AllocationOverrideRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof overrideAllocation>>,
+        TError,
+        {id: string;allocationId: string;data: BodyType<AllocationOverrideRequest>},
+        TContext
+      > => {
+      return useMutation(getOverrideAllocationMutationOptions(options));
+    }
+
+export const getListScaleExceptionsUrl = (id: string,) => {
+
+
+
+
+  return `/api/scales/${id}/exceptions`
+}
+
+/**
+ * @summary Listar exceções da escala
+ */
+export const listScaleExceptions = async (id: string, options?: RequestInit): Promise<ListScaleExceptions200> => {
+
+  return customFetch<ListScaleExceptions200>(getListScaleExceptionsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListScaleExceptionsQueryKey = (id: string,) => {
+    return [
+    `/api/scales/${id}/exceptions`
+    ] as const;
+    }
+
+
+export const getListScaleExceptionsQueryOptions = <TData = Awaited<ReturnType<typeof listScaleExceptions>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listScaleExceptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListScaleExceptionsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listScaleExceptions>>> = ({ signal }) => listScaleExceptions(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listScaleExceptions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListScaleExceptionsQueryResult = NonNullable<Awaited<ReturnType<typeof listScaleExceptions>>>
+export type ListScaleExceptionsQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary Listar exceções da escala
+ */
+
+export function useListScaleExceptions<TData = Awaited<ReturnType<typeof listScaleExceptions>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listScaleExceptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListScaleExceptionsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getResolveScaleExceptionUrl = (id: string,
+    exceptionId: string,) => {
+
+
+
+
+  return `/api/scales/${id}/exceptions/${exceptionId}/resolve`
+}
+
+/**
+ * @summary Resolver exceção da escala
+ */
+export const resolveScaleException = async (id: string,
+    exceptionId: string, options?: RequestInit): Promise<ResolveScaleException200> => {
+
+  return customFetch<ResolveScaleException200>(getResolveScaleExceptionUrl(id,exceptionId),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+export const getResolveScaleExceptionMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveScaleException>>, TError,{id: string;exceptionId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resolveScaleException>>, TError,{id: string;exceptionId: string}, TContext> => {
+
+const mutationKey = ['resolveScaleException'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resolveScaleException>>, {id: string;exceptionId: string}> = (props) => {
+          const {id,exceptionId} = props ?? {};
+
+          return  resolveScaleException(id,exceptionId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResolveScaleExceptionMutationResult = NonNullable<Awaited<ReturnType<typeof resolveScaleException>>>
+
+    export type ResolveScaleExceptionMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Resolver exceção da escala
+ */
+export const useResolveScaleException = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveScaleException>>, TError,{id: string;exceptionId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resolveScaleException>>,
+        TError,
+        {id: string;exceptionId: string},
+        TContext
+      > => {
+      return useMutation(getResolveScaleExceptionMutationOptions(options));
     }
 

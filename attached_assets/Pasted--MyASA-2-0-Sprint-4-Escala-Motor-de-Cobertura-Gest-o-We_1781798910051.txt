@@ -1,0 +1,321 @@
+# MyASA 2.0 — Sprint 4: Escala (Motor de Cobertura + Gestão Web)
+
+Utilizar obrigatoriamente:
+
+* Sprint 0 concluída
+* Sprint 1 concluída
+* Sprint 2 concluída
+* Sprint 3 concluída
+* Arquitetura Técnica
+* Blueprint Executivo
+* Fundação S-04 Escala
+* Livro do Show implementado
+* Agenda implementada
+* Gate Final de Construção
+
+Importante:
+
+Não implementar Meu Dia ainda.
+
+Não implementar Painel Operacional ainda.
+
+Não implementar Livro do Dia ainda.
+
+Não implementar IA ainda.
+
+Respeitar decisão oficial:
+
+WEB = Gestão primeiro
+
+MOBILE = Operação primeiro
+
+Objetivo:
+
+Construir o núcleo operacional do MyASA:
+
+Escala
+
+A Escala deve ser capaz de transformar:
+
+Agenda + Livro do Show + Pessoas + Grupos + Restrições
+
+em
+
+Alocações operacionais reais.
+
+═══════════════════════
+PARTE 1 — DOMÍNIO ESCALA
+═══════════════════════
+
+Implementar:
+
+Scale
+
+ScaleAllocation
+
+AllocationCandidate
+
+AllocationException
+
+Estados da Escala:
+
+* Draft
+* Published
+* Republished
+* Archived
+
+Estados de Alocação:
+
+* Assigned
+* Open
+* Conflict
+* ManualOverride
+
+Critérios de aceite:
+
+* Escala existe independentemente do Livro do Dia
+* Escala pode ser gerada e editada
+* Escala pode ser publicada
+
+═══════════════════════
+PARTE 2 — MOTOR DE COBERTURA
+═══════════════════════
+
+Implementar:
+
+CandidateRanker
+
+CascadeCalculator
+
+ExceptionPrioritizer
+
+Regras:
+
+Camada 1
+Elegibilidade obrigatória
+
+Camada 2
+Compatibilidade operacional
+
+Camada 3
+Priorização
+
+Aplicar:
+
+* tags
+* restrições
+* escopo
+* disponibilidade
+* operação
+
+Critérios de aceite:
+
+* Candidatos elegíveis identificados
+* Inelegíveis possuem motivo explícito
+* Resultado reproduzível e determinístico
+
+═══════════════════════
+PARTE 3 — GERAÇÃO DE ESCALA
+═══════════════════════
+
+Implementar:
+
+Gerar Escala
+
+Regenerar Escala
+
+Republicar Escala
+
+Fluxo:
+
+Agenda
+↓
+Livro do Show
+↓
+Motor
+↓
+Escala
+
+Critérios de aceite:
+
+* Escala nasce automaticamente da Agenda + Livro do Show
+* Exceções ficam registradas
+* Em Aberto é permitido
+* Nenhuma atribuição silenciosa
+
+═══════════════════════
+PARTE 4 — EXCEÇÕES
+═══════════════════════
+
+Implementar:
+
+AllocationException
+
+Tipos:
+
+* Sem candidato
+* Restrição
+* Conflito
+* Cobertura insuficiente
+* Supervisor override
+
+Cada exceção deve conter:
+
+* motivo
+* impacto
+* candidatos analisados
+
+Critérios de aceite:
+
+* Supervisor entende por que ocorreu
+* Histórico rastreável
+
+═══════════════════════
+PARTE 5 — WEB ADMIN / SUPERVISOR
+═══════════════════════
+
+Criar:
+
+/admin/scales
+
+/supervisor/scales
+
+IMPORTANTE:
+
+Não copiar o layout do mobile.
+
+Web é ferramenta de gestão.
+
+Utilizar espaço disponível para:
+
+* filtros
+* visão por dia
+* visão por semana
+* exceções
+* cobertura
+* candidatos
+* comparação de versões
+
+Estrutura recomendada:
+
+Painel esquerdo:
+
+* lista de escalas
+* filtros
+
+Painel central:
+
+* alocações
+
+Painel direito:
+
+* impacto
+* candidatos
+* exceções
+
+O Supervisor deve conseguir:
+
+* entender a operação
+* corrigir a operação
+* publicar a operação
+
+sem trocar de tela constantemente.
+
+Critérios de aceite:
+
+* Gestão completa pela Web
+* Fluxo operacional sem SQL
+* Supervisor resolve exceções pela interface
+
+═══════════════════════
+PARTE 6 — MOBILE
+═══════════════════════
+
+Criar:
+
+Escala (consulta)
+
+Mostrar:
+
+* minhas alocações
+* meus horários
+* minha operação
+* meu grupo
+
+Não permitir:
+
+* edição
+* publicação
+* cobertura
+* gestão
+
+Objetivo:
+
+Preparar a futura integração com Meu Dia.
+
+═══════════════════════
+PARTE 7 — EVENT BUS
+═══════════════════════
+
+Implementar eventos:
+
+scale.created
+
+scale.generated
+
+scale.updated
+
+scale.published
+
+scale.republished
+
+allocation.assigned
+
+allocation.open
+
+allocation.conflict
+
+═══════════════════════
+PARTE 8 — AUDITORIA
+═══════════════════════
+
+Validar:
+
+* Motor determinístico
+* Escopo respeitado
+* Exceções explicáveis
+* Supervisor consegue operar sem suporte técnico
+* Mobile permanece operacional e simples
+* Web permanece ferramenta de gestão
+
+Responder:
+
+A Sprint 5 (Meu Dia) pode começar utilizando apenas dados da Escala?
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Classificar:
+
+🟢 Sprint 4 concluída
+
+🟡 Ajustes necessários
+
+🔴 Bloqueado
+
+Objetivo final:
+
+Ao final da Sprint 4:
+
+Uma Operação real possui:
+
+* Agenda
+* Livro do Show
+* Escala gerada
+* Cobertura calculada
+* Exceções identificadas
+* Gestão completa via Web
+* Consulta operacional via Mobile
+
+Pronto para alimentar a Sprint 5 (Meu Dia).

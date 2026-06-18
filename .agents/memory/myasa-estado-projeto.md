@@ -8,7 +8,7 @@ MyASA 2.0 — plataforma operacional para operações artísticas, shows e equip
 Comunicação e documentação em Português Brasileiro.
 
 ## Fase atual
-**Sprint 3 CONCLUÍDO** — Livro do Show (hierarquia completa + versionamento) + Agenda (CRUD + estados) + Web Admin pages + Mobile read-only views + Auditoria.
+**Sprint 4 CONCLUÍDO** — Motor de Cobertura (Escala) + Gestão Web + Mobile consulta.
 Próxima fase: Design de Interface (Bloco 1 — S-01 Meu Dia, S-02 Painel Operacional, S-04 Escala).
 
 ## Stack técnica
@@ -19,6 +19,7 @@ Próxima fase: Design de Interface (Bloco 1 — S-01 Meu Dia, S-02 Painel Operac
 
 ## Auth Pattern
 - JWT: ACCESS 15min, REFRESH 30 dias (hash SHA-256 em `refresh_tokens` table)
+- Login retorna `{ user, accessToken, refreshToken, roles }` — campo é `accessToken`, não `token`
 - Web admin: tokens em `localStorage` (`myasa_access_token`, `myasa_refresh_token`) + `setAuthTokenGetter`
 - Mobile: tokens em `AsyncStorage` + `setAuthTokenGetter`; `setBaseUrl` com `EXPO_PUBLIC_DOMAIN`
 - Segredos: `ACCESS_SECRET` / `REFRESH_SECRET` via env (fallback dev)
@@ -35,6 +36,44 @@ Próxima fase: Design de Interface (Bloco 1 — S-01 Meu Dia, S-02 Painel Operac
 ## Radix Select — REGRA IMPORTANTE
 - `<SelectItem value="">` lança erro em runtime: "value prop must not be empty string"
 - Sempre use sentinela como `"ALL"` para a opção "Todos" e normalize ao ler: `value === "ALL" ? undefined : value`
+
+## Override de Alocação — PADRÃO
+- Rota: `PATCH /api/scales/:id/allocations/:allocationId` (não POST .../override)
+- `.returning()` do Drizzle não inclui campos de joins — re-fetch com leftJoin após update para retornar `userName` + `positionName`
+- **Why**: `.returning()` retorna apenas colunas da tabela atualizada, joins devem ser feitos em query separada
+
+## Endpoints Sprint 4 (novos — Escalas)
+- `GET /api/scales` — lista escalas da operação
+- `POST /api/scales/generate` — gera escala (requer operationId + agendaEventId + showBookId)
+- `GET /api/scales/my-allocations` — alocações do usuário logado
+- `GET /api/scales/:id` — detalhe da escala com allocations + exceptions
+- `PATCH /api/scales/:id` — atualiza metadados (title, notes)
+- `POST /api/scales/:id/publish` — DRAFT → PUBLISHED
+- `POST /api/scales/:id/republish` — PUBLISHED/REPUBLISHED → REPUBLISHED
+- `POST /api/scales/:id/archive` — → ARCHIVED (não PATCH com status)
+- `POST /api/scales/:id/regenerate` — regenera mantendo overrides manuais
+- `GET /api/scales/:id/allocations` — lista alocações com candidatos
+- `PATCH /api/scales/:id/allocations/:allocationId` — override manual
+- `GET /api/scales/:id/exceptions` — lista exceções
+- `PATCH /api/scales/:id/exceptions/:exceptId` — resolve exceção
+
+## Motor de Cobertura (coverage-engine.ts)
+- 3 camadas: Elegibilidade (status ativo, membro da operação) → Compatibilidade (tags/restrições) → Priorização (score)
+- Cria `allocationCandidatesTable` para cada posição com ranking
+- Cria `allocationExceptionsTable` para NO_CANDIDATE, CONFLICT, INSUFFICIENT_COVERAGE, SUPERVISOR_OVERRIDE
+- Override manual gera exceção tipo SUPERVISOR_OVERRIDE automaticamente
+
+## Schema Sprint 4 (lib/db/src/schema/scale.ts)
+- `scalesTable`: operationId, agendaEventId, showBookId, title, generatedAt/By, publishedAt/By, republishedAt/By, archivedAt/By
+- `scaleAllocationsTable`: positionId, userId, status (ASSIGNED/OPEN/CONFLICT/MANUAL_OVERRIDE), overriddenBy, overrideReason
+- `allocationCandidatesTable`: allocationId, userId, rank, eligible, compatible, priorityScore, rejectionReason, candidateData JSONB
+- `allocationExceptionsTable`: type (NO_CANDIDATE/RESTRICTION/CONFLICT/INSUFFICIENT_COVERAGE/SUPERVISOR_OVERRIDE), reason, impact, resolvedBy/At
+
+## Páginas Web Admin (Sprint 4)
+- `/admin/scales` — 3 painéis: lista de escalas | alocações | candidatos+exceções; gerar/publicar/republicar/arquivar/override
+
+## Tabs Mobile (Sprint 4)
+- `(tabs)/scale.tsx` — read-only: minhas alocações com filtro por status, cards com horário e função
 
 ## Endpoints Sprint 3 (novos)
 - `GET/POST /api/show-books` + `GET /api/show-books/:id` + `PATCH /api/show-books/:id` + `PATCH /api/show-books/:id/status`
@@ -70,6 +109,7 @@ Próxima fase: Design de Interface (Bloco 1 — S-01 Meu Dia, S-02 Painel Operac
 - `admin@myasa.demo` / `myasa123` (ADMIN)
 - `supervisor@myasa.demo` / `myasa123` (SUPERVISOR_A)
 - `membro01..05@myasa.demo` / `myasa123` (MEMBER)
+- operationId em uso: `43a6a11c-ec85-4e86-b630-b9bb3d35b286`
 
 ## Comandos úteis
 - `pnpm --filter @workspace/db run seed` — upsert de senhas se dados já existem, seed completo se DB vazio
