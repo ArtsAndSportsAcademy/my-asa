@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { useState, useEffect, ReactNode } from "react";
 import { setAuthTokenGetter, getMe } from "@workspace/api-client-react";
 import type { User, UserRole } from "@workspace/api-client-react";
+import { AuthContext } from "./authContext";
 
 interface AuthState {
   user: User | null;
@@ -8,13 +9,6 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
 }
-
-interface AuthContextType extends AuthState {
-  login: (accessToken: string, refreshToken: string, user: User, roles: UserRole[]) => void;
-  logout: () => void;
-}
-
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 function clearStorage() {
   localStorage.removeItem("myasa_access_token");
@@ -84,4 +78,3 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     </AuthContext.Provider>
   );
 }
-
