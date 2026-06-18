@@ -1,0 +1,228 @@
+Vamos iniciar a fase de Wireframe Estrutural de S-06 Solicitações.
+
+Importante:
+
+A especificação funcional está congelada e considerada concluída.
+
+Não abrir novas auditorias.
+
+Não reavaliar arquitetura.
+
+Não alterar estados.
+
+Não alterar regras de negócio.
+
+O objetivo agora é verificar se a interface consegue representar corretamente tudo o que já foi decidido.
+
+═══════════════════════
+OBJETIVO
+═══════════════════════
+
+Produzir o Wireframe Estrutural completo de S-06.
+
+O foco deve ser:
+
+* hierarquia;
+* fluxo;
+* estados;
+* tomada de decisão;
+* navegação;
+* carga cognitiva.
+
+Não produzir mockup visual.
+
+Não escolher cores.
+
+Não aplicar design system.
+
+Estrutura apenas.
+
+═══════════════════════
+PERFIL 1 — MEMBRO
+═══════════════════════
+
+Documentar os wireframes:
+
+W1 — Lista de Solicitações
+
+Estados mistos:
+
+* enviada;
+* em análise;
+* aguardando informação;
+* proposta alternativa;
+* aprovada;
+* negada;
+* revogada;
+* expirada.
+
+Validar:
+
+* estado visível sem abrir;
+* ação necessária evidente;
+* ordenação correta.
+
+---
+
+W2 — Criar Solicitação
+
+Fluxo completo:
+
+* escolha do tipo;
+* preenchimento;
+* confirmação.
+
+Validar:
+
+* mínimo esforço;
+* prevenção de duplicidade;
+* clareza.
+
+---
+
+W3 — Acompanhamento de Solicitação
+
+Validar:
+
+* linha do tempo;
+* histórico;
+* estado atual;
+* decisão;
+* motivo;
+* ações disponíveis.
+
+---
+
+W4 — Proposta Alternativa
+
+Validar:
+
+* aceitar;
+* recusar;
+* abrir conversa.
+
+Garantir que o prazo seja impossível de ignorar.
+
+---
+
+W5 — Aguardando Informação
+
+Validar:
+
+* pergunta do Supervisor;
+* resposta do Membro;
+* contexto preservado.
+
+═══════════════════════
+PERFIL 2 — SUPERVISOR
+═══════════════════════
+
+Documentar os wireframes:
+
+W6 — Lista de Solicitações
+
+Validar:
+
+* ordenação por impacto;
+* agrupamento por data;
+* agrupamento por função;
+* visão consolidada.
+
+---
+
+W7 — Análise Individual
+
+Validar rigorosamente os 4 blocos:
+
+1. Pedido
+2. Impacto Operacional
+3. Impacto Acumulado
+4. Decisão
+
+Nenhum botão de decisão pode aparecer antes dos blocos.
+
+---
+
+W8 — Visão Consolidada
+
+Cenário:
+
+Múltiplas solicitações para a mesma data.
+
+Validar:
+
+* cobertura;
+* risco;
+* agrupamento;
+* simulações.
+
+---
+
+W9 — Fluxo de Revogação
+
+Validar:
+
+* impacto;
+* confirmação;
+* motivo obrigatório.
+
+═══════════════════════
+PERFIL 3 — ADMIN
+═══════════════════════
+
+Documentar:
+
+W10 — Monitoramento
+
+Validar:
+
+* solicitações próximas da escalada;
+* solicitações escaladas;
+* solicitações expiradas;
+* indicadores de saúde.
+
+---
+
+W11 — Investigação
+
+Validar:
+
+* histórico narrativo;
+* responsáveis;
+* decisões;
+* escaladas;
+* reatribuições.
+
+═══════════════════════
+AUDITORIA DE WIREFRAME
+═══════════════════════
+
+Ao final responder:
+
+1. Existe excesso de carga cognitiva?
+
+2. Existe informação importante escondida?
+
+3. Existe algum estado difícil de entender?
+
+4. Existe algum fluxo que exige cliques desnecessários?
+
+5. Existe alguma inconsistência entre Membro, Supervisor e Admin?
+
+6. Existe algum ponto onde a interface contradiz a especificação funcional?
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Classificar:
+
+🟢 Pronto para Mockup
+
+🟡 Ajustes de Wireframe necessários
+
+🔴 Revisão estrutural necessária
+
+Objetivo:
+
+Encerrar Wireframe Estrutural de S-06 e preparar a superfície para Mockup Visual.
