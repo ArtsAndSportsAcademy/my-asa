@@ -1,0 +1,130 @@
+MyASA 2.0 — Auditoria de Encerramento da Arquitetura Operacional
+
+Utilizar obrigatoriamente:
+
+* Arquitetura MyASA 2.0
+* Pesquisas dos três perfis
+* Jornadas
+* Mapa de Superfícies
+* Arquitetura de Navegação
+* Bloco 1 completo
+* S-06 completo
+* Entidade Mudança Operacional
+* Ciclo de Planejamento Operacional
+* Ciclo de Comunicação Operacional
+* Wireframes Integrados do Ciclo de Comunicação
+
+Objetivo:
+
+Confirmar que o núcleo operacional do MyASA está conceitualmente encerrado antes de avançar para Governança, IA e Conhecimento.
+
+Não produzir wireframes.
+
+Não produzir mockups.
+
+Não produzir componentes.
+
+═══════════════════════
+PARTE 1 — COBERTURA
+═══════════════════════
+
+Responder:
+
+Existe alguma decisão operacional importante ainda não modelada?
+
+Existe alguma entidade sem dono?
+
+Existe alguma dependência oculta?
+
+Existe alguma superfície crítica sem fundamento suficiente?
+
+═══════════════════════
+PARTE 2 — FRONTEIRAS
+═══════════════════════
+
+Validar limites entre:
+
+* Escala e Livro do Dia
+* Livro do Dia e Avisos
+* Avisos e Meu Dia
+* Meu Dia e Histórico
+* Solicitações e Mudanças Operacionais
+
+Identificar sobreposições.
+
+Identificar lacunas.
+
+═══════════════════════
+PARTE 3 — BLOCOS RESTANTES
+═══════════════════════
+
+Auditar:
+
+S-03 Painel de Saúde
+
+S-07 Entregas
+
+S-10 IA
+
+S-12 Agenda
+
+S-13 Livro do Show
+
+S-14 Biblioteca
+
+S-15 Equipes
+
+S-16 Operações
+
+S-17 Administração
+
+Para cada um responder:
+
+1. Quanto já está definido?
+2. O que ainda falta?
+3. O que depende dos ciclos já concluídos?
+4. O que pode ser iniciado imediatamente?
+
+═══════════════════════
+PARTE 4 — RISCO DE RETRABALHO
+═══════════════════════
+
+Responder:
+
+Se iniciarmos mockups de:
+
+* Livro do Dia
+* Avisos
+* Histórico
+
+Existe algum risco de uma descoberta futura exigir revisão estrutural?
+
+Classificar:
+
+Baixo
+Médio
+Alto
+
+═══════════════════════
+PARTE 5 — VEREDITO
+═══════════════════════
+
+Responder:
+
+O núcleo operacional do MyASA está encerrado?
+
+Se sim:
+
+Listar oficialmente quais blocos passam a ser considerados concluídos.
+
+Se não:
+
+Listar exatamente o que falta.
+
+Classificar:
+
+🟢 Núcleo encerrado
+
+🟡 Pequenos ajustes
+
+🔴 Revisão estrutural necessária
