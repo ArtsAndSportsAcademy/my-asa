@@ -1,0 +1,193 @@
+MyASA 2.0 — Auditoria de Navegação e Rotas (Pós Release 13.1)
+
+Utilizar obrigatoriamente:
+
+Sprint 0 → Sprint 14 concluídas
+Release 13.1 concluída
+Gate de Revisão Geral
+Blueprint Executivo
+Arquitetura Funcional Congelada
+
+Importante:
+
+Não implementar funcionalidades.
+
+Não alterar banco.
+
+Não alterar APIs.
+
+Não alterar permissões.
+
+Objetivo:
+
+Validar que todas as superfícies operacionais do MyASA continuam acessíveis após a reorganização de navegação.
+
+Pergunta respondida:
+
+"Existe alguma superfície crítica que foi escondida ou removida da navegação?"
+
+═══════════════════════
+PARTE 1 — INVENTÁRIO DE ROTAS
+═══════════════════════
+
+Listar todas as rotas existentes.
+
+Responder em tabela:
+
+Superfície	Rota
+
+Incluir:
+
+Meu Dia
+Painel Operacional
+Painel de Saúde
+Escala
+Livro do Dia
+Solicitações
+Avisos
+Mensagens
+Entregas
+Histórico
+Agenda
+Livro do Show
+Biblioteca
+Operações
+Grupos
+Usuários
+Auditoria
+
+═══════════════════════
+PARTE 2 — VISIBILIDADE POR PAPEL
+═══════════════════════
+
+Responder:
+
+Superfície	Admin	Supervisor	Membro
+
+Exemplo:
+
+Escala
+
+Admin → ?
+
+Supervisor → ?
+
+Membro → ?
+
+Livro do Dia
+
+Admin → ?
+
+Supervisor → ?
+
+Membro → ?
+
+═══════════════════════
+PARTE 3 — MENU WEB
+═══════════════════════
+
+Auditar o sidebar atual.
+
+Validar:
+
+Escala aparece?
+Livro do Dia aparece?
+Avisos aparecem?
+Mensagens aparecem?
+Entregas aparecem?
+Painel Operacional aparece?
+
+Responder:
+
+Quais superfícies existem mas não possuem entrada visível no menu?
+
+═══════════════════════
+PARTE 4 — MENU MOBILE
+═══════════════════════
+
+Auditar:
+
+Tabs principais
+
+Menu "Mais"
+
+Validar:
+
+Fluxo do Membro:
+
+Meu Dia
+↓
+Avisos
+↓
+Mensagens
+↓
+Escala
+↓
+Entregas
+
+Confirmar se está acessível em poucos toques.
+
+═══════════════════════
+PARTE 5 — SUPERVISOR
+═══════════════════════
+
+Validar se existe navegação adequada para:
+
+Escalas
+Livro do Dia
+Avisos
+Mensagens
+Entregas
+Painel Operacional
+
+Responder:
+
+O Supervisor possui uma jornada operacional completa sem depender de rotas Admin?
+
+═══════════════════════
+PARTE 6 — ADMIN
+═══════════════════════
+
+Validar se existe navegação adequada para:
+
+Operações
+Grupos
+Usuários
+Agenda
+Escalas
+Livro do Dia
+Painel Operacional
+Biblioteca
+
+Responder:
+
+Existe alguma superfície crítica que o Admin não consegue acessar pelo menu?
+
+═══════════════════════
+PARTE 7 — AUDITORIA FINAL
+═══════════════════════
+
+Responder:
+
+Escala continua acessível para Admin?
+Escala continua acessível para Supervisor?
+Livro do Dia continua acessível para Admin?
+Livro do Dia continua acessível para Supervisor?
+Existe alguma rota órfã (funciona, mas não aparece em menus)?
+Existe alguma superfície oficial S-01 → S-17 sem entrada de navegação?
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Classificar:
+
+🟢 Navegação consistente
+
+🟡 Ajustes necessários
+
+🔴 Superfícies críticas ocultas
+
+Objetivo final:
+
+Garantir que nenhuma superfície operacional importante (especialmente Escala, Livro do Dia, Avisos, Mensagens e Entregas) tenha sido escondida durante a reorganização de UX realizada na Release 13.1.
