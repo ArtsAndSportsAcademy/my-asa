@@ -28,6 +28,8 @@ tags:
     description: "Livro do Dia — execucao operacional derivada da Escala"
   - name: operational-panel
     description: "Painel Operacional — visao consolidada de saude operacional"
+  - name: my-day
+    description: "Meu Dia — superficie principal do membro"
 
 security:
   - bearerAuth: []
@@ -2769,6 +2771,21 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /my-day:
+    get:
+      operationId: getMyDay
+      tags: [my-day]
+      summary: "Get consolidated Meu Dia view for the authenticated member"
+      responses:
+        "200":
+          description: Meu Dia consolidado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyDayResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -4376,3 +4393,172 @@ components:
         coveragePct:
           type: number
           nullable: true
+
+    MyDayResponse:
+      type: object
+      required: [generatedAt, immediateAction, nextActivity, todayActivities, futureActivities, complementaryInfo]
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        immediateAction:
+          $ref: "#/components/schemas/MyDayActivity"
+          nullable: true
+        nextActivity:
+          $ref: "#/components/schemas/MyDayActivity"
+          nullable: true
+        todayActivities:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyDayActivity"
+        futureActivities:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyDayActivity"
+        complementaryInfo:
+          $ref: "#/components/schemas/MyDayComplementaryInfo"
+
+    MyDayActivity:
+      type: object
+      required: [allocationId, allocationStatus, scaleId, scaleTitle, scaleStatus, operationId, eventId, eventTitle, eventType, eventDate, eventStatus]
+      properties:
+        allocationId:
+          type: string
+        allocationStatus:
+          type: string
+        scaleId:
+          type: string
+        scaleTitle:
+          type: string
+        scaleStatus:
+          type: string
+        scaleRepublishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        operationId:
+          type: string
+        operationName:
+          type: string
+          nullable: true
+        groupId:
+          type: string
+          nullable: true
+        groupName:
+          type: string
+          nullable: true
+        eventId:
+          type: string
+        eventTitle:
+          type: string
+        eventType:
+          type: string
+        eventDate:
+          type: string
+          format: date
+        eventStartTime:
+          type: string
+          nullable: true
+        eventEndTime:
+          type: string
+          nullable: true
+        eventLocation:
+          type: string
+          nullable: true
+        eventStatus:
+          type: string
+        positionId:
+          type: string
+          nullable: true
+        positionName:
+          type: string
+          nullable: true
+        dailyBook:
+          $ref: "#/components/schemas/MyDayDailyBookSummary"
+          nullable: true
+
+    MyDayDailyBookSummary:
+      type: object
+      required: [id, status, version, myAssignments]
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+        version:
+          type: integer
+        republishedDelta:
+          type: object
+          nullable: true
+          additionalProperties: true
+        myAssignments:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyDayBookAssignment"
+
+    MyDayBookAssignment:
+      type: object
+      required: [assignmentId, positionId, positionName, status]
+      properties:
+        assignmentId:
+          type: string
+        positionId:
+          type: string
+        positionName:
+          type: string
+        status:
+          type: string
+
+    MyDayComplementaryInfo:
+      type: object
+      required: [pendingRequests, upcomingDeliveries]
+      properties:
+        pendingRequests:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyDayPendingRequest"
+        upcomingDeliveries:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyDayUpcomingDelivery"
+
+    MyDayPendingRequest:
+      type: object
+      required: [requestId, type, status, targetDates, createdAt]
+      properties:
+        requestId:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+        targetDates:
+          type: array
+          items:
+            type: string
+        reason:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    MyDayUpcomingDelivery:
+      type: object
+      required: [assignmentId, deliveryId, title, type, dueDate, status, operationId]
+      properties:
+        assignmentId:
+          type: string
+        deliveryId:
+          type: string
+        title:
+          type: string
+        type:
+          type: string
+        dueDate:
+          type: string
+          format: date
+        status:
+          type: string
+        operationId:
+          type: string

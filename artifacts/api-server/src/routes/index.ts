@@ -11,6 +11,7 @@ import agendaRouter from "./agenda";
 import scalesRouter from "./scales";
 import dailyBookRouter from "./daily-book";
 import operationalPanelRouter from "./operational-panel";
+import myDayRouter from "./my-day";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(agendaRouter);
 router.use(scalesRouter);
 router.use(dailyBookRouter);
 router.use(operationalPanelRouter);
+router.use(myDayRouter);
 
 export default router;

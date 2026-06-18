@@ -97,6 +97,7 @@ import type {
   LoginRequest,
   LoginResult,
   MeResponse,
+  MyDayResponse,
   NotFoundResponse,
   OperationCreate,
   OperationStatusUpdate,
@@ -6798,6 +6799,83 @@ export function useGetOperationalPanel<TData = Awaited<ReturnType<typeof getOper
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetOperationalPanelQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetMyDayUrl = () => {
+
+
+
+
+  return `/api/my-day`
+}
+
+/**
+ * @summary Get consolidated Meu Dia view for the authenticated member
+ */
+export const getMyDay = async ( options?: RequestInit): Promise<MyDayResponse> => {
+
+  return customFetch<MyDayResponse>(getGetMyDayUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyDayQueryKey = () => {
+    return [
+    `/api/my-day`
+    ] as const;
+    }
+
+
+export const getGetMyDayQueryOptions = <TData = Awaited<ReturnType<typeof getMyDay>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyDay>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyDayQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyDay>>> = ({ signal }) => getMyDay({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyDay>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyDayQueryResult = NonNullable<Awaited<ReturnType<typeof getMyDay>>>
+export type GetMyDayQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Get consolidated Meu Dia view for the authenticated member
+ */
+
+export function useGetMyDay<TData = Awaited<ReturnType<typeof getMyDay>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyDay>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyDayQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

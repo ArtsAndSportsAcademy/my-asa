@@ -2337,3 +2337,166 @@ export const GetOperationalPanelResponse = zod.object({
 })
 
 
+/**
+ * @summary Get consolidated Meu Dia view for the authenticated member
+ */
+export const GetMyDayResponse = zod.object({
+  "generatedAt": zod.coerce.date(),
+  "immediateAction": zod.object({
+  "allocationId": zod.string(),
+  "allocationStatus": zod.string(),
+  "scaleId": zod.string(),
+  "scaleTitle": zod.string(),
+  "scaleStatus": zod.string(),
+  "scaleRepublishedAt": zod.coerce.date().nullish(),
+  "operationId": zod.string(),
+  "operationName": zod.string().nullish(),
+  "groupId": zod.string().nullish(),
+  "groupName": zod.string().nullish(),
+  "eventId": zod.string(),
+  "eventTitle": zod.string(),
+  "eventType": zod.string(),
+  "eventDate": zod.coerce.date(),
+  "eventStartTime": zod.string().nullish(),
+  "eventEndTime": zod.string().nullish(),
+  "eventLocation": zod.string().nullish(),
+  "eventStatus": zod.string(),
+  "positionId": zod.string().nullish(),
+  "positionName": zod.string().nullish(),
+  "dailyBook": zod.object({
+  "id": zod.string(),
+  "status": zod.string(),
+  "version": zod.number(),
+  "republishedDelta": zod.record(zod.string(), zod.unknown()).nullish(),
+  "myAssignments": zod.array(zod.object({
+  "assignmentId": zod.string(),
+  "positionId": zod.string(),
+  "positionName": zod.string(),
+  "status": zod.string()
+}))
+}).nullish()
+}).nullable(),
+  "nextActivity": zod.object({
+  "allocationId": zod.string(),
+  "allocationStatus": zod.string(),
+  "scaleId": zod.string(),
+  "scaleTitle": zod.string(),
+  "scaleStatus": zod.string(),
+  "scaleRepublishedAt": zod.coerce.date().nullish(),
+  "operationId": zod.string(),
+  "operationName": zod.string().nullish(),
+  "groupId": zod.string().nullish(),
+  "groupName": zod.string().nullish(),
+  "eventId": zod.string(),
+  "eventTitle": zod.string(),
+  "eventType": zod.string(),
+  "eventDate": zod.coerce.date(),
+  "eventStartTime": zod.string().nullish(),
+  "eventEndTime": zod.string().nullish(),
+  "eventLocation": zod.string().nullish(),
+  "eventStatus": zod.string(),
+  "positionId": zod.string().nullish(),
+  "positionName": zod.string().nullish(),
+  "dailyBook": zod.object({
+  "id": zod.string(),
+  "status": zod.string(),
+  "version": zod.number(),
+  "republishedDelta": zod.record(zod.string(), zod.unknown()).nullish(),
+  "myAssignments": zod.array(zod.object({
+  "assignmentId": zod.string(),
+  "positionId": zod.string(),
+  "positionName": zod.string(),
+  "status": zod.string()
+}))
+}).nullish()
+}).nullable(),
+  "todayActivities": zod.array(zod.object({
+  "allocationId": zod.string(),
+  "allocationStatus": zod.string(),
+  "scaleId": zod.string(),
+  "scaleTitle": zod.string(),
+  "scaleStatus": zod.string(),
+  "scaleRepublishedAt": zod.coerce.date().nullish(),
+  "operationId": zod.string(),
+  "operationName": zod.string().nullish(),
+  "groupId": zod.string().nullish(),
+  "groupName": zod.string().nullish(),
+  "eventId": zod.string(),
+  "eventTitle": zod.string(),
+  "eventType": zod.string(),
+  "eventDate": zod.coerce.date(),
+  "eventStartTime": zod.string().nullish(),
+  "eventEndTime": zod.string().nullish(),
+  "eventLocation": zod.string().nullish(),
+  "eventStatus": zod.string(),
+  "positionId": zod.string().nullish(),
+  "positionName": zod.string().nullish(),
+  "dailyBook": zod.object({
+  "id": zod.string(),
+  "status": zod.string(),
+  "version": zod.number(),
+  "republishedDelta": zod.record(zod.string(), zod.unknown()).nullish(),
+  "myAssignments": zod.array(zod.object({
+  "assignmentId": zod.string(),
+  "positionId": zod.string(),
+  "positionName": zod.string(),
+  "status": zod.string()
+}))
+}).nullish()
+})),
+  "futureActivities": zod.array(zod.object({
+  "allocationId": zod.string(),
+  "allocationStatus": zod.string(),
+  "scaleId": zod.string(),
+  "scaleTitle": zod.string(),
+  "scaleStatus": zod.string(),
+  "scaleRepublishedAt": zod.coerce.date().nullish(),
+  "operationId": zod.string(),
+  "operationName": zod.string().nullish(),
+  "groupId": zod.string().nullish(),
+  "groupName": zod.string().nullish(),
+  "eventId": zod.string(),
+  "eventTitle": zod.string(),
+  "eventType": zod.string(),
+  "eventDate": zod.coerce.date(),
+  "eventStartTime": zod.string().nullish(),
+  "eventEndTime": zod.string().nullish(),
+  "eventLocation": zod.string().nullish(),
+  "eventStatus": zod.string(),
+  "positionId": zod.string().nullish(),
+  "positionName": zod.string().nullish(),
+  "dailyBook": zod.object({
+  "id": zod.string(),
+  "status": zod.string(),
+  "version": zod.number(),
+  "republishedDelta": zod.record(zod.string(), zod.unknown()).nullish(),
+  "myAssignments": zod.array(zod.object({
+  "assignmentId": zod.string(),
+  "positionId": zod.string(),
+  "positionName": zod.string(),
+  "status": zod.string()
+}))
+}).nullish()
+})),
+  "complementaryInfo": zod.object({
+  "pendingRequests": zod.array(zod.object({
+  "requestId": zod.string(),
+  "type": zod.string(),
+  "status": zod.string(),
+  "targetDates": zod.array(zod.string()),
+  "reason": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})),
+  "upcomingDeliveries": zod.array(zod.object({
+  "assignmentId": zod.string(),
+  "deliveryId": zod.string(),
+  "title": zod.string(),
+  "type": zod.string(),
+  "dueDate": zod.coerce.date(),
+  "status": zod.string(),
+  "operationId": zod.string()
+}))
+})
+})
+
+

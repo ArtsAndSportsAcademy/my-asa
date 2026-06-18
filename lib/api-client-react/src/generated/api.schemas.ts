@@ -1104,6 +1104,80 @@ export interface OperationalPanel {
   upcomingEvents: OperationalUpcomingEvent[];
 }
 
+export interface MyDayBookAssignment {
+  assignmentId: string;
+  positionId: string;
+  positionName: string;
+  status: string;
+}
+
+export type MyDayDailyBookSummaryRepublishedDelta = { [key: string]: unknown } | null;
+
+export interface MyDayDailyBookSummary {
+  id: string;
+  status: string;
+  version: number;
+  republishedDelta?: MyDayDailyBookSummaryRepublishedDelta;
+  myAssignments: MyDayBookAssignment[];
+}
+
+export interface MyDayActivity {
+  allocationId: string;
+  allocationStatus: string;
+  scaleId: string;
+  scaleTitle: string;
+  scaleStatus: string;
+  scaleRepublishedAt?: string | null;
+  operationId: string;
+  operationName?: string | null;
+  groupId?: string | null;
+  groupName?: string | null;
+  eventId: string;
+  eventTitle: string;
+  eventType: string;
+  eventDate: string;
+  eventStartTime?: string | null;
+  eventEndTime?: string | null;
+  eventLocation?: string | null;
+  eventStatus: string;
+  positionId?: string | null;
+  positionName?: string | null;
+  dailyBook?: MyDayDailyBookSummary | null;
+}
+
+export interface MyDayPendingRequest {
+  requestId: string;
+  type: string;
+  status: string;
+  targetDates: string[];
+  reason?: string | null;
+  createdAt: string;
+}
+
+export interface MyDayUpcomingDelivery {
+  assignmentId: string;
+  deliveryId: string;
+  title: string;
+  type: string;
+  dueDate: string;
+  status: string;
+  operationId: string;
+}
+
+export interface MyDayComplementaryInfo {
+  pendingRequests: MyDayPendingRequest[];
+  upcomingDeliveries: MyDayUpcomingDelivery[];
+}
+
+export interface MyDayResponse {
+  generatedAt: string;
+  immediateAction: MyDayActivity | null;
+  nextActivity: MyDayActivity | null;
+  todayActivities: MyDayActivity[];
+  futureActivities: MyDayActivity[];
+  complementaryInfo: MyDayComplementaryInfo;
+}
+
 /**
  * Bad request
  */

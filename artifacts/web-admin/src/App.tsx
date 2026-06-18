@@ -17,6 +17,7 @@ import DailyBookPage from "@/pages/admin/daily-book";
 import SupervisorDailyBookPage from "@/pages/supervisor/daily-book";
 import AdminOperationalPanel from "@/pages/admin/operational-panel";
 import SupervisorOperationalPanel from "@/pages/supervisor/operational-panel";
+import MeuDiaPage from "@/pages/admin/meu-dia";
 
 const queryClient = new QueryClient();
 
@@ -68,6 +69,7 @@ function Router() {
       <RoleRoute path="/supervisor/daily-book" component={SupervisorDailyBookPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
       <ProtectedRoute path="/admin/operational-panel" component={AdminOperationalPanel} />
       <RoleRoute path="/supervisor/operational-panel" component={SupervisorOperationalPanel} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
+      <ProtectedRoute path="/admin/meu-dia" component={MeuDiaPage} />
       <Route component={NotFound} />
     </Switch>
   );

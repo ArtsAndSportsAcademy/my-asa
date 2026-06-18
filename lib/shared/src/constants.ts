@@ -30,6 +30,7 @@ export const LOG_DOMAIN = {
   NOTIFICATIONS: "notifications",
   AUDIT: "audit",
   OPERATIONAL_PANEL: "operational_panel",
+  MY_DAY: "my_day",
 } as const;
 
 export const REQUEST_ID_HEADER = "x-request-id";
