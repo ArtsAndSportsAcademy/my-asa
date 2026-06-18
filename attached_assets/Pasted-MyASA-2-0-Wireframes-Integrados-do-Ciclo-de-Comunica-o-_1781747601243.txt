@@ -1,0 +1,242 @@
+MyASA 2.0 — Wireframes Integrados do Ciclo de Comunicação Operacional
+
+Utilizar obrigatoriamente:
+
+* Arquitetura MyASA 2.0
+* Entidade Mudança Operacional
+* Ciclo de Planejamento Operacional
+* Ciclo de Comunicação Operacional
+* UX Integrado aprovado
+* Bloco 1 completo
+* S-06 completo
+* Decisões D-01 a D-20
+* Decisões UX-01 a UX-10
+
+Importante:
+
+Não produzir mockups.
+
+Não aplicar visual.
+
+Não aplicar cores.
+
+Não desenhar componentes finais.
+
+Foco exclusivo em:
+
+* estrutura;
+* hierarquia;
+* fluxo;
+* contexto;
+* travessias.
+
+═══════════════════════
+OBJETIVO
+═══════════════════════
+
+Transformar o Ciclo de Comunicação Operacional em wireframes estruturais completos.
+
+As superfícies não devem ser tratadas como módulos independentes.
+
+Elas representam perspectivas diferentes da mesma Mudança Operacional.
+
+S-05 Livro do Dia
+S-08 Avisos
+S-11 Histórico
+
+═══════════════════════
+PARTE 1 — CENÁRIOS OBRIGATÓRIOS
+═══════════════════════
+
+Modelar os wireframes utilizando estes cenários:
+
+WC-01
+Mudança simples
+(1 membro afetado)
+
+WC-02
+Mudança importante
+(5 membros afetados)
+
+WC-03
+Mudança persistente
+(vários dias)
+
+WC-04
+Livro republicado
+
+WC-05
+Membro sem confirmação
+
+WC-06
+Investigação pelo Supervisor
+
+WC-07
+Investigação pelo Admin
+
+═══════════════════════
+PARTE 2 — S-05 LIVRO DO DIA
+═══════════════════════
+
+Produzir wireframes para:
+
+WL-01
+Livro Publicado
+
+WL-02
+Livro Desatualizado
+
+WL-03
+Livro Republicado
+
+WL-04
+Livro Executado
+
+Responder:
+
+O que Supervisor vê primeiro?
+
+O que Membro vê primeiro?
+
+Como identificar perda de confiabilidade?
+
+Como identificar versão atual?
+
+Como visualizar alterações entre versões?
+
+Como mostrar impacto sem obrigar leitura completa?
+
+Como diferenciar:
+
+* conteúdo normal;
+* conteúdo alterado;
+* conteúdo crítico.
+
+═══════════════════════
+PARTE 3 — S-08 AVISOS
+═══════════════════════
+
+Produzir wireframes para:
+
+WA-01
+Aviso Simples
+
+WA-02
+Aviso Importante
+
+WA-03
+Alteração Operacional Persistente
+
+WA-04
+Aviso Escalado
+
+Responder:
+
+O que exige confirmação?
+
+O que exige apenas ciência?
+
+Como mostrar impacto individual?
+
+Como mostrar impacto coletivo?
+
+Como mostrar quem não confirmou?
+
+Como evitar fadiga de notificações?
+
+═══════════════════════
+PARTE 4 — S-11 HISTÓRICO
+═══════════════════════
+
+Produzir wireframes para:
+
+WH-01
+Consulta rápida
+
+WH-02
+Investigação de Mudança Operacional
+
+WH-03
+Investigação por membro
+
+WH-04
+Investigação por atividade
+
+WH-05
+Investigação por período
+
+Lembrar:
+
+Histórico não é log.
+
+Histórico é investigação narrativa.
+
+Responder:
+
+Como mostrar:
+
+* causa;
+* decisão;
+* consequência;
+* resolução.
+
+═══════════════════════
+PARTE 5 — TRAVESSIAS
+═══════════════════════
+
+Mapear visualmente:
+
+Livro → Aviso
+
+Aviso → Livro
+
+Aviso → Histórico
+
+Livro → Histórico
+
+Meu Dia → Aviso
+
+Painel Operacional → Livro
+
+Para cada travessia responder:
+
+Qual contexto é preservado?
+
+Qual contexto muda?
+
+O que nunca pode ser perdido?
+
+═══════════════════════
+PARTE 6 — AUDITORIA DE WIREFRAME
+═══════════════════════
+
+Responder:
+
+1. Existe duplicação visual?
+2. Existe contexto perdido?
+3. Existe investigação interrompida?
+4. Existe navegação desnecessária?
+5. Existe risco de membro não entender a mudança?
+6. Existe risco de supervisor perder rastreabilidade?
+7. Existe risco de admin perder narrativa?
+8. Existe risco de Livro e Aviso divergirem?
+
+═══════════════════════
+PARTE 7 — VEREDITO
+═══════════════════════
+
+Produzir:
+
+Wireframes estruturais completos do Ciclo de Comunicação Operacional.
+
+Classificar:
+
+🟢 Pronto para Mockup
+
+🟡 Ajustes necessários
+
+🔴 Revisão estrutural necessária
+
+Objetivo final:
+
+Encerrar estruturalmente S-05, S-08 e S-11 como um único ciclo antes de iniciar qualquer mockup visual.
