@@ -34,7 +34,7 @@ const TYPE_COLORS: Record<string, string> = {
   SHOW: "bg-violet-100 text-violet-800",
   REHEARSAL: "bg-blue-100 text-blue-800",
   MEETING: "bg-amber-100 text-amber-800",
-  OPERATIONAL_BLOCK: "bg-orange-100 text-orange-800",
+  OPERATIONAL_BLOCK: "bg-indigo-100 text-indigo-800",
   COLLECTIVE_VACATION: "bg-green-100 text-green-800",
 };
 const STATUS_LABELS: Record<string, string> = {

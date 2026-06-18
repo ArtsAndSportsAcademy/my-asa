@@ -1,25 +1,25 @@
 const colors = {
   light: {
-    text: "#0f1117",
-    tint: "#5C4BF5",
+    text: "#111827",
+    tint: "#7C3AED",
 
-    background: "#F7F7FA",
-    foreground: "#0f1117",
+    background: "#F5F5F7",
+    foreground: "#111827",
 
     card: "#FFFFFF",
-    cardForeground: "#0f1117",
+    cardForeground: "#111827",
 
-    primary: "#5C4BF5",
+    primary: "#7C3AED",
     primaryForeground: "#FFFFFF",
 
-    secondary: "#EFEFFD",
-    secondaryForeground: "#3730A3",
+    secondary: "#EDE9FE",
+    secondaryForeground: "#5B21B6",
 
-    muted: "#EFEFFD",
+    muted: "#EDE9FE",
     mutedForeground: "#6B7280",
 
-    accent: "#F0EEFF",
-    accentForeground: "#4338CA",
+    accent: "#EDE9FE",
+    accentForeground: "#6D28D9",
 
     destructive: "#EF4444",
     destructiveForeground: "#FFFFFF",

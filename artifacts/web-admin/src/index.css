@@ -67,67 +67,80 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* LIGHT MODE */
+/* ─── LIGHT MODE — Identidade MyASA ─────────────────────────────────────────── */
 :root {
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
 
-  --opaque-button-border-intensity: -8; 
+  --opaque-button-border-intensity: -8;
 
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  --background: 40 20% 98%;
-  --foreground: 220 20% 15%;
+  /* Fundo: #F5F5F7 */
+  --background: 240 8% 96%;
+  /* Texto principal: #111827 */
+  --foreground: 221 39% 11%;
 
-  --border: 220 15% 90%;
-  
+  /* Borda: #E5E7EB */
+  --border: 220 13% 91%;
+
+  /* Cards: #FFFFFF */
   --card: 0 0% 100%;
-  --card-foreground: 220 20% 15%;
-  --card-border: 220 15% 90%;
+  --card-foreground: 221 39% 11%;
+  --card-border: 220 13% 91%;
 
-  --sidebar: 220 20% 96%;
-  --sidebar-foreground: 220 20% 15%;
-  --sidebar-border: 220 15% 90%;
-  --sidebar-primary: 15 80% 50%;
+  /* Sidebar — fundo levemente cinza-azulado */
+  --sidebar: 220 20% 97%;
+  --sidebar-foreground: 221 39% 11%;
+  --sidebar-border: 220 13% 91%;
+  /* Violet primário: #7C3AED */
+  --sidebar-primary: 262 83% 58%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 40 50% 90%;
-  --sidebar-accent-foreground: 15 80% 50%;
-  --sidebar-ring: 15 80% 50%;
+  /* Hover ativo: violeta muito claro */
+  --sidebar-accent: 262 60% 95%;
+  --sidebar-accent-foreground: 262 83% 45%;
+  --sidebar-ring: 262 83% 58%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 220 20% 15%;
-  --popover-border: 220 15% 90%;
+  --popover-foreground: 221 39% 11%;
+  --popover-border: 220 13% 91%;
 
-  --primary: 15 80% 50%;
+  /* Cor primária MyASA — Violet #7C3AED */
+  --primary: 262 83% 58%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 220 20% 15%;
+  /* Secundário — escuro neutro */
+  --secondary: 221 39% 11%;
   --secondary-foreground: 0 0% 100%;
 
-  --muted: 40 10% 90%;
-  --muted-foreground: 220 10% 40%;
+  /* Muted — cinza frio */
+  --muted: 220 9% 93%;
+  --muted-foreground: 220 9% 46%;
 
-  --accent: 40 50% 90%;
-  --accent-foreground: 15 80% 50%;
+  /* Accent — violeta muito claro */
+  --accent: 262 60% 95%;
+  --accent-foreground: 262 83% 45%;
 
+  /* Destructive — vermelho semântico: #EF4444 */
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
 
-  --input: 220 15% 85%;
-  --ring: 15 80% 50%;
+  --input: 220 13% 88%;
+  --ring: 262 83% 58%;
 
-  --chart-1: 15 80% 50%;
-  --chart-2: 220 20% 15%;
-  --chart-3: 40 80% 60%;
-  --chart-4: 280 40% 50%;
-  --chart-5: 160 50% 40%;
+  /* Charts */
+  --chart-1: 262 83% 58%;
+  --chart-2: 221 39% 11%;
+  --chart-3: 221 83% 53%;
+  --chart-4: 142 71% 45%;
+  --chart-5: 38 92% 50%;
 
   --app-font-sans: 'Inter', sans-serif;
   --app-font-serif: 'Playfair Display', Georgia, serif;
   --app-font-mono: Menlo, monospace;
-  
-  --radius: 0.375rem; 
+
+  --radius: 0.375rem;
 
   --shadow-2xs: 0px 2px 0px 0px rgba(0,0,0,0.02);
   --shadow-xs: 0px 2px 0px 0px rgba(0,0,0,0.04);
@@ -153,50 +166,50 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 220 20% 8%;
-  --foreground: 40 20% 98%;
+  --background: 222 30% 8%;
+  --foreground: 240 8% 96%;
 
-  --border: 220 20% 18%;
+  --border: 222 20% 18%;
 
-  --card: 220 20% 10%;
-  --card-foreground: 40 20% 98%;
-  --card-border: 220 20% 18%;
+  --card: 222 25% 10%;
+  --card-foreground: 240 8% 96%;
+  --card-border: 222 20% 18%;
 
-  --sidebar: 220 20% 10%;
-  --sidebar-foreground: 40 20% 98%;
-  --sidebar-border: 220 20% 18%;
-  --sidebar-primary: 15 80% 50%;
+  --sidebar: 222 25% 10%;
+  --sidebar-foreground: 240 8% 96%;
+  --sidebar-border: 222 20% 18%;
+  --sidebar-primary: 262 83% 65%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 220 20% 16%;
-  --sidebar-accent-foreground: 40 20% 98%;
-  --sidebar-ring: 15 80% 50%;
+  --sidebar-accent: 262 30% 18%;
+  --sidebar-accent-foreground: 262 83% 80%;
+  --sidebar-ring: 262 83% 65%;
 
-  --popover: 220 20% 10%;
-  --popover-foreground: 40 20% 98%;
-  --popover-border: 220 20% 18%;
+  --popover: 222 25% 10%;
+  --popover-foreground: 240 8% 96%;
+  --popover-border: 222 20% 18%;
 
-  --primary: 15 80% 50%;
+  --primary: 262 83% 65%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 220 20% 18%;
-  --secondary-foreground: 40 20% 98%;
+  --secondary: 222 20% 18%;
+  --secondary-foreground: 240 8% 96%;
 
-  --muted: 220 20% 14%;
+  --muted: 222 20% 14%;
   --muted-foreground: 220 10% 60%;
 
-  --accent: 220 20% 16%;
-  --accent-foreground: 40 20% 98%;
+  --accent: 262 30% 18%;
+  --accent-foreground: 240 8% 96%;
 
   --destructive: 0 62% 30%;
-  --destructive-foreground: 40 20% 98%;
+  --destructive-foreground: 240 8% 96%;
 
-  --input: 220 20% 20%;
-  --ring: 15 80% 50%;
+  --input: 222 20% 20%;
+  --ring: 262 83% 65%;
 
-  --chart-1: 15 80% 50%;
-  --chart-2: 40 80% 60%;
-  --chart-3: 280 40% 50%;
-  --chart-4: 160 50% 40%;
+  --chart-1: 262 83% 65%;
+  --chart-2: 38 92% 55%;
+  --chart-3: 221 83% 60%;
+  --chart-4: 142 71% 45%;
   --chart-5: 220 40% 60%;
 }
 
@@ -220,5 +233,16 @@
     content: attr(data-placeholder);
     color: hsl(var(--muted-foreground));
     pointer-events: none;
+  }
+
+  /* Gradiente oficial MyASA — violet → blue */
+  .bg-myasa-gradient {
+    background: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%);
+  }
+  .text-myasa-gradient {
+    background: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 }

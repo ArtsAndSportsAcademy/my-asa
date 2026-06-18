@@ -53,7 +53,7 @@ export default function Login() {
   return (
     <div className="min-h-screen flex bg-muted/30">
       {/* Left side - Visual/Brand */}
-      <div className="hidden lg:flex w-1/2 bg-primary items-center justify-center p-12 relative overflow-hidden">
+      <div className="hidden lg:flex w-1/2 bg-myasa-gradient items-center justify-center p-12 relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507676184212-d0330a151522?auto=format&fit=crop&q=80')] mix-blend-overlay opacity-20 bg-cover bg-center" />
         <div className="relative z-10 text-primary-foreground max-w-lg">
           <div className="flex items-center gap-3 mb-6">

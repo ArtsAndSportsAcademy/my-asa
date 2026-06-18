@@ -3,6 +3,17 @@ name: MyASA 2.0 — Estado do Projeto
 description: Sprint progress, architectural decisions, and key conventions for the MyASA 2.0 system
 ---
 
+## Sprint 6 — Padronização Visual Oficial (concluído)
+- Paleta oficial MyASA aplicada em todas as superfícies Web e Mobile
+- Primary: #7C3AED (violet), gradiente from #7C3AED to #2563EB
+- Background: #F5F5F7, Cards: #FFFFFF, Texto: #111827, Muted: #6B7280, Borda: #E5E7EB
+- Semânticos mantidos: verde #22C55E, âmbar #F59E0B, vermelho #EF4444
+- Web: index.css reescrito com novos CSS custom properties; login hero usa .bg-myasa-gradient
+- Mobile: constants/colors.ts atualizado — primary #7C3AED, tint #7C3AED, background #F5F5F7
+- agenda.tsx: OPERATIONAL_BLOCK bg-orange → bg-indigo; daily-book.tsx: text-orange → text-violet
+- Amber semântico preservado onde representa atenção/pendente (escala, daily-book)
+- TypeScript: api-client-react recompilado após Sprint 5 merge; web-admin + mobile typechecks limpos
+
 ## Sprint 5 — Livro do Dia (concluído)
 - DB: 5 tables (daily_books, _scenes, _blocks, _positions, _assignments)
 - 13 API endpoints under /daily-book (all write endpoints require ADMIN|SUPERVISOR_A|SUPERVISOR_B)
@@ -12,6 +23,11 @@ description: Sprint progress, architectural decisions, and key conventions for t
 - Route guards: RoleRoute in App.tsx — /admin/daily-book (ADMIN+SUP_A+SUP_B), /supervisor/daily-book (SUP_A+SUP_B)
 
 ## Architecture decisions worth preserving
+
+### Visual Identity — MyASA Official Palette
+Primary = #7C3AED (violet), gradient = linear-gradient(135deg, #7C3AED 0%, #2563EB 100%).
+Available via CSS utility `.bg-myasa-gradient` and `.text-myasa-gradient` in index.css.
+Never use orange/copper as brand color. Amber (#F59E0B) only for semantic attention states.
 
 ### Role enum values (critical)
 Actual roles: "ADMIN", "SUPERVISOR_A", "SUPERVISOR_B", "MEMBER" — NOT "SUPERVISOR".
@@ -58,6 +74,10 @@ After republish, right panel auto-switches to "delta" tab.
 ### DailyBook Histórico tab
 No `republishedAt` field on DailyBook/DailyBookWithScenes. Use `version > 1` to detect republication.
 Timestamp fields that DO exist: generatedAt, publishedAt, executedAt, cancelledAt.
+
+### api-client-react rebuild after codegen
+After running codegen, always run `pnpm --filter @workspace/api-client-react exec tsc -p tsconfig.json`
+to update dist/. Without this, web-admin/mobile see stale type exports even though src is correct.
 
 ## Sprints anteriores
 - Sprint 2: CRUD completo usuários/operações/grupos no web-admin, mobile atualizado

@@ -92,7 +92,7 @@ function DeltaView({ delta }: { delta: any }) {
       )}
       {(delta.structural ?? []).length > 0 && (
         <div>
-          <p className="font-medium text-orange-700">Estruturais ({delta.structural.length})</p>
+          <p className="font-medium text-violet-700">Estruturais ({delta.structural.length})</p>
           <ul className="mt-1 space-y-0.5 pl-4">
             {delta.structural.map((s: any, i: number) => (
               <li key={i} className="text-xs text-muted-foreground">△ {s.type} {s.name ?? s.blockName ?? s.positionName ?? ""}</li>
