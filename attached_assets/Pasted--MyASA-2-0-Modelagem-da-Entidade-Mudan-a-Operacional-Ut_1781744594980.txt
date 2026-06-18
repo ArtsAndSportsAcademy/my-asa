@@ -1,0 +1,202 @@
+# MyASA 2.0 — Modelagem da Entidade Mudança Operacional
+
+Utilizar obrigatoriamente:
+
+* Arquitetura MyASA 2.0
+* Ciclo de Planejamento Operacional
+* Bloco 1 completo
+* S-06 completo
+* Pesquisas dos três perfis
+* Jornadas aprovadas
+
+Objetivo:
+
+Formalizar a entidade transversal que conecta Solicitações, Escala, Livro do Dia, Avisos, Meu Dia, Histórico e IA.
+
+Não desenhar telas.
+
+Não desenhar wireframes.
+
+Não desenhar componentes.
+
+Modelar comportamento e ciclo de vida.
+
+═══════════════════════
+PARTE 1 — DEFINIÇÃO
+═══════════════════════
+
+Responder:
+
+O que é uma Mudança Operacional?
+
+O que não é uma Mudança Operacional?
+
+Quais eventos geram uma Mudança Operacional?
+
+Quais eventos não geram?
+
+Criar definição oficial para a arquitetura.
+
+═══════════════════════
+PARTE 2 — TIPOS
+═══════════════════════
+
+Classificar:
+
+Mudança de Pessoa
+
+Mudança de Papel
+
+Mudança de Horário
+
+Mudança de Cobertura
+
+Mudança de Estrutura
+
+Mudança de Show
+
+Mudança de Livro do Dia
+
+Mudança de Restrição
+
+Mudança de Escala
+
+Outros tipos encontrados
+
+Para cada tipo:
+
+* origem
+* impacto
+* destinatários
+* necessidade de confirmação
+
+═══════════════════════
+PARTE 3 — CICLO DE VIDA
+═══════════════════════
+
+Modelar estados:
+
+Criada
+
+Analisada
+
+Aplicada
+
+Publicada
+
+Comunicada
+
+Confirmada
+
+Expirada
+
+Revogada
+
+Investigar se faltam estados.
+
+Responder:
+
+Quem move cada estado?
+
+Quem audita?
+
+Quem pode voltar estado?
+
+═══════════════════════
+PARTE 4 — PROPAGAÇÃO
+═══════════════════════
+
+Quando uma Mudança Operacional nasce:
+
+O que acontece em:
+
+* Escala
+* Livro do Dia
+* Avisos
+* Meu Dia
+* Histórico
+* IA
+
+Mapear a propagação completa.
+
+═══════════════════════
+PARTE 5 — CONFIRMAÇÃO
+═══════════════════════
+
+Definir:
+
+Quando exige confirmação.
+
+Quem confirma.
+
+Quem monitora.
+
+Quando escala.
+
+Quando vira risco operacional.
+
+═══════════════════════
+PARTE 6 — HISTÓRICO
+═══════════════════════
+
+Como o Histórico agrupa múltiplos eventos dentro da mesma Mudança Operacional.
+
+Objetivo:
+
+Evitar centenas de registros isolados.
+
+Criar narrativa única.
+
+═══════════════════════
+PARTE 7 — IA
+═══════════════════════
+
+Como a IA interpreta Mudanças Operacionais.
+
+Perguntas obrigatórias:
+
+O que mudou?
+
+Quem foi impactado?
+
+Quem confirmou?
+
+Quem não confirmou?
+
+Existe risco?
+
+A operação continua coberta?
+
+═══════════════════════
+PARTE 8 — AUDITORIA
+═══════════════════════
+
+Responder:
+
+Existe alguma superfície que depende de Mudança Operacional mas não a representa?
+
+Existe alguma duplicação?
+
+Existe alguma lacuna?
+
+Existe algum conflito com decisões anteriores?
+
+═══════════════════════
+PARTE 9 — VEREDITO
+═══════════════════════
+
+Produzir:
+
+Especificação Oficial da Entidade Mudança Operacional.
+
+Classificar:
+
+🟢 Consistente
+
+🟡 Ajustes necessários
+
+🔴 Revisão estrutural necessária
+
+Objetivo final:
+
+Transformar Mudança Operacional em uma entidade formal da arquitetura antes do design de Livro do Dia, Avisos, Histórico e IA.
