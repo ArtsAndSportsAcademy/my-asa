@@ -1,0 +1,207 @@
+MyASA 2.0 — Planejamento do MVP Piloto ASA
+
+Utilizar obrigatoriamente:
+
+* Arquitetura Funcional Completa
+* Backlog Mestre MyASA 2.0
+* Auditoria Final da Arquitetura
+* Fundação das 17 superfícies
+* Todas as decisões formais acumuladas
+
+Importante:
+
+Não criar novas funcionalidades.
+
+Não criar novos pilares.
+
+Não reabrir decisões arquiteturais encerradas.
+
+Assumir que a arquitetura está congelada.
+
+Objetivo:
+
+Transformar o backlog em um plano de construção real para o piloto da ASA.
+
+═══════════════════════
+PARTE 1 — DEFINIÇÃO DO PILOTO
+═══════════════════════
+
+Definir:
+
+O que significa sucesso para o piloto?
+
+Quantos usuários?
+
+Quais perfis participam?
+
+Qual duração?
+
+Qual operação utilizar?
+
+Responder:
+
+Qual é o menor grupo real capaz de validar o produto?
+
+═══════════════════════
+PARTE 2 — MVP PILOTO
+═══════════════════════
+
+Classificar todos os épicos:
+
+Obrigatório para o piloto
+
+Importante para o piloto
+
+Pode esperar
+
+Produzir uma tabela final.
+
+═══════════════════════
+PARTE 3 — CORTE DE ESCOPO
+═══════════════════════
+
+Responder:
+
+O que explicitamente NÃO entra no piloto?
+
+Listar funcionalidades removidas temporariamente.
+
+Justificar.
+
+═══════════════════════
+PARTE 4 — ORDEM DE CONSTRUÇÃO
+═══════════════════════
+
+Transformar os épicos em sequência de entrega.
+
+Produzir:
+
+Sprint 1
+
+Sprint 2
+
+Sprint 3
+
+Sprint 4
+
+Sprint 5
+
+Para cada sprint:
+
+Objetivo
+
+Features
+
+Dependências
+
+Critério de aceite
+
+═══════════════════════
+PARTE 5 — DECISÕES TÉCNICAS PENDENTES
+═══════════════════════
+
+Encerrar formalmente:
+
+A-03
+
+Push-only
+ou
+Push + banner in-app
+
+A-05
+
+Motor determinístico
+vs
+LLM
+
+S-07
+
+Confirmar modelo oficial do MVP.
+
+Registrar decisões definitivas.
+
+═══════════════════════
+PARTE 6 — RISCOS DO PILOTO
+═══════════════════════
+
+Identificar:
+
+Riscos técnicos
+
+Riscos operacionais
+
+Riscos de adoção
+
+Riscos de UX
+
+Para cada risco:
+
+Probabilidade
+
+Impacto
+
+Mitigação
+
+═══════════════════════
+PARTE 7 — MÉTRICAS
+═══════════════════════
+
+Definir como medir sucesso.
+
+Exemplos:
+
+Redução de mensagens fora do sistema
+
+Confirmações registradas
+
+Tempo de resolução de exceções
+
+Adoção por Supervisores
+
+Uso diário por Membros
+
+Produzir métricas oficiais do piloto.
+
+═══════════════════════
+PARTE 8 — GO / NO-GO
+═══════════════════════
+
+Definir critérios objetivos para:
+
+Continuar expansão
+
+Ajustar produto
+
+Interromper piloto
+
+═══════════════════════
+PARTE 9 — AUDITORIA FINAL
+═══════════════════════
+
+Responder:
+
+Existe alguma dependência crítica esquecida?
+
+Existe algum épico obrigatório ausente?
+
+Existe alguma funcionalidade do piloto sem dono?
+
+═══════════════════════
+PARTE 10 — VEREDITO
+═══════════════════════
+
+Produzir:
+
+Plano Oficial do MVP Piloto ASA
+
+Classificar:
+
+🟢 Pronto para Construção
+
+🟡 Ajustes Necessários
+
+🔴 Replanejamento Necessário
+
+Responder explicitamente:
+
+“Se a equipe começar a desenvolver amanhã, qual é a primeira sprint e qual é o primeiro marco visível para os usuários?”
