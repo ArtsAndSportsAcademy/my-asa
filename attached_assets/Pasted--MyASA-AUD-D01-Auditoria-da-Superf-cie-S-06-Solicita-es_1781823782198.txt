@@ -1,0 +1,239 @@
+# MyASA — AUD-D01: Auditoria da Superfície S-06 Solicitações
+
+Utilizar obrigatoriamente:
+
+* Blueprint Executivo
+* Gate Arquitetural
+* Catálogo Oficial das 17 Superfícies
+* Backlog Mestre
+* Sprint 0 → Sprint 15 concluídas
+* Auditoria de Navegação mais recente
+
+Importante:
+
+Não implementar nada.
+
+Não criar tabelas.
+
+Não criar rotas.
+
+Não alterar permissões.
+
+Objetivo:
+
+Determinar o estado real da superfície S-06 Solicitações dentro da arquitetura atual do MyASA.
+
+Pergunta respondida:
+
+"O que aconteceu com Solicitações?"
+
+═══════════════════════
+PARTE 1 — FUNDAMENTO
+═══════════════════════
+
+No catálogo oficial das superfícies:
+
+S-06 = Solicitações
+
+Validar:
+
+* Continua prevista?
+* Foi implementada?
+* Foi removida?
+* Foi substituída?
+* Foi absorvida por outra superfície?
+
+═══════════════════════
+PARTE 2 — CÓDIGO
+═══════════════════════
+
+Auditar:
+
+Backend
+
+OpenAPI
+
+Banco de Dados
+
+Web
+
+Mobile
+
+Procurar:
+
+requests
+
+request_decisions
+
+request_status
+
+request_type
+
+approval
+
+approval_flow
+
+absence_request
+
+swap_request
+
+change_request
+
+ou equivalentes.
+
+Responder:
+
+Existe código implementado?
+
+═══════════════════════
+PARTE 3 — BANCO
+═══════════════════════
+
+Verificar schema atual.
+
+Responder:
+
+Existem tabelas relacionadas a Solicitações?
+
+Exemplos esperados:
+
+* requests
+* request_decisions
+* request_history
+
+ou equivalentes.
+
+Responder:
+
+* tabela existe?
+* migration aplicada?
+* está sendo utilizada?
+
+═══════════════════════
+PARTE 4 — API
+═══════════════════════
+
+Verificar:
+
+Existe rota?
+
+Exemplos:
+
+* /requests
+* /requests/:id
+* /request-decisions
+
+ou equivalentes.
+
+Responder:
+
+* implementada
+* parcial
+* inexistente
+
+═══════════════════════
+PARTE 5 — WEB
+═══════════════════════
+
+Verificar:
+
+Existe tela?
+
+Admin
+
+Supervisor
+
+Membro
+
+Responder:
+
+* rota
+* menu
+* estado da implementação
+
+═══════════════════════
+PARTE 6 — MOBILE
+═══════════════════════
+
+Verificar:
+
+Existe experiência mobile?
+
+Responder:
+
+* tela
+* tab
+* navegação
+* status
+
+═══════════════════════
+PARTE 7 — DEPENDÊNCIAS
+═══════════════════════
+
+Caso S-06 não exista:
+
+Responder:
+
+Quais superfícies dependem dela?
+
+Exemplos possíveis:
+
+* Escala
+* Livro do Dia
+* Check-in
+* Governança
+* Histórico
+
+Classificar impacto:
+
+* Baixo
+* Médio
+* Alto
+* Crítico
+
+═══════════════════════
+PARTE 8 — ARQUITETURA
+═══════════════════════
+
+Responder:
+
+S-06 continua necessária?
+
+Opções:
+
+A) Sim — deve ser implementada
+
+B) Não — foi substituída formalmente
+
+C) Parcialmente — parte do escopo migrou para outras superfícies
+
+Justificar com base na arquitetura atual.
+
+═══════════════════════
+PARTE 9 — AUDITORIA FINAL
+═══════════════════════
+
+Responder objetivamente:
+
+1. S-06 existe hoje?
+2. Onde está implementada?
+3. Está acessível para usuários?
+4. Está documentada?
+5. Está abandonada?
+6. Continua sendo necessária?
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Classificar:
+
+🟢 Implementada
+
+🟡 Parcial
+
+🔴 Ausente
+
+Objetivo final:
+
+Encerrar definitivamente a dúvida sobre o estado da superfície S-06 Solicitações e determinar se ela ainda faz parte do núcleo operacional do MyASA.
