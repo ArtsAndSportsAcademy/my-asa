@@ -20,6 +20,7 @@ import libraryRouter from "./library";
 import checkInsRouter from "./check-ins";
 import requestsRouter from "./requests";
 import delegationsRouter from "./delegations";
+import tasksRouter from "./tasks";
 
 const router: IRouter = Router();
 
@@ -44,5 +45,6 @@ router.use(libraryRouter);
 router.use(checkInsRouter);
 router.use(requestsRouter);
 router.use(delegationsRouter);
+router.use(tasksRouter);
 
 export default router;

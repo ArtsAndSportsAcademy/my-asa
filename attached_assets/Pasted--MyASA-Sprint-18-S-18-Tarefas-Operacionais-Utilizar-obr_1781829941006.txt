@@ -1,0 +1,378 @@
+# MyASA — Sprint 18 — S-18 Tarefas Operacionais
+
+Utilizar obrigatoriamente:
+
+* Sprint 0 → Sprint 17 concluídas
+* GOV-D11 concluída
+* AUD-D02 concluída (fonte oficial)
+* S-06 Solicitações
+* S-07 Entregas
+* S-11 Histórico
+* S-14 Biblioteca
+
+Importante:
+
+Implementar exclusivamente o que foi aprovado na AUD-D02.
+
+Não simplificar o domínio.
+
+Não transformar em Jira/Trello genérico.
+
+Não permitir criação de tarefas por Membros.
+
+Objetivo:
+
+Implementar oficialmente o domínio S-18 — Tarefas Operacionais.
+
+Pergunta respondida:
+
+"Como a gestão acompanha, comprova e aprova a execução de trabalhos operacionais?"
+
+═══════════════════════
+T001 — Banco de Dados
+═══════════════════════
+
+Criar:
+
+tasks
+
+task_evidences
+
+task_comments
+
+Enums:
+
+TaskPriority
+
+* LOW
+* MEDIUM
+* HIGH
+* CRITICAL
+
+TaskStatus
+
+* CREATED
+* IN_PROGRESS
+* READY_FOR_APPROVAL
+* CHANGES_REQUESTED
+* APPROVED
+* COMPLETED
+* CANCELLED
+* EXPIRED
+
+TaskOrigin
+
+* MANUAL
+* REQUEST
+* LIBRARY
+* AI
+
+TaskEvidenceType
+
+* PHOTO
+* VIDEO
+* DOCUMENT
+* PDF
+* LINK
+* AUDIO
+* PRESENTATION
+
+Implementar schema conforme AUD-D02.
+
+═══════════════════════
+T002 — API
+═══════════════════════
+
+Implementar:
+
+GET /tasks
+
+GET /tasks/:id
+
+POST /tasks
+
+PATCH /tasks/:id
+
+POST /tasks/:id/start
+
+POST /tasks/:id/ready-for-approval
+
+POST /tasks/:id/approve
+
+POST /tasks/:id/request-changes
+
+POST /tasks/:id/cancel
+
+GET /tasks/my
+
+═══════════════════════
+T003 — Evidências
+═══════════════════════
+
+Implementar:
+
+POST /tasks/:id/evidences
+
+DELETE /tasks/:id/evidences/:evidenceId
+
+Permitir:
+
+* obrigatórias
+* complementares
+
+Validar:
+
+Não permitir READY_FOR_APPROVAL sem todas as evidências obrigatórias.
+
+═══════════════════════
+T004 — Comentários
+═══════════════════════
+
+Implementar:
+
+POST /tasks/:id/comments
+
+GET /tasks/:id/comments
+
+Comentários devem ficar visíveis para:
+
+* criador
+* responsável
+* aprovador
+* admin
+
+═══════════════════════
+T005 — OpenAPI + Codegen
+═══════════════════════
+
+Gerar:
+
+useListTasks
+
+useGetTask
+
+useCreateTask
+
+useUpdateTask
+
+useMyTasks
+
+useApproveTask
+
+useRequestTaskChanges
+
+useTaskComments
+
+useTaskEvidences
+
+═══════════════════════
+T006 — Web Admin / Supervisor
+═══════════════════════
+
+Nova superfície:
+
+Tarefas
+
+Visões:
+
+* Todas
+* Minhas
+* Aguardando Aprovação
+* Atrasadas
+* Concluídas
+
+Permitir:
+
+* criar tarefa
+* editar tarefa
+* cancelar tarefa
+* aprovar tarefa
+* solicitar ajustes
+
+Filtros:
+
+* operação
+* responsável
+* prioridade
+* status
+
+═══════════════════════
+T007 — Mobile (Responsável)
+═══════════════════════
+
+Nova superfície:
+
+Minhas Tarefas
+
+Permitir:
+
+* visualizar atribuídas
+* iniciar execução
+* atualizar checklist operacional
+* anexar evidências
+* comentar
+* enviar para aprovação
+
+Não permitir:
+
+* aprovar
+* cancelar
+
+═══════════════════════
+T008 — Checklist Obrigatório
+═══════════════════════
+
+Criado pelo criador.
+
+Regras:
+
+* editável até início da execução
+* obrigatório para aprovação
+* bloqueia READY_FOR_APPROVAL se incompleto
+
+═══════════════════════
+T009 — Checklist Operacional
+═══════════════════════
+
+Criado pelo responsável.
+
+Regras:
+
+* editável durante execução
+* não bloqueia aprovação
+* utilizado para organização pessoal
+
+═══════════════════════
+T010 — Aprovação
+═══════════════════════
+
+Fluxo:
+
+CREATED
+↓
+IN_PROGRESS
+↓
+READY_FOR_APPROVAL
+↓
+APPROVED
+
+ou
+
+CHANGES_REQUESTED
+↓
+IN_PROGRESS
+
+Tarefas sem aprovação:
+
+CREATED
+↓
+IN_PROGRESS
+↓
+COMPLETED
+
+═══════════════════════
+T011 — Histórico
+═══════════════════════
+
+Registrar:
+
+task.created
+
+task.started
+
+task.comment_added
+
+task.evidence_added
+
+task.ready_for_approval
+
+task.approved
+
+task.changes_requested
+
+task.completed
+
+task.cancelled
+
+task.expired
+
+═══════════════════════
+T012 — Biblioteca
+═══════════════════════
+
+Implementar origem:
+
+LIBRARY
+
+Validar caso:
+
+Atualizar Biblioteca
+
+Fluxo:
+
+Tarefa
+↓
+Aprovação
+↓
+Biblioteca
+
+Sem duplicação de conteúdo.
+
+═══════════════════════
+T013 — Delegações
+═══════════════════════
+
+Compatibilidade com GOV-D11.
+
+Delegado pode:
+
+* criar
+* aprovar
+* solicitar ajustes
+
+Somente dentro do escopo delegado.
+
+═══════════════════════
+AUDITORIA FINAL
+═══════════════════════
+
+Responder:
+
+1. Tarefas estão separadas de Avisos?
+2. Tarefas estão separadas de Solicitações?
+3. Tarefas estão separadas de Entregas?
+4. Checklist obrigatório funciona?
+5. Checklist operacional funciona?
+6. Evidências obrigatórias bloqueiam aprovação?
+7. Evidências complementares funcionam?
+8. Aprovação funciona?
+9. Delegações funcionam?
+10. Biblioteca integra sem duplicação?
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Objetivo final:
+
+Implementar oficialmente a superfície S-18 — Tarefas Operacionais.
+
+Fluxo completo:
+
+Gestão
+↓
+Cria tarefa
+↓
+Responsável executa
+↓
+Anexa evidências
+↓
+Solicita aprovação
+↓
+Aprovador valida
+↓
+Histórico registra
+↓
+Biblioteca recebe resultado (quando aplicável)
+
+Sem transformar o MyASA em um gerenciador genérico de projetos e preservando o foco operacional da ASA.

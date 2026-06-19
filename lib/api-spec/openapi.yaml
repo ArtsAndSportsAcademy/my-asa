@@ -30,6 +30,8 @@ tags:
     description: "Painel Operacional — visao consolidada de saude operacional"
   - name: my-day
     description: "Meu Dia — superficie principal do membro"
+  - name: tasks
+    description: "Tarefas Operacionais — S-18"
 
 security:
   - bearerAuth: []
@@ -4018,6 +4020,397 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /tasks/my:
+    get:
+      operationId: getMyTasks
+      tags: [tasks]
+      summary: Listar tarefas atribuídas ao usuário atual
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+        - in: query
+          name: priority
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lista de tarefas do usuário
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /tasks:
+    get:
+      operationId: listTasks
+      tags: [tasks]
+      summary: Listar tarefas (gestão)
+      parameters:
+        - in: query
+          name: operationId
+          schema:
+            type: string
+        - in: query
+          name: status
+          schema:
+            type: string
+        - in: query
+          name: priority
+          schema:
+            type: string
+        - in: query
+          name: assigneeId
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lista de tarefas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createTask
+      tags: [tasks]
+      summary: Criar nova tarefa
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTaskRequest"
+      responses:
+        "201":
+          description: Tarefa criada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskSingleResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /tasks/{taskId}:
+    get:
+      operationId: getTask
+      tags: [tasks]
+      summary: Detalhe de uma tarefa
+      parameters:
+        - in: path
+          name: taskId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Detalhe da tarefa
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateTask
+      tags: [tasks]
+      summary: Editar tarefa
+      parameters:
+        - in: path
+          name: taskId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTaskRequest"
+      responses:
+        "200":
+          description: Tarefa atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskSingleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /tasks/{taskId}/start:
+    post:
+      operationId: startTask
+      tags: [tasks]
+      summary: Iniciar execução da tarefa
+      parameters:
+        - in: path
+          name: taskId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Tarefa iniciada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskSingleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /tasks/{taskId}/ready-for-approval:
+    post:
+      operationId: submitTaskForApproval
+      tags: [tasks]
+      summary: Submeter tarefa para aprovação
+      parameters:
+        - in: path
+          name: taskId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Tarefa submetida para aprovação
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskSingleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /tasks/{taskId}/approve:
+    post:
+      operationId: approveTask
+      tags: [tasks]
+      summary: Aprovar tarefa
+      parameters:
+        - in: path
+          name: taskId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Tarefa aprovada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskSingleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /tasks/{taskId}/request-changes:
+    post:
+      operationId: requestTaskChanges
+      tags: [tasks]
+      summary: Solicitar ajustes na tarefa
+      parameters:
+        - in: path
+          name: taskId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [comment]
+              properties:
+                comment:
+                  type: string
+      responses:
+        "200":
+          description: Ajustes solicitados
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskSingleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /tasks/{taskId}/cancel:
+    post:
+      operationId: cancelTask
+      tags: [tasks]
+      summary: Cancelar tarefa
+      parameters:
+        - in: path
+          name: taskId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+      responses:
+        "200":
+          description: Tarefa cancelada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskSingleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /tasks/{taskId}/evidences:
+    post:
+      operationId: addTaskEvidence
+      tags: [tasks]
+      summary: Adicionar evidência à tarefa
+      parameters:
+        - in: path
+          name: taskId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddTaskEvidenceRequest"
+      responses:
+        "201":
+          description: Evidência adicionada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskEvidenceSingleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /tasks/{taskId}/evidences/{evidenceId}:
+    delete:
+      operationId: deleteTaskEvidence
+      tags: [tasks]
+      summary: Remover evidência
+      parameters:
+        - in: path
+          name: taskId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: evidenceId
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Evidência removida
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /tasks/{taskId}/comments:
+    get:
+      operationId: getTaskComments
+      tags: [tasks]
+      summary: Listar comentários da tarefa
+      parameters:
+        - in: path
+          name: taskId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lista de comentários
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskCommentsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: addTaskComment
+      tags: [tasks]
+      summary: Adicionar comentário à tarefa
+      parameters:
+        - in: path
+          name: taskId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body:
+                  type: string
+      responses:
+        "201":
+          description: Comentário adicionado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskCommentSingleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -7042,4 +7435,253 @@ components:
         body:
           type: string
         summary:
+          type: string
+
+    TaskChecklistItem:
+      type: object
+      required: [id, label, completed]
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        completed:
+          type: boolean
+
+    TaskMandatoryEvidence:
+      type: object
+      required: [id, type, description]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        description:
+          type: string
+
+    TaskItem:
+      type: object
+      required: [id, title, priority, status, dueDate, requiresApproval, origin, operationId, assigneeId, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        priority:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, CRITICAL]
+        status:
+          type: string
+          enum: [CREATED, IN_PROGRESS, READY_FOR_APPROVAL, CHANGES_REQUESTED, APPROVED, COMPLETED, CANCELLED, EXPIRED]
+        dueDate:
+          type: string
+        requiresApproval:
+          type: boolean
+        origin:
+          type: string
+          enum: [MANUAL, REQUEST, LIBRARY, AI]
+        operationId:
+          type: string
+        operationName:
+          type: string
+        assigneeId:
+          type: string
+        assigneeName:
+          type: string
+        creatorId:
+          type: string
+        approverId:
+          type: string
+        approverName:
+          type: string
+        mandatoryChecklist:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskChecklistItem"
+        operationalChecklist:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskChecklistItem"
+        mandatoryEvidences:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskMandatoryEvidence"
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    TaskEvidence:
+      type: object
+      required: [id, taskId, uploaderId, type, url, isRequired, createdAt]
+      properties:
+        id:
+          type: string
+        taskId:
+          type: string
+        uploaderId:
+          type: string
+        type:
+          type: string
+          enum: [PHOTO, VIDEO, DOCUMENT, PDF, LINK, AUDIO, PRESENTATION]
+        url:
+          type: string
+        description:
+          type: string
+        isRequired:
+          type: boolean
+        mandatoryEvidenceRefId:
+          type: string
+        createdAt:
+          type: string
+
+    TaskComment:
+      type: object
+      required: [id, taskId, authorId, body, createdAt]
+      properties:
+        id:
+          type: string
+        taskId:
+          type: string
+        authorId:
+          type: string
+        authorName:
+          type: string
+        body:
+          type: string
+        createdAt:
+          type: string
+
+    TaskListResponse:
+      type: object
+      required: [tasks]
+      properties:
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskItem"
+
+    TaskSingleResponse:
+      type: object
+      required: [task]
+      properties:
+        task:
+          $ref: "#/components/schemas/TaskItem"
+
+    TaskDetailResponse:
+      type: object
+      required: [task, evidences]
+      properties:
+        task:
+          $ref: "#/components/schemas/TaskItem"
+        evidences:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskEvidence"
+
+    TaskCommentsResponse:
+      type: object
+      required: [comments]
+      properties:
+        comments:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskComment"
+
+    TaskCommentSingleResponse:
+      type: object
+      required: [comment]
+      properties:
+        comment:
+          $ref: "#/components/schemas/TaskComment"
+
+    TaskEvidenceSingleResponse:
+      type: object
+      required: [evidence]
+      properties:
+        evidence:
+          $ref: "#/components/schemas/TaskEvidence"
+
+    CreateTaskRequest:
+      type: object
+      required: [title, operationId, assigneeId, dueDate]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        operationId:
+          type: string
+        assigneeId:
+          type: string
+        approverId:
+          type: string
+        requiresApproval:
+          type: boolean
+        priority:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, CRITICAL]
+        dueDate:
+          type: string
+        mandatoryChecklist:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskChecklistItem"
+        mandatoryEvidences:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskMandatoryEvidence"
+        origin:
+          type: string
+          enum: [MANUAL, REQUEST, LIBRARY, AI]
+        libraryDocumentId:
+          type: string
+
+    UpdateTaskRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        assigneeId:
+          type: string
+        approverId:
+          type: string
+        requiresApproval:
+          type: boolean
+        priority:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, CRITICAL]
+        dueDate:
+          type: string
+        mandatoryChecklist:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskChecklistItem"
+        operationalChecklist:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskChecklistItem"
+        mandatoryEvidences:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskMandatoryEvidence"
+
+    AddTaskEvidenceRequest:
+      type: object
+      required: [type, url]
+      properties:
+        type:
+          type: string
+          enum: [PHOTO, VIDEO, DOCUMENT, PDF, LINK, AUDIO, PRESENTATION]
+        url:
+          type: string
+        description:
+          type: string
+        isRequired:
+          type: boolean
+        mandatoryEvidenceRefId:
           type: string

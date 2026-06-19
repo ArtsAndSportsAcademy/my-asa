@@ -956,6 +956,89 @@ export const DeleteShowBookLineBody = zod.object({
 
 
 /**
+ * @summary Listar referências oficiais da posição
+ */
+export const ListShowBookPositionRefsParams = zod.object({
+  "id": zod.coerce.string(),
+  "positionId": zod.coerce.string()
+})
+
+export const ListShowBookPositionRefsResponse = zod.object({
+  "refs": zod.array(zod.object({
+  "id": zod.string(),
+  "positionId": zod.string(),
+  "showBookId": zod.string(),
+  "documentId": zod.string(),
+  "label": zod.string().nullish(),
+  "addedBy": zod.string(),
+  "createdAt": zod.string()
+}).and(zod.object({
+  "document": zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "type": zod.enum(['OPERATIONAL_PROCEDURE', 'RULES_AND_POLICIES', 'CHARACTER_REFERENCE', 'COSTUME_REFERENCE', 'ONBOARDING_MATERIAL', 'SAFETY_PROCEDURE']),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'UPDATED', 'ARCHIVED']),
+  "summary": zod.string().nullish(),
+  "version": zod.number()
+})
+})))
+})
+
+
+/**
+ * @summary Vincular documento da Biblioteca à posição
+ */
+export const AddShowBookPositionRefParams = zod.object({
+  "id": zod.coerce.string(),
+  "positionId": zod.coerce.string()
+})
+
+export const AddShowBookPositionRefBody = zod.object({
+  "documentId": zod.string(),
+  "label": zod.string().optional()
+})
+
+
+/**
+ * @summary Remover referência oficial da posição
+ */
+export const DeleteShowBookPositionRefParams = zod.object({
+  "id": zod.coerce.string(),
+  "positionId": zod.coerce.string(),
+  "refId": zod.coerce.string()
+})
+
+
+/**
+ * @summary Listar todas as referências de um Livro do Show
+ */
+export const ListShowBookRefsParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const ListShowBookRefsResponse = zod.object({
+  "refs": zod.array(zod.object({
+  "id": zod.string(),
+  "positionId": zod.string(),
+  "showBookId": zod.string(),
+  "documentId": zod.string(),
+  "label": zod.string().nullish(),
+  "addedBy": zod.string(),
+  "createdAt": zod.string()
+}).and(zod.object({
+  "document": zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "type": zod.enum(['OPERATIONAL_PROCEDURE', 'RULES_AND_POLICIES', 'CHARACTER_REFERENCE', 'COSTUME_REFERENCE', 'ONBOARDING_MATERIAL', 'SAFETY_PROCEDURE']),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'UPDATED', 'ARCHIVED']),
+  "summary": zod.string().nullish(),
+  "version": zod.number()
+})
+})))
+})
+
+
+/**
  * @summary Listar tags de qualificação da operação
  */
 export const ListOperationTagsParams = zod.object({
@@ -3737,6 +3820,542 @@ export const ListLibraryDocumentVersionsResponse = zod.object({
   "createdBy": zod.string(),
   "createdAt": zod.string()
 }))
+})
+
+
+/**
+ * @summary Listar tarefas atribuídas ao usuário atual
+ */
+export const GetMyTasksQueryParams = zod.object({
+  "status": zod.coerce.string().optional(),
+  "priority": zod.coerce.string().optional()
+})
+
+export const GetMyTasksResponse = zod.object({
+  "tasks": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "description": zod.string().optional(),
+  "priority": zod.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  "status": zod.enum(['CREATED', 'IN_PROGRESS', 'READY_FOR_APPROVAL', 'CHANGES_REQUESTED', 'APPROVED', 'COMPLETED', 'CANCELLED', 'EXPIRED']),
+  "dueDate": zod.string(),
+  "requiresApproval": zod.boolean(),
+  "origin": zod.enum(['MANUAL', 'REQUEST', 'LIBRARY', 'AI']),
+  "operationId": zod.string(),
+  "operationName": zod.string().optional(),
+  "assigneeId": zod.string(),
+  "assigneeName": zod.string().optional(),
+  "creatorId": zod.string().optional(),
+  "approverId": zod.string().optional(),
+  "approverName": zod.string().optional(),
+  "mandatoryChecklist": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "completed": zod.boolean()
+})).optional(),
+  "operationalChecklist": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "completed": zod.boolean()
+})).optional(),
+  "mandatoryEvidences": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.string(),
+  "description": zod.string()
+})).optional(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Listar tarefas (gestão)
+ */
+export const ListTasksQueryParams = zod.object({
+  "operationId": zod.coerce.string().optional(),
+  "status": zod.coerce.string().optional(),
+  "priority": zod.coerce.string().optional(),
+  "assigneeId": zod.coerce.string().optional()
+})
+
+export const ListTasksResponse = zod.object({
+  "tasks": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "description": zod.string().optional(),
+  "priority": zod.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  "status": zod.enum(['CREATED', 'IN_PROGRESS', 'READY_FOR_APPROVAL', 'CHANGES_REQUESTED', 'APPROVED', 'COMPLETED', 'CANCELLED', 'EXPIRED']),
+  "dueDate": zod.string(),
+  "requiresApproval": zod.boolean(),
+  "origin": zod.enum(['MANUAL', 'REQUEST', 'LIBRARY', 'AI']),
+  "operationId": zod.string(),
+  "operationName": zod.string().optional(),
+  "assigneeId": zod.string(),
+  "assigneeName": zod.string().optional(),
+  "creatorId": zod.string().optional(),
+  "approverId": zod.string().optional(),
+  "approverName": zod.string().optional(),
+  "mandatoryChecklist": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "completed": zod.boolean()
+})).optional(),
+  "operationalChecklist": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "completed": zod.boolean()
+})).optional(),
+  "mandatoryEvidences": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.string(),
+  "description": zod.string()
+})).optional(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Criar nova tarefa
+ */
+export const CreateTaskBody = zod.object({
+  "title": zod.string(),
+  "description": zod.string().optional(),
+  "operationId": zod.string(),
+  "assigneeId": zod.string(),
+  "approverId": zod.string().optional(),
+  "requiresApproval": zod.boolean().optional(),
+  "priority": zod.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).optional(),
+  "dueDate": zod.string(),
+  "mandatoryChecklist": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "completed": zod.boolean()
+})).optional(),
+  "mandatoryEvidences": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.string(),
+  "description": zod.string()
+})).optional(),
+  "origin": zod.enum(['MANUAL', 'REQUEST', 'LIBRARY', 'AI']).optional(),
+  "libraryDocumentId": zod.string().optional()
+})
+
+
+/**
+ * @summary Detalhe de uma tarefa
+ */
+export const GetTaskParams = zod.object({
+  "taskId": zod.coerce.string()
+})
+
+export const GetTaskResponse = zod.object({
+  "task": zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "description": zod.string().optional(),
+  "priority": zod.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  "status": zod.enum(['CREATED', 'IN_PROGRESS', 'READY_FOR_APPROVAL', 'CHANGES_REQUESTED', 'APPROVED', 'COMPLETED', 'CANCELLED', 'EXPIRED']),
+  "dueDate": zod.string(),
+  "requiresApproval": zod.boolean(),
+  "origin": zod.enum(['MANUAL', 'REQUEST', 'LIBRARY', 'AI']),
+  "operationId": zod.string(),
+  "operationName": zod.string().optional(),
+  "assigneeId": zod.string(),
+  "assigneeName": zod.string().optional(),
+  "creatorId": zod.string().optional(),
+  "approverId": zod.string().optional(),
+  "approverName": zod.string().optional(),
+  "mandatoryChecklist": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "completed": zod.boolean()
+})).optional(),
+  "operationalChecklist": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "completed": zod.boolean()
+})).optional(),
+  "mandatoryEvidences": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.string(),
+  "description": zod.string()
+})).optional(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}),
+  "evidences": zod.array(zod.object({
+  "id": zod.string(),
+  "taskId": zod.string(),
+  "uploaderId": zod.string(),
+  "type": zod.enum(['PHOTO', 'VIDEO', 'DOCUMENT', 'PDF', 'LINK', 'AUDIO', 'PRESENTATION']),
+  "url": zod.string(),
+  "description": zod.string().optional(),
+  "isRequired": zod.boolean(),
+  "mandatoryEvidenceRefId": zod.string().optional(),
+  "createdAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Editar tarefa
+ */
+export const UpdateTaskParams = zod.object({
+  "taskId": zod.coerce.string()
+})
+
+export const UpdateTaskBody = zod.object({
+  "title": zod.string().optional(),
+  "description": zod.string().optional(),
+  "assigneeId": zod.string().optional(),
+  "approverId": zod.string().optional(),
+  "requiresApproval": zod.boolean().optional(),
+  "priority": zod.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).optional(),
+  "dueDate": zod.string().optional(),
+  "mandatoryChecklist": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "completed": zod.boolean()
+})).optional(),
+  "operationalChecklist": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "completed": zod.boolean()
+})).optional(),
+  "mandatoryEvidences": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.string(),
+  "description": zod.string()
+})).optional()
+})
+
+export const UpdateTaskResponse = zod.object({
+  "task": zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "description": zod.string().optional(),
+  "priority": zod.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  "status": zod.enum(['CREATED', 'IN_PROGRESS', 'READY_FOR_APPROVAL', 'CHANGES_REQUESTED', 'APPROVED', 'COMPLETED', 'CANCELLED', 'EXPIRED']),
+  "dueDate": zod.string(),
+  "requiresApproval": zod.boolean(),
+  "origin": zod.enum(['MANUAL', 'REQUEST', 'LIBRARY', 'AI']),
+  "operationId": zod.string(),
+  "operationName": zod.string().optional(),
+  "assigneeId": zod.string(),
+  "assigneeName": zod.string().optional(),
+  "creatorId": zod.string().optional(),
+  "approverId": zod.string().optional(),
+  "approverName": zod.string().optional(),
+  "mandatoryChecklist": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "completed": zod.boolean()
+})).optional(),
+  "operationalChecklist": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "completed": zod.boolean()
+})).optional(),
+  "mandatoryEvidences": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.string(),
+  "description": zod.string()
+})).optional(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Iniciar execução da tarefa
+ */
+export const StartTaskParams = zod.object({
+  "taskId": zod.coerce.string()
+})
+
+export const StartTaskResponse = zod.object({
+  "task": zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "description": zod.string().optional(),
+  "priority": zod.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  "status": zod.enum(['CREATED', 'IN_PROGRESS', 'READY_FOR_APPROVAL', 'CHANGES_REQUESTED', 'APPROVED', 'COMPLETED', 'CANCELLED', 'EXPIRED']),
+  "dueDate": zod.string(),
+  "requiresApproval": zod.boolean(),
+  "origin": zod.enum(['MANUAL', 'REQUEST', 'LIBRARY', 'AI']),
+  "operationId": zod.string(),
+  "operationName": zod.string().optional(),
+  "assigneeId": zod.string(),
+  "assigneeName": zod.string().optional(),
+  "creatorId": zod.string().optional(),
+  "approverId": zod.string().optional(),
+  "approverName": zod.string().optional(),
+  "mandatoryChecklist": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "completed": zod.boolean()
+})).optional(),
+  "operationalChecklist": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "completed": zod.boolean()
+})).optional(),
+  "mandatoryEvidences": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.string(),
+  "description": zod.string()
+})).optional(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Submeter tarefa para aprovação
+ */
+export const SubmitTaskForApprovalParams = zod.object({
+  "taskId": zod.coerce.string()
+})
+
+export const SubmitTaskForApprovalResponse = zod.object({
+  "task": zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "description": zod.string().optional(),
+  "priority": zod.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  "status": zod.enum(['CREATED', 'IN_PROGRESS', 'READY_FOR_APPROVAL', 'CHANGES_REQUESTED', 'APPROVED', 'COMPLETED', 'CANCELLED', 'EXPIRED']),
+  "dueDate": zod.string(),
+  "requiresApproval": zod.boolean(),
+  "origin": zod.enum(['MANUAL', 'REQUEST', 'LIBRARY', 'AI']),
+  "operationId": zod.string(),
+  "operationName": zod.string().optional(),
+  "assigneeId": zod.string(),
+  "assigneeName": zod.string().optional(),
+  "creatorId": zod.string().optional(),
+  "approverId": zod.string().optional(),
+  "approverName": zod.string().optional(),
+  "mandatoryChecklist": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "completed": zod.boolean()
+})).optional(),
+  "operationalChecklist": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "completed": zod.boolean()
+})).optional(),
+  "mandatoryEvidences": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.string(),
+  "description": zod.string()
+})).optional(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Aprovar tarefa
+ */
+export const ApproveTaskParams = zod.object({
+  "taskId": zod.coerce.string()
+})
+
+export const ApproveTaskResponse = zod.object({
+  "task": zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "description": zod.string().optional(),
+  "priority": zod.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  "status": zod.enum(['CREATED', 'IN_PROGRESS', 'READY_FOR_APPROVAL', 'CHANGES_REQUESTED', 'APPROVED', 'COMPLETED', 'CANCELLED', 'EXPIRED']),
+  "dueDate": zod.string(),
+  "requiresApproval": zod.boolean(),
+  "origin": zod.enum(['MANUAL', 'REQUEST', 'LIBRARY', 'AI']),
+  "operationId": zod.string(),
+  "operationName": zod.string().optional(),
+  "assigneeId": zod.string(),
+  "assigneeName": zod.string().optional(),
+  "creatorId": zod.string().optional(),
+  "approverId": zod.string().optional(),
+  "approverName": zod.string().optional(),
+  "mandatoryChecklist": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "completed": zod.boolean()
+})).optional(),
+  "operationalChecklist": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "completed": zod.boolean()
+})).optional(),
+  "mandatoryEvidences": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.string(),
+  "description": zod.string()
+})).optional(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Solicitar ajustes na tarefa
+ */
+export const RequestTaskChangesParams = zod.object({
+  "taskId": zod.coerce.string()
+})
+
+export const RequestTaskChangesBody = zod.object({
+  "comment": zod.string()
+})
+
+export const RequestTaskChangesResponse = zod.object({
+  "task": zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "description": zod.string().optional(),
+  "priority": zod.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  "status": zod.enum(['CREATED', 'IN_PROGRESS', 'READY_FOR_APPROVAL', 'CHANGES_REQUESTED', 'APPROVED', 'COMPLETED', 'CANCELLED', 'EXPIRED']),
+  "dueDate": zod.string(),
+  "requiresApproval": zod.boolean(),
+  "origin": zod.enum(['MANUAL', 'REQUEST', 'LIBRARY', 'AI']),
+  "operationId": zod.string(),
+  "operationName": zod.string().optional(),
+  "assigneeId": zod.string(),
+  "assigneeName": zod.string().optional(),
+  "creatorId": zod.string().optional(),
+  "approverId": zod.string().optional(),
+  "approverName": zod.string().optional(),
+  "mandatoryChecklist": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "completed": zod.boolean()
+})).optional(),
+  "operationalChecklist": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "completed": zod.boolean()
+})).optional(),
+  "mandatoryEvidences": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.string(),
+  "description": zod.string()
+})).optional(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Cancelar tarefa
+ */
+export const CancelTaskParams = zod.object({
+  "taskId": zod.coerce.string()
+})
+
+export const CancelTaskBody = zod.object({
+  "reason": zod.string().optional()
+})
+
+export const CancelTaskResponse = zod.object({
+  "task": zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "description": zod.string().optional(),
+  "priority": zod.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  "status": zod.enum(['CREATED', 'IN_PROGRESS', 'READY_FOR_APPROVAL', 'CHANGES_REQUESTED', 'APPROVED', 'COMPLETED', 'CANCELLED', 'EXPIRED']),
+  "dueDate": zod.string(),
+  "requiresApproval": zod.boolean(),
+  "origin": zod.enum(['MANUAL', 'REQUEST', 'LIBRARY', 'AI']),
+  "operationId": zod.string(),
+  "operationName": zod.string().optional(),
+  "assigneeId": zod.string(),
+  "assigneeName": zod.string().optional(),
+  "creatorId": zod.string().optional(),
+  "approverId": zod.string().optional(),
+  "approverName": zod.string().optional(),
+  "mandatoryChecklist": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "completed": zod.boolean()
+})).optional(),
+  "operationalChecklist": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "completed": zod.boolean()
+})).optional(),
+  "mandatoryEvidences": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.string(),
+  "description": zod.string()
+})).optional(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Adicionar evidência à tarefa
+ */
+export const AddTaskEvidenceParams = zod.object({
+  "taskId": zod.coerce.string()
+})
+
+export const AddTaskEvidenceBody = zod.object({
+  "type": zod.enum(['PHOTO', 'VIDEO', 'DOCUMENT', 'PDF', 'LINK', 'AUDIO', 'PRESENTATION']),
+  "url": zod.string(),
+  "description": zod.string().optional(),
+  "isRequired": zod.boolean().optional(),
+  "mandatoryEvidenceRefId": zod.string().optional()
+})
+
+
+/**
+ * @summary Remover evidência
+ */
+export const DeleteTaskEvidenceParams = zod.object({
+  "taskId": zod.coerce.string(),
+  "evidenceId": zod.coerce.string()
+})
+
+
+/**
+ * @summary Listar comentários da tarefa
+ */
+export const GetTaskCommentsParams = zod.object({
+  "taskId": zod.coerce.string()
+})
+
+export const GetTaskCommentsResponse = zod.object({
+  "comments": zod.array(zod.object({
+  "id": zod.string(),
+  "taskId": zod.string(),
+  "authorId": zod.string(),
+  "authorName": zod.string().optional(),
+  "body": zod.string(),
+  "createdAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Adicionar comentário à tarefa
+ */
+export const AddTaskCommentParams = zod.object({
+  "taskId": zod.coerce.string()
+})
+
+export const AddTaskCommentBody = zod.object({
+  "body": zod.string()
 })
 
 

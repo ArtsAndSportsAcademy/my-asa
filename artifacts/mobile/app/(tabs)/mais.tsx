@@ -16,9 +16,10 @@ const SECTIONS: { title: string; items: { label: string; icon: string; route: st
   {
     title: "Operacional",
     items: [
-      { label: "Livro do Dia",    icon: "file-text",  route: "/(tabs)/daily-book"   },
-      { label: "Painel",          icon: "activity",   route: "/(tabs)/panel"        },
-      { label: "Solicitações",    icon: "inbox",      route: "/(tabs)/solicitacoes" },
+      { label: "Livro do Dia",    icon: "file-text",    route: "/(tabs)/daily-book"   },
+      { label: "Painel",          icon: "activity",     route: "/(tabs)/panel"        },
+      { label: "Solicitações",    icon: "inbox",        route: "/(tabs)/solicitacoes" },
+      { label: "Tarefas",         icon: "check-square", route: "/(tabs)/tarefas"      },
     ],
   },
   {

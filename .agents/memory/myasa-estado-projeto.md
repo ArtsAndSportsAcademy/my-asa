@@ -3,6 +3,25 @@ name: MyASA 2.0 — Estado do Projeto
 description: Sprint progress, architectural decisions, and key conventions for the MyASA 2.0 system
 ---
 
+## Sprint 18 — S-18 Tarefas Operacionais (COMPLETO)
+**Objetivo:** Domínio completo de Tarefas Operacionais conforme AUD-D02.
+
+### O que foi entregue
+- **DB:** `lib/db/src/schema/tasks.ts` — 4 enums (TaskPriority, TaskStatus, TaskOrigin, TaskEvidenceType) + 3 tabelas (tasks, task_evidences, task_comments). Migração aplicada via psql.
+- **API:** `artifacts/api-server/src/routes/tasks.ts` — 13 endpoints (GET /my, GET /, POST /, GET /:id, PATCH /:id, POST /:id/start, POST /:id/ready-for-approval, POST /:id/approve, POST /:id/request-changes, POST /:id/cancel, POST /:id/evidences, DELETE /:id/evidences/:evidenceId, GET /:id/comments, POST /:id/comments). Typecheck limpo.
+- **OpenAPI + Codegen:** 14 operationIds + schemas completos em `lib/api-spec/openapi.yaml`. 9 hooks gerados via orval. `api-client-react` recompilado (`tsc -p tsconfig.json`) para atualizar dist/.
+- **Web Admin:** `admin/tasks.tsx` + `supervisor/tasks.tsx` — tabs (Todas/Em Aberto/Ag. Aprovação/Atrasadas/Concluídas), filtros de operação/prioridade, dialog de criação com checklist, ações de aprovar/solicitar ajustes/cancelar. Sem erros TS nas novas páginas.
+- **Mobile:** `(tabs)/tarefas.tsx` — lista de minhas tarefas, filtro de status, checklist interativo, ações Iniciar/Concluir/Enviar p/ Aprovação. Acessível via mais.tsx "Operacional > Tarefas".
+- **Roteamento:** `admin/tasks` (ADMIN) + `supervisor/tasks` (SUPERVISOR_A/B) em App.tsx. CheckSquare em ambos os sidebars (ADMIN_NAV OPERAÇÃO e SUPERVISOR_NAV OPERAÇÃO).
+
+### Convenções estabelecidas no Sprint 18
+- Após orval codegen, SEMPRE rodar `pnpm --filter @workspace/api-client-react exec tsc -p tsconfig.json` para atualizar dist/ (project references exigem compilação).
+- `useListUsers()` sem argumentos (não `useListUsers({}, {})`).
+- Mutations de tasks: `approveTask({taskId})`, `requestChanges({taskId, data:{comment}})`, `cancelTask({taskId, data?:{reason}})`, `startTask({taskId})`, `submitTaskForApproval({taskId})`.
+- Erros pré-existentes em home.tsx, operational-panel.tsx, requests.tsx, delegations.tsx são de sprints anteriores (hooks adicionados manualmente no passado) e não bloqueiam o S-18.
+
+---
+
 ## Sprint 17 — Branding & Identity (COMPLETO)
 **Objetivo:** Transformar o MyASA de plataforma funcional para produto com identidade própria.
 

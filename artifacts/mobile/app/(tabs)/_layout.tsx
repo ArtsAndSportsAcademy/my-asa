@@ -44,6 +44,7 @@ function NativeTabLayout() {
         <Icon sf={{ default: "ellipsis", selected: "ellipsis.circle.fill" }} />
         <Label>Mais</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Screen name="tarefas" options={{ href: null }} />
     </NativeTabs>
   );
 }
@@ -170,6 +171,7 @@ function ClassicTabLayout() {
       <Tabs.Screen name="historico"    options={{ tabBarButton: () => null, title: "Histórico"     }} />
       <Tabs.Screen name="biblioteca"  options={{ tabBarButton: () => null, title: "Biblioteca"    }} />
       <Tabs.Screen name="solicitacoes" options={{ tabBarButton: () => null, title: "Solicitações" }} />
+      <Tabs.Screen name="tarefas"      options={{ tabBarButton: () => null, title: "Tarefas"       }} />
     </Tabs>
   );
 }

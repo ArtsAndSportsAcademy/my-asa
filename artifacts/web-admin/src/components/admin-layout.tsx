@@ -3,7 +3,7 @@ import {
   Home, Users, Briefcase, Users2, LogOut, ChevronRight,
   BookOpen, CalendarDays, ShieldCheck, ClipboardList, BookMarked,
   LayoutDashboard, Bell, Clock, MessageSquare, Package, Library,
-  FileText,
+  FileText, CheckSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -37,6 +37,7 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/scales",        icon: ClipboardList, label: "Escalas"       },
       { href: "/admin/daily-book",    icon: BookMarked,    label: "Livro do Dia"  },
       { href: "/admin/requests",      icon: FileText,      label: "Solicitações"  },
+      { href: "/admin/tasks",         icon: CheckSquare,   label: "Tarefas"       },
     ],
   },
   {
@@ -85,6 +86,7 @@ const SUPERVISOR_NAV: NavGroup[] = [
       { href: "/admin/scales",                 icon: ClipboardList,   label: "Escalas"       },
       { href: "/supervisor/daily-book",        icon: BookMarked,      label: "Livro do Dia"  },
       { href: "/supervisor/requests",          icon: FileText,        label: "Solicitações"  },
+      { href: "/supervisor/tasks",             icon: CheckSquare,     label: "Tarefas"       },
       { href: "/supervisor/delegations",       icon: ShieldCheck,     label: "Delegações"    },
     ],
   },

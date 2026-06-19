@@ -72,8 +72,6 @@ export interface Operation {
   name: string;
   organizationId: string;
   status: OperationStatus;
-  lateThresholdMinutes?: number | null;
-  timezone?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -198,8 +196,6 @@ export type OperationUpdateHealthThresholds = { [key: string]: unknown } | null;
 export interface OperationUpdate {
   name?: string;
   healthThresholds?: OperationUpdateHealthThresholds;
-  lateThresholdMinutes?: number;
-  timezone?: string;
 }
 
 export type OperationStatusUpdateStatus = typeof OperationStatusUpdateStatus[keyof typeof OperationStatusUpdateStatus];
@@ -357,6 +353,56 @@ export type ShowBookSceneWithBlocks = ShowBookScene & {
 
 export type ShowBookWithTree = ShowBook & {
   scenes: ShowBookSceneWithBlocks[];
+};
+
+export interface ShowBookPositionRef {
+  id: string;
+  positionId: string;
+  showBookId: string;
+  documentId: string;
+  label?: string | null;
+  addedBy: string;
+  createdAt: string;
+}
+
+export interface ShowBookPositionRefCreate {
+  documentId: string;
+  label?: string;
+}
+
+export type ShowBookLibraryDocSummaryType = typeof ShowBookLibraryDocSummaryType[keyof typeof ShowBookLibraryDocSummaryType];
+
+
+export const ShowBookLibraryDocSummaryType = {
+  OPERATIONAL_PROCEDURE: 'OPERATIONAL_PROCEDURE',
+  RULES_AND_POLICIES: 'RULES_AND_POLICIES',
+  CHARACTER_REFERENCE: 'CHARACTER_REFERENCE',
+  COSTUME_REFERENCE: 'COSTUME_REFERENCE',
+  ONBOARDING_MATERIAL: 'ONBOARDING_MATERIAL',
+  SAFETY_PROCEDURE: 'SAFETY_PROCEDURE',
+} as const;
+
+export type ShowBookLibraryDocSummaryStatus = typeof ShowBookLibraryDocSummaryStatus[keyof typeof ShowBookLibraryDocSummaryStatus];
+
+
+export const ShowBookLibraryDocSummaryStatus = {
+  DRAFT: 'DRAFT',
+  PUBLISHED: 'PUBLISHED',
+  UPDATED: 'UPDATED',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export interface ShowBookLibraryDocSummary {
+  id: string;
+  title: string;
+  type: ShowBookLibraryDocSummaryType;
+  status: ShowBookLibraryDocSummaryStatus;
+  summary?: string | null;
+  version: number;
+}
+
+export type ShowBookPositionRefWithDoc = ShowBookPositionRef & {
+  document: ShowBookLibraryDocSummary;
 };
 
 export type ShowBookVersionChangeType = typeof ShowBookVersionChangeType[keyof typeof ShowBookVersionChangeType];
@@ -1953,6 +1999,213 @@ export interface NewLibraryDocumentVersionRequest {
   summary?: string;
 }
 
+export interface TaskChecklistItem {
+  id: string;
+  label: string;
+  completed: boolean;
+}
+
+export interface TaskMandatoryEvidence {
+  id: string;
+  type: string;
+  description: string;
+}
+
+export type TaskItemPriority = typeof TaskItemPriority[keyof typeof TaskItemPriority];
+
+
+export const TaskItemPriority = {
+  LOW: 'LOW',
+  MEDIUM: 'MEDIUM',
+  HIGH: 'HIGH',
+  CRITICAL: 'CRITICAL',
+} as const;
+
+export type TaskItemStatus = typeof TaskItemStatus[keyof typeof TaskItemStatus];
+
+
+export const TaskItemStatus = {
+  CREATED: 'CREATED',
+  IN_PROGRESS: 'IN_PROGRESS',
+  READY_FOR_APPROVAL: 'READY_FOR_APPROVAL',
+  CHANGES_REQUESTED: 'CHANGES_REQUESTED',
+  APPROVED: 'APPROVED',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED',
+  EXPIRED: 'EXPIRED',
+} as const;
+
+export type TaskItemOrigin = typeof TaskItemOrigin[keyof typeof TaskItemOrigin];
+
+
+export const TaskItemOrigin = {
+  MANUAL: 'MANUAL',
+  REQUEST: 'REQUEST',
+  LIBRARY: 'LIBRARY',
+  AI: 'AI',
+} as const;
+
+export interface TaskItem {
+  id: string;
+  title: string;
+  description?: string;
+  priority: TaskItemPriority;
+  status: TaskItemStatus;
+  dueDate: string;
+  requiresApproval: boolean;
+  origin: TaskItemOrigin;
+  operationId: string;
+  operationName?: string;
+  assigneeId: string;
+  assigneeName?: string;
+  creatorId?: string;
+  approverId?: string;
+  approverName?: string;
+  mandatoryChecklist?: TaskChecklistItem[];
+  operationalChecklist?: TaskChecklistItem[];
+  mandatoryEvidences?: TaskMandatoryEvidence[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type TaskEvidenceType = typeof TaskEvidenceType[keyof typeof TaskEvidenceType];
+
+
+export const TaskEvidenceType = {
+  PHOTO: 'PHOTO',
+  VIDEO: 'VIDEO',
+  DOCUMENT: 'DOCUMENT',
+  PDF: 'PDF',
+  LINK: 'LINK',
+  AUDIO: 'AUDIO',
+  PRESENTATION: 'PRESENTATION',
+} as const;
+
+export interface TaskEvidence {
+  id: string;
+  taskId: string;
+  uploaderId: string;
+  type: TaskEvidenceType;
+  url: string;
+  description?: string;
+  isRequired: boolean;
+  mandatoryEvidenceRefId?: string;
+  createdAt: string;
+}
+
+export interface TaskComment {
+  id: string;
+  taskId: string;
+  authorId: string;
+  authorName?: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface TaskListResponse {
+  tasks: TaskItem[];
+}
+
+export interface TaskSingleResponse {
+  task: TaskItem;
+}
+
+export interface TaskDetailResponse {
+  task: TaskItem;
+  evidences: TaskEvidence[];
+}
+
+export interface TaskCommentsResponse {
+  comments: TaskComment[];
+}
+
+export interface TaskCommentSingleResponse {
+  comment: TaskComment;
+}
+
+export interface TaskEvidenceSingleResponse {
+  evidence: TaskEvidence;
+}
+
+export type CreateTaskRequestPriority = typeof CreateTaskRequestPriority[keyof typeof CreateTaskRequestPriority];
+
+
+export const CreateTaskRequestPriority = {
+  LOW: 'LOW',
+  MEDIUM: 'MEDIUM',
+  HIGH: 'HIGH',
+  CRITICAL: 'CRITICAL',
+} as const;
+
+export type CreateTaskRequestOrigin = typeof CreateTaskRequestOrigin[keyof typeof CreateTaskRequestOrigin];
+
+
+export const CreateTaskRequestOrigin = {
+  MANUAL: 'MANUAL',
+  REQUEST: 'REQUEST',
+  LIBRARY: 'LIBRARY',
+  AI: 'AI',
+} as const;
+
+export interface CreateTaskRequest {
+  title: string;
+  description?: string;
+  operationId: string;
+  assigneeId: string;
+  approverId?: string;
+  requiresApproval?: boolean;
+  priority?: CreateTaskRequestPriority;
+  dueDate: string;
+  mandatoryChecklist?: TaskChecklistItem[];
+  mandatoryEvidences?: TaskMandatoryEvidence[];
+  origin?: CreateTaskRequestOrigin;
+  libraryDocumentId?: string;
+}
+
+export type UpdateTaskRequestPriority = typeof UpdateTaskRequestPriority[keyof typeof UpdateTaskRequestPriority];
+
+
+export const UpdateTaskRequestPriority = {
+  LOW: 'LOW',
+  MEDIUM: 'MEDIUM',
+  HIGH: 'HIGH',
+  CRITICAL: 'CRITICAL',
+} as const;
+
+export interface UpdateTaskRequest {
+  title?: string;
+  description?: string;
+  assigneeId?: string;
+  approverId?: string;
+  requiresApproval?: boolean;
+  priority?: UpdateTaskRequestPriority;
+  dueDate?: string;
+  mandatoryChecklist?: TaskChecklistItem[];
+  operationalChecklist?: TaskChecklistItem[];
+  mandatoryEvidences?: TaskMandatoryEvidence[];
+}
+
+export type AddTaskEvidenceRequestType = typeof AddTaskEvidenceRequestType[keyof typeof AddTaskEvidenceRequestType];
+
+
+export const AddTaskEvidenceRequestType = {
+  PHOTO: 'PHOTO',
+  VIDEO: 'VIDEO',
+  DOCUMENT: 'DOCUMENT',
+  PDF: 'PDF',
+  LINK: 'LINK',
+  AUDIO: 'AUDIO',
+  PRESENTATION: 'PRESENTATION',
+} as const;
+
+export interface AddTaskEvidenceRequest {
+  type: AddTaskEvidenceRequestType;
+  url: string;
+  description?: string;
+  isRequired?: boolean;
+  mandatoryEvidenceRefId?: string;
+}
+
 /**
  * Bad request
  */
@@ -2122,6 +2375,18 @@ export type CreateShowBookLine201 = {
 
 export type UpdateShowBookLine200 = {
   line: ShowBookLine;
+};
+
+export type ListShowBookPositionRefs200 = {
+  refs: ShowBookPositionRefWithDoc[];
+};
+
+export type AddShowBookPositionRef201 = {
+  ref: ShowBookPositionRef;
+};
+
+export type ListShowBookRefs200 = {
+  refs: ShowBookPositionRefWithDoc[];
 };
 
 export type ListOperationTags200 = {
@@ -2397,256 +2662,27 @@ categoryId?: string;
 status?: string;
 };
 
-export type ShowBookLibraryDocType = typeof ShowBookLibraryDocType[keyof typeof ShowBookLibraryDocType];
-
-export const ShowBookLibraryDocType = {
-  OPERATIONAL_PROCEDURE: 'OPERATIONAL_PROCEDURE',
-  RULES_AND_POLICIES: 'RULES_AND_POLICIES',
-  CHARACTER_REFERENCE: 'CHARACTER_REFERENCE',
-  COSTUME_REFERENCE: 'COSTUME_REFERENCE',
-  ONBOARDING_MATERIAL: 'ONBOARDING_MATERIAL',
-  SAFETY_PROCEDURE: 'SAFETY_PROCEDURE',
-} as const;
-
-export type ShowBookLibraryDocStatus = typeof ShowBookLibraryDocStatus[keyof typeof ShowBookLibraryDocStatus];
-
-export const ShowBookLibraryDocStatus = {
-  DRAFT: 'DRAFT',
-  PUBLISHED: 'PUBLISHED',
-  UPDATED: 'UPDATED',
-  ARCHIVED: 'ARCHIVED',
-} as const;
-
-export interface ShowBookLibraryDocSummary {
-  id: string;
-  title: string;
-  type: ShowBookLibraryDocType;
-  status: ShowBookLibraryDocStatus;
-  summary?: string | null;
-  version: number;
-}
-
-export interface ShowBookPositionRef {
-  id: string;
-  positionId: string;
-  showBookId: string;
-  documentId: string;
-  label?: string | null;
-  addedBy: string;
-  createdAt: string;
-}
-
-export interface ShowBookPositionRefCreate {
-  documentId: string;
-  label?: string;
-}
-
-export type ShowBookPositionRefWithDoc = ShowBookPositionRef & {
-  document: ShowBookLibraryDocSummary;
+export type GetMyTasksParams = {
+status?: string;
+priority?: string;
 };
 
-export type ListShowBookPositionRefs200 = {
-  refs: ShowBookPositionRefWithDoc[];
+export type ListTasksParams = {
+operationId?: string;
+status?: string;
+priority?: string;
+assigneeId?: string;
 };
 
-export type AddShowBookPositionRef201 = {
-  ref: ShowBookPositionRef;
+export type RequestTaskChangesBody = {
+  comment: string;
 };
 
-export type ListShowBookRefs200 = {
-  refs: ShowBookPositionRefWithDoc[];
-};
-
-// ─── Check-in Operacional ─────────────────────────────────────────────────────
-
-export interface CheckInRecord {
-  id: string;
-  status: string;
-  checkedInAt?: string | null;
-  excuseReason?: string | null;
-  date: string;
-  operationId: string;
-}
-
-export interface CheckInItem {
-  userId: string | null;
-  userName: string;
-  userPhotoUrl?: string | null;
-  earliestStart?: string | null;
-  checkInId: string | null;
-  status: string;
-  checkedInAt?: string | null;
-  excuseReason?: string | null;
-  registeredBy?: string | null;
-}
-
-export interface CheckInListResponse {
-  checkIns: CheckInItem[];
-}
-
-export interface CheckInSummary {
-  total: number;
-  checkedIn: number;
-  late: number;
-  absent: number;
-  excused: number;
-  expected: number;
-}
-
-export interface CheckInSummaryResponse {
-  summary: CheckInSummary;
-}
-
-export interface CheckInMyStatusResponse {
-  status: string | null;
-  checkIn: CheckInRecord | null;
-  operationId?: string | null;
-  message?: string | null;
-}
-
-export interface PerformCheckInResponse {
-  checkIn: CheckInRecord;
-}
-
-export interface UpdateCheckInRequest {
-  status?: string;
-  excuseReason?: string;
-  userId?: string;
-  operationId?: string;
-  date?: string;
-}
-
-export interface ListCheckInsParams {
-  date: string;
-  operationId: string;
-}
-
-export interface GetCheckInSummaryParams {
-  date: string;
-  operationId: string;
-}
-
-export interface GetMyCheckInStatusParams {
-  date?: string;
-}
-
-// ─── S-06 Solicitações ────────────────────────────────────────────────────────
-
-export type RequestType =
-  | "LEAVE" | "ROLE_RESTRICTION" | "PHYSICAL_RESTRICTION"
-  | "HEALTH_RESTRICTION" | "SCHEDULE_CHANGE" | "SWAP" | "OTHER";
-
-export type RequestStatus =
-  | "PENDING" | "APPROVED" | "DENIED"
-  | "ALTERNATIVE_PROPOSED" | "ALTERNATIVE_ACCEPTED" | "ALTERNATIVE_REJECTED" | "EXPIRED";
-
-export type RequestDecisionType = "APPROVED" | "DENIED" | "ALTERNATIVE_PROPOSED";
-
-export interface RequestDecisionItem {
-  id: string;
-  requestId: string;
-  supervisorId: string;
-  supervisorName: string;
-  decision: RequestDecisionType;
-  reason?: string | null;
-  alternativeDetails?: string | null;
-  deadline?: string | null;
-  createdAt: string;
-}
-
-export interface RequestItem {
-  id: string;
-  requesterId: string;
-  requesterName: string;
-  operationId: string;
-  operationName: string;
-  type: RequestType;
-  status: RequestStatus;
-  targetDates: string[];
-  reason?: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface RequestDetail extends RequestItem {
-  decisions: RequestDecisionItem[];
-}
-
-export interface CreateRequestBody {
-  type: RequestType;
-  operationId: string;
-  targetDates: string[];
+export type CancelTaskBody = {
   reason?: string;
-}
+};
 
-export interface DecideRequestBody {
-  decision: RequestDecisionType;
-  reason?: string;
-  alternativeDetails?: string;
-  deadline?: string;
-}
+export type AddTaskCommentBody = {
+  body: string;
+};
 
-export interface UpdateRequestBody {
-  status: "ALTERNATIVE_ACCEPTED" | "ALTERNATIVE_REJECTED";
-}
-
-export interface ListRequestsResponse {
-  requests: RequestItem[];
-}
-
-export interface GetRequestResponse {
-  request: RequestDetail;
-}
-
-export interface ListRequestsParams {
-  operationId?: string;
-  status?: string;
-}
-
-export interface ListPendingRequestsParams {
-  operationId?: string;
-}
-
-
-// ─── GOV-D11: Delegações ──────────────────────────────────────────────────────
-
-export interface DelegationItem {
-  delegationId: string;
-  supervisorId: string;
-  supervisorName: string;
-  delegateId: string;
-  delegateName: string;
-  operationId: string;
-  operationName: string;
-  startDate: string;
-  endDate: string;
-  reason: string | null;
-  status: string;
-  createdAt: string;
-}
-
-export interface ActiveDelegationItem {
-  delegationId: string;
-  supervisorId: string;
-  supervisorName: string;
-  operationId: string;
-  operationName: string;
-  startDate: string;
-  endDate: string;
-}
-
-export interface CreateDelegationBody {
-  delegateId: string;
-  operationId: string;
-  startDate: string;
-  endDate: string;
-  reason?: string;
-}
-
-export interface ListDelegationsResponse {
-  delegations: DelegationItem[];
-}
-
-export interface MyActiveDelegationsResponse {
-  delegations: ActiveDelegationItem[];
-}

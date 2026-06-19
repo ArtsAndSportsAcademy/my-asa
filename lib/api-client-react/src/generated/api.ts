@@ -22,6 +22,9 @@ import type {
 import type {
   AddGroupMember201,
   AddGroupSupervisor201,
+  AddShowBookPositionRef201,
+  AddTaskCommentBody,
+  AddTaskEvidenceRequest,
   AddUserRole201,
   AgendaEventCreate,
   AgendaEventUpdate,
@@ -35,6 +38,7 @@ import type {
   CancelAgendaEvent200,
   CancelDailyBook200,
   CancelDailyBookRequest,
+  CancelTaskBody,
   CompleteAgendaEvent200,
   ConfirmAgendaEvent200,
   ConflictResponse,
@@ -53,6 +57,7 @@ import type {
   CreateShowBookLine201,
   CreateShowBookPosition201,
   CreateShowBookScene201,
+  CreateTaskRequest,
   CreateUser201,
   CurrentOrganization,
   DailyBookAssignmentPatchRequest,
@@ -74,6 +79,7 @@ import type {
   GetDailyBook200,
   GetDailyBookDelta200,
   GetMyHistoryParams,
+  GetMyTasksParams,
   GetOperation200,
   GetOperationalGroup200,
   GetOperationalGroups200,
@@ -116,9 +122,12 @@ import type {
   ListScaleExceptions200,
   ListScales200,
   ListScalesParams,
+  ListShowBookPositionRefs200,
+  ListShowBookRefs200,
   ListShowBookVersions200,
   ListShowBooks200,
   ListShowBooksParams,
+  ListTasksParams,
   ListUserRoles200,
   ListUserTags200,
   ListUsers200,
@@ -158,6 +167,7 @@ import type {
   ReorderDailyBookScenes200,
   RepublishDailyBook200,
   RepublishScale200,
+  RequestTaskChangesBody,
   ResolveScaleException200,
   RoleCreate,
   ScaleGenerateRequest,
@@ -166,10 +176,17 @@ import type {
   SceneUpdate,
   SendMessageRequest,
   ShowBookCreate,
+  ShowBookPositionRefCreate,
   ShowBookStatusUpdate,
   ShowBookUpdate,
   SuspendAgendaEvent200,
   TagCreate,
+  TaskCommentSingleResponse,
+  TaskCommentsResponse,
+  TaskDetailResponse,
+  TaskEvidenceSingleResponse,
+  TaskListResponse,
+  TaskSingleResponse,
   TokensResponse,
   UnauthorizedResponse,
   UnprocessableEntityResponse,
@@ -188,36 +205,14 @@ import type {
   UpdateShowBookPosition200,
   UpdateShowBookScene200,
   UpdateShowBookStatus200,
+  UpdateTaskRequest,
   UpdateUser200,
   UpdateUserStatus200,
   UserContext,
   UserCreate,
   UserStatusUpdate,
   UserTagAssign,
-  UserUpdate,
-  AddShowBookPositionRef201,
-  ListShowBookPositionRefs200,
-  ListShowBookRefs200,
-  ShowBookPositionRefCreate,
-  ShowBookPositionRefWithDoc,
-  CheckInListResponse,
-  CheckInSummaryResponse,
-  CheckInMyStatusResponse,
-  PerformCheckInResponse,
-  UpdateCheckInRequest,
-  ListCheckInsParams,
-  GetCheckInSummaryParams,
-  GetMyCheckInStatusParams,
-  CheckInRecord,
-  CreateRequestBody,
-  UpdateRequestBody,
-  DecideRequestBody,
-  RequestItem,
-  RequestDecisionItem,
-  ListRequestsResponse,
-  GetRequestResponse,
-  ListRequestsParams,
-  ListPendingRequestsParams,
+  UserUpdate
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -3703,6 +3698,313 @@ export const useDeleteShowBookLine = <TError = ErrorType<BadRequestResponse | Un
       > => {
       return useMutation(getDeleteShowBookLineMutationOptions(options));
     }
+
+export const getListShowBookPositionRefsUrl = (id: string,
+    positionId: string,) => {
+
+
+
+
+  return `/api/show-books/${id}/positions/${positionId}/refs`
+}
+
+/**
+ * @summary Listar referências oficiais da posição
+ */
+export const listShowBookPositionRefs = async (id: string,
+    positionId: string, options?: RequestInit): Promise<ListShowBookPositionRefs200> => {
+
+  return customFetch<ListShowBookPositionRefs200>(getListShowBookPositionRefsUrl(id,positionId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListShowBookPositionRefsQueryKey = (id: string,
+    positionId: string,) => {
+    return [
+    `/api/show-books/${id}/positions/${positionId}/refs`
+    ] as const;
+    }
+
+
+export const getListShowBookPositionRefsQueryOptions = <TData = Awaited<ReturnType<typeof listShowBookPositionRefs>>, TError = ErrorType<UnauthorizedResponse>>(id: string,
+    positionId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listShowBookPositionRefs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListShowBookPositionRefsQueryKey(id,positionId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listShowBookPositionRefs>>> = ({ signal }) => listShowBookPositionRefs(id,positionId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id && positionId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listShowBookPositionRefs>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListShowBookPositionRefsQueryResult = NonNullable<Awaited<ReturnType<typeof listShowBookPositionRefs>>>
+export type ListShowBookPositionRefsQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Listar referências oficiais da posição
+ */
+
+export function useListShowBookPositionRefs<TData = Awaited<ReturnType<typeof listShowBookPositionRefs>>, TError = ErrorType<UnauthorizedResponse>>(
+ id: string,
+    positionId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listShowBookPositionRefs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListShowBookPositionRefsQueryOptions(id,positionId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getAddShowBookPositionRefUrl = (id: string,
+    positionId: string,) => {
+
+
+
+
+  return `/api/show-books/${id}/positions/${positionId}/refs`
+}
+
+/**
+ * @summary Vincular documento da Biblioteca à posição
+ */
+export const addShowBookPositionRef = async (id: string,
+    positionId: string,
+    showBookPositionRefCreate: ShowBookPositionRefCreate, options?: RequestInit): Promise<AddShowBookPositionRef201> => {
+
+  return customFetch<AddShowBookPositionRef201>(getAddShowBookPositionRefUrl(id,positionId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      showBookPositionRefCreate,)
+  }
+);}
+
+
+
+
+export const getAddShowBookPositionRefMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addShowBookPositionRef>>, TError,{id: string;positionId: string;data: BodyType<ShowBookPositionRefCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addShowBookPositionRef>>, TError,{id: string;positionId: string;data: BodyType<ShowBookPositionRefCreate>}, TContext> => {
+
+const mutationKey = ['addShowBookPositionRef'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addShowBookPositionRef>>, {id: string;positionId: string;data: BodyType<ShowBookPositionRefCreate>}> = (props) => {
+          const {id,positionId,data} = props ?? {};
+
+          return  addShowBookPositionRef(id,positionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddShowBookPositionRefMutationResult = NonNullable<Awaited<ReturnType<typeof addShowBookPositionRef>>>
+    export type AddShowBookPositionRefMutationBody = BodyType<ShowBookPositionRefCreate>
+    export type AddShowBookPositionRefMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>
+
+    /**
+ * @summary Vincular documento da Biblioteca à posição
+ */
+export const useAddShowBookPositionRef = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addShowBookPositionRef>>, TError,{id: string;positionId: string;data: BodyType<ShowBookPositionRefCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addShowBookPositionRef>>,
+        TError,
+        {id: string;positionId: string;data: BodyType<ShowBookPositionRefCreate>},
+        TContext
+      > => {
+      return useMutation(getAddShowBookPositionRefMutationOptions(options));
+    }
+
+export const getDeleteShowBookPositionRefUrl = (id: string,
+    positionId: string,
+    refId: string,) => {
+
+
+
+
+  return `/api/show-books/${id}/positions/${positionId}/refs/${refId}`
+}
+
+/**
+ * @summary Remover referência oficial da posição
+ */
+export const deleteShowBookPositionRef = async (id: string,
+    positionId: string,
+    refId: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteShowBookPositionRefUrl(id,positionId,refId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteShowBookPositionRefMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookPositionRef>>, TError,{id: string;positionId: string;refId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookPositionRef>>, TError,{id: string;positionId: string;refId: string}, TContext> => {
+
+const mutationKey = ['deleteShowBookPositionRef'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteShowBookPositionRef>>, {id: string;positionId: string;refId: string}> = (props) => {
+          const {id,positionId,refId} = props ?? {};
+
+          return  deleteShowBookPositionRef(id,positionId,refId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteShowBookPositionRefMutationResult = NonNullable<Awaited<ReturnType<typeof deleteShowBookPositionRef>>>
+
+    export type DeleteShowBookPositionRefMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Remover referência oficial da posição
+ */
+export const useDeleteShowBookPositionRef = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookPositionRef>>, TError,{id: string;positionId: string;refId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteShowBookPositionRef>>,
+        TError,
+        {id: string;positionId: string;refId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteShowBookPositionRefMutationOptions(options));
+    }
+
+export const getListShowBookRefsUrl = (id: string,) => {
+
+
+
+
+  return `/api/show-books/${id}/refs`
+}
+
+/**
+ * @summary Listar todas as referências de um Livro do Show
+ */
+export const listShowBookRefs = async (id: string, options?: RequestInit): Promise<ListShowBookRefs200> => {
+
+  return customFetch<ListShowBookRefs200>(getListShowBookRefsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListShowBookRefsQueryKey = (id: string,) => {
+    return [
+    `/api/show-books/${id}/refs`
+    ] as const;
+    }
+
+
+export const getListShowBookRefsQueryOptions = <TData = Awaited<ReturnType<typeof listShowBookRefs>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listShowBookRefs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListShowBookRefsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listShowBookRefs>>> = ({ signal }) => listShowBookRefs(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listShowBookRefs>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListShowBookRefsQueryResult = NonNullable<Awaited<ReturnType<typeof listShowBookRefs>>>
+export type ListShowBookRefsQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary Listar todas as referências de um Livro do Show
+ */
+
+export function useListShowBookRefs<TData = Awaited<ReturnType<typeof listShowBookRefs>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listShowBookRefs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListShowBookRefsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getListOperationTagsUrl = (operationId: string,) => {
 
@@ -10290,575 +10592,1044 @@ export function useListLibraryDocumentVersions<TData = Awaited<ReturnType<typeof
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
-// ─── Referências oficiais da Biblioteca por posição ───────────────────────────
 
-export const getListShowBookPositionRefsUrl = (id: string, positionId: string) =>
-  `/api/show-books/${id}/positions/${positionId}/refs`;
 
-export const listShowBookPositionRefs = async (id: string, positionId: string, options?: RequestInit): Promise<ListShowBookPositionRefs200> =>
-  customFetch<ListShowBookPositionRefs200>(getListShowBookPositionRefsUrl(id, positionId), { ...options });
 
-export const getListShowBookPositionRefsQueryKey = (id: string, positionId: string) =>
-  [`/api/show-books/${id}/positions/${positionId}/refs`] as const;
 
-export const getListShowBookPositionRefsQueryOptions = <TData = Awaited<ReturnType<typeof listShowBookPositionRefs>>, TError = ErrorType<UnauthorizedResponse>>(
-  id: string, positionId: string, options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof listShowBookPositionRefs>>, TError, TData>, request?: SecondParameter<typeof customFetch> }
+
+
+export const getGetMyTasksUrl = (params?: GetMyTasksParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/tasks/my?${stringifiedParams}` : `/api/tasks/my`
+}
+
+/**
+ * @summary Listar tarefas atribuídas ao usuário atual
+ */
+export const getMyTasks = async (params?: GetMyTasksParams, options?: RequestInit): Promise<TaskListResponse> => {
+
+  return customFetch<TaskListResponse>(getGetMyTasksUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyTasksQueryKey = (params?: GetMyTasksParams,) => {
+    return [
+    `/api/tasks/my`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetMyTasksQueryOptions = <TData = Awaited<ReturnType<typeof getMyTasks>>, TError = ErrorType<UnauthorizedResponse>>(params?: GetMyTasksParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyTasks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-  const queryKey = queryOptions?.queryKey ?? getListShowBookPositionRefsQueryKey(id, positionId);
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof listShowBookPositionRefs>>> = ({ signal }) =>
-    listShowBookPositionRefs(id, positionId, { signal, ...requestOptions });
-  return { queryKey, queryFn, enabled: !!(id && positionId), ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof listShowBookPositionRefs>>, TError, TData> & { queryKey: QueryKey };
-};
 
-export type ListShowBookPositionRefsQueryResult = NonNullable<Awaited<ReturnType<typeof listShowBookPositionRefs>>>;
-export type ListShowBookPositionRefsQueryError = ErrorType<UnauthorizedResponse>;
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
-export function useListShowBookPositionRefs<TData = Awaited<ReturnType<typeof listShowBookPositionRefs>>, TError = ErrorType<UnauthorizedResponse>>(
-  id: string, positionId: string, options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof listShowBookPositionRefs>>, TError, TData>, request?: SecondParameter<typeof customFetch> }
-): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListShowBookPositionRefsQueryOptions(id, positionId, options);
-  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  const queryKey =  queryOptions?.queryKey ?? getGetMyTasksQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyTasks>>> = ({ signal }) => getMyTasks(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyTasks>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyTasksQueryResult = NonNullable<Awaited<ReturnType<typeof getMyTasks>>>
+export type GetMyTasksQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Listar tarefas atribuídas ao usuário atual
+ */
+
+export function useGetMyTasks<TData = Awaited<ReturnType<typeof getMyTasks>>, TError = ErrorType<UnauthorizedResponse>>(
+ params?: GetMyTasksParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyTasks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyTasksQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
-export const getAddShowBookPositionRefUrl = (id: string, positionId: string) =>
-  `/api/show-books/${id}/positions/${positionId}/refs`;
 
-export const addShowBookPositionRef = async (id: string, positionId: string, showBookPositionRefCreate: ShowBookPositionRefCreate, options?: RequestInit): Promise<AddShowBookPositionRef201> =>
-  customFetch<AddShowBookPositionRef201>(getAddShowBookPositionRefUrl(id, positionId), {
-    ...options, method: 'POST', headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(showBookPositionRefCreate),
+
+
+
+
+
+export const getListTasksUrl = (params?: ListTasksParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
   });
 
-export const getAddShowBookPositionRefMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>, TContext = unknown>(
-  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof addShowBookPositionRef>>, TError, { id: string; positionId: string; data: BodyType<ShowBookPositionRefCreate> }, TContext>, request?: SecondParameter<typeof customFetch> }
-): UseMutationOptions<Awaited<ReturnType<typeof addShowBookPositionRef>>, TError, { id: string; positionId: string; data: BodyType<ShowBookPositionRefCreate> }, TContext> => {
-  const mutationKey = ['addShowBookPositionRef'];
-  const { mutation: mutationOptions, request: requestOptions } = options ?
-    options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-  const mutationFn: MutationFunction<Awaited<ReturnType<typeof addShowBookPositionRef>>, { id: string; positionId: string; data: BodyType<ShowBookPositionRefCreate> }> = (props) => {
-    const { id, positionId, data } = props ?? {};
-    return addShowBookPositionRef(id, positionId, data, requestOptions);
-  };
-  return { mutationFn, ...mutationOptions };
-};
+  const stringifiedParams = normalizedParams.toString();
 
-export type AddShowBookPositionRefMutationResult = NonNullable<Awaited<ReturnType<typeof addShowBookPositionRef>>>;
-export type AddShowBookPositionRefMutationBody = BodyType<ShowBookPositionRefCreate>;
-export type AddShowBookPositionRefMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>;
+  return stringifiedParams.length > 0 ? `/api/tasks?${stringifiedParams}` : `/api/tasks`
+}
 
-export const useAddShowBookPositionRef = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>, TContext = unknown>(
-  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof addShowBookPositionRef>>, TError, { id: string; positionId: string; data: BodyType<ShowBookPositionRefCreate> }, TContext>, request?: SecondParameter<typeof customFetch> }
-): UseMutationResult<Awaited<ReturnType<typeof addShowBookPositionRef>>, TError, { id: string; positionId: string; data: BodyType<ShowBookPositionRefCreate> }, TContext> => {
-  return useMutation(getAddShowBookPositionRefMutationOptions(options));
-};
+/**
+ * @summary Listar tarefas (gestão)
+ */
+export const listTasks = async (params?: ListTasksParams, options?: RequestInit): Promise<TaskListResponse> => {
 
-export const getDeleteShowBookPositionRefUrl = (id: string, positionId: string, refId: string) =>
-  `/api/show-books/${id}/positions/${positionId}/refs/${refId}`;
+  return customFetch<TaskListResponse>(getListTasksUrl(params),
+  {
+    ...options,
+    method: 'GET'
 
-export const deleteShowBookPositionRef = async (id: string, positionId: string, refId: string, options?: RequestInit): Promise<void> =>
-  customFetch<void>(getDeleteShowBookPositionRefUrl(id, positionId, refId), { ...options, method: 'DELETE' });
 
-export const getDeleteShowBookPositionRefMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>, TContext = unknown>(
-  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookPositionRef>>, TError, { id: string; positionId: string; refId: string }, TContext>, request?: SecondParameter<typeof customFetch> }
-): UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookPositionRef>>, TError, { id: string; positionId: string; refId: string }, TContext> => {
-  const mutationKey = ['deleteShowBookPositionRef'];
-  const { mutation: mutationOptions, request: requestOptions } = options ?
-    options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-  const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteShowBookPositionRef>>, { id: string; positionId: string; refId: string }> = (props) => {
-    const { id, positionId, refId } = props ?? {};
-    return deleteShowBookPositionRef(id, positionId, refId, requestOptions);
-  };
-  return { mutationFn, ...mutationOptions };
-};
+  }
+);}
 
-export type DeleteShowBookPositionRefMutationResult = NonNullable<Awaited<ReturnType<typeof deleteShowBookPositionRef>>>;
-export type DeleteShowBookPositionRefMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>;
 
-export const useDeleteShowBookPositionRef = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>, TContext = unknown>(
-  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookPositionRef>>, TError, { id: string; positionId: string; refId: string }, TContext>, request?: SecondParameter<typeof customFetch> }
-): UseMutationResult<Awaited<ReturnType<typeof deleteShowBookPositionRef>>, TError, { id: string; positionId: string; refId: string }, TContext> => {
-  return useMutation(getDeleteShowBookPositionRefMutationOptions(options));
-};
 
-export const getListShowBookRefsUrl = (id: string) => `/api/show-books/${id}/refs`;
 
-export const listShowBookRefs = async (id: string, options?: RequestInit): Promise<ListShowBookRefs200> =>
-  customFetch<ListShowBookRefs200>(getListShowBookRefsUrl(id), { ...options });
 
-export const getListShowBookRefsQueryKey = (id: string) =>
-  [`/api/show-books/${id}/refs`] as const;
+export const getListTasksQueryKey = (params?: ListTasksParams,) => {
+    return [
+    `/api/tasks`, ...(params ? [params] : [])
+    ] as const;
+    }
 
-export const getListShowBookRefsQueryOptions = <TData = Awaited<ReturnType<typeof listShowBookRefs>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
-  id: string, options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof listShowBookRefs>>, TError, TData>, request?: SecondParameter<typeof customFetch> }
+
+export const getListTasksQueryOptions = <TData = Awaited<ReturnType<typeof listTasks>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(params?: ListTasksParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTasks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-  const queryKey = queryOptions?.queryKey ?? getListShowBookRefsQueryKey(id);
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof listShowBookRefs>>> = ({ signal }) =>
-    listShowBookRefs(id, { signal, ...requestOptions });
-  return { queryKey, queryFn, enabled: !!(id), ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof listShowBookRefs>>, TError, TData> & { queryKey: QueryKey };
-};
 
-export type ListShowBookRefsQueryResult = NonNullable<Awaited<ReturnType<typeof listShowBookRefs>>>;
-export type ListShowBookRefsQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>;
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
-export function useListShowBookRefs<TData = Awaited<ReturnType<typeof listShowBookRefs>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
-  id: string, options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof listShowBookRefs>>, TError, TData>, request?: SecondParameter<typeof customFetch> }
-): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListShowBookRefsQueryOptions(id, options);
-  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  const queryKey =  queryOptions?.queryKey ?? getListTasksQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTasks>>> = ({ signal }) => listTasks(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTasks>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListTasksQueryResult = NonNullable<Awaited<ReturnType<typeof listTasks>>>
+export type ListTasksQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary Listar tarefas (gestão)
+ */
+
+export function useListTasks<TData = Awaited<ReturnType<typeof listTasks>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+ params?: ListTasksParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTasks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListTasksQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
-// Unused import suppressor
-void (null as unknown as ShowBookPositionRefWithDoc);
 
-// ─── Check-in Operacional ─────────────────────────────────────────────────────
 
-export const listCheckIns = async (params: ListCheckInsParams, options?: RequestInit): Promise<CheckInListResponse> =>
-  customFetch<CheckInListResponse>(`/api/check-ins?date=${params.date}&operationId=${params.operationId}`, { ...options });
 
-export const getListCheckInsQueryKey = (params: ListCheckInsParams) =>
-  [`/api/check-ins`, params] as const;
 
-export const getListCheckInsQueryOptions = <TData = Awaited<ReturnType<typeof listCheckIns>>, TError = ErrorType<UnauthorizedResponse>>(
-  params: ListCheckInsParams,
-  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof listCheckIns>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
+
+
+export const getCreateTaskUrl = () => {
+
+
+
+
+  return `/api/tasks`
+}
+
+/**
+ * @summary Criar nova tarefa
+ */
+export const createTask = async (createTaskRequest: CreateTaskRequest, options?: RequestInit): Promise<TaskSingleResponse> => {
+
+  return customFetch<TaskSingleResponse>(getCreateTaskUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createTaskRequest,)
+  }
+);}
+
+
+
+
+export const getCreateTaskMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTask>>, TError,{data: BodyType<CreateTaskRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createTask>>, TError,{data: BodyType<CreateTaskRequest>}, TContext> => {
+
+const mutationKey = ['createTask'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createTask>>, {data: BodyType<CreateTaskRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createTask(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateTaskMutationResult = NonNullable<Awaited<ReturnType<typeof createTask>>>
+    export type CreateTaskMutationBody = BodyType<CreateTaskRequest>
+    export type CreateTaskMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>
+
+    /**
+ * @summary Criar nova tarefa
+ */
+export const useCreateTask = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTask>>, TError,{data: BodyType<CreateTaskRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createTask>>,
+        TError,
+        {data: BodyType<CreateTaskRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateTaskMutationOptions(options));
+    }
+
+export const getGetTaskUrl = (taskId: string,) => {
+
+
+
+
+  return `/api/tasks/${taskId}`
+}
+
+/**
+ * @summary Detalhe de uma tarefa
+ */
+export const getTask = async (taskId: string, options?: RequestInit): Promise<TaskDetailResponse> => {
+
+  return customFetch<TaskDetailResponse>(getGetTaskUrl(taskId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTaskQueryKey = (taskId: string,) => {
+    return [
+    `/api/tasks/${taskId}`
+    ] as const;
+    }
+
+
+export const getGetTaskQueryOptions = <TData = Awaited<ReturnType<typeof getTask>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(taskId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTask>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-  const queryKey = queryOptions?.queryKey ?? getListCheckInsQueryKey(params);
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof listCheckIns>>> = ({ signal }) =>
-    listCheckIns(params, { signal, ...requestOptions });
-  return { queryKey, queryFn, enabled: !!(params.date && params.operationId), ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof listCheckIns>>, TError, TData> & { queryKey: QueryKey };
-};
 
-export type ListCheckInsQueryResult = NonNullable<Awaited<ReturnType<typeof listCheckIns>>>;
-export type ListCheckInsQueryError = ErrorType<UnauthorizedResponse>;
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
-export function useListCheckIns<TData = Awaited<ReturnType<typeof listCheckIns>>, TError = ErrorType<UnauthorizedResponse>>(
-  params: ListCheckInsParams,
-  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof listCheckIns>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
-): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListCheckInsQueryOptions(params, options);
-  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  const queryKey =  queryOptions?.queryKey ?? getGetTaskQueryKey(taskId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTask>>> = ({ signal }) => getTask(taskId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(taskId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTask>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTaskQueryResult = NonNullable<Awaited<ReturnType<typeof getTask>>>
+export type GetTaskQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+
+/**
+ * @summary Detalhe de uma tarefa
+ */
+
+export function useGetTask<TData = Awaited<ReturnType<typeof getTask>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(
+ taskId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTask>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTaskQueryOptions(taskId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
-// summary
 
-export const getCheckInSummaryFn = async (params: GetCheckInSummaryParams, options?: RequestInit): Promise<CheckInSummaryResponse> =>
-  customFetch<CheckInSummaryResponse>(`/api/check-ins/summary?date=${params.date}&operationId=${params.operationId}`, { ...options });
 
-export const getGetCheckInSummaryQueryKey = (params: GetCheckInSummaryParams) =>
-  [`/api/check-ins/summary`, params] as const;
 
-export const getGetCheckInSummaryQueryOptions = <TData = Awaited<ReturnType<typeof getCheckInSummaryFn>>, TError = ErrorType<UnauthorizedResponse>>(
-  params: GetCheckInSummaryParams,
-  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getCheckInSummaryFn>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
+
+
+
+export const getUpdateTaskUrl = (taskId: string,) => {
+
+
+
+
+  return `/api/tasks/${taskId}`
+}
+
+/**
+ * @summary Editar tarefa
+ */
+export const updateTask = async (taskId: string,
+    updateTaskRequest: UpdateTaskRequest, options?: RequestInit): Promise<TaskSingleResponse> => {
+
+  return customFetch<TaskSingleResponse>(getUpdateTaskUrl(taskId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateTaskRequest,)
+  }
+);}
+
+
+
+
+export const getUpdateTaskMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTask>>, TError,{taskId: string;data: BodyType<UpdateTaskRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateTask>>, TError,{taskId: string;data: BodyType<UpdateTaskRequest>}, TContext> => {
+
+const mutationKey = ['updateTask'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateTask>>, {taskId: string;data: BodyType<UpdateTaskRequest>}> = (props) => {
+          const {taskId,data} = props ?? {};
+
+          return  updateTask(taskId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateTaskMutationResult = NonNullable<Awaited<ReturnType<typeof updateTask>>>
+    export type UpdateTaskMutationBody = BodyType<UpdateTaskRequest>
+    export type UpdateTaskMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Editar tarefa
+ */
+export const useUpdateTask = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTask>>, TError,{taskId: string;data: BodyType<UpdateTaskRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateTask>>,
+        TError,
+        {taskId: string;data: BodyType<UpdateTaskRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateTaskMutationOptions(options));
+    }
+
+export const getStartTaskUrl = (taskId: string,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/start`
+}
+
+/**
+ * @summary Iniciar execução da tarefa
+ */
+export const startTask = async (taskId: string, options?: RequestInit): Promise<TaskSingleResponse> => {
+
+  return customFetch<TaskSingleResponse>(getStartTaskUrl(taskId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getStartTaskMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startTask>>, TError,{taskId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startTask>>, TError,{taskId: string}, TContext> => {
+
+const mutationKey = ['startTask'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startTask>>, {taskId: string}> = (props) => {
+          const {taskId} = props ?? {};
+
+          return  startTask(taskId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartTaskMutationResult = NonNullable<Awaited<ReturnType<typeof startTask>>>
+
+    export type StartTaskMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Iniciar execução da tarefa
+ */
+export const useStartTask = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startTask>>, TError,{taskId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof startTask>>,
+        TError,
+        {taskId: string},
+        TContext
+      > => {
+      return useMutation(getStartTaskMutationOptions(options));
+    }
+
+export const getSubmitTaskForApprovalUrl = (taskId: string,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/ready-for-approval`
+}
+
+/**
+ * @summary Submeter tarefa para aprovação
+ */
+export const submitTaskForApproval = async (taskId: string, options?: RequestInit): Promise<TaskSingleResponse> => {
+
+  return customFetch<TaskSingleResponse>(getSubmitTaskForApprovalUrl(taskId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getSubmitTaskForApprovalMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | ConflictResponse | UnprocessableEntityResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitTaskForApproval>>, TError,{taskId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitTaskForApproval>>, TError,{taskId: string}, TContext> => {
+
+const mutationKey = ['submitTaskForApproval'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitTaskForApproval>>, {taskId: string}> = (props) => {
+          const {taskId} = props ?? {};
+
+          return  submitTaskForApproval(taskId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitTaskForApprovalMutationResult = NonNullable<Awaited<ReturnType<typeof submitTaskForApproval>>>
+
+    export type SubmitTaskForApprovalMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | ConflictResponse | UnprocessableEntityResponse>
+
+    /**
+ * @summary Submeter tarefa para aprovação
+ */
+export const useSubmitTaskForApproval = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | ConflictResponse | UnprocessableEntityResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitTaskForApproval>>, TError,{taskId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitTaskForApproval>>,
+        TError,
+        {taskId: string},
+        TContext
+      > => {
+      return useMutation(getSubmitTaskForApprovalMutationOptions(options));
+    }
+
+export const getApproveTaskUrl = (taskId: string,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/approve`
+}
+
+/**
+ * @summary Aprovar tarefa
+ */
+export const approveTask = async (taskId: string, options?: RequestInit): Promise<TaskSingleResponse> => {
+
+  return customFetch<TaskSingleResponse>(getApproveTaskUrl(taskId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getApproveTaskMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveTask>>, TError,{taskId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approveTask>>, TError,{taskId: string}, TContext> => {
+
+const mutationKey = ['approveTask'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveTask>>, {taskId: string}> = (props) => {
+          const {taskId} = props ?? {};
+
+          return  approveTask(taskId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApproveTaskMutationResult = NonNullable<Awaited<ReturnType<typeof approveTask>>>
+
+    export type ApproveTaskMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Aprovar tarefa
+ */
+export const useApproveTask = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveTask>>, TError,{taskId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approveTask>>,
+        TError,
+        {taskId: string},
+        TContext
+      > => {
+      return useMutation(getApproveTaskMutationOptions(options));
+    }
+
+export const getRequestTaskChangesUrl = (taskId: string,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/request-changes`
+}
+
+/**
+ * @summary Solicitar ajustes na tarefa
+ */
+export const requestTaskChanges = async (taskId: string,
+    requestTaskChangesBody: RequestTaskChangesBody, options?: RequestInit): Promise<TaskSingleResponse> => {
+
+  return customFetch<TaskSingleResponse>(getRequestTaskChangesUrl(taskId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      requestTaskChangesBody,)
+  }
+);}
+
+
+
+
+export const getRequestTaskChangesMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestTaskChanges>>, TError,{taskId: string;data: BodyType<RequestTaskChangesBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestTaskChanges>>, TError,{taskId: string;data: BodyType<RequestTaskChangesBody>}, TContext> => {
+
+const mutationKey = ['requestTaskChanges'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestTaskChanges>>, {taskId: string;data: BodyType<RequestTaskChangesBody>}> = (props) => {
+          const {taskId,data} = props ?? {};
+
+          return  requestTaskChanges(taskId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestTaskChangesMutationResult = NonNullable<Awaited<ReturnType<typeof requestTaskChanges>>>
+    export type RequestTaskChangesMutationBody = BodyType<RequestTaskChangesBody>
+    export type RequestTaskChangesMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Solicitar ajustes na tarefa
+ */
+export const useRequestTaskChanges = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestTaskChanges>>, TError,{taskId: string;data: BodyType<RequestTaskChangesBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestTaskChanges>>,
+        TError,
+        {taskId: string;data: BodyType<RequestTaskChangesBody>},
+        TContext
+      > => {
+      return useMutation(getRequestTaskChangesMutationOptions(options));
+    }
+
+export const getCancelTaskUrl = (taskId: string,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/cancel`
+}
+
+/**
+ * @summary Cancelar tarefa
+ */
+export const cancelTask = async (taskId: string,
+    cancelTaskBody?: CancelTaskBody, options?: RequestInit): Promise<TaskSingleResponse> => {
+
+  return customFetch<TaskSingleResponse>(getCancelTaskUrl(taskId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      cancelTaskBody,)
+  }
+);}
+
+
+
+
+export const getCancelTaskMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelTask>>, TError,{taskId: string;data?: BodyType<CancelTaskBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelTask>>, TError,{taskId: string;data?: BodyType<CancelTaskBody>}, TContext> => {
+
+const mutationKey = ['cancelTask'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelTask>>, {taskId: string;data?: BodyType<CancelTaskBody>}> = (props) => {
+          const {taskId,data} = props ?? {};
+
+          return  cancelTask(taskId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelTaskMutationResult = NonNullable<Awaited<ReturnType<typeof cancelTask>>>
+    export type CancelTaskMutationBody = BodyType<CancelTaskBody> | undefined
+    export type CancelTaskMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Cancelar tarefa
+ */
+export const useCancelTask = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelTask>>, TError,{taskId: string;data?: BodyType<CancelTaskBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof cancelTask>>,
+        TError,
+        {taskId: string;data?: BodyType<CancelTaskBody>},
+        TContext
+      > => {
+      return useMutation(getCancelTaskMutationOptions(options));
+    }
+
+export const getAddTaskEvidenceUrl = (taskId: string,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/evidences`
+}
+
+/**
+ * @summary Adicionar evidência à tarefa
+ */
+export const addTaskEvidence = async (taskId: string,
+    addTaskEvidenceRequest: AddTaskEvidenceRequest, options?: RequestInit): Promise<TaskEvidenceSingleResponse> => {
+
+  return customFetch<TaskEvidenceSingleResponse>(getAddTaskEvidenceUrl(taskId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      addTaskEvidenceRequest,)
+  }
+);}
+
+
+
+
+export const getAddTaskEvidenceMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addTaskEvidence>>, TError,{taskId: string;data: BodyType<AddTaskEvidenceRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addTaskEvidence>>, TError,{taskId: string;data: BodyType<AddTaskEvidenceRequest>}, TContext> => {
+
+const mutationKey = ['addTaskEvidence'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addTaskEvidence>>, {taskId: string;data: BodyType<AddTaskEvidenceRequest>}> = (props) => {
+          const {taskId,data} = props ?? {};
+
+          return  addTaskEvidence(taskId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddTaskEvidenceMutationResult = NonNullable<Awaited<ReturnType<typeof addTaskEvidence>>>
+    export type AddTaskEvidenceMutationBody = BodyType<AddTaskEvidenceRequest>
+    export type AddTaskEvidenceMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+    /**
+ * @summary Adicionar evidência à tarefa
+ */
+export const useAddTaskEvidence = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addTaskEvidence>>, TError,{taskId: string;data: BodyType<AddTaskEvidenceRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addTaskEvidence>>,
+        TError,
+        {taskId: string;data: BodyType<AddTaskEvidenceRequest>},
+        TContext
+      > => {
+      return useMutation(getAddTaskEvidenceMutationOptions(options));
+    }
+
+export const getDeleteTaskEvidenceUrl = (taskId: string,
+    evidenceId: string,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/evidences/${evidenceId}`
+}
+
+/**
+ * @summary Remover evidência
+ */
+export const deleteTaskEvidence = async (taskId: string,
+    evidenceId: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteTaskEvidenceUrl(taskId,evidenceId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteTaskEvidenceMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTaskEvidence>>, TError,{taskId: string;evidenceId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteTaskEvidence>>, TError,{taskId: string;evidenceId: string}, TContext> => {
+
+const mutationKey = ['deleteTaskEvidence'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteTaskEvidence>>, {taskId: string;evidenceId: string}> = (props) => {
+          const {taskId,evidenceId} = props ?? {};
+
+          return  deleteTaskEvidence(taskId,evidenceId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteTaskEvidenceMutationResult = NonNullable<Awaited<ReturnType<typeof deleteTaskEvidence>>>
+
+    export type DeleteTaskEvidenceMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Remover evidência
+ */
+export const useDeleteTaskEvidence = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTaskEvidence>>, TError,{taskId: string;evidenceId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteTaskEvidence>>,
+        TError,
+        {taskId: string;evidenceId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteTaskEvidenceMutationOptions(options));
+    }
+
+export const getGetTaskCommentsUrl = (taskId: string,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/comments`
+}
+
+/**
+ * @summary Listar comentários da tarefa
+ */
+export const getTaskComments = async (taskId: string, options?: RequestInit): Promise<TaskCommentsResponse> => {
+
+  return customFetch<TaskCommentsResponse>(getGetTaskCommentsUrl(taskId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTaskCommentsQueryKey = (taskId: string,) => {
+    return [
+    `/api/tasks/${taskId}/comments`
+    ] as const;
+    }
+
+
+export const getGetTaskCommentsQueryOptions = <TData = Awaited<ReturnType<typeof getTaskComments>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(taskId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskComments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-  const queryKey = queryOptions?.queryKey ?? getGetCheckInSummaryQueryKey(params);
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof getCheckInSummaryFn>>> = ({ signal }) =>
-    getCheckInSummaryFn(params, { signal, ...requestOptions });
-  return { queryKey, queryFn, enabled: !!(params.date && params.operationId), ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof getCheckInSummaryFn>>, TError, TData> & { queryKey: QueryKey };
-};
 
-export type GetCheckInSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof getCheckInSummaryFn>>>;
-export type GetCheckInSummaryQueryError = ErrorType<UnauthorizedResponse>;
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
-export function useGetCheckInSummary<TData = Awaited<ReturnType<typeof getCheckInSummaryFn>>, TError = ErrorType<UnauthorizedResponse>>(
-  params: GetCheckInSummaryParams,
-  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getCheckInSummaryFn>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
-): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getGetCheckInSummaryQueryOptions(params, options);
-  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  const queryKey =  queryOptions?.queryKey ?? getGetTaskCommentsQueryKey(taskId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTaskComments>>> = ({ signal }) => getTaskComments(taskId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(taskId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTaskComments>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTaskCommentsQueryResult = NonNullable<Awaited<ReturnType<typeof getTaskComments>>>
+export type GetTaskCommentsQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+
+/**
+ * @summary Listar comentários da tarefa
+ */
+
+export function useGetTaskComments<TData = Awaited<ReturnType<typeof getTaskComments>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(
+ taskId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskComments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTaskCommentsQueryOptions(taskId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
-// my-status
 
-export const getMyCheckInStatusFn = async (params?: GetMyCheckInStatusParams, options?: RequestInit): Promise<CheckInMyStatusResponse> => {
-  const qs = params?.date ? `?date=${params.date}` : '';
-  return customFetch<CheckInMyStatusResponse>(`/api/check-ins/my-status${qs}`, { ...options });
-};
 
-export const getGetMyCheckInStatusQueryKey = (params?: GetMyCheckInStatusParams) =>
-  [`/api/check-ins/my-status`, params] as const;
 
-export const getGetMyCheckInStatusQueryOptions = <TData = Awaited<ReturnType<typeof getMyCheckInStatusFn>>, TError = ErrorType<UnauthorizedResponse>>(
-  params?: GetMyCheckInStatusParams,
-  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getMyCheckInStatusFn>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
-) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-  const queryKey = queryOptions?.queryKey ?? getGetMyCheckInStatusQueryKey(params);
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyCheckInStatusFn>>> = ({ signal }) =>
-    getMyCheckInStatusFn(params, { signal, ...requestOptions });
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof getMyCheckInStatusFn>>, TError, TData> & { queryKey: QueryKey };
-};
 
-export type GetMyCheckInStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getMyCheckInStatusFn>>>;
-export type GetMyCheckInStatusQueryError = ErrorType<UnauthorizedResponse>;
 
-export function useGetMyCheckInStatus<TData = Awaited<ReturnType<typeof getMyCheckInStatusFn>>, TError = ErrorType<UnauthorizedResponse>>(
-  params?: GetMyCheckInStatusParams,
-  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getMyCheckInStatusFn>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
-): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getGetMyCheckInStatusQueryOptions(params, options);
-  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
-  return { ...query, queryKey: queryOptions.queryKey };
+
+export const getAddTaskCommentUrl = (taskId: string,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/comments`
 }
 
-// perform my check-in (POST)
+/**
+ * @summary Adicionar comentário à tarefa
+ */
+export const addTaskComment = async (taskId: string,
+    addTaskCommentBody: AddTaskCommentBody, options?: RequestInit): Promise<TaskCommentSingleResponse> => {
 
-export const performMyCheckIn = async (options?: RequestInit): Promise<PerformCheckInResponse> =>
-  customFetch<PerformCheckInResponse>('/api/check-ins/my', {
-    ...options, method: 'POST',
+  return customFetch<TaskCommentSingleResponse>(getAddTaskCommentUrl(taskId),
+  {
+    ...options,
+    method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-  });
-
-export const getPerformMyCheckInMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>, TContext = unknown>(
-  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof performMyCheckIn>>, TError, void, TContext>; request?: SecondParameter<typeof customFetch> }
-): UseMutationOptions<Awaited<ReturnType<typeof performMyCheckIn>>, TError, void, TContext> => {
-  const mutationKey = ['performMyCheckIn'];
-  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
-  const mutationFn: MutationFunction<Awaited<ReturnType<typeof performMyCheckIn>>, void> = () =>
-    performMyCheckIn(requestOptions);
-  return { mutationKey, mutationFn, ...mutationOptions };
-};
-
-export type PerformMyCheckInMutationResult = NonNullable<Awaited<ReturnType<typeof performMyCheckIn>>>;
-export type PerformMyCheckInMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>;
-
-export const usePerformMyCheckIn = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>, TContext = unknown>(
-  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof performMyCheckIn>>, TError, void, TContext>; request?: SecondParameter<typeof customFetch> }
-): UseMutationResult<Awaited<ReturnType<typeof performMyCheckIn>>, TError, void, TContext> => {
-  const mutationOptions = getPerformMyCheckInMutationOptions(options);
-  return useMutation(mutationOptions);
-};
-
-// update check-in (PATCH by supervisor)
-
-export const updateCheckIn = async (id: string, data: UpdateCheckInRequest, options?: RequestInit): Promise<{ checkIn: CheckInRecord }> =>
-  customFetch<{ checkIn: CheckInRecord }>(`/api/check-ins/${id}`, {
-    ...options, method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(data),
-  });
-
-export const getUpdateCheckInMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>, TContext = unknown>(
-  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateCheckIn>>, TError, { id: string; data: BodyType<UpdateCheckInRequest> }, TContext>; request?: SecondParameter<typeof customFetch> }
-): UseMutationOptions<Awaited<ReturnType<typeof updateCheckIn>>, TError, { id: string; data: BodyType<UpdateCheckInRequest> }, TContext> => {
-  const mutationKey = ['updateCheckIn'];
-  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
-  const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCheckIn>>, { id: string; data: BodyType<UpdateCheckInRequest> }> = (props) => {
-    const { id, data } = props;
-    return updateCheckIn(id, data, requestOptions);
-  };
-  return { mutationKey, mutationFn, ...mutationOptions };
-};
-
-export type UpdateCheckInMutationResult = NonNullable<Awaited<ReturnType<typeof updateCheckIn>>>;
-export type UpdateCheckInMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>;
-
-export const useUpdateCheckIn = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>, TContext = unknown>(
-  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateCheckIn>>, TError, { id: string; data: BodyType<UpdateCheckInRequest> }, TContext>; request?: SecondParameter<typeof customFetch> }
-): UseMutationResult<Awaited<ReturnType<typeof updateCheckIn>>, TError, { id: string; data: BodyType<UpdateCheckInRequest> }, TContext> => {
-  const mutationOptions = getUpdateCheckInMutationOptions(options);
-  return useMutation(mutationOptions);
-};
-
-// ─── S-06 Solicitações ────────────────────────────────────────────────────────
-
-// list requests
-
-export const listRequestsFn = async (params?: ListRequestsParams, options?: RequestInit): Promise<ListRequestsResponse> => {
-  const q = new URLSearchParams();
-  if (params?.operationId) q.set('operationId', params.operationId);
-  if (params?.status) q.set('status', params.status);
-  const qs = q.toString() ? `?${q.toString()}` : '';
-  return customFetch<ListRequestsResponse>(`/api/requests${qs}`, { ...options, method: 'GET' });
-};
-
-export const getListRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listRequestsFn>>, TError = ErrorType<UnauthorizedResponse>>(
-  params?: ListRequestsParams,
-  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof listRequestsFn>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
-): UseQueryOptions<Awaited<ReturnType<typeof listRequestsFn>>, TError, TData> & { queryKey: QueryKey } => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-  const queryKey = queryOptions?.queryKey ?? ['listRequests', ...(params ? [params] : [])];
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof listRequestsFn>>> = ({ signal }) =>
-    listRequestsFn(params, signal ? { signal } : requestOptions);
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof listRequestsFn>>, TError, TData> & { queryKey: QueryKey };
-};
-
-export type ListRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof listRequestsFn>>>;
-export type ListRequestsQueryError = ErrorType<UnauthorizedResponse>;
-
-export function useListRequests<TData = Awaited<ReturnType<typeof listRequestsFn>>, TError = ErrorType<UnauthorizedResponse>>(
-  params?: ListRequestsParams,
-  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof listRequestsFn>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
-): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListRequestsQueryOptions(params, options);
-  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-// list pending requests
-
-export const listPendingRequestsFn = async (params?: ListPendingRequestsParams, options?: RequestInit): Promise<ListRequestsResponse> => {
-  const q = new URLSearchParams();
-  if (params?.operationId) q.set('operationId', params.operationId);
-  const qs = q.toString() ? `?${q.toString()}` : '';
-  return customFetch<ListRequestsResponse>(`/api/requests/pending${qs}`, { ...options, method: 'GET' });
-};
-
-export const getListPendingRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listPendingRequestsFn>>, TError = ErrorType<UnauthorizedResponse>>(
-  params?: ListPendingRequestsParams,
-  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof listPendingRequestsFn>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
-): UseQueryOptions<Awaited<ReturnType<typeof listPendingRequestsFn>>, TError, TData> & { queryKey: QueryKey } => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-  const queryKey = queryOptions?.queryKey ?? ['listPendingRequests', ...(params ? [params] : [])];
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof listPendingRequestsFn>>> = ({ signal }) =>
-    listPendingRequestsFn(params, signal ? { signal } : requestOptions);
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof listPendingRequestsFn>>, TError, TData> & { queryKey: QueryKey };
-};
-
-export type ListPendingRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof listPendingRequestsFn>>>;
-export type ListPendingRequestsQueryError = ErrorType<UnauthorizedResponse>;
-
-export function useListPendingRequests<TData = Awaited<ReturnType<typeof listPendingRequestsFn>>, TError = ErrorType<UnauthorizedResponse>>(
-  params?: ListPendingRequestsParams,
-  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof listPendingRequestsFn>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
-): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListPendingRequestsQueryOptions(params, options);
-  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-// get single request
-
-export const getRequestFn = async (id: string, options?: RequestInit): Promise<GetRequestResponse> =>
-  customFetch<GetRequestResponse>(`/api/requests/${id}`, { ...options, method: 'GET' });
-
-export const getGetRequestQueryOptions = <TData = Awaited<ReturnType<typeof getRequestFn>>, TError = ErrorType<UnauthorizedResponse>>(
-  id: string,
-  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getRequestFn>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
-): UseQueryOptions<Awaited<ReturnType<typeof getRequestFn>>, TError, TData> & { queryKey: QueryKey } => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-  const queryKey = queryOptions?.queryKey ?? ['getRequest', id];
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof getRequestFn>>> = ({ signal }) =>
-    getRequestFn(id, signal ? { signal } : requestOptions);
-  return { queryKey, queryFn, enabled: !!id, ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof getRequestFn>>, TError, TData> & { queryKey: QueryKey };
-};
-
-export type GetRequestQueryResult = NonNullable<Awaited<ReturnType<typeof getRequestFn>>>;
-export type GetRequestQueryError = ErrorType<UnauthorizedResponse>;
-
-export function useGetRequest<TData = Awaited<ReturnType<typeof getRequestFn>>, TError = ErrorType<UnauthorizedResponse>>(
-  id: string,
-  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getRequestFn>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
-): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getGetRequestQueryOptions(id, options);
-  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-// create request (member)
-
-export const createRequest = async (data: CreateRequestBody, options?: RequestInit): Promise<{ request: RequestItem }> =>
-  customFetch<{ request: RequestItem }>('/api/requests', {
-    ...options, method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(data),
-  });
-
-export const getCreateRequestMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>, TContext = unknown>(
-  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof createRequest>>, TError, { data: BodyType<CreateRequestBody> }, TContext>; request?: SecondParameter<typeof customFetch> }
-): UseMutationOptions<Awaited<ReturnType<typeof createRequest>>, TError, { data: BodyType<CreateRequestBody> }, TContext> => {
-  const mutationKey = ['createRequest'];
-  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
-  const mutationFn: MutationFunction<Awaited<ReturnType<typeof createRequest>>, { data: BodyType<CreateRequestBody> }> = (props) => {
-    const { data } = props;
-    return createRequest(data, requestOptions);
-  };
-  return { mutationKey, mutationFn, ...mutationOptions };
-};
-
-export type CreateRequestMutationResult = NonNullable<Awaited<ReturnType<typeof createRequest>>>;
-export type CreateRequestMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>;
-
-export const useCreateRequest = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>, TContext = unknown>(
-  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof createRequest>>, TError, { data: BodyType<CreateRequestBody> }, TContext>; request?: SecondParameter<typeof customFetch> }
-): UseMutationResult<Awaited<ReturnType<typeof createRequest>>, TError, { data: BodyType<CreateRequestBody> }, TContext> => {
-  const mutationOptions = getCreateRequestMutationOptions(options);
-  return useMutation(mutationOptions);
-};
-
-// update request — member responds to alternative
-
-export const updateRequest = async (id: string, data: UpdateRequestBody, options?: RequestInit): Promise<{ request: RequestItem }> =>
-  customFetch<{ request: RequestItem }>(`/api/requests/${id}`, {
-    ...options, method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(data),
-  });
-
-export const getUpdateRequestMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>, TContext = unknown>(
-  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateRequest>>, TError, { id: string; data: BodyType<UpdateRequestBody> }, TContext>; request?: SecondParameter<typeof customFetch> }
-): UseMutationOptions<Awaited<ReturnType<typeof updateRequest>>, TError, { id: string; data: BodyType<UpdateRequestBody> }, TContext> => {
-  const mutationKey = ['updateRequest'];
-  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
-  const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateRequest>>, { id: string; data: BodyType<UpdateRequestBody> }> = (props) => {
-    const { id, data } = props;
-    return updateRequest(id, data, requestOptions);
-  };
-  return { mutationKey, mutationFn, ...mutationOptions };
-};
-
-export type UpdateRequestMutationResult = NonNullable<Awaited<ReturnType<typeof updateRequest>>>;
-export type UpdateRequestMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>;
-
-export const useUpdateRequest = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>, TContext = unknown>(
-  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateRequest>>, TError, { id: string; data: BodyType<UpdateRequestBody> }, TContext>; request?: SecondParameter<typeof customFetch> }
-): UseMutationResult<Awaited<ReturnType<typeof updateRequest>>, TError, { id: string; data: BodyType<UpdateRequestBody> }, TContext> => {
-  const mutationOptions = getUpdateRequestMutationOptions(options);
-  return useMutation(mutationOptions);
-};
-
-// decide request (supervisor)
-
-export const decideRequest = async (id: string, data: DecideRequestBody, options?: RequestInit): Promise<{ decision: RequestDecisionItem }> =>
-  customFetch<{ decision: RequestDecisionItem }>(`/api/requests/${id}/decision`, {
-    ...options, method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(data),
-  });
-
-export const getDecideRequestMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>, TContext = unknown>(
-  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof decideRequest>>, TError, { id: string; data: BodyType<DecideRequestBody> }, TContext>; request?: SecondParameter<typeof customFetch> }
-): UseMutationOptions<Awaited<ReturnType<typeof decideRequest>>, TError, { id: string; data: BodyType<DecideRequestBody> }, TContext> => {
-  const mutationKey = ['decideRequest'];
-  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
-  const mutationFn: MutationFunction<Awaited<ReturnType<typeof decideRequest>>, { id: string; data: BodyType<DecideRequestBody> }> = (props) => {
-    const { id, data } = props;
-    return decideRequest(id, data, requestOptions);
-  };
-  return { mutationKey, mutationFn, ...mutationOptions };
-};
-
-export type DecideRequestMutationResult = NonNullable<Awaited<ReturnType<typeof decideRequest>>>;
-export type DecideRequestMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>;
-
-export const useDecideRequest = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>, TContext = unknown>(
-  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof decideRequest>>, TError, { id: string; data: BodyType<DecideRequestBody> }, TContext>; request?: SecondParameter<typeof customFetch> }
-): UseMutationResult<Awaited<ReturnType<typeof decideRequest>>, TError, { id: string; data: BodyType<DecideRequestBody> }, TContext> => {
-  const mutationOptions = getDecideRequestMutationOptions(options);
-  return useMutation(mutationOptions);
-};
-
-
-
-
-
-
-
-
-// ─── GOV-D11: Delegações ──────────────────────────────────────────────────────
-
-import type {
-  DelegationItem,
-  ListDelegationsResponse,
-  MyActiveDelegationsResponse,
-  CreateDelegationBody,
-  ErrorResponse,
-} from './api.schemas';
-
-// list delegations (supervisor/admin)
-
-export const listDelegations = async (options?: RequestInit): Promise<ListDelegationsResponse> =>
-  customFetch<ListDelegationsResponse>(`/api/delegations`, { ...options, method: 'GET' });
-
-export const getListDelegationsQueryKey = (): readonly string[] => ['listDelegations'];
-
-export const useListDelegations = <TData = ListDelegationsResponse, TError = ErrorType<ErrorResponse>>(
-  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof listDelegations>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
-): UseQueryResult<TData, TError> => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-  return useQuery({
-    queryKey: queryOptions?.queryKey ?? getListDelegationsQueryKey(),
-    queryFn: () => listDelegations(requestOptions),
-    ...queryOptions,
-  });
-};
-
-// my active delegations (delegate)
-
-export const getMyActiveDelegations = async (options?: RequestInit): Promise<MyActiveDelegationsResponse> =>
-  customFetch<MyActiveDelegationsResponse>(`/api/delegations/my-active`, { ...options, method: 'GET' });
-
-export const getMyActiveDelegationsQueryKey = (): readonly string[] => ['myActiveDelegations'];
-
-export const useGetMyActiveDelegations = <TData = MyActiveDelegationsResponse, TError = ErrorType<ErrorResponse>>(
-  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getMyActiveDelegations>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
-): UseQueryResult<TData, TError> => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-  return useQuery({
-    queryKey: queryOptions?.queryKey ?? getMyActiveDelegationsQueryKey(),
-    queryFn: () => getMyActiveDelegations(requestOptions),
-    ...queryOptions,
-  });
-};
-
-// create delegation
-
-export const createDelegation = async (data: CreateDelegationBody, options?: RequestInit): Promise<{ delegation: DelegationItem }> =>
-  customFetch<{ delegation: DelegationItem }>(`/api/delegations`, {
-    ...options, method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(data),
-  });
-
-export const getCreateDelegationMutationOptions = <TError = ErrorType<ErrorResponse>, TContext = unknown>(
-  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof createDelegation>>, TError, BodyType<CreateDelegationBody>, TContext>; request?: SecondParameter<typeof customFetch> }
-): UseMutationOptions<Awaited<ReturnType<typeof createDelegation>>, TError, BodyType<CreateDelegationBody>, TContext> => {
-  const mutationKey = ['createDelegation'];
-  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
-  const mutationFn: MutationFunction<Awaited<ReturnType<typeof createDelegation>>, BodyType<CreateDelegationBody>> = (data) => {
-    return createDelegation(data, requestOptions);
-  };
-  return { mutationKey, mutationFn, ...mutationOptions };
-};
-
-export const useCreateDelegation = <TError = ErrorType<ErrorResponse>, TContext = unknown>(
-  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof createDelegation>>, TError, BodyType<CreateDelegationBody>, TContext>; request?: SecondParameter<typeof customFetch> }
-): UseMutationResult<Awaited<ReturnType<typeof createDelegation>>, TError, BodyType<CreateDelegationBody>, TContext> => {
-  const mutationOptions = getCreateDelegationMutationOptions(options);
-  return useMutation(mutationOptions);
-};
-
-// cancel delegation
-
-export const cancelDelegation = async (id: string, options?: RequestInit): Promise<{ delegation: DelegationItem }> =>
-  customFetch<{ delegation: DelegationItem }>(`/api/delegations/${id}/cancel`, { ...options, method: 'PATCH' });
-
-export const getCancelDelegationMutationOptions = <TError = ErrorType<ErrorResponse>, TContext = unknown>(
-  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof cancelDelegation>>, TError, string, TContext>; request?: SecondParameter<typeof customFetch> }
-): UseMutationOptions<Awaited<ReturnType<typeof cancelDelegation>>, TError, string, TContext> => {
-  const mutationKey = ['cancelDelegation'];
-  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
-  const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelDelegation>>, string> = (id) => {
-    return cancelDelegation(id, requestOptions);
-  };
-  return { mutationKey, mutationFn, ...mutationOptions };
-};
-
-export const useCancelDelegation = <TError = ErrorType<ErrorResponse>, TContext = unknown>(
-  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof cancelDelegation>>, TError, string, TContext>; request?: SecondParameter<typeof customFetch> }
-): UseMutationResult<Awaited<ReturnType<typeof cancelDelegation>>, TError, string, TContext> => {
-  const mutationOptions = getCancelDelegationMutationOptions(options);
-  return useMutation(mutationOptions);
-};
+    body: JSON.stringify(
+      addTaskCommentBody,)
+  }
+);}
+
+
+
+
+export const getAddTaskCommentMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addTaskComment>>, TError,{taskId: string;data: BodyType<AddTaskCommentBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addTaskComment>>, TError,{taskId: string;data: BodyType<AddTaskCommentBody>}, TContext> => {
+
+const mutationKey = ['addTaskComment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addTaskComment>>, {taskId: string;data: BodyType<AddTaskCommentBody>}> = (props) => {
+          const {taskId,data} = props ?? {};
+
+          return  addTaskComment(taskId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddTaskCommentMutationResult = NonNullable<Awaited<ReturnType<typeof addTaskComment>>>
+    export type AddTaskCommentMutationBody = BodyType<AddTaskCommentBody>
+    export type AddTaskCommentMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+    /**
+ * @summary Adicionar comentário à tarefa
+ */
+export const useAddTaskComment = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addTaskComment>>, TError,{taskId: string;data: BodyType<AddTaskCommentBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addTaskComment>>,
+        TError,
+        {taskId: string;data: BodyType<AddTaskCommentBody>},
+        TContext
+      > => {
+      return useMutation(getAddTaskCommentMutationOptions(options));
+    }
+
