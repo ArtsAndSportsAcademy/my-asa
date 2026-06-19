@@ -4538,6 +4538,12 @@ components:
         status:
           type: string
           enum: [DRAFT, ACTIVE, PAUSED, ARCHIVED]
+        lateThresholdMinutes:
+          type: integer
+          nullable: true
+        timezone:
+          type: string
+          nullable: true
         createdAt:
           type: string
         updatedAt:
@@ -4716,6 +4722,12 @@ components:
           type: string
         healthThresholds:
           type: object
+          nullable: true
+        lateThresholdMinutes:
+          type: integer
+          nullable: true
+        timezone:
+          type: string
           nullable: true
 
     OperationStatusUpdate:

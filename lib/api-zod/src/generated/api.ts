@@ -108,6 +108,8 @@ export const GetCurrentOrganizationResponse = zod.object({
   "name": zod.string(),
   "organizationId": zod.string(),
   "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']),
+  "lateThresholdMinutes": zod.number().nullish(),
+  "timezone": zod.string().nullish(),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()
 })),
@@ -132,6 +134,8 @@ export const GetOperationsResponse = zod.object({
   "name": zod.string(),
   "organizationId": zod.string(),
   "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']),
+  "lateThresholdMinutes": zod.number().nullish(),
+  "timezone": zod.string().nullish(),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()
 }))
@@ -160,6 +164,8 @@ export const GetOperationResponse = zod.object({
   "name": zod.string(),
   "organizationId": zod.string(),
   "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']),
+  "lateThresholdMinutes": zod.number().nullish(),
+  "timezone": zod.string().nullish(),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()
 })
@@ -177,7 +183,9 @@ export const UpdateOperationBody = zod.object({
   "name": zod.string().optional(),
   "healthThresholds": zod.object({
 
-}).passthrough().nullish()
+}).passthrough().nullish(),
+  "lateThresholdMinutes": zod.number().nullish(),
+  "timezone": zod.string().nullish()
 })
 
 export const UpdateOperationResponse = zod.object({
@@ -186,6 +194,8 @@ export const UpdateOperationResponse = zod.object({
   "name": zod.string(),
   "organizationId": zod.string(),
   "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']),
+  "lateThresholdMinutes": zod.number().nullish(),
+  "timezone": zod.string().nullish(),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()
 })
@@ -209,6 +219,8 @@ export const UpdateOperationStatusResponse = zod.object({
   "name": zod.string(),
   "organizationId": zod.string(),
   "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']),
+  "lateThresholdMinutes": zod.number().nullish(),
+  "timezone": zod.string().nullish(),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()
 })
@@ -387,6 +399,8 @@ export const GetUserContextResponse = zod.object({
   "name": zod.string(),
   "organizationId": zod.string(),
   "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']),
+  "lateThresholdMinutes": zod.number().nullish(),
+  "timezone": zod.string().nullish(),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()
 })),

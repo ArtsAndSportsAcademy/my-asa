@@ -12,6 +12,8 @@ export interface Operation {
   name: string;
   organizationId: string;
   status: OperationStatus;
+  lateThresholdMinutes?: number | null;
+  timezone?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }

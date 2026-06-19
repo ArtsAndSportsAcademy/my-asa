@@ -10,4 +10,6 @@ import type { OperationUpdateHealthThresholds } from './operationUpdateHealthThr
 export interface OperationUpdate {
   name?: string;
   healthThresholds?: OperationUpdateHealthThresholds;
+  lateThresholdMinutes?: number | null;
+  timezone?: string | null;
 }
