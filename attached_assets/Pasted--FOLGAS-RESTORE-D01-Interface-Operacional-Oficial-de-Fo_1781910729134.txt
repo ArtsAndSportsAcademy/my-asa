@@ -1,0 +1,286 @@
+# 🌴 FOLGAS-RESTORE-D01 — Interface Operacional Oficial de Folgas
+
+Contexto:
+
+O módulo Folgas foi implementado como uma lista de registros individuais.
+
+Esta não é a experiência operacional definida para o MyASA.
+
+A interface oficial de Folgas sempre foi uma grade mensal operacional semelhante a uma planilha.
+
+O objetivo desta sprint é restaurar a experiência original do módulo.
+
+────────────────────
+
+# 1. Conceito do Pilar
+
+A pergunta das Folgas é:
+
+> Quem estará ausente e quando?
+
+A tela deve permitir responder rapidamente:
+
+* quem está de folga;
+* quem está em no-show;
+* quem está em recesso;
+* quais dias estão preenchidos;
+* quais pessoas estão indisponíveis.
+
+────────────────────
+
+# 2. Interface Principal
+
+A tela principal NÃO deve ser uma lista.
+
+A tela principal deve ser uma grade mensal.
+
+Linhas:
+
+* membros.
+
+Colunas:
+
+* dias do mês.
+
+Células:
+
+* tipo da ausência.
+
+Exemplo:
+
+```
+       01 02 03 04 05 06 07
+```
+
+Amanda     NS NS NS
+Arthur              R  R
+Carol                   O
+
+────────────────────
+
+# 3. Tipos
+
+NS = No Show
+
+R = Recesso
+
+O = Outro
+
+Vazio = disponível
+
+Cores distintas.
+
+Legenda sempre visível.
+
+────────────────────
+
+# 4. Navegação
+
+Permitir:
+
+* mês anterior;
+* próximo mês;
+* selecionar mês;
+* selecionar ano.
+
+Filtros:
+
+* operação;
+* grupo;
+* membro;
+* tipo.
+
+────────────────────
+
+# 5. Edição Rápida
+
+Clique simples:
+
+vazio → NS → R → O → vazio
+
+Para ajustes rápidos.
+
+────────────────────
+
+# 6. Preenchimento em Lote
+
+A interface deve priorizar velocidade.
+
+6.1 Arrastar seleção (web)
+
+Clicar e arrastar vários dias.
+
+Ao soltar:
+
+* NS
+* R
+* O
+* Limpar
+
+Aplica em todas as células.
+
+────────────────────
+
+6.2 Preencher período
+
+Selecionar:
+
+* membro;
+* data inicial;
+* data final;
+* tipo.
+
+Exemplo:
+
+Amanda
+01/07 até 07/07
+R
+
+Preenche automaticamente.
+
+────────────────────
+
+6.3 Preencher semana
+
+Botão na linha do membro:
+
+"Preencher semana"
+
+Selecionar:
+
+* NS
+* R
+* O
+
+Aplica de segunda a domingo.
+
+────────────────────
+
+6.4 Limpar período
+
+Selecionar intervalo.
+
+Remover vários dias de uma vez.
+
+────────────────────
+
+# 7. Mobile
+
+O mobile não precisa reproduzir exatamente a planilha.
+
+Sugestões:
+
+* toque longo;
+* selecionar intervalo;
+* preencher período.
+
+Objetivo:
+
+Não obrigar 30 cliques.
+
+────────────────────
+
+# 8. Lista Secundária
+
+A lista tabular atual pode continuar.
+
+Nome:
+
+"Registros"
+
+Utilizada para:
+
+* auditoria;
+* filtros;
+* exportação;
+* edição avançada.
+
+Mas NÃO é a tela principal.
+
+────────────────────
+
+# 9. Importação
+
+Importação NÃO é prioridade.
+
+Ordem:
+
+1. Grade mensal.
+2. Preenchimento em lote.
+3. Salvamento automático.
+4. Mobile.
+5. Importação.
+
+Importação:
+
+* CSV.
+* Planilha.
+
+Mas o sistema deve funcionar completamente sem ela.
+
+────────────────────
+
+# 10. Integrações
+
+Folgas devem alimentar:
+
+* Escalas.
+* Meu Dia.
+* ASA.
+* Disponibilidade.
+* Notificações.
+* Livro do Dia.
+
+────────────────────
+
+# 11. ASA
+
+A ASA deve responder:
+
+* quem está de folga hoje?
+* quem estará ausente amanhã?
+* Amanda está disponível?
+* quais folgas afetam a operação?
+* quem está em no-show?
+
+────────────────────
+
+# 12. Meu Dia
+
+MEMBER:
+
+* Você está de folga amanhã.
+
+SUPERVISOR:
+
+* 3 pessoas estão ausentes hoje.
+
+ADMIN:
+
+* 2 folgas impactam a operação.
+
+────────────────────
+
+# 13. Critério de Aceitação
+
+Um supervisor deve conseguir:
+
+* visualizar o mês inteiro;
+* preencher uma semana em poucos segundos;
+* alterar vários dias ao mesmo tempo;
+* identificar ausências rapidamente;
+* não depender de importação.
+
+A tela deve parecer uma planilha operacional.
+
+Não um formulário.
+
+Não uma lista.
+
+Não um sistema de registros.
+
+────────────────────
+
+Resultado esperado:
+
+O módulo Folgas volta a representar a experiência operacional originalmente definida para o MyASA.

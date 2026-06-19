@@ -1,0 +1,285 @@
+# #40 — FOLGAS-RESTORE-D01 — Grade Operacional Mensal
+
+## Objetivo
+
+Restaurar a experiência operacional original do módulo Folgas.
+
+A tela principal de Folgas não deve ser uma lista de registros.
+
+Ela deve funcionar como uma planilha operacional mensal, permitindo que supervisores e administradores preencham e consultem ausências rapidamente.
+
+A pergunta da tela é:
+
+> Quem estará ausente e quando?
+
+---
+
+# Conceito Oficial
+
+Linhas:
+
+* membros.
+
+Colunas:
+
+* dias do mês.
+
+Células:
+
+* tipo de ausência.
+
+Tipos:
+
+* NS = No Show
+* R = Recesso
+* O = Outro
+* vazio = disponível
+
+A lista atual de registros permanece como visão secundária.
+
+---
+
+# Interface Principal
+
+/admin/folgas
+
+/supervisor/folgas
+
+A tela principal deve ser:
+
+* grade mensal;
+* scroll horizontal;
+* cabeçalho dos dias;
+* destaque para finais de semana;
+* legenda sempre visível.
+
+Filtros:
+
+* operação;
+* grupo;
+* membro.
+
+Navegação:
+
+* mês anterior;
+* próximo mês;
+* seletor de mês;
+* seletor de ano.
+
+Toggle:
+
+* Planilha
+* Registros
+
+"Registros" utiliza a tabela atual.
+
+---
+
+# Edição
+
+Não utilizar:
+
+vazio → NS → R → O → vazio
+
+Esse sistema gera muitos cliques e erros.
+
+---
+
+# Clique na célula
+
+Ao clicar:
+
+Abrir mini menu:
+
+* NS
+* R
+* O
+* Limpar
+
+Aplicação imediata.
+
+---
+
+# Seleção múltipla
+
+Selecionar várias células.
+
+Após seleção:
+
+* NS
+* R
+* O
+* Limpar
+
+Aplica em todas.
+
+---
+
+# Arrastar
+
+Web:
+
+clicar e arrastar.
+
+Ao soltar:
+
+* NS
+* R
+* O
+* Limpar
+
+---
+
+# Preencher período
+
+Fluxo prioritário.
+
+Selecionar:
+
+* membro;
+* data inicial;
+* data final;
+* tipo.
+
+Exemplo:
+
+Amanda
+
+01/07 → 10/07
+
+Recesso
+
+Sistema preenche automaticamente.
+
+---
+
+# Preencher semana
+
+Botão na linha do membro:
+
+* Preencher semana.
+
+Selecionar:
+
+* NS
+* R
+* O
+
+Aplica na semana visível.
+
+---
+
+# Limpar período
+
+Selecionar:
+
+* membro;
+* intervalo.
+
+Remover todas as ausências do período.
+
+---
+
+# Totais
+
+Mostrar por membro:
+
+* NS: 3
+* R: 10
+* O: 2
+
+---
+
+# Indicador do dia atual
+
+Destacar o dia atual na grade.
+
+---
+
+# Mobile
+
+Não precisa reproduzir exatamente a planilha.
+
+Permitir:
+
+* toque longo;
+* selecionar período;
+* preencher período;
+* preencher semana.
+
+Objetivo:
+
+Não obrigar dezenas de toques.
+
+---
+
+# Registros
+
+A tabela atual permanece.
+
+Nova aba:
+
+Registros.
+
+Utilizada para:
+
+* auditoria;
+* filtros;
+* histórico;
+* edição avançada.
+
+---
+
+# Importação
+
+Prioridade baixa.
+
+Ordem:
+
+1. Grade mensal.
+2. Seleção múltipla.
+3. Preencher período.
+4. Preencher semana.
+5. Mobile.
+6. Importação.
+
+O sistema deve funcionar completamente sem importação.
+
+---
+
+# Integrações
+
+Não alterar:
+
+* ASA.
+* Meu Dia.
+* Escalas.
+* Notificações.
+
+As integrações atuais permanecem.
+
+---
+
+# Critério de Aceitação
+
+Um supervisor deve conseguir:
+
+* visualizar o mês inteiro;
+* preencher uma semana em segundos;
+* lançar férias rapidamente;
+* identificar ausências;
+* consultar disponibilidade.
+
+A tela deve parecer uma planilha operacional.
+
+Não uma lista.
+
+Não um formulário.
+
+Não um cadastro de registros.
+
+---
+
+# Resultado Esperado
+
+Folgas volta a ser um dos pilares operacionais do MyASA, permitindo gestão rápida e visual das ausências da equipe.
