@@ -21,6 +21,9 @@ import {
   useCreateRequest,
   useUpdateRequest,
   useGetOperations,
+  useGetMyActiveDelegations,
+  useListPendingRequests,
+  useDecideRequest,
   type RequestType,
   type RequestItem,
 } from "@workspace/api-client-react";
@@ -92,11 +95,33 @@ export default function SolicitacoesScreen() {
   const [reason, setReason] = useState("");
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [showOpSelector, setShowOpSelector] = useState(false);
+  const [activeTab, setActiveTab] = useState<"minhas" | "decidir">("minhas");
 
   const { data: opsData } = useGetOperations();
   const operations = opsData?.operations ?? [];
 
-  const { data, isLoading, refetch } = useListRequests(undefined, {
+  const { data: delegData } = useGetMyActiveDelegations({ query: { retry: false } as any });
+  const hasRequestsDelegation = (delegData?.delegations ?? []).some(
+    (d) => (d.responsibilities as string[]).includes("REQUESTS")
+  );
+
+  const { data: pendingData, isLoading: pendingLoading } = useListPendingRequests(
+    {} as any,
+    { query: { enabled: hasRequestsDelegation } as any }
+  );
+  const pendingRequests = pendingData?.requests ?? [];
+
+  const decideMutation = useDecideRequest({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/requests/pending"] });
+        Alert.alert("Decisão registrada", "A solicitação foi processada.");
+      },
+      onError: () => Alert.alert("Erro", "Não foi possível processar a solicitação."),
+    },
+  });
+
+  const { data, isLoading, refetch } = useListRequests(undefined as any, {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     query: { refetchOnWindowFocus: true } as any,
   });
@@ -205,7 +230,92 @@ export default function SolicitacoesScreen() {
           </Pressable>
         </View>
 
-        {isLoading ? (
+        {/* Tab bar — Capitão com REQUESTS */}
+        {hasRequestsDelegation && (
+          <View style={{ flexDirection: "row", paddingHorizontal: 16, marginBottom: 8, gap: 8 }}>
+            <Pressable
+              onPress={() => setActiveTab("minhas")}
+              style={{
+                flex: 1, alignItems: "center", paddingVertical: 8, borderRadius: 8,
+                backgroundColor: activeTab === "minhas" ? colors.primary : colors.card,
+                borderWidth: 1, borderColor: activeTab === "minhas" ? colors.primary : colors.border,
+              }}
+            >
+              <Text style={{ color: activeTab === "minhas" ? "#fff" : colors.mutedForeground, fontSize: 13, fontWeight: "500" }}>
+                Minhas
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setActiveTab("decidir")}
+              style={{
+                flex: 1, alignItems: "center", paddingVertical: 8, borderRadius: 8,
+                backgroundColor: activeTab === "decidir" ? colors.primary : colors.card,
+                borderWidth: 1, borderColor: activeTab === "decidir" ? colors.primary : colors.border,
+              }}
+            >
+              <Text style={{ color: activeTab === "decidir" ? "#fff" : colors.mutedForeground, fontSize: 13, fontWeight: "500" }}>
+                Para Decidir{pendingRequests.length > 0 ? ` (${pendingRequests.length})` : ""}
+              </Text>
+            </Pressable>
+          </View>
+        )}
+
+        {activeTab === "decidir" ? (
+          pendingLoading ? (
+            <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
+          ) : pendingRequests.length === 0 ? (
+            <View style={styles.emptyWrap}>
+              <Feather name="inbox" size={40} color={colors.mutedForeground} />
+              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+                Nenhuma solicitação pendente para decidir.
+              </Text>
+            </View>
+          ) : (
+            <View style={{ paddingHorizontal: 16, gap: 10 }}>
+              {pendingRequests.map((req) => (
+                <View key={req.id} style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, gap: 8 }}>
+                  <Text style={{ color: colors.foreground, fontWeight: "600", fontSize: 14 }}>
+                    {REQUEST_TYPE_LABELS[req.type] ?? req.type}
+                  </Text>
+                  {req.targetDates && req.targetDates.length > 0 && (
+                    <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
+                      {req.targetDates.map(formatDate).join(", ")}
+                    </Text>
+                  )}
+                  {(req as any).reason && (
+                    <Text style={{ color: colors.mutedForeground, fontSize: 13 }} numberOfLines={2}>
+                      {(req as any).reason}
+                    </Text>
+                  )}
+                  <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
+                    <Pressable
+                      style={{ flex: 1, backgroundColor: "#16A34A", borderRadius: 8, paddingVertical: 9, alignItems: "center" }}
+                      onPress={() =>
+                        Alert.alert("Aprovar?", "Confirmar aprovação desta solicitação?", [
+                          { text: "Cancelar", style: "cancel" },
+                          { text: "Aprovar", onPress: () => decideMutation.mutate({ id: req.id, data: { decision: "APPROVED" } as any }) },
+                        ])
+                      }
+                    >
+                      <Text style={{ color: "#fff", fontSize: 13, fontWeight: "600" }}>Aprovar</Text>
+                    </Pressable>
+                    <Pressable
+                      style={{ flex: 1, backgroundColor: "#DC2626", borderRadius: 8, paddingVertical: 9, alignItems: "center" }}
+                      onPress={() =>
+                        Alert.alert("Negar?", "Confirmar negação desta solicitação?", [
+                          { text: "Cancelar", style: "cancel" },
+                          { text: "Negar", style: "destructive", onPress: () => decideMutation.mutate({ id: req.id, data: { decision: "DENIED" } as any }) },
+                        ])
+                      }
+                    >
+                      <Text style={{ color: "#fff", fontSize: 13, fontWeight: "600" }}>Negar</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )
+        ) : isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
         ) : requests.length === 0 ? (
           <View style={styles.emptyWrap}>

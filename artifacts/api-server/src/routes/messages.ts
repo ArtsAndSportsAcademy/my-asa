@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { eq, and, desc, inArray, isNull, lte, gte } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   messageThreadsTable,
@@ -7,6 +7,7 @@ import {
   messagesTable,
   usersTable,
   userRolesTable,
+  delegationsTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
@@ -18,6 +19,7 @@ const router: IRouter = Router();
 // ─── Permission matrix (MSG-D03) ──────────────────────────────────────────────
 const ALLOWED_TARGETS: Record<RoleValue, RoleValue[]> = {
   MEMBER:       ["SUPERVISOR_A", "SUPERVISOR_B"],
+  // note: MEMBER com OPERATIONAL_MESSAGES ganha acesso estendido — ver hasOperationalMessagesDelegation
   SUPERVISOR_A: ["MEMBER", "SUPERVISOR_A", "SUPERVISOR_B", "ADMIN"],
   SUPERVISOR_B: ["MEMBER", "SUPERVISOR_A", "SUPERVISOR_B", "ADMIN"],
   ADMIN:        ["SUPERVISOR_A", "SUPERVISOR_B", "ADMIN"],
@@ -30,6 +32,24 @@ async function getUserRole(userId: string): Promise<RoleValue | null> {
     .where(and(eq(userRolesTable.userId, userId), eq(userRolesTable.active, true)))
     .limit(1);
   return (row?.role as RoleValue) ?? null;
+}
+
+// ─── T006: verifica se MEMBER tem delegação ativa com OPERATIONAL_MESSAGES ────
+
+async function hasOperationalMessagesDelegation(userId: string): Promise<boolean> {
+  const now = new Date();
+  const rows = await db
+    .select({ responsibilities: delegationsTable.responsibilities })
+    .from(delegationsTable)
+    .where(
+      and(
+        eq(delegationsTable.delegateeId, userId),
+        isNull(delegationsTable.revokedAt),
+        lte(delegationsTable.validFrom, now),
+        gte(delegationsTable.validUntil, now),
+      )
+    );
+  return rows.some((r) => (r.responsibilities as string[]).includes("OPERATIONAL_MESSAGES"));
 }
 
 // ─── GET /messages/recipients ─────────────────────────────────────────────────
@@ -112,7 +132,11 @@ router.post(
       const senderRole = await getUserRole(userId);
       if (!senderRole) { res.status(403).json({ error: "Papel não encontrado" }); return; }
 
-      const allowed = ALLOWED_TARGETS[senderRole];
+      let allowed = [...ALLOWED_TARGETS[senderRole]];
+      if (senderRole === "MEMBER") {
+        const isCapitao = await hasOperationalMessagesDelegation(userId);
+        if (isCapitao) allowed = ["MEMBER", "SUPERVISOR_A", "SUPERVISOR_B", "ADMIN"];
+      }
 
       const targetRoles = await db
         .select({ userId: userRolesTable.userId, role: userRolesTable.role })
@@ -426,9 +450,13 @@ router.patch(
       const threadId = String(req.params.threadId);
 
       const senderRole = await getUserRole(userId);
-      if (!senderRole || senderRole === "MEMBER") {
-        res.status(403).json({ error: "Apenas Admin ou Supervisor pode encerrar conversas" });
-        return;
+      if (!senderRole) { res.status(403).json({ error: "Papel não encontrado" }); return; }
+      if (senderRole === "MEMBER") {
+        const isCapitao = await hasOperationalMessagesDelegation(userId);
+        if (!isCapitao) {
+          res.status(403).json({ error: "Apenas Admin, Supervisor ou Capitão delegado pode encerrar conversas" });
+          return;
+        }
       }
 
       const [thread] = await db

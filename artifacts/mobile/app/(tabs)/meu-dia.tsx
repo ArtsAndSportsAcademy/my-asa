@@ -182,7 +182,18 @@ const RESP_LABELS: Record<string, string> = {
   SCALES: "Escalas",
 };
 
+const RESP_ACTIONS: Record<string, { label: string; route?: string; webOnly?: boolean }> = {
+  CHECK_INS:            { label: "Check-ins",   webOnly: true },
+  DAILY_BOOK:           { label: "Livro do Dia", route: "/(tabs)/daily-book" },
+  NOTICES:              { label: "Avisos",       route: "/(tabs)/avisos" },
+  REQUESTS:             { label: "Solicitações", route: "/(tabs)/solicitacoes" },
+  TASK_APPROVALS:       { label: "Tarefas",      route: "/(tabs)/tarefas" },
+  SCALES:               { label: "Escalas",      webOnly: true },
+  OPERATIONAL_MESSAGES: { label: "Mensagens",    route: "/(tabs)/mensagens" },
+};
+
 function DelegateBanner({ delegations, colors }: { delegations: ActiveDelegationItem[]; colors: ReturnType<typeof useColors> }) {
+  const router = useRouter();
   if (delegations.length === 0) return null;
   return (
     <View style={[styles.deltaBanner, { backgroundColor: "#EFF6FF", borderColor: "#3B82F6", marginTop: 8, marginBottom: 0 }]}>
@@ -199,14 +210,45 @@ function DelegateBanner({ delegations, colors }: { delegations: ActiveDelegation
             Em nome de {d.supervisorName} · {d.startDate} → {d.endDate}
           </Text>
           {(d.responsibilities as string[]).length > 0 && (
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 4, marginTop: 4 }}>
-              {(d.responsibilities as string[]).map((r) => (
-                <View key={r} style={{ backgroundColor: "#DBEAFE", borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
-                  <Text style={{ color: "#1D4ED8", fontSize: 10, fontWeight: "600" }}>
-                    ✓ {RESP_LABELS[r] ?? r}
-                  </Text>
-                </View>
-              ))}
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
+              {(d.responsibilities as string[]).map((r) => {
+                const action = RESP_ACTIONS[r];
+                if (!action) return null;
+                return (
+                  <TouchableOpacity
+                    key={r}
+                    onPress={() => {
+                      if (action.webOnly) {
+                        Alert.alert(
+                          "Disponível no Web Admin",
+                          `${action.label} só pode ser gerenciado pelo MyASA Web Admin.`
+                        );
+                      } else if (action.route) {
+                        router.push(action.route as any);
+                      }
+                    }}
+                    style={{
+                      backgroundColor: "#DBEAFE",
+                      borderRadius: 6,
+                      paddingHorizontal: 8,
+                      paddingVertical: 5,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Feather
+                      name={action.webOnly ? "monitor" : "arrow-right-circle"}
+                      size={10}
+                      color="#1D4ED8"
+                    />
+                    <Text style={{ color: "#1D4ED8", fontSize: 11, fontWeight: "600" }}>
+                      {action.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           )}
         </View>

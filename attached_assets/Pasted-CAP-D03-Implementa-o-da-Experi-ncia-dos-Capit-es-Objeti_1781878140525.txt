@@ -1,0 +1,290 @@
+CAP-D03 — Implementação da Experiência dos Capitães
+
+Objetivo:
+
+Transformar Delegações em uma experiência operacional utilizável para Capitães, reaproveitando ao máximo o que já existe.
+
+Base obrigatória:
+
+- GOV-D11
+- GOV-D11.1
+- CAP-D01
+- CAP-D02
+- Auditorias pré-piloto
+- Delegações por responsabilidade já implementadas
+
+Importante:
+
+- Não criar nova tabela
+- Não criar novo modelo de Capitão
+- Não criar novo papel
+- Não duplicar telas
+- Reaproveitar páginas supervisor existentes
+- Manter a regra: Capitão = MEMBER + responsabilidades delegadas
+
+==================================================
+
+T001 — Web Admin: RoleRoute com Delegação
+
+Problema:
+
+Hoje o Capitão vê menus de supervisor, mas ao clicar é redirecionado silenciosamente para /admin/home.
+
+Implementar:
+
+RoleRoute deve permitir acesso quando:
+
+- usuário tem papel permitido
+
+OU
+
+- usuário possui delegação ativa com a responsabilidade necessária para aquela rota
+
+Mapear:
+
+- CHECK_INS → /supervisor/check-ins
+- REQUESTS → /supervisor/requests
+- TASK_APPROVALS → /supervisor/tasks
+- DAILY_BOOK → /supervisor/daily-book
+- NOTICES → /supervisor/avisos
+- SCALES → /admin/scales
+- OPERATIONAL_MESSAGES → /supervisor/messages
+
+Resultado esperado:
+
+Capitão acessa apenas as páginas relacionadas às responsabilidades recebidas.
+
+==================================================
+
+T002 — Web Admin: Sidebar Dinâmica de Capitão
+
+Problema:
+
+O Capitão não vê uma experiência própria no web-admin.
+
+Implementar no admin-layout:
+
+Quando o usuário tiver delegações ativas, exibir seção:
+
+CAPITÃO
+
+Com apenas os itens correspondentes às responsabilidades recebidas.
+
+Exemplo:
+
+Carol recebeu:
+
+- CHECK_INS
+- DAILY_BOOK
+- NOTICES
+
+Sidebar deve mostrar:
+
+CAPITÃO
+- Check-ins
+- Livro do Dia
+- Avisos
+
+Abaixo disso, manter a experiência normal de Membro quando aplicável.
+
+Não exibir:
+
+- Delegações
+- Auditoria
+- Operações
+- Usuários
+- Grupos
+- Itens de supervisor que não foram delegados
+
+==================================================
+
+T003 — Web Admin: Bloqueio com Mensagem Clara
+
+Problema:
+
+Hoje o bloqueio gera redirecionamento silencioso para /admin/home.
+
+Corrigir:
+
+Quando o usuário tentar acessar área sem permissão, mostrar tela clara:
+
+"Você não tem permissão para acessar esta área."
+
+Incluir:
+
+- botão "Voltar para Meu Dia"
+- explicação curta
+- se for Capitão, listar responsabilidades ativas
+
+Nunca redirecionar silenciosamente.
+
+==================================================
+
+T004 — Mobile: DelegateBanner Acionável
+
+Problema:
+
+DelegateBanner informa responsabilidades, mas não leva a lugar nenhum.
+
+Implementar:
+
+Cada responsabilidade no banner deve ter botão de ação:
+
+- CHECK_INS → Check-ins
+- DAILY_BOOK → Livro do Dia
+- NOTICES → Avisos
+- REQUESTS → Solicitações Pendentes
+- TASK_APPROVALS → Tarefas para Aprovar
+- SCALES → Abrir Web Admin / Escalas
+- OPERATIONAL_MESSAGES → Mensagens
+
+Se a ação for web-only, indicar claramente:
+
+"Disponível no Web Admin"
+
+==================================================
+
+T005 — Mobile: Ações Condicionais nas Telas Existentes
+
+Adicionar comportamento condicional:
+
+avisos.tsx
+
+Se usuário tiver NOTICES:
+- mostrar botão "Novo Aviso"
+- permitir criar/publicar aviso
+
+daily-book.tsx
+
+Se usuário tiver DAILY_BOOK:
+- mostrar ações disponíveis
+- permitir publicar/republicar quando aplicável
+
+solicitacoes.tsx
+
+Se usuário tiver REQUESTS:
+- adicionar aba "Pendentes"
+- permitir aprovar/negar/propor alternativa
+
+tarefas.tsx
+
+Se usuário tiver TASK_APPROVALS:
+- adicionar aba "Para Aprovar"
+- permitir aprovar ou solicitar ajustes
+
+mensagens.tsx
+
+Se usuário tiver OPERATIONAL_MESSAGES:
+- exibir contexto "Mensagem Operacional"
+- manter envio normal
+
+==================================================
+
+T006 — API: OPERATIONAL_MESSAGES
+
+Problema:
+
+OPERATIONAL_MESSAGES existe como responsabilidade, mas mensagens ainda não validam delegação operacional.
+
+Implementar:
+
+Nas rotas de mensagens operacionais, aceitar:
+
+- ADMIN
+- SUPERVISOR
+- Capitão com OPERATIONAL_MESSAGES
+
+Sem alterar mensagens pessoais comuns de MEMBER.
+
+==================================================
+
+T007 — Delegação Criada → Aviso Automático
+
+Problema:
+
+Capitão só descobre a delegação se abrir o app e ver o banner.
+
+Implementar:
+
+Quando uma delegação for criada, gerar aviso automático para o membro delegado.
+
+Conteúdo sugerido:
+
+"Você recebeu responsabilidades delegadas em Snowland."
+
+Incluir:
+
+- operação
+- período
+- responsabilidades
+
+Esse aviso deve aparecer em Avisos / Meu Dia.
+
+Histórico deve continuar registrando delegation.created.
+
+==================================================
+
+T008 — Auditoria de Reaproveitamento
+
+Confirmar:
+
+- Nenhuma tabela nova criada
+- Nenhuma rota nova obrigatória criada
+- Páginas supervisor reaproveitadas
+- Mobile reutilizou telas existentes
+- Backend continuou usando hasActiveResponsibility
+- Modelo MEMBER + delegação preservado
+
+==================================================
+
+T009 — Testes de Jornada
+
+Testar cenário:
+
+Débora delega para Carol:
+
+- CHECK_INS
+- DAILY_BOOK
+- NOTICES
+
+Validar Web:
+
+- Carol vê seção CAPITÃO
+- Carol vê apenas Check-ins, Livro do Dia e Avisos
+- Carol acessa as páginas corretas
+- Carol não acessa Solicitações, Tarefas ou Escalas se não recebeu
+- bloqueio mostra mensagem clara
+
+Validar Mobile:
+
+- Carol recebe aviso automático
+- DelegateBanner mostra botões
+- botões levam ao destino correto
+- Avisos permite criar/publicar
+- Livro do Dia permite ação delegada
+- Check-ins informa corretamente se for web-only ou abre tela correspondente
+
+==================================================
+
+T010 — Veredito Final
+
+Responder:
+
+1. Capitão consegue descobrir que recebeu delegação?
+2. Capitão consegue encontrar onde agir?
+3. Capitão consegue operar pelo web?
+4. Capitão consegue operar pelo mobile?
+5. O menu web mostra apenas o que ele pode fazer?
+6. O redirecionamento silencioso foi eliminado?
+7. O modelo MEMBER + delegação foi preservado?
+8. Existe alguma responsabilidade ainda sem experiência utilizável?
+
+Classificar:
+
+- Aprovado
+- Parcial
+- Reprovado
+
+Objetivo final:
+
+Transformar o Capitão de uma permissão técnica em uma experiência operacional real, sem criar novo papel e sem duplicar o sistema de supervisores.

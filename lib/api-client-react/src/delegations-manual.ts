@@ -95,22 +95,22 @@ const cancelDelegation = async (id: string): Promise<{ delegation: DelegationIte
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 
 export function useListDelegations(
-  options?: { query?: UseQueryOptions<{ delegations: DelegationItem[] }, Error> }
+  options?: { query?: Omit<UseQueryOptions<{ delegations: DelegationItem[] }, Error>, "queryKey" | "queryFn"> }
 ) {
   return useQuery<{ delegations: DelegationItem[] }, Error>({
     queryKey: getListDelegationsQueryKey(),
     queryFn: listDelegations,
-    ...options?.query,
+    ...(options?.query as any),
   });
 }
 
 export function useGetMyActiveDelegations(
-  options?: { query?: UseQueryOptions<{ delegations: ActiveDelegationItem[] }, Error> }
+  options?: { query?: Omit<UseQueryOptions<{ delegations: ActiveDelegationItem[] }, Error>, "queryKey" | "queryFn"> }
 ) {
   return useQuery<{ delegations: ActiveDelegationItem[] }, Error>({
     queryKey: getMyActiveDelegationsQueryKey(),
     queryFn: getMyActiveDelegations,
-    ...options?.query,
+    ...(options?.query as any),
   });
 }
 

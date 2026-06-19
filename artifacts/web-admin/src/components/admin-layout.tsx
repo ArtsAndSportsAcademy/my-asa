@@ -4,11 +4,12 @@ import {
   BookOpen, CalendarDays, ShieldCheck, ClipboardList, BookMarked,
   LayoutDashboard, Bell, Clock, MessageSquare, Package, Library,
   FileText, CheckSquare, TrendingUp, AlertTriangle, ClipboardCheck, ArrowLeftRight,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
-import { useLogout } from "@workspace/api-client-react";
+import { useLogout, useGetMyActiveDelegations } from "@workspace/api-client-react";
 
 // ─── Nav definitions ──────────────────────────────────────────────────────────
 
@@ -124,6 +125,17 @@ const SUPERVISOR_NAV: NavGroup[] = [
   },
 ];
 
+// Responsabilidade → item de navegação para Capitão
+const RESP_TO_NAV: Record<string, NavItem> = {
+  CHECK_INS:            { href: "/supervisor/check-ins",  icon: ClipboardCheck, label: "Check-ins"     },
+  REQUESTS:             { href: "/supervisor/requests",   icon: FileText,       label: "Solicitações"  },
+  TASK_APPROVALS:       { href: "/supervisor/tasks",      icon: CheckSquare,    label: "Tarefas"       },
+  DAILY_BOOK:           { href: "/supervisor/daily-book", icon: BookMarked,     label: "Livro do Dia"  },
+  NOTICES:              { href: "/supervisor/avisos",     icon: Bell,           label: "Avisos"        },
+  SCALES:               { href: "/admin/scales",          icon: ClipboardList,  label: "Escalas"       },
+  OPERATIONAL_MESSAGES: { href: "/supervisor/messages",   icon: MessageSquare,  label: "Mensagens"     },
+};
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 interface AdminLayoutProps {
@@ -136,11 +148,39 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
   const [location, setLocation] = useLocation();
   const { user, logout: clearAuth, roles: userRoles } = useAuth();
   const logoutMutation = useLogout();
+  const { data: delegData } = useGetMyActiveDelegations({
+    query: { retry: false } as any,
+  });
 
-  const isAdmin = userRoles.some((r) => r.role === "ADMIN");
+  const isAdmin      = userRoles.some((r) => r.role === "ADMIN");
   const isSupervisor = userRoles.some((r) => r.role === "SUPERVISOR_A" || r.role === "SUPERVISOR_B");
-  const roleLabel = isAdmin ? "Administrador" : isSupervisor ? "Supervisor" : "Membro";
-  const navGroups = isAdmin ? ADMIN_NAV : SUPERVISOR_NAV;
+  const activeDelegations = delegData?.delegations ?? [];
+
+  // Responsabilidades únicas das delegações ativas
+  const captainResponsibilities = [
+    ...new Set(activeDelegations.flatMap((d) => d.responsibilities as string[])),
+  ];
+
+  const isCaptain = !isAdmin && !isSupervisor && captainResponsibilities.length > 0;
+
+  // Itens do CAPITÃO: apenas responsabilidades recebidas, sem duplicar
+  const captainItems: NavItem[] = captainResponsibilities
+    .map((r) => RESP_TO_NAV[r])
+    .filter(Boolean);
+
+  const roleLabel = isAdmin
+    ? "Administrador"
+    : isSupervisor
+    ? "Supervisor"
+    : isCaptain
+    ? "Capitão"
+    : "Membro";
+
+  const navGroups: NavGroup[] = isAdmin
+    ? ADMIN_NAV
+    : isSupervisor
+    ? SUPERVISOR_NAV
+    : [];
 
   const handleLogout = () => {
     const refreshToken = localStorage.getItem("myasa_refresh_token") || "";
@@ -170,6 +210,53 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
         </div>
 
         <nav className="flex-1 p-3 space-y-4">
+          {/* Início sempre visível */}
+          <div>
+            <div className="space-y-0.5">
+              {[{ href: "/admin/home", icon: Home, label: "Início" }].map((item) => {
+                const Icon = item.icon;
+                const active = location === item.href;
+                return (
+                  <Link key={item.href} href={item.href}>
+                    <a className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    }`}>
+                      <Icon className="w-4 h-4 shrink-0" />
+                      {item.label}
+                    </a>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Seção CAPITÃO — só para membros com delegações */}
+          {isCaptain && captainItems.length > 0 && (
+            <div>
+              <p className="px-3 mb-1 text-[10px] font-semibold tracking-widest text-muted-foreground/60 uppercase flex items-center gap-1.5">
+                <Shield className="w-3 h-3" />
+                Capitão
+              </p>
+              <div className="space-y-0.5">
+                {captainItems.map((item) => {
+                  const Icon = item.icon;
+                  const active = location === item.href;
+                  return (
+                    <Link key={item.href} href={item.href}>
+                      <a className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      }`}>
+                        <Icon className="w-4 h-4 shrink-0" />
+                        {item.label}
+                      </a>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Nav normal de admin/supervisor */}
           {navGroups.map((group) => (
             <div key={group.label}>
               <p className="px-3 mb-1 text-[10px] font-semibold tracking-widest text-muted-foreground/60 uppercase">

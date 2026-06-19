@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -10,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { useColors } from "@/hooks/useColors";
 import {
@@ -17,6 +19,10 @@ import {
   useStartTask,
   useSubmitTaskForApproval,
   useUpdateTask,
+  useGetMyActiveDelegations,
+  useListTasks,
+  useApproveTask,
+  getListTasksQueryKey,
 } from "@workspace/api-client-react";
 import type { TaskItem } from "@workspace/api-client-react";
 
@@ -177,6 +183,8 @@ export default function TarefasScreen() {
   const insets = useSafeAreaInsets();
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [loading, setLoading] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"minhas" | "aprovar">("minhas");
+  const queryClient = useQueryClient();
 
   const { data, isLoading, refetch } = useGetMyTasks(
     statusFilter ? { status: statusFilter } : undefined
@@ -186,6 +194,28 @@ export default function TarefasScreen() {
   const { mutateAsync: startTask } = useStartTask();
   const { mutateAsync: submitTask } = useSubmitTaskForApproval();
   const { mutateAsync: updateTask } = useUpdateTask();
+
+  const { data: delegData } = useGetMyActiveDelegations({ query: { retry: false } as any });
+  const hasTaskApprovalsDelegation = (delegData?.delegations ?? []).some(
+    (d) => (d.responsibilities as string[]).includes("TASK_APPROVALS")
+  );
+
+  const { data: approvalData, isLoading: approvalLoading, refetch: refetchApproval } = useListTasks(
+    { status: "READY_FOR_APPROVAL" } as any,
+    { query: { enabled: hasTaskApprovalsDelegation } as any }
+  );
+  const approvalTasks: TaskItem[] = ((approvalData as any)?.tasks ?? []) as TaskItem[];
+
+  const approveMutation = useApproveTask({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() });
+        refetchApproval();
+        Alert.alert("Aprovada", "Tarefa aprovada com sucesso.");
+      },
+      onError: () => Alert.alert("Erro", "Não foi possível aprovar a tarefa."),
+    },
+  });
 
   async function handleStart(id: string) {
     setLoading(id);
@@ -250,8 +280,74 @@ export default function TarefasScreen() {
         ))}
       </ScrollView>
 
+      {/* Tab bar — Capitão com TASK_APPROVALS */}
+      {hasTaskApprovalsDelegation && (
+        <View style={{ flexDirection: "row", paddingHorizontal: 16, marginBottom: 8, gap: 8 }}>
+          <Pressable
+            onPress={() => setActiveTab("minhas")}
+            style={{
+              flex: 1, alignItems: "center", paddingVertical: 8, borderRadius: 8,
+              backgroundColor: activeTab === "minhas" ? colors.primary : colors.card,
+              borderWidth: 1, borderColor: activeTab === "minhas" ? colors.primary : colors.border,
+            }}
+          >
+            <Text style={{ color: activeTab === "minhas" ? "#fff" : colors.mutedForeground, fontSize: 13, fontWeight: "500" }}>
+              Minhas Tarefas
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setActiveTab("aprovar")}
+            style={{
+              flex: 1, alignItems: "center", paddingVertical: 8, borderRadius: 8,
+              backgroundColor: activeTab === "aprovar" ? colors.primary : colors.card,
+              borderWidth: 1, borderColor: activeTab === "aprovar" ? colors.primary : colors.border,
+            }}
+          >
+            <Text style={{ color: activeTab === "aprovar" ? "#fff" : colors.mutedForeground, fontSize: 13, fontWeight: "500" }}>
+              Para Aprovar{approvalTasks.length > 0 ? ` (${approvalTasks.length})` : ""}
+            </Text>
+          </Pressable>
+        </View>
+      )}
+
       <View style={styles.list}>
-        {isLoading ? (
+        {activeTab === "aprovar" ? (
+          approvalLoading ? (
+            <ActivityIndicator style={{ marginTop: 48 }} color={colors.primary} />
+          ) : approvalTasks.length === 0 ? (
+            <View style={styles.empty}>
+              <Feather name="check-square" size={32} color={colors.mutedForeground} style={{ opacity: 0.4 }} />
+              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+                Nenhuma tarefa aguardando aprovação.
+              </Text>
+            </View>
+          ) : (
+            approvalTasks.map((task) => (
+              <View key={task.id} style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Text style={[styles.taskTitle, { color: colors.foreground }]} numberOfLines={2}>{task.title}</Text>
+                <Text style={{ color: colors.mutedForeground, fontSize: 12, marginTop: 2 }}>
+                  Vence: {task.dueDate}
+                </Text>
+                {(task as any).assigneeName && (
+                  <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
+                    Responsável: {(task as any).assigneeName}
+                  </Text>
+                )}
+                <Pressable
+                  style={{ marginTop: 10, backgroundColor: "#16A34A", borderRadius: 8, paddingVertical: 9, alignItems: "center" }}
+                  onPress={() =>
+                    Alert.alert("Aprovar tarefa?", `"${task.title}" será marcada como aprovada.`, [
+                      { text: "Cancelar", style: "cancel" },
+                      { text: "Aprovar", onPress: () => approveMutation.mutate({ taskId: task.id }) },
+                    ])
+                  }
+                >
+                  <Text style={{ color: "#fff", fontSize: 13, fontWeight: "600" }}>Aprovar</Text>
+                </Pressable>
+              </View>
+            ))
+          )
+        ) : isLoading ? (
           <ActivityIndicator style={{ marginTop: 48 }} color={colors.primary} />
         ) : tasks.length === 0 ? (
           <View style={styles.empty}>

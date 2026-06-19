@@ -1,10 +1,11 @@
-import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
+import { Switch, Route, Router as WouterRouter, Redirect, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { useAuth } from "@/hooks/useAuth";
+import { useGetMyActiveDelegations } from "@workspace/api-client-react";
 import Login from "@/pages/login";
 import AdminHome from "@/pages/admin/home";
 import UsersPage from "@/pages/admin/users";
@@ -42,36 +43,125 @@ import SupervisorInterRequestsPage from "@/pages/supervisor/supervisor-requests"
 
 const queryClient = new QueryClient();
 
+// ─── Responsabilidade → rota (para acesso por delegação) ──────────────────────
+
+const ROUTE_RESPONSIBILITY: Record<string, string> = {
+  "/supervisor/check-ins":  "CHECK_INS",
+  "/supervisor/requests":   "REQUESTS",
+  "/supervisor/tasks":      "TASK_APPROVALS",
+  "/supervisor/daily-book": "DAILY_BOOK",
+  "/supervisor/avisos":     "NOTICES",
+  "/admin/scales":          "SCALES",
+  "/supervisor/messages":   "OPERATIONAL_MESSAGES",
+};
+
+const RESP_LABELS_WEB: Record<string, string> = {
+  CHECK_INS:            "Check-ins",
+  REQUESTS:             "Solicitações",
+  TASK_APPROVALS:       "Aprovação de Tarefas",
+  DAILY_BOOK:           "Livro do Dia",
+  NOTICES:              "Avisos",
+  OPERATIONAL_MESSAGES: "Mensagens Operacionais",
+  SCALES:               "Escalas",
+};
+
+// ─── Componentes auxiliares ───────────────────────────────────────────────────
+
+function Spinner() {
+  return (
+    <div className="min-h-screen bg-muted/20 flex items-center justify-center">
+      <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+    </div>
+  );
+}
+
+function AccessDenied() {
+  const [, setLocation] = useLocation();
+  const { data } = useGetMyActiveDelegations();
+  const allResp = [...new Set(
+    (data?.delegations ?? []).flatMap((d) => d.responsibilities as string[])
+  )];
+
+  return (
+    <div className="min-h-screen bg-muted/20 flex items-center justify-center p-6">
+      <div className="max-w-md w-full bg-card border rounded-xl p-8 text-center space-y-4">
+        <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
+          <svg className="w-6 h-6 text-destructive" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M12 9v2m0 4h.01M12 3a9 9 0 110 18A9 9 0 0112 3z" />
+          </svg>
+        </div>
+        <h2 className="text-xl font-serif font-bold">Acesso restrito</h2>
+        <p className="text-muted-foreground text-sm">
+          Você não tem permissão para acessar esta área.
+        </p>
+        {allResp.length > 0 && (
+          <div className="text-left bg-muted/50 rounded-lg p-4">
+            <p className="text-[10px] font-semibold text-muted-foreground mb-2 uppercase tracking-widest">
+              Suas responsabilidades ativas
+            </p>
+            <ul className="space-y-1.5">
+              {allResp.map((r) => (
+                <li key={r} className="text-sm flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                  {RESP_LABELS_WEB[r] ?? r}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <button
+          onClick={() => setLocation("/admin/home")}
+          className="w-full bg-primary text-primary-foreground rounded-lg py-2.5 text-sm font-medium hover:bg-primary/90 transition-colors"
+        >
+          Voltar para Meu Dia
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Route guards ─────────────────────────────────────────────────────────────
+
 function ProtectedRoute({ component: Component, path }: { component: React.ComponentType<any>, path: string }) {
   const { isAuthenticated, isLoading } = useAuth();
-  
-  if (isLoading) return <div className="min-h-screen bg-muted/20 flex items-center justify-center"><div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" /></div>;
-  
-  if (!isAuthenticated) {
-    return <Redirect to="/login" />;
-  }
-
+  if (isLoading) return <Spinner />;
+  if (!isAuthenticated) return <Redirect to="/login" />;
   return <Route path={path} component={Component} />;
 }
 
 function RoleRoute({ component: Component, path, roles }: { component: React.ComponentType<any>, path: string, roles: string[] }) {
   const { isAuthenticated, isLoading, roles: userRoles } = useAuth();
-  
-  if (isLoading) return <div className="min-h-screen bg-muted/20 flex items-center justify-center"><div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" /></div>;
-  
+  const { data: delegData, isLoading: delegLoading } = useGetMyActiveDelegations({
+    query: { enabled: !isLoading && isAuthenticated, retry: false } as any,
+  });
+
+  if (isLoading || delegLoading) return <Spinner />;
   if (!isAuthenticated) return <Redirect to="/login" />;
-  
+
   const hasRole = userRoles.some((r) => roles.includes(r.role));
-  if (!hasRole) return <Redirect to="/admin/home" />;
+
+  if (!hasRole) {
+    const required = ROUTE_RESPONSIBILITY[path];
+    const hasDelegation = required
+      ? (delegData?.delegations ?? []).some((d) =>
+          (d.responsibilities as string[]).includes(required)
+        )
+      : false;
+
+    if (!hasDelegation) return <AccessDenied />;
+  }
 
   return <Route path={path} component={Component} />;
 }
 
 function RootRoute() {
   const { isAuthenticated, isLoading } = useAuth();
-  if (isLoading) return <div className="min-h-screen bg-muted/20 flex items-center justify-center"><div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" /></div>;
+  if (isLoading) return <Spinner />;
   return <Redirect to={isAuthenticated ? "/admin/home" : "/login"} />;
 }
+
+// ─── Router ───────────────────────────────────────────────────────────────────
 
 function Router() {
   return (
@@ -85,7 +175,7 @@ function Router() {
       <ProtectedRoute path="/admin/show-book" component={ShowBookPage} />
       <ProtectedRoute path="/admin/agenda" component={AgendaPage} />
       <ProtectedRoute path="/admin/auditoria" component={AuditoriaPage} />
-      <ProtectedRoute path="/admin/scales" component={ScalesPage} />
+      <RoleRoute path="/admin/scales" component={ScalesPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/admin/daily-book" component={DailyBookPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/supervisor/daily-book" component={SupervisorDailyBookPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
       <ProtectedRoute path="/admin/operational-panel" component={AdminOperationalPanel} />

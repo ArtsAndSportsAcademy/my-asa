@@ -4,6 +4,7 @@ import {
   useGetDailyBook,
   getListDailyBookQueryKey,
   getGetDailyBookQueryKey,
+  useGetMyActiveDelegations,
 } from "@workspace/api-client-react";
 import type {
   DailyBook,
@@ -78,6 +79,12 @@ export default function DailyBookScreen() {
   const isSupervisor = auth.roles.some((r) =>
     ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"].includes(r.role)
   );
+
+  const { data: delegData } = useGetMyActiveDelegations({ query: { retry: false } as any });
+  const dailyBookDelegation = (delegData?.delegations ?? []).find(
+    (d) => (d.responsibilities as string[]).includes("DAILY_BOOK")
+  );
+  const isCapitaoDailyBook = !!dailyBookDelegation && !isSupervisor;
 
   const {
     data: listData,
@@ -289,9 +296,22 @@ export default function DailyBookScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Livro do Dia</Text>
         <Text style={styles.headerSub}>
-          {isSupervisor ? "Visão do supervisor — leitura" : "Seus escalamentos do dia"}
+          {isSupervisor
+            ? "Visão do supervisor — leitura"
+            : isCapitaoDailyBook
+            ? `Capitão · em nome de ${dailyBookDelegation?.supervisorName ?? "Supervisor"}`
+            : "Seus escalamentos do dia"}
         </Text>
       </View>
+
+      {isCapitaoDailyBook && (
+        <View style={{ backgroundColor: "#EFF6FF", borderWidth: 1, borderColor: "#3B82F6", borderRadius: 10, marginHorizontal: 16, marginBottom: 12, padding: 10, flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Feather name="shield" size={14} color="#1D4ED8" />
+          <Text style={{ color: "#1E40AF", fontSize: 12, fontWeight: "600", flex: 1 }}>
+            Você está operando o Livro do Dia como Capitão delegado.
+          </Text>
+        </View>
+      )}
 
       <ScrollView
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}

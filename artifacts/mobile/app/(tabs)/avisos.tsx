@@ -4,18 +4,23 @@ import {
   useMarkNoticeViewed,
   useConfirmNotice,
   getGetMyNoticesQueryKey,
+  useGetMyActiveDelegations,
+  useCreateNotice,
+  usePublishNotice,
 } from "@workspace/api-client-react";
 import type { MyNoticeItem } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -48,10 +53,54 @@ export default function AvisosScreen() {
 
   const [selectedNotice, setSelectedNotice] = useState<MyNoticeItem | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newContent, setNewContent] = useState("");
+  const [newUrgency, setNewUrgency] = useState<"INFORMATIVE" | "IMPORTANT" | "CRITICAL">("INFORMATIVE");
+  const [creating, setCreating] = useState(false);
 
   const { data: notices, isLoading } = useGetMyNotices({});
   const viewMutation    = useMarkNoticeViewed();
   const confirmMutation = useConfirmNotice();
+
+  const { data: delegData } = useGetMyActiveDelegations({ query: { retry: false } as any });
+  const noticesDelegation = (delegData?.delegations ?? []).find(
+    (d) => (d.responsibilities as string[]).includes("NOTICES")
+  );
+  const canCreateNotice = !!noticesDelegation;
+  const noticesOpId = noticesDelegation?.operationId ?? "";
+
+  const createNoticeMutation = useCreateNotice();
+  const publishNoticeMutation = usePublishNotice();
+
+  async function handleCreateAndPublish() {
+    if (!newContent.trim() || !noticesOpId) {
+      Alert.alert("Atenção", "Preencha o conteúdo do aviso.");
+      return;
+    }
+    setCreating(true);
+    try {
+      const result = await createNoticeMutation.mutateAsync({
+        data: {
+          operationId: noticesOpId,
+          title: newTitle.trim() || undefined,
+          content: newContent.trim(),
+          urgency: newUrgency,
+        },
+      });
+      await publishNoticeMutation.mutateAsync({ noticeId: result.id });
+      qc.invalidateQueries({ queryKey: getGetMyNoticesQueryKey() });
+      setShowCreate(false);
+      setNewTitle("");
+      setNewContent("");
+      setNewUrgency("INFORMATIVE");
+      Alert.alert("Aviso publicado", "O aviso foi criado e publicado com sucesso.");
+    } catch {
+      Alert.alert("Erro", "Não foi possível criar o aviso. Verifique sua delegação.");
+    } finally {
+      setCreating(false);
+    }
+  }
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -96,11 +145,21 @@ export default function AvisosScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Avisos</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground, flex: 1 }]}>Avisos</Text>
         {unreadCount > 0 && (
           <View style={[styles.badge, { backgroundColor: colors.primary }]}>
             <Text style={styles.badgeText}>{unreadCount}</Text>
           </View>
+        )}
+        {canCreateNotice && (
+          <TouchableOpacity
+            onPress={() => setShowCreate(true)}
+            style={{ backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, flexDirection: "row", alignItems: "center", gap: 4 }}
+            activeOpacity={0.8}
+          >
+            <Feather name="plus" size={14} color="#fff" />
+            <Text style={{ color: "#fff", fontSize: 13, fontWeight: "600" }}>Novo Aviso</Text>
+          </TouchableOpacity>
         )}
       </View>
 
@@ -294,6 +353,80 @@ export default function AvisosScreen() {
             </View>
           );
         })()}
+      </Modal>
+
+      {/* ─── Modal Novo Aviso (Capitão) ─────────────────────────────────── */}
+      <Modal visible={showCreate} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowCreate(false)}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+          {/* Header */}
+          <View style={[styles.header, { paddingTop: 20, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+            <TouchableOpacity onPress={() => setShowCreate(false)} style={{ padding: 4 }}>
+              <Feather name="x" size={22} color={colors.foreground} />
+            </TouchableOpacity>
+            <Text style={[styles.headerTitle, { color: colors.foreground, fontSize: 18, flex: 1, marginLeft: 8 }]}>Novo Aviso</Text>
+            <TouchableOpacity
+              onPress={handleCreateAndPublish}
+              disabled={creating}
+              style={{ backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7 }}
+              activeOpacity={0.8}
+            >
+              <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>
+                {creating ? "Publicando…" : "Publicar"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }} keyboardShouldPersistTaps="handled">
+            {/* Urgência */}
+            <View style={{ gap: 6 }}>
+              <Text style={{ color: colors.mutedForeground, fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.6 }}>Urgência</Text>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                {(["INFORMATIVE", "IMPORTANT", "CRITICAL"] as const).map((u) => (
+                  <Pressable
+                    key={u}
+                    onPress={() => setNewUrgency(u)}
+                    style={{
+                      flex: 1, alignItems: "center", paddingVertical: 8, borderRadius: 8,
+                      backgroundColor: newUrgency === u ? colors.primary : colors.card,
+                      borderWidth: 1, borderColor: newUrgency === u ? colors.primary : colors.border,
+                    }}
+                  >
+                    <Text style={{ color: newUrgency === u ? "#fff" : colors.mutedForeground, fontSize: 12, fontWeight: "600" }}>
+                      {u === "INFORMATIVE" ? "Info" : u === "IMPORTANT" ? "Importante" : "Crítico"}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            {/* Título opcional */}
+            <View style={{ gap: 6 }}>
+              <Text style={{ color: colors.mutedForeground, fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.6 }}>Título (opcional)</Text>
+              <TextInput
+                value={newTitle}
+                onChangeText={setNewTitle}
+                placeholder="Título do aviso…"
+                placeholderTextColor={colors.mutedForeground}
+                style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, color: colors.foreground, fontSize: 15 }}
+              />
+            </View>
+
+            {/* Conteúdo */}
+            <View style={{ gap: 6 }}>
+              <Text style={{ color: colors.mutedForeground, fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.6 }}>Conteúdo *</Text>
+              <TextInput
+                value={newContent}
+                onChangeText={setNewContent}
+                placeholder="Escreva o aviso aqui…"
+                placeholderTextColor={colors.mutedForeground}
+                multiline
+                numberOfLines={6}
+                textAlignVertical="top"
+                style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, color: colors.foreground, fontSize: 15, minHeight: 120 }}
+              />
+            </View>
+          </ScrollView>
+        </View>
       </Modal>
     </View>
   );
