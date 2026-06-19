@@ -1,0 +1,247 @@
+TASK-D01 — Evidências de Tarefa (Fluxo Completo)
+
+Objetivo:
+
+Fechar o último fluxo operacional incompleto identificado no AUD-P02 e Sprint 23.
+
+Hoje:
+
+- Membro consegue iniciar tarefa
+- Membro consegue executar checklist
+- Membro consegue concluir checklist
+
+Mas:
+
+- Não consegue anexar evidência pelo mobile
+- Não consegue enviar a tarefa completa para aprovação
+- Supervisor não consegue validar evidência recebida
+
+Objetivo:
+
+Permitir execução completa da tarefa pelo aplicativo.
+
+Importante:
+
+- Não criar novo papel
+- Não criar nova tabela
+- Reaproveitar task_evidences existente
+- Reaproveitar API existente
+- Reaproveitar fluxo atual de aprovação
+
+==================================================
+
+T001 — Auditoria do Fluxo Atual
+
+Mapear:
+
+1. Como a evidência é armazenada hoje
+2. Quais endpoints já existem
+3. O que mobile já consome
+4. O que web-admin já consome
+5. Onde o fluxo quebra
+
+Responder:
+
+- Banco
+- API
+- Mobile
+- Web
+
+Classificar:
+
+✅ Completo
+
+🟡 Parcial
+
+🔴 Ausente
+
+==================================================
+
+T002 — Mobile: Evidência de Tarefa
+
+Em tarefas.tsx
+
+Adicionar seção:
+
+Evidências
+
+Permitir:
+
+- URL
+- Link Google Drive
+- Link OneDrive
+- Link YouTube
+- Texto simples
+- Observação
+
+Não implementar upload de arquivo neste sprint.
+
+Objetivo:
+
+Começar simples.
+
+==================================================
+
+T003 — Criar Evidência
+
+Conectar com endpoint existente.
+
+Validar:
+
+- taskId
+- usuário responsável
+- texto
+- url opcional
+
+Registrar:
+
+- createdBy
+- createdAt
+
+==================================================
+
+T004 — Visualização da Evidência
+
+Membro deve conseguir visualizar:
+
+- evidências enviadas
+- data
+- autor
+
+Supervisor deve conseguir visualizar:
+
+- todas as evidências da tarefa
+
+Sem criar tela nova.
+
+Utilizar a própria tela de tarefa.
+
+==================================================
+
+T005 — Envio para Aprovação
+
+Quando existir evidência:
+
+Permitir:
+
+"Enviar para Aprovação"
+
+Fluxo:
+
+IN_PROGRESS
+↓
+READY_FOR_APPROVAL
+
+Validar:
+
+- checklist concluído
+- evidência presente quando obrigatória
+
+==================================================
+
+T006 — Aprovação
+
+Supervisor:
+
+- aprova
+- reprova
+- solicita ajuste
+
+Reutilizar fluxo existente.
+
+Validar:
+
+APPROVED
+REJECTED
+CHANGES_REQUESTED
+
+==================================================
+
+T007 — Histórico
+
+Registrar:
+
+task_evidence_created
+
+task_sent_for_approval
+
+task_approved
+
+task_rejected
+
+task_changes_requested
+
+Confirmar:
+
+history_events funcionando.
+
+==================================================
+
+T008 — Mobile UX
+
+Responder:
+
+Um membro novo consegue:
+
+1. Encontrar a área de evidências?
+2. Entender o que anexar?
+3. Enviar para aprovação?
+4. Ver retorno do supervisor?
+
+Menos de 3 cliques?
+
+Se não:
+
+ajustar.
+
+==================================================
+
+T009 — Teste Real
+
+Cenário:
+
+Débora cria tarefa para Carol.
+
+Carol:
+
+- inicia tarefa
+- completa checklist
+- adiciona evidência
+- envia para aprovação
+
+Débora:
+
+- visualiza evidência
+- aprova
+
+Validar:
+
+- status correto
+- histórico correto
+- mobile funcionando
+- web funcionando
+
+==================================================
+
+T010 — Veredito Final
+
+Responder:
+
+1. Fluxo ficou completo?
+2. Existe alguma etapa fora do sistema?
+3. Ainda precisa WhatsApp?
+4. Ainda precisa planilha?
+5. O membro consegue concluir sozinho?
+6. O supervisor consegue aprovar sozinho?
+
+Classificar:
+
+🟢 Completo
+
+🟡 Parcial
+
+🔴 Incompleto
+
+Objetivo final:
+
+Permitir que uma tarefa seja criada, executada, comprovada e aprovada inteiramente dentro do MyASA, sem depender de WhatsApp ou ferramentas externas.

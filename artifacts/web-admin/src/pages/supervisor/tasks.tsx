@@ -19,9 +19,10 @@ import {
   useApproveTask,
   useRequestTaskChanges,
   useCancelTask,
+  useGetTask,
 } from "@workspace/api-client-react";
-import type { TaskItem } from "@workspace/api-client-react";
-import { Plus, CheckCircle2, XCircle, RotateCcw, AlertCircle, Ban } from "lucide-react";
+import type { TaskItem, TaskEvidence } from "@workspace/api-client-react";
+import { Plus, CheckCircle2, XCircle, RotateCcw, AlertCircle, Ban, Paperclip, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 
 const PRIORITY_LABELS: Record<string, string> = {
   LOW: "Baixa", MEDIUM: "Média", HIGH: "Alta", CRITICAL: "Crítica",
@@ -53,6 +54,57 @@ const STATUS_COLORS: Record<string, string> = {
   EXPIRED: "bg-red-100 text-red-600 border-red-200",
 };
 
+function EvidenceViewer({ taskId }: { taskId: string }) {
+  const [open, setOpen] = useState(false);
+  const { data: detail } = useGetTask(taskId, {
+    query: { enabled: open } as any,
+  });
+  const evidences: TaskEvidence[] = (detail as any)?.evidences ?? [];
+
+  return (
+    <div className="mt-3 pt-3 border-t">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <Paperclip className="h-3 w-3" />
+        Evidências{evidences.length > 0 ? ` (${evidences.length})` : ""}
+        {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+      </button>
+      {open && (
+        <div className="mt-2 space-y-1.5">
+          {evidences.length === 0 ? (
+            <p className="text-xs text-muted-foreground italic">Nenhuma evidência anexada.</p>
+          ) : (
+            evidences.map((ev) => (
+              <div key={ev.id} className="flex items-start gap-2 bg-muted/50 rounded-md p-2">
+                <ExternalLink className="h-3 w-3 mt-0.5 text-violet-600 shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <a
+                    href={ev.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-violet-600 hover:underline truncate block"
+                  >
+                    {ev.url}
+                  </a>
+                  {ev.description && (
+                    <p className="text-xs text-muted-foreground mt-0.5">{ev.description}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {new Date(ev.createdAt).toLocaleDateString("pt-BR")}
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TaskCard({ task, onApprove, onRequestChanges, onCancel }: {
   task: TaskItem;
   onApprove: (id: string) => void;
@@ -80,6 +132,7 @@ function TaskCard({ task, onApprove, onRequestChanges, onCancel }: {
               {task.operationName && <div>Operação: {task.operationName}</div>}
               <div>Prazo: <span className={isLate ? "text-red-600 font-medium" : ""}>{new Date(task.dueDate + "T12:00:00").toLocaleDateString("pt-BR")}</span></div>
             </div>
+            <EvidenceViewer taskId={task.id} />
           </div>
           <div className="flex flex-col gap-1.5 shrink-0">
             {task.status === "READY_FOR_APPROVAL" && (

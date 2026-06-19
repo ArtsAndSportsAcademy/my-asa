@@ -8,6 +8,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -22,9 +23,12 @@ import {
   useGetMyActiveDelegations,
   useListTasks,
   useApproveTask,
+  useAddTaskEvidence,
+  useDeleteTaskEvidence,
+  useGetTask,
   getListTasksQueryKey,
 } from "@workspace/api-client-react";
-import type { TaskItem } from "@workspace/api-client-react";
+import type { TaskItem, TaskEvidence } from "@workspace/api-client-react";
 
 // ─── Labels ──────────────────────────────────────────────────────────────────
 
@@ -50,6 +54,175 @@ function priorityDot(p: string): string {
   return "#9ca3af";
 }
 
+// ─── Evidence Section ─────────────────────────────────────────────────────────
+
+function EvidenceSection({
+  taskId,
+  taskStatus,
+  colors,
+  onEvidenceAdded,
+}: {
+  taskId: string;
+  taskStatus: string;
+  colors: ReturnType<typeof useColors>;
+  onEvidenceAdded: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [url, setUrl] = useState("");
+  const [description, setDescription] = useState("");
+
+  const { data: taskDetail, refetch: refetchDetail } = useGetTask(taskId, {
+    query: { enabled: expanded } as any,
+  });
+  const evidences: TaskEvidence[] = (taskDetail as any)?.evidences ?? [];
+
+  const addMutation = useAddTaskEvidence({
+    mutation: {
+      onSuccess: () => {
+        refetchDetail();
+        onEvidenceAdded();
+        setShowForm(false);
+        setUrl("");
+        setDescription("");
+      },
+      onError: () => Alert.alert("Erro", "Não foi possível adicionar a evidência."),
+    },
+  });
+
+  const deleteMutation = useDeleteTaskEvidence({
+    mutation: {
+      onSuccess: () => refetchDetail(),
+      onError: () => Alert.alert("Erro", "Não foi possível remover a evidência."),
+    },
+  });
+
+  const canEdit = ["IN_PROGRESS", "CHANGES_REQUESTED"].includes(taskStatus);
+
+  return (
+    <View style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 10, marginTop: 4, gap: 8 }}>
+      <Pressable
+        style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+        onPress={() => setExpanded(!expanded)}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Feather name="paperclip" size={12} color={colors.mutedForeground} />
+          <Text style={{ fontSize: 11, fontWeight: "600", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.5 }}>
+            Evidências{evidences.length > 0 ? ` (${evidences.length})` : ""}
+          </Text>
+        </View>
+        <Feather name={expanded ? "chevron-up" : "chevron-down"} size={14} color={colors.mutedForeground} />
+      </Pressable>
+
+      {expanded && (
+        <View style={{ gap: 8 }}>
+          {evidences.length === 0 && !showForm && (
+            <Text style={{ fontSize: 12, color: colors.mutedForeground, fontStyle: "italic" }}>
+              Nenhuma evidência anexada ainda.
+            </Text>
+          )}
+
+          {evidences.map((ev: TaskEvidence) => (
+            <View
+              key={ev.id}
+              style={{ flexDirection: "row", alignItems: "flex-start", backgroundColor: colors.muted, borderRadius: 8, padding: 10, gap: 8 }}
+            >
+              <Feather name="link" size={13} color="#7c3aed" style={{ marginTop: 2 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 12, color: "#7c3aed", fontWeight: "500" }} numberOfLines={2}>{ev.url}</Text>
+                {ev.description ? (
+                  <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 2 }}>{ev.description}</Text>
+                ) : null}
+                <Text style={{ fontSize: 10, color: colors.mutedForeground, marginTop: 2 }}>
+                  {new Date(ev.createdAt).toLocaleDateString("pt-BR")}
+                </Text>
+              </View>
+              {canEdit && (
+                <Pressable
+                  hitSlop={8}
+                  onPress={() =>
+                    Alert.alert("Remover evidência?", "Esta ação não pode ser desfeita.", [
+                      { text: "Cancelar", style: "cancel" },
+                      { text: "Remover", style: "destructive", onPress: () => deleteMutation.mutate({ taskId, evidenceId: ev.id }) },
+                    ])
+                  }
+                >
+                  <Feather name="trash-2" size={13} color="#ef4444" />
+                </Pressable>
+              )}
+            </View>
+          ))}
+
+          {canEdit && !showForm && (
+            <Pressable
+              style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4 }}
+              onPress={() => setShowForm(true)}
+            >
+              <Feather name="plus-circle" size={14} color="#7c3aed" />
+              <Text style={{ fontSize: 13, color: "#7c3aed", fontWeight: "500" }}>Adicionar Evidência</Text>
+            </Pressable>
+          )}
+
+          {showForm && (
+            <View style={{ gap: 8 }}>
+              <TextInput
+                style={[evidenceStyles.input, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.card }]}
+                placeholder="URL / Link (Drive, YouTube, OneDrive...)"
+                placeholderTextColor={colors.mutedForeground}
+                value={url}
+                onChangeText={setUrl}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+              />
+              <TextInput
+                style={[evidenceStyles.input, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.card, minHeight: 60 }]}
+                placeholder="Descrição ou observação (opcional)"
+                placeholderTextColor={colors.mutedForeground}
+                value={description}
+                onChangeText={setDescription}
+                multiline
+              />
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <Pressable
+                  style={{ flex: 1, backgroundColor: colors.muted, borderRadius: 8, paddingVertical: 9, alignItems: "center" }}
+                  onPress={() => { setShowForm(false); setUrl(""); setDescription(""); }}
+                >
+                  <Text style={{ fontSize: 13, color: colors.mutedForeground, fontWeight: "500" }}>Cancelar</Text>
+                </Pressable>
+                <Pressable
+                  style={{
+                    flex: 2, backgroundColor: "#7c3aed", borderRadius: 8, paddingVertical: 9, alignItems: "center",
+                    opacity: !url.trim() || addMutation.isPending ? 0.5 : 1,
+                  }}
+                  onPress={() => {
+                    if (!url.trim()) return;
+                    addMutation.mutate({ taskId, data: { type: "LINK", url: url.trim(), description: description.trim() || undefined } });
+                  }}
+                  disabled={!url.trim() || addMutation.isPending}
+                >
+                  {addMutation.isPending
+                    ? <ActivityIndicator size="small" color="#fff" />
+                    : <Text style={{ fontSize: 13, color: "#fff", fontWeight: "600" }}>Salvar</Text>
+                  }
+                </Pressable>
+              </View>
+            </View>
+          )}
+        </View>
+      )}
+    </View>
+  );
+}
+
+const evidenceStyles = StyleSheet.create({
+  input: {
+    borderWidth: 1, borderRadius: 8,
+    paddingHorizontal: 12, paddingVertical: 9,
+    fontSize: 13, textAlignVertical: "top",
+  },
+});
+
 // ─── Task Card ────────────────────────────────────────────────────────────────
 
 function TaskCard({
@@ -58,6 +231,7 @@ function TaskCard({
   onStart,
   onSubmit,
   onToggleChecklist,
+  onEvidenceAdded,
   loading,
 }: {
   task: TaskItem;
@@ -65,13 +239,16 @@ function TaskCard({
   onStart: (id: string) => void;
   onSubmit: (id: string) => void;
   onToggleChecklist: (task: TaskItem, itemId: string, completed: boolean) => void;
+  onEvidenceAdded: () => void;
   loading: string | null;
 }) {
   const today = new Date().toISOString().slice(0, 10);
   const isLate = !["APPROVED", "COMPLETED", "CANCELLED"].includes(task.status) && task.dueDate < today;
   const checklist = (task.operationalChecklist ?? []).concat(task.mandatoryChecklist ?? []);
   const completedCount = checklist.filter((i) => i.completed).length;
-  const canSubmit = task.status === "IN_PROGRESS" && (!task.requiresApproval || completedCount === checklist.length || checklist.length === 0);
+  const checklistDone = checklist.length === 0 || completedCount === checklist.length;
+  const canSubmit = task.status === "IN_PROGRESS" && checklistDone;
+  const showEvidenceSection = ["IN_PROGRESS", "CHANGES_REQUESTED", "READY_FOR_APPROVAL"].includes(task.status);
 
   return (
     <View style={[styles.card, { backgroundColor: colors.card, borderColor: isLate ? "#fca5a5" : colors.border }]}>
@@ -137,6 +314,16 @@ function TaskCard({
         </View>
       )}
 
+      {/* Evidências */}
+      {showEvidenceSection && (
+        <EvidenceSection
+          taskId={task.id}
+          taskStatus={task.status}
+          colors={colors}
+          onEvidenceAdded={onEvidenceAdded}
+        />
+      )}
+
       {/* Actions */}
       <View style={styles.actions}>
         {task.status === "CREATED" && (
@@ -166,9 +353,27 @@ function TaskCard({
           </Pressable>
         )}
         {task.status === "CHANGES_REQUESTED" && (
-          <View style={[styles.alertBox, { backgroundColor: "#fef3c7", borderColor: "#fde68a" }]}>
-            <Feather name="alert-circle" size={14} color="#d97706" />
-            <Text style={[styles.alertText, { color: "#92400e" }]}>Ajustes solicitados pelo aprovador</Text>
+          <>
+            <View style={[styles.alertBox, { backgroundColor: "#fef3c7", borderColor: "#fde68a" }]}>
+              <Feather name="alert-circle" size={14} color="#d97706" />
+              <Text style={[styles.alertText, { color: "#92400e" }]}>Ajustes solicitados — atualize as evidências e reenvie.</Text>
+            </View>
+            <Pressable
+              style={({ pressed }) => [styles.btn, styles.btnSuccess, pressed && { opacity: 0.75 }, loading === task.id && { opacity: 0.5 }]}
+              onPress={() => onSubmit(task.id)}
+              disabled={loading === task.id}
+            >
+              {loading === task.id
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Text style={styles.btnPrimaryText}>Reenviar para Aprovação</Text>
+              }
+            </Pressable>
+          </>
+        )}
+        {task.status === "READY_FOR_APPROVAL" && (
+          <View style={[styles.alertBox, { backgroundColor: "#ede9fe", borderColor: "#c4b5fd" }]}>
+            <Feather name="clock" size={14} color="#7c3aed" />
+            <Text style={[styles.alertText, { color: "#5b21b6" }]}>Aguardando aprovação do supervisor.</Text>
           </View>
         )}
       </View>
@@ -220,15 +425,21 @@ export default function TarefasScreen() {
   async function handleStart(id: string) {
     setLoading(id);
     try { await startTask({ taskId: id }); await refetch(); }
-    catch { /* silently handled */ }
+    catch { Alert.alert("Erro", "Não foi possível iniciar a tarefa."); }
     finally { setLoading(null); }
   }
 
   async function handleSubmit(id: string) {
     setLoading(id);
-    try { await submitTask({ taskId: id }); await refetch(); }
-    catch { /* silently handled */ }
-    finally { setLoading(null); }
+    try {
+      await submitTask({ taskId: id });
+      await refetch();
+    } catch (err: any) {
+      const msg = err?.response?.data?.error ?? "Verifique se o checklist está completo e as evidências obrigatórias foram anexadas.";
+      Alert.alert("Não foi possível enviar", msg);
+    } finally {
+      setLoading(null);
+    }
   }
 
   async function handleToggleChecklist(task: TaskItem, itemId: string, completed: boolean) {
@@ -323,28 +534,12 @@ export default function TarefasScreen() {
             </View>
           ) : (
             approvalTasks.map((task) => (
-              <View key={task.id} style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <Text style={[styles.taskTitle, { color: colors.foreground }]} numberOfLines={2}>{task.title}</Text>
-                <Text style={{ color: colors.mutedForeground, fontSize: 12, marginTop: 2 }}>
-                  Vence: {task.dueDate}
-                </Text>
-                {(task as any).assigneeName && (
-                  <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
-                    Responsável: {(task as any).assigneeName}
-                  </Text>
-                )}
-                <Pressable
-                  style={{ marginTop: 10, backgroundColor: "#16A34A", borderRadius: 8, paddingVertical: 9, alignItems: "center" }}
-                  onPress={() =>
-                    Alert.alert("Aprovar tarefa?", `"${task.title}" será marcada como aprovada.`, [
-                      { text: "Cancelar", style: "cancel" },
-                      { text: "Aprovar", onPress: () => approveMutation.mutate({ taskId: task.id }) },
-                    ])
-                  }
-                >
-                  <Text style={{ color: "#fff", fontSize: 13, fontWeight: "600" }}>Aprovar</Text>
-                </Pressable>
-              </View>
+              <ApprovalCard
+                key={task.id}
+                task={task}
+                colors={colors}
+                onApprove={() => approveMutation.mutate({ taskId: task.id })}
+              />
             ))
           )
         ) : isLoading ? (
@@ -365,12 +560,88 @@ export default function TarefasScreen() {
               onStart={handleStart}
               onSubmit={handleSubmit}
               onToggleChecklist={handleToggleChecklist}
+              onEvidenceAdded={refetch}
               loading={loading}
             />
           ))
         )}
       </View>
     </ScrollView>
+  );
+}
+
+// ─── Approval Card (Para Aprovar tab) ────────────────────────────────────────
+
+function ApprovalCard({
+  task,
+  colors,
+  onApprove,
+}: {
+  task: TaskItem;
+  colors: ReturnType<typeof useColors>;
+  onApprove: () => void;
+}) {
+  const [showEvidence, setShowEvidence] = useState(false);
+  const { data: taskDetail } = useGetTask(task.id, {
+    query: { enabled: showEvidence } as any,
+  });
+  const evidences: TaskEvidence[] = (taskDetail as any)?.evidences ?? [];
+
+  return (
+    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <Text style={[styles.taskTitle, { color: colors.foreground }]} numberOfLines={2}>{task.title}</Text>
+      <Text style={{ color: colors.mutedForeground, fontSize: 12, marginTop: 2 }}>
+        Vence: {new Date(task.dueDate + "T12:00:00").toLocaleDateString("pt-BR")}
+      </Text>
+      {(task as any).assigneeName && (
+        <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>
+          Responsável: {(task as any).assigneeName}
+        </Text>
+      )}
+
+      {/* Evidências do aprovador */}
+      <Pressable
+        style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 6 }}
+        onPress={() => setShowEvidence(!showEvidence)}
+      >
+        <Feather name="paperclip" size={12} color={colors.mutedForeground} />
+        <Text style={{ fontSize: 12, color: colors.mutedForeground, fontWeight: "500" }}>
+          Ver Evidências{evidences.length > 0 ? ` (${evidences.length})` : ""}
+        </Text>
+        <Feather name={showEvidence ? "chevron-up" : "chevron-down"} size={12} color={colors.mutedForeground} />
+      </Pressable>
+      {showEvidence && (
+        <View style={{ gap: 6 }}>
+          {evidences.length === 0 ? (
+            <Text style={{ fontSize: 12, color: colors.mutedForeground, fontStyle: "italic" }}>Sem evidências anexadas.</Text>
+          ) : (
+            evidences.map((ev: TaskEvidence) => (
+              <View key={ev.id} style={{ flexDirection: "row", alignItems: "flex-start", backgroundColor: colors.muted, borderRadius: 8, padding: 10, gap: 8 }}>
+                <Feather name="link" size={13} color="#7c3aed" style={{ marginTop: 2 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, color: "#7c3aed" }} numberOfLines={2}>{ev.url}</Text>
+                  {ev.description ? (
+                    <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 2 }}>{ev.description}</Text>
+                  ) : null}
+                </View>
+              </View>
+            ))
+          )}
+        </View>
+      )}
+
+      <Pressable
+        style={{ marginTop: 8, backgroundColor: "#16A34A", borderRadius: 8, paddingVertical: 9, alignItems: "center" }}
+        onPress={() =>
+          Alert.alert("Aprovar tarefa?", `"${task.title}" será marcada como aprovada.`, [
+            { text: "Cancelar", style: "cancel" },
+            { text: "Aprovar", onPress: onApprove },
+          ])
+        }
+      >
+        <Text style={{ color: "#fff", fontSize: 13, fontWeight: "600" }}>Aprovar</Text>
+      </Pressable>
+    </View>
   );
 }
 
