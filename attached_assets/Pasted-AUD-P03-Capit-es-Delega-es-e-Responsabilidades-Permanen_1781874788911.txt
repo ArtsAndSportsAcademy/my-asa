@@ -1,0 +1,200 @@
+AUD-P03 — Capitães, Delegações e Responsabilidades Permanentes
+
+Objetivo
+
+Validar se o modelo atual de Delegações representa corretamente a operação real da ASA.
+
+Importante:
+
+* Não implementar nada.
+* Não alterar banco de dados.
+* Não alterar permissões.
+* Não criar novas entidades.
+* Auditoria apenas.
+
+Objetivo principal:
+
+Responder se o modelo atual de Delegações é suficiente para representar:
+
+* Capitães temporários
+* Responsáveis permanentes
+* Operação diária da ASA
+
+═══════════════════════
+PARTE 1 — Experiência do Capitão
+═══════════════════════
+
+Validar as responsabilidades delegáveis:
+
+* CHECK_INS
+* REQUESTS
+* TASK_APPROVALS
+* DAILY_BOOK
+* NOTICES
+* SCALES
+* OPERATIONAL_MESSAGES
+
+Para cada uma responder:
+
+* Existe backend?
+* Existe mobile?
+* Existe web?
+* Existe menu visível?
+* Existe atalho?
+* Existe indicação visual de que o usuário está atuando como delegado?
+* Existe histórico?
+* O capitão consegue executar sozinho?
+
+Classificar:
+
+✅ Completo
+
+🟡 Parcial
+
+🔴 Inexistente
+
+═══════════════════════
+PARTE 2 — Jornada Real do Capitão
+═══════════════════════
+
+Cenário:
+
+Débora delega para Carol:
+
+* CHECK_INS
+* DAILY_BOOK
+* NOTICES
+
+Validar:
+
+1. Carol recebe a delegação.
+2. Carol entende que recebeu a delegação.
+3. Carol encontra as funcionalidades.
+4. Carol consegue operar sem ajuda.
+5. Débora consegue acompanhar.
+6. Histórico registra corretamente.
+
+Responder:
+
+Existe algum ponto onde o capitão fique perdido?
+
+═══════════════════════
+PARTE 3 — Mobile vs Web
+═══════════════════════
+
+Para cada responsabilidade delegável responder:
+
+O capitão consegue operar:
+
+* Apenas pelo mobile?
+* Apenas pelo web?
+* Pelos dois?
+
+Identificar lacunas.
+
+Exemplos:
+
+* Funciona no backend mas não existe tela web.
+* Funciona no web mas não existe mobile.
+* Existe API mas não existe navegação.
+
+═══════════════════════
+PARTE 4 — Responsabilidades Permanentes da ASA
+═══════════════════════
+
+Analisar exemplos reais:
+
+* Carol responsável pelos personagens do Musical.
+* Amanda responsável pelos check-ins.
+* Responsável por figurinos.
+* Responsável por perucas.
+* Responsável pela biblioteca.
+* Responsável por treinamentos.
+* Responsável por documentação técnica.
+
+Responder:
+
+1. Isso pode ser representado hoje usando Delegações?
+2. Uma delegação sem data final resolveria?
+3. O sistema continua claro para os usuários?
+4. Supervisor consegue visualizar facilmente os responsáveis?
+5. Equipe consegue identificar quem é responsável por cada área?
+6. Histórico continua funcionando corretamente?
+
+═══════════════════════
+PARTE 5 — Temporário vs Permanente
+═══════════════════════
+
+Comparar:
+
+Delegação Temporária
+
+Exemplos:
+
+* Férias
+* Licença
+* Viagem
+* Cobertura operacional
+
+Responsabilidade Permanente
+
+Exemplos:
+
+* Personagens
+* Figurinos
+* Biblioteca
+* Treinos
+* Check-ins
+
+Responder:
+
+O modelo atual atende igualmente os dois casos?
+
+Ou estamos tentando resolver dois problemas diferentes com a mesma ferramenta?
+
+═══════════════════════
+PARTE 6 — Necessidade de Nova Estrutura
+═══════════════════════
+
+Responder objetivamente:
+
+As Delegações atuais são suficientes para:
+
+* Capitães temporários?
+* Responsáveis permanentes?
+
+Se não forem suficientes:
+
+Explicar exatamente o que falta.
+
+Importante:
+
+Não propor implementação ainda.
+
+Primeiro comprovar a necessidade.
+
+═══════════════════════
+PARTE 7 — Veredito Final
+═══════════════════════
+
+Responder:
+
+1. O modelo de Capitão está pronto para o piloto?
+2. O capitão consegue operar sozinho?
+3. O capitão consegue operar pelo mobile?
+4. O capitão consegue operar pelo web?
+5. As Delegações atuais representam corretamente a realidade da ASA?
+6. Responsabilidades permanentes já estão resolvidas?
+7. Existe necessidade real de um futuro módulo de Responsabilidades Permanentes?
+
+Classificar:
+
+🔴 Necessário antes do piloto
+
+🟡 Necessário após o piloto
+
+🟢 Não necessário
+
+Objetivo final:
+
+Determinar se Delegações já resolvem toda a operação de liderança distribuída da ASA ou se existe uma lacuna entre “Capitão Temporário” e “Responsável Permanente”.
