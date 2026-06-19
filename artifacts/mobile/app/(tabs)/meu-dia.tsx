@@ -1,5 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { AsaAvatar } from "@/components/AsaAvatar";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   useGetMyDay,
   getGetMyDayQueryKey,
@@ -495,8 +497,16 @@ function EmptyState({ message, colors }: { message: string; colors: ReturnType<t
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
+function getGreeting(): { label: string; emoji: string } {
+  const hour = new Date().getHours();
+  if (hour < 12) return { label: "Bom dia", emoji: "☀️" };
+  if (hour < 18) return { label: "Boa tarde", emoji: "🌤️" };
+  return { label: "Boa noite", emoji: "🌙" };
+}
+
 export default function MeuDiaScreen() {
   const colors = useColors();
+  const { user } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
@@ -655,6 +665,30 @@ export default function MeuDiaScreen() {
           </View>
         ) : (
           <>
+            {/* ── Saudação da ASA ── */}
+            {(() => {
+              const { label, emoji } = getGreeting();
+              const firstName = user?.name?.split(" ")[0] ?? "";
+              return (
+                <View
+                  style={[
+                    styles.asaGreetingCard,
+                    { backgroundColor: colors.card, borderColor: colors.border },
+                  ]}
+                >
+                  <AsaAvatar size="medium" />
+                  <View style={styles.asaGreetingText}>
+                    <Text style={[styles.asaGreetingTitle, { color: colors.foreground }]}>
+                      {label} {emoji}{firstName ? `, ${firstName}!` : "!"}
+                    </Text>
+                    <Text style={[styles.asaGreetingSub, { color: colors.mutedForeground }]}>
+                      Sou a ASA — sua assistente na operação 🤝
+                    </Text>
+                  </View>
+                </View>
+              );
+            })()}
+
             {/* ── Delegação Ativa ── */}
             <DelegateBanner delegations={activeDelegations} colors={colors} />
 
@@ -942,6 +976,18 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 24, fontWeight: "700", marginBottom: 2 },
   headerSub: { fontSize: 13 },
+  asaGreetingCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 2,
+  },
+  asaGreetingText: { flex: 1 },
+  asaGreetingTitle: { fontSize: 16, fontWeight: "700", marginBottom: 2 },
+  asaGreetingSub: { fontSize: 12, lineHeight: 17 },
   scroll: { flex: 1 },
   scrollContent: { padding: 16, gap: 10 },
   centered: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 80, gap: 12 },

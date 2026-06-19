@@ -22,6 +22,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { AsaEmptyState } from "@/components/AsaEmptyState";
 
 // ─── Config ────────────────────────────────────────────────────────────────────
 
@@ -151,10 +152,10 @@ export default function BibliotecaTab() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />}
         >
           {documents.length === 0 ? (
-            <View style={s.empty}>
-              <Feather name="book-open" size={32} color={colors.mutedForeground} style={{ marginBottom: 8, opacity: 0.4 }} />
-              <Text style={s.emptyText}>Nenhum documento na biblioteca ainda. O administrador adicionará materiais em breve.</Text>
-            </View>
+            <AsaEmptyState
+              title="Biblioteca ainda vazia 📚"
+              subtitle="Em breve o administrador vai adicionar materiais aqui. Por enquanto, pode contar comigo! 😊"
+            />
           ) : (
             documents.map((doc) => (
               <Pressable key={doc.id} onPress={() => setSelectedId(doc.id)} style={s.card}>

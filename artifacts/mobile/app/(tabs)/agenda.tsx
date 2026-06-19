@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { AsaEmptyState } from "@/components/AsaEmptyState";
 
 const TYPE_LABELS: Record<string, string> = {
   SHOW: "Apresentação",
@@ -198,11 +199,10 @@ export default function AgendaScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />}
         >
           {events.length === 0 ? (
-            <View style={styles.empty}>
-              <Feather name="calendar" size={40} color={colors.mutedForeground} />
-              <Text style={styles.emptyText}>Nenhum evento na agenda ainda.</Text>
-              <Text style={styles.emptySubText}>Tente outro filtro ou aguarde novos eventos da operação.</Text>
-            </View>
+            <AsaEmptyState
+              title="Nenhum evento na agenda ainda 🗓️"
+              subtitle="Tente outro filtro ou aguarde novos eventos da operação. Quando aparecer, você fica sabendo!"
+            />
           ) : (
             events.map((event) => (
               <View key={event.id} style={styles.card}>

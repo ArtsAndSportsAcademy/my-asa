@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { AsaEmptyState } from "@/components/AsaEmptyState";
 
 import {
   ALLOCATION_STATUS_LABELS,
@@ -236,17 +237,12 @@ export default function ScaleScreen() {
             <ActivityIndicator color={colors.primary} />
           </View>
         ) : displayed.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Feather name="calendar" size={36} color={colors.mutedForeground} style={{ opacity: 0.4 }} />
-            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-              {activeFilter === "upcoming" ? "Nenhuma alocação futura na sua escala" : "Nenhuma alocação registrada ainda"}
-            </Text>
-            <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>
-              {activeFilter === "upcoming"
-                ? "Você não tem escalas futuras no momento."
-                : "Você ainda não foi alocado em nenhuma escala."}
-            </Text>
-          </View>
+          <AsaEmptyState
+            title={activeFilter === "upcoming" ? "Nenhuma escala futura ainda 📅" : "Nenhuma escala registrada ainda 📅"}
+            subtitle={activeFilter === "upcoming"
+              ? "Quando o supervisor publicar sua escala, eu apareço aqui com tudo organizado!"
+              : "Você ainda não foi alocado em nenhuma escala. Fique ligado! 😊"}
+          />
         ) : (
           displayed.map((alloc) => (
             <AllocationCard key={alloc.id} alloc={alloc} colors={colors} />

@@ -9,6 +9,7 @@ import {
 } from "@workspace/api-client-react";
 import type { User } from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
+import { AsaEmptyState } from "@/components/AsaEmptyState";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -210,10 +211,13 @@ export default function UsersPage() {
                 ))
               ) : filteredUsers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={isAdmin ? 5 : 4} className="text-center py-10 text-muted-foreground">
-                    {users.length === 0
-                      ? "Nenhum usuário cadastrado ainda. Adicione membros para começar a organizar sua equipe na ASA."
-                      : "Nenhum usuário corresponde aos filtros aplicados."}
+                  <TableCell colSpan={isAdmin ? 5 : 4} className="py-0">
+                    <AsaEmptyState
+                      title={users.length === 0 ? "Nenhum membro cadastrado ainda! 👋" : "Nenhum membro corresponde ao filtro"}
+                      subtitle={users.length === 0
+                        ? "Adicione os primeiros membros para começar a organizar sua equipe na ASA. Vamos lá!"
+                        : "Tente ajustar os filtros — seus membros estão por aqui, prometo! 😉"}
+                    />
                   </TableCell>
                 </TableRow>
               ) : (

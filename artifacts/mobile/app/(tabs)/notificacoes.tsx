@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useColors } from "@/hooks/useColors";
+import { AsaEmptyState } from "@/components/AsaEmptyState";
 import {
   useGetNotifications,
   useMarkNotificationRead,
@@ -414,15 +415,10 @@ export default function NotificacoesScreen() {
           }
         >
           {notifications.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Feather name="bell-off" size={40} color={colors.mutedForeground} />
-              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-                Nenhuma notificação
-              </Text>
-              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-                Você está em dia!
-              </Text>
-            </View>
+            <AsaEmptyState
+              title="Tudo em dia! 🎉"
+              subtitle="Estou de olho em tudo por aqui. Quando algo importante aparecer, você vai saber na hora!"
+            />
           ) : (
             <>
               <Section

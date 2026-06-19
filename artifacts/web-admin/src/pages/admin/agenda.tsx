@@ -13,6 +13,7 @@ import {
 } from "@workspace/api-client-react";
 import type { AgendaEvent } from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
+import { AsaEmptyState } from "@/components/AsaEmptyState";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -560,10 +561,10 @@ export default function AgendaPage() {
         ) : viewMode === "week" ? (
           <WeekCalendar currentDate={calendarDate} events={events} />
         ) : sortedEvents.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 text-muted-foreground gap-2">
-            <CalendarDays className="h-10 w-10 opacity-20" />
-            <p className="text-sm">Nenhum evento encontrado. Crie o primeiro evento para organizar a programação da operação.</p>
-          </div>
+          <AsaEmptyState
+            title="Nenhum evento na agenda ainda 🗓️"
+            subtitle="Crie o primeiro evento para organizar a programação da operação. Fico ansiosa para ver a agenda cheia!"
+          />
         ) : (
           <Table>
             <TableHeader>
