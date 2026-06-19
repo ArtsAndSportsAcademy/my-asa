@@ -141,8 +141,8 @@ export default function Login() {
                   <div className="space-y-2">
                     <p className="font-medium text-foreground">Contas de demonstração:</p>
                     <ul className="space-y-1 font-mono text-xs">
-                      <li>admin@myasa.demo / myasa123</li>
-                      <li>supervisor@myasa.demo / myasa123</li>
+                      <li>admin@myasa.demo / Teste@123</li>
+                      <li>supervisor@myasa.demo / Teste@123</li>
                     </ul>
                   </div>
                 </div>

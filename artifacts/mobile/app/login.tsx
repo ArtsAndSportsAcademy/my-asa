@@ -260,7 +260,7 @@ export default function LoginScreen() {
             Demo:{" "}
             <Text style={styles.hintBold}>admin@myasa.demo</Text>
             {" / "}
-            <Text style={styles.hintBold}>myasa123</Text>
+            <Text style={styles.hintBold}>Teste@123</Text>
           </Text>
         </View>
       </View>
