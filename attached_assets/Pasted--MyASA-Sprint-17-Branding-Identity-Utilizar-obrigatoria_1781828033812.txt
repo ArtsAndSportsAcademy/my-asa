@@ -1,0 +1,251 @@
+# MyASA — Sprint 17 — Branding & Identity
+
+Utilizar obrigatoriamente:
+
+* Sprint 0 → GOV-D11 concluídas
+* Feedback de Campo #001
+* Auditoria de Navegação
+* Auditoria Visual
+* Screenshots atuais do Web Admin e Mobile
+* Identidade oficial MyASA
+
+Importante:
+
+Não alterar regras de negócio.
+
+Não alterar banco de dados.
+
+Não alterar APIs.
+
+Não alterar permissões.
+
+Objetivo:
+
+Transformar o MyASA de uma plataforma funcional para uma plataforma com identidade própria, coerente e reconhecível para o elenco, supervisores e administradores.
+
+Pergunta respondida:
+
+"Quando alguém abre o sistema, ele parece o MyASA?"
+
+═══════════════════════
+T001 — Nome Oficial
+═══════════════════════
+
+Padronizar toda a plataforma para:
+
+MyASA
+
+Remover:
+
+* MyASA 2.0
+* My ASA 2.0
+* Versões antigas do nome
+
+Critério:
+
+Todo usuário deve enxergar apenas:
+
+MyASA
+
+═══════════════════════
+T002 — Asinha Oficial
+═══════════════════════
+
+Aplicar a asinha oficial em toda a plataforma.
+
+Versões:
+
+1. Asinha completa
+2. Asinha sem fundo
+3. Asinha monocromática
+
+Locais:
+
+* Login
+* Sidebar Web
+* Splash Mobile
+* Cabeçalhos principais
+* Tela Home
+
+Objetivo:
+
+Transformar a asinha no elemento visual principal da marca.
+
+═══════════════════════
+T003 — Home por Papel
+═══════════════════════
+
+Admin
+
+Mostrar:
+
+* Saúde Operacional
+* Escalas pendentes
+* Livro do Dia pendente
+* Avisos ativos
+* Check-ins do dia
+* Operações
+
+Supervisor
+
+Mostrar:
+
+* Minha Operação
+* Livro do Dia
+* Escala
+* Solicitações pendentes
+* Avisos
+* Check-ins
+
+Membro
+
+Mostrar:
+
+* Meu Dia
+* Próximo compromisso
+* Avisos pendentes
+* Solicitações
+* Entregas
+
+Cada perfil deve sentir que entrou em sua própria plataforma.
+
+═══════════════════════
+T004 — Sidebar Branding
+═══════════════════════
+
+Revisar sidebar.
+
+Adicionar:
+
+* asinha oficial
+* nome MyASA
+* identificação visual do papel atual
+
+Exemplo:
+
+MyASA
+Administrador
+
+ou
+
+MyASA
+Supervisor
+
+═══════════════════════
+T005 — Agenda Visual
+═══════════════════════
+
+Manter a tabela atual.
+
+Adicionar visualização:
+
+📅 Calendário
+
+Modos:
+
+* Mês
+* Semana
+* Lista
+
+Não remover funcionalidades existentes.
+
+Objetivo:
+
+Agenda parecer Agenda.
+
+═══════════════════════
+T006 — Design System
+═══════════════════════
+
+Auditar:
+
+* badges
+* ícones
+* cores
+* espaçamentos
+* títulos
+* cards
+
+Eliminar inconsistências remanescentes.
+
+Critério:
+
+Mesma linguagem visual em:
+
+* Escalas
+* Livro do Dia
+* Avisos
+* Solicitações
+* Biblioteca
+* Histórico
+
+═══════════════════════
+T007 — Mobile Identity
+═══════════════════════
+
+Aplicar identidade MyASA:
+
+* splash
+* loading
+* tela inicial
+* estados vazios
+* banners
+
+Usar a asinha como elemento recorrente.
+
+═══════════════════════
+T008 — Linguagem
+═══════════════════════
+
+Padronizar textos.
+
+Evitar:
+
+* termos técnicos internos
+* nomenclaturas inconsistentes
+
+Objetivo:
+
+Sistema parecer humano e operacional.
+
+═══════════════════════
+T009 — Auditoria de Marca
+═══════════════════════
+
+Responder:
+
+1. Existe alguma ocorrência de "MyASA 2.0"?
+2. A asinha aparece em todos os pontos principais?
+3. O sistema parece um produto único?
+4. Admin, Supervisor e Membro possuem identidade própria?
+5. Agenda parece uma Agenda?
+6. A plataforma está pronta para apresentação externa?
+
+═══════════════════════
+FORA DE ESCOPO
+═══════════════════════
+
+Não implementar:
+
+* IA
+* Tarefas Operacionais
+* Novos módulos
+* Alterações de banco
+* Alterações de API
+* Novas permissões
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Objetivo final:
+
+Quando um usuário abrir o sistema, a reação deve ser:
+
+"Estou usando o MyASA."
+
+e não:
+
+"Estou usando um sistema administrativo genérico."
+
+A Sprint 17 deve consolidar a identidade visual, emocional e operacional do produto antes da entrada da IA (S-10).

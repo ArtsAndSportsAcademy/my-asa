@@ -131,6 +131,8 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
   const logoutMutation = useLogout();
 
   const isAdmin = userRoles.some((r) => r.role === "ADMIN");
+  const isSupervisor = userRoles.some((r) => r.role === "SUPERVISOR_A" || r.role === "SUPERVISOR_B");
+  const roleLabel = isAdmin ? "Administrador" : isSupervisor ? "Supervisor" : "Membro";
   const navGroups = isAdmin ? ADMIN_NAV : SUPERVISOR_NAV;
 
   const handleLogout = () => {
@@ -154,7 +156,10 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
             alt="Asinha MyASA"
             className="w-7 h-8 shrink-0"
           />
-          <span className="font-serif font-bold text-base tracking-tight">MyASA</span>
+          <div>
+            <span className="font-serif font-bold text-base tracking-tight leading-none">MyASA</span>
+            <p className="text-[10px] text-muted-foreground leading-none mt-0.5">{roleLabel}</p>
+          </div>
         </div>
 
         <nav className="flex-1 p-3 space-y-4">

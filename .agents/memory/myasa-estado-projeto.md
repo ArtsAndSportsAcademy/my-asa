@@ -3,6 +3,24 @@ name: MyASA 2.0 — Estado do Projeto
 description: Sprint progress, architectural decisions, and key conventions for the MyASA 2.0 system
 ---
 
+## Sprint 17 — Branding & Identity (COMPLETO)
+**Objetivo:** Transformar o MyASA de plataforma funcional para produto com identidade própria.
+
+### O que foi entregue
+- **T001/T008:** "MyASA 2.0" já ausente; login page corrigido para "Bem-vindo ao MyASA" + "Entre com suas credenciais para continuar."
+- **T002/T004:** Asinha já presente em login, sidebar, home (web + mobile). Sidebar atualizada com label de papel ("Administrador"/"Supervisor"/"Membro") abaixo de "MyASA".
+- **T003:** Home por papel expandida — Admin agora mostra check-ins do dia + pendências (solicitações + livros); Supervisor idem + contador de solicitações pendentes no botão de atalho; Membro tem grade de links rápidos + avisos ativos + próximos eventos + nudge para mobile.
+- **T005:** Agenda ganhou calendário (Mês/Semana/Lista) com navegação prev/next/hoje. Default: visão Mês. Calendário de mês: grade 6×7, segunda-feira primeiro, chips coloridos por tipo. Semana: 7 colunas com horário. Lista: tabela original intacta.
+- **T007:** `LoadingScreen.tsx` criado (asinha pulsante no fundo roxo). `_layout.tsx` substitui `return null` por `<LoadingScreen />` durante auth loading.
+- **T006/T009:** Auditoria: "MyASA 2.0" = zero ocorrências; asinha em todos os pontos principais; plataforma coesa.
+
+### Convenções estabelecidas no Sprint 17
+- Calendário de agenda usa `getWeekStart(d)` com segunda como início de semana (padrão BR).
+- `useListAvisos` NÃO existe — o hook correto é `useListNotices`.
+- LoadingScreen usa `Animated.loop(Sequence([timing→0.7, timing→1]))` para pulsar a asinha.
+
+---
+
 ## Sprint GOV-D11 — Delegação Temporária de Supervisão (COMPLETO)
 **Objetivo:** Supervisor delega temporariamente responsabilidades operacionais a um membro durante um período específico.
 

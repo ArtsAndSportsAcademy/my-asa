@@ -84,9 +84,9 @@ export default function Login() {
 
           <Card className="border-none shadow-xl bg-card">
             <CardHeader className="space-y-3 pb-6">
-              <CardTitle className="text-3xl font-serif">Acesso ao Painel</CardTitle>
+              <CardTitle className="text-3xl font-serif">Bem-vindo ao MyASA</CardTitle>
               <CardDescription className="text-base">
-                Insira suas credenciais para acessar o ambiente administrativo.
+                Entre com suas credenciais para continuar.
               </CardDescription>
             </CardHeader>
             <CardContent>

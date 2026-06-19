@@ -14,6 +14,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { LoadingScreen } from "@/components/LoadingScreen";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 
 SplashScreen.preventAutoHideAsync();
@@ -35,7 +36,7 @@ function RootLayoutNav() {
     }
   }, [isAuthenticated, isLoading, segments]);
 
-  if (isLoading) return null;
+  if (isLoading) return <LoadingScreen />;
 
   return (
     <Stack>
