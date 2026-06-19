@@ -85,6 +85,7 @@ const SUPERVISOR_NAV: NavGroup[] = [
       { href: "/admin/scales",                 icon: ClipboardList,   label: "Escalas"       },
       { href: "/supervisor/daily-book",        icon: BookMarked,      label: "Livro do Dia"  },
       { href: "/supervisor/requests",          icon: FileText,        label: "Solicitações"  },
+      { href: "/supervisor/delegations",       icon: ShieldCheck,     label: "Delegações"    },
     ],
   },
   {

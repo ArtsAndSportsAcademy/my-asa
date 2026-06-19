@@ -10766,3 +10766,99 @@ export const useDecideRequest = <TError = ErrorType<BadRequestResponse | Unautho
 
 
 
+
+// ─── GOV-D11: Delegações ──────────────────────────────────────────────────────
+
+import type {
+  DelegationItem,
+  ListDelegationsResponse,
+  MyActiveDelegationsResponse,
+  CreateDelegationBody,
+  ErrorResponse,
+} from './api.schemas';
+
+// list delegations (supervisor/admin)
+
+export const listDelegations = async (options?: RequestInit): Promise<ListDelegationsResponse> =>
+  customFetch<ListDelegationsResponse>(`/api/delegations`, { ...options, method: 'GET' });
+
+export const getListDelegationsQueryKey = (): readonly string[] => ['listDelegations'];
+
+export const useListDelegations = <TData = ListDelegationsResponse, TError = ErrorType<ErrorResponse>>(
+  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof listDelegations>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
+): UseQueryResult<TData, TError> => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+  return useQuery({
+    queryKey: queryOptions?.queryKey ?? getListDelegationsQueryKey(),
+    queryFn: () => listDelegations(requestOptions),
+    ...queryOptions,
+  });
+};
+
+// my active delegations (delegate)
+
+export const getMyActiveDelegations = async (options?: RequestInit): Promise<MyActiveDelegationsResponse> =>
+  customFetch<MyActiveDelegationsResponse>(`/api/delegations/my-active`, { ...options, method: 'GET' });
+
+export const getMyActiveDelegationsQueryKey = (): readonly string[] => ['myActiveDelegations'];
+
+export const useGetMyActiveDelegations = <TData = MyActiveDelegationsResponse, TError = ErrorType<ErrorResponse>>(
+  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getMyActiveDelegations>>, TError, TData>; request?: SecondParameter<typeof customFetch> }
+): UseQueryResult<TData, TError> => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+  return useQuery({
+    queryKey: queryOptions?.queryKey ?? getMyActiveDelegationsQueryKey(),
+    queryFn: () => getMyActiveDelegations(requestOptions),
+    ...queryOptions,
+  });
+};
+
+// create delegation
+
+export const createDelegation = async (data: CreateDelegationBody, options?: RequestInit): Promise<{ delegation: DelegationItem }> =>
+  customFetch<{ delegation: DelegationItem }>(`/api/delegations`, {
+    ...options, method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(data),
+  });
+
+export const getCreateDelegationMutationOptions = <TError = ErrorType<ErrorResponse>, TContext = unknown>(
+  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof createDelegation>>, TError, BodyType<CreateDelegationBody>, TContext>; request?: SecondParameter<typeof customFetch> }
+): UseMutationOptions<Awaited<ReturnType<typeof createDelegation>>, TError, BodyType<CreateDelegationBody>, TContext> => {
+  const mutationKey = ['createDelegation'];
+  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof createDelegation>>, BodyType<CreateDelegationBody>> = (data) => {
+    return createDelegation(data, requestOptions);
+  };
+  return { mutationKey, mutationFn, ...mutationOptions };
+};
+
+export const useCreateDelegation = <TError = ErrorType<ErrorResponse>, TContext = unknown>(
+  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof createDelegation>>, TError, BodyType<CreateDelegationBody>, TContext>; request?: SecondParameter<typeof customFetch> }
+): UseMutationResult<Awaited<ReturnType<typeof createDelegation>>, TError, BodyType<CreateDelegationBody>, TContext> => {
+  const mutationOptions = getCreateDelegationMutationOptions(options);
+  return useMutation(mutationOptions);
+};
+
+// cancel delegation
+
+export const cancelDelegation = async (id: string, options?: RequestInit): Promise<{ delegation: DelegationItem }> =>
+  customFetch<{ delegation: DelegationItem }>(`/api/delegations/${id}/cancel`, { ...options, method: 'PATCH' });
+
+export const getCancelDelegationMutationOptions = <TError = ErrorType<ErrorResponse>, TContext = unknown>(
+  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof cancelDelegation>>, TError, string, TContext>; request?: SecondParameter<typeof customFetch> }
+): UseMutationOptions<Awaited<ReturnType<typeof cancelDelegation>>, TError, string, TContext> => {
+  const mutationKey = ['cancelDelegation'];
+  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelDelegation>>, string> = (id) => {
+    return cancelDelegation(id, requestOptions);
+  };
+  return { mutationKey, mutationFn, ...mutationOptions };
+};
+
+export const useCancelDelegation = <TError = ErrorType<ErrorResponse>, TContext = unknown>(
+  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof cancelDelegation>>, TError, string, TContext>; request?: SecondParameter<typeof customFetch> }
+): UseMutationResult<Awaited<ReturnType<typeof cancelDelegation>>, TError, string, TContext> => {
+  const mutationOptions = getCancelDelegationMutationOptions(options);
+  return useMutation(mutationOptions);
+};

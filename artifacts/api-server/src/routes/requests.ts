@@ -12,6 +12,7 @@ import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
 import { writeHistoryEvent } from "../lib/history-helper.js";
+import { isActiveDelegate } from "../lib/delegation-check.js";
 
 const router: IRouter = Router();
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
@@ -95,8 +96,10 @@ router.get("/requests/pending", requireAuth, requireOrganization, async (req, re
   const { operationId } = req.query as Record<string, string>;
 
   if (!MANAGER_ROLES.includes(user.role)) {
-    res.status(403).json({ error: "Forbidden", message: "Acesso restrito a gestores" });
-    return;
+    if (!operationId || !(await isActiveDelegate(user.sub, operationId))) {
+      res.status(403).json({ error: "Forbidden", message: "Acesso restrito a gestores" });
+      return;
+    }
   }
 
   try {
@@ -344,11 +347,6 @@ router.post("/requests/:id/decision", requireAuth, requireOrganization, async (r
     deadline?: string;
   };
 
-  if (!MANAGER_ROLES.includes(user.role)) {
-    res.status(403).json({ error: "Forbidden", message: "Apenas gestores podem decidir solicitações" });
-    return;
-  }
-
   const validDecisions = ["APPROVED", "DENIED", "ALTERNATIVE_PROPOSED"];
   if (!decision || !validDecisions.includes(decision)) {
     res.status(400).json({ error: "Bad Request", message: "decision deve ser APPROVED, DENIED ou ALTERNATIVE_PROPOSED" });
@@ -365,6 +363,13 @@ router.post("/requests/:id/decision", requireAuth, requireOrganization, async (r
     if (!existing) {
       res.status(404).json({ error: "Not Found", message: "Solicitação não encontrada" });
       return;
+    }
+
+    if (!MANAGER_ROLES.includes(user.role)) {
+      if (!(await isActiveDelegate(user.sub, existing.operationId))) {
+        res.status(403).json({ error: "Forbidden", message: "Apenas gestores podem decidir solicitações" });
+        return;
+      }
     }
 
     const activeStatuses = ["PENDING", "ALTERNATIVE_REJECTED"];

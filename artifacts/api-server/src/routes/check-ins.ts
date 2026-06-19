@@ -13,6 +13,7 @@ import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
 import { writeHistoryEvent } from "../lib/history-helper.js";
+import { isActiveDelegate } from "../lib/delegation-check.js";
 
 const router: IRouter = Router();
 
@@ -367,11 +368,6 @@ router.patch("/check-ins/:id", requireAuth, requireOrganization, async (req, res
   const log = requestLogger(LOG_DOMAIN.CHECK_IN, req.requestId, req.correlationId);
   const user = req.user!;
 
-  if (!MANAGER_ROLES.includes(user.role)) {
-    res.status(403).json({ error: "Forbidden", message: "Acesso restrito a supervisores" });
-    return;
-  }
-
   const checkInId = req.params["id"] as string;
   const { status, excuseReason, userId, operationId, date } = req.body as {
     status?: string;
@@ -380,6 +376,13 @@ router.patch("/check-ins/:id", requireAuth, requireOrganization, async (req, res
     operationId?: string;
     date?: string;
   };
+
+  if (!MANAGER_ROLES.includes(user.role)) {
+    if (!operationId || !(await isActiveDelegate(user.sub, operationId))) {
+      res.status(403).json({ error: "Forbidden", message: "Acesso restrito a supervisores ou delegados" });
+      return;
+    }
+  }
 
   const validStatuses = ["CHECKED_IN", "LATE", "ABSENT", "EXCUSED"];
 

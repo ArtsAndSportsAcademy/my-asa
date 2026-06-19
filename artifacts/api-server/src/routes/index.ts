@@ -19,6 +19,7 @@ import deliveriesRouter from "./deliveries";
 import libraryRouter from "./library";
 import checkInsRouter from "./check-ins";
 import requestsRouter from "./requests";
+import delegationsRouter from "./delegations";
 
 const router: IRouter = Router();
 
@@ -42,5 +43,6 @@ router.use(deliveriesRouter);
 router.use(libraryRouter);
 router.use(checkInsRouter);
 router.use(requestsRouter);
+router.use(delegationsRouter);
 
 export default router;

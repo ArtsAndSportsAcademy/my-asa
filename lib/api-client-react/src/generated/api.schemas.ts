@@ -2607,3 +2607,46 @@ export interface ListPendingRequestsParams {
   operationId?: string;
 }
 
+
+// ─── GOV-D11: Delegações ──────────────────────────────────────────────────────
+
+export interface DelegationItem {
+  delegationId: string;
+  supervisorId: string;
+  supervisorName: string;
+  delegateId: string;
+  delegateName: string;
+  operationId: string;
+  operationName: string;
+  startDate: string;
+  endDate: string;
+  reason: string | null;
+  status: string;
+  createdAt: string;
+}
+
+export interface ActiveDelegationItem {
+  delegationId: string;
+  supervisorId: string;
+  supervisorName: string;
+  operationId: string;
+  operationName: string;
+  startDate: string;
+  endDate: string;
+}
+
+export interface CreateDelegationBody {
+  delegateId: string;
+  operationId: string;
+  startDate: string;
+  endDate: string;
+  reason?: string;
+}
+
+export interface ListDelegationsResponse {
+  delegations: DelegationItem[];
+}
+
+export interface MyActiveDelegationsResponse {
+  delegations: ActiveDelegationItem[];
+}

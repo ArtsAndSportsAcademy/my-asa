@@ -18,17 +18,6 @@ export const userRolesTable = pgTable("user_roles", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const delegationsTable = pgTable("delegations", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  delegatorId: uuid("delegator_id").notNull().references(() => usersTable.id),
-  delegateeId: uuid("delegatee_id").notNull().references(() => usersTable.id),
-  operationId: uuid("operation_id").notNull().references(() => operationsTable.id),
-  validFrom: timestamp("valid_from", { withTimezone: true }).notNull(),
-  validUntil: timestamp("valid_until", { withTimezone: true }).notNull(),
-  revokedAt: timestamp("revoked_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
 export const restrictionsTable = pgTable("restrictions", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id").notNull().references(() => usersTable.id),
@@ -44,10 +33,6 @@ export const restrictionsTable = pgTable("restrictions", {
 export const insertUserRoleSchema = createInsertSchema(userRolesTable).omit({ id: true, createdAt: true });
 export type InsertUserRole = z.infer<typeof insertUserRoleSchema>;
 export type UserRole = typeof userRolesTable.$inferSelect;
-
-export const insertDelegationSchema = createInsertSchema(delegationsTable).omit({ id: true, createdAt: true });
-export type InsertDelegation = z.infer<typeof insertDelegationSchema>;
-export type Delegation = typeof delegationsTable.$inferSelect;
 
 export const insertRestrictionSchema = createInsertSchema(restrictionsTable).omit({ id: true, createdAt: true });
 export type InsertRestriction = z.infer<typeof insertRestrictionSchema>;

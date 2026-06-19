@@ -1,0 +1,203 @@
+# MyASA — GOV-D11 — Delegação Temporária de Supervisão
+
+Utilizar obrigatoriamente:
+
+* Sprint 0 → Sprint 16 concluídas
+* Blueprint Executivo
+* Gate Arquitetural
+* Sistema de Papéis (Admin, Supervisor, Membro)
+* S-04 Escala
+* S-05 Livro do Dia
+* S-06 Solicitações
+* S-08 Avisos
+* FC-02 Check-in
+
+Importante:
+
+Não criar um novo papel.
+
+Não transformar membros em supervisores permanentes.
+
+Não alterar o sistema de permissões global.
+
+Objetivo:
+
+Permitir que um Supervisor delegue temporariamente suas responsabilidades operacionais para outro membro durante um período específico.
+
+Pergunta respondida:
+
+"Quem responde pela operação quando o supervisor não está disponível?"
+
+═══════════════════════
+T001 — Modelo de Delegação
+═══════════════════════
+
+Criar conceito:
+
+Delegação Temporária
+
+Campos:
+
+* supervisor origem
+* delegado
+* data início
+* data fim
+* motivo
+* status
+
+Status:
+
+* PENDING
+* ACTIVE
+* EXPIRED
+* CANCELLED
+
+═══════════════════════
+T002 — Permissões Temporárias
+═══════════════════════
+
+Durante a delegação ativa:
+
+O delegado pode:
+
+* acessar Livro do Dia da operação
+* acessar Solicitações da operação
+* acessar Avisos da operação
+* acessar Check-ins da operação
+* acessar Painel Operacional da operação
+
+O delegado NÃO pode:
+
+* alterar papéis
+* alterar usuários
+* alterar operações
+* acessar Auditoria global
+* acessar Administração geral
+
+═══════════════════════
+T003 — Supervisor
+═══════════════════════
+
+Nova área:
+
+Minhas Delegações
+
+Permitir:
+
+* criar delegação
+* cancelar delegação futura
+* visualizar delegações ativas
+* visualizar histórico
+
+═══════════════════════
+T004 — Delegado
+═══════════════════════
+
+Quando existir delegação ativa:
+
+Exibir banner:
+
+"Você está atuando como Supervisor Temporário"
+
+Mostrar:
+
+* operação
+* supervisor titular
+* período
+
+═══════════════════════
+T005 — Livro do Dia
+═══════════════════════
+
+Validar:
+
+Delegado consegue:
+
+* publicar
+* republicar
+* ajustar posições
+
+Apenas na operação delegada.
+
+═══════════════════════
+T006 — Solicitações
+═══════════════════════
+
+Validar:
+
+Delegado consegue:
+
+* aprovar
+* negar
+* propor alternativa
+
+Somente na operação delegada.
+
+═══════════════════════
+T007 — Check-in
+═══════════════════════
+
+Validar:
+
+Delegado consegue:
+
+* marcar presente
+* marcar atrasado
+* marcar ausente
+* marcar justificado
+
+Somente na operação delegada.
+
+═══════════════════════
+T008 — Histórico
+═══════════════════════
+
+Registrar:
+
+delegation.created
+
+delegation.activated
+
+delegation.cancelled
+
+delegation.expired
+
+request.approved_by_delegate
+
+daily_book.published_by_delegate
+
+checkin.updated_by_delegate
+
+Rastreabilidade obrigatória.
+
+═══════════════════════
+T009 — Auditoria Operacional
+═══════════════════════
+
+Responder:
+
+1. O supervisor pode sair de férias sem deixar a operação sem responsável?
+2. Existe rastreabilidade de quem tomou decisões?
+3. O delegado possui apenas permissões temporárias?
+4. A delegação expira automaticamente?
+5. A operação continua funcionando sem intervenção do Admin?
+
+═══════════════════════
+FORA DE ESCOPO
+═══════════════════════
+
+Não implementar:
+
+* IA
+* Tarefas Operacionais
+* Aprovação multinível
+* Novos papéis
+* Alteração estrutural do sistema de usuários
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Objetivo final:
+
+Garantir continuidade operacional quando um Supervisor estiver de férias, afastado, em treinamento ou indisponível, sem promover permanentemente outro membro e sem depender de intervenção manual do Admin.

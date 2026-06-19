@@ -3,6 +3,25 @@ name: MyASA 2.0 — Estado do Projeto
 description: Sprint progress, architectural decisions, and key conventions for the MyASA 2.0 system
 ---
 
+## Sprint GOV-D11 — Delegação Temporária de Supervisão (COMPLETO)
+**Objetivo:** Supervisor delega temporariamente responsabilidades operacionais a um membro durante um período específico.
+
+### O que foi entregue
+- **DB:** `lib/db/src/schema/delegations.ts` — enum `delegationStatusEnum` + `delegationsTable` (organizationId, supervisorId, delegateId, operationId, startDate/endDate como date string, reason, status). Removido delegationsTable obsoleto de `teams.ts` que causava colisão de nomes. Aplicado via psql.
+- **Permission helper:** `artifacts/api-server/src/lib/delegation-check.ts` — `isActiveDelegate(userId, operationId)` verifica delegação ativa pelo dia atual.
+- **API:** 4 endpoints em `/delegations` — lista (GET), minhas ativas (GET /my-active), criar (POST, só SUPERVISOR), cancelar (PATCH /:id/cancel).
+- **Route patches:** `requests.ts` (GET /pending + POST /decision), `check-ins.ts` (PATCH), `daily-book.ts` (publish + republish) — todos permitem delegate além de MANAGER_ROLES.
+- **api-client-react:** 5 schemas + 4 hooks (`useListDelegations`, `useGetMyActiveDelegations`, `useCreateDelegation`, `useCancelDelegation`) adicionados manualmente.
+- **Web Admin:** `supervisor/delegations.tsx` — lista de delegações, modal criar (com selects de operação + membro), confirmar cancelamento. Nav item "Delegações" adicionado ao SUPERVISOR_NAV.
+- **Mobile:** Banner `DelegateBanner` em `meu-dia.tsx` — exibido quando o usuário tem delegações ativas, mostrando operação e supervisor em nome de quem age.
+
+### Convenções estabelecidas no GOV-D11
+- `isActiveDelegate` importado em rotas como `../lib/delegation-check.js` — padrão a seguir para qualquer nova rota que precise de delegate access.
+- Para checar delegate em daily-book (sem operationId direto), fazer join `scalesTable` via `book.scaleId` para obter `operationId`.
+- Após alterar schema em `lib/db/src/`, SEMPRE rodar `pnpm --filter @workspace/db exec tsc -p tsconfig.json` antes de typechecks dependentes.
+
+---
+
 ## Sprint 16 — S-06: Solicitações (COMPLETO)
 **Objetivo:** Transformar tabelas requests + request_decisions em superfície operacional completa (Membro cria, Supervisor decide, Admin visualiza).
 

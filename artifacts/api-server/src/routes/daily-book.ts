@@ -19,9 +19,11 @@ import {
 } from "@workspace/db";
 import { requireAuth, requireOrganization, requireRole } from "../middlewares/auth.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
+import { isActiveDelegate } from "../lib/delegation-check.js";
 import { eventBus } from "../lib/event-bus.js";
 
 const router: IRouter = Router();
+const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
 
 async function getDailyBookOrFail(id: string, res: any) {
   const [book] = await db
@@ -437,13 +439,22 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, requ
   }
 });
 
-router.post("/daily-book/:id/publish", requireAuth, requireOrganization, requireRole("ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"), async (req, res) => {
+router.post("/daily-book/:id/publish", requireAuth, requireOrganization, async (req, res) => {
   const id = req.params.id as string;
   const { reason } = req.body;
   const userId = req.user!.sub;
+  const user = req.user!;
   try {
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
+    if (!MANAGER_ROLES.includes(user.role)) {
+      let allowed = false;
+      if (book.scaleId) {
+        const [sr] = await db.select({ operationId: scalesTable.operationId }).from(scalesTable).where(eq(scalesTable.id, book.scaleId)).limit(1);
+        if (sr && await isActiveDelegate(userId, sr.operationId)) allowed = true;
+      }
+      if (!allowed) { res.status(403).json({ error: "Forbidden", message: "Acesso restrito a supervisores ou delegados" }); return; }
+    }
     if (!["DRAFT"].includes(book.status)) {
       res.status(409).json({ error: `Livro em status ${book.status} não pode ser publicado diretamente` });
       return;
@@ -468,13 +479,22 @@ router.post("/daily-book/:id/publish", requireAuth, requireOrganization, require
   }
 });
 
-router.post("/daily-book/:id/republish", requireAuth, requireOrganization, requireRole("ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"), async (req, res) => {
+router.post("/daily-book/:id/republish", requireAuth, requireOrganization, async (req, res) => {
   const id = req.params.id as string;
   const { reason } = req.body;
   const userId = req.user!.sub;
+  const user = req.user!;
   try {
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
+    if (!MANAGER_ROLES.includes(user.role)) {
+      let allowed = false;
+      if (book.scaleId) {
+        const [sr] = await db.select({ operationId: scalesTable.operationId }).from(scalesTable).where(eq(scalesTable.id, book.scaleId)).limit(1);
+        if (sr && await isActiveDelegate(userId, sr.operationId)) allowed = true;
+      }
+      if (!allowed) { res.status(403).json({ error: "Forbidden", message: "Acesso restrito a supervisores ou delegados" }); return; }
+    }
     if (!["PUBLISHED", "REPUBLISHED"].includes(book.status)) {
       res.status(409).json({ error: "Somente livros PUBLICADOS ou REPUBLICADOS podem ser republicados" });
       return;

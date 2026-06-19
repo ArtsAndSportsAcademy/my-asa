@@ -6,12 +6,15 @@ import {
   useGetMyCheckInStatus,
   usePerformMyCheckIn,
   getGetMyCheckInStatusQueryKey,
+  useGetMyActiveDelegations,
+  getMyActiveDelegationsQueryKey,
 } from "@workspace/api-client-react";
 import type {
   MyDayActivity,
   MyDayResponse,
   MyDayNoticeItem,
   CheckInMyStatusResponse,
+  ActiveDelegationItem,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useState } from "react";
@@ -160,6 +163,25 @@ function CheckInCard({
           </TouchableOpacity>
         )}
       </View>
+    </View>
+  );
+}
+
+// ─── Delegate Banner ──────────────────────────────────────────────────────────
+
+function DelegateBanner({ delegations, colors }: { delegations: ActiveDelegationItem[]; colors: ReturnType<typeof useColors> }) {
+  if (delegations.length === 0) return null;
+  return (
+    <View style={[styles.deltaBanner, { backgroundColor: "#EFF6FF", borderColor: "#3B82F6", marginTop: 8, marginBottom: 0 }]}>
+      <View style={styles.deltaHeader}>
+        <Feather name="shield" size={14} color="#1D4ED8" />
+        <Text style={[styles.deltaTitle, { color: "#1D4ED8" }]}>Supervisão Delegada</Text>
+      </View>
+      {delegations.map((d) => (
+        <Text key={d.delegationId} style={[styles.deltaVal, { color: "#1E40AF" }]}>
+          • {d.operationName} — em nome de {d.supervisorName}
+        </Text>
+      ))}
     </View>
   );
 }
@@ -393,6 +415,9 @@ export default function MeuDiaScreen() {
 
   const performCheckInMutation = usePerformMyCheckIn();
 
+  const { data: delegationsData } = useGetMyActiveDelegations();
+  const activeDelegations = delegationsData?.delegations ?? [];
+
   function handleCheckIn() {
     performCheckInMutation.mutate(undefined, {
       onSuccess: () => {
@@ -408,6 +433,7 @@ export default function MeuDiaScreen() {
     setRefreshing(true);
     await queryClient.invalidateQueries({ queryKey: getGetMyDayQueryKey() });
     await queryClient.invalidateQueries({ queryKey: getGetMyCheckInStatusQueryKey() });
+    await queryClient.invalidateQueries({ queryKey: getMyActiveDelegationsQueryKey() });
     await refetch();
     setRefreshing(false);
   }, [queryClient, refetch]);
@@ -463,6 +489,9 @@ export default function MeuDiaScreen() {
           </View>
         ) : (
           <>
+            {/* ── Delegação Ativa ── */}
+            <DelegateBanner delegations={activeDelegations} colors={colors} />
+
             {/* ── Check-in ── */}
             <CheckInCard
               colors={colors}
