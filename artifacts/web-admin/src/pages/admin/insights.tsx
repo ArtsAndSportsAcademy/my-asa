@@ -400,12 +400,12 @@ export default function AdminInsightsPage() {
             </button>
           ))}
         </div>
-        <Select value={operationId} onValueChange={setOperationId}>
+        <Select value={operationId || "__all__"} onValueChange={(v) => setOperationId(v === "__all__" ? "" : v)}>
           <SelectTrigger className="w-48 h-9">
             <SelectValue placeholder="Todas as operações" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todas as operações</SelectItem>
+            <SelectItem value="__all__">Todas as operações</SelectItem>
             {operations.map((op: any) => (
               <SelectItem key={op.id} value={op.id}>{op.name}</SelectItem>
             ))}

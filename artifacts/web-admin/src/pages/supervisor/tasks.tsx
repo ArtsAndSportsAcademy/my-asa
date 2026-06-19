@@ -331,20 +331,20 @@ export default function SupervisorTasksPage() {
             <div className="flex flex-wrap items-end gap-4">
               <div className="flex-1 min-w-[180px] space-y-1.5">
                 <Label className="text-xs">Operação</Label>
-                <Select value={operationId} onValueChange={setOperationId}>
+                <Select value={operationId || "__all__"} onValueChange={(v) => setOperationId(v === "__all__" ? "" : v)}>
                   <SelectTrigger className="h-9"><SelectValue placeholder="Todas as operações" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todas as operações</SelectItem>
+                    <SelectItem value="__all__">Todas as operações</SelectItem>
                     {operations.map((op) => <SelectItem key={op.id} value={op.id}>{op.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="min-w-[140px] space-y-1.5">
                 <Label className="text-xs">Prioridade</Label>
-                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                <Select value={priorityFilter || "__all__"} onValueChange={(v) => setPriorityFilter(v === "__all__" ? "" : v)}>
                   <SelectTrigger className="h-9"><SelectValue placeholder="Todas" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todas</SelectItem>
+                    <SelectItem value="__all__">Todas</SelectItem>
                     {["LOW","MEDIUM","HIGH","CRITICAL"].map((p) => <SelectItem key={p} value={p}>{PRIORITY_LABELS[p]}</SelectItem>)}
                   </SelectContent>
                 </Select>

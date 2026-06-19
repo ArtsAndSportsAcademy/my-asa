@@ -39,7 +39,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const ALL_STATUSES = [
-  { value: "", label: "Todos os status" },
+  { value: "__all__", label: "Todos os status" },
   { value: "PENDING", label: "Aguardando" },
   { value: "APPROVED", label: "Aprovadas" },
   { value: "DENIED", label: "Negadas" },
@@ -50,7 +50,7 @@ const ALL_STATUSES = [
 ];
 
 const ALL_TYPES = [
-  { value: "", label: "Todos os tipos" },
+  { value: "__all__", label: "Todos os tipos" },
   { value: "LEAVE", label: "Folga" },
   { value: "SCHEDULE_CHANGE", label: "Mudança de Escala" },
   { value: "SWAP", label: "Troca" },
@@ -95,12 +95,12 @@ export default function AdminRequestsPage() {
           <CardContent className="flex flex-wrap gap-4">
             <div className="flex-1 min-w-[200px]">
               <Label className="mb-1.5 block text-sm">Operação</Label>
-              <Select value={operationId} onValueChange={setOperationId}>
+              <Select value={operationId || "__all__"} onValueChange={(v) => setOperationId(v === "__all__" ? "" : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todas as operações" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas as operações</SelectItem>
+                  <SelectItem value="__all__">Todas as operações</SelectItem>
                   {operations.map((op) => (
                     <SelectItem key={op.id} value={op.id}>{op.name}</SelectItem>
                   ))}
@@ -109,7 +109,7 @@ export default function AdminRequestsPage() {
             </div>
             <div className="flex-1 min-w-[200px]">
               <Label className="mb-1.5 block text-sm">Tipo</Label>
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <Select value={typeFilter || "__all__"} onValueChange={(v) => setTypeFilter(v === "__all__" ? "" : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todos os tipos" />
                 </SelectTrigger>
@@ -122,7 +122,7 @@ export default function AdminRequestsPage() {
             </div>
             <div className="flex-1 min-w-[200px]">
               <Label className="mb-1.5 block text-sm">Status</Label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={statusFilter || "__all__"} onValueChange={(v) => setStatusFilter(v === "__all__" ? "" : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todos os status" />
                 </SelectTrigger>
