@@ -1,0 +1,264 @@
+PILOT-D01 — Auditoria Final de Prontidão para Piloto
+
+Objetivo:
+
+Executar a auditoria mais rigorosa já realizada no MyASA.
+
+Não implementar nada.
+Não corrigir nada.
+Não criar código.
+Não alterar banco.
+Não alterar permissões.
+
+Modo:
+Somente leitura.
+
+Objetivo principal:
+
+Determinar se cada perfil do sistema consegue operar sozinho, entende seu papel e possui uma experiência coerente.
+
+═══════════════════════
+PARTE 1 — ADMIN
+═══════════════════════
+
+Validar:
+
+• Navegação completa.
+• Todos os menus.
+• Todos os módulos.
+• Consistência entre telas.
+• Funções administrativas.
+• Permissões.
+• Acesso entre operações.
+
+Responder:
+
+1. O Admin entende seu papel?
+2. O Admin encontra tudo?
+3. Existe menu redundante?
+4. Existe funcionalidade escondida?
+5. Existe funcionalidade que parece quebrada?
+6. Existe algo que o Admin não deveria ver?
+7. Existe algo importante difícil de encontrar?
+
+Classificar:
+
+🟢 Claro
+
+🟡 Parcial
+
+🔴 Confuso
+
+═══════════════════════
+PARTE 2 — SUPERVISOR
+═══════════════════════
+
+Validar:
+
+• Agenda
+• Escalas
+• Livro do Dia
+• Solicitações
+• Tarefas
+• Avisos
+• Check-ins
+• Delegações
+• Aprovações entre Supervisores
+• Restrições
+• Indicadores
+
+Responder:
+
+1. O supervisor consegue operar sozinho?
+2. Precisa de treinamento?
+3. Alguma funcionalidade está escondida?
+4. Alguma funcionalidade está mal nomeada?
+5. Alguma tela exige orientação?
+6. Existe algo que pareça bug?
+
+═══════════════════════
+PARTE 3 — CAPITÃO
+═══════════════════════
+
+Validar:
+
+• Descoberta da delegação.
+• Mobile.
+• Web.
+• Sidebar.
+• DelegateBanner.
+• Fluxos delegados.
+
+Responsabilidades:
+
+• CHECK_INS
+• REQUESTS
+• TASK_APPROVALS
+• DAILY_BOOK
+• NOTICES
+• SCALES
+• OPERATIONAL_MESSAGES
+
+Responder:
+
+1. O Capitão entende que virou Capitão?
+2. Consegue encontrar suas funções?
+3. Consegue executar sozinho?
+4. Mobile funciona?
+5. Web funciona?
+6. Existe algo confuso?
+7. Precisa de treinamento?
+
+═══════════════════════
+PARTE 4 — MEMBRO
+═══════════════════════
+
+Validar:
+
+• Meu Dia
+• Escala
+• Agenda
+• Avisos
+• Mensagens
+• Solicitações
+• Tarefas
+• Livro do Dia
+• Biblioteca
+• Entregas
+• Indicadores
+
+Responder:
+
+1. O membro novo entende o sistema?
+2. Encontra suas tarefas?
+3. Encontra suas solicitações?
+4. Entende Agenda versus Escala?
+5. Entende Livro do Dia?
+6. Alguma funcionalidade está escondida?
+7. Existe algo que gere confusão?
+
+═══════════════════════
+PARTE 5 — MEMBRO ESPECIAL
+═══════════════════════
+
+Analisar:
+
+• Treinadores.
+• Professores.
+• Coreógrafos.
+• Preparadores.
+• Fisioterapeutas.
+• Técnicos.
+• Instrutores.
+
+Responder:
+
+1. Conseguem operar como MEMBER?
+2. Precisam de papel próprio?
+3. Especializações já resolvem?
+4. Conseguem receber tarefas?
+5. Conseguem participar da agenda?
+6. Conseguem receber avisos?
+7. Existe alguma limitação real?
+
+═══════════════════════
+PARTE 6 — NAVEGAÇÃO
+═══════════════════════
+
+Para cada perfil:
+
+• Admin
+• Supervisor
+• Capitão
+• Membro
+• Membro Especial
+
+Responder:
+
+1. Quantos cliques para chegar às funções principais?
+2. Existe menu morto?
+3. Existe tela inacessível?
+4. Existe redirecionamento silencioso?
+5. Existe navegação quebrada?
+6. Existe ação que não abre?
+7. Existe inconsistência entre mobile e web?
+
+═══════════════════════
+PARTE 7 — PERMISSÕES
+═══════════════════════
+
+Validar:
+
+• O que cada perfil vê.
+• O que cada perfil pode editar.
+• O que cada perfil pode publicar.
+• O que cada perfil pode aprovar.
+• O que cada perfil pode excluir.
+
+Responder:
+
+• Existe permissão excessiva?
+• Existe bloqueio indevido?
+• Existe algo exposto incorretamente?
+• Existe algum risco operacional?
+
+═══════════════════════
+PARTE 8 — COERÊNCIA OPERACIONAL
+═══════════════════════
+
+Responder:
+
+1. O sistema representa a realidade da ASA?
+2. Existe funcionalidade sem uso real?
+3. Existe processo real sem representação?
+4. Existe excesso de complexidade?
+5. Existe algo que ainda depende de WhatsApp?
+6. Existe algo que ainda depende de planilha?
+7. Existe algo que ainda depende de intervenção manual?
+
+═══════════════════════
+PARTE 9 — TESTE DO USUÁRIO NOVO
+═══════════════════════
+
+Simular:
+
+• Admin novo.
+• Supervisor novo.
+• Capitão novo.
+• Membro novo.
+• Treinador novo.
+
+Perguntas:
+
+• Consegue usar sozinho?
+• Precisa de treinamento?
+• Fica perdido?
+• Faz algo errado?
+• Interpreta algo como bug?
+
+═══════════════════════
+PARTE 10 — VEREDITO FINAL
+═══════════════════════
+
+Responder:
+
+1. Admin está pronto?
+2. Supervisor está pronto?
+3. Capitão está pronto?
+4. Membro está pronto?
+5. Membro Especial está pronto?
+6. O sistema está pronto para piloto?
+7. O que ainda bloqueia?
+8. O que pode esperar?
+
+Classificar:
+
+🔴 Necessário antes do piloto
+
+🟡 Recomendado antes do piloto
+
+🟢 Pode ficar para depois
+
+Objetivo final:
+
+Determinar se o MyASA está realmente pronto para ser utilizado por pessoas reais sem treinamento intensivo e identificar qualquer falha operacional, de navegação, permissão ou experiência antes do início do piloto.
