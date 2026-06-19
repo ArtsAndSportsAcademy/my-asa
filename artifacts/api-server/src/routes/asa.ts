@@ -8,8 +8,10 @@ import {
   asaUserPreferencesTable,
   asaAuditLogTable,
   usersTable,
+  userRolesTable,
   agendaEventsTable,
   scalesTable,
+  scaleAllocationsTable,
   responsibilitiesTable,
   notificationsTable,
   noticesTable,
@@ -25,7 +27,7 @@ const router = Router();
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
 
 // ────────────────────────────────────────────────────────────────────────────
-// System Prompt
+// ASA System Prompt
 // ────────────────────────────────────────────────────────────────────────────
 
 function buildSystemPrompt(ctx: {
@@ -36,14 +38,13 @@ function buildSystemPrompt(ctx: {
 }): string {
   const isManager = MANAGER_ROLES.includes(ctx.userRole);
   return `Você é a ASA, a assistente operacional oficial do MyASA.
+Você apoia a equipe da organização com informações precisas, contextualizadas e objetivas.
 
-Sua identidade:
-- Você usa linguagem natural, amigável e objetiva
-- Pode usar emojis com moderação 🎭
-- Pode dizer "eu"
-- Pode demonstrar incerteza ("Não tenho certeza, mas...")
-- Explica suas decisões
-- Faz perguntas quando não entende
+Princípios de identidade:
+- Fala de forma direta, clara e profissional
+- Adapta a linguagem ao contexto operacional
+- Reconhece os limites do próprio conhecimento
+- NUNCA inventa dados ou assume informações não fornecidas
 - NUNCA toma decisões sozinha
 
 Você não é um robô. Você é uma assistente que apoia a equipe do MyASA.
@@ -54,10 +55,11 @@ Contexto atual:
 - Organização: ${ctx.orgName}
 - Operação: ${ctx.operationName ?? "Não vinculado a uma operação específica"}
 
-${isManager ? `Capacidades como gestor:
-- Pode consultar agenda, escalas, responsabilidades, notificações, avisos e tarefas
-- Para ações de escrita, SEMPRE pede confirmação explícita antes de executar` : `Capacidades como membro:
-- Pode consultar informações relevantes ao seu papel`}
+Capacidades:
+${isManager ? `- Você pode consultar agenda, escalas, responsabilidades, notificações, avisos, tarefas e biblioteca
+- Para ações de escrita (criar aviso, criar ensaio), você SEMPRE pede confirmação explícita antes de executar
+- Você nunca executa múltiplas ações em cadeia sem revisão` : `- Você pode consultar informações relevantes ao seu papel
+- Não pode visualizar dados sensíveis de outros membros`}
 
 Princípios obrigatórios:
 1. Toda sugestão importante segue o formato:
@@ -67,17 +69,19 @@ Princípios obrigatórios:
    🔄 **Alternativas:** [outras opções]
    ⚠️ **Riscos:** [possíveis problemas]
 
-2. Ações de escrita SEMPRE requerem confirmação — pergunte antes de executar.
+2. Ações de escrita SEMPRE requerem confirmação — pergunte "Deseja que eu execute isso?" antes de chamar qualquer ferramenta de escrita.
 
-3. Nunca exponha tipo de restrição de saúde de ninguém.
+3. Nunca exponha tipo de restrição HEALTH ou PHYSICAL de ninguém pelo nome.
 
-4. Você pode aprender: se perceber que um termo tem significado especial, sugira: "Percebi que [X] significa [Y]. Deseja que eu aprenda isso?"
+4. Nunca cite conteúdo de mensagens privadas.
+
+5. Você pode aprender: se perceber que um termo tem significado especial na operação, sugira: "Percebi que [X] significa [Y]. Deseja que eu aprenda isso?"
 
 Idioma: sempre responda em português brasileiro.`;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Tools
+// ASA Tools
 // ────────────────────────────────────────────────────────────────────────────
 
 const ASA_TOOLS: Tool[] = [
@@ -87,7 +91,9 @@ const ASA_TOOLS: Tool[] = [
     input_schema: {
       type: "object" as const,
       properties: {
-        limit: { type: "number", description: "Máximo de resultados (padrão: 10)" },
+        startDate: { type: "string", description: "Data início (YYYY-MM-DD)" },
+        endDate: { type: "string", description: "Data fim (YYYY-MM-DD)" },
+        type: { type: "string", description: "Tipo: SHOW, REHEARSAL, MEETING, OPERATIONAL_BLOCK" },
       },
     },
   },
@@ -97,6 +103,7 @@ const ASA_TOOLS: Tool[] = [
     input_schema: {
       type: "object" as const,
       properties: {
+        status: { type: "string", description: "Status: DRAFT, PUBLISHED, ARCHIVED" },
         limit: { type: "number", description: "Máximo de resultados (padrão: 5)" },
       },
     },
@@ -108,12 +115,13 @@ const ASA_TOOLS: Tool[] = [
       type: "object" as const,
       properties: {
         unassigned: { type: "boolean", description: "Se true, retorna apenas sem responsável" },
+        category: { type: "string", description: "Categoria da responsabilidade" },
       },
     },
   },
   {
     name: "consultar_notificacoes",
-    description: "Consulta notificações do usuário",
+    description: "Consulta notificações pendentes ou recentes do usuário",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -124,10 +132,11 @@ const ASA_TOOLS: Tool[] = [
   },
   {
     name: "consultar_avisos",
-    description: "Consulta avisos publicados da operação",
+    description: "Consulta avisos (notices) da organização",
     input_schema: {
       type: "object" as const,
       properties: {
+        status: { type: "string", description: "Status: DRAFT, PUBLISHED, CANCELLED" },
         limit: { type: "number", description: "Máximo de resultados (padrão: 5)" },
       },
     },
@@ -138,13 +147,14 @@ const ASA_TOOLS: Tool[] = [
     input_schema: {
       type: "object" as const,
       properties: {
+        status: { type: "string", description: "Status da tarefa" },
         limit: { type: "number", description: "Máximo de resultados (padrão: 10)" },
       },
     },
   },
   {
     name: "consultar_memorias",
-    description: "Consulta as memórias aprovadas da ASA (termos, apelidos, regras)",
+    description: "Consulta as memórias aprovadas da ASA (termos, apelidos, regras da operação)",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -154,14 +164,15 @@ const ASA_TOOLS: Tool[] = [
   },
   {
     name: "criar_aviso_rascunho",
-    description: "Cria um rascunho de aviso (NÃO publica automaticamente — requer revisão do supervisor)",
+    description: "Cria um rascunho de aviso (NÃO publica automaticamente — requer confirmação e publicação manual pelo supervisor)",
     input_schema: {
       type: "object" as const,
-      required: ["title", "content"],
+      required: ["title", "content", "type"],
       properties: {
         title: { type: "string", description: "Título do aviso" },
         content: { type: "string", description: "Conteúdo do aviso" },
-        urgency: { type: "string", description: "Urgência: INFORMATIVE, IMPORTANT ou CRITICAL" },
+        type: { type: "string", description: "Tipo: INFORMATIVE, CHANGE, ALERT, EMERGENCY" },
+        urgency: { type: "string", description: "Urgência: LOW, MEDIUM, HIGH, CRITICAL" },
       },
     },
   },
@@ -182,7 +193,7 @@ const ASA_TOOLS: Tool[] = [
   },
   {
     name: "sugerir_memoria",
-    description: "Sugere que a ASA aprenda um novo termo ou regra (fica pendente de aprovação)",
+    description: "Sugere que a ASA aprenda um novo termo ou regra operacional (fica pendente de aprovação)",
     input_schema: {
       type: "object" as const,
       required: ["type", "key", "value"],
@@ -208,7 +219,7 @@ async function executeTool(
 
   try {
     if (name === "consultar_agenda") {
-      const limit = (input.limit as number) ?? 10;
+      const limit = 10;
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
       const events = await db
         .select()
@@ -285,11 +296,11 @@ async function executeTool(
 
     if (name === "consultar_avisos") {
       const limit = (input.limit as number) ?? 5;
-      if (!ctx.operationId) return JSON.stringify({ avisos: [], message: "Nenhuma operação ativa encontrada" });
+      if (!ctx.organizationId) return JSON.stringify({ avisos: [], message: "Organização não configurada" });
       const notices = await db
         .select()
         .from(noticesTable)
-        .where(eq(noticesTable.operationId, ctx.operationId))
+        .where(eq(noticesTable.organizationId, ctx.organizationId))
         .orderBy(desc(noticesTable.createdAt))
         .limit(limit);
       return JSON.stringify(notices.map(n => ({
@@ -338,22 +349,21 @@ async function executeTool(
 
     if (name === "criar_aviso_rascunho") {
       if (!isManager) return JSON.stringify({ error: "Sem permissão para criar avisos" });
-      if (!ctx.operationId) return JSON.stringify({ error: "Nenhuma operação ativa encontrada" });
-      const urgency = (input.urgency as "INFORMATIVE" | "IMPORTANT" | "CRITICAL") ?? "INFORMATIVE";
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
       const [notice] = await db.insert(noticesTable).values({
-        title: (input.title as string) ?? undefined,
+        title: input.title as string,
         content: input.content as string,
-        type: "INFORMATIVE",
-        urgency,
-        operationId: ctx.operationId,
-        authorId: ctx.userId,
+        type: (input.type as "INFORMATIVE" | "CHANGE" | "ALERT" | "EMERGENCY") ?? "INFORMATIVE",
+        urgency: (input.urgency as "LOW" | "MEDIUM" | "HIGH" | "CRITICAL") ?? "MEDIUM",
+        organizationId: ctx.organizationId,
+        createdBy: ctx.userId,
         status: "DRAFT",
       }).returning();
       return JSON.stringify({
         created: true,
         id: notice.id,
         status: "DRAFT",
-        message: "Aviso criado como rascunho. Para publicar, acesse Avisos e clique em Publicar.",
+        message: "Aviso criado como rascunho. Para publicar, acesse a seção de Avisos e clique em Publicar.",
       });
     }
 
@@ -400,7 +410,7 @@ async function executeTool(
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Chat (SSE Streaming)
+// Chat Endpoint (SSE Streaming)
 // ────────────────────────────────────────────────────────────────────────────
 
 router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganization, async (req, res): Promise<void> => {
@@ -423,7 +433,11 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
     return;
   }
 
-  await db.insert(aiMessages).values({ conversationId, role: "user", content });
+  await db.insert(aiMessages).values({
+    conversationId,
+    role: "user",
+    content,
+  });
 
   const history = await db
     .select()
@@ -478,16 +492,15 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
         messages: currentMessages,
       });
 
+      let assistantContent: MessageParam["content"] = [];
       const textBlocks: { type: "text"; text: string }[] = [];
       const toolUseBlocks: Array<{ type: "tool_use"; id: string; name: string; input: Record<string, unknown> }> = [];
-      let inputJsonBuffer = "";
 
       for await (const event of stream) {
         if (event.type === "content_block_start") {
           if (event.content_block.type === "text") {
             textBlocks.push({ type: "text", text: "" });
           } else if (event.content_block.type === "tool_use") {
-            inputJsonBuffer = "";
             toolUseBlocks.push({
               type: "tool_use",
               id: event.content_block.id,
@@ -502,45 +515,65 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
             fullResponse += event.delta.text;
             res.write(`data: ${JSON.stringify({ content: event.delta.text })}\n\n`);
           } else if (event.delta.type === "input_json_delta") {
-            inputJsonBuffer += event.delta.partial_json ?? "";
-          }
-        } else if (event.type === "content_block_stop") {
-          if (inputJsonBuffer) {
             const lastTool = toolUseBlocks[toolUseBlocks.length - 1];
             if (lastTool) {
-              try { lastTool.input = JSON.parse(inputJsonBuffer); } catch {}
+              try {
+                const partial = JSON.parse(event.delta.partial_json || "{}");
+                lastTool.input = { ...lastTool.input, ...partial };
+              } catch {}
             }
-            inputJsonBuffer = "";
           }
+        } else if (event.type === "message_stop") {
+          assistantContent = [
+            ...textBlocks,
+            ...toolUseBlocks,
+          ];
         }
       }
 
       if (toolUseBlocks.length === 0) {
         continueLoop = false;
       } else {
-        currentMessages.push({ role: "assistant", content: [...textBlocks, ...toolUseBlocks] });
+        currentMessages.push({ role: "assistant", content: assistantContent });
+
         const toolResults: MessageParam["content"] = [];
 
         for (const toolUse of toolUseBlocks) {
           toolsUsed.push(toolUse.name);
           res.write(`data: ${JSON.stringify({ tool: toolUse.name })}\n\n`);
+
           const result = await executeTool(toolUse.name, toolUse.input, {
             userId: user.id,
             organizationId: user.organizationId ?? null,
             userRole: user.role,
             operationId,
           });
+
           if (toolUse.name.startsWith("criar_") || toolUse.name.startsWith("sugerir_")) {
             actionsExecuted.push({ tool: toolUse.name, input: toolUse.input, result: JSON.parse(result) });
           }
-          toolResults.push({ type: "tool_result", tool_use_id: toolUse.id, content: result });
+
+          toolResults.push({
+            type: "tool_result",
+            tool_use_id: toolUse.id,
+            content: result,
+          });
         }
+
         currentMessages.push({ role: "user", content: toolResults });
       }
     }
 
-    await db.insert(aiMessages).values({ conversationId, role: "assistant", content: fullResponse });
-    await db.update(conversations).set({ updatedAt: new Date() }).where(eq(conversations.id, conversationId));
+    await db.insert(aiMessages).values({
+      conversationId,
+      role: "assistant",
+      content: fullResponse,
+    });
+
+    await db.update(conversations)
+      .set({ updatedAt: new Date() })
+      .where(eq(conversations.id, conversationId));
+
     await db.insert(asaAuditLogTable).values({
       userId: user.id,
       conversationId: String(conversationId),
@@ -555,7 +588,8 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
   } catch (err) {
-    res.write(`data: ${JSON.stringify({ error: String(err) })}\n\n`);
+    const errMsg = String(err);
+    res.write(`data: ${JSON.stringify({ error: errMsg })}\n\n`);
     res.end();
   }
 });
@@ -616,7 +650,11 @@ router.patch("/asa/memories/:id", requireAuth, requireOrganization, async (req, 
   }
 
   const updates: Record<string, unknown> = { updatedAt: new Date() };
-  if (status) { updates.status = status; updates.approvedBy = user.id; updates.approvedAt = new Date(); }
+  if (status) {
+    updates.status = status;
+    updates.approvedBy = user.id;
+    updates.approvedAt = new Date();
+  }
   if (value) updates.value = value;
 
   const [updated] = await db
@@ -625,7 +663,11 @@ router.patch("/asa/memories/:id", requireAuth, requireOrganization, async (req, 
     .where(eq(asaMemoriesTable.id, id))
     .returning();
 
-  if (!updated) { res.status(404).json({ error: "Memória não encontrada" }); return; }
+  if (!updated) {
+    res.status(404).json({ error: "Memória não encontrada" });
+    return;
+  }
+
   res.json(updated);
 });
 
@@ -635,7 +677,10 @@ router.delete("/asa/memories/:id", requireAuth, requireOrganization, async (req,
 
   if (!MANAGER_ROLES.includes(user.role)) {
     const [mem] = await db.select().from(asaMemoriesTable).where(eq(asaMemoriesTable.id, id));
-    if (!mem || mem.createdBy !== user.id) { res.status(403).json({ error: "Sem permissão" }); return; }
+    if (!mem || mem.createdBy !== user.id) {
+      res.status(403).json({ error: "Sem permissão" });
+      return;
+    }
   }
 
   await db.delete(asaMemoriesTable).where(eq(asaMemoriesTable.id, id));
@@ -648,27 +693,44 @@ router.delete("/asa/memories/:id", requireAuth, requireOrganization, async (req,
 
 router.get("/asa/preferences", requireAuth, async (req, res): Promise<void> => {
   const user = req.user!;
-  let [prefs] = await db.select().from(asaUserPreferencesTable).where(eq(asaUserPreferencesTable.userId, user.id));
+
+  let [prefs] = await db
+    .select()
+    .from(asaUserPreferencesTable)
+    .where(eq(asaUserPreferencesTable.userId, user.id));
+
   if (!prefs) {
-    [prefs] = await db.insert(asaUserPreferencesTable).values({ userId: user.id, mode: "BALANCED" }).returning();
+    [prefs] = await db.insert(asaUserPreferencesTable).values({
+      userId: user.id,
+      mode: "BALANCED",
+    }).returning();
   }
+
   res.json(prefs);
 });
 
 router.patch("/asa/preferences", requireAuth, async (req, res): Promise<void> => {
   const user = req.user!;
-  const updates = req.body as Partial<{
-    mode: "SILENT" | "BALANCED" | "PROACTIVE";
-    morningGreeting: boolean;
-    eveningGreeting: boolean;
-    reminders: boolean;
-    birthdayAlerts: boolean;
-    notificationsEnabled: boolean;
-  }>;
+  const updates = req.body as {
+    mode?: "SILENT" | "BALANCED" | "PROACTIVE";
+    morningGreeting?: boolean;
+    eveningGreeting?: boolean;
+    reminders?: boolean;
+    birthdayAlerts?: boolean;
+    notificationsEnabled?: boolean;
+  };
 
-  const [existing] = await db.select().from(asaUserPreferencesTable).where(eq(asaUserPreferencesTable.userId, user.id));
+  const [existing] = await db
+    .select()
+    .from(asaUserPreferencesTable)
+    .where(eq(asaUserPreferencesTable.userId, user.id));
+
   if (!existing) {
-    const [created] = await db.insert(asaUserPreferencesTable).values({ userId: user.id, mode: "BALANCED", ...updates }).returning();
+    const [created] = await db.insert(asaUserPreferencesTable).values({
+      userId: user.id,
+      mode: "BALANCED",
+      ...updates,
+    }).returning();
     res.json(created);
     return;
   }
