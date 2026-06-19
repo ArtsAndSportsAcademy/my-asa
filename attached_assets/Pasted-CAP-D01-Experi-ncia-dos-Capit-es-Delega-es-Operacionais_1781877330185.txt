@@ -1,0 +1,254 @@
+CAP-D01 — Experiência dos Capitães (Delegações Operacionais)
+
+Objetivo
+
+Validar se um Capitão consegue realmente operar o MyASA sozinho após receber uma delegação.
+
+Importante:
+
+- Não implementar nada.
+- Não alterar banco.
+- Não alterar permissões.
+- Não alterar APIs.
+- Não alterar telas.
+
+Auditoria apenas.
+
+Objetivo principal:
+
+Responder se a experiência atual de Capitão é utilizável na operação real da ASA.
+
+═══════════════════════
+PARTE 1 — Descoberta da Delegação
+═══════════════════════
+
+Cenário:
+
+Débora delega para Carol:
+
+- CHECK_INS
+- DAILY_BOOK
+- NOTICES
+
+Validar:
+
+1. Carol percebe que recebeu a delegação?
+
+2. Onde ela percebe?
+
+3. Existe aviso?
+
+4. Existe destaque visual?
+
+5. Existe histórico da delegação?
+
+6. Existe diferença clara entre:
+
+- Membro
+- Capitão
+
+7. O sistema explica o que mudou?
+
+Classificar:
+
+🟢 Claro
+🟡 Parcial
+🔴 Confuso
+
+═══════════════════════
+PARTE 2 — Jornada do Capitão
+═══════════════════════
+
+Para cada responsabilidade:
+
+- CHECK_INS
+- REQUESTS
+- TASK_APPROVALS
+- DAILY_BOOK
+- NOTICES
+- SCALES
+- OPERATIONAL_MESSAGES
+
+Responder:
+
+1. O Capitão sabe que recebeu?
+
+2. Sabe onde executar?
+
+3. Consegue chegar à tela correta?
+
+4. Consegue executar?
+
+5. Consegue concluir sozinho?
+
+6. Precisa pedir ajuda?
+
+7. Precisa de treinamento?
+
+Classificar:
+
+🟢 Funcional
+🟡 Parcial
+🔴 Não utilizável
+
+═══════════════════════
+PARTE 3 — Mobile
+═══════════════════════
+
+Validar:
+
+O Capitão consegue operar pelo mobile?
+
+Para cada responsabilidade responder:
+
+- Existe tela?
+- Existe navegação?
+- Existe botão?
+- Existe ação?
+- Existe confirmação?
+
+Classificar:
+
+🟢 Completo
+🟡 Parcial
+🔴 Inexistente
+
+═══════════════════════
+PARTE 4 — Web
+═══════════════════════
+
+Validar:
+
+O Capitão consegue operar pelo web-admin?
+
+Responder:
+
+1. O menu mostrado corresponde ao que ele pode fazer?
+
+2. Existe item que gera expectativa falsa?
+
+3. Existe redirecionamento silencioso?
+
+4. Existe mensagem explicando bloqueios?
+
+5. Existe experiência específica para Capitão?
+
+6. Existe indicação visual das responsabilidades recebidas?
+
+Classificar:
+
+🟢 Correto
+🟡 Parcial
+🔴 Problemático
+
+═══════════════════════
+PARTE 5 — Comparação ASA Real
+═══════════════════════
+
+Usar cenários reais:
+
+- Amanda responsável pelos Check-ins
+- Carol responsável pelos Personagens
+- Capitão cobrindo férias
+- Capitão cobrindo folga
+- Capitão cobrindo ausência temporária
+
+Responder:
+
+1. O fluxo atual representa a realidade?
+
+2. O Capitão consegue assumir a responsabilidade sem depender do Supervisor?
+
+3. O Supervisor consegue acompanhar?
+
+4. O Admin consegue acompanhar?
+
+5. Existe risco operacional?
+
+═══════════════════════
+PARTE 6 — Responsabilidades Permanentes
+═══════════════════════
+
+Analisar:
+
+Exemplos:
+
+- Responsável por Check-ins
+- Responsável por Biblioteca
+- Responsável por Personagens
+- Responsável por Figurinos
+- Responsável por Perucas
+- Responsável por Treinamentos
+- Responsável por Redes Sociais
+
+Responder:
+
+1. Delegações atuais resolvem esse cenário?
+
+2. Delegações permanentes seriam suficientes?
+
+3. O sistema continua compreensível?
+
+4. Supervisor consegue visualizar facilmente?
+
+5. Equipe consegue identificar responsáveis?
+
+6. Existe alguma limitação estrutural?
+
+Importante:
+
+Não propor implementação.
+
+Apenas verificar se Delegações já resolvem.
+
+═══════════════════════
+PARTE 7 — Lacunas
+═══════════════════════
+
+Listar:
+
+🔴 Bloqueia piloto
+
+🟡 Ajustar antes do piloto
+
+🟢 Pode ficar para depois
+
+Responder:
+
+- O que existe no backend mas não existe na experiência?
+- O que existe na experiência mas não funciona?
+- O que o Capitão acredita que consegue fazer mas não consegue?
+
+═══════════════════════
+PARTE 8 — Veredito Final
+═══════════════════════
+
+Responder objetivamente:
+
+1. O modelo de Capitão está pronto para piloto?
+
+2. O Capitão consegue operar sozinho?
+
+3. O Capitão consegue operar pelo mobile?
+
+4. O Capitão consegue operar pelo web?
+
+5. Delegações atuais representam corretamente a operação da ASA?
+
+6. Delegações resolvem responsabilidades temporárias?
+
+7. Delegações resolvem responsabilidades permanentes?
+
+8. Existe necessidade real de uma estrutura futura de Responsabilidades Permanentes?
+
+Classificar:
+
+🔴 Necessário antes do piloto
+
+🟡 Necessário após o piloto
+
+🟢 Não necessário
+
+Objetivo final:
+
+Determinar se o Capitão é hoje um papel operacional realmente utilizável ou apenas uma permissão técnica ainda sem experiência adequada.
