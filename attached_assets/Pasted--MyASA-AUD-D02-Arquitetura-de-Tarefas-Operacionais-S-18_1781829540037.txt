@@ -1,0 +1,209 @@
+# MyASA — AUD-D02 — Arquitetura de Tarefas Operacionais (S-18)
+
+Utilizar obrigatoriamente:
+
+* Sprint 0 → Sprint 17 concluídas
+* Catálogo Oficial das Superfícies
+* Entregas (S-07)
+* Solicitações (S-06)
+* Avisos (S-08)
+* Biblioteca (S-14)
+* Histórico (S-11)
+* Conversas funcionais registradas sobre Tarefas Operacionais
+
+Importante:
+
+Não implementar nada.
+
+Não criar tabelas.
+
+Não criar APIs.
+
+Não criar telas.
+
+Objetivo:
+
+Definir oficialmente o domínio de Tarefas Operacionais antes da implementação.
+
+Pergunta respondida:
+
+"O que é uma Tarefa no MyASA?"
+
+═══════════════════════
+PARTE 1 — FRONTEIRAS
+═══════════════════════
+
+Comparar:
+
+* Solicitações
+* Entregas
+* Avisos
+* Tarefas
+
+Responder:
+
+O que pertence a cada domínio?
+
+O que NÃO pertence?
+
+═══════════════════════
+PARTE 2 — CASOS REAIS ASA
+═══════════════════════
+
+Classificar exemplos reais:
+
+* Preparar Pocket
+* Atualizar figurino
+* Revisar coreografia
+* Treinar substituto
+* Criar apresentação
+* Atualizar biblioteca
+* Produzir vídeo
+* Organizar evento
+
+Todos devem ser classificados:
+
+* Tarefa
+* Entrega
+* Solicitação
+* Aviso
+
+═══════════════════════
+PARTE 3 — ESTRUTURA
+═══════════════════════
+
+Validar oficialmente:
+
+Uma tarefa pode possuir:
+
+* responsável
+* prazo
+* prioridade
+* progresso
+* comentários
+* checklist obrigatório
+* checklist operacional
+* aprovação
+* aprovador
+* evidências obrigatórias
+* evidências complementares
+
+Responder:
+
+Falta algum elemento?
+
+Existe algo redundante?
+
+═══════════════════════
+PARTE 4 — CHECKLISTS
+═══════════════════════
+
+Validar modelo:
+
+Checklist Obrigatório
+
+Criado pelo solicitante.
+
+Checklist Operacional
+
+Criado pelo responsável.
+
+Responder:
+
+A separação faz sentido?
+
+═══════════════════════
+PARTE 5 — EVIDÊNCIAS
+═══════════════════════
+
+Validar:
+
+Tipos:
+
+* Foto
+* Vídeo
+* Documento
+* PDF
+* Link
+* Áudio
+* Apresentação
+
+Responder:
+
+A tarefa pode possuir múltiplas evidências?
+
+Quem define a quantidade mínima?
+
+Quem adiciona evidências complementares?
+
+═══════════════════════
+PARTE 6 — APROVAÇÃO
+═══════════════════════
+
+Validar fluxo:
+
+Criada
+↓
+Em andamento
+↓
+Pronta para aprovação
+↓
+Aprovada
+
+ou
+
+Solicitar ajustes
+
+Responder:
+
+Esse fluxo atende a operação ASA?
+
+═══════════════════════
+PARTE 7 — IA FUTURA
+═══════════════════════
+
+Responder:
+
+Como a IA poderá utilizar Tarefas?
+
+Exemplos:
+
+* acompanhar progresso
+* detectar atrasos
+* sugerir responsáveis
+* identificar bloqueios
+
+═══════════════════════
+PARTE 8 — GOVERNANÇA
+═══════════════════════
+
+Responder:
+
+Quem pode criar?
+
+* Admin
+* Supervisor
+* Delegado
+* Membro
+
+Quem pode aprovar?
+
+Quem pode encerrar?
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Objetivo final:
+
+Produzir a definição oficial do domínio de Tarefas Operacionais.
+
+Nenhuma implementação.
+
+Nenhuma tabela.
+
+Nenhuma API.
+
+Apenas arquitetura e regras de negócio.
+
+A Sprint seguinte será baseada exclusivamente nesta auditoria.

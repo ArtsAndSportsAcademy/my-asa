@@ -12,3 +12,9 @@ id = "XgSxH7fPhYHDR20ZRIDZg"
 uri = "file://docs/wireframe-estrutural-s06-solicitacoes.md"
 type = "text"
 title = "Wireframe Estrutural — S-06 Solicitações"
+
+[[outputs]]
+id = "FI0tiRxEbs4KAw0gg9dGp"
+uri = "file://docs/aud-d02-tarefas-operacionais-myasa-2.0.md"
+type = "text"
+title = "AUD-D02 — Arquitetura de Tarefas Operacionais"
