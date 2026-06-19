@@ -1,11 +1,12 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lte } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { agendaEventsTable } from "@workspace/db";
+import { agendaEventsTable, usersTable, operationsTable } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
 import { eventBus } from "../lib/event-bus.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
+import { notifyMany } from "../services/notificationService.js";
 
 const router: IRouter = Router();
 
@@ -207,6 +208,32 @@ router.post("/agenda/events/:id/confirm", requireAuth, requireOrganization, asyn
       .where(eq(agendaEventsTable.id, id))
       .returning();
     eventBus.emit("agenda.event.confirmed", { eventId: id });
+
+    // Notify org members for REHEARSAL events (fire-and-forget)
+    if (updated?.type === "REHEARSAL") {
+      (async () => {
+        try {
+          const [op] = await db.select({ organizationId: operationsTable.organizationId })
+            .from(operationsTable).where(eq(operationsTable.id, updated.operationId)).limit(1);
+          if (op) {
+            const members = await db.select({ id: usersTable.id }).from(usersTable)
+              .where(eq(usersTable.organizationId, op.organizationId));
+            const memberIds = members.map((m) => m.id).filter((id) => id !== req.user!.sub);
+            await notifyMany(memberIds, {
+              type: "agenda.rehearsal.confirmed",
+              title: `Ensaio confirmado: ${updated.title}`,
+              message: `O ensaio de ${updated.date} foi confirmado. Verifique sua agenda.`,
+              priority: "NORMAL",
+              category: "rehearsal",
+              entityType: "agenda_event",
+              entityId: updated.id,
+              actionUrl: "/(tabs)/agenda",
+            });
+          }
+        } catch { /* non-critical */ }
+      })();
+    }
+
     res.json({ event: updated });
   } catch (err) {
     res.status(500).json({ error: "Erro ao confirmar evento" });
@@ -248,6 +275,31 @@ router.post("/agenda/events/:id/suspend", requireAuth, requireOrganization, asyn
       operationId: updated?.operationId ?? undefined,
       metadata: { reason },
     }).catch(() => {});
+    // Notify org members for REHEARSAL events (fire-and-forget)
+    if (updated?.type === "REHEARSAL") {
+      (async () => {
+        try {
+          const [op] = await db.select({ organizationId: operationsTable.organizationId })
+            .from(operationsTable).where(eq(operationsTable.id, updated.operationId)).limit(1);
+          if (op) {
+            const members = await db.select({ id: usersTable.id }).from(usersTable)
+              .where(eq(usersTable.organizationId, op.organizationId));
+            const memberIds = members.map((m) => m.id).filter((id) => id !== userId);
+            await notifyMany(memberIds, {
+              type: "agenda.rehearsal.suspended",
+              title: `Ensaio suspenso: ${updated.title}`,
+              message: `O ensaio de ${updated.date} foi suspenso. Motivo: ${reason}`,
+              priority: "IMPORTANT",
+              category: "rehearsal",
+              entityType: "agenda_event",
+              entityId: updated.id,
+              actionUrl: "/(tabs)/agenda",
+            });
+          }
+        } catch { /* non-critical */ }
+      })();
+    }
+
     const log = requestLogger("agenda", req.requestId, req.correlationId);
     log.info({ eventId: id, reason }, "Evento suspenso");
     res.json({ event: updated });
@@ -295,6 +347,31 @@ router.post("/agenda/events/:id/cancel", requireAuth, requireOrganization, async
       operationId: event.operationId,
       metadata: { reason },
     }).catch(() => {});
+    // Notify org members for REHEARSAL events (fire-and-forget)
+    if (event.type === "REHEARSAL") {
+      (async () => {
+        try {
+          const [op] = await db.select({ organizationId: operationsTable.organizationId })
+            .from(operationsTable).where(eq(operationsTable.id, event.operationId)).limit(1);
+          if (op) {
+            const members = await db.select({ id: usersTable.id }).from(usersTable)
+              .where(eq(usersTable.organizationId, op.organizationId));
+            const memberIds = members.map((m) => m.id).filter((id) => id !== userId);
+            await notifyMany(memberIds, {
+              type: "agenda.rehearsal.cancelled",
+              title: `Ensaio cancelado: ${event.title}`,
+              message: `O ensaio de ${event.date} foi cancelado. Motivo: ${reason}`,
+              priority: "CRITICAL",
+              category: "rehearsal",
+              entityType: "agenda_event",
+              entityId: id,
+              actionUrl: "/(tabs)/agenda",
+            });
+          }
+        } catch { /* non-critical */ }
+      })();
+    }
+
     const log = requestLogger("agenda", req.requestId, req.correlationId);
     log.info({ eventId: id, reason }, "Evento cancelado");
     res.json({ event: updated });

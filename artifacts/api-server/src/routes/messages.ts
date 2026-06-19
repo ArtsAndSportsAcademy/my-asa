@@ -11,6 +11,7 @@ import {
 } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
+import { notifyMany } from "../services/notificationService.js";
 
 type RoleValue = "MEMBER" | "SUPERVISOR_A" | "SUPERVISOR_B" | "ADMIN";
 
@@ -429,6 +430,27 @@ router.post(
             eq(messageThreadParticipantsTable.userId, userId),
           )
         );
+
+      // notify other thread participants
+      (async () => {
+        const participants = await db
+          .select({ userId: messageThreadParticipantsTable.userId })
+          .from(messageThreadParticipantsTable)
+          .where(eq(messageThreadParticipantsTable.threadId, threadId));
+        const otherUserIds = participants
+          .map((p) => p.userId)
+          .filter((uid) => uid !== userId);
+        await notifyMany(otherUserIds, {
+          type: "message.new",
+          title: "Nova mensagem",
+          message: `${senderName ?? "Alguém"}: ${content.trim().slice(0, 80)}${content.trim().length > 80 ? "…" : ""}`,
+          priority: "NORMAL",
+          category: "message",
+          entityType: "thread",
+          entityId: threadId,
+          actionUrl: `/(tabs)/mensagens`,
+        });
+      })().catch(() => {});
 
       res.status(201).json({ message });
     } catch {

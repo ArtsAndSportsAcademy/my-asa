@@ -9,6 +9,7 @@ import { Platform, StyleSheet, View, useColorScheme } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
 import { useUnreadMessagesCount } from "@/hooks/useUnreadMessages";
+import { useGetUnreadCount } from "@workspace/api-client-react";
 
 // IMPORTANT: iOS 26 uses NativeTabs for native tabs with liquid glass support.
 // NativeTabs intentionally does NOT use custom design tokens — liquid glass
@@ -29,6 +30,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "bell", selected: "bell.fill" }} />
         <Label>Avisos</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="notificacoes">
+        <Icon sf={{ default: "tray", selected: "tray.fill" }} />
+        <Label>Central</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="mensagens">
         <Icon sf={{ default: "message", selected: "message.fill" }} />
         <Label>Mensagens</Label>
@@ -36,10 +41,6 @@ function NativeTabLayout() {
       <NativeTabs.Trigger name="scale">
         <Icon sf={{ default: "list.clipboard", selected: "list.clipboard.fill" }} />
         <Label>Escala</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="tarefas">
-        <Icon sf={{ default: "checkmark.square", selected: "checkmark.square.fill" }} />
-        <Label>Tarefas</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="mais">
         <Icon sf={{ default: "ellipsis", selected: "ellipsis.circle.fill" }} />
@@ -55,6 +56,8 @@ function ClassicTabLayout() {
   const colors = useColors();
   const colorScheme = useColorScheme();
   const unreadMessages = useUnreadMessagesCount();
+  const { data: unreadCountData } = useGetUnreadCount({ refetchInterval: 30_000 });
+  const unreadNotifications = unreadCountData?.count ?? 0;
   const isDark = colorScheme === "dark";
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
@@ -115,6 +118,19 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
+        name="notificacoes"
+        options={{
+          title: "Central",
+          tabBarBadge: unreadNotifications > 0 ? (unreadNotifications > 99 ? "99+" : unreadNotifications) : undefined,
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="tray" tintColor={color} size={24} />
+            ) : (
+              <Feather name="inbox" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
         name="mensagens"
         options={{
           title: "Mensagens",
@@ -140,18 +156,6 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="tarefas"
-        options={{
-          title: "Tarefas",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="checkmark.square" tintColor={color} size={24} />
-            ) : (
-              <Feather name="check-square" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
         name="mais"
         options={{
           title: "Mais",
@@ -165,15 +169,16 @@ function ClassicTabLayout() {
       />
 
       {/* ── Secondary screens — roteáveis mas ocultos da tab bar ── */}
-      <Tabs.Screen name="index"       options={{ tabBarButton: () => null, title: "Home"          }} />
-      <Tabs.Screen name="panel"       options={{ tabBarButton: () => null, title: "Painel"        }} />
-      <Tabs.Screen name="agenda"      options={{ tabBarButton: () => null, title: "Agenda"        }} />
-      <Tabs.Screen name="show-book"   options={{ tabBarButton: () => null, title: "Livro do Show" }} />
-      <Tabs.Screen name="daily-book"  options={{ tabBarButton: () => null, title: "Livro do Dia"  }} />
-      <Tabs.Screen name="historico"   options={{ tabBarButton: () => null, title: "Histórico"     }} />
-      <Tabs.Screen name="biblioteca"  options={{ tabBarButton: () => null, title: "Biblioteca"    }} />
-      <Tabs.Screen name="solicitacoes" options={{ tabBarButton: () => null, title: "Solicitações" }} />
-      <Tabs.Screen name="entregas"    options={{ tabBarButton: () => null, title: "Entregas"      }} />
+      <Tabs.Screen name="index"        options={{ tabBarButton: () => null, title: "Home"          }} />
+      <Tabs.Screen name="panel"        options={{ tabBarButton: () => null, title: "Painel"        }} />
+      <Tabs.Screen name="agenda"       options={{ tabBarButton: () => null, title: "Agenda"        }} />
+      <Tabs.Screen name="show-book"    options={{ tabBarButton: () => null, title: "Livro do Show" }} />
+      <Tabs.Screen name="daily-book"   options={{ tabBarButton: () => null, title: "Livro do Dia"  }} />
+      <Tabs.Screen name="historico"    options={{ tabBarButton: () => null, title: "Histórico"     }} />
+      <Tabs.Screen name="biblioteca"   options={{ tabBarButton: () => null, title: "Biblioteca"    }} />
+      <Tabs.Screen name="solicitacoes" options={{ tabBarButton: () => null, title: "Solicitações"  }} />
+      <Tabs.Screen name="entregas"     options={{ tabBarButton: () => null, title: "Entregas"      }} />
+      <Tabs.Screen name="tarefas"      options={{ tabBarButton: () => null, title: "Tarefas"       }} />
     </Tabs>
   );
 }

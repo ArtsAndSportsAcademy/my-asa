@@ -14,6 +14,7 @@ import { requestLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { hasActiveResponsibility } from "../lib/delegation-check.js";
+import { sendNotification } from "../services/notificationService.js";
 
 const router: IRouter = Router();
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
@@ -452,6 +453,28 @@ router.post("/requests/:id/decision", requireAuth, requireOrganization, async (r
       orgId: user.organizationId,
     });
 
+    // notify requester of decision
+    const decisionTitleMap: Record<string, string> = {
+      APPROVED: "Solicitação aprovada",
+      DENIED: "Solicitação recusada",
+      ALTERNATIVE_PROPOSED: "Alternativa proposta para sua solicitação",
+    };
+    const decisionMsgMap: Record<string, string> = {
+      APPROVED: `Sua solicitação do tipo ${existing.type} foi aprovada.`,
+      DENIED: `Sua solicitação do tipo ${existing.type} foi recusada.${reason ? ` Motivo: ${reason}` : ""}`,
+      ALTERNATIVE_PROPOSED: `Uma alternativa foi proposta para sua solicitação. Verifique e responda.`,
+    };
+    sendNotification({
+      userId: existing.requesterId,
+      type: `request.${decision.toLowerCase()}`,
+      title: decisionTitleMap[decision] ?? "Decisão sobre sua solicitação",
+      message: decisionMsgMap[decision] ?? "Sua solicitação foi atualizada.",
+      priority: decision === "DENIED" ? "IMPORTANT" : decision === "ALTERNATIVE_PROPOSED" ? "IMPORTANT" : "NORMAL",
+      category: "approval",
+      entityType: "request",
+      entityId: id,
+      actionUrl: `/(tabs)/solicitacoes`,
+    }).catch(() => {});
     log.info({ requestId: id, decision, supervisorId: user.sub }, "request decision recorded");
     res.status(201).json({ decision: decisionRecord });
   } catch (err) {

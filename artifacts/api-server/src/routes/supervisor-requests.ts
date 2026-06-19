@@ -10,6 +10,7 @@ import {
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
+import { sendNotification } from "../services/notificationService.js";
 import { LOG_DOMAIN } from "@workspace/shared";
 
 const router: IRouter = Router();
@@ -150,6 +151,21 @@ router.post("/supervisor-requests", requireAuth, requireOrganization, async (req
       actorType: "HUMAN",
     }).catch(() => {});
 
+    // Notify target supervisor about the new request (fire-and-forget)
+    if (targetSupervisorId) {
+      sendNotification({
+        userId: targetSupervisorId,
+        type: "supervisor_request.received",
+        title: "Nova solicitação de supervisor",
+        message: `Supervisor de ${requestorOp?.name ?? requestorOperationId} solicita uso do membro ${member.name}. Motivo: ${reason}`,
+        priority: "IMPORTANT",
+        category: "approval",
+        entityType: "supervisor_request",
+        entityId: request!.id,
+        actionUrl: "/(tabs)/mais",
+      }).catch(() => {});
+    }
+
     log.info({ requestId: request!.id, memberId, targetOperationId }, "supervisor-request criada");
     res.status(201).json({ request: { ...request, memberName: member.name } });
   } catch (err) {
@@ -223,6 +239,23 @@ router.post("/supervisor-requests/:id/respond", requireAuth, requireOrganization
       entityId: id,
       actorId: user.sub,
       actorType: "HUMAN",
+    }).catch(() => {});
+
+    // Notify the requestor about the decision (fire-and-forget)
+    const decisionTitle = decision === "APPROVED" ? "Solicitação aprovada" : "Solicitação negada";
+    const decisionMsg = decision === "APPROVED"
+      ? `Sua solicitação de uso de membro foi aprovada.${responseReason ? ` Observação: ${responseReason}` : ""}`
+      : `Sua solicitação de uso de membro foi negada.${responseReason ? ` Motivo: ${responseReason}` : ""}`;
+    sendNotification({
+      userId: existing.requestorId,
+      type: `supervisor_request.${decision.toLowerCase()}`,
+      title: decisionTitle,
+      message: decisionMsg,
+      priority: "IMPORTANT",
+      category: "approval",
+      entityType: "supervisor_request",
+      entityId: id,
+      actionUrl: "/(tabs)/mais",
     }).catch(() => {});
 
     log.info({ requestId: id, decision, respondedBy: user.sub }, "supervisor-request respondida");

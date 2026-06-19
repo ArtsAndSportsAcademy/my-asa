@@ -4,5 +4,6 @@ export * from "./check-ins";
 export * from "./requests-manual";
 export * from "./delegations-manual";
 export * from "./insights-manual";
+export * from "./notifications-manual";
 export { setBaseUrl, setAuthTokenGetter, customFetch } from "./custom-fetch";
 export type { AuthTokenGetter } from "./custom-fetch";

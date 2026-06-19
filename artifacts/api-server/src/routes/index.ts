@@ -24,6 +24,7 @@ import tasksRouter from "./tasks";
 import insightsRouter from "./insights";
 import restrictionsRouter from "./restrictions";
 import supervisorRequestsRouter from "./supervisor-requests";
+import notificationsRouter from "./notifications";
 
 const router: IRouter = Router();
 
@@ -52,5 +53,6 @@ router.use(tasksRouter);
 router.use(insightsRouter);
 router.use(restrictionsRouter);
 router.use(supervisorRequestsRouter);
+router.use(notificationsRouter);
 
 export default router;

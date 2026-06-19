@@ -7,6 +7,7 @@ import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
 import { writeHistoryEvent } from "../lib/history-helper.js";
+import { sendNotification } from "../services/notificationService.js";
 
 const router: IRouter = Router();
 const SUPERVISOR_ROLES = ["SUPERVISOR_A", "SUPERVISOR_B"];
@@ -302,6 +303,19 @@ router.post("/delegations", requireAuth, requireOrganization, async (req, res): 
       }
     })();
 
+    // Notify delegatee about new responsibility assignment (fire-and-forget)
+    sendNotification({
+      userId: delegateId,
+      type: "delegation.assigned",
+      title: "Responsabilidades delegadas a você",
+      message: `Você recebeu responsabilidades delegadas: ${responsibilityLabels}. Válido de ${startDate} até ${endDate}.`,
+      priority: "NORMAL",
+      category: "responsibility",
+      entityType: "delegation",
+      entityId: delegation!.id,
+      actionUrl: "/(tabs)/mais",
+    }).catch(() => {});
+
     log.info({ delegationId: delegation!.id, responsibilities: validResponsibilities }, "delegação criada");
     res.status(201).json({
       delegation: {
@@ -375,6 +389,19 @@ router.patch("/delegations/:id/cancel", requireAuth, requireOrganization, async 
       entityId: id,
       actorId: user.sub,
       actorType: "HUMAN",
+    }).catch(() => {});
+
+    // Notify delegatee about revocation (fire-and-forget)
+    sendNotification({
+      userId: existing.delegateeId,
+      type: "delegation.revoked",
+      title: "Delegação de responsabilidades cancelada",
+      message: "Uma delegação de responsabilidades atribuída a você foi cancelada pelo supervisor.",
+      priority: "IMPORTANT",
+      category: "responsibility",
+      entityType: "delegation",
+      entityId: id,
+      actionUrl: "/(tabs)/mais",
     }).catch(() => {});
 
     log.info({ delegationId: id }, "delegação cancelada");

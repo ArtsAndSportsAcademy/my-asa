@@ -10,6 +10,9 @@ import {
   getMyActiveDelegationsQueryKey,
   useGetMyTasks,
   getGetMyTasksQueryKey,
+  useGetNotifications,
+  useMarkNotificationRead,
+  getNotificationsQueryKey,
 } from "@workspace/api-client-react";
 import type {
   MyDayActivity,
@@ -18,6 +21,7 @@ import type {
   CheckInMyStatusResponse,
   ActiveDelegationItem,
   TaskItem,
+  UserNotificationItem,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useState } from "react";
@@ -522,6 +526,62 @@ export default function MeuDiaScreen() {
     .filter((t) => !["APPROVED", "COMPLETED", "CANCELLED", "EXPIRED"].includes(t.status))
     .sort((a, b) => TASK_PRIORITY_ORDER[a.priority] - TASK_PRIORITY_ORDER[b.priority]);
 
+  // Notifications for Meu Dia — up to 5 IMPORTANT/CRITICAL unread
+  const { data: notificationsData } = useGetNotifications(
+    { unreadOnly: true, limit: 20 },
+    { query: { queryKey: getNotificationsQueryKey({ unreadOnly: true, limit: 20 }) } },
+  );
+  const markNotifRead = useMarkNotificationRead();
+  const PRIORITY_ORDER: Record<string, number> = { CRITICAL: 0, IMPORTANT: 1, NORMAL: 2, LOW: 3 };
+
+  // Required mix for Meu Dia alerts section:
+  //   1. CRITICAL notifications (any category) — always surfaced first
+  //   2. Pending-action notifications: "approval" and "notice" categories
+  //      even at NORMAL priority — these represent actionable items
+  //   3. IMPORTANT notifications (other categories)
+  // Deduplicate by entityId+entityType, cap 2 per category, max 5 total.
+  const urgentNotifications: UserNotificationItem[] = (() => {
+    const all = notificationsData?.notifications ?? [];
+
+    // Accept CRITICAL/IMPORTANT of any category, plus approval+notice at NORMAL
+    const ACTIONABLE_CATEGORIES = new Set(["approval", "notice"]);
+    const raw = all.filter(
+      (n) =>
+        n.priority === "CRITICAL" ||
+        n.priority === "IMPORTANT" ||
+        (n.priority === "NORMAL" && ACTIONABLE_CATEGORIES.has(n.category)),
+    );
+
+    // Dedup: for the same entity keep only the highest-priority notification
+    const entityMap = new Map<string, UserNotificationItem>();
+    for (const n of raw) {
+      const key = n.entityType && n.entityId ? `${n.entityType}:${n.entityId}` : n.id;
+      const existing = entityMap.get(key);
+      if (!existing || (PRIORITY_ORDER[n.priority] ?? 3) < (PRIORITY_ORDER[existing.priority] ?? 3)) {
+        entityMap.set(key, n);
+      }
+    }
+
+    // Cap 2 per category to prevent a single domain flooding the section,
+    // sorted CRITICAL → IMPORTANT → NORMAL and by createdAt within same priority
+    const categoryCounts: Record<string, number> = {};
+    const capped: UserNotificationItem[] = [];
+    const sorted = [...entityMap.values()].sort((a, b) => {
+      const pd = (PRIORITY_ORDER[a.priority] ?? 3) - (PRIORITY_ORDER[b.priority] ?? 3);
+      if (pd !== 0) return pd;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+    for (const n of sorted) {
+      const catCount = categoryCounts[n.category] ?? 0;
+      if (catCount < 2) {
+        capped.push(n);
+        categoryCounts[n.category] = catCount + 1;
+      }
+    }
+
+    return capped.slice(0, 5);
+  })();
+
   function handleCheckIn() {
     performCheckInMutation.mutate(undefined, {
       onSuccess: () => {
@@ -539,6 +599,7 @@ export default function MeuDiaScreen() {
     await queryClient.invalidateQueries({ queryKey: getGetMyCheckInStatusQueryKey() });
     await queryClient.invalidateQueries({ queryKey: getMyActiveDelegationsQueryKey() });
     await queryClient.invalidateQueries({ queryKey: getGetMyTasksQueryKey() });
+    await queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
     await refetch();
     setRefreshing(false);
   }, [queryClient, refetch]);
@@ -626,6 +687,57 @@ export default function MeuDiaScreen() {
               </View>
               <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
             </Pressable>
+
+            {/* ── Alertas Operacionais (IMPORTANT/CRITICAL notificações) ── */}
+            {urgentNotifications.length > 0 && (
+              <>
+                <SectionHeader title="Alertas Operacionais" icon="alert-circle" colors={colors} />
+                {urgentNotifications.map((n) => {
+                  const isCritical = n.priority === "CRITICAL";
+                  return (
+                    <TouchableOpacity
+                      key={n.id}
+                      activeOpacity={0.75}
+                      onPress={() => {
+                        markNotifRead.mutate(n.id);
+                        if (n.actionUrl) router.push(n.actionUrl as any);
+                      }}
+                      style={[
+                        styles.notifCard,
+                        {
+                          backgroundColor: isCritical ? "#FEF2F2" : "#FFFBEB",
+                          borderColor: isCritical ? "#FECACA" : "#FDE68A",
+                          borderLeftColor: isCritical ? "#EF4444" : "#F59E0B",
+                        },
+                      ]}
+                    >
+                      <View style={styles.notifRow}>
+                        <Feather
+                          name={isCritical ? "alert-octagon" : "alert-triangle"}
+                          size={16}
+                          color={isCritical ? "#DC2626" : "#B45309"}
+                        />
+                        <View style={{ flex: 1, marginLeft: 8 }}>
+                          <Text
+                            style={[styles.notifTitle, { color: isCritical ? "#991B1B" : "#92400E" }]}
+                            numberOfLines={1}
+                          >
+                            {n.title}
+                          </Text>
+                          <Text
+                            style={[styles.notifMsg, { color: isCritical ? "#B91C1C" : "#B45309" }]}
+                            numberOfLines={2}
+                          >
+                            {n.message}
+                          </Text>
+                        </View>
+                        <Feather name="chevron-right" size={14} color={isCritical ? "#DC2626" : "#B45309"} />
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </>
+            )}
 
             {/* ── Avisos Pendentes ── */}
             {(data as any).pendingNotices && (data as any).pendingNotices.length > 0 && (
@@ -999,5 +1111,28 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 13,
     fontWeight: "700",
+  },
+
+  // ── Operational Notification Cards ──
+  notifCard: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderLeftWidth: 4,
+    padding: 12,
+    marginBottom: 6,
+  },
+  notifRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 0,
+  },
+  notifTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    marginBottom: 2,
+  },
+  notifMsg: {
+    fontSize: 12,
+    lineHeight: 16,
   },
 });

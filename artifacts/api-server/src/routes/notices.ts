@@ -13,6 +13,7 @@ import { requestLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { hasActiveResponsibility } from "../lib/delegation-check.js";
+import { notifyMany } from "../services/notificationService.js";
 
 const MANAGER_ROLES_NOTICES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
 
@@ -376,6 +377,29 @@ router.post("/notices/:noticeId/publish", requireAuth, async (req, res): Promise
       entityType: "notice", entityId: noticeId,
       actorId: req.user!.sub, actorType: "HUMAN",
     }).catch(() => {});
+    // notify recipients
+    (async () => {
+      const recipients = await db
+        .select({ userId: noticeRecipientsTable.userId })
+        .from(noticeRecipientsTable)
+        .where(eq(noticeRecipientsTable.noticeId, noticeId));
+      const userIds = [...new Set(recipients.map((r) => r.userId).filter(Boolean))] as string[];
+      const noticeTitle = (detail as any).title ?? "Novo aviso";
+      const urgency = (detail as any).urgency as string | undefined;
+      const priority = urgency === "CRITICAL" ? "CRITICAL" as const
+        : urgency === "IMPORTANT" ? "IMPORTANT" as const
+        : "NORMAL" as const;
+      await notifyMany(userIds, {
+        type: "notice.published",
+        title: "Novo aviso",
+        message: noticeTitle,
+        priority,
+        category: "notice",
+        entityType: "notice",
+        entityId: noticeId,
+        actionUrl: `/(tabs)/avisos`,
+      });
+    })().catch(() => {});
     res.json(detail);
   } catch (err) {
     log.error({ err }, "erro ao publicar aviso");

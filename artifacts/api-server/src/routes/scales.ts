@@ -16,6 +16,7 @@ import { eventBus } from "../lib/event-bus.js";
 import { runCoverageEngine, persistEngineResult } from "../services/coverage-engine.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { hasActiveResponsibility } from "../lib/delegation-check.js";
+import { notifyMany } from "../services/notificationService.js";
 
 const router: IRouter = Router();
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
@@ -389,6 +390,24 @@ router.post("/scales/:id/publish", requireAuth, requireOrganization, async (req,
       actorId: userId, actorType: "HUMAN",
       operationId: scale.operationId,
     }).catch(() => {});
+    // notify allocated members
+    db.select({ userId: scaleAllocationsTable.userId })
+      .from(scaleAllocationsTable)
+      .where(and(eq(scaleAllocationsTable.scaleId, id), eq(scaleAllocationsTable.status, "ASSIGNED")))
+      .then((rows) => {
+        const userIds = [...new Set(rows.map((r) => r.userId).filter(Boolean))] as string[];
+        notifyMany(userIds, {
+          type: "scale.published",
+          title: "Escala publicada",
+          message: `Você foi escalonado em ${scale.title ?? "uma nova escala"}.`,
+          priority: "NORMAL",
+          category: "schedule",
+          entityType: "scale",
+          entityId: id,
+          actionUrl: `/(tabs)/scale`,
+        });
+      })
+      .catch(() => {});
     res.json({ scale: updated });
   } catch (err) {
     log.error({ err }, "erro ao publicar escala");
@@ -434,6 +453,24 @@ router.post("/scales/:id/republish", requireAuth, requireOrganization, async (re
       actorId: userId, actorType: "HUMAN",
       operationId: scale.operationId,
     }).catch(() => {});
+    // notify allocated members of change
+    db.select({ userId: scaleAllocationsTable.userId })
+      .from(scaleAllocationsTable)
+      .where(and(eq(scaleAllocationsTable.scaleId, id), eq(scaleAllocationsTable.status, "ASSIGNED")))
+      .then((rows) => {
+        const userIds = [...new Set(rows.map((r) => r.userId).filter(Boolean))] as string[];
+        notifyMany(userIds, {
+          type: "scale.republished",
+          title: "Escala atualizada",
+          message: `A escala ${scale.title ?? ""} foi republicada com alterações. Verifique as mudanças.`,
+          priority: "IMPORTANT",
+          category: "schedule",
+          entityType: "scale",
+          entityId: id,
+          actionUrl: `/(tabs)/scale`,
+        });
+      })
+      .catch(() => {});
     res.json({ scale: updated });
   } catch (err) {
     log.error({ err }, "erro ao republicar escala");

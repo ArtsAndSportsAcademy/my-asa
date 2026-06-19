@@ -21,6 +21,7 @@ import { requireAuth, requireOrganization, requireRole } from "../middlewares/au
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { hasActiveResponsibility } from "../lib/delegation-check.js";
 import { eventBus } from "../lib/event-bus.js";
+import { notifyMany } from "../services/notificationService.js";
 
 const router: IRouter = Router();
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
@@ -496,6 +497,24 @@ router.post("/daily-book/:id/publish", requireAuth, requireOrganization, async (
       actorId: userId, actorType: "HUMAN",
     }).catch(() => {});
     await writeDailyBookAudit(id, userId, "publish", { status: book.status }, { status: "PUBLISHED", reason: reason ?? null });
+    // notify assigned users
+    db.select({ userId: dailyBookAssignmentsTable.userId })
+      .from(dailyBookAssignmentsTable)
+      .where(eq(dailyBookAssignmentsTable.dailyBookId, id))
+      .then((rows) => {
+        const userIds = [...new Set(rows.map((r) => r.userId).filter(Boolean))] as string[];
+        notifyMany(userIds, {
+          type: "book.published",
+          title: "Livro do Dia publicado",
+          message: `O Livro do Dia (v${updated!.version}) foi publicado com suas atribuições.`,
+          priority: "NORMAL",
+          category: "book",
+          entityType: "daily_book",
+          entityId: id,
+          actionUrl: `/(tabs)/daily-book`,
+        });
+      })
+      .catch(() => {});
     res.json({ dailyBook: updated });
   } catch (err) {
     res.status(500).json({ error: "Erro ao publicar Livro do Dia" });
@@ -559,6 +578,24 @@ router.post("/daily-book/:id/republish", requireAuth, requireOrganization, async
       actorId: userId, actorType: "HUMAN",
     }).catch(() => {});
     await writeDailyBookAudit(id, userId, "republish", { version: previousVersion, snapshot: prevSnapshot }, { version: newVersion, delta, reason: reason ?? null });
+    // notify assigned users of changes
+    db.select({ userId: dailyBookAssignmentsTable.userId })
+      .from(dailyBookAssignmentsTable)
+      .where(eq(dailyBookAssignmentsTable.dailyBookId, id))
+      .then((rows) => {
+        const userIds = [...new Set(rows.map((r) => r.userId).filter(Boolean))] as string[];
+        notifyMany(userIds, {
+          type: "book.republished",
+          title: "Livro do Dia atualizado",
+          message: `O Livro do Dia foi republicado (v${previousVersion} → v${newVersion}). Verifique as alterações.`,
+          priority: "IMPORTANT",
+          category: "book",
+          entityType: "daily_book",
+          entityId: id,
+          actionUrl: `/(tabs)/daily-book`,
+        });
+      })
+      .catch(() => {});
     res.json({ dailyBook: updated, delta });
   } catch (err) {
     console.error(err);
