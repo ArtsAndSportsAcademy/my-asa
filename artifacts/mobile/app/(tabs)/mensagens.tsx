@@ -92,12 +92,27 @@ function ThreadCard({
         </View>
         <View style={styles.threadCardContent}>
           <View style={styles.threadCardTop}>
-            <Text style={[styles.threadTitle, { color: colors.foreground }]} numberOfLines={1}>
+            <Text
+              style={[
+                styles.threadTitle,
+                { color: colors.foreground, fontWeight: (thread.unreadCount ?? 0) > 0 ? "700" : "600" },
+              ]}
+              numberOfLines={1}
+            >
               {thread.title}
             </Text>
-            <Text style={[styles.threadTime, { color: colors.mutedForeground }]}>
-              {fmtTime(thread.lastMessage?.createdAt ?? thread.createdAt)}
-            </Text>
+            <View style={styles.threadTopRight}>
+              {(thread.unreadCount ?? 0) > 0 && (
+                <View style={styles.unreadDot}>
+                  <Text style={styles.unreadDotText}>
+                    {(thread.unreadCount ?? 0) > 99 ? "99+" : thread.unreadCount}
+                  </Text>
+                </View>
+              )}
+              <Text style={[styles.threadTime, { color: colors.mutedForeground }]}>
+                {fmtTime(thread.lastMessage?.createdAt ?? thread.createdAt)}
+              </Text>
+            </View>
           </View>
           <Text style={[styles.threadNames, { color: colors.mutedForeground }]} numberOfLines={1}>
             {names || "—"}
@@ -540,6 +555,9 @@ const styles = StyleSheet.create({
   threadCardContent: { flex: 1 },
   threadCardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 4 },
   threadTitle: { fontSize: 14, fontWeight: "600", flex: 1 },
+  threadTopRight: { flexDirection: "row", alignItems: "center", gap: 5, flexShrink: 0 },
+  unreadDot: { backgroundColor: "#7C3AED", borderRadius: 10, minWidth: 18, height: 18, paddingHorizontal: 4, alignItems: "center", justifyContent: "center" },
+  unreadDotText: { color: "#fff", fontSize: 10, fontWeight: "700" },
   threadTime: { fontSize: 11 },
   threadNames: { fontSize: 12, marginTop: 2 },
   threadPreview: { fontSize: 12, marginTop: 2 },

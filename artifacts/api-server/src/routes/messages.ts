@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, desc, inArray, isNull, lte, gte } from "drizzle-orm";
+import { eq, and, desc, inArray, isNull, lte, gte, or, gt, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   messageThreadsTable,
@@ -235,6 +235,33 @@ router.get(
         .where(inArray(messageThreadsTable.id, threadIds))
         .orderBy(desc(messageThreadsTable.createdAt));
 
+      // Fetch unread counts for all threads in a single query
+      const unreadRows = await db
+        .select({
+          threadId: messagesTable.threadId,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(messagesTable)
+        .innerJoin(
+          messageThreadParticipantsTable,
+          and(
+            eq(messageThreadParticipantsTable.threadId, messagesTable.threadId),
+            eq(messageThreadParticipantsTable.userId, userId),
+          )
+        )
+        .where(
+          and(
+            inArray(messagesTable.threadId, threadIds),
+            or(
+              isNull(messageThreadParticipantsTable.lastReadAt),
+              gt(messagesTable.createdAt, messageThreadParticipantsTable.lastReadAt),
+            )
+          )
+        )
+        .groupBy(messagesTable.threadId);
+
+      const unreadMap = new Map(unreadRows.map((u) => [u.threadId, u.count]));
+
       const enriched = await Promise.all(
         threads.map(async (t) => {
           const [lastMsg] = await db
@@ -264,7 +291,7 @@ router.get(
             myRole: roleMap.get(t.id),
             lastMessage: lastMsg ?? null,
             participants: others,
-            unreadCount: 0,
+            unreadCount: unreadMap.get(t.id) ?? 0,
           };
         })
       );

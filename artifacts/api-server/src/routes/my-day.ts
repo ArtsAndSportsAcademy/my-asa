@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, inArray, not, gte, asc, desc, or } from "drizzle-orm";
+import { eq, and, inArray, not, gte, asc, desc, or, isNull } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   scaleAllocationsTable,
@@ -112,7 +112,7 @@ router.get("/my-day", requireAuth, requireOrganization, async (req, res) => {
         )
         .orderBy(asc(deliveriesTable.dueDate)),
 
-      // 4. Pending notices (IMPORTANT / PERSISTENT / ESCALATED) not yet confirmed
+      // 4. Pending notices with urgency CRITICAL or IMPORTANT, not yet confirmed, not expired
       db
         .select({
           id: noticesTable.id,
@@ -131,8 +131,12 @@ router.get("/my-day", requireAuth, requireOrganization, async (req, res) => {
           and(
             eq(noticeRecipientsTable.userId, userId),
             eq(noticesTable.status, "PUBLISHED"),
-            inArray(noticesTable.type, ["IMPORTANT", "PERSISTENT", "ESCALATED"]),
+            inArray(noticesTable.urgency, ["CRITICAL", "IMPORTANT"]),
             not(eq(noticeRecipientsTable.status, "CONFIRMED")),
+            or(
+              isNull(noticesTable.expiresAt),
+              gte(noticesTable.expiresAt, new Date()),
+            ),
           )
         )
         .orderBy(desc(noticesTable.publishedAt)),

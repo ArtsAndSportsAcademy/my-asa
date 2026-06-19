@@ -1,0 +1,273 @@
+PUSH-D01 — Sistema Central de Notificações do MyASA
+
+Contexto:
+O MyASA já possui Agenda, Escalas, Livro do Dia, Avisos, Mensagens, Folgas, Ensaios, Aprovações e Painel Operacional.
+
+O objetivo desta sprint é criar o sistema oficial de notificações do aplicativo.
+
+Importante:
+
+* O sistema deve ser mobile-first.
+* Não substituir Avisos.
+* Não substituir Mensagens.
+* Notificações são eventos operacionais que exigem atenção.
+
+────────────────────
+PARTE 1 — Conceito Oficial
+────────────────────
+
+Definir três camadas:
+
+1. Mensagens
+   Conversas entre pessoas e grupos.
+
+2. Avisos
+   Comunicações oficiais e permanentes.
+
+3. Notificações
+   Eventos operacionais que exigem atenção do usuário.
+
+Pergunta respondida:
+
+"Preciso fazer alguma coisa ou apenas saber disso?"
+
+────────────────────
+PARTE 2 — Schema
+────────────────────
+
+Auditar schema atual.
+
+Caso necessário criar:
+
+notifications
+
+* id
+* userId
+* type
+* title
+* message
+* priority
+* category
+* entityType
+* entityId
+* actionUrl
+* readAt
+* createdAt
+* expiresAt
+
+Campos:
+
+priority:
+
+* LOW
+* NORMAL
+* IMPORTANT
+* CRITICAL
+
+category:
+
+* schedule
+* book
+* notice
+* approval
+* absence
+* rehearsal
+* responsibility
+* message
+* system
+
+────────────────────
+PARTE 3 — Eventos Obrigatórios
+────────────────────
+
+Gerar notificações para:
+
+ESCALAS
+
+* Você foi escalado.
+* Sua escala foi alterada.
+* Você foi removido.
+
+LIVRO DO DIA
+
+* Livro publicado.
+* Livro republicado.
+
+AVISOS
+
+* Novo aviso.
+* Aviso crítico.
+
+MENSAGENS
+
+* Nova mensagem.
+* Menção direta.
+* Resposta à sua mensagem.
+
+FOLGAS
+
+* Solicitação aprovada.
+* Solicitação recusada.
+
+APROVAÇÕES
+
+* Aprovação pendente.
+* Solicitação aguardando ação.
+
+ENSAIOS
+
+* Convocação.
+* Alteração.
+* Cancelamento.
+
+RESPONSABILIDADES
+
+* Nova responsabilidade.
+* Responsabilidade removida.
+
+SISTEMA
+
+* Erro importante.
+* Manutenção.
+
+────────────────────
+PARTE 4 — Central de Notificações
+────────────────────
+
+Criar tela:
+
+Notificações
+
+Seções:
+
+Hoje
+Esta semana
+Anteriores
+
+Permitir:
+
+* marcar como lida
+* marcar todas como lidas
+* filtrar por categoria
+* abrir ação relacionada
+
+Exemplo:
+
+"Você foi escalada para Show de Patinação 14:00"
+
+Ao tocar:
+abre a escala.
+
+────────────────────
+PARTE 5 — Badges
+────────────────────
+
+Exibir contador:
+
+* Tab principal.
+* Ícone de sino.
+* Meu Dia.
+
+Regras:
+
+* Apenas não lidas.
+* Atualização em tempo real se possível.
+
+────────────────────
+PARTE 6 — Push Notifications
+────────────────────
+
+Preparar infraestrutura.
+
+Não é obrigatório integrar serviço externo nesta sprint.
+
+Criar camada de envio:
+
+sendNotification()
+
+Para futura integração com:
+
+* Expo Push
+* Firebase
+* APNs
+
+────────────────────
+PARTE 7 — Meu Dia
+────────────────────
+
+Meu Dia deve mostrar:
+
+1. Avisos críticos.
+2. Aprovações pendentes.
+3. Notificações importantes.
+4. Itens que exigem ação.
+
+Não mostrar spam.
+
+Máximo:
+5 cards.
+
+────────────────────
+PARTE 8 — Prioridades
+────────────────────
+
+CRITICAL
+
+* Aviso urgente.
+* Problema operacional.
+
+IMPORTANT
+
+* Aprovação.
+* Convocação.
+* Alteração de escala.
+
+NORMAL
+
+* Nova mensagem.
+* Novo aviso.
+
+LOW
+
+* Sistema.
+* Informações.
+
+────────────────────
+PARTE 9 — Permissões
+────────────────────
+
+MEMBER:
+
+* próprias notificações.
+
+SUPERVISOR:
+
+* próprias + equipe quando permitido.
+
+ADMIN:
+
+* visão administrativa.
+
+Nunca mostrar informações fora do escopo do usuário.
+
+────────────────────
+PARTE 10 — Entregáveis
+────────────────────
+
+1. Schema final.
+2. APIs.
+3. Tela mobile.
+4. Badges.
+5. Meu Dia.
+6. Relatório final.
+
+Responder:
+
+* Quais eventos notificam?
+* Como prioridades funcionam?
+* Como Meu Dia utiliza notificações?
+* Como futura integração push funcionará?
+
+Objetivo final:
+
+"Que nenhuma informação importante da operação dependa do WhatsApp."

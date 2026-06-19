@@ -4,7 +4,7 @@ description: Estado atual do produto, sprints concluídas e decisões de arquite
 ---
 
 ## Sprint atual
-AGENDA-FIX-01 — Segurança e visibilidade da Agenda — **COMPLETO**
+MSG-S01 — Badge mensagens não-lidas + Avisos CRITICAL/IMPORTANT em Meu Dia — **COMPLETO**
 
 ## Sprints concluídas
 - Sprint 18.1 — Task Integration & Audit
@@ -17,6 +17,9 @@ AGENDA-FIX-01 — Segurança e visibilidade da Agenda — **COMPLETO**
 - ROADMAP-A01 — Auditoria de prontidão para piloto (relatório entregue, 6 itens 🔴 identificados)
 - NAV-D01 — Ajustes de navegação e linguagem pré-piloto (todos os itens 🔴 implementados)
 - AGENDA-FIX-01 — RBAC + visibilidade da Agenda (campo visibility, filtros por papel, MEMBER bloqueado)
+- PILOT-FIX-01 — Correções críticas pré-piloto (Admin NAV, Mobile Mais, daily_books migration, webOnly Alert, guards de telas)
+- MSG-D01 — Especificação de Comunicação v1.1 (docs/specs/MSG-D01-spec.md)
+- MSG-S01 — Badge de mensagens não-lidas + Avisos CRITICAL/IMPORTANT em Meu Dia
 
 ---
 
