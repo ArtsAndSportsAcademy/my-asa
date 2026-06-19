@@ -8,3 +8,4 @@
 - [Schema collision: teams.ts delegationsTable](schema-collision-delegations.md) — teams.ts tinha delegationsTable obsoleto (delegatorId/delegateeId/validFrom/validUntil); o canônico é lib/db/src/schema/delegations.ts (GOV-D11)
 - [Orval hooks apagados — padrão de correção](orval-hooks-pattern.md) — quando orval regenera api.ts, hooks manuais de sprints anteriores são apagados; padrão: criar arquivo manual + exportar no index
 - [admin-layout lucide-react import duplicata](admin-layout-import-trap.md) — Users já existia no import de lucide-react em admin-layout.tsx; ao adicionar ícones novos, verificar linha 1-8 antes de editar
+- [Scales — queryKey de folgas](scales-folgas-query.md) — useListFolgas exige getListFolgasQueryKey no queryKey ou TypeScript falha com TS2741
