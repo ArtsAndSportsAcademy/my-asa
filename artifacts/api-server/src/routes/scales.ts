@@ -513,6 +513,7 @@ router.get("/scales/:id/allocations", requireAuth, requireOrganization, async (r
     const allocations = await db
       .select({
         id: scaleAllocationsTable.id,
+        agendaEventId: scaleAllocationsTable.agendaEventId,
         positionId: scaleAllocationsTable.positionId,
         userId: scaleAllocationsTable.userId,
         status: scaleAllocationsTable.status,

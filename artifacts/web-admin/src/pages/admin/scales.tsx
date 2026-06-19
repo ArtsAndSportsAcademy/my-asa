@@ -26,7 +26,6 @@ import type {
   ScaleAllocationWithCandidates,
   AllocationException,
   AgendaEvent,
-  FolgaItem,
 } from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
@@ -84,9 +83,10 @@ function buildDateRange(start: string, end: string): string[] {
 
 function fmtDayShort(d: string) {
   const dt = new Date(d + "T12:00:00");
-  const wd = dt.toLocaleDateString("pt-BR", { weekday: "short" });
-  const day = dt.getDate();
-  return { wd: wd.replace(".", "").slice(0, 3), day };
+  return {
+    wd: dt.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "").slice(0, 3),
+    day: dt.getDate(),
+  };
 }
 
 function fmtTime(t?: string | null) {
@@ -94,7 +94,7 @@ function fmtTime(t?: string | null) {
   return t.slice(0, 5);
 }
 
-// ─── Form interfaces ──────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface GenerateFormState { agendaEventId: string; showBookId: string; title: string; }
 interface OverrideFormState { userId: string; reason: string; notes: string; }
@@ -116,14 +116,14 @@ export default function ScalesPage() {
   const [selectedScale, setSelectedScale] = useState<ScaleSummary | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
-  // ── Open slot candidate panel ──────────────────────────────────────────────
+  // ── Candidate panel ────────────────────────────────────────────────────────
   const [openSlotAlloc, setOpenSlotAlloc] = useState<ScaleAllocationWithCandidates | null>(null);
 
-  // ── Dialog state ───────────────────────────────────────────────────────────
+  // ── Dialogs ────────────────────────────────────────────────────────────────
   const [showGenerate, setShowGenerate] = useState(false);
   const [showOverride, setShowOverride] = useState(false);
 
-  // ── Form state ─────────────────────────────────────────────────────────────
+  // ── Forms ─────────────────────────────────────────────────────────────────
   const [generateForm, setGenerateForm] = useState<GenerateFormState>({
     agendaEventId: "", showBookId: "", title: "",
   });
@@ -158,7 +158,12 @@ export default function ScalesPage() {
   });
 
   const folgasEnabled = !!operationId && !!selectedDay;
-  const folgasParams = { operationId, dateFrom: selectedDay ?? undefined, dateTo: selectedDay ?? undefined, status: "APPROVED" as any };
+  const folgasParams = {
+    operationId,
+    dateFrom: selectedDay ?? undefined,
+    dateTo: selectedDay ?? undefined,
+    status: "APPROVED" as any,
+  };
   const { data: folgasData } = useListFolgas(folgasParams, {
     query: { queryKey: getListFolgasQueryKey(folgasParams), enabled: folgasEnabled },
   });
@@ -291,9 +296,12 @@ export default function ScalesPage() {
   const scales = useMemo(() => scalesData?.scales ?? [], [scalesData]);
   const allocations = useMemo(() => allocationsData?.allocations ?? [], [allocationsData]);
   const exceptions = useMemo(() => exceptionsData?.exceptions ?? [], [exceptionsData]);
-  const folgas: FolgaItem[] = useMemo(() => (folgasData as any)?.folgas ?? [], [folgasData]);
-  const folgaUserIds = useMemo(() => new Set(folgas.map((f) => f.userId)), [folgas]);
+  const folgaUserIds = useMemo(
+    () => new Set<string>(((folgasData as any)?.folgas ?? []).map((f: any) => String(f.userId))),
+    [folgasData]
+  );
 
+  // All unique members across ALL events in this scale (columns of the matrix)
   const members = useMemo(() => {
     const seen = new Set<string>();
     const result: { userId: string; userName: string }[] = [];
@@ -303,52 +311,104 @@ export default function ScalesPage() {
         result.push({ userId: a.userId, userName: a.userName ?? a.userId.slice(0, 8) });
       }
     }
+    return result.sort((a, b) => a.userName.localeCompare(b.userName, "pt-BR"));
+  }, [allocations]);
+
+  // Cell lookup: eventId → userId → allocation
+  const allocByEvent = useMemo(() => {
+    const result = new Map<string, Map<string, ScaleAllocationWithCandidates>>();
+    for (const a of allocations) {
+      if (!a.agendaEventId || !a.userId) continue;
+      if (!result.has(a.agendaEventId)) result.set(a.agendaEventId, new Map());
+      result.get(a.agendaEventId)!.set(a.userId, a);
+    }
     return result;
   }, [allocations]);
 
-  const openSlots = useMemo(() => allocations.filter((a) => a.status === "OPEN"), [allocations]);
-
-  const memberAllocMap = useMemo(() => {
-    const map: Record<string, ScaleAllocationWithCandidates> = {};
+  // Open slots per event: eventId → open allocations
+  const openByEvent = useMemo(() => {
+    const result = new Map<string, ScaleAllocationWithCandidates[]>();
     for (const a of allocations) {
-      if (a.userId) map[a.userId] = a;
+      if (a.status !== "OPEN" || !a.agendaEventId) continue;
+      if (!result.has(a.agendaEventId)) result.set(a.agendaEventId, []);
+      result.get(a.agendaEventId)!.push(a);
     }
-    return map;
+    return result;
   }, [allocations]);
 
-  const dayRange = useMemo(() => {
-    if (!selectedScale) return [];
-    return buildDateRange(selectedScale.periodStart, selectedScale.periodEnd);
-  }, [selectedScale]);
+  // Unique eventIds in this scale
+  const allEventIds = useMemo(
+    () => [...new Set(allocations.map((a) => a.agendaEventId).filter(Boolean))] as string[],
+    [allocations]
+  );
 
-  const scaleEvent = useMemo((): AgendaEvent | null => {
-    const eid = selectedScale?.agendaEventId;
-    if (!eid || !eventsData?.events) return null;
-    return eventsData.events.find((e) => e.id === eid) ?? null;
-  }, [selectedScale, eventsData]);
+  // Days that have events (for day strip indicators)
+  const eventDays = useMemo(() => {
+    const days = new Set<string>();
+    for (const eid of allEventIds) {
+      const ev = eventsData?.events?.find((e) => e.id === eid);
+      if (ev?.date) days.add(ev.date);
+      else if (selectedScale?.periodStart) days.add(selectedScale.periodStart);
+    }
+    return days;
+  }, [allEventIds, eventsData, selectedScale]);
+
+  // Rows of the matrix for the selected day: one row per event, sorted by startTime
+  const eventRows = useMemo(() => {
+    if (!allEventIds.length) return [];
+    const rows = allEventIds.map((eventId) => ({
+      eventId,
+      event: (eventsData?.events?.find((e) => e.id === eventId) ?? null) as AgendaEvent | null,
+    }));
+
+    // Filter to selectedDay (if we have event details); if event not found, include anyway
+    const filtered = selectedDay
+      ? rows.filter((r) => !r.event || r.event.date === selectedDay)
+      : rows;
+
+    // Sort chronologically
+    return filtered.sort((a, b) => {
+      const at = a.event?.startTime ?? "00:00";
+      const bt = b.event?.startTime ?? "00:00";
+      return at.localeCompare(bt);
+    });
+  }, [allEventIds, selectedDay, eventsData]);
+
+  const hasAnyOpenSlots = useMemo(
+    () => [...openByEvent.values()].some((v) => v.length > 0),
+    [openByEvent]
+  );
 
   const unresolvedExceptions = useMemo(
     () => exceptions.filter((e) => !e.resolvedAt),
     [exceptions]
   );
 
-  const problems = selectedScale ? (selectedScale.openCount + selectedScale.exceptionCount) : 0;
-  const exclamations = problems >= 3 ? "!!!" : problems === 2 ? "!!" : problems === 1 ? "!" : "";
+  const dayRange = useMemo(() => {
+    if (!selectedScale) return [];
+    return buildDateRange(selectedScale.periodStart, selectedScale.periodEnd);
+  }, [selectedScale]);
+
+  const problems = selectedScale
+    ? selectedScale.openCount + selectedScale.exceptionCount
+    : 0;
+  const exclamations =
+    problems >= 3 ? "!!!" : problems === 2 ? "!!" : problems === 1 ? "!" : "";
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <AdminLayout title="Escalas">
       <div className="flex flex-col overflow-hidden" style={{ height: "calc(100vh - 4rem)" }}>
 
-        {/* ── Top bar: scale selector + action buttons ── */}
+        {/* ── Top bar ── */}
         <div className="bg-white border-b px-6 py-2.5 flex items-center gap-3 shrink-0">
-          {/* Scale selector dropdown */}
-          <div className="flex items-center gap-2 flex-1 min-w-0 max-w-sm">
+          {/* Scale selector with prev/next arrows */}
+          <div className="flex items-center gap-1 flex-1 min-w-0 max-w-sm">
             <Button
               variant="ghost"
               size="icon"
               className="h-8 w-8 shrink-0"
-              disabled={!selectedScale}
+              disabled={!selectedScale || scales.findIndex((s) => s.id === selectedScale?.id) <= 0}
               onClick={() => {
                 const idx = scales.findIndex((s) => s.id === selectedScale?.id);
                 if (idx > 0) pickScale(scales[idx - 1]!);
@@ -364,7 +424,7 @@ export default function ScalesPage() {
                 if (s) pickScale(s);
               }}
             >
-              <SelectTrigger className="h-8 text-sm font-medium border-0 shadow-none focus:ring-0 px-1">
+              <SelectTrigger className="h-8 text-sm font-medium border-0 shadow-none focus:ring-0 px-1 flex-1">
                 <SelectValue placeholder={scalesLoading ? "Carregando..." : "Selecionar escala..."} />
               </SelectTrigger>
               <SelectContent>
@@ -387,7 +447,10 @@ export default function ScalesPage() {
               variant="ghost"
               size="icon"
               className="h-8 w-8 shrink-0"
-              disabled={!selectedScale}
+              disabled={
+                !selectedScale ||
+                scales.findIndex((s) => s.id === selectedScale?.id) >= scales.length - 1
+              }
               onClick={() => {
                 const idx = scales.findIndex((s) => s.id === selectedScale?.id);
                 if (idx < scales.length - 1) pickScale(scales[idx + 1]!);
@@ -399,25 +462,24 @@ export default function ScalesPage() {
 
           <div className="h-5 border-l shrink-0" />
 
-          {/* Gerar button */}
           {isSupervisor && (
             <Button size="sm" className="h-8" onClick={() => setShowGenerate(true)}>
               <Plus className="h-3.5 w-3.5 mr-1" /> Gerar
             </Button>
           )}
 
-          {/* Actions for selected scale */}
           {selectedScale && (
             <>
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-8 text-xs text-muted-foreground"
-                onClick={() => setLocation(isAdminRole ? "/admin/daily-book" : "/supervisor/daily-book")}
+                onClick={() =>
+                  setLocation(isAdminRole ? "/admin/daily-book" : "/supervisor/daily-book")
+                }
               >
                 <BookMarked className="h-3.5 w-3.5 mr-1.5" /> Livro do Dia
               </Button>
-
               {isSupervisor && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -427,7 +489,10 @@ export default function ScalesPage() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     {selectedScale.status === "DRAFT" && (
-                      <DropdownMenuItem onClick={handleRegenerate} disabled={regenerateMut.isPending}>
+                      <DropdownMenuItem
+                        onClick={handleRegenerate}
+                        disabled={regenerateMut.isPending}
+                      >
                         <RefreshCw className="h-4 w-4 mr-2" /> Regenerar
                       </DropdownMenuItem>
                     )}
@@ -446,15 +511,17 @@ export default function ScalesPage() {
           )}
         </div>
 
-        {/* ── Day strip (only when scale selected) ── */}
+        {/* ── Day strip ── */}
         {selectedScale && dayRange.length > 0 && (
           <div className="bg-white border-b px-6 shrink-0">
             <div className="flex gap-1 py-2 overflow-x-auto">
               {dayRange.map((day) => {
                 const isSelected = day === selectedDay;
-                const isEventDay = scaleEvent?.date === day;
+                const hasEvent = eventDays.has(day);
+                const hasIssues =
+                  isSelected &&
+                  (selectedScale.openCount > 0 || selectedScale.exceptionCount > 0);
                 const { wd, day: d } = fmtDayShort(day);
-                const hasIssues = isEventDay && (selectedScale.openCount > 0 || selectedScale.exceptionCount > 0);
                 return (
                   <button
                     key={day}
@@ -467,8 +534,8 @@ export default function ScalesPage() {
                   >
                     <span className="text-[10px] font-medium uppercase tracking-wide">{wd}</span>
                     <span className="text-base font-bold leading-tight">{d}</span>
-                    <div className="flex items-center gap-0.5 h-2">
-                      {isEventDay && (
+                    <div className="flex items-center gap-0.5 h-2.5">
+                      {hasEvent && (
                         <Star
                           className="h-2.5 w-2.5"
                           fill={isSelected ? "currentColor" : "none"}
@@ -476,7 +543,11 @@ export default function ScalesPage() {
                         />
                       )}
                       {hasIssues && (
-                        <div className={`w-1.5 h-1.5 rounded-full ${isSelected ? "bg-amber-300" : "bg-amber-400"}`} />
+                        <div
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            isSelected ? "bg-amber-300" : "bg-amber-400"
+                          }`}
+                        />
                       )}
                     </div>
                   </button>
@@ -486,10 +557,14 @@ export default function ScalesPage() {
           </div>
         )}
 
-        {/* ── Main content: grid or empty state ── */}
+        {/* ── Main content ── */}
         <div className="flex-1 overflow-hidden">
           {!selectedScale ? (
-            <EmptyState isSupervisor={isSupervisor} scalesLoading={scalesLoading} onGenerate={() => setShowGenerate(true)} />
+            <EmptyState
+              isSupervisor={isSupervisor}
+              scalesLoading={scalesLoading}
+              onGenerate={() => setShowGenerate(true)}
+            />
           ) : allocLoading ? (
             <div className="flex items-center justify-center h-full text-muted-foreground">
               <p className="text-sm">Carregando escala...</p>
@@ -500,10 +575,11 @@ export default function ScalesPage() {
                 scale={selectedScale}
                 allocations={allocations}
                 members={members}
-                openSlots={openSlots}
-                memberAllocMap={memberAllocMap}
+                allocByEvent={allocByEvent}
+                openByEvent={openByEvent}
+                hasAnyOpenSlots={hasAnyOpenSlots}
+                eventRows={eventRows}
                 folgaUserIds={folgaUserIds}
-                scaleEvent={scaleEvent}
                 unresolvedExceptions={unresolvedExceptions}
                 isSupervisor={isSupervisor}
                 onOpenSlotClick={(alloc) => setOpenSlotAlloc(alloc)}
@@ -514,7 +590,7 @@ export default function ScalesPage() {
           )}
         </div>
 
-        {/* ── Validation bar (fixed bottom, only when scale selected) ── */}
+        {/* ── Validation bar ── */}
         {selectedScale && (
           <ValidationBar
             scale={selectedScale}
@@ -591,7 +667,7 @@ export default function ScalesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Candidate Panel (Sheet) ── */}
+      {/* ── Candidate Panel ── */}
       <Sheet open={!!openSlotAlloc} onOpenChange={(open) => { if (!open) setOpenSlotAlloc(null); }}>
         <SheetContent className="w-[420px] sm:w-[480px] overflow-y-auto">
           <SheetHeader className="mb-4">
@@ -602,7 +678,6 @@ export default function ScalesPage() {
               </span>
             </SheetTitle>
           </SheetHeader>
-
           {openSlotAlloc && (
             <CandidateList
               alloc={openSlotAlloc}
@@ -695,20 +770,28 @@ function EmptyState({
   );
 }
 
+// ─── Grid constants ───────────────────────────────────────────────────────────
+
+const LABEL_COL = 224;
+const MEMBER_COL = 148;
+const OPEN_COL = 180;
+
 // ─── ScaleGrid ────────────────────────────────────────────────────────────────
 
-const LABEL_COL = 220;
-const MEMBER_COL = 148;
-const OPEN_COL = 168;
+interface EventRow {
+  eventId: string;
+  event: AgendaEvent | null;
+}
 
 interface ScaleGridProps {
   scale: ScaleSummary;
   allocations: ScaleAllocationWithCandidates[];
   members: { userId: string; userName: string }[];
-  openSlots: ScaleAllocationWithCandidates[];
-  memberAllocMap: Record<string, ScaleAllocationWithCandidates>;
+  allocByEvent: Map<string, Map<string, ScaleAllocationWithCandidates>>;
+  openByEvent: Map<string, ScaleAllocationWithCandidates[]>;
+  hasAnyOpenSlots: boolean;
+  eventRows: EventRow[];
   folgaUserIds: Set<string>;
-  scaleEvent: AgendaEvent | null;
   unresolvedExceptions: AllocationException[];
   isSupervisor: boolean;
   onOpenSlotClick: (alloc: ScaleAllocationWithCandidates) => void;
@@ -717,13 +800,20 @@ interface ScaleGridProps {
 }
 
 function ScaleGrid({
-  scale, allocations, members, openSlots, memberAllocMap, folgaUserIds,
-  scaleEvent, unresolvedExceptions, isSupervisor, onOpenSlotClick,
-  onResolveException, resolvePending,
+  scale,
+  allocations,
+  members,
+  allocByEvent,
+  openByEvent,
+  hasAnyOpenSlots,
+  eventRows,
+  folgaUserIds,
+  unresolvedExceptions,
+  isSupervisor,
+  onOpenSlotClick,
+  onResolveException,
+  resolvePending,
 }: ScaleGridProps) {
-  const hasOpenCols = openSlots.length > 0;
-  const totalWidth = LABEL_COL + members.length * MEMBER_COL + (hasOpenCols ? OPEN_COL : 0);
-
   if (allocations.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-muted-foreground gap-3">
@@ -733,11 +823,8 @@ function ScaleGrid({
     );
   }
 
-  const eventTitle = scaleEvent?.title ?? scale.title;
-  const eventTime = fmtTime(scaleEvent?.startTime);
-  const eventEndTime = fmtTime(scaleEvent?.endTime);
-  const eventLocation = scaleEvent?.location ?? "";
-  const eventDate = scaleEvent?.date ?? scale.periodStart;
+  const totalWidth =
+    LABEL_COL + members.length * MEMBER_COL + (hasAnyOpenSlots ? OPEN_COL : 0);
 
   return (
     <div className="p-5 space-y-4">
@@ -775,209 +862,238 @@ function ScaleGrid({
         </div>
       )}
 
+      {/* No events on selected day */}
+      {eventRows.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
+          <p className="text-sm">Sem atividades neste dia.</p>
+          <p className="text-xs">Selecione outro dia no calendário acima.</p>
+        </div>
+      )}
+
       {/* Matrix grid */}
-      <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <div style={{ minWidth: totalWidth }}>
+      {eventRows.length > 0 && (
+        <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <div style={{ minWidth: totalWidth }}>
 
-            {/* ── Header row ── */}
-            <div className="flex border-b bg-gray-50/80">
-              {/* Fixed label column header */}
-              <div
-                className="flex items-center px-4 py-2.5 border-r bg-gray-50/80 shrink-0 sticky left-0 z-10"
-                style={{ width: LABEL_COL, minWidth: LABEL_COL }}
-              >
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Atividade
-                </span>
-              </div>
-
-              {/* Member columns */}
-              {members.map((m) => (
+              {/* ── Header row ── */}
+              <div className="flex border-b bg-gray-50/80 sticky top-0 z-20">
+                {/* Sticky label column */}
                 <div
-                  key={m.userId}
-                  style={{ width: MEMBER_COL, minWidth: MEMBER_COL }}
-                  className="flex flex-col items-center justify-center px-2 py-2.5 border-r shrink-0"
+                  className="flex items-end px-4 py-2.5 border-r bg-gray-50 shrink-0 sticky left-0 z-30"
+                  style={{ width: LABEL_COL, minWidth: LABEL_COL }}
                 >
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mb-1">
-                    <span className="text-xs font-bold text-primary">
-                      {m.userName.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                  <span className="text-xs font-medium text-gray-700 truncate max-w-full text-center leading-tight">
-                    {m.userName.split(" ")[0]}
-                  </span>
-                  {folgaUserIds.has(m.userId) && (
-                    <span className="flex items-center gap-0.5 text-[10px] text-gray-400 mt-0.5">
-                      <Palmtree className="h-2.5 w-2.5" /> Folga
-                    </span>
-                  )}
-                </div>
-              ))}
-
-              {/* Open slots header */}
-              {hasOpenCols && (
-                <div
-                  style={{ width: OPEN_COL, minWidth: OPEN_COL }}
-                  className="flex items-center px-3 py-2.5 shrink-0"
-                >
-                  <span className="text-xs font-semibold text-red-600 uppercase tracking-wide">
-                    Em Aberto ({openSlots.length})
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Atividade
                   </span>
                 </div>
-              )}
-            </div>
 
-            {/* ── Activity row ── */}
-            <div className="flex">
-              {/* Fixed activity label */}
-              <div
-                className="flex flex-col justify-center px-4 py-5 border-r bg-white shrink-0 sticky left-0 z-10"
-                style={{ width: LABEL_COL, minWidth: LABEL_COL }}
-              >
-                <div className="flex items-start gap-2">
-                  {scaleEvent?.type === "SHOW" && (
-                    <Star className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" fill="currentColor" />
-                  )}
-                  <div className="min-w-0">
-                    <p className="font-semibold text-sm text-gray-900 leading-tight line-clamp-2">
-                      {eventTitle}
-                    </p>
-                    {(eventTime || eventLocation) && (
-                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                        {eventTime && (
-                          <span>{eventTime}{eventEndTime ? ` — ${eventEndTime}` : ""}</span>
-                        )}
-                        {eventTime && eventLocation && " · "}
-                        {eventLocation && <span>{eventLocation}</span>}
-                      </p>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-0.5">{eventDate}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Member cells */}
-              {members.map((m) => {
-                const alloc = memberAllocMap[m.userId];
-                const hasFolga = folgaUserIds.has(m.userId);
-
-                if (hasFolga) {
-                  return (
-                    <MemberCell key={m.userId} state="folga" label="" />
-                  );
-                }
-                if (!alloc) {
-                  return <MemberCell key={m.userId} state="empty" label="" />;
-                }
-                if (alloc.status === "CONFLICT") {
-                  return <MemberCell key={m.userId} state="conflict" label={alloc.positionName ?? "—"} />;
-                }
-                return (
-                  <MemberCell
+                {/* Member column headers */}
+                {members.map((m) => (
+                  <div
                     key={m.userId}
-                    state={alloc.status === "MANUAL_OVERRIDE" ? "override" : "assigned"}
-                    label={alloc.positionName ?? "—"}
-                  />
+                    style={{ width: MEMBER_COL, minWidth: MEMBER_COL }}
+                    className="flex flex-col items-center justify-end px-2 py-2.5 border-r shrink-0"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mb-1">
+                      <span className="text-xs font-bold text-primary">
+                        {m.userName.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <span className="text-xs font-medium text-gray-700 truncate max-w-full text-center leading-tight">
+                      {m.userName.split(" ")[0]}
+                    </span>
+                    {folgaUserIds.has(m.userId) && (
+                      <span className="flex items-center gap-0.5 text-[10px] text-gray-400 mt-0.5">
+                        <Palmtree className="h-2.5 w-2.5" /> Folga
+                      </span>
+                    )}
+                  </div>
+                ))}
+
+                {/* Open slots column header */}
+                {hasAnyOpenSlots && (
+                  <div
+                    style={{ width: OPEN_COL, minWidth: OPEN_COL }}
+                    className="flex items-end px-3 py-2.5 shrink-0"
+                  >
+                    <span className="text-xs font-semibold text-red-600 uppercase tracking-wide">
+                      Em Aberto
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* ── Event rows ── */}
+              {eventRows.map(({ eventId, event }, rowIdx) => {
+                const openSlots = openByEvent.get(eventId) ?? [];
+                const memberMap = allocByEvent.get(eventId);
+                const isLastRow = rowIdx === eventRows.length - 1;
+
+                return (
+                  <div
+                    key={eventId}
+                    className={`flex ${isLastRow ? "" : "border-b"}`}
+                  >
+                    {/* Sticky activity label */}
+                    <div
+                      className="flex flex-col justify-center px-4 py-5 border-r bg-white shrink-0 sticky left-0 z-10"
+                      style={{ width: LABEL_COL, minWidth: LABEL_COL }}
+                    >
+                      <div className="flex items-start gap-2">
+                        {event?.type === "SHOW" && (
+                          <Star
+                            className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0"
+                            fill="currentColor"
+                          />
+                        )}
+                        <div className="min-w-0">
+                          <p className="font-semibold text-sm text-gray-900 leading-tight line-clamp-2">
+                            {event?.title ?? scale.title}
+                          </p>
+                          {event && (
+                            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                              {fmtTime(event.startTime)}
+                              {event.endTime && ` — ${fmtTime(event.endTime)}`}
+                              {event.location && ` · ${event.location}`}
+                            </p>
+                          )}
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {event?.date ?? scale.periodStart}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Member cells */}
+                    {members.map((m) => {
+                      const alloc = memberMap?.get(m.userId) ?? null;
+                      const hasFolga = folgaUserIds.has(m.userId);
+                      return (
+                        <GridCell
+                          key={m.userId}
+                          alloc={alloc}
+                          hasFolga={hasFolga}
+                        />
+                      );
+                    })}
+
+                    {/* Open slots for this event row */}
+                    {hasAnyOpenSlots && (
+                      <div
+                        style={{ width: OPEN_COL, minWidth: OPEN_COL }}
+                        className="px-3 py-4 flex flex-col gap-2 shrink-0"
+                      >
+                        {openSlots.map((slot) => (
+                          <button
+                            key={slot.id}
+                            onClick={() => onOpenSlotClick(slot)}
+                            className="w-full text-left rounded-lg border-2 border-dashed border-red-300 bg-red-50 px-3 py-2 hover:bg-red-100 hover:border-red-400 transition-colors group"
+                          >
+                            <p className="text-xs font-semibold text-red-700 leading-snug">
+                              {slot.positionName ?? "Posição"}
+                            </p>
+                            <p className="text-[10px] text-red-500 mt-0.5 group-hover:text-red-600">
+                              {slot.candidates.length > 0
+                                ? `${slot.candidates.length} candidato${
+                                    slot.candidates.length !== 1 ? "s" : ""
+                                  } · ver`
+                                : "Sem candidatos"}
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
 
-              {/* Open slots */}
-              {hasOpenCols && (
-                <div
-                  style={{ width: OPEN_COL, minWidth: OPEN_COL }}
-                  className="px-3 py-4 flex flex-col gap-2 shrink-0"
-                >
-                  {openSlots.map((slot) => (
-                    <button
-                      key={slot.id}
-                      onClick={() => onOpenSlotClick(slot)}
-                      className="w-full text-left rounded-lg border-2 border-dashed border-red-300 bg-red-50 px-3 py-2 hover:bg-red-100 hover:border-red-400 transition-colors group"
-                    >
-                      <p className="text-xs font-semibold text-red-700 leading-snug">
-                        {slot.positionName ?? "Posição"}
-                      </p>
-                      <p className="text-[10px] text-red-500 mt-0.5 group-hover:text-red-600">
-                        {slot.candidates.length > 0
-                          ? `${slot.candidates.length} candidato${slot.candidates.length !== 1 ? "s" : ""} · ver`
-                          : "Sem candidatos"}
-                      </p>
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
-
           </div>
         </div>
-      </div>
+      )}
 
       {/* Legend */}
-      <div className="flex items-center gap-5 text-xs text-muted-foreground px-1">
-        <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded bg-green-200 inline-block" /> Alocado
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded bg-amber-200 inline-block" /> Conflito
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded bg-purple-200 inline-block" /> Override
-        </span>
-        <span className="flex items-center gap-1.5">
-          <Palmtree className="h-3 w-3" /> Folga
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded border-2 border-dashed border-red-400 inline-block" /> Em aberto
-        </span>
-      </div>
+      {eventRows.length > 0 && (
+        <div className="flex items-center gap-5 text-xs text-muted-foreground px-1">
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded bg-green-200 inline-block" /> Alocado
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded bg-amber-200 inline-block" /> Conflito
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded bg-purple-200 inline-block" /> Override
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Palmtree className="h-3 w-3" /> Folga
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded border-2 border-dashed border-red-400 inline-block" />{" "}
+            Em aberto
+          </span>
+        </div>
+      )}
     </div>
   );
 }
 
-// ─── MemberCell ───────────────────────────────────────────────────────────────
+// ─── GridCell ─────────────────────────────────────────────────────────────────
 
-type CellState = "empty" | "assigned" | "conflict" | "override" | "folga";
+function GridCell({
+  alloc,
+  hasFolga,
+}: {
+  alloc: ScaleAllocationWithCandidates | null;
+  hasFolga: boolean;
+}) {
+  // Determine background based on allocation status
+  let bg = "bg-white";
+  if (alloc?.status === "CONFLICT") bg = "bg-amber-50";
+  else if (alloc?.status === "MANUAL_OVERRIDE") bg = "bg-purple-50";
+  else if (alloc?.status === "ASSIGNED") bg = "bg-green-50";
+  else if (!alloc && hasFolga) bg = "bg-gray-50";
 
-function MemberCell({ state, label }: { state: CellState; label: string }) {
-  const base = "shrink-0 border-r flex items-center justify-center px-2 py-5";
-  const configs: Record<CellState, { bg: string; badge: string }> = {
-    empty: { bg: "bg-white", badge: "" },
-    assigned: { bg: "bg-green-50", badge: "bg-green-100 text-green-800" },
-    conflict: { bg: "bg-amber-50", badge: "bg-amber-100 text-amber-800" },
-    override: { bg: "bg-purple-50", badge: "bg-purple-100 text-purple-800" },
-    folga: { bg: "bg-gray-50", badge: "" },
-  };
-  const cfg = configs[state];
+  const badgeClass =
+    alloc?.status === "CONFLICT"
+      ? "bg-amber-100 text-amber-800"
+      : alloc?.status === "MANUAL_OVERRIDE"
+        ? "bg-purple-100 text-purple-800"
+        : "bg-green-100 text-green-800";
 
   return (
     <div
-      className={`${base} ${cfg.bg}`}
+      className={`border-r flex items-center justify-center px-2 py-5 shrink-0 ${bg}`}
       style={{ width: MEMBER_COL, minWidth: MEMBER_COL }}
     >
-      {state === "folga" && (
+      {alloc ? (
+        // Has allocation: show role badge + optional overlays
+        <div className="flex flex-col items-center gap-1 text-center">
+          <span className={`text-xs font-medium px-1.5 py-0.5 rounded leading-tight ${badgeClass}`}>
+            {alloc.positionName ?? "—"}
+          </span>
+          <div className="flex items-center gap-1">
+            {alloc.status === "CONFLICT" && (
+              <AlertTriangle className="h-3 w-3 text-amber-500" />
+            )}
+            {alloc.status === "MANUAL_OVERRIDE" && (
+              <span className="text-[9px] text-purple-500">override</span>
+            )}
+            {/* Folga is an overlay — shows alongside the allocation state */}
+            {hasFolga && (
+              <span className="flex items-center gap-0.5 text-[9px] text-gray-400">
+                <Palmtree className="h-2.5 w-2.5" />
+              </span>
+            )}
+          </div>
+        </div>
+      ) : hasFolga ? (
+        // No allocation but on folga
         <div className="flex flex-col items-center gap-1 text-gray-400">
           <Palmtree className="h-4 w-4" />
           <span className="text-[10px]">Folga</span>
         </div>
-      )}
-      {state === "conflict" && label && (
-        <div className="flex flex-col items-center gap-1 text-center">
-          <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${cfg.badge} leading-tight`}>
-            {label}
-          </span>
-          <AlertTriangle className="h-3 w-3 text-amber-500" />
-        </div>
-      )}
-      {(state === "assigned" || state === "override") && label && (
-        <div className="text-center">
-          <span className={`text-xs font-medium px-1.5 py-0.5 rounded leading-tight ${cfg.badge}`}>
-            {label}
-          </span>
-          {state === "override" && (
-            <p className="text-[9px] text-purple-500 mt-0.5">override</p>
-          )}
-        </div>
-      )}
+      ) : null /* empty cell */}
     </div>
   );
 }
@@ -993,7 +1109,14 @@ interface CandidateListProps {
   onManualOverride: () => void;
 }
 
-function CandidateList({ alloc, isSupervisor, isArchived, isPending, onAssign, onManualOverride }: CandidateListProps) {
+function CandidateList({
+  alloc,
+  isSupervisor,
+  isArchived,
+  isPending,
+  onAssign,
+  onManualOverride,
+}: CandidateListProps) {
   const sorted = [...alloc.candidates].sort((a, b) => a.rank - b.rank);
 
   if (sorted.length === 0) {
@@ -1021,55 +1144,58 @@ function CandidateList({ alloc, isSupervisor, isArchived, isPending, onAssign, o
           <div
             key={c.id}
             className={`rounded-xl border-2 p-4 ${
-              isTop ? "border-green-500 bg-green-50" :
-              isModerate ? "border-amber-400 bg-amber-50/50" :
-              "border-gray-200 bg-gray-50 opacity-75"
+              isTop
+                ? "border-green-500 bg-green-50"
+                : isModerate
+                  ? "border-amber-400 bg-amber-50/50"
+                  : "border-gray-200 bg-gray-50 opacity-75"
             }`}
           >
-            {/* Tag row */}
             <div className="flex items-center justify-between mb-2">
-              {isTop && (
-                <Badge className="bg-green-600 text-white text-xs">✓ Recomendada</Badge>
-              )}
+              {isTop && <Badge className="bg-green-600 text-white text-xs">✓ Recomendada</Badge>}
               {isModerate && !isTop && (
                 <Badge className="bg-amber-500 text-white text-xs">⚠ Risco moderado</Badge>
               )}
-              {isHigh && (
-                <Badge className="bg-red-500 text-white text-xs">✕ Risco alto</Badge>
-              )}
+              {isHigh && <Badge className="bg-red-500 text-white text-xs">✕ Risco alto</Badge>}
               <span className="text-xs text-muted-foreground ml-auto">#{c.rank}</span>
             </div>
 
-            {/* Name */}
             <p className={`font-bold mb-1 ${isTop ? "text-xl" : isModerate ? "text-lg" : "text-base"}`}>
               {c.userName ?? "Membro"}
             </p>
 
-            {/* Attributes */}
             <div className="flex flex-wrap gap-1.5 mb-2">
               {c.compatible && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700">Compatível</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700">
+                  Compatível
+                </span>
               )}
               {c.eligible && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700">Elegível</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700">
+                  Elegível
+                </span>
               )}
               {!c.compatible && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Incompatível</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">
+                  Incompatível
+                </span>
               )}
               {!c.eligible && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700">Inelegível</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700">
+                  Inelegível
+                </span>
               )}
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
                 Score: {c.priorityScore}
               </span>
             </div>
 
-            {/* Rejection reason */}
             {c.rejectionReason && (
-              <p className="text-xs text-muted-foreground italic mb-2 leading-relaxed">{c.rejectionReason}</p>
+              <p className="text-xs text-muted-foreground italic mb-2 leading-relaxed">
+                {c.rejectionReason}
+              </p>
             )}
 
-            {/* Action button */}
             {isSupervisor && !isArchived && (
               <Button
                 size="sm"
@@ -1085,10 +1211,14 @@ function CandidateList({ alloc, isSupervisor, isArchived, isPending, onAssign, o
         );
       })}
 
-      {/* Manual override link */}
       {isSupervisor && !isArchived && (
         <div className="pt-2 border-t">
-          <Button variant="ghost" size="sm" className="w-full text-muted-foreground text-xs" onClick={onManualOverride}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full text-muted-foreground text-xs"
+            onClick={onManualOverride}
+          >
             Override Manual (inserir ID do usuário)
           </Button>
         </div>
@@ -1109,10 +1239,17 @@ interface ValidationBarProps {
   republishPending: boolean;
 }
 
-function ValidationBar({ scale, exclamations, isSupervisor, onPublish, onRepublish, publishPending, republishPending }: ValidationBarProps) {
+function ValidationBar({
+  scale,
+  exclamations,
+  isSupervisor,
+  onPublish,
+  onRepublish,
+  publishPending,
+  republishPending,
+}: ValidationBarProps) {
   return (
     <div className="bg-white border-t px-6 py-3 flex items-center justify-between gap-4 shrink-0">
-      {/* Left: status + counts */}
       <div className="flex items-center gap-4 text-sm flex-wrap">
         <Badge variant={STATUS_VARIANTS[scale.status] ?? "secondary"} className="text-xs">
           {STATUS_LABELS[scale.status] ?? scale.status}
@@ -1143,7 +1280,6 @@ function ValidationBar({ scale, exclamations, isSupervisor, onPublish, onRepubli
         )}
       </div>
 
-      {/* Right: publish action */}
       {isSupervisor && (
         <div className="shrink-0">
           {scale.status === "DRAFT" && (
