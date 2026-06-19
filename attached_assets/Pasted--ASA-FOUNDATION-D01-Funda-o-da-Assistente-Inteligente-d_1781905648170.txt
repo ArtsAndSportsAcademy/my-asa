@@ -1,0 +1,239 @@
+# ASA-FOUNDATION-D01 — Fundação da Assistente Inteligente do MyASA
+
+Objetivo:
+Construir a fundação da ASA, a assistente oficial do MyASA. Esta sprint NÃO implementa o LLM definitivo nem todas as ações da IA. O objetivo é criar a arquitetura, memória, permissões e ferramentas que permitirão a ASA operar em todo o sistema.
+
+────────────────────
+
+# 1. Identidade da ASA
+
+Nome oficial: ASA
+
+A ASA é uma assistente operacional amigável, humana e objetiva.
+
+Ela:
+
+* utiliza linguagem natural;
+* pode utilizar emojis;
+* pode dizer "eu";
+* pode demonstrar incerteza;
+* pode explicar suas decisões;
+* pode fazer perguntas quando não entender;
+* nunca toma decisões sozinha.
+
+A ASA não é um robô.
+A ASA não substitui supervisores ou administradores.
+
+────────────────────
+
+# 2. Princípios obrigatórios
+
+1. Se uma informação existe no MyASA, a ASA deve poder consultá-la respeitando permissões.
+
+2. Se uma ação pode ser realizada por um usuário, a ASA deve poder executá-la mediante confirmação.
+
+3. Toda ação executada pela ASA deve gerar auditoria.
+
+4. A ASA pode errar, perguntar e aprender.
+
+5. A ASA nunca aprova decisões sozinha.
+
+────────────────────
+
+# 3. Fontes de conhecimento
+
+A ASA deve possuir acesso de leitura a:
+
+* Agenda
+* Escalas
+* Livro do Dia
+* Livro do Show
+* Responsabilidades
+* Tarefas
+* Notificações
+* Avisos
+* Reconhecimentos
+* Biblioteca
+* Estatísticas
+* Aniversários
+* Histórico operacional
+
+A Biblioteca é a memória oficial da operação.
+
+────────────────────
+
+# 4. Memórias
+
+Criar sistema de memórias dividido em:
+
+PERSONAL
+
+* preferências do usuário;
+* apelidos pessoais;
+* linguagem individual.
+
+OPERATIONAL
+
+* termos da operação;
+* grupos;
+* expressões.
+
+OFFICIAL
+
+* regras aprovadas;
+* definições globais.
+
+Toda memória deve possuir:
+
+* criador;
+* aprovador;
+* data;
+* escopo.
+
+────────────────────
+
+# 5. Aprendizado
+
+A ASA pode sugerir:
+
+"Percebi que BV significa Boas-Vindas. Deseja que eu aprenda isso?"
+
+ADMIN e SUPERVISOR aprovam memórias operacionais.
+
+Usuários aprovam memórias pessoais.
+
+────────────────────
+
+# 6. Conversa
+
+Uma única conversa principal.
+
+A ASA deve conhecer:
+
+* usuário;
+* papel;
+* operação;
+* notificações;
+* responsabilidades;
+* contexto atual.
+
+A conversa funciona no estilo ChatGPT.
+
+────────────────────
+
+# 7. Explicabilidade
+
+Toda sugestão deve explicar:
+
+1. Conclusão.
+2. Dados utilizados.
+3. Motivos.
+4. Alternativas.
+5. Riscos.
+
+────────────────────
+
+# 8. Ferramentas iniciais
+
+READ:
+
+* consultar agenda;
+* consultar escalas;
+* consultar responsabilidades;
+* consultar biblioteca;
+* consultar notificações;
+* consultar tarefas;
+* consultar avisos.
+
+WRITE (sempre confirmação):
+
+* criar aviso;
+* criar tarefa;
+* criar ensaio;
+* criar notificação;
+* sugerir cobertura.
+
+────────────────────
+
+# 9. Auditoria
+
+Toda ação da ASA gera:
+
+* usuário;
+* horário;
+* pergunta;
+* resposta;
+* ferramenta utilizada;
+* ação executada;
+* confirmação.
+
+Nenhuma ação pode ocorrer sem rastreabilidade.
+
+────────────────────
+
+# 10. Notificações da ASA
+
+A ASA pode gerar:
+
+* sugestões;
+* lembretes;
+* aniversários;
+* tarefas;
+* pendências;
+* riscos.
+
+Sempre respeitando preferências do usuário.
+
+────────────────────
+
+# 11. Personalização
+
+Cada usuário poderá escolher:
+
+* silenciosa;
+* equilibrada;
+* proativa.
+
+Configurações:
+
+* bom dia;
+* boa noite;
+* lembretes;
+* aniversários;
+* notificações.
+
+────────────────────
+
+# 12. Escopo da Sprint
+
+Entregar:
+
+✅ arquitetura da ASA
+
+✅ sistema de memórias
+
+✅ auditoria
+
+✅ ferramentas
+
+✅ permissões
+
+✅ fundação do chat
+
+Não implementar ainda:
+
+❌ LLM definitivo
+
+❌ execução autônoma
+
+❌ voz
+
+❌ avatar animado
+
+❌ notificações inteligentes completas
+
+────────────────────
+
+Resultado esperado:
+
+A ASA passa a existir dentro do MyASA como uma entidade oficial do sistema, preparada para evoluir nas próximas sprints.

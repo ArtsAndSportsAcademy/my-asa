@@ -26,6 +26,8 @@ import restrictionsRouter from "./restrictions";
 import supervisorRequestsRouter from "./supervisor-requests";
 import notificationsRouter from "./notifications";
 import responsibilitiesRouter from "./responsibilities";
+import anthropicRouter from "./anthropic/index";
+import asaRouter from "./asa";
 
 const router: IRouter = Router();
 
@@ -56,5 +58,7 @@ router.use(restrictionsRouter);
 router.use(supervisorRequestsRouter);
 router.use(notificationsRouter);
 router.use(responsibilitiesRouter);
+router.use(anthropicRouter);
+router.use(asaRouter);
 
 export default router;

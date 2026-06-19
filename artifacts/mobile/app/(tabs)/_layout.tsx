@@ -180,6 +180,7 @@ function ClassicTabLayout() {
       <Tabs.Screen name="entregas"     options={{ tabBarButton: () => null, title: "Entregas"      }} />
       <Tabs.Screen name="tarefas"          options={{ tabBarButton: () => null, title: "Tarefas"           }} />
       <Tabs.Screen name="responsabilidades" options={{ tabBarButton: () => null, title: "Responsabilidades" }} />
+      <Tabs.Screen name="asa"              options={{ tabBarButton: () => null, title: "ASA"               }} />
     </Tabs>
   );
 }

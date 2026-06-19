@@ -4405,3 +4405,225 @@ export const AddTaskCommentBody = zod.object({
 })
 
 
+/**
+ * @summary List all conversations
+ */
+export const ListAnthropicConversationsResponseItem = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "userId": zod.string().optional(),
+  "organizationId": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().optional()
+})
+export const ListAnthropicConversationsResponse = zod.array(ListAnthropicConversationsResponseItem)
+
+
+/**
+ * @summary Create a new conversation
+ */
+export const CreateAnthropicConversationBody = zod.object({
+  "title": zod.string()
+})
+
+
+/**
+ * @summary Get conversation with messages
+ */
+export const GetAnthropicConversationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetAnthropicConversationResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "userId": zod.string().optional(),
+  "organizationId": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().optional(),
+  "messages": zod.array(zod.object({
+  "id": zod.number(),
+  "conversationId": zod.number(),
+  "role": zod.string(),
+  "content": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Delete a conversation
+ */
+export const DeleteAnthropicConversationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary List messages in a conversation
+ */
+export const ListAnthropicMessagesParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListAnthropicMessagesResponseItem = zod.object({
+  "id": zod.number(),
+  "conversationId": zod.number(),
+  "role": zod.string(),
+  "content": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+export const ListAnthropicMessagesResponse = zod.array(ListAnthropicMessagesResponseItem)
+
+
+/**
+ * @summary Send a message and receive an AI response (SSE stream)
+ */
+export const SendAnthropicMessageParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const SendAnthropicMessageBody = zod.object({
+  "content": zod.string()
+})
+
+
+/**
+ * @summary List ASA memories
+ */
+export const ListAsaMemoriesQueryParams = zod.object({
+  "type": zod.enum(['PERSONAL', 'OPERATIONAL', 'OFFICIAL']).optional(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED']).optional()
+})
+
+export const ListAsaMemoriesResponseItem = zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['PERSONAL', 'OPERATIONAL', 'OFFICIAL']),
+  "key": zod.string(),
+  "value": zod.string(),
+  "scope": zod.string(),
+  "organizationId": zod.string().nullish(),
+  "createdBy": zod.string(),
+  "approvedBy": zod.string().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED']),
+  "createdAt": zod.coerce.date()
+})
+export const ListAsaMemoriesResponse = zod.array(ListAsaMemoriesResponseItem)
+
+
+/**
+ * @summary Suggest a new memory
+ */
+export const CreateAsaMemoryBody = zod.object({
+  "type": zod.enum(['PERSONAL', 'OPERATIONAL', 'OFFICIAL']),
+  "key": zod.string(),
+  "value": zod.string(),
+  "scope": zod.string(),
+  "organizationId": zod.string().optional()
+})
+
+
+/**
+ * @summary Approve or reject a memory
+ */
+export const UpdateAsaMemoryParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateAsaMemoryBody = zod.object({
+  "status": zod.enum(['APPROVED', 'REJECTED']).optional(),
+  "value": zod.string().optional()
+})
+
+export const UpdateAsaMemoryResponse = zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['PERSONAL', 'OPERATIONAL', 'OFFICIAL']),
+  "key": zod.string(),
+  "value": zod.string(),
+  "scope": zod.string(),
+  "organizationId": zod.string().nullish(),
+  "createdBy": zod.string(),
+  "approvedBy": zod.string().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED']),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a memory
+ */
+export const DeleteAsaMemoryParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+
+/**
+ * @summary Get ASA preferences for current user
+ */
+export const GetAsaPreferencesResponse = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "mode": zod.enum(['SILENT', 'BALANCED', 'PROACTIVE']),
+  "morningGreeting": zod.boolean().optional(),
+  "eveningGreeting": zod.boolean().optional(),
+  "reminders": zod.boolean().optional(),
+  "birthdayAlerts": zod.boolean().optional(),
+  "notificationsEnabled": zod.boolean().optional(),
+  "updatedAt": zod.coerce.date().optional()
+})
+
+
+/**
+ * @summary Update ASA preferences
+ */
+export const UpdateAsaPreferencesBody = zod.object({
+  "mode": zod.enum(['SILENT', 'BALANCED', 'PROACTIVE']).optional(),
+  "morningGreeting": zod.boolean().optional(),
+  "eveningGreeting": zod.boolean().optional(),
+  "reminders": zod.boolean().optional(),
+  "birthdayAlerts": zod.boolean().optional(),
+  "notificationsEnabled": zod.boolean().optional()
+})
+
+export const UpdateAsaPreferencesResponse = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "mode": zod.enum(['SILENT', 'BALANCED', 'PROACTIVE']),
+  "morningGreeting": zod.boolean().optional(),
+  "eveningGreeting": zod.boolean().optional(),
+  "reminders": zod.boolean().optional(),
+  "birthdayAlerts": zod.boolean().optional(),
+  "notificationsEnabled": zod.boolean().optional(),
+  "updatedAt": zod.coerce.date().optional()
+})
+
+
+/**
+ * @summary List ASA audit log (ADMIN/SUPERVISOR only)
+ */
+export const listAsaAuditLogQueryLimitDefault = 50;
+
+export const ListAsaAuditLogQueryParams = zod.object({
+  "userId": zod.coerce.string().optional(),
+  "limit": zod.coerce.number().default(listAsaAuditLogQueryLimitDefault)
+})
+
+export const ListAsaAuditLogResponseItem = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "conversationId": zod.string().nullish(),
+  "organizationId": zod.string().nullish(),
+  "question": zod.string(),
+  "response": zod.string(),
+  "toolsUsed": zod.array(zod.string()).optional(),
+  "actionsExecuted": zod.array(zod.object({
+
+}).passthrough()).optional(),
+  "confirmedByUser": zod.boolean().optional(),
+  "createdAt": zod.coerce.date()
+})
+export const ListAsaAuditLogResponse = zod.array(ListAsaAuditLogResponseItem)
+
+

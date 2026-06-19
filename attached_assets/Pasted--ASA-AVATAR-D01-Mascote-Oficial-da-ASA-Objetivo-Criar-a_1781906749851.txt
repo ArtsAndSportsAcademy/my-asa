@@ -1,0 +1,199 @@
+# 🟣 ASA-AVATAR-D01 — Mascote Oficial da ASA
+
+Objetivo:
+Criar a identidade visual oficial da ASA, a assistente inteligente do MyASA.
+
+A ASA não é apenas uma IA.
+Ela é a mascote oficial da inteligência artificial do aplicativo.
+
+A ASA deve transmitir:
+
+* acolhimento;
+* ajuda;
+* inteligência;
+* simpatia;
+* confiança;
+* proximidade.
+
+────────────────────
+
+# 1. Quem é a ASA
+
+Nome: ASA
+
+A ASA é a assistente oficial do MyASA.
+
+Ela conversa com os usuários, ajuda na operação, consulta informações do sistema e executa ações mediante confirmação.
+
+Ela deve parecer:
+
+* amigável;
+* acolhedora;
+* inteligente;
+* objetiva;
+* levemente divertida.
+
+Ela pode utilizar emojis.
+
+Ela pode ter humor leve.
+
+Ela nunca deve parecer um robô.
+
+────────────────────
+
+# 2. Conceito visual
+
+A ASA NÃO é:
+
+❌ uma pessoa
+
+❌ uma supervisora
+
+❌ um personagem do show
+
+❌ um robô
+
+❌ uma inteligência artificial futurista
+
+A ASA É:
+
+✅ uma pequena mascote
+
+✅ uma massinha fofa
+
+✅ uma criatura amigável
+
+✅ um companheiro do aplicativo
+
+────────────────────
+
+# 3. Aparência
+
+* corpo arredondado;
+* aparência macia;
+* estilo 3D;
+* sem gênero;
+* sem idade;
+* sem roupa;
+* sem uniforme.
+
+Cores:
+
+* azul claro;
+* roxo;
+* degradês oficiais do MyASA.
+
+Características:
+
+* olhos grandes e brilhantes;
+* pequenas bochechas;
+* expressão amigável;
+* asas inspiradas no logo oficial do MyASA;
+* pequeno topete azul e roxo.
+
+────────────────────
+
+# 4. Função dentro do aplicativo
+
+A ASA aparecerá em:
+
+* chat da IA;
+* boas-vindas;
+* bom dia;
+* boa noite;
+* biblioteca;
+* notificações;
+* tarefas;
+* reconhecimentos;
+* avisos;
+* estados vazios;
+* carregamentos.
+
+────────────────────
+
+# 5. Expressões futuras
+
+A mascote deverá possuir:
+
+☀️ Bom dia
+
+🌙 Boa noite
+
+🤔 Pensando
+
+📚 Biblioteca
+
+⚠️ Aviso
+
+🔔 Notificação
+
+🎉 Reconhecimento
+
+🏆 Conquista
+
+📋 Tarefa
+
+💧 Água
+
+❄️ Frio
+
+☔ Chuva
+
+🔥 Calor
+
+🔄 Atualizando
+
+😊 Feliz
+
+😢 Triste
+
+💜 Obrigada
+
+👋 Até logo
+
+────────────────────
+
+# 6. Diretrizes obrigatórias
+
+A aparência da ASA deve permanecer consistente.
+
+Todas as futuras imagens devem representar a MESMA personagem.
+
+Não criar novas versões.
+
+Não alterar:
+
+* asas;
+* olhos;
+* formato;
+* cores;
+* proporções.
+
+As futuras imagens devem apenas mudar a expressão ou ação.
+
+────────────────────
+
+# 7. Objetivo final
+
+A ASA deve se tornar:
+
+* mascote oficial do MyASA;
+* rosto da inteligência artificial;
+* personagem do aplicativo;
+* elemento de acolhimento dos usuários.
+
+A experiência ideal é:
+
+"Pergunta para a ASA."
+
+"A ASA me ajudou."
+
+"A ASA me lembrou."
+
+"A ASA encontrou isso na Biblioteca."
+
+────────────────────
+
+Resultado esperado:
+
+Uma mascote oficial consistente, amigável e reconhecível, integrada à experiência da IA do MyASA.

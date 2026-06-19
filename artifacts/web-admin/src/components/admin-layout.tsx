@@ -4,7 +4,7 @@ import {
   BookOpen, CalendarDays, ShieldCheck, ClipboardList, BookMarked,
   LayoutDashboard, Bell, Clock, MessageSquare, Package, Library,
   FileText, CheckSquare, TrendingUp, AlertTriangle, ClipboardCheck, ArrowLeftRight,
-  Shield,
+  Shield, Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -82,6 +82,12 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/insights",  icon: TrendingUp,  label: "Indicadores"  },
     ],
   },
+  {
+    label: "INTELIGÊNCIA",
+    items: [
+      { href: "/admin/asa", icon: Sparkles, label: "ASA" },
+    ],
+  },
 ];
 
 const SUPERVISOR_NAV: NavGroup[] = [
@@ -126,6 +132,12 @@ const SUPERVISOR_NAV: NavGroup[] = [
     items: [
       { href: "/supervisor/history",   icon: Clock,       label: "Histórico" },
       { href: "/supervisor/insights",  icon: TrendingUp,  label: "Indicadores"  },
+    ],
+  },
+  {
+    label: "INTELIGÊNCIA",
+    items: [
+      { href: "/admin/asa", icon: Sparkles, label: "ASA" },
     ],
   },
 ];

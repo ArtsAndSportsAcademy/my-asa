@@ -2279,6 +2279,161 @@ export interface AddTaskEvidenceRequest {
   mandatoryEvidenceRefId?: string;
 }
 
+export interface AnthropicConversation {
+  id: number;
+  title: string;
+  userId?: string;
+  organizationId?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface AnthropicMessage {
+  id: number;
+  conversationId: number;
+  role: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface AnthropicConversationInput {
+  title: string;
+}
+
+export interface AnthropicMessageInput {
+  content: string;
+}
+
+export interface AnthropicConversationWithMessages {
+  id: number;
+  title: string;
+  userId?: string;
+  organizationId?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+  messages: AnthropicMessage[];
+}
+
+export interface AnthropicError {
+  error: string;
+}
+
+export type AsaMemoryType = typeof AsaMemoryType[keyof typeof AsaMemoryType];
+
+
+export const AsaMemoryType = {
+  PERSONAL: 'PERSONAL',
+  OPERATIONAL: 'OPERATIONAL',
+  OFFICIAL: 'OFFICIAL',
+} as const;
+
+export type AsaMemoryStatus = typeof AsaMemoryStatus[keyof typeof AsaMemoryStatus];
+
+
+export const AsaMemoryStatus = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export interface AsaMemory {
+  id: string;
+  type: AsaMemoryType;
+  key: string;
+  value: string;
+  scope: string;
+  organizationId?: string | null;
+  createdBy: string;
+  approvedBy?: string | null;
+  approvedAt?: string | null;
+  status: AsaMemoryStatus;
+  createdAt: string;
+}
+
+export type CreateAsaMemoryRequestType = typeof CreateAsaMemoryRequestType[keyof typeof CreateAsaMemoryRequestType];
+
+
+export const CreateAsaMemoryRequestType = {
+  PERSONAL: 'PERSONAL',
+  OPERATIONAL: 'OPERATIONAL',
+  OFFICIAL: 'OFFICIAL',
+} as const;
+
+export interface CreateAsaMemoryRequest {
+  type: CreateAsaMemoryRequestType;
+  key: string;
+  value: string;
+  scope: string;
+  organizationId?: string;
+}
+
+export type UpdateAsaMemoryRequestStatus = typeof UpdateAsaMemoryRequestStatus[keyof typeof UpdateAsaMemoryRequestStatus];
+
+
+export const UpdateAsaMemoryRequestStatus = {
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export interface UpdateAsaMemoryRequest {
+  status?: UpdateAsaMemoryRequestStatus;
+  value?: string;
+}
+
+export type AsaPreferencesMode = typeof AsaPreferencesMode[keyof typeof AsaPreferencesMode];
+
+
+export const AsaPreferencesMode = {
+  SILENT: 'SILENT',
+  BALANCED: 'BALANCED',
+  PROACTIVE: 'PROACTIVE',
+} as const;
+
+export interface AsaPreferences {
+  id: string;
+  userId: string;
+  mode: AsaPreferencesMode;
+  morningGreeting?: boolean;
+  eveningGreeting?: boolean;
+  reminders?: boolean;
+  birthdayAlerts?: boolean;
+  notificationsEnabled?: boolean;
+  updatedAt?: string;
+}
+
+export type UpdateAsaPreferencesRequestMode = typeof UpdateAsaPreferencesRequestMode[keyof typeof UpdateAsaPreferencesRequestMode];
+
+
+export const UpdateAsaPreferencesRequestMode = {
+  SILENT: 'SILENT',
+  BALANCED: 'BALANCED',
+  PROACTIVE: 'PROACTIVE',
+} as const;
+
+export interface UpdateAsaPreferencesRequest {
+  mode?: UpdateAsaPreferencesRequestMode;
+  morningGreeting?: boolean;
+  eveningGreeting?: boolean;
+  reminders?: boolean;
+  birthdayAlerts?: boolean;
+  notificationsEnabled?: boolean;
+}
+
+export type AsaAuditEntryActionsExecutedItem = { [key: string]: unknown };
+
+export interface AsaAuditEntry {
+  id: string;
+  userId: string;
+  conversationId?: string | null;
+  organizationId?: string | null;
+  question: string;
+  response: string;
+  toolsUsed?: string[];
+  actionsExecuted?: AsaAuditEntryActionsExecutedItem[];
+  confirmedByUser?: boolean;
+  createdAt: string;
+}
+
 /**
  * Bad request
  */
@@ -2757,5 +2912,33 @@ export type CancelTaskBody = {
 
 export type AddTaskCommentBody = {
   body: string;
+};
+
+export type ListAsaMemoriesParams = {
+type?: ListAsaMemoriesType;
+status?: ListAsaMemoriesStatus;
+};
+
+export type ListAsaMemoriesType = typeof ListAsaMemoriesType[keyof typeof ListAsaMemoriesType];
+
+
+export const ListAsaMemoriesType = {
+  PERSONAL: 'PERSONAL',
+  OPERATIONAL: 'OPERATIONAL',
+  OFFICIAL: 'OFFICIAL',
+} as const;
+
+export type ListAsaMemoriesStatus = typeof ListAsaMemoriesStatus[keyof typeof ListAsaMemoriesStatus];
+
+
+export const ListAsaMemoriesStatus = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export type ListAsaAuditLogParams = {
+userId?: string;
+limit?: number;
 };
 

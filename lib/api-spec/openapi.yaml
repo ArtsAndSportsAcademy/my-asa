@@ -32,6 +32,10 @@ tags:
     description: "Meu Dia — superficie principal do membro"
   - name: tasks
     description: "Tarefas Operacionais — S-18"
+  - name: anthropic
+    description: Anthropic AI chat operations
+  - name: asa
+    description: "ASA — Assistente Inteligente do MyASA"
 
 security:
   - bearerAuth: []
@@ -4411,6 +4415,255 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /anthropic/conversations:
+    get:
+      operationId: listAnthropicConversations
+      tags: [anthropic]
+      summary: List all conversations
+      responses:
+        "200":
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AnthropicConversation"
+    post:
+      operationId: createAnthropicConversation
+      tags: [anthropic]
+      summary: Create a new conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnthropicConversationInput"
+      responses:
+        "201":
+          description: Created conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnthropicConversation"
+  /anthropic/conversations/{id}:
+    get:
+      operationId: getAnthropicConversation
+      tags: [anthropic]
+      summary: Get conversation with messages
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Conversation with messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnthropicConversationWithMessages"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnthropicError"
+    delete:
+      operationId: deleteAnthropicConversation
+      tags: [anthropic]
+      summary: Delete a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnthropicError"
+  /anthropic/conversations/{id}/messages:
+    get:
+      operationId: listAnthropicMessages
+      tags: [anthropic]
+      summary: List messages in a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AnthropicMessage"
+    post:
+      operationId: sendAnthropicMessage
+      tags: [anthropic]
+      summary: Send a message and receive an AI response (SSE stream)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnthropicMessageInput"
+      responses:
+        "200":
+          description: SSE stream of assistant response chunks
+          content:
+            text/event-stream: {}
+
+  /asa/memories:
+    get:
+      operationId: listAsaMemories
+      tags: [asa]
+      summary: List ASA memories
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [PERSONAL, OPERATIONAL, OFFICIAL]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, APPROVED, REJECTED]
+      responses:
+        "200":
+          description: List of memories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AsaMemory"
+    post:
+      operationId: createAsaMemory
+      tags: [asa]
+      summary: Suggest a new memory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAsaMemoryRequest"
+      responses:
+        "201":
+          description: Memory created (pending approval)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AsaMemory"
+  /asa/memories/{id}:
+    patch:
+      operationId: updateAsaMemory
+      tags: [asa]
+      summary: Approve or reject a memory
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAsaMemoryRequest"
+      responses:
+        "200":
+          description: Memory updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AsaMemory"
+    delete:
+      operationId: deleteAsaMemory
+      tags: [asa]
+      summary: Delete a memory
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+  /asa/preferences:
+    get:
+      operationId: getAsaPreferences
+      tags: [asa]
+      summary: Get ASA preferences for current user
+      responses:
+        "200":
+          description: User preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AsaPreferences"
+    patch:
+      operationId: updateAsaPreferences
+      tags: [asa]
+      summary: Update ASA preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAsaPreferencesRequest"
+      responses:
+        "200":
+          description: Updated preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AsaPreferences"
+  /asa/audit:
+    get:
+      operationId: listAsaAuditLog
+      tags: [asa]
+      summary: List ASA audit log (ADMIN/SUPERVISOR only)
+      parameters:
+        - name: userId
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Audit log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AsaAuditEntry"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -7719,3 +7972,207 @@ components:
           type: boolean
         mandatoryEvidenceRefId:
           type: string
+
+    AnthropicConversation:
+      type: object
+      required: [id, title, createdAt]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        userId:
+          type: string
+        organizationId:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    AnthropicMessage:
+      type: object
+      required: [id, conversationId, role, content, createdAt]
+      properties:
+        id:
+          type: integer
+        conversationId:
+          type: integer
+        role:
+          type: string
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    AnthropicConversationInput:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+    AnthropicMessageInput:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+    AnthropicConversationWithMessages:
+      type: object
+      required: [id, title, createdAt, messages]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        userId:
+          type: string
+        organizationId:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnthropicMessage"
+    AnthropicError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    AsaMemory:
+      type: object
+      required: [id, type, key, value, scope, createdBy, status, createdAt]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [PERSONAL, OPERATIONAL, OFFICIAL]
+        key:
+          type: string
+        value:
+          type: string
+        scope:
+          type: string
+        organizationId:
+          type: string
+          nullable: true
+        createdBy:
+          type: string
+        approvedBy:
+          type: string
+          nullable: true
+        approvedAt:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED]
+        createdAt:
+          type: string
+          format: date-time
+    CreateAsaMemoryRequest:
+      type: object
+      required: [type, key, value, scope]
+      properties:
+        type:
+          type: string
+          enum: [PERSONAL, OPERATIONAL, OFFICIAL]
+        key:
+          type: string
+        value:
+          type: string
+        scope:
+          type: string
+        organizationId:
+          type: string
+    UpdateAsaMemoryRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [APPROVED, REJECTED]
+        value:
+          type: string
+    AsaPreferences:
+      type: object
+      required: [id, userId, mode]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        mode:
+          type: string
+          enum: [SILENT, BALANCED, PROACTIVE]
+        morningGreeting:
+          type: boolean
+        eveningGreeting:
+          type: boolean
+        reminders:
+          type: boolean
+        birthdayAlerts:
+          type: boolean
+        notificationsEnabled:
+          type: boolean
+        updatedAt:
+          type: string
+          format: date-time
+    UpdateAsaPreferencesRequest:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [SILENT, BALANCED, PROACTIVE]
+        morningGreeting:
+          type: boolean
+        eveningGreeting:
+          type: boolean
+        reminders:
+          type: boolean
+        birthdayAlerts:
+          type: boolean
+        notificationsEnabled:
+          type: boolean
+    AsaAuditEntry:
+      type: object
+      required: [id, userId, question, response, createdAt]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        conversationId:
+          type: string
+          nullable: true
+        organizationId:
+          type: string
+          nullable: true
+        question:
+          type: string
+        response:
+          type: string
+        toolsUsed:
+          type: array
+          items:
+            type: string
+        actionsExecuted:
+          type: array
+          items:
+            type: object
+        confirmedByUser:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
