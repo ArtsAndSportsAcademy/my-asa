@@ -1,0 +1,250 @@
+AGENDA-FIX-01 — Segurança e Visibilidade da Agenda
+
+Objetivo
+
+Corrigir os riscos identificados no AGENDA-D01 antes do piloto.
+
+Importante:
+
+* Não criar sistema de convocações.
+* Não criar participantes.
+* Não criar notificações.
+* Não integrar Google Calendar.
+* Não alterar Escalas.
+* Não alterar Livro do Dia.
+* Corrigir apenas segurança e visibilidade.
+
+Objetivo principal:
+
+Garantir que membros vejam apenas o que devem ver.
+
+═══════════════════════
+PARTE 1 — RBAC DA AGENDA
+═══════════════════════
+
+Auditar e corrigir:
+
+POST /agenda/events
+PATCH /agenda/events/:id
+POST /agenda/events/:id/confirm
+POST /agenda/events/:id/suspend
+POST /agenda/events/:id/cancel
+DELETE /agenda/events/:id
+
+Regras:
+
+ADMIN:
+✅ tudo
+
+SUPERVISOR:
+✅ tudo da própria operação
+
+CAPITÃO:
+🔴 nenhuma ação nesta sprint
+
+MEMBER:
+❌ criar
+❌ editar
+❌ cancelar
+❌ confirmar
+❌ suspender
+❌ excluir
+
+Objetivo:
+
+Nenhum MEMBER autenticado deve conseguir alterar a agenda via API.
+
+═══════════════════════
+PARTE 2 — VISIBILIDADE
+═══════════════════════
+
+Adicionar campo:
+
+visibility
+
+Valores:
+
+* OPERATION
+* MANAGEMENT
+
+Regras:
+
+OPERATION:
+
+* ADMIN vê
+* SUPERVISOR vê
+* CAPITÃO vê
+* MEMBER vê
+
+MANAGEMENT:
+
+* ADMIN vê
+* SUPERVISOR vê
+* CAPITÃO não vê
+* MEMBER não vê
+
+Default:
+
+OPERATION
+
+Objetivo:
+
+Permitir que reuniões e planejamento interno não apareçam para membros.
+
+═══════════════════════
+PARTE 3 — FILTRO DA API
+═══════════════════════
+
+GET /agenda/events
+
+ADMIN:
+
+* vê tudo
+
+SUPERVISOR:
+
+* vê tudo da operação
+
+MEMBER:
+
+* apenas:
+    status = CONFIRMED
+    visibility = OPERATION
+
+CAPITÃO:
+
+* comportamento igual MEMBER nesta sprint
+
+Validar:
+
+* lista
+* semana
+* mês
+* filtros
+
+═══════════════════════
+PARTE 4 — MOBILE
+═══════════════════════
+
+MEMBER:
+
+Ocultar:
+
+* Rascunhos
+* Suspensos internos
+* Gestão
+
+Remover:
+
+* filtro DRAFT
+* qualquer referência a rascunhos
+
+Exibir apenas:
+
+* Confirmados
+* Cancelados
+* Concluídos
+
+Objetivo:
+
+Membro não deve saber que existe planejamento interno.
+
+═══════════════════════
+PARTE 5 — WEB ADMIN
+═══════════════════════
+
+Adicionar campo:
+
+Visibilidade:
+
+( ) Operação
+( ) Gestão
+
+Sugestão:
+
+OPERATION:
+“Todos da operação visualizam”
+
+MANAGEMENT:
+“Somente supervisão e administração”
+
+Default:
+
+OPERATION
+
+═══════════════════════
+PARTE 6 — CANCELAMENTOS
+═══════════════════════
+
+Ao cancelar evento:
+
+* manter writeHistoryEvent
+* manter badge CANCELLED
+* manter visualização histórica
+
+Não implementar:
+
+* convocações
+* notificações
+* impacto em escala
+* impacto em Livro do Dia
+
+Objetivo:
+
+Evitar efeitos colaterais antes do piloto.
+
+═══════════════════════
+PARTE 7 — TESTES
+═══════════════════════
+
+Testar:
+
+MEMBER:
+
+❌ criar evento
+❌ editar evento
+❌ cancelar evento
+❌ confirmar evento
+
+SUPERVISOR:
+
+✅ criar
+✅ editar
+✅ cancelar
+✅ confirmar
+
+MEMBER:
+
+❌ visualizar MANAGEMENT
+
+MEMBER:
+
+❌ visualizar DRAFT
+
+SUPERVISOR:
+
+✅ visualizar tudo
+
+═══════════════════════
+PARTE 8 — VEREDITO
+═══════════════════════
+
+Responder:
+
+1. MEMBER consegue alterar agenda?
+2. MEMBER consegue ver informações internas?
+3. SUPERVISOR consegue controlar visibilidade?
+4. ADMIN mantém visão completa?
+5. A Agenda está segura para o piloto?
+
+Classificar:
+
+🔴 Bloqueia piloto
+
+🟡 Melhoria futura
+
+🟢 Resolvido
+
+Objetivo final:
+
+Transformar a Agenda de um mural operacional em uma agenda segura para o piloto, sem ainda implementar o sistema completo de convocações.

@@ -4,7 +4,7 @@ description: Estado atual do produto, sprints concluídas e decisões de arquite
 ---
 
 ## Sprint atual
-NAV-D01 — Navegação e linguagem pré-piloto — **COMPLETO**
+AGENDA-FIX-01 — Segurança e visibilidade da Agenda — **COMPLETO**
 
 ## Sprints concluídas
 - Sprint 18.1 — Task Integration & Audit
@@ -16,6 +16,7 @@ NAV-D01 — Navegação e linguagem pré-piloto — **COMPLETO**
 - TASK-D01 — Evidências de tarefas (EvidenceSection mobile + EvidenceViewer web-admin)
 - ROADMAP-A01 — Auditoria de prontidão para piloto (relatório entregue, 6 itens 🔴 identificados)
 - NAV-D01 — Ajustes de navegação e linguagem pré-piloto (todos os itens 🔴 implementados)
+- AGENDA-FIX-01 — RBAC + visibilidade da Agenda (campo visibility, filtros por papel, MEMBER bloqueado)
 
 ---
 

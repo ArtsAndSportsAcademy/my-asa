@@ -5,6 +5,7 @@
  * MyASA 2.0 API
  * OpenAPI spec version: 0.3.0
  */
+import type { AgendaEventUpdateVisibility } from './agendaEventUpdateVisibility';
 
 export interface AgendaEventUpdate {
   title?: string;
@@ -16,4 +17,5 @@ export interface AgendaEventUpdate {
   notes?: string | null;
   showBookId?: string | null;
   groupId?: string | null;
+  visibility?: AgendaEventUpdateVisibility;
 }

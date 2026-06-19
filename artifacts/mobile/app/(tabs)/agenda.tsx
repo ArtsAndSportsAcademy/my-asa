@@ -26,17 +26,13 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  DRAFT: "Rascunho",
   CONFIRMED: "Confirmado",
-  SUSPENDED: "Suspenso",
   CANCELLED: "Cancelado",
   COMPLETED: "Realizado",
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  DRAFT: "#6B7280",
   CONFIRMED: "#16A34A",
-  SUSPENDED: "#D97706",
   CANCELLED: "#DC2626",
   COMPLETED: "#2563EB",
 };
@@ -49,13 +45,13 @@ const TYPE_ICONS: Record<string, string> = {
   COLLECTIVE_VACATION: "sun",
 };
 
-type FilterStatus = "" | "CONFIRMED" | "DRAFT" | "SUSPENDED" | "CANCELLED" | "COMPLETED";
+type FilterStatus = "" | "CONFIRMED" | "CANCELLED" | "COMPLETED";
 
 const FILTER_TABS: { label: string; value: FilterStatus }[] = [
   { label: "Todos", value: "" },
   { label: "Confirmados", value: "CONFIRMED" },
-  { label: "Rascunhos", value: "DRAFT" },
-  { label: "Suspensos", value: "SUSPENDED" },
+  { label: "Cancelados", value: "CANCELLED" },
+  { label: "Realizados", value: "COMPLETED" },
 ];
 
 export default function AgendaScreen() {

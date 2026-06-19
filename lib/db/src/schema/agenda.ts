@@ -13,6 +13,10 @@ export const agendaEventStatusEnum = pgEnum("agenda_event_status", [
   "DRAFT", "CONFIRMED", "SUSPENDED", "CANCELLED", "COMPLETED",
 ]);
 
+export const agendaVisibilityEnum = pgEnum("agenda_visibility", [
+  "OPERATION", "MANAGEMENT",
+]);
+
 export const agendaEventsTable = pgTable("agenda_events", {
   id: uuid("id").primaryKey().defaultRandom(),
   operationId: uuid("operation_id").notNull().references(() => operationsTable.id),
@@ -27,6 +31,7 @@ export const agendaEventsTable = pgTable("agenda_events", {
   location: text("location"),
   notes: text("notes"),
   status: agendaEventStatusEnum("status").notNull().default("DRAFT"),
+  visibility: agendaVisibilityEnum("visibility").notNull().default("OPERATION"),
   reason: text("reason"),
   createdBy: uuid("created_by").notNull().references(() => usersTable.id),
   confirmedBy: uuid("confirmed_by").references(() => usersTable.id),

@@ -5292,6 +5292,10 @@ components:
         status:
           type: string
           enum: [DRAFT, CONFIRMED, SUSPENDED, CANCELLED, COMPLETED]
+        visibility:
+          type: string
+          enum: [OPERATION, MANAGEMENT]
+          default: OPERATION
         reason:
           type: string
           nullable: true
@@ -5322,7 +5326,7 @@ components:
           type: string
         updatedAt:
           type: string
-      required: [id, operationId, type, title, date, status, createdBy]
+      required: [id, operationId, type, title, date, status, visibility, createdBy]
 
     AgendaEventCreate:
       type: object
@@ -5359,6 +5363,9 @@ components:
         notes:
           type: string
           nullable: true
+        visibility:
+          type: string
+          enum: [OPERATION, MANAGEMENT]
       required: [operationId, type, title, date]
 
     AgendaEventUpdate:
@@ -5391,6 +5398,9 @@ components:
         groupId:
           type: string
           nullable: true
+        visibility:
+          type: string
+          enum: [OPERATION, MANAGEMENT]
 
     # ── Scale — Schemas ───────────────────────────────────────────────────────
 

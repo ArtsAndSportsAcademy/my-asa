@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.3.0
  */
 import type { AgendaEventCreateType } from './agendaEventCreateType';
+import type { AgendaEventCreateVisibility } from './agendaEventCreateVisibility';
 
 export interface AgendaEventCreate {
   operationId: string;
@@ -19,4 +20,5 @@ export interface AgendaEventCreate {
   endTime?: string | null;
   location?: string | null;
   notes?: string | null;
+  visibility?: AgendaEventCreateVisibility;
 }

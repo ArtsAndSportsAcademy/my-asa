@@ -26,7 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Plus, MoreHorizontal, CheckCircle, PauseCircle, XCircle, Flag, Pencil, Trash2,
-  CalendarDays, ChevronLeft, ChevronRight, List, Calendar,
+  CalendarDays, ChevronLeft, ChevronRight, List, Calendar, Eye, EyeOff,
 } from "lucide-react";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -49,6 +49,10 @@ const STATUS_LABELS: Record<string, string> = {
 const STATUS_VARIANTS: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   DRAFT: "secondary", CONFIRMED: "default", SUSPENDED: "outline",
   CANCELLED: "destructive", COMPLETED: "secondary",
+};
+const VISIBILITY_LABELS: Record<string, string> = {
+  OPERATION: "Todos da operação",
+  MANAGEMENT: "Somente supervisão e administração",
 };
 const EVENT_TYPES = ["SHOW", "REHEARSAL", "MEETING", "OPERATIONAL_BLOCK", "COLLECTIVE_VACATION"] as const;
 const WEEKDAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
@@ -153,7 +157,7 @@ function MonthCalendar({ currentDate, events }: { currentDate: Date; events: Age
                     title={ev.title}
                     className={`text-[10px] px-1.5 py-0.5 rounded truncate leading-tight font-medium ${
                       TYPE_COLORS[ev.type] ?? "bg-gray-100 text-gray-800"
-                    }`}
+                    } ${ev.visibility === "MANAGEMENT" ? "opacity-70 italic" : ""}`}
                   >
                     {ev.startTime ? `${ev.startTime} ` : ""}
                     {ev.title}
@@ -216,7 +220,7 @@ function WeekCalendar({ currentDate, events }: { currentDate: Date; events: Agen
                     key={ev.id}
                     className={`text-[10px] px-1.5 py-1 rounded leading-tight ${
                       TYPE_COLORS[ev.type] ?? "bg-gray-100 text-gray-800"
-                    }`}
+                    } ${ev.visibility === "MANAGEMENT" ? "opacity-70 italic" : ""}`}
                   >
                     <div className="font-semibold truncate">{ev.title}</div>
                     {ev.startTime && (
@@ -238,11 +242,13 @@ function WeekCalendar({ currentDate, events }: { currentDate: Date; events: Agen
 interface EventFormState {
   title: string; type: string; date: string; endDate: string;
   startTime: string; endTime: string; location: string; notes: string;
+  visibility: "OPERATION" | "MANAGEMENT";
 }
 
 const emptyForm: EventFormState = {
   title: "", type: "SHOW", date: "", endDate: "",
   startTime: "", endTime: "", location: "", notes: "",
+  visibility: "OPERATION",
 };
 
 // ─── Main page ────────────────────────────────────────────────────────────────
@@ -356,6 +362,7 @@ export default function AgendaPage() {
           endDate: form.endDate || undefined, startTime: form.startTime || undefined,
           endTime: form.endTime || undefined, location: form.location || undefined,
           notes: form.notes || undefined,
+          visibility: form.visibility as any,
         },
       },
       {
@@ -375,6 +382,7 @@ export default function AgendaPage() {
           endDate: form.endDate || undefined, startTime: form.startTime || undefined,
           endTime: form.endTime || undefined, location: form.location || undefined,
           notes: form.notes || undefined,
+          visibility: form.visibility as any,
         },
       },
       {
@@ -425,6 +433,7 @@ export default function AgendaPage() {
       title: event.title, type: event.type, date: event.date, endDate: event.endDate ?? "",
       startTime: event.startTime ?? "", endTime: event.endTime ?? "",
       location: event.location ?? "", notes: event.notes ?? "",
+      visibility: (event.visibility as "OPERATION" | "MANAGEMENT") ?? "OPERATION",
     });
   };
 
@@ -565,6 +574,7 @@ export default function AgendaPage() {
                 <TableHead>Horário</TableHead>
                 <TableHead>Local</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Visibilidade</TableHead>
                 {isAdmin && <TableHead className="w-10" />}
               </TableRow>
             </TableHeader>
@@ -595,6 +605,18 @@ export default function AgendaPage() {
                   <TableCell className="text-sm text-muted-foreground">{event.location ?? "—"}</TableCell>
                   <TableCell>
                     <Badge variant={STATUS_VARIANTS[event.status]}>{STATUS_LABELS[event.status]}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <span className={`inline-flex items-center gap-1 text-xs ${
+                      event.visibility === "MANAGEMENT"
+                        ? "text-amber-700 font-medium"
+                        : "text-muted-foreground"
+                    }`}>
+                      {event.visibility === "MANAGEMENT"
+                        ? <><EyeOff className="h-3 w-3" /> Gestão</>
+                        : <><Eye className="h-3 w-3" /> Operação</>
+                      }
+                    </span>
                   </TableCell>
                   {isAdmin && (
                     <TableCell>
@@ -690,6 +712,36 @@ export default function AgendaPage() {
               <Label>Notas</Label>
               <Textarea value={form.notes} onChange={setField("notes")} placeholder="Informações adicionais" rows={2} />
             </div>
+            <div className="col-span-2">
+              <Label>Visibilidade</Label>
+              <Select
+                value={form.visibility}
+                onValueChange={(v) => setForm((f) => ({ ...f, visibility: v as "OPERATION" | "MANAGEMENT" }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="OPERATION">
+                    <span className="flex items-center gap-2">
+                      <Eye className="h-3.5 w-3.5" />
+                      {VISIBILITY_LABELS.OPERATION}
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="MANAGEMENT">
+                    <span className="flex items-center gap-2">
+                      <EyeOff className="h-3.5 w-3.5" />
+                      {VISIBILITY_LABELS.MANAGEMENT}
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                {form.visibility === "MANAGEMENT"
+                  ? "Apenas supervisores e administradores verão este evento."
+                  : "Todos os membros da operação poderão ver este evento."}
+              </p>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
@@ -730,6 +782,36 @@ export default function AgendaPage() {
             <div className="col-span-2">
               <Label>Notas</Label>
               <Textarea value={form.notes} onChange={setField("notes")} rows={2} />
+            </div>
+            <div className="col-span-2">
+              <Label>Visibilidade</Label>
+              <Select
+                value={form.visibility}
+                onValueChange={(v) => setForm((f) => ({ ...f, visibility: v as "OPERATION" | "MANAGEMENT" }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="OPERATION">
+                    <span className="flex items-center gap-2">
+                      <Eye className="h-3.5 w-3.5" />
+                      {VISIBILITY_LABELS.OPERATION}
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="MANAGEMENT">
+                    <span className="flex items-center gap-2">
+                      <EyeOff className="h-3.5 w-3.5" />
+                      {VISIBILITY_LABELS.MANAGEMENT}
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                {form.visibility === "MANAGEMENT"
+                  ? "Apenas supervisores e administradores verão este evento."
+                  : "Todos os membros da operação poderão ver este evento."}
+              </p>
             </div>
           </div>
           <DialogFooter>

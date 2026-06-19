@@ -7,6 +7,7 @@
  */
 import type { AgendaEventStatus } from './agendaEventStatus';
 import type { AgendaEventType } from './agendaEventType';
+import type { AgendaEventVisibility } from './agendaEventVisibility';
 
 export interface AgendaEvent {
   id: string;
@@ -22,6 +23,7 @@ export interface AgendaEvent {
   location?: string | null;
   notes?: string | null;
   status: AgendaEventStatus;
+  visibility: AgendaEventVisibility;
   reason?: string | null;
   createdBy: string;
   confirmedBy?: string | null;

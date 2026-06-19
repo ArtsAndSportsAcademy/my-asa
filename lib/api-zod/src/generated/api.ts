@@ -1162,6 +1162,8 @@ export const ListAgendaEventsQueryParams = zod.object({
   "to": zod.date().optional()
 })
 
+export const listAgendaEventsResponseEventsItemVisibilityDefault = `OPERATION`;
+
 export const ListAgendaEventsResponse = zod.object({
   "events": zod.array(zod.object({
   "id": zod.string(),
@@ -1177,6 +1179,7 @@ export const ListAgendaEventsResponse = zod.object({
   "location": zod.string().nullish(),
   "notes": zod.string().nullish(),
   "status": zod.enum(['DRAFT', 'CONFIRMED', 'SUSPENDED', 'CANCELLED', 'COMPLETED']),
+  "visibility": zod.enum(['OPERATION', 'MANAGEMENT']).default(listAgendaEventsResponseEventsItemVisibilityDefault),
   "reason": zod.string().nullish(),
   "createdBy": zod.string(),
   "confirmedBy": zod.string().nullish(),
@@ -1206,7 +1209,8 @@ export const CreateAgendaEventBody = zod.object({
   "startTime": zod.string().nullish(),
   "endTime": zod.string().nullish(),
   "location": zod.string().nullish(),
-  "notes": zod.string().nullish()
+  "notes": zod.string().nullish(),
+  "visibility": zod.enum(['OPERATION', 'MANAGEMENT']).optional()
 })
 
 
@@ -1216,6 +1220,8 @@ export const CreateAgendaEventBody = zod.object({
 export const GetAgendaEventParams = zod.object({
   "id": zod.coerce.string()
 })
+
+export const getAgendaEventResponseEventVisibilityDefault = `OPERATION`;
 
 export const GetAgendaEventResponse = zod.object({
   "event": zod.object({
@@ -1232,6 +1238,7 @@ export const GetAgendaEventResponse = zod.object({
   "location": zod.string().nullish(),
   "notes": zod.string().nullish(),
   "status": zod.enum(['DRAFT', 'CONFIRMED', 'SUSPENDED', 'CANCELLED', 'COMPLETED']),
+  "visibility": zod.enum(['OPERATION', 'MANAGEMENT']).default(getAgendaEventResponseEventVisibilityDefault),
   "reason": zod.string().nullish(),
   "createdBy": zod.string(),
   "confirmedBy": zod.string().nullish(),
@@ -1263,8 +1270,11 @@ export const UpdateAgendaEventBody = zod.object({
   "location": zod.string().nullish(),
   "notes": zod.string().nullish(),
   "showBookId": zod.string().nullish(),
-  "groupId": zod.string().nullish()
+  "groupId": zod.string().nullish(),
+  "visibility": zod.enum(['OPERATION', 'MANAGEMENT']).optional()
 })
+
+export const updateAgendaEventResponseEventVisibilityDefault = `OPERATION`;
 
 export const UpdateAgendaEventResponse = zod.object({
   "event": zod.object({
@@ -1281,6 +1291,7 @@ export const UpdateAgendaEventResponse = zod.object({
   "location": zod.string().nullish(),
   "notes": zod.string().nullish(),
   "status": zod.enum(['DRAFT', 'CONFIRMED', 'SUSPENDED', 'CANCELLED', 'COMPLETED']),
+  "visibility": zod.enum(['OPERATION', 'MANAGEMENT']).default(updateAgendaEventResponseEventVisibilityDefault),
   "reason": zod.string().nullish(),
   "createdBy": zod.string(),
   "confirmedBy": zod.string().nullish(),
@@ -1311,6 +1322,8 @@ export const ConfirmAgendaEventParams = zod.object({
   "id": zod.coerce.string()
 })
 
+export const confirmAgendaEventResponseEventVisibilityDefault = `OPERATION`;
+
 export const ConfirmAgendaEventResponse = zod.object({
   "event": zod.object({
   "id": zod.string(),
@@ -1326,6 +1339,7 @@ export const ConfirmAgendaEventResponse = zod.object({
   "location": zod.string().nullish(),
   "notes": zod.string().nullish(),
   "status": zod.enum(['DRAFT', 'CONFIRMED', 'SUSPENDED', 'CANCELLED', 'COMPLETED']),
+  "visibility": zod.enum(['OPERATION', 'MANAGEMENT']).default(confirmAgendaEventResponseEventVisibilityDefault),
   "reason": zod.string().nullish(),
   "createdBy": zod.string(),
   "confirmedBy": zod.string().nullish(),
@@ -1352,6 +1366,8 @@ export const SuspendAgendaEventBody = zod.object({
   "reason": zod.string()
 })
 
+export const suspendAgendaEventResponseEventVisibilityDefault = `OPERATION`;
+
 export const SuspendAgendaEventResponse = zod.object({
   "event": zod.object({
   "id": zod.string(),
@@ -1367,6 +1383,7 @@ export const SuspendAgendaEventResponse = zod.object({
   "location": zod.string().nullish(),
   "notes": zod.string().nullish(),
   "status": zod.enum(['DRAFT', 'CONFIRMED', 'SUSPENDED', 'CANCELLED', 'COMPLETED']),
+  "visibility": zod.enum(['OPERATION', 'MANAGEMENT']).default(suspendAgendaEventResponseEventVisibilityDefault),
   "reason": zod.string().nullish(),
   "createdBy": zod.string(),
   "confirmedBy": zod.string().nullish(),
@@ -1393,6 +1410,8 @@ export const CancelAgendaEventBody = zod.object({
   "reason": zod.string()
 })
 
+export const cancelAgendaEventResponseEventVisibilityDefault = `OPERATION`;
+
 export const CancelAgendaEventResponse = zod.object({
   "event": zod.object({
   "id": zod.string(),
@@ -1408,6 +1427,7 @@ export const CancelAgendaEventResponse = zod.object({
   "location": zod.string().nullish(),
   "notes": zod.string().nullish(),
   "status": zod.enum(['DRAFT', 'CONFIRMED', 'SUSPENDED', 'CANCELLED', 'COMPLETED']),
+  "visibility": zod.enum(['OPERATION', 'MANAGEMENT']).default(cancelAgendaEventResponseEventVisibilityDefault),
   "reason": zod.string().nullish(),
   "createdBy": zod.string(),
   "confirmedBy": zod.string().nullish(),
@@ -1430,6 +1450,8 @@ export const CompleteAgendaEventParams = zod.object({
   "id": zod.coerce.string()
 })
 
+export const completeAgendaEventResponseEventVisibilityDefault = `OPERATION`;
+
 export const CompleteAgendaEventResponse = zod.object({
   "event": zod.object({
   "id": zod.string(),
@@ -1445,6 +1467,7 @@ export const CompleteAgendaEventResponse = zod.object({
   "location": zod.string().nullish(),
   "notes": zod.string().nullish(),
   "status": zod.enum(['DRAFT', 'CONFIRMED', 'SUSPENDED', 'CANCELLED', 'COMPLETED']),
+  "visibility": zod.enum(['OPERATION', 'MANAGEMENT']).default(completeAgendaEventResponseEventVisibilityDefault),
   "reason": zod.string().nullish(),
   "createdBy": zod.string(),
   "confirmedBy": zod.string().nullish(),

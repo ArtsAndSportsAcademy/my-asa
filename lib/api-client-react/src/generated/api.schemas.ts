@@ -700,6 +700,14 @@ export const AgendaEventStatus = {
   COMPLETED: 'COMPLETED',
 } as const;
 
+export type AgendaEventVisibility = typeof AgendaEventVisibility[keyof typeof AgendaEventVisibility];
+
+
+export const AgendaEventVisibility = {
+  OPERATION: 'OPERATION',
+  MANAGEMENT: 'MANAGEMENT',
+} as const;
+
 export interface AgendaEvent {
   id: string;
   operationId: string;
@@ -714,6 +722,7 @@ export interface AgendaEvent {
   location?: string | null;
   notes?: string | null;
   status: AgendaEventStatus;
+  visibility: AgendaEventVisibility;
   reason?: string | null;
   createdBy: string;
   confirmedBy?: string | null;
@@ -738,6 +747,14 @@ export const AgendaEventCreateType = {
   COLLECTIVE_VACATION: 'COLLECTIVE_VACATION',
 } as const;
 
+export type AgendaEventCreateVisibility = typeof AgendaEventCreateVisibility[keyof typeof AgendaEventCreateVisibility];
+
+
+export const AgendaEventCreateVisibility = {
+  OPERATION: 'OPERATION',
+  MANAGEMENT: 'MANAGEMENT',
+} as const;
+
 export interface AgendaEventCreate {
   operationId: string;
   showBookId?: string | null;
@@ -750,7 +767,16 @@ export interface AgendaEventCreate {
   endTime?: string | null;
   location?: string | null;
   notes?: string | null;
+  visibility?: AgendaEventCreateVisibility;
 }
+
+export type AgendaEventUpdateVisibility = typeof AgendaEventUpdateVisibility[keyof typeof AgendaEventUpdateVisibility];
+
+
+export const AgendaEventUpdateVisibility = {
+  OPERATION: 'OPERATION',
+  MANAGEMENT: 'MANAGEMENT',
+} as const;
 
 export interface AgendaEventUpdate {
   title?: string;
@@ -762,6 +788,7 @@ export interface AgendaEventUpdate {
   notes?: string | null;
   showBookId?: string | null;
   groupId?: string | null;
+  visibility?: AgendaEventUpdateVisibility;
 }
 
 export type ScaleSummaryStatus = typeof ScaleSummaryStatus[keyof typeof ScaleSummaryStatus];

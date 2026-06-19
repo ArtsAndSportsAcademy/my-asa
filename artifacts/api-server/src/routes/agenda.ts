@@ -10,6 +10,11 @@ import { writeHistoryEvent } from "../lib/history-helper.js";
 const router: IRouter = Router();
 
 const VALID_TYPES = ["SHOW", "REHEARSAL", "MEETING", "OPERATIONAL_BLOCK", "COLLECTIVE_VACATION"] as const;
+const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"] as const;
+
+function isManager(role: string): boolean {
+  return (MANAGER_ROLES as readonly string[]).includes(role);
+}
 
 async function getEventOrFail(id: string, res: any) {
   const [event] = await db
@@ -24,27 +29,53 @@ async function getEventOrFail(id: string, res: any) {
   return event;
 }
 
+// ─── GET /agenda/events ───────────────────────────────────────────────────────
+// ADMIN/SUPERVISOR: tudo da operação
+// MEMBER/CAPITÃO: apenas CONFIRMED + visibility=OPERATION
+
 router.get("/agenda/events", requireAuth, requireOrganization, async (req, res) => {
   const { operationId, type, status, from, to } = req.query as Record<string, string | undefined>;
+  const userRole = req.user!.role;
+  const isMgr = isManager(userRole);
+
   try {
     const conditions: ReturnType<typeof eq>[] = [];
+
     if (operationId) conditions.push(eq(agendaEventsTable.operationId, operationId));
     if (type) conditions.push(eq(agendaEventsTable.type, type as any));
-    if (status) conditions.push(eq(agendaEventsTable.status, status as any));
     if (from) conditions.push(gte(agendaEventsTable.date, from));
     if (to) conditions.push(lte(agendaEventsTable.date, to));
+
+    if (isMgr) {
+      // Managers podem filtrar por status livremente
+      if (status) conditions.push(eq(agendaEventsTable.status, status as any));
+    } else {
+      // MEMBER / CAPITÃO: somente CONFIRMED + OPERATION
+      conditions.push(eq(agendaEventsTable.status, "CONFIRMED"));
+      conditions.push(eq(agendaEventsTable.visibility, "OPERATION"));
+    }
+
     const events =
       conditions.length > 0
         ? await db.select().from(agendaEventsTable).where(and(...conditions))
         : await db.select().from(agendaEventsTable);
+
     res.json({ events });
   } catch (err) {
     res.status(500).json({ error: "Erro ao listar eventos" });
   }
 });
 
+// ─── POST /agenda/events ──────────────────────────────────────────────────────
+// Somente ADMIN / SUPERVISOR
+
 router.post("/agenda/events", requireAuth, requireOrganization, async (req, res) => {
-  const { operationId, showBookId, groupId, type, title, date, endDate, startTime, endTime, location, notes } =
+  if (!isManager(req.user!.role)) {
+    res.status(403).json({ error: "Apenas administradores e supervisores podem criar eventos" });
+    return;
+  }
+
+  const { operationId, showBookId, groupId, type, title, date, endDate, startTime, endTime, location, notes, visibility } =
     req.body;
   if (!operationId || !type || !title || !date) {
     res.status(400).json({ error: "operationId, type, title e date são obrigatórios" });
@@ -71,6 +102,7 @@ router.post("/agenda/events", requireAuth, requireOrganization, async (req, res)
         location: location ?? null,
         notes: notes ?? null,
         status: "DRAFT",
+        visibility: (visibility === "MANAGEMENT" ? "MANAGEMENT" : "OPERATION") as any,
         createdBy: userId,
       })
       .returning();
@@ -83,18 +115,36 @@ router.post("/agenda/events", requireAuth, requireOrganization, async (req, res)
   }
 });
 
+// ─── GET /agenda/events/:id ───────────────────────────────────────────────────
+
 router.get("/agenda/events/:id", requireAuth, requireOrganization, async (req, res) => {
   const id = req.params.id as string;
+  const userRole = req.user!.role;
   try {
     const event = await getEventOrFail(id, res);
     if (!event) return;
+    // MEMBER só vê se o evento for CONFIRMED + OPERATION
+    if (!isManager(userRole)) {
+      if (event.status !== "CONFIRMED" || event.visibility !== "OPERATION") {
+        res.status(404).json({ error: "Evento não encontrado" });
+        return;
+      }
+    }
     res.json({ event });
   } catch (err) {
     res.status(500).json({ error: "Erro ao buscar evento" });
   }
 });
 
+// ─── PATCH /agenda/events/:id ─────────────────────────────────────────────────
+// Somente ADMIN / SUPERVISOR
+
 router.patch("/agenda/events/:id", requireAuth, requireOrganization, async (req, res) => {
+  if (!isManager(req.user!.role)) {
+    res.status(403).json({ error: "Apenas administradores e supervisores podem editar eventos" });
+    return;
+  }
+
   const id = req.params.id as string;
   try {
     const event = await getEventOrFail(id, res);
@@ -103,10 +153,11 @@ router.patch("/agenda/events/:id", requireAuth, requireOrganization, async (req,
       res.status(409).json({ error: "Evento em estado terminal — não pode ser alterado" });
       return;
     }
-    const { title, date, endDate, startTime, endTime, location, notes, showBookId, groupId } = req.body;
+    const { title, date, endDate, startTime, endTime, location, notes, showBookId, groupId, visibility } = req.body;
     const changedFields: string[] = [];
     if (title !== undefined && title !== event.title) changedFields.push("title");
     if (date !== undefined && date !== event.date) changedFields.push("date");
+    if (visibility !== undefined && visibility !== event.visibility) changedFields.push("visibility");
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (title !== undefined) updates.title = title;
     if (date !== undefined) updates.date = date;
@@ -117,6 +168,7 @@ router.patch("/agenda/events/:id", requireAuth, requireOrganization, async (req,
     if (notes !== undefined) updates.notes = notes;
     if (showBookId !== undefined) updates.showBookId = showBookId;
     if (groupId !== undefined) updates.groupId = groupId;
+    if (visibility !== undefined) updates.visibility = visibility === "MANAGEMENT" ? "MANAGEMENT" : "OPERATION";
     const [updated] = await db
       .update(agendaEventsTable)
       .set(updates as any)
@@ -131,7 +183,15 @@ router.patch("/agenda/events/:id", requireAuth, requireOrganization, async (req,
   }
 });
 
+// ─── POST /agenda/events/:id/confirm ─────────────────────────────────────────
+// Somente ADMIN / SUPERVISOR
+
 router.post("/agenda/events/:id/confirm", requireAuth, requireOrganization, async (req, res) => {
+  if (!isManager(req.user!.role)) {
+    res.status(403).json({ error: "Apenas administradores e supervisores podem confirmar eventos" });
+    return;
+  }
+
   const id = req.params.id as string;
   try {
     const event = await getEventOrFail(id, res);
@@ -153,7 +213,15 @@ router.post("/agenda/events/:id/confirm", requireAuth, requireOrganization, asyn
   }
 });
 
+// ─── POST /agenda/events/:id/suspend ─────────────────────────────────────────
+// Somente ADMIN / SUPERVISOR
+
 router.post("/agenda/events/:id/suspend", requireAuth, requireOrganization, async (req, res) => {
+  if (!isManager(req.user!.role)) {
+    res.status(403).json({ error: "Apenas administradores e supervisores podem suspender eventos" });
+    return;
+  }
+
   const id = req.params.id as string;
   const { reason } = req.body;
   if (!reason) { res.status(400).json({ error: "reason é obrigatório para suspensão" }); return; }
@@ -188,7 +256,15 @@ router.post("/agenda/events/:id/suspend", requireAuth, requireOrganization, asyn
   }
 });
 
+// ─── POST /agenda/events/:id/cancel ──────────────────────────────────────────
+// Somente ADMIN / SUPERVISOR
+
 router.post("/agenda/events/:id/cancel", requireAuth, requireOrganization, async (req, res) => {
+  if (!isManager(req.user!.role)) {
+    res.status(403).json({ error: "Apenas administradores e supervisores podem cancelar eventos" });
+    return;
+  }
+
   const id = req.params.id as string;
   const { reason } = req.body;
   if (!reason) { res.status(400).json({ error: "reason é obrigatório para cancelamento" }); return; }
@@ -227,7 +303,15 @@ router.post("/agenda/events/:id/cancel", requireAuth, requireOrganization, async
   }
 });
 
+// ─── POST /agenda/events/:id/complete ────────────────────────────────────────
+// Somente ADMIN / SUPERVISOR
+
 router.post("/agenda/events/:id/complete", requireAuth, requireOrganization, async (req, res) => {
+  if (!isManager(req.user!.role)) {
+    res.status(403).json({ error: "Apenas administradores e supervisores podem concluir eventos" });
+    return;
+  }
+
   const id = req.params.id as string;
   try {
     const event = await getEventOrFail(id, res);
@@ -248,7 +332,15 @@ router.post("/agenda/events/:id/complete", requireAuth, requireOrganization, asy
   }
 });
 
+// ─── DELETE /agenda/events/:id ────────────────────────────────────────────────
+// Somente ADMIN / SUPERVISOR
+
 router.delete("/agenda/events/:id", requireAuth, requireOrganization, async (req, res) => {
+  if (!isManager(req.user!.role)) {
+    res.status(403).json({ error: "Apenas administradores e supervisores podem excluir eventos" });
+    return;
+  }
+
   const id = req.params.id as string;
   try {
     const event = await getEventOrFail(id, res);
