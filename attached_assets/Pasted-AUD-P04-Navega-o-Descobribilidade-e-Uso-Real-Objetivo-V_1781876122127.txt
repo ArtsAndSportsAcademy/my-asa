@@ -1,0 +1,239 @@
+AUD-P04 — Navegação, Descobribilidade e Uso Real
+
+Objetivo
+
+Validar se um usuário da ASA consegue utilizar o MyASA sem treinamento prévio.
+
+Importante:
+
+* Não implementar nada.
+* Não alterar código.
+* Não alterar permissões.
+* Não alterar banco de dados.
+* Auditoria apenas.
+
+Objetivo principal:
+
+Responder se uma pessoa consegue descobrir sozinha:
+
+* O que pode fazer.
+* Onde fazer.
+* Como fazer.
+
+═══════════════════════
+PARTE 1 — Descobribilidade por Papel
+═══════════════════════
+
+Validar separadamente:
+
+* ADMIN
+* SUPERVISOR
+* CAPITÃO (Delegado)
+* MEMBER
+
+Para cada papel responder:
+
+1. O usuário entende qual é seu papel atual?
+2. O sistema deixa claro quais são suas responsabilidades?
+3. O usuário sabe onde encontrar suas ações principais?
+4. Existe alguma funcionalidade importante escondida?
+5. Existe alguma funcionalidade visível que não deveria aparecer?
+
+Classificar:
+
+🟢 Claro
+
+🟡 Confuso
+
+🔴 Difícil de entender
+
+═══════════════════════
+PARTE 2 — Navegação por Superfície
+═══════════════════════
+
+Auditar:
+
+* Meu Dia
+* Agenda
+* Escalas
+* Livro do Dia
+* Check-ins
+* Avisos
+* Mensagens
+* Solicitações
+* Tarefas
+* Biblioteca
+* Entregas
+* Histórico
+* Painel Operacional
+* Insights
+* Delegações
+
+Responder para cada item:
+
+1. É fácil encontrar?
+2. O nome é intuitivo?
+3. O usuário entende para que serve?
+4. Existe caminho de retorno?
+5. Existe duplicidade de navegação?
+6. Existe alguma ação escondida?
+
+Classificar:
+
+🟢 Intuitivo
+
+🟡 Exige orientação
+
+🔴 Difícil de localizar
+
+═══════════════════════
+PARTE 3 — Experiência dos Capitães
+═══════════════════════
+
+Cenário:
+
+Débora delega para Carol:
+
+* CHECK_INS
+* DAILY_BOOK
+* NOTICES
+
+Responder:
+
+1. Carol percebe que recebeu a delegação?
+2. Carol entende o que significa cada responsabilidade?
+3. Carol sabe onde executar cada ação?
+4. Existe atalho direto para cada responsabilidade?
+5. Existe contexto visual de que ela está atuando como Capitã?
+6. Existe diferença visível entre experiência de Membro e Capitã?
+7. Carol consegue operar sem treinamento?
+
+Classificar:
+
+🟢 Sim
+
+🟡 Parcialmente
+
+🔴 Não
+
+═══════════════════════
+PARTE 4 — Experiência Mobile
+═══════════════════════
+
+Validar:
+
+* Check-in
+* Escala
+* Livro do Dia
+* Avisos
+* Solicitações
+* Tarefas
+* Mensagens
+* Perfil
+
+Responder:
+
+1. O fluxo é completo?
+2. O usuário encontra facilmente?
+3. Existem telas apenas de leitura quando deveriam permitir ação?
+4. Existe algo que obrigue o usuário a abrir o web-admin?
+5. Existe alguma funcionalidade inacessível pelo mobile?
+
+═══════════════════════
+PARTE 5 — Experiência Web
+═══════════════════════
+
+Validar:
+
+* Admin
+* Supervisor
+* Capitão
+
+Responder:
+
+1. O menu corresponde ao que o usuário realmente pode fazer?
+2. Existe menu que gera expectativa falsa?
+3. Existe redirecionamento silencioso?
+4. Existe página acessível mas sem utilidade prática?
+5. Existe funcionalidade disponível apenas porque aparece no menu?
+
+Identificar pontos que parecem bug para o usuário.
+
+═══════════════════════
+PARTE 6 — Linguagem Operacional
+═══════════════════════
+
+Auditar nomenclaturas:
+
+* Avisos
+* Solicitações
+* Tarefas
+* Delegações
+* Escalas
+* Livro do Dia
+* Livro do Show
+* Entregas
+* Biblioteca
+* Painel Operacional
+
+Responder:
+
+1. O nome representa corretamente a função?
+2. Existe termo que significa coisas diferentes para papéis diferentes?
+3. Existe termo interno que a ASA não usa no dia a dia?
+4. Existe termo que pode gerar confusão?
+
+═══════════════════════
+PARTE 7 — Teste do Usuário Novo
+═══════════════════════
+
+Simular:
+
+Novo usuário recebe acesso.
+
+Sem treinamento.
+
+Sem manual.
+
+Sem explicação.
+
+Responder:
+
+Ele consegue:
+
+* Fazer check-in?
+* Consultar escala?
+* Consultar livro do dia?
+* Ler aviso?
+* Criar solicitação?
+* Executar tarefa?
+* Encontrar mensagens?
+* Encontrar perfil?
+
+Onde ele trava?
+
+═══════════════════════
+PARTE 8 — Veredito Final
+═══════════════════════
+
+Responder:
+
+1. O sistema é tecnicamente funcional?
+2. O sistema é intuitivo?
+3. O sistema é autodescoberto?
+4. Um usuário novo consegue utilizá-lo sozinho?
+5. Um capitão consegue operar sozinho?
+6. O web-admin transmite corretamente as permissões reais?
+7. Existe alguma área que parece quebrada mesmo funcionando?
+
+Classificar:
+
+🔴 Necessário antes do piloto
+
+🟡 Recomendado antes do piloto
+
+🟢 Pode ficar para depois do piloto
+
+Objetivo final:
+
+Determinar se o MyASA está pronto para ser usado por pessoas reais da ASA sem treinamento intensivo e sem dependência constante de supervisores para explicar onde cada funcionalidade está.
