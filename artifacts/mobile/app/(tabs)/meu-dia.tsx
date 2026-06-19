@@ -172,18 +172,44 @@ function CheckInCard({
 
 // ─── Delegate Banner ──────────────────────────────────────────────────────────
 
+const RESP_LABELS: Record<string, string> = {
+  CHECK_INS: "Check-ins",
+  REQUESTS: "Solicitações",
+  TASK_APPROVALS: "Aprova Tarefas",
+  DAILY_BOOK: "Livro do Dia",
+  NOTICES: "Avisos",
+  OPERATIONAL_MESSAGES: "Mensagens",
+  SCALES: "Escalas",
+};
+
 function DelegateBanner({ delegations, colors }: { delegations: ActiveDelegationItem[]; colors: ReturnType<typeof useColors> }) {
   if (delegations.length === 0) return null;
   return (
     <View style={[styles.deltaBanner, { backgroundColor: "#EFF6FF", borderColor: "#3B82F6", marginTop: 8, marginBottom: 0 }]}>
       <View style={styles.deltaHeader}>
         <Feather name="shield" size={14} color="#1D4ED8" />
-        <Text style={[styles.deltaTitle, { color: "#1D4ED8" }]}>Supervisão Delegada</Text>
+        <Text style={[styles.deltaTitle, { color: "#1D4ED8" }]}>Responsabilidades Delegadas</Text>
       </View>
       {delegations.map((d) => (
-        <Text key={d.delegationId} style={[styles.deltaVal, { color: "#1E40AF" }]}>
-          • {d.operationName} — em nome de {d.supervisorName}
-        </Text>
+        <View key={d.delegationId} style={{ marginTop: 6 }}>
+          <Text style={[styles.deltaVal, { color: "#1E40AF", fontWeight: "600" }]}>
+            {d.operationName}
+          </Text>
+          <Text style={[styles.deltaVal, { color: "#1E40AF", fontSize: 11, marginTop: 1 }]}>
+            Em nome de {d.supervisorName} · {d.startDate} → {d.endDate}
+          </Text>
+          {(d.responsibilities as string[]).length > 0 && (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 4, marginTop: 4 }}>
+              {(d.responsibilities as string[]).map((r) => (
+                <View key={r} style={{ backgroundColor: "#DBEAFE", borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
+                  <Text style={{ color: "#1D4ED8", fontSize: 10, fontWeight: "600" }}>
+                    ✓ {RESP_LABELS[r] ?? r}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
       ))}
     </View>
   );

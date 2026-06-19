@@ -13,7 +13,7 @@ import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
 import { writeHistoryEvent } from "../lib/history-helper.js";
-import { isActiveDelegate } from "../lib/delegation-check.js";
+import { hasActiveResponsibility } from "../lib/delegation-check.js";
 
 const router: IRouter = Router();
 
@@ -378,8 +378,8 @@ router.patch("/check-ins/:id", requireAuth, requireOrganization, async (req, res
   };
 
   if (!MANAGER_ROLES.includes(user.role)) {
-    if (!operationId || !(await isActiveDelegate(user.sub, operationId))) {
-      res.status(403).json({ error: "Forbidden", message: "Acesso restrito a supervisores ou delegados" });
+    if (!operationId || !(await hasActiveResponsibility(user.sub, operationId, "CHECK_INS"))) {
+      res.status(403).json({ error: "Forbidden", message: "Acesso restrito a supervisores ou delegados com responsabilidade de check-ins" });
       return;
     }
   }

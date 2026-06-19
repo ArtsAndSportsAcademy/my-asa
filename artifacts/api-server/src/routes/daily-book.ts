@@ -19,7 +19,7 @@ import {
 } from "@workspace/db";
 import { requireAuth, requireOrganization, requireRole } from "../middlewares/auth.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
-import { isActiveDelegate } from "../lib/delegation-check.js";
+import { hasActiveResponsibility } from "../lib/delegation-check.js";
 import { eventBus } from "../lib/event-bus.js";
 
 const router: IRouter = Router();
@@ -451,7 +451,7 @@ router.post("/daily-book/:id/publish", requireAuth, requireOrganization, async (
       let allowed = false;
       if (book.scaleId) {
         const [sr] = await db.select({ operationId: scalesTable.operationId }).from(scalesTable).where(eq(scalesTable.id, book.scaleId)).limit(1);
-        if (sr && await isActiveDelegate(userId, sr.operationId)) allowed = true;
+        if (sr && await hasActiveResponsibility(userId, sr.operationId, "DAILY_BOOK")) allowed = true;
       }
       if (!allowed) { res.status(403).json({ error: "Forbidden", message: "Acesso restrito a supervisores ou delegados" }); return; }
     }
@@ -491,7 +491,7 @@ router.post("/daily-book/:id/republish", requireAuth, requireOrganization, async
       let allowed = false;
       if (book.scaleId) {
         const [sr] = await db.select({ operationId: scalesTable.operationId }).from(scalesTable).where(eq(scalesTable.id, book.scaleId)).limit(1);
-        if (sr && await isActiveDelegate(userId, sr.operationId)) allowed = true;
+        if (sr && await hasActiveResponsibility(userId, sr.operationId, "DAILY_BOOK")) allowed = true;
       }
       if (!allowed) { res.status(403).json({ error: "Forbidden", message: "Acesso restrito a supervisores ou delegados" }); return; }
     }

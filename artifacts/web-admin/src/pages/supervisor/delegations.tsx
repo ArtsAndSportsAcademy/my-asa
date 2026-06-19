@@ -8,16 +8,22 @@ import {
   useListUsers,
   getListDelegationsQueryKey,
 } from "@workspace/api-client-react";
+import type { DelegatedResponsibility } from "@workspace/api-client-react";
+import {
+  ALL_RESPONSIBILITIES,
+  RESPONSIBILITY_LABELS,
+} from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, X, AlertCircle, Loader2, ShieldCheck } from "lucide-react";
+import { Plus, X, AlertCircle, Loader2, ShieldCheck, ChevronDown, ChevronUp } from "lucide-react";
 
 const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   PENDING:   { label: "Pendente",  variant: "outline"      },
@@ -40,16 +46,52 @@ function fmtDate(s: string) {
   }
 }
 
+function ResponsibilityChips({ responsibilities }: { responsibilities: DelegatedResponsibility[] }) {
+  if (responsibilities.length === 0) return <span className="text-xs text-muted-foreground">Nenhuma</span>;
+  if (responsibilities.length === ALL_RESPONSIBILITIES.length) {
+    return <Badge variant="secondary" className="text-xs">Todas</Badge>;
+  }
+  return (
+    <div className="flex flex-wrap gap-1">
+      {responsibilities.map((r) => (
+        <Badge key={r} variant="outline" className="text-xs px-1.5 py-0">
+          {RESPONSIBILITY_LABELS[r]}
+        </Badge>
+      ))}
+    </div>
+  );
+}
+
+function ResponsibilityDetail({ delegateName, responsibilities }: { delegateName: string; responsibilities: DelegatedResponsibility[] }) {
+  return (
+    <div className="mt-1 space-y-0.5">
+      <p className="text-xs font-medium text-muted-foreground">{delegateName} possui:</p>
+      <div className="grid grid-cols-2 gap-0.5">
+        {ALL_RESPONSIBILITIES.map((r) => {
+          const has = responsibilities.includes(r);
+          return (
+            <span key={r} className={`text-xs ${has ? "text-green-700" : "text-red-400 line-through"}`}>
+              {has ? "✓" : "✗"} {RESPONSIBILITY_LABELS[r]}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function SupervisorDelegationsPage() {
   const queryClient = useQueryClient();
   const [showModal, setShowModal] = useState(false);
   const [cancelId, setCancelId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const [delegateId, setDelegateId] = useState("");
   const [operationId, setOperationId] = useState("");
   const [startDate, setStartDate]   = useState("");
   const [endDate, setEndDate]       = useState("");
   const [reason, setReason]         = useState("");
+  const [selectedResp, setSelectedResp] = useState<DelegatedResponsibility[]>([]);
   const [formError, setFormError]   = useState("");
 
   const { data, isLoading, error } = useListDelegations();
@@ -63,7 +105,20 @@ export default function SupervisorDelegationsPage() {
   const users       = usersData?.users ?? [];
 
   const resetForm = () => {
-    setDelegateId(""); setOperationId(""); setStartDate(""); setEndDate(""); setReason(""); setFormError("");
+    setDelegateId(""); setOperationId(""); setStartDate(""); setEndDate("");
+    setReason(""); setSelectedResp([]); setFormError("");
+  };
+
+  const toggleResp = (r: DelegatedResponsibility) => {
+    setSelectedResp((prev) =>
+      prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]
+    );
+  };
+
+  const toggleAll = () => {
+    setSelectedResp((prev) =>
+      prev.length === ALL_RESPONSIBILITIES.length ? [] : [...ALL_RESPONSIBILITIES]
+    );
   };
 
   const handleCreate = () => {
@@ -75,9 +130,20 @@ export default function SupervisorDelegationsPage() {
       setFormError("A data de término deve ser igual ou posterior à data de início.");
       return;
     }
+    if (selectedResp.length === 0) {
+      setFormError("Selecione ao menos uma responsabilidade.");
+      return;
+    }
     setFormError("");
     createMutation.mutate(
-      { delegateId, operationId, startDate, endDate, reason: reason || undefined },
+      {
+        delegateId,
+        operationId,
+        startDate,
+        endDate,
+        reason: reason || undefined,
+        responsibilities: selectedResp,
+      },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListDelegationsQueryKey() });
@@ -97,20 +163,18 @@ export default function SupervisorDelegationsPage() {
         queryClient.invalidateQueries({ queryKey: getListDelegationsQueryKey() });
         setCancelId(null);
       },
-      onError: () => {
-        setCancelId(null);
-      },
+      onError: () => setCancelId(null),
     });
   };
 
   return (
-    <AdminLayout title="Delegações" subtitle="Delegue temporariamente responsabilidades operacionais">
+    <AdminLayout title="Delegações" subtitle="Delegue responsabilidades operacionais específicas a membros da equipe">
       <div className="p-6 max-w-5xl mx-auto space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold">Delegações Temporárias</h2>
+            <h2 className="text-lg font-semibold">Delegações de Responsabilidade</h2>
             <p className="text-sm text-muted-foreground">
-              Autorize um membro a exercer funções de supervisão durante um período determinado.
+              O Capitão é um membro com responsabilidades específicas delegadas — sem mudança de papel.
             </p>
           </div>
           <Button onClick={() => { resetForm(); setShowModal(true); }}>
@@ -144,39 +208,62 @@ export default function SupervisorDelegationsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Membro delegado</TableHead>
+                  <TableHead>Membro (Capitão)</TableHead>
                   <TableHead>Operação</TableHead>
+                  <TableHead>Responsabilidades</TableHead>
                   <TableHead>Período</TableHead>
-                  <TableHead>Motivo</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-12" />
+                  <TableHead className="w-20" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {delegations.map((d) => (
-                  <TableRow key={d.id}>
-                    <TableCell className="font-medium">{d.delegateeName}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{d.operationName}</TableCell>
-                    <TableCell className="text-sm whitespace-nowrap">
-                      {fmtDate(d.startDate)} – {fmtDate(d.endDate)}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground max-w-[180px] truncate">
-                      {d.reason ?? "—"}
-                    </TableCell>
-                    <TableCell><StatusBadge status={d.status} /></TableCell>
-                    <TableCell>
-                      {["PENDING", "ACTIVE"].includes(d.status) && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => setCancelId(d.id)}
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
+                  <>
+                    <TableRow key={d.id} className="cursor-pointer hover:bg-muted/40" onClick={() => setExpandedId(expandedId === d.id ? null : d.id)}>
+                      <TableCell className="font-medium">{d.delegateeName}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{d.operationName}</TableCell>
+                      <TableCell>
+                        <ResponsibilityChips responsibilities={d.responsibilities ?? []} />
+                      </TableCell>
+                      <TableCell className="text-sm whitespace-nowrap">
+                        {fmtDate(d.startDate)} – {fmtDate(d.endDate)}
+                      </TableCell>
+                      <TableCell><StatusBadge status={d.status} /></TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon" className="h-7 w-7">
+                            {expandedId === d.id
+                              ? <ChevronUp className="w-3.5 h-3.5" />
+                              : <ChevronDown className="w-3.5 h-3.5" />
+                            }
+                          </Button>
+                          {["PENDING", "ACTIVE"].includes(d.status) && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive hover:text-destructive"
+                              onClick={(e) => { e.stopPropagation(); setCancelId(d.id); }}
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                    {expandedId === d.id && (
+                      <TableRow key={`${d.id}-detail`} className="bg-muted/20">
+                        <TableCell colSpan={6} className="py-3 px-4">
+                          <ResponsibilityDetail
+                            delegateName={d.delegateeName ?? "Membro"}
+                            responsibilities={d.responsibilities ?? []}
+                          />
+                          {d.reason && (
+                            <p className="text-xs text-muted-foreground mt-2">Motivo: {d.reason}</p>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </>
                 ))}
               </TableBody>
             </Table>
@@ -189,9 +276,9 @@ export default function SupervisorDelegationsPage() {
         open={showModal}
         onOpenChange={(open) => { if (!open) { setShowModal(false); resetForm(); } }}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Nova Delegação</DialogTitle>
+            <DialogTitle>Nova Delegação de Responsabilidade</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
@@ -209,7 +296,7 @@ export default function SupervisorDelegationsPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Membro delegado *</Label>
+              <Label>Membro (Capitão) *</Label>
               <Select value={delegateId} onValueChange={setDelegateId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o membro" />
@@ -225,20 +312,47 @@ export default function SupervisorDelegationsPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Início *</Label>
-                <Input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
+                <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
               </div>
               <div className="space-y-1.5">
                 <Label>Término *</Label>
-                <Input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
+                <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Responsabilidades *</Label>
+                <button
+                  type="button"
+                  className="text-xs text-primary hover:underline"
+                  onClick={toggleAll}
+                >
+                  {selectedResp.length === ALL_RESPONSIBILITIES.length ? "Desmarcar todas" : "Selecionar todas"}
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2 border rounded-md p-3 bg-muted/30">
+                {ALL_RESPONSIBILITIES.map((r) => (
+                  <div key={r} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`resp-${r}`}
+                      checked={selectedResp.includes(r)}
+                      onCheckedChange={() => toggleResp(r)}
+                    />
+                    <label
+                      htmlFor={`resp-${r}`}
+                      className="text-sm cursor-pointer select-none"
+                    >
+                      {RESPONSIBILITY_LABELS[r]}
+                    </label>
+                  </div>
+                ))}
+              </div>
+              {selectedResp.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {selectedResp.length} responsabilidade{selectedResp.length !== 1 ? "s" : ""} selecionada{selectedResp.length !== 1 ? "s" : ""}
+                </p>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -246,7 +360,7 @@ export default function SupervisorDelegationsPage() {
               <Textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="Ex: viagem, licença médica..."
+                placeholder="Ex: viagem, licença médica, ausência planejada..."
                 rows={2}
               />
             </div>
@@ -277,7 +391,7 @@ export default function SupervisorDelegationsPage() {
             <DialogTitle>Cancelar Delegação</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground py-1">
-            Tem certeza? O membro perderá imediatamente acesso às funcionalidades delegadas.
+            Tem certeza? O membro perderá imediatamente acesso às responsabilidades delegadas.
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCancelId(null)}>Voltar</Button>

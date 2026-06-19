@@ -1,0 +1,230 @@
+MyASA — Sprint 20 — GOV-D11.1 Delegação por Responsabilidade
+
+Utilizar obrigatoriamente:
+
+* Sprint 0 → Sprint 19 concluídas
+* GOV-D11 concluída
+* AUD-D03 concluída
+* Estrutura atual de Delegações
+* Estrutura atual de Permissões
+* Estrutura atual de Tarefas, Solicitações, Check-ins, Avisos e Livro do Dia
+
+Importante:
+
+Não criar novos papéis.
+
+Não criar papel Capitão.
+
+Não criar SUPERVISOR_C.
+
+Manter a regra oficial:
+
+Capitão = MEMBER + Responsabilidades Delegadas
+
+Objetivo:
+
+Permitir que Supervisores deleguem responsabilidades específicas para membros, mesmo permanecendo ativos na operação.
+
+Pergunta respondida:
+
+“Quem pode fazer o quê hoje?”
+
+═══════════════════════
+T001 — Modelo de Delegação
+═══════════════════════
+
+Evoluir delegations.
+
+Adicionar conceito:
+
+Delegated Responsibilities
+
+Responsabilidades possíveis:
+
+* CHECK_INS
+* REQUESTS
+* TASK_APPROVALS
+* DAILY_BOOK
+* NOTICES
+* OPERATIONAL_MESSAGES
+* SCALES
+
+Uma delegação pode possuir:
+
+* uma responsabilidade
+* várias responsabilidades
+* todas as responsabilidades
+
+═══════════════════════
+T002 — Banco de Dados
+═══════════════════════
+
+Criar estrutura adequada para múltiplas responsabilidades.
+
+Permitir:
+
+Delegação
+↓
+N responsabilidades
+
+Sem duplicação.
+
+═══════════════════════
+T003 — API
+═══════════════════════
+
+Atualizar:
+
+GET /delegations
+
+GET /delegations/my-active
+
+POST /delegations
+
+PATCH /delegations/:id/cancel
+
+Adicionar retorno explícito:
+
+* responsabilidades delegadas
+* origem da delegação
+* supervisor delegante
+
+═══════════════════════
+T004 — Permissões
+═══════════════════════
+
+Aplicar validação por responsabilidade.
+
+Exemplos:
+
+CHECK_INS
+→ permite registrar e corrigir check-ins
+
+REQUESTS
+→ permite aprovar solicitações
+
+TASK_APPROVALS
+→ permite aprovar tarefas
+
+DAILY_BOOK
+→ permite publicar Livro do Dia
+
+NOTICES
+→ permite publicar avisos
+
+OPERATIONAL_MESSAGES
+→ permite administrar mensagens operacionais
+
+SCALES
+→ permite editar escalas
+
+═══════════════════════
+T005 — Web Supervisor
+═══════════════════════
+
+Nova experiência de delegação.
+
+Supervisor seleciona:
+
+* membro
+* operação
+* período
+* responsabilidades
+
+Visualização clara:
+
+“Carol possui:
+✓ Check-ins
+✓ Avisos
+✗ Livro do Dia
+✗ Solicitações”
+
+═══════════════════════
+T006 — Mobile
+═══════════════════════
+
+Evoluir DelegateBanner.
+
+Exibir:
+
+Você possui responsabilidades delegadas.
+
+Operação:
+Snowland
+
+Responsabilidades:
+✓ Check-ins
+✓ Avisos
+
+Período:
+01/07 → 07/07
+
+═══════════════════════
+T007 — Histórico
+═══════════════════════
+
+Registrar:
+
+delegation.created
+
+delegation.updated
+
+delegation.cancelled
+
+delegation.expired
+
+Responsabilidades concedidas e removidas.
+
+═══════════════════════
+T008 — Auditoria de Operação
+═══════════════════════
+
+Validar cenários reais:
+
+Cenário 1
+
+Supervisor presente
+↓
+Delega apenas Check-ins
+
+Cenário 2
+
+Supervisor presente
+↓
+Delega apenas Aprovação de Tarefas
+
+Cenário 3
+
+Supervisor ausente
+↓
+Delega múltiplas responsabilidades
+
+Cenário 4
+
+Dois capitães
+↓
+Responsabilidades diferentes
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Objetivo final:
+
+Transformar Delegações em um sistema de responsabilidades operacionais.
+
+Regra oficial do MyASA:
+
+Supervisor = papel
+
+Capitão = membro com responsabilidades delegadas
+
+Não existe papel Capitão.
+
+Não existe Supervisor Assistente.
+
+A operação é definida pelas responsabilidades delegadas e não pelo cargo.
+
+Resultado esperado:
+
+Mais flexibilidade operacional sem aumentar a complexidade da estrutura de papéis.

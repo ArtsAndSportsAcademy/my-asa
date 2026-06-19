@@ -12,6 +12,9 @@ import { requireAuth } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
 import { writeHistoryEvent } from "../lib/history-helper.js";
+import { hasActiveResponsibility } from "../lib/delegation-check.js";
+
+const MANAGER_ROLES_NOTICES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
 
 const router: IRouter = Router();
 
@@ -201,6 +204,15 @@ router.post("/notices", requireAuth, async (req, res): Promise<void> => {
   if (!operationId || !content) {
     res.status(400).json({ error: "operationId e content são obrigatórios" });
     return;
+  }
+
+  const userRole = (req.user as any).role as string;
+  if (!MANAGER_ROLES_NOTICES.includes(userRole)) {
+    const isDelegate = await hasActiveResponsibility(userId, operationId, "NOTICES");
+    if (!isDelegate) {
+      res.status(403).json({ error: "Forbidden", message: "Apenas supervisores ou delegados com responsabilidade de Avisos podem criar avisos" });
+      return;
+    }
   }
 
   const deltaJson = (changeBefore || changeAfter)

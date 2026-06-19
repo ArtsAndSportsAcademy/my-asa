@@ -14,7 +14,7 @@ import {
   requireOrganization,
 } from "../middlewares/auth.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
-import { isActiveDelegate } from "../lib/delegation-check.js";
+import { hasActiveResponsibility } from "../lib/delegation-check.js";
 import { requestLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
 
@@ -40,7 +40,7 @@ async function canManageTasks(
   operationId: string
 ): Promise<boolean> {
   if (MANAGER_ROLES.includes(role)) return true;
-  return isActiveDelegate(userId, operationId);
+  return hasActiveResponsibility(userId, operationId, "TASK_APPROVALS");
 }
 
 // ─── GET /tasks/my — tarefas atribuídas ao usuário atual ─────────────────────

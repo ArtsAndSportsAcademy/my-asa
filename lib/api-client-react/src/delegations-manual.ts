@@ -4,20 +4,61 @@ import { customFetch } from "./custom-fetch";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+export type DelegatedResponsibility =
+  | "CHECK_INS"
+  | "REQUESTS"
+  | "TASK_APPROVALS"
+  | "DAILY_BOOK"
+  | "NOTICES"
+  | "OPERATIONAL_MESSAGES"
+  | "SCALES";
+
+export const ALL_RESPONSIBILITIES: DelegatedResponsibility[] = [
+  "CHECK_INS",
+  "REQUESTS",
+  "TASK_APPROVALS",
+  "DAILY_BOOK",
+  "NOTICES",
+  "OPERATIONAL_MESSAGES",
+  "SCALES",
+];
+
+export const RESPONSIBILITY_LABELS: Record<DelegatedResponsibility, string> = {
+  CHECK_INS: "Check-ins",
+  REQUESTS: "Solicitações",
+  TASK_APPROVALS: "Aprovação de Tarefas",
+  DAILY_BOOK: "Livro do Dia",
+  NOTICES: "Avisos",
+  OPERATIONAL_MESSAGES: "Mensagens Operacionais",
+  SCALES: "Escalas",
+};
+
 export interface DelegationItem {
   id: string;
-  delegatorId: string;
-  delegatorName?: string | null;
-  delegateeId: string;
+  supervisorId: string;
+  supervisorName?: string | null;
+  delegateId: string;
   delegateeName?: string | null;
   operationId: string;
   operationName?: string | null;
   startDate: string;
   endDate: string;
   reason?: string | null;
+  responsibilities: DelegatedResponsibility[];
   status: "PENDING" | "ACTIVE" | "EXPIRED" | "CANCELLED";
   createdAt: string;
-  updatedAt: string;
+}
+
+export interface ActiveDelegationItem {
+  delegationId: string;
+  supervisorId: string;
+  supervisorName?: string | null;
+  operationId: string;
+  operationName?: string | null;
+  startDate: string;
+  endDate: string;
+  responsibilities: DelegatedResponsibility[];
+  reason?: string | null;
 }
 
 export interface CreateDelegationInput {
@@ -26,25 +67,30 @@ export interface CreateDelegationInput {
   startDate: string;
   endDate: string;
   reason?: string;
+  responsibilities: DelegatedResponsibility[];
 }
 
 // ─── Query Keys ───────────────────────────────────────────────────────────────
 
 export const getListDelegationsQueryKey = (): QueryKey => ["/api/delegations"];
+export const getMyActiveDelegationsQueryKey = (): QueryKey => ["/api/delegations/my-active"];
 
 // ─── Fetch functions ──────────────────────────────────────────────────────────
 
 const listDelegations = async (): Promise<{ delegations: DelegationItem[] }> =>
   customFetch<{ delegations: DelegationItem[] }>("/api/delegations", { method: "GET" });
 
-const createDelegation = async (data: CreateDelegationInput): Promise<unknown> =>
-  customFetch<unknown>("/api/delegations", {
+const getMyActiveDelegations = async (): Promise<{ delegations: ActiveDelegationItem[] }> =>
+  customFetch<{ delegations: ActiveDelegationItem[] }>("/api/delegations/my-active", { method: "GET" });
+
+const createDelegation = async (data: CreateDelegationInput): Promise<{ delegation: DelegationItem }> =>
+  customFetch<{ delegation: DelegationItem }>("/api/delegations", {
     method: "POST",
     body: JSON.stringify(data),
   });
 
-const cancelDelegation = async (id: string): Promise<unknown> =>
-  customFetch<unknown>(`/api/delegations/${id}/cancel`, { method: "PATCH" });
+const cancelDelegation = async (id: string): Promise<{ delegation: DelegationItem }> =>
+  customFetch<{ delegation: DelegationItem }>(`/api/delegations/${id}/cancel`, { method: "PATCH" });
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 
@@ -58,19 +104,29 @@ export function useListDelegations(
   });
 }
 
-export function useCreateDelegation(
-  options?: UseMutationOptions<unknown, Error, CreateDelegationInput>
+export function useGetMyActiveDelegations(
+  options?: { query?: UseQueryOptions<{ delegations: ActiveDelegationItem[] }, Error> }
 ) {
-  return useMutation<unknown, Error, CreateDelegationInput>({
+  return useQuery<{ delegations: ActiveDelegationItem[] }, Error>({
+    queryKey: getMyActiveDelegationsQueryKey(),
+    queryFn: getMyActiveDelegations,
+    ...options?.query,
+  });
+}
+
+export function useCreateDelegation(
+  options?: UseMutationOptions<{ delegation: DelegationItem }, Error, CreateDelegationInput>
+) {
+  return useMutation<{ delegation: DelegationItem }, Error, CreateDelegationInput>({
     mutationFn: createDelegation,
     ...options,
   });
 }
 
 export function useCancelDelegation(
-  options?: UseMutationOptions<unknown, Error, string>
+  options?: UseMutationOptions<{ delegation: DelegationItem }, Error, string>
 ) {
-  return useMutation<unknown, Error, string>({
+  return useMutation<{ delegation: DelegationItem }, Error, string>({
     mutationFn: cancelDelegation,
     ...options,
   });

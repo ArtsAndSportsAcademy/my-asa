@@ -12,7 +12,7 @@ import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
 import { writeHistoryEvent } from "../lib/history-helper.js";
-import { isActiveDelegate } from "../lib/delegation-check.js";
+import { hasActiveResponsibility } from "../lib/delegation-check.js";
 
 const router: IRouter = Router();
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
@@ -96,7 +96,7 @@ router.get("/requests/pending", requireAuth, requireOrganization, async (req, re
   const { operationId } = req.query as Record<string, string>;
 
   if (!MANAGER_ROLES.includes(user.role)) {
-    if (!operationId || !(await isActiveDelegate(user.sub, operationId))) {
+    if (!operationId || !(await hasActiveResponsibility(user.sub, operationId, "REQUESTS"))) {
       res.status(403).json({ error: "Forbidden", message: "Acesso restrito a gestores" });
       return;
     }
@@ -366,7 +366,7 @@ router.post("/requests/:id/decision", requireAuth, requireOrganization, async (r
     }
 
     if (!MANAGER_ROLES.includes(user.role)) {
-      if (!(await isActiveDelegate(user.sub, existing.operationId))) {
+      if (!(await hasActiveResponsibility(user.sub, existing.operationId, "REQUESTS"))) {
         res.status(403).json({ error: "Forbidden", message: "Apenas gestores podem decidir solicitações" });
         return;
       }

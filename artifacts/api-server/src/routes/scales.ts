@@ -15,8 +15,10 @@ import { requestLogger } from "../lib/logger.js";
 import { eventBus } from "../lib/event-bus.js";
 import { runCoverageEngine, persistEngineResult } from "../services/coverage-engine.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
+import { hasActiveResponsibility } from "../lib/delegation-check.js";
 
 const router: IRouter = Router();
+const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
@@ -304,11 +306,19 @@ router.post("/scales/:id/regenerate", requireAuth, requireOrganization, async (r
 router.patch("/scales/:id", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger("scale", req.requestId, req.correlationId);
   const id = req.params["id"] as string;
+  const user = req.user!;
   const { title } = req.body;
 
   try {
     const scale = await getScaleOrFail(id, res);
     if (!scale) return;
+
+    if (!MANAGER_ROLES.includes(user.role)) {
+      if (!(await hasActiveResponsibility(user.sub, scale.operationId, "SCALES"))) {
+        res.status(403).json({ error: "Forbidden", message: "Apenas supervisores ou delegados com responsabilidade de Escalas" });
+        return;
+      }
+    }
 
     const [updated] = await db
       .update(scalesTable)
@@ -328,11 +338,20 @@ router.patch("/scales/:id", requireAuth, requireOrganization, async (req, res) =
 router.post("/scales/:id/publish", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger("scale", req.requestId, req.correlationId);
   const id = req.params["id"] as string;
-  const userId = req.user!.sub;
+  const user = req.user!;
+  const userId = user.sub;
 
   try {
     const scale = await getScaleOrFail(id, res);
     if (!scale) return;
+
+    if (!MANAGER_ROLES.includes(user.role)) {
+      if (!(await hasActiveResponsibility(userId, scale.operationId, "SCALES"))) {
+        res.status(403).json({ error: "Forbidden", message: "Apenas supervisores ou delegados com responsabilidade de Escalas" });
+        return;
+      }
+    }
+
     if (!["DRAFT"].includes(scale.status)) {
       res.status(409).json({ error: "Apenas escalas em Rascunho podem ser publicadas" });
       return;
@@ -364,11 +383,20 @@ router.post("/scales/:id/publish", requireAuth, requireOrganization, async (req,
 router.post("/scales/:id/republish", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger("scale", req.requestId, req.correlationId);
   const id = req.params["id"] as string;
-  const userId = req.user!.sub;
+  const user = req.user!;
+  const userId = user.sub;
 
   try {
     const scale = await getScaleOrFail(id, res);
     if (!scale) return;
+
+    if (!MANAGER_ROLES.includes(user.role)) {
+      if (!(await hasActiveResponsibility(userId, scale.operationId, "SCALES"))) {
+        res.status(403).json({ error: "Forbidden", message: "Apenas supervisores ou delegados com responsabilidade de Escalas" });
+        return;
+      }
+    }
+
     if (!["PUBLISHED", "REPUBLISHED"].includes(scale.status)) {
       res.status(409).json({ error: "Apenas escalas publicadas podem ser republicadas" });
       return;
