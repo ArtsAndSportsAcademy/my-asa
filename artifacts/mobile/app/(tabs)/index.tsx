@@ -46,6 +46,16 @@ const ROLE_LABELS: Record<string, string> = {
   MEMBER: "Membro",
 };
 
+const SPECIALIZATION_LABELS: Record<string, string> = {
+  PERFORMER:          "Performer",
+  PROFESSOR:          "Professor",
+  TRAINER:            "Treinador",
+  PHYSIOTHERAPIST:    "Fisioterapeuta",
+  STRENGTH_COACH:     "Preparador Físico",
+  TECHNICAL_OPERATOR: "Técnico Operacional",
+  OTHER:              "Outro",
+};
+
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: "Ativa",
   DRAFT: "Rascunho",
@@ -356,6 +366,17 @@ export default function HomeScreen() {
                   </View>
                 )}
               </View>
+            </View>
+          </>
+        )}
+        {context?.user?.specialization && (
+          <>
+            <View style={styles.divider} />
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Especialização</Text>
+              <Text style={styles.infoValue} testID="text-specialization">
+                {SPECIALIZATION_LABELS[context.user.specialization] ?? context.user.specialization}
+              </Text>
             </View>
           </>
         )}

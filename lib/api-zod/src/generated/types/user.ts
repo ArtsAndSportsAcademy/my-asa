@@ -5,6 +5,7 @@
  * MyASA 2.0 API
  * OpenAPI spec version: 0.3.0
  */
+import type { UserSpecialization } from './userSpecialization';
 import type { UserStatus } from './userStatus';
 
 export interface User {
@@ -13,6 +14,7 @@ export interface User {
   email: string;
   photoUrl?: string | null;
   status: UserStatus;
+  specialization?: UserSpecialization;
   organizationId: string;
   createdAt?: string;
   updatedAt?: string;

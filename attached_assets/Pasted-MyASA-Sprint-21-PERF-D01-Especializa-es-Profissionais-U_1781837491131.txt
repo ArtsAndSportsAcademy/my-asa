@@ -1,0 +1,234 @@
+MyASA — Sprint 21 — PERF-D01 Especializações Profissionais
+
+Utilizar obrigatoriamente:
+
+* Sprint 0 → Sprint 20.1 concluídas
+* AUD-D03 concluída
+* GOV-D11 e GOV-D11.1 concluídos
+* Estrutura atual de Usuários
+* Estrutura atual de Insights
+* Estrutura atual de Biblioteca, Tarefas e Mensagens
+
+Importante:
+
+Não criar novos papéis.
+
+Não alterar permissões.
+
+Não criar regras de acesso novas.
+
+Manter a definição oficial:
+
+Papel = o que a pessoa pode fazer
+
+Especialização = quem a pessoa é
+
+Objetivo:
+
+Adicionar contexto profissional aos usuários sem alterar a governança existente.
+
+Pergunta respondida:
+
+“Quem é esta pessoa dentro da organização?”
+
+═══════════════════════
+T001 — Modelo de Dados
+═══════════════════════
+
+Adicionar ao usuário:
+
+specialization
+
+Valores iniciais sugeridos:
+
+* PERFORMER
+* PROFESSOR
+* TRAINER
+* PHYSIOTHERAPIST
+* STRENGTH_COACH
+* TECHNICAL_OPERATOR
+* OTHER
+
+Permitir valor nulo.
+
+Usuários atuais permanecem válidos.
+
+Nenhuma migração deve quebrar dados existentes.
+
+═══════════════════════
+T002 — API
+═══════════════════════
+
+Atualizar:
+
+GET /users
+
+GET /users/:id
+
+POST /users
+
+PATCH /users/:id
+
+Incluir specialization nos contratos.
+
+Atualizar OpenAPI.
+
+Atualizar codegen.
+
+═══════════════════════
+T003 — Web Admin
+═══════════════════════
+
+Tela de Usuários:
+
+Adicionar coluna:
+
+Especialização
+
+Filtros:
+
+* Papel
+* Especialização
+* Operação
+
+Formulário de criação/edição:
+
+Permitir selecionar especialização.
+
+═══════════════════════
+T004 — Mobile
+═══════════════════════
+
+Perfil do usuário:
+
+Exibir:
+
+Nome
+
+Papel
+
+Especialização
+
+Exemplo:
+
+Carol
+Membro
+Treinadora
+
+ou
+
+Arthur
+Membro
+Performer
+
+═══════════════════════
+T005 — Insights
+═══════════════════════
+
+Preparar consultas futuras.
+
+Permitir segmentação por:
+
+* Especialização
+* Operação
+* Papel
+
+Não criar novos gráficos.
+
+Somente garantir que os dados possam ser filtrados futuramente.
+
+═══════════════════════
+T006 — Biblioteca
+═══════════════════════
+
+Preparar associação futura:
+
+Documento
+↓
+Responsável
+
+Exemplo:
+
+Protocolo de Alongamento
+Responsável:
+Treinador
+
+Ficha de Recuperação
+Responsável:
+Fisioterapeuta
+
+Sem alterar permissões.
+
+═══════════════════════
+T007 — Tarefas
+═══════════════════════
+
+Preparar filtros futuros.
+
+Exemplos:
+
+Mostrar tarefas atribuídas a:
+
+* Treinadores
+* Fisioterapeutas
+* Performers
+
+Sem alterar fluxo operacional.
+
+═══════════════════════
+T008 — Compatibilidade com IA
+═══════════════════════
+
+Garantir que o campo specialization esteja disponível em:
+
+* usuários
+* tarefas
+* solicitações
+* biblioteca
+* insights
+
+Objetivo:
+
+Permitir que a IA compreenda contexto profissional sem depender de inferências.
+
+Exemplo:
+
+MEMBER + TRAINER
+
+MEMBER + PHYSIOTHERAPIST
+
+MEMBER + PERFORMER
+
+═══════════════════════
+T009 — Auditoria
+═══════════════════════
+
+Responder:
+
+1. A especialização altera permissões?
+2. A especialização altera papéis?
+3. Usuários antigos continuam funcionando?
+4. Os filtros funcionam?
+5. Os dados estão disponíveis para futuras integrações?
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Objetivo final:
+
+Adicionar contexto profissional à plataforma sem aumentar a complexidade de permissões.
+
+Resultado esperado:
+
+O MyASA passa a saber não apenas o que a pessoa pode fazer, mas também quem ela é dentro da organização.
+
+ADMIN = acesso
+
+SUPERVISOR = acesso
+
+MEMBER = acesso
+
+PERFORMER / TRAINER / PROFESSOR / PHYSIOTHERAPIST = contexto profissional
+
+Esses conceitos devem permanecer independentes.

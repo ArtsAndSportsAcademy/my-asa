@@ -5,10 +5,12 @@
  * MyASA 2.0 API
  * OpenAPI spec version: 0.3.0
  */
+import type { UserCreateSpecialization } from './userCreateSpecialization';
 
 export interface UserCreate {
   name: string;
   email: string;
   /** @minLength 6 */
   password: string;
+  specialization?: UserCreateSpecialization;
 }

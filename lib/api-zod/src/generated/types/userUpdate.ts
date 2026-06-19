@@ -5,8 +5,10 @@
  * MyASA 2.0 API
  * OpenAPI spec version: 0.3.0
  */
+import type { UserUpdateSpecialization } from './userUpdateSpecialization';
 
 export interface UserUpdate {
   name?: string;
   email?: string;
+  specialization?: UserUpdateSpecialization;
 }

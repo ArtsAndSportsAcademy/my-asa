@@ -89,10 +89,16 @@ router.get("/users/:id", requireAuth, requireOrganization, async (req, res) => {
 
 router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
   const log = requestLogger("teams", req.requestId, req.correlationId);
-  const { name, email, password } = req.body;
+  const { name, email, password, specialization } = req.body;
 
   if (!name?.trim() || !email?.trim() || !password) {
     res.status(400).json({ error: "BAD_REQUEST", message: "name, email e password são obrigatórios" });
+    return;
+  }
+
+  const VALID_SPECIALIZATIONS = ["PERFORMER", "PROFESSOR", "TRAINER", "PHYSIOTHERAPIST", "STRENGTH_COACH", "TECHNICAL_OPERATOR", "OTHER"];
+  if (specialization && !VALID_SPECIALIZATIONS.includes(specialization)) {
+    res.status(400).json({ error: "BAD_REQUEST", message: `specialization inválida. Valores aceitos: ${VALID_SPECIALIZATIONS.join(", ")}` });
     return;
   }
 
@@ -115,6 +121,7 @@ router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), as
         email: normalizedEmail,
         passwordHash,
         status: "ACTIVE",
+        specialization: specialization ?? null,
       })
       .returning();
 
@@ -136,7 +143,13 @@ router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), as
 router.patch("/users/:id", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
   const log = requestLogger("teams", req.requestId, req.correlationId);
   const id = req.params.id as string;
-  const { name, email } = req.body;
+  const { name, email, specialization } = req.body;
+
+  const VALID_SPECIALIZATIONS = ["PERFORMER", "PROFESSOR", "TRAINER", "PHYSIOTHERAPIST", "STRENGTH_COACH", "TECHNICAL_OPERATOR", "OTHER"];
+  if (specialization !== undefined && specialization !== null && !VALID_SPECIALIZATIONS.includes(specialization)) {
+    res.status(400).json({ error: "BAD_REQUEST", message: `specialization inválida. Valores aceitos: ${VALID_SPECIALIZATIONS.join(", ")}` });
+    return;
+  }
 
   try {
     const user = await db.query.usersTable.findFirst({
@@ -158,10 +171,13 @@ router.patch("/users/:id", requireAuth, requireOrganization, requireRole("ADMIN"
       }
       updates.email = normalizedEmail;
     }
+    if (specialization !== undefined) {
+      updates.specialization = specialization ?? null;
+    }
 
     const [updated] = await db
       .update(usersTable)
-      .set(updates as { name?: string; email?: string; updatedAt?: Date })
+      .set(updates as { name?: string; email?: string; specialization?: string | null; updatedAt?: Date })
       .where(eq(usersTable.id, id))
       .returning();
 

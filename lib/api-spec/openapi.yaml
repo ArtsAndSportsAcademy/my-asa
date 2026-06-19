@@ -4490,6 +4490,10 @@ components:
         status:
           type: string
           enum: [ACTIVE, INACTIVE]
+        specialization:
+          type: string
+          nullable: true
+          enum: [PERFORMER, PROFESSOR, TRAINER, PHYSIOTHERAPIST, STRENGTH_COACH, TECHNICAL_OPERATOR, OTHER]
         organizationId:
           type: string
         createdAt:
@@ -4673,6 +4677,10 @@ components:
         password:
           type: string
           minLength: 6
+        specialization:
+          type: string
+          nullable: true
+          enum: [PERFORMER, PROFESSOR, TRAINER, PHYSIOTHERAPIST, STRENGTH_COACH, TECHNICAL_OPERATOR, OTHER]
       required: [name, email, password]
 
     UserUpdate:
@@ -4683,6 +4691,10 @@ components:
         email:
           type: string
           format: email
+        specialization:
+          type: string
+          nullable: true
+          enum: [PERFORMER, PROFESSOR, TRAINER, PHYSIOTHERAPIST, STRENGTH_COACH, TECHNICAL_OPERATOR, OTHER]
 
     UserStatusUpdate:
       type: object

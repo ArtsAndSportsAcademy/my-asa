@@ -22,12 +22,26 @@ export const UserStatus = {
   INACTIVE: 'INACTIVE',
 } as const;
 
+export type UserSpecialization = typeof UserSpecialization[keyof typeof UserSpecialization] | null;
+
+
+export const UserSpecialization = {
+  PERFORMER: 'PERFORMER',
+  PROFESSOR: 'PROFESSOR',
+  TRAINER: 'TRAINER',
+  PHYSIOTHERAPIST: 'PHYSIOTHERAPIST',
+  STRENGTH_COACH: 'STRENGTH_COACH',
+  TECHNICAL_OPERATOR: 'TECHNICAL_OPERATOR',
+  OTHER: 'OTHER',
+} as const;
+
 export interface User {
   id: string;
   name: string;
   email: string;
   photoUrl?: string | null;
   status: UserStatus;
+  specialization?: UserSpecialization;
   organizationId: string;
   createdAt?: string;
   updatedAt?: string;
@@ -138,16 +152,44 @@ export interface UserContext {
   groups: OperationalGroup[];
 }
 
+export type UserCreateSpecialization = typeof UserCreateSpecialization[keyof typeof UserCreateSpecialization] | null;
+
+
+export const UserCreateSpecialization = {
+  PERFORMER: 'PERFORMER',
+  PROFESSOR: 'PROFESSOR',
+  TRAINER: 'TRAINER',
+  PHYSIOTHERAPIST: 'PHYSIOTHERAPIST',
+  STRENGTH_COACH: 'STRENGTH_COACH',
+  TECHNICAL_OPERATOR: 'TECHNICAL_OPERATOR',
+  OTHER: 'OTHER',
+} as const;
+
 export interface UserCreate {
   name: string;
   email: string;
   /** @minLength 6 */
   password: string;
+  specialization?: UserCreateSpecialization;
 }
+
+export type UserUpdateSpecialization = typeof UserUpdateSpecialization[keyof typeof UserUpdateSpecialization] | null;
+
+
+export const UserUpdateSpecialization = {
+  PERFORMER: 'PERFORMER',
+  PROFESSOR: 'PROFESSOR',
+  TRAINER: 'TRAINER',
+  PHYSIOTHERAPIST: 'PHYSIOTHERAPIST',
+  STRENGTH_COACH: 'STRENGTH_COACH',
+  TECHNICAL_OPERATOR: 'TECHNICAL_OPERATOR',
+  OTHER: 'OTHER',
+} as const;
 
 export interface UserUpdate {
   name?: string;
   email?: string;
+  specialization?: UserUpdateSpecialization;
 }
 
 export type UserStatusUpdateStatus = typeof UserStatusUpdateStatus[keyof typeof UserStatusUpdateStatus];
