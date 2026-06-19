@@ -14,7 +14,9 @@ export type HistoryCategory =
   | "OPERATIONAL_CHANGE"
   | "CHECK_IN"
   | "DELEGATION"
-  | "TASK";
+  | "TASK"
+  | "RESTRICTION"
+  | "SUPERVISOR_REQUEST";
 
 export interface WriteHistoryEventInput {
   category: HistoryCategory;

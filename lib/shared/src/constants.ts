@@ -34,6 +34,8 @@ export const LOG_DOMAIN = {
   CHECK_IN: "check_in",
   DELEGATIONS: "delegations",
   TASKS: "tasks",
+  RESTRICTIONS: "restrictions",
+  SUPERVISOR_REQUESTS: "supervisor_requests",
 } as const;
 
 export const REQUEST_ID_HEADER = "x-request-id";

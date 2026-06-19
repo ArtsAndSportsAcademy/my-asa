@@ -17,3 +17,4 @@ export * from "./library.js";
 export * from "./checkin.js";
 export * from "./delegations.js";
 export * from "./tasks.js";
+export * from "./supervisor-requests.js";

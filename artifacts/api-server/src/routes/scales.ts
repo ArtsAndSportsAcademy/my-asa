@@ -83,12 +83,20 @@ router.get("/scales", requireAuth, requireOrganization, async (req, res) => {
 // POST /api/scales/generate — generate scale from agenda event + show book
 router.post("/scales/generate", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger("scale", req.requestId, req.correlationId);
-  const userId = req.user!.sub;
+  const user = req.user!;
+  const userId = user.sub;
   const { agendaEventId, showBookId, operationId, groupId, title } = req.body;
 
   if (!agendaEventId || !showBookId || !operationId) {
     res.status(400).json({ error: "agendaEventId, showBookId e operationId são obrigatórios" });
     return;
+  }
+
+  if (!MANAGER_ROLES.includes(user.role)) {
+    if (!(await hasActiveResponsibility(userId, operationId, "SCALES"))) {
+      res.status(403).json({ error: "Forbidden", message: "Apenas supervisores ou delegados com responsabilidade de Escalas podem gerar escalas" });
+      return;
+    }
   }
 
   try {
@@ -247,11 +255,20 @@ router.get("/scales/:id", requireAuth, requireOrganization, async (req, res) => 
 router.post("/scales/:id/regenerate", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger("scale", req.requestId, req.correlationId);
   const id = req.params["id"] as string;
-  const userId = req.user!.sub;
+  const user = req.user!;
+  const userId = user.sub;
 
   try {
     const scale = await getScaleOrFail(id, res);
     if (!scale) return;
+
+    if (!MANAGER_ROLES.includes(user.role)) {
+      if (!(await hasActiveResponsibility(userId, scale.operationId, "SCALES"))) {
+        res.status(403).json({ error: "Forbidden", message: "Apenas supervisores ou delegados com responsabilidade de Escalas podem regenerar escalas" });
+        return;
+      }
+    }
+
     if (!["DRAFT"].includes(scale.status)) {
       res.status(409).json({ error: "Apenas escalas em Rascunho podem ser regeradas" });
       return;

@@ -7,6 +7,7 @@ import {
   requestDecisionsTable,
   usersTable,
   operationsTable,
+  restrictionsTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
@@ -401,6 +402,31 @@ router.post("/requests/:id/decision", requireAuth, requireOrganization, async (r
       .update(requestsTable)
       .set({ status: newStatus as any, updatedAt: new Date() })
       .where(eq(requestsTable.id, id));
+
+    // T002: criar restrição automática quando aprovado e o tipo implica restrição
+    if (decision === "APPROVED") {
+      const restrictionTypeMap: Record<string, string> = {
+        LEAVE: "SCHEDULE",
+        PHYSICAL_RESTRICTION: "PHYSICAL",
+        HEALTH_RESTRICTION: "HEALTH",
+        ROLE_RESTRICTION: "ROLE",
+      };
+      const restrictionType = restrictionTypeMap[existing.type];
+      if (restrictionType && existing.targetDates.length > 0) {
+        const sortedDates = [...existing.targetDates].sort();
+        const periodStart = sortedDates[0]!;
+        const periodEnd = sortedDates[sortedDates.length - 1]!;
+        await db.insert(restrictionsTable).values({
+          userId: existing.requesterId,
+          type: restrictionType as any,
+          periodStart,
+          periodEnd,
+          status: "ACTIVE",
+          notes: `Criada automaticamente via solicitação aprovada. Motivo: ${reason ?? existing.reason ?? "—"}. Ref: ${id}`,
+          createdBy: user.sub,
+        }).onConflictDoNothing();
+      }
+    }
 
     const actorName = await getActorName(user.sub);
     const actionMap: Record<string, string> = {

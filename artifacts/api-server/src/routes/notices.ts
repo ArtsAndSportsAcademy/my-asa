@@ -329,10 +329,12 @@ router.patch("/notices/:noticeId", requireAuth, async (req, res): Promise<void> 
 router.post("/notices/:noticeId/publish", requireAuth, async (req, res): Promise<void> => {
   const log = requestLogger(LOG_DOMAIN.AVISOS, req.requestId, req.correlationId);
   const noticeId = String(req.params.noticeId);
+  const userId = req.user!.sub;
+  const userRole = (req.user as any).role as string;
 
   try {
     const [existing] = await db
-      .select({ status: noticesTable.status })
+      .select({ status: noticesTable.status, operationId: noticesTable.operationId })
       .from(noticesTable)
       .where(eq(noticesTable.id, noticeId));
 
@@ -340,6 +342,14 @@ router.post("/notices/:noticeId/publish", requireAuth, async (req, res): Promise
     if (existing.status !== "DRAFT") {
       res.status(400).json({ error: "Apenas rascunhos podem ser publicados" });
       return;
+    }
+
+    if (!MANAGER_ROLES_NOTICES.includes(userRole)) {
+      const isDelegate = await hasActiveResponsibility(userId, existing.operationId, "NOTICES");
+      if (!isDelegate) {
+        res.status(403).json({ error: "Forbidden", message: "Apenas supervisores ou delegados com responsabilidade de Avisos podem publicar" });
+        return;
+      }
     }
 
     const now = new Date();

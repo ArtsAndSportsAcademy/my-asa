@@ -1,0 +1,311 @@
+SPRINT 22 — PRE-PILOT01: FECHAMENTO DE LACUNAS CRÍTICAS
+
+Objetivo:
+
+Resolver todos os itens classificados como BLOQUEIA PILOTO identificados nas auditorias AUD-P02.
+
+IMPORTANTE:
+
+- Não iniciar Mensagens 2.0
+- Não iniciar Google Calendar
+- Não iniciar IA Operacional Avançada
+- Não criar novos módulos independentes
+
+Foco:
+
+Transformar funcionalidades parcialmente implementadas em fluxos operacionais completos e seguros.
+
+====================================================
+
+T001 — RESTRIÇÕES OPERACIONAIS
+
+Problema:
+restrictionsTable existe.
+Motor de escala consulta restrições.
+Mas não existe superfície operacional para utilizá-las.
+
+Implementar:
+
+API:
+GET /restrictions
+POST /restrictions
+PATCH /restrictions/:id
+DELETE /restrictions/:id
+
+Tipos:
+HEALTH
+PHYSICAL
+ROLE
+AVAILABILITY
+
+Web Supervisor:
+Nova tela:
+ /supervisor/restrictions
+
+Funcionalidades:
+- listar
+- criar
+- editar
+- encerrar
+
+Mobile:
+Meu Dia → Minhas Restrições (somente leitura)
+
+Histórico obrigatório:
+restriction.created
+restriction.updated
+restriction.closed
+
+====================================================
+
+T002 — SOLICITAÇÃO → RESTRIÇÃO AUTOMÁTICA
+
+Problema:
+Solicitação aprovada não afeta elegibilidade da escala.
+
+Implementar:
+
+Quando uma solicitação for aprovada:
+
+LEAVE
+PHYSICAL_RESTRICTION
+HEALTH_RESTRICTION
+
+criar automaticamente uma Restrição ativa.
+
+Quando a solicitação for:
+- cancelada
+- expirada
+- revertida
+
+encerrar a Restrição correspondente.
+
+Resultado esperado:
+Escalas passam a respeitar automaticamente:
+- folgas
+- limitações físicas
+- limitações de saúde
+
+====================================================
+
+T003 — GESTÃO COMPLETA DE CHECK-INS
+
+Problema:
+Supervisor não consegue operar check-ins.
+
+Implementar:
+
+Tela:
+/supervisor/check-ins
+
+Funcionalidades:
+- listar check-ins do dia
+- filtrar por operação
+- filtrar por status
+
+Ações:
+CHECKED_IN
+LATE
+ABSENT
+EXCUSED
+
+Permitir:
+- corrigir status
+- justificar ausência
+- marcar EXCUSED
+
+Histórico:
+checkin.corrected
+checkin.excused
+
+====================================================
+
+T004 — GOVERNANÇA DE AVISOS
+
+Problema:
+Qualquer autenticado pode publicar aviso.
+
+Corrigir:
+
+Somente:
+- ADMIN
+- SUPERVISOR
+- Capitão com NOTICES
+
+podem publicar.
+
+Validar:
+- criar
+- editar
+- publicar
+- cancelar
+
+Histórico:
+notice.published
+notice.unpublished
+
+====================================================
+
+T005 — GOVERNANÇA DE ESCALAS
+
+Problema:
+Qualquer autenticado pode gerar escala.
+
+Corrigir:
+
+Somente:
+- ADMIN
+- SUPERVISOR
+- Capitão com SCALES
+
+podem:
+- gerar
+- regenerar
+- publicar
+- republicar
+
+Auditar todas as rotas relacionadas.
+
+====================================================
+
+T006 — LIVRO DO DIA COMPLETO PARA CAPITÕES
+
+Problema:
+Capitão publica.
+Mas não gera.
+
+Corrigir:
+
+Responsabilidade:
+DAILY_BOOK
+
+deve permitir:
+- gerar
+- regenerar
+- publicar
+- republicar
+
+Mesmo comportamento do Supervisor.
+
+====================================================
+
+T007 — CONFLITOS CROSS-SCALE
+
+Problema:
+Pessoa pode ser escalada em dois lugares ao mesmo tempo.
+
+Implementar:
+
+Durante geração e override verificar:
+
+- outra escala
+- outro show
+- outro ensaio
+- mesmo período
+- mesma pessoa
+
+Gerar:
+CONFLICT_CROSS_SCALE
+
+Exibir:
+- Quem
+- Onde
+- Horário
+- Escala conflitante
+
+Primeira versão:
+Apenas alerta.
+Não bloquear.
+
+Supervisor decide.
+
+====================================================
+
+T008 — SOLICITAÇÃO SUPERVISOR → SUPERVISOR
+
+Problema:
+Victor não possui caminho formal para solicitar Carol de outro contexto.
+
+Implementar:
+
+Novo tipo:
+SUPERVISOR_RESOURCE_REQUEST
+
+Fluxo:
+
+Supervisor A
+↓
+Solicita membro
+↓
+Supervisor B
+↓
+Aprova ou nega
+↓
+Histórico
+
+Histórico:
+resource_request.created
+resource_request.approved
+resource_request.denied
+
+====================================================
+
+T009 — AUDITORIA DE SEGURANÇA
+
+Auditar:
+
+- Avisos
+- Escalas
+- Livro do Dia
+- Solicitações
+- Tarefas
+- Delegações
+- Check-ins
+- Restrições
+
+Responder:
+
+Existe endpoint operacional sem guarda adequada?
+
+Listar todos.
+
+Corrigir os encontrados.
+
+====================================================
+
+T010 — AUDITORIA FINAL PRÉ-MENSAGENS
+
+Responder:
+
+Restrições:
+- Supervisor consegue registrar?
+- Escala respeita?
+
+Check-ins:
+- Supervisor consegue operar?
+- EXCUSED funciona?
+
+Governança:
+- MEMBER publica aviso?
+- MEMBER gera escala?
+
+Capitães:
+- Conseguem executar tudo delegado?
+
+Conflitos:
+- Cross-scale detectado?
+
+Solicitações:
+- Supervisor → Supervisor funciona?
+
+Veredito:
+
+🔴 Ainda bloqueia piloto
+
+🟡 Ajustar antes do piloto
+
+🟢 Pronto para seguir
+
+Objetivo final:
+
+Encerrar todas as lacunas críticas identificadas nas duas auditorias e deixar o MyASA pronto para avançar para Mensagens 2.0, Google Calendar e Piloto Operacional.

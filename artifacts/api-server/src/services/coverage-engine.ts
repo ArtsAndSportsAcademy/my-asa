@@ -7,6 +7,7 @@ import {
   userTagsTable,
   agendaEventsTable,
   scaleAllocationsTable,
+  scalesTable,
   allocationCandidatesTable,
   allocationExceptionsTable,
 } from "@workspace/db";
@@ -25,6 +26,8 @@ export interface CandidateAnalysis {
   rank: number;
   rejectionReason?: string;
   tags: string[];
+  scheduleConflict?: boolean;
+  conflictDetails?: string;
 }
 
 export interface PositionResult {
@@ -149,6 +152,32 @@ export async function runCoverageEngine(
 
   const restrictedUserIds = new Set(restrictions.map((r) => r.userId));
 
+  // T007: Fetch cross-scale conflicts — published allocations for same day in OTHER scales
+  const publishedAllocsOnDate = await db
+    .select({
+      userId: scaleAllocationsTable.userId,
+      scaleId: scalesTable.id,
+      operationId: scalesTable.operationId,
+    })
+    .from(scaleAllocationsTable)
+    .innerJoin(scalesTable, eq(scaleAllocationsTable.scaleId, scalesTable.id))
+    .innerJoin(agendaEventsTable, eq(scaleAllocationsTable.agendaEventId, agendaEventsTable.id))
+    .where(
+      and(
+        inArray(scaleAllocationsTable.userId, memberIds),
+        inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"]),
+        eq(agendaEventsTable.date, eventDate),
+      )
+    );
+
+  // Map userId → list of conflicting scaleIds/operationIds
+  const crossScaleConflictMap = new Map<string, { scaleId: string; operationId: string }[]>();
+  for (const row of publishedAllocsOnDate) {
+    if (!row.userId) continue;
+    if (!crossScaleConflictMap.has(row.userId)) crossScaleConflictMap.set(row.userId, []);
+    crossScaleConflictMap.get(row.userId)!.push({ scaleId: row.scaleId, operationId: row.operationId });
+  }
+
   // Fetch user tags
   const userTags = await db
     .select({ userId: userTagsTable.userId, tagId: userTagsTable.tagId })
@@ -185,6 +214,13 @@ export async function runCoverageEngine(
       if (!isActive) rejectionReason = "Usuário inativo";
       else if (!hasNoRestriction) rejectionReason = "Restrição ativa no período";
 
+      // ── Cross-scale conflict check ──
+      const crossConflicts = crossScaleConflictMap.get(userId);
+      const scheduleConflict = !!crossConflicts && crossConflicts.length > 0;
+      const conflictDetails = scheduleConflict
+        ? `Já escalado em ${crossConflicts!.length} escala(s) publicada(s) neste dia`
+        : undefined;
+
       // ── Layer 2: Operational Compatibility ──
       const userHasTags = userTagMap[userId] ?? [];
       const hasRequiredTags =
@@ -213,9 +249,11 @@ export async function runCoverageEngine(
         eligible,
         compatible,
         priorityScore,
-        rank: 0, // assigned after sort
+        rank: 0,
         rejectionReason,
         tags: userHasTags,
+        scheduleConflict,
+        conflictDetails,
       });
     }
 

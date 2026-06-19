@@ -177,7 +177,7 @@ router.patch("/users/:id", requireAuth, requireOrganization, requireRole("ADMIN"
 
     const [updated] = await db
       .update(usersTable)
-      .set(updates as { name?: string; email?: string; specialization?: string | null; updatedAt?: Date })
+      .set(updates as any)
       .where(eq(usersTable.id, id))
       .returning();
 

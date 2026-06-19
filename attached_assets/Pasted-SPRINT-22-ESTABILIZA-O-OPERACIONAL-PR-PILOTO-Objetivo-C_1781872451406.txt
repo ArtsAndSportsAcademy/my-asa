@@ -1,0 +1,310 @@
+SPRINT 22 — ESTABILIZAÇÃO OPERACIONAL PRÉ-PILOTO
+
+Objetivo
+
+Corrigir todas as lacunas operacionais identificadas nas auditorias antes de iniciar:
+
+* Mensagens 2.0
+* Google Calendar
+* IA Operacional Avançada
+
+Esta sprint não deve criar novos pilares.
+
+Ela existe apenas para garantir que a operação real da ASA funcione sem controles paralelos por WhatsApp, planilhas ou memória dos supervisores.
+
+⸻
+
+T001 — Restrições Operacionais
+
+Problema identificado:
+
+O sistema possui restrições no banco e o motor de escala já está preparado para utilizá-las.
+
+Porém supervisores não conseguem registrar restrições.
+
+Implementar:
+
+* Tela de Restrições para Supervisor
+* Criar restrição
+* Editar restrição
+* Encerrar restrição
+
+Tipos:
+
+* Saúde
+* Física
+* Função
+* Disponibilidade
+
+Validar:
+
+Quando uma restrição estiver ativa:
+
+* a pessoa deixa de ser elegível
+* o motor de escala respeita a restrição
+* o supervisor recebe aviso visual
+
+Registrar histórico.
+
+⸻
+
+T002 — Solicitações Integradas às Restrições
+
+Problema identificado:
+
+Folgas e restrições aprovadas não afetam automaticamente a escala.
+
+Implementar:
+
+Quando uma solicitação for aprovada:
+
+* Folga
+* Restrição Física
+* Restrição de Saúde
+
+Criar automaticamente uma Restrição ativa.
+
+Quando a solicitação for encerrada:
+
+* encerrar também a Restrição correspondente.
+
+Resultado esperado:
+
+O supervisor não precisa registrar a mesma informação duas vezes.
+
+⸻
+
+T003 — Gestão de Check-in
+
+Problema identificado:
+
+O supervisor não consegue operar check-ins.
+
+Implementar:
+
+Tela:
+
+Supervisor → Check-ins
+
+Permitir:
+
+* visualizar check-ins do dia
+* filtrar por operação
+* filtrar por status
+* corrigir check-ins
+* marcar justificativa
+* marcar EXCUSED
+
+Registrar histórico.
+
+Validar:
+
+Todo fluxo operacional de chegada de elenco pode ser executado sem intervenção técnica.
+
+⸻
+
+T004 — Governança de Avisos
+
+Problema identificado:
+
+Qualquer usuário autenticado consegue publicar avisos.
+
+Corrigir:
+
+Somente:
+
+* Admin
+* Supervisor
+* Capitão com responsabilidade NOTICES
+
+podem publicar.
+
+Validar:
+
+* criar
+* editar
+* publicar
+* cancelar
+
+Registrar histórico.
+
+⸻
+
+T005 — Governança de Escalas
+
+Problema identificado:
+
+Qualquer usuário autenticado consegue gerar escalas.
+
+Corrigir:
+
+Somente:
+
+* Admin
+* Supervisor
+* Capitão com responsabilidade SCALES
+
+podem:
+
+* gerar
+* regenerar
+* publicar
+* republicar
+
+Auditar todas as rotas relacionadas.
+
+⸻
+
+T006 — Livro do Dia Completo para Capitões
+
+Problema identificado:
+
+Capitão consegue publicar.
+
+Capitão não consegue gerar.
+
+Corrigir:
+
+Responsabilidade DAILY_BOOK deve permitir:
+
+* gerar
+* regenerar
+* publicar
+* republicar
+
+Mesmo comportamento operacional do Supervisor.
+
+⸻
+
+T007 — Conflitos Operacionais
+
+Problema identificado:
+
+Uma pessoa pode ser escalada em dois compromissos simultâneos sem aviso.
+
+Implementar:
+
+Durante geração de escala e alterações manuais:
+
+Verificar:
+
+* outra escala
+* outro show
+* outro ensaio
+* mesmo horário
+
+Criar alerta operacional.
+
+Primeira fase:
+
+Não bloquear.
+
+Apenas alertar o supervisor.
+
+Mostrar:
+
+* quem está em conflito
+* onde está o conflito
+* horário
+* operação relacionada
+
+⸻
+
+T008 — Solicitação Entre Supervisores
+
+Problema identificado:
+
+Não existe fluxo formal quando um supervisor precisa utilizar alguém de outro contexto.
+
+Exemplo:
+
+Victor precisa de Carol para um ensaio.
+
+Implementar:
+
+Supervisor A solicita.
+
+Supervisor B aprova ou recusa.
+
+Registrar histórico completo.
+
+Objetivo:
+
+Evitar decisões informais fora do sistema.
+
+⸻
+
+T009 — Auditoria de Segurança
+
+Verificar:
+
+* Avisos
+* Escalas
+* Livro do Dia
+* Solicitações
+* Tarefas
+* Delegações
+* Check-ins
+* Restrições
+
+Responder:
+
+Existe algum endpoint operacional acessível sem a permissão correta?
+
+Corrigir todos os casos encontrados.
+
+⸻
+
+T010 — Auditoria Final da Sprint
+
+Responder:
+
+Restrições
+
+* Supervisor consegue registrar?
+* Escala respeita?
+
+Check-ins
+
+* Supervisor consegue operar?
+* EXCUSED funciona?
+
+Capitães
+
+* Conseguem executar tudo que receberam?
+
+Avisos
+
+* Apenas responsáveis conseguem publicar?
+
+Escalas
+
+* Apenas responsáveis conseguem gerar?
+
+Conflitos
+
+* O sistema alerta corretamente?
+
+Solicitações entre Supervisores
+
+* Funcionam ponta a ponta?
+
+⸻
+
+Critério de Aprovação
+
+Para avançar para Mensagens 2.0:
+
+✅ Restrições funcionando
+
+✅ Check-ins funcionando
+
+✅ Governança corrigida
+
+✅ Capitães completos
+
+✅ Conflitos detectados
+
+✅ Fluxo Supervisor → Supervisor funcionando
+
+Se algum desses itens falhar, a plataforma ainda não está pronta para o piloto operacional da ASA. 

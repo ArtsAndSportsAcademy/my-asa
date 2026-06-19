@@ -225,13 +225,22 @@ async function writeDailyBookAudit(
   }
 }
 
-router.post("/daily-book/generate", requireAuth, requireOrganization, requireRole("ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"), async (req, res) => {
-  const { agendaEventId, scaleId: explicitScaleId } = req.body;
+router.post("/daily-book/generate", requireAuth, requireOrganization, async (req, res) => {
+  const { agendaEventId, scaleId: explicitScaleId, operationId: bodyOperationId } = req.body;
   if (!agendaEventId) {
     res.status(400).json({ error: "agendaEventId é obrigatório" });
     return;
   }
-  const userId = req.user!.sub;
+  const user = req.user!;
+  const userId = user.sub;
+
+  if (!MANAGER_ROLES.includes(user.role)) {
+    const opId = bodyOperationId ?? null;
+    if (!opId || !(await hasActiveResponsibility(userId, opId, "DAILY_BOOK"))) {
+      res.status(403).json({ error: "Forbidden", message: "Apenas supervisores ou delegados com responsabilidade de Livro do Dia podem gerar" });
+      return;
+    }
+  }
   try {
     const [event] = await db.select().from(agendaEventsTable).where(eq(agendaEventsTable.id, agendaEventId)).limit(1);
     if (!event) { res.status(404).json({ error: "Evento não encontrado" }); return; }
@@ -369,12 +378,26 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, requireRol
   }
 });
 
-router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, requireRole("ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"), async (req, res) => {
+router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, async (req, res) => {
   const id = req.params.id as string;
-  const userId = req.user!.sub;
+  const user = req.user!;
+  const userId = user.sub;
   try {
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
+
+    if (!MANAGER_ROLES.includes(user.role)) {
+      let allowed = false;
+      if (book.agendaEventId) {
+        const [ev] = await db.select({ operationId: agendaEventsTable.operationId }).from(agendaEventsTable).where(eq(agendaEventsTable.id, book.agendaEventId)).limit(1);
+        if (ev?.operationId && await hasActiveResponsibility(userId, ev.operationId, "DAILY_BOOK")) allowed = true;
+      }
+      if (!allowed) {
+        res.status(403).json({ error: "Forbidden", message: "Apenas supervisores ou delegados com responsabilidade de Livro do Dia podem regenerar" });
+        return;
+      }
+    }
+
     if (book.status === "PUBLISHED" || book.status === "REPUBLISHED") {
       res.status(409).json({ error: "Livro publicado não pode ser regenerado. Use republish." });
       return;
