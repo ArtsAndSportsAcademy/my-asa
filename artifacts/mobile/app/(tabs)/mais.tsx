@@ -10,22 +10,33 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 
-const SECTIONS: { title: string; items: { label: string; subtitle?: string; icon: string; route: string }[] }[] = [
+const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
+
+type SectionItem = {
+  label: string;
+  subtitle?: string;
+  icon: string;
+  route: string;
+  managerOnly?: boolean;
+};
+
+const SECTIONS: { title: string; items: SectionItem[] }[] = [
   {
     title: "Operacional",
     items: [
-      { label: "Solicitações",  icon: "inbox",        route: "/(tabs)/solicitacoes" },
-      { label: "Livro do Dia",  subtitle: "Roteiro operacional do dia",      icon: "file-text",  route: "/(tabs)/daily-book"   },
-      { label: "Entregas",      subtitle: "Materiais e conteúdos atribuídos", icon: "package",    route: "/(tabs)/entregas"     },
-      { label: "Painel",        icon: "activity",     route: "/(tabs)/panel"        },
+      { label: "Solicitações",  icon: "inbox",       route: "/(tabs)/solicitacoes" },
+      { label: "Livro do Dia",  subtitle: "Roteiro operacional do dia",       icon: "file-text", route: "/(tabs)/daily-book"   },
+      { label: "Entregas",      subtitle: "Materiais e conteúdos atribuídos", icon: "package",   route: "/(tabs)/entregas"     },
+      { label: "Painel",        subtitle: "Saúde e cobertura operacional",    icon: "activity",  route: "/(tabs)/panel",        managerOnly: true },
     ],
   },
   {
     title: "Consulta",
     items: [
-      { label: "Livro do Show", subtitle: "Estrutura oficial do espetáculo", icon: "book-open",  route: "/(tabs)/show-book"  },
+      { label: "Livro do Show", subtitle: "Estrutura oficial do espetáculo", icon: "book-open", route: "/(tabs)/show-book"  },
       { label: "Agenda",        icon: "calendar",   route: "/(tabs)/agenda"     },
       { label: "Biblioteca",    icon: "book",       route: "/(tabs)/biblioteca" },
     ],
@@ -33,8 +44,14 @@ const SECTIONS: { title: string; items: { label: string; subtitle?: string; icon
   {
     title: "Registro",
     items: [
-      { label: "Histórico",    icon: "clock",        route: "/(tabs)/historico" },
-      { label: "Indicadores",  icon: "trending-up",  route: "/(tabs)/insights"  },
+      { label: "Histórico",    icon: "clock",       route: "/(tabs)/historico" },
+      { label: "Indicadores",  subtitle: "Métricas da gestão operacional", icon: "trending-up", route: "/(tabs)/insights", managerOnly: true },
+    ],
+  },
+  {
+    title: "Perfil",
+    items: [
+      { label: "Meu Perfil", subtitle: "Papel, operação, grupos e delegações", icon: "user", route: "/(tabs)/" },
     ],
   },
 ];
@@ -43,6 +60,14 @@ export default function MaisScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { roles } = useAuth();
+
+  const isManager = roles.some((r) => MANAGER_ROLES.includes(r.role));
+
+  const visibleSections = SECTIONS.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => !item.managerOnly || isManager),
+  })).filter((section) => section.items.length > 0);
 
   return (
     <ScrollView
@@ -53,7 +78,7 @@ export default function MaisScreen() {
       }}
       showsVerticalScrollIndicator={false}
     >
-      {SECTIONS.map((section) => (
+      {visibleSections.map((section) => (
         <View key={section.title} style={styles.section}>
           <Text
             style={[
@@ -70,7 +95,7 @@ export default function MaisScreen() {
             ]}
           >
             {section.items.map((item, index) => (
-              <React.Fragment key={item.route}>
+              <React.Fragment key={item.route + item.label}>
                 <Pressable
                   style={({ pressed }) => [
                     styles.row,

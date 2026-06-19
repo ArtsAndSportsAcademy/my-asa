@@ -1,0 +1,313 @@
+MSG-D01 — Mensagens, Avisos, Notificações e IA
+
+Objetivo:
+
+Definir o comportamento oficial de comunicação do MyASA antes do piloto.
+
+Premissa:
+
+Mensagens devem funcionar de forma parecida com WhatsApp, dentro do MyASA.
+
+Avisos devem funcionar como mural oficial / mensagens fixadas / comunicados importantes.
+
+Notificações devem avisar o usuário quando algo importante acontece.
+
+IA deve conseguir entender decisões operacionais nas mensagens sem quebrar confidencialidade.
+
+IMPORTANTE:
+
+Não implementar ainda.
+Auditoria e especificação primeiro.
+
+═══════════════════════
+PARTE 1 — Diferença oficial entre Mensagens e Avisos
+═══════════════════════
+
+Definir:
+
+Mensagens:
+
+* conversa rápida
+* individual
+* grupo
+* operação
+* equipe
+* evento
+* ensaio
+* tarefa
+* troca operacional
+
+Avisos:
+
+* comunicado oficial
+* mural
+* mensagem fixada
+* informação importante
+* exige leitura ou confirmação
+* pode ser direcionado para operação, grupo ou pessoas
+
+Responder:
+
+1. Quando algo deve ser Mensagem?
+2. Quando algo deve ser Aviso?
+3. Um Aviso pode nascer de uma Mensagem?
+4. Uma Mensagem importante pode virar Aviso?
+5. O usuário entende a diferença?
+
+═══════════════════════
+PARTE 2 — Mensagens estilo WhatsApp
+═══════════════════════
+
+Auditar e definir suporte para:
+
+* conversa individual
+* grupos
+* operação inteira
+* grupos operacionais
+* grupos temporários
+* mensagens de texto
+* emojis
+* reações
+* resposta direta
+* encaminhar
+* apagar para mim
+* apagar para todos
+* editar mensagem
+* mensagem fixada
+* busca
+* áudio
+* imagem
+* vídeo
+* PDF/documento
+* figurinha
+
+Classificar:
+
+🔴 Necessário para piloto
+🟡 Recomendado
+🟢 Pós-piloto
+
+═══════════════════════
+PARTE 3 — Grupos de conversa
+═══════════════════════
+
+Definir tipos de grupos:
+
+1. Grupo operacional
+   Exemplo:
+   Patinadores, Musical, Fisioterapia
+
+2. Grupo de evento
+   Exemplo:
+   Ensaio Musical 20/07
+
+3. Grupo de tarefa
+   Exemplo:
+   Atualizar Biblioteca Astrid
+
+4. Grupo temporário
+   Exemplo:
+   Pocket Páscoa
+
+5. Grupo de supervisão
+   Exemplo:
+   Supervisores Snowland
+
+Responder:
+
+* Quem pode criar grupo?
+* Quem pode adicionar/remover pessoas?
+* Grupos podem nascer automaticamente de Agenda, Escala ou Tarefa?
+* Grupo pode ser arquivado?
+* Membro pode sair?
+* Supervisor pode fixar mensagem?
+
+═══════════════════════
+PARTE 4 — Avisos como mural oficial
+═══════════════════════
+
+Definir:
+
+Avisos são comunicados oficiais.
+
+Devem ter:
+
+* título
+* conteúdo
+* público-alvo
+* prioridade
+* fixado ou não
+* exige confirmação ou não
+* data de início
+* data de fim
+* autor
+* status de leitura
+* status de confirmação
+
+Responder:
+
+1. Avisos aparecem em Meu Dia?
+2. Avisos aparecem em uma aba própria?
+3. Avisos importantes ficam fixados?
+4. Aviso pode ser criado a partir de uma mensagem?
+5. Aviso pode gerar notificação?
+6. Aviso pode ter reações simples?
+7. Aviso pode reconhecer alguém?
+
+Exemplo:
+"Parabéns para Amanda pelo excelente trabalho hoje 👏"
+
+═══════════════════════
+PARTE 5 — Notificações do aplicativo
+═══════════════════════
+
+Definir notificações para:
+
+* novo aviso
+* aviso urgente
+* mensagem nova
+* menção
+* tarefa atribuída
+* tarefa aprovada
+* tarefa com ajustes solicitados
+* solicitação aprovada/negada
+* delegação recebida
+* mudança de escala
+* evento novo na agenda
+* evento cancelado
+* livro do dia publicado
+* check-in pendente
+* atraso detectado
+
+Responder:
+
+1. Quais notificações são push?
+2. Quais são apenas badge interno?
+3. Quais aparecem em Meu Dia?
+4. Quais são críticas?
+5. O usuário pode silenciar?
+6. Supervisor pode marcar como urgente?
+
+═══════════════════════
+PARTE 6 — IA nas mensagens
+═══════════════════════
+
+Objetivo:
+
+Permitir que a IA entenda acordos operacionais sem invadir conversas privadas.
+
+Definir níveis de acesso da IA:
+
+Nível 1 — Sem leitura automática
+IA só lê quando alguém marca ou chama.
+
+Exemplo:
+"@IA resume essa conversa"
+
+Nível 2 — Leitura operacional limitada
+IA analisa apenas grupos operacionais, não conversas privadas.
+
+Nível 3 — Detecção de decisões
+IA identifica acordos como:
+
+* horário alterado
+* pessoa substituída
+* tarefa combinada
+* aviso importante
+* conflito resolvido
+
+Nível 4 — Ação sugerida, não automática
+IA sugere:
+"Quer transformar isso em Aviso?"
+"Quer criar uma Tarefa?"
+"Quer atualizar a Agenda?"
+
+Responder:
+
+1. IA pode ler conversas privadas?
+2. IA pode ler grupos operacionais?
+3. IA só age quando chamada?
+4. IA pode sugerir avisos?
+5. IA pode sugerir tarefas?
+6. IA pode resumir decisões?
+7. IA registra no histórico?
+8. Como proteger confidencialidade?
+
+Regra recomendada:
+
+IA não lê conversa privada automaticamente.
+IA pode ser chamada manualmente.
+IA pode analisar grupos operacionais com permissão explícita.
+IA sugere ações, mas não executa sem confirmação humana.
+
+═══════════════════════
+PARTE 7 — Privacidade e Confidencialidade
+═══════════════════════
+
+Definir:
+
+* Conversas privadas não são analisadas automaticamente.
+* Grupos operacionais podem ter IA habilitada.
+* Mensagens sensíveis não viram aviso automaticamente.
+* IA nunca executa ação sem confirmação.
+* Histórico registra ações, não conteúdo privado completo.
+* Admin não deve ler conversas privadas sem regra clara.
+
+Responder:
+
+1. Quem pode ver conversas privadas?
+2. Admin pode auditar mensagens?
+3. O que entra no histórico?
+4. O que não deve entrar?
+5. Como evitar sensação de vigilância?
+
+═══════════════════════
+PARTE 8 — Prioridade para piloto
+═══════════════════════
+
+Classificar:
+
+🔴 Necessário antes do piloto:
+
+* texto
+* grupos básicos
+* notificações básicas
+* avisos oficiais
+* leitura/confirmação
+
+🟡 Recomendado:
+
+* reações
+* emojis
+* respostas diretas
+* anexos por link
+* mensagem fixada
+
+🟢 Pós-piloto:
+
+* áudio
+* vídeo
+* upload pesado
+* figurinhas
+* IA automática
+* busca avançada
+* encaminhar
+* apagar para todos
+
+═══════════════════════
+PARTE 9 — Veredito
+═══════════════════════
+
+Responder:
+
+1. O sistema de mensagens atual substitui WhatsApp?
+2. O que falta para substituir WhatsApp no piloto?
+3. Avisos estão bem separados de mensagens?
+4. Notificações estão suficientes?
+5. IA pode participar sem violar confidencialidade?
+6. O que deve ser implementado agora?
+7. O que deve ficar para depois?
+
+Objetivo final:
+
+Definir uma estratégia segura para comunicação interna do MyASA, separando corretamente Mensagens, Avisos, Notificações e IA.

@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { useAuth } from "@/contexts/AuthContext";
 
 import {
   HEALTH_ICON,
@@ -24,10 +25,15 @@ import {
   EXCEPTION_TYPE_LABELS,
 } from "@/lib/operational-constants";
 
+const MANAGER_ROLES_PANEL = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
+
 export default function PanelScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = React.useState(false);
+  const { roles } = useAuth();
+
+  const isManager = roles.some(r => MANAGER_ROLES_PANEL.includes(r.role));
 
   const { data, isLoading, refetch } = useGetOperationalPanel({});
 
@@ -66,6 +72,20 @@ export default function PanelScreen() {
     coverBar: { height: 6, backgroundColor: colors.border, borderRadius: 3, overflow: "hidden", marginTop: 6 },
     coverFill: { height: 6, borderRadius: 3 },
   });
+
+  if (!isManager) {
+    return (
+      <View style={[s.container, { justifyContent: "center", alignItems: "center", paddingHorizontal: 32 }]}>
+        <Feather name="lock" size={32} color={colors.mutedForeground} />
+        <Text style={{ color: colors.foreground, fontSize: 17, fontWeight: "700", marginTop: 12, textAlign: "center" }}>
+          Painel Operacional
+        </Text>
+        <Text style={{ color: colors.mutedForeground, fontSize: 14, marginTop: 8, textAlign: "center", lineHeight: 20 }}>
+          Esta tela exibe indicadores de saúde da operação disponíveis apenas para supervisores e administradores.
+        </Text>
+      </View>
+    );
+  }
 
   if (isLoading) {
     return (

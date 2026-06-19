@@ -182,6 +182,8 @@ function CargaSection({ operationId, colors }: { operationId: string; colors: Re
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+const MANAGER_ROLES_INSIGHTS = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
+
 export default function InsightsScreen() {
   const colors  = useColors();
   const insets  = useSafeAreaInsets();
@@ -189,6 +191,23 @@ export default function InsightsScreen() {
 
   const { roles } = useAuth();
   const operationId = roles.find(r => r.operationId)?.operationId ?? "";
+  const isManager = roles.some(r => MANAGER_ROLES_INSIGHTS.includes(r.role));
+
+  if (!isManager) {
+    return (
+      <View style={[s.restrictedContainer, { backgroundColor: colors.background }]}>
+        <View style={[s.restrictedCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Feather name="lock" size={32} color={colors.mutedForeground} style={{ marginBottom: 12 }} />
+          <Text style={[s.restrictedTitle, { color: colors.foreground }]}>
+            Indicadores de Gestão
+          </Text>
+          <Text style={[s.restrictedText, { color: colors.mutedForeground }]}>
+            Esta tela exibe métricas operacionais disponíveis apenas para supervisores e administradores.
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <ScrollView
@@ -359,6 +378,30 @@ const s = StyleSheet.create({
   tableNums: {
     flexDirection: "row",
     gap: 16,
+  },
+  restrictedContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+  },
+  restrictedCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 28,
+    alignItems: "center",
+    gap: 8,
+    width: "100%",
+  },
+  restrictedTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  restrictedText: {
+    fontSize: 14,
+    textAlign: "center",
+    lineHeight: 20,
   },
   tableNum: {
     fontSize: 14,

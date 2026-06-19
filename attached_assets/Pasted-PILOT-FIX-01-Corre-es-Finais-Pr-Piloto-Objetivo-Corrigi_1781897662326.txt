@@ -1,0 +1,275 @@
+PILOT-FIX-01 — Correções Finais Pré-Piloto
+
+Objetivo:
+
+Corrigir os itens críticos encontrados no PILOT-D01 antes de seguir para Mensagens, Responsabilidades Permanentes e IA.
+
+Base obrigatória:
+
+- PILOT-D01 — Auditoria Final de Prontidão para Piloto
+- NAV-D01 concluído
+- AGENDA-FIX-01 concluído
+- CAP-D03 concluído
+- TASK-D01 concluído
+
+Importante:
+
+- Não criar novos módulos
+- Não alterar arquitetura principal
+- Não iniciar Mensagens 2.0
+- Não iniciar IA
+- Não iniciar Responsabilidades Permanentes
+- Corrigir apenas os bloqueios e atritos críticos identificados no PILOT-D01
+
+==================================================
+
+T001 — Admin NAV: Expor telas operacionais escondidas
+
+Problema:
+
+Admin possui permissão para acessar algumas telas, mas elas não aparecem no menu ADMIN_NAV.
+
+Adicionar ao ADMIN_NAV:
+
+- Check-ins
+- Restrições
+- Aprovações entre Supervisores
+
+Essas telas já existem e aceitam ADMIN.
+
+Objetivo:
+
+Admin deve encontrar tudo o que pode operar sem precisar saber a URL manualmente.
+
+Validar:
+
+- Admin vê os itens no menu
+- Admin acessa as telas
+- Supervisor continua vendo no próprio menu
+- Membro não vê esses itens
+
+==================================================
+
+T002 — Mobile Mais: filtrar itens por perfil
+
+Problema:
+
+Membro vê itens de gestão no menu Mais:
+
+- Painel
+- Indicadores
+
+Mesmo quando a API retorna vazio ou 403.
+
+Corrigir:
+
+No mobile, esconder de MEMBER comum:
+
+- Painel
+- Indicadores
+
+Manter visível para:
+
+- ADMIN
+- SUPERVISOR
+- CAPITÃO quando tiver responsabilidade operacional aplicável
+
+Objetivo:
+
+Membro não deve abrir telas de gestão vazias ou sem contexto.
+
+Validar:
+
+- MEMBER comum não vê Painel
+- MEMBER comum não vê Indicadores
+- SUPERVISOR vê Painel e Indicadores
+- CAPITÃO vê apenas se fizer sentido pela delegação ativa
+
+==================================================
+
+T003 — Mobile: acesso claro ao Perfil / Contexto
+
+Problema:
+
+A tela de perfil/contexto existe, mas não tem acesso claro pela navegação normal.
+
+Corrigir:
+
+Adicionar entrada no menu Mais:
+
+- Meu Perfil
+
+ou
+
+- Perfil e Contexto
+
+Deve abrir a tela que mostra:
+
+- nome
+- papel
+- especialização
+- operações
+- grupos
+- delegações ativas, se houver
+
+Objetivo:
+
+Usuário deve saber onde consultar quem ele é dentro do MyASA.
+
+Validar:
+
+- MEMBER acessa perfil pelo menu Mais
+- SUPERVISOR acessa perfil
+- CAPITÃO vê delegações no contexto
+- Especialização aparece corretamente
+
+==================================================
+
+T004 — Painel Operacional: corrigir erro 500
+
+Problema:
+
+Durante o PILOT-D01, GET /api/operational-panel retornou erro 500 relacionado a daily_books.scale_id ausente.
+
+Investigar e corrigir:
+
+- schema
+- queries
+- migrations
+- joins
+- fallback quando scaleId não existir
+
+Objetivo:
+
+Painel Operacional deve carregar para Admin e Supervisor sem erro.
+
+Validar:
+
+- ADMIN abre Painel Operacional
+- SUPERVISOR abre Painel Operacional
+- API retorna 200
+- Não existe erro relacionado a daily_books.scale_id
+- Dados aparecem mesmo quando não há Livro do Dia publicado
+
+==================================================
+
+T005 — Biblioteca API: proteger escrita por role
+
+Problema:
+
+PILOT-D01 identificou que a API da Biblioteca pode permitir POST/PATCH com requireAuth sem requireRole.
+
+Corrigir:
+
+Endpoints de criação/edição/publicação/exclusão da Biblioteca devem aceitar apenas:
+
+- ADMIN
+- SUPERVISOR
+
+MEMBER pode apenas visualizar documentos permitidos.
+
+Validar:
+
+- MEMBER não cria documento
+- MEMBER não edita documento
+- MEMBER não publica documento
+- SUPERVISOR cria/edita
+- ADMIN cria/edita
+
+==================================================
+
+T006 — Capitão: webOnly com link claro
+
+Problema:
+
+No mobile, responsabilidades webOnly como CHECK_INS e SCALES informam que estão disponíveis no Web Admin, mas não dão caminho claro.
+
+Corrigir:
+
+Alerts de webOnly devem informar:
+
+- abrir pelo navegador
+- URL ou botão/link para Web Admin, se disponível
+- texto claro: "Esta ação precisa ser feita no Web Admin"
+
+Validar:
+
+- CHECK_INS mostra orientação clara
+- SCALES mostra orientação clara
+- Capitão entende onde executar
+
+==================================================
+
+T007 — Mensagens de telas vazias
+
+Problema:
+
+Algumas telas retornam vazio ou 403 sem explicação clara.
+
+Adicionar mensagens amigáveis em:
+
+- Indicadores para MEMBER
+- Painel para MEMBER, se ainda acessível em algum contexto
+- Livro do Dia quando não houver livro publicado
+- Solicitações sem registros
+- Tarefas sem registros
+
+Objetivo:
+
+Tela vazia não deve parecer bug.
+
+==================================================
+
+T008 — Auditoria Final de Correções
+
+Testar perfis:
+
+ADMIN:
+- vê Check-ins
+- vê Restrições
+- vê Aprovações entre Supervisores
+- Painel Operacional carrega
+
+SUPERVISOR:
+- continua funcionando igual
+- Painel carrega
+- Biblioteca continua editável
+
+CAPITÃO:
+- vê apenas responsabilidades delegadas
+- webOnly bem explicado
+- Perfil mostra contexto
+
+MEMBER:
+- não vê Painel
+- não vê Indicadores
+- acessa Perfil
+- não consegue escrever na Biblioteca via API
+- telas vazias têm mensagens claras
+
+==================================================
+
+T009 — Veredito
+
+Responder:
+
+1. Os 4 itens críticos do PILOT-D01 foram resolvidos?
+2. Existem novos erros de TypeScript?
+3. Existe alguma tela inacessível?
+4. Existe algum menu morto?
+5. MEMBER ainda vê telas de gestão?
+6. Admin encontra todas as funções operacionais?
+7. Painel Operacional está estável?
+8. Biblioteca está segura?
+
+Classificar:
+
+🟢 Pronto para seguir
+
+🟡 Requer ajuste
+
+🔴 Ainda bloqueia piloto
+
+Objetivo final:
+
+Eliminar os bloqueios finais identificados no PILOT-D01 e deixar o MyASA pronto para avançar para Mensagens, Responsabilidades Permanentes e Auditoria da IA.

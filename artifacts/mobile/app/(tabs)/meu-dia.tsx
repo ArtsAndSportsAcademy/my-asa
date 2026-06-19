@@ -220,8 +220,9 @@ function DelegateBanner({ delegations, colors }: { delegations: ActiveDelegation
                     onPress={() => {
                       if (action.webOnly) {
                         Alert.alert(
-                          "Disponível no Web Admin",
-                          `${action.label} é gerenciado pelo MyASA Web Admin. Acesse o web admin pelo navegador do seu celular ou computador.`
+                          `${action.label} — Web Admin`,
+                          `Esta função é executada pelo MyASA Web Admin.\n\nAbra o navegador do seu celular ou computador e acesse o endereço do MyASA Web Admin para gerenciar ${action.label}.`,
+                          [{ text: "Entendido" }]
                         );
                       } else if (action.route) {
                         router.push(action.route as any);

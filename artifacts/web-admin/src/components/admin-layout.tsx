@@ -35,10 +35,13 @@ const ADMIN_NAV: NavGroup[] = [
   {
     label: "OPERAÇÃO",
     items: [
-      { href: "/admin/scales",        icon: ClipboardList, label: "Escalas"       },
-      { href: "/admin/daily-book",    icon: BookMarked,    label: "Livro do Dia"  },
-      { href: "/admin/requests",      icon: FileText,      label: "Solicitações"  },
-      { href: "/admin/tasks",         icon: CheckSquare,   label: "Tarefas"       },
+      { href: "/admin/scales",                  icon: ClipboardList,   label: "Escalas"                      },
+      { href: "/admin/daily-book",              icon: BookMarked,      label: "Livro do Dia"                 },
+      { href: "/admin/requests",                icon: FileText,        label: "Solicitações"                 },
+      { href: "/admin/tasks",                   icon: CheckSquare,     label: "Tarefas"                      },
+      { href: "/supervisor/restrictions",       icon: AlertTriangle,   label: "Restrições"                   },
+      { href: "/supervisor/check-ins",          icon: ClipboardCheck,  label: "Check-ins"                    },
+      { href: "/supervisor/supervisor-requests",icon: ArrowLeftRight,  label: "Aprovações entre Supervisores"},
     ],
   },
   {
