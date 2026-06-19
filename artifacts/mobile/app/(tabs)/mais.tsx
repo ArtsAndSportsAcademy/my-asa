@@ -33,7 +33,8 @@ const SECTIONS: { title: string; items: { label: string; icon: string; route: st
   {
     title: "Registro",
     items: [
-      { label: "Histórico",     icon: "clock",      route: "/(tabs)/historico"  },
+      { label: "Histórico",     icon: "clock",        route: "/(tabs)/historico"  },
+      { label: "Insights",      icon: "trending-up",  route: "/(tabs)/insights"   },
     ],
   },
 ];

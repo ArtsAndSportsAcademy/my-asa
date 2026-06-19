@@ -21,6 +21,7 @@ import checkInsRouter from "./check-ins";
 import requestsRouter from "./requests";
 import delegationsRouter from "./delegations";
 import tasksRouter from "./tasks";
+import insightsRouter from "./insights";
 
 const router: IRouter = Router();
 
@@ -46,5 +47,6 @@ router.use(checkInsRouter);
 router.use(requestsRouter);
 router.use(delegationsRouter);
 router.use(tasksRouter);
+router.use(insightsRouter);
 
 export default router;

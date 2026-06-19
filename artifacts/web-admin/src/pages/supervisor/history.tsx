@@ -29,7 +29,7 @@ import {
   Package,
   MessageSquare,
   Activity,
-  CheckCircle2,
+  CheckCircle,
 } from "lucide-react";
 
 // ─── Config ────────────────────────────────────────────────────────────────────
@@ -43,7 +43,7 @@ const CATEGORY_CFG: Record<string, { label: string; badge: string; dot: string; 
   DELIVERY:           { label: "Entrega",      badge: "bg-teal-100 text-teal-800",      dot: "bg-teal-500",    Icon: Package },
   MESSAGE:            { label: "Mensagem",     badge: "bg-sky-100 text-sky-800",        dot: "bg-sky-500",     Icon: MessageSquare },
   OPERATIONAL_CHANGE: { label: "MO",           badge: "bg-red-100 text-red-800",        dot: "bg-red-500",     Icon: AlertCircle },
-  TASK:               { label: "Tarefa",       badge: "bg-purple-100 text-purple-800",  dot: "bg-purple-500",  Icon: CheckCircle2 },
+  TASK:               { label: "Tarefa",       badge: "bg-purple-100 text-purple-800",  dot: "bg-purple-500",  Icon: CheckCircle },
 };
 
 const ACTION_LABELS: Record<string, string> = {

@@ -1,0 +1,226 @@
+MyASA — Sprint 19 — Insights Operacionais
+
+Utilizar obrigatoriamente:
+
+* Sprint 0 → Sprint 18.1 concluídas
+* S-02 Painel Operacional
+* S-04 Escala
+* S-06 Solicitações
+* S-08 Avisos
+* S-11 Histórico
+* S-18 Tarefas
+* FC-02 Check-in
+* GOV-D11 Delegações
+
+Importante:
+
+Não implementar IA.
+
+Não criar chat.
+
+Não gerar recomendações automáticas.
+
+Objetivo:
+
+Transformar os dados operacionais já existentes em indicadores de gestão.
+
+Pergunta respondida:
+
+“O que está acontecendo na operação?”
+
+═══════════════════════
+T001 — Painel de Insights
+═══════════════════════
+
+Criar nova área:
+
+Insights Operacionais
+
+Admin:
+
+* visão global
+
+Supervisor:
+
+* visão da própria operação
+
+═══════════════════════
+T002 — Insights de Check-in
+═══════════════════════
+
+Exibir:
+
+* taxa de presença
+* taxa de atraso
+* taxa de ausência
+* taxa de ausência justificada
+
+Períodos:
+
+* hoje
+* 7 dias
+* 30 dias
+
+Permitir comparação entre operações.
+
+═══════════════════════
+T003 — Insights de Solicitações
+═══════════════════════
+
+Exibir:
+
+* total de solicitações
+* aprovadas
+* negadas
+* alternativas propostas
+* tempo médio de resposta
+
+Classificar por tipo:
+
+* folga
+* troca
+* restrição física
+* restrição médica
+* mudança de escala
+
+═══════════════════════
+T004 — Insights de Tarefas
+═══════════════════════
+
+Exibir:
+
+* criadas
+* concluídas
+* atrasadas
+* aguardando aprovação
+
+Indicadores:
+
+* tempo médio de conclusão
+* taxa de aprovação
+* taxa de retrabalho (changes requested)
+
+═══════════════════════
+T005 — Carga Operacional
+═══════════════════════
+
+Supervisor deve visualizar:
+
+Por responsável:
+
+* tarefas abertas
+* tarefas atrasadas
+* solicitações pendentes
+* escalações futuras
+
+Objetivo:
+
+Detectar sobrecarga.
+
+═══════════════════════
+T006 — Insights de Avisos
+═══════════════════════
+
+Exibir:
+
+* taxa de confirmação
+* avisos ignorados
+* avisos escalados
+* tempo médio de confirmação
+
+═══════════════════════
+T007 — Insights de Biblioteca
+═══════════════════════
+
+Primeira etapa do FC-03.
+
+Exibir:
+
+* documentos mais acessados
+* documentos menos acessados
+* categorias mais consultadas
+
+Ainda sem IA.
+
+═══════════════════════
+T008 — Tendências Operacionais
+═══════════════════════
+
+Exibir:
+
+* evolução semanal
+* evolução mensal
+
+Indicadores:
+
+* presença
+* atrasos
+* solicitações
+* tarefas
+
+Somente histórico.
+
+Sem previsões.
+
+═══════════════════════
+T009 — Mobile
+═══════════════════════
+
+Adicionar versão simplificada.
+
+Mostrar apenas:
+
+* presença
+* tarefas
+* solicitações
+
+Voltado para supervisores.
+
+═══════════════════════
+T010 — Auditoria de Valor
+═══════════════════════
+
+Responder:
+
+1. Os indicadores ajudam o supervisor?
+2. Existe algum insight sem utilidade prática?
+3. Há duplicação de informação?
+4. O painel mostra fatos ou opiniões?
+5. Quais indicadores os supervisores consultam mais?
+
+═══════════════════════
+FORA DE ESCOPO
+═══════════════════════
+
+Não implementar:
+
+* IA
+* Recomendações automáticas
+* Machine Learning
+* Alertas preditivos
+* Sugestões automáticas
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Objetivo final:
+
+Transformar dados operacionais em visibilidade operacional.
+
+Resultado esperado:
+
+Supervisor deixa de perguntar:
+
+“O que está acontecendo?”
+
+e passa a enxergar:
+
+* presença
+* carga
+* pendências
+* desempenho operacional
+
+em um único local.
+
+A Sprint 19 prepara o terreno para a futura IA sem introduzir inteligência artificial nesta fase.

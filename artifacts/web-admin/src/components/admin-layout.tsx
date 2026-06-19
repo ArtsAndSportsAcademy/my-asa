@@ -3,7 +3,7 @@ import {
   Home, Users, Briefcase, Users2, LogOut, ChevronRight,
   BookOpen, CalendarDays, ShieldCheck, ClipboardList, BookMarked,
   LayoutDashboard, Bell, Clock, MessageSquare, Package, Library,
-  FileText, CheckSquare,
+  FileText, CheckSquare, TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -74,6 +74,7 @@ const ADMIN_NAV: NavGroup[] = [
     items: [
       { href: "/admin/history",   icon: Clock,       label: "Histórico" },
       { href: "/admin/auditoria", icon: ShieldCheck, label: "Auditoria" },
+      { href: "/admin/insights",  icon: TrendingUp,  label: "Insights"  },
     ],
   },
 ];
@@ -114,7 +115,8 @@ const SUPERVISOR_NAV: NavGroup[] = [
   {
     label: "CONTROLE",
     items: [
-      { href: "/supervisor/history", icon: Clock, label: "Histórico" },
+      { href: "/supervisor/history",   icon: Clock,       label: "Histórico" },
+      { href: "/supervisor/insights",  icon: TrendingUp,  label: "Insights"  },
     ],
   },
 ];
