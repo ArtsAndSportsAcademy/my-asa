@@ -1,0 +1,371 @@
+AGENDA-D01 — Agenda, Convocações e Visibilidade
+
+Objetivo:
+
+Auditar se a Agenda do MyASA está pronta para o piloto e se respeita corretamente a diferença entre:
+
+- visão de Admin
+- visão de Supervisor
+- visão de Capitão
+- visão de Membro
+
+Regra principal esperada:
+
+Admin e Supervisor visualizam o planejamento operacional conforme seu escopo.
+
+Membros visualizam apenas:
+- eventos em que foram convocados
+- eventos do grupo/operação liberados para eles
+- eventos públicos da operação
+
+Membros não devem visualizar:
+- reuniões internas de supervisão
+- planejamento operacional reservado
+- eventos de outros grupos sem convocação
+- eventos ainda em rascunho ou privados
+
+Importante:
+
+- Não implementar nada ainda.
+- Não alterar banco.
+- Não alterar permissões.
+- Auditoria apenas.
+- Validar código, API, mobile e web.
+
+==================================================
+
+PARTE 1 — Modelo Atual da Agenda
+
+Auditar:
+
+- agendaEventsTable
+- agendaRouter
+- hooks gerados
+- web-admin /admin/agenda
+- mobile agenda.tsx
+- relação com operationId
+- relação com groupId
+- relação com escala
+- relação com participantes
+
+Responder:
+
+1. Quais campos existem hoje em agendaEvents?
+2. Existe campo de visibilidade?
+3. Existe status do evento?
+4. Existe lista de participantes?
+5. Existe vínculo com grupo?
+6. Existe vínculo com operação?
+7. Existe vínculo com escala?
+8. Existe vínculo com Livro do Dia?
+
+Classificar:
+
+🟢 Completo
+🟡 Parcial
+🔴 Ausente
+
+==================================================
+
+PARTE 2 — Quem Pode Criar e Editar Eventos
+
+Validar por papel:
+
+ADMIN
+SUPERVISOR
+CAPITÃO
+MEMBER
+
+Para cada um responder:
+
+- Pode criar evento?
+- Pode editar evento?
+- Pode cancelar evento?
+- Pode adicionar participantes?
+- Pode remover participantes?
+- Pode alterar visibilidade?
+- Pode publicar/liberar evento?
+
+Classificar:
+
+🟢 Correto
+🟡 Parcial
+🔴 Incorreto
+
+==================================================
+
+PARTE 3 — Visibilidade por Tipo de Evento
+
+Validar se o sistema suporta os seguintes tipos de visibilidade:
+
+1. Privado
+
+Exemplo:
+Reunião Débora + Edu
+
+Somente participantes visualizam.
+
+2. Grupo
+
+Exemplo:
+Treino Patinadores
+
+Somente membros do grupo visualizam.
+
+3. Operação
+
+Exemplo:
+Reunião geral Snowland
+
+Todos da operação visualizam.
+
+4. Público / Geral
+
+Exemplo:
+Evento institucional ASA
+
+Todos os usuários autorizados visualizam.
+
+5. Gestão
+
+Exemplo:
+Planejamento de escala
+
+Somente Admin/Supervisor visualizam.
+
+Responder para cada tipo:
+
+- Existe no banco?
+- Existe na API?
+- Existe na UI web?
+- Existe na UI mobile?
+- Funciona ponta a ponta?
+
+==================================================
+
+PARTE 4 — Agenda do Membro
+
+Cenário:
+
+Carol é MEMBER e pertence a:
+
+- Patinadores
+- Musical
+- Eventos Especiais
+
+Validar:
+
+Quando Carol abre a Agenda no mobile, ela vê:
+
+- eventos em que está convocada?
+- eventos do grupo Patinadores?
+- eventos do Musical?
+- eventos públicos da operação?
+- reuniões de supervisores?
+- eventos de outros grupos?
+- eventos em rascunho?
+- eventos cancelados?
+
+Responder:
+
+O membro vê exatamente o que deveria?
+
+Ou vê demais?
+
+Ou vê de menos?
+
+==================================================
+
+PARTE 5 — Agenda do Supervisor
+
+Cenário:
+
+Victor é Supervisor do Musical.
+
+Validar:
+
+Quando Victor abre a Agenda, ele vê:
+
+- todos os eventos do Musical?
+- eventos de grupos dentro do Musical?
+- eventos privados onde ele não participa?
+- eventos de outras operações?
+- eventos cancelados?
+- eventos em rascunho?
+- filtros por operação, grupo e tipo?
+
+Responder:
+
+Supervisor tem controle suficiente?
+
+Ou vê demais?
+
+Ou vê de menos?
+
+==================================================
+
+PARTE 6 — Agenda do Admin
+
+Validar:
+
+Admin consegue:
+
+- ver todos os eventos
+- filtrar por operação
+- filtrar por grupo
+- filtrar por tipo
+- criar eventos globais
+- editar eventos de qualquer operação
+- cancelar eventos
+- auditar alterações
+
+Responder:
+
+Admin tem visão organizacional completa?
+
+==================================================
+
+PARTE 7 — Convocações
+
+Auditar se é possível convocar:
+
+- pessoas individuais
+- grupos
+- operação inteira
+- múltiplos grupos
+- membros por especialização
+- membros por personagem/função
+- capitães/delegados
+
+Cenário real:
+
+Victor cria "Ensaio Musical — Princesas"
+
+Precisa convocar:
+
+- Carol
+- Amanda
+- Sofia
+
+Responder:
+
+1. Como Victor adiciona participantes hoje?
+2. Existe seleção individual?
+3. Existe seleção por grupo?
+4. Existe seleção por operação?
+5. Existe seleção por tags/personagens?
+6. Existe seleção por especialização?
+7. Existe remoção de participante?
+8. Participantes são avisados?
+
+Classificar:
+
+🟢 Completo
+🟡 Parcial
+🔴 Ausente
+
+==================================================
+
+PARTE 8 — Relação Agenda ↔ Escala
+
+Responder:
+
+1. Um evento pode existir sem escala?
+2. Uma escala pode existir sem evento?
+3. Gerar escala exige evento?
+4. Publicar escala atualiza o evento?
+5. Cancelar evento afeta escala?
+6. Alterar horário do evento afeta escala?
+7. Conflito de agenda aparece na escala?
+8. Conflito de escala aparece na agenda?
+
+Objetivo:
+
+Confirmar se a Agenda é realmente o início do fluxo operacional.
+
+==================================================
+
+PARTE 9 — Relação Agenda ↔ Livro do Dia
+
+Responder:
+
+1. O Livro do Dia nasce da Agenda?
+2. O Livro do Dia depende da escala publicada?
+3. Eventos da Agenda aparecem no Livro do Dia?
+4. Cancelar evento afeta Livro do Dia?
+5. Alterar evento afeta Livro do Dia?
+6. Livro do Dia pode existir sem evento?
+
+==================================================
+
+PARTE 10 — Cancelamentos e Alterações
+
+Validar:
+
+Quando um evento é cancelado:
+
+- participantes são avisados?
+- histórico registra?
+- escala vinculada é impactada?
+- livro do dia é impactado?
+- mobile reflete cancelamento?
+- web reflete cancelamento?
+
+Quando um evento muda de horário:
+
+- participantes são avisados?
+- conflitos são recalculados?
+- escala é sinalizada?
+- histórico registra?
+
+==================================================
+
+PARTE 11 — Linguagem e UX
+
+Validar na UI:
+
+- O usuário entende diferença entre Agenda e Escala?
+- O usuário entende se foi convocado?
+- O usuário entende se o evento é público, privado ou de grupo?
+- O usuário entende se o evento está cancelado?
+- O supervisor entende quem verá o evento?
+
+Identificar termos confusos.
+
+==================================================
+
+PARTE 12 — Veredito Final
+
+Responder objetivamente:
+
+1. A Agenda está pronta para piloto?
+
+2. O membro vê apenas o que deveria?
+
+3. O supervisor consegue controlar visibilidade?
+
+4. O admin tem visão completa?
+
+5. Convocações funcionam de forma clara?
+
+6. A Agenda se conecta corretamente com Escala?
+
+7. A Agenda se conecta corretamente com Livro do Dia?
+
+8. Cancelamentos e alterações são seguros?
+
+9. Existe risco de o membro ver informação que não deveria?
+
+10. Existe risco de o membro não ver algo importante?
+
+Classificar lacunas:
+
+🔴 Necessário antes do piloto
+
+🟡 Recomendado antes do piloto
+
+🟢 Pode ficar para depois
+
+Objetivo final:
+
+Determinar se a Agenda do MyASA pode ser usada como fonte oficial de planejamento operacional durante o piloto, sem expor informações indevidas aos membros e sem esconder eventos importantes.
