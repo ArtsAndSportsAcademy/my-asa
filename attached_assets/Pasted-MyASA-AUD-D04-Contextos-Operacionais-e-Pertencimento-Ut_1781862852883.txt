@@ -1,0 +1,217 @@
+MyASA — AUD-D04 Contextos Operacionais e Pertencimento
+
+Utilizar obrigatoriamente:
+
+* Sprint 0 → Sprint 21 concluídas
+* GOV-D11 concluída
+* GOV-D11.1 concluída
+* PERF-D01 concluída
+
+Objetivo:
+
+Responder como as pessoas realmente pertencem à organização.
+
+Pergunta principal:
+
+Uma pessoa pertence apenas a uma operação e supervisor?
+
+Ou pertence simultaneamente a múltiplos contextos?
+
+═══════════════════════
+PARTE 1 — MAPEAMENTO REAL
+═══════════════════════
+
+Auditar exemplos reais da ASA.
+
+Exemplos:
+
+Patinadores
+
+Bailarinos
+
+Treinadores
+
+Professores
+
+Fisioterapeutas
+
+Técnicos
+
+Identificar:
+
+* Quem convoca?
+* Quem escala?
+* Quem aprova?
+* Quem supervisiona?
+
+═══════════════════════
+PARTE 2 — PERSONAGENS
+═══════════════════════
+
+Verificar se personagens constituem contexto operacional.
+
+Exemplos:
+
+Astrid
+
+Mensageiro
+
+Rainha
+
+Igno
+
+Ales
+
+Ottoz
+
+Perguntas:
+
+Um personagem gera:
+
+* ensaios?
+* tarefas?
+* convocações?
+* documentação?
+
+═══════════════════════
+PARTE 3 — ELENCOS
+═══════════════════════
+
+Verificar se existem elencos paralelos.
+
+Exemplos:
+
+Musical
+
+Patinação
+
+Aéreos
+
+Eventos Especiais
+
+Pocket Shows
+
+Hotéis
+
+Determinar:
+
+Uma pessoa pode pertencer a múltiplos elencos simultaneamente?
+
+═══════════════════════
+PARTE 4 — TREINAMENTOS
+═══════════════════════
+
+Analisar:
+
+Aulas
+
+Treinos
+
+Ensaios
+
+Preparação Física
+
+Fisioterapia
+
+Pergunta:
+
+Treinadores convocam por supervisor?
+
+Ou convocam diretamente seus grupos?
+
+═══════════════════════
+PARTE 5 — RESPONSABILIDADE
+═══════════════════════
+
+Determinar:
+
+Quando Victor precisa da Carol para um ensaio:
+
+O processo correto é:
+
+A)
+Solicitação entre supervisores
+
+ou
+
+B)
+Convocação direta por pertencimento ao grupo
+
+ou
+
+C)
+Modelo híbrido
+
+═══════════════════════
+PARTE 6 — CONFLITOS
+═══════════════════════
+
+Mapear conflitos reais.
+
+Exemplos:
+
+Pessoa escalada em dois lugares.
+
+Pessoa convocada para ensaio durante evento.
+
+Pessoa pertencente a múltiplos grupos.
+
+Como a operação resolve hoje?
+
+═══════════════════════
+PARTE 7 — ESTRUTURAS EXISTENTES
+═══════════════════════
+
+Auditar:
+
+Operations
+
+Groups
+
+Roles
+
+Specializations
+
+Delegations
+
+Schedules
+
+Agenda
+
+Verificar:
+
+Quais estruturas já resolvem o problema?
+
+Quais lacunas ainda existem?
+
+═══════════════════════
+PARTE 8 — IA FUTURA
+═══════════════════════
+
+Responder:
+
+A IA conseguirá entender corretamente:
+
+* quem participa de quê?
+* quem pode convocar quem?
+* quem responde por cada atividade?
+
+com a estrutura atual?
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Responder:
+
+1. Como as pessoas realmente pertencem à ASA?
+2. Operações são suficientes?
+3. Grupos são suficientes?
+4. Personagens precisam existir como entidade?
+5. Elencos precisam existir como entidade?
+6. Treinamentos precisam existir como entidade?
+7. Existe uma lacuna estrutural antes do piloto?
+
+Objetivo final:
+
+Descobrir se a modelagem atual representa corretamente a realidade operacional da ASA antes do início do piloto.
