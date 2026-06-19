@@ -1,0 +1,205 @@
+MyASA — AUD-P02 Auditoria de Implementação Real Pré-Piloto
+
+Utilizar obrigatoriamente:
+
+* Sprint 0 → Sprint 21 concluídas
+* AUD-D01 Solicitações
+* AUD-D02 Tarefas
+* AUD-D03 Papéis
+* AUD-D04 Contextos Operacionais
+* GOV-D11 e GOV-D11.1
+* FC-02 Check-in
+* Sprint 19 Insights
+
+Importante:
+
+Não implementar novas funcionalidades.
+
+Não criar tabelas.
+
+Não criar APIs.
+
+Não alterar permissões.
+
+Objetivo:
+
+Verificar se tudo que foi considerado “pronto” está realmente utilizável por Admin, Supervisor, Delegado e Membro.
+
+Pergunta central:
+
+“Isso existe apenas no código ou funciona de ponta a ponta para o usuário real?”
+
+═══════════════════════
+PARTE 1 — Inventário completo
+═══════════════════════
+
+Listar todas as superfícies e capacidades:
+
+* Agenda
+* Escala
+* Livro do Dia
+* Check-in
+* Solicitações
+* Tarefas
+* Delegações
+* Delegação por responsabilidade
+* Avisos
+* Mensagens
+* Entregas
+* Biblioteca
+* Livro do Show
+* Histórico
+* Insights
+* Especializações
+* Grupos / Multi-pertencimento
+
+Para cada item responder:
+
+* existe banco?
+* existe API?
+* existe OpenAPI/codegen?
+* existe Web Admin?
+* existe Web Supervisor?
+* existe Mobile?
+* existe menu/atalho?
+* existe histórico?
+* existe teste manual mínimo?
+
+═══════════════════════
+PARTE 2 — Fluxos reais ASA
+═══════════════════════
+
+Executar auditoria dos fluxos reais:
+
+Fluxo 1 — Multi-pertencimento
+
+Carol pertence a:
+
+* Patinadores
+* Musical
+* Eventos Especiais
+
+Validar se aparece corretamente em grupos, escala e agenda.
+
+Fluxo 2 — Victor convoca patinadora para ensaio musical
+
+Validar:
+
+* Victor consegue criar evento/escala?
+* Carol pode ser adicionada sem troca formal?
+* conflito é detectado se ela já estiver ocupada?
+
+Fluxo 3 — Capitão por responsabilidade
+
+Supervisor delega:
+
+* Check-ins
+* Avisos
+* Tarefas
+
+Validar:
+
+* capitão vê banner?
+* consegue executar apenas responsabilidades delegadas?
+* não consegue acessar o que não foi delegado?
+
+Fluxo 4 — Solicitação
+
+Membro cria solicitação.
+Supervisor decide.
+Membro vê resposta.
+Histórico registra.
+
+Fluxo 5 — Tarefa
+
+Supervisor cria tarefa.
+Membro executa.
+Adiciona evidência.
+Envia para aprovação.
+Supervisor aprova.
+Histórico registra.
+Meu Dia e Painel refletem.
+
+Fluxo 6 — Check-in
+
+Membro faz check-in.
+Supervisor corrige.
+Tolerância e timezone da operação são respeitados.
+Painel mostra status.
+
+Fluxo 7 — Livro do Show ↔ Biblioteca
+
+Posição/personagem possui referência oficial.
+Mobile abre documento corretamente.
+Não existe duplicação.
+
+Fluxo 8 — Insights
+
+Dados de check-in, tarefas, solicitações e avisos aparecem nos gráficos.
+Supervisor vê apenas seu escopo.
+
+═══════════════════════
+PARTE 3 — Rotas órfãs
+═══════════════════════
+
+Identificar:
+
+* rotas que existem mas não aparecem no menu
+* telas que existem mas não são acessíveis
+* endpoints sem UI
+* UI sem endpoint
+* schema sem rota
+* rota sem histórico
+
+═══════════════════════
+PARTE 4 — Papéis e escopos
+═══════════════════════
+
+Validar para cada papel:
+
+Admin
+Supervisor
+Delegado
+Membro
+
+Responder:
+
+* o que vê?
+* o que pode criar?
+* o que pode aprovar?
+* o que pode editar?
+* o que não deveria ver?
+
+Validar especialmente:
+
+* specialization não altera permissão
+* delegação altera apenas responsabilidades específicas
+* multi-pertencimento funciona por userRoles
+
+═══════════════════════
+PARTE 5 — Lacunas antes do piloto
+═══════════════════════
+
+Classificar lacunas encontradas:
+
+🔴 Bloqueia piloto
+
+🟡 Ajustar antes do piloto
+
+🟢 Pode ir para pós-piloto
+
+═══════════════════════
+PARTE 6 — Veredito
+═══════════════════════
+
+Responder:
+
+1. O MyASA está funcionalmente pronto para piloto?
+2. Existe alguma superfície “meio pronta” como Solicitações estava antes?
+3. Quais fluxos quebram no uso real?
+4. Quais itens existem no código mas não na experiência?
+5. Quais itens devem ser corrigidos antes de Mensagens 2.0 / Google Calendar?
+
+Objetivo final:
+
+Gerar uma lista objetiva de pendências reais antes de seguir com novas funcionalidades.
