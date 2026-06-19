@@ -1,0 +1,76 @@
+Iniciar MSG-S01 — Implementação das lacunas críticas de Comunicação para piloto
+
+Contexto:
+PILOT-FIX-01 foi concluído com veredito verde. Os bloqueadores de navegação, Painel Operacional, Biblioteca e telas MEMBER foram resolvidos.
+
+A especificação MSG-D01 v1.1 já existe em:
+docs/specs/MSG-D01-spec.md
+
+Objetivo:
+Implementar somente as lacunas 🔴 identificadas em MSG-D01 que bloqueiam o piloto:
+
+1. Badge de mensagens não lidas na aba/menu Mensagens
+2. Card de avisos CRITICAL/IMPORTANT em Meu Dia
+
+Escopo:
+
+* Ler MSG-D01 v1.1 antes de codar.
+* Auditar schemas existentes de communication.ts e notifications.ts.
+* Auditar rotas notices.ts e messages.ts.
+* Auditar telas mobile avisos.tsx, mensagens.tsx e Meu Dia.
+* Não alterar decisões já aprovadas na spec.
+* Não implementar push notifications ainda.
+* Não implementar IA sobre mensagens ainda.
+* Não implementar apagar/editar mensagens.
+* Não criar sistema paralelo se lastReadAt já resolve.
+
+Requisitos — Badge Mensagens:
+
+* Calcular mensagens não lidas usando lastReadAt ou estrutura equivalente já existente.
+* Mostrar badge na tab/menu Mensagens.
+* Mostrar badge por conversa/grupo na lista de mensagens, se aplicável.
+* Ao abrir conversa, marcar como lida.
+* Respeitar ADMIN, SUPERVISOR e MEMBER.
+* MEMBER só vê contador do que recebeu.
+* SUPERVISOR só vê contador do seu escopo operacional/equipe.
+* ADMIN vê conforme escopo administrativo.
+
+Requisitos — Meu Dia:
+
+* Exibir avisos ativos de prioridade CRITICAL e IMPORTANT.
+* Respeitar notice_recipients.
+* Avisos expirados não aparecem.
+* CRITICAL deve ter mais destaque visual que IMPORTANT.
+* Card deve ser claro e operacional.
+* Não misturar aviso com mensagem comum.
+* Se pinned já existir ou for criado por migration, respeitar o comportamento definido na spec.
+
+Validação obrigatória:
+
+* ADMIN, SUPERVISOR e MEMBER testados.
+* Badge aparece quando há mensagens não lidas.
+* Badge some ou reduz ao abrir conversa.
+* Conversa fora do escopo não aparece.
+* Aviso IMPORTANT aparece em Meu Dia.
+* Aviso CRITICAL aparece em Meu Dia com destaque.
+* Aviso expirado não aparece.
+* Aviso fora do público-alvo não aparece.
+* TypeScript sem erros.
+* Nenhum menu morto.
+* Nenhuma regressão no PILOT-FIX-01.
+
+Entregáveis:
+
+1. Código implementado
+2. Migrations se necessárias
+3. Atualização breve em replit.md ou changelog técnico
+4. Relatório final MSG-S01 com:
+
+   * arquivos alterados
+   * lógica do badge
+   * lógica do card em Meu Dia
+   * testes executados
+   * riscos/remanescentes para MSG-S02, push notifications e IA pós-piloto
+
+Importante:
+Esta é uma task de piloto. Priorizar estabilidade, clareza operacional e mínimo escopo.
