@@ -28,6 +28,7 @@ const SECTIONS: { title: string; items: SectionItem[] }[] = [
     title: "Operacional",
     items: [
       { label: "Solicitações",  icon: "inbox",       route: "/(tabs)/solicitacoes" },
+      { label: "Folgas",        subtitle: "Ausências e dias de descanso", icon: "calendar", route: "/(tabs)/folgas" },
       { label: "Livro do Dia",  subtitle: "Roteiro operacional do dia",       icon: "file-text", route: "/(tabs)/daily-book"   },
       { label: "Entregas",      subtitle: "Materiais e conteúdos atribuídos", icon: "package",   route: "/(tabs)/entregas"     },
       { label: "Tarefas",       subtitle: "Tarefas atribuídas a você",        icon: "check-square", route: "/(tabs)/tarefas"  },

@@ -54,6 +54,7 @@ import type {
   CreateAgendaEvent201,
   CreateAsaMemoryRequest,
   CreateDeliveryRequest,
+  CreateFolgaRequest,
   CreateHistoryNarrativeRequest,
   CreateLibraryCategoryRequest,
   CreateLibraryDocumentRequest,
@@ -82,6 +83,8 @@ import type {
   DeliverySingleResponse,
   EscalateNoticeRequest,
   ExecuteDailyBook200,
+  FolgaItem,
+  FolgaListResponse,
   ForbiddenResponse,
   GenerateDailyBook201,
   GenerateScale201,
@@ -123,6 +126,7 @@ import type {
   ListAsaMemoriesParams,
   ListDailyBook200,
   ListDailyBookParams,
+  ListFolgasParams,
   ListHistoryNarrativesParams,
   ListHistoryParams,
   ListLibraryDocumentsParams,
@@ -206,6 +210,7 @@ import type {
   UpdateAsaMemoryRequest,
   UpdateAsaPreferencesRequest,
   UpdateChecklistRequest,
+  UpdateFolgaRequest,
   UpdateHistoryNarrativeRequest,
   UpdateLibraryDocumentRequest,
   UpdateNoticeRequest,
@@ -12619,4 +12624,301 @@ export function useListAsaAuditLog<TData = Awaited<ReturnType<typeof listAsaAudi
 
 
 
+
+export const getListFolgasUrl = (params?: ListFolgasParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/folgas?${stringifiedParams}` : `/api/folgas`
+}
+
+/**
+ * @summary Listar folgas
+ */
+export const listFolgas = async (params?: ListFolgasParams, options?: RequestInit): Promise<FolgaListResponse> => {
+
+  return customFetch<FolgaListResponse>(getListFolgasUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListFolgasQueryKey = (params?: ListFolgasParams,) => {
+    return [
+    `/api/folgas`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListFolgasQueryOptions = <TData = Awaited<ReturnType<typeof listFolgas>>, TError = ErrorType<UnauthorizedResponse>>(params?: ListFolgasParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFolgas>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListFolgasQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listFolgas>>> = ({ signal }) => listFolgas(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listFolgas>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListFolgasQueryResult = NonNullable<Awaited<ReturnType<typeof listFolgas>>>
+export type ListFolgasQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Listar folgas
+ */
+
+export function useListFolgas<TData = Awaited<ReturnType<typeof listFolgas>>, TError = ErrorType<UnauthorizedResponse>>(
+ params?: ListFolgasParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFolgas>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListFolgasQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateFolgaUrl = () => {
+
+
+
+
+  return `/api/folgas`
+}
+
+/**
+ * @summary Criar folga manual (gestores)
+ */
+export const createFolga = async (createFolgaRequest: CreateFolgaRequest, options?: RequestInit): Promise<FolgaItem> => {
+
+  return customFetch<FolgaItem>(getCreateFolgaUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createFolgaRequest,)
+  }
+);}
+
+
+
+
+export const getCreateFolgaMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFolga>>, TError,{data: BodyType<CreateFolgaRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createFolga>>, TError,{data: BodyType<CreateFolgaRequest>}, TContext> => {
+
+const mutationKey = ['createFolga'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createFolga>>, {data: BodyType<CreateFolgaRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createFolga(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateFolgaMutationResult = NonNullable<Awaited<ReturnType<typeof createFolga>>>
+    export type CreateFolgaMutationBody = BodyType<CreateFolgaRequest>
+    export type CreateFolgaMutationError = ErrorType<BadRequestResponse | ForbiddenResponse>
+
+    /**
+ * @summary Criar folga manual (gestores)
+ */
+export const useCreateFolga = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFolga>>, TError,{data: BodyType<CreateFolgaRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createFolga>>,
+        TError,
+        {data: BodyType<CreateFolgaRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateFolgaMutationOptions(options));
+    }
+
+export const getUpdateFolgaUrl = (id: string,) => {
+
+
+
+
+  return `/api/folgas/${id}`
+}
+
+/**
+ * @summary Editar folga
+ */
+export const updateFolga = async (id: string,
+    updateFolgaRequest: UpdateFolgaRequest, options?: RequestInit): Promise<FolgaItem> => {
+
+  return customFetch<FolgaItem>(getUpdateFolgaUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateFolgaRequest,)
+  }
+);}
+
+
+
+
+export const getUpdateFolgaMutationOptions = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFolga>>, TError,{id: string;data: BodyType<UpdateFolgaRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateFolga>>, TError,{id: string;data: BodyType<UpdateFolgaRequest>}, TContext> => {
+
+const mutationKey = ['updateFolga'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateFolga>>, {id: string;data: BodyType<UpdateFolgaRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateFolga(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateFolgaMutationResult = NonNullable<Awaited<ReturnType<typeof updateFolga>>>
+    export type UpdateFolgaMutationBody = BodyType<UpdateFolgaRequest>
+    export type UpdateFolgaMutationError = ErrorType<NotFoundResponse>
+
+    /**
+ * @summary Editar folga
+ */
+export const useUpdateFolga = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFolga>>, TError,{id: string;data: BodyType<UpdateFolgaRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateFolga>>,
+        TError,
+        {id: string;data: BodyType<UpdateFolgaRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateFolgaMutationOptions(options));
+    }
+
+export const getCancelFolgaUrl = (id: string,) => {
+
+
+
+
+  return `/api/folgas/${id}/cancelar`
+}
+
+/**
+ * @summary Cancelar folga
+ */
+export const cancelFolga = async (id: string, options?: RequestInit): Promise<FolgaItem> => {
+
+  return customFetch<FolgaItem>(getCancelFolgaUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getCancelFolgaMutationOptions = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelFolga>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelFolga>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['cancelFolga'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelFolga>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  cancelFolga(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelFolgaMutationResult = NonNullable<Awaited<ReturnType<typeof cancelFolga>>>
+
+    export type CancelFolgaMutationError = ErrorType<NotFoundResponse>
+
+    /**
+ * @summary Cancelar folga
+ */
+export const useCancelFolga = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelFolga>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof cancelFolga>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getCancelFolgaMutationOptions(options));
+    }
 

@@ -36,6 +36,8 @@ tags:
     description: Anthropic AI chat operations
   - name: asa
     description: "ASA — Assistente Inteligente do MyASA"
+  - name: folgas
+    description: "Folgas — ausências operacionais registradas"
 
 security:
   - bearerAuth: []
@@ -4664,6 +4666,105 @@ paths:
                 items:
                   $ref: "#/components/schemas/AsaAuditEntry"
 
+
+  /folgas:
+    get:
+      operationId: listFolgas
+      tags: [folgas]
+      summary: Listar folgas
+      parameters:
+        - name: operationId
+          in: query
+          schema: { type: string }
+        - name: userId
+          in: query
+          schema: { type: string }
+        - name: type
+          in: query
+          schema: { type: string, enum: [DAY_OFF, NO_SHOW, RECESSO, AFASTAMENTO, RESTRICAO, OUTRO] }
+        - name: status
+          in: query
+          schema: { type: string, enum: [ACTIVE, CANCELLED] }
+        - name: dateFrom
+          in: query
+          schema: { type: string, format: date }
+        - name: dateTo
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Lista de folgas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FolgaListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createFolga
+      tags: [folgas]
+      summary: Criar folga manual (gestores)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFolgaRequest"
+      responses:
+        "201":
+          description: Folga criada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FolgaItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /folgas/{id}:
+    patch:
+      operationId: updateFolga
+      tags: [folgas]
+      summary: Editar folga
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFolgaRequest"
+      responses:
+        "200":
+          description: Folga atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FolgaItem"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /folgas/{id}/cancelar:
+    post:
+      operationId: cancelFolga
+      tags: [folgas]
+      summary: Cancelar folga
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Folga cancelada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FolgaItem"
+        "404":
+          $ref: "#/components/responses/NotFound"
 components:
   securitySchemes:
     bearerAuth:
@@ -8176,3 +8277,57 @@ components:
         createdAt:
           type: string
           format: date-time
+    FolgaItem:
+      type: object
+      required: [id, userId, userName, operationId, operationName, type, startDate, endDate, status, origem, createdBy, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        userName: { type: string }
+        operationId: { type: string }
+        operationName: { type: string }
+        type:
+          type: string
+          enum: [DAY_OFF, NO_SHOW, RECESSO, AFASTAMENTO, RESTRICAO, OUTRO]
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        status:
+          type: string
+          enum: [ACTIVE, CANCELLED]
+        origem:
+          type: string
+          enum: [MANUAL, SOLICITACAO]
+        requestId: { type: string, nullable: true }
+        createdBy: { type: string }
+        notes: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    FolgaListResponse:
+      type: object
+      required: [folgas]
+      properties:
+        folgas:
+          type: array
+          items:
+            $ref: "#/components/schemas/FolgaItem"
+    CreateFolgaRequest:
+      type: object
+      required: [userId, operationId, type, startDate, endDate]
+      properties:
+        userId: { type: string }
+        operationId: { type: string }
+        type:
+          type: string
+          enum: [DAY_OFF, NO_SHOW, RECESSO, AFASTAMENTO, RESTRICAO, OUTRO]
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        notes: { type: string }
+    UpdateFolgaRequest:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [DAY_OFF, NO_SHOW, RECESSO, AFASTAMENTO, RESTRICAO, OUTRO]
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        notes: { type: string }

@@ -28,6 +28,7 @@ import notificationsRouter from "./notifications";
 import responsibilitiesRouter from "./responsibilities";
 import anthropicRouter from "./anthropic/index";
 import asaRouter from "./asa";
+import folgasRouter from "./folgas";
 
 const router: IRouter = Router();
 
@@ -60,5 +61,6 @@ router.use(notificationsRouter);
 router.use(responsibilitiesRouter);
 router.use(anthropicRouter);
 router.use(asaRouter);
+router.use(folgasRouter);
 
 export default router;

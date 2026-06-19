@@ -4627,3 +4627,108 @@ export const ListAsaAuditLogResponseItem = zod.object({
 export const ListAsaAuditLogResponse = zod.array(ListAsaAuditLogResponseItem)
 
 
+/**
+ * @summary Listar folgas
+ */
+export const ListFolgasQueryParams = zod.object({
+  "operationId": zod.coerce.string().optional(),
+  "userId": zod.coerce.string().optional(),
+  "type": zod.enum(['DAY_OFF', 'NO_SHOW', 'RECESSO', 'AFASTAMENTO', 'RESTRICAO', 'OUTRO']).optional(),
+  "status": zod.enum(['ACTIVE', 'CANCELLED']).optional(),
+  "dateFrom": zod.date().optional(),
+  "dateTo": zod.date().optional()
+})
+
+export const ListFolgasResponse = zod.object({
+  "folgas": zod.array(zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "userName": zod.string(),
+  "operationId": zod.string(),
+  "operationName": zod.string(),
+  "type": zod.enum(['DAY_OFF', 'NO_SHOW', 'RECESSO', 'AFASTAMENTO', 'RESTRICAO', 'OUTRO']),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "status": zod.enum(['ACTIVE', 'CANCELLED']),
+  "origem": zod.enum(['MANUAL', 'SOLICITACAO']),
+  "requestId": zod.string().nullish(),
+  "createdBy": zod.string(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Criar folga manual (gestores)
+ */
+export const CreateFolgaBody = zod.object({
+  "userId": zod.string(),
+  "operationId": zod.string(),
+  "type": zod.enum(['DAY_OFF', 'NO_SHOW', 'RECESSO', 'AFASTAMENTO', 'RESTRICAO', 'OUTRO']),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "notes": zod.string().optional()
+})
+
+
+/**
+ * @summary Editar folga
+ */
+export const UpdateFolgaParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateFolgaBody = zod.object({
+  "type": zod.enum(['DAY_OFF', 'NO_SHOW', 'RECESSO', 'AFASTAMENTO', 'RESTRICAO', 'OUTRO']).optional(),
+  "startDate": zod.coerce.date().optional(),
+  "endDate": zod.coerce.date().optional(),
+  "notes": zod.string().optional()
+})
+
+export const UpdateFolgaResponse = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "userName": zod.string(),
+  "operationId": zod.string(),
+  "operationName": zod.string(),
+  "type": zod.enum(['DAY_OFF', 'NO_SHOW', 'RECESSO', 'AFASTAMENTO', 'RESTRICAO', 'OUTRO']),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "status": zod.enum(['ACTIVE', 'CANCELLED']),
+  "origem": zod.enum(['MANUAL', 'SOLICITACAO']),
+  "requestId": zod.string().nullish(),
+  "createdBy": zod.string(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Cancelar folga
+ */
+export const CancelFolgaParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const CancelFolgaResponse = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "userName": zod.string(),
+  "operationId": zod.string(),
+  "operationName": zod.string(),
+  "type": zod.enum(['DAY_OFF', 'NO_SHOW', 'RECESSO', 'AFASTAMENTO', 'RESTRICAO', 'OUTRO']),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "status": zod.enum(['ACTIVE', 'CANCELLED']),
+  "origem": zod.enum(['MANUAL', 'SOLICITACAO']),
+  "requestId": zod.string().nullish(),
+  "createdBy": zod.string(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+

@@ -15,6 +15,7 @@ import {
   useGetNotifications,
   useMarkNotificationRead,
   getNotificationsQueryKey,
+  useListFolgas,
 } from "@workspace/api-client-react";
 import type {
   MyDayActivity,
@@ -536,6 +537,13 @@ export default function MeuDiaScreen() {
     .filter((t) => !["APPROVED", "COMPLETED", "CANCELLED", "EXPIRED"].includes(t.status))
     .sort((a, b) => TASK_PRIORITY_ORDER[a.priority] - TASK_PRIORITY_ORDER[b.priority]);
 
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const { data: folgasHojeData } = useListFolgas(
+    { dateFrom: todayStr, dateTo: todayStr, status: "ACTIVE" },
+    { query: { enabled: !!user } }
+  );
+  const ausenciasHoje = folgasHojeData?.folgas ?? [];
+
   // Notifications for Meu Dia — up to 5 IMPORTANT/CRITICAL unread
   const { data: notificationsData } = useGetNotifications(
     { unreadOnly: true, limit: 20 },
@@ -911,6 +919,32 @@ export default function MeuDiaScreen() {
               )}
 
             {/* ── Minhas Tarefas (T001) ── */}
+            {ausenciasHoje.length > 0 && (
+              <>
+                <SectionHeader title="Ausências de Hoje" icon="calendar" colors={colors} />
+                {ausenciasHoje.map((f) => (
+                  <View
+                    key={f.id}
+                    style={[styles.complementaryCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  >
+                    <View style={styles.complementaryHeader}>
+                      <Text style={[styles.complementaryTitle, { color: colors.foreground, flex: 1 }]} numberOfLines={1}>
+                        {f.userName}
+                      </Text>
+                      <View style={{ backgroundColor: "#D1FAE5", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
+                        <Text style={{ fontSize: 11, fontWeight: "600", color: "#065F46" }}>
+                          {f.type === "DAY_OFF" ? "Folga" : f.type === "NO_SHOW" ? "No-show" : f.type === "RECESSO" ? "Recesso" : f.type === "AFASTAMENTO" ? "Afastamento" : f.type}
+                        </Text>
+                      </View>
+                    </View>
+                    {f.operationName ? (
+                      <Text style={[styles.metaText, { color: colors.mutedForeground, marginTop: 2 }]}>{f.operationName}</Text>
+                    ) : null}
+                  </View>
+                ))}
+              </>
+            )}
+
             {myActiveTasks.length > 0 && (
               <>
                 <SectionHeader title="Minhas Tarefas" icon="check-square" colors={colors} />

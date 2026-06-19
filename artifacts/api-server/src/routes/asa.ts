@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, gte, lte } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   conversations,
@@ -17,6 +17,7 @@ import {
   noticesTable,
   tasksTable,
   operationsTable,
+  folgasTable,
 } from "@workspace/db";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
@@ -201,6 +202,42 @@ const ASA_TOOLS: Tool[] = [
         type: { type: "string", description: "PERSONAL, OPERATIONAL ou OFFICIAL" },
         key: { type: "string", description: "Termo ou apelido" },
         value: { type: "string", description: "Significado ou definição" },
+      },
+    },
+  },
+  {
+    name: "consultar_folgas",
+    description: "Consulta folgas registradas (ausências, dias de descanso, recesso, no-show). Pode filtrar por data, usuário e tipo.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        dateFrom:  { type: "string", description: "Data início (YYYY-MM-DD). Se omitida, usa hoje." },
+        dateTo:    { type: "string", description: "Data fim (YYYY-MM-DD). Se omitida, usa dateFrom." },
+        userId:    { type: "string", description: "ID do usuário para filtrar folgas de um membro específico" },
+        type:      { type: "string", description: "Tipo: DAY_OFF, NO_SHOW, RECESSO, AFASTAMENTO, RESTRICAO, OUTRO" },
+        limit:     { type: "number", description: "Máximo de resultados (padrão: 20)" },
+      },
+    },
+  },
+  {
+    name: "consultar_ausencias_do_dia",
+    description: "Lista todos os membros que estão de folga em uma data específica (padrão: hoje). Ideal para responder 'quem está de folga hoje?'",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        date: { type: "string", description: "Data (YYYY-MM-DD). Padrão: hoje." },
+      },
+    },
+  },
+  {
+    name: "consultar_disponibilidade",
+    description: "Verifica se um membro específico está disponível (sem folga ativa) em uma data",
+    input_schema: {
+      type: "object" as const,
+      required: ["userId", "date"],
+      properties: {
+        userId: { type: "string", description: "ID do membro" },
+        date:   { type: "string", description: "Data a verificar (YYYY-MM-DD)" },
       },
     },
   },
@@ -401,6 +438,97 @@ async function executeTool(
         status: "PENDING",
       }).returning();
       return JSON.stringify({ suggested: true, id: memory.id, status: "PENDING", message: "Memória sugerida. Aguarda aprovação." });
+    }
+
+    if (name === "consultar_folgas") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const today = new Date().toISOString().slice(0, 10);
+      const dateFrom = (input.dateFrom as string) ?? today;
+      const dateTo   = (input.dateTo   as string) ?? dateFrom;
+      const limit    = (input.limit    as number) ?? 20;
+
+      const conditions: any[] = [
+        eq(folgasTable.status, "ACTIVE"),
+        lte(folgasTable.startDate, dateTo),
+        gte(folgasTable.endDate,   dateFrom),
+      ];
+      if (input.userId) conditions.push(eq(folgasTable.userId,   input.userId as string));
+      if (input.type)   conditions.push(eq(folgasTable.type,     input.type   as any));
+
+      const rows = await db
+        .select({
+          id:        folgasTable.id,
+          type:      folgasTable.type,
+          startDate: folgasTable.startDate,
+          endDate:   folgasTable.endDate,
+          origem:    folgasTable.origem,
+          notes:     folgasTable.notes,
+          userName:  usersTable.name,
+          userId:    folgasTable.userId,
+        })
+        .from(folgasTable)
+        .leftJoin(usersTable, eq(folgasTable.userId, usersTable.id))
+        .where(and(...conditions))
+        .orderBy(folgasTable.startDate)
+        .limit(limit);
+
+      return JSON.stringify({ total: rows.length, folgas: rows });
+    }
+
+    if (name === "consultar_ausencias_do_dia") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const date = (input.date as string) ?? new Date().toISOString().slice(0, 10);
+
+      const rows = await db
+        .select({
+          id:        folgasTable.id,
+          type:      folgasTable.type,
+          startDate: folgasTable.startDate,
+          endDate:   folgasTable.endDate,
+          origem:    folgasTable.origem,
+          userName:  usersTable.name,
+          userId:    folgasTable.userId,
+        })
+        .from(folgasTable)
+        .leftJoin(usersTable, eq(folgasTable.userId, usersTable.id))
+        .where(and(
+          eq(folgasTable.status, "ACTIVE"),
+          lte(folgasTable.startDate, date),
+          gte(folgasTable.endDate,   date),
+        ))
+        .orderBy(usersTable.name);
+
+      if (rows.length === 0) {
+        return JSON.stringify({ date, message: `Nenhum membro está de folga em ${date}.`, ausencias: [] });
+      }
+      return JSON.stringify({
+        date,
+        total: rows.length,
+        message: `${rows.length} membro(s) ausente(s) em ${date}.`,
+        ausencias: rows,
+      });
+    }
+
+    if (name === "consultar_disponibilidade") {
+      const { userId: targetId, date } = input as { userId: string; date: string };
+      const folgas = await db
+        .select({ id: folgasTable.id, type: folgasTable.type, startDate: folgasTable.startDate, endDate: folgasTable.endDate })
+        .from(folgasTable)
+        .where(and(
+          eq(folgasTable.userId, targetId),
+          eq(folgasTable.status, "ACTIVE"),
+          lte(folgasTable.startDate, date),
+          gte(folgasTable.endDate,   date),
+        ))
+        .limit(1);
+
+      const [user] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, targetId));
+      const userName = user?.name ?? targetId;
+
+      if (folgas.length === 0) {
+        return JSON.stringify({ disponivel: true,  message: `${userName} está disponível em ${date} (sem folga registrada).` });
+      }
+      return JSON.stringify({ disponivel: false, message: `${userName} está de folga em ${date} (${folgas[0]!.type}: ${folgas[0]!.startDate} → ${folgas[0]!.endDate}).` });
     }
 
     return JSON.stringify({ error: `Ferramenta desconhecida: ${name}` });

@@ -2434,6 +2434,96 @@ export interface AsaAuditEntry {
   createdAt: string;
 }
 
+export type FolgaItemType = typeof FolgaItemType[keyof typeof FolgaItemType];
+
+
+export const FolgaItemType = {
+  DAY_OFF: 'DAY_OFF',
+  NO_SHOW: 'NO_SHOW',
+  RECESSO: 'RECESSO',
+  AFASTAMENTO: 'AFASTAMENTO',
+  RESTRICAO: 'RESTRICAO',
+  OUTRO: 'OUTRO',
+} as const;
+
+export type FolgaItemStatus = typeof FolgaItemStatus[keyof typeof FolgaItemStatus];
+
+
+export const FolgaItemStatus = {
+  ACTIVE: 'ACTIVE',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export type FolgaItemOrigem = typeof FolgaItemOrigem[keyof typeof FolgaItemOrigem];
+
+
+export const FolgaItemOrigem = {
+  MANUAL: 'MANUAL',
+  SOLICITACAO: 'SOLICITACAO',
+} as const;
+
+export interface FolgaItem {
+  id: string;
+  userId: string;
+  userName: string;
+  operationId: string;
+  operationName: string;
+  type: FolgaItemType;
+  startDate: string;
+  endDate: string;
+  status: FolgaItemStatus;
+  origem: FolgaItemOrigem;
+  requestId?: string | null;
+  createdBy: string;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FolgaListResponse {
+  folgas: FolgaItem[];
+}
+
+export type CreateFolgaRequestType = typeof CreateFolgaRequestType[keyof typeof CreateFolgaRequestType];
+
+
+export const CreateFolgaRequestType = {
+  DAY_OFF: 'DAY_OFF',
+  NO_SHOW: 'NO_SHOW',
+  RECESSO: 'RECESSO',
+  AFASTAMENTO: 'AFASTAMENTO',
+  RESTRICAO: 'RESTRICAO',
+  OUTRO: 'OUTRO',
+} as const;
+
+export interface CreateFolgaRequest {
+  userId: string;
+  operationId: string;
+  type: CreateFolgaRequestType;
+  startDate: string;
+  endDate: string;
+  notes?: string;
+}
+
+export type UpdateFolgaRequestType = typeof UpdateFolgaRequestType[keyof typeof UpdateFolgaRequestType];
+
+
+export const UpdateFolgaRequestType = {
+  DAY_OFF: 'DAY_OFF',
+  NO_SHOW: 'NO_SHOW',
+  RECESSO: 'RECESSO',
+  AFASTAMENTO: 'AFASTAMENTO',
+  RESTRICAO: 'RESTRICAO',
+  OUTRO: 'OUTRO',
+} as const;
+
+export interface UpdateFolgaRequest {
+  type?: UpdateFolgaRequestType;
+  startDate?: string;
+  endDate?: string;
+  notes?: string;
+}
+
 /**
  * Bad request
  */
@@ -2941,4 +3031,33 @@ export type ListAsaAuditLogParams = {
 userId?: string;
 limit?: number;
 };
+
+export type ListFolgasParams = {
+operationId?: string;
+userId?: string;
+type?: ListFolgasType;
+status?: ListFolgasStatus;
+dateFrom?: string;
+dateTo?: string;
+};
+
+export type ListFolgasType = typeof ListFolgasType[keyof typeof ListFolgasType];
+
+
+export const ListFolgasType = {
+  DAY_OFF: 'DAY_OFF',
+  NO_SHOW: 'NO_SHOW',
+  RECESSO: 'RECESSO',
+  AFASTAMENTO: 'AFASTAMENTO',
+  RESTRICAO: 'RESTRICAO',
+  OUTRO: 'OUTRO',
+} as const;
+
+export type ListFolgasStatus = typeof ListFolgasStatus[keyof typeof ListFolgasStatus];
+
+
+export const ListFolgasStatus = {
+  ACTIVE: 'ACTIVE',
+  CANCELLED: 'CANCELLED',
+} as const;
 

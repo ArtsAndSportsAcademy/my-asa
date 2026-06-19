@@ -3,6 +3,7 @@ import {
   getGetMyDayQueryKey,
   useGetMyTasks,
   getGetMyTasksQueryKey,
+  useListFolgas,
 } from "@workspace/api-client-react";
 import type { MyDayActivity, MyDayResponse, TaskItem } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -25,6 +26,7 @@ import {
   CheckSquare,
   Package,
   AlertCircle,
+  Palmtree,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -279,6 +281,10 @@ function PendingNoticeCard({ notice }: { notice: any }) {
 export default function MeuDiaPage() {
   const queryClient = useQueryClient();
 
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: folgasHoje } = useListFolgas({ dateFrom: today, dateTo: today, status: "ACTIVE" });
+  const ausenciasHoje = folgasHoje?.folgas ?? [];
+
   const { data, isLoading, isError, refetch, isFetching } = useGetMyDay({
     query: {
       queryKey: getGetMyDayQueryKey(),
@@ -474,6 +480,30 @@ export default function MeuDiaPage() {
                       </Card>
                     );
                   })}
+                </div>
+              </>
+            )}
+
+            {/* ── Ausências de Hoje ── */}
+            {ausenciasHoje.length > 0 && (
+              <>
+                <SectionHeader title="Ausências de Hoje" icon={Palmtree} />
+                <div className="space-y-2">
+                  {ausenciasHoje.map((f) => (
+                    <Card key={f.id}>
+                      <CardContent className="p-3 flex items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold truncate">{f.userName}</p>
+                          {f.operationName && (
+                            <p className="text-xs text-muted-foreground">{f.operationName}</p>
+                          )}
+                        </div>
+                        <Badge variant="outline" className="shrink-0 text-xs bg-green-50 text-green-700 border-green-200">
+                          {f.type === "DAY_OFF" ? "Folga" : f.type === "NO_SHOW" ? "No-show" : f.type === "RECESSO" ? "Recesso" : f.type === "AFASTAMENTO" ? "Afastamento" : f.type}
+                        </Badge>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
               </>
             )}

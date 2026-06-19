@@ -8,6 +8,7 @@ import {
   usersTable,
   operationsTable,
   restrictionsTable,
+  folgasTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
@@ -425,6 +426,22 @@ router.post("/requests/:id/decision", requireAuth, requireOrganization, async (r
           status: "ACTIVE",
           notes: `Criada automaticamente via solicitação aprovada. Motivo: ${reason ?? existing.reason ?? "—"}. Ref: ${id}`,
           createdBy: user.sub,
+        }).onConflictDoNothing();
+      }
+      // Auto-criar folga quando LEAVE aprovada
+      if (existing.type === "LEAVE" && existing.targetDates.length > 0) {
+        const leaveDates = [...existing.targetDates].sort();
+        await db.insert(folgasTable).values({
+          userId: existing.requesterId,
+          operationId: existing.operationId,
+          type: "DAY_OFF",
+          startDate: leaveDates[0]!,
+          endDate:   leaveDates[leaveDates.length - 1]!,
+          status: "ACTIVE",
+          origem: "SOLICITACAO",
+          requestId: id,
+          createdBy: user.sub,
+          notes: `Gerada automaticamente via solicitação aprovada.`,
         }).onConflictDoNothing();
       }
     }

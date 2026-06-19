@@ -1,0 +1,258 @@
+# PILOT-NAV-FOLGAS-FIX-01 — Correção de navegação e módulo Folgas
+
+Contexto:
+Durante navegação real no aplicativo, foram encontrados problemas de usabilidade:
+
+1. Algumas páginas não abrem corretamente e ficam em estado de carregamento/placeholder.
+2. O módulo de Folgas não aparece como área própria.
+3. As folgas estão sendo tratadas apenas dentro de Solicitações, mas isso está errado do ponto de vista operacional.
+
+Decisão de produto:
+Solicitações ≠ Folgas.
+
+Solicitações:
+
+* pedidos enviados;
+* aprovações;
+* recusas;
+* histórico de decisão.
+
+Folgas:
+
+* tabela operacional;
+* quem está de folga;
+* quando;
+* tipo;
+* operação;
+* cobertura;
+* impacto no dia.
+
+Objetivo:
+Corrigir navegação e criar/recuperar a área própria de Folgas no app.
+
+────────────────────
+
+# 1. Auditoria de navegação
+
+Auditar todas as rotas mobile e web-admin.
+
+Verificar:
+
+* páginas que não abrem;
+* telas presas em loading;
+* telas placeholder tipo “Canva está fazendo a página”;
+* rotas mortas;
+* itens de menu que apontam para telas inexistentes;
+* páginas sem empty state correto;
+* permissões que escondem páginas indevidamente.
+
+Entregar lista:
+
+* rota;
+* papel afetado;
+* problema;
+* correção necessária.
+
+────────────────────
+
+# 2. Módulo Folgas
+
+Criar ou restaurar área própria chamada:
+
+Folgas
+
+A área deve existir em:
+
+* mobile;
+* web-admin;
+* menu Mais;
+* navegação supervisor/admin.
+
+────────────────────
+
+# 3. Diferença entre Folgas e Solicitações
+
+Solicitações:
+
+* “quero pedir folga”
+* “aprovar/recusar pedido”
+* “acompanhar status”
+
+Folgas:
+
+* “quem estará ausente”
+* “quem está de folga hoje”
+* “qual tabela de folgas da semana/mês”
+* “isso afeta escala, ensaio ou livro?”
+
+────────────────────
+
+# 4. Tela Folgas — Mobile
+
+Criar visualização tipo tabela/lista:
+
+Filtros:
+
+* Hoje
+* Semana
+* Mês
+* Minha operação
+* Todos
+* Tipo
+
+Tipos:
+
+* DAY_OFF
+* NO_SHOW
+* RECESSO
+* AFASTAMENTO
+* RESTRIÇÃO
+* OUTRO
+
+Card:
+
+* nome da pessoa;
+* data início;
+* data fim;
+* tipo;
+* operação;
+* status;
+* observação, se permitido.
+
+MEMBER:
+
+* vê suas próprias folgas;
+* pode ver informações gerais permitidas da operação se já definido.
+
+SUPERVISOR:
+
+* vê folgas da equipe/operação.
+
+ADMIN:
+
+* vê tudo.
+
+────────────────────
+
+# 5. Tela Folgas — Web Admin
+
+Criar tabela operacional:
+
+Colunas:
+
+* Pessoa
+* Tipo
+* Início
+* Fim
+* Operação
+* Status
+* Origem
+* Criado por
+* Observação
+* Ações
+
+Filtros:
+
+* data;
+* operação;
+* tipo;
+* pessoa;
+* status.
+
+Ações:
+
+* criar folga manual;
+* editar;
+* cancelar;
+* exportar futuramente.
+
+────────────────────
+
+# 6. Integração com Escalas, Livro e Agenda
+
+Folgas devem impactar:
+
+* geração de escala;
+* substituições;
+* Livro do Dia;
+* Meu Dia;
+* Painel Operacional;
+* ASA.
+
+A ASA deve conseguir responder:
+
+* quem está de folga hoje?
+* quem está de folga amanhã?
+* Amanda está disponível sexta?
+* quais folgas afetam a escala?
+* quem está em no-show?
+
+────────────────────
+
+# 7. Meu Dia
+
+Adicionar card quando relevante:
+
+Para MEMBER:
+
+* “Você está de folga hoje”
+* “Sua folga começa amanhã”
+
+Para SUPERVISOR/ADMIN:
+
+* “3 pessoas estão de folga hoje”
+* “1 ausência afeta a escala”
+
+────────────────────
+
+# 8. Notificações
+
+Gerar notificações quando:
+
+* folga aprovada;
+* folga alterada;
+* folga cancelada;
+* no-show registrado;
+* folga impacta escala publicada.
+
+────────────────────
+
+# 9. ASA
+
+Adicionar ferramentas de leitura:
+
+* consultar_folgas
+* consultar_disponibilidade
+* consultar_ausencias_do_dia
+
+A ASA deve usar Folgas como fonte principal para disponibilidade.
+
+────────────────────
+
+# 10. Validação
+
+Testar:
+
+* MEMBER encontra “Folgas” facilmente.
+* SUPERVISOR encontra tabela de folgas.
+* ADMIN vê visão completa.
+* Solicitações continua existindo separadamente.
+* Folga aprovada aparece na tabela de Folgas.
+* Folga manual aparece na tabela.
+* Folga impacta disponibilidade.
+* ASA responde “quem está de folga hoje?”.
+* Nenhum menu morto.
+* Nenhuma tela fica presa em loading.
+
+────────────────────
+
+Entregáveis:
+
+1. Auditoria de rotas quebradas.
+2. Correção de páginas que não abrem.
+3. Módulo Folgas mobile.
+4. Módulo Folgas web-admin.
+5. Integração com Meu Dia.
+6. Integração com Notificações.
+7. Ferramenta de leitura para ASA.
+8. Relatório final com arquivos alterados e testes.
