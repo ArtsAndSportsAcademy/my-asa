@@ -49,11 +49,23 @@ const ALL_STATUSES = [
   { value: "EXPIRED", label: "Expiradas" },
 ];
 
+const ALL_TYPES = [
+  { value: "", label: "Todos os tipos" },
+  { value: "LEAVE", label: "Folga" },
+  { value: "SCHEDULE_CHANGE", label: "Mudança de Escala" },
+  { value: "SWAP", label: "Troca" },
+  { value: "ROLE_RESTRICTION", label: "Restrição de Função" },
+  { value: "PHYSICAL_RESTRICTION", label: "Restrição Física" },
+  { value: "HEALTH_RESTRICTION", label: "Restrição de Saúde" },
+  { value: "OTHER", label: "Outro" },
+];
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function AdminRequestsPage() {
   const [operationId, setOperationId] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [typeFilter, setTypeFilter] = useState<string>("");
 
   const { data: opsData } = useGetOperations();
   const operations = opsData?.operations ?? [];
@@ -62,7 +74,11 @@ export default function AdminRequestsPage() {
     operationId: operationId || undefined,
     status: statusFilter || undefined,
   });
-  const requests = data?.requests ?? [];
+  const allRequests = data?.requests ?? [];
+
+  const requests = typeFilter
+    ? allRequests.filter((r) => r.type === typeFilter)
+    : allRequests;
 
   function formatDates(dates: string[]) {
     return dates.map((d) => new Date(d + "T12:00:00").toLocaleDateString("pt-BR")).join(", ");
@@ -92,6 +108,19 @@ export default function AdminRequestsPage() {
               </Select>
             </div>
             <div className="flex-1 min-w-[200px]">
+              <Label className="mb-1.5 block text-sm">Tipo</Label>
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos os tipos" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ALL_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1 min-w-[200px]">
               <Label className="mb-1.5 block text-sm">Status</Label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger>
@@ -111,6 +140,7 @@ export default function AdminRequestsPage() {
         {!isLoading && (
           <p className="text-sm text-muted-foreground">
             {requests.length} solicitaç{requests.length === 1 ? "ão" : "ões"} encontrada{requests.length !== 1 ? "s" : ""}
+            {typeFilter ? ` (${TYPE_LABELS[typeFilter] ?? typeFilter})` : ""}
           </p>
         )}
 
@@ -118,7 +148,11 @@ export default function AdminRequestsPage() {
         {isLoading ? (
           <div className="text-center py-16 text-muted-foreground">Carregando...</div>
         ) : requests.length === 0 ? (
-          <div className="text-center py-16 text-muted-foreground">Nenhuma solicitação encontrada.</div>
+          <div className="text-center py-16 text-muted-foreground">
+            {typeFilter
+              ? `Nenhuma solicitação do tipo "${TYPE_LABELS[typeFilter] ?? typeFilter}" encontrada.`
+              : "Nenhuma solicitação encontrada."}
+          </div>
         ) : (
           <div className="space-y-3">
             {requests.map((req) => (
