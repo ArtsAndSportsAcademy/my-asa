@@ -75,7 +75,7 @@ const ADMIN_NAV: NavGroup[] = [
     items: [
       { href: "/admin/history",   icon: Clock,       label: "Histórico" },
       { href: "/admin/auditoria", icon: ShieldCheck, label: "Auditoria" },
-      { href: "/admin/insights",  icon: TrendingUp,  label: "Insights"  },
+      { href: "/admin/insights",  icon: TrendingUp,  label: "Indicadores"  },
     ],
   },
 ];
@@ -92,7 +92,7 @@ const SUPERVISOR_NAV: NavGroup[] = [
       { href: "/supervisor/delegations",        icon: ShieldCheck,      label: "Delegações"           },
       { href: "/supervisor/restrictions",       icon: AlertTriangle,    label: "Restrições"           },
       { href: "/supervisor/check-ins",          icon: ClipboardCheck,   label: "Check-ins"            },
-      { href: "/supervisor/supervisor-requests",icon: ArrowLeftRight,   label: "Entre Supervisores"   },
+      { href: "/supervisor/supervisor-requests",icon: ArrowLeftRight,   label: "Aprovações entre Supervisores"   },
     ],
   },
   {
@@ -120,7 +120,7 @@ const SUPERVISOR_NAV: NavGroup[] = [
     label: "CONTROLE",
     items: [
       { href: "/supervisor/history",   icon: Clock,       label: "Histórico" },
-      { href: "/supervisor/insights",  icon: TrendingUp,  label: "Insights"  },
+      { href: "/supervisor/insights",  icon: TrendingUp,  label: "Indicadores"  },
     ],
   },
 ];

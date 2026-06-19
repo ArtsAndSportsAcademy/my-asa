@@ -405,7 +405,7 @@ export default function AdminDailyBookPage() {
   const lastDelta = selectedBook?.republishDeltaJson as any;
 
   return (
-    <AdminLayout title="Livro do Dia">
+    <AdminLayout title="Livro do Dia" subtitle="Roteiro operacional do dia">
       <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
         {/* Panel 1 — Lista de Livros */}
         <div className="w-64 border-r flex flex-col shrink-0">

@@ -12,20 +12,20 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
 
-const SECTIONS: { title: string; items: { label: string; icon: string; route: string }[] }[] = [
+const SECTIONS: { title: string; items: { label: string; subtitle?: string; icon: string; route: string }[] }[] = [
   {
     title: "Operacional",
     items: [
-      { label: "Livro do Dia",    icon: "file-text",    route: "/(tabs)/daily-book"   },
-      { label: "Painel",          icon: "activity",     route: "/(tabs)/panel"        },
-      { label: "Solicitações",    icon: "inbox",        route: "/(tabs)/solicitacoes" },
-      { label: "Tarefas",         icon: "check-square", route: "/(tabs)/tarefas"      },
+      { label: "Solicitações",  icon: "inbox",        route: "/(tabs)/solicitacoes" },
+      { label: "Livro do Dia",  subtitle: "Roteiro operacional do dia",      icon: "file-text",  route: "/(tabs)/daily-book"   },
+      { label: "Entregas",      subtitle: "Materiais e conteúdos atribuídos", icon: "package",    route: "/(tabs)/entregas"     },
+      { label: "Painel",        icon: "activity",     route: "/(tabs)/panel"        },
     ],
   },
   {
     title: "Consulta",
     items: [
-      { label: "Livro do Show", icon: "book-open",  route: "/(tabs)/show-book"  },
+      { label: "Livro do Show", subtitle: "Estrutura oficial do espetáculo", icon: "book-open",  route: "/(tabs)/show-book"  },
       { label: "Agenda",        icon: "calendar",   route: "/(tabs)/agenda"     },
       { label: "Biblioteca",    icon: "book",       route: "/(tabs)/biblioteca" },
     ],
@@ -33,8 +33,8 @@ const SECTIONS: { title: string; items: { label: string; icon: string; route: st
   {
     title: "Registro",
     items: [
-      { label: "Histórico",     icon: "clock",        route: "/(tabs)/historico"  },
-      { label: "Insights",      icon: "trending-up",  route: "/(tabs)/insights"   },
+      { label: "Histórico",    icon: "clock",        route: "/(tabs)/historico" },
+      { label: "Indicadores",  icon: "trending-up",  route: "/(tabs)/insights"  },
     ],
   },
 ];
@@ -90,11 +90,16 @@ export default function MaisScreen() {
                       color={colors.primary}
                     />
                   </View>
-                  <Text
-                    style={[styles.rowLabel, { color: colors.foreground }]}
-                  >
-                    {item.label}
-                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.rowLabel, { color: colors.foreground }]}>
+                      {item.label}
+                    </Text>
+                    {item.subtitle && (
+                      <Text style={[styles.rowSubtitle, { color: colors.mutedForeground }]}>
+                        {item.subtitle}
+                      </Text>
+                    )}
+                  </View>
                   <Feather
                     name="chevron-right"
                     size={16}
@@ -139,7 +144,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
     gap: 12,
   },
   iconWrap: {
@@ -150,9 +155,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   rowLabel: {
-    flex: 1,
     fontSize: 15,
     fontWeight: "500",
+  },
+  rowSubtitle: {
+    fontSize: 12,
+    marginTop: 1,
   },
   divider: {
     height: 1,

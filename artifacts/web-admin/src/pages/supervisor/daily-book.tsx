@@ -299,7 +299,7 @@ export default function SupervisorDailyBookPage() {
   const lastDelta = selectedBook?.republishDeltaJson as any;
 
   return (
-    <AdminLayout title="Livro do Dia — Supervisor">
+    <AdminLayout title="Livro do Dia" subtitle="Roteiro operacional do dia">
       <div className="flex items-center justify-end mb-4">
         <Button variant="outline" size="sm" onClick={() => setLocation("/supervisor/avisos")}>
           <Bell className="w-4 h-4 mr-2" />

@@ -1,0 +1,196 @@
+NAV-D01 — Implementação de Navegação e Linguagem Pré-Piloto
+
+Objetivo
+
+Implementar os ajustes identificados no ROADMAP-A01.
+
+Importante:
+
+* Implementar apenas os itens desta auditoria.
+* Não criar novos módulos.
+* Não alterar permissões.
+* Não alterar banco de dados.
+* Não alterar APIs existentes, exceto quando explicitamente necessário para navegação.
+* Priorizar reutilização máxima.
+
+═══════════════════════
+PARTE 1 — Navegação Mobile
+═══════════════════════
+
+Avaliar e implementar:
+
+1. Reorganização das Tabs Principais
+
+Situação atual:
+
+1. Meu Dia
+2. Avisos
+3. Mensagens
+4. Escala
+5. Entregas
+
+Validar proposta:
+
+1. Meu Dia
+2. Avisos
+3. Mensagens
+4. Escala
+5. Tarefas
+
+Responder:
+
+* O que precisa ser alterado?
+* Quais arquivos serão impactados?
+* Existe risco de regressão?
+* Quantos componentes serão reaproveitados?
+
+═══════════════════════
+PARTE 2 — Solicitações
+═══════════════════════
+
+Objetivo:
+
+Reduzir a profundidade de acesso.
+
+Validar alternativas:
+
+A) Nova Tab Principal
+
+B) Atalho em Meu Dia
+
+C) Card fixo em Operação
+
+D) Outra solução melhor
+
+Responder:
+
+* Qual alternativa exige menos código?
+* Qual é mais intuitiva?
+* Qual mantém consistência com o restante do aplicativo?
+
+═══════════════════════
+PARTE 3 — Livro do Dia vs Livro do Show
+═══════════════════════
+
+Validar melhorias de linguagem.
+
+Livro do Dia:
+
+Subtítulo sugerido:
+
+“Roteiro operacional do dia”
+
+Livro do Show:
+
+Subtítulo sugerido:
+
+“Estrutura oficial do espetáculo”
+
+Responder:
+
+* Onde os subtítulos devem aparecer?
+* Mobile
+* Web
+* Cards
+* Cabeçalhos
+
+Identificar todos os pontos afetados.
+
+═══════════════════════
+PARTE 4 — Capitão Mobile
+═══════════════════════
+
+Validar experiência atual.
+
+Responsabilidades:
+
+* CHECK_INS
+* REQUESTS
+* TASK_APPROVALS
+* DAILY_BOOK
+* NOTICES
+* SCALES
+* OPERATIONAL_MESSAGES
+
+Responder:
+
+* Existe ação acessível?
+* Existe navegação direta?
+* Existe contexto visual?
+* Existe retorno visual após a ação?
+
+Listar exatamente o que ainda falta.
+
+═══════════════════════
+PARTE 5 — Capitão Web
+═══════════════════════
+
+Validar:
+
+* Sidebar dinâmica
+* RoleRoute com delegação
+* Mensagens de acesso negado
+* Seção Capitão
+
+Responder:
+
+* Está funcionando ponta a ponta?
+* Existem responsabilidades sem rota?
+* Existem menus incoerentes?
+* Existe duplicação desnecessária?
+
+═══════════════════════
+PARTE 6 — Linguagem Operacional
+═══════════════════════
+
+Auditar todos os nomes visíveis.
+
+Identificar:
+
+🔴 Termos confusos
+
+🟡 Termos parcialmente claros
+
+🟢 Termos claros
+
+Avaliar especialmente:
+
+* Entregas
+* Livro do Dia
+* Livro do Show
+* Entre Supervisores
+* Delegações
+* Painel Operacional
+* Insights
+* Restrições
+
+Responder:
+
+* O termo deve permanecer?
+* Deve ganhar subtítulo?
+* Deve ser renomeado?
+
+═══════════════════════
+PARTE 7 — Veredito Final
+═══════════════════════
+
+Responder:
+
+1. O membro consegue encontrar as funcionalidades principais sem treinamento?
+2. O capitão consegue operar sozinho?
+3. O supervisor consegue operar sozinho?
+4. A navegação está pronta para o piloto?
+5. A linguagem está pronta para o piloto?
+6. O que ainda bloqueia o piloto?
+
+Classificar:
+
+🔴 Necessário antes do piloto
+
+🟡 Recomendado antes do piloto
+
+🟢 Pode ficar para depois
+
+Objetivo final:
+
+Determinar se a experiência de navegação e linguagem do MyASA está pronta para colocar usuários reais dentro do sistema sem treinamento formal.

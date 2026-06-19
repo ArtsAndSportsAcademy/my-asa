@@ -221,7 +221,7 @@ function DelegateBanner({ delegations, colors }: { delegations: ActiveDelegation
                       if (action.webOnly) {
                         Alert.alert(
                           "Disponível no Web Admin",
-                          `${action.label} só pode ser gerenciado pelo MyASA Web Admin.`
+                          `${action.label} é gerenciado pelo MyASA Web Admin. Acesse o web admin pelo navegador do seu celular ou computador.`
                         );
                       } else if (action.route) {
                         router.push(action.route as any);
@@ -604,6 +604,28 @@ export default function MeuDiaScreen() {
               isLoading={performCheckInMutation.isPending || checkInLoading}
             />
 
+            {/* ── Ação Rápida: Nova Solicitação ── */}
+            <Pressable
+              onPress={() => router.push("/(tabs)/solicitacoes")}
+              style={[
+                styles.quickActionRow,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: colors.primary + "18" }]}>
+                <Feather name="inbox" size={16} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.quickActionLabel, { color: colors.foreground }]}>
+                  Minhas Solicitações
+                </Text>
+                <Text style={[styles.quickActionSub, { color: colors.mutedForeground }]}>
+                  Folgas, trocas e restrições
+                </Text>
+              </View>
+              <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+            </Pressable>
+
             {/* ── Avisos Pendentes ── */}
             {(data as any).pendingNotices && (data as any).pendingNotices.length > 0 && (
               <>
@@ -823,6 +845,24 @@ const styles = StyleSheet.create({
   subSectionRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 4, marginBottom: 2 },
   subSectionLink: { fontSize: 12, fontWeight: "600" },
   alertHint: { fontSize: 11, fontWeight: "500", marginTop: 4 },
+  quickActionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    gap: 10,
+  },
+  quickActionIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quickActionLabel: { fontSize: 14, fontWeight: "600" },
+  quickActionSub: { fontSize: 12, marginTop: 1 },
   card: {
     borderRadius: 12,
     overflow: "hidden",

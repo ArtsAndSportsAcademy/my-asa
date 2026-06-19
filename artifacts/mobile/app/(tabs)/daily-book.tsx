@@ -2,6 +2,8 @@ import { Feather } from "@expo/vector-icons";
 import {
   useListDailyBook,
   useGetDailyBook,
+  usePublishDailyBook,
+  useRepublishDailyBook,
   getListDailyBookQueryKey,
   getGetDailyBookQueryKey,
   useGetMyActiveDelegations,
@@ -17,11 +19,13 @@ import type {
 import React, { useState, useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -96,9 +100,9 @@ export default function DailyBookScreen() {
   );
 
   const books: DailyBook[] = (listData as any)?.dailyBooks ?? [];
-  const publishedBooks = books.filter(
-    (b) => b.status === "PUBLISHED" || b.status === "REPUBLISHED"
-  );
+  const visibleBooks = isCapitaoDailyBook
+    ? books
+    : books.filter((b) => b.status === "PUBLISHED" || b.status === "REPUBLISHED");
 
   const {
     data: bookData,
@@ -111,6 +115,45 @@ export default function DailyBookScreen() {
     },
   });
   const selectedBook = (bookData as any)?.dailyBook as DailyBookWithScenes | undefined;
+
+  const publishMutation = usePublishDailyBook();
+  const republishMutation = useRepublishDailyBook();
+
+  const handlePublish = useCallback(() => {
+    if (!selectedBookId) return;
+    Alert.alert("Publicar Livro do Dia", "Confirmar publicação? Os membros serão notificados.", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Publicar",
+        onPress: () =>
+          publishMutation.mutate(
+            { id: selectedBookId },
+            {
+              onSuccess: () => { refetchList(); refetchBook(); },
+              onError: () => Alert.alert("Erro", "Não foi possível publicar o livro."),
+            }
+          ),
+      },
+    ]);
+  }, [selectedBookId, publishMutation, refetchList, refetchBook]);
+
+  const handleRepublish = useCallback(() => {
+    if (!selectedBookId) return;
+    Alert.alert("Republicar Livro do Dia", "Confirmar republicação? Os membros serão notificados das alterações.", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Republicar",
+        onPress: () =>
+          republishMutation.mutate(
+            { id: selectedBookId },
+            {
+              onSuccess: () => { refetchList(); refetchBook(); },
+              onError: () => Alert.alert("Erro", "Não foi possível republicar o livro."),
+            }
+          ),
+      },
+    ]);
+  }, [selectedBookId, republishMutation, refetchList, refetchBook]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -297,10 +340,10 @@ export default function DailyBookScreen() {
         <Text style={styles.headerTitle}>Livro do Dia</Text>
         <Text style={styles.headerSub}>
           {isSupervisor
-            ? "Visão do supervisor — leitura"
+            ? "Roteiro operacional do dia"
             : isCapitaoDailyBook
             ? `Capitão · em nome de ${dailyBookDelegation?.supervisorName ?? "Supervisor"}`
-            : "Seus escalamentos do dia"}
+            : "Roteiro operacional do dia"}
         </Text>
       </View>
 
@@ -318,13 +361,13 @@ export default function DailyBookScreen() {
       >
         {/* Book selector */}
         <Text style={styles.sectionTitle}>Selecionar Livro</Text>
-        {publishedBooks.length === 0 ? (
+        {visibleBooks.length === 0 ? (
           <View style={styles.emptyCard}>
             <Feather name="book-open" size={28} color={colors.mutedForeground} />
             <Text style={styles.emptyText}>Nenhum Livro do Dia publicado ainda. Aguarde o supervisor gerar o livro do próximo evento.</Text>
           </View>
         ) : (
-          publishedBooks.map((book) => {
+          visibleBooks.map((book) => {
             const selected = selectedBookId === book.id;
             const statusColor = STATUS_COLORS[book.status] ?? "#6B7280";
             return (
@@ -367,9 +410,33 @@ export default function DailyBookScreen() {
               <View style={styles.emptyCard}>
                 <Text style={styles.emptyText}>Livro não encontrado</Text>
               </View>
-            ) : isSupervisor ? (
+            ) : (isSupervisor || isCapitaoDailyBook) ? (
               <>
-                {/* Supervisor: full tree read-only */}
+                {/* Supervisor/Capitão: full tree */}
+                {isCapitaoDailyBook && selectedBook.status === "DRAFT" && (
+                  <TouchableOpacity
+                    onPress={handlePublish}
+                    disabled={publishMutation.isPending}
+                    style={{ marginHorizontal: 16, marginBottom: 10, backgroundColor: "#16A34A", borderRadius: 10, paddingVertical: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
+                  >
+                    <Feather name="send" size={15} color="#fff" />
+                    <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>
+                      {publishMutation.isPending ? "Publicando…" : "Publicar Livro do Dia"}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                {isCapitaoDailyBook && selectedBook.status === "PUBLISHED" && (
+                  <TouchableOpacity
+                    onPress={handleRepublish}
+                    disabled={republishMutation.isPending}
+                    style={{ marginHorizontal: 16, marginBottom: 10, backgroundColor: "#0284C7", borderRadius: 10, paddingVertical: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
+                  >
+                    <Feather name="refresh-cw" size={15} color="#fff" />
+                    <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>
+                      {republishMutation.isPending ? "Republicando…" : "Republicar Livro do Dia"}
+                    </Text>
+                  </TouchableOpacity>
+                )}
                 <Text style={styles.sectionTitle}>
                   Livro do Dia v{selectedBook.version} — Visão Completa
                 </Text>

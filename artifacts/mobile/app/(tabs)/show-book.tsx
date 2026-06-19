@@ -278,7 +278,7 @@ export default function ShowBookScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Livro do Show</Text>
-        <Text style={styles.headerSub}>Estrutura do espetáculo</Text>
+        <Text style={styles.headerSub}>Estrutura oficial do espetáculo</Text>
       </View>
 
       <ScrollView

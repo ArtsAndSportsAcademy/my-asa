@@ -36,15 +36,14 @@ function NativeTabLayout() {
         <Icon sf={{ default: "list.clipboard", selected: "list.clipboard.fill" }} />
         <Label>Escala</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="entregas">
-        <Icon sf={{ default: "shippingbox", selected: "shippingbox.fill" }} />
-        <Label>Entregas</Label>
+      <NativeTabs.Trigger name="tarefas">
+        <Icon sf={{ default: "checkmark.square", selected: "checkmark.square.fill" }} />
+        <Label>Tarefas</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="mais">
         <Icon sf={{ default: "ellipsis", selected: "ellipsis.circle.fill" }} />
         <Label>Mais</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Screen name="tarefas" options={{ href: null }} />
     </NativeTabs>
   );
 }
@@ -138,14 +137,14 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="entregas"
+        name="tarefas"
         options={{
-          title: "Entregas",
+          title: "Tarefas",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="shippingbox" tintColor={color} size={24} />
+              <SymbolView name="checkmark.square" tintColor={color} size={24} />
             ) : (
-              <Feather name="package" size={22} color={color} />
+              <Feather name="check-square" size={22} color={color} />
             ),
         }}
       />
@@ -163,15 +162,15 @@ function ClassicTabLayout() {
       />
 
       {/* ── Secondary screens — roteáveis mas ocultos da tab bar ── */}
-      <Tabs.Screen name="index"      options={{ tabBarButton: () => null, title: "Home"         }} />
-      <Tabs.Screen name="panel"      options={{ tabBarButton: () => null, title: "Painel"       }} />
-      <Tabs.Screen name="agenda"     options={{ tabBarButton: () => null, title: "Agenda"       }} />
-      <Tabs.Screen name="show-book"  options={{ tabBarButton: () => null, title: "Livro do Show"}} />
-      <Tabs.Screen name="daily-book" options={{ tabBarButton: () => null, title: "Livro do Dia" }} />
-      <Tabs.Screen name="historico"    options={{ tabBarButton: () => null, title: "Histórico"     }} />
+      <Tabs.Screen name="index"       options={{ tabBarButton: () => null, title: "Home"          }} />
+      <Tabs.Screen name="panel"       options={{ tabBarButton: () => null, title: "Painel"        }} />
+      <Tabs.Screen name="agenda"      options={{ tabBarButton: () => null, title: "Agenda"        }} />
+      <Tabs.Screen name="show-book"   options={{ tabBarButton: () => null, title: "Livro do Show" }} />
+      <Tabs.Screen name="daily-book"  options={{ tabBarButton: () => null, title: "Livro do Dia"  }} />
+      <Tabs.Screen name="historico"   options={{ tabBarButton: () => null, title: "Histórico"     }} />
       <Tabs.Screen name="biblioteca"  options={{ tabBarButton: () => null, title: "Biblioteca"    }} />
       <Tabs.Screen name="solicitacoes" options={{ tabBarButton: () => null, title: "Solicitações" }} />
-      <Tabs.Screen name="tarefas"      options={{ tabBarButton: () => null, title: "Tarefas"       }} />
+      <Tabs.Screen name="entregas"    options={{ tabBarButton: () => null, title: "Entregas"      }} />
     </Tabs>
   );
 }
