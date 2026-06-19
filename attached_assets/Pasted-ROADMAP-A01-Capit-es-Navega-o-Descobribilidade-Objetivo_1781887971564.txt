@@ -1,0 +1,289 @@
+ROADMAP-A01 — Capitães + Navegação + Descobribilidade
+
+Objetivo
+
+Após as auditorias AUD-P03, AUD-P04, CAP-D01, CAP-D02 e CAP-D03, executar uma auditoria final de prontidão para definir exatamente o que deve ser corrigido antes do piloto.
+
+Importante:
+
+* Não implementar ainda.
+* Não alterar banco.
+* Não alterar APIs.
+* Não criar novas funcionalidades.
+* Não criar novos módulos.
+* Apenas validar a experiência real dos usuários.
+
+O foco é responder:
+
+As pessoas conseguem usar o que já existe?
+
+⸻
+
+PARTE 1 — Fluxo do Membro
+
+Validar a jornada completa de um membro novo.
+
+Sem treinamento.
+
+Sem manual.
+
+Sem ajuda de supervisor.
+
+Responder:
+
+Meu Dia
+
+* Consegue entender o que é?
+* Consegue encontrar o check-in?
+* Consegue identificar seus compromissos?
+
+Escala
+
+* Consegue encontrar?
+* Entende o que está vendo?
+* Entende horário, local e função?
+
+Livro do Dia
+
+* Consegue encontrar?
+* Entende a diferença para Livro do Show?
+
+Solicitações
+
+* Consegue criar?
+* Entende os tipos disponíveis?
+* Sabe qual escolher?
+
+Tarefas
+
+* Consegue executar?
+* Consegue anexar evidências?
+* Consegue enviar para aprovação?
+
+Avisos
+
+* Consegue visualizar?
+* Consegue confirmar leitura?
+
+Mensagens
+
+* Consegue iniciar conversa?
+* Consegue responder?
+
+Classificar cada fluxo:
+
+🟢 Intuitivo
+
+🟡 Exige orientação
+
+🔴 Confuso
+
+⸻
+
+PARTE 2 — Fluxo do Supervisor
+
+Validar a operação diária de um supervisor.
+
+Responder:
+
+Agenda
+
+* Consegue criar eventos?
+* Consegue encontrar eventos existentes?
+
+Escalas
+
+* Consegue gerar?
+* Consegue publicar?
+* Consegue resolver conflitos?
+
+Livro do Dia
+
+* Consegue gerar?
+* Consegue publicar?
+* Consegue republicar?
+
+Solicitações
+
+* Consegue aprovar?
+* Consegue negar?
+
+Tarefas
+
+* Consegue criar?
+* Consegue aprovar?
+
+Avisos
+
+* Consegue criar?
+* Consegue publicar?
+
+Check-ins
+
+* Consegue gerenciar?
+* Consegue corrigir?
+
+Delegações
+
+* Consegue criar?
+* Consegue visualizar?
+
+Classificar:
+
+🟢 Intuitivo
+
+🟡 Exige orientação
+
+🔴 Confuso
+
+⸻
+
+PARTE 3 — Fluxo do Capitão
+
+Usar o cenário:
+
+Débora delega:
+
+* CHECK_INS
+* DAILY_BOOK
+* NOTICES
+
+para Carol.
+
+Responder:
+
+Descoberta
+
+* Carol percebe que virou capitã?
+* Carol entende o que recebeu?
+
+Navegação
+
+* Carol encontra onde executar?
+* Carol encontra em menos de 3 cliques?
+
+Operação
+
+* Carol consegue atuar sozinha?
+* Carol precisa de treinamento?
+* Carol precisa pedir ajuda?
+
+Mobile
+
+* O mobile permite executar?
+
+Web
+
+* O web permite executar?
+
+Classificar:
+
+🟢 Funcional
+
+🟡 Parcial
+
+🔴 Não utilizável
+
+⸻
+
+PARTE 4 — Menus
+
+Auditar todos os menus.
+
+Mobile
+
+Tabs principais:
+
+* Meu Dia
+* Avisos
+* Mensagens
+* Escala
+* Entregas
+
+Responder:
+
+* Ordem correta?
+* Algum item importante escondido?
+* Algum item sem uso frequente ocupando posição principal?
+
+Menu Mais
+
+Responder:
+
+* Está organizado?
+* Existe agrupamento lógico?
+
+Web Admin
+
+Responder:
+
+* Estrutura clara?
+* Existem itens redundantes?
+* Existem nomes confusos?
+
+⸻
+
+PARTE 5 — Linguagem
+
+Validar todos os termos.
+
+Especial atenção:
+
+* Livro do Dia
+* Livro do Show
+* Entregas
+* Solicitações
+* Delegações
+* Escalas
+* Avisos
+
+Responder:
+
+* É autoexplicativo?
+* É jargão interno?
+* Um usuário novo entende?
+
+Classificar:
+
+🟢 Claro
+
+🟡 Parcial
+
+🔴 Confuso
+
+⸻
+
+PARTE 6 — Priorização Pré-Piloto
+
+Gerar lista final.
+
+Separar em:
+
+🔴 Necessário antes do piloto
+
+Itens que impedem uso real.
+
+🟡 Recomendado antes do piloto
+
+Itens que causam atrito.
+
+🟢 Pode ficar para depois
+
+Itens que não afetam a adoção inicial.
+
+⸻
+
+VEREDITO FINAL
+
+Responder:
+
+1. O MyASA está pronto para um piloto interno?
+2. Um membro novo consegue usar sozinho?
+3. Um supervisor consegue operar sozinho?
+4. Um capitão consegue operar sozinho?
+5. O maior risco atual é funcionalidade ou experiência?
+6. Qual deve ser o próximo sprint após essa auditoria?
+
+Objetivo final:
+
+Produzir a lista definitiva de ajustes de experiência e navegação antes da entrada do primeiro grupo real de usuários no MyASA.
