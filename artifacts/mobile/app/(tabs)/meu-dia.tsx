@@ -8,6 +8,8 @@ import {
   getGetMyCheckInStatusQueryKey,
   useGetMyActiveDelegations,
   getMyActiveDelegationsQueryKey,
+  useGetMyTasks,
+  getGetMyTasksQueryKey,
 } from "@workspace/api-client-react";
 import type {
   MyDayActivity,
@@ -15,6 +17,7 @@ import type {
   MyDayNoticeItem,
   CheckInMyStatusResponse,
   ActiveDelegationItem,
+  TaskItem,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useState } from "react";
@@ -385,6 +388,30 @@ function PendingNoticeCard({ notice, colors }: { notice: MyDayNoticeItem; colors
   );
 }
 
+const TASK_PRIORITY_ORDER: Record<string, number> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+const TASK_PRIORITY_LABELS: Record<string, string> = { CRITICAL: "Crítica", HIGH: "Alta", MEDIUM: "Média", LOW: "Baixa" };
+const TASK_PRIORITY_COLORS: Record<string, { bg: string; text: string }> = {
+  CRITICAL: { bg: "#FEE2E2", text: "#991B1B" },
+  HIGH:     { bg: "#FFEDD5", text: "#9A3412" },
+  MEDIUM:   { bg: "#FEF3C7", text: "#92400E" },
+  LOW:      { bg: "#F3F4F6", text: "#4B5563" },
+};
+const TASK_STATUS_LABELS: Record<string, string> = {
+  CREATED: "Criada", IN_PROGRESS: "Em andamento", READY_FOR_APPROVAL: "Ag. aprovação",
+  CHANGES_REQUESTED: "Revisar", APPROVED: "Aprovada", COMPLETED: "Concluída",
+  CANCELLED: "Cancelada", EXPIRED: "Expirada",
+};
+const TASK_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+  CREATED:            { bg: "#F3F4F6", text: "#4B5563" },
+  IN_PROGRESS:        { bg: "#DBEAFE", text: "#1E40AF" },
+  READY_FOR_APPROVAL: { bg: "#EDE9FE", text: "#6D28D9" },
+  CHANGES_REQUESTED:  { bg: "#FEF3C7", text: "#92400E" },
+  APPROVED:           { bg: "#D1FAE5", text: "#065F46" },
+  COMPLETED:          { bg: "#D1FAE5", text: "#065F46" },
+  CANCELLED:          { bg: "#F3F4F6", text: "#6B7280" },
+  EXPIRED:            { bg: "#FEE2E2", text: "#991B1B" },
+};
+
 function EmptyState({ message, colors }: { message: string; colors: ReturnType<typeof useColors> }) {
   return (
     <View style={[styles.emptyCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
@@ -418,6 +445,14 @@ export default function MeuDiaScreen() {
   const { data: delegationsData } = useGetMyActiveDelegations();
   const activeDelegations = delegationsData?.delegations ?? [];
 
+  const { data: myTasksData } = useGetMyTasks(
+    undefined,
+    { query: { queryKey: getGetMyTasksQueryKey() } }
+  );
+  const myActiveTasks: TaskItem[] = (myTasksData?.tasks ?? [])
+    .filter((t) => !["APPROVED", "COMPLETED", "CANCELLED", "EXPIRED"].includes(t.status))
+    .sort((a, b) => TASK_PRIORITY_ORDER[a.priority] - TASK_PRIORITY_ORDER[b.priority]);
+
   function handleCheckIn() {
     performCheckInMutation.mutate(undefined, {
       onSuccess: () => {
@@ -434,6 +469,7 @@ export default function MeuDiaScreen() {
     await queryClient.invalidateQueries({ queryKey: getGetMyDayQueryKey() });
     await queryClient.invalidateQueries({ queryKey: getGetMyCheckInStatusQueryKey() });
     await queryClient.invalidateQueries({ queryKey: getMyActiveDelegationsQueryKey() });
+    await queryClient.invalidateQueries({ queryKey: getGetMyTasksQueryKey() });
     await refetch();
     setRefreshing(false);
   }, [queryClient, refetch]);
@@ -636,6 +672,55 @@ export default function MeuDiaScreen() {
               data.complementaryInfo.upcomingDeliveries.length === 0 && (
                 <EmptyState message="Nenhuma solicitação pendente ou entrega futura." colors={colors} />
               )}
+
+            {/* ── Minhas Tarefas (T001) ── */}
+            {myActiveTasks.length > 0 && (
+              <>
+                <SectionHeader title="Minhas Tarefas" icon="check-square" colors={colors} />
+                {myActiveTasks.slice(0, 6).map((t) => {
+                  const isLate = new Date(t.dueDate) < new Date();
+                  const priColor = TASK_PRIORITY_COLORS[t.priority] ?? TASK_PRIORITY_COLORS.LOW;
+                  const stsColor = TASK_STATUS_COLORS[t.status] ?? TASK_STATUS_COLORS.CREATED;
+                  return (
+                    <View
+                      key={t.id}
+                      style={[
+                        styles.complementaryCard,
+                        {
+                          backgroundColor: isLate ? "#FFF5F5" : colors.card,
+                          borderColor: isLate ? "#FCA5A5" : colors.border,
+                        },
+                      ]}
+                    >
+                      <View style={styles.complementaryHeader}>
+                        <Text
+                          style={[styles.complementaryTitle, { color: colors.foreground, flex: 1 }]}
+                          numberOfLines={1}
+                        >
+                          {t.title}
+                        </Text>
+                        <View style={[styles.statusBadge, { backgroundColor: stsColor.bg }]}>
+                          <Text style={[styles.statusText, { color: stsColor.text }]}>
+                            {TASK_STATUS_LABELS[t.status] ?? t.status}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+                        <View style={[styles.statusBadge, { backgroundColor: priColor.bg }]}>
+                          <Text style={[styles.statusText, { color: priColor.text }]}>
+                            {TASK_PRIORITY_LABELS[t.priority] ?? t.priority}
+                          </Text>
+                        </View>
+                        <Text style={[styles.metaText, { color: isLate ? "#DC2626" : colors.mutedForeground }]}>
+                          {isLate ? "⚠ Atrasada · " : "Até "}
+                          {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </>
+            )}
           </>
         )}
       </ScrollView>

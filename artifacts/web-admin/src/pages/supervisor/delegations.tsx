@@ -154,8 +154,8 @@ export default function SupervisorDelegationsPage() {
               </TableHeader>
               <TableBody>
                 {delegations.map((d) => (
-                  <TableRow key={d.delegationId}>
-                    <TableCell className="font-medium">{d.delegateName}</TableCell>
+                  <TableRow key={d.id}>
+                    <TableCell className="font-medium">{d.delegateeName}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{d.operationName}</TableCell>
                     <TableCell className="text-sm whitespace-nowrap">
                       {fmtDate(d.startDate)} – {fmtDate(d.endDate)}
@@ -170,7 +170,7 @@ export default function SupervisorDelegationsPage() {
                           variant="ghost"
                           size="icon"
                           className="text-destructive hover:text-destructive"
-                          onClick={() => setCancelId(d.delegationId)}
+                          onClick={() => setCancelId(d.id)}
                         >
                           <X className="w-4 h-4" />
                         </Button>

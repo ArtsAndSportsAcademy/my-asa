@@ -1,0 +1,194 @@
+MyASA — Sprint 18.1 — Integração e Auditoria de Tarefas
+
+Utilizar obrigatoriamente:
+
+* Sprint 0 → Sprint 18 concluídas
+* AUD-D02 concluída
+* GOV-D11 concluída
+* S-18 Tarefas Operacionais implementada
+* S-11 Histórico
+* S-02 Painel Operacional
+* S-01 Meu Dia
+* S-14 Biblioteca
+
+Importante:
+
+Não criar novas tabelas.
+
+Não criar novos conceitos.
+
+Não alterar o domínio de Tarefas.
+
+Objetivo:
+
+Integrar Tarefas ao restante da plataforma e validar que elas participam da operação diária.
+
+Pergunta respondida:
+
+“As Tarefas fazem parte da rotina operacional do MyASA?”
+
+═══════════════════════
+T001 — Meu Dia
+═══════════════════════
+
+Adicionar seção:
+
+Minhas Tarefas
+
+Mostrar:
+
+* atrasadas
+* em andamento
+* aguardando aprovação
+
+Priorizar:
+
+CRITICAL
+HIGH
+MEDIUM
+LOW
+
+Objetivo:
+
+Membro deve enxergar suas tarefas sem precisar navegar até a tela específica.
+
+═══════════════════════
+T002 — Painel Operacional
+═══════════════════════
+
+Adicionar widget:
+
+Tarefas Operacionais
+
+Indicadores:
+
+* abertas
+* em andamento
+* aguardando aprovação
+* atrasadas
+* concluídas hoje
+
+Filtros por operação.
+
+═══════════════════════
+T003 — Histórico
+═══════════════════════
+
+Validar exibição visual de:
+
+task.created
+
+task.started
+
+task.approved
+
+task.completed
+
+task.cancelled
+
+task.expired
+
+Garantir consistência com Avisos, Solicitações e Check-ins.
+
+═══════════════════════
+T004 — Delegações
+═══════════════════════
+
+Validar GOV-D11.
+
+Responder:
+
+* Delegado cria tarefa?
+* Delegado aprova tarefa?
+* Delegado solicita ajustes?
+* Delegado enxerga apenas tarefas da operação delegada?
+
+═══════════════════════
+T005 — Biblioteca
+═══════════════════════
+
+Validar integração LIBRARY.
+
+Caso real:
+
+Atualizar Biblioteca
+↓
+Tarefa
+↓
+Aprovação
+↓
+Biblioteca
+
+Confirmar que não existe duplicação de conteúdo.
+
+═══════════════════════
+T006 — Alertas Operacionais
+═══════════════════════
+
+Adicionar indicadores para:
+
+* tarefa atrasada
+* tarefa aguardando aprovação
+* tarefa crítica
+
+Sem notificações push nesta sprint.
+
+Somente indicadores visuais.
+
+═══════════════════════
+T007 — Carga Operacional
+═══════════════════════
+
+Adicionar visão para Supervisor:
+
+Quantidade de tarefas por responsável.
+
+Exibir:
+
+* total
+* em andamento
+* atrasadas
+
+Objetivo:
+
+Detectar sobrecarga operacional.
+
+═══════════════════════
+T008 — Auditoria de Consistência
+═══════════════════════
+
+Responder:
+
+1. Tarefas aparecem no Meu Dia?
+2. Tarefas aparecem no Painel?
+3. Tarefas aparecem no Histórico?
+4. Delegações funcionam?
+5. Biblioteca funciona?
+6. Existem telas órfãs?
+7. Existe duplicação de dados?
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Objetivo final:
+
+Transformar S-18 de um módulo isolado em parte integrada da operação diária.
+
+Resultado esperado:
+
+Solicitações
+↓
+Escala
+↓
+Livro do Dia
+↓
+Check-in
+↓
+Tarefas
+↓
+Biblioteca
+↓
+Histórico
+
+funcionando como um fluxo operacional único.

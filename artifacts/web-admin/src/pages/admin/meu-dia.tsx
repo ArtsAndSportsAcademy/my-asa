@@ -1,5 +1,10 @@
-import { useGetMyDay, getGetMyDayQueryKey } from "@workspace/api-client-react";
-import type { MyDayActivity, MyDayResponse } from "@workspace/api-client-react";
+import {
+  useGetMyDay,
+  getGetMyDayQueryKey,
+  useGetMyTasks,
+  getGetMyTasksQueryKey,
+} from "@workspace/api-client-react";
+import type { MyDayActivity, MyDayResponse, TaskItem } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Zap,
@@ -49,6 +54,41 @@ const REQUEST_TYPE_LABELS: Record<string, string> = {
   SCHEDULE_CHANGE: "Mudança de Horário",
   SWAP: "Troca",
   OTHER: "Outro",
+};
+
+// ─── Task constants ───────────────────────────────────────────────────────────
+
+const TASK_PRIORITY_ORDER: Record<string, number> = {
+  CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3,
+};
+const TASK_PRIORITY_LABELS: Record<string, string> = {
+  CRITICAL: "Crítica", HIGH: "Alta", MEDIUM: "Média", LOW: "Baixa",
+};
+const TASK_PRIORITY_BADGES: Record<string, string> = {
+  CRITICAL: "bg-red-100 text-red-800",
+  HIGH:     "bg-orange-100 text-orange-800",
+  MEDIUM:   "bg-amber-100 text-amber-800",
+  LOW:      "bg-gray-100 text-gray-600",
+};
+const TASK_STATUS_LABELS: Record<string, string> = {
+  CREATED:              "Criada",
+  IN_PROGRESS:          "Em andamento",
+  READY_FOR_APPROVAL:   "Ag. aprovação",
+  CHANGES_REQUESTED:    "Revisar",
+  APPROVED:             "Aprovada",
+  COMPLETED:            "Concluída",
+  CANCELLED:            "Cancelada",
+  EXPIRED:              "Expirada",
+};
+const TASK_STATUS_BADGES: Record<string, string> = {
+  CREATED:              "bg-gray-100 text-gray-600",
+  IN_PROGRESS:          "bg-blue-100 text-blue-700",
+  READY_FOR_APPROVAL:   "bg-violet-100 text-violet-700",
+  CHANGES_REQUESTED:    "bg-amber-100 text-amber-700",
+  APPROVED:             "bg-green-100 text-green-700",
+  COMPLETED:            "bg-green-100 text-green-700",
+  CANCELLED:            "bg-gray-100 text-gray-500",
+  EXPIRED:              "bg-red-100 text-red-700",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -252,6 +292,15 @@ export default function MeuDiaPage() {
     refetch();
   };
 
+  const { data: myTasksData } = useGetMyTasks(
+    undefined,
+    { query: { queryKey: getGetMyTasksQueryKey() } }
+  );
+  const myTasks: TaskItem[] = myTasksData?.tasks ?? [];
+  const activeTasks = myTasks
+    .filter((t) => !["APPROVED", "COMPLETED", "CANCELLED", "EXPIRED"].includes(t.status))
+    .sort((a, b) => TASK_PRIORITY_ORDER[a.priority] - TASK_PRIORITY_ORDER[b.priority]);
+
   return (
     <div className="min-h-screen bg-muted/20 flex flex-col font-sans">
       {/* Topbar */}
@@ -409,6 +458,44 @@ export default function MeuDiaPage() {
               data.complementaryInfo.upcomingDeliveries.length === 0 && (
                 <EmptyState message="Nenhuma solicitação pendente ou entrega futura." />
               )}
+
+            {/* ── Minhas Tarefas (T001) ── */}
+            {activeTasks.length > 0 && (
+              <>
+                <SectionHeader title="Minhas Tarefas" icon={CheckSquare} />
+                <div className="space-y-2">
+                  {activeTasks.slice(0, 6).map((t) => {
+                    const isLate = new Date(t.dueDate) < new Date();
+                    return (
+                      <Card key={t.id} className={isLate ? "border-red-200 bg-red-50/30" : ""}>
+                        <CardContent className="p-3 flex items-start gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold line-clamp-1">{t.title}</p>
+                            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                              <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${TASK_PRIORITY_BADGES[t.priority] ?? "bg-gray-100 text-gray-600"}`}>
+                                {TASK_PRIORITY_LABELS[t.priority] ?? t.priority}
+                              </span>
+                              <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${TASK_STATUS_BADGES[t.status] ?? "bg-gray-100 text-gray-600"}`}>
+                                {TASK_STATUS_LABELS[t.status] ?? t.status}
+                              </span>
+                              {t.operationName && (
+                                <span className="text-xs text-muted-foreground">{t.operationName}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <p className={`text-xs font-medium whitespace-nowrap ${isLate ? "text-red-600" : "text-muted-foreground"}`}>
+                              {isLate ? "⚠ " : ""}
+                              Até {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </>
+            )}
 
             <p className="text-xs text-muted-foreground text-right">
               Atualizado às {new Date(data.generatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}

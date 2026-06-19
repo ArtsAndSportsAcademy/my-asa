@@ -1,4 +1,4 @@
-- [MyASA 2.0 — Estado do Projeto](myasa-estado-projeto.md) — GOV-D11 Delegação Temporária de Supervisão concluída; próxima sprint a definir
+- [MyASA 2.0 — Estado do Projeto](myasa-estado-projeto.md) — Sprint 18.1 Integração de Tarefas concluída; próxima sprint a definir
 - [LOG_DOMAIN extension pattern](log-domain-pattern.md) — ao criar nova rota, adicionar entrada no LOG_DOMAIN de lib/shared/src/constants.ts antes de usar requestLogger
 - [YAML plain scalar colon bug](yaml-colon-bug.md) — summary com ": " em YAML não-quoted quebra orval silenciosamente
 - [Express params cast pattern](express-params-cast.md) — req.params.id tipado como string|string[] no Express; sempre usar `const id = req.params.id as string`
@@ -6,3 +6,4 @@
 - [Vite Fast Refresh — Auth Context split](vite-fast-refresh-auth.md) — contexto de autenticação deve ser dividido em 3 arquivos para evitar crash de HMR
 - [lib/db rebuild após mudança de schema](lib-db-rebuild.md) — após alterar schema em lib/db/src/, rodar `pnpm --filter @workspace/db exec tsc -p tsconfig.json` para atualizar dist/ antes de typechecks dependentes
 - [Schema collision: teams.ts delegationsTable](schema-collision-delegations.md) — teams.ts tinha delegationsTable obsoleto (delegatorId/delegateeId/validFrom/validUntil); o canônico é lib/db/src/schema/delegations.ts (GOV-D11)
+- [Orval hooks apagados — padrão de correção](orval-hooks-pattern.md) — quando orval regenera api.ts, hooks manuais de sprints anteriores são apagados; padrão: criar arquivo manual + exportar no index

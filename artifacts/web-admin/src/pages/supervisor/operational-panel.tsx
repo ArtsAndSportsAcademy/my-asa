@@ -6,6 +6,8 @@ import {
   useUpdateCheckIn,
   getListCheckInsQueryKey,
   getGetCheckInSummaryQueryKey,
+  useListTasks,
+  getListTasksQueryKey,
 } from "@workspace/api-client-react";
 import type {
   OperationalHealth,
@@ -14,13 +16,14 @@ import type {
   OperationalUpcomingEvent,
   CheckInItem,
   CheckInSummary,
+  TaskItem,
 } from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Activity, AlertTriangle, BookMarked, CalendarDays,
   CheckCircle2, XCircle, AlertCircle, Clock, RefreshCw, Layers,
-  UserCheck, Users,
+  UserCheck, Users, ClipboardList,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -132,6 +135,27 @@ export default function SupervisorOperationalPanel() {
   );
   const checkIns: CheckInItem[] = checkInsData?.checkIns ?? [];
   const summary: CheckInSummary | null = summaryData?.summary ?? null;
+
+  const taskParams = { operationId: operationId || undefined };
+  const { data: tasksData } = useListTasks(
+    taskParams,
+    { query: { enabled: !!operationId, queryKey: getListTasksQueryKey(taskParams) } }
+  );
+  const tasks: TaskItem[] = tasksData?.tasks ?? [];
+  const activeTasks = tasks.filter((t) => !["APPROVED", "COMPLETED", "CANCELLED", "EXPIRED"].includes(t.status));
+  const lateTasks = activeTasks.filter((t) => new Date(t.dueDate) < new Date());
+  const approvalTasks = activeTasks.filter((t) => t.status === "READY_FOR_APPROVAL");
+  const criticalTasks = activeTasks.filter((t) => t.priority === "CRITICAL");
+
+  const cargaPorResponsavel = activeTasks.reduce<Record<string, { name: string; total: number; late: number; inProgress: number }>>((acc, t) => {
+    const key = t.assigneeId;
+    if (!acc[key]) acc[key] = { name: t.assigneeName ?? t.assigneeId, total: 0, late: 0, inProgress: 0 };
+    acc[key].total++;
+    if (new Date(t.dueDate) < new Date()) acc[key].late++;
+    if (t.status === "IN_PROGRESS") acc[key].inProgress++;
+    return acc;
+  }, {});
+  const cargaList = Object.values(cargaPorResponsavel).sort((a, b) => b.late - a.late || b.total - a.total);
 
   const updateMutation = useUpdateCheckIn();
 
@@ -442,6 +466,137 @@ export default function SupervisorOperationalPanel() {
           )}
         </CardContent>
       </Card>
+
+      {/* ── Tarefas Operacionais (T002/T006) ── */}
+      <Card className="mt-4">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <ClipboardList className="h-4 w-4" /> Tarefas Operacionais
+            {lateTasks.length > 0 && (
+              <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                {lateTasks.length} atrasada{lateTasks.length > 1 ? "s" : ""}
+              </span>
+            )}
+            {lateTasks.length === 0 && approvalTasks.length > 0 && (
+              <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700">
+                {approvalTasks.length} ag. aprovação
+              </span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {!operationId ? (
+            <p className="px-6 py-4 text-sm text-muted-foreground text-center">Operação não vinculada ao perfil.</p>
+          ) : activeTasks.length === 0 ? (
+            <div className="px-6 py-6 flex flex-col items-center gap-2">
+              <CheckCircle2 className="h-8 w-8 text-green-500" />
+              <p className="text-sm text-green-600 font-medium">Nenhuma tarefa ativa</p>
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-2 px-6 pt-4 pb-3">
+                <span className="text-xs px-2.5 py-1 rounded-full bg-muted text-muted-foreground font-medium">
+                  {activeTasks.length} ativas
+                </span>
+                {approvalTasks.length > 0 && (
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-violet-100 text-violet-700 font-medium">
+                    {approvalTasks.length} ag. aprovação
+                  </span>
+                )}
+                {lateTasks.length > 0 && (
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-red-100 text-red-700 font-medium">
+                    {lateTasks.length} atrasada{lateTasks.length > 1 ? "s" : ""}
+                  </span>
+                )}
+                {criticalTasks.length > 0 && (
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-red-50 text-red-800 font-medium border border-red-200">
+                    {criticalTasks.length} crítica{criticalTasks.length > 1 ? "s" : ""}
+                  </span>
+                )}
+              </div>
+              <div className="divide-y max-h-56 overflow-y-auto">
+                {activeTasks.slice(0, 8).map((t) => {
+                  const isLate = new Date(t.dueDate) < new Date();
+                  return (
+                    <div key={t.id} className={`px-6 py-3 flex items-start gap-2 ${isLate ? "bg-red-50/30" : ""}`}>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{t.title}</p>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                          <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
+                            t.priority === "CRITICAL" ? "bg-red-100 text-red-800"
+                            : t.priority === "HIGH" ? "bg-orange-100 text-orange-800"
+                            : t.priority === "MEDIUM" ? "bg-amber-100 text-amber-800"
+                            : "bg-gray-100 text-gray-600"
+                          }`}>
+                            {t.priority === "CRITICAL" ? "Crítica" : t.priority === "HIGH" ? "Alta" : t.priority === "MEDIUM" ? "Média" : "Baixa"}
+                          </span>
+                          <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
+                            t.status === "READY_FOR_APPROVAL" ? "bg-violet-100 text-violet-700"
+                            : t.status === "IN_PROGRESS" ? "bg-blue-100 text-blue-700"
+                            : t.status === "CHANGES_REQUESTED" ? "bg-amber-100 text-amber-700"
+                            : "bg-gray-100 text-gray-600"
+                          }`}>
+                            {t.status === "READY_FOR_APPROVAL" ? "Ag. aprovação"
+                              : t.status === "IN_PROGRESS" ? "Em andamento"
+                              : t.status === "CHANGES_REQUESTED" ? "Revisar"
+                              : "Criada"}
+                          </span>
+                          {t.assigneeName && (
+                            <span className="text-xs text-muted-foreground">{t.assigneeName}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className={`text-xs font-medium ${isLate ? "text-red-600" : "text-muted-foreground"}`}>
+                          {isLate ? "⚠ " : ""}
+                          {new Date(t.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Carga Operacional por Responsável (T007) ── */}
+      {cargaList.length > 0 && (
+        <Card className="mt-4">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Users className="h-4 w-4" /> Carga Operacional por Responsável
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="divide-y max-h-64 overflow-y-auto">
+              {cargaList.map((item) => (
+                <div key={item.name} className="px-6 py-3 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{item.name}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
+                      {item.total} tarefa{item.total > 1 ? "s" : ""}
+                    </span>
+                    {item.inProgress > 0 && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">
+                        {item.inProgress} em andamento
+                      </span>
+                    )}
+                    {item.late > 0 && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">
+                        {item.late} atrasada{item.late > 1 ? "s" : ""}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </AdminLayout>
   );
 }

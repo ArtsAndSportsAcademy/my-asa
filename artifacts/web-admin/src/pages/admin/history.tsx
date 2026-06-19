@@ -62,6 +62,7 @@ const CATEGORY_CFG: Record<string, { label: string; badge: string; Icon: React.E
   DELIVERY:           { label: "Entrega",      badge: "bg-teal-100 text-teal-800",      Icon: Package },
   MESSAGE:            { label: "Mensagem",     badge: "bg-sky-100 text-sky-800",        Icon: MessageSquare },
   OPERATIONAL_CHANGE: { label: "MO",           badge: "bg-red-100 text-red-800",        Icon: AlertCircle },
+  TASK:               { label: "Tarefa",       badge: "bg-purple-100 text-purple-800",  Icon: CheckCircle2 },
 };
 
 const ACTION_LABELS: Record<string, string> = {
@@ -73,6 +74,10 @@ const ACTION_LABELS: Record<string, string> = {
   suspended:   "Suspenso",
   updated:     "Atualizado",
   completed:   "Concluído",
+  created:     "Criada",
+  started:     "Iniciada",
+  approved:    "Aprovada",
+  expired:     "Expirada",
 };
 
 const NARRATIVE_STATUS_CFG: Record<string, { label: string; badge: string }> = {
