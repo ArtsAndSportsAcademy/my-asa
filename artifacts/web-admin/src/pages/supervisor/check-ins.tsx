@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { ClipboardCheck, UserX, Clock, CheckCircle2, UserCheck } from "lucide-react";
+import AdminLayout from "@/components/admin-layout";
 
 const STATUS_OPTIONS = [
   { value: "CHECKED_IN", label: "Presente", color: "bg-green-100 text-green-800" },
@@ -80,14 +81,9 @@ export default function SupervisorCheckInsPage() {
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <ClipboardCheck className="w-6 h-6" /> Check-ins do Dia
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">Visualize e corrija a presença do elenco.</p>
-        </div>
+    <AdminLayout title="Check-ins do Dia" subtitle="Visualize e corrija a presença do elenco.">
+    <div className="max-w-4xl space-y-6">
+      <div className="flex justify-end">
         <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-40" />
       </div>
 
@@ -175,5 +171,6 @@ export default function SupervisorCheckInsPage() {
         </div>
       )}
     </div>
+    </AdminLayout>
   );
 }

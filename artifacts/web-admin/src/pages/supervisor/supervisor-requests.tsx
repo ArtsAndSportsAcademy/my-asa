@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeftRight, Plus, Send, Inbox } from "lucide-react";
+import AdminLayout from "@/components/admin-layout";
 
 type Direction = "sent" | "received";
 
@@ -116,16 +117,9 @@ export default function SupervisorInterRequestsPage() {
   const operations = opsData?.operations ?? [];
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <ArrowLeftRight className="w-6 h-6" /> Solicitações Entre Supervisores
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Solicite ou autorize o uso de membros em outras operações.
-          </p>
-        </div>
+    <AdminLayout title="Solicitações Entre Supervisores" subtitle="Solicite ou autorize o uso de membros em outras operações.">
+    <div className="max-w-4xl space-y-6">
+      <div className="flex justify-end">
         <Button onClick={() => setShowNew(true)} className="gap-2">
           <Plus className="w-4 h-4" /> Nova Solicitação
         </Button>
@@ -270,5 +264,6 @@ export default function SupervisorInterRequestsPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </AdminLayout>
   );
 }

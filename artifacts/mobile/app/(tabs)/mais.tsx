@@ -30,6 +30,7 @@ const SECTIONS: { title: string; items: SectionItem[] }[] = [
       { label: "Solicitações",  icon: "inbox",       route: "/(tabs)/solicitacoes" },
       { label: "Livro do Dia",  subtitle: "Roteiro operacional do dia",       icon: "file-text", route: "/(tabs)/daily-book"   },
       { label: "Entregas",      subtitle: "Materiais e conteúdos atribuídos", icon: "package",   route: "/(tabs)/entregas"     },
+      { label: "Tarefas",       subtitle: "Tarefas atribuídas a você",        icon: "check-square", route: "/(tabs)/tarefas"  },
       { label: "Painel",            subtitle: "Saúde e cobertura operacional",    icon: "activity",  route: "/(tabs)/panel",                managerOnly: true },
       { label: "Responsabilidades", subtitle: "Funções permanentes da operação",  icon: "users",     route: "/(tabs)/responsabilidades" },
     ],

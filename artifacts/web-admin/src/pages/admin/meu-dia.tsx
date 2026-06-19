@@ -6,6 +6,7 @@ import {
 } from "@workspace/api-client-react";
 import type { MyDayActivity, MyDayResponse, TaskItem } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import AdminLayout from "@/components/admin-layout";
 import {
   Zap,
   ArrowRightCircle,
@@ -23,13 +24,11 @@ import {
   Video,
   CheckSquare,
   Package,
-  ChevronRight,
   AlertCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAuth } from "@/hooks/useAuth";
+import { Card, CardContent } from "@/components/ui/card";
 
 import {
   EVENT_TYPE_LABELS,
@@ -279,7 +278,6 @@ function PendingNoticeCard({ notice }: { notice: any }) {
 
 export default function MeuDiaPage() {
   const queryClient = useQueryClient();
-  const { logout: clearAuth } = useAuth();
 
   const { data, isLoading, isError, refetch, isFetching } = useGetMyDay({
     query: {
@@ -302,18 +300,9 @@ export default function MeuDiaPage() {
     .sort((a, b) => TASK_PRIORITY_ORDER[a.priority] - TASK_PRIORITY_ORDER[b.priority]);
 
   return (
-    <div className="min-h-screen bg-muted/20 flex flex-col font-sans">
-      {/* Topbar */}
-      <header className="h-16 border-b bg-card flex items-center justify-between px-6 sticky top-0 z-10">
-        <div className="flex items-center gap-3">
-          <img src="/asinha.svg" alt="Asinha MyASA" className="w-7 h-8" />
-          <span className="font-serif font-bold text-lg tracking-tight">MyASA</span>
-          <div className="hidden md:flex items-center text-muted-foreground ml-4">
-            <ChevronRight className="w-4 h-4 mx-2" />
-            <span className="text-sm font-medium">Meu Dia</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
+    <AdminLayout title="Meu Dia" subtitle={dayLabel()}>
+      <div className="max-w-3xl space-y-4">
+        <div className="flex justify-end">
           <Button
             variant="outline"
             size="sm"
@@ -323,14 +312,6 @@ export default function MeuDiaPage() {
             <RefreshCw className={`w-4 h-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
             Atualizar
           </Button>
-        </div>
-      </header>
-
-      <main className="flex-1 p-6 md:p-10 max-w-3xl mx-auto w-full space-y-4">
-        {/* Page title */}
-        <div>
-          <h1 className="text-3xl font-serif font-bold tracking-tight text-foreground">Meu Dia</h1>
-          <p className="text-muted-foreground mt-1 text-base capitalize">{dayLabel()}</p>
         </div>
 
         {isLoading ? (
@@ -502,7 +483,7 @@ export default function MeuDiaPage() {
             </p>
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </AdminLayout>
   );
 }

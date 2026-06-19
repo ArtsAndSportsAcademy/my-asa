@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle, Plus } from "lucide-react";
+import AdminLayout from "@/components/admin-layout";
 
 const RESTRICTION_TYPES = [
   { value: "HEALTH", label: "Saúde" },
@@ -135,12 +136,9 @@ export default function SupervisorRestrictionsPage() {
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Restrições Operacionais</h1>
-          <p className="text-sm text-muted-foreground mt-1">Registre e gerencie impedimentos temporários de membros.</p>
-        </div>
+    <AdminLayout title="Restrições Operacionais" subtitle="Registre e gerencie impedimentos temporários de membros.">
+    <div className="max-w-4xl space-y-6">
+      <div className="flex justify-end">
         <Button onClick={() => setShowNew(true)} className="gap-2">
           <Plus className="w-4 h-4" /> Nova Restrição
         </Button>
@@ -268,5 +266,6 @@ export default function SupervisorRestrictionsPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </AdminLayout>
   );
 }
