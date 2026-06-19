@@ -1,0 +1,150 @@
+MyASA — AUD-D03 — Papéis e Perfis Operacionais
+
+Utilizar obrigatoriamente:
+
+* Sprint 0 → Sprint 18.1 concluídas
+* GOV-D11 concluída
+* Catálogo Oficial das Superfícies
+* Estrutura atual de papéis
+* Feedbacks de campo recebidos dos supervisores
+* Discussões recentes sobre treinadores e professores
+
+Importante:
+
+Não implementar nada.
+
+Não alterar banco.
+
+Não alterar permissões.
+
+Não criar tabelas.
+
+Objetivo:
+
+Definir oficialmente quem são os usuários do MyASA e quais responsabilidades pertencem a cada perfil.
+
+Pergunta respondida:
+
+“Quem usa o MyASA e o que cada pessoa pode fazer?”
+
+═══════════════════════
+PARTE 1 — INVENTÁRIO DE USUÁRIOS
+═══════════════════════
+
+Mapear todos os perfis existentes hoje.
+
+Validar:
+
+* Admin
+* Supervisor
+* Delegado
+* Membro
+
+Identificar perfis adicionais:
+
+* Professor
+* Treinador
+* Fisioterapeuta
+* Preparador físico
+* Outros
+
+═══════════════════════
+PARTE 2 — PROFESSORES E TREINADORES
+═══════════════════════
+
+Responder:
+
+Professor/Treinador é:
+
+A) Um novo papel?
+
+ou
+
+B) Um tipo especializado de Membro?
+
+Justificar.
+
+═══════════════════════
+PARTE 3 — MATRIZ DE PERMISSÕES
+═══════════════════════
+
+Para cada perfil responder:
+
+Pode:
+
+* ver agenda
+* criar agenda
+* enviar mensagens
+* criar avisos
+* criar tarefas
+* aprovar tarefas
+* criar biblioteca
+* publicar documentos
+* visualizar escala
+* editar escala
+* visualizar livro do dia
+* publicar livro do dia
+* aprovar solicitações
+* registrar check-in
+
+═══════════════════════
+PARTE 4 — TREINAMENTOS
+═══════════════════════
+
+Responder:
+
+Como treinadores se relacionam com:
+
+* Agenda
+* Mensagens
+* Biblioteca
+* Tarefas
+* Avisos
+
+═══════════════════════
+PARTE 5 — JORNADAS
+═══════════════════════
+
+Simular:
+
+Admin
+
+Supervisor
+
+Delegado
+
+Membro
+
+Professor/Treinador
+
+Responder:
+
+Quais telas utilizam diariamente?
+
+═══════════════════════
+PARTE 6 — IMPACTO FUTURO
+═══════════════════════
+
+Responder:
+
+A estrutura atual suporta crescimento?
+
+Existem perfis ausentes?
+
+Quais perfis devem existir antes da IA?
+
+═══════════════════════
+VEREDITO
+═══════════════════════
+
+Objetivo final:
+
+Produzir a definição oficial dos papéis e perfis operacionais do MyASA.
+
+Nenhuma implementação.
+
+Nenhuma alteração técnica.
+
+Somente arquitetura e governança.
+
+A próxima sprint será definida com base nesta auditoria.
