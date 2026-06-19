@@ -426,7 +426,7 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
   const [conv] = await db
     .select()
     .from(conversations)
-    .where(and(eq(conversations.id, conversationId), eq(conversations.userId, user.id)));
+    .where(and(eq(conversations.id, conversationId), eq(conversations.userId, user.sub)));
 
   if (!conv) {
     res.status(404).json({ error: "Conversa não encontrada" });
@@ -446,7 +446,7 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
     .orderBy(aiMessages.createdAt)
     .limit(50);
 
-  const [userRow] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, user.id));
+  const [userRow] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, user.sub));
 
   let operationId: string | null = null;
   let operationName: string | null = null;
@@ -543,7 +543,7 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
           res.write(`data: ${JSON.stringify({ tool: toolUse.name })}\n\n`);
 
           const result = await executeTool(toolUse.name, toolUse.input, {
-            userId: user.id,
+            userId: user.sub,
             organizationId: user.organizationId ?? null,
             userRole: user.role,
             operationId,
@@ -575,7 +575,7 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
       .where(eq(conversations.id, conversationId));
 
     await db.insert(asaAuditLogTable).values({
-      userId: user.id,
+      userId: user.sub,
       conversationId: String(conversationId),
       organizationId: user.organizationId ?? undefined,
       question: content,
@@ -630,9 +630,9 @@ router.post("/asa/memories", requireAuth, requireOrganization, async (req, res):
     type,
     key,
     value,
-    scope: scope ?? user.id,
+    scope: scope ?? user.sub,
     organizationId: user.organizationId!,
-    createdBy: user.id,
+    createdBy: user.sub,
     status: "PENDING",
   }).returning();
 
@@ -652,7 +652,7 @@ router.patch("/asa/memories/:id", requireAuth, requireOrganization, async (req, 
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (status) {
     updates.status = status;
-    updates.approvedBy = user.id;
+    updates.approvedBy = user.sub;
     updates.approvedAt = new Date();
   }
   if (value) updates.value = value;
@@ -677,7 +677,7 @@ router.delete("/asa/memories/:id", requireAuth, requireOrganization, async (req,
 
   if (!MANAGER_ROLES.includes(user.role)) {
     const [mem] = await db.select().from(asaMemoriesTable).where(eq(asaMemoriesTable.id, id));
-    if (!mem || mem.createdBy !== user.id) {
+    if (!mem || mem.createdBy !== user.sub) {
       res.status(403).json({ error: "Sem permissão" });
       return;
     }
@@ -697,11 +697,11 @@ router.get("/asa/preferences", requireAuth, async (req, res): Promise<void> => {
   let [prefs] = await db
     .select()
     .from(asaUserPreferencesTable)
-    .where(eq(asaUserPreferencesTable.userId, user.id));
+    .where(eq(asaUserPreferencesTable.userId, user.sub));
 
   if (!prefs) {
     [prefs] = await db.insert(asaUserPreferencesTable).values({
-      userId: user.id,
+      userId: user.sub,
       mode: "BALANCED",
     }).returning();
   }
@@ -723,11 +723,11 @@ router.patch("/asa/preferences", requireAuth, async (req, res): Promise<void> =>
   const [existing] = await db
     .select()
     .from(asaUserPreferencesTable)
-    .where(eq(asaUserPreferencesTable.userId, user.id));
+    .where(eq(asaUserPreferencesTable.userId, user.sub));
 
   if (!existing) {
     const [created] = await db.insert(asaUserPreferencesTable).values({
-      userId: user.id,
+      userId: user.sub,
       mode: "BALANCED",
       ...updates,
     }).returning();
@@ -738,7 +738,7 @@ router.patch("/asa/preferences", requireAuth, async (req, res): Promise<void> =>
   const [updated] = await db
     .update(asaUserPreferencesTable)
     .set({ ...updates, updatedAt: new Date() })
-    .where(eq(asaUserPreferencesTable.userId, user.id))
+    .where(eq(asaUserPreferencesTable.userId, user.sub))
     .returning();
 
   res.json(updated);

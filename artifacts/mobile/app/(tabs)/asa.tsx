@@ -138,6 +138,7 @@ export default function AsaScreen() {
           Authorization: `Bearer ${token ?? ""}`,
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({ title: `Conversa ASA ${new Date().toLocaleString("pt-BR")}` }),
       });
       if (!res.ok) throw new Error("Falha ao criar conversa");
       const data = await res.json();

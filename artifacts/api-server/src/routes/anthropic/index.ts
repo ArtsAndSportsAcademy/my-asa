@@ -11,7 +11,7 @@ router.get("/anthropic/conversations", requireAuth, async (req, res): Promise<vo
   const rows = await db
     .select()
     .from(conversations)
-    .where(eq(conversations.userId, user.id))
+    .where(eq(conversations.userId, user.sub))
     .orderBy(conversations.updatedAt);
 
   res.json(rows.reverse());
@@ -28,7 +28,7 @@ router.post("/anthropic/conversations", requireAuth, async (req, res): Promise<v
 
   const [conv] = await db.insert(conversations).values({
     title,
-    userId: user.id,
+    userId: user.sub,
     organizationId: user.organizationId ?? undefined,
   }).returning();
 
@@ -42,7 +42,7 @@ router.get("/anthropic/conversations/:id", requireAuth, async (req, res): Promis
   const [conv] = await db
     .select()
     .from(conversations)
-    .where(and(eq(conversations.id, id), eq(conversations.userId, user.id)));
+    .where(and(eq(conversations.id, id), eq(conversations.userId, user.sub)));
 
   if (!conv) {
     res.status(404).json({ error: "Conversa não encontrada" });
@@ -65,7 +65,7 @@ router.delete("/anthropic/conversations/:id", requireAuth, async (req, res): Pro
   const [conv] = await db
     .select()
     .from(conversations)
-    .where(and(eq(conversations.id, id), eq(conversations.userId, user.id)));
+    .where(and(eq(conversations.id, id), eq(conversations.userId, user.sub)));
 
   if (!conv) {
     res.status(404).json({ error: "Conversa não encontrada" });
@@ -83,7 +83,7 @@ router.get("/anthropic/conversations/:id/messages", requireAuth, async (req, res
   const [conv] = await db
     .select()
     .from(conversations)
-    .where(and(eq(conversations.id, id), eq(conversations.userId, user.id)));
+    .where(and(eq(conversations.id, id), eq(conversations.userId, user.sub)));
 
   if (!conv) {
     res.status(404).json({ error: "Conversa não encontrada" });
