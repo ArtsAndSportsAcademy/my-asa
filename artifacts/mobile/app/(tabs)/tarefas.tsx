@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useColors } from "@/hooks/useColors";
+import { AsaEmptyState } from "@/components/AsaEmptyState";
 import {
   useGetMyTasks,
   useStartTask,
@@ -526,12 +527,10 @@ export default function TarefasScreen() {
           approvalLoading ? (
             <ActivityIndicator style={{ marginTop: 48 }} color={colors.primary} />
           ) : approvalTasks.length === 0 ? (
-            <View style={styles.empty}>
-              <Feather name="check-square" size={32} color={colors.mutedForeground} style={{ opacity: 0.4 }} />
-              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-                Nenhuma tarefa aguardando aprovação.
-              </Text>
-            </View>
+            <AsaEmptyState
+              title="Tudo em dia por aqui! ✅"
+              subtitle="Nenhuma tarefa aguardando sua aprovação no momento."
+            />
           ) : (
             approvalTasks.map((task) => (
               <ApprovalCard
@@ -545,12 +544,10 @@ export default function TarefasScreen() {
         ) : isLoading ? (
           <ActivityIndicator style={{ marginTop: 48 }} color={colors.primary} />
         ) : tasks.length === 0 ? (
-          <View style={styles.empty}>
-            <Feather name="check-square" size={32} color={colors.mutedForeground} style={{ opacity: 0.4 }} />
-            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              Nenhuma tarefa encontrada.
-            </Text>
-          </View>
+          <AsaEmptyState
+            title="Sem tarefas por enquanto 🎉"
+            subtitle="Quando você receber uma tarefa, ela vai aparecer aqui. Aproveite a calmaria!"
+          />
         ) : (
           tasks.map((task) => (
             <TaskCard

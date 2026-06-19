@@ -29,6 +29,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/contexts/AuthContext";
+import { AsaEmptyState } from "@/components/AsaEmptyState";
 
 // ─── Config ────────────────────────────────────────────────────────────────────
 
@@ -491,13 +492,10 @@ export default function MensagensScreen() {
           </View>
         )}
         {!isLoading && threads.length === 0 && (
-          <View style={styles.emptyState}>
-            <Feather name="message-square" size={36} color={colors.mutedForeground} style={{ opacity: 0.3, marginBottom: 12 }} />
-            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Nenhuma conversa iniciada ainda</Text>
-            <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>
-              Toque em "Nova" para se comunicar com sua equipe na ASA.
-            </Text>
-          </View>
+          <AsaEmptyState
+            title="Nenhuma conversa ainda 💬"
+            subtitle={"Toque em \"Nova\" para abrir um canal direto com a sua equipe. A comunicação começa com uma mensagem!"}
+          />
         )}
         {threads.map((t) => (
           <ThreadCard

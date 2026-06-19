@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useColors } from "@/hooks/useColors";
+import { AsaEmptyState } from "@/components/AsaEmptyState";
 import {
   useListRequests,
   useCreateRequest,
@@ -264,12 +265,10 @@ export default function SolicitacoesScreen() {
           pendingLoading ? (
             <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
           ) : pendingRequests.length === 0 ? (
-            <View style={styles.emptyWrap}>
-              <Feather name="inbox" size={40} color={colors.mutedForeground} />
-              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-                Nenhuma solicitação pendente para decidir.
-              </Text>
-            </View>
+            <AsaEmptyState
+              title="Nada para decidir agora 👍"
+              subtitle="Todas as solicitações da equipe já foram processadas. Boa gestão!"
+            />
           ) : (
             <View style={{ paddingHorizontal: 16, gap: 10 }}>
               {pendingRequests.map((req) => (
@@ -318,15 +317,10 @@ export default function SolicitacoesScreen() {
         ) : isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
         ) : requests.length === 0 ? (
-          <View style={styles.emptyWrap}>
-            <Feather name="inbox" size={40} color={colors.mutedForeground} />
-            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              Nenhuma solicitação ainda.
-            </Text>
-            <Text style={[styles.emptySubText, { color: colors.mutedForeground }]}>
-              Toque em "Nova" para criar sua primeira solicitação.
-            </Text>
-          </View>
+          <AsaEmptyState
+            title="Sem solicitações por aqui 📋"
+            subtitle={"Precisou de folga ou quer trocar uma escala? Toque em \"Nova\" e eu te ajudo a registrar!"}
+          />
         ) : (
           <>
             {/* Aguardando alternativa */}
