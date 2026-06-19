@@ -1,0 +1,181 @@
+CAP-D02 — Capitão Utilizável
+
+Objetivo
+
+Transformar o resultado do CAP-D01 em um plano de implementação.
+
+Importante:
+
+* Não implementar ainda.
+* Não alterar código.
+* Não alterar banco.
+* Não alterar permissões.
+
+Objetivo desta auditoria:
+
+Mapear exatamente o que precisa existir para que um Capitão consiga operar sozinho.
+
+═══════════════════════
+PARTE 1 — Descoberta da Delegação
+═══════════════════════
+
+Usar o cenário:
+
+Débora delega para Carol:
+
+* CHECK_INS
+* DAILY_BOOK
+* NOTICES
+
+Responder:
+
+1. O que Carol deveria ver imediatamente após receber a delegação?
+2. Onde deveria aparecer?
+3. Como Carol saberia que recebeu?
+4. Como Carol saberia o que fazer?
+5. Como Carol saberia onde fazer?
+6. O que já existe hoje?
+7. O que falta?
+
+═══════════════════════
+PARTE 2 — Jornada Ideal do Capitão
+═══════════════════════
+
+Para cada responsabilidade:
+
+* CHECK_INS
+* REQUESTS
+* TASK_APPROVALS
+* DAILY_BOOK
+* NOTICES
+* SCALES
+* OPERATIONAL_MESSAGES
+
+Responder:
+
+1. Onde o Capitão deveria clicar?
+2. Quantos cliques?
+3. Qual tela deveria abrir?
+4. Qual ação deveria existir?
+5. Qual confirmação deveria aparecer?
+6. O que existe hoje?
+7. O que falta?
+
+Classificar:
+
+🟢 Já existe
+
+🟡 Existe parcialmente
+
+🔴 Não existe
+
+═══════════════════════
+PARTE 3 — Mobile
+═══════════════════════
+
+Responder:
+
+Para cada responsabilidade:
+
+* Existe backend?
+* Existe API?
+* Existe tela?
+* Existe navegação?
+* Existe botão?
+* Existe ação?
+
+Mapear exatamente:
+
+O que precisa ser criado.
+
+O que apenas precisa ficar visível.
+
+O que já existe mas está escondido.
+
+═══════════════════════
+PARTE 4 — Web Admin
+═══════════════════════
+
+Auditar o comportamento atual:
+
+Capitão faz login.
+
+Responder:
+
+1. O que ele vê?
+2. O que ele deveria ver?
+3. Quais menus deveriam aparecer?
+4. Quais menus não deveriam aparecer?
+5. Quais páginas poderiam ser reutilizadas?
+6. Quais páginas precisam de adaptação?
+7. Quais páginas já funcionam e só estão bloqueadas?
+
+═══════════════════════
+PARTE 5 — Reutilização
+═══════════════════════
+
+Objetivo:
+
+Evitar criar telas novas desnecessariamente.
+
+Para cada responsabilidade responder:
+
+A experiência do Capitão pode reutilizar:
+
+* Tela do Supervisor?
+* Tela do Admin?
+* Tela existente do Mobile?
+
+Ou exige algo novo?
+
+Mapear o reaproveitamento possível.
+
+═══════════════════════
+PARTE 6 — Fluxos Reais da ASA
+═══════════════════════
+
+Validar:
+
+* Amanda responsável por Check-ins
+* Carol responsável pelos Personagens
+* Capitão cobrindo férias
+* Capitão cobrindo folga
+* Capitão cobrindo ausência temporária
+
+Responder:
+
+Após os ajustes propostos:
+
+O Capitão conseguiria operar sozinho?
+
+═══════════════════════
+PARTE 7 — Escopo Mínimo para o Piloto
+═══════════════════════
+
+Responder:
+
+Qual é o menor conjunto de mudanças necessário para que o papel de Capitão seja utilizável?
+
+Classificar:
+
+🔴 Obrigatório antes do piloto
+
+🟡 Recomendado antes do piloto
+
+🟢 Pode ficar para depois
+
+═══════════════════════
+PARTE 8 — Veredito Final
+═══════════════════════
+
+Responder:
+
+1. O que precisa ser implementado?
+2. O que pode ser reaproveitado?
+3. O que não precisa ser criado?
+4. O Capitão pode virar um papel operacional real sem alterar o modelo atual de Delegações?
+5. Qual é o caminho mais simples para colocar os Capitães em produção?
+
+Objetivo final:
+
+Produzir um plano técnico enxuto para transformar Delegações em uma experiência operacional completa sem criar um sistema novo de Capitães.
