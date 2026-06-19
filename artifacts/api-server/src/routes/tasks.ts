@@ -258,14 +258,14 @@ router.post("/tasks", requireAuth, requireOrganization, async (req, res) => {
       libraryDocumentId?: string;
     };
 
-    if (!title || !operationId || !assigneeId || !dueDate) {
-      res.status(400).json({ error: "Bad Request", message: "title, operationId, assigneeId e dueDate são obrigatórios" });
+    const allowed = await canManageTasks(user.sub, user.role as RoleValue, operationId ?? "");
+    if (!allowed) {
+      res.status(403).json({ error: "Forbidden", message: "Apenas gestores podem criar tarefas" });
       return;
     }
 
-    const allowed = await canManageTasks(user.sub, user.role as RoleValue, operationId);
-    if (!allowed) {
-      res.status(403).json({ error: "Forbidden", message: "Apenas gestores podem criar tarefas" });
+    if (!title || !operationId || !assigneeId || !dueDate) {
+      res.status(400).json({ error: "Bad Request", message: "title, operationId, assigneeId e dueDate são obrigatórios" });
       return;
     }
 
