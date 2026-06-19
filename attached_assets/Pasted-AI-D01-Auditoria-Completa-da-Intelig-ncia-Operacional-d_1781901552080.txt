@@ -1,0 +1,225 @@
+AI-D01 — Auditoria Completa da Inteligência Operacional do MyASA
+
+Contexto:
+O MyASA já possui:
+
+* Agenda
+* Escalas
+* Livro do Dia
+* Livro do Show
+* Folgas
+* Ensaios
+* Aprovações
+* Avisos
+* Mensagens
+* Notificações
+* Meu Dia
+* Painel Operacional
+* Biblioteca
+
+Objetivo:
+Mapear exatamente:
+
+1. O que a IA já consegue fazer.
+2. O que a IA deveria fazer.
+3. O que a IA nunca deve fazer.
+4. Quais dados ela utiliza.
+5. Quais riscos existem.
+6. Qual deve ser a evolução pós-piloto.
+
+Nenhuma funcionalidade nova deve ser implementada nesta task.
+
+Esta é uma auditoria.
+
+────────────────────
+PARTE 1 — Inventário de Capacidades
+────────────────────
+
+Auditar todos os comandos, ferramentas e rotas utilizadas pela IA.
+
+Listar:
+
+* criar ensaio
+* cancelar ensaio
+* adicionar participantes
+* criar aviso
+* adicionar em escala
+* remover da escala
+* trocar pessoas
+* aprovar solicitações
+* consultar folgas
+* consultar cobertura
+* consultar operação
+* consultar Livro do Dia
+
+Para cada ação responder:
+
+* funciona?
+* é utilizada?
+* está protegida por permissão?
+* gera auditoria?
+* possui confirmação?
+
+Classificar:
+
+🟢 Produção
+🟡 Experimental
+🔴 Incompleto
+
+────────────────────
+PARTE 2 — Conhecimento Atual
+────────────────────
+
+Responder:
+
+A IA conhece:
+
+* escalas?
+* agenda?
+* folgas?
+* avisos?
+* notificações?
+* livro?
+* responsabilidades?
+* mensagens?
+
+Para cada domínio:
+
+* leitura
+* sugestão
+* execução
+
+────────────────────
+PARTE 3 — Permissões
+────────────────────
+
+Mapear:
+
+ADMIN
+SUPERVISOR
+MEMBER
+
+Quais comandos cada papel pode executar?
+
+Identificar:
+
+* possíveis elevações de privilégio;
+* comandos perigosos;
+* ações irreversíveis.
+
+────────────────────
+PARTE 4 — Explicabilidade
+────────────────────
+
+Verificar:
+
+* a IA explica suas decisões?
+* mostra dados utilizados?
+* mostra alternativas?
+* apresenta riscos?
+
+Modelo desejado:
+
+Conclusão
+Dados analisados
+Motivos
+Alternativas
+Riscos
+
+────────────────────
+PARTE 5 — Mensagens e Privacidade
+────────────────────
+
+Responder:
+
+A IA lê mensagens?
+
+Quais tipos?
+
+* privadas
+* grupos
+* avisos
+
+Níveis:
+
+1. Nenhum acesso.
+2. Apenas avisos.
+3. Grupos operacionais.
+4. Resumos.
+
+Responder:
+
+* quais riscos existem?
+* quais limites devem existir?
+* quais informações nunca devem ser expostas?
+
+────────────────────
+PARTE 6 — Limites da IA
+────────────────────
+
+A IA nunca deve:
+
+* punir pessoas;
+* avaliar desempenho individual;
+* decidir escalas sozinha;
+* aprovar folgas sozinha;
+* expor mensagens privadas;
+* divulgar informações confidenciais;
+* substituir supervisores.
+
+A IA sempre deve:
+
+* sugerir;
+* justificar;
+* explicar;
+* registrar.
+
+────────────────────
+PARTE 7 — Futuro Pós-Piloto
+────────────────────
+
+Classificar:
+
+🟢 Implementar logo.
+🟡 Avaliar.
+🔴 Não implementar.
+
+Exemplos:
+
+* resumo diário;
+* alerta de cobertura;
+* responsabilidades sem dono;
+* pessoas sobrecarregadas;
+* conflitos operacionais;
+* acordos em grupos;
+* resumo de avisos.
+
+────────────────────
+PARTE 8 — Perguntas Obrigatórias
+────────────────────
+
+1. O que a IA faz hoje?
+2. O que realmente funciona?
+3. O que ninguém usa?
+4. O que oferece risco?
+5. O que falta?
+6. O que nunca deve existir?
+7. Qual o nível de maturidade atual?
+8. A IA está pronta para piloto?
+
+────────────────────
+Entregáveis
+────────────────────
+
+* docs/specs/AI-D01-audit.md
+* tabela completa de capacidades
+* mapa de permissões
+* mapa de riscos
+* recomendações
+* roadmap AI-D02
+
+Nenhum código.
+
+Objetivo:
+
+Antes de ensinar coisas novas para a IA, entender exatamente quem ela é dentro da operação do MyASA.

@@ -4,7 +4,7 @@ description: Estado atual do produto, sprints concluídas e decisões de arquite
 ---
 
 ## Sprint atual
-MSG-S01 — Badge mensagens não-lidas + Avisos CRITICAL/IMPORTANT em Meu Dia — **COMPLETO**
+AI-D01 — Auditoria da Inteligência Operacional — **COMPLETO** (docs/specs/AI-D01-audit.md)
 
 ## Sprints concluídas
 - Sprint 18.1 — Task Integration & Audit
@@ -20,6 +20,8 @@ MSG-S01 — Badge mensagens não-lidas + Avisos CRITICAL/IMPORTANT em Meu Dia �
 - PILOT-FIX-01 — Correções críticas pré-piloto (Admin NAV, Mobile Mais, daily_books migration, webOnly Alert, guards de telas)
 - MSG-D01 — Especificação de Comunicação v1.1 (docs/specs/MSG-D01-spec.md)
 - MSG-S01 — Badge de mensagens não-lidas + Avisos CRITICAL/IMPORTANT em Meu Dia
+- RESPONSIBILITIES-D01 — Schema + API + Web Admin + Mobile + Meu Dia (responsabilidades permanentes)
+- AI-D01 — Auditoria completa da inteligência operacional (docs/specs/AI-D01-audit.md)
 
 ---
 

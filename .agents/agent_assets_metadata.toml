@@ -18,3 +18,9 @@ id = "FI0tiRxEbs4KAw0gg9dGp"
 uri = "file://docs/aud-d02-tarefas-operacionais-myasa-2.0.md"
 type = "text"
 title = "AUD-D02 — Arquitetura de Tarefas Operacionais"
+
+[[outputs]]
+id = "YevYU5jVtvOG39bLgmwq2"
+uri = "file://docs/specs/AI-D01-audit.md"
+type = "text"
+title = "AI-D01 — Auditoria da Inteligência Operacional do MyASA"
