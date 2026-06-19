@@ -178,7 +178,8 @@ function ClassicTabLayout() {
       <Tabs.Screen name="biblioteca"   options={{ tabBarButton: () => null, title: "Biblioteca"    }} />
       <Tabs.Screen name="solicitacoes" options={{ tabBarButton: () => null, title: "Solicitações"  }} />
       <Tabs.Screen name="entregas"     options={{ tabBarButton: () => null, title: "Entregas"      }} />
-      <Tabs.Screen name="tarefas"      options={{ tabBarButton: () => null, title: "Tarefas"       }} />
+      <Tabs.Screen name="tarefas"          options={{ tabBarButton: () => null, title: "Tarefas"           }} />
+      <Tabs.Screen name="responsabilidades" options={{ tabBarButton: () => null, title: "Responsabilidades" }} />
     </Tabs>
   );
 }

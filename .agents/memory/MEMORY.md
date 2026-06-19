@@ -1,4 +1,4 @@
-- [MyASA 2.0 — Estado do Projeto](myasa-estado-projeto.md) — Sprint 18.1 Integração de Tarefas concluída; próxima sprint a definir
+- [MyASA 2.0 — Estado do Projeto](myasa-estado-projeto.md) — RESPONSIBILITIES-D01 concluído; schema+API+web-admin+mobile+Meu Dia+notificações entregues
 - [LOG_DOMAIN extension pattern](log-domain-pattern.md) — ao criar nova rota, adicionar entrada no LOG_DOMAIN de lib/shared/src/constants.ts antes de usar requestLogger
 - [YAML plain scalar colon bug](yaml-colon-bug.md) — summary com ": " em YAML não-quoted quebra orval silenciosamente
 - [Express params cast pattern](express-params-cast.md) — req.params.id tipado como string|string[] no Express; sempre usar `const id = req.params.id as string`
@@ -7,3 +7,4 @@
 - [lib/db rebuild após mudança de schema](lib-db-rebuild.md) — após alterar schema em lib/db/src/, rodar `pnpm --filter @workspace/db exec tsc -p tsconfig.json` para atualizar dist/ antes de typechecks dependentes
 - [Schema collision: teams.ts delegationsTable](schema-collision-delegations.md) — teams.ts tinha delegationsTable obsoleto (delegatorId/delegateeId/validFrom/validUntil); o canônico é lib/db/src/schema/delegations.ts (GOV-D11)
 - [Orval hooks apagados — padrão de correção](orval-hooks-pattern.md) — quando orval regenera api.ts, hooks manuais de sprints anteriores são apagados; padrão: criar arquivo manual + exportar no index
+- [admin-layout lucide-react import duplicata](admin-layout-import-trap.md) — Users já existia no import de lucide-react em admin-layout.tsx; ao adicionar ícones novos, verificar linha 1-8 antes de editar

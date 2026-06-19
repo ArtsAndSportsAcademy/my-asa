@@ -37,6 +37,7 @@ const ADMIN_NAV: NavGroup[] = [
     items: [
       { href: "/admin/scales",                  icon: ClipboardList,   label: "Escalas"                      },
       { href: "/admin/daily-book",              icon: BookMarked,      label: "Livro do Dia"                 },
+      { href: "/admin/responsibilities",        icon: Users,           label: "Responsabilidades"            },
       { href: "/admin/requests",                icon: FileText,        label: "Solicitações"                 },
       { href: "/admin/tasks",                   icon: CheckSquare,     label: "Tarefas"                      },
       { href: "/supervisor/restrictions",       icon: AlertTriangle,   label: "Restrições"                   },
@@ -92,6 +93,7 @@ const SUPERVISOR_NAV: NavGroup[] = [
       { href: "/supervisor/daily-book",        icon: BookMarked,      label: "Livro do Dia"  },
       { href: "/supervisor/requests",          icon: FileText,        label: "Solicitações"  },
       { href: "/supervisor/tasks",             icon: CheckSquare,     label: "Tarefas"       },
+      { href: "/admin/responsibilities",         icon: Users,            label: "Responsabilidades"    },
       { href: "/supervisor/delegations",        icon: ShieldCheck,      label: "Delegações"           },
       { href: "/supervisor/restrictions",       icon: AlertTriangle,    label: "Restrições"           },
       { href: "/supervisor/check-ins",          icon: ClipboardCheck,   label: "Check-ins"            },

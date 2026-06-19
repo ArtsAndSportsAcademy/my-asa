@@ -18,6 +18,8 @@ import {
   operationalGroupsTable,
   noticesTable,
   noticeRecipientsTable,
+  responsibilitiesTable,
+  responsibilityAssignmentsTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
@@ -275,6 +277,60 @@ router.get("/my-day", requireAuth, requireOrganization, async (req, res) => {
       nextActivity = futureActivities[1] ?? null;
     }
 
+    // ── T005: Responsabilidades descobertas (sem responsável) — apenas ADMIN/SUPERVISOR ──
+    const userRole = req.user!.role;
+    const isManagerRole = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"].includes(userRole);
+    let uncoveredResponsibilities: Array<{
+      id: string;
+      title: string;
+      category: string;
+      operationName: string | null;
+    }> = [];
+
+    if (isManagerRole) {
+      // All active responsibilities in this org
+      const allResps = await db
+        .select({
+          id: responsibilitiesTable.id,
+          title: responsibilitiesTable.title,
+          category: responsibilitiesTable.category,
+          operationId: responsibilitiesTable.operationId,
+          operationName: operationsTable.name,
+        })
+        .from(responsibilitiesTable)
+        .leftJoin(operationsTable, eq(responsibilitiesTable.operationId, operationsTable.id))
+        .where(
+          and(
+            eq(responsibilitiesTable.orgId, req.user!.organizationId),
+            eq(responsibilitiesTable.active, true),
+          )
+        )
+        .orderBy(responsibilitiesTable.category, responsibilitiesTable.title);
+
+      if (allResps.length > 0) {
+        const respIds = allResps.map((r) => r.id);
+        const activeAssignments = await db
+          .select({ responsibilityId: responsibilityAssignmentsTable.responsibilityId })
+          .from(responsibilityAssignmentsTable)
+          .where(
+            and(
+              inArray(responsibilityAssignmentsTable.responsibilityId, respIds),
+              eq(responsibilityAssignmentsTable.active, true),
+            )
+          );
+        const coveredIds = new Set(activeAssignments.map((a) => a.responsibilityId));
+        uncoveredResponsibilities = allResps
+          .filter((r) => !coveredIds.has(r.id))
+          .slice(0, 2)
+          .map((r) => ({
+            id: r.id,
+            title: r.title,
+            category: r.category,
+            operationName: r.operationName ?? null,
+          }));
+      }
+    }
+
     const payload = {
       generatedAt: new Date().toISOString(),
       immediateAction,
@@ -314,6 +370,7 @@ router.get("/my-day", requireAuth, requireOrganization, async (req, res) => {
           status: d.assignmentStatus,
           operationId: d.deliveryOperationId,
         })),
+        uncoveredResponsibilities,
       },
     };
 

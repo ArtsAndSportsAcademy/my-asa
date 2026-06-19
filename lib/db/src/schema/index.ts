@@ -18,3 +18,4 @@ export * from "./checkin.js";
 export * from "./delegations.js";
 export * from "./tasks.js";
 export * from "./supervisor-requests.js";
+export * from "./responsibilities.js";

@@ -1,0 +1,230 @@
+RESPONSIBILITIES-D01 — Responsabilidades Permanentes
+
+Contexto:
+O MyASA já possui:
+
+* Escalas
+* Agenda
+* Livro do Dia
+* Livro do Show
+* Folgas
+* Avisos
+* Mensagens
+* Notificações
+* Meu Dia
+* Supervisores temporários
+
+Objetivo:
+Permitir que a operação responda à pergunta:
+
+"Quem é responsável por isso?"
+
+Importante:
+Este módulo NÃO substitui:
+
+* Supervisor
+* Supervisor temporário
+* Escala
+* Delegação
+
+Responsabilidade é uma atribuição contínua ou recorrente.
+
+────────────────────
+PARTE 1 — Conceito
+────────────────────
+
+Definir responsabilidade como:
+
+"Uma função permanente ou recorrente atribuída a uma pessoa."
+
+Exemplos reais:
+
+* Instagram ASA
+* Aquecimento
+* Perucas
+* Figurinos
+* Lifts
+* Aula Grupo A
+* Manutenção de equipamentos
+* Música
+* Alongamento
+* Material de competição
+* Organização de ensaios
+
+Uma pessoa pode ter várias responsabilidades.
+
+Uma responsabilidade pode ter mais de um responsável.
+
+────────────────────
+PARTE 2 — Perguntas de negócio
+────────────────────
+
+O sistema deve responder:
+
+* Quem cuida disso?
+* Quem é o responsável atual?
+* Existe responsável?
+* Quem substitui em ausência?
+* Quantas responsabilidades uma pessoa possui?
+* Quais responsabilidades estão sem dono?
+
+────────────────────
+PARTE 3 — Schema
+────────────────────
+
+Auditar schemas existentes.
+
+Se necessário criar:
+
+responsibilities
+
+* id
+* organizationId
+* title
+* description
+* category
+* operationId
+* active
+* createdAt
+* updatedAt
+
+responsibility_assignments
+
+* id
+* responsibilityId
+* memberId
+* role (PRIMARY, SECONDARY)
+* substituteMemberId
+* startsAt
+* endsAt
+* active
+
+────────────────────
+PARTE 4 — Categorias
+────────────────────
+
+Exemplos:
+
+* OPERAÇÃO
+* TREINAMENTO
+* MANUTENÇÃO
+* COMUNICAÇÃO
+* ARTÍSTICO
+* EQUIPAMENTOS
+* ADMINISTRATIVO
+
+As categorias devem ser configuráveis.
+
+────────────────────
+PARTE 5 — Interface
+────────────────────
+
+Nova área:
+
+Responsabilidades
+
+Visualizações:
+
+1. Lista
+2. Por pessoa
+3. Por categoria
+4. Sem responsável
+
+Card:
+
+Responsabilidade
+Responsável principal
+Responsável secundário
+Substituto
+Operação
+
+────────────────────
+PARTE 6 — Meu Dia
+────────────────────
+
+Mostrar:
+
+* responsabilidades sem responsável;
+* substituições necessárias;
+* responsabilidade descoberta.
+
+Máximo:
+2 cards.
+
+────────────────────
+PARTE 7 — Notificações
+────────────────────
+
+Gerar:
+
+* nova responsabilidade atribuída;
+* responsabilidade removida;
+* substituição ativada;
+* responsabilidade sem responsável.
+
+Prioridade:
+IMPORTANT.
+
+────────────────────
+PARTE 8 — IA
+────────────────────
+
+Permitir perguntas:
+
+* Quem cuida do Instagram?
+* Quem é responsável pelo aquecimento?
+* Quais responsabilidades estão sem dono?
+* Quem pode substituir Carolina nas perucas?
+* Quais responsabilidades Arthur possui?
+
+A IA apenas consulta.
+
+Não permitir alteração pela IA nesta sprint.
+
+────────────────────
+PARTE 9 — Permissões
+────────────────────
+
+ADMIN:
+
+* cria;
+* edita;
+* remove.
+
+SUPERVISOR:
+
+* visualiza;
+* sugere alterações.
+
+MEMBER:
+
+* vê apenas responsabilidades relacionadas.
+
+────────────────────
+PARTE 10 — Validação
+────────────────────
+
+Validar:
+
+* pessoa com múltiplas responsabilidades;
+* responsabilidade sem responsável;
+* responsável substituto;
+* filtros;
+* notificações;
+* permissões.
+
+────────────────────
+Entregáveis
+────────────────────
+
+1. Schema.
+2. APIs.
+3. Tela web.
+4. Tela mobile.
+5. Integração Meu Dia.
+6. Integração notificações.
+7. Relatório final.
+
+Objetivo:
+
+Que nenhuma responsabilidade permanente da ASA dependa de memória, grupos de WhatsApp ou acordos verbais.

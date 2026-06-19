@@ -40,6 +40,7 @@ import SupervisorInsightsPage from "@/pages/supervisor/insights";
 import SupervisorRestrictionsPage from "@/pages/supervisor/restrictions";
 import SupervisorCheckInsPage from "@/pages/supervisor/check-ins";
 import SupervisorInterRequestsPage from "@/pages/supervisor/supervisor-requests";
+import ResponsibilitiesPage from "@/pages/admin/responsibilities";
 
 const queryClient = new QueryClient();
 
@@ -201,6 +202,7 @@ function Router() {
       <RoleRoute path="/supervisor/restrictions" component={SupervisorRestrictionsPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/supervisor/check-ins" component={SupervisorCheckInsPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/supervisor/supervisor-requests" component={SupervisorInterRequestsPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
+      <ProtectedRoute path="/admin/responsibilities" component={ResponsibilitiesPage} />
       <Route component={NotFound} />
     </Switch>
   );
