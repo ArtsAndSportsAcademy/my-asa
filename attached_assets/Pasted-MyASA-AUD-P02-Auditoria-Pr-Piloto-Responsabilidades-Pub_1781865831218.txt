@@ -1,0 +1,211 @@
+MyASA — AUD-P02 Auditoria Pré-Piloto: Responsabilidades, Publicação e Conflitos
+
+Utilizar obrigatoriamente:
+
+* Sprint 0 → Sprint 21 concluídas
+* GOV-D11 e GOV-D11.1
+* AUD-D03 Papéis
+* AUD-D04 Contextos Operacionais
+* S-04 Escala
+* S-05 Livro do Dia
+* S-06 Solicitações
+* S-12 Agenda
+* S-18 Tarefas
+* FC-02 Check-in
+
+Importante:
+
+Não implementar nada.
+
+Não alterar banco.
+
+Não alterar permissões.
+
+Objetivo:
+
+Verificar se as regras discutidas existem de verdade no aplicativo e funcionam para o usuário real.
+
+Pergunta central:
+
+“O que está apenas conceitualmente correto e o que está realmente implementado ponta a ponta?”
+
+═══════════════════════
+PARTE 1 — Capitães e responsabilidades
+═══════════════════════
+
+Validar GOV-D11.1 no uso real:
+
+* Supervisor consegue delegar uma responsabilidade?
+* Supervisor consegue delegar várias responsabilidades?
+* Capitão vê claramente o que recebeu?
+* Capitão consegue executar apenas o que recebeu?
+* Capitão é bloqueado no que não recebeu?
+* Admin e Supervisor continuam podendo intervir?
+
+Testar responsabilidades:
+
+* CHECK_INS
+* REQUESTS
+* TASK_APPROVALS
+* DAILY_BOOK
+* NOTICES
+* SCALES
+
+Classificar:
+
+✅ Implementado ponta a ponta
+
+🟡 Parcial
+
+🔴 Não implementado
+
+═══════════════════════
+PARTE 2 — Publicação
+═══════════════════════
+
+Auditar publicação de:
+
+* Escala
+* Livro do Dia
+* Avisos
+* Biblioteca
+* Tarefas aprovadas
+
+Responder:
+
+* Quem pode publicar?
+* Quem deveria publicar?
+* Existe responsável atual?
+* Delegação permite publicar?
+* Admin pode intervir?
+* Há histórico de publicação?
+* O usuário sabe visualmente quem publicou?
+
+Validar especialmente:
+
+* Supervisor da operação publica?
+* Capitão com responsabilidade correta publica?
+* Outro supervisor sem responsabilidade consegue publicar?
+* Admin consegue publicar?
+
+═══════════════════════
+PARTE 3 — Convocação por grupo, projeto ou show
+═══════════════════════
+
+Auditar se o supervisor consegue convocar pessoas por:
+
+* grupo operacional
+* operação
+* show
+* projeto/evento
+* personagem/função
+* especialização profissional
+
+Responder:
+
+* Isso existe na UI?
+* Existe na API?
+* É intuitivo?
+* Ou só é possível montando manualmente?
+
+Cenário real:
+
+Victor cria ensaio do Musical e precisa convocar patinadores que também fazem personagens no Musical.
+
+Validar se o fluxo funciona.
+
+═══════════════════════
+PARTE 4 — Conflitos
+═══════════════════════
+
+Auditar conflitos de agenda e escala.
+
+Cenários:
+
+1. Pessoa já está em show publicado.
+2. Pessoa já está em escala publicada.
+3. Pessoa tem folga aprovada.
+4. Pessoa tem restrição física/saúde.
+5. Pessoa já está em outro ensaio no mesmo horário.
+6. Pessoa tem tarefa crítica no mesmo período.
+7. Pessoa pertence a outro grupo/supervisor.
+
+Responder:
+
+* O conflito é detectado?
+* O conflito aparece para o supervisor?
+* O sistema bloqueia ou apenas alerta?
+* Existe sugestão de solução?
+* Existe solicitação de liberação?
+* Existe prioridade entre conflitos?
+
+═══════════════════════
+PARTE 5 — Regra de prioridade operacional
+═══════════════════════
+
+Validar se existe regra formal.
+
+Se não existir, propor uma matriz:
+
+Prioridade sugerida:
+
+1. Folga/restrição aprovada
+2. Show publicado
+3. Livro do Dia publicado
+4. Escala publicada
+5. Evento confirmado
+6. Ensaio obrigatório
+7. Tarefa crítica
+8. Treino/aula
+9. Projeto temporário em rascunho
+
+Responder:
+
+* Essa regra existe no código?
+* Existe no motor de escala?
+* Existe na UI?
+* Existe no histórico?
+
+═══════════════════════
+PARTE 6 — Solicitação entre responsáveis
+═══════════════════════
+
+Validar se existe fluxo para:
+
+“Preciso usar alguém que está vinculado a outro contexto.”
+
+Exemplo:
+
+Victor precisa da Carol.
+Carol está vinculada ao grupo de patinadores.
+
+Responder:
+
+* Victor consegue chamar diretamente se Carol pertence ao grupo dele?
+* Se não pertence, existe solicitação ao responsável?
+* A solicitação gera histórico?
+* A aprovação evita conflito?
+* O membro é avisado?
+
+═══════════════════════
+PARTE 7 — Veredito
+═══════════════════════
+
+Responder objetivamente:
+
+1. Capitães funcionam 100%?
+2. Publicação está governada?
+3. Convocação por grupo/projeto/show funciona?
+4. Conflitos são detectados corretamente?
+5. Existe prioridade operacional?
+6. Existe alguma parte só conceitual, não implementada?
+7. O que bloqueia piloto?
+8. O que pode ir para pós-piloto?
+
+Classificar cada item:
+
+🔴 Bloqueia piloto
+
+🟡 Ajustar antes do piloto
+
+🟢 Pode ficar para depois
