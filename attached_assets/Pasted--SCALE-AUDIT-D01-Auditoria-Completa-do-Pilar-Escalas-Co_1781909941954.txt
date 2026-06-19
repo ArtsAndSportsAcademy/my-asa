@@ -1,0 +1,182 @@
+# 🔴 SCALE-AUDIT-D01 — Auditoria Completa do Pilar Escalas
+
+Contexto:
+
+Durante a validação real do aplicativo foi identificado que a interface atual de Escalas não corresponde ao conceito original do MyASA.
+
+O sistema passou a apresentar uma visualização de alocação/cobertura baseada em posições, candidatos e compatibilidade.
+
+Porém, a Escala do MyASA sempre foi definida como:
+
+* visão semanal;
+* pessoas;
+* entradas;
+* conflitos;
+* indisponibilidades;
+* folgas.
+
+Como Escalas é um dos pilares do sistema, qualquer alteração em sua modelagem pode impactar:
+
+* Livro do Dia;
+* Agenda;
+* Folgas;
+* IA (ASA);
+* Notificações;
+* Cobertura;
+* Responsabilidades.
+
+O objetivo desta sprint NÃO é alterar código inicialmente.
+
+O objetivo é descobrir exatamente o que aconteceu.
+
+────────────────────
+
+# 1. Pergunta principal
+
+A modelagem original das Escalas ainda existe?
+
+Responder:
+
+* SIM, apenas a interface mudou.
+* NÃO, a arquitetura foi alterada.
+
+────────────────────
+
+# 2. Auditoria de banco
+
+Verificar:
+
+* schedules
+* schedule_entries
+* coverage
+* exceptions
+* assignments
+* compatibilities
+* positions
+
+Perguntas:
+
+1. As entradas individuais ainda existem?
+2. As pessoas continuam sendo o eixo principal?
+3. A semana continua sendo a unidade principal?
+4. As indisponibilidades continuam vinculadas?
+5. Os conflitos continuam calculados?
+6. A escala semanal antiga pode ser reconstruída?
+
+────────────────────
+
+# 3. Auditoria da UI
+
+Listar:
+
+* tela antiga;
+* tela atual;
+* componentes removidos;
+* componentes substituídos.
+
+Identificar:
+
+* quando a interface semanal deixou de ser principal;
+* qual sprint alterou isso;
+* quais arquivos foram modificados.
+
+────────────────────
+
+# 4. Relação com outros pilares
+
+Verificar impacto em:
+
+* Livro do Dia;
+* Agenda;
+* Folgas;
+* Meu Dia;
+* Responsabilidades;
+* Notificações;
+* ASA.
+
+Pergunta:
+
+A IA depende da nova modelagem?
+
+Ou a IA pode continuar utilizando a estrutura semanal original?
+
+────────────────────
+
+# 5. Conceito oficial do Pilar Escalas
+
+A pergunta da Escala é:
+
+"Quem faz o quê?"
+
+A Escala deve mostrar:
+
+* semana;
+* dias;
+* pessoas;
+* entradas;
+* indisponibilidades;
+* conflitos;
+* folgas.
+
+Ela NÃO deve ser:
+
+* motor de compatibilidade;
+* visão de candidatos;
+* painel de posições;
+* tela técnica do algoritmo.
+
+────────────────────
+
+# 6. Veredito obrigatório
+
+Responder:
+
+1. O pilar Escalas foi alterado?
+2. Apenas a interface mudou?
+3. O banco continua compatível?
+4. A escala semanal ainda pode existir?
+5. A IA depende da nova estrutura?
+6. O Livro do Dia seria afetado?
+7. Existe risco arquitetural?
+8. Qual a recomendação?
+
+────────────────────
+
+# 7. Se a modelagem original existir
+
+Criar sprint:
+
+SCALE-RESTORE-D01
+
+Objetivo:
+Restaurar a escala semanal como interface oficial do MyASA.
+
+────────────────────
+
+# 8. Se a modelagem foi alterada
+
+Criar relatório:
+
+SCALE-MIGRATION-IMPACT-D01
+
+Identificando:
+
+* riscos;
+* pilares afetados;
+* impacto na IA;
+* impacto operacional;
+* plano de retorno.
+
+────────────────────
+
+Resultado esperado:
+
+Determinar se o problema é:
+
+🟢 Interface
+
+ou
+
+🔴 Arquitetura.
+
+Nenhuma alteração de código deve ser feita antes desta auditoria.
