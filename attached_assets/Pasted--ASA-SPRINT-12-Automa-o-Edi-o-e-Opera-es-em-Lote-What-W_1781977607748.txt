@@ -1,0 +1,261 @@
+# ASA-SPRINT-12 — Automação, Edição e Operações em Lote
+
+## What & Why
+
+A ASA já consegue:
+
+✓ consultar
+
+✓ criar
+
+✓ analisar
+
+✓ aprender
+
+✓ sugerir
+
+O próximo passo é torná-la mais robusta, mais rápida e mais capaz de operar em cenários reais de alta demanda.
+
+A pergunta desta sprint é:
+
+> "Como a ASA pode operar de forma mais natural, confiável e eficiente?"
+
+━━━━━━━━━━━━━━━━━━
+
+1. RESOLUÇÃO MULTI-MEMBRO
+   ━━━━━━━━━━━━━━━━━━
+
+Atualmente consultar_membros recebe apenas um nome por vez.
+
+A ferramenta deve aceitar:
+
+* vírgulas
+* "e"
+* listas
+
+Exemplos:
+
+"João, Pedro e Ana"
+
+"Amanda, Carol, Arthur"
+
+Resultado:
+
+✓ resolver todos os membros
+
+✓ desambiguar individualmente
+
+✓ continuar mesmo se um nome falhar
+
+Exemplo:
+
+✓ João encontrado
+
+✓ Pedro encontrado
+
+⚠ Carlos não encontrado
+
+━━━━━━━━━━━━━━━━━━
+2. OPERAÇÕES EM LOTE
+━━━━━━━━━━━━━━━━━━
+
+Novas capacidades:
+
+* criar várias tarefas
+* registrar várias folgas
+* adicionar vários membros
+* criar vários reconhecimentos
+
+Exemplos:
+
+"Criar tarefa para todos do Grupo A."
+
+"Marcar férias de Amanda, Carol e Sofia."
+
+"Adicionar todo o elenco ao ensaio."
+
+━━━━━━━━━━━━━━━━━━
+3. EDIÇÃO DE ENTIDADES
+━━━━━━━━━━━━━━━━━━
+
+Permitir:
+
+✓ editar tarefa
+
+✓ editar folga
+
+✓ editar ensaio
+
+✓ editar bloco operacional
+
+✓ editar aviso
+
+✓ editar reconhecimento
+
+Exemplos:
+
+"Mude a tarefa da Amanda para sexta."
+
+"Troque a folga para domingo."
+
+"Altere o horário do ensaio."
+
+━━━━━━━━━━━━━━━━━━
+4. CONFIRMAÇÕES EM MASSA
+━━━━━━━━━━━━━━━━━━
+
+Quando várias ações forem detectadas:
+
+ASA:
+
+📋 Detectei 4 ações:
+
+• criar 3 tarefas
+
+• registrar 1 ausência
+
+Deseja confirmar?
+
+Somente após confirmação:
+
+✓ executar todas.
+
+━━━━━━━━━━━━━━━━━━
+5. EXECUÇÃO EM LOTE
+━━━━━━━━━━━━━━━━━━
+
+Novos tools:
+
+criar_tarefas_em_lote
+
+registrar_ausencias_em_lote
+
+criar_reconhecimentos_em_lote
+
+criar_entradas_em_lote
+
+adicionar_participantes_em_lote
+
+━━━━━━━━━━━━━━━━━━
+6. PUSH E NOTIFICAÇÕES
+━━━━━━━━━━━━━━━━━━
+
+A ASA poderá:
+
+📱 enviar push
+
+📱 avisar responsáveis
+
+📱 lembrar tarefas
+
+📱 avisar reconhecimentos
+
+Exemplos:
+
+"Você recebeu um reconhecimento."
+
+"Sua tarefa vence amanhã."
+
+━━━━━━━━━━━━━━━━━━
+7. EDIÇÃO CONVERSACIONAL
+━━━━━━━━━━━━━━━━━━
+
+Exemplos:
+
+"Move a tarefa da Amanda para sexta."
+
+"Troca o horário do ensaio."
+
+"Altera a folga da Babi."
+
+A ASA:
+
+✓ localiza
+
+✓ mostra a alteração
+
+✓ pede confirmação
+
+✓ executa
+
+━━━━━━━━━━━━━━━━━━
+8. RESILIÊNCIA DE EXECUÇÃO
+━━━━━━━━━━━━━━━━━━
+
+Se uma ação falhar:
+
+✓ continuar as demais
+
+✓ informar o erro
+
+✓ mostrar o resultado parcial
+
+Exemplo:
+
+✓ João atualizado
+
+✓ Pedro atualizado
+
+⚠ Carlos não encontrado
+
+━━━━━━━━━━━━━━━━━━
+9. NOVAS TOOLS
+━━━━━━━━━━━━━━━━━━
+
+consultar_membros_multi
+
+editar_tarefa
+
+editar_folga
+
+editar_ensaio
+
+editar_aviso
+
+editar_reconhecimento
+
+criar_tarefas_em_lote
+
+registrar_ausencias_em_lote
+
+enviar_push
+
+━━━━━━━━━━━━━━━━━━
+RESTRIÇÕES
+━━━━━━━━━━━━━━━━━━
+
+✗ nunca publicar sem confirmação
+
+✗ nunca executar em massa sem resumo
+
+✗ nunca alterar múltiplos membros silenciosamente
+
+Sempre:
+
+✓ explicar
+
+✓ resumir
+
+✓ pedir confirmação
+
+━━━━━━━━━━━━━━━━━━
+CRITÉRIO DE ACEITAÇÃO
+━━━━━━━━━━━━━━━━━━
+
+✓ múltiplos nomes
+
+✓ ações em lote
+
+✓ edição de entidades
+
+✓ confirmação em massa
+
+✓ notificações
+
+✓ execução resiliente
+
+Resultado:
+
+A ASA deixa de operar pessoa por pessoa.
+
+Ela passa a operar equipes inteiras.
