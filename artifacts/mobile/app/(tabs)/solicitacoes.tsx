@@ -321,7 +321,7 @@ export default function SolicitacoesScreen() {
           <AsaEmptyState
             title="Sem solicitações por aqui 📋"
             subtitle={"Precisou de folga ou quer trocar uma escala? Toque em \"Nova\" e eu te ajudo a registrar!"}
-            pose="duvida"
+            pose="feliz"
           />
         ) : (
           <>

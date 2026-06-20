@@ -8,7 +8,7 @@ interface AsaEmptyStateProps {
   pose?: AsaPose;
 }
 
-export function AsaEmptyState({ title, subtitle, pose = "duvida" }: AsaEmptyStateProps) {
+export function AsaEmptyState({ title, subtitle, pose = "feliz" }: AsaEmptyStateProps) {
   return (
     <View style={styles.container}>
       <AsaAvatar size="large" pose={pose} />

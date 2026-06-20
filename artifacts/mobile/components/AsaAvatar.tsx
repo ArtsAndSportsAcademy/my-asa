@@ -134,7 +134,10 @@ export function AsaAvatar({ size = "medium", pose, state }: AsaAvatarProps) {
   }, []);
 
   return (
-    <Pressable onPress={handlePress}>
+    <Pressable
+      onPress={handlePress}
+      style={[styles.container, { width: dimension, height: dimension }]}
+    >
       <Animated.Image
         source={POSE_IMAGES[activePose]}
         style={[
@@ -146,13 +149,21 @@ export function AsaAvatar({ size = "medium", pose, state }: AsaAvatarProps) {
           },
         ]}
         resizeMode="contain"
+        fadeDuration={0}
       />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    overflow: "visible",
+    backgroundColor: "transparent",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   image: {
     overflow: "visible",
+    backgroundColor: "transparent",
   },
 });

@@ -124,9 +124,9 @@ function climaPose(result: ClimaResult): AsaPose {
 }
 
 function toolResultToPose(tool: string | null, result?: ClimaResult | null): AsaPose {
-  if (!tool) return "carregando";
+  if (!tool) return "analisando";
   if (tool === "consultar_clima" && result) return climaPose(result);
-  return BASE_TOOL_POSE[tool] ?? "carregando";
+  return BASE_TOOL_POSE[tool] ?? "analisando";
 }
 
 function deriveFinishedPose(tools: string[], content: string, climaResult?: ClimaResult | null): AsaPose {
@@ -514,7 +514,7 @@ export default function AsaScreen() {
       {messages.length === 0 ? (
         <View style={styles.empty}>
           <View style={{ marginBottom: 16 }}>
-            <AsaAvatar size="large" pose="feliz" />
+            <AsaAvatar size="large" pose={error ? "duvida" : "feliz"} />
           </View>
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Olá! Eu sou a ASA 😊</Text>
           <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>
