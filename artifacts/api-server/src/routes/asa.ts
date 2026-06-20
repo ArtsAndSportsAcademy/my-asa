@@ -30,7 +30,7 @@ import {
 } from "@workspace/db";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
-import { createNotification } from "../services/notificationService.js";
+import { createNotification, sendNotification } from "../services/notificationService.js";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type MessageParam = { role: "user" | "assistant"; content: any };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -968,6 +968,21 @@ const ASA_TOOLS: Tool[] = [
       type: "object" as const,
       properties: {
         type: { type: "string", description: "Tipo de marco: TIME_OF_HOUSE ou ALL (padrão: ALL)" },
+      },
+    },
+  },
+  // ── Push / Notificações ───────────────────────────────────────────────────────
+  {
+    name: "enviar_push",
+    description: "Envia uma notificação push (bandeja do celular) e registra no histórico in-app de um ou mais responsáveis. Use para avisar sobre pendências, lembretes ou alertas operacionais. Exclusivo para gestores. Sempre confirme com o usuário antes de disparar. Use consultar_membros para obter os IDs. Se o membro não tiver dispositivo registrado, o aviso fica só no histórico in-app.",
+    input_schema: {
+      type: "object" as const,
+      required: ["userIds", "title", "message"],
+      properties: {
+        userIds:  { type: "array", items: { type: "string" }, description: "IDs dos membros a notificar (obtidos via consultar_membros)" },
+        title:    { type: "string", description: "Título curto da notificação (ex: 'Lembrete de tarefa')" },
+        message:  { type: "string", description: "Corpo da notificação" },
+        priority: { type: "string", description: "Prioridade: LOW, NORMAL, IMPORTANT, CRITICAL (padrão: NORMAL)" },
       },
     },
   },
@@ -1912,7 +1927,7 @@ async function coreCriarReconhecimento(
     publishedAt: new Date(),
   }).returning();
   try {
-    await createNotification({
+    await sendNotification({
       userId: p.userId,
       type: "RECOGNITION_RECEIVED",
       title: "🎉 Você recebeu um reconhecimento!",
@@ -2616,6 +2631,59 @@ export async function executeTool(
       } catch (err) {
         return JSON.stringify({ error: err instanceof Error ? err.message : String(err) });
       }
+    }
+
+    // ── enviar_push ───────────────────────────────────────────────────────────
+    if (name === "enviar_push") {
+      if (!isManager) return JSON.stringify({ error: "Sem permissão para enviar notificações" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const rawUserIds = input.userIds;
+      const userIds = Array.isArray(rawUserIds)
+        ? (rawUserIds as unknown[]).map((u) => String(u)).filter(Boolean)
+        : typeof rawUserIds === "string"
+        ? [rawUserIds]
+        : [];
+      const pushTitle   = input.title   as string;
+      const pushMessage = input.message as string;
+      const pushPriority = (["LOW", "NORMAL", "IMPORTANT", "CRITICAL"].includes(String(input.priority))
+        ? input.priority
+        : "NORMAL") as "LOW" | "NORMAL" | "IMPORTANT" | "CRITICAL";
+
+      if (userIds.length === 0) return JSON.stringify({ error: "Informe ao menos um membro (userIds)" });
+      if (!pushTitle || !pushMessage) return JSON.stringify({ error: "title e message são obrigatórios" });
+
+      // Validate the targets belong to the same organization (avoid IDOR).
+      const targets = await db
+        .select({ id: usersTable.id, name: usersTable.name })
+        .from(usersTable)
+        .where(and(eq(usersTable.organizationId, ctx.organizationId), inArray(usersTable.id, userIds)));
+      if (targets.length === 0) return JSON.stringify({ error: "Nenhum membro válido encontrado nesta organização" });
+
+      let sent = 0;
+      let inAppOnly = 0;
+      for (const t of targets) {
+        try {
+          const { push } = await sendNotification({
+            userId:   t.id,
+            type:     "ASA_PUSH",
+            title:    pushTitle,
+            message:  pushMessage,
+            priority: pushPriority,
+            category: "system",
+          });
+          if (push.sent > 0) sent += 1; else inAppOnly += 1;
+        } catch {
+          inAppOnly += 1;
+        }
+      }
+
+      return JSON.stringify({
+        sent: true,
+        total: targets.length,
+        delivered: sent,
+        inAppOnly,
+        message: `📲 Notificação enviada para ${targets.length} membro(s). ${sent} receberam push no celular${inAppOnly > 0 ? `, ${inAppOnly} ficaram só no histórico in-app (sem dispositivo registrado)` : ""}.`,
+      });
     }
 
     // ── detectar_marcos ───────────────────────────────────────────────────────
@@ -3958,7 +4026,7 @@ export async function executeTool(
         publishedAt:    new Date(),
       }).returning();
       try {
-        await createNotification({
+        await sendNotification({
           userId:     recUserId,
           type:       "RECOGNITION_RECEIVED",
           title:      "🎉 Você recebeu um reconhecimento!",

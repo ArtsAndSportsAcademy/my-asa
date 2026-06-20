@@ -7,6 +7,7 @@ import {
 import { eq, and, isNull, or, gt, desc, count } from "drizzle-orm";
 import { domainLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
+import { sendPushToUser, type PushDeliveryResult } from "./pushService.js";
 
 const log = domainLogger(LOG_DOMAIN.NOTIFICATIONS);
 
@@ -160,23 +161,45 @@ export async function getUnreadCount(userId: string): Promise<number> {
   return row?.count ?? 0;
 }
 
-// ─── sendNotification stub ────────────────────────────────────────────────────
-// Prepared for future Expo Push / Firebase / APNs integration.
-// Currently stores the notification and logs it.
+// ─── sendNotification — in-app history + real Expo push delivery ──────────────
+// Always records the in-app (sino) notification. Then attempts real push
+// delivery to the user's registered devices via Expo. Push failures never
+// break the in-app record — they are logged and reflected in the delivery
+// summary returned to the caller.
 
 export async function sendNotification(
   input: CreateNotificationInput,
-): Promise<UserNotification> {
+): Promise<{ notification: UserNotification; push: PushDeliveryResult }> {
   const notification = await createNotification(input);
 
-  // TODO: integrate with Expo Push / Firebase / APNs
-  // e.g. call push service with notification.id and input details
+  let push: PushDeliveryResult = { attempted: 0, sent: 0, failed: 0 };
+  try {
+    push = await sendPushToUser(input.userId, {
+      title: input.title,
+      body: input.message,
+      priority: input.priority,
+      data: {
+        type: input.type,
+        category: input.category,
+        notificationId: notification.id,
+        ...(input.entityType ? { entityType: input.entityType } : {}),
+        ...(input.entityId ? { entityId: input.entityId } : {}),
+        ...(input.actionUrl ? { actionUrl: input.actionUrl } : {}),
+      },
+    });
+  } catch (err) {
+    log.error(
+      { notificationId: notification.id, userId: input.userId, err },
+      "push delivery failed (in-app notification still recorded)",
+    );
+  }
+
   log.info(
-    { notificationId: notification.id, userId: input.userId, priority: input.priority },
-    "sendNotification — push stub (not yet connected to external service)",
+    { notificationId: notification.id, userId: input.userId, priority: input.priority, push },
+    "sendNotification — in-app recorded, push attempted",
   );
 
-  return notification;
+  return { notification, push };
 }
 
 // ─── Convenience batch helper (notify multiple users) ───────────────────────

@@ -26,6 +26,24 @@ export const insertNotificationSchema = createInsertSchema(notificationsTable).o
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notificationsTable.$inferSelect;
 
+// ─── Device Tokens (PUSH-D02) ─────────────────────────────────────────────────
+// One row per registered device push token (Expo push token). A user may have
+// several (multiple devices). The token is unique so registration is an upsert.
+
+export const deviceTokensTable = pgTable("device_tokens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => usersTable.id),
+  token: text("token").notNull().unique(),
+  platform: platformEnum("platform"),
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const insertDeviceTokenSchema = createInsertSchema(deviceTokensTable).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertDeviceToken = z.infer<typeof insertDeviceTokenSchema>;
+export type DeviceToken = typeof deviceTokensTable.$inferSelect;
+
 // ─── User Notifications (PUSH-D01) ────────────────────────────────────────────
 // Semantic notification layer — separate from the push-delivery `notifications` table.
 // Answers "do I need to do something or just know about this?"

@@ -1,6 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
 import React, { createContext, useContext, useEffect, useState } from "react";
+import {
+  registerForPushNotificationsAsync,
+  unregisterPushNotificationsAsync,
+} from "@/lib/push";
 
 export interface AuthUser {
   id: string;
@@ -67,6 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setAccessToken(storedToken);
           setUser(JSON.parse(storedUser) as AuthUser);
           setRoles(storedRoles ? (JSON.parse(storedRoles) as AuthRole[]) : []);
+          void registerForPushNotificationsAsync();
         }
       } catch {
         // ignore parse errors
@@ -91,9 +96,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAccessToken(token);
     setUser(authUser);
     setRoles(authRoles);
+    void registerForPushNotificationsAsync();
   };
 
   const signOut = async () => {
+    await unregisterPushNotificationsAsync();
     await Promise.all([
       AsyncStorage.removeItem("myasa_access_token"),
       AsyncStorage.removeItem("myasa_refresh_token"),

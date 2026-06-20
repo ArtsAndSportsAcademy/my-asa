@@ -1,5 +1,6 @@
 - [MyASA 2.0 — Estado do Projeto](myasa-estado-projeto.md) — Audit TS completo; zero erros em api-server, mobile, web-admin (exceto pré-existentes acordados)
 - [LOG_DOMAIN extension pattern](log-domain-pattern.md) — ao criar nova rota, adicionar entrada no LOG_DOMAIN de lib/shared/src/constants.ts antes de usar requestLogger
+- [Push (Expo) e jobs recorrentes](push-and-scheduling.md) — push best-effort nunca lança, status real por token; sem cron (setTimeout pós-listen, não no boot); drizzle generate captura todo o drift
 - [YAML plain scalar colon bug](yaml-colon-bug.md) — summary com ": " em YAML não-quoted quebra orval silenciosamente
 - [Express params cast pattern](express-params-cast.md) — req.params.id tipado como string|string[] no Express; sempre usar `const id = req.params.id as string`
 - [api-client-react build requerido](api-client-react-build.md) — lib usa composite + declarationOnly; deve rodar `tsc -p tsconfig.json` na lib antes do typecheck do web-admin

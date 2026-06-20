@@ -12,6 +12,7 @@ import {
   getUnreadCount,
   type NotificationCategory,
 } from "../services/notificationService.js";
+import { registerDeviceToken, removeDeviceToken } from "../services/pushService.js";
 
 const router: IRouter = Router();
 
@@ -122,6 +123,57 @@ router.patch("/notifications/read-all", requireAuth, requireOrganization, async 
     res.json({ marked: count });
   } catch (err) {
     log.error({ err }, "erro ao marcar todas as notificações como lidas");
+    res.status(500).json({ error: "Erro interno" });
+  }
+});
+
+// ─── POST /notifications/device-token — registra token de push do dispositivo ──
+// Chamado pelo app após o login. Faz upsert por token (único). Não exige
+// organização — qualquer usuário autenticado pode registrar seu dispositivo.
+
+router.post("/notifications/device-token", requireAuth, async (req, res): Promise<void> => {
+  const log = requestLogger(LOG_DOMAIN.NOTIFICATIONS, req.requestId, req.correlationId);
+  const user = req.user!;
+  const { token, platform } = req.body as { token?: string; platform?: string };
+
+  if (!token || typeof token !== "string") {
+    res.status(400).json({ error: "token é obrigatório" });
+    return;
+  }
+
+  const normalizedPlatform =
+    platform === "IOS" || platform === "ANDROID" ? platform : null;
+
+  try {
+    const row = await registerDeviceToken({
+      userId: user.sub,
+      token,
+      platform: normalizedPlatform,
+    });
+    res.status(201).json({ id: row.id, registered: true });
+  } catch (err) {
+    log.error({ err }, "erro ao registrar token de dispositivo");
+    res.status(500).json({ error: "Erro interno" });
+  }
+});
+
+// ─── DELETE /notifications/device-token — remove token (logout) ───────────────
+
+router.delete("/notifications/device-token", requireAuth, async (req, res): Promise<void> => {
+  const log = requestLogger(LOG_DOMAIN.NOTIFICATIONS, req.requestId, req.correlationId);
+  const user = req.user!;
+  const { token } = req.body as { token?: string };
+
+  if (!token || typeof token !== "string") {
+    res.status(400).json({ error: "token é obrigatório" });
+    return;
+  }
+
+  try {
+    await removeDeviceToken(user.sub, token);
+    res.json({ removed: true });
+  } catch (err) {
+    log.error({ err }, "erro ao remover token de dispositivo");
     res.status(500).json({ error: "Erro interno" });
   }
 });
