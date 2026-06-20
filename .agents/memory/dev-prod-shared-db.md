@@ -1,16 +1,17 @@
 ---
-name: Dev e Prod compartilham o MESMO banco
-description: DATABASE_URL é secret global; o app publicado e o dev usam o mesmo Postgres — apagar dados em dev apaga o app publicado
+name: Dev e Prod usam bancos SEPARADOS
+description: O app publicado (produção) tem um banco Postgres próprio, separado do banco de desenvolvimento; escrever em dev NÃO afeta o app publicado
 ---
 
-DATABASE_URL é um secret global do projeto. O ambiente de desenvolvimento e o app publicado (https://my-asa-two.replit.app) apontam para o MESMO banco Postgres.
+CORREÇÃO de uma suposição anterior errada: o ambiente de desenvolvimento e o app publicado (https://my-asa-two.replit.app) usam **bancos Postgres SEPARADOS**, apesar de `DATABASE_URL` aparecer como um único secret global em `viewEnvVars` (a plataforma injeta uma `DATABASE_URL` própria, runtime-managed, no deployment).
 
-**Why:** confirmado por contagem idêntica de linhas (mesmos usuários em dev e prod). Não há banco separado de produção.
+**Why:** comprovado — após limpar o banco de dev (1 usuário admin) e publicar, o app publicado continuou com 43 usuários de demonstração e o login do admin falhava com "user not found"; `executeSql environment:"production"` (réplica somente-leitura) mostrou esses 43 usuários, enquanto dev mostrava 1. Réplica não fica horas atrasada → são bancos distintos.
 
 **How to apply:**
-- Qualquer DELETE/UPDATE/TRUNCATE rodado em dev afeta imediatamente o app publicado. Tratar toda escrita como produção.
-- `executeSql` com `environment:"production"` é READ-ONLY (writes bloqueados). Para escrever, usar `environment:"development"` — mas lembrar que isso escreve no banco que o app publicado usa.
-- `TRUNCATE`/`DROP` são bloqueados no caminho do callback executeSql; `DELETE` é permitido.
-- Para adicionar valor a um pgEnum (ex.: security_audit_action), o array no código não basta: rodar `ALTER TYPE "<enum>" ADD VALUE IF NOT EXISTS '<valor>'` via executeSql, senão inserts com o novo valor falham em runtime.
-- **Tasks mescladas NÃO aplicam mudanças de schema neste banco.** O post-merge faz `skipping drizzle push`. Uma task agent aplica a migração só no banco isolado dela; ao mesclar, vem só o código. Se o código mesclado passar a usar uma coluna nova (ex.: Task de login por username adicionou `users.username` mas a coluna não existia aqui → login quebrado em dev e no app publicado), aplicar a migração manualmente via executeSql: `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...` + constraints. Sempre conferir `information_schema.columns` quando código mesclado referenciar campos novos.
-- Para apagar todos os dados sem mapear ordem de FK: loop iterativo de `DELETE FROM "<tabela>"` por tabela, repetindo as que falham por 23503 até esvaziar (convergiu em ~3 passes para ~58 tabelas).
+- `executeSql environment:"development"` escreve SÓ no banco de dev; NÃO afeta o app publicado.
+- `executeSql environment:"production"` é READ-ONLY (réplica) — não dá para escrever em produção por aí. O valor da `DATABASE_URL` de produção não é visível (`viewEnvVars` só mostra existência de secrets), então não há como conectar direto no banco de produção a partir do loop do agente.
+- Para mudar DADOS de produção (ex.: limpar tudo + criar admin), o único caminho controlável é código no próprio app que roda em produção. Padrão usado: bootstrap guardado em `artifacts/api-server/src/lib/bootstrap.ts` — roda só se env var `RESET_PROD_DB="1"` (setada production-scoped) E uma linha marcadora em `_bootstrap_log` ainda não existir (garante execução única, seguro contra restart de autoscale). Depois republicar.
+- Schema de produção é aplicado pela Replit no Publish (diff dev→prod). DADOS não são copiados no publish — persistem no banco de produção entre publicações.
+- Tasks mescladas NÃO aplicam mudanças de schema no banco de dev (post-merge faz `skipping drizzle push`); aplicar manualmente via executeSql `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...` quando código mesclado referenciar coluna nova (conferir `information_schema.columns`).
+- Para adicionar valor a um pgEnum: rodar `ALTER TYPE "<enum>" ADD VALUE IF NOT EXISTS '<valor>'` via executeSql; o array no código não basta.
+- `TRUNCATE`/`DROP` são bloqueados no callback executeSql; `DELETE` é permitido. Dentro do app (pool direto, como no bootstrap) `TRUNCATE` funciona.
