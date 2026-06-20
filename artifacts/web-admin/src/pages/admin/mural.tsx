@@ -51,8 +51,8 @@ export default function MuralPage() {
 
   useEffect(() => {
     fetch("/api/asa/mural", { credentials: "include" })
-      .then(r => r.json())
-      .then(d => setData(d))
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+      .then((d: MuralData) => setData(d))
       .catch(() => setData(null))
       .finally(() => setLoading(false));
   }, []);
