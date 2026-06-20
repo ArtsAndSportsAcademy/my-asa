@@ -96,7 +96,7 @@ router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), as
     return;
   }
 
-  const VALID_SPECIALIZATIONS = ["PERFORMER", "PROFESSOR", "TRAINER", "PHYSIOTHERAPIST", "STRENGTH_COACH", "TECHNICAL_OPERATOR", "OTHER"];
+  const VALID_SPECIALIZATIONS = ["PERFORMER", "PROFESSOR", "TRAINER", "PHYSIOTHERAPIST", "STRENGTH_COACH", "TECHNICAL_OPERATOR", "CHOREOGRAPHER", "OTHER"];
   if (specialization && !VALID_SPECIALIZATIONS.includes(specialization)) {
     res.status(400).json({ error: "BAD_REQUEST", message: `specialization inválida. Valores aceitos: ${VALID_SPECIALIZATIONS.join(", ")}` });
     return;
@@ -141,12 +141,18 @@ router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), as
   }
 });
 
-router.patch("/users/:id", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
+router.patch("/users/:id", requireAuth, requireOrganization, requireRole("ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"), async (req, res) => {
   const log = requestLogger("teams", req.requestId, req.correlationId);
   const id = req.params.id as string;
   const { name, email, specialization, birthDate } = req.body;
 
-  const VALID_SPECIALIZATIONS = ["PERFORMER", "PROFESSOR", "TRAINER", "PHYSIOTHERAPIST", "STRENGTH_COACH", "TECHNICAL_OPERATOR", "OTHER"];
+  // Supervisors may only edit a member's specialization (function); full edits remain ADMIN-only.
+  if (req.user!.role !== "ADMIN" && (name !== undefined || email !== undefined || birthDate !== undefined)) {
+    res.status(403).json({ error: "FORBIDDEN", message: "Supervisores podem editar apenas a especialização do membro." });
+    return;
+  }
+
+  const VALID_SPECIALIZATIONS = ["PERFORMER", "PROFESSOR", "TRAINER", "PHYSIOTHERAPIST", "STRENGTH_COACH", "TECHNICAL_OPERATOR", "CHOREOGRAPHER", "OTHER"];
   if (specialization !== undefined && specialization !== null && !VALID_SPECIALIZATIONS.includes(specialization)) {
     res.status(400).json({ error: "BAD_REQUEST", message: `specialization inválida. Valores aceitos: ${VALID_SPECIALIZATIONS.join(", ")}` });
     return;

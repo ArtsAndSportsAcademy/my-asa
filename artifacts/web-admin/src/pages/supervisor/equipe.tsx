@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import {
   useListUsers,
   useGetOperations,
@@ -8,12 +9,17 @@ import {
   useCreateDelegation,
   useCreateMessageThread,
   useSendMessage,
+  useListTasks,
+  useListUserRoles,
+  useUpdateUser,
+  useListDelegations,
   getListMessageThreadsQueryKey,
   getListDelegationsQueryKey,
+  getListUsersQueryKey,
   ALL_RESPONSIBILITIES,
   RESPONSIBILITY_LABELS,
 } from "@workspace/api-client-react";
-import type { DelegatedResponsibility } from "@workspace/api-client-react";
+import type { DelegatedResponsibility, UserUpdateSpecialization } from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +37,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   MessageSquare, CheckSquare, ShieldCheck, Palmtree, Trophy,
   ArrowLeft, Loader2, Search, Users, AlertCircle, ChevronRight,
+  History, CalendarDays, Activity, Star, Pencil, Check, X,
 } from "lucide-react";
 
 // ─── Types & constants ──────────────────────────────────────────────────────
@@ -50,7 +57,7 @@ interface Operation {
   name: string;
 }
 
-type ActionKey = "message" | "task" | "delegation" | "folga" | "recognition";
+type ActionKey = "message" | "task" | "delegation" | "folga" | "recognition" | "history";
 
 const PRIORITY_LABELS: Record<string, string> = {
   LOW: "Baixa", MEDIUM: "Média", HIGH: "Alta", CRITICAL: "Crítica",
@@ -63,10 +70,30 @@ const SPECIALIZATION_LABELS: Record<string, string> = {
   PHYSIOTHERAPIST:    "Fisioterapeuta",
   STRENGTH_COACH:     "Preparador Físico",
   TECHNICAL_OPERATOR: "Técnico Operacional",
+  CHOREOGRAPHER:      "Coreógrafo",
   OTHER:              "Outro",
 };
 
 const specLabel = (s?: string | null) => (s ? SPECIALIZATION_LABELS[s] ?? s : "");
+
+// Especializado = trabalha COM o elenco; Performer (elenco) e demais → visão "o que faço".
+const SPECIALIST_SPECS = new Set([
+  "PROFESSOR", "TRAINER", "PHYSIOTHERAPIST", "STRENGTH_COACH", "TECHNICAL_OPERATOR", "CHOREOGRAPHER",
+]);
+const isSpecialist = (s?: string | null) => !!s && SPECIALIST_SPECS.has(s);
+
+const EDITABLE_SPECS = [
+  "PERFORMER", "PROFESSOR", "TRAINER", "PHYSIOTHERAPIST",
+  "STRENGTH_COACH", "TECHNICAL_OPERATOR", "CHOREOGRAPHER", "OTHER",
+];
+
+const TERMINAL_TASK_STATUS = new Set(["COMPLETED", "APPROVED", "CANCELLED", "EXPIRED"]);
+
+const TASK_STATUS_LABELS: Record<string, string> = {
+  CREATED: "Criada", IN_PROGRESS: "Em andamento", READY_FOR_APPROVAL: "Aguardando aprovação",
+  CHANGES_REQUESTED: "Ajustes pedidos", APPROVED: "Aprovada", COMPLETED: "Concluída",
+  CANCELLED: "Cancelada", EXPIRED: "Expirada",
+};
 
 const FOLGA_TYPES = [
   { value: "DAY_OFF",     label: "Folga" },
@@ -473,13 +500,20 @@ function RecognitionForm({ member, onDone }: { member: Member; onDone: () => voi
 
 // ─── Action hub config ───────────────────────────────────────────────────────
 
-const ACTIONS: { key: ActionKey; label: string; description: string; icon: React.ElementType; color: string }[] = [
-  { key: "message",     label: "Mensagem",       description: "Iniciar uma conversa",            icon: MessageSquare, color: "text-blue-600 bg-blue-50"     },
-  { key: "task",        label: "Tarefa",         description: "Atribuir uma tarefa",             icon: CheckSquare,   color: "text-violet-600 bg-violet-50" },
-  { key: "delegation",  label: "Delegação",      description: "Delegar responsabilidades",       icon: ShieldCheck,   color: "text-emerald-600 bg-emerald-50" },
-  { key: "folga",       label: "Folga",          description: "Registrar folga ou ausência",     icon: Palmtree,      color: "text-amber-600 bg-amber-50"   },
-  { key: "recognition", label: "Reconhecimento", description: "Reconhecer no mural da equipe",   icon: Trophy,        color: "text-rose-600 bg-rose-50"     },
-];
+interface HubAction { key: ActionKey; label: string; description: string; icon: React.ElementType; color: string }
+
+const ALL_ACTIONS: Record<ActionKey, HubAction> = {
+  message:     { key: "message",     label: "Mensagem",                 description: "Iniciar uma conversa",        icon: MessageSquare, color: "text-blue-600 bg-blue-50"       },
+  task:        { key: "task",        label: "Criar tarefa",             description: "Atribuir uma tarefa",         icon: CheckSquare,   color: "text-violet-600 bg-violet-50"   },
+  folga:       { key: "folga",       label: "Registrar folga",          description: "Folga ou ausência",           icon: Palmtree,      color: "text-amber-600 bg-amber-50"     },
+  recognition: { key: "recognition", label: "Reconhecimento",           description: "Reconhecer no mural",          icon: Trophy,        color: "text-rose-600 bg-rose-50"       },
+  delegation:  { key: "delegation",  label: "Delegar responsabilidade", description: "Atribuir responsabilidades",  icon: ShieldCheck,   color: "text-emerald-600 bg-emerald-50" },
+  history:     { key: "history",     label: "Ver histórico",            description: "Tarefas e atividades",         icon: History,       color: "text-slate-600 bg-slate-100"    },
+};
+
+// Performer (elenco) → "o que eu faço". Especializado → "quem eu acompanho".
+const PERFORMER_ACTION_KEYS: ActionKey[]  = ["message", "task", "folga", "recognition", "history"];
+const SPECIALIST_ACTION_KEYS: ActionKey[] = ["message", "task", "recognition", "delegation", "history"];
 
 const ACTION_TITLES: Record<ActionKey, string> = {
   message: "Enviar mensagem",
@@ -487,13 +521,129 @@ const ACTION_TITLES: Record<ActionKey, string> = {
   delegation: "Delegar responsabilidade",
   folga: "Registrar folga",
   recognition: "Dar reconhecimento",
+  history: "Histórico de tarefas",
 };
+
+// ─── Profile summary pieces ──────────────────────────────────────────────────
+
+function SpecializationEditor({ member, spec, onChange }: { member: Member; spec: string | null; onChange: (s: string | null) => void }) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const updateMut = useUpdateUser();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(spec ?? "");
+
+  const save = () => {
+    updateMut.mutate(
+      { id: member.id, data: { specialization: (value || null) as UserUpdateSpecialization } },
+      {
+        onSuccess: () => {
+          qc.invalidateQueries({ queryKey: getListUsersQueryKey() });
+          onChange(value || null);
+          toast({ title: "Especialização atualizada." });
+          setEditing(false);
+        },
+        onError: () => toast({ title: "Não foi possível atualizar.", variant: "destructive" }),
+      }
+    );
+  };
+
+  if (!editing) {
+    return (
+      <div className="flex items-center gap-1.5">
+        {spec
+          ? <Badge variant="secondary" className="text-[11px]">{specLabel(spec)}</Badge>
+          : <span className="text-xs text-muted-foreground">Sem especialização</span>}
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setValue(spec ?? ""); setEditing(true); }}>
+          <Pencil className="w-3.5 h-3.5" />
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <Select value={value || "NONE"} onValueChange={(v) => setValue(v === "NONE" ? "" : v)}>
+        <SelectTrigger className="h-8 w-44"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="NONE">Sem especialização</SelectItem>
+          {EDITABLE_SPECS.map((s) => <SelectItem key={s} value={s}>{specLabel(s)}</SelectItem>)}
+        </SelectContent>
+      </Select>
+      <Button size="icon" className="h-8 w-8" onClick={save} disabled={updateMut.isPending}>
+        {updateMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+      </Button>
+      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditing(false)}><X className="w-3.5 h-3.5" /></Button>
+    </div>
+  );
+}
+
+function StatCard({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: number }) {
+  return (
+    <div className="rounded-md border bg-background p-2.5 flex items-center gap-2.5">
+      <span className="flex items-center justify-center w-8 h-8 rounded-md bg-muted shrink-0"><Icon className="w-4 h-4 text-muted-foreground" /></span>
+      <div className="min-w-0">
+        <p className="text-lg font-semibold leading-none">{value}</p>
+        <p className="text-[11px] text-muted-foreground truncate">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+function HistoryView({ tasks }: { tasks: any[] }) {
+  if (tasks.length === 0) {
+    return <div className="text-center py-10 text-muted-foreground text-sm">Nenhuma tarefa registrada para este membro.</div>;
+  }
+  const sorted = [...tasks].sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+  return (
+    <div className="space-y-2">
+      {sorted.map((t) => (
+        <div key={t.id} className="rounded-lg border p-3">
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-sm font-medium">{t.title}</p>
+            <Badge variant="outline" className="text-[10px] shrink-0">{TASK_STATUS_LABELS[t.status] ?? t.status}</Badge>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-[11px] text-muted-foreground">
+            {t.operationName && <span>{t.operationName}</span>}
+            {t.priority && <span>{PRIORITY_LABELS[t.priority] ?? t.priority}</span>}
+            {t.dueDate && <span>Prazo: {new Date(t.dueDate).toLocaleDateString("pt-BR")}</span>}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 // ─── Member hub dialog ───────────────────────────────────────────────────────
 
 function MemberHub({ member, operations, onClose }: { member: Member; operations: Operation[]; onClose: () => void }) {
   const [action, setAction] = useState<ActionKey | null>(null);
+  const [spec, setSpec] = useState<string | null>(member.specialization ?? null);
+  const specialist = isSpecialist(spec);
 
+  const { data: rolesData } = useListUserRoles(member.id);
+  const { data: tasksData } = useListTasks({ assigneeId: member.id });
+  const { data: delegData } = useListDelegations();
+  const { data: recogData } = useQuery({
+    queryKey: ["member-recognitions", member.id],
+    queryFn: async () => {
+      const r = await fetch(`/api/asa/recognitions?userId=${member.id}`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      if (!r.ok) throw new Error(String(r.status));
+      return r.json() as Promise<{ recognitions: { id: string }[] }>;
+    },
+  });
+
+  const roleOpIds = new Set(((rolesData as any)?.roles ?? []).map((r: any) => r.operationId));
+  const memberOps = operations.filter((o) => roleOpIds.has(o.id));
+  const tasks = (((tasksData as any)?.tasks ?? []) as any[]);
+  const activeTasks = tasks.filter((t) => !TERMINAL_TASK_STATUS.has(t.status));
+  const heldDelegations = (((delegData as any)?.delegations ?? []) as any[]).filter((d) => d.delegateId === member.id && d.status === "ACTIVE");
+  const heldResponsibilities = Array.from(new Set(heldDelegations.flatMap((d) => (d.responsibilities ?? []) as string[])));
+  const recognitionCount = (recogData?.recognitions ?? []).length;
+
+  const actionKeys = specialist ? SPECIALIST_ACTION_KEYS : PERFORMER_ACTION_KEYS;
   const done = () => setAction(null);
 
   return (
@@ -513,33 +663,86 @@ function MemberHub({ member, operations, onClose }: { member: Member; operations
             <div className="min-w-0">
               <p className="text-base font-semibold leading-tight truncate">{member.name}</p>
               <p className="text-xs text-muted-foreground font-normal truncate">
-                {action ? ACTION_TITLES[action] : (member.specialization || member.email || "Membro da equipe")}
+                {action ? ACTION_TITLES[action] : (specialist ? "Especializado — quem acompanha" : "Elenco — o que faz")}
               </p>
             </div>
           </DialogTitle>
         </DialogHeader>
 
         {!action ? (
-          <div className="space-y-2 py-1">
-            {ACTIONS.map((a) => {
-              const Icon = a.icon;
-              return (
-                <button
-                  key={a.key}
-                  onClick={() => setAction(a.key)}
-                  className="w-full flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors text-left"
-                >
-                  <span className={`flex items-center justify-center w-9 h-9 rounded-lg shrink-0 ${a.color}`}>
-                    <Icon className="w-4.5 h-4.5" />
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{a.label}</p>
-                    <p className="text-xs text-muted-foreground">{a.description}</p>
+          <div className="space-y-4 py-1">
+            <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-muted-foreground">{specialist ? "Especialidade" : "Função"}</span>
+                <SpecializationEditor member={member} spec={spec} onChange={setSpec} />
+              </div>
+
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">
+                  {specialist ? "Operações atendidas" : "Operações em que atua"}
+                </p>
+                {memberOps.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {memberOps.map((o) => <Badge key={o.id} variant="outline" className="text-[10px]">{o.name}</Badge>)}
                   </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-                </button>
-              );
-            })}
+                ) : <p className="text-xs text-muted-foreground">Nenhuma operação atribuída.</p>}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <StatCard icon={Activity} label="Tarefas ativas" value={activeTasks.length} />
+                {specialist
+                  ? <StatCard icon={ShieldCheck} label="Responsabilidades" value={heldResponsibilities.length} />
+                  : <StatCard icon={Star} label="Reconhecimentos" value={recognitionCount} />}
+              </div>
+
+              {specialist && heldResponsibilities.length > 0 && (
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Responsabilidades delegadas</p>
+                  <div className="flex flex-wrap gap-1">
+                    {heldResponsibilities.map((r) => (
+                      <Badge key={r} variant="secondary" className="text-[10px]">
+                        {RESPONSIBILITY_LABELS[r as DelegatedResponsibility] ?? r}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-3 pt-0.5">
+                {specialist ? (
+                  <Link href="/admin/agenda" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+                    <CalendarDays className="w-3.5 h-3.5" /> Ver agenda
+                  </Link>
+                ) : (
+                  <Link href="/admin/scales" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+                    <CalendarDays className="w-3.5 h-3.5" /> Ver escala
+                  </Link>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {actionKeys.map((k) => {
+                const a = ALL_ACTIONS[k];
+                const Icon = a.icon;
+                return (
+                  <button
+                    key={a.key}
+                    onClick={() => setAction(a.key)}
+                    className="w-full flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors text-left"
+                  >
+                    <span className={`flex items-center justify-center w-9 h-9 rounded-lg shrink-0 ${a.color}`}>
+                      <Icon className="w-4.5 h-4.5" />
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{a.label}</p>
+                      <p className="text-xs text-muted-foreground">{a.description}</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                  </button>
+                );
+              })}
+            </div>
           </div>
         ) : (
           <div className="py-1">
@@ -548,6 +751,7 @@ function MemberHub({ member, operations, onClose }: { member: Member; operations
             {action === "delegation"  && <DelegationForm member={member} operations={operations} onDone={done} />}
             {action === "folga"       && <FolgaForm member={member} operations={operations} onDone={done} />}
             {action === "recognition" && <RecognitionForm member={member} onDone={done} />}
+            {action === "history"     && <HistoryView tasks={tasks} />}
           </div>
         )}
       </DialogContent>

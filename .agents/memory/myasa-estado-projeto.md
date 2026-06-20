@@ -40,7 +40,17 @@ description: Resumo do que foi construído por sprint no projeto MyASA 2.0
 - historico-asa.tsx: nova tela com tabs Reconhecimentos/Memórias
 - mais.tsx: Histórico ASA na seção Inteligência
 
+### EQUIPE-HUB-PROFILE-AWARE
+- Especialização `CHOREOGRAPHER` (Coreógrafo) adicionada em todo o stack (openapi 3 enums, api-server VALID_SPECIALIZATIONS, lib/db identity.ts type+labels)
+- Hub de perfil (supervisor/equipe.tsx) é profile-aware: Performer/Elenco ("o que faço": message/task/folga/recognition/history) vs Especializado ("quem acompanha": message/task/recognition/delegation/history). `isSpecialist()` define o split; troca de view ao vivo via estado local `spec`
+- Especialização editável inline no hub (SpecializationEditor), persiste via useUpdateUser e invalida getListUsersQueryKey
+
 ## Notas importantes
+
+### PATCH /users/:id — permissão por papel (decisão)
+Rota agora aceita ADMIN + SUPERVISOR_A + SUPERVISOR_B, mas **supervisores só podem editar `specialization`** (name/email/birthDate continuam ADMIN-only, bloqueados com 403 dentro do handler).
+**Why:** o hub de perfil em supervisor/equipe.tsx precisa editar a função do membro; antes a rota era ADMIN-only e dava 403.
+**How to apply:** ao adicionar campos editáveis por supervisor, estender a checagem de campos do handler; não relaxar para outros campos sem intenção.
 
 ### GET /api/asa/memories
 Retorna array direto (NÃO `{ memories: [] }`). Filtrar por status via query param `?status=APPROVED`.

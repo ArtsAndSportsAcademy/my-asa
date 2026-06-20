@@ -4970,7 +4970,7 @@ components:
         specialization:
           type: string
           nullable: true
-          enum: [PERFORMER, PROFESSOR, TRAINER, PHYSIOTHERAPIST, STRENGTH_COACH, TECHNICAL_OPERATOR, OTHER]
+          enum: [PERFORMER, PROFESSOR, TRAINER, PHYSIOTHERAPIST, STRENGTH_COACH, TECHNICAL_OPERATOR, CHOREOGRAPHER, OTHER]
         organizationId:
           type: string
         createdAt:
@@ -5157,7 +5157,7 @@ components:
         specialization:
           type: string
           nullable: true
-          enum: [PERFORMER, PROFESSOR, TRAINER, PHYSIOTHERAPIST, STRENGTH_COACH, TECHNICAL_OPERATOR, OTHER]
+          enum: [PERFORMER, PROFESSOR, TRAINER, PHYSIOTHERAPIST, STRENGTH_COACH, TECHNICAL_OPERATOR, CHOREOGRAPHER, OTHER]
       required: [name, email, password]
 
     UserUpdate:
@@ -5171,7 +5171,7 @@ components:
         specialization:
           type: string
           nullable: true
-          enum: [PERFORMER, PROFESSOR, TRAINER, PHYSIOTHERAPIST, STRENGTH_COACH, TECHNICAL_OPERATOR, OTHER]
+          enum: [PERFORMER, PROFESSOR, TRAINER, PHYSIOTHERAPIST, STRENGTH_COACH, TECHNICAL_OPERATOR, CHOREOGRAPHER, OTHER]
 
     UserStatusUpdate:
       type: object

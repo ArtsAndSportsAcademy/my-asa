@@ -15,6 +15,7 @@ export type UserSpecialization =
   | "PHYSIOTHERAPIST"
   | "STRENGTH_COACH"
   | "TECHNICAL_OPERATOR"
+  | "CHOREOGRAPHER"
   | "OTHER";
 
 export const ALL_SPECIALIZATIONS: UserSpecialization[] = [
@@ -24,6 +25,7 @@ export const ALL_SPECIALIZATIONS: UserSpecialization[] = [
   "PHYSIOTHERAPIST",
   "STRENGTH_COACH",
   "TECHNICAL_OPERATOR",
+  "CHOREOGRAPHER",
   "OTHER",
 ];
 
@@ -34,6 +36,7 @@ export const SPECIALIZATION_LABELS: Record<UserSpecialization, string> = {
   PHYSIOTHERAPIST:    "Fisioterapeuta",
   STRENGTH_COACH:     "Preparador Físico",
   TECHNICAL_OPERATOR: "Técnico Operacional",
+  CHOREOGRAPHER:      "Coreógrafo",
   OTHER:              "Outro",
 };
 
