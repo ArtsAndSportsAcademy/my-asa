@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "MyASA Mobile",
-    "slug": "mobile",
+    "name": "MyASA",
+    "slug": "myasa",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "scheme": "myasa",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -14,13 +14,15 @@
       "backgroundColor": "#5B21B6"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.myasa.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#5B21B6"
-      }
+      },
+      "package": "com.myasa.app"
     },
     "web": {
       "favicon": "./assets/images/icon.png"
