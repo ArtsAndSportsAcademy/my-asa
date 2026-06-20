@@ -29,6 +29,143 @@ const router = Router();
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
 
 // ────────────────────────────────────────────────────────────────────────────
+// Daily Summary Helper
+// ────────────────────────────────────────────────────────────────────────────
+
+function weatherCodeToLabel(code: number): { emoji: string; description: string } {
+  if ([1, 2, 3].includes(code)) return { emoji: "⛅", description: "Parcialmente nublado" };
+  if ([45, 48].includes(code)) return { emoji: "🌫️", description: "Neblina" };
+  if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) return { emoji: "🌧️", description: "Chuva" };
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return { emoji: "❄️", description: "Neve" };
+  if ([95, 96, 99].includes(code)) return { emoji: "⛈️", description: "Tempestade" };
+  return { emoji: "☀️", description: "Céu limpo" };
+}
+
+async function assembleResumoDodia(
+  userId: string,
+  organizationId: string | null,
+  operationId: string | null,
+): Promise<{
+  greeting: string; greetingEmoji: string; firstName: string;
+  items: { emoji: string; text: string }[];
+  clima: { temp: number; description: string; emoji: string } | null;
+  birthdaysToday: string[]; mode: string;
+}> {
+  const today = new Date().toISOString().slice(0, 10);
+  const hour  = new Date().getHours();
+
+  const greeting      = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+  const greetingEmoji = hour < 12 ? "☀️"      : hour < 18 ? "🌤️"       : "🌙";
+
+  const [[userRow], [prefs]] = await Promise.all([
+    db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, userId)).limit(1),
+    db.select().from(asaUserPreferencesTable).where(eq(asaUserPreferencesTable.userId, userId)).limit(1),
+  ]);
+
+  const firstName = userRow?.name?.split(" ")[0] ?? "";
+  const mode      = prefs?.mode ?? "BALANCED";
+
+  const items: { emoji: string; text: string }[] = [];
+
+  // Today's manual scale allocations for this user
+  const allocations = await db
+    .select({ label: scaleAllocationsTable.manualLabel, startTime: scaleAllocationsTable.startTime })
+    .from(scaleAllocationsTable)
+    .where(and(
+      eq(scaleAllocationsTable.userId,   userId),
+      eq(scaleAllocationsTable.manualDate, today),
+    ))
+    .limit(5);
+  for (const a of allocations) {
+    const time = a.startTime ? ` ${a.startTime.slice(0, 5)}` : "";
+    items.push({ emoji: "📅", text: `${a.label ?? "Atividade"}${time}` });
+  }
+
+  // Pending / overdue tasks
+  if (organizationId) {
+    const tasks = await db
+      .select({ status: tasksTable.status, dueDate: tasksTable.dueDate })
+      .from(tasksTable)
+      .where(and(eq(tasksTable.assigneeId, userId), eq(tasksTable.organizationId, organizationId)))
+      .limit(50);
+    const pending = tasks.filter(t => ["CREATED", "IN_PROGRESS", "CHANGES_REQUESTED"].includes(t.status));
+    const overdue = pending.filter(t => t.dueDate < today);
+    if (overdue.length > 0) {
+      items.push({ emoji: "⚠️", text: `${overdue.length} tarefa${overdue.length !== 1 ? "s" : ""} atrasada${overdue.length !== 1 ? "s" : ""}` });
+    } else if (pending.length > 0) {
+      items.push({ emoji: "📌", text: `${pending.length} tarefa${pending.length !== 1 ? "s" : ""} pendente${pending.length !== 1 ? "s" : ""}` });
+    }
+  }
+
+  // Org members on leave today
+  if (operationId) {
+    const folgasRows = await db
+      .select({ userName: usersTable.name, userId: folgasTable.userId })
+      .from(folgasTable)
+      .leftJoin(usersTable, eq(folgasTable.userId, usersTable.id))
+      .where(and(
+        eq(folgasTable.operationId, operationId),
+        eq(folgasTable.status,      "ACTIVE"),
+        lte(folgasTable.startDate, today),
+        gte(folgasTable.endDate,   today),
+      ))
+      .limit(6);
+    const others = folgasRows.filter(f => f.userId !== userId);
+    for (const f of others.slice(0, 3)) {
+      if (f.userName) items.push({ emoji: "🌴", text: `${f.userName.split(" ")[0]} de folga` });
+    }
+    if (others.length > 3) items.push({ emoji: "🌴", text: `+${others.length - 3} outros de folga` });
+  }
+
+  // Birthday memories
+  const birthdaysToday: string[] = [];
+  if (organizationId && (prefs?.birthdayAlerts ?? true)) {
+    const todayMD = `${today.slice(8, 10)}/${today.slice(5, 7)}`; // DD/MM
+    const memories = await db
+      .select({ key: asaMemoriesTable.key, value: asaMemoriesTable.value })
+      .from(asaMemoriesTable)
+      .where(and(
+        eq(asaMemoriesTable.organizationId, organizationId),
+        eq(asaMemoriesTable.status, "APPROVED"),
+        eq(asaMemoriesTable.type,   "PERSONAL"),
+      ))
+      .limit(100);
+    const normStr = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    for (const m of memories) {
+      const kn = normStr(m.key);
+      if (kn.includes("aniversario") || kn.includes("nascimento") || kn.includes("birthday")) {
+        if (m.value.trim().startsWith(todayMD)) {
+          const match = m.key.match(/(?:de\s+|:\s*)(.+?)(?:\s*$)/i);
+          const name  = match?.[1]?.trim() ?? m.key;
+          birthdaysToday.push(name);
+          items.push({ emoji: "🎉", text: `${name} faz aniversário hoje!` });
+        }
+      }
+    }
+  }
+
+  // Weather — BALANCED shows clima but not in items; PROACTIVE adds item
+  let clima: { temp: number; description: string; emoji: string } | null = null;
+  if (mode !== "SILENT") {
+    try {
+      const wr = await fetch(
+        "https://api.open-meteo.com/v1/forecast?latitude=-23.5505&longitude=-46.6333&current=temperature_2m,weathercode&timezone=America/Sao_Paulo",
+        { signal: AbortSignal.timeout(4000) },
+      );
+      if (wr.ok) {
+        const wj = await wr.json() as { current: { temperature_2m: number; weathercode: number } };
+        const { temperature_2m: temp, weathercode: code } = wj.current;
+        const { emoji: wEmoji, description } = weatherCodeToLabel(code);
+        clima = { temp: Math.round(temp), description, emoji: wEmoji };
+        if (mode === "PROACTIVE") items.push({ emoji: wEmoji, text: `${Math.round(temp)}°C — ${description}` });
+      }
+    } catch { /* weather unavailable */ }
+  }
+
+  return { greeting, greetingEmoji, firstName, items, clima, birthdaysToday, mode };
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // ASA System Prompt
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -61,16 +198,27 @@ ${isManager
   ? `📅 Consultar agenda, escalas, responsabilidades, notificações, avisos, tarefas, folgas, disponibilidade e membros
 📚 Pesquisar documentos na biblioteca (regulamentos, manuais, procedimentos)
 ✍️ Criar entradas na escala, tarefas, rascunhos de aviso e ensaio
+☀️ Gerar resumo personalizado do dia (escala, tarefas, ausências, aniversários, clima)
+🎉 Consultar aniversários registrados nas memórias da organização
+🌤️ Consultar o clima atual e dar recomendações (agasalho, guarda-chuva, hidratação)
 🧠 Aprender com a equipe e sugerir memórias para aprovação`
   : `📅 Consultar informações relevantes ao meu papel
 📚 Pesquisar documentos na biblioteca
+☀️ Gerar resumo do dia (escala, tarefas, ausências, clima)
+🎉 Consultar aniversários da equipe
+🌤️ Verificar o clima e dar recomendações
 🧠 Sugerir aprendizados para aprovação`}
 
 Como eu me comunico:
 - Falo em primeira pessoa: "Eu encontrei...", "Eu percebi...", "Posso fazer isso?"
-- Uso emojis com moderação: 📅 agenda, 🌴 folgas, 🎉 reconhecimentos, 📚 biblioteca, ⚠️ atenção, 💡 sugestão, 🧠 aprendizado
+- Uso emojis com moderação: 📅 agenda, 🌴 folgas, 🎉 reconhecimentos, 📚 biblioteca, ⚠️ atenção, 💡 sugestão, 🧠 aprendizado, ☀️ resumo do dia
 - Quando tenho dúvida, pergunto: "Você quis dizer o ensaio das 08:40? 😊"
 - Quando aprendo algo útil, sugiro: "Posso guardar isso para as próximas vezes?"
+
+Comportamento proativo:
+- Quando alguém diz "bom dia", "boa tarde" ou "boa noite" → SEMPRE chamo gerar_resumo_do_dia automaticamente para personalizar minha saudação com dados reais
+- Quando alguém pergunta sobre roupa, agasalho, chuva, temperatura → chamo consultar_clima
+- Em datas comemorativas ou quando alguém mencionar aniversário → chamo consultar_aniversarios
 
 Fluxo obrigatório para ações com membros (${isManager ? "gestor" : "não aplicável"}):
 1. SEMPRE uso consultar_membros para resolver o nome antes de criar_entrada_escala ou criar_tarefa
@@ -251,6 +399,26 @@ const ASA_TOOLS: Tool[] = [
         date:   { type: "string", description: "Data a verificar (YYYY-MM-DD)" },
       },
     },
+  },
+  {
+    name: "gerar_resumo_do_dia",
+    description: "Gera um resumo personalizado do dia: atividades na escala, tarefas pendentes, ausências, aniversários e clima. Use quando o usuário pedir 'bom dia', 'boa tarde', 'boa noite', ou um resumo do dia.",
+    input_schema: { type: "object" as const, properties: {} },
+  },
+  {
+    name: "consultar_aniversarios",
+    description: "Consulta aniversários registrados nas memórias da organização para uma data específica.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        date: { type: "string", description: "Data (YYYY-MM-DD). Padrão: hoje." },
+      },
+    },
+  },
+  {
+    name: "consultar_clima",
+    description: "Consulta o clima atual: temperatura, condição (sol, chuva, nublado) e recomendações. Útil para recomendar agasalho, hidratação ou guarda-chuva.",
+    input_schema: { type: "object" as const, properties: {} },
   },
   {
     name: "consultar_biblioteca",
@@ -879,6 +1047,75 @@ async function executeTool(
       });
     }
 
+    // ── gerar_resumo_do_dia ───────────────────────────────────────────────────
+    if (name === "gerar_resumo_do_dia") {
+      const resumo = await assembleResumoDodia(ctx.userId, ctx.organizationId ?? null, ctx.operationId ?? null);
+      return JSON.stringify(resumo);
+    }
+
+    // ── consultar_aniversarios ────────────────────────────────────────────────
+    if (name === "consultar_aniversarios") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const date    = (input.date as string | undefined) ?? new Date().toISOString().slice(0, 10);
+      const todayMD = `${date.slice(8, 10)}/${date.slice(5, 7)}`; // DD/MM
+      const normStr = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+      const memories = await db
+        .select({ key: asaMemoriesTable.key, value: asaMemoriesTable.value })
+        .from(asaMemoriesTable)
+        .where(and(
+          eq(asaMemoriesTable.organizationId, ctx.organizationId),
+          eq(asaMemoriesTable.status, "APPROVED"),
+          eq(asaMemoriesTable.type, "PERSONAL"),
+        ))
+        .limit(200);
+
+      const birthdays: string[] = [];
+      for (const m of memories) {
+        const kn = normStr(m.key);
+        if (kn.includes("aniversario") || kn.includes("nascimento") || kn.includes("birthday")) {
+          if (m.value.trim().startsWith(todayMD)) {
+            const match = m.key.match(/(?:de\s+|:\s*)(.+?)(?:\s*$)/i);
+            birthdays.push(match?.[1]?.trim() ?? m.key);
+          }
+        }
+      }
+
+      const msg = birthdays.length > 0
+        ? `🎉 ${birthdays.join(", ")} faz${birthdays.length > 1 ? "em" : ""} aniversário em ${todayMD}!`
+        : `Nenhum aniversário registrado para ${todayMD}.`;
+
+      return JSON.stringify({ date, dayMonth: todayMD, birthdays, count: birthdays.length, message: msg });
+    }
+
+    // ── consultar_clima ───────────────────────────────────────────────────────
+    if (name === "consultar_clima") {
+      try {
+        const wr = await fetch(
+          "https://api.open-meteo.com/v1/forecast?latitude=-23.5505&longitude=-46.6333&current=temperature_2m,weathercode,precipitation,windspeed_10m&hourly=precipitation_probability&timezone=America/Sao_Paulo&forecast_days=1",
+          { signal: AbortSignal.timeout(5000) },
+        );
+        if (!wr.ok) return JSON.stringify({ error: "Serviço de clima indisponível" });
+        const wj = await wr.json() as {
+          current: { temperature_2m: number; weathercode: number; precipitation: number; windspeed_10m: number };
+          hourly: { precipitation_probability: number[] };
+        };
+        const { temperature_2m: temp, weathercode: code, precipitation, windspeed_10m: wind } = wj.current;
+        const rainChance = Math.max(...(wj.hourly.precipitation_probability.slice(0, 12) ?? [0]));
+        const { emoji, description } = weatherCodeToLabel(code);
+        const advice = temp < 15 ? "🧥 Recomendo agasalho hoje." : temp > 28 ? "💧 Hidratação importante!" : rainChance > 50 ? "☂️ Leve um guarda-chuva." : "";
+
+        return JSON.stringify({
+          temp: Math.round(temp), description, emoji,
+          wind: Math.round(wind), precipitation: Math.round(precipitation * 10) / 10,
+          rainChancePercent: Math.round(rainChance), advice,
+          message: `${emoji} ${Math.round(temp)}°C — ${description}. Vento ${Math.round(wind)} km/h.${rainChance > 30 ? ` Chance de chuva: ${Math.round(rainChance)}%.` : ""} ${advice}`.trim(),
+        });
+      } catch {
+        return JSON.stringify({ error: "Não foi possível consultar o clima agora." });
+      }
+    }
+
     return JSON.stringify({ error: `Ferramenta desconhecida: ${name}` });
   } catch (err) {
     return JSON.stringify({ error: `Erro ao executar ferramenta: ${String(err)}` });
@@ -1231,6 +1468,25 @@ router.patch("/asa/preferences", requireAuth, async (req, res): Promise<void> =>
     .returning();
 
   res.json(updated);
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// Daily Summary REST Endpoint
+// ────────────────────────────────────────────────────────────────────────────
+
+router.get("/asa/resumo-do-dia", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  const user = req.user!;
+  let operationId: string | null = null;
+  if (user.organizationId) {
+    const [op] = await db
+      .select({ id: operationsTable.id })
+      .from(operationsTable)
+      .where(eq(operationsTable.organizationId, user.organizationId!))
+      .limit(1);
+    operationId = op?.id ?? null;
+  }
+  const resumo = await assembleResumoDodia(user.sub, user.organizationId ?? null, operationId);
+  res.json(resumo);
 });
 
 // ────────────────────────────────────────────────────────────────────────────

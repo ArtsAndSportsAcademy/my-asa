@@ -1,0 +1,214 @@
+ASA-SPRINT-03 — Proatividade, Reconhecimento e Meu Dia
+
+Contexto
+
+ASA-SPRINT-02A e 02B foram concluídas.
+
+A ASA já consegue:
+
+* conversar naturalmente;
+* consultar membros;
+* criar entradas na escala;
+* criar tarefas;
+* consultar folgas;
+* consultar disponibilidade;
+* consultar documentos;
+* utilizar memórias;
+* aprender preferências;
+* explicar decisões.
+
+O objetivo da Sprint 03 é fazer a ASA participar da vida operacional do usuário.
+
+A ASA deixa de esperar perguntas e passa a ajudar ativamente.
+
+⸻
+
+1. Meu Dia Inteligente
+
+Ao abrir o aplicativo, a ASA pode gerar um resumo personalizado.
+
+Exemplo:
+
+☀️ Bom dia, Carol!
+
+📅 Hoje você possui:
+• Musical 12:30
+• Patinação 14:00
+
+🎉 Hoje Amanda faz aniversário.
+
+📌 Você possui 2 tarefas pendentes.
+
+🌴 Arthur está de folga.
+
+Boa sorte no seu dia!
+
+⸻
+
+2. Boa Noite
+
+No final do dia:
+
+🌙 Boa noite!
+
+📅 Amanhã sua escala já está publicada.
+
+⚠️ Você possui uma tarefa para sexta.
+
+🎭 O Livro do Dia já foi publicado.
+
+⸻
+
+3. Aniversários
+
+A ASA deve consultar aniversários.
+
+Exemplos:
+
+🎉 Amanda faz aniversário hoje.
+
+Perguntar:
+
+“Deseja criar um reconhecimento?”
+
+“Deseja enviar um aviso?”
+
+⸻
+
+4. Reconhecimentos
+
+Integração com o módulo de reconhecimento.
+
+Exemplos:
+
+🏆 Arthur completou 100 shows.
+
+🎭 Carol completou 50 apresentações.
+
+⭐ Amanda concluiu todas as tarefas.
+
+ASA pergunta:
+
+“Deseja publicar esse reconhecimento?”
+
+⸻
+
+5. Clima e Operação
+
+A ASA pode consultar:
+
+* temperatura;
+* frio;
+* calor;
+* chuva.
+
+Exemplos:
+
+❄️ Hoje está muito frio.
+
+🌧️ Pode chover durante a tarde.
+
+💧 Não esqueça sua garrafa de água.
+
+⸻
+
+6. Tarefas Pendentes
+
+A ASA pode lembrar:
+
+* tarefas próximas;
+* tarefas atrasadas;
+* aprovações.
+
+Exemplos:
+
+📌 Amanda possui uma tarefa vencendo amanhã.
+
+⚠️ Você possui 3 aprovações pendentes.
+
+⸻
+
+7. Preferências de Notificação
+
+Cada usuário escolhe:
+
+🔕 Silenciosa.
+
+🔔 Equilibrada.
+
+✨ Proativa.
+
+Silenciosa:
+
+* apenas informações importantes.
+
+Equilibrada:
+
+* lembretes e avisos.
+
+Proativa:
+
+* bom dia, aniversários, tarefas, clima e sugestões.
+
+⸻
+
+8. Humor da ASA
+
+Permitir pequenos estados:
+
+😊 Feliz.
+
+🤔 Pensativa.
+
+🎉 Comemorando.
+
+⚠️ Atenção.
+
+💡 Sugestão.
+
+O avatar pode mudar futuramente.
+
+⸻
+
+9. Notificações Inteligentes
+
+A ASA pode sugerir:
+
+* publicar reconhecimento;
+* lembrar tarefas;
+* avisar aniversários;
+* lembrar reuniões.
+
+Sempre respeitando as preferências do usuário.
+
+⸻
+
+10. Critério de Aceitação
+
+A ASA consegue:
+
+✓ dar bom dia;
+
+✓ dar boa noite;
+
+✓ lembrar tarefas;
+
+✓ celebrar conquistas;
+
+✓ avisar aniversários;
+
+✓ consultar clima;
+
+✓ gerar resumos;
+
+✓ respeitar preferências;
+
+✓ parecer uma assistente viva.
+
+⸻
+
+Resultado Esperado
+
+A ASA deixa de ser apenas uma ferramenta operacional.
+
+Ela passa a fazer parte do dia a dia da equipe, ajudando, lembrando, celebrando e acompanhando a operação de forma natural.

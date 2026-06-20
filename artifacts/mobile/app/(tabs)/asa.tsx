@@ -52,6 +52,9 @@ const TOOL_LABELS: Record<string, string> = {
   criar_entrada_escala:        "📋 Adicionando à escala",
   criar_tarefa:                "✅ Criando tarefa",
   consultar_biblioteca:        "📚 Consultando biblioteca",
+  gerar_resumo_do_dia:         "☀️ Gerando resumo do dia",
+  consultar_aniversarios:      "🎉 Consultando aniversários",
+  consultar_clima:             "🌤️ Consultando clima",
   sugerir_memoria:             "💡 Sugerindo memória",
 };
 

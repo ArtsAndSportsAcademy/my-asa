@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { AsaAvatar } from "@/components/AsaAvatar";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   useGetMyDay,
@@ -27,7 +28,7 @@ import type {
   UserNotificationItem,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -505,6 +506,22 @@ function getGreeting(): { label: string; emoji: string } {
   return { label: "Boa noite", emoji: "🌙" };
 }
 
+async function getBaseUrl(): Promise<string> {
+  const domain = process.env.EXPO_PUBLIC_DOMAIN;
+  if (domain) return `https://${domain}`;
+  return "";
+}
+
+type ResumoDodia = {
+  greeting: string;
+  greetingEmoji: string;
+  firstName: string;
+  items: { emoji: string; text: string }[];
+  clima: { temp: number; description: string; emoji: string } | null;
+  birthdaysToday: string[];
+  mode: string;
+};
+
 export default function MeuDiaScreen() {
   const colors = useColors();
   const { user } = useAuth();
@@ -512,6 +529,28 @@ export default function MeuDiaScreen() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
+  const [resumo, setResumo] = useState<ResumoDodia | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchResumo() {
+      try {
+        const [token, baseUrl] = await Promise.all([
+          AsyncStorage.getItem("myasa_access_token"),
+          getBaseUrl(),
+        ]);
+        const res = await fetch(`${baseUrl}/api/asa/resumo-do-dia`, {
+          headers: { Authorization: `Bearer ${token ?? ""}` },
+        });
+        if (res.ok && !cancelled) {
+          const data = (await res.json()) as ResumoDodia;
+          setResumo(data);
+        }
+      } catch { /* ignore */ }
+    }
+    fetchResumo();
+    return () => { cancelled = true; };
+  }, []);
 
   const { data, isLoading, isError, refetch } = useGetMyDay({
     query: {
@@ -676,7 +715,10 @@ export default function MeuDiaScreen() {
             {/* ── Saudação da ASA ── */}
             {(() => {
               const { label, emoji } = getGreeting();
-              const firstName = user?.name?.split(" ")[0] ?? "";
+              const displayGreeting = resumo?.greeting ?? label;
+              const displayEmoji    = resumo?.greetingEmoji ?? emoji;
+              const firstName       = resumo?.firstName ?? user?.name?.split(" ")[0] ?? "";
+              const hasItems        = (resumo?.items?.length ?? 0) > 0;
               return (
                 <View
                   style={[
@@ -684,15 +726,44 @@ export default function MeuDiaScreen() {
                     { backgroundColor: colors.card, borderColor: colors.border },
                   ]}
                 >
-                  <AsaAvatar size="medium" />
-                  <View style={styles.asaGreetingText}>
-                    <Text style={[styles.asaGreetingTitle, { color: colors.foreground }]}>
-                      {label} {emoji}{firstName ? `, ${firstName}!` : "!"}
-                    </Text>
-                    <Text style={[styles.asaGreetingSub, { color: colors.mutedForeground }]}>
-                      Sou a ASA — sua assistente na operação 🤝
-                    </Text>
+                  {/* Topo: avatar + saudação */}
+                  <View style={styles.asaGreetingRow}>
+                    <AsaAvatar size="medium" />
+                    <View style={styles.asaGreetingText}>
+                      <Text style={[styles.asaGreetingTitle, { color: colors.foreground }]}>
+                        {displayGreeting} {displayEmoji}{firstName ? `, ${firstName}!` : "!"}
+                      </Text>
+                      <Text style={[styles.asaGreetingSub, { color: colors.mutedForeground }]}>
+                        {hasItems ? "Aqui está seu resumo do dia:" : "Sou a ASA — sua assistente na operação 🤝"}
+                      </Text>
+                    </View>
                   </View>
+
+                  {/* Itens do resumo */}
+                  {hasItems && (
+                    <View style={styles.asaResumoItems}>
+                      {resumo!.items.map((item, i) => (
+                        <View key={i} style={styles.asaResumoItem}>
+                          <Text style={styles.asaResumoEmoji}>{item.emoji}</Text>
+                          <Text style={[styles.asaResumoText, { color: colors.foreground }]} numberOfLines={2}>
+                            {item.text}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  {/* Botão Falar com a ASA */}
+                  <Pressable
+                    onPress={() => router.push("/(tabs)/asa")}
+                    style={({ pressed }) => [
+                      styles.asaFalarButton,
+                      { backgroundColor: colors.primary + "18", opacity: pressed ? 0.7 : 1 },
+                    ]}
+                  >
+                    <Feather name="message-circle" size={14} color={colors.primary} />
+                    <Text style={[styles.asaFalarText, { color: colors.primary }]}>Falar com a ASA</Text>
+                  </Pressable>
                 </View>
               );
             })()}
@@ -1011,17 +1082,35 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 24, fontWeight: "700", marginBottom: 2 },
   headerSub: { fontSize: 13 },
   asaGreetingCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
+    flexDirection: "column",
     borderRadius: 14,
     borderWidth: 1,
     padding: 14,
     marginBottom: 2,
+    gap: 0,
+  },
+  asaGreetingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
   asaGreetingText: { flex: 1 },
   asaGreetingTitle: { fontSize: 16, fontWeight: "700", marginBottom: 2 },
   asaGreetingSub: { fontSize: 12, lineHeight: 17 },
+  asaResumoItems: { marginTop: 12, gap: 5 },
+  asaResumoItem: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  asaResumoEmoji: { fontSize: 14, width: 20, textAlign: "center" },
+  asaResumoText: { fontSize: 13, flex: 1, lineHeight: 18 },
+  asaFalarButton: {
+    marginTop: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  asaFalarText: { fontSize: 13, fontWeight: "600" },
   scroll: { flex: 1 },
   scrollContent: { padding: 16, gap: 10 },
   centered: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 80, gap: 12 },
