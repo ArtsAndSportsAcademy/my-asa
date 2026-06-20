@@ -143,16 +143,18 @@ function ClassicTabLayout() {
             ),
         }}
       />
+      {/* Escala: tab primária no iOS nativo (NativeTabLayout); oculta no Classic para não criar overflow */}
       <Tabs.Screen
         name="scale"
         options={{
           title: "Escala",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="list.clipboard" tintColor={color} size={24} />
-            ) : (
-              <Feather name="clipboard" size={22} color={color} />
-            ),
+          ...(isIOS
+            ? {
+                tabBarIcon: ({ color }) => (
+                  <SymbolView name="list.clipboard" tintColor={color} size={24} />
+                ),
+              }
+            : { tabBarButton: () => null }),
         }}
       />
       <Tabs.Screen
