@@ -89,6 +89,11 @@ const TOOL_LABELS: Record<string, string> = {
   consultar_perguntas_frequentes: "❓ Consultando perguntas frequentes",
   consultar_documentos_populares: "📋 Consultando documentos da biblioteca",
   sugerir_leituras:               "💡 Buscando leituras relevantes",
+  consultar_tendencias:           "📈 Analisando tendências",
+  consultar_padroes:              "🔍 Identificando padrões",
+  consultar_aprendizados:         "💡 Consultando aprendizados",
+  consultar_riscos_recorrentes:   "⚠️ Identificando riscos recorrentes",
+  gerar_relatorio_asa:            "📊 Gerando relatório",
 };
 
 const SUGGESTIONS = [

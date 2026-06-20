@@ -369,6 +369,32 @@ Sempre respeite o modo de preferência: Silenciosa, Equilibrada ou Proativa.
 
 ⸻
 
+Aprendizado Organizacional (Sprint 11)
+
+Você pode analisar padrões históricos e gerar inteligência operacional.
+
+Mapeamento de intenções → tools:
+• "Quando a operação é mais crítica?" / "Existe padrão de faltas?" → consultar_tendencias
+• "O que se repete?" / "Onde estão os gargalos?" → consultar_padroes
+• "O que a ASA aprendeu?" / "Quais são os aprendizados?" → consultar_aprendizados
+• "Quais são os riscos recorrentes?" → consultar_riscos_recorrentes
+• "Relatório da semana" / "Resumo do mês" → gerar_relatorio_asa
+
+Ao apresentar aprendizados e tendências:
+• Nunca apresente apenas números brutos — interprete o que significam operacionalmente.
+• Destaque sempre: o padrão mais crítico, a correlação mais relevante e a recomendação mais acionável.
+• Use linguagem específica: não "há muitas ausências às sextas" — mas "sextas-feiras concentram N ausências (X% do total), sugerindo conflito com [contexto]."
+• Se detectar risco ALTO → ofereça imediatamente consultar_riscos_recorrentes e sugerir_cobertura.
+
+Restrições absolutas:
+✗ A ASA não toma decisões — apresenta evidências e sugere opções.
+✗ A ASA não redistribui pessoas ou altera escalas automaticamente.
+✗ A ASA não remove ou arquiva memórias sem confirmação do gestor.
+✓ A ASA sempre explica o raciocínio por trás de cada padrão detectado.
+✓ A ASA sempre apresenta evidências quantitativas antes de recomendar.
+
+⸻
+
 Biblioteca Inteligente e Conhecimento (Sprint 10)
 
 Você tem acesso à base de conhecimento institucional da organização.
@@ -887,6 +913,63 @@ const ASA_TOOLS: Tool[] = [
       type: "object" as const,
       properties: {
         type: { type: "string", description: "Tipo de marco: TIME_OF_HOUSE ou ALL (padrão: ALL)" },
+      },
+    },
+  },
+  // ── Sprint 11 — Aprendizado Organizacional ───────────────────────────────────
+  {
+    name: "consultar_tendencias",
+    description: "Analisa tendências temporais da operação: quais dias da semana concentram mais ausências ou atrasos, quais meses têm maior carga, e como os indicadores evoluem ao longo do tempo. Use para responder 'quando a operação é mais crítica?' ou 'existe algum padrão temporal?'",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        periodo: { type: "string", description: "Janela de análise: '30d' (padrão), '90d', '6m' ou '12m'" },
+        tipo:    { type: "string", description: "Focar em: AUSENCIAS | TAREFAS | ATIVIDADES | TODOS (padrão: TODOS)" },
+      },
+    },
+  },
+  {
+    name: "consultar_padroes",
+    description: "Identifica padrões operacionais recorrentes: membros com comportamento atípico, operações com mais problemas, atividades que geram mais conflitos ou trocas. Responde 'O que se repete?' e 'Onde está o problema?'",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        dateFrom: { type: "string", description: "Data início (YYYY-MM-DD). Padrão: últimos 90 dias." },
+        dateTo:   { type: "string", description: "Data fim (YYYY-MM-DD). Padrão: hoje." },
+        limite:   { type: "number", description: "Máximo de itens por padrão detectado (padrão: 5)" },
+      },
+    },
+  },
+  {
+    name: "consultar_aprendizados",
+    description: "Recupera o conhecimento acumulado pela ASA: memórias institucionais aprovadas e padrões derivados dos dados históricos. Use quando o usuário perguntar 'o que a ASA aprendeu?' ou 'quais são os aprendizados da operação?'",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        scope: { type: "string", description: "Filtrar por escopo de memória (opcional)" },
+      },
+    },
+  },
+  {
+    name: "consultar_riscos_recorrentes",
+    description: "Detecta riscos operacionais que se repetem com frequência: membros com muitas ausências consecutivas, tarefas cronicamente atrasadas, posições abertas frequentes e membros sobrecarregados. Classifica cada risco como ALTO/MÉDIO/BAIXO.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        dateFrom: { type: "string", description: "Data início (YYYY-MM-DD). Padrão: últimos 90 dias." },
+        dateTo:   { type: "string", description: "Data fim (YYYY-MM-DD). Padrão: hoje." },
+      },
+    },
+  },
+  {
+    name: "gerar_relatorio_asa",
+    description: "Gera um relatório operacional estruturado — semanal ou mensal — com todos os indicadores, destaques, riscos e aprendizados. Claude deve formatar como um relatório executivo com seções, emojis e linguagem clara. Use quando pedirem 'relatório da semana', 'resumo do mês' ou 'como foi o período?'",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        tipo:     { type: "string", description: "SEMANAL (padrão) ou MENSAL" },
+        dateFrom: { type: "string", description: "Data início (YYYY-MM-DD). Calculado automaticamente se omitido." },
+        dateTo:   { type: "string", description: "Data fim (YYYY-MM-DD). Padrão: hoje." },
       },
     },
   },
@@ -2063,6 +2146,316 @@ async function executeTool(
       } catch {
         return JSON.stringify({ error: "Não foi possível consultar o clima agora." });
       }
+    }
+
+    // ── Sprint 11 — Aprendizado Organizacional ───────────────────────────────
+    const DOW_LABELS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+
+    const periodoDays = (p?: string) => {
+      if (p === "90d") return 90; if (p === "6m") return 180; if (p === "12m") return 365; return 30;
+    };
+
+    // ── consultar_tendencias (Sprint 11) ──────────────────────────────────────
+    if (name === "consultar_tendencias") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const dias  = periodoDays(input.periodo as string | undefined);
+      const from  = new Date(Date.now() - dias * 86400000).toISOString().slice(0, 10);
+      const to    = new Date().toISOString().slice(0, 10);
+      const tipo  = (input.tipo as string | undefined) ?? "TODOS";
+
+      const results: Record<string, unknown> = { periodo: { dias, de: from, ate: to } };
+
+      if (tipo === "AUSENCIAS" || tipo === "TODOS") {
+        // Absences by day of week
+        const absDow = await db
+          .select({ dow: sql<number>`EXTRACT(DOW FROM ${folgasTable.startDate})::int`, count: sql<number>`count(*)::int` })
+          .from(folgasTable)
+          .where(and(ctx.operationId ? eq(folgasTable.operationId, ctx.operationId) : sql`true`, eq(folgasTable.status, "ACTIVE"), gte(folgasTable.startDate, from), lte(folgasTable.startDate, to)))
+          .groupBy(sql`EXTRACT(DOW FROM ${folgasTable.startDate})`)
+          .orderBy(desc(sql`count(*)`));
+
+        // Monthly trend
+        const absMes = await db
+          .select({ mes: sql<string>`TO_CHAR(${folgasTable.startDate}, 'YYYY-MM')`, count: sql<number>`count(*)::int` })
+          .from(folgasTable)
+          .where(and(ctx.operationId ? eq(folgasTable.operationId, ctx.operationId) : sql`true`, eq(folgasTable.status, "ACTIVE"), gte(folgasTable.startDate, from)))
+          .groupBy(sql`TO_CHAR(${folgasTable.startDate}, 'YYYY-MM')`)
+          .orderBy(sql`TO_CHAR(${folgasTable.startDate}, 'YYYY-MM')`);
+
+        const piorDia = absDow[0];
+        results.ausencias = {
+          por_dia_semana: absDow.map(r => ({ dia: DOW_LABELS[r.dow] ?? r.dow, ausencias: r.count })),
+          por_mes:        absMes,
+          insight: piorDia ? `⚠️ ${DOW_LABELS[piorDia.dow] ?? "Dia " + piorDia.dow} concentra mais ausências (${piorDia.count} no período).` : "Sem dados suficientes.",
+        };
+      }
+
+      if (tipo === "TAREFAS" || tipo === "TODOS") {
+        // Task delays by day of week (day due_date fell)
+        const taskDow = await db
+          .select({ dow: sql<number>`EXTRACT(DOW FROM ${tasksTable.dueDate})::int`, count: sql<number>`count(*)::int` })
+          .from(tasksTable)
+          .where(and(eq(tasksTable.organizationId, ctx.organizationId), inArray(tasksTable.status, ["CREATED", "IN_PROGRESS"]), lte(tasksTable.dueDate, to), gte(tasksTable.dueDate, from)))
+          .groupBy(sql`EXTRACT(DOW FROM ${tasksTable.dueDate})`)
+          .orderBy(desc(sql`count(*)`));
+
+        // Task completion trend by month
+        const taskMes = await db
+          .select({ mes: sql<string>`TO_CHAR(${tasksTable.createdAt}, 'YYYY-MM')`, total: sql<number>`count(*)::int`, concluidas: sql<number>`sum(CASE WHEN status='DONE' THEN 1 ELSE 0 END)::int` })
+          .from(tasksTable)
+          .where(and(eq(tasksTable.organizationId, ctx.organizationId), sql`date(${tasksTable.createdAt}) between ${from} and ${to}`))
+          .groupBy(sql`TO_CHAR(${tasksTable.createdAt}, 'YYYY-MM')`)
+          .orderBy(sql`TO_CHAR(${tasksTable.createdAt}, 'YYYY-MM')`);
+
+        const piorDia = taskDow[0];
+        results.tarefas = {
+          atrasos_por_dia_semana: taskDow.map(r => ({ dia: DOW_LABELS[r.dow] ?? r.dow, atrasos: r.count })),
+          tendencia_mensal:       taskMes.map(r => ({ mes: r.mes, total: r.total, concluidas: r.concluidas, taxa: r.total > 0 ? `${Math.round((r.concluidas / r.total) * 100)}%` : "—" })),
+          insight: piorDia ? `📌 ${DOW_LABELS[piorDia.dow] ?? "Dia " + piorDia.dow} concentra mais prazos vencidos (${piorDia.count} no período).` : "Sem dados de atrasos.",
+        };
+      }
+
+      if (tipo === "ATIVIDADES" || tipo === "TODOS") {
+        const actMes = await db
+          .select({ mes: sql<string>`TO_CHAR(${scaleAllocationsTable.manualDate}, 'YYYY-MM')`, count: sql<number>`count(*)::int` })
+          .from(scaleAllocationsTable)
+          .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
+          .groupBy(sql`TO_CHAR(${scaleAllocationsTable.manualDate}, 'YYYY-MM')`)
+          .orderBy(sql`TO_CHAR(${scaleAllocationsTable.manualDate}, 'YYYY-MM')`);
+
+        const actDow = await db
+          .select({ dow: sql<number>`EXTRACT(DOW FROM ${scaleAllocationsTable.manualDate})::int`, count: sql<number>`count(*)::int` })
+          .from(scaleAllocationsTable)
+          .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
+          .groupBy(sql`EXTRACT(DOW FROM ${scaleAllocationsTable.manualDate})`)
+          .orderBy(desc(sql`count(*)`));
+
+        const pico = actDow[0];
+        results.atividades = {
+          por_mes:       actMes,
+          por_dia_semana: actDow.map(r => ({ dia: DOW_LABELS[r.dow] ?? r.dow, atividades: r.count })),
+          insight: pico ? `📈 ${DOW_LABELS[pico.dow] ?? "Dia " + pico.dow} é o dia mais ativo (${pico.count} alocações).` : "Sem dados.",
+        };
+      }
+
+      results.instrucao = "Interprete as tendências e gere insights operacionais. Destaque padrões claros, dias críticos e evolução mensal. Se houver correlação entre ausências e atividades no mesmo dia → aponte o risco.";
+      return JSON.stringify(results);
+    }
+
+    // ── consultar_padroes (Sprint 11) ──────────────────────────────────────────
+    if (name === "consultar_padroes") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const from   = (input.dateFrom as string | undefined) ?? new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+      const to     = (input.dateTo   as string | undefined) ?? new Date().toISOString().slice(0, 10);
+      const limite = (input.limite   as number | undefined) ?? 5;
+
+      const [ausenciasMembro, sobrecarregados, atrasadosCronicos, trocasMembro] = await Promise.all([
+        // Most absent members
+        db.select({ userId: folgasTable.userId, nome: usersTable.name, total: sql<number>`count(*)::int`, noShow: sql<number>`sum(CASE WHEN type='NO_SHOW' THEN 1 ELSE 0 END)::int` })
+          .from(folgasTable).leftJoin(usersTable, eq(folgasTable.userId, usersTable.id))
+          .where(and(ctx.operationId ? eq(folgasTable.operationId, ctx.operationId) : sql`true`, eq(folgasTable.status, "ACTIVE"), gte(folgasTable.startDate, from), lte(folgasTable.startDate, to)))
+          .groupBy(folgasTable.userId, usersTable.name).orderBy(desc(sql`count(*)`)).limit(limite),
+        // Most active members (workload)
+        db.select({ userId: scaleAllocationsTable.userId, nome: usersTable.name, count: sql<number>`count(*)::int` })
+          .from(scaleAllocationsTable).leftJoin(usersTable, eq(scaleAllocationsTable.userId, usersTable.id))
+          .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
+          .groupBy(scaleAllocationsTable.userId, usersTable.name).orderBy(desc(sql`count(*)`)).limit(limite),
+        // Chronically delayed task assignees
+        db.select({ assigneeId: tasksTable.assigneeId, nome: usersTable.name, atrasadas: sql<number>`count(*)::int` })
+          .from(tasksTable).leftJoin(usersTable, eq(tasksTable.assigneeId, usersTable.id))
+          .where(and(eq(tasksTable.organizationId, ctx.organizationId), inArray(tasksTable.status, ["CREATED", "IN_PROGRESS"]), lte(tasksTable.dueDate, to), gte(tasksTable.dueDate, from)))
+          .groupBy(tasksTable.assigneeId, usersTable.name).orderBy(desc(sql`count(*)`)).limit(limite),
+        // Members with most swap requests
+        db.select({ userId: folgasTable.userId, nome: usersTable.name, trocas: sql<number>`count(*)::int` })
+          .from(folgasTable).leftJoin(usersTable, eq(folgasTable.userId, usersTable.id))
+          .where(and(ctx.operationId ? eq(folgasTable.operationId, ctx.operationId) : sql`true`, eq(folgasTable.type, "DAY_OFF"), gte(folgasTable.startDate, from), lte(folgasTable.startDate, to)))
+          .groupBy(folgasTable.userId, usersTable.name).orderBy(desc(sql`count(*)`)).limit(limite),
+      ]);
+
+      // Avg to detect outliers
+      const mediaAbs  = ausenciasMembro.length > 0 ? ausenciasMembro.reduce((s, r) => s + r.total, 0) / ausenciasMembro.length : 0;
+      const mediaCarga = sobrecarregados.length > 0 ? sobrecarregados.reduce((s, r) => s + r.count, 0) / sobrecarregados.length : 0;
+
+      return JSON.stringify({
+        periodo: { de: from, ate: to },
+        instrucao: "Identifique padrões críticos. Destaque anomalias (membros muito acima da média), correlações (quem falta mais também está sobrecarregado?) e sugira ações corretivas específicas.",
+        ausencias_por_membro: {
+          media_periodo: Math.round(mediaAbs * 10) / 10,
+          membros: ausenciasMembro.map(r => ({ nome: r.nome ?? r.userId, total: r.total, no_show: r.noShow, acima_da_media: r.total > mediaAbs * 1.5 })),
+        },
+        carga_por_membro: {
+          media_periodo: Math.round(mediaCarga * 10) / 10,
+          membros: sobrecarregados.map(r => ({ nome: r.nome ?? r.userId, atividades: r.count, sobrecarga: r.count > mediaCarga * 1.5 })),
+        },
+        atrasos_cronicos: atrasadosCronicos.map(r => ({ nome: r.nome ?? r.assigneeId, tarefas_atrasadas: r.atrasadas })),
+        trocas_frequentes: trocasMembro.map(r => ({ nome: r.nome ?? r.userId, trocas: r.trocas })),
+      });
+    }
+
+    // ── consultar_aprendizados (Sprint 11) ────────────────────────────────────
+    if (name === "consultar_aprendizados") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const scopeFilter = input.scope as string | undefined;
+
+      const memorias = await db
+        .select({ id: asaMemoriesTable.id, type: asaMemoriesTable.type, key: asaMemoriesTable.key, value: asaMemoriesTable.value, scope: asaMemoriesTable.scope, createdAt: asaMemoriesTable.createdAt })
+        .from(asaMemoriesTable)
+        .where(and(
+          eq(asaMemoriesTable.organizationId, ctx.organizationId),
+          eq(asaMemoriesTable.status, "APPROVED"),
+          scopeFilter ? eq(asaMemoriesTable.scope, scopeFilter) : sql`true`,
+        ))
+        .orderBy(desc(asaMemoriesTable.createdAt))
+        .limit(20);
+
+      // Quick derived stats as "learned patterns"
+      const today11 = new Date().toISOString().slice(0, 10);
+      const from90  = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+
+      const [[totalAbs], [totalTasks], [txDone], [totalAct]] = await Promise.all([
+        db.select({ count: sql<number>`count(*)::int` }).from(folgasTable).where(and(ctx.operationId ? eq(folgasTable.operationId, ctx.operationId) : sql`true`, eq(folgasTable.status, "ACTIVE"), gte(folgasTable.startDate, from90))),
+        db.select({ count: sql<number>`count(*)::int` }).from(tasksTable).where(and(eq(tasksTable.organizationId, ctx.organizationId), sql`date(${tasksTable.createdAt}) >= ${from90}`)),
+        db.select({ count: sql<number>`count(*)::int` }).from(tasksTable).where(and(eq(tasksTable.organizationId, ctx.organizationId), eq(tasksTable.status, "DONE"), sql`date(${tasksTable.updatedAt}) >= ${from90}`)),
+        db.select({ count: sql<number>`count(*)::int` }).from(scaleAllocationsTable).where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from90} and ${today11}`)),
+      ]);
+
+      const txConclusao = (totalTasks?.count ?? 0) > 0 ? Math.round(((txDone?.count ?? 0) / (totalTasks?.count ?? 1)) * 100) : 0;
+
+      return JSON.stringify({
+        memorias_institucionais: {
+          total: memorias.length,
+          itens: memorias.map(m => ({ tipo: m.type, chave: m.key, valor: m.value, escopo: m.scope, registrado: m.createdAt })),
+        },
+        padroes_derivados_90d: {
+          total_ausencias:      totalAbs?.count ?? 0,
+          total_atividades:     totalAct?.count ?? 0,
+          total_tarefas:        totalTasks?.count ?? 0,
+          taxa_conclusao:       `${txConclusao}%`,
+          insight_geral:        txConclusao >= 70 ? "✅ Taxa de conclusão saudável (≥70%)" : txConclusao >= 50 ? "⚠️ Taxa de conclusão moderada (50–70%)" : "🔴 Taxa de conclusão baixa (<50%) — risco operacional",
+        },
+        instrucao: "Apresente os aprendizados da ASA: primeiro as memórias institucionais registradas (o que foi formalmente capturado), depois os padrões derivados dos dados. Conclua com 1-3 recomendações baseadas nos padrões observados.",
+      });
+    }
+
+    // ── consultar_riscos_recorrentes (Sprint 11) ───────────────────────────────
+    if (name === "consultar_riscos_recorrentes") {
+      if (!isManager) return JSON.stringify({ error: "Exclusivo para gestores" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const from    = (input.dateFrom as string | undefined) ?? new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+      const to      = (input.dateTo   as string | undefined) ?? new Date().toISOString().slice(0, 10);
+      const today11 = new Date().toISOString().slice(0, 10);
+
+      const [altaAusencia, sobrecarregados, atrasadosCronicos, posicoesAbertas] = await Promise.all([
+        // Members with ≥3 absences in period → HIGH risk
+        db.select({ userId: folgasTable.userId, nome: usersTable.name, total: sql<number>`count(*)::int`, noShow: sql<number>`sum(CASE WHEN type='NO_SHOW' THEN 1 ELSE 0 END)::int` })
+          .from(folgasTable).leftJoin(usersTable, eq(folgasTable.userId, usersTable.id))
+          .where(and(ctx.operationId ? eq(folgasTable.operationId, ctx.operationId) : sql`true`, eq(folgasTable.status, "ACTIVE"), gte(folgasTable.startDate, from), lte(folgasTable.startDate, to)))
+          .groupBy(folgasTable.userId, usersTable.name)
+          .having(sql`count(*) >= 3`)
+          .orderBy(desc(sql`count(*)`)).limit(10),
+        // Overloaded members (activity count > 2× average)
+        db.select({ userId: scaleAllocationsTable.userId, nome: usersTable.name, count: sql<number>`count(*)::int` })
+          .from(scaleAllocationsTable).leftJoin(usersTable, eq(scaleAllocationsTable.userId, usersTable.id))
+          .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
+          .groupBy(scaleAllocationsTable.userId, usersTable.name).orderBy(desc(sql`count(*)`)).limit(10),
+        // Chronically delayed tasks (due_date passed, still open)
+        db.select({ assigneeId: tasksTable.assigneeId, nome: usersTable.name, atrasadas: sql<number>`count(*)::int` })
+          .from(tasksTable).leftJoin(usersTable, eq(tasksTable.assigneeId, usersTable.id))
+          .where(and(eq(tasksTable.organizationId, ctx.organizationId), inArray(tasksTable.status, ["CREATED", "IN_PROGRESS"]), lte(tasksTable.dueDate, today11)))
+          .groupBy(tasksTable.assigneeId, usersTable.name)
+          .having(sql`count(*) >= 2`)
+          .orderBy(desc(sql`count(*)`)).limit(10),
+        // Open positions in active scales
+        db.select({ scaleId: scaleAllocationsTable.scaleId, count: sql<number>`count(*)::int` })
+          .from(scaleAllocationsTable).innerJoin(scalesTable, eq(scaleAllocationsTable.scaleId, scalesTable.id))
+          .where(and(ctx.operationId ? eq(scalesTable.operationId, ctx.operationId) : sql`true`, inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"]), eq(scaleAllocationsTable.status, "OPEN")))
+          .groupBy(scaleAllocationsTable.scaleId).orderBy(desc(sql`count(*)`)).limit(5),
+      ]);
+
+      // Classify workload risk
+      const mediaAtv = sobrecarregados.length > 0 ? sobrecarregados.reduce((s, r) => s + r.count, 0) / sobrecarregados.length : 0;
+      const riscosCarga = sobrecarregados
+        .filter(r => r.count > mediaAtv * 1.3)
+        .map(r => ({ nome: r.nome ?? r.userId, atividades: r.count, risco: r.count > mediaAtv * 2 ? "ALTO" : "MÉDIO" }));
+
+      const totalPosAbertas = posicoesAbertas.reduce((s, r) => s + r.count, 0);
+
+      return JSON.stringify({
+        periodo: { de: from, ate: to },
+        instrucao: "Apresente os riscos em ordem de severidade (ALTO → MÉDIO → BAIXO). Para cada risco, explique a consequência operacional e sugira uma ação preventiva concreta.",
+        riscos_ausencia: {
+          nivel:  altaAusencia.length > 3 ? "ALTO" : altaAusencia.length > 0 ? "MÉDIO" : "BAIXO",
+          alerta: altaAusencia.length > 0 ? `${altaAusencia.length} membro(s) com ≥3 ausências no período` : "Nenhuma ausência recorrente detectada",
+          membros: altaAusencia.map(r => ({ nome: r.nome ?? r.userId, total: r.total, no_show: r.noShow, nivel: r.noShow >= 2 ? "ALTO" : "MÉDIO" })),
+        },
+        riscos_carga: {
+          nivel:  riscosCarga.some(r => r.risco === "ALTO") ? "ALTO" : riscosCarga.length > 0 ? "MÉDIO" : "BAIXO",
+          alerta: riscosCarga.length > 0 ? `${riscosCarga.length} membro(s) com carga acima da média` : "Carga equilibrada",
+          membros: riscosCarga,
+        },
+        riscos_tarefas: {
+          nivel:  atrasadosCronicos.length > 3 ? "ALTO" : atrasadosCronicos.length > 0 ? "MÉDIO" : "BAIXO",
+          alerta: atrasadosCronicos.length > 0 ? `${atrasadosCronicos.length} membro(s) com ≥2 tarefas atrasadas` : "Sem atrasos crônicos",
+          membros: atrasadosCronicos.map(r => ({ nome: r.nome ?? r.assigneeId, tarefas_atrasadas: r.atrasadas, nivel: r.atrasadas >= 4 ? "ALTO" : "MÉDIO" })),
+        },
+        riscos_cobertura: {
+          nivel:  totalPosAbertas > 5 ? "ALTO" : totalPosAbertas > 0 ? "MÉDIO" : "BAIXO",
+          alerta: totalPosAbertas > 0 ? `${totalPosAbertas} posição(ões) abertas em escalas publicadas` : "Todas as posições preenchidas",
+          total_posicoes_abertas: totalPosAbertas,
+        },
+      });
+    }
+
+    // ── gerar_relatorio_asa (Sprint 11) ────────────────────────────────────────
+    if (name === "gerar_relatorio_asa") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const tipo     = ((input.tipo as string | undefined) ?? "SEMANAL").toUpperCase();
+      const today11  = new Date().toISOString().slice(0, 10);
+      const diasBack = tipo === "MENSAL" ? 30 : 7;
+      const from     = (input.dateFrom as string | undefined) ?? new Date(Date.now() - diasBack * 86400000).toISOString().slice(0, 10);
+      const to       = (input.dateTo   as string | undefined) ?? today11;
+
+      const [[actTotal], taskStats, [absTotal], [recTotal], [openPos], topActivity, topAbs, atrasadas] = await Promise.all([
+        // Activities
+        db.select({ count: sql<number>`count(*)::int` }).from(scaleAllocationsTable).where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`)),
+        // Tasks by status
+        db.select({ status: tasksTable.status, count: sql<number>`count(*)::int` }).from(tasksTable).where(and(eq(tasksTable.organizationId, ctx.organizationId), sql`date(${tasksTable.createdAt}) between ${from} and ${to}`)).groupBy(tasksTable.status),
+        // Absences
+        db.select({ count: sql<number>`count(*)::int` }).from(folgasTable).where(and(ctx.operationId ? eq(folgasTable.operationId, ctx.operationId) : sql`true`, eq(folgasTable.status, "ACTIVE"), gte(folgasTable.startDate, from), lte(folgasTable.startDate, to))),
+        // Recognitions
+        db.select({ count: sql<number>`count(*)::int` }).from(recognitionsTable).where(and(eq(recognitionsTable.organizationId, ctx.organizationId), sql`date(${recognitionsTable.createdAt}) between ${from} and ${to}`)),
+        // Open positions
+        db.select({ count: sql<number>`count(*)::int` }).from(scaleAllocationsTable).innerJoin(scalesTable, eq(scaleAllocationsTable.scaleId, scalesTable.id)).where(and(ctx.operationId ? eq(scalesTable.operationId, ctx.operationId) : sql`true`, inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"]), eq(scaleAllocationsTable.status, "OPEN"))),
+        // Top performer
+        db.select({ userId: scaleAllocationsTable.userId, nome: usersTable.name, count: sql<number>`count(*)::int` }).from(scaleAllocationsTable).leftJoin(usersTable, eq(scaleAllocationsTable.userId, usersTable.id)).where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`)).groupBy(scaleAllocationsTable.userId, usersTable.name).orderBy(desc(sql`count(*)`)).limit(3),
+        // Top absent
+        db.select({ userId: folgasTable.userId, nome: usersTable.name, count: sql<number>`count(*)::int` }).from(folgasTable).leftJoin(usersTable, eq(folgasTable.userId, usersTable.id)).where(and(ctx.operationId ? eq(folgasTable.operationId, ctx.operationId) : sql`true`, eq(folgasTable.status, "ACTIVE"), gte(folgasTable.startDate, from), lte(folgasTable.startDate, to))).groupBy(folgasTable.userId, usersTable.name).orderBy(desc(sql`count(*)`)).limit(3),
+        // Overdue tasks
+        db.select({ count: sql<number>`count(*)::int` }).from(tasksTable).where(and(eq(tasksTable.organizationId, ctx.organizationId), inArray(tasksTable.status, ["CREATED", "IN_PROGRESS"]), lte(tasksTable.dueDate, today11))),
+      ]);
+
+      const taskMap    = Object.fromEntries(taskStats.map(t => [t.status, t.count]));
+      const taskTotal  = taskStats.reduce((s, t) => s + t.count, 0);
+      const taskDone   = taskMap["DONE"] ?? 0;
+      const txConc     = taskTotal > 0 ? Math.round((taskDone / taskTotal) * 100) : 0;
+      const atrasadasN = atrasadas[0]?.count ?? 0;
+
+      return JSON.stringify({
+        tipo, periodo: { de: from, ate: to }, dias: diasBack,
+        instrucao: `Gere um relatório ${tipo} executivo completo com as seções abaixo. Use emojis, bullets e linguagem direta. Conclua com 1-3 aprendizados e 1-2 recomendações para o próximo período.`,
+        secoes: {
+          "📈 Atividades":     { total: actTotal?.count ?? 0 },
+          "📌 Tarefas":        { total: taskTotal, concluidas: taskDone, taxa_conclusao: `${txConc}%`, atrasadas: atrasadasN },
+          "🌴 Ausências":      { total: absTotal?.count ?? 0 },
+          "🏆 Reconhecimentos":{ total: recTotal?.count ?? 0 },
+          "⚠️ Posições Abertas":{ total: openPos?.count ?? 0 },
+          "🌟 Destaques":      { top_performer: topActivity.slice(0, 3).map(r => ({ nome: r.nome ?? r.userId, atividades: r.count })), mais_ausencias: topAbs.slice(0, 3).map(r => ({ nome: r.nome ?? r.userId, ausencias: r.count })) },
+          "💡 Saúde da Operação": {
+            status: txConc >= 70 && (openPos?.count ?? 0) === 0 ? "✅ SAUDÁVEL" : txConc >= 50 && (openPos?.count ?? 0) <= 2 ? "⚠️ ATENÇÃO" : "🔴 CRÍTICA",
+            sinais: [txConc < 50 ? "Taxa de conclusão de tarefas abaixo de 50%" : null, (openPos?.count ?? 0) > 3 ? "Muitas posições abertas em escalas publicadas" : null, (absTotal?.count ?? 0) > (actTotal?.count ?? 1) * 0.2 ? "Alta taxa de ausências no período" : null].filter(Boolean),
+          },
+        },
+      });
     }
 
     // ── Sprint 10 — Biblioteca Inteligente e Conhecimento ────────────────────
