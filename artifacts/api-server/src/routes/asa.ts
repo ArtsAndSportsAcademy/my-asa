@@ -569,6 +569,25 @@ Regras obrigatórias para detecção:
 
 ⸻
 
+Listas de membros e operações em lote (Sprint 12)
+
+Quando o usuário citar VÁRIOS membros numa mesma frase (separados por vírgula, "e", ";" ou quebras de linha — ex: "crie a tarefa X para João, Pedro e Ana" ou "João, Pedro e Ana faltaram hoje"), trate isso como uma operação em lote:
+
+1. RESOLVER: passe a lista inteira de uma vez para consultar_membros (ele aceita vários nomes e devolve "resultados" por nome, mais "membrosResolvidos"). Não chame uma vez por nome.
+2. RESUMIR: antes de executar qualquer ação em massa, mostre um resumo claro do que será feito e PEÇA CONFIRMAÇÃO. Ex:
+   "📋 Detectei 3 ações. Vou:
+   • Criar tarefa 'X' para João Silva (até 25/06)
+   • Criar tarefa 'X' para Pedro Santos (até 25/06)
+   • Criar tarefa 'X' para Ana Costa (até 25/06)
+   ⚠️ 'Bia' não foi encontrada — vou pular.
+   Posso executar?"
+3. NUNCA execute o lote silenciosamente. Só chame as ferramentas *_lote (criar_tarefas_lote, registrar_ausencias_lote, criar_reconhecimentos_lote, criar_entradas_escala_lote, adicionar_participantes_evento) APÓS o usuário confirmar ("sim", "pode", "manda ver").
+4. Para nomes ambíguos ou não encontrados: NÃO trave a operação inteira. Liste-os no resumo, prossiga com os que foram resolvidos e pergunte separadamente sobre os pendentes.
+5. RELATAR: após executar, repasse o resultado item a item — quantos deram certo e quais falharam (com o motivo). As ferramentas de lote continuam mesmo quando um item falha.
+6. Para 1 só membro, continue usando as ferramentas individuais normais.
+
+⸻
+
 Princípios
 
 1. Confirme ações importantes antes de executar.
@@ -608,6 +627,7 @@ ${isManager
 • Consultar aniversários e detectar marcos de tempo de casa
 • Criar e consultar reconhecimentos para membros da equipe
 • Consultar o clima atual
+• Resolver listas de membros e executar ações em lote (tarefas, ausências, reconhecimentos, escala, participantes de evento) com resumo e confirmação antes
 • Sugerir memórias para aprovação e aprender com a equipe`
   : `• Consultar sua escala, tarefas e informações do dia
 • Pesquisar documentos na biblioteca
@@ -1449,7 +1469,455 @@ const ASA_TOOLS: Tool[] = [
       },
     },
   },
+  // ── Sprint 12 — Multi-membro e operações em lote ────────────────────────────
+  {
+    name: "criar_tarefas_lote",
+    description: "Cria VÁRIAS tarefas de uma vez (uma por membro/item). Use quando o usuário pedir a mesma tarefa para vários membros (ex: 'crie a tarefa X para João, Pedro e Ana') ou várias tarefas diferentes. Resolva os nomes via consultar_membros ANTES. SEMPRE resuma o que será criado e peça confirmação antes de chamar esta ferramenta. Continua mesmo se um item falhar.",
+    input_schema: {
+      type: "object" as const,
+      required: ["tarefas"],
+      properties: {
+        tarefas: {
+          type: "array",
+          description: "Lista de tarefas a criar",
+          items: {
+            type: "object",
+            required: ["title", "assigneeId", "dueDate"],
+            properties: {
+              title:        { type: "string", description: "Título da tarefa" },
+              description:  { type: "string", description: "Descrição (opcional)" },
+              assigneeId:   { type: "string", description: "ID do responsável (via consultar_membros)" },
+              assigneeName: { type: "string", description: "Nome do responsável (para o resumo)" },
+              dueDate:      { type: "string", description: "Prazo (YYYY-MM-DD)" },
+              priority:     { type: "string", description: "LOW | MEDIUM (padrão) | HIGH | CRITICAL" },
+            },
+          },
+        },
+      },
+    },
+  },
+  {
+    name: "registrar_ausencias_lote",
+    description: "Registra VÁRIAS ausências/folgas/afastamentos de uma vez (uma por membro). Use quando o usuário listar vários membros ausentes (ex: 'João, Pedro e Ana faltaram hoje'). Resolva os nomes via consultar_membros ANTES. SEMPRE resuma e peça confirmação antes de executar. Continua mesmo se um item falhar.",
+    input_schema: {
+      type: "object" as const,
+      required: ["ausencias"],
+      properties: {
+        ausencias: {
+          type: "array",
+          description: "Lista de ausências a registrar",
+          items: {
+            type: "object",
+            required: ["userId", "startDate"],
+            properties: {
+              userId:    { type: "string", description: "ID do membro (via consultar_membros)" },
+              userName:  { type: "string", description: "Nome do membro (para o resumo)" },
+              startDate: { type: "string", description: "Data de início (YYYY-MM-DD)" },
+              endDate:   { type: "string", description: "Data de fim (YYYY-MM-DD). Se omitido, usa startDate" },
+              type:      { type: "string", description: "NO_SHOW (padrão dia único) | DAY_OFF | AFASTAMENTO (padrão multi-dia) | RECESSO | RESTRICAO | OUTRO" },
+              reason:    { type: "string", description: "Motivo (opcional)" },
+            },
+          },
+        },
+      },
+    },
+  },
+  {
+    name: "criar_reconhecimentos_lote",
+    description: "Cria VÁRIOS reconhecimentos de uma vez (um por membro). Use quando o usuário quiser reconhecer vários membros (ex: 'parabenize João, Pedro e Ana pelo evento'). Resolva os nomes via consultar_membros ANTES. SEMPRE resuma e peça confirmação antes de executar. Continua mesmo se um item falhar.",
+    input_schema: {
+      type: "object" as const,
+      required: ["reconhecimentos"],
+      properties: {
+        reconhecimentos: {
+          type: "array",
+          description: "Lista de reconhecimentos a criar",
+          items: {
+            type: "object",
+            required: ["userId", "type", "title", "message"],
+            properties: {
+              userId:   { type: "string", description: "ID do membro (via consultar_membros)" },
+              userName: { type: "string", description: "Nome do membro (para o resumo)" },
+              type:     { type: "string", description: "Tipo do reconhecimento" },
+              title:    { type: "string", description: "Título do reconhecimento" },
+              message:  { type: "string", description: "Mensagem do reconhecimento" },
+            },
+          },
+        },
+      },
+    },
+  },
+  {
+    name: "criar_entradas_escala_lote",
+    description: "Cria VÁRIAS entradas de escala de uma vez (uma por membro). Use quando o usuário quiser escalar vários membros para a mesma atividade/data (ex: 'escale João, Pedro e Ana para o ensaio de sábado'). Resolva os nomes via consultar_membros ANTES. SEMPRE resuma e peça confirmação antes de executar. Requer uma escala ativa cobrindo a data. Continua mesmo se um item falhar.",
+    input_schema: {
+      type: "object" as const,
+      required: ["entradas"],
+      properties: {
+        entradas: {
+          type: "array",
+          description: "Lista de entradas de escala a criar",
+          items: {
+            type: "object",
+            required: ["userId", "date", "label"],
+            properties: {
+              userId:    { type: "string", description: "ID do membro (via consultar_membros)" },
+              userName:  { type: "string", description: "Nome do membro (para o resumo)" },
+              date:      { type: "string", description: "Data da atividade (YYYY-MM-DD)" },
+              label:     { type: "string", description: "Nome/atividade da entrada" },
+              startTime: { type: "string", description: "Horário de início (opcional)" },
+              endTime:   { type: "string", description: "Horário de fim (opcional)" },
+              notes:     { type: "string", description: "Observações (opcional)" },
+            },
+          },
+        },
+      },
+    },
+  },
+  {
+    name: "adicionar_participantes_evento",
+    description: "Adiciona VÁRIOS participantes a um evento da agenda de uma vez (ex: 'adicione todo o time ao ensaio de sábado'). Identifique o evento por eventId (via consultar_agenda) OU por eventoTitulo + data. Resolva os nomes dos participantes via consultar_membros ANTES. Cada participante vira uma entrada de escala vinculada ao evento. SEMPRE resuma e peça confirmação antes de executar. Continua mesmo se um participante falhar.",
+    input_schema: {
+      type: "object" as const,
+      required: ["participantes"],
+      properties: {
+        eventId:      { type: "string", description: "ID do evento da agenda (via consultar_agenda). Preferencial." },
+        eventoTitulo: { type: "string", description: "Título do evento (alternativa ao eventId, combinar com data)" },
+        data:         { type: "string", description: "Data do evento YYYY-MM-DD (usada com eventoTitulo, ou como data da entrada)" },
+        participantes: {
+          type: "array",
+          description: "Lista de membros a adicionar como participantes",
+          items: {
+            type: "object",
+            required: ["userId"],
+            properties: {
+              userId:   { type: "string", description: "ID do membro (via consultar_membros)" },
+              userName: { type: "string", description: "Nome do membro (para o resumo)" },
+            },
+          },
+        },
+      },
+    },
+  },
 ];
+
+// ────────────────────────────────────────────────────────────────────────────
+// Shared helpers — resolução multi-membro + cores de operação (single + lote)
+// ────────────────────────────────────────────────────────────────────────────
+
+type ToolCtx = { userId: string; organizationId: string | null; userRole: string; operationId: string | null };
+
+function normalizeName(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9 ]/g, "")
+    .trim();
+}
+
+/**
+ * Quebra uma query de membros em nomes individuais. Aceita vírgula, ponto-e-vírgula,
+ * o conectivo "e" (com espaços ao redor) e quebras de linha.
+ * Ex.: "João, Pedro e Ana" → ["João", "Pedro", "Ana"]
+ */
+function splitMemberQueries(raw: string): string[] {
+  const parts = raw
+    .split(/\s*,\s*|\s*;\s*|\s+e\s+|\n+/i)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  // Deduplicate preserving order (case-insensitive)
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const p of parts) {
+    const key = normalizeName(p);
+    if (key && !seen.has(key)) { seen.add(key); out.push(p); }
+  }
+  return out;
+}
+
+type MemberMatch = { id: string; name: string };
+type MemberResolution = {
+  query: string;
+  found: boolean;
+  ambiguous: boolean;
+  member: MemberMatch | null;
+  members: MemberMatch[];
+  message: string;
+};
+
+/**
+ * Resolve um único nome contra a lista de usuários, usando as memórias para apelidos.
+ * Não aborta — sempre devolve um resultado estruturado (encontrado / ambíguo / não encontrado).
+ */
+function resolveOneMember(
+  query: string,
+  users: MemberMatch[],
+  memories: { key: string; value: string }[],
+): MemberResolution {
+  const normQuery = normalizeName(query);
+  let resolvedQuery = normQuery;
+  for (const m of memories) {
+    if (normalizeName(m.key) === normQuery) { resolvedQuery = normalizeName(m.value); break; }
+  }
+
+  const scored = users
+    .map((u) => {
+      const normName = normalizeName(u.name);
+      let score = 0;
+      if (normName === resolvedQuery) score = 100;
+      else {
+        const nameWords = normName.split(" ");
+        const qWords = resolvedQuery.split(" ").filter(Boolean);
+        for (const qw of qWords) {
+          for (const nw of nameWords) {
+            if (nw === qw) score += 40;
+            else if (nw.startsWith(qw) && qw.length >= 3) score += 25;
+            else if (nw.includes(qw) && qw.length >= 3) score += 12;
+          }
+        }
+      }
+      return { id: u.id, name: u.name, score };
+    })
+    .filter((u) => u.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
+
+  if (scored.length === 0) {
+    return {
+      query, found: false, ambiguous: false, member: null, members: [],
+      message: `Nenhum membro encontrado para "${query}".`,
+    };
+  }
+
+  const isAmbiguous = scored.length > 1 && scored[0]!.score === scored[1]!.score;
+  return {
+    query,
+    found: true,
+    ambiguous: isAmbiguous,
+    member: isAmbiguous ? null : { id: scored[0]!.id, name: scored[0]!.name },
+    members: scored.map((u) => ({ id: u.id, name: u.name })),
+    message: isAmbiguous
+      ? `"${query}": encontrei ${scored.length} membros com nomes similares. Qual você quer dizer?`
+      : `"${query}": ${scored[0]!.name}`,
+  };
+}
+
+/** Carrega os usuários ativos da operação/organização + memórias aprovadas (para apelidos). */
+async function loadOrgMembersAndMemories(ctx: ToolCtx): Promise<{ users: MemberMatch[]; memories: { key: string; value: string }[] }> {
+  const allUsers = await db
+    .select({ id: usersTable.id, name: usersTable.name })
+    .from(usersTable)
+    .innerJoin(userRolesTable, eq(userRolesTable.userId, usersTable.id))
+    .where(and(
+      ctx.operationId ? eq(userRolesTable.operationId, ctx.operationId) : sql`true`,
+      ne(usersTable.status, "INACTIVE"),
+    ));
+  const userMap = new Map<string, MemberMatch>();
+  for (const u of allUsers) userMap.set(u.id, u);
+
+  const memories = ctx.organizationId
+    ? await db
+        .select({ key: asaMemoriesTable.key, value: asaMemoriesTable.value })
+        .from(asaMemoriesTable)
+        .where(and(
+          eq(asaMemoriesTable.status, "APPROVED"),
+          eq(asaMemoriesTable.organizationId, ctx.organizationId),
+        ))
+        .limit(100)
+    : [];
+
+  return { users: [...userMap.values()], memories };
+}
+
+// ── Cores de operação (lançam Error com mensagem amigável em caso de falha) ──────
+
+async function coreCriarTarefa(
+  ctx: ToolCtx,
+  p: { title?: string; description?: string; assigneeId?: string; dueDate?: string; priority?: string },
+): Promise<{ id: string }> {
+  if (!ctx.organizationId) throw new Error("Organização não configurada");
+  if (!ctx.operationId) throw new Error("Operação não configurada");
+  if (!p.title || !p.assigneeId || !p.dueDate) throw new Error("title, assigneeId e dueDate são obrigatórios");
+  const priority = (p.priority as "LOW" | "MEDIUM" | "HIGH" | "CRITICAL") ?? "MEDIUM";
+  const [task] = await db
+    .insert(tasksTable)
+    .values({
+      organizationId: ctx.organizationId,
+      operationId: ctx.operationId,
+      title: p.title,
+      description: p.description ?? undefined,
+      creatorId: ctx.userId,
+      assigneeId: p.assigneeId,
+      priority,
+      dueDate: p.dueDate,
+      status: "CREATED",
+      origin: "AI",
+      requiresApproval: true,
+    })
+    .returning();
+  return { id: task!.id };
+}
+
+async function coreRegistrarAusencia(
+  ctx: ToolCtx,
+  p: { userId?: string; startDate?: string; endDate?: string; date?: string; type?: string; reason?: string },
+): Promise<{ id: string; startDate: string; endDate: string; type: string; isSingleDay: boolean }> {
+  if (!ctx.organizationId) throw new Error("Organização não configurada");
+  if (!ctx.operationId) throw new Error("Selecione uma operação antes de registrar ausências");
+  if (!p.userId) throw new Error("userId é obrigatório");
+  const startDate = ((p.startDate ?? p.date) as string | undefined) ?? "";
+  if (!startDate) throw new Error("startDate é obrigatório");
+  const endDate = (p.endDate ?? startDate) as string;
+  const isSingleDay = startDate === endDate;
+  const defaultType = isSingleDay ? "NO_SHOW" : "AFASTAMENTO";
+  const absType = ((p.type as string | undefined) ?? defaultType) as typeof folgasTable.$inferInsert["type"];
+  const [folga] = await db.insert(folgasTable).values({
+    userId: p.userId,
+    operationId: ctx.operationId,
+    type: absType,
+    startDate,
+    endDate,
+    status: "ACTIVE",
+    origem: "MANUAL",
+    createdBy: ctx.userId,
+    notes: p.reason ?? `Registrado pela ASA em ${new Date().toLocaleDateString("pt-BR")}`,
+  }).returning();
+  return { id: folga!.id, startDate, endDate, type: absType as string, isSingleDay };
+}
+
+async function coreCriarReconhecimento(
+  ctx: ToolCtx,
+  p: { userId?: string; type?: string; title?: string; message?: string },
+): Promise<{ id: string }> {
+  if (!ctx.organizationId) throw new Error("Organização não configurada");
+  if (!p.userId || !p.type || !p.title || !p.message)
+    throw new Error("userId, type, title e message são obrigatórios");
+  const [recTarget] = await db.select({ id: usersTable.id }).from(usersTable)
+    .where(and(eq(usersTable.id, p.userId), eq(usersTable.organizationId, ctx.organizationId)))
+    .limit(1);
+  if (!recTarget) throw new Error("Membro não encontrado nesta organização");
+  const [rec] = await db.insert(recognitionsTable).values({
+    organizationId: ctx.organizationId,
+    userId: p.userId,
+    type: p.type,
+    title: p.title,
+    message: p.message,
+    createdBy: ctx.userId,
+    publishedAt: new Date(),
+  }).returning();
+  try {
+    await createNotification({
+      userId: p.userId,
+      type: "RECOGNITION_RECEIVED",
+      title: "🎉 Você recebeu um reconhecimento!",
+      message: p.title,
+      priority: "IMPORTANT",
+      category: "system",
+      entityType: "recognition",
+      entityId: rec!.id,
+    });
+  } catch (err) { console.error("Falha ao notificar reconhecimento", { targetUserId: p.userId, recognitionId: rec!.id, err }); }
+  return { id: rec!.id };
+}
+
+async function coreCriarEntradaEscala(
+  ctx: ToolCtx,
+  p: {
+    userId?: string; userName?: string; date?: string; label?: string;
+    startTime?: string; endTime?: string; notes?: string; agendaEventId?: string | null;
+  },
+): Promise<{ id: string; scaleId: string; scaleName: string; warning: string | null }> {
+  if (!ctx.operationId) throw new Error("Operação não configurada");
+  if (!p.userId || !p.date || !p.label) throw new Error("userId, date e label são obrigatórios");
+
+  const scales = await db
+    .select({ id: scalesTable.id, title: scalesTable.title, status: scalesTable.status })
+    .from(scalesTable)
+    .where(and(
+      eq(scalesTable.operationId, ctx.operationId),
+      lte(scalesTable.periodStart, p.date),
+      gte(scalesTable.periodEnd, p.date),
+    ))
+    .orderBy(desc(scalesTable.updatedAt))
+    .limit(5);
+
+  const active = scales.filter((s) => ["DRAFT", "PUBLISHED", "REPUBLISHED"].includes(s.status));
+  if (active.length === 0)
+    throw new Error(`Nenhuma escala ativa cobre a data ${p.date}. Crie ou gere uma escala que inclua essa data primeiro.`);
+
+  const scale = active[0]!;
+
+  const folgas = await db
+    .select({ id: folgasTable.id, type: folgasTable.type })
+    .from(folgasTable)
+    .where(and(
+      eq(folgasTable.userId, p.userId),
+      eq(folgasTable.status, "ACTIVE"),
+      lte(folgasTable.startDate, p.date),
+      gte(folgasTable.endDate, p.date),
+    ))
+    .limit(1);
+
+  const [entry] = await db
+    .insert(scaleAllocationsTable)
+    .values({
+      scaleId: scale.id,
+      agendaEventId: p.agendaEventId ?? null,
+      userId: p.userId,
+      status: "MANUAL_OVERRIDE",
+      manualDate: p.date,
+      manualLabel: p.label,
+      startTime: p.startTime ?? null,
+      endTime: p.endTime ?? null,
+      notes: p.notes ?? null,
+      overriddenBy: ctx.userId,
+      overrideReason: "Criado via ASA",
+    })
+    .returning();
+
+  const warning = folgas.length > 0
+    ? `⚠️ ${p.userName ?? "Este membro"} tem folga registrada em ${p.date} (${folgas[0]!.type}).`
+    : null;
+
+  return { id: entry!.id, scaleId: scale.id, scaleName: scale.title, warning };
+}
+
+// ── Runner resiliente de lote ───────────────────────────────────────────────────
+
+type BatchItemResult = { ref: string; ok: boolean; id?: string; warning?: string | null; error?: string };
+
+/**
+ * Processa uma lista item a item, continuando mesmo quando um item falha.
+ * Devolve resultados estruturados por item.
+ */
+async function runBatch<T>(
+  items: T[],
+  refOf: (item: T, index: number) => string,
+  handler: (item: T) => Promise<{ id?: string; warning?: string | null }>,
+): Promise<BatchItemResult[]> {
+  const results: BatchItemResult[] = [];
+  for (let i = 0; i < items.length; i++) {
+    const ref = refOf(items[i]!, i);
+    try {
+      const out = await handler(items[i]!);
+      results.push({ ref, ok: true, id: out.id, warning: out.warning ?? null });
+    } catch (err) {
+      results.push({ ref, ok: false, error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+  return results;
+}
+
+/** Monta um resumo padrão de um resultado de lote. */
+function summarizeBatch(noun: string, results: BatchItemResult[]): { total: number; sucessos: number; falhas: number; itens: BatchItemResult[]; message: string } {
+  const ok = results.filter((r) => r.ok);
+  const fail = results.filter((r) => !r.ok);
+  const okLine = ok.length > 0 ? `✓ ${ok.length} ${noun}: ${ok.map((r) => r.ref).join(", ")}` : "";
+  const failLine = fail.length > 0 ? `⚠ ${fail.length} falha(s): ${fail.map((r) => `${r.ref} (${r.error})`).join("; ")}` : "";
+  const message = [okLine, failLine].filter(Boolean).join("\n") || "Nenhum item processado.";
+  return { total: results.length, sucessos: ok.length, falhas: fail.length, itens: results, message };
+}
 
 // ────────────────────────────────────────────────────────────────────────────
 // Tool Executor
@@ -1877,88 +2345,62 @@ async function executeTool(
 
     // ── consultar_membros ─────────────────────────────────────────────────────
     if (name === "consultar_membros") {
-      const query = ((input.query as string) ?? "").trim();
-      if (!query) return JSON.stringify({ error: "query é obrigatória" });
+      const rawQuery = ((input.query as string) ?? "").trim();
+      if (!rawQuery) return JSON.stringify({ error: "query é obrigatória" });
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
 
-      const allUsers = await db
-        .select({ id: usersTable.id, name: usersTable.name })
-        .from(usersTable)
-        .innerJoin(userRolesTable, eq(userRolesTable.userId, usersTable.id))
-        .where(and(
-          ctx.operationId ? eq(userRolesTable.operationId, ctx.operationId) : sql`true`,
-          ne(usersTable.status, "INACTIVE"),
-        ));
+      const { users, memories } = await loadOrgMembersAndMemories(ctx);
 
-      // Deduplicate by id (user may have multiple roles)
-      const userMap = new Map<string, { id: string; name: string }>();
-      for (const u of allUsers) userMap.set(u.id, u);
-      const users = [...userMap.values()];
+      // Aceita listas: "João, Pedro e Ana" → resolve cada nome separadamente
+      const queries = splitMemberQueries(rawQuery);
+      const resolutions = queries.map((q) => resolveOneMember(q, users, memories));
 
-      // Check approved memories for nickname → real name
-      const memories = await db
-        .select({ key: asaMemoriesTable.key, value: asaMemoriesTable.value })
-        .from(asaMemoriesTable)
-        .where(and(
-          eq(asaMemoriesTable.status, "APPROVED"),
-          eq(asaMemoriesTable.organizationId, ctx.organizationId),
-        ))
-        .limit(100);
-
-      const norm = (s: string) =>
-        s.toLowerCase()
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .replace(/[^a-z0-9 ]/g, "")
-          .trim();
-
-      const normQuery = norm(query);
-
-      // Resolve nickname via memories
-      let resolvedQuery = normQuery;
-      for (const m of memories) {
-        if (norm(m.key) === normQuery) { resolvedQuery = norm(m.value); break; }
-      }
-
-      const scored = users
-        .map((u) => {
-          const normName = norm(u.name);
-          let score = 0;
-          if (normName === resolvedQuery) score = 100;
-          else {
-            const nameWords = normName.split(" ");
-            const qWords    = resolvedQuery.split(" ").filter(Boolean);
-            for (const qw of qWords) {
-              for (const nw of nameWords) {
-                if (nw === qw) score += 40;
-                else if (nw.startsWith(qw) && qw.length >= 3) score += 25;
-                else if (nw.includes(qw)   && qw.length >= 3) score += 12;
-              }
-            }
-          }
-          return { id: u.id, name: u.name, score };
-        })
-        .filter((u) => u.score > 0)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 5);
-
-      if (scored.length === 0) {
+      // ── Caso simples: um único nome → mantém o formato legado (retrocompatível) ──
+      if (resolutions.length <= 1) {
+        const r = resolutions[0] ?? resolveOneMember(rawQuery, users, memories);
+        if (!r.found) {
+          return JSON.stringify({
+            found: false,
+            message: `Nenhum membro encontrado para "${r.query}". Verifique o nome ou tente parte do nome.`,
+            members: [],
+            resultados: [r],
+          });
+        }
         return JSON.stringify({
-          found: false,
-          message: `Nenhum membro encontrado para "${query}". Verifique o nome ou tente parte do nome.`,
-          members: [],
+          found: true,
+          ambiguous: r.ambiguous,
+          message: r.ambiguous
+            ? `Encontrei ${r.members.length} membros com nomes similares. Qual você quer dizer?`
+            : `Encontrado: ${r.member!.name}`,
+          member: r.member,
+          members: r.members,
+          resultados: [r],
         });
       }
 
-      const isAmbiguous = scored.length > 1 && scored[0]!.score === scored[1]!.score;
+      // ── Vários nomes: resolve todos, segue em frente mesmo quando um falha ──
+      const encontrados = resolutions.filter((r) => r.found && !r.ambiguous);
+      const ambiguos    = resolutions.filter((r) => r.found && r.ambiguous);
+      const naoEncontrados = resolutions.filter((r) => !r.found);
+
+      const parts: string[] = [];
+      if (encontrados.length > 0)
+        parts.push(`✓ Encontrados (${encontrados.length}): ${encontrados.map((r) => r.member!.name).join(", ")}`);
+      if (ambiguos.length > 0)
+        parts.push(`❓ Ambíguos (${ambiguos.length}): ${ambiguos.map((r) => `"${r.query}"`).join(", ")} — preciso que você escolha.`);
+      if (naoEncontrados.length > 0)
+        parts.push(`⚠ Não encontrados (${naoEncontrados.length}): ${naoEncontrados.map((r) => `"${r.query}"`).join(", ")}`);
+
       return JSON.stringify({
-        found: true,
-        ambiguous: isAmbiguous,
-        message: isAmbiguous
-          ? `Encontrei ${scored.length} membros com nomes similares. Qual você quer dizer?`
-          : `Encontrado: ${scored[0]!.name}`,
-        member: isAmbiguous ? null : { id: scored[0]!.id, name: scored[0]!.name },
-        members: scored.map((u) => ({ id: u.id, name: u.name })),
+        multi: true,
+        total: resolutions.length,
+        encontrados: encontrados.length,
+        ambiguos: ambiguos.length,
+        naoEncontrados: naoEncontrados.length,
+        message: parts.join("\n"),
+        resultados: resolutions,
+        // Lista pronta de membros resolvidos sem ambiguidade (para ações em lote)
+        membrosResolvidos: encontrados.map((r) => r.member),
       });
     }
 
@@ -1967,7 +2409,6 @@ async function executeTool(
       if (!isManager) return JSON.stringify({ error: "Sem permissão para criar entradas na escala" });
       if (!ctx.operationId)  return JSON.stringify({ error: "Operação não configurada" });
 
-      const userId    = input.userId    as string;
       const userName  = input.userName  as string | undefined;
       const date      = input.date      as string;
       const label     = input.label     as string;
@@ -1975,128 +2416,63 @@ async function executeTool(
       const endTime   = input.endTime   as string | undefined;
       const notes     = input.notes     as string | undefined;
 
-      if (!userId || !date || !label)
-        return JSON.stringify({ error: "userId, date e label são obrigatórios" });
-
-      // Find most recent active scale covering this date
-      const scales = await db
-        .select({ id: scalesTable.id, title: scalesTable.title, status: scalesTable.status })
-        .from(scalesTable)
-        .where(and(
-          eq(scalesTable.operationId, ctx.operationId),
-          lte(scalesTable.periodStart, date),
-          gte(scalesTable.periodEnd,   date),
-        ))
-        .orderBy(desc(scalesTable.updatedAt))
-        .limit(5);
-
-      const active = scales.filter((s) =>
-        ["DRAFT", "PUBLISHED", "REPUBLISHED"].includes(s.status)
-      );
-
-      if (active.length === 0) {
-        return JSON.stringify({
-          error: `Nenhuma escala ativa cobre a data ${date}. Crie ou gere uma escala que inclua essa data primeiro.`,
+      try {
+        const res = await coreCriarEntradaEscala(ctx, {
+          userId: input.userId as string,
+          userName, date, label, startTime, endTime, notes,
         });
+        return JSON.stringify({
+          created:   true,
+          entryId:   res.id,
+          scaleId:   res.scaleId,
+          scaleName: res.scaleName,
+          warning:   res.warning,
+          message:
+            `✅ Entrada criada na escala "${res.scaleName}":\n` +
+            `• Membro: ${userName ?? input.userId}\n` +
+            `• Atividade: ${label}\n` +
+            `• Data: ${date}\n` +
+            (startTime ? `• Início: ${startTime}\n` : "") +
+            (endTime   ? `• Fim: ${endTime}\n`   : "") +
+            (notes     ? `• Obs: ${notes}\n`      : "") +
+            (res.warning ? `\n${res.warning}`      : ""),
+        });
+      } catch (err) {
+        return JSON.stringify({ error: err instanceof Error ? err.message : String(err) });
       }
-
-      const scale = active[0]!;
-
-      // Warn about folga
-      const folgas = await db
-        .select({ id: folgasTable.id, type: folgasTable.type })
-        .from(folgasTable)
-        .where(and(
-          eq(folgasTable.userId,   userId),
-          eq(folgasTable.status,   "ACTIVE"),
-          lte(folgasTable.startDate, date),
-          gte(folgasTable.endDate,   date),
-        ))
-        .limit(1);
-
-      const [entry] = await db
-        .insert(scaleAllocationsTable)
-        .values({
-          scaleId:       scale.id,
-          agendaEventId: null,
-          userId,
-          status:        "MANUAL_OVERRIDE",
-          manualDate:    date,
-          manualLabel:   label,
-          startTime:     startTime ?? null,
-          endTime:       endTime   ?? null,
-          notes:         notes     ?? null,
-          overriddenBy:  ctx.userId,
-          overrideReason: "Criado via ASA",
-        })
-        .returning();
-
-      const warning = folgas.length > 0
-        ? `⚠️ ${userName ?? "Este membro"} tem folga registrada em ${date} (${folgas[0]!.type}).`
-        : null;
-
-      return JSON.stringify({
-        created:   true,
-        entryId:   entry.id,
-        scaleId:   scale.id,
-        scaleName: scale.title,
-        warning,
-        message:
-          `✅ Entrada criada na escala "${scale.title}":\n` +
-          `• Membro: ${userName ?? userId}\n` +
-          `• Atividade: ${label}\n` +
-          `• Data: ${date}\n` +
-          (startTime ? `• Início: ${startTime}\n` : "") +
-          (endTime   ? `• Fim: ${endTime}\n`   : "") +
-          (notes     ? `• Obs: ${notes}\n`      : "") +
-          (warning   ? `\n${warning}`            : ""),
-      });
     }
 
     // ── criar_tarefa ──────────────────────────────────────────────────────────
     if (name === "criar_tarefa") {
       if (!isManager) return JSON.stringify({ error: "Sem permissão para criar tarefas" });
-      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
-      if (!ctx.operationId)    return JSON.stringify({ error: "Operação não configurada" });
 
       const title        = input.title        as string;
-      const description  = input.description  as string | undefined;
-      const assigneeId   = input.assigneeId   as string;
       const assigneeName = input.assigneeName as string | undefined;
       const dueDate      = input.dueDate      as string;
-      const priority     = (input.priority    as "LOW" | "MEDIUM" | "HIGH" | "CRITICAL") ?? "MEDIUM";
+      const priority     = (input.priority    as string) ?? "MEDIUM";
 
-      if (!title || !assigneeId || !dueDate)
-        return JSON.stringify({ error: "title, assigneeId e dueDate são obrigatórios" });
-
-      const [task] = await db
-        .insert(tasksTable)
-        .values({
-          organizationId: ctx.organizationId,
-          operationId:    ctx.operationId,
+      try {
+        const res = await coreCriarTarefa(ctx, {
           title,
-          description:    description ?? undefined,
-          creatorId:      ctx.userId,
-          assigneeId,
-          priority,
+          description: input.description as string | undefined,
+          assigneeId:  input.assigneeId  as string,
           dueDate,
-          status:   "CREATED",
-          origin:   "AI",
-          requiresApproval: true,
-        })
-        .returning();
-
-      return JSON.stringify({
-        created: true,
-        id: task.id,
-        message:
-          `✅ Tarefa criada:\n` +
-          `• Título: ${title}\n` +
-          `• Responsável: ${assigneeName ?? assigneeId}\n` +
-          `• Prazo: ${dueDate}\n` +
-          `• Prioridade: ${priority}\n` +
-          `• Status: Em criação — requer aprovação`,
-      });
+          priority,
+        });
+        return JSON.stringify({
+          created: true,
+          id: res.id,
+          message:
+            `✅ Tarefa criada:\n` +
+            `• Título: ${title}\n` +
+            `• Responsável: ${assigneeName ?? input.assigneeId}\n` +
+            `• Prazo: ${dueDate}\n` +
+            `• Prioridade: ${priority}\n` +
+            `• Status: Em criação — requer aprovação`,
+        });
+      } catch (err) {
+        return JSON.stringify({ error: err instanceof Error ? err.message : String(err) });
+      }
     }
 
     // ── consultar_reconhecimentos ─────────────────────────────────────────────
@@ -2119,42 +2495,22 @@ async function executeTool(
     if (name === "criar_reconhecimento") {
       if (!isManager) return JSON.stringify({ error: "Sem permissão para criar reconhecimentos" });
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
-      const recUserId = input.userId as string;
-      const recType   = input.type    as string;
       const recTitle  = input.title   as string;
-      const recMsg    = input.message as string;
-      if (!recUserId || !recType || !recTitle || !recMsg)
-        return JSON.stringify({ error: "userId, type, title e message são obrigatórios" });
-      const [recTarget] = await db.select({ id: usersTable.id }).from(usersTable)
-        .where(and(eq(usersTable.id, recUserId), eq(usersTable.organizationId, ctx.organizationId)))
-        .limit(1);
-      if (!recTarget) return JSON.stringify({ error: "Membro não encontrado nesta organização" });
-      const [rec] = await db.insert(recognitionsTable).values({
-        organizationId: ctx.organizationId,
-        userId:         recUserId,
-        type:           recType,
-        title:          recTitle,
-        message:        recMsg,
-        createdBy:      ctx.userId,
-        publishedAt:    new Date(),
-      }).returning();
       try {
-        await createNotification({
-          userId:     recUserId,
-          type:       "RECOGNITION_RECEIVED",
-          title:      "🎉 Você recebeu um reconhecimento!",
-          message:    recTitle,
-          priority:   "IMPORTANT",
-          category:   "system",
-          entityType: "recognition",
-          entityId:   rec.id,
+        const res = await coreCriarReconhecimento(ctx, {
+          userId:  input.userId  as string,
+          type:    input.type    as string,
+          title:   recTitle,
+          message: input.message as string,
         });
-      } catch (err) { console.error("Falha ao notificar reconhecimento", { targetUserId: recUserId, recognitionId: rec.id, err }); }
-      return JSON.stringify({
-        created: true,
-        id: rec.id,
-        message: `🎉 Reconhecimento "${recTitle}" criado com sucesso!`,
-      });
+        return JSON.stringify({
+          created: true,
+          id: res.id,
+          message: `🎉 Reconhecimento "${recTitle}" criado com sucesso!`,
+        });
+      } catch (err) {
+        return JSON.stringify({ error: err instanceof Error ? err.message : String(err) });
+      }
     }
 
     // ── detectar_marcos ───────────────────────────────────────────────────────
@@ -3914,47 +4270,34 @@ async function executeTool(
     // ── registrar_ausencia (Sprint 05) ───────────────────────────────────────
     if (name === "registrar_ausencia") {
       if (!isManager) return JSON.stringify({ error: "Sem permissão para registrar ausências" });
-      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
-      if (!ctx.operationId) return JSON.stringify({ error: "Selecione uma operação antes de registrar ausências" });
 
-      const targetUserId = input.userId   as string;
-      const startDate    = ((input.startDate ?? input.date) as string | undefined) ?? "";
-      const endDate      = ((input.endDate   ?? startDate)  as string);
-      const isSingleDay  = startDate === endDate;
-      const defaultType  = isSingleDay ? "NO_SHOW" : "AFASTAMENTO";
-      const absType      = ((input.type as string | undefined) ?? defaultType) as typeof folgasTable.$inferInsert["type"];
-      const reason       = input.reason   as string | undefined;
-      const displayName  = (input.userName as string | undefined) ?? targetUserId;
-
-      if (!startDate) return JSON.stringify({ error: "startDate é obrigatório" });
-
+      const displayName = (input.userName as string | undefined) ?? (input.userId as string);
       const fmt = (d: string) => d.split("-").reverse().join("/");
 
-      const [folga] = await db.insert(folgasTable).values({
-        userId:      targetUserId,
-        operationId: ctx.operationId,
-        type:        absType,
-        startDate,
-        endDate,
-        status:      "ACTIVE",
-        origem:      "MANUAL",
-        createdBy:   ctx.userId,
-        notes:       reason ?? `Registrado pela ASA em ${new Date().toLocaleDateString("pt-BR")}`,
-      }).returning();
-
-      const periodoLabel = isSingleDay
-        ? `para ${fmt(startDate)}`
-        : `de ${fmt(startDate)} até ${fmt(endDate)} (${absType === "AFASTAMENTO" ? "afastamento" : (absType ?? "ausência").toLowerCase()})`;
-
-      return JSON.stringify({
-        registered: true,
-        id:         folga.id,
-        member:     displayName,
-        startDate,
-        endDate,
-        type:       absType,
-        message:    `📋 ${isSingleDay ? "Ausência" : "Período"} de ${displayName} registrado ${periodoLabel}. Acompanhe na página de Folgas.`,
-      });
+      try {
+        const res = await coreRegistrarAusencia(ctx, {
+          userId:    input.userId    as string,
+          startDate: input.startDate as string | undefined,
+          endDate:   input.endDate   as string | undefined,
+          date:      input.date      as string | undefined,
+          type:      input.type      as string | undefined,
+          reason:    input.reason    as string | undefined,
+        });
+        const periodoLabel = res.isSingleDay
+          ? `para ${fmt(res.startDate)}`
+          : `de ${fmt(res.startDate)} até ${fmt(res.endDate)} (${res.type === "AFASTAMENTO" ? "afastamento" : (res.type ?? "ausência").toLowerCase()})`;
+        return JSON.stringify({
+          registered: true,
+          id:         res.id,
+          member:     displayName,
+          startDate:  res.startDate,
+          endDate:    res.endDate,
+          type:       res.type,
+          message:    `📋 ${res.isSingleDay ? "Ausência" : "Período"} de ${displayName} registrado ${periodoLabel}. Acompanhe na página de Folgas.`,
+        });
+      } catch (err) {
+        return JSON.stringify({ error: err instanceof Error ? err.message : String(err) });
+      }
     }
 
     // ── criar_solicitacao_troca (Sprint 05) ──────────────────────────────────
@@ -3995,6 +4338,170 @@ async function executeTool(
         members: [n1, n2],
         date,
         message: `🔄 Solicitação de troca entre ${n1} e ${n2} registrada para ${date}. Uma tarefa foi criada para acompanhamento — você pode gerenciá-la na página de Tarefas.`,
+      });
+    }
+
+    // ── Sprint 12 — Operações em lote ─────────────────────────────────────────
+    if (name === "criar_tarefas_lote") {
+      if (!isManager) return JSON.stringify({ error: "Sem permissão para criar tarefas" });
+      const tarefas = (input.tarefas as Array<Record<string, unknown>> | undefined) ?? [];
+      if (tarefas.length === 0) return JSON.stringify({ error: "Nenhuma tarefa informada" });
+
+      const results = await runBatch(
+        tarefas,
+        (t) => (t.assigneeName as string | undefined) ?? (t.title as string | undefined) ?? "tarefa",
+        async (t) => {
+          const r = await coreCriarTarefa(ctx, {
+            title:       t.title       as string,
+            description: t.description as string | undefined,
+            assigneeId:  t.assigneeId  as string,
+            dueDate:     t.dueDate     as string,
+            priority:    t.priority    as string | undefined,
+          });
+          return { id: r.id };
+        },
+      );
+      return JSON.stringify({ batch: true, tipo: "tarefas", ...summarizeBatch("tarefa(s) criada(s)", results) });
+    }
+
+    if (name === "registrar_ausencias_lote") {
+      if (!isManager) return JSON.stringify({ error: "Sem permissão para registrar ausências" });
+      const ausencias = (input.ausencias as Array<Record<string, unknown>> | undefined) ?? [];
+      if (ausencias.length === 0) return JSON.stringify({ error: "Nenhuma ausência informada" });
+
+      const results = await runBatch(
+        ausencias,
+        (a) => (a.userName as string | undefined) ?? (a.userId as string | undefined) ?? "membro",
+        async (a) => {
+          const r = await coreRegistrarAusencia(ctx, {
+            userId:    a.userId    as string,
+            startDate: a.startDate as string | undefined,
+            endDate:   a.endDate   as string | undefined,
+            date:      a.date      as string | undefined,
+            type:      a.type      as string | undefined,
+            reason:    a.reason    as string | undefined,
+          });
+          return { id: r.id };
+        },
+      );
+      return JSON.stringify({ batch: true, tipo: "ausencias", ...summarizeBatch("ausência(s) registrada(s)", results) });
+    }
+
+    if (name === "criar_reconhecimentos_lote") {
+      if (!isManager) return JSON.stringify({ error: "Sem permissão para criar reconhecimentos" });
+      const reconhecimentos = (input.reconhecimentos as Array<Record<string, unknown>> | undefined) ?? [];
+      if (reconhecimentos.length === 0) return JSON.stringify({ error: "Nenhum reconhecimento informado" });
+
+      const results = await runBatch(
+        reconhecimentos,
+        (r) => (r.userName as string | undefined) ?? (r.userId as string | undefined) ?? "membro",
+        async (r) => {
+          const out = await coreCriarReconhecimento(ctx, {
+            userId:  r.userId  as string,
+            type:    r.type    as string,
+            title:   r.title   as string,
+            message: r.message as string,
+          });
+          return { id: out.id };
+        },
+      );
+      return JSON.stringify({ batch: true, tipo: "reconhecimentos", ...summarizeBatch("reconhecimento(s) criado(s)", results) });
+    }
+
+    if (name === "criar_entradas_escala_lote") {
+      if (!isManager) return JSON.stringify({ error: "Sem permissão para criar entradas na escala" });
+      const entradas = (input.entradas as Array<Record<string, unknown>> | undefined) ?? [];
+      if (entradas.length === 0) return JSON.stringify({ error: "Nenhuma entrada informada" });
+
+      const results = await runBatch(
+        entradas,
+        (e) => (e.userName as string | undefined) ?? (e.userId as string | undefined) ?? "membro",
+        async (e) => {
+          const r = await coreCriarEntradaEscala(ctx, {
+            userId:    e.userId    as string,
+            userName:  e.userName  as string | undefined,
+            date:      e.date      as string,
+            label:     e.label     as string,
+            startTime: e.startTime as string | undefined,
+            endTime:   e.endTime   as string | undefined,
+            notes:     e.notes     as string | undefined,
+          });
+          return { id: r.id, warning: r.warning };
+        },
+      );
+      return JSON.stringify({ batch: true, tipo: "entradas_escala", ...summarizeBatch("entrada(s) criada(s)", results) });
+    }
+
+    if (name === "adicionar_participantes_evento") {
+      if (!isManager) return JSON.stringify({ error: "Sem permissão para adicionar participantes" });
+      if (!ctx.operationId) return JSON.stringify({ error: "Operação não configurada" });
+      const participantes = (input.participantes as Array<Record<string, unknown>> | undefined) ?? [];
+      if (participantes.length === 0) return JSON.stringify({ error: "Nenhum participante informado" });
+
+      const eventId      = input.eventId      as string | undefined;
+      const eventoTitulo = input.eventoTitulo as string | undefined;
+      const dataInput    = input.data         as string | undefined;
+
+      // Localiza o evento por id, ou por título + data
+      let event: { id: string; title: string; startTime: Date | string | null } | undefined;
+      if (eventId) {
+        const [ev] = await db
+          .select({ id: agendaEventsTable.id, title: agendaEventsTable.title, startTime: agendaEventsTable.startTime })
+          .from(agendaEventsTable)
+          .where(and(
+            eq(agendaEventsTable.id, eventId),
+            ctx.operationId ? eq(agendaEventsTable.operationId, ctx.operationId) : sql`true`,
+          ))
+          .limit(1);
+        event = ev;
+      } else if (eventoTitulo) {
+        const candidates = await db
+          .select({ id: agendaEventsTable.id, title: agendaEventsTable.title, startTime: agendaEventsTable.startTime })
+          .from(agendaEventsTable)
+          .where(ctx.operationId ? eq(agendaEventsTable.operationId, ctx.operationId) : sql`true`)
+          .orderBy(agendaEventsTable.startTime)
+          .limit(50);
+        const normTitle = normalizeName(eventoTitulo);
+        event = candidates.find((c) => {
+          const matchTitle = normalizeName(c.title).includes(normTitle) || normTitle.includes(normalizeName(c.title));
+          const matchDate = dataInput
+            ? (c.startTime ? new Date(c.startTime).toISOString().slice(0, 10) === dataInput : false)
+            : true;
+          return matchTitle && matchDate;
+        });
+      }
+
+      if (!event) {
+        return JSON.stringify({ error: "Evento não encontrado. Use consultar_agenda para obter o eventId, ou informe eventoTitulo + data." });
+      }
+
+      const eventDate = dataInput
+        ?? (event.startTime ? new Date(event.startTime).toISOString().slice(0, 10) : undefined);
+      if (!eventDate) {
+        return JSON.stringify({ error: "Não foi possível determinar a data do evento. Informe a data (YYYY-MM-DD)." });
+      }
+
+      const results = await runBatch(
+        participantes,
+        (p) => (p.userName as string | undefined) ?? (p.userId as string | undefined) ?? "membro",
+        async (p) => {
+          const r = await coreCriarEntradaEscala(ctx, {
+            userId:        p.userId   as string,
+            userName:      p.userName as string | undefined,
+            date:          eventDate,
+            label:         event!.title,
+            agendaEventId: event!.id,
+          });
+          return { id: r.id, warning: r.warning };
+        },
+      );
+      const summary = summarizeBatch("participante(s) adicionado(s)", results);
+      return JSON.stringify({
+        batch: true,
+        tipo: "participantes_evento",
+        evento: { id: event.id, titulo: event.title, data: eventDate },
+        ...summary,
+        message: `Evento "${event.title}" (${eventDate}):\n${summary.message}`,
       });
     }
 
