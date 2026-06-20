@@ -489,6 +489,7 @@ export const UpdateUserParams = zod.object({
 export const UpdateUserBody = zod.object({
   "name": zod.string().optional(),
   "email": zod.string().email().optional(),
+  "username": zod.string().optional().describe('Nome de usuário (login). Normalizado: minusculas, sem acentos, espacos viram ponto, apenas letras\/numeros\/ponto.'),
   "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish()
 })
 

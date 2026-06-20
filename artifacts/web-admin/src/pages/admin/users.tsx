@@ -74,7 +74,7 @@ export default function UsersPage() {
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
 
   const [createForm, setCreateForm] = useState({ name: "", email: "", password: "", specialization: "", birthDate: "" });
-  const [editForm, setEditForm] = useState({ name: "", email: "", specialization: "", birthDate: "" });
+  const [editForm, setEditForm] = useState({ name: "", email: "", username: "", specialization: "", birthDate: "" });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
 
@@ -116,13 +116,14 @@ export default function UsersPage() {
 
   const handleEdit = () => {
     if (!editUser) return;
-    const { name, email, specialization, birthDate } = editForm;
+    const { name, email, username, specialization, birthDate } = editForm;
     updateMutation.mutate(
       {
         id: editUser.id,
         data: {
           name: name.trim() || undefined,
           email: email.trim() || undefined,
+          username: username.trim() || undefined,
           specialization: (specialization || null) as any,
           ...(birthDate !== undefined ? { birthDate: (birthDate || null) as any } : {}),
         },
@@ -178,6 +179,7 @@ export default function UsersPage() {
     setEditForm({
       name: user.name,
       email: user.email,
+      username: user.username ?? "",
       specialization: user.specialization ?? "",
       birthDate: (user as any).birthDate ?? "",
     });
@@ -401,6 +403,19 @@ export default function UsersPage() {
                 value={editForm.email}
                 onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Nome de usuário <span className="text-muted-foreground text-xs">(login)</span></Label>
+              <Input
+                placeholder="nome.sobrenome"
+                autoCapitalize="none"
+                autoComplete="off"
+                value={editForm.username}
+                onChange={(e) => setEditForm((f) => ({ ...f, username: e.target.value }))}
+              />
+              <p className="text-xs text-muted-foreground">
+                Apenas letras, números e pontos. Acentos e espaços são convertidos automaticamente.
+              </p>
             </div>
             <div className="space-y-2">
               <Label>Especialização <span className="text-muted-foreground text-xs">(opcional)</span></Label>

@@ -1,15 +1,19 @@
 import { Feather } from "@expo/vector-icons";
-import { useGetUserContext, getGetUserContextQueryKey } from "@workspace/api-client-react";
+import { useGetUserContext, getGetUserContextQueryKey, useUpdateUser } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React, { useState, useCallback } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { SvgXml } from "react-native-svg";
@@ -71,10 +75,48 @@ export default function HomeScreen() {
   const queryClient = useQueryClient();
 
   const [refreshing, setRefreshing] = useState(false);
+  const [usernameModalOpen, setUsernameModalOpen] = useState(false);
+  const [usernameDraft, setUsernameDraft] = useState("");
+  const [usernameError, setUsernameError] = useState<string | null>(null);
 
   const { data: context, isLoading, refetch } = useGetUserContext({
     query: { queryKey: getGetUserContextQueryKey() },
   });
+
+  const updateUser = useUpdateUser();
+
+  const openUsernameModal = () => {
+    setUsernameDraft(context?.user?.username ?? "");
+    setUsernameError(null);
+    setUsernameModalOpen(true);
+  };
+
+  const handleSaveUsername = () => {
+    const userId = context?.user?.id;
+    if (!userId) return;
+    const value = usernameDraft.trim();
+    if (!value) {
+      setUsernameError("O nome de usuário é obrigatório.");
+      return;
+    }
+    setUsernameError(null);
+    updateUser.mutate(
+      { id: userId, data: { username: value } },
+      {
+        onSuccess: async () => {
+          setUsernameModalOpen(false);
+          await queryClient.invalidateQueries({ queryKey: getGetUserContextQueryKey() });
+        },
+        onError: (err: any) => {
+          const msg =
+            err?.data?.message ??
+            err?.response?.data?.message ??
+            "Não foi possível salvar o nome de usuário.";
+          setUsernameError(msg);
+        },
+      },
+    );
+  };
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -263,6 +305,79 @@ export default function HomeScreen() {
       color: colors.foreground,
       flex: 1,
     },
+    usernameValueRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.5)",
+      justifyContent: "center",
+      paddingHorizontal: 24,
+    },
+    modalCard: {
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      padding: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      gap: 12,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: "700" as const,
+      color: colors.foreground,
+    },
+    modalSubtitle: {
+      fontSize: 13,
+      color: colors.mutedForeground,
+      lineHeight: 18,
+    },
+    modalInput: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      fontSize: 15,
+      color: colors.foreground,
+      backgroundColor: colors.background,
+    },
+    modalError: {
+      fontSize: 13,
+      color: "#dc2626",
+    },
+    modalActions: {
+      flexDirection: "row",
+      justifyContent: "flex-end",
+      gap: 10,
+      marginTop: 4,
+    },
+    modalButton: {
+      paddingHorizontal: 18,
+      paddingVertical: 10,
+      borderRadius: 10,
+      alignItems: "center",
+      justifyContent: "center",
+      minWidth: 96,
+    },
+    modalButtonGhost: {
+      backgroundColor: colors.secondary,
+    },
+    modalButtonGhostText: {
+      fontSize: 14,
+      fontWeight: "600" as const,
+      color: colors.foreground,
+    },
+    modalButtonPrimary: {
+      backgroundColor: colors.primary,
+    },
+    modalButtonPrimaryText: {
+      fontSize: 14,
+      fontWeight: "600" as const,
+      color: "#fff",
+    },
   });
 
   if (isLoading && !context) {
@@ -347,6 +462,20 @@ export default function HomeScreen() {
             {context?.user?.email ?? auth.user?.email ?? "—"}
           </Text>
         </View>
+        <View style={styles.divider} />
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Nome de usuário</Text>
+          <Pressable
+            style={styles.usernameValueRow}
+            onPress={openUsernameModal}
+            testID="button-edit-username"
+          >
+            <Text style={styles.infoValue} testID="text-username">
+              {context?.user?.username ?? "—"}
+            </Text>
+            <Feather name="edit-2" size={14} color={colors.primary} />
+          </Pressable>
+        </View>
         {activeRoles.length > 0 && (
           <>
             <View style={styles.divider} />
@@ -429,6 +558,62 @@ export default function HomeScreen() {
           </Text>
         )}
       </View>
+
+      <Modal
+        visible={usernameModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setUsernameModalOpen(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Nome de usuário</Text>
+            <Text style={styles.modalSubtitle}>
+              Use apenas letras, números e pontos. Acentos e espaços são convertidos automaticamente.
+            </Text>
+            <TextInput
+              value={usernameDraft}
+              onChangeText={setUsernameDraft}
+              placeholder="nome.sobrenome"
+              placeholderTextColor={colors.mutedForeground}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="off"
+              style={styles.modalInput}
+              testID="input-username"
+            />
+            {usernameError && (
+              <Text style={styles.modalError} testID="text-username-error">
+                {usernameError}
+              </Text>
+            )}
+            <View style={styles.modalActions}>
+              <Pressable
+                style={[styles.modalButton, styles.modalButtonGhost]}
+                onPress={() => setUsernameModalOpen(false)}
+                disabled={updateUser.isPending}
+              >
+                <Text style={styles.modalButtonGhostText}>Cancelar</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalButton, styles.modalButtonPrimary]}
+                onPress={handleSaveUsername}
+                disabled={updateUser.isPending}
+                testID="button-save-username"
+              >
+                {updateUser.isPending ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.modalButtonPrimaryText}>Salvar</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </ScrollView>
   );
 }

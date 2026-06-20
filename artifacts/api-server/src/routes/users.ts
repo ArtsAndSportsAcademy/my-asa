@@ -3,7 +3,7 @@ import { eq, and, inArray, like } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { db } from "@workspace/db";
 import { usersTable, userRolesTable, refreshTokensTable } from "@workspace/db";
-import { normalizeUsernameBase, resolveUniqueUsername } from "@workspace/db";
+import { normalizeUsernameBase, resolveUniqueUsername, validateAndNormalizeUsername } from "@workspace/db";
 import { requireAuth, requireOrganization, requireRole } from "../middlewares/auth.js";
 import { recordAudit } from "../lib/audit.service.js";
 import { requestLogger } from "../lib/logger.js";
@@ -153,14 +153,37 @@ router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), as
   }
 });
 
-router.patch("/users/:id", requireAuth, requireOrganization, requireRole("ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"), async (req, res) => {
+router.patch("/users/:id", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger("teams", req.requestId, req.correlationId);
   const id = req.params.id as string;
-  const { name, email, specialization, birthDate } = req.body;
+  const { name, email, username, specialization, birthDate } = req.body;
 
-  // Supervisors may only edit a member's specialization (function); full edits remain ADMIN-only.
-  if (req.user!.role !== "ADMIN" && (name !== undefined || email !== undefined || birthDate !== undefined)) {
-    res.status(403).json({ error: "FORBIDDEN", message: "Supervisores podem editar apenas a especialização do membro." });
+  const role = req.user!.role;
+  const isAdmin = role === "ADMIN";
+  const isSupervisor = role === "SUPERVISOR_A" || role === "SUPERVISOR_B";
+  const isSelf = id === req.user!.sub;
+
+  // O nome de usuário pode ser editado pelo próprio usuário ou por um admin.
+  if (username !== undefined && !isAdmin && !isSelf) {
+    res.status(403).json({ error: "FORBIDDEN", message: "Você só pode alterar o seu próprio nome de usuário." });
+    return;
+  }
+
+  // Nome, e-mail e data de nascimento permanecem exclusivos do admin.
+  if ((name !== undefined || email !== undefined || birthDate !== undefined) && !isAdmin) {
+    res.status(403).json({ error: "FORBIDDEN", message: "Apenas administradores podem editar nome, e-mail ou data de nascimento." });
+    return;
+  }
+
+  // Especialização (função) pode ser editada por admin ou supervisor.
+  if (specialization !== undefined && !isAdmin && !isSupervisor) {
+    res.status(403).json({ error: "FORBIDDEN", message: "Você não tem permissão para editar a especialização." });
+    return;
+  }
+
+  // Membros comuns só podem editar o próprio perfil (nome de usuário).
+  if (!isAdmin && !isSupervisor && !isSelf) {
+    res.status(403).json({ error: "FORBIDDEN", message: "Você não tem permissão para editar este usuário." });
     return;
   }
 
@@ -189,6 +212,20 @@ router.patch("/users/:id", requireAuth, requireOrganization, requireRole("ADMIN"
         return;
       }
       updates.email = normalizedEmail;
+    }
+    if (username !== undefined) {
+      const result = validateAndNormalizeUsername(username);
+      if (!result.ok) {
+        res.status(400).json({ error: "BAD_REQUEST", message: result.message });
+        return;
+      }
+      // Username é único globalmente (é usado como login).
+      const existing = await db.query.usersTable.findFirst({ where: eq(usersTable.username, result.username) });
+      if (existing && existing.id !== id) {
+        res.status(409).json({ error: "CONFLICT", message: "Este nome de usuário já está em uso." });
+        return;
+      }
+      updates.username = result.username;
     }
     if (specialization !== undefined) {
       updates.specialization = specialization ?? null;

@@ -32,6 +32,11 @@ O login (mobile + web-admin) usa `username` em vez de `email`. Email continua ex
 - `loginUser(username, password)` busca por `eq(usersTable.username, normalized)` (lowercase+trim).
 - Criação de usuário (`POST /users`) gera username único: busca conflitos com `like(username, base%)`, monta Set, resolve.
 
+## Edição do username (usuário ou admin)
+- `validateAndNormalizeUsername(input)` em `lib/db/src/username.ts`: normaliza igual à geração + valida tamanho (3–30) e retorna `{ok,username}` ou `{ok:false,message}`. Não usa o fallback "usuario".
+- `PATCH /users/:id` aceita `username`: self **ou** admin podem editar (nome/email/birthDate continuam admin-only; specialization admin/supervisor). Unicidade é **global** (username é o login), conflito → 409.
+- UI: web-admin dialog de edição (admin) + mobile `app/(tabs)/index.tsx` (modal de auto-edição). `UserUpdate` no openapi ganhou `username` — regenerar orval.
+
 ## Credenciais demo (após backfill)
 - Admin: `cris.fontana` / Teste@123 — Supervisor: `rafael.torres` / Teste@123.
 - Seed simples (myasa.demo): `admin.demo`, `supervisor.demo`, `membro.01..05` / myasa123.

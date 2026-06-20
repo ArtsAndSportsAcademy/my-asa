@@ -37,3 +37,58 @@ export function resolveUniqueUsername(base: string, taken: Set<string>): string 
 export function generateUniqueUsername(name: string, taken: Set<string>): string {
   return resolveUniqueUsername(normalizeUsernameBase(name), taken);
 }
+
+/** Limites de tamanho para um username escolhido pelo usuário. */
+export const USERNAME_MIN_LENGTH = 3;
+export const USERNAME_MAX_LENGTH = 30;
+
+/**
+ * Valida e normaliza um username escolhido manualmente (pelo usuário ou admin).
+ *
+ * Aplica a mesma normalização da geração automática (minúsculas, sem acentos,
+ * espaços viram ponto, apenas letras/números/ponto) e valida o tamanho.
+ * Retorna o username normalizado em caso de sucesso, ou uma mensagem de erro
+ * clara em caso de formato inválido.
+ */
+export function validateAndNormalizeUsername(
+  input: unknown,
+): { ok: true; username: string } | { ok: false; message: string } {
+  if (typeof input !== "string" || !input.trim()) {
+    return { ok: false, message: "O nome de usuário é obrigatório." };
+  }
+
+  // Aplica a normalização sem o fallback "usuario", para conseguir detectar
+  // entradas que não contêm nenhum caractere válido.
+  const username = input
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s.]/g, "")
+    .replace(/\s+/g, ".")
+    .replace(/\.+/g, ".")
+    .replace(/^\.+|\.+$/g, "");
+
+  if (!username || !/[a-z0-9]/.test(username)) {
+    return {
+      ok: false,
+      message: "Use apenas letras, números e pontos (ex.: lucas.fernandes).",
+    };
+  }
+
+  if (username.length < USERNAME_MIN_LENGTH) {
+    return {
+      ok: false,
+      message: `O nome de usuário deve ter pelo menos ${USERNAME_MIN_LENGTH} caracteres.`,
+    };
+  }
+
+  if (username.length > USERNAME_MAX_LENGTH) {
+    return {
+      ok: false,
+      message: `O nome de usuário deve ter no máximo ${USERNAME_MAX_LENGTH} caracteres.`,
+    };
+  }
+
+  return { ok: true, username };
+}

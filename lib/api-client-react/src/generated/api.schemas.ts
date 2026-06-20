@@ -193,6 +193,8 @@ export const UserUpdateSpecialization = {
 export interface UserUpdate {
   name?: string;
   email?: string;
+  /** Nome de usuário (login). Normalizado: minusculas, sem acentos, espacos viram ponto, apenas letras/numeros/ponto. */
+  username?: string;
   specialization?: UserUpdateSpecialization;
 }
 

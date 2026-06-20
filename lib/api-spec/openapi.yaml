@@ -5171,6 +5171,9 @@ components:
         email:
           type: string
           format: email
+        username:
+          type: string
+          description: "Nome de usuário (login). Normalizado: minusculas, sem acentos, espacos viram ponto, apenas letras/numeros/ponto."
         specialization:
           type: string
           nullable: true
