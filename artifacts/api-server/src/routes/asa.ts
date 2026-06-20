@@ -585,6 +585,7 @@ Quando o usuário citar VÁRIOS membros numa mesma frase (separados por vírgula
 4. Para nomes ambíguos ou não encontrados: NÃO trave a operação inteira. Liste-os no resumo, prossiga com os que foram resolvidos e pergunte separadamente sobre os pendentes.
 5. RELATAR: após executar, repasse o resultado item a item — quantos deram certo e quais falharam (com o motivo). As ferramentas de lote continuam mesmo quando um item falha.
 6. Para 1 só membro, continue usando as ferramentas individuais normais.
+7. DESFAZER: se o usuário pedir para desfazer/cancelar/reverter o que você acabou de criar em massa ("desfaz isso", "cancela o que você acabou de criar", "reverte o último lote"), use a ferramenta desfazer_lote. Pegue do resultado do último lote o campo "tipo" e os IDs dos itens que tiveram ok=true (itens[].id). Resuma o que será desfeito e PEÇA CONFIRMAÇÃO antes de chamar. Ela reverte item a item e continua mesmo se algum falhar (relate por item depois).
 
 ⸻
 
@@ -1638,6 +1639,22 @@ const ASA_TOOLS: Tool[] = [
       },
     },
   },
+  {
+    name: "desfazer_lote",
+    description: "Desfaz (cancela/remove) os itens criados na ÚLTIMA execução em lote. Use quando o usuário pedir para desfazer, cancelar ou reverter o que você acabou de criar em massa (ex: 'desfaz isso', 'cancela o que você acabou de criar', 'reverte o último lote'). Pegue do resultado do último lote o campo 'tipo' e os IDs dos itens com sucesso (itens[].id onde ok=true). SEMPRE resuma o que será desfeito e peça confirmação antes de chamar. Reusa os cancelamentos individuais item a item e continua mesmo se um item falhar.",
+    input_schema: {
+      type: "object" as const,
+      required: ["tipo", "ids"],
+      properties: {
+        tipo: { type: "string", description: "Tipo do lote a desfazer (campo 'tipo' devolvido pela ferramenta de lote): tarefas | ausencias | reconhecimentos | entradas_escala | participantes_evento" },
+        ids:  {
+          type: "array",
+          description: "IDs dos itens criados no lote (itens[].id, apenas os que tiveram ok=true)",
+          items: { type: "string" },
+        },
+      },
+    },
+  },
   // ── Edição de entidades por conversa ────────────────────────────────────────
   {
     name: "editar_tarefa",
@@ -2001,6 +2018,73 @@ async function coreCriarEntradaEscala(
     : null;
 
   return { id: entry!.id, scaleId: scale.id, scaleName: scale.title, warning };
+}
+
+// ── Cores de cancelamento / remoção (reusados por single + desfazer_lote) ───────
+
+async function coreCancelarTarefa(
+  ctx: ToolCtx,
+  taskId: string,
+  acao: string = "CANCELAR",
+): Promise<{ id: string; novoStatus: string; title: string }> {
+  if (!ctx.organizationId) throw new Error("Organização não configurada");
+  const novoStatus = acao.toUpperCase() === "CONCLUIR" ? "COMPLETED" : "CANCELLED";
+  const [existing] = await db
+    .select({ id: tasksTable.id, status: tasksTable.status, title: tasksTable.title })
+    .from(tasksTable)
+    .where(and(eq(tasksTable.id, taskId), eq(tasksTable.organizationId, ctx.organizationId)))
+    .limit(1);
+  if (!existing) throw new Error("Tarefa não encontrada");
+  if (existing.status === "CANCELLED" || existing.status === "COMPLETED")
+    throw new Error(`Tarefa já está no status ${existing.status}`);
+  await db.update(tasksTable).set({ status: novoStatus as typeof existing.status, updatedAt: new Date() }).where(eq(tasksTable.id, taskId));
+  return { id: taskId, novoStatus, title: existing.title };
+}
+
+async function coreCancelarAusencia(
+  _ctx: ToolCtx,
+  folgaId: string,
+): Promise<{ id: string; startDate: string }> {
+  const [existing] = await db
+    .select({ id: folgasTable.id, status: folgasTable.status, startDate: folgasTable.startDate })
+    .from(folgasTable)
+    .where(eq(folgasTable.id, folgaId))
+    .limit(1);
+  if (!existing) throw new Error("Ausência não encontrada com esse ID");
+  if (existing.status === "CANCELLED") throw new Error("Esta ausência já está cancelada");
+  await db.update(folgasTable).set({ status: "CANCELLED", updatedAt: new Date() }).where(eq(folgasTable.id, folgaId));
+  return { id: folgaId, startDate: existing.startDate };
+}
+
+async function coreRemoverEntradaEscala(
+  _ctx: ToolCtx,
+  allocationId: string,
+): Promise<{ id: string; label: string }> {
+  const [existing] = await db
+    .select({ id: scaleAllocationsTable.id, status: scaleAllocationsTable.status, manualLabel: scaleAllocationsTable.manualLabel })
+    .from(scaleAllocationsTable)
+    .where(eq(scaleAllocationsTable.id, allocationId))
+    .limit(1);
+  if (!existing) throw new Error("Entrada de escala não encontrada");
+  if (existing.status !== "MANUAL_OVERRIDE")
+    throw new Error(`Apenas entradas manuais podem ser removidas via ASA. Esta entrada tem status "${existing.status}".`);
+  await db.delete(scaleAllocationsTable).where(eq(scaleAllocationsTable.id, allocationId));
+  return { id: allocationId, label: existing.manualLabel ?? allocationId };
+}
+
+async function coreRemoverReconhecimento(
+  ctx: ToolCtx,
+  recognitionId: string,
+): Promise<{ id: string; title: string }> {
+  if (!ctx.organizationId) throw new Error("Organização não configurada");
+  const [existing] = await db
+    .select({ id: recognitionsTable.id, title: recognitionsTable.title })
+    .from(recognitionsTable)
+    .where(and(eq(recognitionsTable.id, recognitionId), eq(recognitionsTable.organizationId, ctx.organizationId)))
+    .limit(1);
+  if (!existing) throw new Error("Reconhecimento não encontrado");
+  await db.delete(recognitionsTable).where(eq(recognitionsTable.id, recognitionId));
+  return { id: recognitionId, title: existing.title };
 }
 
 // ── Runner resiliente de lote ───────────────────────────────────────────────────
@@ -2802,35 +2886,33 @@ export async function executeTool(
     // ── Cancelamentos / Remoções ──────────────────────────────────────────────
     if (name === "cancelar_ausencia") {
       if (!isManager) return JSON.stringify({ error: "Apenas gestores podem cancelar ausências" });
-      const folgaId = input.folgaId as string;
-      const [existing] = await db.select({ id: folgasTable.id, status: folgasTable.status, userId: folgasTable.userId, type: folgasTable.type, startDate: folgasTable.startDate }).from(folgasTable).where(eq(folgasTable.id, folgaId)).limit(1);
-      if (!existing) return JSON.stringify({ success: false, message: "Ausência não encontrada com esse ID." });
-      if (existing.status === "CANCELLED") return JSON.stringify({ success: false, message: "Esta ausência já está cancelada." });
-      await db.update(folgasTable).set({ status: "CANCELLED", updatedAt: new Date() }).where(eq(folgasTable.id, folgaId));
-      return JSON.stringify({ success: true, message: `✅ Ausência de ${existing.startDate} cancelada com sucesso. O membro volta a estar disponível nessa data.`, id: folgaId });
+      try {
+        const r = await coreCancelarAusencia(ctx, input.folgaId as string);
+        return JSON.stringify({ success: true, message: `✅ Ausência de ${r.startDate} cancelada com sucesso. O membro volta a estar disponível nessa data.`, id: r.id });
+      } catch (err) {
+        return JSON.stringify({ success: false, message: err instanceof Error ? err.message : String(err) });
+      }
     }
 
     if (name === "cancelar_tarefa") {
       if (!isManager) return JSON.stringify({ error: "Apenas gestores podem cancelar tarefas" });
-      const taskId = input.taskId as string;
-      const acao   = ((input.acao as string | undefined) ?? "CANCELAR").toUpperCase();
-      const novoStatus = acao === "CONCLUIR" ? "COMPLETED" : "CANCELLED";
-      const [existing] = await db.select({ id: tasksTable.id, status: tasksTable.status, title: tasksTable.title, assigneeId: tasksTable.assigneeId }).from(tasksTable).where(and(eq(tasksTable.id, taskId), eq(tasksTable.organizationId, ctx.organizationId!))).limit(1);
-      if (!existing) return JSON.stringify({ success: false, message: "Tarefa não encontrada." });
-      if (existing.status === "CANCELLED" || existing.status === "COMPLETED") return JSON.stringify({ success: false, message: `Tarefa já está no status ${existing.status}.` });
-      await db.update(tasksTable).set({ status: novoStatus as typeof existing.status, updatedAt: new Date() }).where(eq(tasksTable.id, taskId));
-      const label = novoStatus === "COMPLETED" ? "concluída" : "cancelada";
-      return JSON.stringify({ success: true, message: `✅ Tarefa "${existing.title}" ${label} com sucesso.`, id: taskId, novoStatus });
+      try {
+        const r = await coreCancelarTarefa(ctx, input.taskId as string, (input.acao as string | undefined) ?? "CANCELAR");
+        const label = r.novoStatus === "COMPLETED" ? "concluída" : "cancelada";
+        return JSON.stringify({ success: true, message: `✅ Tarefa "${r.title}" ${label} com sucesso.`, id: r.id, novoStatus: r.novoStatus });
+      } catch (err) {
+        return JSON.stringify({ success: false, message: err instanceof Error ? err.message : String(err) });
+      }
     }
 
     if (name === "remover_entrada_escala") {
       if (!isManager) return JSON.stringify({ error: "Apenas gestores podem remover entradas da escala" });
-      const allocationId = input.allocationId as string;
-      const [existing] = await db.select({ id: scaleAllocationsTable.id, status: scaleAllocationsTable.status, manualLabel: scaleAllocationsTable.manualLabel, userId: scaleAllocationsTable.userId }).from(scaleAllocationsTable).where(eq(scaleAllocationsTable.id, allocationId)).limit(1);
-      if (!existing) return JSON.stringify({ success: false, message: "Entrada de escala não encontrada." });
-      if (existing.status !== "MANUAL_OVERRIDE") return JSON.stringify({ success: false, message: `Apenas entradas manuais podem ser removidas via ASA. Esta entrada tem status "${existing.status}". Para alterações em escalas publicadas, use o painel de escalas no web admin.` });
-      await db.delete(scaleAllocationsTable).where(eq(scaleAllocationsTable.id, allocationId));
-      return JSON.stringify({ success: true, message: `✅ Entrada manual "${existing.manualLabel ?? allocationId}" removida da escala com sucesso.`, id: allocationId });
+      try {
+        const r = await coreRemoverEntradaEscala(ctx, input.allocationId as string);
+        return JSON.stringify({ success: true, message: `✅ Entrada manual "${r.label}" removida da escala com sucesso.`, id: r.id });
+      } catch (err) {
+        return JSON.stringify({ success: false, message: err instanceof Error ? err.message : String(err) });
+      }
     }
 
     // ── Publicação ───────────────────────────────────────────────────────────
@@ -4676,6 +4758,39 @@ export async function executeTool(
         ...summary,
         message: `Evento "${event.title}" (${eventDate}):\n${summary.message}`,
       });
+    }
+
+    if (name === "desfazer_lote") {
+      if (!isManager) return JSON.stringify({ error: "Sem permissão para desfazer operações em lote" });
+      const tipoRaw = (input.tipo as string | undefined) ?? "";
+      const tipo = tipoRaw.toLowerCase().trim();
+      const ids = ((input.ids as unknown[] | undefined) ?? []).map((v) => String(v)).filter(Boolean);
+      if (ids.length === 0) return JSON.stringify({ error: "Nenhum ID informado para desfazer" });
+
+      const undoers: Record<string, (id: string) => Promise<{ id?: string }>> = {
+        tarefas:              (id) => coreCancelarTarefa(ctx, id),
+        tarefa:               (id) => coreCancelarTarefa(ctx, id),
+        ausencias:            (id) => coreCancelarAusencia(ctx, id),
+        ausencia:             (id) => coreCancelarAusencia(ctx, id),
+        reconhecimentos:      (id) => coreRemoverReconhecimento(ctx, id),
+        reconhecimento:       (id) => coreRemoverReconhecimento(ctx, id),
+        entradas_escala:      (id) => coreRemoverEntradaEscala(ctx, id),
+        entrada_escala:       (id) => coreRemoverEntradaEscala(ctx, id),
+        participantes_evento: (id) => coreRemoverEntradaEscala(ctx, id),
+        participante_evento:  (id) => coreRemoverEntradaEscala(ctx, id),
+      };
+      const undoer = undoers[tipo];
+      if (!undoer) return JSON.stringify({ error: `Tipo de lote desconhecido para desfazer: "${tipoRaw}". Use tarefas | ausencias | reconhecimentos | entradas_escala | participantes_evento.` });
+
+      const results = await runBatch(
+        ids,
+        (id) => id,
+        async (id) => {
+          const r = await undoer(id);
+          return { id: r.id };
+        },
+      );
+      return JSON.stringify({ batch: true, desfazer: true, tipo, ...summarizeBatch("item(ns) desfeito(s)", results) });
     }
 
     // ── Edição de entidades por conversa ──────────────────────────────────────

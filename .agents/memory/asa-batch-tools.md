@@ -21,3 +21,10 @@ e faça tanto a ferramenta single quanto a `_lote` chamarem o mesmo core. Não d
 - Participantes de evento não têm tabela dedicada: reusa `coreCriarEntradaEscala` passando `agendaEventId`
   (precisa de uma escala ativa cobrindo a data do evento).
 - O system prompt exige resumo + confirmação explícita antes de chamar qualquer ferramenta `_lote`.
+- **Desfazer lote** (`desfazer_lote`): a Asa "lembra" os IDs porque o resultado do lote (`tipo` + `itens[].id`)
+  fica no histórico da conversa (persistido em `aiMessages`); não há estado server-side. O modelo passa `tipo`+`ids`
+  de volta. O handler reusa cores de cancelamento (`coreCancelarTarefa`/`coreCancelarAusencia`/`coreRemoverEntradaEscala`/
+  `coreRemoverReconhecimento`) via `runBatch` (continua em falha). Mesma regra dos cores de criação: cancelamentos
+  single E o desfazer chamam o mesmo core — não duplicar lógica de validação/delete.
+- Reconhecimento não tem "cancelar" — desfazer = DELETE da linha em `recognitionsTable`. Entrada de escala só remove
+  se status `MANUAL_OVERRIDE` (lotes criam com esse status, então OK).
