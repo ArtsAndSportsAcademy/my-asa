@@ -1,0 +1,176 @@
+
+
+
+
+⸻
+
+AUTONOMIA CRIATIVA DA SIMULAÇÃO
+
+A simulação não deve se limitar apenas às situações descritas.
+
+A IA possui liberdade para criar novos acontecimentos sempre que isso ajudar a demonstrar melhor o funcionamento do My ASA.
+
+A IA pode criar:
+
+* novos eventos;
+* novos ensaios;
+* treinamentos;
+* apresentações especiais;
+* eventos de hotéis;
+* workshops;
+* reuniões;
+* mudanças operacionais;
+* problemas técnicos;
+* novas necessidades da empresa.
+
+A simulação deve parecer viva e dinâmica.
+
+⸻
+
+EVENTOS ESPECIAIS
+
+Ao longo dos 30 dias, podem surgir:
+
+* feriados;
+* alta temporada;
+* baixa temporada;
+* eventos corporativos;
+* visitas importantes;
+* apresentações extras;
+* eventos beneficentes;
+* festivais;
+* treinamentos obrigatórios;
+* semanas temáticas.
+
+Esses eventos podem gerar mudanças operacionais.
+
+⸻
+
+GESTÃO DE SAÚDE E BEM-ESTAR
+
+A IA pode identificar:
+
+* excesso de carga;
+* fadiga;
+* excesso de apresentações;
+* falta de descanso;
+* conflitos de horários;
+* necessidade de recuperação.
+
+A IA pode sugerir:
+
+* fisioterapia;
+* redução de carga;
+* folgas;
+* redistribuição de atividades;
+* acompanhamento.
+
+⸻
+
+DESENVOLVIMENTO DOS MEMBROS
+
+A IA pode identificar talentos e oportunidades.
+
+Exemplos:
+
+* membro apto para liderança;
+* membro apto para treinamento;
+* membro apto para coberturas;
+* membro apto para novos papéis;
+* membro com potencial de crescimento.
+
+A IA pode sugerir:
+
+* treinamentos;
+* aulas;
+* mentorias;
+* experiências em outras operações.
+
+⸻
+
+COMUNICAÇÃO INTERNA
+
+A IA pode criar:
+
+* avisos operacionais;
+* lembretes;
+* resumos do dia;
+* resumos semanais;
+* mensagens motivacionais;
+* alertas importantes;
+* comunicados administrativos.
+
+⸻
+
+RESUMO DIÁRIO AUTOMÁTICO
+
+Todos os dias às 07:00 a ASA IA deve gerar:
+
+* situação operacional;
+* cobertura das operações;
+* folgas do dia;
+* riscos identificados;
+* eventos importantes;
+* pendências;
+* alertas.
+
+Todos os dias às 17:30 a ASA IA deve gerar:
+
+* resumo do dia;
+* problemas ocorridos;
+* decisões tomadas;
+* alterações realizadas;
+* aprendizados registrados.
+
+⸻
+
+APRENDIZADOS DA IA
+
+A IA deve construir uma biblioteca interna de aprendizados.
+
+Exemplos:
+
+* Amanda cobre bem o Musical.
+* Lucas possui facilidade em hotéis.
+* Rafael apresenta boa liderança.
+* O Show da Água possui maior risco de cobertura.
+* Segunda-feira apresenta maior índice de faltas.
+
+Esses aprendizados devem influenciar sugestões futuras.
+
+⸻
+
+CENÁRIOS COMPLEXOS
+
+Ao longo do mês devem ocorrer situações mais difíceis, como:
+
+* múltiplos afastamentos;
+* problemas climáticos;
+* mudanças de última hora;
+* lesões;
+* conflitos de agenda;
+* eventos simultâneos;
+* falta de cobertura;
+* indisponibilidade de espaços;
+* atrasos;
+* problemas técnicos.
+
+A IA deve auxiliar na resolução.
+
+⸻
+
+OBJETIVO FINAL DA SIMULAÇÃO
+
+A simulação deve fazer com que qualquer pessoa consiga visualizar:
+
+* como funciona o My ASA;
+* como os supervisores trabalham;
+* como os membros utilizam o sistema;
+* como a administração acompanha as operações;
+* como a ASA IA auxilia a equipe.
+
+A demonstração deve transmitir a sensação de que o aplicativo já está em funcionamento há vários meses.
+
+Se necessário, a IA pode criar novos problemas, novos eventos, novos processos e novas oportunidades para demonstrar melhor o potencial do sistema.
+
+Quanto mais rica, realista e dinâmica for a operação, melhor será a simulação.
