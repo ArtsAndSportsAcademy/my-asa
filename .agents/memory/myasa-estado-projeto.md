@@ -28,7 +28,30 @@ description: Resumo do que foi construído por sprint no projeto MyASA 2.0
 - Mobile: AsaAvatar substituiu 🐦 no header, no estado vazio e nas bolhas de mensagem (Image 30x30)
 - Mobile: TOOL_LABELS + consultar_biblioteca adicionado
 
-## Próximos itens mapeados (Sprint 02C+)
-- Painel de memórias no web-admin (aprovação/rejeição de pendentes)
+### ASA-SPRINT-04 — Vida, Reconhecimento e Conversas Inteligentes
+- DB: recognitions table criada; asaUserPreferencesTable estendido (goodMorningTime, goodNightTime, messageFrequency, proactivityLevel)
+- assembleResumoDodia() recebe 4º param userRole (default "MEMBER"); retorna avatarState + milestones
+- Milestone detection via users.createdAt: marcos de 3m, 6m, 1a, 2a...
+- Operational suggestions (gestores): membros de folga com tarefas pendentes → emoji 💡
+- avatarState: comemoracao > atencao > sugestao > bomdia/boanoite/feliz
+- 3 novas tools: consultar_reconhecimentos, criar_reconhecimento, detectar_marcos
+- REST endpoints: GET/POST /api/asa/recognitions
+- AsaAvatar.tsx: prop state com badge emoji overlay (7 estados)
+- historico-asa.tsx: nova tela com tabs Reconhecimentos/Memórias
+- mais.tsx: Histórico ASA na seção Inteligência
+
+## Notas importantes
+
+### GET /api/asa/memories
+Retorna array direto (NÃO `{ memories: [] }`). Filtrar por status via query param `?status=APPROVED`.
+
+### assembleResumoDodia signature
+```typescript
+assembleResumoDodia(userId, organizationId, operationId, userRole?)
+```
+Chamado em 2 lugares: tool handler (ctx.userRole) + REST endpoint (user.role).
+
+## Próximos itens mapeados
+- Web-admin: UI de reconhecimentos (listar/criar)
+- Web-admin: UI de preferências avançadas (goodMorningTime, goodNightTime, messageFrequency, proactivityLevel)
 - Proatividade: morning/evening greeting via cron + push notifications
-- Resumo do Dia: infraestrutura preparada no system prompt (bom dia / boa noite)

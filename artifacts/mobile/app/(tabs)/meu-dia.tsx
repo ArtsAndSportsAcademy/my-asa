@@ -520,6 +520,8 @@ type ResumoDodia = {
   clima: { temp: number; description: string; emoji: string } | null;
   birthdaysToday: string[];
   mode: string;
+  avatarState?: "feliz" | "duvida" | "comemoracao" | "atencao" | "sugestao" | "boanoite" | "bomdia";
+  milestones?: { name: string; label: string }[];
 };
 
 export default function MeuDiaScreen() {
@@ -728,7 +730,7 @@ export default function MeuDiaScreen() {
                 >
                   {/* Topo: avatar + saudação */}
                   <View style={styles.asaGreetingRow}>
-                    <AsaAvatar size="medium" />
+                    <AsaAvatar size="medium" state={resumo?.avatarState} />
                     <View style={styles.asaGreetingText}>
                       <Text style={[styles.asaGreetingTitle, { color: colors.foreground }]}>
                         {displayGreeting} {displayEmoji}{firstName ? `, ${firstName}!` : "!"}

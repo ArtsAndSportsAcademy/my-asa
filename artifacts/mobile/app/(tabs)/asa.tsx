@@ -56,12 +56,17 @@ const TOOL_LABELS: Record<string, string> = {
   consultar_aniversarios:      "🎉 Consultando aniversários",
   consultar_clima:             "🌤️ Consultando clima",
   sugerir_memoria:             "💡 Sugerindo memória",
+  consultar_reconhecimentos:   "🏆 Consultando reconhecimentos",
+  criar_reconhecimento:        "🎖️ Criando reconhecimento",
+  detectar_marcos:             "⭐ Detectando marcos",
 };
 
 const SUGGESTIONS = [
   "Quem está de folga hoje?",
   "Adicionar [nome] na escala amanhã.",
   "Criar tarefa para [nome] até sexta.",
+  "Detectar marcos da equipe hoje.",
+  "Quem faz aniversário essa semana?",
 ];
 
 // ─── Message Bubble ────────────────────────────────────────────────────────────

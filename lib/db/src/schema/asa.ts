@@ -75,6 +75,10 @@ export const asaUserPreferencesTable = pgTable("asa_user_preferences", {
   reminders: boolean("reminders").notNull().default(true),
   birthdayAlerts: boolean("birthday_alerts").notNull().default(true),
   notificationsEnabled: boolean("notifications_enabled").notNull().default(true),
+  goodMorningTime: text("good_morning_time").default("07:00"),
+  goodNightTime: text("good_night_time").default("22:00"),
+  messageFrequency: text("message_frequency").default("DAILY"),
+  proactivityLevel: text("proactivity_level").default("MEDIUM"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -106,3 +110,22 @@ export const asaAuditLogTable = pgTable("asa_audit_log", {
 });
 
 export type AsaAuditLog = typeof asaAuditLogTable.$inferSelect;
+
+// ────────────────────────────────────────────────────────────────────────────
+// Recognitions
+// ────────────────────────────────────────────────────────────────────────────
+
+export const recognitionsTable = pgTable("recognitions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id"),
+  userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  type: text("type").notNull(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  createdBy: uuid("created_by").references(() => usersTable.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type Recognition = typeof recognitionsTable.$inferSelect;

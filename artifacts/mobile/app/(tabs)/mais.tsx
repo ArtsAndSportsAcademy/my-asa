@@ -55,6 +55,7 @@ const SECTIONS: { title: string; items: SectionItem[] }[] = [
     title: "Inteligência",
     items: [
       { label: "ASA", subtitle: "Assistente operacional inteligente", icon: "cpu", route: "/(tabs)/asa" },
+      { label: "Histórico ASA", subtitle: "Reconhecimentos e memórias registradas", icon: "award", route: "/(tabs)/historico-asa" },
     ],
   },
   {

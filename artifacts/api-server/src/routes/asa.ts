@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, and, desc, gte, lte, ne, ilike, or, sql } from "drizzle-orm";
+import { eq, and, desc, gte, lte, ne, ilike, or, sql, inArray } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   conversations,
@@ -7,6 +7,7 @@ import {
   asaMemoriesTable,
   asaUserPreferencesTable,
   asaAuditLogTable,
+  recognitionsTable,
   usersTable,
   userRolesTable,
   agendaEventsTable,
@@ -45,11 +46,14 @@ async function assembleResumoDodia(
   userId: string,
   organizationId: string | null,
   operationId: string | null,
+  userRole: string = "MEMBER",
 ): Promise<{
   greeting: string; greetingEmoji: string; firstName: string;
   items: { emoji: string; text: string }[];
   clima: { temp: number; description: string; emoji: string } | null;
   birthdaysToday: string[]; mode: string;
+  avatarState: "feliz" | "duvida" | "comemoracao" | "atencao" | "sugestao" | "boanoite" | "bomdia";
+  milestones: { name: string; label: string }[];
 }> {
   const today = new Date().toISOString().slice(0, 10);
   const hour  = new Date().getHours();
@@ -186,7 +190,86 @@ async function assembleResumoDodia(
     } catch { /* weather unavailable */ }
   }
 
-  return { greeting, greetingEmoji, firstName, items, clima, birthdaysToday, mode };
+  // Milestones — time at company (anniversaries)
+  const milestones: { name: string; label: string }[] = [];
+  if (organizationId) {
+    const isManagerRole = MANAGER_ROLES.includes(userRole);
+    const orgUsersForMilestones = isManagerRole
+      ? await db.select({ id: usersTable.id, name: usersTable.name, createdAt: usersTable.createdAt })
+          .from(usersTable)
+          .where(and(eq(usersTable.organizationId, organizationId), ne(usersTable.id, userId)))
+          .limit(50)
+      : await db.select({ id: usersTable.id, name: usersTable.name, createdAt: usersTable.createdAt })
+          .from(usersTable)
+          .where(and(eq(usersTable.id, userId), eq(usersTable.organizationId, organizationId)))
+          .limit(1);
+
+    const todayDate = new Date();
+    for (const u of orgUsersForMilestones) {
+      const created = new Date(u.createdAt);
+      if (created.getDate() !== todayDate.getDate() || created.getMonth() !== todayDate.getMonth()) continue;
+      const years = todayDate.getFullYear() - created.getFullYear();
+      const totalMonths = years * 12 + (todayDate.getMonth() - created.getMonth());
+      const fn = u.name.split(" ")[0]!;
+      if (years >= 1 && years <= 10) {
+        const label = `${years} ano${years > 1 ? "s" : ""} na ASA`;
+        milestones.push({ name: fn, label });
+        items.push({ emoji: "🎖️", text: `${fn} completa ${label} hoje!` });
+      } else if (totalMonths === 3 || totalMonths === 6) {
+        const label = `${totalMonths} meses na ASA`;
+        milestones.push({ name: fn, label });
+        items.push({ emoji: "⭐", text: `${fn} completa ${label} hoje!` });
+      }
+    }
+  }
+
+  // Operational suggestions for managers — users on folga with pending tasks
+  if (MANAGER_ROLES.includes(userRole) && organizationId) {
+    const todayFolgas = await db
+      .select({ userId: folgasTable.userId, userName: usersTable.name })
+      .from(folgasTable)
+      .leftJoin(usersTable, eq(folgasTable.userId, usersTable.id))
+      .where(and(
+        eq(folgasTable.organizationId, organizationId),
+        eq(folgasTable.status, "ACTIVE"),
+        lte(folgasTable.startDate, today),
+        gte(folgasTable.endDate, today),
+      ))
+      .limit(10);
+
+    for (const f of todayFolgas) {
+      if (!f.userId || f.userId === userId) continue;
+      const pendingTasks = await db
+        .select({ id: tasksTable.id })
+        .from(tasksTable)
+        .where(and(
+          eq(tasksTable.assigneeId, f.userId),
+          eq(tasksTable.organizationId, organizationId),
+          inArray(tasksTable.status, ["CREATED", "IN_PROGRESS", "CHANGES_REQUESTED"]),
+        ))
+        .limit(3);
+      if (pendingTasks.length > 0) {
+        const fn = f.userName?.split(" ")[0] ?? "Membro";
+        items.push({ emoji: "💡", text: `${fn} está de folga com ${pendingTasks.length} tarefa${pendingTasks.length > 1 ? "s" : ""} pendente${pendingTasks.length > 1 ? "s" : ""}` });
+      }
+    }
+  }
+
+  // Determine avatar state
+  let avatarState: "feliz" | "duvida" | "comemoracao" | "atencao" | "sugestao" | "boanoite" | "bomdia" = "feliz";
+  if (birthdaysToday.length > 0 || milestones.length > 0) {
+    avatarState = "comemoracao";
+  } else if (items.some(i => i.emoji === "⚠️")) {
+    avatarState = "atencao";
+  } else if (items.some(i => i.emoji === "💡")) {
+    avatarState = "sugestao";
+  } else if (hour < 12) {
+    avatarState = "bomdia";
+  } else if (hour >= 18) {
+    avatarState = "boanoite";
+  }
+
+  return { greeting, greetingEmoji, firstName, items, clima, birthdaysToday, mode, avatarState, milestones };
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -223,13 +306,15 @@ ${isManager
 📚 Pesquisar documentos na biblioteca (regulamentos, manuais, procedimentos)
 ✍️ Criar entradas na escala, tarefas, rascunhos de aviso e ensaio
 ☀️ Gerar resumo personalizado do dia (escala, tarefas, ausências, aniversários, clima)
-🎉 Consultar aniversários registrados nas memórias da organização
+🎉 Consultar aniversários e detectar marcos de tempo de casa (3 meses, 6 meses, 1 ano…)
+🏆 Criar e consultar reconhecimentos personalizados para membros da equipe
 🌤️ Consultar o clima atual e dar recomendações (agasalho, guarda-chuva, hidratação)
 🧠 Aprender com a equipe e sugerir memórias para aprovação`
   : `📅 Consultar informações relevantes ao meu papel
 📚 Pesquisar documentos na biblioteca
 ☀️ Gerar resumo do dia (escala, tarefas, ausências, clima)
 🎉 Consultar aniversários da equipe
+🏆 Consultar reconhecimentos da organização
 🌤️ Verificar o clima e dar recomendações
 🧠 Sugerir aprendizados para aprovação`}
 
@@ -243,9 +328,11 @@ Comportamento proativo:
 - Quando alguém diz "bom dia", "boa tarde" ou "boa noite" → SEMPRE chamo gerar_resumo_do_dia automaticamente para personalizar minha saudação com dados reais
 - Quando alguém pergunta sobre roupa, agasalho, chuva, temperatura → chamo consultar_clima
 - Em datas comemorativas ou quando alguém mencionar aniversário → chamo consultar_aniversarios
+- Quando o resumo retornar milestones (marcos de tempo de casa) → menciono e sugiro criar_reconhecimento
+- Quando um membro é mencionado por uma conquista → pergunto se quer criar um reconhecimento para ele
 
 Fluxo obrigatório para ações com membros (${isManager ? "gestor" : "não aplicável"}):
-1. SEMPRE uso consultar_membros para resolver o nome antes de criar_entrada_escala ou criar_tarefa
+1. SEMPRE uso consultar_membros para resolver o nome antes de criar_entrada_escala, criar_tarefa ou criar_reconhecimento
 2. Se houver ambiguidade → pergunto: "Eu encontrei dois Arthurs. Qual você quer dizer?"
 3. Se o membro estiver de folga → aviso e peço confirmação antes de continuar
 4. Após confirmar tudo → pergunto: "Posso criar isso?" antes de executar
@@ -254,6 +341,8 @@ Exemplos de como respondo:
 - "Adicionar Arthur no ensaio" → busco Arthur → confirmo qual → verifico folga → "Posso adicionar Arthur Alcorte no ensaio de amanhã às 19h?"
 - "Criar tarefa para Amanda" → busco Amanda → "Posso criar a tarefa para Amanda até sexta?"
 - "Como funciona a troca de folga?" → consulto a biblioteca → "Encontrei no regulamento: ..."
+- "Quem faz aniversário de casa hoje?" → chamo detectar_marcos → reporto marcos encontrados
+- "Criar reconhecimento para João" → busco João → "Posso criar o reconhecimento '1 ano na ASA' para João?"
 
 Regras que nunca quebro:
 1. Para sugestões importantes: 📋 Conclusão → 📊 Dados → 🧠 Motivos → 🔄 Alternativas → ⚠️ Riscos
@@ -496,6 +585,41 @@ const ASA_TOOLS: Tool[] = [
         assigneeName:{ type: "string", description: "Nome do responsável (para confirmação)" },
         dueDate:     { type: "string", description: "Prazo (YYYY-MM-DD)" },
         priority:    { type: "string", description: "Prioridade: LOW, MEDIUM, HIGH, CRITICAL (padrão: MEDIUM)" },
+      },
+    },
+  },
+  {
+    name: "consultar_reconhecimentos",
+    description: "Consulta reconhecimentos criados para membros da organização. Mostra histórico de celebrações, marcos e conquistas registradas pela ASA.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        userId: { type: "string", description: "ID do usuário (opcional, para filtrar por membro)" },
+        limit:  { type: "number", description: "Máximo de resultados (padrão: 10)" },
+      },
+    },
+  },
+  {
+    name: "criar_reconhecimento",
+    description: "Cria um reconhecimento personalizado para um membro da equipe (tempo de casa, aniversário, conquista, excelência). Use consultar_membros primeiro. Sempre confirme com o usuário antes de executar.",
+    input_schema: {
+      type: "object" as const,
+      required: ["userId", "type", "title", "message"],
+      properties: {
+        userId:  { type: "string", description: "ID do membro a ser reconhecido (obtido via consultar_membros)" },
+        type:    { type: "string", description: "Tipo: BIRTHDAY, ONE_YEAR, TWO_YEARS, SIX_MONTHS, THREE_MONTHS, TASK_COMPLETED, CUSTOM" },
+        title:   { type: "string", description: "Título do reconhecimento (ex: '1 ano na ASA! 🎉')" },
+        message: { type: "string", description: "Mensagem personalizada e calorosa de reconhecimento" },
+      },
+    },
+  },
+  {
+    name: "detectar_marcos",
+    description: "Detecta marcos dos membros da organização hoje: tempo de casa (3 meses, 6 meses, 1 ano, 2 anos...). Útil para identificar quem deve ser reconhecido.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        type: { type: "string", description: "Tipo de marco: TIME_OF_HOUSE ou ALL (padrão: ALL)" },
       },
     },
   },
@@ -1071,9 +1195,80 @@ async function executeTool(
       });
     }
 
+    // ── consultar_reconhecimentos ─────────────────────────────────────────────
+    if (name === "consultar_reconhecimentos") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const limit = (input.limit as number | undefined) ?? 10;
+      const conditions: ReturnType<typeof eq>[] = [eq(recognitionsTable.organizationId, ctx.organizationId)];
+      if (input.userId) conditions.push(eq(recognitionsTable.userId, input.userId as string));
+      const recs = await db
+        .select()
+        .from(recognitionsTable)
+        .where(and(...conditions))
+        .orderBy(desc(recognitionsTable.createdAt))
+        .limit(limit);
+      if (recs.length === 0) return JSON.stringify({ total: 0, message: "Nenhum reconhecimento registrado ainda.", reconhecimentos: [] });
+      return JSON.stringify({ total: recs.length, reconhecimentos: recs });
+    }
+
+    // ── criar_reconhecimento ──────────────────────────────────────────────────
+    if (name === "criar_reconhecimento") {
+      if (!isManager) return JSON.stringify({ error: "Sem permissão para criar reconhecimentos" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const recUserId = input.userId as string;
+      const recType   = input.type    as string;
+      const recTitle  = input.title   as string;
+      const recMsg    = input.message as string;
+      if (!recUserId || !recType || !recTitle || !recMsg)
+        return JSON.stringify({ error: "userId, type, title e message são obrigatórios" });
+      const [rec] = await db.insert(recognitionsTable).values({
+        organizationId: ctx.organizationId,
+        userId:         recUserId,
+        type:           recType,
+        title:          recTitle,
+        message:        recMsg,
+        createdBy:      ctx.userId,
+        publishedAt:    new Date(),
+      }).returning();
+      return JSON.stringify({
+        created: true,
+        id: rec.id,
+        message: `🎉 Reconhecimento "${recTitle}" criado com sucesso!`,
+      });
+    }
+
+    // ── detectar_marcos ───────────────────────────────────────────────────────
+    if (name === "detectar_marcos") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const todayDate = new Date();
+      const orgUsers = await db
+        .select({ id: usersTable.id, name: usersTable.name, createdAt: usersTable.createdAt })
+        .from(usersTable)
+        .where(eq(usersTable.organizationId, ctx.organizationId))
+        .limit(100);
+      const marcos: { userId: string; name: string; type: string; label: string }[] = [];
+      for (const u of orgUsers) {
+        const created = new Date(u.createdAt);
+        if (created.getDate() !== todayDate.getDate() || created.getMonth() !== todayDate.getMonth()) continue;
+        const years = todayDate.getFullYear() - created.getFullYear();
+        const totalMonths = years * 12 + (todayDate.getMonth() - created.getMonth());
+        if (years >= 1 && years <= 10) {
+          marcos.push({ userId: u.id, name: u.name, type: "TIME_OF_HOUSE", label: `${years} ano${years > 1 ? "s" : ""} na ASA` });
+        } else if (totalMonths === 3 || totalMonths === 6) {
+          marcos.push({ userId: u.id, name: u.name, type: "TIME_OF_HOUSE", label: `${totalMonths} meses na ASA` });
+        }
+      }
+      if (marcos.length === 0) return JSON.stringify({ total: 0, message: "Nenhum marco especial hoje.", marcos: [] });
+      return JSON.stringify({
+        total: marcos.length,
+        message: `${marcos.length} marco(s) detectado(s) hoje! Considere criar um reconhecimento para cada um.`,
+        marcos,
+      });
+    }
+
     // ── gerar_resumo_do_dia ───────────────────────────────────────────────────
     if (name === "gerar_resumo_do_dia") {
-      const resumo = await assembleResumoDodia(ctx.userId, ctx.organizationId ?? null, ctx.operationId ?? null);
+      const resumo = await assembleResumoDodia(ctx.userId, ctx.organizationId ?? null, ctx.operationId ?? null, ctx.userRole);
       return JSON.stringify(resumo);
     }
 
@@ -1468,6 +1663,10 @@ router.patch("/asa/preferences", requireAuth, async (req, res): Promise<void> =>
     reminders?: boolean;
     birthdayAlerts?: boolean;
     notificationsEnabled?: boolean;
+    goodMorningTime?: string;
+    goodNightTime?: string;
+    messageFrequency?: "DAILY" | "WEEKLY" | "REALTIME";
+    proactivityLevel?: "LOW" | "MEDIUM" | "HIGH";
   };
 
   const [existing] = await db
@@ -1509,8 +1708,57 @@ router.get("/asa/resumo-do-dia", requireAuth, requireOrganization, async (req, r
       .limit(1);
     operationId = op?.id ?? null;
   }
-  const resumo = await assembleResumoDodia(user.sub, user.organizationId ?? null, operationId);
+  const resumo = await assembleResumoDodia(user.sub, user.organizationId ?? null, operationId, user.role);
   res.json(resumo);
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// Recognitions REST Endpoints
+// ────────────────────────────────────────────────────────────────────────────
+
+router.get("/asa/recognitions", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  const user = req.user!;
+  const limit = parseInt(String(req.query.limit ?? "50"));
+  const userId = req.query.userId as string | undefined;
+
+  const conditions: ReturnType<typeof eq>[] = [eq(recognitionsTable.organizationId, user.organizationId!)];
+  if (userId) conditions.push(eq(recognitionsTable.userId, userId));
+
+  const recs = await db
+    .select()
+    .from(recognitionsTable)
+    .where(and(...conditions))
+    .orderBy(desc(recognitionsTable.createdAt))
+    .limit(limit);
+
+  res.json({ recognitions: recs });
+});
+
+router.post("/asa/recognitions", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  const user = req.user!;
+
+  if (!MANAGER_ROLES.includes(user.role)) {
+    res.status(403).json({ error: "Apenas gestores podem criar reconhecimentos" });
+    return;
+  }
+
+  const { userId, type, title, message } = req.body as { userId: string; type: string; title: string; message: string };
+  if (!userId || !type || !title || !message) {
+    res.status(400).json({ error: "BAD_REQUEST", message: "userId, type, title e message são obrigatórios" });
+    return;
+  }
+
+  const [rec] = await db.insert(recognitionsTable).values({
+    organizationId: user.organizationId!,
+    userId,
+    type,
+    title,
+    message,
+    createdBy: user.sub,
+    publishedAt: new Date(),
+  }).returning();
+
+  res.status(201).json({ recognition: rec });
 });
 
 // ────────────────────────────────────────────────────────────────────────────
