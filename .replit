@@ -49,5 +49,3 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.production]
-RESET_PROD_DB = "1"
-BOOTSTRAP_ADMIN_PASSWORD = "MYASA2026"
