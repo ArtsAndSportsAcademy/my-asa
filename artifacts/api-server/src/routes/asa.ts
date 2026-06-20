@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, and, desc, gte, lte, ne, ilike, or } from "drizzle-orm";
+import { eq, and, desc, gte, lte, ne, ilike, or, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   conversations,
@@ -117,9 +117,30 @@ async function assembleResumoDodia(
     if (others.length > 3) items.push({ emoji: "🌴", text: `+${others.length - 3} outros de folga` });
   }
 
-  // Birthday memories
+  // Birthdays — 1) from usersTable.birthDate (DB), 2) from memories (backward compat)
   const birthdaysToday: string[] = [];
   if (organizationId && (prefs?.birthdayAlerts ?? true)) {
+    const month = parseInt(today.slice(5, 7));
+    const day   = parseInt(today.slice(8, 10));
+
+    // Primary: query users with birthDate matching today's month+day
+    const dbBirthdays = await db
+      .select({ name: usersTable.name })
+      .from(usersTable)
+      .where(and(
+        eq(usersTable.organizationId, organizationId),
+        sql`${usersTable.birthDate} IS NOT NULL`,
+        sql`EXTRACT(MONTH FROM ${usersTable.birthDate}) = ${month}`,
+        sql`EXTRACT(DAY FROM ${usersTable.birthDate}) = ${day}`,
+      ));
+
+    for (const u of dbBirthdays) {
+      const firstName = u.name.split(" ")[0]!;
+      birthdaysToday.push(firstName);
+      items.push({ emoji: "🎉", text: `${firstName} faz aniversário hoje!` });
+    }
+
+    // Fallback: memories with birthday pattern (for orgs that taught ASA manually)
     const todayMD = `${today.slice(8, 10)}/${today.slice(5, 7)}`; // DD/MM
     const memories = await db
       .select({ key: asaMemoriesTable.key, value: asaMemoriesTable.value })
@@ -137,8 +158,11 @@ async function assembleResumoDodia(
         if (m.value.trim().startsWith(todayMD)) {
           const match = m.key.match(/(?:de\s+|:\s*)(.+?)(?:\s*$)/i);
           const name  = match?.[1]?.trim() ?? m.key;
-          birthdaysToday.push(name);
-          items.push({ emoji: "🎉", text: `${name} faz aniversário hoje!` });
+          // Skip if already detected from DB to avoid duplicates
+          if (!birthdaysToday.some(n => n.toLowerCase() === name.toLowerCase())) {
+            birthdaysToday.push(name);
+            items.push({ emoji: "🎉", text: `${name} faz aniversário hoje!` });
+          }
         }
       }
     }

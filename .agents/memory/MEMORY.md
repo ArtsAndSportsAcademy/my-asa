@@ -1,4 +1,4 @@
-- [MyASA 2.0 — Estado do Projeto](myasa-estado-projeto.md) — PILOT-NAV-FOLGAS-FIX-01 concluído; módulo Folgas completo (DB+API+web-admin+mobile+Meu Dia+ASA tools)
+- [MyASA 2.0 — Estado do Projeto](myasa-estado-projeto.md) — birthDate implementado (DB+API+web-admin+ASA resumo-do-dia); Folgas completo; ASA-SPRINT-03 concluído
 - [LOG_DOMAIN extension pattern](log-domain-pattern.md) — ao criar nova rota, adicionar entrada no LOG_DOMAIN de lib/shared/src/constants.ts antes de usar requestLogger
 - [YAML plain scalar colon bug](yaml-colon-bug.md) — summary com ": " em YAML não-quoted quebra orval silenciosamente
 - [Express params cast pattern](express-params-cast.md) — req.params.id tipado como string|string[] no Express; sempre usar `const id = req.params.id as string`

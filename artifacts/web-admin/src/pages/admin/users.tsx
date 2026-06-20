@@ -60,8 +60,8 @@ export default function UsersPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
 
-  const [createForm, setCreateForm] = useState({ name: "", email: "", password: "", specialization: "" });
-  const [editForm, setEditForm] = useState({ name: "", email: "", specialization: "" });
+  const [createForm, setCreateForm] = useState({ name: "", email: "", password: "", specialization: "", birthDate: "" });
+  const [editForm, setEditForm] = useState({ name: "", email: "", specialization: "", birthDate: "" });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
 
@@ -83,13 +83,14 @@ export default function UsersPage() {
           email: email.trim(),
           password,
           specialization: (specialization || undefined) as any,
+          birthDate: (createForm.birthDate || null) as any,
         },
       },
       {
         onSuccess: () => {
           toast({ title: "Usuário criado com sucesso" });
           setCreateOpen(false);
-          setCreateForm({ name: "", email: "", password: "", specialization: "" });
+          setCreateForm({ name: "", email: "", password: "", specialization: "", birthDate: "" });
           invalidate();
         },
         onError: (err: any) => {
@@ -102,8 +103,7 @@ export default function UsersPage() {
 
   const handleEdit = () => {
     if (!editUser) return;
-    const { name, email, specialization } = editForm;
-    if (!name.trim() && !email.trim() && specialization === (editUser.specialization ?? "")) return;
+    const { name, email, specialization, birthDate } = editForm;
     updateMutation.mutate(
       {
         id: editUser.id,
@@ -111,6 +111,7 @@ export default function UsersPage() {
           name: name.trim() || undefined,
           email: email.trim() || undefined,
           specialization: (specialization || null) as any,
+          birthDate: (birthDate || null) as any,
         },
       },
       {
@@ -150,6 +151,7 @@ export default function UsersPage() {
       name: user.name,
       email: user.email,
       specialization: user.specialization ?? "",
+      birthDate: (user as any).birthDate ?? "",
     });
   };
 
@@ -320,6 +322,14 @@ export default function UsersPage() {
                 ))}
               </select>
             </div>
+            <div className="space-y-2">
+              <Label>Data de nascimento <span className="text-muted-foreground text-xs">(opcional — para alertas de aniversário)</span></Label>
+              <Input
+                type="date"
+                value={createForm.birthDate}
+                onChange={(e) => setCreateForm((f) => ({ ...f, birthDate: e.target.value }))}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
@@ -363,6 +373,14 @@ export default function UsersPage() {
                   <option key={s} value={s}>{SPECIALIZATION_LABELS[s]}</option>
                 ))}
               </select>
+            </div>
+            <div className="space-y-2">
+              <Label>Data de nascimento <span className="text-muted-foreground text-xs">(opcional — para alertas de aniversário)</span></Label>
+              <Input
+                type="date"
+                value={editForm.birthDate}
+                onChange={(e) => setEditForm((f) => ({ ...f, birthDate: e.target.value }))}
+              />
             </div>
           </div>
           <DialogFooter>

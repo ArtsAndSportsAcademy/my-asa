@@ -89,7 +89,7 @@ router.get("/users/:id", requireAuth, requireOrganization, async (req, res) => {
 
 router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
   const log = requestLogger("teams", req.requestId, req.correlationId);
-  const { name, email, password, specialization } = req.body;
+  const { name, email, password, specialization, birthDate } = req.body;
 
   if (!name?.trim() || !email?.trim() || !password) {
     res.status(400).json({ error: "BAD_REQUEST", message: "name, email e password são obrigatórios" });
@@ -122,6 +122,7 @@ router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), as
         passwordHash,
         status: "ACTIVE",
         specialization: specialization ?? null,
+        birthDate: (birthDate as string | undefined) ?? null,
       })
       .returning();
 
@@ -143,7 +144,7 @@ router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), as
 router.patch("/users/:id", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
   const log = requestLogger("teams", req.requestId, req.correlationId);
   const id = req.params.id as string;
-  const { name, email, specialization } = req.body;
+  const { name, email, specialization, birthDate } = req.body;
 
   const VALID_SPECIALIZATIONS = ["PERFORMER", "PROFESSOR", "TRAINER", "PHYSIOTHERAPIST", "STRENGTH_COACH", "TECHNICAL_OPERATOR", "OTHER"];
   if (specialization !== undefined && specialization !== null && !VALID_SPECIALIZATIONS.includes(specialization)) {
@@ -173,6 +174,9 @@ router.patch("/users/:id", requireAuth, requireOrganization, requireRole("ADMIN"
     }
     if (specialization !== undefined) {
       updates.specialization = specialization ?? null;
+    }
+    if (birthDate !== undefined) {
+      updates.birthDate = (birthDate as string | null) || null;
     }
 
     const [updated] = await db

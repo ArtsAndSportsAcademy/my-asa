@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, pgEnum, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -46,6 +46,7 @@ export const usersTable = pgTable("users", {
   photoUrl: text("photo_url"),
   status: userStatusEnum("status").notNull().default("ACTIVE"),
   specialization: text("specialization").$type<UserSpecialization | null>(),
+  birthDate: date("birth_date", { mode: "string" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
