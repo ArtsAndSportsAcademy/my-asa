@@ -14,18 +14,21 @@ import {
   useListAgendaEvents,
   useListShowBooks,
   useListFolgas,
+  useListUsers,
   getListScalesQueryKey,
   getListScaleAllocationsQueryKey,
   getListScaleExceptionsQueryKey,
   getListAgendaEventsQueryKey,
   getListShowBooksQueryKey,
   getListFolgasQueryKey,
+  getListUsersQueryKey,
 } from "@workspace/api-client-react";
 import type {
   ScaleSummary,
   ScaleAllocationWithCandidates,
   AllocationException,
   AgendaEvent,
+  User as UserModel,
 } from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
@@ -116,8 +119,8 @@ export default function ScalesPage() {
   const [selectedScale, setSelectedScale] = useState<ScaleSummary | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
-  // ── Candidate panel ────────────────────────────────────────────────────────
-  const [openSlotAlloc, setOpenSlotAlloc] = useState<ScaleAllocationWithCandidates | null>(null);
+  // ── Candidate panel (any allocation, not just open slots) ─────────────────
+  const [selectedAlloc, setSelectedAlloc] = useState<ScaleAllocationWithCandidates | null>(null);
 
   // ── Dialogs ────────────────────────────────────────────────────────────────
   const [showGenerate, setShowGenerate] = useState(false);
@@ -157,6 +160,10 @@ export default function ScalesPage() {
     query: { queryKey: getListShowBooksQueryKey(showBooksParams), enabled: !!operationId && showGenerate },
   });
 
+  const { data: usersData } = useListUsers({
+    query: { queryKey: getListUsersQueryKey(), enabled: !!operationId },
+  });
+
   const folgasEnabled = !!operationId && !!selectedDay;
   const folgasParams = {
     operationId,
@@ -191,7 +198,7 @@ export default function ScalesPage() {
   function pickScale(scale: ScaleSummary) {
     setSelectedScale(scale);
     setSelectedDay(scale.periodStart);
-    setOpenSlotAlloc(null);
+    setSelectedAlloc(null);
   }
 
   async function handleGenerate() {
@@ -254,31 +261,31 @@ export default function ScalesPage() {
   }
 
   async function handleAssignCandidate(candidate: { userId: string; userName?: string | null }) {
-    if (!selectedScale?.id || !openSlotAlloc?.id) return;
+    if (!selectedScale?.id || !selectedAlloc?.id) return;
     try {
       await overrideMut.mutateAsync({
         id: selectedScale.id,
-        allocationId: openSlotAlloc.id,
+        allocationId: selectedAlloc.id,
         data: { userId: candidate.userId, reason: "Selecionado via painel de candidatos" },
       });
       toast({ title: `${candidate.userName ?? "Membro"} alocado com sucesso` });
       invalidateAllocations();
-      setOpenSlotAlloc(null);
+      setSelectedAlloc(null);
     } catch { toast({ title: "Erro ao alocar", variant: "destructive" }); }
   }
 
   async function handleManualOverride() {
-    if (!selectedScale?.id || !openSlotAlloc?.id || !overrideForm.userId || !overrideForm.reason) return;
+    if (!selectedScale?.id || !selectedAlloc?.id || !overrideForm.userId || !overrideForm.reason) return;
     try {
       await overrideMut.mutateAsync({
         id: selectedScale.id,
-        allocationId: openSlotAlloc.id,
+        allocationId: selectedAlloc.id,
         data: { userId: overrideForm.userId, reason: overrideForm.reason, notes: overrideForm.notes || undefined },
       });
       toast({ title: "Override aplicado" });
       invalidateAllocations();
       setShowOverride(false);
-      setOpenSlotAlloc(null);
+      setSelectedAlloc(null);
       setOverrideForm({ userId: "", reason: "", notes: "" });
     } catch { toast({ title: "Erro no override", variant: "destructive" }); }
   }
@@ -301,18 +308,13 @@ export default function ScalesPage() {
     [folgasData]
   );
 
-  // All unique members across ALL events in this scale (columns of the matrix)
-  const members = useMemo(() => {
-    const seen = new Set<string>();
-    const result: { userId: string; userName: string }[] = [];
-    for (const a of allocations) {
-      if (a.userId && !seen.has(a.userId)) {
-        seen.add(a.userId);
-        result.push({ userId: a.userId, userName: a.userName ?? a.userId.slice(0, 8) });
-      }
-    }
-    return result.sort((a, b) => a.userName.localeCompare(b.userName, "pt-BR"));
-  }, [allocations]);
+  // ALL members of the operation — columns of the matrix (most cells will be empty)
+  const members = useMemo<{ userId: string; userName: string }[]>(() => {
+    return (usersData?.users ?? [])
+      .filter((u: UserModel) => u.status !== "INACTIVE")
+      .map((u: UserModel) => ({ userId: u.id, userName: u.name }))
+      .sort((a, b) => a.userName.localeCompare(b.userName, "pt-BR"));
+  }, [usersData]);
 
   // Cell lookup: eventId → userId → allocation
   const allocByEvent = useMemo(() => {
@@ -352,6 +354,32 @@ export default function ScalesPage() {
     }
     return days;
   }, [allEventIds, eventsData, selectedScale]);
+
+  // Per-day health aggregation: "ok" | "risk" | "exception" (not global scale counters)
+  type DayHealth = "ok" | "risk" | "exception";
+  const dayHealth = useMemo(() => {
+    const result = new Map<string, DayHealth>();
+    // Group scale eventIds by date
+    const eventsByDate = new Map<string, string[]>();
+    for (const eid of allEventIds) {
+      const ev = eventsData?.events?.find((e) => e.id === eid);
+      const date = ev?.date ?? selectedScale?.periodStart;
+      if (date) {
+        if (!eventsByDate.has(date)) eventsByDate.set(date, []);
+        eventsByDate.get(date)!.push(eid);
+      }
+    }
+    for (const [date, eids] of eventsByDate) {
+      const hasException = exceptions.some(
+        (ex) => !ex.resolvedAt && ex.agendaEventId && eids.includes(ex.agendaEventId)
+      );
+      const hasOpenSlots = eids.some((eid) => (openByEvent.get(eid)?.length ?? 0) > 0);
+      if (hasException) result.set(date, "exception");
+      else if (hasOpenSlots) result.set(date, "risk");
+      else result.set(date, "ok");
+    }
+    return result;
+  }, [allEventIds, eventsData, exceptions, openByEvent, selectedScale]);
 
   // Rows of the matrix for the selected day: one row per event, sorted by startTime
   const eventRows = useMemo(() => {
@@ -518,9 +546,7 @@ export default function ScalesPage() {
               {dayRange.map((day) => {
                 const isSelected = day === selectedDay;
                 const hasEvent = eventDays.has(day);
-                const hasIssues =
-                  isSelected &&
-                  (selectedScale.openCount > 0 || selectedScale.exceptionCount > 0);
+                const health = dayHealth.get(day);
                 const { wd, day: d } = fmtDayShort(day);
                 return (
                   <button
@@ -542,12 +568,11 @@ export default function ScalesPage() {
                           style={{ opacity: isSelected ? 0.7 : 0.5 }}
                         />
                       )}
-                      {hasIssues && (
-                        <div
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            isSelected ? "bg-amber-300" : "bg-amber-400"
-                          }`}
-                        />
+                      {health === "exception" && (
+                        <div className={`w-1.5 h-1.5 rounded-full ${isSelected ? "bg-red-300" : "bg-red-500"}`} />
+                      )}
+                      {health === "risk" && (
+                        <div className={`w-1.5 h-1.5 rounded-full ${isSelected ? "bg-amber-300" : "bg-amber-400"}`} />
                       )}
                     </div>
                   </button>
@@ -582,7 +607,7 @@ export default function ScalesPage() {
                 folgaUserIds={folgaUserIds}
                 unresolvedExceptions={unresolvedExceptions}
                 isSupervisor={isSupervisor}
-                onOpenSlotClick={(alloc) => setOpenSlotAlloc(alloc)}
+                onCellClick={(alloc) => setSelectedAlloc(alloc)}
                 onResolveException={handleResolveException}
                 resolvePending={resolveMut.isPending}
               />
@@ -668,19 +693,24 @@ export default function ScalesPage() {
       </Dialog>
 
       {/* ── Candidate Panel ── */}
-      <Sheet open={!!openSlotAlloc} onOpenChange={(open) => { if (!open) setOpenSlotAlloc(null); }}>
+      <Sheet open={!!selectedAlloc} onOpenChange={(open) => { if (!open) setSelectedAlloc(null); }}>
         <SheetContent className="w-[420px] sm:w-[480px] overflow-y-auto">
           <SheetHeader className="mb-4">
             <SheetTitle className="flex flex-col gap-1">
-              <span>Candidatos</span>
+              <span>
+                {selectedAlloc?.status === "OPEN" ? "Candidatos" : "Reatribuir / Override"}
+              </span>
               <span className="text-sm font-normal text-muted-foreground">
-                Posição: <strong>{openSlotAlloc?.positionName ?? "—"}</strong>
+                Posição: <strong>{selectedAlloc?.positionName ?? "—"}</strong>
+                {selectedAlloc?.userName && (
+                  <span> · atual: <em>{selectedAlloc.userName}</em></span>
+                )}
               </span>
             </SheetTitle>
           </SheetHeader>
-          {openSlotAlloc && (
+          {selectedAlloc && (
             <CandidateList
-              alloc={openSlotAlloc}
+              alloc={selectedAlloc}
               isSupervisor={isSupervisor}
               isArchived={selectedScale?.status === "ARCHIVED"}
               isPending={overrideMut.isPending}
@@ -699,7 +729,7 @@ export default function ScalesPage() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <p className="text-sm text-muted-foreground">
-              Posição: <strong>{openSlotAlloc?.positionName ?? "—"}</strong>
+              Posição: <strong>{selectedAlloc?.positionName ?? "—"}</strong>
             </p>
             <div className="space-y-1.5">
               <Label>ID do Membro *</Label>
@@ -794,7 +824,7 @@ interface ScaleGridProps {
   folgaUserIds: Set<string>;
   unresolvedExceptions: AllocationException[];
   isSupervisor: boolean;
-  onOpenSlotClick: (alloc: ScaleAllocationWithCandidates) => void;
+  onCellClick: (alloc: ScaleAllocationWithCandidates) => void;
   onResolveException: (id: string) => void;
   resolvePending: boolean;
 }
@@ -810,7 +840,7 @@ function ScaleGrid({
   folgaUserIds,
   unresolvedExceptions,
   isSupervisor,
-  onOpenSlotClick,
+  onCellClick,
   onResolveException,
   resolvePending,
 }: ScaleGridProps) {
@@ -974,6 +1004,8 @@ function ScaleGrid({
                           key={m.userId}
                           alloc={alloc}
                           hasFolga={hasFolga}
+                          isSupervisor={isSupervisor}
+                          onCellClick={alloc ? onCellClick : undefined}
                         />
                       );
                     })}
@@ -987,7 +1019,7 @@ function ScaleGrid({
                         {openSlots.map((slot) => (
                           <button
                             key={slot.id}
-                            onClick={() => onOpenSlotClick(slot)}
+                            onClick={() => onCellClick(slot)}
                             className="w-full text-left rounded-lg border-2 border-dashed border-red-300 bg-red-50 px-3 py-2 hover:bg-red-100 hover:border-red-400 transition-colors group"
                           >
                             <p className="text-xs font-semibold text-red-700 leading-snug">
@@ -1043,9 +1075,13 @@ function ScaleGrid({
 function GridCell({
   alloc,
   hasFolga,
+  isSupervisor,
+  onCellClick,
 }: {
   alloc: ScaleAllocationWithCandidates | null;
   hasFolga: boolean;
+  isSupervisor: boolean;
+  onCellClick?: (alloc: ScaleAllocationWithCandidates) => void;
 }) {
   // Determine background based on allocation status
   let bg = "bg-white";
@@ -1061,39 +1097,61 @@ function GridCell({
         ? "bg-purple-100 text-purple-800"
         : "bg-green-100 text-green-800";
 
+  const isClickable = !!alloc && isSupervisor && !!onCellClick;
+
+  const inner = alloc ? (
+    // Has allocation: show role badge + optional overlays
+    <div className="flex flex-col items-center gap-1 text-center w-full">
+      <span className={`text-xs font-medium px-1.5 py-0.5 rounded leading-tight ${badgeClass}`}>
+        {alloc.positionName ?? "—"}
+      </span>
+      <div className="flex items-center gap-1">
+        {alloc.status === "CONFLICT" && (
+          <AlertTriangle className="h-3 w-3 text-amber-500" />
+        )}
+        {alloc.status === "MANUAL_OVERRIDE" && (
+          <span className="text-[9px] text-purple-500">override</span>
+        )}
+        {/* Folga is an overlay — shows alongside the allocation state */}
+        {hasFolga && (
+          <span className="flex items-center gap-0.5 text-[9px] text-gray-400">
+            <Palmtree className="h-2.5 w-2.5" />
+          </span>
+        )}
+      </div>
+      {isClickable && (
+        <span className="text-[9px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+          editar
+        </span>
+      )}
+    </div>
+  ) : hasFolga ? (
+    // No allocation but on folga
+    <div className="flex flex-col items-center gap-1 text-gray-400">
+      <Palmtree className="h-4 w-4" />
+      <span className="text-[10px]">Folga</span>
+    </div>
+  ) : null;
+
+  if (isClickable) {
+    return (
+      <button
+        className={`border-r flex items-center justify-center px-2 py-5 shrink-0 group hover:brightness-95 transition-all cursor-pointer ${bg}`}
+        style={{ width: MEMBER_COL, minWidth: MEMBER_COL }}
+        onClick={() => onCellClick!(alloc!)}
+        title="Clique para reatribuir / override"
+      >
+        {inner}
+      </button>
+    );
+  }
+
   return (
     <div
       className={`border-r flex items-center justify-center px-2 py-5 shrink-0 ${bg}`}
       style={{ width: MEMBER_COL, minWidth: MEMBER_COL }}
     >
-      {alloc ? (
-        // Has allocation: show role badge + optional overlays
-        <div className="flex flex-col items-center gap-1 text-center">
-          <span className={`text-xs font-medium px-1.5 py-0.5 rounded leading-tight ${badgeClass}`}>
-            {alloc.positionName ?? "—"}
-          </span>
-          <div className="flex items-center gap-1">
-            {alloc.status === "CONFLICT" && (
-              <AlertTriangle className="h-3 w-3 text-amber-500" />
-            )}
-            {alloc.status === "MANUAL_OVERRIDE" && (
-              <span className="text-[9px] text-purple-500">override</span>
-            )}
-            {/* Folga is an overlay — shows alongside the allocation state */}
-            {hasFolga && (
-              <span className="flex items-center gap-0.5 text-[9px] text-gray-400">
-                <Palmtree className="h-2.5 w-2.5" />
-              </span>
-            )}
-          </div>
-        </div>
-      ) : hasFolga ? (
-        // No allocation but on folga
-        <div className="flex flex-col items-center gap-1 text-gray-400">
-          <Palmtree className="h-4 w-4" />
-          <span className="text-[10px]">Folga</span>
-        </div>
-      ) : null /* empty cell */}
+      {inner}
     </div>
   );
 }
