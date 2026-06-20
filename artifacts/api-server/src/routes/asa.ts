@@ -21,6 +21,8 @@ import {
   folgasTable,
   libraryDocumentsTable,
   organizationsTable,
+  messagesTable,
+  messageThreadsTable,
 } from "@workspace/db";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
@@ -362,6 +364,31 @@ Outras iniciativas proativas:
 • Quando um membro for elogiado → pergunte se quer criar um reconhecimento formal.
 
 Sempre respeite o modo de preferência: Silenciosa, Equilibrada ou Proativa.
+
+⸻
+
+Mensagens Inteligentes (Sprint 08)
+
+Você pode analisar mensagens de grupos e threads operacionais.
+
+Quando o usuário pedir para "analisar o grupo", "ver o que está acontecendo no chat" ou "resumir as mensagens":
+1. Chame analisar_conversa(sinceHours=48) para buscar mensagens recentes.
+2. Analise o conteúdo e identifique categorias: 📅 eventos, 🌴 ausências, 🔄 trocas, 📌 tarefas, 🎉 social, ⚠️ atenção.
+3. Para cada item detectado, apresente e sugira a ação correspondente — mas NUNCA execute sem confirmação.
+
+Para análises específicas:
+• "Tem algum ensaio mencionado?" → detectar_eventos
+• "Alguém vai faltar?" → detectar_ausencias
+• "Houve alguma troca?" → detectar_trocas
+• "Quais tarefas foram mencionadas?" → detectar_tarefas
+• "Resumo do grupo" → resumir_conversa
+• "O que é importante?" → destacar_itens
+
+Regras absolutas para mensagens:
+✗ Nunca cria/registra sem confirmação explícita do gestor.
+✗ Não monitora conversas privadas — apenas threads e grupos operacionais.
+✓ Sempre explica o que encontrou e por que é relevante.
+✓ Sempre confirma o nome do membro via consultar_membros antes de registrar qualquer ação.
 
 ⸻
 
@@ -801,6 +828,98 @@ const ASA_TOOLS: Tool[] = [
       type: "object" as const,
       properties: {
         type: { type: "string", description: "Tipo de marco: TIME_OF_HOUSE ou ALL (padrão: ALL)" },
+      },
+    },
+  },
+  // ── Sprint 08 — Mensagens Inteligentes ───────────────────────────────────────
+  {
+    name: "analisar_conversa",
+    description: "Busca as mensagens recentes de um grupo ou thread operacional e as retorna para análise. Use quando o usuário pedir para analisar um canal, grupo ou conversa. Após receber as mensagens, identifique ensaios, tarefas, ausências, trocas e outros eventos operacionais.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        threadId: { type: "string", description: "ID do thread de mensagens (opcional)" },
+        groupId:  { type: "string", description: "ID do grupo operacional (opcional)" },
+        limit:    { type: "number", description: "Número de mensagens a buscar (padrão: 30)" },
+        sinceHours: { type: "number", description: "Buscar mensagens das últimas N horas (padrão: 48)" },
+      },
+    },
+  },
+  {
+    name: "detectar_eventos",
+    description: "Analisa mensagens recentes e detecta menções a ensaios, reuniões ou eventos. Retorna as mensagens que contêm palavras-chave como 'ensaio', 'reunião', 'apresentação', horários e datas. Claude deve extrair: hora, data, tipo de evento e sugerir criar_ensaio_rascunho se confirmado.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        threadId:   { type: "string", description: "ID do thread (opcional)" },
+        groupId:    { type: "string", description: "ID do grupo (opcional)" },
+        limit:      { type: "number", description: "Mensagens a buscar (padrão: 50)" },
+        sinceHours: { type: "number", description: "Janela de tempo em horas (padrão: 72)" },
+      },
+    },
+  },
+  {
+    name: "detectar_tarefas",
+    description: "Analisa mensagens recentes e detecta menções a tarefas implícitas: 'X precisa fazer Y', 'X fica responsável por Y', 'alguém pode fazer Y'. Retorna mensagens com padrões de responsabilidade. Claude deve extrair: responsável, tarefa, prazo (se mencionado) e sugerir criação.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        threadId:   { type: "string", description: "ID do thread (opcional)" },
+        groupId:    { type: "string", description: "ID do grupo (opcional)" },
+        limit:      { type: "number", description: "Mensagens a buscar (padrão: 50)" },
+        sinceHours: { type: "number", description: "Janela de tempo em horas (padrão: 72)" },
+      },
+    },
+  },
+  {
+    name: "detectar_ausencias",
+    description: "Analisa mensagens recentes e detecta menções a ausências: 'X não vai vir', 'X vai faltar', 'X está afastado'. Retorna mensagens com padrões de ausência. Claude deve extrair: membro, data e sugerir registrar_ausencia se confirmado.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        threadId:   { type: "string", description: "ID do thread (opcional)" },
+        groupId:    { type: "string", description: "ID do grupo (opcional)" },
+        limit:      { type: "number", description: "Mensagens a buscar (padrão: 50)" },
+        sinceHours: { type: "number", description: "Janela de tempo em horas (padrão: 72)" },
+      },
+    },
+  },
+  {
+    name: "detectar_trocas",
+    description: "Analisa mensagens recentes e detecta menções a trocas de escala: 'X troca com Y', 'X e Y vão trocar'. Retorna mensagens com padrões de troca. Claude deve extrair: os dois membros, a data e sugerir criar_solicitacao_troca se confirmado.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        threadId:   { type: "string", description: "ID do thread (opcional)" },
+        groupId:    { type: "string", description: "ID do grupo (opcional)" },
+        limit:      { type: "number", description: "Mensagens a buscar (padrão: 50)" },
+        sinceHours: { type: "number", description: "Janela de tempo em horas (padrão: 72)" },
+      },
+    },
+  },
+  {
+    name: "resumir_conversa",
+    description: "Busca e estrutura as mensagens de um grupo/thread para gerar um resumo operacional. Claude deve produzir: total de mensagens, participantes, ensaios detectados, ausências, tarefas e trocas mencionadas.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        threadId:   { type: "string", description: "ID do thread (opcional)" },
+        groupId:    { type: "string", description: "ID do grupo (opcional)" },
+        limit:      { type: "number", description: "Mensagens a analisar (padrão: 50)" },
+        sinceHours: { type: "number", description: "Janela de tempo em horas (padrão: 48)" },
+      },
+    },
+  },
+  {
+    name: "destacar_itens",
+    description: "Analisa mensagens e destaca itens operacionais importantes categorizados: ensaios, ausências, trocas, tarefas, aniversários e mudanças operacionais. Retorna cada item com categoria, remetente, conteúdo e sugestão de ação.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        threadId:   { type: "string", description: "ID do thread (opcional)" },
+        groupId:    { type: "string", description: "ID do grupo (opcional)" },
+        limit:      { type: "number", description: "Mensagens a analisar (padrão: 50)" },
+        sinceHours: { type: "number", description: "Janela de tempo em horas (padrão: 72)" },
       },
     },
   },
@@ -1753,6 +1872,169 @@ async function executeTool(
       } catch {
         return JSON.stringify({ error: "Não foi possível consultar o clima agora." });
       }
+    }
+
+    // ── Sprint 08 shared helper ───────────────────────────────────────────────
+    const fetchMsgs = async (opts: { threadId?: string; groupId?: string; limit?: number; sinceHours?: number }) => {
+      const limit      = opts.limit ?? 30;
+      const sinceMs    = (opts.sinceHours ?? 48) * 3_600_000;
+      const since      = new Date(Date.now() - sinceMs);
+      const conditions: ReturnType<typeof eq>[] = [];
+      if (opts.threadId) conditions.push(eq(messagesTable.threadId, opts.threadId));
+      if (opts.groupId)  conditions.push(eq(messagesTable.groupId, opts.groupId));
+      // Scope to org via threads when no direct filter
+      if (!opts.threadId && !opts.groupId && ctx.organizationId) {
+        const orgThreadIds = await db
+          .select({ id: messageThreadsTable.id })
+          .from(messageThreadsTable)
+          .where(eq(messageThreadsTable.orgId, ctx.organizationId))
+          .limit(50);
+        if (orgThreadIds.length > 0) {
+          conditions.push(inArray(messagesTable.threadId, orgThreadIds.map(t => t.id)));
+        }
+      }
+      conditions.push(gte(messagesTable.createdAt, since));
+      return db
+        .select({
+          id:        messagesTable.id,
+          sender:    messagesTable.senderName,
+          content:   messagesTable.content,
+          createdAt: messagesTable.createdAt,
+          threadId:  messagesTable.threadId,
+          groupId:   messagesTable.groupId,
+        })
+        .from(messagesTable)
+        .where(conditions.length > 0 ? and(...conditions) : gte(messagesTable.createdAt, since))
+        .orderBy(desc(messagesTable.createdAt))
+        .limit(limit);
+    };
+
+    // ── analisar_conversa (Sprint 08) ─────────────────────────────────────────
+    if (name === "analisar_conversa") {
+      const msgs = await fetchMsgs({ threadId: input.threadId as string | undefined, groupId: input.groupId as string | undefined, limit: (input.limit as number | undefined) ?? 30, sinceHours: (input.sinceHours as number | undefined) ?? 48 });
+      if (msgs.length === 0) return JSON.stringify({ total: 0, message: "Nenhuma mensagem encontrada no período.", mensagens: [] });
+      const participantes = [...new Set(msgs.map(m => m.sender).filter(Boolean))];
+      return JSON.stringify({
+        total: msgs.length,
+        participantes,
+        message: `${msgs.length} mensagem(ns) encontrada(s) de ${participantes.length} participante(s). Analise o conteúdo abaixo.`,
+        mensagens: msgs.map(m => ({ remetente: m.sender ?? "—", conteudo: m.content, horario: m.createdAt })),
+      });
+    }
+
+    // ── detectar_eventos (Sprint 08) ──────────────────────────────────────────
+    if (name === "detectar_eventos") {
+      const msgs = await fetchMsgs({ threadId: input.threadId as string | undefined, groupId: input.groupId as string | undefined, limit: (input.limit as number | undefined) ?? 50, sinceHours: (input.sinceHours as number | undefined) ?? 72 });
+      const EVENTO_KW = /ensaio|reunião|reuniao|apresentação|apresentacao|show|treino|aula|sessão|sessao|\d{1,2}h|\d{1,2}:\d{2}|amanhã|amanha|segunda|terça|terca|quarta|quinta|sexta|sábado|sabado|domingo/i;
+      const filtered = msgs.filter(m => EVENTO_KW.test(m.content));
+      if (filtered.length === 0) return JSON.stringify({ total: 0, message: "Nenhuma menção a evento/ensaio encontrada nas mensagens.", eventos: [] });
+      return JSON.stringify({
+        total: filtered.length,
+        message: `${filtered.length} mensagem(ns) com possíveis eventos detectados. Extraia data, hora e tipo de cada um.`,
+        sugestao: "Se identificar um ensaio ou evento confirmado, use criar_ensaio_rascunho para criar um rascunho e peça confirmação.",
+        mensagens: filtered.map(m => ({ remetente: m.sender ?? "—", conteudo: m.content, horario: m.createdAt })),
+      });
+    }
+
+    // ── detectar_tarefas (Sprint 08) ──────────────────────────────────────────
+    if (name === "detectar_tarefas") {
+      const msgs = await fetchMsgs({ threadId: input.threadId as string | undefined, groupId: input.groupId as string | undefined, limit: (input.limit as number | undefined) ?? 50, sinceHours: (input.sinceHours as number | undefined) ?? 72 });
+      const TAREFA_KW = /precisa|fica responsável|fica responsavel|responsável por|responsavel por|entregar|terminar|concluir|fazer|criar|alguém pode|alguem pode|quem pode|prazo|até|ate|deadline/i;
+      const filtered = msgs.filter(m => TAREFA_KW.test(m.content));
+      if (filtered.length === 0) return JSON.stringify({ total: 0, message: "Nenhuma menção a tarefa encontrada nas mensagens.", tarefas: [] });
+      return JSON.stringify({
+        total: filtered.length,
+        message: `${filtered.length} mensagem(ns) com possíveis tarefas detectadas. Extraia responsável, descrição e prazo.`,
+        sugestao: "Para cada tarefa identificada, pergunte se deseja criar via criar_solicitacao_troca ou registrar como tarefa formal.",
+        mensagens: filtered.map(m => ({ remetente: m.sender ?? "—", conteudo: m.content, horario: m.createdAt })),
+      });
+    }
+
+    // ── detectar_ausencias (Sprint 08) ────────────────────────────────────────
+    if (name === "detectar_ausencias") {
+      const msgs = await fetchMsgs({ threadId: input.threadId as string | undefined, groupId: input.groupId as string | undefined, limit: (input.limit as number | undefined) ?? 50, sinceHours: (input.sinceHours as number | undefined) ?? 72 });
+      const AUSENCIA_KW = /não vai vir|nao vai vir|vai faltar|não virá|nao vira|não vem|nao vem|afastado|ausente|falta|não consegue|nao consegue|não pode|nao pode|está de folga|esta de folga|saiu|licença|licenca/i;
+      const filtered = msgs.filter(m => AUSENCIA_KW.test(m.content));
+      if (filtered.length === 0) return JSON.stringify({ total: 0, message: "Nenhuma menção a ausência encontrada nas mensagens.", ausencias: [] });
+      return JSON.stringify({
+        total: filtered.length,
+        message: `${filtered.length} mensagem(ns) com possíveis ausências detectadas. Identifique o membro e a data.`,
+        sugestao: "Para cada ausência identificada, resolva o nome via consultar_membros e pergunte se deseja registrar via registrar_ausencia.",
+        mensagens: filtered.map(m => ({ remetente: m.sender ?? "—", conteudo: m.content, horario: m.createdAt })),
+      });
+    }
+
+    // ── detectar_trocas (Sprint 08) ───────────────────────────────────────────
+    if (name === "detectar_trocas") {
+      const msgs = await fetchMsgs({ threadId: input.threadId as string | undefined, groupId: input.groupId as string | undefined, limit: (input.limit as number | undefined) ?? 50, sinceHours: (input.sinceHours as number | undefined) ?? 72 });
+      const TROCA_KW = /troca|trocar|cobrir|cobre|substitui|substituir|vai no lugar|no lugar de|cede|ceder/i;
+      const filtered = msgs.filter(m => TROCA_KW.test(m.content));
+      if (filtered.length === 0) return JSON.stringify({ total: 0, message: "Nenhuma menção a troca de escala encontrada.", trocas: [] });
+      return JSON.stringify({
+        total: filtered.length,
+        message: `${filtered.length} mensagem(ns) com possíveis trocas detectadas. Identifique os dois membros e a data.`,
+        sugestao: "Para cada troca identificada, resolva os nomes via consultar_membros e pergunte se deseja abrir via criar_solicitacao_troca.",
+        mensagens: filtered.map(m => ({ remetente: m.sender ?? "—", conteudo: m.content, horario: m.createdAt })),
+      });
+    }
+
+    // ── resumir_conversa (Sprint 08) ──────────────────────────────────────────
+    if (name === "resumir_conversa") {
+      const msgs = await fetchMsgs({ threadId: input.threadId as string | undefined, groupId: input.groupId as string | undefined, limit: (input.limit as number | undefined) ?? 50, sinceHours: (input.sinceHours as number | undefined) ?? 48 });
+      if (msgs.length === 0) return JSON.stringify({ total: 0, message: "Nenhuma mensagem encontrada para resumir.", mensagens: [] });
+      const participantes = [...new Set(msgs.map(m => m.sender).filter(Boolean))];
+      const oldest = msgs[msgs.length - 1]?.createdAt;
+      const newest = msgs[0]?.createdAt;
+      return JSON.stringify({
+        instrucao: "Gere um resumo operacional estruturado com: participantes, assuntos principais, decisões, ensaios/eventos mencionados, ausências, trocas e tarefas implícitas. Use emojis para categorias.",
+        total: msgs.length,
+        participantes,
+        periodo: { de: oldest, ate: newest },
+        message: `${msgs.length} mensagem(ns) de ${participantes.length} participante(s). Gere o resumo abaixo.`,
+        mensagens: msgs.map(m => ({ remetente: m.sender ?? "—", conteudo: m.content, horario: m.createdAt })),
+      });
+    }
+
+    // ── destacar_itens (Sprint 08) ────────────────────────────────────────────
+    if (name === "destacar_itens") {
+      const msgs = await fetchMsgs({ threadId: input.threadId as string | undefined, groupId: input.groupId as string | undefined, limit: (input.limit as number | undefined) ?? 50, sinceHours: (input.sinceHours as number | undefined) ?? 72 });
+      if (msgs.length === 0) return JSON.stringify({ total: 0, message: "Nenhuma mensagem encontrada.", itens: [] });
+
+      const KW_CATS = [
+        { cat: "📅 EVENTO",   re: /ensaio|reunião|reuniao|apresentação|apresentacao|show|\d{1,2}h|\d{1,2}:\d{2}/i },
+        { cat: "🌴 AUSÊNCIA", re: /faltar|não vai vir|nao vai vir|afastado|ausente|folga|não vem|nao vem/i },
+        { cat: "🔄 TROCA",    re: /troca|trocar|cobrir|cobre|substitui/i },
+        { cat: "📌 TAREFA",   re: /precisa|responsável|responsavel|entregar|terminar|fazer|prazo/i },
+        { cat: "🎉 SOCIAL",   re: /aniversário|aniversario|parabéns|parabens|feliz|conquista|marco/i },
+        { cat: "⚠️ ATENÇÃO",  re: /urgente|atenção|atencao|importante|crítico|critico|problema|erro/i },
+      ];
+
+      const itens: { categoria: string; remetente: string; conteudo: string; horario: unknown; sugestao: string }[] = [];
+      const SUGESTOES: Record<string, string> = {
+        "📅 EVENTO":   "Pergunte se deseja criar um evento ou ensaio via criar_ensaio_rascunho.",
+        "🌴 AUSÊNCIA": "Confirme o membro e a data, depois ofereça registrar_ausencia.",
+        "🔄 TROCA":    "Confirme os dois membros, depois ofereça criar_solicitacao_troca.",
+        "📌 TAREFA":   "Confirme responsável e prazo, depois ofereça criar uma tarefa formal.",
+        "🎉 SOCIAL":   "Considere criar um reconhecimento ou aviso comemorativo.",
+        "⚠️ ATENÇÃO":  "Destaque ao supervisor. Verifique se requer ação imediata.",
+      };
+
+      for (const m of msgs) {
+        for (const { cat, re } of KW_CATS) {
+          if (re.test(m.content)) {
+            itens.push({ categoria: cat, remetente: m.sender ?? "—", conteudo: m.content, horario: m.createdAt, sugestao: SUGESTOES[cat] ?? "" });
+            break;
+          }
+        }
+      }
+
+      if (itens.length === 0) return JSON.stringify({ total: 0, message: "Nenhum item operacional detectado nas mensagens.", itens: [] });
+      return JSON.stringify({
+        total: itens.length,
+        de_total: msgs.length,
+        message: `${itens.length} item(ns) relevante(s) de ${msgs.length} mensagem(ns). Apresente por categoria e sugira ações.`,
+        itens,
+      });
     }
 
     // ── detectar_conquistas (Sprint 07) ──────────────────────────────────────

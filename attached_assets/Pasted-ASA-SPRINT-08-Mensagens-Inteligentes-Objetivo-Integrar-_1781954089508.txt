@@ -1,0 +1,160 @@
+ASA-SPRINT-08 — Mensagens Inteligentes
+
+Objetivo
+
+Integrar a ASA ao módulo de Mensagens.
+
+A ASA passa a compreender conversas, identificar acontecimentos operacionais e sugerir ações.
+
+A pergunta desta sprint é:
+
+“O que a equipe está dizendo que a ASA pode ajudar?”
+
+━━━━━━━━━━━━━━━━━━
+MONITORAMENTO DE CONVERSAS
+━━━━━━━━━━━━━━━━━━
+
+A ASA pode analisar mensagens de:
+
+* grupos;
+* canais;
+* avisos;
+* conversas operacionais.
+
+Ela não monitora conversas privadas.
+
+Ela apenas analisa conversas às quais possui acesso institucional.
+
+━━━━━━━━━━━━━━━━━━
+DETECÇÃO DE EVENTOS
+━━━━━━━━━━━━━━━━━━
+
+Exemplos:
+
+“Amanhã teremos ensaio às 09h.”
+
+→ Detectei um possível ensaio.
+
+“Reunião às 14h.”
+
+→ Deseja criar um evento?
+
+━━━━━━━━━━━━━━━━━━
+DETECÇÃO DE AUSÊNCIAS
+━━━━━━━━━━━━━━━━━━
+
+“Arthur não virá amanhã.”
+
+→ Deseja registrar uma ausência?
+
+“Amanda ficará afastada.”
+
+→ Deseja registrar um período de ausência?
+
+━━━━━━━━━━━━━━━━━━
+DETECÇÃO DE TROCAS
+━━━━━━━━━━━━━━━━━━
+
+“Amanda troca com Carol.”
+
+→ Deseja abrir uma solicitação de troca?
+
+━━━━━━━━━━━━━━━━━━
+DETECÇÃO DE TAREFAS
+━━━━━━━━━━━━━━━━━━
+
+“Carol precisa terminar os figurinos.”
+
+→ Deseja criar uma tarefa?
+
+“Arthur precisa entregar o vídeo.”
+
+→ Deseja criar uma tarefa?
+
+━━━━━━━━━━━━━━━━━━
+RESUMO DE CONVERSAS
+━━━━━━━━━━━━━━━━━━
+
+A ASA pode gerar:
+
+📋 Resumo do grupo.
+
+• 1 ensaio identificado.
+• 2 tarefas detectadas.
+• 1 ausência mencionada.
+
+━━━━━━━━━━━━━━━━━━
+ITENS IMPORTANTES
+━━━━━━━━━━━━━━━━━━
+
+A ASA destaca:
+
+⚠️ mudanças operacionais
+
+📅 ensaios
+
+🌴 ausências
+
+📌 tarefas
+
+🎉 aniversários
+
+━━━━━━━━━━━━━━━━━━
+NOVAS TOOLS
+━━━━━━━━━━━━━━━━━━
+
+analisar_conversa
+
+detectar_eventos
+
+detectar_tarefas
+
+detectar_ausencias
+
+detectar_trocas
+
+resumir_conversa
+
+destacar_itens
+
+━━━━━━━━━━━━━━━━━━
+REGRAS
+━━━━━━━━━━━━━━━━━━
+
+A ASA:
+
+✗ não cria automaticamente.
+
+✗ não registra automaticamente.
+
+✗ não publica automaticamente.
+
+Sempre:
+
+✓ sugere.
+
+✓ explica.
+
+✓ pede confirmação.
+
+━━━━━━━━━━━━━━━━━━
+CRITÉRIO DE ACEITAÇÃO
+━━━━━━━━━━━━━━━━━━
+
+✓ detectar ensaios
+
+✓ detectar tarefas
+
+✓ detectar trocas
+
+✓ detectar ausências
+
+✓ resumir grupos
+
+✓ destacar informações importantes
+
+Resultado:
+
+A ASA deixa de apenas conversar.
+
+Ela passa a compreender as conversas da equipe.

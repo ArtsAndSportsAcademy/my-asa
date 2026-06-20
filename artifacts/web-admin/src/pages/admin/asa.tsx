@@ -49,6 +49,13 @@ const TOOL_LABELS: Record<string, string> = {
   consultar_marcos:               "⭐ Consultando marcos futuros",
   criar_reconhecimento_automatico:"🎖️ Criando reconhecimento automático",
   consultar_historico_membro:     "📋 Consultando histórico do membro",
+  analisar_conversa:              "💬 Analisando conversa",
+  detectar_eventos:               "📅 Detectando eventos",
+  detectar_tarefas:               "📌 Detectando tarefas",
+  detectar_ausencias:             "🌴 Detectando ausências",
+  detectar_trocas:                "🔄 Detectando trocas",
+  resumir_conversa:               "📋 Resumindo conversa",
+  destacar_itens:                 "⚠️ Destacando itens importantes",
 };
 
 // ─── Message bubble ────────────────────────────────────────────────────────────
