@@ -84,7 +84,8 @@ export default function SupervisorAvisosPage() {
   const { data: notices = [], isLoading, refetch, isFetching } = useListNotices(
     statusFilter ? { status: statusFilter } : undefined
   );
-  const { data: ops = [] } = useGetOperations({});
+  const { data: opsData } = useGetOperations();
+  const ops = opsData?.operations ?? [];
   const { data: detail, refetch: refetchDetail } = useGetNotice(selectedId ?? "", {
     query: { enabled: !!selectedId, queryKey: getGetNoticeQueryKey(selectedId ?? "") },
   });
