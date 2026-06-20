@@ -89,7 +89,7 @@ export default function SupervisorRestrictionsPage() {
     mutationFn: (data: typeof form) =>
       customFetch("/api/restrictions", { method: "POST", body: JSON.stringify(data) }),
     onSuccess: () => {
-      toast({ title: "Restrição criada" });
+      toast({ title: "Indisponibilidade registrada" });
       qc.invalidateQueries({ queryKey: ["restrictions"] });
       setShowNew(false);
       setForm({ userId: "", type: "HEALTH", periodStart: "", periodEnd: "", notes: "" });
@@ -104,7 +104,7 @@ export default function SupervisorRestrictionsPage() {
     mutationFn: ({ id, data }: { id: string; data: Partial<typeof editForm> }) =>
       customFetch(`/api/restrictions/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
     onSuccess: () => {
-      toast({ title: "Restrição atualizada" });
+      toast({ title: "Indisponibilidade atualizada" });
       qc.invalidateQueries({ queryKey: ["restrictions"] });
       setEditId(null);
     },
@@ -118,7 +118,7 @@ export default function SupervisorRestrictionsPage() {
     mutationFn: (id: string) =>
       customFetch(`/api/restrictions/${id}/encerrar`, { method: "POST" }),
     onSuccess: () => {
-      toast({ title: "Restrição encerrada" });
+      toast({ title: "Indisponibilidade encerrada" });
       qc.invalidateQueries({ queryKey: ["restrictions"] });
     },
     onError: (err: unknown) => {
@@ -136,11 +136,11 @@ export default function SupervisorRestrictionsPage() {
   };
 
   return (
-    <AdminLayout title="Restrições Operacionais" subtitle="Registre e gerencie impedimentos temporários de membros.">
+    <AdminLayout title="Indisponibilidades" subtitle="Registre e gerencie impedimentos temporários de membros da equipe.">
     <div className="max-w-4xl space-y-6">
       <div className="flex justify-end">
         <Button onClick={() => setShowNew(true)} className="gap-2">
-          <Plus className="w-4 h-4" /> Nova Restrição
+          <Plus className="w-4 h-4" /> Nova Indisponibilidade
         </Button>
       </div>
 
@@ -191,7 +191,7 @@ export default function SupervisorRestrictionsPage() {
 
       <Dialog open={showNew} onOpenChange={setShowNew}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Nova Restrição</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Nova Indisponibilidade</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <div>
               <Label>Membro</Label>
@@ -226,7 +226,7 @@ export default function SupervisorRestrictionsPage() {
               <Textarea rows={3} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Detalhes opcionais..." />
             </div>
             <Button className="w-full" onClick={() => createMutation.mutate(form)} disabled={!form.userId || !form.periodStart || !form.periodEnd || createMutation.isPending}>
-              {createMutation.isPending ? "Salvando..." : "Criar Restrição"}
+              {createMutation.isPending ? "Salvando..." : "Salvar"}
             </Button>
           </div>
         </DialogContent>
@@ -234,7 +234,7 @@ export default function SupervisorRestrictionsPage() {
 
       <Dialog open={!!editId} onOpenChange={() => setEditId(null)}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Editar Restrição</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Editar Indisponibilidade</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <div>
               <Label>Tipo</Label>

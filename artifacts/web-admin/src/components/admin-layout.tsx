@@ -41,7 +41,7 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/requests",                icon: FileText,        label: "Solicitações"                 },
       { href: "/admin/folgas",                  icon: Palmtree,        label: "Folgas"                       },
       { href: "/admin/tasks",                   icon: CheckSquare,     label: "Tarefas"                      },
-      { href: "/supervisor/restrictions",       icon: AlertTriangle,   label: "Restrições"                   },
+      { href: "/supervisor/restrictions",       icon: AlertTriangle,   label: "Indisponibilidades"            },
       { href: "/supervisor/check-ins",          icon: ClipboardCheck,  label: "Check-ins"                    },
       { href: "/supervisor/supervisor-requests",icon: ArrowLeftRight,  label: "Aprovações entre Supervisores"},
     ],
@@ -109,7 +109,7 @@ const SUPERVISOR_NAV: NavGroup[] = [
       { href: "/supervisor/tasks",             icon: CheckSquare,     label: "Tarefas"       },
       { href: "/admin/responsibilities",         icon: Users,            label: "Responsabilidades"    },
       { href: "/supervisor/delegations",        icon: ShieldCheck,      label: "Delegações"           },
-      { href: "/supervisor/restrictions",       icon: AlertTriangle,    label: "Restrições"           },
+      { href: "/supervisor/restrictions",       icon: AlertTriangle,    label: "Indisponibilidades"   },
       { href: "/supervisor/check-ins",          icon: ClipboardCheck,   label: "Check-ins"            },
       { href: "/supervisor/supervisor-requests",icon: ArrowLeftRight,   label: "Aprovações entre Supervisores"   },
     ],
@@ -242,13 +242,11 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
                 const Icon = item.icon;
                 const active = location === item.href;
                 return (
-                  <Link key={item.href} href={item.href}>
-                    <a className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                    }`}>
-                      <Icon className="w-4 h-4 shrink-0" />
-                      {item.label}
-                    </a>
+                  <Link key={item.href} href={item.href} className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}>
+                    <Icon className="w-4 h-4 shrink-0" />
+                    {item.label}
                   </Link>
                 );
               })}
@@ -267,13 +265,11 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
                   const Icon = item.icon;
                   const active = location === item.href;
                   return (
-                    <Link key={item.href} href={item.href}>
-                      <a className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                      }`}>
-                        <Icon className="w-4 h-4 shrink-0" />
-                        {item.label}
-                      </a>
+                    <Link key={item.href} href={item.href} className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    }`}>
+                      <Icon className="w-4 h-4 shrink-0" />
+                      {item.label}
                     </Link>
                   );
                 })}
@@ -292,15 +288,13 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
                   const Icon = item.icon;
                   const active = location === item.href;
                   return (
-                    <Link key={item.href} href={item.href}>
-                      <a className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        active
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                      }`}>
-                        <Icon className="w-4 h-4 shrink-0" />
-                        {item.label}
-                      </a>
+                    <Link key={item.href} href={item.href} className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      active
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    }`}>
+                      <Icon className="w-4 h-4 shrink-0" />
+                      {item.label}
                     </Link>
                   );
                 })}
@@ -342,8 +336,8 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
             <span className="text-sm font-medium">{title}</span>
           ) : (
             <>
-              <Link href="/admin/home">
-                <a className="text-muted-foreground hover:text-foreground text-sm">Início</a>
+              <Link href="/admin/home" className="text-muted-foreground hover:text-foreground text-sm">
+                Início
               </Link>
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm font-medium">{title}</span>
