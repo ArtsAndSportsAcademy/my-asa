@@ -12,6 +12,7 @@ import {
 } from "@workspace/api-client-react";
 import type { NoticeListItem, NoticeDetail, CreateNoticeRequest, UpdateNoticeRequest } from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -72,6 +73,10 @@ const TYPE_LABELS: Record<string, string> = {
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function AdminAvisosPage() {
+  const { roles: userRoles } = useAuth();
+  const isManager = userRoles.some(
+    (r) => r.role === "ADMIN" || r.role === "SUPERVISOR_A" || r.role === "SUPERVISOR_B"
+  );
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -196,9 +201,11 @@ export default function AdminAvisosPage() {
           <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isFetching ? "animate-spin" : ""}`} />
           Atualizar
         </Button>
-        <Button size="sm" onClick={() => setCreateOpen(true)}>
-          <Plus className="h-3.5 w-3.5 mr-1.5" /> Novo Aviso
-        </Button>
+        {isManager && (
+          <Button size="sm" onClick={() => setCreateOpen(true)}>
+            <Plus className="h-3.5 w-3.5 mr-1.5" /> Novo Aviso
+          </Button>
+        )}
       </div>
 
       {/* List */}
@@ -257,7 +264,7 @@ export default function AdminAvisosPage() {
                       )}
                     </div>
                   </div>
-                  <div className="flex gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <div className={`flex gap-1.5 shrink-0 ${isManager ? "" : "hidden"}`} onClick={(e) => e.stopPropagation()}>
                     {n.status === "DRAFT" && (
                       <Button size="sm" variant="outline" className="h-7 text-xs" onClick={(e) => openEdit(n.id, e)}>
                         <Pencil className="h-3 w-3 mr-1" /> Editar

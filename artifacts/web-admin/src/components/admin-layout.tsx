@@ -166,6 +166,57 @@ const SUPERVISOR_NAV: NavGroup[] = [
   },
 ];
 
+const MEMBER_NAV: NavGroup[] = [
+  {
+    label: "PAINEL",
+    items: [
+      { href: "/admin/home",    icon: Home,            label: "Início"   },
+      { href: "/admin/meu-dia", icon: LayoutDashboard, label: "Meu Dia"  },
+    ],
+  },
+  {
+    label: "OPERAÇÃO",
+    items: [
+      { href: "/membro/escala",       icon: ClipboardList, label: "Minha Escala"   },
+      { href: "/membro/livro-do-dia", icon: BookMarked,    label: "Livro do Dia"   },
+      { href: "/membro/tarefas",      icon: CheckSquare,   label: "Minhas Tarefas" },
+      { href: "/membro/entregas",     icon: Package,       label: "Minhas Entregas"},
+    ],
+  },
+  {
+    label: "AUTOSSERVIÇO",
+    items: [
+      { href: "/membro/solicitacoes", icon: FileText, label: "Solicitações" },
+    ],
+  },
+  {
+    label: "COMUNICAÇÃO",
+    items: [
+      { href: "/membro/avisos",    icon: Bell,          label: "Avisos"    },
+      { href: "/membro/mensagens", icon: MessageSquare, label: "Mensagens" },
+    ],
+  },
+  {
+    label: "CONHECIMENTO",
+    items: [
+      { href: "/membro/biblioteca", icon: Library,  label: "Biblioteca"    },
+      { href: "/admin/show-book",   icon: BookOpen, label: "Livro do Show" },
+    ],
+  },
+  {
+    label: "PLANEJAMENTO",
+    items: [
+      { href: "/admin/agenda", icon: CalendarDays, label: "Agenda" },
+    ],
+  },
+  {
+    label: "INTELIGÊNCIA",
+    items: [
+      { href: "/admin/asa", icon: Sparkles, label: "ASA" },
+    ],
+  },
+];
+
 // Responsabilidade → item de navegação para Capitão
 const RESP_TO_NAV: Record<string, NavItem> = {
   CHECK_INS:            { href: "/supervisor/check-ins",  icon: ClipboardCheck, label: "Check-ins"     },
@@ -266,7 +317,7 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
     ? ADMIN_NAV
     : isSupervisor
     ? SUPERVISOR_NAV
-    : [];
+    : MEMBER_NAV;
 
   const handleLogout = () => {
     const refreshToken = localStorage.getItem("myasa_refresh_token") || "";

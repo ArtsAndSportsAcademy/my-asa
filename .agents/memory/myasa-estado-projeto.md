@@ -45,7 +45,17 @@ description: Resumo do que foi construído por sprint no projeto MyASA 2.0
 - Hub de perfil (supervisor/equipe.tsx) é profile-aware: Performer/Elenco ("o que faço": message/task/folga/recognition/history) vs Especializado ("quem acompanha": message/task/recognition/delegation/history). `isSpecialist()` define o split; troca de view ao vivo via estado local `spec`
 - Especialização editável inline no hub (SpecializationEditor), persiste via useUpdateUser e invalida getListUsersQueryKey
 
+### WEB-ADMIN MEMBER-PARITY
+- MEMBER agora tem paridade no web-admin com o mobile: páginas próprias em `src/pages/membro/*` (escala, tarefas, entregas, mensagens, biblioteca, livro-do-dia, avisos, solicitacoes), montadas em rotas `/membro/*` (ProtectedRoute, auth-only).
+- `admin-layout.tsx`: MEMBER_NAV define a navegação do membro; capitães herdam MEMBER_NAV + seção Capitão.
+- Páginas de membro DEVEM usar hooks my-scoped (useGetMyTasks, useGetMyDeliveries, useGetMyNotices, useListMyAllocations, etc.), nunca os hooks globais de gestão.
+
 ## Notas importantes
+
+### Controle de acesso: páginas de gestão vs membro (decisão)
+Páginas de gestão (ex.: `/admin/avisos`) devem usar **RoleRoute** (ADMIN/SUPERVISOR_A/SUPERVISOR_B), nunca `ProtectedRoute` (auth-only).
+**Why:** com ProtectedRoute, um MEMBER podia navegar manualmente para `/admin/avisos` e ver dados de gestão (lista/detalhe de avisos com contagem de destinatários) — esconder só os botões de criar/gerir com `isManager` não basta, os dados ainda renderizavam.
+**How to apply:** ao criar página de gestão, gate por RoleRoute; o equivalente de leitura do membro vive em `/membro/*` com hook my-scoped. Home do membro usa `useGetMyNotices` (não `useListNotices`).
 
 ### PATCH /users/:id — permissão por papel (decisão)
 Rota agora aceita ADMIN + SUPERVISOR_A + SUPERVISOR_B, mas **supervisores só podem editar `specialization`** (name/email/birthDate continuam ADMIN-only, bloqueados com 403 dentro do handler).

@@ -46,6 +46,14 @@ import AsaPage from "@/pages/admin/asa";
 import AdminFolgasPage from "@/pages/admin/folgas";
 import SupervisorFolgasPage from "@/pages/supervisor/folgas";
 import MuralPage from "@/pages/admin/mural";
+import MinhaEscalaPage from "@/pages/membro/minha-escala";
+import MinhasTarefasPage from "@/pages/membro/minhas-tarefas";
+import MinhasEntregasPage from "@/pages/membro/minhas-entregas";
+import MembroMensagensPage from "@/pages/membro/mensagens";
+import MembroBibliotecaPage from "@/pages/membro/biblioteca";
+import MembroLivroDoDiaPage from "@/pages/membro/livro-do-dia";
+import MembroAvisosPage from "@/pages/membro/avisos";
+import MembroSolicitacoesPage from "@/pages/membro/solicitacoes";
 
 const queryClient = new QueryClient();
 
@@ -187,7 +195,7 @@ function Router() {
       <RoleRoute path="/admin/operational-panel" component={AdminOperationalPanel} roles={["ADMIN"]} />
       <RoleRoute path="/supervisor/operational-panel" component={SupervisorOperationalPanel} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
       <ProtectedRoute path="/admin/meu-dia" component={MeuDiaPage} />
-      <ProtectedRoute path="/admin/avisos" component={AdminAvisosPage} />
+      <RoleRoute path="/admin/avisos" component={AdminAvisosPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/supervisor/avisos" component={SupervisorAvisosPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/admin/history" component={AdminHistoryPage} roles={["ADMIN"]} />
       <RoleRoute path="/supervisor/history" component={SupervisorHistoryPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
@@ -213,6 +221,14 @@ function Router() {
       <RoleRoute path="/admin/folgas" component={AdminFolgasPage} roles={["ADMIN"]} />
       <RoleRoute path="/supervisor/folgas" component={SupervisorFolgasPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
       <ProtectedRoute path="/admin/mural" component={MuralPage} />
+      <ProtectedRoute path="/membro/escala" component={MinhaEscalaPage} />
+      <ProtectedRoute path="/membro/tarefas" component={MinhasTarefasPage} />
+      <ProtectedRoute path="/membro/entregas" component={MinhasEntregasPage} />
+      <ProtectedRoute path="/membro/mensagens" component={MembroMensagensPage} />
+      <ProtectedRoute path="/membro/biblioteca" component={MembroBibliotecaPage} />
+      <ProtectedRoute path="/membro/livro-do-dia" component={MembroLivroDoDiaPage} />
+      <ProtectedRoute path="/membro/avisos" component={MembroAvisosPage} />
+      <ProtectedRoute path="/membro/solicitacoes" component={MembroSolicitacoesPage} />
       <Route component={NotFound} />
     </Switch>
   );

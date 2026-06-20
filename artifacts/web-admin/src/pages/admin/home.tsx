@@ -5,7 +5,7 @@ import {
   useGetUserContext,
   useGetCheckInSummary,
   useListPendingRequests,
-  useListNotices,
+  useGetMyNotices,
   getGetUserContextQueryKey,
   getGetCheckInSummaryQueryKey,
 } from "@workspace/api-client-react";
@@ -497,19 +497,23 @@ function MemberHomeContent() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { data: panelData } = useGetOperationalPanel({});
-  const { data: avisosData } = useListNotices({} as any, { query: {} as any });
+  const { data: avisosData } = useGetMyNotices({});
 
   const upcomingEvents = (panelData?.upcomingEvents ?? []) as OperationalUpcomingEvent[];
-  const activeAvisos = (avisosData as any)?.notices ?? [];
-  const pendingAvisos = activeAvisos.filter((a: any) => a.status === "ACTIVE");
+  const myNotices = (avisosData ?? []) as any[];
+  const pendingAvisos = myNotices.filter(
+    (a: any) => a.recipientStatus === "SENT" || a.recipientStatus === "PENDING"
+  );
 
   const QUICK_LINKS = [
-    { label: "Escalas", icon: ClipboardList, href: "/admin/scales" },
-    { label: "Avisos", icon: Bell, href: "/admin/avisos" },
-    { label: "Solicitações", icon: FileText, href: "/admin/requests" },
-    { label: "Entregas", icon: Package, href: "/admin/deliveries" },
-    { label: "Mensagens", icon: Activity, href: "/admin/messages" },
-    { label: "Biblioteca", icon: BookMarked, href: "/admin/library" },
+    { label: "Minha Escala", icon: ClipboardList, href: "/membro/escala" },
+    { label: "Avisos", icon: Bell, href: "/membro/avisos" },
+    { label: "Solicitações", icon: FileText, href: "/membro/solicitacoes" },
+    { label: "Minhas Tarefas", icon: CheckCircle2, href: "/membro/tarefas" },
+    { label: "Minhas Entregas", icon: Package, href: "/membro/entregas" },
+    { label: "Mensagens", icon: Activity, href: "/membro/mensagens" },
+    { label: "Biblioteca", icon: BookMarked, href: "/membro/biblioteca" },
+    { label: "Livro do Dia", icon: AlertCircle, href: "/membro/livro-do-dia" },
   ];
 
   return (
@@ -545,9 +549,9 @@ function MemberHomeContent() {
             <div className="space-y-2">
               {pendingAvisos.slice(0, 3).map((a: any) => (
                 <div key={a.id} className="text-sm p-2 rounded-lg bg-amber-50 border border-amber-100">
-                  <p className="font-medium text-amber-900">{a.title}</p>
-                  {a.body && (
-                    <p className="text-xs text-amber-700 mt-0.5 line-clamp-1">{a.body}</p>
+                  {a.title && <p className="font-medium text-amber-900">{a.title}</p>}
+                  {a.content && (
+                    <p className="text-xs text-amber-700 mt-0.5 line-clamp-1">{a.content}</p>
                   )}
                 </div>
               ))}
@@ -555,7 +559,7 @@ function MemberHomeContent() {
             <Button
               variant="ghost" size="sm"
               className="mt-2 w-full text-xs"
-              onClick={() => setLocation("/admin/avisos")}
+              onClick={() => setLocation("/membro/avisos")}
             >
               Ver todos <ChevronRight className="w-3 h-3 ml-1" />
             </Button>
@@ -593,7 +597,7 @@ function MemberHomeContent() {
       <div className="flex items-center gap-3 p-4 rounded-xl bg-primary/5 border border-primary/10 text-sm">
         <img src="/asinha.svg" alt="" className="w-8 h-9 shrink-0 opacity-70" />
         <p className="text-muted-foreground">
-          Para a experiência completa do Membro — check-in, meu dia e atividades — use o <strong className="text-foreground">app MyASA</strong> no celular.
+          Leve sua operação no bolso: o <strong className="text-foreground">app MyASA</strong> traz check-in, notificações e tudo do seu dia no celular.
         </p>
       </div>
     </div>
