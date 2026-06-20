@@ -75,6 +75,15 @@ export default function SupervisorRequestsPage() {
   const { roles } = useAuth();
 
   const [operationId, setOperationId] = useState<string>("");
+
+  useEffect(() => {
+    if (!operationId && roles.length > 0) {
+      const firstActive = roles.find((r) => r.active);
+      const firstOpId = (firstActive ?? roles[0])?.operationId ?? "";
+      if (firstOpId) setOperationId(firstOpId);
+    }
+  }, [roles, operationId]);
+
   const [statusFilter, setStatusFilter] = useState<string>("PENDING,ALTERNATIVE_REJECTED");
   const [deciding, setDeciding] = useState<RequestItem | null>(null);
   const [decisionType, setDecisionType] = useState<RequestDecisionType>("APPROVED");
