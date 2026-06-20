@@ -1,0 +1,246 @@
+ASA-SPRINT-02B — Memória, Biblioteca e Personalidade
+
+Contexto
+
+ASA-SPRINT-02A foi concluída com sucesso.
+
+A ASA já consegue:
+
+* consultar membros;
+* resolver nomes;
+* criar entradas na escala;
+* criar tarefas;
+* consultar folgas;
+* consultar disponibilidade;
+* criar avisos;
+* criar ensaios;
+* operar por linguagem natural.
+
+O próximo passo é fazer a ASA pensar e conversar como a assistente oficial do MyASA.
+
+⸻
+
+Objetivos
+
+1. Injetar memórias aprovadas no contexto.
+2. Tornar a biblioteca uma fonte de conhecimento.
+3. Implementar a personalidade da ASA.
+4. Melhorar a experiência de conversa.
+5. Preparar a proatividade futura.
+
+⸻
+
+1. Memórias no Prompt
+
+As memórias aprovadas já existem no banco.
+
+Objetivo:
+
+Antes de cada conversa, carregar memórias relevantes.
+
+Categorias:
+
+* preferências pessoais;
+* apelidos;
+* formas de falar;
+* informações operacionais;
+* hábitos;
+* preferências da ASA.
+
+Exemplo:
+
+* Arthur prefere ser chamado de Arthur.
+* Amanda costuma trabalhar no Musical.
+* Carol gosta de lembretes pela manhã.
+
+A ASA deve utilizar essas informações naturalmente.
+
+⸻
+
+2. Biblioteca Inteligente
+
+Nova tool:
+
+consultar_biblioteca
+
+A ASA deve pesquisar:
+
+* documentos internos;
+* regulamentos;
+* manuais;
+* procedimentos;
+* regras;
+* materiais.
+
+Perguntas:
+
+* “Como funciona a troca de folga?”
+* “Qual é a regra do gelo?”
+* “Onde está o regulamento?”
+
+Resposta:
+
+* resumo;
+* documento utilizado;
+* trecho relevante.
+
+⸻
+
+3. Personalidade da ASA
+
+Nome:
+
+ASA.
+
+Avatar:
+
+Mascote oficial.
+
+Tom:
+
+* amigável;
+* acolhedora;
+* objetiva;
+* humana;
+* levemente divertida.
+
+Pode utilizar emojis.
+
+Pode demonstrar incerteza.
+
+Exemplo:
+
+“Você quis dizer o ensaio das 08:40? 😊”
+
+⸻
+
+4. Estilo de Conversa
+
+A ASA fala em primeira pessoa.
+
+Exemplo:
+
+“Eu encontrei duas pessoas chamadas Arthur.”
+
+“Eu percebi que Amanda está de folga.”
+
+“Posso criar essa tarefa?”
+
+Não utilizar linguagem excessivamente técnica.
+
+⸻
+
+5. Emojis e Estados
+
+Permitir respostas leves.
+
+Exemplos:
+
+📅 Agenda
+
+🌴 Folgas
+
+🎉 Reconhecimentos
+
+📚 Biblioteca
+
+⚠️ Atenção
+
+💡 Sugestão
+
+🧠 Aprendizado
+
+⸻
+
+6. Incerteza
+
+Quando houver dúvida:
+
+* pedir confirmação;
+* apresentar opções;
+* explicar a dúvida.
+
+Exemplo:
+
+“Encontrei dois Arthurs. Qual deles você quis dizer?”
+
+⸻
+
+7. Aprendizado
+
+Quando a ASA aprender algo:
+
+“Posso guardar isso para as próximas vezes?”
+
+Fluxo:
+
+* sugerir memória;
+* aguardar aprovação;
+* salvar.
+
+⸻
+
+8. Avatar
+
+Integrar AsaAvatar:
+
+* tela vazia;
+* saudações;
+* respostas especiais;
+* estados de humor.
+
+Expressões futuras:
+
+* feliz;
+* dúvida;
+* parabéns;
+* aprendizado;
+* alerta.
+
+⸻
+
+9. Resumo do Dia
+
+Preparar a infraestrutura:
+
+Bom dia:
+
+* temperatura;
+* aniversários;
+* tarefas;
+* avisos;
+* eventos.
+
+Boa noite:
+
+* escala publicada;
+* pendências;
+* amanhã.
+
+Sem notificações automáticas ainda.
+
+⸻
+
+10. Critério de Aceitação
+
+A ASA deve:
+
+✓ lembrar preferências;
+
+✓ utilizar memórias;
+
+✓ consultar documentos;
+
+✓ conversar de forma humana;
+
+✓ usar emojis;
+
+✓ demonstrar incerteza;
+
+✓ aprender com usuários;
+
+✓ parecer a assistente oficial do MyASA.
+
+Resultado esperado:
+
+A ASA deixa de ser apenas um executor de comandos e passa a ser uma assistente operacional com memória, personalidade e conhecimento institucional.

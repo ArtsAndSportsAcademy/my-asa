@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -14,6 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { AsaAvatar } from "@/components/AsaAvatar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -49,6 +51,7 @@ const TOOL_LABELS: Record<string, string> = {
   criar_ensaio_rascunho:       "🎭 Criando rascunho de ensaio",
   criar_entrada_escala:        "📋 Adicionando à escala",
   criar_tarefa:                "✅ Criando tarefa",
+  consultar_biblioteca:        "📚 Consultando biblioteca",
   sugerir_memoria:             "💡 Sugerindo memória",
 };
 
@@ -66,9 +69,11 @@ function MessageBubble({ msg, colors }: { msg: Message; colors: ReturnType<typeo
   return (
     <View style={[styles.messageRow, isUser && styles.messageRowUser]}>
       {!isUser && (
-        <View style={[styles.avatar, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={{ fontSize: 14 }}>🐦</Text>
-        </View>
+        <Image
+          source={require("@/assets/images/asa-avatar.png")}
+          style={{ width: 30, height: 30, borderRadius: 15, marginBottom: 2 }}
+          resizeMode="cover"
+        />
       )}
       <View style={[
         styles.bubble,
@@ -242,9 +247,7 @@ export default function AsaScreen() {
         borderBottomColor: colors.border,
       }]}>
         <View style={styles.headerLeft}>
-          <View style={[styles.asaAvatar, { backgroundColor: colors.background, borderColor: colors.border }]}>
-            <Text style={{ fontSize: 20 }}>🐦</Text>
-          </View>
+          <AsaAvatar size="small" />
           <View>
             <Text style={[styles.headerTitle, { color: colors.foreground }]}>ASA</Text>
             <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>Assistente Operacional</Text>
@@ -262,12 +265,12 @@ export default function AsaScreen() {
       {/* ── Messages ── */}
       {messages.length === 0 ? (
         <View style={styles.empty}>
-          <View style={[styles.emptyIcon, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={{ fontSize: 32 }}>🐦</Text>
+          <View style={{ marginBottom: 16 }}>
+            <AsaAvatar size="large" />
           </View>
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Olá! Sou a ASA.</Text>
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Olá! Eu sou a ASA 😊</Text>
           <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>
-            Posso consultar agenda, escalas,{"\n"}avisos, tarefas e muito mais.
+            Posso consultar agenda, escalas, tarefas e avisos — e também criar entradas, tarefas e muito mais. É só me pedir!
           </Text>
           {error && (
             <Pressable onPress={createConversation} style={[styles.errorBtn, { backgroundColor: colors.card, borderColor: colors.border }]}>

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, and, desc, gte, lte, ne } from "drizzle-orm";
+import { eq, and, desc, gte, lte, ne, ilike, or } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   conversations,
@@ -18,6 +18,7 @@ import {
   tasksTable,
   operationsTable,
   folgasTable,
+  libraryDocumentsTable,
 } from "@workspace/db";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
@@ -36,61 +37,59 @@ function buildSystemPrompt(ctx: {
   userRole: string;
   orgName: string;
   operationName: string | null;
+  memories?: { key: string; value: string; type: string }[];
 }): string {
   const isManager = MANAGER_ROLES.includes(ctx.userRole);
-  return `Você é a ASA, a assistente operacional oficial do MyASA.
-Você apoia a equipe da organização com informações precisas, contextualizadas e objetivas.
 
-Princípios de identidade:
-- Fala de forma direta, clara e profissional
-- Adapta a linguagem ao contexto operacional
-- Reconhece os limites do próprio conhecimento
-- NUNCA inventa dados ou assume informações não fornecidas
-- NUNCA toma decisões sozinha
+  const memoriesBlock = ctx.memories && ctx.memories.length > 0
+    ? `\nMemórias ativas sobre esta organização e seus membros:\n${ctx.memories
+        .map(m => `- [${m.type}] ${m.key}: ${m.value}`)
+        .join("\n")}\n\nUse essas informações naturalmente na conversa, sem citar explicitamente que veio de uma memória.\n`
+    : "";
 
-Você não é um robô. Você é uma assistente que apoia a equipe do MyASA.
+  return `Você é a ASA — a assistente operacional oficial do MyASA. 🐦
 
-Contexto atual:
-- Usuário: ${ctx.userName}
-- Papel: ${ctx.userRole}${isManager ? " (gestor)" : ""}
-- Organização: ${ctx.orgName}
-- Operação: ${ctx.operationName ?? "Não vinculado a uma operação específica"}
+Eu sou a ASA, e estou aqui para apoiar a equipe da ${ctx.orgName}. Falo em primeira pessoa, sou objetiva, acolhedora e levemente divertida. Uso emojis quando faz sentido. Reconheço quando tenho dúvidas e peço confirmação antes de agir.
 
-Capacidades:
-${isManager ? `- Consultar: agenda, escalas, responsabilidades, notificações, avisos, tarefas, folgas, membros
-- Escrever: criar entradas na escala, criar tarefas, criar rascunhos de aviso e ensaio
-- SEMPRE peça confirmação explícita antes de executar qualquer ação de escrita
-- Nunca executa múltiplas ações em cadeia sem revisão` : `- Você pode consultar informações relevantes ao seu papel
-- Não pode visualizar dados sensíveis de outros membros`}
+Quem está conversando comigo agora:
+- Nome: ${ctx.userName}
+- Papel: ${ctx.userRole}${isManager ? " (gestor — pode criar entradas, tarefas e avisos)" : ""}
+- Operação: ${ctx.operationName ?? "não vinculada a uma operação específica"}
+${memoriesBlock}
+O que eu consigo fazer:
+${isManager
+  ? `📅 Consultar agenda, escalas, responsabilidades, notificações, avisos, tarefas, folgas, disponibilidade e membros
+📚 Pesquisar documentos na biblioteca (regulamentos, manuais, procedimentos)
+✍️ Criar entradas na escala, tarefas, rascunhos de aviso e ensaio
+🧠 Aprender com a equipe e sugerir memórias para aprovação`
+  : `📅 Consultar informações relevantes ao meu papel
+📚 Pesquisar documentos na biblioteca
+🧠 Sugerir aprendizados para aprovação`}
 
-Fluxo obrigatório para ações envolvendo membros:
-1. SEMPRE use consultar_membros para resolver o nome antes de qualquer ação (criar_entrada_escala, criar_tarefa)
-2. Se houver ambiguidade ("Arthur Alcorte ou Arthur Silva?"), pergunte ao usuário antes de continuar
-3. Se o membro estiver de folga, avise e peça confirmação antes de criar a entrada
-4. Após confirmar o membro correto, peça confirmação final antes de executar a ação
+Como eu me comunico:
+- Falo em primeira pessoa: "Eu encontrei...", "Eu percebi...", "Posso fazer isso?"
+- Uso emojis com moderação: 📅 agenda, 🌴 folgas, 🎉 reconhecimentos, 📚 biblioteca, ⚠️ atenção, 💡 sugestão, 🧠 aprendizado
+- Quando tenho dúvida, pergunto: "Você quis dizer o ensaio das 08:40? 😊"
+- Quando aprendo algo útil, sugiro: "Posso guardar isso para as próximas vezes?"
 
-Exemplos de operação por linguagem natural:
-- "Adicionar Arthur na aula de acrobacia amanhã às 15h" → consultar_membros("Arthur") → confirmar membro → verificar folga → pedir confirmação → criar_entrada_escala
-- "Criar tarefa para Amanda terminar o figurino até sexta" → consultar_membros("Amanda") → confirmar → pedir confirmação → criar_tarefa
-- "Quem está livre amanhã?" → consultar_ausencias_do_dia → responder com quem está disponível
+Fluxo obrigatório para ações com membros (${isManager ? "gestor" : "não aplicável"}):
+1. SEMPRE uso consultar_membros para resolver o nome antes de criar_entrada_escala ou criar_tarefa
+2. Se houver ambiguidade → pergunto: "Eu encontrei dois Arthurs. Qual você quer dizer?"
+3. Se o membro estiver de folga → aviso e peço confirmação antes de continuar
+4. Após confirmar tudo → pergunto: "Posso criar isso?" antes de executar
 
-Princípios obrigatórios:
-1. Toda sugestão importante segue o formato:
-   📋 **Conclusão:** [sua recomendação]
-   📊 **Dados analisados:** [o que consultei]
-   🧠 **Motivos:** [por que estou sugerindo isso]
-   🔄 **Alternativas:** [outras opções]
-   ⚠️ **Riscos:** [possíveis problemas]
+Exemplos de como respondo:
+- "Adicionar Arthur no ensaio" → busco Arthur → confirmo qual → verifico folga → "Posso adicionar Arthur Alcorte no ensaio de amanhã às 19h?"
+- "Criar tarefa para Amanda" → busco Amanda → "Posso criar a tarefa para Amanda até sexta?"
+- "Como funciona a troca de folga?" → consulto a biblioteca → "Encontrei no regulamento: ..."
 
-2. Ações de escrita SEMPRE requerem confirmação — pergunte "Deseja que eu execute isso?" antes de chamar qualquer ferramenta de escrita.
+Regras que nunca quebro:
+1. Para sugestões importantes: 📋 Conclusão → 📊 Dados → 🧠 Motivos → 🔄 Alternativas → ⚠️ Riscos
+2. Ações de escrita sempre pedem confirmação antes de executar
+3. Nunca exponho tipo de restrição HEALTH ou PHYSICAL pelo nome de ninguém
+4. Nunca cito mensagens privadas
 
-3. Nunca exponha tipo de restrição HEALTH ou PHYSICAL de ninguém pelo nome.
-
-4. Nunca cite conteúdo de mensagens privadas.
-
-5. Você pode aprender: se perceber que um termo tem significado especial na operação, sugira: "Percebi que [X] significa [Y]. Deseja que eu aprenda isso?"
-
-Idioma: sempre responda em português brasileiro.`;
+Idioma: sempre em português brasileiro.`;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -250,6 +249,17 @@ const ASA_TOOLS: Tool[] = [
       properties: {
         userId: { type: "string", description: "ID do membro" },
         date:   { type: "string", description: "Data a verificar (YYYY-MM-DD)" },
+      },
+    },
+  },
+  {
+    name: "consultar_biblioteca",
+    description: "Pesquisa documentos na biblioteca interna da organização: regulamentos, manuais, procedimentos, regras e materiais. Use quando alguém perguntar sobre regras, procedimentos ou 'como funciona X'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        query: { type: "string", description: "Termo ou pergunta a pesquisar (ex: 'troca de folga', 'regra do gelo')" },
+        type:  { type: "string", description: "Tipo: OPERATIONAL_PROCEDURE, RULES_AND_POLICIES, CHARACTER_REFERENCE, COSTUME_REFERENCE, ONBOARDING_MATERIAL, SAFETY_PROCEDURE" },
       },
     },
   },
@@ -587,6 +597,64 @@ async function executeTool(
       return JSON.stringify({ disponivel: false, message: `${userName} está de folga em ${date} (${folgas[0]!.type}: ${folgas[0]!.startDate} → ${folgas[0]!.endDate}).` });
     }
 
+    // ── consultar_biblioteca ──────────────────────────────────────────────────
+    if (name === "consultar_biblioteca") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+
+      const query = (input.query as string | undefined) ?? "";
+      const typeFilter = input.type as string | undefined;
+
+      const conditions: ReturnType<typeof eq>[] = [
+        eq(libraryDocumentsTable.orgId, ctx.organizationId),
+        eq(libraryDocumentsTable.status, "PUBLISHED"),
+      ];
+      if (typeFilter) conditions.push(eq(libraryDocumentsTable.type, typeFilter as never));
+
+      let docs = await db
+        .select({
+          id:      libraryDocumentsTable.id,
+          title:   libraryDocumentsTable.title,
+          type:    libraryDocumentsTable.type,
+          summary: libraryDocumentsTable.summary,
+          body:    libraryDocumentsTable.body,
+        })
+        .from(libraryDocumentsTable)
+        .where(and(...conditions))
+        .limit(20);
+
+      // Keyword filter in JS (title + summary + body)
+      if (query.trim()) {
+        const normQ = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        docs = docs.filter(d => {
+          const haystack = [d.title, d.summary ?? "", d.body]
+            .join(" ").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          return haystack.includes(normQ);
+        });
+      }
+
+      if (docs.length === 0) {
+        return JSON.stringify({
+          found: false,
+          message: query
+            ? `Eu não encontrei nenhum documento publicado sobre "${query}" na biblioteca.`
+            : "Eu não encontrei nenhum documento publicado na biblioteca.",
+          docs: [],
+        });
+      }
+
+      return JSON.stringify({
+        found: true,
+        count: docs.length,
+        docs: docs.map(d => ({
+          id: d.id,
+          title: d.title,
+          type: d.type,
+          summary: d.summary,
+          excerpt: d.body.length > 500 ? d.body.slice(0, 500) + "…" : d.body,
+        })),
+      });
+    }
+
     // ── consultar_membros ─────────────────────────────────────────────────────
     if (name === "consultar_membros") {
       const query = ((input.query as string) ?? "").trim();
@@ -867,11 +935,24 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
     if (op) { operationId = op.id; operationName = op.name; }
   }
 
+  // Load approved memories to inject into system prompt
+  const activeMemories = user.organizationId
+    ? await db
+        .select({ key: asaMemoriesTable.key, value: asaMemoriesTable.value, type: asaMemoriesTable.type })
+        .from(asaMemoriesTable)
+        .where(and(
+          eq(asaMemoriesTable.organizationId, user.organizationId),
+          eq(asaMemoriesTable.status, "APPROVED"),
+        ))
+        .limit(40)
+    : [];
+
   const systemPrompt = buildSystemPrompt({
     userName: userRow?.name ?? "Usuário",
     userRole: user.role,
     orgName: user.organizationId ?? "Organização",
     operationName,
+    memories: activeMemories,
   });
 
   const chatMessages: MessageParam[] = history.map(m => ({
