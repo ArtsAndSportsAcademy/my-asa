@@ -62,6 +62,11 @@ const TOOL_LABELS: Record<string, string> = {
   consultar_ausencias_historicas: "🌴 Analisando histórico de ausências",
   consultar_tarefas_historicas:   "📌 Analisando histórico de tarefas",
   consultar_carga_historica:      "📊 Analisando carga histórica",
+  resumir_documento:              "📚 Resumindo documento",
+  comparar_documentos:            "🔍 Comparando documentos",
+  consultar_perguntas_frequentes: "❓ Consultando perguntas frequentes",
+  consultar_documentos_populares: "📋 Consultando documentos da biblioteca",
+  sugerir_leituras:               "💡 Buscando leituras relevantes",
 };
 
 // ─── Message bubble ────────────────────────────────────────────────────────────

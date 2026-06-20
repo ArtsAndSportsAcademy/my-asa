@@ -23,6 +23,8 @@ import {
   organizationsTable,
   messagesTable,
   messageThreadsTable,
+  libraryDocumentVersionsTable,
+  libraryCategoriesTable,
 } from "@workspace/db";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
@@ -364,6 +366,40 @@ Outras iniciativas proativas:
 • Quando um membro for elogiado → pergunte se quer criar um reconhecimento formal.
 
 Sempre respeite o modo de preferência: Silenciosa, Equilibrada ou Proativa.
+
+⸻
+
+Biblioteca Inteligente e Conhecimento (Sprint 10)
+
+Você tem acesso à base de conhecimento institucional da organização.
+
+Quando o usuário perguntar sobre regras, procedimentos, personagens, figurinos ou segurança:
+1. Chame sugerir_leituras(tema="{palavra-chave}") para encontrar documentos relevantes.
+2. Se o usuário quiser aprofundar → chame resumir_documento para trazer o conteúdo completo.
+3. Se o usuário perguntar sobre diferença entre versões ou documentos → use comparar_documentos.
+
+Mapeamento de intenções → tools:
+• "O que diz o regulamento de folgas?" → sugerir_leituras(tema="folgas") → resumir_documento
+• "Qual a diferença entre o contrato antigo e o novo?" → comparar_documentos
+• "Quais documentos temos?" → consultar_perguntas_frequentes
+• "Quais documentos estão desatualizados?" → consultar_documentos_populares
+• "Explica o procedimento de segurança" → sugerir_leituras(tema="segurança") → resumir_documento
+
+Tipos de documento disponíveis:
+• OPERATIONAL_PROCEDURE — como fazer as coisas
+• RULES_AND_POLICIES — regulamentos e políticas
+• CHARACTER_REFERENCE — referência de personagens
+• COSTUME_REFERENCE — referência de figurinos
+• ONBOARDING_MATERIAL — integração de novos membros
+• SAFETY_PROCEDURE — segurança
+
+Comportamentos proativos:
+✓ Se a conversa envolver folgas → sugira documentos de RULES_AND_POLICIES sobre folgas.
+✓ Se consultar um personagem → ofereça CHARACTER_REFERENCE relacionado.
+✓ Se houver rascunhos pendentes detectados → avise o gestor que há documentos para publicar.
+✓ Se um documento estiver desatualizado há > 90 dias → sinalize e sugira revisão.
+
+Apresente documentos de forma útil: não apenas liste títulos — explique o que cada um cobre e por que é relevante para o contexto da pergunta.
 
 ⸻
 
@@ -852,6 +888,66 @@ const ASA_TOOLS: Tool[] = [
       properties: {
         type: { type: "string", description: "Tipo de marco: TIME_OF_HOUSE ou ALL (padrão: ALL)" },
       },
+    },
+  },
+  // ── Sprint 10 — Biblioteca Inteligente e Conhecimento ────────────────────────
+  {
+    name: "resumir_documento",
+    description: "Busca um documento da biblioteca pelo título ou ID e retorna seu conteúdo para resumo. Use quando o usuário perguntar 'o que diz o documento X?', 'explica o regulamento Y' ou pedir para ler um documento específico. Claude deve resumir o conteúdo em linguagem clara e operacional.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        documentId: { type: "string", description: "ID UUID do documento (opcional se buscar por título)" },
+        titulo:     { type: "string", description: "Título ou trecho do título para busca (opcional se tiver ID)" },
+      },
+    },
+  },
+  {
+    name: "comparar_documentos",
+    description: "Busca dois documentos (ou duas versões do mesmo documento) e retorna ambos os conteúdos lado a lado para Claude comparar diferenças. Use quando o usuário perguntar 'qual a diferença entre X e Y?' ou 'o que mudou na versão nova?'",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        documentId1: { type: "string", description: "ID do primeiro documento (ou do documento a comparar versões)" },
+        documentId2: { type: "string", description: "ID do segundo documento (omitir para comparar versões do mesmo doc)" },
+        titulo1:     { type: "string", description: "Título do primeiro documento (alternativa ao ID)" },
+        titulo2:     { type: "string", description: "Título do segundo documento (alternativa ao ID)" },
+        versao1:     { type: "number", description: "Versão específica para comparar (opcional)" },
+        versao2:     { type: "number", description: "Segunda versão para comparar (opcional)" },
+      },
+    },
+  },
+  {
+    name: "consultar_perguntas_frequentes",
+    description: "Lista os tópicos e documentos da biblioteca mais relevantes com base nos tipos de conteúdo disponíveis. Identifica quais documentos têm múltiplas versões (muito atualizados), quais são onboarding e quais são procedimentos operacionais. Use para responder 'que tipo de informação a organização registra?'",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        tipo: { type: "string", description: "Filtrar por tipo: OPERATIONAL_PROCEDURE | RULES_AND_POLICIES | CHARACTER_REFERENCE | COSTUME_REFERENCE | ONBOARDING_MATERIAL | SAFETY_PROCEDURE (opcional)" },
+      },
+    },
+  },
+  {
+    name: "consultar_documentos_populares",
+    description: "Retorna documentos categorizados por estado: recém-atualizados (UPDATED), desatualizados (PUBLISHED há mais de 90 dias sem revisão), rascunhos pendentes (DRAFT) e arquivados. Identifica gaps na base de conhecimento. Use para 'quais documentos precisam de atenção?'",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        limite: { type: "number", description: "Máximo de documentos por categoria (padrão: 5)" },
+      },
+    },
+  },
+  {
+    name: "sugerir_leituras",
+    description: "Busca documentos relevantes para um tema específico. Use quando o usuário perguntar sobre um assunto que pode estar documentado (folgas, figurinos, personagens, segurança, procedimentos) ou quando a conversa atual envolve um tópico com documentos relacionados.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        tema:  { type: "string", description: "Tema ou palavra-chave para buscar nos documentos (ex: 'folga', 'figurino', 'segurança')" },
+        tipo:  { type: "string", description: "Filtrar por tipo de documento (opcional)" },
+        limit: { type: "number", description: "Número máximo de sugestões (padrão: 5)" },
+      },
+      required: ["tema"],
     },
   },
   // ── Sprint 09 — Estatísticas e Inteligência Operacional ──────────────────────
@@ -1967,6 +2063,181 @@ async function executeTool(
       } catch {
         return JSON.stringify({ error: "Não foi possível consultar o clima agora." });
       }
+    }
+
+    // ── Sprint 10 — Biblioteca Inteligente e Conhecimento ────────────────────
+    const BODY_LIMIT = 3000; // chars fed to Claude per document
+
+    const findDoc = async (docId?: string, titulo?: string) => {
+      if (!ctx.organizationId) return null;
+      if (docId) {
+        const [d] = await db.select().from(libraryDocumentsTable).where(and(eq(libraryDocumentsTable.id, docId), eq(libraryDocumentsTable.orgId, ctx.organizationId))).limit(1);
+        return d ?? null;
+      }
+      if (titulo) {
+        const [d] = await db.select().from(libraryDocumentsTable).where(and(eq(libraryDocumentsTable.orgId, ctx.organizationId), ilike(libraryDocumentsTable.title, `%${titulo}%`), ne(libraryDocumentsTable.status, "ARCHIVED"))).orderBy(desc(libraryDocumentsTable.updatedAt)).limit(1);
+        return d ?? null;
+      }
+      return null;
+    };
+
+    // ── resumir_documento (Sprint 10) ─────────────────────────────────────────
+    if (name === "resumir_documento") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const doc = await findDoc(input.documentId as string | undefined, input.titulo as string | undefined);
+      if (!doc) return JSON.stringify({ found: false, message: "Documento não encontrado. Verifique o título ou use consultar_documentos_populares para listar documentos disponíveis." });
+      const bodySnippet = doc.body.length > BODY_LIMIT ? doc.body.slice(0, BODY_LIMIT) + "\n\n[... conteúdo truncado ...]" : doc.body;
+      return JSON.stringify({
+        found: true,
+        id:       doc.id,
+        titulo:   doc.title,
+        tipo:     doc.type,
+        status:   doc.status,
+        versao:   doc.version,
+        resumo:   doc.summary ?? null,
+        publicado: doc.publishedAt,
+        atualizado: doc.updatedAt,
+        instrucao: "Resuma este documento em linguagem clara e operacional. Destaque: propósito, regras principais, exceções e quem é afetado.",
+        conteudo: bodySnippet,
+      });
+    }
+
+    // ── comparar_documentos (Sprint 10) ───────────────────────────────────────
+    if (name === "comparar_documentos") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const id1 = input.documentId1 as string | undefined;
+      const id2 = input.documentId2 as string | undefined;
+      const t1  = input.titulo1 as string | undefined;
+      const t2  = input.titulo2 as string | undefined;
+      const v1  = input.versao1 as number | undefined;
+      const v2  = input.versao2 as number | undefined;
+
+      // Compare two versions of the same document
+      if ((id1 || t1) && !id2 && !t2) {
+        const doc = await findDoc(id1, t1);
+        if (!doc) return JSON.stringify({ found: false, message: "Documento não encontrado." });
+        const versions = await db.select().from(libraryDocumentVersionsTable).where(eq(libraryDocumentVersionsTable.documentId, doc.id)).orderBy(desc(libraryDocumentVersionsTable.version)).limit(5);
+        if (versions.length < 2) return JSON.stringify({ found: true, message: `O documento "${doc.title}" tem apenas 1 versão registrada — não há versão anterior para comparar.`, versao_atual: doc.version });
+        const verA = v1 ? versions.find(v => v.version === v1) : versions[1];
+        const verB = v2 ? versions.find(v => v.version === v2) : versions[0];
+        return JSON.stringify({
+          found: true,
+          instrucao: "Compare as duas versões abaixo. Destaque: o que foi adicionado, removido ou alterado. Use bullets para clareza.",
+          documento: doc.title,
+          versao_antiga: { versao: verA?.version, body: (verA?.body ?? "").slice(0, BODY_LIMIT) },
+          versao_nova:   { versao: verB?.version, body: (verB?.body ?? "").slice(0, BODY_LIMIT) },
+        });
+      }
+
+      // Compare two different documents
+      const [doc1, doc2] = await Promise.all([findDoc(id1, t1), findDoc(id2, t2)]);
+      if (!doc1 || !doc2) return JSON.stringify({ found: false, message: `${!doc1 ? "Primeiro" : "Segundo"} documento não encontrado.` });
+      return JSON.stringify({
+        found: true,
+        instrucao: "Compare os dois documentos abaixo. Destaque diferenças de escopo, regras, público-alvo e aplicabilidade. Use bullets para clareza.",
+        documento_1: { titulo: doc1.title, tipo: doc1.type, versao: doc1.version, status: doc1.status, body: doc1.body.slice(0, BODY_LIMIT) },
+        documento_2: { titulo: doc2.title, tipo: doc2.type, versao: doc2.version, status: doc2.status, body: doc2.body.slice(0, BODY_LIMIT) },
+      });
+    }
+
+    // ── consultar_perguntas_frequentes (Sprint 10) ────────────────────────────
+    if (name === "consultar_perguntas_frequentes") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const tipoFilter = input.tipo as string | undefined;
+      const docs = await db
+        .select({ id: libraryDocumentsTable.id, title: libraryDocumentsTable.title, type: libraryDocumentsTable.type, version: libraryDocumentsTable.version, status: libraryDocumentsTable.status, summary: libraryDocumentsTable.summary, updatedAt: libraryDocumentsTable.updatedAt })
+        .from(libraryDocumentsTable)
+        .where(and(eq(libraryDocumentsTable.orgId, ctx.organizationId), tipoFilter ? eq(libraryDocumentsTable.type, tipoFilter as typeof libraryDocumentsTable.type._.data) : ne(libraryDocumentsTable.status, "ARCHIVED")))
+        .orderBy(desc(libraryDocumentsTable.version), desc(libraryDocumentsTable.updatedAt))
+        .limit(30);
+
+      if (docs.length === 0) return JSON.stringify({ total: 0, message: "Nenhum documento publicado encontrado na biblioteca.", documentos: [] });
+
+      // Group by type
+      const byType = docs.reduce<Record<string, typeof docs>>((acc, d) => { acc[d.type] = acc[d.type] ?? []; acc[d.type].push(d); return acc; }, {});
+      const moreVersions = docs.filter(d => d.version > 1).sort((a, b) => b.version - a.version).slice(0, 5);
+
+      const TYPE_LABELS: Record<string, string> = {
+        OPERATIONAL_PROCEDURE: "Procedimentos Operacionais",
+        RULES_AND_POLICIES:    "Regras e Políticas",
+        CHARACTER_REFERENCE:   "Referências de Personagem",
+        COSTUME_REFERENCE:     "Referências de Figurino",
+        ONBOARDING_MATERIAL:   "Material de Integração",
+        SAFETY_PROCEDURE:      "Procedimentos de Segurança",
+      };
+
+      return JSON.stringify({
+        total: docs.length,
+        instrucao: "Apresente os tópicos mais relevantes da biblioteca. Destaque quais documentos têm múltiplas versões (mais atualizados) e ofereça resumir_documento para o que o usuário quiser saber mais.",
+        por_tipo: Object.entries(byType).map(([t, ds]) => ({ tipo: TYPE_LABELS[t] ?? t, quantidade: ds.length, documentos: ds.map(d => ({ id: d.id, titulo: d.title, versao: d.version, status: d.status })) })),
+        mais_atualizados: moreVersions.map(d => ({ id: d.id, titulo: d.title, versao: d.version })),
+      });
+    }
+
+    // ── consultar_documentos_populares (Sprint 10) ────────────────────────────
+    if (name === "consultar_documentos_populares") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const limite = (input.limite as number | undefined) ?? 5;
+      const staleDate = new Date(Date.now() - 90 * 86400000).toISOString();
+
+      const [recentlyUpdated, stale, drafts, archived] = await Promise.all([
+        // Recently updated
+        db.select({ id: libraryDocumentsTable.id, title: libraryDocumentsTable.title, type: libraryDocumentsTable.type, version: libraryDocumentsTable.version, updatedAt: libraryDocumentsTable.updatedAt })
+          .from(libraryDocumentsTable)
+          .where(and(eq(libraryDocumentsTable.orgId, ctx.organizationId), eq(libraryDocumentsTable.status, "UPDATED")))
+          .orderBy(desc(libraryDocumentsTable.updatedAt)).limit(limite),
+        // Stale: PUBLISHED but not touched in 90 days
+        db.select({ id: libraryDocumentsTable.id, title: libraryDocumentsTable.title, type: libraryDocumentsTable.type, version: libraryDocumentsTable.version, publishedAt: libraryDocumentsTable.publishedAt })
+          .from(libraryDocumentsTable)
+          .where(and(eq(libraryDocumentsTable.orgId, ctx.organizationId), eq(libraryDocumentsTable.status, "PUBLISHED"), lte(libraryDocumentsTable.updatedAt, staleDate)))
+          .orderBy(libraryDocumentsTable.updatedAt).limit(limite),
+        // Drafts
+        db.select({ id: libraryDocumentsTable.id, title: libraryDocumentsTable.title, type: libraryDocumentsTable.type, createdAt: libraryDocumentsTable.createdAt })
+          .from(libraryDocumentsTable)
+          .where(and(eq(libraryDocumentsTable.orgId, ctx.organizationId), eq(libraryDocumentsTable.status, "DRAFT")))
+          .orderBy(desc(libraryDocumentsTable.createdAt)).limit(limite),
+        // Archived
+        db.select({ id: libraryDocumentsTable.id, title: libraryDocumentsTable.title, type: libraryDocumentsTable.type, archivedAt: libraryDocumentsTable.archivedAt })
+          .from(libraryDocumentsTable)
+          .where(and(eq(libraryDocumentsTable.orgId, ctx.organizationId), eq(libraryDocumentsTable.status, "ARCHIVED")))
+          .orderBy(desc(libraryDocumentsTable.archivedAt)).limit(limite),
+      ]);
+
+      return JSON.stringify({
+        instrucao: "Apresente o estado da biblioteca. Destaque documentos que precisam de revisão (desatualizados), rascunhos pendentes e o que foi recém-atualizado. Ofereça ações concretas ao gestor.",
+        recem_atualizados: { quantidade: recentlyUpdated.length, documentos: recentlyUpdated },
+        desatualizados:    { quantidade: stale.length, alerta: stale.length > 0 ? "⚠️ Documentos sem revisão há mais de 90 dias" : null, documentos: stale },
+        rascunhos_pendentes: { quantidade: drafts.length, alerta: drafts.length > 0 ? "📝 Rascunhos aguardando publicação" : null, documentos: drafts },
+        arquivados:        { quantidade: archived.length, documentos: archived },
+      });
+    }
+
+    // ── sugerir_leituras (Sprint 10) ──────────────────────────────────────────
+    if (name === "sugerir_leituras") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const tema  = input.tema as string;
+      const tipo  = input.tipo as string | undefined;
+      const limit = (input.limit as number | undefined) ?? 5;
+
+      const docs = await db
+        .select({ id: libraryDocumentsTable.id, title: libraryDocumentsTable.title, type: libraryDocumentsTable.type, summary: libraryDocumentsTable.summary, status: libraryDocumentsTable.status, version: libraryDocumentsTable.version })
+        .from(libraryDocumentsTable)
+        .where(and(
+          eq(libraryDocumentsTable.orgId, ctx.organizationId),
+          ne(libraryDocumentsTable.status, "ARCHIVED"),
+          tipo ? eq(libraryDocumentsTable.type, tipo as typeof libraryDocumentsTable.type._.data) : sql`true`,
+          or(ilike(libraryDocumentsTable.title, `%${tema}%`), ilike(libraryDocumentsTable.summary, `%${tema}%`), ilike(libraryDocumentsTable.body, `%${tema}%`)),
+        ))
+        .orderBy(desc(libraryDocumentsTable.updatedAt))
+        .limit(limit);
+
+      if (docs.length === 0) return JSON.stringify({ found: false, tema, message: `Nenhum documento encontrado sobre "${tema}". Tente consultar_documentos_populares para ver todos os documentos disponíveis.` });
+      return JSON.stringify({
+        tema,
+        total: docs.length,
+        instrucao: `Apresente as ${docs.length} sugestão(ões) de leitura sobre "${tema}". Para cada uma, explique brevemente por que é relevante e ofereça resumir_documento.`,
+        sugestoes: docs.map(d => ({ id: d.id, titulo: d.title, tipo: d.type, status: d.status, versao: d.version, resumo: d.summary ?? null })),
+      });
     }
 
     // ── Sprint 09 helpers ─────────────────────────────────────────────────────
