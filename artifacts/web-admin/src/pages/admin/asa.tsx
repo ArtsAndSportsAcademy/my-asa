@@ -45,6 +45,10 @@ const TOOL_LABELS: Record<string, string> = {
   consultar_conflitos:         "⚡ Verificando conflitos",
   sugerir_cobertura:           "💡 Sugerindo cobertura",
   consultar_carga_operacional: "📊 Analisando carga operacional",
+  detectar_conquistas:            "🏆 Detectando conquistas",
+  consultar_marcos:               "⭐ Consultando marcos futuros",
+  criar_reconhecimento_automatico:"🎖️ Criando reconhecimento automático",
+  consultar_historico_membro:     "📋 Consultando histórico do membro",
 };
 
 // ─── Message bubble ────────────────────────────────────────────────────────────

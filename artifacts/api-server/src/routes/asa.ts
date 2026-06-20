@@ -365,6 +365,31 @@ Sempre respeite o modo de preferência: Silenciosa, Equilibrada ou Proativa.
 
 ⸻
 
+Vida da Equipe e Cultura (Sprint 07)
+
+A ASA celebra a equipe ativamente.
+
+Ao gerar o resumo do dia, SEMPRE chame consultar_aniversarios e detectar_marcos.
+Se houver aniversários ou marcos → mencione na resposta E pergunte: "Deseja criar um reconhecimento?"
+
+Proatividade cultural (modo Equilibrado ou Proativo):
+• Aniversários → "🎉 [Nome] faz aniversário hoje! Posso criar um reconhecimento especial?"
+• Tempo de casa → "⭐ [Nome] completa [N] anos na ASA hoje! Quer que eu crie um reconhecimento?"
+• Conquistas → "🏆 [Nome] atingiu [N] atividades! Uma conquista que merece ser celebrada."
+• Quando alguém elogia um membro → "Posso criar um reconhecimento formal para [Nome]?"
+
+Ao criar um reconhecimento automático:
+1. Chame criar_reconhecimento_automatico com triggerType e triggerLabel claros.
+2. Apresente o texto gerado ANTES de publicar.
+3. Pergunte: "Posso publicar este reconhecimento?"
+4. Só publique após confirmação.
+
+Histórico pessoal:
+• Quando perguntarem sobre a trajetória ou conquistas de um membro → use consultar_historico_membro.
+• Marcos próximos (próximos 7 dias) → use consultar_marcos para alertas antecipados.
+
+⸻
+
 Modo Supervisor (Sprint 06)${isManager ? "" : "\n[Seção não aplicável ao papel atual]"}
 
 ${isManager ? `Você age como assistente operacional dos supervisores e administradores.
@@ -676,7 +701,7 @@ const ASA_TOOLS: Tool[] = [
   },
   {
     name: "consultar_aniversarios",
-    description: "Consulta aniversários registrados nas memórias da organização para uma data específica.",
+    description: "Consulta aniversários dos membros para uma data. Verifica tanto o campo birthDate dos usuários quanto memórias registradas. Usa para alertas proativos e sugestão de reconhecimentos.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -776,6 +801,55 @@ const ASA_TOOLS: Tool[] = [
       type: "object" as const,
       properties: {
         type: { type: "string", description: "Tipo de marco: TIME_OF_HOUSE ou ALL (padrão: ALL)" },
+      },
+    },
+  },
+  // ── Sprint 07 — Vida da Equipe e Cultura Organizacional ─────────────────────
+  {
+    name: "detectar_conquistas",
+    description: "Detecta conquistas de membros: marcos de 50 ou 100 atividades escaladas, 50 ou 100 tarefas concluídas. Retorna lista de membros que atingiram ou estão próximos de marcos. Use ao gerar o resumo do dia ou quando perguntarem sobre conquistas da equipe.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        userId: { type: "string", description: "ID do membro específico (opcional — omitir para toda a organização)" },
+        limit:  { type: "number", description: "Máximo de resultados (padrão: 20)" },
+      },
+    },
+  },
+  {
+    name: "consultar_marcos",
+    description: "Consulta marcos de tempo de casa e aniversários para os próximos N dias. Diferente de detectar_marcos (que verifica hoje): este retorna marcos futuros para planejamento. Excelente para alertas antecipados.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        daysAhead: { type: "number", description: "Dias à frente para verificar (padrão: 7)" },
+      },
+    },
+  },
+  {
+    name: "criar_reconhecimento_automatico",
+    description: "Cria um reconhecimento formal para um membro baseado em conquista detectada automaticamente (aniversário, tempo de casa, marco de atividades). Sempre pede confirmação antes de publicar.",
+    input_schema: {
+      type: "object" as const,
+      required: ["userId", "userName", "triggerType", "triggerLabel"],
+      properties: {
+        userId:       { type: "string", description: "ID do membro" },
+        userName:     { type: "string", description: "Nome do membro para exibição" },
+        triggerType:  { type: "string", description: "Tipo do gatilho: BIRTHDAY | TIME_OF_HOUSE | ACHIEVEMENT" },
+        triggerLabel: { type: "string", description: "Descrição do gatilho: 'Aniversário', '2 anos na ASA', '100 apresentações'" },
+        customMessage:{ type: "string", description: "Mensagem personalizada (opcional — ASA gera automaticamente se omitido)" },
+      },
+    },
+  },
+  {
+    name: "consultar_historico_membro",
+    description: "Retorna o perfil de conquistas de um membro: reconhecimentos recebidos, tempo de casa, marcos atingidos, atividades realizadas e tarefas concluídas.",
+    input_schema: {
+      type: "object" as const,
+      required: ["userId"],
+      properties: {
+        userId:   { type: "string", description: "ID do membro" },
+        userName: { type: "string", description: "Nome do membro (para exibição)" },
       },
     },
   },
@@ -1607,9 +1681,24 @@ async function executeTool(
     if (name === "consultar_aniversarios") {
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
       const date    = (input.date as string | undefined) ?? new Date().toISOString().slice(0, 10);
-      const todayMD = `${date.slice(8, 10)}/${date.slice(5, 7)}`; // DD/MM
+      const mm      = date.slice(5, 7); const dd = date.slice(8, 10);
+      const todayMD = `${dd}/${mm}`;
       const normStr = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
+      // 1. Query usersTable.birthDate (canonical source)
+      const birthdays: { nome: string; source: string }[] = [];
+      const userBdays = await db
+        .select({ name: usersTable.name, birthDate: usersTable.birthDate })
+        .from(usersTable)
+        .where(and(
+          eq(usersTable.organizationId, ctx.organizationId),
+          eq(usersTable.status, "ACTIVE"),
+          sql`to_char(${usersTable.birthDate}::date, 'MM-DD') = ${`${mm}-${dd}`}`,
+        ))
+        .limit(20);
+      for (const u of userBdays) birthdays.push({ nome: u.name, source: "db" });
+
+      // 2. Memories fallback (for orgs without birthDate set)
       const memories = await db
         .select({ key: asaMemoriesTable.key, value: asaMemoriesTable.value })
         .from(asaMemoriesTable)
@@ -1619,23 +1708,23 @@ async function executeTool(
           eq(asaMemoriesTable.type, "PERSONAL"),
         ))
         .limit(200);
-
-      const birthdays: string[] = [];
       for (const m of memories) {
         const kn = normStr(m.key);
         if (kn.includes("aniversario") || kn.includes("nascimento") || kn.includes("birthday")) {
           if (m.value.trim().startsWith(todayMD)) {
             const match = m.key.match(/(?:de\s+|:\s*)(.+?)(?:\s*$)/i);
-            birthdays.push(match?.[1]?.trim() ?? m.key);
+            const nome  = match?.[1]?.trim() ?? m.key;
+            if (!birthdays.some(b => normStr(b.nome) === normStr(nome))) birthdays.push({ nome, source: "memory" });
           }
         }
       }
 
-      const msg = birthdays.length > 0
-        ? `🎉 ${birthdays.join(", ")} faz${birthdays.length > 1 ? "em" : ""} aniversário em ${todayMD}!`
+      const names = birthdays.map(b => b.nome);
+      const msg   = names.length > 0
+        ? `🎉 ${names.join(", ")} faz${names.length > 1 ? "em" : ""} aniversário hoje (${todayMD})! Que tal criar um reconhecimento?`
         : `Nenhum aniversário registrado para ${todayMD}.`;
 
-      return JSON.stringify({ date, dayMonth: todayMD, birthdays, count: birthdays.length, message: msg });
+      return JSON.stringify({ date, dayMonth: todayMD, birthdays: names, count: names.length, message: msg });
     }
 
     // ── consultar_clima ───────────────────────────────────────────────────────
@@ -1664,6 +1753,186 @@ async function executeTool(
       } catch {
         return JSON.stringify({ error: "Não foi possível consultar o clima agora." });
       }
+    }
+
+    // ── detectar_conquistas (Sprint 07) ──────────────────────────────────────
+    if (name === "detectar_conquistas") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const limit    = (input.limit as number | undefined) ?? 20;
+      const MILESTONES = [50, 100, 200, 500];
+
+      // Scale allocations count per user
+      const allocFilter = input.userId
+        ? and(eq(scaleAllocationsTable.userId, input.userId as string), inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]))
+        : inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]);
+      const allocCounts = await db
+        .select({ userId: scaleAllocationsTable.userId, count: sql<number>`count(*)::int` })
+        .from(scaleAllocationsTable)
+        .where(allocFilter)
+        .groupBy(scaleAllocationsTable.userId)
+        .limit(limit);
+
+      // Completed tasks count per user
+      const taskFilter = input.userId
+        ? and(eq(tasksTable.organizationId, ctx.organizationId), eq(tasksTable.assigneeId, input.userId as string), eq(tasksTable.status, "DONE"))
+        : and(eq(tasksTable.organizationId, ctx.organizationId), eq(tasksTable.status, "DONE"));
+      const taskCounts = await db
+        .select({ assigneeId: tasksTable.assigneeId, count: sql<number>`count(*)::int` })
+        .from(tasksTable)
+        .where(taskFilter)
+        .groupBy(tasksTable.assigneeId)
+        .limit(limit);
+
+      const taskMap = new Map(taskCounts.map(t => [t.assigneeId, t.count]));
+      const userIds = [...new Set(allocCounts.map(a => a.userId).filter(Boolean))] as string[];
+      const userRows = userIds.length > 0
+        ? await db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(and(inArray(usersTable.id, userIds), eq(usersTable.organizationId, ctx.organizationId)))
+        : [];
+      const nameMap = new Map(userRows.map(u => [u.id, u.name]));
+
+      const conquistas: { membro: string; tipo: string; marco: number; label: string }[] = [];
+      for (const a of allocCounts) {
+        if (!a.userId) continue;
+        const nome = nameMap.get(a.userId) ?? a.userId;
+        for (const m of MILESTONES) {
+          if (a.count === m) conquistas.push({ membro: nome, tipo: "ATIVIDADES", marco: m, label: `🏆 ${nome} atingiu ${m} atividades escaladas!` });
+        }
+        const tasks = taskMap.get(a.userId) ?? 0;
+        for (const m of MILESTONES) {
+          if (tasks === m) conquistas.push({ membro: nome, tipo: "TAREFAS", marco: m, label: `🏆 ${nome} concluiu ${m} tarefas!` });
+        }
+      }
+
+      if (conquistas.length === 0) return JSON.stringify({ total: 0, message: "Nenhuma conquista de marco atingida no momento.", conquistas: [] });
+      return JSON.stringify({ total: conquistas.length, message: `${conquistas.length} conquista(s) de marco detectada(s)!`, conquistas });
+    }
+
+    // ── consultar_marcos (Sprint 07) ──────────────────────────────────────────
+    if (name === "consultar_marcos") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const daysAhead = (input.daysAhead as number | undefined) ?? 7;
+      const today     = new Date();
+      const marcos: { userId: string; nome: string; tipo: string; label: string; data: string }[] = [];
+
+      const orgUsers = await db
+        .select({ id: usersTable.id, name: usersTable.name, createdAt: usersTable.createdAt, birthDate: usersTable.birthDate })
+        .from(usersTable)
+        .where(and(eq(usersTable.organizationId, ctx.organizationId), eq(usersTable.status, "ACTIVE")))
+        .limit(200);
+
+      for (let offset = 0; offset <= daysAhead; offset++) {
+        const d = new Date(today); d.setDate(d.getDate() + offset);
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        const dateStr = `${d.getFullYear()}-${mm}-${dd}`;
+
+        for (const u of orgUsers) {
+          // Time of house milestones
+          const joined = new Date(u.createdAt);
+          const years  = d.getFullYear() - joined.getFullYear();
+          const months = (d.getFullYear() - joined.getFullYear()) * 12 + (d.getMonth() - joined.getMonth());
+          if (joined.getDate() === d.getDate() && joined.getMonth() === d.getMonth()) {
+            if (years > 0 && years <= 10) marcos.push({ userId: u.id, nome: u.name, tipo: "TIME_OF_HOUSE", label: `${years} ano${years > 1 ? "s" : ""} na ASA`, data: dateStr });
+            else if (months === 3 || months === 6) marcos.push({ userId: u.id, nome: u.name, tipo: "TIME_OF_HOUSE", label: `${months} meses na ASA`, data: dateStr });
+          }
+          // Birthdays
+          if (u.birthDate) {
+            const bm = u.birthDate.slice(5, 7); const bd = u.birthDate.slice(8, 10);
+            if (bm === mm && bd === dd) marcos.push({ userId: u.id, nome: u.name, tipo: "BIRTHDAY", label: `🎉 Aniversário`, data: dateStr });
+          }
+        }
+      }
+
+      if (marcos.length === 0) return JSON.stringify({ total: 0, message: `Nenhum marco nos próximos ${daysAhead} dias.`, marcos: [] });
+      return JSON.stringify({ total: marcos.length, daysAhead, message: `${marcos.length} marco(s) nos próximos ${daysAhead} dias.`, marcos });
+    }
+
+    // ── criar_reconhecimento_automatico (Sprint 07) ───────────────────────────
+    if (name === "criar_reconhecimento_automatico") {
+      if (!isManager) return JSON.stringify({ error: "Sem permissão para criar reconhecimentos" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const recUserId      = input.userId       as string;
+      const recUserName    = input.userName     as string;
+      const triggerType    = input.triggerType  as string;
+      const triggerLabel   = input.triggerLabel as string;
+      const customMessage  = input.customMessage as string | undefined;
+
+      const autoMessages: Record<string, string> = {
+        BIRTHDAY:      `🎉 Hoje é um dia especial — é o aniversário de ${recUserName}! Em nome de toda a equipe, parabéns! Sua dedicação e energia fazem toda a diferença na nossa operação.`,
+        TIME_OF_HOUSE: `⭐ ${recUserName} completa ${triggerLabel} com a gente! Obrigado por sua trajetória, comprometimento e por fazer parte desta equipe incrível.`,
+        ACHIEVEMENT:   `🏆 ${recUserName} atingiu um marco: ${triggerLabel}! Uma conquista que reflete esforço, dedicação e presença constante. Parabéns!`,
+      };
+      const message = customMessage ?? autoMessages[triggerType] ?? `🎖️ Reconhecimento especial para ${recUserName}: ${triggerLabel}.`;
+      const title   = triggerType === "BIRTHDAY" ? `🎂 Feliz aniversário, ${recUserName.split(" ")[0]}!` : `${triggerType === "TIME_OF_HOUSE" ? "⭐" : "🏆"} ${triggerLabel} — ${recUserName.split(" ")[0]}`;
+
+      const [rec] = await db.insert(recognitionsTable).values({
+        organizationId: ctx.organizationId,
+        userId:         recUserId,
+        type:           `AUTO_${triggerType}`,
+        title,
+        message,
+        createdBy:      ctx.userId,
+        publishedAt:    new Date(),
+      }).returning();
+
+      return JSON.stringify({
+        created: true,
+        id: rec.id,
+        title,
+        message,
+        trigger: triggerLabel,
+        displayMessage: `🎖️ Reconhecimento "${title}" criado e publicado! ${recUserName} pode ver no Mural da Equipe.`,
+      });
+    }
+
+    // ── consultar_historico_membro (Sprint 07) ────────────────────────────────
+    if (name === "consultar_historico_membro") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const memberId   = input.userId   as string;
+      const memberName = (input.userName as string | undefined) ?? memberId;
+
+      const [userRow] = await db
+        .select({ id: usersTable.id, name: usersTable.name, createdAt: usersTable.createdAt, birthDate: usersTable.birthDate })
+        .from(usersTable)
+        .where(and(eq(usersTable.id, memberId), eq(usersTable.organizationId, ctx.organizationId)))
+        .limit(1);
+
+      if (!userRow) return JSON.stringify({ error: "Membro não encontrado" });
+
+      const today   = new Date();
+      const joined  = new Date(userRow.createdAt);
+      const months  = (today.getFullYear() - joined.getFullYear()) * 12 + (today.getMonth() - joined.getMonth());
+      const years   = Math.floor(months / 12);
+      const tempoDeCasa = years >= 1 ? `${years} ano${years > 1 ? "s" : ""}` : `${months} mês${months !== 1 ? "es" : ""}`;
+
+      const recRows = await db
+        .select({ id: recognitionsTable.id, type: recognitionsTable.type, title: recognitionsTable.title, publishedAt: recognitionsTable.publishedAt })
+        .from(recognitionsTable)
+        .where(and(eq(recognitionsTable.userId, memberId), eq(recognitionsTable.organizationId, ctx.organizationId)))
+        .orderBy(desc(recognitionsTable.createdAt))
+        .limit(10);
+
+      const [activityCount] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(scaleAllocationsTable)
+        .where(and(eq(scaleAllocationsTable.userId, memberId), inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"])));
+
+      const [tasksDone] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(tasksTable)
+        .where(and(eq(tasksTable.assigneeId, memberId), eq(tasksTable.organizationId, ctx.organizationId), eq(tasksTable.status, "DONE")));
+
+      return JSON.stringify({
+        membro: userRow.name,
+        aniversario: userRow.birthDate ?? "não registrado",
+        tempoDeCasa,
+        mesesNaASA: months,
+        reconhecimentos: recRows.map(r => ({ titulo: r.title, tipo: r.type, data: r.publishedAt })),
+        totalReconhecimentos: recRows.length,
+        atividadesRealizadas: activityCount?.count ?? 0,
+        tarefasConcluidas: tasksDone?.count ?? 0,
+        message: `📋 Histórico de ${userRow.name}: ${tempoDeCasa} na ASA, ${activityCount?.count ?? 0} atividades, ${tasksDone?.count ?? 0} tarefas concluídas, ${recRows.length} reconhecimento(s).`,
+      });
     }
 
     // ── consultar_riscos_operacionais (Sprint 06) ─────────────────────────────
@@ -2454,6 +2723,79 @@ router.patch("/asa/preferences", requireAuth, async (req, res): Promise<void> =>
     .returning();
 
   res.json(updated);
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// Mural da Equipe REST Endpoint
+// ────────────────────────────────────────────────────────────────────────────
+
+router.get("/asa/mural", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  const user   = req.user!;
+  const orgId  = user.organizationId!;
+  const today  = new Date();
+  const mm     = String(today.getMonth() + 1).padStart(2, "0");
+  const dd     = String(today.getDate()).padStart(2, "0");
+
+  // Upcoming birthdays (next 30 days) from usersTable.birthDate
+  const upcoming_birthdays: { name: string; date: string; daysUntil: number }[] = [];
+  const allUsers = await db
+    .select({ id: usersTable.id, name: usersTable.name, birthDate: usersTable.birthDate, createdAt: usersTable.createdAt })
+    .from(usersTable)
+    .where(and(eq(usersTable.organizationId, orgId), eq(usersTable.status, "ACTIVE")))
+    .limit(200);
+
+  for (const u of allUsers) {
+    if (!u.birthDate) continue;
+    const bm = u.birthDate.slice(5, 7); const bd = u.birthDate.slice(8, 10);
+    // Check next 30 days
+    for (let offset = 0; offset <= 30; offset++) {
+      const d = new Date(today); d.setDate(d.getDate() + offset);
+      const cm = String(d.getMonth() + 1).padStart(2, "0");
+      const cd = String(d.getDate()).padStart(2, "0");
+      if (bm === cm && bd === cd) {
+        upcoming_birthdays.push({ name: u.name, date: `${cd}/${cm}`, daysUntil: offset });
+        break;
+      }
+    }
+  }
+  upcoming_birthdays.sort((a, b) => a.daysUntil - b.daysUntil);
+
+  // Upcoming time-of-house milestones (next 30 days)
+  const MILESTONE_MONTHS = [3, 6, 12, 24, 60, 120];
+  const upcoming_milestones: { name: string; label: string; date: string; daysUntil: number }[] = [];
+  for (const u of allUsers) {
+    const joined = new Date(u.createdAt);
+    for (let offset = 0; offset <= 30; offset++) {
+      const d = new Date(today); d.setDate(d.getDate() + offset);
+      if (joined.getDate() !== d.getDate() || joined.getMonth() !== d.getMonth()) continue;
+      const totalMonths = (d.getFullYear() - joined.getFullYear()) * 12 + (d.getMonth() - joined.getMonth());
+      if (MILESTONE_MONTHS.includes(totalMonths)) {
+        const label = totalMonths < 12
+          ? `${totalMonths} meses na equipe`
+          : `${totalMonths / 12} ano${totalMonths / 12 > 1 ? "s" : ""} na equipe`;
+        upcoming_milestones.push({ name: u.name, label, date: `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`, daysUntil: offset });
+      }
+    }
+  }
+  upcoming_milestones.sort((a, b) => a.daysUntil - b.daysUntil);
+
+  // Recent recognitions (last 15)
+  const recent_recognitions = await db
+    .select({
+      id:          recognitionsTable.id,
+      type:        recognitionsTable.type,
+      title:       recognitionsTable.title,
+      message:     recognitionsTable.message,
+      publishedAt: recognitionsTable.publishedAt,
+      memberName:  usersTable.name,
+    })
+    .from(recognitionsTable)
+    .leftJoin(usersTable, eq(recognitionsTable.userId, usersTable.id))
+    .where(eq(recognitionsTable.organizationId, orgId))
+    .orderBy(desc(recognitionsTable.createdAt))
+    .limit(15);
+
+  res.json({ upcoming_birthdays, upcoming_milestones, recent_recognitions });
 });
 
 // ────────────────────────────────────────────────────────────────────────────

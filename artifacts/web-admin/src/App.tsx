@@ -44,6 +44,7 @@ import ResponsibilitiesPage from "@/pages/admin/responsibilities";
 import AsaPage from "@/pages/admin/asa";
 import AdminFolgasPage from "@/pages/admin/folgas";
 import SupervisorFolgasPage from "@/pages/supervisor/folgas";
+import MuralPage from "@/pages/admin/mural";
 
 const queryClient = new QueryClient();
 
@@ -209,6 +210,7 @@ function Router() {
       <ProtectedRoute path="/admin/asa" component={AsaPage} />
       <RoleRoute path="/admin/folgas" component={AdminFolgasPage} roles={["ADMIN"]} />
       <RoleRoute path="/supervisor/folgas" component={SupervisorFolgasPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
+      <ProtectedRoute path="/admin/mural" component={MuralPage} />
       <Route component={NotFound} />
     </Switch>
   );

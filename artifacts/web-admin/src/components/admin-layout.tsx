@@ -4,7 +4,7 @@ import {
   BookOpen, CalendarDays, ShieldCheck, ClipboardList, BookMarked,
   LayoutDashboard, Bell, Clock, MessageSquare, Package, Library,
   FileText, CheckSquare, TrendingUp, AlertTriangle, ClipboardCheck, ArrowLeftRight,
-  Shield, Sparkles, Palmtree,
+  Shield, Sparkles, Palmtree, Trophy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -81,6 +81,12 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/history",   icon: Clock,       label: "Histórico" },
       { href: "/admin/auditoria", icon: ShieldCheck, label: "Auditoria" },
       { href: "/admin/insights",  icon: TrendingUp,  label: "Indicadores"  },
+    ],
+  },
+  {
+    label: "EQUIPE",
+    items: [
+      { href: "/admin/mural", icon: Trophy, label: "Mural da Equipe" },
     ],
   },
   {
