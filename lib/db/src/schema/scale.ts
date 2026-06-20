@@ -44,13 +44,18 @@ export const scalesTable = pgTable("scales", {
 export const scaleAllocationsTable = pgTable("scale_allocations", {
   id: uuid("id").primaryKey().defaultRandom(),
   scaleId: uuid("scale_id").notNull().references(() => scalesTable.id, { onDelete: "cascade" }),
-  agendaEventId: uuid("agenda_event_id").notNull().references(() => agendaEventsTable.id),
+  agendaEventId: uuid("agenda_event_id").references(() => agendaEventsTable.id),
   positionId: uuid("position_id").references(() => showBookRolesTable.id),
   userId: uuid("user_id").references(() => usersTable.id),
   status: allocationStatusEnum("status").notNull().default("OPEN"),
   overriddenBy: uuid("overridden_by").references(() => usersTable.id),
   overrideReason: text("override_reason"),
   notes: text("notes"),
+  // Campos para entradas manuais (sem evento de agenda)
+  manualDate: date("manual_date", { mode: "string" }),
+  manualLabel: text("manual_label"),
+  startTime: text("start_time"),
+  endTime: text("end_time"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

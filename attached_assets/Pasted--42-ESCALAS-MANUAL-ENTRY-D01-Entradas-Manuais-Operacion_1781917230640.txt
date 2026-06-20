@@ -1,0 +1,257 @@
+#42 — ESCALAS-MANUAL-ENTRY-D01 — Entradas Manuais Operacionais
+
+What & Why
+
+As referências do MyASA original mostram claramente dois tipos de escala:
+
+1. Escala operacional livre.
+2. Escala de show/evento.
+
+A escala operacional permite criar entradas manualmente diretamente na grade.
+
+Exemplos:
+
+* Aula de Acrobacia
+* Preparação Musical
+* Ensaio
+* Reunião
+* Apoio de palco
+* Backstage
+* Tarefa operacional
+
+Atualmente a escala depende de agendaEventId, impedindo entradas livres.
+
+Esta sprint restaura a funcionalidade central do MyASA original.
+
+⸻
+
+Conceito
+
+A pergunta da Escala é:
+
+O que cada pessoa faz neste dia?
+
+Nem toda atividade possui:
+
+* Evento.
+* Livro do Show.
+* Coverage engine.
+
+O supervisor deve poder criar atividades manualmente.
+
+⸻
+
+Done Looks Like
+
+Adicionar entrada
+
+Botão:
+
+* Adicionar entrada
+
+Disponível:
+
+* administrador;
+* supervisor.
+
+⸻
+
+Fluxo
+
+Selecionar:
+
+* membro;
+* data;
+* horário inicial;
+* horário final;
+* título da atividade;
+* observações opcionais.
+
+Exemplo:
+
+Título:
+Aula de Acrobacia
+
+Horário:
+15:45–17:00
+
+Membro:
+Arthur
+
+⸻
+
+Entrada criada
+
+A entrada aparece imediatamente na célula.
+
+Exemplo:
+
+AULA DE ACROBACIA
+15:45–17:00
+
+⸻
+
+Entradas múltiplas
+
+Uma célula pode conter:
+
+* várias atividades;
+* vários horários.
+
+Exemplo:
+
+ENSAIO
+08:40–09:40
+
+PREPARAÇÃO
+10:00–10:30
+
+⸻
+
+Duplicar anterior
+
+Botão:
+
+Duplicar anterior.
+
+Permite:
+
+* copiar dia anterior;
+* copiar semana anterior;
+* copiar entradas selecionadas.
+
+⸻
+
+Status
+
+Entradas manuais podem ser:
+
+* rascunho;
+* publicadas.
+
+Membro só visualiza:
+
+* após publicação.
+
+⸻
+
+Compatibilidade
+
+Entradas manuais convivem com:
+
+* coverage engine;
+* atividades de show;
+* alocações automáticas;
+* conflitos;
+* folgas.
+
+Nenhuma funcionalidade existente deve ser removida.
+
+⸻
+
+Modelo de dados
+
+Permitir alocações sem agendaEventId.
+
+Opções:
+
+1. agendaEventId nullable.
+2. campo manualDate.
+3. campo manualLabel.
+4. campo startTime.
+5. campo endTime.
+
+Exemplo:
+
+{
+userId,
+scaleId,
+manualDate,
+manualLabel,
+startTime,
+endTime
+}
+
+⸻
+
+Interface
+
+Nas células vazias:
+
+* Adicionar.
+
+Nas células preenchidas:
+
+* Nova entrada.
+
+⸻
+
+Estados da célula
+
+1. Vazia.
+2. Entrada manual.
+3. Entrada automática.
+4. Folga.
+5. Conflito.
+6. Múltiplas entradas.
+
+⸻
+
+IA (ASA)
+
+A ASA deve poder criar entradas manuais.
+
+Exemplos:
+
+“Adicionar aula de acrobacia para Arthur às 15:45.”
+
+“Colocar Carolina no ensaio das 08:40.”
+
+“Criar reunião para Amanda e Antonio.”
+
+⸻
+
+Integrações
+
+Continuam funcionando:
+
+* Livro do Dia.
+* Folgas.
+* Meu Dia.
+* Notificações.
+* ASA.
+* Escalas de show.
+
+⸻
+
+Critério de aceitação
+
+Um supervisor deve conseguir:
+
+* abrir uma escala vazia;
+* adicionar atividades manualmente;
+* copiar entradas;
+* publicar a escala;
+* visualizar tudo na grade.
+
+A experiência precisa ser igual ao MyASA original.
+
+A escala operacional deve existir independentemente de:
+
+* Livro do Show;
+* Evento;
+* Coverage engine.
+
+⸻
+
+Resultado esperado
+
+O MyASA volta a possuir:
+
+1. Escalas operacionais livres.
+2. Escalas de show.
+3. Entradas manuais.
+4. Cobertura automática.
+5. Publicação unificada.
+
+As duas formas de trabalhar convivem no mesmo pilar de Escalas.

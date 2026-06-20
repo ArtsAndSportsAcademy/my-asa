@@ -15,6 +15,8 @@ import {
   useListShowBooks,
   useListFolgas,
   useListUsers,
+  useCreateScaleEntry,
+  useDeleteScaleEntry,
   getListScalesQueryKey,
   getListScaleAllocationsQueryKey,
   getListScaleExceptionsQueryKey,
@@ -55,7 +57,7 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   Plus, RefreshCw, Send, AlertTriangle, CheckCircle, Clock,
   MoreHorizontal, Archive, Zap, BookMarked, Palmtree, User,
-  ChevronLeft, ChevronRight, Star,
+  ChevronLeft, ChevronRight, Star, PenLine, X,
 } from "lucide-react";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -109,6 +111,14 @@ interface GenerateFormState {
   title: string;
 }
 interface OverrideFormState { userId: string; reason: string; notes: string; }
+interface AddEntryFormState {
+  memberId: string;
+  date: string;
+  label: string;
+  startTime: string;
+  endTime: string;
+  notes: string;
+}
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -133,6 +143,7 @@ export default function ScalesPage() {
   // ── Dialogs ────────────────────────────────────────────────────────────────
   const [showGenerate, setShowGenerate] = useState(false);
   const [showOverride, setShowOverride] = useState(false);
+  const [showAddEntry, setShowAddEntry] = useState(false);
 
   // ── Forms ─────────────────────────────────────────────────────────────────
   const [generateForm, setGenerateForm] = useState<GenerateFormState>({
@@ -146,6 +157,9 @@ export default function ScalesPage() {
   });
   const [overrideForm, setOverrideForm] = useState<OverrideFormState>({
     userId: "", reason: "", notes: "",
+  });
+  const [addEntryForm, setAddEntryForm] = useState<AddEntryFormState>({
+    memberId: "", date: "", label: "", startTime: "", endTime: "", notes: "",
   });
 
   // ── Queries ────────────────────────────────────────────────────────────────
@@ -197,6 +211,8 @@ export default function ScalesPage() {
   const regenerateMut = useRegenerateScale();
   const overrideMut = useOverrideAllocation();
   const resolveMut = useResolveScaleException();
+  const createEntryMut = useCreateScaleEntry();
+  const deleteEntryMut = useDeleteScaleEntry();
 
   function invalidateScales() {
     queryClient.invalidateQueries({ queryKey: getListScalesQueryKey(scalesParams) });
@@ -333,6 +349,41 @@ export default function ScalesPage() {
     } catch { toast({ title: "Erro ao resolver exceção", variant: "destructive" }); }
   }
 
+  function handleOpenAddEntry(memberId: string, date: string) {
+    setAddEntryForm({ memberId, date, label: "", startTime: "", endTime: "", notes: "" });
+    setShowAddEntry(true);
+  }
+
+  async function handleAddEntry() {
+    if (!selectedScale?.id || !addEntryForm.memberId || !addEntryForm.date || !addEntryForm.label) return;
+    try {
+      await createEntryMut.mutateAsync({
+        scaleId: selectedScale.id,
+        memberId: addEntryForm.memberId,
+        date: addEntryForm.date,
+        label: addEntryForm.label,
+        startTime: addEntryForm.startTime || undefined,
+        endTime: addEntryForm.endTime || undefined,
+        notes: addEntryForm.notes || undefined,
+      });
+      toast({ title: "Entrada adicionada" });
+      setShowAddEntry(false);
+      setAddEntryForm({ memberId: "", date: "", label: "", startTime: "", endTime: "", notes: "" });
+    } catch (e: any) {
+      toast({ title: e?.message ?? "Erro ao adicionar entrada", variant: "destructive" });
+    }
+  }
+
+  async function handleDeleteEntry(entryId: string) {
+    if (!selectedScale?.id) return;
+    try {
+      await deleteEntryMut.mutateAsync({ scaleId: selectedScale.id, entryId });
+      toast({ title: "Entrada removida" });
+    } catch (e: any) {
+      toast({ title: e?.message ?? "Erro ao remover entrada", variant: "destructive" });
+    }
+  }
+
   // ── Derived data ───────────────────────────────────────────────────────────
   const scales = useMemo(() => scalesData?.scales ?? [], [scalesData]);
   const allocations = useMemo(() => allocationsData?.allocations ?? [], [allocationsData]);
@@ -357,6 +408,20 @@ export default function ScalesPage() {
       if (!a.agendaEventId || !a.userId) continue;
       if (!result.has(a.agendaEventId)) result.set(a.agendaEventId, new Map());
       result.get(a.agendaEventId)!.set(a.userId, a);
+    }
+    return result;
+  }, [allocations]);
+
+  // Manual entries: date → userId → entries[]
+  const manualByDateMember = useMemo(() => {
+    const result = new Map<string, Map<string, ScaleAllocationWithCandidates[]>>();
+    for (const a of allocations) {
+      if (a.agendaEventId) continue; // engine allocations handled in allocByEvent
+      const date = (a as any).manualDate as string | null;
+      if (!date || !a.userId) continue;
+      if (!result.has(date)) result.set(date, new Map());
+      if (!result.get(date)!.has(a.userId)) result.get(date)!.set(a.userId, []);
+      result.get(date)!.get(a.userId)!.push(a);
     }
     return result;
   }, [allocations]);
@@ -644,6 +709,10 @@ export default function ScalesPage() {
                 onCellClick={(alloc) => setSelectedAlloc(alloc)}
                 onResolveException={handleResolveException}
                 resolvePending={resolveMut.isPending}
+                manualByDateMember={manualByDateMember}
+                selectedDay={selectedDay}
+                onAddEntry={handleOpenAddEntry}
+                onDeleteEntry={handleDeleteEntry}
               />
             </div>
           )}
@@ -899,6 +968,85 @@ export default function ScalesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── Add Manual Entry Dialog ── */}
+      <Dialog open={showAddEntry} onOpenChange={setShowAddEntry}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Adicionar Entrada</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-1">
+            <div className="space-y-1.5">
+              <Label>Membro</Label>
+              <Select
+                value={addEntryForm.memberId}
+                onValueChange={(v) => setAddEntryForm((f) => ({ ...f, memberId: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecionar membro" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(members as { userId: string; userName: string }[]).map((m) => (
+                    <SelectItem key={m.userId} value={m.userId}>{m.userName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Data *</Label>
+              <Input
+                type="date"
+                value={addEntryForm.date}
+                onChange={(e) => setAddEntryForm((f) => ({ ...f, date: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Atividade *</Label>
+              <Input
+                placeholder="Ex: Ensaio, Montagem, Operação..."
+                value={addEntryForm.label}
+                onChange={(e) => setAddEntryForm((f) => ({ ...f, label: e.target.value }))}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Início</Label>
+                <Input
+                  type="time"
+                  value={addEntryForm.startTime}
+                  onChange={(e) => setAddEntryForm((f) => ({ ...f, startTime: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Fim</Label>
+                <Input
+                  type="time"
+                  value={addEntryForm.endTime}
+                  onChange={(e) => setAddEntryForm((f) => ({ ...f, endTime: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Observações</Label>
+              <Textarea
+                placeholder="Opcional..."
+                rows={2}
+                value={addEntryForm.notes}
+                onChange={(e) => setAddEntryForm((f) => ({ ...f, notes: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddEntry(false)}>Cancelar</Button>
+            <Button
+              onClick={handleAddEntry}
+              disabled={!addEntryForm.memberId || !addEntryForm.date || !addEntryForm.label || createEntryMut.isPending}
+            >
+              {createEntryMut.isPending ? "Salvando..." : "Adicionar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }
@@ -936,6 +1084,132 @@ const LABEL_COL = 224;
 const MEMBER_COL = 148;
 const OPEN_COL = 180;
 
+// ─── OperationalDayView ───────────────────────────────────────────────────────
+
+interface OperationalDayViewProps {
+  members: { userId: string; userName: string }[];
+  dayManual: Map<string, ScaleAllocationWithCandidates[]>;
+  folgaUserIds: Set<string>;
+  isSupervisor: boolean;
+  selectedDay: string | null;
+  onAddEntry: (memberId: string, date: string) => void;
+  onDeleteEntry: (entryId: string) => void;
+}
+
+function OperationalDayView({
+  members,
+  dayManual,
+  folgaUserIds,
+  isSupervisor,
+  selectedDay,
+  onAddEntry,
+  onDeleteEntry,
+}: OperationalDayViewProps) {
+  const date = selectedDay ?? new Date().toISOString().split("T")[0]!;
+
+  return (
+    <div>
+      {/* Day header */}
+      <div className="flex items-center gap-2 mb-3">
+        <PenLine className="h-4 w-4 text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">
+          Dia operacional — sem eventos de agenda.{" "}
+          {isSupervisor && "Use os botões abaixo para adicionar atividades."}
+        </p>
+      </div>
+
+      {/* Member columns */}
+      <div className="bg-white rounded-xl border shadow-sm overflow-x-auto">
+        <div className="flex min-w-max">
+          {members.map((m) => {
+            const entries = dayManual.get(m.userId) ?? [];
+            const hasFolga = folgaUserIds.has(m.userId);
+            return (
+              <div
+                key={m.userId}
+                className="flex flex-col border-r last:border-r-0"
+                style={{ minWidth: 148, maxWidth: 172 }}
+              >
+                {/* Member header */}
+                <div className="flex flex-col items-center gap-1 px-3 py-3 border-b bg-gray-50/80">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-xs font-bold text-primary">
+                      {m.userName.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <span className="text-xs font-medium text-gray-700 text-center leading-tight">
+                    {m.userName.split(" ")[0]}
+                  </span>
+                  {hasFolga && (
+                    <span className="flex items-center gap-0.5 text-[10px] text-amber-500">
+                      <Palmtree className="h-2.5 w-2.5" /> Folga
+                    </span>
+                  )}
+                </div>
+
+                {/* Entry cards */}
+                <div className="flex flex-col gap-1.5 p-2 min-h-[80px]">
+                  {entries.map((entry) => {
+                    const e = entry as any;
+                    return (
+                      <div
+                        key={entry.id}
+                        className="group relative rounded-lg bg-primary/10 px-2.5 py-2 text-xs"
+                      >
+                        <p className="font-semibold text-primary uppercase leading-tight tracking-wide">
+                          {e.manualLabel ?? "—"}
+                        </p>
+                        {(e.startTime || e.endTime) && (
+                          <p className="text-primary/70 mt-0.5">
+                            {e.startTime ? fmtTime(e.startTime) : ""}
+                            {e.startTime && e.endTime ? " – " : ""}
+                            {e.endTime ? fmtTime(e.endTime) : ""}
+                          </p>
+                        )}
+                        {e.notes && (
+                          <p className="text-muted-foreground mt-0.5 line-clamp-1">{e.notes}</p>
+                        )}
+                        {isSupervisor && (
+                          <button
+                            onClick={() => onDeleteEntry(entry.id)}
+                            className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 p-0.5 rounded"
+                            title="Remover entrada"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Add button */}
+                  {isSupervisor && (
+                    <button
+                      onClick={() => onAddEntry(m.userId, date)}
+                      className="w-full flex items-center justify-center gap-1 rounded-lg border border-dashed border-muted-foreground/30 px-2 py-2 text-xs text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                    >
+                      <Plus className="h-3 w-3" />
+                      Adicionar
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Empty state when no members */}
+          {members.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 px-8 text-muted-foreground gap-2 w-full">
+              <User className="h-8 w-8 opacity-20" />
+              <p className="text-sm">Nenhum membro encontrado.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── ScaleGrid ────────────────────────────────────────────────────────────────
 
 interface EventRow {
@@ -957,6 +1231,10 @@ interface ScaleGridProps {
   onCellClick: (alloc: ScaleAllocationWithCandidates) => void;
   onResolveException: (id: string) => void;
   resolvePending: boolean;
+  manualByDateMember: Map<string, Map<string, ScaleAllocationWithCandidates[]>>;
+  selectedDay: string | null;
+  onAddEntry: (memberId: string, date: string) => void;
+  onDeleteEntry: (entryId: string) => void;
 }
 
 function ScaleGrid({
@@ -973,8 +1251,14 @@ function ScaleGrid({
   onCellClick,
   onResolveException,
   resolvePending,
+  manualByDateMember,
+  selectedDay,
+  onAddEntry,
+  onDeleteEntry,
 }: ScaleGridProps) {
-  if (allocations.length === 0) {
+  const dayManual = selectedDay ? (manualByDateMember.get(selectedDay) ?? new Map()) : new Map();
+
+  if (allocations.length === 0 && !isSupervisor) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-muted-foreground gap-3">
         <Zap className="h-10 w-10 opacity-15" />
@@ -1022,12 +1306,17 @@ function ScaleGrid({
         </div>
       )}
 
-      {/* No events on selected day */}
+      {/* No events on selected day: show operational day view with manual entry columns */}
       {eventRows.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
-          <p className="text-sm">Sem atividades neste dia.</p>
-          <p className="text-xs">Selecione outro dia no calendário acima.</p>
-        </div>
+        <OperationalDayView
+          members={members}
+          dayManual={dayManual}
+          folgaUserIds={folgaUserIds}
+          isSupervisor={isSupervisor}
+          selectedDay={selectedDay}
+          onAddEntry={onAddEntry}
+          onDeleteEntry={onDeleteEntry}
+        />
       )}
 
       {/* Matrix grid */}

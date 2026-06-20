@@ -558,6 +558,10 @@ router.get("/scales/:id/allocations", requireAuth, requireOrganization, async (r
         status: scaleAllocationsTable.status,
         overrideReason: scaleAllocationsTable.overrideReason,
         notes: scaleAllocationsTable.notes,
+        manualDate: scaleAllocationsTable.manualDate,
+        manualLabel: scaleAllocationsTable.manualLabel,
+        startTime: scaleAllocationsTable.startTime,
+        endTime: scaleAllocationsTable.endTime,
         positionName: showBookRolesTable.name,
         userName: usersTable.name,
       })
@@ -603,6 +607,97 @@ router.get("/scales/:id/allocations", requireAuth, requireOrganization, async (r
   } catch (err) {
     log.error({ err }, "erro ao buscar alocações");
     res.status(500).json({ error: "Erro interno" });
+  }
+});
+
+// POST /api/scales/:id/entries — criar entrada manual (sem evento de agenda)
+router.post("/scales/:id/entries", requireAuth, requireOrganization, async (req, res) => {
+  const log = requestLogger("scale", req.requestId, req.correlationId);
+  const id = req.params["id"] as string;
+  const user = req.user!;
+  const userId = user.sub;
+  const { memberId, date, label, startTime, endTime, notes } = req.body;
+
+  if (!memberId || !date || !label) {
+    res.status(400).json({ error: "memberId, date e label são obrigatórios" });
+    return;
+  }
+
+  try {
+    const scale = await getScaleOrFail(id, res);
+    if (!scale) return;
+
+    if (scale.status === "ARCHIVED") {
+      res.status(409).json({ error: "Escala arquivada não pode ser modificada" });
+      return;
+    }
+
+    if (!MANAGER_ROLES.includes(user.role)) {
+      if (!(await hasActiveResponsibility(userId, scale.operationId, "SCALES"))) {
+        res.status(403).json({ error: "Forbidden" });
+        return;
+      }
+    }
+
+    const [entry] = await db
+      .insert(scaleAllocationsTable)
+      .values({
+        scaleId: id,
+        agendaEventId: null,
+        userId: memberId,
+        status: "MANUAL_OVERRIDE",
+        manualDate: date,
+        manualLabel: label,
+        startTime: startTime ?? null,
+        endTime: endTime ?? null,
+        notes: notes ?? null,
+        overriddenBy: userId,
+        overrideReason: "Entrada manual",
+      })
+      .returning();
+
+    // Update scale totals
+    await db.update(scalesTable).set({ updatedAt: new Date() }).where(eq(scalesTable.id, id));
+
+    res.status(201).json({ entry });
+  } catch (err) {
+    log.error({ err }, "erro ao criar entrada manual");
+    res.status(500).json({ error: "Erro ao criar entrada" });
+  }
+});
+
+// DELETE /api/scales/:id/entries/:entryId — remover entrada manual
+router.delete("/scales/:id/entries/:entryId", requireAuth, requireOrganization, async (req, res) => {
+  const log = requestLogger("scale", req.requestId, req.correlationId);
+  const id = req.params["id"] as string;
+  const entryId = req.params["entryId"] as string;
+  const user = req.user!;
+  const userId = user.sub;
+
+  try {
+    const scale = await getScaleOrFail(id, res);
+    if (!scale) return;
+
+    if (scale.status === "ARCHIVED") {
+      res.status(409).json({ error: "Escala arquivada não pode ser modificada" });
+      return;
+    }
+
+    if (!MANAGER_ROLES.includes(user.role)) {
+      if (!(await hasActiveResponsibility(userId, scale.operationId, "SCALES"))) {
+        res.status(403).json({ error: "Forbidden" });
+        return;
+      }
+    }
+
+    await db
+      .delete(scaleAllocationsTable)
+      .where(and(eq(scaleAllocationsTable.id, entryId), eq(scaleAllocationsTable.scaleId, id)));
+
+    res.json({ ok: true });
+  } catch (err) {
+    log.error({ err }, "erro ao remover entrada");
+    res.status(500).json({ error: "Erro ao remover entrada" });
   }
 });
 
