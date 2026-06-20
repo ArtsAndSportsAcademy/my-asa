@@ -42,6 +42,8 @@ import {
 } from "lucide-react";
 import { useListUsers } from "@workspace/api-client-react";
 import { useListAgendaEvents } from "@workspace/api-client-react";
+import { useListShowBooks } from "@workspace/api-client-react";
+import type { ShowBook } from "@workspace/api-client-react";
 
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: "Rascunho",
@@ -234,6 +236,7 @@ export default function AdminDailyBookPage() {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [generateOpen, setGenerateOpen] = useState(false);
+  const [selectedShowBookId, setSelectedShowBookId] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -242,17 +245,19 @@ export default function AdminDailyBookPage() {
   const [centerTab, setCenterTab] = useState<"cena" | "bloco" | "posicao">("cena");
   const [rightTab, setRightTab] = useState<"impacto" | "alteracoes" | "historico" | "delta">("impacto");
   const [filterStatus, setFilterStatus] = useState<string>("__all");
-  const [filterEventId, setFilterEventId] = useState<string>("__all");
+  const [filterShowBookId, setFilterShowBookId] = useState<string>("__all");
 
   const listParams = {
     ...(filterStatus !== "__all" ? { status: filterStatus } : {}),
-    ...(filterEventId !== "__all" ? { agendaEventId: filterEventId } : {}),
   };
   const { data: listData, isLoading } = useListDailyBook(
     listParams,
     { query: { queryKey: getListDailyBookQueryKey(listParams) } }
   );
-  const books: DailyBook[] = (listData as any)?.dailyBooks ?? [];
+  const allBooks: DailyBook[] = (listData as any)?.dailyBooks ?? [];
+  const books: DailyBook[] = filterShowBookId === "__all"
+    ? allBooks
+    : allBooks.filter((b) => b.showBookId === filterShowBookId);
 
   const { data: bookData } = useGetDailyBook(selectedId ?? "", {
     query: { enabled: !!selectedId, queryKey: getGetDailyBookQueryKey(selectedId ?? "") },
@@ -260,7 +265,10 @@ export default function AdminDailyBookPage() {
   const selectedBook = (bookData as any)?.dailyBook as DailyBookWithScenes | undefined;
 
   const { data: eventsData } = useListAgendaEvents({ operationId });
-  const events: { id: string; title: string }[] = (eventsData as any)?.events ?? [];
+  const events: { id: string; title: string; showBookId?: string | null }[] = (eventsData as any)?.events ?? [];
+
+  const { data: showBooksData } = useListShowBooks({ operationId });
+  const showBooks: ShowBook[] = (showBooksData as any)?.showBooks ?? [];
 
   const { data: usersData } = useListUsers();
   const users: { id: string; name: string | null }[] = (usersData as any)?.users ?? [];
@@ -429,14 +437,14 @@ export default function AdminDailyBookPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={filterEventId} onValueChange={setFilterEventId}>
+            <Select value={filterShowBookId} onValueChange={setFilterShowBookId}>
               <SelectTrigger className="h-7 text-xs">
-                <SelectValue placeholder="Todos os eventos" />
+                <SelectValue placeholder="Todos os show books" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__all">Todos</SelectItem>
-                {events.map((e) => (
-                  <SelectItem key={e.id} value={e.id}>{e.title ?? e.id.slice(0, 8)}</SelectItem>
+                {showBooks.map((sb) => (
+                  <SelectItem key={sb.id} value={sb.id}>{sb.title}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -448,7 +456,8 @@ export default function AdminDailyBookPage() {
               <div className="p-4 text-center text-sm text-muted-foreground">Nenhum Livro do Dia gerado ainda. Gere o primeiro livro a partir de um evento da Agenda.</div>
             ) : (
               books.map((book) => {
-                const eventLabel = book.agendaEventId.slice(0, 8);
+                const showBook = showBooks.find((sb) => sb.id === book.showBookId);
+                const bookLabel = showBook?.title ?? book.agendaEventId.slice(0, 8);
                 return (
                   <button
                     key={book.id}
@@ -457,7 +466,7 @@ export default function AdminDailyBookPage() {
                   >
                     <div className="flex items-center gap-2">
                       <BookOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <span className="text-sm font-medium truncate flex-1">Evento {eventLabel}</span>
+                      <span className="text-sm font-medium truncate flex-1">{bookLabel}</span>
                       <Badge variant={STATUS_VARIANTS[book.status] ?? "secondary"} className="text-xs shrink-0">
                         v{book.version}
                       </Badge>
@@ -593,7 +602,12 @@ export default function AdminDailyBookPage() {
               <div className="px-4 pt-3 border-b shrink-0">
                 <div className="mb-2">
                   <h3 className="text-sm font-semibold">Livro do Dia — v{selectedBook.version}</h3>
-                  <p className="text-xs text-muted-foreground">Evento: <span className="font-mono">{selectedBook.agendaEventId.slice(0, 8)}</span></p>
+                  {(() => {
+                    const sb = showBooks.find((s) => s.id === selectedBook.showBookId);
+                    return sb
+                      ? <p className="text-xs text-muted-foreground">Show Book: <span className="font-medium">{sb.title}</span></p>
+                      : <p className="text-xs text-muted-foreground">Evento: <span className="font-mono">{selectedBook.agendaEventId.slice(0, 8)}</span></p>;
+                  })()}
                 </div>
                 <TabsList className="h-8">
                   <TabsTrigger value="impacto" className="text-xs">Impacto</TabsTrigger>
@@ -811,28 +825,53 @@ export default function AdminDailyBookPage() {
       </Dialog>
 
       {/* Dialog — Gerar Livro do Dia */}
-      <Dialog open={generateOpen} onOpenChange={setGenerateOpen}>
+      <Dialog open={generateOpen} onOpenChange={(o) => { setGenerateOpen(o); if (!o) { setSelectedShowBookId(null); setSelectedEventId(null); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Gerar Livro do Dia</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <Label className="mb-1.5 block">Evento</Label>
-              <Select value={selectedEventId ?? ""} onValueChange={setSelectedEventId}>
+              <Label className="mb-1.5 block">Livro do Show</Label>
+              <Select
+                value={selectedShowBookId ?? ""}
+                onValueChange={(v) => { setSelectedShowBookId(v); setSelectedEventId(null); }}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione o evento..." />
+                  <SelectValue placeholder="Selecione o livro do show..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {events.map((e) => (
-                    <SelectItem key={e.id} value={e.id}>{e.title ?? e.id}</SelectItem>
+                  {showBooks.map((sb) => (
+                    <SelectItem key={sb.id} value={sb.id}>{sb.title}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+            {selectedShowBookId && (
+              <div>
+                <Label className="mb-1.5 block">Data / Evento</Label>
+                <Select value={selectedEventId ?? ""} onValueChange={setSelectedEventId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o evento..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {events
+                      .filter((e) => e.showBookId === selectedShowBookId)
+                      .map((e) => (
+                        <SelectItem key={e.id} value={e.id}>
+                          {e.title ?? e.id}
+                        </SelectItem>
+                      ))}
+                    {events.filter((e) => e.showBookId === selectedShowBookId).length === 0 && (
+                      <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum evento vinculado a este show book</div>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setGenerateOpen(false); setSelectedEventId(null); }}>Cancelar</Button>
+            <Button variant="outline" onClick={() => { setGenerateOpen(false); setSelectedShowBookId(null); setSelectedEventId(null); }}>Cancelar</Button>
             <Button onClick={handleGenerate} disabled={!selectedEventId || generateMutation.isPending}>
               {generateMutation.isPending ? "Gerando..." : "Gerar"}
             </Button>
