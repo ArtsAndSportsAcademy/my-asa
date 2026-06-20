@@ -7,10 +7,9 @@ import { useLogin } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Info } from "lucide-react";
 
 const loginSchema = z.object({
   username: z.string().min(1, "O nome de usuário é obrigatório"),
@@ -134,20 +133,6 @@ export default function Login() {
                 </form>
               </Form>
             </CardContent>
-            <CardFooter>
-              <div className="w-full p-4 rounded-lg bg-muted text-muted-foreground text-sm border border-border/50">
-                <div className="flex items-start gap-2">
-                  <Info className="w-4 h-4 mt-0.5 shrink-0" />
-                  <div className="space-y-2">
-                    <p className="font-medium text-foreground">Grupo Entretenimento Artístico:</p>
-                    <ul className="space-y-1 font-mono text-xs">
-                      <li>cris.fontana / Teste@123 <span className="font-sans text-muted-foreground">(Admin)</span></li>
-                      <li>rafael.torres / Teste@123 <span className="font-sans text-muted-foreground">(Supervisor)</span></li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </CardFooter>
           </Card>
         </div>
       </div>
