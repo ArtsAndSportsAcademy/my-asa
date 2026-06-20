@@ -24,3 +24,15 @@ id = "YevYU5jVtvOG39bLgmwq2"
 uri = "file://docs/specs/AI-D01-audit.md"
 type = "text"
 title = "AI-D01 — Auditoria da Inteligência Operacional do MyASA"
+
+[[outputs]]
+id = "R5A-U7f1gupGsPs8F5588"
+uri = "file://artifacts/web-admin/public/asa-avatar.png"
+type = "image"
+title = "Asa Avatar"
+
+[[outputs]]
+id = "jSG8zZ52bfbi3xiQ1CUiC"
+uri = "file://attached_assets/ChatGPT_Image_19_jun_2026,_07_13_47_p.m._1781963887961.png"
+type = "image"
+title = "Sprite Sheet — 20 poses da Asa"

@@ -365,7 +365,7 @@ router.patch("/responsibilities/:id/assignments/:assignmentId", requireAuth, req
     const user = req.user!;
     if (user.role !== "ADMIN") { res.status(403).json({ error: "Somente ADMIN pode editar atribuições" }); return; }
 
-    const { assignmentId } = req.params;
+    const assignmentId = req.params["assignmentId"] as string;
     const { substituteMemberId, active, endsAt } = req.body as {
       substituteMemberId?: string | null;
       active?: boolean;
@@ -378,14 +378,13 @@ router.patch("/responsibilities/:id/assignments/:assignmentId", requireAuth, req
       .where(eq(responsibilityAssignmentsTable.id, assignmentId));
     if (!existing) { res.status(404).json({ error: "Atribuição não encontrada" }); return; }
 
+    const setVals: Record<string, unknown> = { updatedAt: new Date() };
+    if (substituteMemberId !== undefined) setVals.substituteMemberId = substituteMemberId ?? null;
+    if (active !== undefined) setVals.active = active;
+    if (endsAt !== undefined) setVals.endsAt = endsAt ? new Date(endsAt) : null;
     const [updated] = await db
       .update(responsibilityAssignmentsTable)
-      .set({
-        ...(substituteMemberId !== undefined && { substituteMemberId: substituteMemberId ?? null }),
-        ...(active !== undefined && { active }),
-        ...(endsAt !== undefined && { endsAt: endsAt ? new Date(endsAt) : null }),
-        updatedAt: new Date(),
-      })
+      .set(setVals as never)
       .where(eq(responsibilityAssignmentsTable.id, assignmentId))
       .returning();
 
@@ -478,7 +477,8 @@ router.delete("/responsibilities/:id/assignments/:assignmentId", requireAuth, re
     const user = req.user!;
     if (user.role !== "ADMIN") { res.status(403).json({ error: "Somente ADMIN pode remover atribuições" }); return; }
 
-    const { assignmentId, id: respId } = req.params;
+    const assignmentId = req.params["assignmentId"] as string;
+    const respId = req.params["id"] as string;
 
     await db
       .update(responsibilityAssignmentsTable)

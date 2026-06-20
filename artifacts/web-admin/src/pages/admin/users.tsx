@@ -83,7 +83,7 @@ export default function UsersPage() {
           email: email.trim(),
           password,
           specialization: (specialization || undefined) as any,
-          birthDate: (createForm.birthDate || null) as any,
+          ...(createForm.birthDate ? { birthDate: createForm.birthDate as any } : {}),
         },
       },
       {
@@ -111,7 +111,7 @@ export default function UsersPage() {
           name: name.trim() || undefined,
           email: email.trim() || undefined,
           specialization: (specialization || null) as any,
-          birthDate: (birthDate || null) as any,
+          ...(birthDate !== undefined ? { birthDate: (birthDate || null) as any } : {}),
         },
       },
       {

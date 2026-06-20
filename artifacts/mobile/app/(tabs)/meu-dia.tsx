@@ -17,6 +17,7 @@ import {
   useMarkNotificationRead,
   getNotificationsQueryKey,
   useListFolgas,
+  getListFolgasQueryKey,
 } from "@workspace/api-client-react";
 import type {
   MyDayActivity,
@@ -579,9 +580,10 @@ export default function MeuDiaScreen() {
     .sort((a, b) => TASK_PRIORITY_ORDER[a.priority] - TASK_PRIORITY_ORDER[b.priority]);
 
   const todayStr = new Date().toISOString().slice(0, 10);
+  const folgasHojeParams = { dateFrom: todayStr, dateTo: todayStr, status: "ACTIVE" as const };
   const { data: folgasHojeData } = useListFolgas(
-    { dateFrom: todayStr, dateTo: todayStr, status: "ACTIVE" },
-    { query: { enabled: !!user } }
+    folgasHojeParams as any,
+    { query: { queryKey: getListFolgasQueryKey(folgasHojeParams as any), enabled: !!user } }
   );
   const ausenciasHoje = folgasHojeData?.folgas ?? [];
 

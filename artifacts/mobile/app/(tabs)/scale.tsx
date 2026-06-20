@@ -3,6 +3,7 @@ import {
   useListMyAllocations,
   getListMyAllocationsQueryKey,
   useListFolgas,
+  getListFolgasQueryKey,
 } from "@workspace/api-client-react";
 import type { MyAllocation } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -240,7 +241,10 @@ export default function ScaleScreen() {
     status: "ACTIVE",
   };
   const { data: folgaData } = useListFolgas(folgaParams as any, {
-    query: { enabled: !!userId },
+    query: {
+      queryKey: getListFolgasQueryKey(folgaParams as any),
+      enabled: !!userId,
+    },
   });
   const activeFolgas = useMemo<FolgaItem[]>(
     () => ((folgaData as any)?.folgas as FolgaItem[] | undefined) ?? [],

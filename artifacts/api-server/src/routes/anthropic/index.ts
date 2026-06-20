@@ -37,7 +37,7 @@ router.post("/anthropic/conversations", requireAuth, async (req, res): Promise<v
 
 router.get("/anthropic/conversations/:id", requireAuth, async (req, res): Promise<void> => {
   const user = req.user!;
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params["id"] as string);
 
   const [conv] = await db
     .select()
@@ -60,7 +60,7 @@ router.get("/anthropic/conversations/:id", requireAuth, async (req, res): Promis
 
 router.delete("/anthropic/conversations/:id", requireAuth, async (req, res): Promise<void> => {
   const user = req.user!;
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params["id"] as string);
 
   const [conv] = await db
     .select()
@@ -78,7 +78,7 @@ router.delete("/anthropic/conversations/:id", requireAuth, async (req, res): Pro
 
 router.get("/anthropic/conversations/:id/messages", requireAuth, async (req, res): Promise<void> => {
   const user = req.user!;
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params["id"] as string);
 
   const [conv] = await db
     .select()

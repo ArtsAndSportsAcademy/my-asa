@@ -25,6 +25,22 @@ export interface CheckInSummary {
   expected: number;
 }
 
+export interface CheckInRecord {
+  id: string;
+  status: string;
+  checkedInAt: string | null;
+  excuseReason?: string | null;
+  date: string;
+  operationId: string;
+}
+
+export interface CheckInMyStatusResponse {
+  status: "EXPECTED" | "CHECKED_IN" | "LATE" | "ABSENT" | "EXCUSED" | null;
+  checkIn: CheckInRecord | null;
+  operationId?: string;
+  message?: string;
+}
+
 export interface ListCheckInsParams {
   date: string;
   operationId: string;
@@ -46,6 +62,9 @@ export const getListCheckInsQueryKey = (params?: ListCheckInsParams): QueryKey =
 export const getGetCheckInSummaryQueryKey = (params?: ListCheckInsParams): QueryKey =>
   ["/api/check-ins/summary", ...(params ? [params] : [])];
 
+export const getGetMyCheckInStatusQueryKey = (params?: { date?: string }): QueryKey =>
+  ["/api/check-ins/my-status", ...(params ? [params] : [])];
+
 // ─── Fetch functions ──────────────────────────────────────────────────────────
 
 const listCheckIns = async (params: ListCheckInsParams): Promise<{ checkIns: CheckInItem[] }> => {
@@ -56,6 +75,20 @@ const listCheckIns = async (params: ListCheckInsParams): Promise<{ checkIns: Che
 const getCheckInSummary = async (params: ListCheckInsParams): Promise<{ summary: CheckInSummary }> => {
   const p = new URLSearchParams({ date: params.date, operationId: params.operationId });
   return customFetch<{ summary: CheckInSummary }>(`/api/check-ins/summary?${p}`, { method: "GET" });
+};
+
+const getMyCheckInStatus = async (params?: { date?: string }): Promise<CheckInMyStatusResponse> => {
+  const p = new URLSearchParams();
+  if (params?.date) p.set("date", params.date);
+  const qs = p.toString();
+  return customFetch<CheckInMyStatusResponse>(
+    `/api/check-ins/my-status${qs ? `?${qs}` : ""}`,
+    { method: "GET" }
+  );
+};
+
+const performMyCheckIn = async (): Promise<{ checkIn: CheckInRecord }> => {
+  return customFetch<{ checkIn: CheckInRecord }>(`/api/check-ins/my`, { method: "POST" });
 };
 
 const updateCheckIn = async ({ id, data }: { id: string; data: UpdateCheckInData }): Promise<unknown> => {
@@ -98,6 +131,28 @@ export function useGetCheckInSummary(
     queryFn: () => getCheckInSummary(params),
     enabled: !!params.operationId,
     ...options?.query,
+  });
+}
+
+export function useGetMyCheckInStatus(
+  params?: { date?: string },
+  options?: {
+    query?: UseQueryOptions<CheckInMyStatusResponse, Error>;
+  }
+) {
+  return useQuery<CheckInMyStatusResponse, Error>({
+    queryKey: getGetMyCheckInStatusQueryKey(params),
+    queryFn: () => getMyCheckInStatus(params),
+    ...options?.query,
+  });
+}
+
+export function usePerformMyCheckIn(
+  options?: UseMutationOptions<{ checkIn: CheckInRecord }, Error, void>
+) {
+  return useMutation<{ checkIn: CheckInRecord }, Error, void>({
+    mutationFn: performMyCheckIn,
+    ...options,
   });
 }
 

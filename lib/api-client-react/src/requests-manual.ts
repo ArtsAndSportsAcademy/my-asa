@@ -4,6 +4,15 @@ import { customFetch } from "./custom-fetch";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+export type RequestType =
+  | "LEAVE"
+  | "ROLE_RESTRICTION"
+  | "PHYSICAL_RESTRICTION"
+  | "HEALTH_RESTRICTION"
+  | "SCHEDULE_CHANGE"
+  | "SWAP"
+  | "OTHER";
+
 export type RequestDecisionType =
   | "APPROVED"
   | "DENIED"
@@ -28,6 +37,22 @@ export interface ListRequestsParams {
   operationId?: string;
   status?: string;
   page?: number;
+}
+
+export interface CreateRequestInput {
+  data: {
+    type: RequestType | string;
+    operationId: string;
+    targetDates: string[];
+    reason?: string;
+  };
+}
+
+export interface UpdateRequestInput {
+  id: string;
+  data: {
+    status: "ALTERNATIVE_ACCEPTED" | "ALTERNATIVE_REJECTED";
+  };
 }
 
 export interface DecideRequestInput {
@@ -66,6 +91,20 @@ const listPendingRequests = async (params?: { operationId?: string }): Promise<{
   return customFetch<{ requests: RequestItem[] }>(`/api/requests/pending${qs ? `?${qs}` : ""}`, { method: "GET" });
 };
 
+const createRequest = async (input: CreateRequestInput): Promise<{ request: RequestItem }> => {
+  return customFetch<{ request: RequestItem }>(`/api/requests`, {
+    method: "POST",
+    body: JSON.stringify(input.data),
+  });
+};
+
+const updateRequest = async (input: UpdateRequestInput): Promise<{ request: RequestItem }> => {
+  return customFetch<{ request: RequestItem }>(`/api/requests/${input.id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input.data),
+  });
+};
+
 const decideRequest = async (input: DecideRequestInput): Promise<unknown> => {
   const { id, data } = input;
   return customFetch<unknown>(`/api/requests/${id}/decide`, {
@@ -95,6 +134,24 @@ export function useListPendingRequests(
     queryKey: getListPendingRequestsQueryKey(params),
     queryFn: () => listPendingRequests(params),
     ...options?.query,
+  });
+}
+
+export function useCreateRequest(
+  options?: { mutation?: UseMutationOptions<{ request: RequestItem }, Error, CreateRequestInput> }
+) {
+  return useMutation<{ request: RequestItem }, Error, CreateRequestInput>({
+    mutationFn: createRequest,
+    ...options?.mutation,
+  });
+}
+
+export function useUpdateRequest(
+  options?: { mutation?: UseMutationOptions<{ request: RequestItem }, Error, UpdateRequestInput> }
+) {
+  return useMutation<{ request: RequestItem }, Error, UpdateRequestInput>({
+    mutationFn: updateRequest,
+    ...options?.mutation,
   });
 }
 

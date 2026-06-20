@@ -26,10 +26,14 @@ import {
   libraryDocumentVersionsTable,
   libraryCategoriesTable,
   libraryViewsTable,
+  userNotificationsTable,
 } from "@workspace/db";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
-import type { MessageParam, Tool } from "@anthropic-ai/sdk/resources/messages.js";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type MessageParam = { role: "user" | "assistant"; content: any };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Tool = { name: string; description?: string; input_schema: any };
 
 const router = Router();
 
@@ -236,7 +240,7 @@ async function assembleResumoDodia(
       .from(folgasTable)
       .leftJoin(usersTable, eq(folgasTable.userId, usersTable.id))
       .where(and(
-        eq(folgasTable.organizationId, organizationId),
+        sql`true`,
         eq(folgasTable.status, "ACTIVE"),
         lte(folgasTable.startDate, today),
         gte(folgasTable.endDate, today),
@@ -1464,7 +1468,7 @@ async function executeTool(
       const events = await db
         .select()
         .from(agendaEventsTable)
-        .where(eq(agendaEventsTable.organizationId, ctx.organizationId))
+        .where(ctx.operationId ? eq(agendaEventsTable.operationId, ctx.operationId) : sql`true`)
         .orderBy(agendaEventsTable.startTime)
         .limit(limit);
       return JSON.stringify(events.map(e => ({
@@ -1524,7 +1528,7 @@ async function executeTool(
         .where(and(
           eq(scaleAllocationsTable.userId, targetUserId),
           inArray(scaleAllocationsTable.scaleId, scaleIds),
-          inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]),
+          inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]),
         ))
         .orderBy(scaleAllocationsTable.manualDate)
         .limit(limit);
@@ -1558,17 +1562,16 @@ async function executeTool(
       const rows = await db
         .select()
         .from(responsibilitiesTable)
-        .where(eq(responsibilitiesTable.organizationId, ctx.organizationId))
+        .where(eq(responsibilitiesTable.orgId, ctx.organizationId))
         .limit(20);
       const filtered = input.unassigned
-        ? rows.filter(r => r.status === "ACTIVE")
+        ? rows.filter(r => r.active)
         : rows;
       return JSON.stringify(filtered.map(r => ({
         id: r.id,
-        name: r.name,
+        name: r.title,
         category: r.category,
-        status: r.status,
-        priority: r.priority,
+        status: r.active ? "ACTIVE" : "INACTIVE",
       })));
     }
 
@@ -1576,16 +1579,16 @@ async function executeTool(
       const limit = (input.limit as number) ?? 10;
       const notifs = await db
         .select()
-        .from(notificationsTable)
-        .where(eq(notificationsTable.userId, ctx.userId))
-        .orderBy(desc(notificationsTable.createdAt))
+        .from(userNotificationsTable)
+        .where(eq(userNotificationsTable.userId, ctx.userId))
+        .orderBy(desc(userNotificationsTable.createdAt))
         .limit(limit);
       const filtered = input.unreadOnly ? notifs.filter(n => !n.readAt) : notifs;
       return JSON.stringify(filtered.map(n => ({
         id: n.id,
         type: n.type,
         title: n.title,
-        body: n.body,
+        body: n.message,
         readAt: n.readAt,
         createdAt: n.createdAt,
       })));
@@ -1597,7 +1600,7 @@ async function executeTool(
       const notices = await db
         .select()
         .from(noticesTable)
-        .where(eq(noticesTable.organizationId, ctx.organizationId))
+        .where(ctx.operationId ? eq(noticesTable.operationId, ctx.operationId) : sql`true`)
         .orderBy(desc(noticesTable.createdAt))
         .limit(limit);
       return JSON.stringify(notices.map(n => ({
@@ -1665,13 +1668,14 @@ async function executeTool(
     if (name === "criar_aviso_rascunho") {
       if (!isManager) return JSON.stringify({ error: "Sem permissão para criar avisos" });
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      if (!ctx.operationId) return JSON.stringify({ error: "Selecione uma operação antes de criar avisos" });
       const [notice] = await db.insert(noticesTable).values({
         title: input.title as string,
         content: input.content as string,
-        type: (input.type as "INFORMATIVE" | "CHANGE" | "ALERT" | "EMERGENCY") ?? "INFORMATIVE",
-        urgency: (input.urgency as "LOW" | "MEDIUM" | "HIGH" | "CRITICAL") ?? "MEDIUM",
-        organizationId: ctx.organizationId,
-        createdBy: ctx.userId,
+        type: (input.type as "INFORMATIVE" | "IMPORTANT" | "PERSISTENT" | "ESCALATED") ?? "INFORMATIVE",
+        urgency: (input.urgency as "INFORMATIVE" | "IMPORTANT" | "CRITICAL") ?? "IMPORTANT",
+        operationId: ctx.operationId,
+        authorId: ctx.userId,
         status: "DRAFT",
       }).returning();
       return JSON.stringify({
@@ -1685,14 +1689,17 @@ async function executeTool(
     if (name === "criar_ensaio_rascunho") {
       if (!isManager) return JSON.stringify({ error: "Sem permissão para criar ensaios" });
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      if (!ctx.operationId) return JSON.stringify({ error: "Selecione uma operação antes de criar ensaios" });
+      const rawDate = (input.date as string | undefined) ?? new Date().toISOString().slice(0, 10);
       const [event] = await db.insert(agendaEventsTable).values({
         title: input.title as string,
         type: "REHEARSAL",
-        startTime: new Date(input.startTime as string),
-        endTime: new Date(input.endTime as string),
-        location: (input.location as string) ?? undefined,
-        description: (input.description as string) ?? undefined,
-        organizationId: ctx.organizationId,
+        date: rawDate,
+        startTime: (input.startTime as string | undefined) ?? null,
+        endTime: (input.endTime as string | undefined) ?? null,
+        location: (input.location as string | undefined) ?? null,
+        notes: (input.description as string | undefined) ?? null,
+        operationId: ctx.operationId,
         createdBy: ctx.userId,
         status: "DRAFT",
         visibility: "MANAGEMENT",
@@ -1878,7 +1885,7 @@ async function executeTool(
         .from(usersTable)
         .innerJoin(userRolesTable, eq(userRolesTable.userId, usersTable.id))
         .where(and(
-          eq(userRolesTable.organizationId, ctx.organizationId),
+          ctx.operationId ? eq(userRolesTable.operationId, ctx.operationId) : sql`true`,
           ne(usersTable.status, "INACTIVE"),
         ));
 
@@ -2288,7 +2295,7 @@ async function executeTool(
       const [existing] = await db
         .select({ id: noticesTable.id, status: noticesTable.status, title: noticesTable.title })
         .from(noticesTable)
-        .where(and(eq(noticesTable.id, noticeId), eq(noticesTable.organizationId, ctx.organizationId)))
+        .where(eq(noticesTable.id, noticeId))
         .limit(1);
       if (!existing) return JSON.stringify({ success: false, message: "Aviso não encontrado. Verifique o ID." });
       if (existing.status === "PUBLISHED") return JSON.stringify({ success: false, message: "Este aviso já está publicado." });
@@ -2326,7 +2333,6 @@ async function executeTool(
       const local      = input.local      as string | undefined;
       const [event] = await db.insert(agendaEventsTable).values({
         operationId:    ctx.operationId,
-        organizationId: ctx.organizationId,
         type:           "OPERATIONAL_BLOCK",
         title:          titulo,
         date:           data,
@@ -2481,14 +2487,14 @@ async function executeTool(
         const actMes = await db
           .select({ mes: sql<string>`TO_CHAR(${scaleAllocationsTable.manualDate}, 'YYYY-MM')`, count: sql<number>`count(*)::int` })
           .from(scaleAllocationsTable)
-          .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
+          .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
           .groupBy(sql`TO_CHAR(${scaleAllocationsTable.manualDate}, 'YYYY-MM')`)
           .orderBy(sql`TO_CHAR(${scaleAllocationsTable.manualDate}, 'YYYY-MM')`);
 
         const actDow = await db
           .select({ dow: sql<number>`EXTRACT(DOW FROM ${scaleAllocationsTable.manualDate})::int`, count: sql<number>`count(*)::int` })
           .from(scaleAllocationsTable)
-          .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
+          .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
           .groupBy(sql`EXTRACT(DOW FROM ${scaleAllocationsTable.manualDate})`)
           .orderBy(desc(sql`count(*)`));
 
@@ -2520,7 +2526,7 @@ async function executeTool(
         // Most active members (workload)
         db.select({ userId: scaleAllocationsTable.userId, nome: usersTable.name, count: sql<number>`count(*)::int` })
           .from(scaleAllocationsTable).leftJoin(usersTable, eq(scaleAllocationsTable.userId, usersTable.id))
-          .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
+          .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
           .groupBy(scaleAllocationsTable.userId, usersTable.name).orderBy(desc(sql`count(*)`)).limit(limite),
         // Chronically delayed task assignees
         db.select({ assigneeId: tasksTable.assigneeId, nome: usersTable.name, atrasadas: sql<number>`count(*)::int` })
@@ -2575,10 +2581,10 @@ async function executeTool(
       const from90  = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
 
       const [[totalAbs], [totalTasks], [txDone], [totalAct]] = await Promise.all([
-        db.select({ count: sql<number>`count(*)::int` }).from(folgasTable).where(and(ctx.operationId ? eq(folgasTable.operationId, ctx.operationId) : sql`true`, eq(folgasTable.status, "ACTIVE"), gte(folgasTable.startDate, from90))),
-        db.select({ count: sql<number>`count(*)::int` }).from(tasksTable).where(and(eq(tasksTable.organizationId, ctx.organizationId), sql`date(${tasksTable.createdAt}) >= ${from90}`)),
-        db.select({ count: sql<number>`count(*)::int` }).from(tasksTable).where(and(eq(tasksTable.organizationId, ctx.organizationId), eq(tasksTable.status, "DONE"), sql`date(${tasksTable.updatedAt}) >= ${from90}`)),
-        db.select({ count: sql<number>`count(*)::int` }).from(scaleAllocationsTable).where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from90} and ${today11}`)),
+        db.select({ count: sql<number>`count(*)::int` }).from(folgasTable).where(and(ctx.operationId ? eq(folgasTable.operationId, ctx.operationId!) : sql`true`, eq(folgasTable.status, "ACTIVE"), gte(folgasTable.startDate, from90))!),
+        db.select({ count: sql<number>`count(*)::int` }).from(tasksTable).where(and(eq(tasksTable.organizationId, ctx.organizationId!), sql`date(${tasksTable.createdAt}) >= ${from90}`)!),
+        db.select({ count: sql<number>`count(*)::int` }).from(tasksTable).where(and(eq(tasksTable.organizationId, ctx.organizationId!), eq(tasksTable.status, "COMPLETED"), sql`date(${tasksTable.updatedAt}) >= ${from90}`)!),
+        db.select({ count: sql<number>`count(*)::int` }).from(scaleAllocationsTable).where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from90} and ${today11}`)!),
       ]);
 
       const txConclusao = (totalTasks?.count ?? 0) > 0 ? Math.round(((txDone?.count ?? 0) / (totalTasks?.count ?? 1)) * 100) : 0;
@@ -2618,7 +2624,7 @@ async function executeTool(
         // Overloaded members (activity count > 2× average)
         db.select({ userId: scaleAllocationsTable.userId, nome: usersTable.name, count: sql<number>`count(*)::int` })
           .from(scaleAllocationsTable).leftJoin(usersTable, eq(scaleAllocationsTable.userId, usersTable.id))
-          .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
+          .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
           .groupBy(scaleAllocationsTable.userId, usersTable.name).orderBy(desc(sql`count(*)`)).limit(10),
         // Chronically delayed tasks (due_date passed, still open)
         db.select({ assigneeId: tasksTable.assigneeId, nome: usersTable.name, atrasadas: sql<number>`count(*)::int` })
@@ -2679,7 +2685,7 @@ async function executeTool(
 
       const [[actTotal], taskStats, [absTotal], [recTotal], [openPos], topActivity, topAbs, atrasadas] = await Promise.all([
         // Activities
-        db.select({ count: sql<number>`count(*)::int` }).from(scaleAllocationsTable).where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`)),
+        db.select({ count: sql<number>`count(*)::int` }).from(scaleAllocationsTable).where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`)),
         // Tasks by status
         db.select({ status: tasksTable.status, count: sql<number>`count(*)::int` }).from(tasksTable).where(and(eq(tasksTable.organizationId, ctx.organizationId), sql`date(${tasksTable.createdAt}) between ${from} and ${to}`)).groupBy(tasksTable.status),
         // Absences
@@ -2689,7 +2695,7 @@ async function executeTool(
         // Open positions
         db.select({ count: sql<number>`count(*)::int` }).from(scaleAllocationsTable).innerJoin(scalesTable, eq(scaleAllocationsTable.scaleId, scalesTable.id)).where(and(ctx.operationId ? eq(scalesTable.operationId, ctx.operationId) : sql`true`, inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"]), eq(scaleAllocationsTable.status, "OPEN"))),
         // Top performer
-        db.select({ userId: scaleAllocationsTable.userId, nome: usersTable.name, count: sql<number>`count(*)::int` }).from(scaleAllocationsTable).leftJoin(usersTable, eq(scaleAllocationsTable.userId, usersTable.id)).where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`)).groupBy(scaleAllocationsTable.userId, usersTable.name).orderBy(desc(sql`count(*)`)).limit(3),
+        db.select({ userId: scaleAllocationsTable.userId, nome: usersTable.name, count: sql<number>`count(*)::int` }).from(scaleAllocationsTable).leftJoin(usersTable, eq(scaleAllocationsTable.userId, usersTable.id)).where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`)).groupBy(scaleAllocationsTable.userId, usersTable.name).orderBy(desc(sql`count(*)`)).limit(3),
         // Top absent
         db.select({ userId: folgasTable.userId, nome: usersTable.name, count: sql<number>`count(*)::int` }).from(folgasTable).leftJoin(usersTable, eq(folgasTable.userId, usersTable.id)).where(and(ctx.operationId ? eq(folgasTable.operationId, ctx.operationId) : sql`true`, eq(folgasTable.status, "ACTIVE"), gte(folgasTable.startDate, from), lte(folgasTable.startDate, to))).groupBy(folgasTable.userId, usersTable.name).orderBy(desc(sql`count(*)`)).limit(3),
         // Overdue tasks
@@ -2833,28 +2839,28 @@ async function executeTool(
     if (name === "consultar_documentos_populares") {
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
       const limite = (input.limite as number | undefined) ?? 5;
-      const staleDate = new Date(Date.now() - 90 * 86400000).toISOString();
+      const staleDate = new Date(Date.now() - 90 * 86400000);
 
       const [recentlyUpdated, stale, drafts, archived] = await Promise.all([
         // Recently updated
         db.select({ id: libraryDocumentsTable.id, title: libraryDocumentsTable.title, type: libraryDocumentsTable.type, version: libraryDocumentsTable.version, updatedAt: libraryDocumentsTable.updatedAt })
           .from(libraryDocumentsTable)
-          .where(and(eq(libraryDocumentsTable.orgId, ctx.organizationId), eq(libraryDocumentsTable.status, "UPDATED")))
+          .where(and(eq(libraryDocumentsTable.orgId, ctx.organizationId!), eq(libraryDocumentsTable.status, "UPDATED"))!)
           .orderBy(desc(libraryDocumentsTable.updatedAt)).limit(limite),
         // Stale: PUBLISHED but not touched in 90 days
         db.select({ id: libraryDocumentsTable.id, title: libraryDocumentsTable.title, type: libraryDocumentsTable.type, version: libraryDocumentsTable.version, publishedAt: libraryDocumentsTable.publishedAt })
           .from(libraryDocumentsTable)
-          .where(and(eq(libraryDocumentsTable.orgId, ctx.organizationId), eq(libraryDocumentsTable.status, "PUBLISHED"), lte(libraryDocumentsTable.updatedAt, staleDate)))
+          .where(and(eq(libraryDocumentsTable.orgId, ctx.organizationId!), eq(libraryDocumentsTable.status, "PUBLISHED"), lte(libraryDocumentsTable.updatedAt, staleDate))!)
           .orderBy(libraryDocumentsTable.updatedAt).limit(limite),
         // Drafts
         db.select({ id: libraryDocumentsTable.id, title: libraryDocumentsTable.title, type: libraryDocumentsTable.type, createdAt: libraryDocumentsTable.createdAt })
           .from(libraryDocumentsTable)
-          .where(and(eq(libraryDocumentsTable.orgId, ctx.organizationId), eq(libraryDocumentsTable.status, "DRAFT")))
+          .where(and(eq(libraryDocumentsTable.orgId, ctx.organizationId!), eq(libraryDocumentsTable.status, "DRAFT"))!)
           .orderBy(desc(libraryDocumentsTable.createdAt)).limit(limite),
         // Archived
         db.select({ id: libraryDocumentsTable.id, title: libraryDocumentsTable.title, type: libraryDocumentsTable.type, archivedAt: libraryDocumentsTable.archivedAt })
           .from(libraryDocumentsTable)
-          .where(and(eq(libraryDocumentsTable.orgId, ctx.organizationId), eq(libraryDocumentsTable.status, "ARCHIVED")))
+          .where(and(eq(libraryDocumentsTable.orgId, ctx.organizationId!), eq(libraryDocumentsTable.status, "ARCHIVED"))!)
           .orderBy(desc(libraryDocumentsTable.archivedAt)).limit(limite),
       ]);
 
@@ -2913,7 +2919,7 @@ async function executeTool(
         .select({ count: sql<number>`count(*)::int` })
         .from(scaleAllocationsTable)
         .where(and(
-          inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]),
+          inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]),
           sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`,
         ));
 
@@ -2979,7 +2985,7 @@ async function executeTool(
       const topActivity = await db
         .select({ userId: scaleAllocationsTable.userId, count: sql<number>`count(*)::int` })
         .from(scaleAllocationsTable)
-        .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
+        .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
         .groupBy(scaleAllocationsTable.userId)
         .orderBy(desc(sql`count(*)`))
         .limit(3);
@@ -2988,14 +2994,14 @@ async function executeTool(
       const topAbsence = await db
         .select({ userId: folgasTable.userId, count: sql<number>`count(*)::int` })
         .from(folgasTable)
-        .where(and(ctx.operationId ? eq(folgasTable.operationId, ctx.operationId) : sql`true`, eq(folgasTable.status, "ACTIVE"), lte(folgasTable.startDate, to), gte(folgasTable.endDate, from)))
+        .where(and(ctx.operationId ? eq(folgasTable.operationId, ctx.operationId!) : sql`true`, eq(folgasTable.status, "ACTIVE"), lte(folgasTable.startDate, to), gte(folgasTable.endDate, from))!)
         .groupBy(folgasTable.userId)
         .orderBy(desc(sql`count(*)`))
         .limit(3);
 
       // Task completion
-      const [totalTasks] = await db.select({ count: sql<number>`count(*)::int` }).from(tasksTable).where(and(eq(tasksTable.organizationId, ctx.organizationId), sql`date(created_at) between ${from} and ${to}`));
-      const [doneTasks]  = await db.select({ count: sql<number>`count(*)::int` }).from(tasksTable).where(and(eq(tasksTable.organizationId, ctx.organizationId), eq(tasksTable.status, "DONE"), sql`date(updated_at) between ${from} and ${to}`));
+      const [totalTasks] = await db.select({ count: sql<number>`count(*)::int` }).from(tasksTable).where(and(eq(tasksTable.organizationId, ctx.organizationId!), sql`date(created_at) between ${from} and ${to}`)!);
+      const [doneTasks]  = await db.select({ count: sql<number>`count(*)::int` }).from(tasksTable).where(and(eq(tasksTable.organizationId, ctx.organizationId!), eq(tasksTable.status, "COMPLETED"), sql`date(updated_at) between ${from} and ${to}`)!);
       const completionRate = totalTasks?.count > 0 ? Math.round(((doneTasks?.count ?? 0) / totalTasks.count) * 100) : 0;
 
       // Resolve names
@@ -3022,28 +3028,28 @@ async function executeTool(
       const uid   = input.userId as string | undefined;
 
       const actFilter = uid
-        ? and(eq(scaleAllocationsTable.userId, uid), inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`)
-        : and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`);
+        ? and(eq(scaleAllocationsTable.userId, uid), inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`)
+        : and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`);
       const allocByMember = await db
         .select({ userId: scaleAllocationsTable.userId, atividades: sql<number>`count(*)::int` })
         .from(scaleAllocationsTable)
-        .where(actFilter)
+        .where(actFilter!)
         .groupBy(scaleAllocationsTable.userId)
         .orderBy(desc(sql`count(*)`))
         .limit(limit);
 
       const doneTskFilter = uid
-        ? and(eq(tasksTable.organizationId, ctx.organizationId), eq(tasksTable.assigneeId, uid), eq(tasksTable.status, "DONE"), sql`date(updated_at) between ${from} and ${to}`)
-        : and(eq(tasksTable.organizationId, ctx.organizationId), eq(tasksTable.status, "DONE"), sql`date(updated_at) between ${from} and ${to}`);
+        ? and(eq(tasksTable.organizationId, ctx.organizationId!), eq(tasksTable.assigneeId, uid), eq(tasksTable.status, "COMPLETED"), sql`date(updated_at) between ${from} and ${to}`)
+        : and(eq(tasksTable.organizationId, ctx.organizationId!), eq(tasksTable.status, "COMPLETED"), sql`date(updated_at) between ${from} and ${to}`);
       const doneByMember = await db
         .select({ assigneeId: tasksTable.assigneeId, concluidas: sql<number>`count(*)::int` })
-        .from(tasksTable).where(doneTskFilter).groupBy(tasksTable.assigneeId).limit(limit);
+        .from(tasksTable).where(doneTskFilter!).groupBy(tasksTable.assigneeId).limit(limit);
       const doneMap = new Map(doneByMember.map(t => [t.assigneeId, t.concluidas]));
 
       const delayedByMember = await db
         .select({ assigneeId: tasksTable.assigneeId, atrasadas: sql<number>`count(*)::int` })
         .from(tasksTable)
-        .where(and(eq(tasksTable.organizationId, ctx.organizationId), uid ? eq(tasksTable.assigneeId, uid) : sql`true`, inArray(tasksTable.status, ["CREATED", "IN_PROGRESS"]), sql`${tasksTable.dueDate} < ${today09}`))
+        .where(and(eq(tasksTable.organizationId, ctx.organizationId!), uid ? eq(tasksTable.assigneeId, uid) : sql`true`, inArray(tasksTable.status, ["CREATED", "IN_PROGRESS"]), sql`${tasksTable.dueDate} < ${today09}`)!)
         .groupBy(tasksTable.assigneeId).limit(limit);
       const delayMap = new Map(delayedByMember.map(t => [t.assigneeId, t.atrasadas]));
 
@@ -3052,7 +3058,7 @@ async function executeTool(
         : and(ctx.operationId ? eq(folgasTable.operationId, ctx.operationId) : sql`true`, eq(folgasTable.status, "ACTIVE"), lte(folgasTable.startDate, to), gte(folgasTable.endDate, from));
       const absByMember = await db
         .select({ userId: folgasTable.userId, ausencias: sql<number>`count(*)::int` })
-        .from(folgasTable).where(absFilter).groupBy(folgasTable.userId).limit(limit);
+        .from(folgasTable).where(absFilter!).groupBy(folgasTable.userId).limit(limit);
       const absMap = new Map(absByMember.map(f => [f.userId, f.ausencias]));
 
       const userIds = [...new Set(allocByMember.map(a => a.userId).filter(Boolean))] as string[];
@@ -3157,7 +3163,7 @@ async function executeTool(
         .select({ userId: scaleAllocationsTable.userId, nome: usersTable.name, atividades: sql<number>`count(*)::int` })
         .from(scaleAllocationsTable)
         .leftJoin(usersTable, eq(scaleAllocationsTable.userId, usersTable.id))
-        .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
+        .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
         .groupBy(scaleAllocationsTable.userId, usersTable.name)
         .orderBy(desc(sql`count(*)`))
         .limit(limit);
@@ -3167,7 +3173,7 @@ async function executeTool(
         .from(
           db.select({ userId: scaleAllocationsTable.userId, cnt: sql<number>`count(*)` })
             .from(scaleAllocationsTable)
-            .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
+            .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
             .groupBy(scaleAllocationsTable.userId)
             .as("sub"),
         );
@@ -3358,23 +3364,23 @@ async function executeTool(
 
       // Scale allocations count per user
       const allocFilter = input.userId
-        ? and(eq(scaleAllocationsTable.userId, input.userId as string), inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]))
-        : inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]);
+        ? and(eq(scaleAllocationsTable.userId, input.userId as string), inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]))
+        : inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]);
       const allocCounts = await db
         .select({ userId: scaleAllocationsTable.userId, count: sql<number>`count(*)::int` })
         .from(scaleAllocationsTable)
-        .where(allocFilter)
+        .where(allocFilter!)
         .groupBy(scaleAllocationsTable.userId)
         .limit(limit);
 
       // Completed tasks count per user
       const taskFilter = input.userId
-        ? and(eq(tasksTable.organizationId, ctx.organizationId), eq(tasksTable.assigneeId, input.userId as string), eq(tasksTable.status, "DONE"))
-        : and(eq(tasksTable.organizationId, ctx.organizationId), eq(tasksTable.status, "DONE"));
+        ? and(eq(tasksTable.organizationId, ctx.organizationId!), eq(tasksTable.assigneeId, input.userId as string), eq(tasksTable.status, "COMPLETED"))
+        : and(eq(tasksTable.organizationId, ctx.organizationId!), eq(tasksTable.status, "COMPLETED"));
       const taskCounts = await db
         .select({ assigneeId: tasksTable.assigneeId, count: sql<number>`count(*)::int` })
         .from(tasksTable)
-        .where(taskFilter)
+        .where(taskFilter!)
         .groupBy(tasksTable.assigneeId)
         .limit(limit);
 
@@ -3510,12 +3516,12 @@ async function executeTool(
       const [activityCount] = await db
         .select({ count: sql<number>`count(*)::int` })
         .from(scaleAllocationsTable)
-        .where(and(eq(scaleAllocationsTable.userId, memberId), inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"])));
+        .where(and(eq(scaleAllocationsTable.userId, memberId), inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"])));
 
       const [tasksDone] = await db
         .select({ count: sql<number>`count(*)::int` })
         .from(tasksTable)
-        .where(and(eq(tasksTable.assigneeId, memberId), eq(tasksTable.organizationId, ctx.organizationId), eq(tasksTable.status, "DONE")));
+        .where(and(eq(tasksTable.assigneeId, memberId), eq(tasksTable.organizationId, ctx.organizationId!), eq(tasksTable.status, "COMPLETED"))!);
 
       return JSON.stringify({
         membro: userRow.name,
@@ -3574,7 +3580,7 @@ async function executeTool(
           .where(and(
             inArray(scaleAllocationsTable.userId, folgaUserIds),
             eq(scaleAllocationsTable.manualDate, date),
-            inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]),
+            inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]),
           ))
           .limit(20);
         for (const a of conflictAllocs) {
@@ -3616,7 +3622,6 @@ async function executeTool(
           eventId:   scaleAllocationsTable.agendaEventId,
           manualDate: scaleAllocationsTable.manualDate,
           manualLabel: scaleAllocationsTable.manualLabel,
-          positionName: scaleAllocationsTable.positionName,
         })
         .from(scaleAllocationsTable)
         .innerJoin(scalesTable, eq(scaleAllocationsTable.scaleId, scalesTable.id))
@@ -3635,7 +3640,7 @@ async function executeTool(
         posicoes: rows.map(r => ({
           escala: r.scaleTitle,
           data: r.manualDate,
-          atividade: r.positionName ?? r.manualLabel ?? "—",
+          atividade: r.manualLabel ?? "—",
         })),
       });
     }
@@ -3718,7 +3723,7 @@ async function executeTool(
           .from(scaleAllocationsTable)
           .where(and(
             eq(scaleAllocationsTable.userId, f.userId),
-            inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]),
+            inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]),
             sql`${scaleAllocationsTable.manualDate} BETWEEN ${dateFrom} AND ${dateTo}`,
           ))
           .limit(5);
@@ -3745,7 +3750,7 @@ async function executeTool(
       // All members in this operation
       const opFilter = ctx.operationId
         ? eq(userRolesTable.operationId, ctx.operationId)
-        : eq(userRolesTable.organizationId, ctx.organizationId);
+        : sql`true`;
 
       const allMembers = await db
         .selectDistinct({ userId: usersTable.id, userName: usersTable.name })
@@ -3772,7 +3777,7 @@ async function executeTool(
         .from(scaleAllocationsTable)
         .where(and(
           eq(scaleAllocationsTable.manualDate, date),
-          inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]),
+          inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]),
         ));
       const allocatedIds = new Set(allocatedThatDay.map(a => a.userId).filter(Boolean) as string[]);
 
@@ -3784,7 +3789,7 @@ async function executeTool(
           .from(scaleAllocationsTable)
           .where(and(
             ilike(scaleAllocationsTable.manualLabel, `%${activityLabel}%`),
-            inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]),
+            inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]),
           ))
           .limit(50);
         experienced.forEach(e => { if (e.userId) experiencedIds.add(e.userId); });
@@ -3805,7 +3810,7 @@ async function executeTool(
       if (suggestions.length === 0) return JSON.stringify({ total: 0, message: "Nenhum membro disponível encontrado para cobertura.", sugestoes: [] });
       return JSON.stringify({
         total: suggestions.length,
-        data,
+        data: date,
         atividade: activityLabel ?? "não especificada",
         message: `${suggestions.length} sugestão(ões) de cobertura para ${date}.`,
         sugestoes: suggestions.map(s => ({
@@ -3830,7 +3835,7 @@ async function executeTool(
         .select({ userId: scaleAllocationsTable.userId, count: sql<number>`count(*)::int` })
         .from(scaleAllocationsTable)
         .where(and(
-          inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]),
+          inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]),
           sql`${scaleAllocationsTable.manualDate} BETWEEN ${dateFrom} AND ${dateTo}`,
         ))
         .groupBy(scaleAllocationsTable.userId)
@@ -3906,7 +3911,7 @@ async function executeTool(
 
       const periodoLabel = isSingleDay
         ? `para ${fmt(startDate)}`
-        : `de ${fmt(startDate)} até ${fmt(endDate)} (${absType === "AFASTAMENTO" ? "afastamento" : absType.toLowerCase()})`;
+        : `de ${fmt(startDate)} até ${fmt(endDate)} (${absType === "AFASTAMENTO" ? "afastamento" : (absType ?? "ausência").toLowerCase()})`;
 
       return JSON.stringify({
         registered: true,
@@ -3972,7 +3977,7 @@ async function executeTool(
 
 router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganization, async (req, res): Promise<void> => {
   const user = req.user!;
-  const conversationId = parseInt(req.params.conversationId);
+  const conversationId = parseInt(req.params["conversationId"] as string);
   const { content } = req.body as { content: string };
 
   if (!content?.trim()) {
@@ -4225,7 +4230,7 @@ router.post("/asa/memories", requireAuth, requireOrganization, async (req, res):
 
 router.patch("/asa/memories/:id", requireAuth, requireOrganization, async (req, res): Promise<void> => {
   const user = req.user!;
-  const { id } = req.params;
+  const id = req.params["id"] as string;
   const { status, value } = req.body as { status?: "APPROVED" | "REJECTED"; value?: string };
 
   if (status && !MANAGER_ROLES.includes(user.role)) {
@@ -4243,7 +4248,7 @@ router.patch("/asa/memories/:id", requireAuth, requireOrganization, async (req, 
 
   const [updated] = await db
     .update(asaMemoriesTable)
-    .set(updates as never)
+    .set(updates as any)
     .where(eq(asaMemoriesTable.id, id))
     .returning();
 
@@ -4257,7 +4262,7 @@ router.patch("/asa/memories/:id", requireAuth, requireOrganization, async (req, 
 
 router.delete("/asa/memories/:id", requireAuth, requireOrganization, async (req, res): Promise<void> => {
   const user = req.user!;
-  const { id } = req.params;
+  const id = req.params["id"] as string;
 
   if (!MANAGER_ROLES.includes(user.role)) {
     const [mem] = await db.select().from(asaMemoriesTable).where(eq(asaMemoriesTable.id, id));

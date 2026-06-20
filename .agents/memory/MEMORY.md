@@ -1,4 +1,4 @@
-- [MyASA 2.0 — Estado do Projeto](myasa-estado-projeto.md) — PILOT-POLISH-D01 concluído; folgas inline mobile, publicação ASA, blocos agenda, rastreamento biblioteca, afastamentos por período
+- [MyASA 2.0 — Estado do Projeto](myasa-estado-projeto.md) — Audit TS completo; zero erros em api-server, mobile, web-admin (exceto pré-existentes acordados)
 - [LOG_DOMAIN extension pattern](log-domain-pattern.md) — ao criar nova rota, adicionar entrada no LOG_DOMAIN de lib/shared/src/constants.ts antes de usar requestLogger
 - [YAML plain scalar colon bug](yaml-colon-bug.md) — summary com ": " em YAML não-quoted quebra orval silenciosamente
 - [Express params cast pattern](express-params-cast.md) — req.params.id tipado como string|string[] no Express; sempre usar `const id = req.params.id as string`
@@ -8,5 +8,8 @@
 - [Schema collision: teams.ts delegationsTable](schema-collision-delegations.md) — teams.ts tinha delegationsTable obsoleto (delegatorId/delegateeId/validFrom/validUntil); o canônico é lib/db/src/schema/delegations.ts (GOV-D11)
 - [Orval hooks apagados — padrão de correção](orval-hooks-pattern.md) — quando orval regenera api.ts, hooks manuais de sprints anteriores são apagados; padrão: criar arquivo manual + exportar no index
 - [admin-layout lucide-react import duplicata](admin-layout-import-trap.md) — Users já existia no import de lucide-react em admin-layout.tsx; ao adicionar ícones novos, verificar linha 1-8 antes de editar
-- [Scales — queryKey de folgas](scales-folgas-query.md) — useListFolgas exige getListFolgasQueryKey no queryKey ou TypeScript falha com TS2741
 - [drizzle-kit push requer TTY](drizzle-push-tty.md) — push-force falha em ambiente não-interativo; alternativa: executeSql via code_execution sandbox com CREATE TABLE IF NOT EXISTS
+- [tasksTable.status enum — sem DONE](tasks-status-enum.md) — valid: EXPIRED|CANCELLED|COMPLETED|APPROVED|CREATED|IN_PROGRESS|READY_FOR_APPROVAL|CHANGES_REQUESTED; não existe "DONE"
+- [Anthropic SDK subpath import — pnpm](anthropic-sdk-subpath.md) — @anthropic-ai/sdk/resources/* não acessível via pnpm symlink; usar tipos locais com content:any compatíveis estruturalmente
+- [Drizzle and() + ctx property narrowing](drizzle-and-ctx-narrowing.md) — ctx.operationId/organizationId não narrowed por TypeScript (objeto); usar ctx.operationId! dentro de eq(); and()! dentro de .where()
+- [noticeTypeEnum valores corretos](notice-type-enum.md) — válidos: INFORMATIVE|IMPORTANT|PERSISTENT|ESCALATED (não CHANGE/ALERT/EMERGENCY); urgency: INFORMATIVE|IMPORTANT|CRITICAL

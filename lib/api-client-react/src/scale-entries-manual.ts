@@ -38,16 +38,10 @@ export function useCreateScaleEntry() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ scaleId, ...body }: CreateScaleEntryBody) => {
-      const res = await customFetch(`/api/scales/${scaleId}/entries`, {
+      return customFetch<{ entry: ManualEntry }>(`/api/scales/${scaleId}/entries`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error((err as any).error ?? "Erro ao criar entrada");
-      }
-      return res.json() as Promise<{ entry: ManualEntry }>;
     },
     onSuccess: (_, { scaleId }) => {
       queryClient.invalidateQueries({ queryKey: getListScaleAllocationsQueryKey(scaleId) });
@@ -61,14 +55,9 @@ export function useDeleteScaleEntry() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ scaleId, entryId }: { scaleId: string; entryId: string }) => {
-      const res = await customFetch(`/api/scales/${scaleId}/entries/${entryId}`, {
+      return customFetch<unknown>(`/api/scales/${scaleId}/entries/${entryId}`, {
         method: "DELETE",
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error((err as any).error ?? "Erro ao remover entrada");
-      }
-      return res.json();
     },
     onSuccess: (_, { scaleId }) => {
       queryClient.invalidateQueries({ queryKey: getListScaleAllocationsQueryKey(scaleId) });
