@@ -6,6 +6,7 @@ import {
   useCreateUser,
   useUpdateUser,
   useUpdateUserStatus,
+  useDeleteUser,
 } from "@workspace/api-client-react";
 import type { User } from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
@@ -17,7 +18,17 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, Pencil, UserCheck, UserX, AlertCircle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Plus, MoreHorizontal, Pencil, UserCheck, UserX, AlertCircle, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -54,11 +65,13 @@ export default function UsersPage() {
   const createMutation = useCreateUser();
   const updateMutation = useUpdateUser();
   const statusMutation = useUpdateUserStatus();
+  const deleteMutation = useDeleteUser();
 
   const [filterSpec, setFilterSpec] = useState("");
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
 
   const [createForm, setCreateForm] = useState({ name: "", email: "", password: "", specialization: "", birthDate: "" });
   const [editForm, setEditForm] = useState({ name: "", email: "", specialization: "", birthDate: "" });
@@ -143,6 +156,21 @@ export default function UsersPage() {
         },
       }
     );
+  };
+
+  const handleDelete = () => {
+    if (!deleteTarget) return;
+    deleteMutation.mutate(deleteTarget.id, {
+      onSuccess: () => {
+        toast({ title: "Usuário excluído" });
+        setDeleteTarget(null);
+        invalidate();
+      },
+      onError: (err: any) => {
+        const msg = err?.data?.message ?? err?.response?.data?.message ?? "Erro ao excluir usuário";
+        toast({ title: msg, variant: "destructive" });
+      },
+    });
   };
 
   const openEdit = (user: User) => {
@@ -266,6 +294,18 @@ export default function UsersPage() {
                                 <><UserCheck className="w-4 h-4 mr-2" />Ativar</>
                               )}
                             </DropdownMenuItem>
+                            {user.id !== auth.user?.id && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => setDeleteTarget(user)}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Excluir
+                                </DropdownMenuItem>
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -392,6 +432,35 @@ export default function UsersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir usuário?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget && (
+                <>
+                  Esta ação remove <strong>{deleteTarget.name}</strong> ({deleteTarget.email}) da lista
+                  permanentemente e não pode ser desfeita. Se o usuário já tiver dados vinculados
+                  (tarefas, escalas, registros), use <strong>Desativar</strong> em vez de excluir.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDelete();
+              }}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 }

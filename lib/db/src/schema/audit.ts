@@ -14,6 +14,7 @@ export const securityAuditActionEnum = pgEnum("security_audit_action", [
   "USER_CREATED",
   "USER_UPDATED",
   "USER_STATUS_CHANGED",
+  "USER_DELETED",
   "ROLE_ASSIGNED",
   "ROLE_REMOVED",
   "OPERATION_CREATED",

@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, and, inArray } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { db } from "@workspace/db";
-import { usersTable, userRolesTable } from "@workspace/db";
+import { usersTable, userRolesTable, refreshTokensTable } from "@workspace/db";
 import { requireAuth, requireOrganization, requireRole } from "../middlewares/auth.js";
 import { recordAudit } from "../lib/audit.service.js";
 import { requestLogger } from "../lib/logger.js";
@@ -240,6 +240,62 @@ router.patch("/users/:id/status", requireAuth, requireOrganization, requireRole(
     res.json({ user: safeUser(updated!) });
   } catch (err) {
     log.error({ err }, "Error updating user status");
+    res.status(500).json({ error: "INTERNAL_ERROR" });
+  }
+});
+
+router.delete("/users/:id", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
+  const log = requestLogger("teams", req.requestId, req.correlationId);
+  const id = req.params.id as string;
+
+  if (id === req.user!.sub) {
+    res.status(400).json({ error: "BAD_REQUEST", message: "Não é possível excluir o próprio usuário" });
+    return;
+  }
+
+  try {
+    const user = await db.query.usersTable.findFirst({
+      where: and(eq(usersTable.id, id), eq(usersTable.organizationId, req.user!.organizationId)),
+    });
+    if (!user) {
+      res.status(404).json({ error: "NOT_FOUND", message: "Usuário não encontrado" });
+      return;
+    }
+
+    try {
+      await db.transaction(async (tx) => {
+        await tx.delete(userRolesTable).where(eq(userRolesTable.userId, id));
+        await tx.delete(refreshTokensTable).where(eq(refreshTokensTable.userId, id));
+        await tx.delete(usersTable).where(eq(usersTable.id, id));
+      });
+    } catch (err) {
+      const code = (err as { code?: string })?.code ?? (err as { cause?: { code?: string } })?.cause?.code;
+      if (code === "23503") {
+        res.status(409).json({
+          error: "CONFLICT",
+          message:
+            "Não é possível excluir: este usuário possui dados vinculados (tarefas, escalas, registros, etc.). Use 'Desativar' para removê-lo sem apagar o histórico.",
+        });
+        return;
+      }
+      throw err;
+    }
+
+    try {
+      await recordAudit({
+        actorId: req.user!.sub,
+        action: "USER_DELETED",
+        targetResource: `user:${id}`,
+        metadata: { email: user.email, name: user.name },
+      });
+    } catch (auditErr) {
+      log.warn({ err: auditErr, userId: id }, "Failed to record USER_DELETED audit (user already deleted)");
+    }
+
+    log.info({ userId: id }, "User deleted");
+    res.status(204).send();
+  } catch (err) {
+    log.error({ err }, "Error deleting user");
     res.status(500).json({ error: "INTERNAL_ERROR" });
   }
 });
