@@ -1,4 +1,5 @@
 import { Link, useLocation } from "wouter";
+import React, { useEffect, useState } from "react";
 import {
   Home, Users, Briefcase, Users2, LogOut, ChevronRight,
   BookOpen, CalendarDays, ShieldCheck, ClipboardList, BookMarked,
@@ -8,8 +9,10 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { useLogout, useGetMyActiveDelegations } from "@workspace/api-client-react";
+import { AsaAvatar, type AsaPose } from "@/components/AsaAvatar";
 
 // ─── Nav definitions ──────────────────────────────────────────────────────────
 
@@ -175,6 +178,39 @@ interface AdminLayoutProps {
   subtitle?: string;
 }
 
+type AsaResumoShort = {
+  avatarState?: string;
+  items?: { emoji: string; text: string }[];
+};
+
+function avatarStateToAdminPose(state: string | undefined): AsaPose {
+  const map: Record<string, AsaPose> = {
+    feliz:       "feliz",
+    duvida:      "duvida",
+    comemoracao: "comemoracao",
+    atencao:     "aviso_importante",
+    sugestao:    "recomendacao",
+    boanoite:    "boanoite",
+    bomdia:      "bomdia",
+  };
+  return (state && map[state]) ? map[state]! : "idle";
+}
+
+function getAdminSpeechText(resumo: AsaResumoShort | null): string {
+  if (!resumo) return "Carregando seu dia…";
+  const overdueItem = resumo.items?.find((i) => i.emoji === "⚠️");
+  if (overdueItem) return `${overdueItem.emoji} ${overdueItem.text}`;
+  const firstItem = resumo.items?.[0];
+  if (firstItem) return `${firstItem.emoji} ${firstItem.text}`;
+  switch (resumo.avatarState) {
+    case "comemoracao": return "Tem motivos para comemorar hoje! 🎉";
+    case "atencao":     return "Atenção: há itens importantes. ⚠️";
+    case "sugestao":    return "Tenho sugestões para você. 💡";
+    case "boanoite":    return "Boa noite! 🌙";
+    default:            return "Tudo certo hoje! ☀️";
+  }
+}
+
 export default function AdminLayout({ children, title, subtitle }: AdminLayoutProps) {
   const [location, setLocation] = useLocation();
   const { user, logout: clearAuth, roles: userRoles } = useAuth();
@@ -182,6 +218,18 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
   const { data: delegData } = useGetMyActiveDelegations({
     query: { retry: false } as any,
   });
+  const [asaResumo, setAsaResumo] = useState<AsaResumoShort | null>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem("myasa_access_token");
+    if (!token) return;
+    fetch("/api/asa/resumo-do-dia", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (data) setAsaResumo(data); })
+      .catch(() => {});
+  }, []);
 
   const isAdmin      = userRoles.some((r) => r.role === "ADMIN");
   const isSupervisor = userRoles.some((r) => r.role === "SUPERVISOR_A" || r.role === "SUPERVISOR_B");
@@ -234,10 +282,25 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
             alt="Asinha MyASA"
             className="w-7 h-8 shrink-0"
           />
-          <div>
+          <div className="flex-1 min-w-0">
             <span className="font-serif font-bold text-base tracking-tight leading-none">MyASA</span>
             <p className="text-[10px] text-muted-foreground leading-none mt-0.5">{roleLabel}</p>
           </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="shrink-0 cursor-pointer">
+                  <AsaAvatar
+                    size="small"
+                    pose={avatarStateToAdminPose(asaResumo?.avatarState)}
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-[180px] text-xs">
+                {getAdminSpeechText(asaResumo)}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         <nav className="flex-1 p-3 space-y-4">

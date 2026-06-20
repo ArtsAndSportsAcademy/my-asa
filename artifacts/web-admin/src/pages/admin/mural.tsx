@@ -13,8 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useListUsers } from "@workspace/api-client-react";
 import { MemberCombobox } from "@/components/member-combobox";
 import { Plus } from "lucide-react";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+import { AsaAvatar } from "@/components/AsaAvatar";
 
 interface MuralData {
   upcoming_birthdays: { name: string; date: string; daysUntil: number }[];
@@ -327,7 +326,10 @@ export default function MuralPage() {
                   {data.upcoming_birthdays.map((b, i) => (
                     <Card key={i} className="p-3 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <span className="text-xl">🎂</span>
+                        {b.daysUntil === 0
+                          ? <AsaAvatar size="small" pose="comemoracao" />
+                          : <span className="text-xl">🎂</span>
+                        }
                         <div>
                           <p className="text-sm font-medium">{b.name}</p>
                           <p className="text-xs text-muted-foreground">{b.date}</p>
@@ -349,7 +351,10 @@ export default function MuralPage() {
                   {data.upcoming_milestones.map((m, i) => (
                     <Card key={i} className="p-3 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <span className="text-xl">⭐</span>
+                        {m.daysUntil === 0
+                          ? <AsaAvatar size="small" pose="comemoracao" />
+                          : <span className="text-xl">⭐</span>
+                        }
                         <div>
                           <p className="text-sm font-medium">{m.name}</p>
                           <p className="text-xs text-muted-foreground">{m.label} · {m.date}</p>

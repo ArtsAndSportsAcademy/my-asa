@@ -26,6 +26,7 @@ import {
 import type { FolgaItem } from "@workspace/api-client-react";
 import { FolgasGrid, MONTH_NAMES } from "@/components/folgas-grid";
 import { Palmtree, Plus, Pencil, XCircle, Loader2, ChevronLeft, ChevronRight, AlertTriangle, Grid3X3, List } from "lucide-react";
+import { AsaAvatar } from "@/components/AsaAvatar";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -689,7 +690,21 @@ export default function AdminFolgasPage() {
                     <tbody>
                       {folgas.map((f) => (
                         <tr key={f.id} className="border-b hover:bg-muted/20 transition-colors">
-                          <td className="py-3 px-4 font-medium">{f.userName}</td>
+                          <td className="py-3 px-4 font-medium">
+                            {(() => {
+                              const today = new Date().toISOString().slice(0, 10);
+                              const isOnLeaveToday =
+                                f.status === "ACTIVE" &&
+                                f.startDate <= today &&
+                                today <= f.endDate;
+                              return (
+                                <div className="flex items-center gap-2">
+                                  {isOnLeaveToday && <AsaAvatar size="small" pose="bomdia" />}
+                                  {f.userName}
+                                </div>
+                              );
+                            })()}
+                          </td>
                           <td className="py-3 px-4 text-muted-foreground">{f.operationName}</td>
                           <td className="py-3 px-4">
                             <Badge variant="outline" className="text-xs">

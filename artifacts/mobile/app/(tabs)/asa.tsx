@@ -15,7 +15,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { AsaAvatar } from "@/components/AsaAvatar";
+import { AsaAvatar, type AsaPose } from "@/components/AsaAvatar";
+import { AsaSpeechBubble } from "@/components/AsaSpeechBubble";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -34,6 +35,103 @@ async function getBaseUrl(): Promise<string> {
   if (domain) return `https://${domain}`;
   return "";
 }
+
+// ─── Tool → Pose map ──────────────────────────────────────────────────────────
+
+const TOOL_POSE_MAP: Record<string, AsaPose> = {
+  consultar_agenda:               "analisando",
+  consultar_escalas:              "analisando",
+  consultar_responsabilidades:    "analisando",
+  consultar_notificacoes:         "analisando",
+  consultar_avisos:               "analisando",
+  consultar_tarefas:              "analisando",
+  consultar_memorias:             "analisando",
+  consultar_folgas:               "analisando",
+  consultar_ausencias_do_dia:     "analisando",
+  consultar_disponibilidade:      "analisando",
+  consultar_membros:              "analisando",
+  consultar_reconhecimentos:      "analisando",
+  consultar_marcos:               "analisando",
+  consultar_historico_membro:     "analisando",
+  consultar_estatisticas:         "analisando",
+  consultar_indicadores:          "analisando",
+  consultar_desempenho:           "analisando",
+  consultar_ausencias_historicas: "analisando",
+  consultar_tarefas_historicas:   "analisando",
+  consultar_carga_historica:      "analisando",
+  consultar_carga_operacional:    "analisando",
+  consultar_riscos_operacionais:  "analisando",
+  consultar_posicoes_abertas:     "analisando",
+  consultar_tarefas_criticas:     "analisando",
+  consultar_conflitos:            "analisando",
+  consultar_padroes:              "analisando",
+  consultar_aprendizados:         "analisando",
+  consultar_riscos_recorrentes:   "analisando",
+  analisar_conversa:              "analisando",
+  resumir_conversa:               "analisando",
+  destacar_itens:                 "analisando",
+  detectar_conquistas:            "analisando",
+  detectar_eventos:               "analisando",
+  detectar_tarefas:               "analisando",
+  detectar_ausencias:             "analisando",
+  detectar_trocas:                "analisando",
+  detectar_marcos:                "analisando",
+  consultar_biblioteca:           "biblioteca",
+  resumir_documento:              "biblioteca",
+  comparar_documentos:            "biblioteca",
+  consultar_perguntas_frequentes: "biblioteca",
+  consultar_documentos_populares: "biblioteca",
+  sugerir_leituras:               "biblioteca",
+  consultar_leituras_biblioteca:  "biblioteca",
+  gerar_resumo_do_dia:            "planejando",
+  consultar_tendencias:           "planejando",
+  gerar_relatorio_asa:            "planejando",
+  consultar_clima:                "analisando",
+  sugerir_memoria:                "recomendacao",
+  sugerir_cobertura:              "recomendacao",
+  consultar_aniversarios:         "comemoracao",
+  criar_aviso_rascunho:           "enviando",
+  criar_ensaio_rascunho:          "enviando",
+  criar_entrada_escala:           "enviando",
+  criar_tarefa:                   "enviando",
+  publicar_aviso:                 "enviando",
+  publicar_escala:                "enviando",
+  criar_bloco_agenda:             "enviando",
+  criar_reconhecimento:           "enviando",
+  criar_reconhecimento_automatico:"enviando",
+  criar_solicitacao_troca:        "enviando",
+  registrar_ausencia:             "enviando",
+  cancelar_ausencia:              "enviando",
+  cancelar_tarefa:                "enviando",
+  remover_entrada_escala:         "enviando",
+};
+
+function toolToPose(tool: string | null): AsaPose {
+  if (!tool) return "carregando";
+  return TOOL_POSE_MAP[tool] ?? "carregando";
+}
+
+function deriveFinishedPose(tools: string[], content: string): AsaPose {
+  if (tools.includes("consultar_clima")) {
+    const lower = content.toLowerCase();
+    const rainWords = ["chuva", "chuvoso", "tempestade", "garoa", "neblina", "nublado", "precipitação"];
+    const coldWords = ["frio", "gélido", "gelado"];
+    if (rainWords.some((w) => lower.includes(w))) return "chuva";
+    if (coldWords.some((w) => lower.includes(w))) return "frio";
+    const tempMatch = lower.match(/(\d+)\s*°/);
+    if (tempMatch && parseInt(tempMatch[1]) < 15) return "frio";
+    return "bomdia";
+  }
+  if (tools.includes("consultar_aniversarios") || tools.includes("detectar_marcos")) return "comemoracao";
+  if (
+    tools.some((t) =>
+      ["criar_tarefa", "publicar_aviso", "publicar_escala", "registrar_ausencia", "criar_entrada_escala"].includes(t)
+    )
+  ) return "tarefa_concluida";
+  return "feliz";
+}
+
+// ─── Tool Labels ───────────────────────────────────────────────────────────────
 
 const TOOL_LABELS: Record<string, string> = {
   consultar_agenda:            "📅 Consultando agenda",
@@ -121,13 +219,22 @@ const SUGGESTIONS_MEMBER = [
 
 // ─── Message Bubble ────────────────────────────────────────────────────────────
 
-function MessageBubble({ msg, colors }: { msg: Message; colors: ReturnType<typeof useColors> }) {
+function MessageBubble({
+  msg,
+  colors,
+  streamingPose,
+}: {
+  msg: Message;
+  colors: ReturnType<typeof useColors>;
+  streamingPose: AsaPose;
+}) {
   const isUser = msg.role === "user";
+  const bubblePose: AsaPose = msg.streaming ? streamingPose : "idle";
 
   return (
     <View style={[styles.messageRow, isUser && styles.messageRowUser]}>
       {!isUser && (
-        <AsaAvatar size="small" pose="idle" />
+        <AsaAvatar size="small" pose={bubblePose} />
       )}
       <View style={[
         styles.bubble,
@@ -188,6 +295,21 @@ export default function AsaScreen() {
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeTool, setActiveTool] = useState<string | null>(null);
+  const [hasError, setHasError] = useState(false);
+  const [finishedPose, setFinishedPose] = useState<AsaPose>("feliz");
+
+  const chatPose: AsaPose = hasError
+    ? "duvida"
+    : streaming
+    ? toolToPose(activeTool)
+    : messages.length > 0
+    ? finishedPose
+    : "feliz";
+
+  const chatBubbleText = streaming && activeTool
+    ? (TOOL_LABELS[activeTool] ?? "Processando…")
+    : "";
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
@@ -197,6 +319,7 @@ export default function AsaScreen() {
   useEffect(() => { scrollToBottom(); }, [messages]);
 
   async function createConversation() {
+    setHasError(false);
     try {
       const [token, baseUrl] = await Promise.all([
         AsyncStorage.getItem("myasa_access_token"),
@@ -231,6 +354,8 @@ export default function AsaScreen() {
     setMessages(prev => [...prev, userMsg, asstMsg]);
     setInput("");
     setStreaming(true);
+    setActiveTool(null);
+    setHasError(false);
     setError(null);
 
     try {
@@ -270,10 +395,18 @@ export default function AsaScreen() {
                 m.id === asstId ? { ...m, content: m.content + json.content } : m
               ));
             } else if (json.tool) {
+              setActiveTool(json.tool);
               setMessages(prev => prev.map(m =>
                 m.id === asstId ? { ...m, tools: [...(m.tools ?? []), json.tool] } : m
               ));
-            } else if (json.done || json.error) {
+            } else if (json.done) {
+              setActiveTool(null);
+              setMessages(prev => prev.map(m =>
+                m.id === asstId ? { ...m, streaming: false } : m
+              ));
+            } else if (json.error) {
+              setHasError(true);
+              setActiveTool(null);
               setMessages(prev => prev.map(m =>
                 m.id === asstId ? { ...m, streaming: false } : m
               ));
@@ -282,11 +415,23 @@ export default function AsaScreen() {
         }
       }
 
-      setMessages(prev => prev.map(m =>
-        m.id === asstId ? { ...m, streaming: false } : m
-      ));
+      setMessages(prev => {
+        const updated = prev.map(m =>
+          m.id === asstId ? { ...m, streaming: false } : m
+        );
+        const asstFinal = updated.find(m => m.id === asstId);
+        if (asstFinal) {
+          const tools   = asstFinal.tools ?? [];
+          const content = asstFinal.content;
+          setFinishedPose(deriveFinishedPose(tools, content));
+        }
+        return updated;
+      });
+      setActiveTool(null);
     } catch (err) {
       setError(`Erro: ${String(err)}`);
+      setHasError(true);
+      setActiveTool(null);
       setMessages(prev => prev.filter(m => m.id !== asstId));
     } finally {
       setStreaming(false);
@@ -306,11 +451,25 @@ export default function AsaScreen() {
         borderBottomColor: colors.border,
       }]}>
         <View style={styles.headerLeft}>
-          <AsaAvatar size="small" pose="idle" />
+          <AsaAvatar size="small" pose={chatPose} />
           <View>
             <Text style={[styles.headerTitle, { color: colors.foreground }]}>ASA</Text>
-            <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>Assistente Operacional</Text>
+            <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>
+              {streaming && activeTool
+                ? (TOOL_LABELS[activeTool] ?? "Processando…")
+                : streaming
+                ? "Pensando…"
+                : "Assistente Operacional"}
+            </Text>
           </View>
+          {!!chatBubbleText && (
+            <AsaSpeechBubble
+              text={chatBubbleText}
+              visible={!!chatBubbleText}
+              duration={600000}
+              style={{ marginLeft: 4, flexShrink: 1 }}
+            />
+          )}
         </View>
         <Pressable
           onPress={createConversation}
@@ -358,7 +517,9 @@ export default function AsaScreen() {
           data={messages}
           keyExtractor={(m) => m.id}
           contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 16 }}
-          renderItem={({ item }) => <MessageBubble msg={item} colors={colors} />}
+          renderItem={({ item }) => (
+            <MessageBubble msg={item} colors={colors} streamingPose={chatPose} />
+          )}
           onContentSizeChange={scrollToBottom}
         />
       )}
@@ -429,14 +590,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   headerLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
-  asaAvatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-  },
   headerTitle: { fontSize: 16, fontWeight: "700" },
   headerSub: { fontSize: 12, marginTop: 1 },
   newBtn: {
@@ -450,15 +603,6 @@ const styles = StyleSheet.create({
   },
   newBtnText: { fontSize: 13, fontWeight: "600" },
   empty: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24 },
-  emptyIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    marginBottom: 16,
-  },
   emptyTitle: { fontSize: 17, fontWeight: "600", marginBottom: 6 },
   emptySubtitle: { fontSize: 14, textAlign: "center", lineHeight: 20, marginBottom: 24 },
   suggestions: { gap: 8, width: "100%" },

@@ -29,7 +29,7 @@ import type {
   UserNotificationItem,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -44,6 +44,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
+import { AsaSpeechBubble } from "@/components/AsaSpeechBubble";
 
 import {
   EVENT_TYPE_LABELS,
@@ -555,6 +556,23 @@ export default function MeuDiaScreen() {
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
   const [resumo, setResumo] = useState<ResumoDodia | null>(null);
+  const [showSpeechBubble, setShowSpeechBubble] = useState(false);
+  const speechBubbleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function getSpeechBubbleText(r: ResumoDodia | null): string {
+    if (!r) return "Olá! Vou carregar seu dia…";
+    const overdueItem = r.items?.find((i) => i.emoji === "⚠️");
+    if (overdueItem) return overdueItem.text;
+    const firstItem = r.items?.[0];
+    if (firstItem) return `${firstItem.emoji} ${firstItem.text}`;
+    switch (r.avatarState) {
+      case "comemoracao": return "Tem motivos para comemorar hoje! 🎉";
+      case "atencao":     return "Atenção: há itens importantes. ⚠️";
+      case "sugestao":    return "Tenho sugestões para você. 💡";
+      case "boanoite":    return "Que tenha um bom descanso! 🌙";
+      default:            return "Tudo certo hoje! ☀️";
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -569,12 +587,25 @@ export default function MeuDiaScreen() {
         });
         if (res.ok && !cancelled) {
           const data = (await res.json()) as ResumoDodia;
-          setResumo(data);
+          setResumo((prev) => {
+            const prevState = prev?.avatarState;
+            const newState  = data.avatarState;
+            const isChange  = !prev || prevState !== newState;
+            if (isChange) {
+              if (speechBubbleTimerRef.current) clearTimeout(speechBubbleTimerRef.current);
+              setShowSpeechBubble(true);
+              speechBubbleTimerRef.current = setTimeout(() => setShowSpeechBubble(false), 4000);
+            }
+            return data;
+          });
         }
       } catch { /* ignore */ }
     }
     fetchResumo();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      if (speechBubbleTimerRef.current) clearTimeout(speechBubbleTimerRef.current);
+    };
   }, []);
 
   const { data, isLoading, isError, refetch } = useGetMyDay({
@@ -755,13 +786,22 @@ export default function MeuDiaScreen() {
                   {/* Topo: avatar + saudação */}
                   <View style={styles.asaGreetingRow}>
                     <AsaAvatar size="medium" pose={resolveAsaPose(resumo)} />
-                    <View style={styles.asaGreetingText}>
+                    <View style={[styles.asaGreetingText, { flex: 1 }]}>
                       <Text style={[styles.asaGreetingTitle, { color: colors.foreground }]}>
                         {displayGreeting} {displayEmoji}{firstName ? `, ${firstName}!` : "!"}
                       </Text>
-                      <Text style={[styles.asaGreetingSub, { color: colors.mutedForeground }]}>
-                        {hasItems ? "Aqui está seu resumo do dia:" : "Sou a ASA — sua assistente na operação 🤝"}
-                      </Text>
+                      {!showSpeechBubble && (
+                        <Text style={[styles.asaGreetingSub, { color: colors.mutedForeground }]}>
+                          {hasItems ? "Aqui está seu resumo do dia:" : "Sou a ASA — sua assistente na operação 🤝"}
+                        </Text>
+                      )}
+                      {showSpeechBubble && (
+                        <AsaSpeechBubble
+                          text={getSpeechBubbleText(resumo)}
+                          duration={4000}
+                          visible={showSpeechBubble}
+                        />
+                      )}
                     </View>
                   </View>
 
