@@ -81,15 +81,21 @@ router.get("/scales", requireAuth, requireOrganization, async (req, res) => {
   }
 });
 
-// POST /api/scales/generate — generate scale (showBookId opcional: apenas shows com posições)
+// POST /api/scales/generate — cria escala operacional
+// agendaEventId e showBookId são completamente opcionais.
+// Requer: operationId + (agendaEventId OU (periodStart + periodEnd))
 router.post("/scales/generate", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger("scale", req.requestId, req.correlationId);
   const user = req.user!;
   const userId = user.sub;
-  const { agendaEventId, showBookId, operationId, groupId, title } = req.body;
+  const { agendaEventId, showBookId, operationId, groupId, title, periodStart: bodyPeriodStart, periodEnd: bodyPeriodEnd } = req.body;
 
-  if (!agendaEventId || !operationId) {
-    res.status(400).json({ error: "agendaEventId e operationId são obrigatórios" });
+  if (!operationId) {
+    res.status(400).json({ error: "operationId é obrigatório" });
+    return;
+  }
+  if (!agendaEventId && (!bodyPeriodStart || !bodyPeriodEnd)) {
+    res.status(400).json({ error: "Informe um evento da agenda OU um período (periodStart + periodEnd)" });
     return;
   }
 
@@ -101,29 +107,39 @@ router.post("/scales/generate", requireAuth, requireOrganization, async (req, re
   }
 
   try {
-    // Fetch event for period dates
-    const [event] = await db
-      .select()
-      .from(agendaEventsTable)
-      .where(eq(agendaEventsTable.id, agendaEventId))
-      .limit(1);
-    if (!event) {
-      res.status(404).json({ error: "Evento de agenda não encontrado" });
-      return;
+    // Derivar período: evento tem prioridade se fornecido
+    let periodStart: string = bodyPeriodStart ?? "";
+    let periodEnd: string = bodyPeriodEnd ?? "";
+    let autoTitle = title;
+
+    if (agendaEventId) {
+      const [event] = await db
+        .select()
+        .from(agendaEventsTable)
+        .where(eq(agendaEventsTable.id, agendaEventId))
+        .limit(1);
+      if (!event) {
+        res.status(404).json({ error: "Evento de agenda não encontrado" });
+        return;
+      }
+      periodStart = event.date;
+      periodEnd = (event as any).endDate ?? event.date;
+      if (!autoTitle) autoTitle = `Escala — ${event.title}`;
     }
 
-    const periodStart = event.date;
-    const periodEnd = event.endDate ?? event.date;
+    if (!autoTitle) {
+      autoTitle = `Escala Operacional ${periodStart}${periodEnd !== periodStart ? ` a ${periodEnd}` : ""}`;
+    }
 
-    // Create scale
+    // Criar escala (agendaEventId e showBookId são nullable)
     const [scale] = await db
       .insert(scalesTable)
       .values({
         operationId,
         groupId: groupId ?? null,
-        agendaEventId,
-        showBookId,
-        title: title ?? `Escala — ${event.title}`,
+        agendaEventId: agendaEventId ?? null,
+        showBookId: showBookId ?? null,
+        title: autoTitle,
         periodStart,
         periodEnd,
         status: "DRAFT",
@@ -138,7 +154,7 @@ router.post("/scales/generate", requireAuth, requireOrganization, async (req, re
       return;
     }
 
-    // Run coverage engine only when show book is provided (shows com posições/personagens)
+    // Motor de cobertura: apenas quando há show book E evento (escalas de show/casting)
     let engineResult = {
       totalPositions: 0,
       assignedPositions: 0,
@@ -146,7 +162,7 @@ router.post("/scales/generate", requireAuth, requireOrganization, async (req, re
       conflictPositions: 0,
     };
 
-    if (showBookId) {
+    if (showBookId && agendaEventId) {
       const fullResult = await runCoverageEngine(agendaEventId, showBookId, operationId, groupId);
       await persistEngineResult(scale.id, agendaEventId, fullResult);
       engineResult = {
@@ -160,7 +176,7 @@ router.post("/scales/generate", requireAuth, requireOrganization, async (req, re
     eventBus.emit("scale.generated", {
       scaleId: scale.id,
       operationId,
-      agendaEventId,
+      agendaEventId: agendaEventId ?? null,
       assignedPositions: engineResult.assignedPositions,
       openPositions: engineResult.openPositions,
     });

@@ -99,7 +99,15 @@ function fmtTime(t?: string | null) {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface GenerateFormState { agendaEventId: string; showBookId: string; title: string; useShowBook: boolean; }
+interface GenerateFormState {
+  mode: "period" | "event";
+  periodStart: string;
+  periodEnd: string;
+  agendaEventId: string;
+  useShowBook: boolean;
+  showBookId: string;
+  title: string;
+}
 interface OverrideFormState { userId: string; reason: string; notes: string; }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -128,7 +136,13 @@ export default function ScalesPage() {
 
   // ── Forms ─────────────────────────────────────────────────────────────────
   const [generateForm, setGenerateForm] = useState<GenerateFormState>({
-    agendaEventId: "", showBookId: "", title: "", useShowBook: false,
+    mode: "period",
+    periodStart: "",
+    periodEnd: "",
+    agendaEventId: "",
+    useShowBook: false,
+    showBookId: "",
+    title: "",
   });
   const [overrideForm, setOverrideForm] = useState<OverrideFormState>({
     userId: "", reason: "", notes: "",
@@ -201,30 +215,44 @@ export default function ScalesPage() {
     setSelectedAlloc(null);
   }
 
+  function isGenerateFormReady() {
+    if (!operationId) return false;
+    if (generateForm.mode === "period") {
+      if (!generateForm.periodStart || !generateForm.periodEnd) return false;
+    } else {
+      if (!generateForm.agendaEventId) return false;
+    }
+    if (generateForm.useShowBook && !generateForm.showBookId) return false;
+    return true;
+  }
+
   async function handleGenerate() {
-    if (!generateForm.agendaEventId || !operationId) return;
+    if (!isGenerateFormReady()) return;
     try {
-      const result = await generateMut.mutateAsync({
-        data: {
-          agendaEventId: generateForm.agendaEventId,
-          showBookId: generateForm.useShowBook && generateForm.showBookId ? generateForm.showBookId : undefined,
-          operationId,
-          title: generateForm.title || undefined,
-        } as any,
-      });
+      const payload: Record<string, unknown> = { operationId, title: generateForm.title || undefined };
+      if (generateForm.mode === "event") {
+        payload.agendaEventId = generateForm.agendaEventId;
+      } else {
+        payload.periodStart = generateForm.periodStart;
+        payload.periodEnd = generateForm.periodEnd;
+      }
+      if (generateForm.useShowBook && generateForm.showBookId) {
+        payload.showBookId = generateForm.showBookId;
+      }
+      const result = await generateMut.mutateAsync({ data: payload as any });
       const hasPositions = result.engine.totalPositions > 0;
       toast({
-        title: "Escala gerada",
+        title: "Escala criada",
         description: hasPositions
           ? `${result.engine.assignedPositions}/${result.engine.totalPositions} posições alocadas.`
-          : "Escala criada. Adicione os membros manualmente.",
+          : "Escala operacional criada. Adicione entradas manualmente.",
       });
       invalidateScales();
       setShowGenerate(false);
-      setGenerateForm({ agendaEventId: "", showBookId: "", title: "", useShowBook: false });
+      setGenerateForm({ mode: "period", periodStart: "", periodEnd: "", agendaEventId: "", useShowBook: false, showBookId: "", title: "" });
       pickScale(result.scale);
     } catch {
-      toast({ title: "Erro ao gerar escala", variant: "destructive" });
+      toast({ title: "Erro ao criar escala", variant: "destructive" });
     }
   }
 
@@ -639,41 +667,116 @@ export default function ScalesPage() {
       <Dialog open={showGenerate} onOpenChange={setShowGenerate}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Gerar Nova Escala</DialogTitle>
+            <DialogTitle>Nova Escala Operacional</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label>Evento da Agenda *</Label>
-              <Select
-                value={generateForm.agendaEventId}
-                onValueChange={(v) => {
-                  const ev = (eventsData?.events ?? []).find((e) => e.id === v);
-                  const isShow = (ev as any)?.type === "SHOW";
-                  setGenerateForm((f) => ({ ...f, agendaEventId: v, useShowBook: isShow, showBookId: "" }));
-                }}
+
+            {/* Modo: Por Período ou Por Evento */}
+            <div className="flex rounded-md border overflow-hidden text-sm">
+              <button
+                type="button"
+                className={`flex-1 py-1.5 px-3 transition-colors ${
+                  generateForm.mode === "period"
+                    ? "bg-primary text-primary-foreground font-medium"
+                    : "bg-background text-muted-foreground hover:bg-muted"
+                }`}
+                onClick={() => setGenerateForm((f) => ({ ...f, mode: "period", agendaEventId: "", useShowBook: false, showBookId: "" }))}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o evento" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(eventsData?.events ?? []).map((ev) => (
-                    <SelectItem key={ev.id} value={ev.id}>
-                      {ev.date} · {ev.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                Por Período
+              </button>
+              <button
+                type="button"
+                className={`flex-1 py-1.5 px-3 transition-colors ${
+                  generateForm.mode === "event"
+                    ? "bg-primary text-primary-foreground font-medium"
+                    : "bg-background text-muted-foreground hover:bg-muted"
+                }`}
+                onClick={() => setGenerateForm((f) => ({ ...f, mode: "event", periodStart: "", periodEnd: "" }))}
+              >
+                Por Evento da Agenda
+              </button>
             </div>
 
-            {/* Livro do Show — condicional */}
+            {/* Conteúdo do modo selecionado */}
+            {generateForm.mode === "period" ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Data início *</Label>
+                    <Input
+                      type="date"
+                      value={generateForm.periodStart}
+                      onChange={(e) => setGenerateForm((f) => ({ ...f, periodStart: e.target.value, periodEnd: f.periodEnd || e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Data fim *</Label>
+                    <Input
+                      type="date"
+                      value={generateForm.periodEnd}
+                      min={generateForm.periodStart}
+                      onChange={(e) => setGenerateForm((f) => ({ ...f, periodEnd: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                {/* Atalhos rápidos */}
+                <div className="flex gap-1.5 flex-wrap">
+                  {[
+                    { label: "Hoje", fn: () => { const d = new Date().toISOString().split("T")[0]!; setGenerateForm((f) => ({ ...f, periodStart: d, periodEnd: d })); } },
+                    { label: "Semana atual", fn: () => {
+                      const now = new Date();
+                      const mon = new Date(now); mon.setDate(now.getDate() - now.getDay() + 1);
+                      const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+                      setGenerateForm((f) => ({ ...f, periodStart: mon.toISOString().split("T")[0]!, periodEnd: sun.toISOString().split("T")[0]! }));
+                    }},
+                    { label: "Próx. semana", fn: () => {
+                      const now = new Date();
+                      const mon = new Date(now); mon.setDate(now.getDate() - now.getDay() + 8);
+                      const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+                      setGenerateForm((f) => ({ ...f, periodStart: mon.toISOString().split("T")[0]!, periodEnd: sun.toISOString().split("T")[0]! }));
+                    }},
+                  ].map(({ label, fn }) => (
+                    <button key={label} type="button" onClick={fn}
+                      className="text-xs px-2 py-0.5 rounded border border-border bg-muted hover:bg-accent transition-colors">
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <Label>Evento da Agenda *</Label>
+                <Select
+                  value={generateForm.agendaEventId}
+                  onValueChange={(v) => {
+                    const ev = (eventsData?.events ?? []).find((e) => e.id === v);
+                    const isShow = (ev as any)?.type === "SHOW";
+                    setGenerateForm((f) => ({ ...f, agendaEventId: v, useShowBook: isShow, showBookId: "" }));
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o evento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(eventsData?.events ?? []).map((ev) => (
+                      <SelectItem key={ev.id} value={ev.id}>
+                        <span className="text-muted-foreground mr-1">{ev.date}</span> {ev.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Livro do Show — opcional, independente do modo */}
             <div className="rounded-md border px-3 py-2.5 space-y-3">
               <label className="flex items-center justify-between gap-2 cursor-pointer select-none">
                 <div>
                   <p className="text-sm font-medium leading-none">Vincular Livro do Show</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {generateForm.useShowBook
-                      ? "Posições/personagens serão alocados pelo motor."
-                      : "Escala livre — ensaio, aula, evento operacional, etc."}
+                      ? "Posições/personagens serão alocados automaticamente."
+                      : "Escala livre — ensaio, aula, reunião, operação."}
                   </p>
                 </div>
                 <input
@@ -683,7 +786,6 @@ export default function ScalesPage() {
                   onChange={(e) => setGenerateForm((f) => ({ ...f, useShowBook: e.target.checked, showBookId: "" }))}
                 />
               </label>
-
               {generateForm.useShowBook && (
                 <Select
                   value={generateForm.showBookId}
@@ -704,7 +806,7 @@ export default function ScalesPage() {
             <div className="space-y-1.5">
               <Label>Título (opcional)</Label>
               <Input
-                placeholder="Será gerado automaticamente se vazio"
+                placeholder="Gerado automaticamente se vazio"
                 value={generateForm.title}
                 onChange={(e) => setGenerateForm((f) => ({ ...f, title: e.target.value }))}
               />
@@ -712,16 +814,9 @@ export default function ScalesPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowGenerate(false)}>Cancelar</Button>
-            <Button
-              onClick={handleGenerate}
-              disabled={
-                !generateForm.agendaEventId ||
-                (generateForm.useShowBook && !generateForm.showBookId) ||
-                generateMut.isPending
-              }
-            >
+            <Button onClick={handleGenerate} disabled={!isGenerateFormReady() || generateMut.isPending}>
               <Zap className="h-4 w-4 mr-1.5" />
-              {generateMut.isPending ? "Gerando..." : "Gerar Escala"}
+              {generateMut.isPending ? "Criando..." : "Criar Escala"}
             </Button>
           </DialogFooter>
         </DialogContent>
