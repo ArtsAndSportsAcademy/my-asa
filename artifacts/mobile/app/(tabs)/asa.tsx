@@ -61,6 +61,12 @@ const TOOL_LABELS: Record<string, string> = {
   detectar_marcos:             "⭐ Detectando marcos",
   registrar_ausencia:          "📋 Registrando ausência",
   criar_solicitacao_troca:     "🔄 Criando solicitação de troca",
+  consultar_riscos_operacionais: "⚠️ Analisando riscos",
+  consultar_posicoes_abertas:  "🔍 Verificando posições abertas",
+  consultar_tarefas_criticas:  "📌 Verificando tarefas críticas",
+  consultar_conflitos:         "⚡ Verificando conflitos",
+  sugerir_cobertura:           "💡 Sugerindo cobertura",
+  consultar_carga_operacional: "📊 Analisando carga operacional",
 };
 
 const SUGGESTIONS = [

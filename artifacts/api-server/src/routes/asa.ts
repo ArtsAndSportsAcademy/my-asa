@@ -365,6 +365,38 @@ Sempre respeite o modo de preferência: Silenciosa, Equilibrada ou Proativa.
 
 ⸻
 
+Modo Supervisor (Sprint 06)${isManager ? "" : "\n[Seção não aplicável ao papel atual]"}
+
+${isManager ? `Você age como assistente operacional dos supervisores e administradores.
+
+Ao gerar o resumo do dia para gestores, SEMPRE use este formato:
+
+☀️ Bom dia! Aqui está o panorama da operação de hoje:
+
+📅 [N] atividades escaladas.
+🌴 [N] membros de folga.
+⚠️ [N] conflito(s) detectado(s) — listar brevemente.
+📌 [N] tarefa(s) crítica(s) — listar as mais urgentes.
+💡 Sugestão: [se houver membro sobrecarregado ou posição aberta].
+
+Para isso, chame em sequência: gerar_resumo_do_dia → consultar_riscos_operacionais → consultar_tarefas_criticas.
+Se houver riscos, chame também consultar_conflitos.
+
+Ao identificar uma posição sem cobertura:
+1. Chame consultar_posicoes_abertas para confirmar.
+2. Chame sugerir_cobertura(date, activityLabel) para listar candidatos.
+3. Apresente: "💡 Sugiro [Nome] porque [motivo: disponível / tem experiência / menor carga]."
+4. Nunca escale automaticamente. Aguarde confirmação.
+
+Ao detectar sobrecarga:
+1. Chame consultar_carga_operacional para ver a distribuição.
+2. Identifique quem tem mais e quem tem menos carga.
+3. Sugira redistribuição: "Arthur tem 6 atividades esta semana. Posso redistribuir alguma?"
+
+Princípio: a ASA supervisiona junto. Nunca substitui o supervisor.` : "[seção disponível apenas para gestores]"}
+
+⸻
+
 Detecção de Intenções Operacionais (Sprint 05)
 
 Você SEMPRE monitora o que as pessoas dizem para identificar intenções operacionais implícitas. Quando detectar qualquer um dos padrões abaixo, reaja imediatamente — sem esperar ser perguntada.
@@ -744,6 +776,74 @@ const ASA_TOOLS: Tool[] = [
       type: "object" as const,
       properties: {
         type: { type: "string", description: "Tipo de marco: TIME_OF_HOUSE ou ALL (padrão: ALL)" },
+      },
+    },
+  },
+  // ── Sprint 06 — Assistente do Supervisor ────────────────────────────────────
+  {
+    name: "consultar_riscos_operacionais",
+    description: "Analisa a operação e detecta riscos: membros com tarefas atrasadas, membros de folga com atividades, excesso de carga, pendências críticas. Use quando o supervisor pedir um panorama de riscos ou ao gerar o resumo do dia.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        date: { type: "string", description: "Data de análise (YYYY-MM-DD). Padrão: hoje." },
+      },
+    },
+  },
+  {
+    name: "consultar_posicoes_abertas",
+    description: "Lista posições em aberto nas escalas ativas da operação (alocações sem responsável definido). Ideal para alertar sobre lacunas de cobertura.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        limit: { type: "number", description: "Máximo de resultados (padrão: 20)" },
+      },
+    },
+  },
+  {
+    name: "consultar_tarefas_criticas",
+    description: "Lista tarefas críticas: atrasadas (vencidas), vencendo hoje ou amanhã, ou com responsável indisponível. Exclusivo para gestores.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        daysAhead: { type: "number", description: "Dias à frente para alertar (padrão: 2 — hoje e amanhã)" },
+        limit:     { type: "number", description: "Máximo de resultados (padrão: 15)" },
+      },
+    },
+  },
+  {
+    name: "consultar_conflitos",
+    description: "Detecta conflitos operacionais: membros de folga com atividades na escala, sobreposições de agenda, disponibilidade comprometida. Retorna lista de conflitos com nome do membro, tipo e data.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        dateFrom: { type: "string", description: "Data início (YYYY-MM-DD). Padrão: hoje." },
+        dateTo:   { type: "string", description: "Data fim (YYYY-MM-DD). Padrão: +7 dias." },
+      },
+    },
+  },
+  {
+    name: "sugerir_cobertura",
+    description: "Sugere membros disponíveis para cobrir uma posição ou atividade. Considera folgas, carga atual e experiência prévia. Sempre deixa a decisão final para o supervisor.",
+    input_schema: {
+      type: "object" as const,
+      required: ["date"],
+      properties: {
+        date:          { type: "string", description: "Data da cobertura necessária (YYYY-MM-DD)" },
+        activityLabel: { type: "string", description: "Nome da atividade a cobrir (opcional — para filtrar por experiência)" },
+        excludeUserId: { type: "string", description: "ID do membro a excluir da sugestão (o que vai faltar)" },
+      },
+    },
+  },
+  {
+    name: "consultar_carga_operacional",
+    description: "Mostra a carga de trabalho por membro: número de atividades na escala e tarefas pendentes. Útil para identificar quem está sobrecarregado ou disponível para mais.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        dateFrom: { type: "string", description: "Data início (YYYY-MM-DD). Padrão: hoje." },
+        dateTo:   { type: "string", description: "Data fim (YYYY-MM-DD). Padrão: +7 dias." },
+        limit:    { type: "number", description: "Máximo de membros (padrão: 20)" },
       },
     },
   },
@@ -1564,6 +1664,349 @@ async function executeTool(
       } catch {
         return JSON.stringify({ error: "Não foi possível consultar o clima agora." });
       }
+    }
+
+    // ── consultar_riscos_operacionais (Sprint 06) ─────────────────────────────
+    if (name === "consultar_riscos_operacionais") {
+      if (!isManager) return JSON.stringify({ error: "Exclusivo para gestores" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const today = new Date().toISOString().slice(0, 10);
+      const date  = (input.date as string | undefined) ?? today;
+      const risks: { severity: string; type: string; message: string; userId?: string; userName?: string }[] = [];
+
+      // 1. Overdue tasks
+      const overdueTasks = await db
+        .select({ title: tasksTable.title, dueDate: tasksTable.dueDate, assigneeName: usersTable.name, assigneeId: tasksTable.assigneeId })
+        .from(tasksTable)
+        .leftJoin(usersTable, eq(tasksTable.assigneeId, usersTable.id))
+        .where(and(
+          eq(tasksTable.organizationId, ctx.organizationId),
+          ctx.operationId ? eq(tasksTable.operationId, ctx.operationId) : sql`true`,
+          inArray(tasksTable.status, ["CREATED", "IN_PROGRESS", "CHANGES_REQUESTED"]),
+          sql`${tasksTable.dueDate} < ${today}`,
+        ))
+        .limit(10);
+      for (const t of overdueTasks) {
+        risks.push({ severity: "HIGH", type: "TAREFA_ATRASADA", message: `Tarefa "${t.title}" atrasada (venceu em ${t.dueDate}).`, userId: t.assigneeId ?? undefined, userName: t.assigneeName ?? undefined });
+      }
+
+      // 2. Members on folga with scale allocations on that date
+      const folgasToday = await db
+        .select({ userId: folgasTable.userId, userName: usersTable.name })
+        .from(folgasTable)
+        .leftJoin(usersTable, eq(folgasTable.userId, usersTable.id))
+        .where(and(
+          ctx.operationId ? eq(folgasTable.operationId, ctx.operationId) : sql`true`,
+          eq(folgasTable.status, "ACTIVE"),
+          lte(folgasTable.startDate, date),
+          gte(folgasTable.endDate, date),
+        ))
+        .limit(20);
+      if (folgasToday.length > 0) {
+        const folgaUserIds = folgasToday.map(f => f.userId).filter(Boolean) as string[];
+        const conflictAllocs = await db
+          .select({ userId: scaleAllocationsTable.userId, label: scaleAllocationsTable.manualLabel })
+          .from(scaleAllocationsTable)
+          .where(and(
+            inArray(scaleAllocationsTable.userId, folgaUserIds),
+            eq(scaleAllocationsTable.manualDate, date),
+            inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]),
+          ))
+          .limit(20);
+        for (const a of conflictAllocs) {
+          const fn = folgasToday.find(f => f.userId === a.userId);
+          risks.push({ severity: "HIGH", type: "FOLGA_COM_ATIVIDADE", message: `${fn?.userName ?? "Membro"} está de folga mas tem atividade "${a.label ?? "—"}" em ${date}.`, userId: a.userId ?? undefined, userName: fn?.userName ?? undefined });
+        }
+      }
+
+      // 3. Open slots in active scales
+      const openSlots = await db
+        .select({ id: scaleAllocationsTable.id })
+        .from(scaleAllocationsTable)
+        .innerJoin(scalesTable, eq(scaleAllocationsTable.scaleId, scalesTable.id))
+        .where(and(
+          ctx.operationId ? eq(scalesTable.operationId, ctx.operationId) : sql`true`,
+          inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"]),
+          eq(scaleAllocationsTable.status, "OPEN"),
+        ))
+        .limit(5);
+      if (openSlots.length > 0) {
+        risks.push({ severity: "MEDIUM", type: "POSICOES_ABERTAS", message: `${openSlots.length} posição(ões) em aberto na escala. Cobertura necessária.` });
+      }
+
+      if (risks.length === 0) return JSON.stringify({ total: 0, message: "Nenhum risco operacional detectado para esta data. ✅", risks: [] });
+      return JSON.stringify({ total: risks.length, date, message: `${risks.length} risco(s) detectado(s) em ${date}.`, risks });
+    }
+
+    // ── consultar_posicoes_abertas (Sprint 06) ────────────────────────────────
+    if (name === "consultar_posicoes_abertas") {
+      if (!isManager) return JSON.stringify({ error: "Exclusivo para gestores" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const limit = (input.limit as number | undefined) ?? 20;
+
+      const rows = await db
+        .select({
+          allocId:   scaleAllocationsTable.id,
+          scaleId:   scalesTable.id,
+          scaleTitle: scalesTable.title,
+          eventId:   scaleAllocationsTable.agendaEventId,
+          manualDate: scaleAllocationsTable.manualDate,
+          manualLabel: scaleAllocationsTable.manualLabel,
+          positionName: scaleAllocationsTable.positionName,
+        })
+        .from(scaleAllocationsTable)
+        .innerJoin(scalesTable, eq(scaleAllocationsTable.scaleId, scalesTable.id))
+        .where(and(
+          ctx.operationId ? eq(scalesTable.operationId, ctx.operationId) : sql`true`,
+          inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED", "DRAFT"]),
+          eq(scaleAllocationsTable.status, "OPEN"),
+        ))
+        .orderBy(scalesTable.periodStart)
+        .limit(limit);
+
+      if (rows.length === 0) return JSON.stringify({ total: 0, message: "Nenhuma posição em aberto nas escalas ativas. ✅", posicoes: [] });
+      return JSON.stringify({
+        total: rows.length,
+        message: `${rows.length} posição(ões) em aberto.`,
+        posicoes: rows.map(r => ({
+          escala: r.scaleTitle,
+          data: r.manualDate,
+          atividade: r.positionName ?? r.manualLabel ?? "—",
+        })),
+      });
+    }
+
+    // ── consultar_tarefas_criticas (Sprint 06) ────────────────────────────────
+    if (name === "consultar_tarefas_criticas") {
+      if (!isManager) return JSON.stringify({ error: "Exclusivo para gestores" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const today     = new Date().toISOString().slice(0, 10);
+      const daysAhead = (input.daysAhead as number | undefined) ?? 2;
+      const limit     = (input.limit    as number | undefined) ?? 15;
+      const future    = new Date(Date.now() + daysAhead * 86400000).toISOString().slice(0, 10);
+
+      const rows = await db
+        .select({
+          id:           tasksTable.id,
+          title:        tasksTable.title,
+          dueDate:      tasksTable.dueDate,
+          status:       tasksTable.status,
+          priority:     tasksTable.priority,
+          assigneeName: usersTable.name,
+          assigneeId:   tasksTable.assigneeId,
+        })
+        .from(tasksTable)
+        .leftJoin(usersTable, eq(tasksTable.assigneeId, usersTable.id))
+        .where(and(
+          eq(tasksTable.organizationId, ctx.organizationId),
+          ctx.operationId ? eq(tasksTable.operationId, ctx.operationId) : sql`true`,
+          inArray(tasksTable.status, ["CREATED", "IN_PROGRESS", "CHANGES_REQUESTED"]),
+          sql`${tasksTable.dueDate} <= ${future}`,
+        ))
+        .orderBy(tasksTable.dueDate)
+        .limit(limit);
+
+      const tarefas = rows.map(t => ({
+        id:        t.id,
+        titulo:    t.title,
+        vencimento: t.dueDate,
+        status:    t.status,
+        prioridade: t.priority,
+        responsavel: t.assigneeName ?? "—",
+        urgencia:  t.dueDate < today ? "ATRASADA" : t.dueDate === today ? "HOJE" : "AMANHA",
+      }));
+
+      if (tarefas.length === 0) return JSON.stringify({ total: 0, message: "Nenhuma tarefa crítica nos próximos dias. ✅", tarefas: [] });
+      const atrasadas = tarefas.filter(t => t.urgencia === "ATRASADA").length;
+      return JSON.stringify({
+        total: tarefas.length,
+        atrasadas,
+        message: `${tarefas.length} tarefa(s) crítica(s)${atrasadas > 0 ? ` — ${atrasadas} já atrasada(s)` : ""}.`,
+        tarefas,
+      });
+    }
+
+    // ── consultar_conflitos (Sprint 06) ───────────────────────────────────────
+    if (name === "consultar_conflitos") {
+      if (!isManager) return JSON.stringify({ error: "Exclusivo para gestores" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const today    = new Date().toISOString().slice(0, 10);
+      const dateFrom = (input.dateFrom as string | undefined) ?? today;
+      const dateTo   = (input.dateTo   as string | undefined) ?? new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+
+      const folgas = await db
+        .select({ userId: folgasTable.userId, userName: usersTable.name, startDate: folgasTable.startDate, endDate: folgasTable.endDate, type: folgasTable.type })
+        .from(folgasTable)
+        .leftJoin(usersTable, eq(folgasTable.userId, usersTable.id))
+        .where(and(
+          ctx.operationId ? eq(folgasTable.operationId, ctx.operationId) : sql`true`,
+          eq(folgasTable.status, "ACTIVE"),
+          lte(folgasTable.startDate, dateTo),
+          gte(folgasTable.endDate, dateFrom),
+        ))
+        .limit(30);
+
+      const conflitos: { tipo: string; membro: string; data: string; detalhe: string }[] = [];
+      for (const f of folgas) {
+        if (!f.userId) continue;
+        const allocs = await db
+          .select({ date: scaleAllocationsTable.manualDate, label: scaleAllocationsTable.manualLabel })
+          .from(scaleAllocationsTable)
+          .where(and(
+            eq(scaleAllocationsTable.userId, f.userId),
+            inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]),
+            sql`${scaleAllocationsTable.manualDate} BETWEEN ${dateFrom} AND ${dateTo}`,
+          ))
+          .limit(5);
+        for (const a of allocs) {
+          if (!a.date) continue;
+          if (a.date >= f.startDate && a.date <= f.endDate) {
+            conflitos.push({ tipo: "FOLGA_COM_ATIVIDADE", membro: f.userName ?? f.userId, data: a.date, detalhe: `${f.userName ?? "Membro"} está de folga (${f.type}) mas tem atividade "${a.label ?? "—"}" nessa data.` });
+          }
+        }
+      }
+
+      if (conflitos.length === 0) return JSON.stringify({ total: 0, message: `Nenhum conflito detectado entre ${dateFrom} e ${dateTo}. ✅`, conflitos: [] });
+      return JSON.stringify({ total: conflitos.length, message: `${conflitos.length} conflito(s) detectado(s).`, conflitos });
+    }
+
+    // ── sugerir_cobertura (Sprint 06) ─────────────────────────────────────────
+    if (name === "sugerir_cobertura") {
+      if (!isManager) return JSON.stringify({ error: "Exclusivo para gestores" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const date          = input.date          as string;
+      const activityLabel = input.activityLabel as string | undefined;
+      const excludeUserId = input.excludeUserId as string | undefined;
+
+      // All members in this operation
+      const opFilter = ctx.operationId
+        ? eq(userRolesTable.operationId, ctx.operationId)
+        : eq(userRolesTable.organizationId, ctx.organizationId);
+
+      const allMembers = await db
+        .selectDistinct({ userId: usersTable.id, userName: usersTable.name })
+        .from(usersTable)
+        .innerJoin(userRolesTable, eq(userRolesTable.userId, usersTable.id))
+        .where(and(opFilter, eq(usersTable.status, "ACTIVE")))
+        .limit(50);
+
+      // Members on folga that day
+      const folgasOnDate = await db
+        .select({ userId: folgasTable.userId })
+        .from(folgasTable)
+        .where(and(
+          ctx.operationId ? eq(folgasTable.operationId, ctx.operationId) : sql`true`,
+          eq(folgasTable.status, "ACTIVE"),
+          lte(folgasTable.startDate, date),
+          gte(folgasTable.endDate, date),
+        ));
+      const onFolgaIds = new Set(folgasOnDate.map(f => f.userId).filter(Boolean) as string[]);
+
+      // Members already allocated that day
+      const allocatedThatDay = await db
+        .select({ userId: scaleAllocationsTable.userId })
+        .from(scaleAllocationsTable)
+        .where(and(
+          eq(scaleAllocationsTable.manualDate, date),
+          inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]),
+        ));
+      const allocatedIds = new Set(allocatedThatDay.map(a => a.userId).filter(Boolean) as string[]);
+
+      // Experience: who has done this activity before
+      const experiencedIds = new Set<string>();
+      if (activityLabel) {
+        const experienced = await db
+          .select({ userId: scaleAllocationsTable.userId })
+          .from(scaleAllocationsTable)
+          .where(and(
+            ilike(scaleAllocationsTable.manualLabel, `%${activityLabel}%`),
+            inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]),
+          ))
+          .limit(50);
+        experienced.forEach(e => { if (e.userId) experiencedIds.add(e.userId); });
+      }
+
+      const suggestions = allMembers
+        .filter(m => m.userId !== excludeUserId && !onFolgaIds.has(m.userId))
+        .map(m => ({
+          userId:      m.userId,
+          nome:        m.userName,
+          disponivel:  !allocatedIds.has(m.userId),
+          experiencia: experiencedIds.has(m.userId),
+          score:       (experiencedIds.has(m.userId) ? 2 : 0) + (!allocatedIds.has(m.userId) ? 1 : 0),
+        }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5);
+
+      if (suggestions.length === 0) return JSON.stringify({ total: 0, message: "Nenhum membro disponível encontrado para cobertura.", sugestoes: [] });
+      return JSON.stringify({
+        total: suggestions.length,
+        data,
+        atividade: activityLabel ?? "não especificada",
+        message: `${suggestions.length} sugestão(ões) de cobertura para ${date}.`,
+        sugestoes: suggestions.map(s => ({
+          nome: s.nome,
+          disponivel: s.disponivel ? "✅ Livre neste dia" : "⚠️ Já tem atividade",
+          experiencia: s.experiencia ? "✅ Já realizou esta atividade" : "—",
+        })),
+      });
+    }
+
+    // ── consultar_carga_operacional (Sprint 06) ───────────────────────────────
+    if (name === "consultar_carga_operacional") {
+      if (!isManager) return JSON.stringify({ error: "Exclusivo para gestores" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const today    = new Date().toISOString().slice(0, 10);
+      const dateFrom = (input.dateFrom as string | undefined) ?? today;
+      const dateTo   = (input.dateTo   as string | undefined) ?? new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+      const limit    = (input.limit    as number | undefined) ?? 20;
+
+      // Count scale allocations per member in the range
+      const allocCounts = await db
+        .select({ userId: scaleAllocationsTable.userId, count: sql<number>`count(*)::int` })
+        .from(scaleAllocationsTable)
+        .where(and(
+          inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]),
+          sql`${scaleAllocationsTable.manualDate} BETWEEN ${dateFrom} AND ${dateTo}`,
+        ))
+        .groupBy(scaleAllocationsTable.userId)
+        .limit(limit);
+
+      // Count pending tasks per member
+      const taskCounts = await db
+        .select({ assigneeId: tasksTable.assigneeId, count: sql<number>`count(*)::int` })
+        .from(tasksTable)
+        .where(and(
+          eq(tasksTable.organizationId, ctx.organizationId),
+          inArray(tasksTable.status, ["CREATED", "IN_PROGRESS", "CHANGES_REQUESTED"]),
+        ))
+        .groupBy(tasksTable.assigneeId)
+        .limit(limit);
+
+      const taskMap = new Map(taskCounts.map(t => [t.assigneeId, t.count]));
+      const userIds = [...new Set(allocCounts.map(a => a.userId).filter(Boolean))] as string[];
+      const userNames = userIds.length > 0
+        ? await db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(inArray(usersTable.id, userIds))
+        : [];
+      const nameMap = new Map(userNames.map(u => [u.id, u.name]));
+
+      const carga = allocCounts
+        .filter(a => a.userId)
+        .map(a => ({
+          membro:      nameMap.get(a.userId!) ?? a.userId,
+          atividades:  a.count,
+          tarefas_pendentes: taskMap.get(a.userId!) ?? 0,
+          carga_total: a.count + (taskMap.get(a.userId!) ?? 0),
+        }))
+        .sort((a, b) => b.carga_total - a.carga_total);
+
+      if (carga.length === 0) return JSON.stringify({ total: 0, message: "Nenhuma atividade registrada no período.", carga: [] });
+      return JSON.stringify({
+        total: carga.length,
+        periodo: `${dateFrom} → ${dateTo}`,
+        message: `Carga operacional de ${carga.length} membro(s) no período.`,
+        carga,
+      });
     }
 
     // ── registrar_ausencia (Sprint 05) ───────────────────────────────────────

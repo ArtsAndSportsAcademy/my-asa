@@ -1,0 +1,231 @@
+ASA-SPRINT-06 — Assistente do Supervisor
+
+Objetivo
+
+A ASA deixa de apenas responder e executar comandos.
+
+Ela passa a ajudar supervisores e administradores identificando riscos, pendências e oportunidades operacionais.
+
+A pergunta desta sprint é:
+
+“O que a ASA percebe que o supervisor ainda não viu?”
+
+━━━━━━━━━━━━━━━━━━
+ALERTAS OPERACIONAIS
+━━━━━━━━━━━━━━━━━━
+
+A ASA pode detectar:
+
+⚠️ membros com tarefas atrasadas
+
+⚠️ membros de folga com atividades atribuídas
+
+⚠️ posições em aberto
+
+⚠️ ensaios sem participantes
+
+⚠️ atividades sem cobertura
+
+⚠️ conflitos de disponibilidade
+
+Exemplos:
+
+“Amanda possui duas tarefas vencidas.”
+
+“Arthur está de folga e possui uma atividade amanhã.”
+
+“O ensaio de sexta ainda não possui participantes.”
+
+━━━━━━━━━━━━━━━━━━
+RESUMO OPERACIONAL
+━━━━━━━━━━━━━━━━━━
+
+Para supervisores:
+
+📋 resumo diário da operação
+
+📌 tarefas pendentes
+
+🌴 folgas importantes
+
+⚠️ conflitos
+
+💡 sugestões
+
+Exemplo:
+
+“Hoje existem duas posições em aberto e uma tarefa crítica pendente.”
+
+━━━━━━━━━━━━━━━━━━
+SUGESTÕES DE COBERTURA
+━━━━━━━━━━━━━━━━━━
+
+A ASA pode sugerir pessoas.
+
+Exemplo:
+
+“Amanda está disponível e já realizou essa atividade anteriormente.”
+
+Critérios:
+
+✓ disponibilidade
+
+✓ folgas
+
+✓ conflitos
+
+✓ experiência
+
+✓ carga de trabalho
+
+A ASA nunca substitui automaticamente.
+
+Ela apenas sugere.
+
+━━━━━━━━━━━━━━━━━━
+RISCOS OPERACIONAIS
+━━━━━━━━━━━━━━━━━━
+
+Detectar:
+
+* excesso de tarefas
+* excesso de atividades
+* conflitos de horário
+* falta de cobertura
+* múltiplas pendências
+
+Exemplo:
+
+“Arthur possui 4 atividades consecutivas sem intervalo.”
+
+━━━━━━━━━━━━━━━━━━
+MONITORAMENTO DE TAREFAS
+━━━━━━━━━━━━━━━━━━
+
+A ASA pode avisar:
+
+📌 tarefa vencendo hoje
+
+⚠️ tarefa atrasada
+
+💡 responsável indisponível
+
+Exemplo:
+
+“A tarefa de Amanda vence amanhã.”
+
+━━━━━━━━━━━━━━━━━━
+MODO SUPERVISOR
+━━━━━━━━━━━━━━━━━━
+
+Novo resumo:
+
+☀️ Bom dia!
+
+📅 12 atividades hoje.
+
+🌴 2 membros de folga.
+
+⚠️ 1 conflito.
+
+📌 3 tarefas pendentes.
+
+💡 Amanda disponível para cobertura.
+
+━━━━━━━━━━━━━━━━━━
+PREFERÊNCIAS
+━━━━━━━━━━━━━━━━━━
+
+O supervisor pode configurar:
+
+🔕 silenciosa
+
+🔔 equilibrada
+
+✨ proativa
+
+Controlando:
+
+* quantidade de alertas;
+* frequência;
+* horário.
+
+━━━━━━━━━━━━━━━━━━
+NOVAS TOOLS
+━━━━━━━━━━━━━━━━━━
+
+consultar_riscos_operacionais
+
+consultar_posicoes_abertas
+
+consultar_tarefas_criticas
+
+consultar_conflitos
+
+sugerir_cobertura
+
+consultar_carga_operacional
+
+━━━━━━━━━━━━━━━━━━
+EXPLICAÇÃO DAS SUGESTÕES
+━━━━━━━━━━━━━━━━━━
+
+A ASA sempre explica:
+
+📋 o que encontrou
+
+🧠 o que analisou
+
+⚠️ riscos
+
+💡 sugestão
+
+Exemplo:
+
+“Sugiro Amanda porque ela está disponível, não possui conflitos e já realizou esta atividade anteriormente.”
+
+━━━━━━━━━━━━━━━━━━
+RESTRIÇÕES
+━━━━━━━━━━━━━━━━━━
+
+A ASA:
+
+✗ não escala automaticamente
+
+✗ não redistribui tarefas
+
+✗ não altera pessoas
+
+✗ não publica mudanças
+
+Sempre:
+
+✓ sugere
+
+✓ explica
+
+✓ pede confirmação
+
+━━━━━━━━━━━━━━━━━━
+CRITÉRIO DE ACEITAÇÃO
+━━━━━━━━━━━━━━━━━━
+
+A ASA consegue:
+
+✓ identificar riscos
+
+✓ detectar conflitos
+
+✓ encontrar pendências
+
+✓ sugerir coberturas
+
+✓ ajudar supervisores
+
+✓ antecipar problemas
+
+Resultado esperado:
+
+A ASA deixa de apenas responder.
+
+Ela passa a supervisionar a operação junto com a equipe.
