@@ -178,62 +178,168 @@ function MonthCalendar({ currentDate, events }: { currentDate: Date; events: Age
   );
 }
 
-// ─── Week Calendar ────────────────────────────────────────────────────────────
+// ─── Week Calendar (Google Calendar style) ────────────────────────────────────
+
+const CAL_START = 7;
+const CAL_END = 22;
+const HOUR_PX = 64;
+
+const TYPE_BG_SOLID: Record<string, string> = {
+  SHOW:               "bg-violet-500 border-violet-700",
+  REHEARSAL:          "bg-blue-500 border-blue-700",
+  MEETING:            "bg-amber-500 border-amber-700",
+  OPERATIONAL_BLOCK:  "bg-indigo-500 border-indigo-700",
+  COLLECTIVE_VACATION:"bg-green-500 border-green-700",
+};
+
+function timeToMin(t: string): number {
+  const [h, m] = t.split(":").map(Number);
+  return (h ?? 0) * 60 + (m ?? 0);
+}
+
+function evTop(startTime: string): number {
+  return Math.max(0, (timeToMin(startTime) / 60 - CAL_START) * HOUR_PX);
+}
+
+function evHeight(startTime: string, endTime: string | undefined | null): number {
+  if (!endTime) return 32;
+  return Math.max(24, (timeToMin(endTime) - timeToMin(startTime)) * (HOUR_PX / 60));
+}
 
 function WeekCalendar({ currentDate, events }: { currentDate: Date; events: AgendaEvent[] }) {
   const days = useMemo(() => buildWeekDays(currentDate), [currentDate]);
   const byDate = useMemo(() => groupByDate(events), [events]);
   const todayStr = toDateStr(new Date());
+  const hours = Array.from({ length: CAL_END - CAL_START }, (_, i) => CAL_START + i);
+  const totalH = (CAL_END - CAL_START) * HOUR_PX;
+
+  const hasAllDay = days.some((d) => (byDate[toDateStr(d)] ?? []).some((e) => !e.startTime));
 
   return (
-    <div className="grid grid-cols-7 gap-2 border rounded-xl overflow-hidden bg-muted/10 p-3">
-      {days.map((day, i) => {
-        const dateStr = toDateStr(day);
-        const dayEvents = byDate[dateStr] ?? [];
-        const isToday = dateStr === todayStr;
-        return (
-          <div key={i} className="min-h-[220px]">
-            <div
-              className={`text-center pb-2 mb-2 border-b ${
-                isToday ? "border-primary" : "border-border"
-              }`}
-            >
-              <p className={`text-[11px] uppercase font-semibold tracking-wide ${isToday ? "text-primary" : "text-muted-foreground"}`}>
+    <div className="bg-card border rounded-xl overflow-hidden shadow-sm select-none">
+
+      {/* ── Day header ── */}
+      <div className="flex border-b bg-muted/30 sticky top-0 z-20">
+        <div className="w-14 shrink-0 border-r" />
+        {days.map((day, i) => {
+          const isToday = toDateStr(day) === todayStr;
+          return (
+            <div key={i} className={`flex-1 text-center py-2.5 border-r last:border-r-0 ${isToday ? "bg-primary/5" : ""}`}>
+              <p className={`text-[10px] uppercase font-semibold tracking-widest ${isToday ? "text-primary" : "text-muted-foreground"}`}>
                 {WEEKDAYS[i]}
               </p>
-              <p
-                className={`text-lg font-bold leading-tight ${
-                  isToday ? "text-primary" : "text-foreground"
-                }`}
-              >
+              <div className={`mx-auto mt-0.5 w-8 h-8 flex items-center justify-center rounded-full text-lg font-bold ${
+                isToday ? "bg-primary text-white" : "text-foreground"
+              }`}>
                 {day.getDate()}
-              </p>
-              <p className="text-[10px] text-muted-foreground">
-                {day.toLocaleDateString("pt-BR", { month: "short" })}
-              </p>
+              </div>
             </div>
-            <div className="space-y-1">
-              {dayEvents.length === 0 ? (
-                <div className="text-[10px] text-muted-foreground/30 text-center pt-4">—</div>
-              ) : (
-                dayEvents.map((ev) => (
-                  <div
-                    key={ev.id}
-                    className={`text-[10px] px-1.5 py-1 rounded leading-tight ${
-                      TYPE_COLORS[ev.type] ?? "bg-gray-100 text-gray-800"
-                    } ${ev.visibility === "MANAGEMENT" ? "opacity-70 italic" : ""}`}
+          );
+        })}
+      </div>
+
+      {/* ── All-day strip ── */}
+      {hasAllDay && (
+        <div className="flex border-b">
+          <div className="w-14 shrink-0 border-r flex items-center justify-end pr-2 py-1">
+            <span className="text-[9px] uppercase text-muted-foreground rotate-0">dia todo</span>
+          </div>
+          {days.map((day, i) => {
+            const dateStr = toDateStr(day);
+            const allDay = (byDate[dateStr] ?? []).filter((e) => !e.startTime);
+            const isToday = dateStr === todayStr;
+            return (
+              <div key={i} className={`flex-1 border-r last:border-r-0 p-1 space-y-0.5 ${isToday ? "bg-primary/5" : ""}`}>
+                {allDay.map((ev) => (
+                  <div key={ev.id}
+                    className={`text-[10px] px-1.5 py-0.5 rounded font-medium truncate cursor-default ${TYPE_COLORS[ev.type] ?? "bg-gray-100 text-gray-700"}`}
+                    title={ev.title}
                   >
-                    <div className="font-semibold truncate">{ev.title}</div>
-                    {ev.startTime && (
-                      <div className="opacity-70 mt-0.5">{ev.startTime}</div>
+                    {ev.title}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Time grid ── */}
+      <div className="flex overflow-y-auto" style={{ maxHeight: 580 }}>
+
+        {/* Time labels */}
+        <div className="w-14 shrink-0 border-r relative bg-card" style={{ height: totalH }}>
+          {hours.map((h) => (
+            <div key={h} className="absolute right-0 left-0 flex justify-end pr-2"
+              style={{ top: (h - CAL_START) * HOUR_PX - 9 }}>
+              <span className="text-[10px] text-muted-foreground font-medium tabular-nums">
+                {String(h).padStart(2, "0")}:00
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Day columns */}
+        {days.map((day, i) => {
+          const dateStr = toDateStr(day);
+          const timed = (byDate[dateStr] ?? []).filter((e) => !!e.startTime);
+          const isToday = dateStr === todayStr;
+          return (
+            <div key={i} className={`flex-1 border-r last:border-r-0 relative ${isToday ? "bg-primary/[0.03]" : ""}`}
+              style={{ height: totalH }}>
+
+              {/* Hour lines */}
+              {hours.map((h) => (
+                <div key={h} className="absolute left-0 right-0 border-t border-border/40"
+                  style={{ top: (h - CAL_START) * HOUR_PX }} />
+              ))}
+              {/* Half-hour lines */}
+              {hours.map((h) => (
+                <div key={`h${h}`} className="absolute left-0 right-0 border-t border-border/20 border-dashed"
+                  style={{ top: (h - CAL_START) * HOUR_PX + HOUR_PX / 2 }} />
+              ))}
+
+              {/* Events */}
+              {timed.map((ev) => {
+                const top = evTop(ev.startTime!);
+                const height = evHeight(ev.startTime!, ev.endTime);
+                const bgCls = TYPE_BG_SOLID[ev.type] ?? "bg-gray-500 border-gray-700";
+                return (
+                  <div key={ev.id}
+                    className={`absolute left-0.5 right-0.5 rounded border-l-2 px-1.5 py-1 text-white overflow-hidden cursor-default ${bgCls} ${ev.visibility === "MANAGEMENT" ? "opacity-70" : ""}`}
+                    style={{ top, height }}
+                    title={`${ev.title}${ev.location ? ` · ${ev.location}` : ""}\n${ev.startTime}${ev.endTime ? ` – ${ev.endTime}` : ""}`}
+                  >
+                    <p className="text-[10px] font-semibold leading-tight truncate">{ev.title}</p>
+                    {height >= 36 && (
+                      <p className="text-[9px] opacity-80 mt-0.5 tabular-nums">
+                        {ev.startTime}{ev.endTime ? ` – ${ev.endTime}` : ""}
+                      </p>
+                    )}
+                    {height >= 52 && ev.location && (
+                      <p className="text-[9px] opacity-70 mt-0.5 truncate">{ev.location}</p>
                     )}
                   </div>
-                ))
-              )}
+                );
+              })}
+
+              {/* Now line (today only) */}
+              {isToday && (() => {
+                const now = new Date();
+                const nowTop = (now.getHours() * 60 + now.getMinutes()) / 60;
+                const lineTop = (nowTop - CAL_START) * HOUR_PX;
+                if (lineTop < 0 || lineTop > totalH) return null;
+                return (
+                  <div className="absolute left-0 right-0 z-10 flex items-center" style={{ top: lineTop }}>
+                    <div className="w-2 h-2 rounded-full bg-red-500 -ml-1 shrink-0" />
+                    <div className="flex-1 h-px bg-red-500" />
+                  </div>
+                );
+              })()}
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }

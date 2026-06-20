@@ -1096,6 +1096,37 @@ interface OperationalDayViewProps {
   onDeleteEntry: (entryId: string) => void;
 }
 
+// ── Time-grid constants for OperationalDayView ────────────────────────────────
+const OP_START = 7;
+const OP_END   = 23;
+const OP_HOUR_PX = 56; // pixels per hour
+
+// Palette for manual activity blocks (cycles by index)
+const OP_COLORS = [
+  "bg-violet-100 border-l-violet-500 text-violet-900",
+  "bg-blue-100 border-l-blue-500 text-blue-900",
+  "bg-amber-100 border-l-amber-500 text-amber-900",
+  "bg-emerald-100 border-l-emerald-500 text-emerald-900",
+  "bg-rose-100 border-l-rose-500 text-rose-900",
+  "bg-indigo-100 border-l-indigo-500 text-indigo-900",
+  "bg-teal-100 border-l-teal-500 text-teal-900",
+  "bg-orange-100 border-l-orange-500 text-orange-900",
+];
+
+function opTimeToMin(t: string): number {
+  const [h, m] = t.split(":").map(Number);
+  return (h ?? 0) * 60 + (m ?? 0);
+}
+
+function opEntryTop(startTime: string): number {
+  return Math.max(0, (opTimeToMin(startTime) / 60 - OP_START) * OP_HOUR_PX);
+}
+
+function opEntryHeight(startTime: string, endTime: string | null | undefined): number {
+  if (!endTime) return 36;
+  return Math.max(28, (opTimeToMin(endTime) - opTimeToMin(startTime)) * (OP_HOUR_PX / 60));
+}
+
 function OperationalDayView({
   members,
   dayManual,
@@ -1106,104 +1137,175 @@ function OperationalDayView({
   onDeleteEntry,
 }: OperationalDayViewProps) {
   const date = selectedDay ?? new Date().toISOString().split("T")[0]!;
+  const hours = Array.from({ length: OP_END - OP_START }, (_, i) => OP_START + i);
+  const totalH = (OP_END - OP_START) * OP_HOUR_PX;
+
+  const allEntries = useMemo(() => {
+    const result: Array<{ memberId: string; entry: any; colorIdx: number }> = [];
+    members.forEach((m) => {
+      const entries = dayManual.get(m.userId) ?? [];
+      entries.forEach((entry, idx) => result.push({ memberId: m.userId, entry, colorIdx: idx % OP_COLORS.length }));
+    });
+    return result;
+  }, [members, dayManual]);
+
+  const labelMap = useMemo(() => {
+    const map = new Map<string, number>();
+    allEntries.forEach(({ entry, colorIdx }) => {
+      const label: string = (entry as any).manualLabel ?? "";
+      if (!map.has(label)) map.set(label, colorIdx);
+    });
+    return map;
+  }, [allEntries]);
 
   return (
     <div>
-      {/* Day header */}
+      {/* Header hint */}
       <div className="flex items-center gap-2 mb-3">
         <PenLine className="h-4 w-4 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">
-          Dia operacional — sem eventos de agenda.{" "}
-          {isSupervisor && "Use os botões abaixo para adicionar atividades."}
+          Grade do dia — sem eventos de agenda vinculados.{" "}
+          {isSupervisor && "Clique em + abaixo de um membro para lançar atividades."}
         </p>
       </div>
 
-      {/* Member columns */}
-      <div className="bg-white rounded-xl border shadow-sm overflow-x-auto">
-        <div className="flex min-w-max">
-          {members.map((m) => {
-            const entries = dayManual.get(m.userId) ?? [];
-            const hasFolga = folgaUserIds.has(m.userId);
-            return (
-              <div
-                key={m.userId}
-                className="flex flex-col border-r last:border-r-0"
-                style={{ minWidth: 148, maxWidth: 172 }}
-              >
-                {/* Member header */}
-                <div className="flex flex-col items-center gap-1 px-3 py-3 border-b bg-gray-50/80">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-xs font-bold text-primary">
-                      {m.userName.charAt(0).toUpperCase()}
+      <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+        <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: 640 }}>
+          <div className="flex min-w-max">
+
+            {/* ── Time axis column ── */}
+            <div className="shrink-0 border-r bg-gray-50/80 sticky left-0 z-20" style={{ width: 52 }}>
+              {/* Corner + add-button spacer */}
+              <div className="border-b bg-gray-50 flex items-end justify-center pb-2" style={{ height: 88 }}>
+                <span className="text-[9px] text-muted-foreground uppercase tracking-widest">hora</span>
+              </div>
+              {/* Hour labels */}
+              <div className="relative" style={{ height: totalH }}>
+                {hours.map((h) => (
+                  <div key={h}
+                    className="absolute right-0 left-0 flex justify-end pr-2 border-t border-border/30"
+                    style={{ top: (h - OP_START) * OP_HOUR_PX }}>
+                    <span className="text-[10px] text-muted-foreground font-medium tabular-nums -mt-3">
+                      {String(h).padStart(2, "0")}:00
                     </span>
                   </div>
-                  <span className="text-xs font-medium text-gray-700 text-center leading-tight">
-                    {m.userName.split(" ")[0]}
-                  </span>
-                  {hasFolga && (
-                    <span className="flex items-center gap-0.5 text-[10px] text-amber-500">
-                      <Palmtree className="h-2.5 w-2.5" /> Folga
-                    </span>
-                  )}
-                </div>
-
-                {/* Entry cards */}
-                <div className="flex flex-col gap-1.5 p-2 min-h-[80px]">
-                  {entries.map((entry) => {
-                    const e = entry as any;
-                    return (
-                      <div
-                        key={entry.id}
-                        className="group relative rounded-lg bg-primary/10 px-2.5 py-2 text-xs"
-                      >
-                        <p className="font-semibold text-primary uppercase leading-tight tracking-wide">
-                          {e.manualLabel ?? "—"}
-                        </p>
-                        {(e.startTime || e.endTime) && (
-                          <p className="text-primary/70 mt-0.5">
-                            {e.startTime ? fmtTime(e.startTime) : ""}
-                            {e.startTime && e.endTime ? " – " : ""}
-                            {e.endTime ? fmtTime(e.endTime) : ""}
-                          </p>
-                        )}
-                        {e.notes && (
-                          <p className="text-muted-foreground mt-0.5 line-clamp-1">{e.notes}</p>
-                        )}
-                        {isSupervisor && (
-                          <button
-                            onClick={() => onDeleteEntry(entry.id)}
-                            className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 p-0.5 rounded"
-                            title="Remover entrada"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-
-                  {/* Add button */}
-                  {isSupervisor && (
-                    <button
-                      onClick={() => onAddEntry(m.userId, date)}
-                      className="w-full flex items-center justify-center gap-1 rounded-lg border border-dashed border-muted-foreground/30 px-2 py-2 text-xs text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-colors"
-                    >
-                      <Plus className="h-3 w-3" />
-                      Adicionar
-                    </button>
-                  )}
-                </div>
+                ))}
               </div>
-            );
-          })}
-
-          {/* Empty state when no members */}
-          {members.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 px-8 text-muted-foreground gap-2 w-full">
-              <User className="h-8 w-8 opacity-20" />
-              <p className="text-sm">Nenhum membro encontrado.</p>
             </div>
-          )}
+
+            {/* ── Member columns ── */}
+            {members.map((m) => {
+              const entries = dayManual.get(m.userId) ?? [];
+              const hasFolga = folgaUserIds.has(m.userId);
+              const timed   = entries.filter((e: any) => !!(e as any).startTime);
+              const untimed = entries.filter((e: any) => !(e as any).startTime);
+
+              return (
+                <div key={m.userId} className="flex flex-col border-r last:border-r-0" style={{ minWidth: 148 }}>
+
+                  {/* Member header */}
+                  <div className="flex flex-col items-center gap-1 px-3 py-3 border-b bg-gray-50/80 sticky top-0 z-10" style={{ height: 88 }}>
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <span className="text-xs font-bold text-primary">
+                        {m.userName.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <span className="text-xs font-medium text-gray-700 text-center leading-tight line-clamp-2">
+                      {m.userName.split(" ")[0]}
+                    </span>
+                    {hasFolga && (
+                      <span className="flex items-center gap-0.5 text-[10px] text-amber-500">
+                        <Palmtree className="h-2.5 w-2.5" /> Folga
+                      </span>
+                    )}
+                    {isSupervisor && (
+                      <button
+                        onClick={() => onAddEntry(m.userId, date)}
+                        className="flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-primary transition-colors"
+                        title="Adicionar atividade"
+                      >
+                        <Plus className="h-3 w-3" /> add
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Time grid body */}
+                  <div className="relative" style={{ height: totalH }}>
+
+                    {/* Hour grid lines */}
+                    {hours.map((h) => (
+                      <div key={h} className="absolute left-0 right-0 border-t border-border/30"
+                        style={{ top: (h - OP_START) * OP_HOUR_PX }} />
+                    ))}
+                    {hours.map((h) => (
+                      <div key={`h${h}`} className="absolute left-0 right-0 border-t border-border/10 border-dashed"
+                        style={{ top: (h - OP_START) * OP_HOUR_PX + OP_HOUR_PX / 2 }} />
+                    ))}
+
+                    {/* Untimed entries — float at top as chips */}
+                    {untimed.length > 0 && (
+                      <div className="absolute left-1 right-1 top-1 flex flex-col gap-0.5 z-10">
+                        {untimed.map((entry: any) => {
+                          const colorIdx = labelMap.get(entry.manualLabel ?? "") ?? 0;
+                          const colorCls = OP_COLORS[colorIdx % OP_COLORS.length];
+                          return (
+                            <div key={entry.id} className={`group relative rounded border-l-2 px-1.5 py-1 text-[10px] ${colorCls}`}>
+                              <p className="font-semibold uppercase leading-tight truncate">{entry.manualLabel ?? "—"}</p>
+                              {isSupervisor && (
+                                <button onClick={() => onDeleteEntry(entry.id)}
+                                  className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 p-0.5">
+                                  <X className="h-2.5 w-2.5" />
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Timed entries — positioned absolutely */}
+                    {timed.map((entry: any) => {
+                      const top = opEntryTop(entry.startTime);
+                      const height = opEntryHeight(entry.startTime, entry.endTime);
+                      const colorIdx = labelMap.get(entry.manualLabel ?? "") ?? 0;
+                      const colorCls = OP_COLORS[colorIdx % OP_COLORS.length];
+                      return (
+                        <div key={entry.id}
+                          className={`group absolute left-0.5 right-0.5 rounded border-l-2 px-1.5 py-0.5 text-[10px] overflow-hidden ${colorCls}`}
+                          style={{ top, height }}
+                          title={`${entry.manualLabel ?? ""}${entry.startTime ? ` · ${fmtTime(entry.startTime)}` : ""}${entry.endTime ? ` – ${fmtTime(entry.endTime)}` : ""}`}
+                        >
+                          <p className="font-semibold uppercase leading-tight truncate">{entry.manualLabel ?? "—"}</p>
+                          {height >= 36 && (
+                            <p className="opacity-70 tabular-nums mt-0.5">
+                              {fmtTime(entry.startTime)}{entry.endTime ? ` – ${fmtTime(entry.endTime)}` : ""}
+                            </p>
+                          )}
+                          {height >= 52 && entry.notes && (
+                            <p className="opacity-60 truncate mt-0.5">{entry.notes}</p>
+                          )}
+                          {isSupervisor && (
+                            <button onClick={() => onDeleteEntry(entry.id)}
+                              className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 p-0.5">
+                              <X className="h-2.5 w-2.5" />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Empty state */}
+            {members.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 px-8 text-muted-foreground gap-2">
+                <User className="h-8 w-8 opacity-20" />
+                <p className="text-sm">Nenhum membro encontrado.</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

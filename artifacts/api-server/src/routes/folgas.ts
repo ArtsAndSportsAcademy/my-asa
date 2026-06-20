@@ -181,7 +181,9 @@ async function cancelAndSplit(
 router.get("/folgas", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger(LOG_DOMAIN.FOLGAS, req.requestId, req.correlationId);
   const user = req.user!;
-  const { operationId, userId, type, status, dateFrom, dateTo } = req.query as Record<string, string>;
+  const raw = req.query as Record<string, string>;
+  const operationId = raw.operationId === "__all__" ? undefined : raw.operationId;
+  const { userId, type, status, dateFrom, dateTo } = raw;
 
   try {
     const conditions: SQL<unknown>[] = [];
