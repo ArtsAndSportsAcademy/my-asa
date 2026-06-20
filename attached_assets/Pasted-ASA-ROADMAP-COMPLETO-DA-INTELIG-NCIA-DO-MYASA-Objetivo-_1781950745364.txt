@@ -1,0 +1,433 @@
+ASA — ROADMAP COMPLETO DA INTELIGÊNCIA DO MYASA
+
+Objetivo
+
+A ASA é a assistente oficial do MyASA.
+
+Ela não é apenas um chatbot.
+
+Ela é uma assistente operacional, institucional e humana que acompanha membros, supervisores e administradores em todas as áreas do sistema.
+
+A ASA evolui em etapas.
+
+Cada sprint adiciona novas capacidades, mantendo sempre:
+
+* supervisão humana;
+* explicabilidade;
+* confirmação;
+* segurança;
+* memória aprovada.
+
+━━━━━━━━━━━━━━━━━━
+ASA-FOUNDATION-D01
+Fundação da ASA
+━━━━━━━━━━━━━━━━━━
+
+Objetivo:
+
+Definir quem é a ASA.
+
+Entregas:
+
+✓ Nome ASA.
+
+✓ Mascote oficial.
+
+✓ Fala em primeira pessoa.
+
+✓ Personalidade.
+
+✓ Memória individual.
+
+✓ Aprendizado supervisionado.
+
+✓ Explicabilidade.
+
+✓ Restrições humanas.
+
+Pergunta respondida:
+
+Quem é a ASA?
+
+━━━━━━━━━━━━━━━━━━
+ASA-SPRINT-02A
+Operação por Linguagem Natural
+━━━━━━━━━━━━━━━━━━
+
+Objetivo:
+
+Permitir que a ASA opere o sistema.
+
+Entregas:
+
+✓ consultar_membros
+
+✓ criar_entrada_escala
+
+✓ criar_tarefa
+
+✓ resolução de nomes
+
+✓ confirmação de ações
+
+✓ verificação de conflitos
+
+Exemplos:
+
+“Adicionar Arthur no ensaio.”
+
+“Criar tarefa para Amanda.”
+
+“Adicionar Carolina na preparação.”
+
+Pergunta respondida:
+
+A ASA consegue agir?
+
+━━━━━━━━━━━━━━━━━━
+ASA-SPRINT-02B
+Memória e Conhecimento
+━━━━━━━━━━━━━━━━━━
+
+Objetivo:
+
+Permitir que a ASA lembre e aprenda.
+
+Entregas:
+
+✓ memórias no prompt
+
+✓ biblioteca inteligente
+
+✓ consulta de documentos
+
+✓ avatar oficial
+
+✓ emojis
+
+✓ conversa em primeira pessoa
+
+✓ personalidade
+
+Pergunta respondida:
+
+A ASA conhece as pessoas e a organização?
+
+━━━━━━━━━━━━━━━━━━
+ASA-SPRINT-03
+Meu Dia e Proatividade
+━━━━━━━━━━━━━━━━━━
+
+Objetivo:
+
+Participar da rotina diária.
+
+Entregas:
+
+✓ resumo do dia
+
+✓ clima
+
+✓ aniversários
+
+✓ tarefas pendentes
+
+✓ atividades
+
+✓ bom dia
+
+✓ boa noite
+
+✓ integração com Meu Dia
+
+Pergunta respondida:
+
+Como a ASA acompanha o dia das pessoas?
+
+━━━━━━━━━━━━━━━━━━
+ASA-SPRINT-04
+Vida e Reconhecimento
+━━━━━━━━━━━━━━━━━━
+
+Objetivo:
+
+Participar da vida da equipe.
+
+Entregas:
+
+✓ reconhecimentos
+
+✓ marcos de tempo de casa
+
+✓ preferências avançadas
+
+✓ estados do avatar
+
+✓ histórico da ASA
+
+✓ sugestões operacionais
+
+Pergunta respondida:
+
+Como a ASA se torna parte da equipe?
+
+━━━━━━━━━━━━━━━━━━
+ASA-SPRINT-05
+Conversas Inteligentes
+━━━━━━━━━━━━━━━━━━
+
+Objetivo:
+
+Entender conversas.
+
+Exemplos:
+
+“Amanhã temos ensaio.”
+
+ASA:
+
+“Detectei um possível ensaio. Deseja criar?”
+
+“Amanda vai trocar com Carol.”
+
+ASA:
+
+“Deseja criar uma solicitação de troca?”
+
+Entregas:
+
+✓ detecção de eventos
+
+✓ detecção de tarefas
+
+✓ detecção de trocas
+
+✓ sugestões contextuais
+
+✓ criação assistida
+
+Pergunta respondida:
+
+A ASA entende conversas?
+
+━━━━━━━━━━━━━━━━━━
+ASA-SPRINT-06
+Assistente do Supervisor
+━━━━━━━━━━━━━━━━━━
+
+Objetivo:
+
+Ajudar supervisores.
+
+Exemplos:
+
+⚠️ Existem posições em aberto.
+
+⚠️ Arthur possui tarefa pendente.
+
+⚠️ Amanda está de folga e possui ensaio.
+
+💡 João está disponível.
+
+Entregas:
+
+✓ alertas operacionais
+
+✓ riscos
+
+✓ sugestões
+
+✓ pendências
+
+✓ acompanhamento
+
+Pergunta respondida:
+
+A ASA ajuda a supervisionar?
+
+━━━━━━━━━━━━━━━━━━
+ASA-SPRINT-07
+Vida da Equipe
+━━━━━━━━━━━━━━━━━━
+
+Objetivo:
+
+Participar da cultura da organização.
+
+Entregas:
+
+🎉 aniversários automáticos
+
+🏆 conquistas
+
+⭐ tempo de casa
+
+🎭 apresentações
+
+❤️ reconhecimentos
+
+Pergunta respondida:
+
+A ASA celebra as pessoas?
+
+━━━━━━━━━━━━━━━━━━
+ASA-SPRINT-08
+Mensagens Inteligentes
+━━━━━━━━━━━━━━━━━━
+
+Objetivo:
+
+Integrar a ASA às mensagens.
+
+Entregas:
+
+✓ resumo de grupos
+
+✓ informações importantes
+
+✓ tarefas detectadas
+
+✓ eventos detectados
+
+✓ ações sugeridas
+
+Pergunta respondida:
+
+A ASA entende as conversas da equipe?
+
+━━━━━━━━━━━━━━━━━━
+ASA-SPRINT-09
+Estatísticas Operacionais
+━━━━━━━━━━━━━━━━━━
+
+Objetivo:
+
+Transformar dados em respostas.
+
+Exemplos:
+
+“Quem mais atrasou?”
+
+“Quem concluiu mais tarefas?”
+
+“Qual documento é mais consultado?”
+
+“Quantos no-shows tivemos?”
+
+Entregas:
+
+✓ estatísticas
+
+✓ indicadores
+
+✓ consultas históricas
+
+✓ tendências
+
+Pergunta respondida:
+
+A ASA entende a operação?
+
+━━━━━━━━━━━━━━━━━━
+ASA-SPRINT-10
+Biblioteca Inteligente Avançada
+━━━━━━━━━━━━━━━━━━
+
+Objetivo:
+
+Transformar documentos em conhecimento.
+
+Entregas:
+
+✓ resumos
+
+✓ comparação de documentos
+
+✓ dúvidas frequentes
+
+✓ sugestões de leitura
+
+✓ documentos mais consultados
+
+Pergunta respondida:
+
+A ASA conhece a organização?
+
+━━━━━━━━━━━━━━━━━━
+ASA-SPRINT-11
+Aprendizado Organizacional
+━━━━━━━━━━━━━━━━━━
+
+Objetivo:
+
+Aprender padrões da operação.
+
+Entregas:
+
+✓ padrões
+
+✓ sazonalidade
+
+✓ riscos
+
+✓ tendências
+
+✓ melhorias sugeridas
+
+Exemplo:
+
+“Os atrasos aumentaram nas sextas-feiras.”
+
+Pergunta respondida:
+
+A ASA aprende com a operação?
+
+━━━━━━━━━━━━━━━━━━
+ASA 2.0
+Inteligência Organizacional
+━━━━━━━━━━━━━━━━━━
+
+A ASA se torna:
+
+🧠 memória institucional.
+
+📚 conhecimento organizacional.
+
+📅 apoio operacional.
+
+💡 assistente de gestão.
+
+❤️ vida da equipe.
+
+🎭 cultura organizacional.
+
+Sempre mantendo:
+
+* supervisão humana;
+* confirmação;
+* explicabilidade;
+* aprovação.
+
+━━━━━━━━━━━━━━━━━━
+FILOSOFIA DA ASA
+━━━━━━━━━━━━━━━━━━
+
+A ASA não substitui pessoas.
+
+A ASA ajuda pessoas.
+
+Ela aprende.
+
+Ela lembra.
+
+Ela explica.
+
+Ela organiza.
+
+Ela celebra.
+
+Ela participa da operação.
+
+Ela cresce junto com a equipe.
+
+Ela faz parte do MyASA.
