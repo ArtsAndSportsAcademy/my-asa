@@ -4765,6 +4765,129 @@ paths:
                 $ref: "#/components/schemas/FolgaItem"
         "404":
           $ref: "#/components/responses/NotFound"
+
+  /folgas/grid:
+    get:
+      operationId: getFolgasGrid
+      tags: [folgas]
+      summary: "Grade mensal de folgas"
+      parameters:
+        - name: operationId
+          in: query
+          required: true
+          schema: { type: string }
+        - name: year
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: month
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Grade mensal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FolgasGridResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /folgas/grid/toggle:
+    post:
+      operationId: toggleFolgaCell
+      tags: [folgas]
+      summary: "Alternar folga de uma célula da grade"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GridToggleRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /folgas/grid/bulk:
+    post:
+      operationId: bulkFillFolgas
+      tags: [folgas]
+      summary: "Preencher multiplas celulas da grade"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GridBulkRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  processed: { type: integer }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /folgas/grid/reset:
+    delete:
+      operationId: resetFolgasGrid
+      tags: [folgas]
+      summary: "Resetar todas as folgas do mes (Admin)"
+      parameters:
+        - name: operationId
+          in: query
+          required: true
+          schema: { type: string }
+        - name: year
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: month
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Reset executado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  cancelled: { type: integer }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -8331,3 +8454,49 @@ components:
         startDate: { type: string, format: date }
         endDate: { type: string, format: date }
         notes: { type: string }
+    FolgasGridMember:
+      type: object
+      required: [userId, name, days, totals]
+      properties:
+        userId: { type: string }
+        name: { type: string }
+        days:
+          type: object
+          additionalProperties: { type: string }
+        totals:
+          type: object
+          additionalProperties: { type: integer }
+    FolgasGridResponse:
+      type: object
+      required: [members, daysInMonth]
+      properties:
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/FolgasGridMember"
+        daysInMonth:
+          type: integer
+    GridToggleRequest:
+      type: object
+      required: [userId, operationId, date]
+      properties:
+        userId: { type: string }
+        operationId: { type: string }
+        date: { type: string, format: date }
+        type:
+          type: string
+          enum: [NO_SHOW, RECESSO, OUTRO, DAY_OFF, AFASTAMENTO, RESTRICAO]
+          nullable: true
+    GridBulkRequest:
+      type: object
+      required: [userId, operationId, dates]
+      properties:
+        userId: { type: string }
+        operationId: { type: string }
+        dates:
+          type: array
+          items: { type: string, format: date }
+        type:
+          type: string
+          enum: [NO_SHOW, RECESSO, OUTRO, DAY_OFF, AFASTAMENTO, RESTRICAO]
+          nullable: true

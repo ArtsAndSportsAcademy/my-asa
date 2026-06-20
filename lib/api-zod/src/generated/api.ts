@@ -4732,3 +4732,69 @@ export const CancelFolgaResponse = zod.object({
 })
 
 
+/**
+ * @summary Grade mensal de folgas
+ */
+export const GetFolgasGridQueryParams = zod.object({
+  "operationId": zod.coerce.string(),
+  "year": zod.coerce.number(),
+  "month": zod.coerce.number()
+})
+
+export const GetFolgasGridResponse = zod.object({
+  "members": zod.array(zod.object({
+  "userId": zod.string(),
+  "name": zod.string(),
+  "days": zod.record(zod.string(), zod.string()),
+  "totals": zod.record(zod.string(), zod.number())
+})),
+  "daysInMonth": zod.number()
+})
+
+
+/**
+ * @summary Alternar folga de uma célula da grade
+ */
+export const ToggleFolgaCellBody = zod.object({
+  "userId": zod.string(),
+  "operationId": zod.string(),
+  "date": zod.coerce.date(),
+  "type": zod.enum(['NO_SHOW', 'RECESSO', 'OUTRO', 'DAY_OFF', 'AFASTAMENTO', 'RESTRICAO']).nullish()
+})
+
+export const ToggleFolgaCellResponse = zod.object({
+  "ok": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Preencher multiplas celulas da grade
+ */
+export const BulkFillFolgasBody = zod.object({
+  "userId": zod.string(),
+  "operationId": zod.string(),
+  "dates": zod.array(zod.coerce.date()),
+  "type": zod.enum(['NO_SHOW', 'RECESSO', 'OUTRO', 'DAY_OFF', 'AFASTAMENTO', 'RESTRICAO']).nullish()
+})
+
+export const BulkFillFolgasResponse = zod.object({
+  "ok": zod.boolean().optional(),
+  "processed": zod.number().optional()
+})
+
+
+/**
+ * @summary Resetar todas as folgas do mes (Admin)
+ */
+export const ResetFolgasGridQueryParams = zod.object({
+  "operationId": zod.coerce.string(),
+  "year": zod.coerce.number(),
+  "month": zod.coerce.number()
+})
+
+export const ResetFolgasGridResponse = zod.object({
+  "ok": zod.boolean().optional(),
+  "cancelled": zod.number().optional()
+})
+
+

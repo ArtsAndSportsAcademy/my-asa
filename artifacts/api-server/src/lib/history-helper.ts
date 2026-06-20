@@ -16,7 +16,8 @@ export type HistoryCategory =
   | "DELEGATION"
   | "TASK"
   | "RESTRICTION"
-  | "SUPERVISOR_REQUEST";
+  | "SUPERVISOR_REQUEST"
+  | "ABSENCE";
 
 export interface WriteHistoryEventInput {
   category: HistoryCategory;

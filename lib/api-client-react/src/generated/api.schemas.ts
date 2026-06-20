@@ -2524,6 +2524,60 @@ export interface UpdateFolgaRequest {
   notes?: string;
 }
 
+export type FolgasGridMemberDays = {[key: string]: string};
+
+export type FolgasGridMemberTotals = {[key: string]: number};
+
+export interface FolgasGridMember {
+  userId: string;
+  name: string;
+  days: FolgasGridMemberDays;
+  totals: FolgasGridMemberTotals;
+}
+
+export interface FolgasGridResponse {
+  members: FolgasGridMember[];
+  daysInMonth: number;
+}
+
+export type GridToggleRequestType = typeof GridToggleRequestType[keyof typeof GridToggleRequestType] | null;
+
+
+export const GridToggleRequestType = {
+  NO_SHOW: 'NO_SHOW',
+  RECESSO: 'RECESSO',
+  OUTRO: 'OUTRO',
+  DAY_OFF: 'DAY_OFF',
+  AFASTAMENTO: 'AFASTAMENTO',
+  RESTRICAO: 'RESTRICAO',
+} as const;
+
+export interface GridToggleRequest {
+  userId: string;
+  operationId: string;
+  date: string;
+  type?: GridToggleRequestType;
+}
+
+export type GridBulkRequestType = typeof GridBulkRequestType[keyof typeof GridBulkRequestType] | null;
+
+
+export const GridBulkRequestType = {
+  NO_SHOW: 'NO_SHOW',
+  RECESSO: 'RECESSO',
+  OUTRO: 'OUTRO',
+  DAY_OFF: 'DAY_OFF',
+  AFASTAMENTO: 'AFASTAMENTO',
+  RESTRICAO: 'RESTRICAO',
+} as const;
+
+export interface GridBulkRequest {
+  userId: string;
+  operationId: string;
+  dates: string[];
+  type?: GridBulkRequestType;
+}
+
 /**
  * Bad request
  */
@@ -3060,4 +3114,30 @@ export const ListFolgasStatus = {
   ACTIVE: 'ACTIVE',
   CANCELLED: 'CANCELLED',
 } as const;
+
+export type GetFolgasGridParams = {
+operationId: string;
+year: number;
+month: number;
+};
+
+export type ToggleFolgaCell200 = {
+  ok?: boolean;
+};
+
+export type BulkFillFolgas200 = {
+  ok?: boolean;
+  processed?: number;
+};
+
+export type ResetFolgasGridParams = {
+operationId: string;
+year: number;
+month: number;
+};
+
+export type ResetFolgasGrid200 = {
+  ok?: boolean;
+  cancelled?: number;
+};
 

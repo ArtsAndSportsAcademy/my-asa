@@ -44,6 +44,7 @@ import type {
   BadRequestResponse,
   BlockCreate,
   BlockUpdate,
+  BulkFillFolgas200,
   CancelAgendaEvent200,
   CancelDailyBook200,
   CancelDailyBookRequest,
@@ -85,12 +86,14 @@ import type {
   ExecuteDailyBook200,
   FolgaItem,
   FolgaListResponse,
+  FolgasGridResponse,
   ForbiddenResponse,
   GenerateDailyBook201,
   GenerateScale201,
   GetAgendaEvent200,
   GetDailyBook200,
   GetDailyBookDelta200,
+  GetFolgasGridParams,
   GetMyHistoryParams,
   GetMyTasksParams,
   GetOperation200,
@@ -101,6 +104,8 @@ import type {
   GetScale200,
   GetShowBook200,
   GetUser200,
+  GridBulkRequest,
+  GridToggleRequest,
   GroupCreate,
   GroupMemberAdd,
   GroupStatusUpdate,
@@ -184,6 +189,8 @@ import type {
   RepublishDailyBook200,
   RepublishScale200,
   RequestTaskChangesBody,
+  ResetFolgasGrid200,
+  ResetFolgasGridParams,
   ResolveScaleException200,
   RoleCreate,
   ScaleGenerateRequest,
@@ -203,6 +210,7 @@ import type {
   TaskEvidenceSingleResponse,
   TaskListResponse,
   TaskSingleResponse,
+  ToggleFolgaCell200,
   TokensResponse,
   UnauthorizedResponse,
   UnprocessableEntityResponse,
@@ -12920,5 +12928,308 @@ export const useCancelFolga = <TError = ErrorType<NotFoundResponse>,
         TContext
       > => {
       return useMutation(getCancelFolgaMutationOptions(options));
+    }
+
+export const getGetFolgasGridUrl = (params: GetFolgasGridParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/folgas/grid?${stringifiedParams}` : `/api/folgas/grid`
+}
+
+/**
+ * @summary Grade mensal de folgas
+ */
+export const getFolgasGrid = async (params: GetFolgasGridParams, options?: RequestInit): Promise<FolgasGridResponse> => {
+
+  return customFetch<FolgasGridResponse>(getGetFolgasGridUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFolgasGridQueryKey = (params?: GetFolgasGridParams,) => {
+    return [
+    `/api/folgas/grid`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetFolgasGridQueryOptions = <TData = Awaited<ReturnType<typeof getFolgasGrid>>, TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>>(params: GetFolgasGridParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFolgasGrid>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFolgasGridQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFolgasGrid>>> = ({ signal }) => getFolgasGrid(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFolgasGrid>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFolgasGridQueryResult = NonNullable<Awaited<ReturnType<typeof getFolgasGrid>>>
+export type GetFolgasGridQueryError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary Grade mensal de folgas
+ */
+
+export function useGetFolgasGrid<TData = Awaited<ReturnType<typeof getFolgasGrid>>, TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>>(
+ params: GetFolgasGridParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFolgasGrid>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFolgasGridQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getToggleFolgaCellUrl = () => {
+
+
+
+
+  return `/api/folgas/grid/toggle`
+}
+
+/**
+ * @summary Alternar folga de uma célula da grade
+ */
+export const toggleFolgaCell = async (gridToggleRequest: GridToggleRequest, options?: RequestInit): Promise<ToggleFolgaCell200> => {
+
+  return customFetch<ToggleFolgaCell200>(getToggleFolgaCellUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      gridToggleRequest,)
+  }
+);}
+
+
+
+
+export const getToggleFolgaCellMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof toggleFolgaCell>>, TError,{data: BodyType<GridToggleRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof toggleFolgaCell>>, TError,{data: BodyType<GridToggleRequest>}, TContext> => {
+
+const mutationKey = ['toggleFolgaCell'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof toggleFolgaCell>>, {data: BodyType<GridToggleRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  toggleFolgaCell(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ToggleFolgaCellMutationResult = NonNullable<Awaited<ReturnType<typeof toggleFolgaCell>>>
+    export type ToggleFolgaCellMutationBody = BodyType<GridToggleRequest>
+    export type ToggleFolgaCellMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>
+
+    /**
+ * @summary Alternar folga de uma célula da grade
+ */
+export const useToggleFolgaCell = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof toggleFolgaCell>>, TError,{data: BodyType<GridToggleRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof toggleFolgaCell>>,
+        TError,
+        {data: BodyType<GridToggleRequest>},
+        TContext
+      > => {
+      return useMutation(getToggleFolgaCellMutationOptions(options));
+    }
+
+export const getBulkFillFolgasUrl = () => {
+
+
+
+
+  return `/api/folgas/grid/bulk`
+}
+
+/**
+ * @summary Preencher multiplas celulas da grade
+ */
+export const bulkFillFolgas = async (gridBulkRequest: GridBulkRequest, options?: RequestInit): Promise<BulkFillFolgas200> => {
+
+  return customFetch<BulkFillFolgas200>(getBulkFillFolgasUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      gridBulkRequest,)
+  }
+);}
+
+
+
+
+export const getBulkFillFolgasMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkFillFolgas>>, TError,{data: BodyType<GridBulkRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof bulkFillFolgas>>, TError,{data: BodyType<GridBulkRequest>}, TContext> => {
+
+const mutationKey = ['bulkFillFolgas'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bulkFillFolgas>>, {data: BodyType<GridBulkRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  bulkFillFolgas(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BulkFillFolgasMutationResult = NonNullable<Awaited<ReturnType<typeof bulkFillFolgas>>>
+    export type BulkFillFolgasMutationBody = BodyType<GridBulkRequest>
+    export type BulkFillFolgasMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>
+
+    /**
+ * @summary Preencher multiplas celulas da grade
+ */
+export const useBulkFillFolgas = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkFillFolgas>>, TError,{data: BodyType<GridBulkRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof bulkFillFolgas>>,
+        TError,
+        {data: BodyType<GridBulkRequest>},
+        TContext
+      > => {
+      return useMutation(getBulkFillFolgasMutationOptions(options));
+    }
+
+export const getResetFolgasGridUrl = (params: ResetFolgasGridParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/folgas/grid/reset?${stringifiedParams}` : `/api/folgas/grid/reset`
+}
+
+/**
+ * @summary Resetar todas as folgas do mes (Admin)
+ */
+export const resetFolgasGrid = async (params: ResetFolgasGridParams, options?: RequestInit): Promise<ResetFolgasGrid200> => {
+
+  return customFetch<ResetFolgasGrid200>(getResetFolgasGridUrl(params),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getResetFolgasGridMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetFolgasGrid>>, TError,{params: ResetFolgasGridParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resetFolgasGrid>>, TError,{params: ResetFolgasGridParams}, TContext> => {
+
+const mutationKey = ['resetFolgasGrid'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resetFolgasGrid>>, {params: ResetFolgasGridParams}> = (props) => {
+          const {params} = props ?? {};
+
+          return  resetFolgasGrid(params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResetFolgasGridMutationResult = NonNullable<Awaited<ReturnType<typeof resetFolgasGrid>>>
+
+    export type ResetFolgasGridMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>
+
+    /**
+ * @summary Resetar todas as folgas do mes (Admin)
+ */
+export const useResetFolgasGrid = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetFolgasGrid>>, TError,{params: ResetFolgasGridParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resetFolgasGrid>>,
+        TError,
+        {params: ResetFolgasGridParams},
+        TContext
+      > => {
+      return useMutation(getResetFolgasGridMutationOptions(options));
     }
 
