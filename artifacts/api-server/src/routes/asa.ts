@@ -916,6 +916,43 @@ const ASA_TOOLS: Tool[] = [
       },
     },
   },
+  // ── Operações de Cancelamento / Remoção ──────────────────────────────────────
+  {
+    name: "cancelar_ausencia",
+    description: "Cancela (remove) uma ausência/folga previamente registrada. Use quando o usuário pedir para remover, cancelar ou desfazer uma folga. Requer o ID da folga — use consultar_folgas para encontrá-lo. SEMPRE confirme com o usuário antes de cancelar.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        folgaId: { type: "string", description: "ID UUID da folga a cancelar" },
+        motivo:  { type: "string", description: "Motivo do cancelamento (opcional)" },
+      },
+      required: ["folgaId"],
+    },
+  },
+  {
+    name: "cancelar_tarefa",
+    description: "Cancela uma tarefa ou marca como concluída. Use quando o usuário pedir para remover, cancelar ou fechar uma tarefa. Requer o ID da tarefa — use consultar_tarefas para encontrá-lo. SEMPRE confirme com o usuário antes de cancelar.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        taskId: { type: "string", description: "ID UUID da tarefa" },
+        acao:   { type: "string", description: "CANCELAR (marca como CANCELLED) ou CONCLUIR (marca como COMPLETED). Padrão: CANCELAR" },
+        motivo: { type: "string", description: "Motivo do cancelamento ou conclusão (opcional)" },
+      },
+      required: ["taskId"],
+    },
+  },
+  {
+    name: "remover_entrada_escala",
+    description: "Remove uma entrada manual da escala (criada via criar_entrada_escala). Apenas entradas MANUAL_OVERRIDE podem ser removidas. Use quando o usuário pedir para remover uma célula ou entrada manual de escala. SEMPRE confirme antes de remover.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        allocationId: { type: "string", description: "ID UUID da alocação a remover" },
+      },
+      required: ["allocationId"],
+    },
+  },
   // ── Sprint 11 — Aprendizado Organizacional ───────────────────────────────────
   {
     name: "consultar_tendencias",
@@ -2146,6 +2183,40 @@ async function executeTool(
       } catch {
         return JSON.stringify({ error: "Não foi possível consultar o clima agora." });
       }
+    }
+
+    // ── Cancelamentos / Remoções ──────────────────────────────────────────────
+    if (name === "cancelar_ausencia") {
+      if (!isManager) return JSON.stringify({ error: "Apenas gestores podem cancelar ausências" });
+      const folgaId = input.folgaId as string;
+      const [existing] = await db.select({ id: folgasTable.id, status: folgasTable.status, userId: folgasTable.userId, type: folgasTable.type, startDate: folgasTable.startDate }).from(folgasTable).where(eq(folgasTable.id, folgaId)).limit(1);
+      if (!existing) return JSON.stringify({ success: false, message: "Ausência não encontrada com esse ID." });
+      if (existing.status === "CANCELLED") return JSON.stringify({ success: false, message: "Esta ausência já está cancelada." });
+      await db.update(folgasTable).set({ status: "CANCELLED", updatedAt: new Date() }).where(eq(folgasTable.id, folgaId));
+      return JSON.stringify({ success: true, message: `✅ Ausência de ${existing.startDate} cancelada com sucesso. O membro volta a estar disponível nessa data.`, id: folgaId });
+    }
+
+    if (name === "cancelar_tarefa") {
+      if (!isManager) return JSON.stringify({ error: "Apenas gestores podem cancelar tarefas" });
+      const taskId = input.taskId as string;
+      const acao   = ((input.acao as string | undefined) ?? "CANCELAR").toUpperCase();
+      const novoStatus = acao === "CONCLUIR" ? "COMPLETED" : "CANCELLED";
+      const [existing] = await db.select({ id: tasksTable.id, status: tasksTable.status, title: tasksTable.title, assigneeId: tasksTable.assigneeId }).from(tasksTable).where(and(eq(tasksTable.id, taskId), eq(tasksTable.organizationId, ctx.organizationId!))).limit(1);
+      if (!existing) return JSON.stringify({ success: false, message: "Tarefa não encontrada." });
+      if (existing.status === "CANCELLED" || existing.status === "COMPLETED") return JSON.stringify({ success: false, message: `Tarefa já está no status ${existing.status}.` });
+      await db.update(tasksTable).set({ status: novoStatus as typeof existing.status, updatedAt: new Date() }).where(eq(tasksTable.id, taskId));
+      const label = novoStatus === "COMPLETED" ? "concluída" : "cancelada";
+      return JSON.stringify({ success: true, message: `✅ Tarefa "${existing.title}" ${label} com sucesso.`, id: taskId, novoStatus });
+    }
+
+    if (name === "remover_entrada_escala") {
+      if (!isManager) return JSON.stringify({ error: "Apenas gestores podem remover entradas da escala" });
+      const allocationId = input.allocationId as string;
+      const [existing] = await db.select({ id: scaleAllocationsTable.id, status: scaleAllocationsTable.status, manualLabel: scaleAllocationsTable.manualLabel, userId: scaleAllocationsTable.userId }).from(scaleAllocationsTable).where(eq(scaleAllocationsTable.id, allocationId)).limit(1);
+      if (!existing) return JSON.stringify({ success: false, message: "Entrada de escala não encontrada." });
+      if (existing.status !== "MANUAL_OVERRIDE") return JSON.stringify({ success: false, message: `Apenas entradas manuais podem ser removidas via ASA. Esta entrada tem status "${existing.status}". Para alterações em escalas publicadas, use o painel de escalas no web admin.` });
+      await db.delete(scaleAllocationsTable).where(eq(scaleAllocationsTable.id, allocationId));
+      return JSON.stringify({ success: true, message: `✅ Entrada manual "${existing.manualLabel ?? allocationId}" removida da escala com sucesso.`, id: allocationId });
     }
 
     // ── Sprint 11 — Aprendizado Organizacional ───────────────────────────────
