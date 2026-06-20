@@ -340,7 +340,7 @@ export const getLoginUrl = () => {
 }
 
 /**
- * @summary Login with email and password
+ * @summary Login with username and password
  */
 export const login = async (loginRequest: LoginRequest, options?: RequestInit): Promise<LoginResult> => {
 
@@ -389,7 +389,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type LoginMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
 
     /**
- * @summary Login with email and password
+ * @summary Login with username and password
  */
 export const useLogin = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof login>>, TError,{data: BodyType<LoginRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}

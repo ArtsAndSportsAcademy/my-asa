@@ -11,7 +11,8 @@
     "push": "drizzle-kit push --config ./drizzle.config.ts",
     "push-force": "drizzle-kit push --force --config ./drizzle.config.ts",
     "seed": "tsx src/schema/seed.ts",
-    "seed-simulation": "tsx src/schema/seed-simulation.ts"
+    "seed-simulation": "tsx src/schema/seed-simulation.ts",
+    "backfill-usernames": "tsx src/backfill-usernames.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

@@ -17,10 +17,10 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
- * @summary Login with email and password
+ * @summary Login with username and password
  */
 export const LoginBody = zod.object({
-  "email": zod.string(),
+  "username": zod.string(),
   "password": zod.string()
 })
 
@@ -31,6 +31,7 @@ export const LoginResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "email": zod.string(),
+  "username": zod.string().nullish(),
   "photoUrl": zod.string().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
   "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
@@ -78,6 +79,7 @@ export const GetMeResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "email": zod.string(),
+  "username": zod.string().nullish(),
   "photoUrl": zod.string().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
   "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
@@ -378,6 +380,7 @@ export const GetUserContextResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "email": zod.string(),
+  "username": zod.string().nullish(),
   "photoUrl": zod.string().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
   "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
@@ -427,6 +430,7 @@ export const ListUsersResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "email": zod.string(),
+  "username": zod.string().nullish(),
   "photoUrl": zod.string().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
   "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
@@ -464,6 +468,7 @@ export const GetUserResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "email": zod.string(),
+  "username": zod.string().nullish(),
   "photoUrl": zod.string().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
   "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
@@ -492,6 +497,7 @@ export const UpdateUserResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "email": zod.string(),
+  "username": zod.string().nullish(),
   "photoUrl": zod.string().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
   "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
@@ -518,6 +524,7 @@ export const UpdateUserStatusResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "email": zod.string(),
+  "username": zod.string().nullish(),
   "photoUrl": zod.string().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
   "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),

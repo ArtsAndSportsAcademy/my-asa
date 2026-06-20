@@ -26,26 +26,27 @@ export interface AuthContext {
 }
 
 export async function loginUser(
-  email: string,
+  username: string,
   password: string,
   ctx: AuthContext,
 ) {
   const log = requestLogger("identity", ctx.requestId, ctx.correlationId);
 
+  const normalizedUsername = username.toLowerCase().trim();
   const user = await db.query.usersTable.findFirst({
-    where: eq(usersTable.email, email.toLowerCase().trim()),
+    where: eq(usersTable.username, normalizedUsername),
   });
 
   if (!user || !user.passwordHash) {
     await recordAudit({
       action: "INVALID_ACCESS_ATTEMPT",
-      targetResource: `login:${email}`,
+      targetResource: `login:${normalizedUsername}`,
       ipAddress: ctx.ipAddress,
       userAgent: ctx.userAgent,
       metadata: { reason: "user_not_found_or_no_password" },
     });
-    log.warn({ email }, "Login failed: user not found or no password");
-    throw new AuthError("INVALID_CREDENTIALS", "Email ou senha inválidos");
+    log.warn({ username: normalizedUsername }, "Login failed: user not found or no password");
+    throw new AuthError("INVALID_CREDENTIALS", "Nome de usuário ou senha inválidos");
   }
 
   if (user.status !== "ACTIVE") {
@@ -64,7 +65,7 @@ export async function loginUser(
       metadata: { reason: "wrong_password" },
     });
     log.warn({ userId: user.id }, "Login failed: wrong password");
-    throw new AuthError("INVALID_CREDENTIALS", "Email ou senha inválidos");
+    throw new AuthError("INVALID_CREDENTIALS", "Nome de usuário ou senha inválidos");
   }
 
   const { roles, operationIds } = await getUserRolesAndOperations(user.id);

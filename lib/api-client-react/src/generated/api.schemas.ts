@@ -40,6 +40,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  username?: string | null;
   photoUrl?: string | null;
   status: UserStatus;
   specialization?: UserSpecialization;
@@ -113,7 +114,7 @@ export interface OperationalGroup {
 }
 
 export interface LoginRequest {
-  email: string;
+  username: string;
   password: string;
 }
 

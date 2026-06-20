@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { like, eq } from "drizzle-orm";
 import { db } from "../index.js";
+import { backfillUsernames } from "../backfill-usernames.js";
 import {
   organizationsTable,
   operationsTable,
@@ -38,6 +39,9 @@ async function seed() {
       .where(like(usersTable.email, "%@myasa.demo"))
       .returning({ id: usersTable.id });
     console.log(`✅ ${updated.length} senhas atualizadas para "${DEFAULT_PASSWORD}"`);
+
+    const filled = await backfillUsernames();
+    console.log(`✅ ${filled} nome(s) de usuário gerado(s) no backfill`);
 
     const existingBooks = await db.select().from(showBooksTable).limit(1);
     if (existingBooks.length === 0) {
@@ -138,6 +142,7 @@ async function seed() {
     organizationId: org!.id,
     name: "Admin Demo",
     email: "admin@myasa.demo",
+    username: "admin.demo",
     status: "ACTIVE",
     passwordHash,
   }).returning();
@@ -146,16 +151,17 @@ async function seed() {
     organizationId: org!.id,
     name: "Supervisor Demo",
     email: "supervisor@myasa.demo",
+    username: "supervisor.demo",
     status: "ACTIVE",
     passwordHash,
   }).returning();
 
   const memberUsers = await db.insert(usersTable).values([
-    { organizationId: org!.id, name: "Membro 01", email: "membro01@myasa.demo", passwordHash },
-    { organizationId: org!.id, name: "Membro 02", email: "membro02@myasa.demo", passwordHash },
-    { organizationId: org!.id, name: "Membro 03", email: "membro03@myasa.demo", passwordHash },
-    { organizationId: org!.id, name: "Membro 04", email: "membro04@myasa.demo", passwordHash },
-    { organizationId: org!.id, name: "Membro 05", email: "membro05@myasa.demo", passwordHash },
+    { organizationId: org!.id, name: "Membro 01", email: "membro01@myasa.demo", username: "membro.01", passwordHash },
+    { organizationId: org!.id, name: "Membro 02", email: "membro02@myasa.demo", username: "membro.02", passwordHash },
+    { organizationId: org!.id, name: "Membro 03", email: "membro03@myasa.demo", username: "membro.03", passwordHash },
+    { organizationId: org!.id, name: "Membro 04", email: "membro04@myasa.demo", username: "membro.04", passwordHash },
+    { organizationId: org!.id, name: "Membro 05", email: "membro05@myasa.demo", username: "membro.05", passwordHash },
   ]).returning();
 
   console.log(`✅ ${2 + memberUsers.length} usuários criados`);
@@ -321,9 +327,9 @@ async function seed() {
   console.log("\n🎉 Seed concluído com sucesso!");
   console.log("\nCredenciais de acesso (dev):");
   console.log(`  Senha (todos): ${DEFAULT_PASSWORD}`);
-  console.log(`  Admin:         admin@myasa.demo`);
-  console.log(`  Supervisor:    supervisor@myasa.demo`);
-  console.log(`  Membros:       membro01..05@myasa.demo`);
+  console.log(`  Admin:         admin.demo`);
+  console.log(`  Supervisor:    supervisor.demo`);
+  console.log(`  Membros:       membro.01..05`);
 }
 
 seed().catch((err) => {

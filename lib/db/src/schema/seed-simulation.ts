@@ -17,6 +17,7 @@
 import bcrypt from "bcryptjs";
 import { eq, and, inArray } from "drizzle-orm";
 import { db } from "../index.js";
+import { backfillUsernames } from "../backfill-usernames.js";
 import {
   organizationsTable,
   operationsTable,
@@ -74,7 +75,8 @@ async function seedSimulation() {
     .limit(1);
 
   if (existing.length > 0) {
-    console.log(`✅ Simulação já existe (org: ${existing[0]!.id}). Nada a fazer.`);
+    const filled = await backfillUsernames();
+    console.log(`✅ Simulação já existe (org: ${existing[0]!.id}). ${filled} nome(s) de usuário gerado(s) no backfill.`);
     return;
   }
 
@@ -909,6 +911,10 @@ async function seedSimulation() {
     },
   ]);
   console.log("✅ 6 reconhecimentos criados");
+
+  // ── Nome de usuário ───────────────────────────────────────────────────────────
+  const filledUsernames = await backfillUsernames();
+  console.log(`✅ ${filledUsernames} nome(s) de usuário gerado(s)`);
 
   // ── Resumo ────────────────────────────────────────────────────────────────────
   console.log("\n🎉 Seed de simulação concluído com sucesso!\n");

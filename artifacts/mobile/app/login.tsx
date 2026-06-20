@@ -46,19 +46,19 @@ export default function LoginScreen() {
   const auth = useAuth();
   const login = useLogin();
 
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleLogin = () => {
     setError(null);
-    if (!email.trim() || !password) {
-      setError("Preencha email e senha.");
+    if (!username.trim() || !password) {
+      setError("Preencha o nome de usuário e a senha.");
       return;
     }
     login.mutate(
-      { data: { email: email.trim().toLowerCase(), password } },
+      { data: { username: username.trim().toLowerCase(), password } },
       {
         onSuccess: async (result) => {
           await auth.signIn(
@@ -72,7 +72,7 @@ export default function LoginScreen() {
         onError: (err: unknown) => {
           const apiError = err as { status?: number };
           if (apiError?.status === 401 || apiError?.status === 403) {
-            setError("Email ou senha inválidos.");
+            setError("Nome de usuário ou senha inválidos.");
           } else {
             setError("Erro de conexão. Tente novamente.");
           }
@@ -193,19 +193,19 @@ export default function LoginScreen() {
 
         <View style={styles.form}>
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>Nome de usuário</Text>
             <View style={styles.inputWrapper}>
               <TextInput
                 style={styles.input}
-                placeholder="seu@email.com"
+                placeholder="nome.sobrenome"
                 placeholderTextColor={colors.mutedForeground}
-                value={email}
-                onChangeText={setEmail}
+                value={username}
+                onChangeText={setUsername}
                 autoCapitalize="none"
                 autoCorrect={false}
-                keyboardType="email-address"
-                textContentType="emailAddress"
-                testID="input-email"
+                keyboardType="default"
+                textContentType="username"
+                testID="input-username"
               />
             </View>
           </View>
@@ -258,7 +258,7 @@ export default function LoginScreen() {
 
           <Text style={styles.hint}>
             Demo:{" "}
-            <Text style={styles.hintBold}>admin@myasa.demo</Text>
+            <Text style={styles.hintBold}>cris.fontana</Text>
             {" / "}
             <Text style={styles.hintBold}>Teste@123</Text>
           </Text>

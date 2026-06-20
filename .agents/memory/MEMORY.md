@@ -21,3 +21,4 @@
 - [Duas tabelas de notificação](notification-tables.md) — `notifications`=push(FCM); `user_notifications`=sino in-app (createNotification/getUnreadCount); a 2ª pode não estar migrada e falha silenciosa em try/catch
 - [Asa — multi-membro e lote](asa-batch-tools.md) — extrair "cores" reutilizáveis; single + _lote chamam o mesmo core; consultar_membros aceita listas; runBatch nunca aborta no 1º erro
 - [api-server direct-call tests](api-server-direct-call-tests.md) — sem framework de teste; exportar handler + entry temp em src/ + bundle esbuild (plugin pino exige outdir, não outfile)
+- [Login por username](login-username.md) — login passou de email→username; util de geração em lib/db/src/username.ts; backfill idempotente; column users.username unique nullable

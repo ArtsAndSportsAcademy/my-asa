@@ -1,8 +1,9 @@
 import { Router, type IRouter } from "express";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, like } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { db } from "@workspace/db";
 import { usersTable, userRolesTable, refreshTokensTable } from "@workspace/db";
+import { normalizeUsernameBase, resolveUniqueUsername } from "@workspace/db";
 import { requireAuth, requireOrganization, requireRole } from "../middlewares/auth.js";
 import { recordAudit } from "../lib/audit.service.js";
 import { requestLogger } from "../lib/logger.js";
@@ -112,6 +113,16 @@ router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), as
       return;
     }
 
+    const usernameBase = normalizeUsernameBase(name as string);
+    const conflicting = await db.query.usersTable.findMany({
+      columns: { username: true },
+      where: like(usersTable.username, `${usernameBase}%`),
+    });
+    const taken = new Set(
+      conflicting.map((u) => u.username).filter((u): u is string => !!u),
+    );
+    const username = resolveUniqueUsername(usernameBase, taken);
+
     const passwordHash = await bcrypt.hash(password as string, 12);
     const [newUser] = await db
       .insert(usersTable)
@@ -119,6 +130,7 @@ router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), as
         organizationId: req.user!.organizationId,
         name: (name as string).trim(),
         email: normalizedEmail,
+        username,
         passwordHash,
         status: "ACTIVE",
         specialization: specialization ?? null,

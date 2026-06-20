@@ -14,15 +14,15 @@ const router: IRouter = Router();
 
 router.post("/login", async (req, res) => {
   const log = requestLogger("identity", req.requestId, req.correlationId);
-  const { email, password } = req.body as { email?: string; password?: string };
+  const { username, password } = req.body as { username?: string; password?: string };
 
-  if (!email || !password) {
-    res.status(400).json({ error: "Bad Request", message: "email e password são obrigatórios" });
+  if (!username || !password) {
+    res.status(400).json({ error: "Bad Request", message: "username e password são obrigatórios" });
     return;
   }
 
   try {
-    const result = await loginUser(email, password, {
+    const result = await loginUser(username, password, {
       requestId: req.requestId,
       correlationId: req.correlationId,
       ipAddress: req.ip,

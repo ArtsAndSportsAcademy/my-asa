@@ -12,6 +12,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  username?: string | null;
   photoUrl?: string | null;
   status: UserStatus;
   specialization?: UserSpecialization;

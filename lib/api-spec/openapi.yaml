@@ -61,7 +61,7 @@ paths:
     post:
       operationId: login
       tags: [auth]
-      summary: Login with email and password
+      summary: Login with username and password
       security: []
       requestBody:
         required: true
@@ -4961,6 +4961,9 @@ components:
           type: string
         email:
           type: string
+        username:
+          type: string
+          nullable: true
         photoUrl:
           type: string
           nullable: true
@@ -5055,11 +5058,11 @@ components:
     LoginRequest:
       type: object
       properties:
-        email:
+        username:
           type: string
         password:
           type: string
-      required: [email, password]
+      required: [username, password]
 
     LoginResult:
       type: object

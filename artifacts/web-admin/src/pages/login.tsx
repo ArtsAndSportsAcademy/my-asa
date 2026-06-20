@@ -13,7 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Info } from "lucide-react";
 
 const loginSchema = z.object({
-  email: z.string().email("Email inválido"),
+  username: z.string().min(1, "O nome de usuário é obrigatório"),
   password: z.string().min(1, "A senha é obrigatória"),
 });
 
@@ -29,7 +29,7 @@ export default function Login() {
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "",
+      username: "",
       password: "",
     },
   });
@@ -37,14 +37,14 @@ export default function Login() {
   const onSubmit = (data: LoginFormValues) => {
     setError(null);
     loginMutation.mutate(
-      { data },
+      { data: { username: data.username.trim().toLowerCase(), password: data.password } },
       {
         onSuccess: (result) => {
           authenticate(result.accessToken, result.refreshToken, result.user, result.roles);
           setLocation("/admin/home");
         },
         onError: () => {
-          setError("Email ou senha inválidos");
+          setError("Nome de usuário ou senha inválidos");
         },
       }
     );
@@ -100,12 +100,12 @@ export default function Login() {
                   
                   <FormField
                     control={form.control}
-                    name="email"
+                    name="username"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email corporativo</FormLabel>
+                        <FormLabel>Nome de usuário</FormLabel>
                         <FormControl>
-                          <Input placeholder="usuario@myasa.demo" {...field} className="h-11" />
+                          <Input placeholder="nome.sobrenome" autoCapitalize="none" autoComplete="username" {...field} className="h-11" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -141,8 +141,8 @@ export default function Login() {
                   <div className="space-y-2">
                     <p className="font-medium text-foreground">Grupo Entretenimento Artístico:</p>
                     <ul className="space-y-1 font-mono text-xs">
-                      <li>cris@entertimento.demo / Teste@123 <span className="font-sans text-muted-foreground">(Admin)</span></li>
-                      <li>rafael@entertimento.demo / Teste@123 <span className="font-sans text-muted-foreground">(Supervisor)</span></li>
+                      <li>cris.fontana / Teste@123 <span className="font-sans text-muted-foreground">(Admin)</span></li>
+                      <li>rafael.torres / Teste@123 <span className="font-sans text-muted-foreground">(Supervisor)</span></li>
                     </ul>
                   </div>
                 </div>
