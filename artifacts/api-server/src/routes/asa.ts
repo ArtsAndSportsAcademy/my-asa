@@ -4468,7 +4468,31 @@ router.get("/asa/mural", requireAuth, requireOrganization, async (req, res): Pro
     .orderBy(desc(noticesTable.publishedAt))
     .limit(8);
 
-  res.json({ upcoming_birthdays, upcoming_milestones, recent_recognitions, recent_notices });
+  // Members with overdue tasks (status pending + dueDate in the past)
+  const todayStr = `${today.getFullYear()}-${mm}-${dd}`;
+  const overdueRows = await db
+    .select({
+      assigneeId: tasksTable.assigneeId,
+      name:       usersTable.name,
+      status:     tasksTable.status,
+      dueDate:    tasksTable.dueDate,
+    })
+    .from(tasksTable)
+    .innerJoin(usersTable, eq(tasksTable.assigneeId, usersTable.id))
+    .where(eq(tasksTable.organizationId, orgId))
+    .limit(500);
+
+  const overdueCounts = new Map<string, { name: string; count: number }>();
+  for (const t of overdueRows) {
+    if (!["CREATED", "IN_PROGRESS", "CHANGES_REQUESTED"].includes(t.status)) continue;
+    if (!(t.dueDate < todayStr)) continue;
+    const entry = overdueCounts.get(t.assigneeId) ?? { name: t.name, count: 0 };
+    entry.count += 1;
+    overdueCounts.set(t.assigneeId, entry);
+  }
+  const overdue_members = [...overdueCounts.values()].sort((a, b) => b.count - a.count);
+
+  res.json({ upcoming_birthdays, upcoming_milestones, recent_recognitions, recent_notices, overdue_members });
 });
 
 // ────────────────────────────────────────────────────────────────────────────

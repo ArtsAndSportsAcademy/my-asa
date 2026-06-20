@@ -26,6 +26,7 @@ interface MuralData {
     id: string; title: string | null; content: string; urgency: string;
     publishedAt: string | null; authorName: string | null;
   }[];
+  overdue_members?: { name: string; count: number }[];
 }
 
 const RECOGNITION_TYPES = [
@@ -275,6 +276,30 @@ export default function MuralPage() {
                 </div>
               )}
             </Section>
+
+            {/* ── Tarefas Atrasadas ── */}
+            {(data.overdue_members ?? []).length > 0 && (
+              <Section title="⚠️ Membros com Tarefas Atrasadas">
+                <div className="grid gap-2">
+                  {(data.overdue_members ?? []).map((m, i) => (
+                    <Card key={i} className="p-3 flex items-center justify-between border-amber-200">
+                      <div className="flex items-center gap-3">
+                        <AsaAvatar size="small" pose="aviso_importante" />
+                        <div>
+                          <p className="text-sm font-medium">{m.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {m.count} tarefa{m.count !== 1 ? "s" : ""} atrasada{m.count !== 1 ? "s" : ""}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px]">
+                        {m.count}
+                      </Badge>
+                    </Card>
+                  ))}
+                </div>
+              </Section>
+            )}
 
             {/* ── Reconhecimentos ── */}
             <Section

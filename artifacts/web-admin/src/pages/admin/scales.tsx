@@ -33,6 +33,7 @@ import type {
   User as UserModel,
 } from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
+import { AsaAvatar } from "@/components/AsaAvatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -1222,8 +1223,11 @@ function OperationalDayView({
                       {m.userName.split(" ")[0]}
                     </span>
                     {hasFolga && (
-                      <span className="flex items-center gap-0.5 text-[10px] text-amber-500">
-                        <Palmtree className="h-2.5 w-2.5" /> Folga
+                      <span className="flex flex-col items-center gap-0.5 text-[10px] text-amber-500">
+                        <AsaAvatar size="small" pose="bomdia" />
+                        <span className="flex items-center gap-0.5">
+                          <Palmtree className="h-2.5 w-2.5" /> Folga
+                        </span>
                       </span>
                     )}
                     {isSupervisor && (
@@ -1463,8 +1467,11 @@ function ScaleGrid({
                       {m.userName.split(" ")[0]}
                     </span>
                     {folgaUserIds.has(m.userId) && (
-                      <span className="flex items-center gap-0.5 text-[10px] text-gray-400 mt-0.5">
-                        <Palmtree className="h-2.5 w-2.5" /> Folga
+                      <span className="flex flex-col items-center gap-0.5 text-[10px] text-gray-400 mt-0.5">
+                        <AsaAvatar size="small" pose="bomdia" />
+                        <span className="flex items-center gap-0.5">
+                          <Palmtree className="h-2.5 w-2.5" /> Folga
+                        </span>
                       </span>
                     )}
                   </div>
