@@ -1,16 +1,17 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { AsaAvatar } from "./AsaAvatar";
+import { AsaAvatar, AsaPose } from "./AsaAvatar";
 
 interface AsaEmptyStateProps {
   title: string;
   subtitle?: string;
+  pose?: AsaPose;
 }
 
-export function AsaEmptyState({ title, subtitle }: AsaEmptyStateProps) {
+export function AsaEmptyState({ title, subtitle, pose = "duvida" }: AsaEmptyStateProps) {
   return (
     <View style={styles.container}>
-      <AsaAvatar size="large" />
+      <AsaAvatar size="large" pose={pose} />
       <Text style={styles.title}>{title}</Text>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
     </View>

@@ -369,6 +369,7 @@ export default function ScaleScreen() {
                 subtitle={activeFilter === "upcoming"
                   ? "Quando o supervisor publicar sua escala, eu apareço aqui com tudo organizado!"
                   : "Você ainda não foi alocado em nenhuma escala. Fique ligado! 😊"}
+                pose="planejando"
               />
             ) : (
               displayed.map((alloc) => (

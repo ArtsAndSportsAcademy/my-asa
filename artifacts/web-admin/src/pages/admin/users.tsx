@@ -219,6 +219,7 @@ export default function UsersPage() {
                       subtitle={users.length === 0
                         ? "Adicione os primeiros membros para começar a organizar sua equipe na ASA. Vamos lá!"
                         : "Tente ajustar os filtros — seus membros estão por aqui, prometo! 😉"}
+                      pose="duvida"
                     />
                   </TableCell>
                 </TableRow>

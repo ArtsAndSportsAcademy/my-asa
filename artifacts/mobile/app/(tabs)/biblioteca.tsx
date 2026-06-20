@@ -155,6 +155,7 @@ export default function BibliotecaTab() {
             <AsaEmptyState
               title="Biblioteca ainda vazia 📚"
               subtitle="Em breve o administrador vai adicionar materiais aqui. Por enquanto, pode contar comigo! 😊"
+              pose="biblioteca"
             />
           ) : (
             documents.map((doc) => (

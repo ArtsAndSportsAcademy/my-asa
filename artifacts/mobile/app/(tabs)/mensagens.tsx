@@ -495,6 +495,7 @@ export default function MensagensScreen() {
           <AsaEmptyState
             title="Nenhuma conversa ainda 💬"
             subtitle={"Toque em \"Nova\" para abrir um canal direto com a sua equipe. A comunicação começa com uma mensagem!"}
+            pose="enviando"
           />
         )}
         {threads.map((t) => (

@@ -418,6 +418,7 @@ export default function NotificacoesScreen() {
             <AsaEmptyState
               title="Tudo em dia! 🎉"
               subtitle="Estou de olho em tudo por aqui. Quando algo importante aparecer, você vai saber na hora!"
+              pose="feliz"
             />
           ) : (
             <>

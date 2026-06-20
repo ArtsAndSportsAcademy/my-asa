@@ -5,7 +5,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -128,11 +127,7 @@ function MessageBubble({ msg, colors }: { msg: Message; colors: ReturnType<typeo
   return (
     <View style={[styles.messageRow, isUser && styles.messageRowUser]}>
       {!isUser && (
-        <Image
-          source={require("@/assets/images/asa-avatar.png")}
-          style={{ width: 30, height: 30, borderRadius: 15, marginBottom: 2 }}
-          resizeMode="cover"
-        />
+        <AsaAvatar size="small" pose="idle" />
       )}
       <View style={[
         styles.bubble,
@@ -311,7 +306,7 @@ export default function AsaScreen() {
         borderBottomColor: colors.border,
       }]}>
         <View style={styles.headerLeft}>
-          <AsaAvatar size="small" />
+          <AsaAvatar size="small" pose="idle" />
           <View>
             <Text style={[styles.headerTitle, { color: colors.foreground }]}>ASA</Text>
             <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>Assistente Operacional</Text>
@@ -330,7 +325,7 @@ export default function AsaScreen() {
       {messages.length === 0 ? (
         <View style={styles.empty}>
           <View style={{ marginBottom: 16 }}>
-            <AsaAvatar size="large" />
+            <AsaAvatar size="large" pose="feliz" />
           </View>
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Olá! Eu sou a ASA 😊</Text>
           <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>

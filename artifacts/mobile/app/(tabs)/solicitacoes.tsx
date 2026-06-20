@@ -268,6 +268,7 @@ export default function SolicitacoesScreen() {
             <AsaEmptyState
               title="Nada para decidir agora 👍"
               subtitle="Todas as solicitações da equipe já foram processadas. Boa gestão!"
+              pose="feliz"
             />
           ) : (
             <View style={{ paddingHorizontal: 16, gap: 10 }}>
@@ -320,6 +321,7 @@ export default function SolicitacoesScreen() {
           <AsaEmptyState
             title="Sem solicitações por aqui 📋"
             subtitle={"Precisou de folga ou quer trocar uma escala? Toque em \"Nova\" e eu te ajudo a registrar!"}
+            pose="duvida"
           />
         ) : (
           <>

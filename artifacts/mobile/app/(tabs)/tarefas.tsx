@@ -530,6 +530,7 @@ export default function TarefasScreen() {
             <AsaEmptyState
               title="Tudo em dia por aqui! ✅"
               subtitle="Nenhuma tarefa aguardando sua aprovação no momento."
+              pose="tarefa_concluida"
             />
           ) : (
             approvalTasks.map((task) => (
@@ -547,6 +548,7 @@ export default function TarefasScreen() {
           <AsaEmptyState
             title="Sem tarefas por enquanto 🎉"
             subtitle="Quando você receber uma tarefa, ela vai aparecer aqui. Aproveite a calmaria!"
+            pose="feliz"
           />
         ) : (
           tasks.map((task) => (

@@ -202,6 +202,7 @@ export default function AgendaScreen() {
             <AsaEmptyState
               title="Nenhum evento na agenda ainda 🗓️"
               subtitle="Tente outro filtro ou aguarde novos eventos da operação. Quando aparecer, você fica sabendo!"
+              pose="planejando"
             />
           ) : (
             events.map((event) => (

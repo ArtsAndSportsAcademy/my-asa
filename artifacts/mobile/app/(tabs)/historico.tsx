@@ -226,6 +226,7 @@ export default function HistoricoScreen() {
           <AsaEmptyState
             title="Histórico vazio por enquanto 📋"
             subtitle="Suas ações operacionais serão registradas aqui automaticamente. Continue arrasando! 💪"
+            pose="analisando"
           />
         )}
 

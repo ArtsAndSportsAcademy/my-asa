@@ -27,6 +27,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
+import { AsaAvatar } from "@/components/AsaAvatar";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -363,6 +364,7 @@ export default function AvisosScreen() {
             <TouchableOpacity onPress={() => setShowCreate(false)} style={{ padding: 4 }}>
               <Feather name="x" size={22} color={colors.foreground} />
             </TouchableOpacity>
+            <AsaAvatar size="small" pose={newUrgency === "CRITICAL" ? "aviso_importante" : "lembrete"} />
             <Text style={[styles.headerTitle, { color: colors.foreground, fontSize: 18, flex: 1, marginLeft: 8 }]}>Novo Aviso</Text>
             <TouchableOpacity
               onPress={handleCreateAndPublish}

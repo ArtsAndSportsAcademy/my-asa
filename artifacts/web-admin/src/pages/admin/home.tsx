@@ -15,6 +15,7 @@ import type {
   OperationalUpcomingEvent,
 } from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
+import { AsaAvatar } from "@/components/AsaAvatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -45,7 +46,7 @@ import {
 function BrandedGreeting({ name, subtitle }: { name: string; subtitle: string }) {
   return (
     <div className="flex items-center gap-4 mb-6 p-5 rounded-xl bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/10">
-      <img src="/asa-avatar.png" alt="ASA — assistente inteligente MyASA" className="w-14 h-14 rounded-full object-cover shrink-0 shadow-sm" />
+      <AsaAvatar size="medium" pose="bomdia" />
       <div>
         <p className="text-xl font-serif font-bold text-foreground">Olá, {name}</p>
         <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>

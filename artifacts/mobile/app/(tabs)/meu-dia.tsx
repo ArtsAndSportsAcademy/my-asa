@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { AsaAvatar } from "@/components/AsaAvatar";
+import { AsaAvatar, AsaPose, avatarStateToPose } from "@/components/AsaAvatar";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -513,6 +513,22 @@ function getGreeting(): { label: string; emoji: string } {
   return { label: "Boa noite", emoji: "🌙" };
 }
 
+function resolveAsaPose(resumo: ResumoDodia | null): AsaPose {
+  if (!resumo) {
+    const hour = new Date().getHours();
+    return (hour >= 6 && hour < 18) ? "bomdia" : "boanoite";
+  }
+  if (resumo.avatarState === "comemoracao") return "comemoracao";
+  if (resumo.avatarState === "feliz") return "feliz";
+  const desc = resumo.clima?.description?.toLowerCase() ?? "";
+  const emoji = resumo.clima?.emoji ?? "";
+  const isChuva = desc.includes("chuva") || desc.includes("chuvoso") || desc.includes("tempestade") || emoji === "🌧️" || emoji === "⛈️" || emoji === "🌩️";
+  if (isChuva) return "chuva";
+  const isFrio = (resumo.clima?.temp ?? 99) < 15;
+  if (isFrio) return "frio";
+  return avatarStateToPose(resumo.avatarState);
+}
+
 async function getBaseUrl(): Promise<string> {
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
   if (domain) return `https://${domain}`;
@@ -738,7 +754,7 @@ export default function MeuDiaScreen() {
                 >
                   {/* Topo: avatar + saudação */}
                   <View style={styles.asaGreetingRow}>
-                    <AsaAvatar size="medium" state={resumo?.avatarState} />
+                    <AsaAvatar size="medium" pose={resolveAsaPose(resumo)} />
                     <View style={styles.asaGreetingText}>
                       <Text style={[styles.asaGreetingTitle, { color: colors.foreground }]}>
                         {displayGreeting} {displayEmoji}{firstName ? `, ${firstName}!` : "!"}

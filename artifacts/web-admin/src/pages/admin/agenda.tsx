@@ -670,6 +670,7 @@ export default function AgendaPage() {
           <AsaEmptyState
             title="Nenhum evento na agenda ainda 🗓️"
             subtitle="Crie o primeiro evento para organizar a programação da operação. Fico ansiosa para ver a agenda cheia!"
+            pose="planejando"
           />
         ) : (
           <Table>
