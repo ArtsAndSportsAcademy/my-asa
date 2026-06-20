@@ -1,0 +1,260 @@
+ASA-SPRINT-02 — Inteligência Operacional e Memória
+
+Contexto
+
+Os pilares operacionais do MyASA estão estabilizados:
+
+* Escalas (operacional + show)
+* Folgas
+* Agenda
+* Tarefas
+* Biblioteca
+* Mensagens
+* Meu Dia
+* Notificações
+
+A ASA agora pode evoluir utilizando esses pilares.
+
+O objetivo desta sprint não é criar novas funcionalidades do aplicativo.
+
+O objetivo é fazer a ASA utilizar tudo o que já existe.
+
+⸻
+
+Objetivos da Sprint
+
+1. Memória individual.
+2. Aprendizado supervisionado.
+3. Operação por linguagem natural.
+4. Resumos e proatividade.
+5. Biblioteca inteligente.
+6. Personalidade da ASA.
+
+⸻
+
+1. Memória Individual
+
+Cada usuário possui memória própria.
+
+Exemplos:
+
+* forma de falar;
+* apelidos;
+* preferências;
+* horários;
+* lembretes;
+* padrões de uso.
+
+A ASA pode sugerir memórias.
+
+Aprovação:
+
+* membro aprova suas próprias memórias;
+* supervisor aprova memórias operacionais;
+* administrador aprova memórias globais.
+
+⸻
+
+2. Aprendizado Supervisionado
+
+A ASA pode errar.
+
+Supervisor ou administrador pode corrigir.
+
+Exemplo:
+
+“Não, o ensaio é às 08:40.”
+
+ASA:
+
+“Entendi. Posso aprender essa informação?”
+
+A memória fica pendente de aprovação.
+
+⸻
+
+3. Operação por Linguagem Natural
+
+A ASA deve conseguir:
+
+* criar tarefas;
+* criar avisos;
+* consultar folgas;
+* consultar disponibilidade;
+* consultar escala;
+* criar ensaios;
+* criar entradas na escala;
+* consultar agenda;
+* consultar responsabilidades.
+
+Exemplos:
+
+“Adicionar Arthur na aula de acrobacia.”
+
+“Criar ensaio amanhã às 08:40.”
+
+“Quem está de folga hoje?”
+
+“Quem está livre às 14h?”
+
+⸻
+
+4. Proatividade
+
+A ASA pode iniciar interações leves.
+
+Exemplos:
+
+Bom dia:
+
+* temperatura;
+* compromissos;
+* aniversários;
+* tarefas;
+* avisos.
+
+Boa noite:
+
+* escala publicada;
+* tarefas pendentes;
+* eventos do dia seguinte.
+
+As notificações devem respeitar preferências do usuário.
+
+Modos:
+
+* silenciosa;
+* equilibrada;
+* proativa.
+
+⸻
+
+5. Biblioteca Inteligente
+
+A ASA deve consultar automaticamente:
+
+* biblioteca;
+* documentos;
+* regulamentos;
+* manuais;
+* arquivos internos.
+
+Perguntas:
+
+“Qual é a regra de folgas?”
+
+“Onde está o regulamento?”
+
+“Como funciona a troca de turno?”
+
+A ASA cita o documento utilizado.
+
+⸻
+
+6. Mensagens
+
+A ASA pode identificar:
+
+* datas;
+* eventos;
+* ensaios;
+* compromissos.
+
+Exemplo:
+
+“Amanhã às 09h temos ensaio.”
+
+ASA:
+
+“Detectei um possível evento. Deseja criar um ensaio?”
+
+Registrar:
+
+* autor da mensagem;
+* conversa;
+* data.
+
+⸻
+
+7. Personalidade
+
+Nome:
+
+ASA.
+
+Avatar:
+
+mascote oficial.
+
+Tom:
+
+* amigável;
+* humana;
+* objetiva;
+* acolhedora;
+* leve.
+
+Pode utilizar emojis.
+
+Pode demonstrar incerteza.
+
+Exemplo:
+
+“Você quis dizer o ensaio das 08:40?”
+
+⸻
+
+8. Explicabilidade
+
+Todas as decisões devem poder ser explicadas.
+
+Exemplo:
+
+“Por que Amanda foi sugerida?”
+
+ASA responde:
+
+* disponibilidade;
+* folgas;
+* conflitos;
+* experiência;
+* alternativas.
+
+⸻
+
+9. Restrições
+
+A ASA:
+
+* não toma decisões finais;
+* não publica escalas sozinha;
+* não aprova solicitações sozinha;
+* não cria memórias permanentes sem aprovação.
+
+Sempre existe validação humana.
+
+⸻
+
+10. Critério de Aceitação
+
+A ASA consegue:
+
+✓ consultar os pilares do sistema;
+
+✓ aprender com correções;
+
+✓ lembrar preferências;
+
+✓ criar ações por linguagem natural;
+
+✓ resumir informações;
+
+✓ consultar documentos;
+
+✓ explicar decisões;
+
+✓ interagir de forma humana.
+
+A ASA deixa de ser apenas um chat.
+
+Ela se torna a assistente operacional oficial do MyASA.
