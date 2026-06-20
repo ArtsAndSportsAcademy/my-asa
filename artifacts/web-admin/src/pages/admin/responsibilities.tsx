@@ -52,22 +52,16 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 async function fetchResponsibilities(params: Record<string, string>) {
   const qs = new URLSearchParams(params).toString();
-  const r = await customFetch(`/api/responsibilities${qs ? `?${qs}` : ""}`);
-  if (!r.ok) throw new Error("Erro ao carregar responsabilidades");
-  return r.json() as Promise<{ responsibilities: Responsibility[] }>;
+  return customFetch<{ responsibilities: Responsibility[] }>(`/api/responsibilities${qs ? `?${qs}` : ""}`);
 }
 
 async function fetchUsers() {
-  const r = await customFetch("/api/users");
-  if (!r.ok) throw new Error("Erro ao carregar usuários");
-  const d = await r.json() as { users?: OrgUser[] };
+  const d = await customFetch<{ users?: OrgUser[] }>("/api/users");
   return d.users ?? [];
 }
 
 async function fetchOperations() {
-  const r = await customFetch("/api/operations");
-  if (!r.ok) throw new Error("Erro ao carregar operações");
-  const d = await r.json() as { operations?: Operation[] };
+  const d = await customFetch<{ operations?: Operation[] }>("/api/operations");
   return d.operations ?? [];
 }
 
@@ -76,8 +70,8 @@ async function fetchOperations() {
 export default function ResponsibilitiesPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const { user } = useAuth();
-  const isAdmin = user?.role === "ADMIN";
+  const { user, roles } = useAuth();
+  const isAdmin = roles.some((ur) => ur.role === "ADMIN");
 
   const [filterCategory, setFilterCategory] = useState("");
   const [filterUnassigned, setFilterUnassigned] = useState(false);
@@ -110,51 +104,36 @@ export default function ResponsibilitiesPage() {
   // ── Mutations ──
 
   const createMut = useMutation({
-    mutationFn: async (body: object) => {
-      const r = await customFetch("/api/responsibilities", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      if (!r.ok) throw new Error((await r.json() as any).error ?? "Erro");
-      return r.json();
-    },
+    mutationFn: (body: object) =>
+      customFetch("/api/responsibilities", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["responsibilities"] }); setShowCreate(false); setForm({ title: "", description: "", category: "OPERAÇÃO", operationId: "" }); toast({ title: "Responsabilidade criada" }); },
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
 
   const updateMut = useMutation({
-    mutationFn: async ({ id, body }: { id: string; body: object }) => {
-      const r = await customFetch(`/api/responsibilities/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      if (!r.ok) throw new Error((await r.json() as any).error ?? "Erro");
-      return r.json();
-    },
+    mutationFn: ({ id, body }: { id: string; body: object }) =>
+      customFetch(`/api/responsibilities/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["responsibilities"] }); setEditItem(null); toast({ title: "Responsabilidade atualizada" }); },
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
 
   const deleteMut = useMutation({
-    mutationFn: async (id: string) => {
-      const r = await customFetch(`/api/responsibilities/${id}`, { method: "DELETE" });
-      if (!r.ok) throw new Error((await r.json() as any).error ?? "Erro");
-      return r.json();
-    },
+    mutationFn: (id: string) =>
+      customFetch(`/api/responsibilities/${id}`, { method: "DELETE" }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["responsibilities"] }); toast({ title: "Responsabilidade removida" }); },
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
 
   const assignMut = useMutation({
-    mutationFn: async ({ id, body }: { id: string; body: object }) => {
-      const r = await customFetch(`/api/responsibilities/${id}/assignments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      if (!r.ok) throw new Error((await r.json() as any).error ?? "Erro");
-      return r.json();
-    },
+    mutationFn: ({ id, body }: { id: string; body: object }) =>
+      customFetch(`/api/responsibilities/${id}/assignments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["responsibilities"] }); setAssignForm({ memberId: "", role: "PRIMARY", substituteMemberId: "" }); toast({ title: "Pessoa atribuída" }); refetch(); },
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
 
   const removeAssignMut = useMutation({
-    mutationFn: async ({ respId, assignId }: { respId: string; assignId: string }) => {
-      const r = await customFetch(`/api/responsibilities/${respId}/assignments/${assignId}`, { method: "DELETE" });
-      if (!r.ok) throw new Error((await r.json() as any).error ?? "Erro");
-      return r.json();
-    },
+    mutationFn: ({ respId, assignId }: { respId: string; assignId: string }) =>
+      customFetch(`/api/responsibilities/${respId}/assignments/${assignId}`, { method: "DELETE" }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["responsibilities"] }); toast({ title: "Atribuição removida" }); },
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
@@ -169,7 +148,7 @@ export default function ResponsibilitiesPage() {
   }, {});
 
   return (
-    <AdminLayout>
+    <AdminLayout title="Responsabilidades">
       <div className="p-6 max-w-5xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">

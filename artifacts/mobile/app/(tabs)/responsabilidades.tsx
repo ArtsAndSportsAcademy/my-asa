@@ -53,9 +53,7 @@ const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
 
 async function fetchResponsibilities(params: Record<string, string> = {}) {
   const qs = new URLSearchParams(params).toString();
-  const r = await customFetch(`/api/responsibilities${qs ? `?${qs}` : ""}`);
-  if (!r.ok) throw new Error("Erro ao carregar responsabilidades");
-  return r.json() as Promise<{ responsibilities: Responsibility[] }>;
+  return customFetch<{ responsibilities: Responsibility[] }>(`/api/responsibilities${qs ? `?${qs}` : ""}`);
 }
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -63,8 +61,8 @@ async function fetchResponsibilities(params: Record<string, string> = {}) {
 export default function ResponsabilidadesScreen() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
-  const { user } = useAuth();
-  const isManager = MANAGER_ROLES.includes(user?.role ?? "");
+  const { user, roles } = useAuth();
+  const isManager = roles.some((r) => MANAGER_ROLES.includes(r.role));
 
   const [filter, setFilter] = useState<"all" | "unassigned" | "mine">("all");
   const [refreshing, setRefreshing] = useState(false);
