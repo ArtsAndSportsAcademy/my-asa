@@ -1,0 +1,145 @@
+DADOS REAIS DA SIMULAÇÃO
+
+A simulação deve utilizar obrigatoriamente os dados já existentes no sistema.
+
+ESTRUTURA DISPONÍVEL:
+
+* 3 operações.
+* 36 usuários.
+* 5 grupos operacionais.
+* 2 Show Books.
+* 112 eventos.
+* 2 escalas publicadas.
+* 795 alocações.
+* 133 folgas.
+* 8 tarefas.
+* 20 memórias aprovadas.
+* 6 reconhecimentos.
+
+USUÁRIOS:
+
+ADMINISTRAÇÃO:
+
+* Cris
+* Babi
+
+SUPERVISORES:
+
+* Rafael (Bailarinos)
+* Fernanda (Patinação)
+* Diego (Produção)
+* Marcos (Acquamotion)
+
+MEMBROS:
+Utilizar os nomes já existentes no banco.
+
+⸻
+
+SITUAÇÕES JÁ EXISTENTES
+
+* Isabela Lima afastada por entorse no tornozelo.
+* Nathan Oliveira em restrição de impacto.
+* Nathalia Correia possui consulta médica.
+* Pocket Show no Hotel Intercontinental em 3 dias.
+* Folgas já distribuídas.
+* 20 memórias operacionais aprovadas.
+
+A IA deve utilizar essas informações nas decisões.
+
+⸻
+
+MEMÓRIAS DA ASA
+
+As memórias aprovadas podem influenciar:
+
+* sugestões;
+* substituições;
+* coberturas;
+* recomendações;
+* aprendizados.
+
+A IA deve citar essas memórias quando forem relevantes.
+
+Exemplo:
+
+“Lucas possui histórico positivo em apresentações externas.”
+
+⸻
+
+A IA DEVE TOMAR INICIATIVA
+
+Sem esperar perguntas, a ASA IA pode:
+
+* gerar resumo da manhã;
+* emitir alertas;
+* identificar riscos;
+* sugerir cobertura;
+* sugerir ensaios;
+* criar relatórios;
+* propor treinamentos;
+* detectar sobrecarga;
+* identificar conflitos.
+
+⸻
+
+EVENTOS AUTOMÁTICOS
+
+Ao longo da simulação, a IA pode gerar:
+
+* aviso operacional;
+* alerta de carga;
+* sugestão de folga;
+* conflito de agenda;
+* recomendação de cobertura;
+* resumo diário;
+* relatório semanal.
+
+⸻
+
+EXEMPLOS DE COMPORTAMENTO DA IA
+
+07:00
+
+“Bom dia.
+Hoje existem 21 membros escalados.
+Há 3 folgas.
+Isabela permanece afastada.
+O Pocket Hotel ocorre em dois dias.
+Risco moderado no Show da Água.”
+
+14:20
+
+“Nathan participou de duas atividades consecutivas.
+Sugiro redução de impacto no ensaio das 16h.”
+
+17:30
+
+“Resumo do dia:
+1 alteração de escala.
+2 trocas aprovadas.
+1 conflito resolvido.
+Nenhum risco operacional aberto.”
+
+⸻
+
+SITUAÇÕES ADICIONAIS QUE DEVEM ACONTECER
+
+Durante os 30 dias, criar:
+
+* novos ensaios;
+* novas tarefas;
+* novas memórias;
+* reconhecimentos;
+* mudanças de cobertura;
+* conflitos de agenda;
+* republicações do Livro do Dia;
+* eventos especiais;
+* reuniões administrativas.
+
+⸻
+
+OBJETIVO
+
+A simulação deve transmitir a sensação de que o aplicativo já está sendo utilizado há meses e que a ASA IA já conhece a operação, as pessoas, as limitações e as necessidades da equipe.
+
+A IA deve se comportar como uma coordenadora operacional virtual que acompanha diariamente a empresa e auxilia todos os níveis da organização.
