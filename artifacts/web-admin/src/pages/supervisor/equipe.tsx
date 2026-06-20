@@ -56,6 +56,18 @@ const PRIORITY_LABELS: Record<string, string> = {
   LOW: "Baixa", MEDIUM: "Média", HIGH: "Alta", CRITICAL: "Crítica",
 };
 
+const SPECIALIZATION_LABELS: Record<string, string> = {
+  PERFORMER:          "Performer",
+  PROFESSOR:          "Professor",
+  TRAINER:            "Treinador",
+  PHYSIOTHERAPIST:    "Fisioterapeuta",
+  STRENGTH_COACH:     "Preparador Físico",
+  TECHNICAL_OPERATOR: "Técnico Operacional",
+  OTHER:              "Outro",
+};
+
+const specLabel = (s?: string | null) => (s ? SPECIALIZATION_LABELS[s] ?? s : "");
+
 const FOLGA_TYPES = [
   { value: "DAY_OFF",     label: "Folga" },
   { value: "NO_SHOW",     label: "No-show" },
@@ -550,34 +562,60 @@ export default function EquipePage() {
   const { data: usersData, isLoading, error } = useListUsers();
   const { data: opsData } = useGetOperations();
   const [search, setSearch] = useState("");
+  const [specFilter, setSpecFilter] = useState("ALL");
   const [selected, setSelected] = useState<Member | null>(null);
 
   const operations: Operation[] = (opsData as any)?.operations ?? [];
 
-  const members: Member[] = useMemo(() => {
-    const list = (usersData?.users ?? []) as Member[];
-    return list
+  const activeMembers: Member[] = useMemo(() => {
+    return ((usersData?.users ?? []) as Member[])
       .filter((m) => m.id !== user?.id)
-      .filter((m) => !m.status || m.status === "ACTIVE")
+      .filter((m) => !m.status || m.status === "ACTIVE");
+  }, [usersData, user?.id]);
+
+  const availableSpecs = useMemo(() => {
+    const set = new Set<string>();
+    activeMembers.forEach((m) => { if (m.specialization) set.add(m.specialization); });
+    return Array.from(set).sort((a, b) => specLabel(a).localeCompare(specLabel(b)));
+  }, [activeMembers]);
+
+  const members: Member[] = useMemo(() => {
+    return activeMembers
+      .filter((m) => specFilter === "ALL" || m.specialization === specFilter)
       .filter((m) => {
         if (!search.trim()) return true;
         const q = search.toLowerCase();
         return m.name.toLowerCase().includes(q) || (m.email ?? "").toLowerCase().includes(q);
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [usersData, search, user?.id]);
+  }, [activeMembers, search, specFilter]);
 
   return (
     <AdminLayout title="Equipe" subtitle="Veja sua equipe e faça tudo a partir do perfil de cada pessoa">
       <div className="max-w-5xl mx-auto space-y-5">
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar membro..."
-            className="pl-9"
-          />
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar membro..."
+              className="pl-9"
+            />
+          </div>
+          {availableSpecs.length > 0 && (
+            <Select value={specFilter} onValueChange={setSpecFilter}>
+              <SelectTrigger className="w-full sm:w-52">
+                <SelectValue placeholder="Todas as funções" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Todas as funções</SelectItem>
+                {availableSpecs.map((s) => (
+                  <SelectItem key={s} value={s}>{specLabel(s)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         {isLoading && (
@@ -624,7 +662,7 @@ export default function EquipePage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold truncate">{m.name}</p>
                     {m.specialization ? (
-                      <Badge variant="secondary" className="text-[10px] mt-0.5">{m.specialization}</Badge>
+                      <Badge variant="secondary" className="text-[10px] mt-0.5">{specLabel(m.specialization)}</Badge>
                     ) : (
                       <p className="text-xs text-muted-foreground truncate">{m.email}</p>
                     )}
