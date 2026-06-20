@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, and, desc, gte, lte } from "drizzle-orm";
+import { eq, and, desc, gte, lte, ne } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   conversations,
@@ -57,10 +57,22 @@ Contexto atual:
 - Operação: ${ctx.operationName ?? "Não vinculado a uma operação específica"}
 
 Capacidades:
-${isManager ? `- Você pode consultar agenda, escalas, responsabilidades, notificações, avisos, tarefas e biblioteca
-- Para ações de escrita (criar aviso, criar ensaio), você SEMPRE pede confirmação explícita antes de executar
-- Você nunca executa múltiplas ações em cadeia sem revisão` : `- Você pode consultar informações relevantes ao seu papel
+${isManager ? `- Consultar: agenda, escalas, responsabilidades, notificações, avisos, tarefas, folgas, membros
+- Escrever: criar entradas na escala, criar tarefas, criar rascunhos de aviso e ensaio
+- SEMPRE peça confirmação explícita antes de executar qualquer ação de escrita
+- Nunca executa múltiplas ações em cadeia sem revisão` : `- Você pode consultar informações relevantes ao seu papel
 - Não pode visualizar dados sensíveis de outros membros`}
+
+Fluxo obrigatório para ações envolvendo membros:
+1. SEMPRE use consultar_membros para resolver o nome antes de qualquer ação (criar_entrada_escala, criar_tarefa)
+2. Se houver ambiguidade ("Arthur Alcorte ou Arthur Silva?"), pergunte ao usuário antes de continuar
+3. Se o membro estiver de folga, avise e peça confirmação antes de criar a entrada
+4. Após confirmar o membro correto, peça confirmação final antes de executar a ação
+
+Exemplos de operação por linguagem natural:
+- "Adicionar Arthur na aula de acrobacia amanhã às 15h" → consultar_membros("Arthur") → confirmar membro → verificar folga → pedir confirmação → criar_entrada_escala
+- "Criar tarefa para Amanda terminar o figurino até sexta" → consultar_membros("Amanda") → confirmar → pedir confirmação → criar_tarefa
+- "Quem está livre amanhã?" → consultar_ausencias_do_dia → responder com quem está disponível
 
 Princípios obrigatórios:
 1. Toda sugestão importante segue o formato:
@@ -238,6 +250,50 @@ const ASA_TOOLS: Tool[] = [
       properties: {
         userId: { type: "string", description: "ID do membro" },
         date:   { type: "string", description: "Data a verificar (YYYY-MM-DD)" },
+      },
+    },
+  },
+  {
+    name: "consultar_membros",
+    description: "Busca membros da organização por nome, apelido ou parte do nome. Resolve 'Arthur', 'Artur', 'Arthur Alcorte' para o usuário correto. SEMPRE use esta ferramenta antes de criar entradas ou tarefas para obter o userId correto.",
+    input_schema: {
+      type: "object" as const,
+      required: ["query"],
+      properties: {
+        query: { type: "string", description: "Nome, apelido ou parte do nome a buscar" },
+      },
+    },
+  },
+  {
+    name: "criar_entrada_escala",
+    description: "Cria uma entrada manual na escala operacional para um membro em uma data. Use consultar_membros primeiro para obter o userId. Sempre confirme com o usuário antes de executar.",
+    input_schema: {
+      type: "object" as const,
+      required: ["userId", "date", "label"],
+      properties: {
+        userId:    { type: "string", description: "ID do membro (obtido via consultar_membros)" },
+        userName:  { type: "string", description: "Nome do membro (para confirmação)" },
+        date:      { type: "string", description: "Data da entrada (YYYY-MM-DD)" },
+        label:     { type: "string", description: "Atividade (ex: Ensaio, Aula de Acrobacia, Reunião, Preparação)" },
+        startTime: { type: "string", description: "Horário de início (HH:MM)" },
+        endTime:   { type: "string", description: "Horário de fim (HH:MM)" },
+        notes:     { type: "string", description: "Observações opcionais" },
+      },
+    },
+  },
+  {
+    name: "criar_tarefa",
+    description: "Cria uma tarefa operacional com responsável e prazo. Use consultar_membros primeiro para obter o assigneeId. Sempre confirme com o usuário antes de executar.",
+    input_schema: {
+      type: "object" as const,
+      required: ["title", "assigneeId", "dueDate"],
+      properties: {
+        title:       { type: "string", description: "Título da tarefa" },
+        description: { type: "string", description: "Descrição detalhada (opcional)" },
+        assigneeId:  { type: "string", description: "ID do responsável (obtido via consultar_membros)" },
+        assigneeName:{ type: "string", description: "Nome do responsável (para confirmação)" },
+        dueDate:     { type: "string", description: "Prazo (YYYY-MM-DD)" },
+        priority:    { type: "string", description: "Prioridade: LOW, MEDIUM, HIGH, CRITICAL (padrão: MEDIUM)" },
       },
     },
   },
@@ -529,6 +585,230 @@ async function executeTool(
         return JSON.stringify({ disponivel: true,  message: `${userName} está disponível em ${date} (sem folga registrada).` });
       }
       return JSON.stringify({ disponivel: false, message: `${userName} está de folga em ${date} (${folgas[0]!.type}: ${folgas[0]!.startDate} → ${folgas[0]!.endDate}).` });
+    }
+
+    // ── consultar_membros ─────────────────────────────────────────────────────
+    if (name === "consultar_membros") {
+      const query = ((input.query as string) ?? "").trim();
+      if (!query) return JSON.stringify({ error: "query é obrigatória" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+
+      const allUsers = await db
+        .select({ id: usersTable.id, name: usersTable.name })
+        .from(usersTable)
+        .innerJoin(userRolesTable, eq(userRolesTable.userId, usersTable.id))
+        .where(and(
+          eq(userRolesTable.organizationId, ctx.organizationId),
+          ne(usersTable.status, "INACTIVE"),
+        ));
+
+      // Deduplicate by id (user may have multiple roles)
+      const userMap = new Map<string, { id: string; name: string }>();
+      for (const u of allUsers) userMap.set(u.id, u);
+      const users = [...userMap.values()];
+
+      // Check approved memories for nickname → real name
+      const memories = await db
+        .select({ key: asaMemoriesTable.key, value: asaMemoriesTable.value })
+        .from(asaMemoriesTable)
+        .where(and(
+          eq(asaMemoriesTable.status, "APPROVED"),
+          eq(asaMemoriesTable.organizationId, ctx.organizationId),
+        ))
+        .limit(100);
+
+      const norm = (s: string) =>
+        s.toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9 ]/g, "")
+          .trim();
+
+      const normQuery = norm(query);
+
+      // Resolve nickname via memories
+      let resolvedQuery = normQuery;
+      for (const m of memories) {
+        if (norm(m.key) === normQuery) { resolvedQuery = norm(m.value); break; }
+      }
+
+      const scored = users
+        .map((u) => {
+          const normName = norm(u.name);
+          let score = 0;
+          if (normName === resolvedQuery) score = 100;
+          else {
+            const nameWords = normName.split(" ");
+            const qWords    = resolvedQuery.split(" ").filter(Boolean);
+            for (const qw of qWords) {
+              for (const nw of nameWords) {
+                if (nw === qw) score += 40;
+                else if (nw.startsWith(qw) && qw.length >= 3) score += 25;
+                else if (nw.includes(qw)   && qw.length >= 3) score += 12;
+              }
+            }
+          }
+          return { id: u.id, name: u.name, score };
+        })
+        .filter((u) => u.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5);
+
+      if (scored.length === 0) {
+        return JSON.stringify({
+          found: false,
+          message: `Nenhum membro encontrado para "${query}". Verifique o nome ou tente parte do nome.`,
+          members: [],
+        });
+      }
+
+      const isAmbiguous = scored.length > 1 && scored[0]!.score === scored[1]!.score;
+      return JSON.stringify({
+        found: true,
+        ambiguous: isAmbiguous,
+        message: isAmbiguous
+          ? `Encontrei ${scored.length} membros com nomes similares. Qual você quer dizer?`
+          : `Encontrado: ${scored[0]!.name}`,
+        member: isAmbiguous ? null : { id: scored[0]!.id, name: scored[0]!.name },
+        members: scored.map((u) => ({ id: u.id, name: u.name })),
+      });
+    }
+
+    // ── criar_entrada_escala ──────────────────────────────────────────────────
+    if (name === "criar_entrada_escala") {
+      if (!isManager) return JSON.stringify({ error: "Sem permissão para criar entradas na escala" });
+      if (!ctx.operationId)  return JSON.stringify({ error: "Operação não configurada" });
+
+      const userId    = input.userId    as string;
+      const userName  = input.userName  as string | undefined;
+      const date      = input.date      as string;
+      const label     = input.label     as string;
+      const startTime = input.startTime as string | undefined;
+      const endTime   = input.endTime   as string | undefined;
+      const notes     = input.notes     as string | undefined;
+
+      if (!userId || !date || !label)
+        return JSON.stringify({ error: "userId, date e label são obrigatórios" });
+
+      // Find most recent active scale covering this date
+      const scales = await db
+        .select({ id: scalesTable.id, title: scalesTable.title, status: scalesTable.status })
+        .from(scalesTable)
+        .where(and(
+          eq(scalesTable.operationId, ctx.operationId),
+          lte(scalesTable.periodStart, date),
+          gte(scalesTable.periodEnd,   date),
+        ))
+        .orderBy(desc(scalesTable.updatedAt))
+        .limit(5);
+
+      const active = scales.filter((s) =>
+        ["DRAFT", "PUBLISHED", "REPUBLISHED"].includes(s.status)
+      );
+
+      if (active.length === 0) {
+        return JSON.stringify({
+          error: `Nenhuma escala ativa cobre a data ${date}. Crie ou gere uma escala que inclua essa data primeiro.`,
+        });
+      }
+
+      const scale = active[0]!;
+
+      // Warn about folga
+      const folgas = await db
+        .select({ id: folgasTable.id, type: folgasTable.type })
+        .from(folgasTable)
+        .where(and(
+          eq(folgasTable.userId,   userId),
+          eq(folgasTable.status,   "ACTIVE"),
+          lte(folgasTable.startDate, date),
+          gte(folgasTable.endDate,   date),
+        ))
+        .limit(1);
+
+      const [entry] = await db
+        .insert(scaleAllocationsTable)
+        .values({
+          scaleId:       scale.id,
+          agendaEventId: null,
+          userId,
+          status:        "MANUAL_OVERRIDE",
+          manualDate:    date,
+          manualLabel:   label,
+          startTime:     startTime ?? null,
+          endTime:       endTime   ?? null,
+          notes:         notes     ?? null,
+          overriddenBy:  ctx.userId,
+          overrideReason: "Criado via ASA",
+        })
+        .returning();
+
+      const warning = folgas.length > 0
+        ? `⚠️ ${userName ?? "Este membro"} tem folga registrada em ${date} (${folgas[0]!.type}).`
+        : null;
+
+      return JSON.stringify({
+        created:   true,
+        entryId:   entry.id,
+        scaleId:   scale.id,
+        scaleName: scale.title,
+        warning,
+        message:
+          `✅ Entrada criada na escala "${scale.title}":\n` +
+          `• Membro: ${userName ?? userId}\n` +
+          `• Atividade: ${label}\n` +
+          `• Data: ${date}\n` +
+          (startTime ? `• Início: ${startTime}\n` : "") +
+          (endTime   ? `• Fim: ${endTime}\n`   : "") +
+          (notes     ? `• Obs: ${notes}\n`      : "") +
+          (warning   ? `\n${warning}`            : ""),
+      });
+    }
+
+    // ── criar_tarefa ──────────────────────────────────────────────────────────
+    if (name === "criar_tarefa") {
+      if (!isManager) return JSON.stringify({ error: "Sem permissão para criar tarefas" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      if (!ctx.operationId)    return JSON.stringify({ error: "Operação não configurada" });
+
+      const title        = input.title        as string;
+      const description  = input.description  as string | undefined;
+      const assigneeId   = input.assigneeId   as string;
+      const assigneeName = input.assigneeName as string | undefined;
+      const dueDate      = input.dueDate      as string;
+      const priority     = (input.priority    as "LOW" | "MEDIUM" | "HIGH" | "CRITICAL") ?? "MEDIUM";
+
+      if (!title || !assigneeId || !dueDate)
+        return JSON.stringify({ error: "title, assigneeId e dueDate são obrigatórios" });
+
+      const [task] = await db
+        .insert(tasksTable)
+        .values({
+          organizationId: ctx.organizationId,
+          operationId:    ctx.operationId,
+          title,
+          description:    description ?? undefined,
+          creatorId:      ctx.userId,
+          assigneeId,
+          priority,
+          dueDate,
+          status:   "CREATED",
+          origin:   "AI",
+          requiresApproval: true,
+        })
+        .returning();
+
+      return JSON.stringify({
+        created: true,
+        id: task.id,
+        message:
+          `✅ Tarefa criada:\n` +
+          `• Título: ${title}\n` +
+          `• Responsável: ${assigneeName ?? assigneeId}\n` +
+          `• Prazo: ${dueDate}\n` +
+          `• Prioridade: ${priority}\n` +
+          `• Status: Em criação — requer aprovação`,
+      });
     }
 
     return JSON.stringify({ error: `Ferramenta desconhecida: ${name}` });

@@ -41,15 +41,21 @@ const TOOL_LABELS: Record<string, string> = {
   consultar_avisos:            "📢 Consultando avisos",
   consultar_tarefas:           "✅ Consultando tarefas",
   consultar_memorias:          "🧠 Consultando memórias",
+  consultar_folgas:            "🌴 Consultando folgas",
+  consultar_ausencias_do_dia:  "🌴 Verificando ausências",
+  consultar_disponibilidade:   "🔍 Verificando disponibilidade",
+  consultar_membros:           "👤 Buscando membro",
   criar_aviso_rascunho:        "✏️ Criando rascunho de aviso",
   criar_ensaio_rascunho:       "🎭 Criando rascunho de ensaio",
+  criar_entrada_escala:        "📋 Adicionando à escala",
+  criar_tarefa:                "✅ Criando tarefa",
   sugerir_memoria:             "💡 Sugerindo memória",
 };
 
 const SUGGESTIONS = [
-  "Quais ensaios temos essa semana?",
-  "Tem responsabilidade sem responsável?",
-  "Quais avisos foram publicados?",
+  "Quem está de folga hoje?",
+  "Adicionar [nome] na escala amanhã.",
+  "Criar tarefa para [nome] até sexta.",
 ];
 
 // ─── Message Bubble ────────────────────────────────────────────────────────────

@@ -1,38 +1,30 @@
 ---
 name: MyASA 2.0 — Estado do Projeto
-description: Estado atual do produto, fases concluídas e próximas etapas
+description: Resumo do que foi construído por sprint no projeto MyASA 2.0
 ---
 
-# Fases concluídas
-- RESPONSIBILITIES-D01: schema, API, web admin, mobile, meu-dia integration ✅
-- AI-D01 audit document: `docs/specs/AI-D01-audit.md` ✅
-- ASA-FOUNDATION-D01: Fundação da ASA inteligente ✅
+## Sprint concluídas
 
-# ASA-FOUNDATION-D01 — Entregáveis
-- DB: conversations, ai_messages, asa_memories, asa_user_preferences, asa_audit_log
-- API routes: /api/anthropic/conversations (CRUD) + /api/asa/chat/:id/messages (SSE) + memories + preferences + audit
-- Web Admin: /admin/asa — página de chat SSE com streaming
-- Mobile: /(tabs)/asa — tela de chat com SSE
-- Model: claude-sonnet-4-6 via Replit AI Integrations (Anthropic)
-- Tools: consultar_agenda, escalas, responsabilidades, notificacoes, avisos, tarefas, memorias, criar_aviso_rascunho, criar_ensaio_rascunho, sugerir_memoria
+### PILOT-NAV-FOLGAS-FIX-01
+- Módulo Folgas completo: DB (folgas + delegations), API CRUD, web-admin (grid + modal), mobile (Meu Dia), ASA tools (consultar_folgas, consultar_ausencias_do_dia, consultar_disponibilidade)
 
-# Fixes críticos documentados
-- requireAuth/requireOrganization vem de `../middlewares/auth.js` (NÃO de auth.service.ts)
-- noticesTable usa operationId (não organizationId) e authorId (não createdBy)
-- noticeUrgencyEnum: INFORMATIVE | IMPORTANT | CRITICAL
-- agendaVisibilityEnum: OPERATION | MANAGEMENT
-- Drizzle where condicional: usar array de conditions + and(...conditions)
+### ESCALAS-MANUAL-ENTRY-D01
+- DB migration: agenda_event_id nullable + manual_date/manual_label/start_time/end_time/notes/overridden_by/override_reason
+- API: POST /scales/:id/entries, DELETE /scales/:id/entries/:entryId
+- Web-admin: OperationalDayView + AddEntryModal
+- Hooks manuais: useCreateScaleEntry, useDeleteScaleEntry
 
-# Demo users
-- admin@myasa.demo (ADMIN bb7a31b8) / Teste@123
-- supervisor@myasa.demo (SUPERVISOR_A b1aa11f9) / Teste@123
-- membro01@myasa.demo (MEMBER b2193dd3) / Teste@123
+### ASA-SPRINT-02A — Operação por Linguagem Natural
+- Tool consultar_membros: fuzzy matching em todos os membros da org, resolução de apelidos via memories APPROVED, desambiguação
+- Tool criar_entrada_escala: encontra escala ativa cobrindo a data, verifica folga, insere em scaleAllocationsTable com MANUAL_OVERRIDE
+- Tool criar_tarefa: cria em tasksTable com origin="AI", requiresApproval=true
+- System prompt: fluxo obrigatório (consultar_membros → confirmar → criar), exemplos de linguagem natural
+- Mobile TOOL_LABELS: adicionados labels para todas as tools (consultar_folgas, ausencias, disponibilidade, consultar_membros, criar_entrada_escala, criar_tarefa)
+- Mobile SUGGESTIONS: "Quem está de folga hoje?", "Adicionar [nome] na escala amanhã.", "Criar tarefa para [nome] até sexta."
 
-# DB connection
-psql "postgresql://postgres:password@helium/heliumdb?sslmode=disable"
-drizzle-kit push SEMPRE falha sem TTY — usar psql
-
-# Próxima fase sugerida
-- Design da interface (UX refinement da tela ASA)
-- Sistema de memórias com aprovação via web admin
-- Testes de ponta a ponta do chat com ferramentas reais
+## Próximos itens mapeados (Sprint 02B+)
+- Memórias aprovadas injetadas no system prompt automaticamente
+- Painel de memórias no web-admin (aprovação/rejeição)
+- Personalidade aprimorada (emojis, mais humanidade)
+- consultar_biblioteca tool
+- Proatividade (morning/evening greeting via cron + push)
