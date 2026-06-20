@@ -23,6 +23,7 @@ import {
 import type { TaskItem } from "@workspace/api-client-react";
 import { Plus, CheckCircle2, XCircle, RotateCcw, Clock, AlertCircle, Ban } from "lucide-react";
 import { MemberCombobox } from "@/components/member-combobox";
+import { AsaConfirmDialog } from "@/components/AsaConfirmDialog";
 
 // ─── Labels ──────────────────────────────────────────────────────────────────
 
@@ -447,22 +448,17 @@ export default function AdminTasksPage() {
         </Tabs>
 
         {/* Dialog confirmação cancelamento */}
-        <Dialog open={!!cancelTaskId} onOpenChange={(o) => { if (!o) setCancelTaskId(null); }}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Cancelar tarefa</DialogTitle>
-            </DialogHeader>
-            <p className="text-sm text-muted-foreground py-2">
-              Tem certeza que deseja cancelar esta tarefa? Esta ação não pode ser desfeita.
-            </p>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setCancelTaskId(null)}>Não cancelar</Button>
-              <Button variant="destructive" onClick={confirmCancel}>
-                <Ban className="h-4 w-4 mr-1.5" /> Cancelar tarefa
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <AsaConfirmDialog
+          open={!!cancelTaskId}
+          onClose={() => setCancelTaskId(null)}
+          title="Cancelar tarefa"
+          bubbleText="Tem certeza? Essa tarefa será cancelada e a ação não pode ser desfeita. ⚠️"
+          description="A tarefa será marcada como cancelada para o responsável."
+          confirmLabel="Cancelar tarefa"
+          cancelLabel="Não cancelar"
+          confirmIcon={<Ban className="h-4 w-4 mr-1.5" />}
+          onConfirm={confirmCancel}
+        />
 
         {/* Dialog ajustes */}
         <Dialog open={!!changesTaskId} onOpenChange={(o) => { if (!o) { setChangesTaskId(null); setChangesComment(""); } }}>

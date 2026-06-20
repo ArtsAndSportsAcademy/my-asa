@@ -16,6 +16,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { useColors } from "@/hooks/useColors";
 import { AsaEmptyState } from "@/components/AsaEmptyState";
+import { AsaConfirmModal } from "@/components/AsaConfirmModal";
 import {
   useGetMyTasks,
   useStartTask,
@@ -72,6 +73,7 @@ function EvidenceSection({
   const [showForm, setShowForm] = useState(false);
   const [url, setUrl] = useState("");
   const [description, setDescription] = useState("");
+  const [evidenceToRemove, setEvidenceToRemove] = useState<string | null>(null);
 
   const { data: taskDetail, refetch: refetchDetail } = useGetTask(taskId, {
     query: { enabled: expanded } as any,
@@ -141,12 +143,7 @@ function EvidenceSection({
               {canEdit && (
                 <Pressable
                   hitSlop={8}
-                  onPress={() =>
-                    Alert.alert("Remover evidência?", "Esta ação não pode ser desfeita.", [
-                      { text: "Cancelar", style: "cancel" },
-                      { text: "Remover", style: "destructive", onPress: () => deleteMutation.mutate({ taskId, evidenceId: ev.id }) },
-                    ])
-                  }
+                  onPress={() => setEvidenceToRemove(ev.id)}
                 >
                   <Feather name="trash-2" size={13} color="#ef4444" />
                 </Pressable>
@@ -212,6 +209,20 @@ function EvidenceSection({
           )}
         </View>
       )}
+
+      <AsaConfirmModal
+        visible={!!evidenceToRemove}
+        onClose={() => setEvidenceToRemove(null)}
+        title="Remover evidência?"
+        bubbleText="Tem certeza? Essa evidência será removida e a ação não pode ser desfeita. ⚠️"
+        confirmLabel="Remover"
+        onConfirm={() => {
+          if (evidenceToRemove) {
+            deleteMutation.mutate({ taskId, evidenceId: evidenceToRemove });
+          }
+          setEvidenceToRemove(null);
+        }}
+      />
     </View>
   );
 }

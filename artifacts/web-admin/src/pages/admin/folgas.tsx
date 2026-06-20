@@ -25,8 +25,9 @@ import {
 } from "@workspace/api-client-react";
 import type { FolgaItem } from "@workspace/api-client-react";
 import { FolgasGrid, MONTH_NAMES } from "@/components/folgas-grid";
-import { Palmtree, Plus, Pencil, XCircle, Loader2, ChevronLeft, ChevronRight, AlertTriangle, Grid3X3, List } from "lucide-react";
+import { Palmtree, Plus, Pencil, XCircle, Loader2, ChevronLeft, ChevronRight, Grid3X3, List } from "lucide-react";
 import { AsaAvatar } from "@/components/AsaAvatar";
+import { AsaConfirmDialog } from "@/components/AsaConfirmDialog";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -416,31 +417,21 @@ function ResetDialog({
   });
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-destructive">
-            <AlertTriangle className="w-5 h-5" />
-            Resetar Folgas do Mês
-          </DialogTitle>
-        </DialogHeader>
-        <p className="text-sm text-muted-foreground py-2">
+    <AsaConfirmDialog
+      open={open}
+      onClose={onClose}
+      title="Resetar Folgas do Mês"
+      bubbleText="Tem certeza? Isso cancela todas as folgas ativas do mês e não pode ser desfeito. ⚠️"
+      description={
+        <>
           Esta ação vai <strong>cancelar todas as folgas ativas</strong> da operação em{" "}
-          <strong>{MONTH_NAMES[month - 1]} {year}</strong>. Não pode ser desfeito.
-        </p>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isPending}>Cancelar</Button>
-          <Button
-            variant="destructive"
-            disabled={isPending}
-            onClick={() => reset({ params: { operationId, year, month } })}
-          >
-            {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Resetar mês
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <strong>{MONTH_NAMES[month - 1]} {year}</strong>.
+        </>
+      }
+      confirmLabel="Resetar mês"
+      isPending={isPending}
+      onConfirm={() => reset({ params: { operationId, year, month } })}
+    />
   );
 }
 
@@ -468,6 +459,7 @@ export default function AdminFolgasPage() {
   const [fillOpen,        setFillOpen]        = useState(false);
   const [clearOpen,       setClearOpen]       = useState(false);
   const [resetOpen,       setResetOpen]       = useState(false);
+  const [cancelTarget,    setCancelTarget]    = useState<FolgaItem | undefined>();
 
   const { data: opsData } = useGetOperations();
   const operations = opsData?.operations ?? [];
@@ -485,11 +477,12 @@ export default function AdminFolgasPage() {
   const { data, isLoading } = useListFolgas(params, { query: { enabled: view === "records" } } as any);
   const folgas = data?.folgas ?? [];
 
-  const { mutate: cancelFolga } = useCancelFolga({
+  const { mutate: cancelFolga, isPending: isCancelling } = useCancelFolga({
     mutation: {
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getListFolgasQueryKey() });
         toast({ title: "Folga cancelada" });
+        setCancelTarget(undefined);
       },
       onError: () => toast({ title: "Erro ao cancelar folga", variant: "destructive" }),
     },
@@ -737,7 +730,7 @@ export default function AdminFolgasPage() {
                                   <Button
                                     size="sm" variant="ghost"
                                     className="h-7 px-2 gap-1 text-xs text-destructive hover:text-destructive"
-                                    onClick={() => cancelFolga({ id: f.id })}
+                                    onClick={() => setCancelTarget(f)}
                                   >
                                     <XCircle className="w-3 h-3" />Cancelar
                                   </Button>
@@ -788,6 +781,24 @@ export default function AdminFolgasPage() {
           />
         </>
       )}
+
+      <AsaConfirmDialog
+        open={!!cancelTarget}
+        onClose={() => setCancelTarget(undefined)}
+        title="Cancelar Folga"
+        bubbleText="Tem certeza? Essa folga será cancelada e a ação não pode ser desfeita. ⚠️"
+        description={
+          cancelTarget && (
+            <>
+              A folga de <strong>{cancelTarget.userName}</strong> será cancelada.
+            </>
+          )
+        }
+        confirmLabel="Cancelar folga"
+        cancelLabel="Voltar"
+        isPending={isCancelling}
+        onConfirm={() => cancelTarget && cancelFolga({ id: cancelTarget.id })}
+      />
     </AdminLayout>
   );
 }
