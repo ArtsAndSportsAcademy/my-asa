@@ -1,0 +1,198 @@
+# PILOT-UX-AUDIT-D01 — Correções Críticas de UX e Permissões
+
+## What & Why
+
+Realizar uma auditoria completa da experiência do usuário em todos os perfis:
+
+* Admin
+* Supervisor
+* Membro
+* Capitão / Delegado
+
+Objetivo:
+
+> Garantir que cada papel veja apenas o que precisa, entenda o sistema e consiga executar suas tarefas sem confusão.
+
+Esta sprint não adiciona novos módulos.
+
+Ela melhora segurança, navegação e experiência de uso.
+
+━━━━━━━━━━━━━━━━━━
+🔴 CRÍTICO — PERMISSÕES
+━━━━━━━━━━━━━━━━━━
+
+Substituir páginas administrativas protegidas apenas por autenticação por proteção real de papel.
+
+Aplicar RoleRoute(["ADMIN"]) em:
+
+* /admin/users
+* /admin/operations
+* /admin/groups
+* /admin/auditoria
+* /admin/operational-panel
+
+Done looks like:
+
+✓ Supervisor não acessa páginas administrativas por URL.
+
+✓ Member não acessa módulos de gestão.
+
+✓ Navegação e permissões ficam consistentes.
+
+━━━━━━━━━━━━━━━━━━
+🟠 ALTA — NAVEGAÇÃO
+━━━━━━━━━━━━━━━━━━
+
+Reorganizar menus:
+
+Supervisor:
+
+PAINÉIS
+• Início
+• Painel
+
+OPERAÇÃO
+• Escalas
+• Folgas
+• Agenda
+• Livro do Dia
+
+Eliminar duplicações de "Início".
+
+Done looks like:
+
+✓ nenhum item duplicado.
+
+✓ navegação mais clara.
+
+━━━━━━━━━━━━━━━━━━
+🟠 ALTA — RESOLUÇÃO DE OPERAÇÃO
+━━━━━━━━━━━━━━━━━━
+
+Corrigir obtenção de operationId.
+
+Antes:
+
+roles[0]
+
+Agora:
+
+roles.find(role => role.operationId)
+
+Done looks like:
+
+✓ check-ins utilizam a operação correta.
+
+✓ supervisores multi-operação funcionam.
+
+━━━━━━━━━━━━━━━━━━
+🟠 ALTA — DIÁLOGOS
+━━━━━━━━━━━━━━━━━━
+
+Substituir:
+
+window.confirm()
+
+Por:
+
+Dialogs nativos do sistema.
+
+Aplicar em:
+
+* cancelamento de tarefas;
+* ações destrutivas;
+* confirmações.
+
+Done looks like:
+
+✓ UX consistente.
+
+✓ menos erros.
+
+━━━━━━━━━━━━━━━━━━
+🟠 ALTA — FOLGAS
+━━━━━━━━━━━━━━━━━━
+
+Substituir:
+
+"ID do membro"
+
+Por:
+
+Select de usuários.
+
+Fonte:
+
+useListUsers()
+
+Done looks like:
+
+✓ nenhum UUID manual.
+
+✓ seleção visual.
+
+✓ operação real.
+
+━━━━━━━━━━━━━━━━━━
+🟠 ALTA — ASA POR PAPEL
+━━━━━━━━━━━━━━━━━━
+
+Admin/Supervisor:
+
+* riscos
+* cobertura
+* resumo operacional
+* tarefas
+
+Member:
+
+* minha escala
+* minhas tarefas
+* avisos
+* Meu Dia
+
+Done looks like:
+
+✓ membros não veem comandos administrativos.
+
+✓ sugestões relevantes para cada papel.
+
+━━━━━━━━━━━━━━━━━━
+🟡 MÉDIA — FORMATAÇÃO
+━━━━━━━━━━━━━━━━━━
+
+Meu Dia:
+
+* arrays → separados por vírgula
+* objetos → chave: valor
+* valores simples → texto
+
+Eliminar JSON.stringify na interface.
+
+━━━━━━━━━━━━━━━━━━
+RESULTADOS ESPERADOS
+━━━━━━━━━━━━━━━━━━
+
+✓ segurança de acesso.
+
+✓ menos confusão.
+
+✓ navegação limpa.
+
+✓ UX consistente.
+
+✓ ASA contextual por papel.
+
+✓ preparação para piloto real.
+
+━━━━━━━━━━━━━━━━━━
+STATUS
+━━━━━━━━━━━━━━━━━━
+
+✅ Concluído.
+
+Esta sprint fecha as principais falhas de experiência encontradas durante a auditoria do piloto.
+
+Resultado:
+
+O MyASA deixa de parecer um sistema em desenvolvimento e passa a se comportar como um produto operacional.
