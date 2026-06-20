@@ -20,6 +20,7 @@ import {
   operationsTable,
   folgasTable,
   libraryDocumentsTable,
+  organizationsTable,
 } from "@workspace/db";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";

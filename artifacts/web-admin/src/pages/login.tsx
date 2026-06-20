@@ -139,10 +139,10 @@ export default function Login() {
                 <div className="flex items-start gap-2">
                   <Info className="w-4 h-4 mt-0.5 shrink-0" />
                   <div className="space-y-2">
-                    <p className="font-medium text-foreground">Contas de demonstração:</p>
+                    <p className="font-medium text-foreground">Grupo Entretenimento Artístico:</p>
                     <ul className="space-y-1 font-mono text-xs">
-                      <li>admin@myasa.demo / Teste@123</li>
-                      <li>supervisor@myasa.demo / Teste@123</li>
+                      <li>cris@entertimento.demo / Teste@123 <span className="font-sans text-muted-foreground">(Admin)</span></li>
+                      <li>rafael@entertimento.demo / Teste@123 <span className="font-sans text-muted-foreground">(Supervisor)</span></li>
                     </ul>
                   </div>
                 </div>
