@@ -4407,7 +4407,28 @@ router.get("/asa/mural", requireAuth, requireOrganization, async (req, res): Pro
     .orderBy(desc(recognitionsTable.createdAt))
     .limit(15);
 
-  res.json({ upcoming_birthdays, upcoming_milestones, recent_recognitions });
+  // Recent published notices (last 8, across all operations of the org)
+  const recentNoticesAlias = usersTable;
+  const recent_notices = await db
+    .select({
+      id:          noticesTable.id,
+      title:       noticesTable.title,
+      content:     noticesTable.content,
+      urgency:     noticesTable.urgency,
+      publishedAt: noticesTable.publishedAt,
+      authorName:  recentNoticesAlias.name,
+    })
+    .from(noticesTable)
+    .innerJoin(operationsTable, eq(noticesTable.operationId, operationsTable.id))
+    .leftJoin(recentNoticesAlias, eq(noticesTable.authorId, recentNoticesAlias.id))
+    .where(and(
+      eq(operationsTable.organizationId, orgId),
+      eq(noticesTable.status, "PUBLISHED"),
+    ))
+    .orderBy(desc(noticesTable.publishedAt))
+    .limit(8);
+
+  res.json({ upcoming_birthdays, upcoming_milestones, recent_recognitions, recent_notices });
 });
 
 // ────────────────────────────────────────────────────────────────────────────
