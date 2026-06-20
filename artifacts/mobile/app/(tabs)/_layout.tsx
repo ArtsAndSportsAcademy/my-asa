@@ -183,6 +183,7 @@ function ClassicTabLayout() {
       <Tabs.Screen name="responsabilidades" options={{ tabBarButton: () => null, title: "Responsabilidades" }} />
       <Tabs.Screen name="insights"         options={{ tabBarButton: () => null, title: "Indicadores"        }} />
       <Tabs.Screen name="asa"              options={{ tabBarButton: () => null, title: "ASA"               }} />
+      <Tabs.Screen name="historico-asa"   options={{ tabBarButton: () => null, title: "Histórico ASA"      }} />
     </Tabs>
   );
 }

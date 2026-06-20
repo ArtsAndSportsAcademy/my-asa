@@ -483,12 +483,14 @@ const ASA_TOOLS: Tool[] = [
   },
   {
     name: "consultar_escalas",
-    description: "Consulta escalas de alocação da organização",
+    description: "Consulta a escala pessoal do usuário — suas entradas e alocações confirmadas. Use para responder 'minha escala', 'onde estou na escala', 'o que tenho essa semana'. Gestores podem consultar a escala de outro membro via userId.",
     input_schema: {
       type: "object" as const,
       properties: {
-        status: { type: "string", description: "Status: DRAFT, PUBLISHED, ARCHIVED" },
-        limit: { type: "number", description: "Máximo de resultados (padrão: 5)" },
+        userId:   { type: "string", description: "ID do membro (opcional — somente gestores; padrão: usuário atual)" },
+        dateFrom: { type: "string", description: "Data início (YYYY-MM-DD). Padrão: hoje." },
+        dateTo:   { type: "string", description: "Data fim (YYYY-MM-DD). Padrão: +14 dias." },
+        limit:    { type: "number", description: "Máximo de entradas (padrão: 20)" },
       },
     },
   },
@@ -527,12 +529,13 @@ const ASA_TOOLS: Tool[] = [
   },
   {
     name: "consultar_tarefas",
-    description: "Consulta tarefas operacionais",
+    description: "Consulta tarefas do usuário atual ('minhas tarefas', 'o que tenho para fazer'). Membros veem apenas as próprias tarefas. Gestores veem todas as da organização ou podem filtrar por membro via userId.",
     input_schema: {
       type: "object" as const,
       properties: {
-        status: { type: "string", description: "Status da tarefa" },
-        limit: { type: "number", description: "Máximo de resultados (padrão: 10)" },
+        userId: { type: "string", description: "ID do membro (opcional — somente gestores)" },
+        status: { type: "string", description: "Status: CREATED, IN_PROGRESS, DONE, CHANGES_REQUESTED, CANCELLED" },
+        limit:  { type: "number", description: "Máximo de resultados (padrão: 10)" },
       },
     },
   },
@@ -769,21 +772,78 @@ async function executeTool(
     }
 
     if (name === "consultar_escalas") {
-      const limit = (input.limit as number) ?? 5;
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const today = new Date().toISOString().slice(0, 10);
+      const dateFrom = (input.dateFrom as string) ?? today;
+      const dateTo   = (input.dateTo   as string) ?? new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+      const limit    = (input.limit    as number) ?? 20;
+
+      // Managers can query another user's allocations; otherwise always current user
+      const targetUserId = (isManager && input.userId) ? (input.userId as string) : ctx.userId;
+
+      // Find scales covering the requested period
       const scales = await db
-        .select()
+        .select({ id: scalesTable.id, title: scalesTable.title, periodStart: scalesTable.periodStart, periodEnd: scalesTable.periodEnd, status: scalesTable.status })
         .from(scalesTable)
-        .where(eq(scalesTable.organizationId, ctx.organizationId))
-        .orderBy(desc(scalesTable.createdAt))
+        .where(and(
+          ctx.operationId ? eq(scalesTable.operationId, ctx.operationId) : sql`true`,
+          inArray(scalesTable.status, ["DRAFT", "PUBLISHED", "REPUBLISHED"]),
+          lte(scalesTable.periodStart, dateTo),
+          gte(scalesTable.periodEnd,   dateFrom),
+        ))
+        .orderBy(desc(scalesTable.periodStart))
+        .limit(10);
+
+      if (scales.length === 0) {
+        return JSON.stringify({ found: false, message: `Nenhuma escala ativa encontrada para ${dateFrom} → ${dateTo}.`, entradas: [] });
+      }
+
+      const scaleIds = scales.map(s => s.id);
+
+      // Get user allocations in those scales
+      const allocations = await db
+        .select({
+          id:           scaleAllocationsTable.id,
+          scaleId:      scaleAllocationsTable.scaleId,
+          status:       scaleAllocationsTable.status,
+          manualDate:   scaleAllocationsTable.manualDate,
+          manualLabel:  scaleAllocationsTable.manualLabel,
+          startTime:    scaleAllocationsTable.startTime,
+          endTime:      scaleAllocationsTable.endTime,
+          notes:        scaleAllocationsTable.notes,
+          agendaEventId:scaleAllocationsTable.agendaEventId,
+        })
+        .from(scaleAllocationsTable)
+        .where(and(
+          eq(scaleAllocationsTable.userId, targetUserId),
+          inArray(scaleAllocationsTable.scaleId, scaleIds),
+          inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]),
+        ))
+        .orderBy(scaleAllocationsTable.manualDate)
         .limit(limit);
-      return JSON.stringify(scales.map(s => ({
-        id: s.id,
-        name: s.name,
-        status: s.status,
-        agendaEventId: s.agendaEventId,
-        createdAt: s.createdAt,
-      })));
+
+      if (allocations.length === 0) {
+        const userName = targetUserId === ctx.userId ? "Você não está" : "Este membro não está";
+        return JSON.stringify({ found: false, message: `${userName} alocado(a) em nenhuma escala entre ${dateFrom} e ${dateTo}.`, entradas: [] });
+      }
+
+      const scaleMap = new Map(scales.map(s => [s.id, s]));
+      const entries = allocations.map(a => {
+        const scale = scaleMap.get(a.scaleId);
+        return {
+          id:        a.id,
+          escala:    scale?.title ?? a.scaleId,
+          periodo:   scale ? `${scale.periodStart} → ${scale.periodEnd}` : null,
+          data:      a.manualDate,
+          atividade: a.manualLabel,
+          inicio:    a.startTime,
+          fim:       a.endTime,
+          status:    a.status,
+          obs:       a.notes,
+        };
+      });
+
+      return JSON.stringify({ found: true, total: entries.length, entradas: entries });
     }
 
     if (name === "consultar_responsabilidades") {
@@ -846,19 +906,37 @@ async function executeTool(
     if (name === "consultar_tarefas") {
       const limit = (input.limit as number) ?? 10;
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+
+      // Managers can query any user's tasks; members see only their own
+      const targetUserId = (isManager && input.userId) ? (input.userId as string) : ctx.userId;
+
+      const conditions: ReturnType<typeof eq>[] = [
+        eq(tasksTable.organizationId, ctx.organizationId),
+        eq(tasksTable.assigneeId, targetUserId),
+      ];
+      if (input.status) conditions.push(eq(tasksTable.status, input.status as any));
+
       const tasks = await db
-        .select()
+        .select({
+          id:          tasksTable.id,
+          title:       tasksTable.title,
+          description: tasksTable.description,
+          status:      tasksTable.status,
+          priority:    tasksTable.priority,
+          dueDate:     tasksTable.dueDate,
+          origin:      tasksTable.origin,
+        })
         .from(tasksTable)
-        .where(eq(tasksTable.organizationId, ctx.organizationId))
-        .orderBy(desc(tasksTable.createdAt))
+        .where(and(...conditions))
+        .orderBy(tasksTable.dueDate, desc(tasksTable.createdAt))
         .limit(limit);
-      return JSON.stringify(tasks.map(t => ({
-        id: t.id,
-        title: t.title,
-        status: t.status,
-        priority: t.priority,
-        dueDate: t.dueDate,
-      })));
+
+      if (tasks.length === 0) {
+        const isSelf = targetUserId === ctx.userId;
+        return JSON.stringify({ found: false, message: isSelf ? "Você não tem tarefas atribuídas no momento." : "Este membro não tem tarefas atribuídas.", tarefas: [] });
+      }
+
+      return JSON.stringify({ found: true, total: tasks.length, tarefas: tasks });
     }
 
     if (name === "consultar_memorias") {
