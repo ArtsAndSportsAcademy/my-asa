@@ -109,6 +109,12 @@ const SUPERVISOR_NAV: NavGroup[] = [
     ],
   },
   {
+    label: "GESTÃO",
+    items: [
+      { href: "/supervisor/equipe", icon: Users2, label: "Equipe" },
+    ],
+  },
+  {
     label: "OPERAÇÃO",
     items: [
       { href: "/admin/scales",                 icon: ClipboardList,   label: "Escalas"       },
