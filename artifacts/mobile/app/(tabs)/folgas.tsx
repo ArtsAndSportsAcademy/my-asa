@@ -25,7 +25,9 @@ import {
   useBulkFillFolgas,
   useToggleFolgaCell,
   getGetFolgasGridQueryKey,
+  getListFolgasQueryKey,
 } from "@workspace/api-client-react";
+import type { GridBulkRequestType, ListFolgasStatus } from "@workspace/api-client-react";
 
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
 
@@ -232,9 +234,10 @@ function ManagerGridView({
   const todayMonth = today.getMonth() + 1;
   const todayYear = today.getFullYear();
 
+  const gridQueryKey = getGetFolgasGridQueryKey({ operationId, year, month });
   const { data, isLoading, refetch, isRefetching } = useGetFolgasGrid(
     { operationId, year, month },
-    { query: { enabled: !!operationId } },
+    { query: { enabled: !!operationId, queryKey: gridQueryKey } },
   );
 
   const members = data?.members ?? [];
@@ -290,7 +293,7 @@ function ManagerGridView({
         weekDates.push(isoDate(year, month, d));
       }
     }
-    bulkFill({ data: { userId, operationId, dates: weekDates, type } });
+    bulkFill({ data: { userId, operationId, dates: weekDates, type: type as GridBulkRequestType } });
   }
 
   if (isLoading) {
@@ -436,22 +439,23 @@ export default function FolgasScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { sub, roles } = useAuth();
+  const { user, roles } = useAuth();
 
   const isManager = roles.some((r) => MANAGER_ROLES.includes(r.role));
-  const operationId = roles[0]?.operationId ?? undefined;
+  const operationId = roles.find((r) => r.operationId)?.operationId ?? undefined;
 
   const today = new Date();
   const [year,  setYear]  = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
   const [fillOpen, setFillOpen] = useState(false);
 
+  const userId = user?.id;
   const params = isManager
-    ? { operationId, status: "ACTIVE" }
-    : { userId: sub, status: "ACTIVE" };
+    ? { operationId, status: "ACTIVE" as ListFolgasStatus }
+    : { userId, status: "ACTIVE" as ListFolgasStatus };
 
   const { data, isLoading, refetch, isRefetching } = useListFolgas(params, {
-    query: { enabled: !!sub && !isManager },
+    query: { enabled: !!userId && !isManager, queryKey: getListFolgasQueryKey(params) },
   });
 
   const folgas = data?.folgas ?? [];

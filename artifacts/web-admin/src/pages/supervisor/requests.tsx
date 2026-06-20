@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
 import AdminLayout from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -71,6 +72,7 @@ const FILTER_OPTIONS = [
 export default function SupervisorRequestsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { roles } = useAuth();
 
   const [operationId, setOperationId] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("PENDING,ALTERNATIVE_REJECTED");
@@ -81,6 +83,13 @@ export default function SupervisorRequestsPage() {
 
   const { data: opsData } = useGetOperations();
   const operations = opsData?.operations ?? [];
+
+  useEffect(() => {
+    if (operationId) return;
+    const autoId = roles.find((r) => r.operationId)?.operationId ?? "";
+    if (autoId) { setOperationId(autoId); return; }
+    if (operations.length === 1) setOperationId(operations[0].id);
+  }, [roles, operations]);
 
   const { data, isLoading } = useListRequests(
     { operationId: operationId || undefined, status: statusFilter },

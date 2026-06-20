@@ -23,6 +23,7 @@ import {
 } from "@workspace/api-client-react";
 import type { TaskItem, TaskEvidence } from "@workspace/api-client-react";
 import { Plus, CheckCircle2, XCircle, RotateCcw, AlertCircle, Ban, Paperclip, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { MemberCombobox } from "@/components/member-combobox";
 
 const PRIORITY_LABELS: Record<string, string> = {
   LOW: "Baixa", MEDIUM: "Média", HIGH: "Alta", CRITICAL: "Crítica",
@@ -228,10 +229,12 @@ function CreateTaskDialog({ onCreated }: { onCreated: () => void }) {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Responsável *</Label>
-              <Select value={form.assigneeId} onValueChange={(v) => setForm((f) => ({ ...f, assigneeId: v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                <SelectContent>{users.map((u: any) => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent>
-              </Select>
+              <MemberCombobox
+                value={form.assigneeId}
+                onChange={(v) => setForm((f) => ({ ...f, assigneeId: v }))}
+                users={users}
+                placeholder="Selecionar responsável"
+              />
             </div>
             <div className="space-y-1.5">
               <Label>Prazo *</Label>
@@ -245,10 +248,12 @@ function CreateTaskDialog({ onCreated }: { onCreated: () => void }) {
           {form.requiresApproval && (
             <div className="space-y-1.5">
               <Label>Aprovador</Label>
-              <Select value={form.approverId} onValueChange={(v) => setForm((f) => ({ ...f, approverId: v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecionar aprovador" /></SelectTrigger>
-                <SelectContent>{users.map((u: any) => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent>
-              </Select>
+              <MemberCombobox
+                value={form.approverId}
+                onChange={(v) => setForm((f) => ({ ...f, approverId: v }))}
+                users={users}
+                placeholder="Selecionar aprovador"
+              />
             </div>
           )}
           <div className="space-y-2">
