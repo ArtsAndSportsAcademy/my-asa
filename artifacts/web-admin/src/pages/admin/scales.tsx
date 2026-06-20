@@ -931,12 +931,20 @@ export default function ScalesPage() {
               Posição: <strong>{selectedAlloc?.positionName ?? "—"}</strong>
             </p>
             <div className="space-y-1.5">
-              <Label>ID do Membro *</Label>
-              <Input
+              <Label>Membro *</Label>
+              <Select
                 value={overrideForm.userId}
-                onChange={(e) => setOverrideForm((f) => ({ ...f, userId: e.target.value }))}
-                placeholder="UUID do usuário"
-              />
+                onValueChange={(v) => setOverrideForm((f) => ({ ...f, userId: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecionar membro" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(members as { userId: string; userName: string }[]).map((m) => (
+                    <SelectItem key={m.userId} value={m.userId}>{m.userName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <Label>Motivo *</Label>
