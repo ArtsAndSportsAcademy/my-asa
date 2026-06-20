@@ -25,6 +25,7 @@ import {
   messageThreadsTable,
   libraryDocumentVersionsTable,
   libraryCategoriesTable,
+  libraryViewsTable,
 } from "@workspace/db";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
@@ -593,6 +594,11 @@ ${isManager
   ? `• Consultar agenda, escalas, responsabilidades, notificações, avisos, tarefas, folgas, disponibilidade e membros
 • Pesquisar documentos na biblioteca (regulamentos, manuais, procedimentos)
 • Criar entradas na escala, tarefas, rascunhos de aviso e ensaio
+• Registrar ausências, folgas, férias e afastamentos por período (um dia ou múltiplos dias)
+• Cancelar ausências e tarefas registradas
+• Publicar avisos e escalas com confirmação obrigatória
+• Criar blocos operacionais na agenda (preparação, reunião, montagem, treinamento)
+• Verificar quem leu (ou não) documentos da biblioteca
 • Gerar resumo personalizado do dia com análise operacional
 • Consultar aniversários e detectar marcos de tempo de casa
 • Criar e consultar reconhecimentos para membros da equipe
@@ -913,6 +919,59 @@ const ASA_TOOLS: Tool[] = [
       type: "object" as const,
       properties: {
         type: { type: "string", description: "Tipo de marco: TIME_OF_HOUSE ou ALL (padrão: ALL)" },
+      },
+    },
+  },
+  // ── Publicação ───────────────────────────────────────────────────────────────
+  {
+    name: "publicar_aviso",
+    description: "Publica um aviso que estava em rascunho (DRAFT). ATENÇÃO: esta ação torna o aviso visível para todos os destinatários. Apresente o título/conteúdo do aviso ao gestor e peça confirmação explícita ('sim, publicar') ANTES de executar. Requer o ID do aviso.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        noticeId: { type: "string", description: "ID UUID do aviso a publicar (obtido via criar_aviso_rascunho ou histórico)" },
+      },
+      required: ["noticeId"],
+    },
+  },
+  {
+    name: "publicar_escala",
+    description: "Publica uma escala que estava em rascunho (DRAFT). ATENÇÃO: após a publicação, os membros passam a ver suas alocações. Apresente o título e período da escala ao gestor e peça confirmação explícita ('sim, publicar') ANTES de executar. Requer o ID da escala — use consultar_escalas para encontrá-la.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        scaleId: { type: "string", description: "ID UUID da escala a publicar (obtido via consultar_escalas)" },
+      },
+      required: ["scaleId"],
+    },
+  },
+  // ── Blocos Operacionais ───────────────────────────────────────────────────────
+  {
+    name: "criar_bloco_agenda",
+    description: "Cria um bloco operacional na agenda (preparação, montagem, reunião, manutenção, treinamento, etc.). Criado como rascunho — confirme no web admin para torná-lo visível aos membros. Use quando o usuário disser: 'criar bloco', 'agendar preparação', 'bloco de montagem', 'reservar horário', etc.",
+    input_schema: {
+      type: "object" as const,
+      required: ["titulo", "data"],
+      properties: {
+        titulo:     { type: "string", description: "Título do bloco (ex: 'Preparação Show A', 'Reunião de equipe', 'Manutenção técnica')" },
+        data:       { type: "string", description: "Data do bloco (YYYY-MM-DD)" },
+        horaInicio: { type: "string", description: "Hora de início (HH:MM, ex: '08:00')" },
+        horaFim:    { type: "string", description: "Hora de fim (HH:MM, ex: '10:00')" },
+        descricao:  { type: "string", description: "Descrição ou observações do bloco (opcional)" },
+        local:      { type: "string", description: "Local do bloco (opcional)" },
+      },
+    },
+  },
+  // ── Biblioteca — Rastreamento de Leitura ─────────────────────────────────────
+  {
+    name: "consultar_leituras_biblioteca",
+    description: "Consulta quem leu (ou não leu) um documento da biblioteca. Use para responder: 'Quem ainda não leu o regulamento?', 'Quantas leituras tem o manual?', 'Amanda já leu o documento X?'. Se mostrarNaoLeram=true, lista membros que AINDA NÃO leram o documento.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        documentId:      { type: "string", description: "ID UUID do documento (opcional — se omitido, lista top documentos mais lidos)" },
+        titulo:          { type: "string", description: "Título parcial para buscar o documento por nome (alternativa ao ID)" },
+        mostrarNaoLeram: { type: "boolean", description: "Se true, lista membros que NÃO leram o documento (requer documentId ou titulo)" },
       },
     },
   },
@@ -1354,16 +1413,18 @@ const ASA_TOOLS: Tool[] = [
   // ── Sprint 05 — Conversas Inteligentes ──────────────────────────────────────
   {
     name: "registrar_ausencia",
-    description: "Registra uma ausência (no-show) de um membro em uma data específica. Use consultar_membros ANTES para obter o userId correto. Confirme com o usuário antes de executar.",
+    description: "Registra ausência, folga, férias, afastamento ou licença de um membro. Suporta um dia único OU períodos longos (ex: 'Amanda afastada de 01/07 a 20/07'). Use consultar_membros ANTES para obter o userId correto. Para detectar: se o usuário mencionar 'férias', 'afastamento', 'licença', 'recesso' → use AFASTAMENTO ou RECESSO. SEMPRE confirme antes de executar.",
     input_schema: {
       type: "object" as const,
-      required: ["userId", "date"],
+      required: ["userId", "startDate"],
       properties: {
-        userId:   { type: "string", description: "ID do membro ausente (obtido via consultar_membros)" },
-        userName: { type: "string", description: "Nome do membro (para confirmação na resposta)" },
-        date:     { type: "string", description: "Data da ausência (YYYY-MM-DD)" },
-        type:     { type: "string", description: "Tipo: NO_SHOW (padrão) | DAY_OFF | OUTRO" },
-        reason:   { type: "string", description: "Motivo da ausência (opcional)" },
+        userId:    { type: "string", description: "ID do membro (obtido via consultar_membros)" },
+        userName:  { type: "string", description: "Nome do membro (para confirmação na resposta)" },
+        startDate: { type: "string", description: "Data de início (YYYY-MM-DD)" },
+        endDate:   { type: "string", description: "Data de fim (YYYY-MM-DD). Se omitido, usa startDate (um único dia)" },
+        date:      { type: "string", description: "Alias para startDate — use startDate de preferência" },
+        type:      { type: "string", description: "Tipo: NO_SHOW (falta avulsa, padrão) | DAY_OFF | AFASTAMENTO (doença, cirurgia) | RECESSO | RESTRICAO | OUTRO. Para períodos multi-dia, padrão automático é AFASTAMENTO" },
+        reason:    { type: "string", description: "Motivo (opcional)" },
       },
     },
   },
@@ -2217,6 +2278,136 @@ async function executeTool(
       if (existing.status !== "MANUAL_OVERRIDE") return JSON.stringify({ success: false, message: `Apenas entradas manuais podem ser removidas via ASA. Esta entrada tem status "${existing.status}". Para alterações em escalas publicadas, use o painel de escalas no web admin.` });
       await db.delete(scaleAllocationsTable).where(eq(scaleAllocationsTable.id, allocationId));
       return JSON.stringify({ success: true, message: `✅ Entrada manual "${existing.manualLabel ?? allocationId}" removida da escala com sucesso.`, id: allocationId });
+    }
+
+    // ── Publicação ───────────────────────────────────────────────────────────
+    if (name === "publicar_aviso") {
+      if (!isManager) return JSON.stringify({ error: "Apenas gestores podem publicar avisos" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const noticeId = input.noticeId as string;
+      const [existing] = await db
+        .select({ id: noticesTable.id, status: noticesTable.status, title: noticesTable.title })
+        .from(noticesTable)
+        .where(and(eq(noticesTable.id, noticeId), eq(noticesTable.organizationId, ctx.organizationId)))
+        .limit(1);
+      if (!existing) return JSON.stringify({ success: false, message: "Aviso não encontrado. Verifique o ID." });
+      if (existing.status === "PUBLISHED") return JSON.stringify({ success: false, message: "Este aviso já está publicado." });
+      if (existing.status !== "DRAFT") return JSON.stringify({ success: false, message: `Não é possível publicar um aviso com status "${existing.status}".` });
+      await db.update(noticesTable).set({ status: "PUBLISHED", publishedAt: new Date() }).where(eq(noticesTable.id, noticeId));
+      return JSON.stringify({ success: true, message: `✅ Aviso "${existing.title ?? "(sem título)"}" publicado com sucesso. Os destinatários já podem visualizá-lo.`, id: noticeId });
+    }
+
+    if (name === "publicar_escala") {
+      if (!isManager) return JSON.stringify({ error: "Apenas gestores podem publicar escalas" });
+      if (!ctx.operationId) return JSON.stringify({ error: "Selecione uma operação antes de publicar escalas" });
+      const scaleId = input.scaleId as string;
+      const [existing] = await db
+        .select({ id: scalesTable.id, status: scalesTable.status, title: scalesTable.title, periodStart: scalesTable.periodStart, periodEnd: scalesTable.periodEnd })
+        .from(scalesTable)
+        .where(and(eq(scalesTable.id, scaleId), eq(scalesTable.operationId, ctx.operationId)))
+        .limit(1);
+      if (!existing) return JSON.stringify({ success: false, message: "Escala não encontrada. Use consultar_escalas para verificar o ID." });
+      if (existing.status === "PUBLISHED" || existing.status === "REPUBLISHED") return JSON.stringify({ success: false, message: "Esta escala já está publicada." });
+      if (existing.status === "ARCHIVED") return JSON.stringify({ success: false, message: "Não é possível publicar uma escala arquivada." });
+      await db.update(scalesTable).set({ status: "PUBLISHED", publishedAt: new Date() }).where(eq(scalesTable.id, scaleId));
+      return JSON.stringify({ success: true, message: `✅ Escala "${existing.title}" publicada (${existing.periodStart} → ${existing.periodEnd}). Os membros já podem ver suas alocações.`, id: scaleId });
+    }
+
+    // ── Blocos Operacionais ───────────────────────────────────────────────────
+    if (name === "criar_bloco_agenda") {
+      if (!isManager) return JSON.stringify({ error: "Apenas gestores podem criar blocos na agenda" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      if (!ctx.operationId) return JSON.stringify({ error: "Selecione uma operação antes de criar blocos" });
+      const titulo     = input.titulo     as string;
+      const data       = input.data       as string;
+      const horaInicio = input.horaInicio as string | undefined;
+      const horaFim    = input.horaFim    as string | undefined;
+      const descricao  = input.descricao  as string | undefined;
+      const local      = input.local      as string | undefined;
+      const [event] = await db.insert(agendaEventsTable).values({
+        operationId:    ctx.operationId,
+        organizationId: ctx.organizationId,
+        type:           "OPERATIONAL_BLOCK",
+        title:          titulo,
+        date:           data,
+        startTime:      horaInicio ?? null,
+        endTime:        horaFim    ?? null,
+        location:       local      ?? null,
+        notes:          descricao  ?? null,
+        status:         "DRAFT",
+        visibility:     "OPERATION",
+        createdBy:      ctx.userId,
+      }).returning({ id: agendaEventsTable.id });
+      const horaStr = horaInicio ? ` às ${horaInicio}${horaFim ? `–${horaFim}` : ""}` : "";
+      return JSON.stringify({ success: true, message: `✅ Bloco "${titulo}" criado na agenda para ${data}${horaStr}. Confirme no web admin (Agenda) para torná-lo visível aos membros.`, id: event.id });
+    }
+
+    // ── Biblioteca — Rastreamento de Leitura ─────────────────────────────────
+    if (name === "consultar_leituras_biblioteca") {
+      if (!isManager) return JSON.stringify({ error: "Apenas gestores podem consultar leituras" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const documentId      = input.documentId      as string | undefined;
+      const tituloFiltro    = input.titulo           as string | undefined;
+      const mostrarNaoLeram = input.mostrarNaoLeram  as boolean | undefined;
+      let docId = documentId;
+
+      if (!docId && tituloFiltro) {
+        const [found] = await db.select({ id: libraryDocumentsTable.id, title: libraryDocumentsTable.title })
+          .from(libraryDocumentsTable)
+          .where(and(eq(libraryDocumentsTable.orgId, ctx.organizationId), ilike(libraryDocumentsTable.title, `%${tituloFiltro}%`)))
+          .limit(1);
+        if (!found) return JSON.stringify({ success: false, message: `Nenhum documento encontrado com o título "${tituloFiltro}".` });
+        docId = found.id;
+      }
+
+      if (docId) {
+        const [doc] = await db.select({ id: libraryDocumentsTable.id, title: libraryDocumentsTable.title })
+          .from(libraryDocumentsTable)
+          .where(and(eq(libraryDocumentsTable.id, docId), eq(libraryDocumentsTable.orgId, ctx.organizationId)))
+          .limit(1);
+        if (!doc) return JSON.stringify({ success: false, message: "Documento não encontrado." });
+
+        const views = await db
+          .select({ userId: libraryViewsTable.userId, userName: usersTable.name, viewedAt: libraryViewsTable.viewedAt })
+          .from(libraryViewsTable)
+          .leftJoin(usersTable, eq(libraryViewsTable.userId, usersTable.id))
+          .where(eq(libraryViewsTable.documentId, docId))
+          .orderBy(desc(libraryViewsTable.viewedAt))
+          .limit(200);
+
+        const uniqueReaders = [...new Map(views.map(v => [v.userId, v])).values()];
+
+        if (mostrarNaoLeram) {
+          const allMembers = await db
+            .select({ id: usersTable.id, name: usersTable.name })
+            .from(usersTable)
+            .where(eq(usersTable.organizationId, ctx.organizationId))
+            .limit(300);
+          const readerIds = new Set(uniqueReaders.map(r => r.userId));
+          const naoLeram  = allMembers.filter(m => !readerIds.has(m.id));
+          return JSON.stringify({
+            documentTitle: doc.title, totalLeituras: views.length, leitoresUnicos: uniqueReaders.length,
+            naoLeram: naoLeram.map(m => m.name),
+            message: naoLeram.length === 0
+              ? `✅ Todos os membros leram "${doc.title}".`
+              : `📋 ${naoLeram.length} membro(s) ainda não leu "${doc.title}": ${naoLeram.map(m => m.name).join(", ")}.`,
+          });
+        }
+        return JSON.stringify({
+          documentTitle: doc.title, totalLeituras: views.length, leitoresUnicos: uniqueReaders.length,
+          ultimasLeituras: uniqueReaders.slice(0, 10).map(r => ({ nome: r.userName, em: r.viewedAt })),
+          message: `📚 "${doc.title}" foi lido ${uniqueReaders.length} vez(es) por pessoa(s) única(s).`,
+        });
+      }
+
+      const topDocs = await db
+        .select({ documentId: libraryViewsTable.documentId, leitores: sql<number>`count(distinct ${libraryViewsTable.userId})::int` })
+        .from(libraryViewsTable)
+        .where(eq(libraryViewsTable.orgId, ctx.organizationId))
+        .groupBy(libraryViewsTable.documentId)
+        .orderBy(desc(sql<number>`count(distinct ${libraryViewsTable.userId})`))
+        .limit(10);
+      return JSON.stringify({ topDocumentos: topDocs, message: topDocs.length === 0 ? "Nenhuma leitura registrada ainda." : `📊 Top ${topDocs.length} documentos mais lidos da organização.` });
     }
 
     // ── Sprint 11 — Aprendizado Organizacional ───────────────────────────────
@@ -3134,7 +3325,7 @@ async function executeTool(
       const itens: { categoria: string; remetente: string; conteudo: string; horario: unknown; sugestao: string }[] = [];
       const SUGESTOES: Record<string, string> = {
         "📅 EVENTO":   "Pergunte se deseja criar um evento ou ensaio via criar_ensaio_rascunho.",
-        "🌴 AUSÊNCIA": "Confirme o membro e a data, depois ofereça registrar_ausencia.",
+        "🌴 AUSÊNCIA / AFASTAMENTO / FÉRIAS": "Confirme o membro e as datas (início e fim). Para período multi-dia: startDate + endDate em registrar_ausencia (tipo AFASTAMENTO ou RECESSO). Para falta avulsa: apenas startDate (tipo NO_SHOW). SEMPRE confirme antes de executar.",
         "🔄 TROCA":    "Confirme os dois membros, depois ofereça criar_solicitacao_troca.",
         "📌 TAREFA":   "Confirme responsável e prazo, depois ofereça criar uma tarefa formal.",
         "🎉 SOCIAL":   "Considere criar um reconhecimento ou aviso comemorativo.",
@@ -3688,31 +3879,43 @@ async function executeTool(
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
       if (!ctx.operationId) return JSON.stringify({ error: "Selecione uma operação antes de registrar ausências" });
 
-      const targetUserId = input.userId as string;
-      const date         = input.date   as string;
-      const absType      = ((input.type as string | undefined) ?? "NO_SHOW") as "NO_SHOW" | "DAY_OFF" | "OUTRO";
-      const reason       = input.reason as string | undefined;
+      const targetUserId = input.userId   as string;
+      const startDate    = ((input.startDate ?? input.date) as string | undefined) ?? "";
+      const endDate      = ((input.endDate   ?? startDate)  as string);
+      const isSingleDay  = startDate === endDate;
+      const defaultType  = isSingleDay ? "NO_SHOW" : "AFASTAMENTO";
+      const absType      = ((input.type as string | undefined) ?? defaultType) as typeof folgasTable.$inferInsert["type"];
+      const reason       = input.reason   as string | undefined;
       const displayName  = (input.userName as string | undefined) ?? targetUserId;
+
+      if (!startDate) return JSON.stringify({ error: "startDate é obrigatório" });
+
+      const fmt = (d: string) => d.split("-").reverse().join("/");
 
       const [folga] = await db.insert(folgasTable).values({
         userId:      targetUserId,
         operationId: ctx.operationId,
         type:        absType,
-        startDate:   date,
-        endDate:     date,
+        startDate,
+        endDate,
         status:      "ACTIVE",
         origem:      "MANUAL",
         createdBy:   ctx.userId,
-        notes:       reason ?? `Ausência registrada pela ASA em ${new Date().toLocaleDateString("pt-BR")}`,
+        notes:       reason ?? `Registrado pela ASA em ${new Date().toLocaleDateString("pt-BR")}`,
       }).returning();
+
+      const periodoLabel = isSingleDay
+        ? `para ${fmt(startDate)}`
+        : `de ${fmt(startDate)} até ${fmt(endDate)} (${absType === "AFASTAMENTO" ? "afastamento" : absType.toLowerCase()})`;
 
       return JSON.stringify({
         registered: true,
-        id: folga.id,
-        member: displayName,
-        date,
-        type: absType,
-        message: `📋 Ausência de ${displayName} registrada para ${date}. Você pode acompanhar na página de Folgas.`,
+        id:         folga.id,
+        member:     displayName,
+        startDate,
+        endDate,
+        type:       absType,
+        message:    `📋 ${isSingleDay ? "Ausência" : "Período"} de ${displayName} registrado ${periodoLabel}. Acompanhe na página de Folgas.`,
       });
     }
 

@@ -5,6 +5,7 @@ import {
   libraryCategoriesTable,
   libraryDocumentsTable,
   libraryDocumentVersionsTable,
+  libraryViewsTable,
   usersTable,
   userRolesTable,
 } from "@workspace/db";
@@ -217,6 +218,9 @@ router.get("/library/documents/:id", requireAuth, requireOrganization, async (re
           .where(eq(libraryDocumentVersionsTable.documentId, docId))
           .orderBy(desc(libraryDocumentVersionsTable.version))
       : [];
+
+    // Log view (fire-and-forget — does not block the response)
+    db.insert(libraryViewsTable).values({ documentId: docId, userId, orgId, viewedAt: new Date() }).catch(() => {});
 
     res.json({ document: doc, versions });
   } catch (err) {

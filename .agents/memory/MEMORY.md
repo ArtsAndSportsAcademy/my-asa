@@ -1,4 +1,4 @@
-- [MyASA 2.0 — Estado do Projeto](myasa-estado-projeto.md) — birthDate implementado (DB+API+web-admin+ASA resumo-do-dia); Folgas completo; ASA-SPRINT-03 concluído
+- [MyASA 2.0 — Estado do Projeto](myasa-estado-projeto.md) — PILOT-POLISH-D01 concluído; folgas inline mobile, publicação ASA, blocos agenda, rastreamento biblioteca, afastamentos por período
 - [LOG_DOMAIN extension pattern](log-domain-pattern.md) — ao criar nova rota, adicionar entrada no LOG_DOMAIN de lib/shared/src/constants.ts antes de usar requestLogger
 - [YAML plain scalar colon bug](yaml-colon-bug.md) — summary com ": " em YAML não-quoted quebra orval silenciosamente
 - [Express params cast pattern](express-params-cast.md) — req.params.id tipado como string|string[] no Express; sempre usar `const id = req.params.id as string`
@@ -9,3 +9,4 @@
 - [Orval hooks apagados — padrão de correção](orval-hooks-pattern.md) — quando orval regenera api.ts, hooks manuais de sprints anteriores são apagados; padrão: criar arquivo manual + exportar no index
 - [admin-layout lucide-react import duplicata](admin-layout-import-trap.md) — Users já existia no import de lucide-react em admin-layout.tsx; ao adicionar ícones novos, verificar linha 1-8 antes de editar
 - [Scales — queryKey de folgas](scales-folgas-query.md) — useListFolgas exige getListFolgasQueryKey no queryKey ou TypeScript falha com TS2741
+- [drizzle-kit push requer TTY](drizzle-push-tty.md) — push-force falha em ambiente não-interativo; alternativa: executeSql via code_execution sandbox com CREATE TABLE IF NOT EXISTS

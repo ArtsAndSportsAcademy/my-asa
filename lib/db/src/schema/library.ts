@@ -60,6 +60,18 @@ export const libraryDocumentVersionsTable = pgTable(
   (t) => [unique().on(t.documentId, t.version)]
 );
 
+export const libraryViewsTable = pgTable("library_views", {
+  id:         uuid("id").primaryKey().defaultRandom(),
+  documentId: uuid("document_id").notNull().references(() => libraryDocumentsTable.id),
+  userId:     uuid("user_id").notNull().references(() => usersTable.id),
+  orgId:      uuid("org_id").notNull(),
+  viewedAt:   timestamp("viewed_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("library_views_doc_idx").on(t.documentId),
+  index("library_views_user_idx").on(t.userId),
+]);
+
 export type LibraryCategory = typeof libraryCategoriesTable.$inferSelect;
 export type LibraryDocument = typeof libraryDocumentsTable.$inferSelect;
 export type LibraryDocumentVersion = typeof libraryDocumentVersionsTable.$inferSelect;
+export type LibraryView = typeof libraryViewsTable.$inferSelect;

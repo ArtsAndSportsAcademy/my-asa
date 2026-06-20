@@ -1,0 +1,192 @@
+PILOT-POLISH-D01 — Refinamentos Finais para o Piloto
+
+What & Why
+
+O MyASA 2.0 encontra-se funcional e operacionalmente completo.
+
+Esta sprint não adiciona novos pilares.
+
+Seu objetivo é eliminar pequenos atritos de uso antes do piloto real com membros, supervisores e administradores.
+
+A pergunta desta sprint é:
+
+“O que ainda pode gerar confusão durante o uso diário?”
+
+━━━━━━━━━━━━━━━━━━
+
+1. ESCALA MOBILE + FOLGAS
+    ━━━━━━━━━━━━━━━━━━
+
+Problema:
+
+O membro visualiza sua escala no mobile, mas nem sempre percebe claramente quando está de folga.
+
+Done looks like:
+
+✓ cartões de atividades exibem indicador 🌴
+
+✓ folga aparece inline na visualização pessoal
+
+✓ folga não aparece como atividade
+
+✓ texto claro:
+
+“Você está de folga neste período.”
+
+━━━━━━━━━━━━━━━━━━
+2. FÉRIAS E AFASTAMENTOS LONGOS
+━━━━━━━━━━━━━━━━━━
+
+Permitir:
+
+“Amanda estará afastada de 01/07 até 20/07.”
+
+ASA:
+
+📋 Detectei um período de afastamento.
+
+Deseja registrar?
+
+Done looks like:
+
+✓ datas múltiplas
+
+✓ férias
+
+✓ afastamentos
+
+✓ licenças
+
+✓ períodos longos
+
+━━━━━━━━━━━━━━━━━━
+3. PUBLICAÇÃO VIA ASA
+━━━━━━━━━━━━━━━━━━
+
+Permitir:
+
+“ASA, publique este aviso.”
+
+“ASA, publique a escala.”
+
+Fluxo:
+
+ASA:
+
+⚠️ Esta ação afetará os membros.
+
+Deseja confirmar?
+
+Done looks like:
+
+✓ confirmação obrigatória
+
+✓ publicação rastreada
+
+✓ auditoria
+
+✓ somente gestores
+
+━━━━━━━━━━━━━━━━━━
+4. BLOCOS OPERACIONAIS
+━━━━━━━━━━━━━━━━━━
+
+Permitir:
+
+“Criar bloco operacional das 08h às 10h.”
+
+Exemplos:
+
+• preparação
+
+• montagem
+
+• reunião
+
+• manutenção
+
+• treinamento
+
+Done looks like:
+
+✓ criar_bloco_agenda
+
+✓ visível na agenda
+
+✓ visível na escala
+
+━━━━━━━━━━━━━━━━━━
+5. BIBLIOTECA — LEITURA
+━━━━━━━━━━━━━━━━━━
+
+Registrar:
+
+✓ quem abriu
+
+✓ quando abriu
+
+✓ quantas vezes
+
+ASA pode responder:
+
+“Quem ainda não leu o regulamento?”
+
+Done looks like:
+
+✓ tabela de visualizações
+
+✓ histórico
+
+✓ estatísticas
+
+━━━━━━━━━━━━━━━━━━
+6. MICRO MELHORIAS DE UX
+━━━━━━━━━━━━━━━━━━
+
+✓ mensagens mais claras
+
+✓ estados vazios da ASA
+
+✓ feedback de confirmação
+
+✓ loading melhorado
+
+✓ ícones consistentes
+
+✓ avisos contextuais
+
+━━━━━━━━━━━━━━━━━━
+PRIORIDADE
+━━━━━━━━━━━━━━━━━━
+
+🔴 Alta
+
+* Folgas no mobile
+* Férias por período
+* Publicação via ASA
+
+🟡 Média
+
+* Blocos operacionais
+
+🟢 Baixa
+
+* Rastreamento de leitura
+
+━━━━━━━━━━━━━━━━━━
+RESULTADO ESPERADO
+━━━━━━━━━━━━━━━━━━
+
+✓ menos dúvidas
+
+✓ menos cliques
+
+✓ menos confusão
+
+✓ maior confiança
+
+✓ experiência mais fluida
+
+O objetivo desta sprint não é adicionar funcionalidades.
+
+O objetivo é fazer o MyASA parecer pronto para uso real.
