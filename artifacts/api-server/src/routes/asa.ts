@@ -2260,7 +2260,7 @@ async function executeTool(
         const advice = temp < 15 ? "🧥 Recomendo agasalho hoje." : temp > 28 ? "💧 Hidratação importante!" : rainChance > 50 ? "☂️ Leve um guarda-chuva." : "";
 
         return JSON.stringify({
-          temp: Math.round(temp), description, emoji,
+          temp: Math.round(temp), weatherCode: code, description, emoji,
           wind: Math.round(wind), precipitation: Math.round(precipitation * 10) / 10,
           rainChancePercent: Math.round(rainChance), advice,
           message: `${emoji} ${Math.round(temp)}°C — ${description}. Vento ${Math.round(wind)} km/h.${rainChance > 30 ? ` Chance de chuva: ${Math.round(rainChance)}%.` : ""} ${advice}`.trim(),
@@ -4173,6 +4173,13 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
 
           if (toolUse.name.startsWith("criar_") || toolUse.name.startsWith("sugerir_")) {
             actionsExecuted.push({ tool: toolUse.name, input: toolUse.input, result: JSON.parse(result) });
+          }
+
+          if (toolUse.name === "consultar_clima") {
+            try {
+              const parsed = JSON.parse(result) as { weatherCode?: number; temp?: number };
+              res.write(`data: ${JSON.stringify({ toolResult: { name: toolUse.name, weatherCode: parsed.weatherCode, temp: parsed.temp } })}\n\n`);
+            } catch {}
           }
 
           toolResults.push({

@@ -38,7 +38,7 @@ async function getBaseUrl(): Promise<string> {
 
 // ─── Tool → Pose map ──────────────────────────────────────────────────────────
 
-const TOOL_POSE_MAP: Record<string, AsaPose> = {
+const BASE_TOOL_POSE: Record<string, AsaPose> = {
   consultar_agenda:               "analisando",
   consultar_escalas:              "analisando",
   consultar_responsabilidades:    "analisando",
@@ -106,13 +106,31 @@ const TOOL_POSE_MAP: Record<string, AsaPose> = {
   remover_entrada_escala:         "enviando",
 };
 
-function toolToPose(tool: string | null): AsaPose {
-  if (!tool) return "carregando";
-  return TOOL_POSE_MAP[tool] ?? "carregando";
+interface ClimaResult {
+  weatherCode?: number;
+  temp?: number;
 }
 
-function deriveFinishedPose(tools: string[], content: string): AsaPose {
+const RAIN_CODES = [45, 48, 51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99];
+const SNOW_CODES = [71, 73, 75, 77, 85, 86];
+
+function climaPose(result: ClimaResult): AsaPose {
+  const { weatherCode: code, temp } = result;
+  if (code != null && RAIN_CODES.includes(code)) return "chuva";
+  if (code != null && SNOW_CODES.includes(code)) return "frio";
+  if (temp != null && temp < 15) return "frio";
+  return "bomdia";
+}
+
+function toolResultToPose(tool: string | null, result?: ClimaResult | null): AsaPose {
+  if (!tool) return "carregando";
+  if (tool === "consultar_clima" && result) return climaPose(result);
+  return BASE_TOOL_POSE[tool] ?? "carregando";
+}
+
+function deriveFinishedPose(tools: string[], content: string, climaResult?: ClimaResult | null): AsaPose {
   if (tools.includes("consultar_clima")) {
+    if (climaResult) return climaPose(climaResult);
     const lower = content.toLowerCase();
     const rainWords = ["chuva", "chuvoso", "tempestade", "garoa", "neblina", "nublado", "precipitação"];
     const coldWords = ["frio", "gélido", "gelado"];
@@ -296,13 +314,14 @@ export default function AsaScreen() {
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTool, setActiveTool] = useState<string | null>(null);
+  const [activeToolResult, setActiveToolResult] = useState<ClimaResult | null>(null);
   const [hasError, setHasError] = useState(false);
   const [finishedPose, setFinishedPose] = useState<AsaPose>("feliz");
 
   const chatPose: AsaPose = hasError
     ? "duvida"
     : streaming
-    ? toolToPose(activeTool)
+    ? toolResultToPose(activeTool, activeToolResult)
     : messages.length > 0
     ? finishedPose
     : "feliz";
@@ -355,8 +374,11 @@ export default function AsaScreen() {
     setInput("");
     setStreaming(true);
     setActiveTool(null);
+    setActiveToolResult(null);
     setHasError(false);
     setError(null);
+
+    let climaResult: ClimaResult | null = null;
 
     try {
       const [token, baseUrl] = await Promise.all([
@@ -396,9 +418,15 @@ export default function AsaScreen() {
               ));
             } else if (json.tool) {
               setActiveTool(json.tool);
+              setActiveToolResult(null);
               setMessages(prev => prev.map(m =>
                 m.id === asstId ? { ...m, tools: [...(m.tools ?? []), json.tool] } : m
               ));
+            } else if (json.toolResult) {
+              if (json.toolResult.name === "consultar_clima") {
+                climaResult = { weatherCode: json.toolResult.weatherCode, temp: json.toolResult.temp };
+                setActiveToolResult(climaResult);
+              }
             } else if (json.done) {
               setActiveTool(null);
               setMessages(prev => prev.map(m =>
@@ -423,7 +451,7 @@ export default function AsaScreen() {
         if (asstFinal) {
           const tools   = asstFinal.tools ?? [];
           const content = asstFinal.content;
-          setFinishedPose(deriveFinishedPose(tools, content));
+          setFinishedPose(deriveFinishedPose(tools, content, climaResult));
         }
         return updated;
       });
