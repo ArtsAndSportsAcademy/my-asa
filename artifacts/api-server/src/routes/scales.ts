@@ -81,15 +81,15 @@ router.get("/scales", requireAuth, requireOrganization, async (req, res) => {
   }
 });
 
-// POST /api/scales/generate — generate scale from agenda event + show book
+// POST /api/scales/generate — generate scale (showBookId opcional: apenas shows com posições)
 router.post("/scales/generate", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger("scale", req.requestId, req.correlationId);
   const user = req.user!;
   const userId = user.sub;
   const { agendaEventId, showBookId, operationId, groupId, title } = req.body;
 
-  if (!agendaEventId || !showBookId || !operationId) {
-    res.status(400).json({ error: "agendaEventId, showBookId e operationId são obrigatórios" });
+  if (!agendaEventId || !operationId) {
+    res.status(400).json({ error: "agendaEventId e operationId são obrigatórios" });
     return;
   }
 
@@ -138,11 +138,24 @@ router.post("/scales/generate", requireAuth, requireOrganization, async (req, re
       return;
     }
 
-    // Run coverage engine
-    const engineResult = await runCoverageEngine(agendaEventId, showBookId, operationId, groupId);
+    // Run coverage engine only when show book is provided (shows com posições/personagens)
+    let engineResult = {
+      totalPositions: 0,
+      assignedPositions: 0,
+      openPositions: 0,
+      conflictPositions: 0,
+    };
 
-    // Persist allocations, candidates, exceptions
-    await persistEngineResult(scale.id, agendaEventId, engineResult);
+    if (showBookId) {
+      const fullResult = await runCoverageEngine(agendaEventId, showBookId, operationId, groupId);
+      await persistEngineResult(scale.id, agendaEventId, fullResult);
+      engineResult = {
+        totalPositions: fullResult.totalPositions,
+        assignedPositions: fullResult.assignedPositions,
+        openPositions: fullResult.openPositions,
+        conflictPositions: fullResult.conflictPositions,
+      };
+    }
 
     eventBus.emit("scale.generated", {
       scaleId: scale.id,
@@ -155,12 +168,7 @@ router.post("/scales/generate", requireAuth, requireOrganization, async (req, re
     const summary = await buildScaleSummary(scale);
     res.status(201).json({
       scale: summary,
-      engine: {
-        totalPositions: engineResult.totalPositions,
-        assignedPositions: engineResult.assignedPositions,
-        openPositions: engineResult.openPositions,
-        conflictPositions: engineResult.conflictPositions,
-      },
+      engine: engineResult,
     });
   } catch (err) {
     log.error({ err }, "erro ao gerar escala");
@@ -274,8 +282,8 @@ router.post("/scales/:id/regenerate", requireAuth, requireOrganization, async (r
       res.status(409).json({ error: "Apenas escalas em Rascunho podem ser regeradas" });
       return;
     }
-    if (!scale.agendaEventId || !scale.showBookId) {
-      res.status(400).json({ error: "Escala não possui agendaEventId e showBookId para regenerar" });
+    if (!scale.agendaEventId) {
+      res.status(400).json({ error: "Escala não possui agendaEventId para regenerar" });
       return;
     }
 
@@ -287,14 +295,29 @@ router.post("/scales/:id/regenerate", requireAuth, requireOrganization, async (r
       .delete(allocationExceptionsTable)
       .where(eq(allocationExceptionsTable.scaleId, id));
 
-    // Rerun engine
-    const engineResult = await runCoverageEngine(
-      scale.agendaEventId,
-      scale.showBookId,
-      scale.operationId,
-      scale.groupId ?? undefined
-    );
-    await persistEngineResult(id, scale.agendaEventId, engineResult);
+    // Rerun engine only if show book is linked (escalas de show com posições)
+    let engineResult = {
+      totalPositions: 0,
+      assignedPositions: 0,
+      openPositions: 0,
+      conflictPositions: 0,
+    };
+
+    if (scale.showBookId) {
+      const fullResult = await runCoverageEngine(
+        scale.agendaEventId,
+        scale.showBookId,
+        scale.operationId,
+        scale.groupId ?? undefined
+      );
+      await persistEngineResult(id, scale.agendaEventId, fullResult);
+      engineResult = {
+        totalPositions: fullResult.totalPositions,
+        assignedPositions: fullResult.assignedPositions,
+        openPositions: fullResult.openPositions,
+        conflictPositions: fullResult.conflictPositions,
+      };
+    }
 
     // Update generatedAt
     await db

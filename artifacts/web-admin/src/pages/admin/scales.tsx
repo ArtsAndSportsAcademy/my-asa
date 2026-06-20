@@ -99,7 +99,7 @@ function fmtTime(t?: string | null) {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface GenerateFormState { agendaEventId: string; showBookId: string; title: string; }
+interface GenerateFormState { agendaEventId: string; showBookId: string; title: string; useShowBook: boolean; }
 interface OverrideFormState { userId: string; reason: string; notes: string; }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -128,7 +128,7 @@ export default function ScalesPage() {
 
   // ── Forms ─────────────────────────────────────────────────────────────────
   const [generateForm, setGenerateForm] = useState<GenerateFormState>({
-    agendaEventId: "", showBookId: "", title: "",
+    agendaEventId: "", showBookId: "", title: "", useShowBook: false,
   });
   const [overrideForm, setOverrideForm] = useState<OverrideFormState>({
     userId: "", reason: "", notes: "",
@@ -202,20 +202,26 @@ export default function ScalesPage() {
   }
 
   async function handleGenerate() {
-    if (!generateForm.agendaEventId || !generateForm.showBookId || !operationId) return;
+    if (!generateForm.agendaEventId || !operationId) return;
     try {
       const result = await generateMut.mutateAsync({
         data: {
           agendaEventId: generateForm.agendaEventId,
-          showBookId: generateForm.showBookId,
+          showBookId: generateForm.useShowBook && generateForm.showBookId ? generateForm.showBookId : undefined,
           operationId,
           title: generateForm.title || undefined,
-        },
+        } as any,
       });
-      toast({ title: "Escala gerada", description: `${result.engine.assignedPositions}/${result.engine.totalPositions} posições alocadas.` });
+      const hasPositions = result.engine.totalPositions > 0;
+      toast({
+        title: "Escala gerada",
+        description: hasPositions
+          ? `${result.engine.assignedPositions}/${result.engine.totalPositions} posições alocadas.`
+          : "Escala criada. Adicione os membros manualmente.",
+      });
       invalidateScales();
       setShowGenerate(false);
-      setGenerateForm({ agendaEventId: "", showBookId: "", title: "" });
+      setGenerateForm({ agendaEventId: "", showBookId: "", title: "", useShowBook: false });
       pickScale(result.scale);
     } catch {
       toast({ title: "Erro ao gerar escala", variant: "destructive" });
@@ -640,7 +646,11 @@ export default function ScalesPage() {
               <Label>Evento da Agenda *</Label>
               <Select
                 value={generateForm.agendaEventId}
-                onValueChange={(v) => setGenerateForm((f) => ({ ...f, agendaEventId: v }))}
+                onValueChange={(v) => {
+                  const ev = (eventsData?.events ?? []).find((e) => e.id === v);
+                  const isShow = (ev as any)?.type === "SHOW";
+                  setGenerateForm((f) => ({ ...f, agendaEventId: v, useShowBook: isShow, showBookId: "" }));
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o evento" />
@@ -654,22 +664,43 @@ export default function ScalesPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
-              <Label>Livro do Show *</Label>
-              <Select
-                value={generateForm.showBookId}
-                onValueChange={(v) => setGenerateForm((f) => ({ ...f, showBookId: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o show book" />
-                </SelectTrigger>
-                <SelectContent>
-                  {((showBooksData as any)?.showBooks ?? []).map((sb: any) => (
-                    <SelectItem key={sb.id} value={sb.id}>{sb.title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
+            {/* Livro do Show — condicional */}
+            <div className="rounded-md border px-3 py-2.5 space-y-3">
+              <label className="flex items-center justify-between gap-2 cursor-pointer select-none">
+                <div>
+                  <p className="text-sm font-medium leading-none">Vincular Livro do Show</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {generateForm.useShowBook
+                      ? "Posições/personagens serão alocados pelo motor."
+                      : "Escala livre — ensaio, aula, evento operacional, etc."}
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-primary cursor-pointer"
+                  checked={generateForm.useShowBook}
+                  onChange={(e) => setGenerateForm((f) => ({ ...f, useShowBook: e.target.checked, showBookId: "" }))}
+                />
+              </label>
+
+              {generateForm.useShowBook && (
+                <Select
+                  value={generateForm.showBookId}
+                  onValueChange={(v) => setGenerateForm((f) => ({ ...f, showBookId: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o Livro do Show" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {((showBooksData as any)?.showBooks ?? []).map((sb: any) => (
+                      <SelectItem key={sb.id} value={sb.id}>{sb.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
+
             <div className="space-y-1.5">
               <Label>Título (opcional)</Label>
               <Input
@@ -683,7 +714,11 @@ export default function ScalesPage() {
             <Button variant="outline" onClick={() => setShowGenerate(false)}>Cancelar</Button>
             <Button
               onClick={handleGenerate}
-              disabled={!generateForm.agendaEventId || !generateForm.showBookId || generateMut.isPending}
+              disabled={
+                !generateForm.agendaEventId ||
+                (generateForm.useShowBook && !generateForm.showBookId) ||
+                generateMut.isPending
+              }
             >
               <Zap className="h-4 w-4 mr-1.5" />
               {generateMut.isPending ? "Gerando..." : "Gerar Escala"}
