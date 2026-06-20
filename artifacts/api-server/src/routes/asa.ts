@@ -30,6 +30,7 @@ import {
 } from "@workspace/db";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
+import { createNotification } from "../services/notificationService.js";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type MessageParam = { role: "user" | "assistant"; content: any };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -2124,6 +2125,10 @@ async function executeTool(
       const recMsg    = input.message as string;
       if (!recUserId || !recType || !recTitle || !recMsg)
         return JSON.stringify({ error: "userId, type, title e message são obrigatórios" });
+      const [recTarget] = await db.select({ id: usersTable.id }).from(usersTable)
+        .where(and(eq(usersTable.id, recUserId), eq(usersTable.organizationId, ctx.organizationId)))
+        .limit(1);
+      if (!recTarget) return JSON.stringify({ error: "Membro não encontrado nesta organização" });
       const [rec] = await db.insert(recognitionsTable).values({
         organizationId: ctx.organizationId,
         userId:         recUserId,
@@ -2133,6 +2138,18 @@ async function executeTool(
         createdBy:      ctx.userId,
         publishedAt:    new Date(),
       }).returning();
+      try {
+        await createNotification({
+          userId:     recUserId,
+          type:       "RECOGNITION_RECEIVED",
+          title:      "🎉 Você recebeu um reconhecimento!",
+          message:    recTitle,
+          priority:   "IMPORTANT",
+          category:   "system",
+          entityType: "recognition",
+          entityId:   rec.id,
+        });
+      } catch (err) { console.error("Falha ao notificar reconhecimento", { targetUserId: recUserId, recognitionId: rec.id, err }); }
       return JSON.stringify({
         created: true,
         id: rec.id,
@@ -3466,6 +3483,10 @@ async function executeTool(
       const message = customMessage ?? autoMessages[triggerType] ?? `🎖️ Reconhecimento especial para ${recUserName}: ${triggerLabel}.`;
       const title   = triggerType === "BIRTHDAY" ? `🎂 Feliz aniversário, ${recUserName.split(" ")[0]}!` : `${triggerType === "TIME_OF_HOUSE" ? "⭐" : "🏆"} ${triggerLabel} — ${recUserName.split(" ")[0]}`;
 
+      const [autoTarget] = await db.select({ id: usersTable.id }).from(usersTable)
+        .where(and(eq(usersTable.id, recUserId), eq(usersTable.organizationId, ctx.organizationId)))
+        .limit(1);
+      if (!autoTarget) return JSON.stringify({ error: "Membro não encontrado nesta organização" });
       const [rec] = await db.insert(recognitionsTable).values({
         organizationId: ctx.organizationId,
         userId:         recUserId,
@@ -3475,6 +3496,18 @@ async function executeTool(
         createdBy:      ctx.userId,
         publishedAt:    new Date(),
       }).returning();
+      try {
+        await createNotification({
+          userId:     recUserId,
+          type:       "RECOGNITION_RECEIVED",
+          title:      "🎉 Você recebeu um reconhecimento!",
+          message:    title,
+          priority:   "IMPORTANT",
+          category:   "system",
+          entityType: "recognition",
+          entityId:   rec.id,
+        });
+      } catch (err) { console.error("Falha ao notificar reconhecimento automático", { targetUserId: recUserId, recognitionId: rec.id, err }); }
 
       return JSON.stringify({
         created: true,
@@ -4486,6 +4519,14 @@ router.post("/asa/recognitions", requireAuth, requireOrganization, async (req, r
     return;
   }
 
+  const [postTarget] = await db.select({ id: usersTable.id }).from(usersTable)
+    .where(and(eq(usersTable.id, userId), eq(usersTable.organizationId, user.organizationId!)))
+    .limit(1);
+  if (!postTarget) {
+    res.status(404).json({ error: "NOT_FOUND", message: "Membro não encontrado nesta organização" });
+    return;
+  }
+
   const [rec] = await db.insert(recognitionsTable).values({
     organizationId: user.organizationId!,
     userId,
@@ -4495,6 +4536,19 @@ router.post("/asa/recognitions", requireAuth, requireOrganization, async (req, r
     createdBy: user.sub,
     publishedAt: new Date(),
   }).returning();
+
+  try {
+    await createNotification({
+      userId,
+      type:       "RECOGNITION_RECEIVED",
+      title:      "🎉 Você recebeu um reconhecimento!",
+      message:    title,
+      priority:   "IMPORTANT",
+      category:   "system",
+      entityType: "recognition",
+      entityId:   rec.id,
+    });
+  } catch (err) { console.error("Falha ao notificar reconhecimento", { targetUserId: userId, recognitionId: rec.id, err }); }
 
   res.status(201).json({ recognition: rec });
 });
