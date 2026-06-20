@@ -99,9 +99,15 @@ const ADMIN_NAV: NavGroup[] = [
 
 const SUPERVISOR_NAV: NavGroup[] = [
   {
+    label: "PAINÉIS",
+    items: [
+      { href: "/admin/home",                   icon: Home,            label: "Início"        },
+      { href: "/supervisor/operational-panel", icon: LayoutDashboard, label: "Painel"        },
+    ],
+  },
+  {
     label: "OPERAÇÃO",
     items: [
-      { href: "/supervisor/operational-panel", icon: LayoutDashboard, label: "Painel"        },
       { href: "/admin/scales",                 icon: ClipboardList,   label: "Escalas"       },
       { href: "/supervisor/daily-book",        icon: BookMarked,      label: "Livro do Dia"  },
       { href: "/supervisor/requests",          icon: FileText,        label: "Solicitações"  },
@@ -235,7 +241,8 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
         </div>
 
         <nav className="flex-1 p-3 space-y-4">
-          {/* Início sempre visível */}
+          {/* Início — apenas para membros e capitães sem grupos de navegação */}
+          {navGroups.length === 0 && (
           <div>
             <div className="space-y-0.5">
               {[{ href: "/admin/home", icon: Home, label: "Início" }].map((item) => {
@@ -252,6 +259,7 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
               })}
             </div>
           </div>
+          )}
 
           {/* Seção CAPITÃO — só para membros com delegações */}
           {isCaptain && captainItems.length > 0 && (

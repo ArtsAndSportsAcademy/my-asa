@@ -174,16 +174,16 @@ function Router() {
       <Route path="/" component={RootRoute} />
       <Route path="/login" component={Login} />
       <ProtectedRoute path="/admin/home" component={AdminHome} />
-      <ProtectedRoute path="/admin/users" component={UsersPage} />
-      <ProtectedRoute path="/admin/operations" component={OperationsPage} />
-      <ProtectedRoute path="/admin/groups" component={GroupsPage} />
+      <RoleRoute path="/admin/users" component={UsersPage} roles={["ADMIN"]} />
+      <RoleRoute path="/admin/operations" component={OperationsPage} roles={["ADMIN"]} />
+      <RoleRoute path="/admin/groups" component={GroupsPage} roles={["ADMIN"]} />
       <ProtectedRoute path="/admin/show-book" component={ShowBookPage} />
       <ProtectedRoute path="/admin/agenda" component={AgendaPage} />
-      <ProtectedRoute path="/admin/auditoria" component={AuditoriaPage} />
+      <RoleRoute path="/admin/auditoria" component={AuditoriaPage} roles={["ADMIN"]} />
       <RoleRoute path="/admin/scales" component={ScalesPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/admin/daily-book" component={DailyBookPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/supervisor/daily-book" component={SupervisorDailyBookPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <ProtectedRoute path="/admin/operational-panel" component={AdminOperationalPanel} />
+      <RoleRoute path="/admin/operational-panel" component={AdminOperationalPanel} roles={["ADMIN"]} />
       <RoleRoute path="/supervisor/operational-panel" component={SupervisorOperationalPanel} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
       <ProtectedRoute path="/admin/meu-dia" component={MeuDiaPage} />
       <ProtectedRoute path="/admin/avisos" component={AdminAvisosPage} />

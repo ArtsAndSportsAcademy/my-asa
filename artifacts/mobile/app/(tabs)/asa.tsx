@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   ActivityIndicator,
   FlatList,
@@ -103,12 +104,20 @@ const TOOL_LABELS: Record<string, string> = {
   gerar_relatorio_asa:            "📊 Gerando relatório",
 };
 
-const SUGGESTIONS = [
+const SUGGESTIONS_MANAGER = [
+  "Bom dia! Qual é o panorama de hoje?",
   "Quem está de folga hoje?",
-  "Adicionar [nome] na escala amanhã.",
-  "Criar tarefa para [nome] até sexta.",
+  "Quais são os riscos operacionais do dia?",
   "Detectar marcos da equipe hoje.",
   "Quem faz aniversário essa semana?",
+  "Gerar relatório da semana.",
+];
+
+const SUGGESTIONS_MEMBER = [
+  "Qual é minha escala essa semana?",
+  "Quais são meus avisos ativos?",
+  "Quem faz aniversário essa semana?",
+  "Quais tarefas tenho pendentes?",
 ];
 
 // ─── Message Bubble ────────────────────────────────────────────────────────────
@@ -173,6 +182,11 @@ export default function AsaScreen() {
   const insets = useSafeAreaInsets();
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
+  const { roles } = useAuth();
+  const isManager = roles.some((r) =>
+    ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"].includes(r.role)
+  );
+  const suggestions = isManager ? SUGGESTIONS_MANAGER : SUGGESTIONS_MEMBER;
 
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -329,7 +343,7 @@ export default function AsaScreen() {
             </Pressable>
           )}
           <View style={styles.suggestions}>
-            {SUGGESTIONS.map((s) => (
+            {suggestions.map((s) => (
               <Pressable
                 key={s}
                 onPress={() => sendMessage(s)}

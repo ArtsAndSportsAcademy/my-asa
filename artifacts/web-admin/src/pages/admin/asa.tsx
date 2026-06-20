@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import AdminLayout from "@/components/admin-layout";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -121,7 +122,27 @@ function MessageBubble({ msg }: { msg: Message }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
+const SUGGESTIONS_MANAGER = [
+  "Bom dia! Qual é o panorama de hoje?",
+  "Quem está de folga hoje?",
+  "Quais são os riscos operacionais do dia?",
+  "Tem alguma responsabilidade sem responsável?",
+  "Quais avisos foram publicados recentemente?",
+  "Gerar relatório da semana.",
+];
+
+const SUGGESTIONS_MEMBER = [
+  "Qual é minha escala essa semana?",
+  "Quais são meus avisos ativos?",
+  "Quem faz aniversário essa semana?",
+  "Quais tarefas tenho pendentes?",
+];
+
 export default function AsaPage() {
+  const { roles: userRoles } = useAuth();
+  const isManager = userRoles.some((r) =>
+    ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"].includes(r.role)
+  );
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -298,11 +319,7 @@ export default function AsaPage() {
                 </p>
               </div>
               <div className="flex flex-wrap justify-center gap-2 mt-2">
-                {[
-                  "Quais ensaios temos essa semana?",
-                  "Tem alguma responsabilidade sem responsável?",
-                  "Quais avisos foram publicados recentemente?",
-                ].map((suggestion) => (
+                {(isManager ? SUGGESTIONS_MANAGER : SUGGESTIONS_MEMBER).map((suggestion) => (
                   <button
                     key={suggestion}
                     onClick={() => { setInput(suggestion); textareaRef.current?.focus(); }}

@@ -39,7 +39,7 @@ export default function SupervisorCheckInsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  const operationId = roles[0]?.operationId ?? "";
+  const operationId = roles.find((r) => r.operationId)?.operationId ?? "";
   const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [excuseInput, setExcuseInput] = useState<Record<string, string>>({});
 

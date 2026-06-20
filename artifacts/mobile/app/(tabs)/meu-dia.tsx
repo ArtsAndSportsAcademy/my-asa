@@ -279,7 +279,13 @@ function RepublishDeltaBanner({ delta, colors }: { delta: Record<string, unknown
       {Object.entries(delta).map(([key, val]) => (
         <View key={key} style={styles.deltaRow}>
           <Text style={styles.deltaKey}>{key}:</Text>
-          <Text style={styles.deltaVal}>{JSON.stringify(val)}</Text>
+          <Text style={styles.deltaVal}>
+            {Array.isArray(val)
+              ? val.join(", ")
+              : val !== null && typeof val === "object"
+              ? Object.entries(val as Record<string, unknown>).map(([k, v]) => `${k}: ${v}`).join("; ")
+              : String(val ?? "")}
+          </Text>
         </View>
       ))}
     </View>

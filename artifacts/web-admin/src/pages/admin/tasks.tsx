@@ -290,6 +290,7 @@ export default function AdminTasksPage() {
   const [refetchKey, setRefetchKey] = useState(0);
   const [changesComment, setChangesComment] = useState("");
   const [changesTaskId, setChangesTaskId] = useState<string | null>(null);
+  const [cancelTaskId, setCancelTaskId] = useState<string | null>(null);
 
   const { data: opsData } = useGetOperations();
   const operations = opsData?.operations ?? [];
@@ -331,8 +332,14 @@ export default function AdminTasksPage() {
     }
   }
 
-  async function handleCancel(id: string) {
-    if (!confirm("Cancelar esta tarefa?")) return;
+  function handleCancel(id: string) {
+    setCancelTaskId(id);
+  }
+
+  async function confirmCancel() {
+    if (!cancelTaskId) return;
+    const id = cancelTaskId;
+    setCancelTaskId(null);
     try {
       await cancelTask({ taskId: id });
       toast({ title: "Tarefa cancelada" });
@@ -437,6 +444,24 @@ export default function AdminTasksPage() {
             </TabsContent>
           ))}
         </Tabs>
+
+        {/* Dialog confirmação cancelamento */}
+        <Dialog open={!!cancelTaskId} onOpenChange={(o) => { if (!o) setCancelTaskId(null); }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Cancelar tarefa</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground py-2">
+              Tem certeza que deseja cancelar esta tarefa? Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setCancelTaskId(null)}>Não cancelar</Button>
+              <Button variant="destructive" onClick={confirmCancel}>
+                <Ban className="h-4 w-4 mr-1.5" /> Cancelar tarefa
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Dialog ajustes */}
         <Dialog open={!!changesTaskId} onOpenChange={(o) => { if (!o) { setChangesTaskId(null); setChangesComment(""); } }}>

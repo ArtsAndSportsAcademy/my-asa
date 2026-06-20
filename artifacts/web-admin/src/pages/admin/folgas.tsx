@@ -19,6 +19,7 @@ import {
   useResetFolgasGrid,
   useGetOperations,
   useGetFolgasGrid,
+  useListUsers,
   getListFolgasQueryKey,
   getGetFolgasGridQueryKey,
 } from "@workspace/api-client-react";
@@ -77,6 +78,8 @@ function FolgaModal({
   const qc = useQueryClient();
   const { data: opsData } = useGetOperations();
   const operations = opsData?.operations ?? [];
+  const { data: usersData } = useListUsers();
+  const users = usersData?.users ?? [];
 
   const [userId,      setUserId]      = useState(editing?.userId      ?? "");
   const [operationId, setOperationId] = useState(editing?.operationId ?? defaultOpId ?? "");
@@ -131,8 +134,15 @@ function FolgaModal({
           {!editing && (
             <>
               <div className="space-y-1">
-                <Label>ID do Membro <span className="text-destructive">*</span></Label>
-                <Input placeholder="UUID do membro" value={userId} onChange={(e) => setUserId(e.target.value)} />
+                <Label>Membro <span className="text-destructive">*</span></Label>
+                <Select value={userId} onValueChange={setUserId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o membro" /></SelectTrigger>
+                  <SelectContent>
+                    {users.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1">
                 <Label>Operação <span className="text-destructive">*</span></Label>
