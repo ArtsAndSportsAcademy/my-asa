@@ -102,8 +102,10 @@ function NewRecognitionDialog({
     try {
       const r = await fetch("/api/asa/recognitions", {
         method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`,
+        },
         body: JSON.stringify(form),
       });
       if (!r.ok) throw new Error(String(r.status));
@@ -182,6 +184,10 @@ function NewRecognitionDialog({
   );
 }
 
+function getToken(): string {
+  return localStorage.getItem("myasa_access_token") ?? "";
+}
+
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function MuralPage() {
@@ -191,7 +197,9 @@ export default function MuralPage() {
 
   function loadMural() {
     setLoading(true);
-    fetch("/api/asa/mural", { credentials: "include" })
+    fetch("/api/asa/mural", {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    })
       .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
       .then((d: MuralData) => setData(d))
       .catch(() => setData(null))
@@ -234,11 +242,11 @@ export default function MuralPage() {
 
             {/* ── Avisos ── */}
             <Section title="📢 Avisos Recentes">
-              {data.recent_notices.length === 0 ? (
+              {(data.recent_notices ?? []).length === 0 ? (
                 <EmptyState message="Nenhum aviso publicado ainda." />
               ) : (
                 <div className="grid gap-3">
-                  {data.recent_notices.map((n) => {
+                  {(data.recent_notices ?? []).map((n) => {
                     const cfg = urgencyConfig(n.urgency);
                     return (
                       <Card key={n.id} className="overflow-hidden">

@@ -13,3 +13,4 @@
 - [Anthropic SDK subpath import — pnpm](anthropic-sdk-subpath.md) — @anthropic-ai/sdk/resources/* não acessível via pnpm symlink; usar tipos locais com content:any compatíveis estruturalmente
 - [Drizzle and() + ctx property narrowing](drizzle-and-ctx-narrowing.md) — ctx.operationId/organizationId não narrowed por TypeScript (objeto); usar ctx.operationId! dentro de eq(); and()! dentro de .where()
 - [noticeTypeEnum valores corretos](notice-type-enum.md) — válidos: INFORMATIVE|IMPORTANT|PERSISTENT|ESCALATED (não CHANGE/ALERT/EMERGENCY); urgency: INFORMATIVE|IMPORTANT|CRITICAL
+- [web-admin fetch — Bearer token obrigatório](web-admin-bearer-fetch.md) — requireAuth usa header Authorization Bearer, não cookie; fetch() direto deve usar `localStorage.getItem("myasa_access_token")`
