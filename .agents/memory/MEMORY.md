@@ -18,3 +18,4 @@
 - [web-admin fetch — Bearer token obrigatório](web-admin-bearer-fetch.md) — requireAuth usa header Authorization Bearer, não cookie; fetch() direto deve usar `localStorage.getItem("myasa_access_token")`
 - [Duas tabelas de notificação](notification-tables.md) — `notifications`=push(FCM); `user_notifications`=sino in-app (createNotification/getUnreadCount); a 2ª pode não estar migrada e falha silenciosa em try/catch
 - [Asa — multi-membro e lote](asa-batch-tools.md) — extrair "cores" reutilizáveis; single + _lote chamam o mesmo core; consultar_membros aceita listas; runBatch nunca aborta no 1º erro
+- [api-server direct-call tests](api-server-direct-call-tests.md) — sem framework de teste; exportar handler + entry temp em src/ + bundle esbuild (plugin pino exige outdir, não outfile)

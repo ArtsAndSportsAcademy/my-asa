@@ -588,6 +588,30 @@ Quando o usuário citar VÁRIOS membros numa mesma frase (separados por vírgula
 
 ⸻
 
+Edição de entidades por conversa
+
+Quando o usuário pedir para MUDAR, ALTERAR, CORRIGIR, REMARCAR, TROCAR ou ATUALIZAR algo que já existe (uma tarefa, folga/ausência, ensaio/bloco de agenda, aviso em rascunho ou reconhecimento), siga SEMPRE este fluxo:
+
+1. LOCALIZAR: identifique o item exato. Use a ferramenta de consulta correspondente (consultar_tarefas, consultar_folgas, consultar_agenda, consultar_avisos, consultar_reconhecimentos) para obter o ID e os valores atuais. Se houver mais de um candidato, pergunte qual antes de prosseguir.
+2. MOSTRAR ANTES/DEPOIS: apresente claramente o que vai mudar, no formato:
+   "✏️ Vou alterar [item]:
+   • [campo]: [valor atual] → [novo valor]
+   Confirma?"
+3. CONFIRMAR: NUNCA edite sem confirmação explícita ("sim", "pode", "confirmo").
+4. EXECUTAR: só então chame a ferramenta de edição (editar_tarefa, editar_ausencia, editar_evento_agenda, editar_aviso, editar_reconhecimento), enviando o ID e APENAS os campos que mudam.
+5. RELATAR: após a edição, confirme o que foi alterado.
+
+Restrições de estado (a ferramenta também valida e devolve erro amigável se violado):
+• Tarefa: NÃO pode ser editada se estiver APROVADA, CONCLUÍDA ou CANCELADA.
+• Evento da agenda (ensaio/bloco): NÃO pode ser editado se estiver CANCELADO ou CONCLUÍDO.
+• Aviso: só pode ser editado enquanto estiver em RASCUNHO (DRAFT). Avisos já publicados não podem ser editados.
+• Ausência: não pode ser editada se já estiver cancelada.
+Se o item não puder ser editado por causa do estado, explique o motivo ao usuário em vez de tentar.
+
+Apenas gestores podem editar entidades.
+
+⸻
+
 Princípios
 
 1. Confirme ações importantes antes de executar.
@@ -1599,6 +1623,87 @@ const ASA_TOOLS: Tool[] = [
       },
     },
   },
+  // ── Edição de entidades por conversa ────────────────────────────────────────
+  {
+    name: "editar_tarefa",
+    description: "Edita uma tarefa existente (título, descrição, responsável, prazo ou prioridade). Use quando o usuário pedir para mudar/alterar/corrigir/atualizar uma tarefa (ex: 'mude o prazo da tarefa X para sexta', 'troque o responsável'). Use consultar_tarefas ANTES para obter o taskId. Tarefas APROVADAS, CONCLUÍDAS ou CANCELADAS NÃO podem ser editadas. SEMPRE mostre o antes/depois e peça confirmação explícita antes de chamar esta ferramenta. Envie apenas os campos que mudam.",
+    input_schema: {
+      type: "object" as const,
+      required: ["taskId"],
+      properties: {
+        taskId:       { type: "string", description: "ID UUID da tarefa (via consultar_tarefas)" },
+        title:        { type: "string", description: "Novo título (opcional)" },
+        description:  { type: "string", description: "Nova descrição (opcional)" },
+        assigneeId:   { type: "string", description: "ID do novo responsável (via consultar_membros) (opcional)" },
+        assigneeName: { type: "string", description: "Nome do novo responsável (para o resumo) (opcional)" },
+        dueDate:      { type: "string", description: "Novo prazo YYYY-MM-DD (opcional)" },
+        priority:     { type: "string", description: "Nova prioridade: LOW | MEDIUM | HIGH | CRITICAL (opcional)" },
+      },
+    },
+  },
+  {
+    name: "editar_ausencia",
+    description: "Edita uma ausência/folga existente (datas, tipo ou motivo). Use quando o usuário pedir para mudar/corrigir uma folga (ex: 'a folga da Amanda é na quinta, não na quarta', 'mude o tipo para afastamento'). Use consultar_folgas ANTES para obter o folgaId. Ausências CANCELADAS não podem ser editadas. SEMPRE mostre o antes/depois e peça confirmação antes de chamar esta ferramenta. Envie apenas os campos que mudam.",
+    input_schema: {
+      type: "object" as const,
+      required: ["folgaId"],
+      properties: {
+        folgaId:   { type: "string", description: "ID UUID da folga (via consultar_folgas)" },
+        startDate: { type: "string", description: "Nova data de início YYYY-MM-DD (opcional)" },
+        endDate:   { type: "string", description: "Nova data de fim YYYY-MM-DD (opcional)" },
+        type:      { type: "string", description: "Novo tipo: NO_SHOW | DAY_OFF | AFASTAMENTO | RECESSO | RESTRICAO | OUTRO (opcional)" },
+        reason:    { type: "string", description: "Novo motivo/observação (opcional)" },
+      },
+    },
+  },
+  {
+    name: "editar_evento_agenda",
+    description: "Edita um evento da agenda existente — ensaio ou bloco operacional (título, data, horários, local ou descrição). Use quando o usuário pedir para mudar/remarcar/alterar um ensaio ou bloco (ex: 'mude o ensaio de sábado para domingo', 'o bloco começa às 9h'). Use consultar_agenda ANTES para obter o eventId. Eventos CANCELADOS ou CONCLUÍDOS não podem ser editados. SEMPRE mostre o antes/depois e peça confirmação antes de chamar esta ferramenta. Envie apenas os campos que mudam.",
+    input_schema: {
+      type: "object" as const,
+      required: ["eventId"],
+      properties: {
+        eventId:    { type: "string", description: "ID UUID do evento (via consultar_agenda)" },
+        titulo:     { type: "string", description: "Novo título (opcional)" },
+        data:       { type: "string", description: "Nova data YYYY-MM-DD (opcional)" },
+        dataFim:    { type: "string", description: "Nova data de fim YYYY-MM-DD (opcional)" },
+        horaInicio: { type: "string", description: "Novo horário de início HH:MM (opcional)" },
+        horaFim:    { type: "string", description: "Novo horário de fim HH:MM (opcional)" },
+        local:      { type: "string", description: "Novo local (opcional)" },
+        descricao:  { type: "string", description: "Nova descrição/observações (opcional)" },
+      },
+    },
+  },
+  {
+    name: "editar_aviso",
+    description: "Edita um aviso que ainda está em rascunho (DRAFT) — título, conteúdo, tipo, urgência ou confirmação. Use quando o usuário pedir para corrigir/ajustar um aviso ANTES de publicá-lo. Use consultar_avisos ANTES para obter o noticeId. Apenas avisos em RASCUNHO podem ser editados; avisos já publicados NÃO podem. SEMPRE mostre o antes/depois e peça confirmação antes de chamar esta ferramenta. Envie apenas os campos que mudam.",
+    input_schema: {
+      type: "object" as const,
+      required: ["noticeId"],
+      properties: {
+        noticeId:             { type: "string", description: "ID UUID do aviso (via consultar_avisos)" },
+        title:                { type: "string", description: "Novo título (opcional)" },
+        content:              { type: "string", description: "Novo conteúdo (opcional)" },
+        type:                 { type: "string", description: "Novo tipo: INFORMATIVE | IMPORTANT | PERSISTENT | ESCALATED (opcional)" },
+        urgency:              { type: "string", description: "Nova urgência: INFORMATIVE | IMPORTANT | CRITICAL (opcional)" },
+        requiresConfirmation: { type: "boolean", description: "Exige confirmação de leitura (opcional)" },
+      },
+    },
+  },
+  {
+    name: "editar_reconhecimento",
+    description: "Edita um reconhecimento existente (tipo, título ou mensagem). Use quando o usuário pedir para corrigir/ajustar um reconhecimento já criado. Use consultar_reconhecimentos ANTES para obter o recognitionId. SEMPRE mostre o antes/depois e peça confirmação antes de chamar esta ferramenta. Envie apenas os campos que mudam.",
+    input_schema: {
+      type: "object" as const,
+      required: ["recognitionId"],
+      properties: {
+        recognitionId: { type: "string", description: "ID UUID do reconhecimento (via consultar_reconhecimentos)" },
+        type:          { type: "string", description: "Novo tipo do reconhecimento (opcional)" },
+        title:         { type: "string", description: "Novo título (opcional)" },
+        message:       { type: "string", description: "Nova mensagem (opcional)" },
+      },
+    },
+  },
 ];
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -1923,7 +2028,7 @@ function summarizeBatch(noun: string, results: BatchItemResult[]): { total: numb
 // Tool Executor
 // ────────────────────────────────────────────────────────────────────────────
 
-async function executeTool(
+export async function executeTool(
   name: string,
   input: Record<string, unknown>,
   ctx: { userId: string; organizationId: string | null; userRole: string; operationId: string | null }
@@ -4503,6 +4608,150 @@ async function executeTool(
         ...summary,
         message: `Evento "${event.title}" (${eventDate}):\n${summary.message}`,
       });
+    }
+
+    // ── Edição de entidades por conversa ──────────────────────────────────────
+    if (name === "editar_tarefa") {
+      if (!isManager) return JSON.stringify({ error: "Apenas gestores podem editar tarefas" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const taskId = input.taskId as string;
+      const [existing] = await db
+        .select({ id: tasksTable.id, status: tasksTable.status, title: tasksTable.title, description: tasksTable.description, assigneeId: tasksTable.assigneeId, dueDate: tasksTable.dueDate, priority: tasksTable.priority })
+        .from(tasksTable)
+        .where(and(eq(tasksTable.id, taskId), eq(tasksTable.organizationId, ctx.organizationId)))
+        .limit(1);
+      if (!existing) return JSON.stringify({ success: false, message: "Tarefa não encontrada. Use consultar_tarefas para obter o ID." });
+      if (["APPROVED", "COMPLETED", "CANCELLED"].includes(existing.status))
+        return JSON.stringify({ success: false, message: `Tarefa com status "${existing.status}" não pode ser editada (encerrada).` });
+
+      const updates: Partial<typeof tasksTable.$inferInsert> = {};
+      const before: Record<string, unknown> = {};
+      const after: Record<string, unknown> = {};
+      if (input.title !== undefined) { before.title = existing.title; after.title = input.title; updates.title = input.title as string; }
+      if (input.description !== undefined) { before.description = existing.description; after.description = input.description; updates.description = input.description as string; }
+      if (input.assigneeId !== undefined) { before.assigneeId = existing.assigneeId; after.assigneeId = input.assigneeId; updates.assigneeId = input.assigneeId as string; }
+      if (input.dueDate !== undefined) { before.dueDate = existing.dueDate; after.dueDate = input.dueDate; updates.dueDate = input.dueDate as string; }
+      if (input.priority !== undefined) { before.priority = existing.priority; after.priority = input.priority; updates.priority = input.priority as typeof existing.priority; }
+      if (Object.keys(updates).length === 0) return JSON.stringify({ success: false, message: "Nenhum campo para alterar foi informado." });
+
+      updates.updatedAt = new Date();
+      await db.update(tasksTable).set(updates).where(eq(tasksTable.id, taskId));
+      return JSON.stringify({ success: true, id: taskId, antes: before, depois: after, message: `✅ Tarefa "${existing.title}" atualizada com sucesso.` });
+    }
+
+    if (name === "editar_ausencia") {
+      if (!isManager) return JSON.stringify({ error: "Apenas gestores podem editar ausências" });
+      const folgaId = input.folgaId as string;
+      const [existing] = await db
+        .select({ id: folgasTable.id, status: folgasTable.status, startDate: folgasTable.startDate, endDate: folgasTable.endDate, type: folgasTable.type, notes: folgasTable.notes })
+        .from(folgasTable)
+        .where(eq(folgasTable.id, folgaId))
+        .limit(1);
+      if (!existing) return JSON.stringify({ success: false, message: "Ausência não encontrada. Use consultar_folgas para obter o ID." });
+      if (existing.status === "CANCELLED") return JSON.stringify({ success: false, message: "Esta ausência está cancelada e não pode ser editada." });
+
+      const updates: Partial<typeof folgasTable.$inferInsert> = {};
+      const before: Record<string, unknown> = {};
+      const after: Record<string, unknown> = {};
+      if (input.startDate !== undefined) { before.startDate = existing.startDate; after.startDate = input.startDate; updates.startDate = input.startDate as string; }
+      if (input.endDate !== undefined) { before.endDate = existing.endDate; after.endDate = input.endDate; updates.endDate = input.endDate as string; }
+      if (input.type !== undefined) { before.type = existing.type; after.type = input.type; updates.type = input.type as typeof existing.type; }
+      if (input.reason !== undefined) { before.notes = existing.notes; after.notes = input.reason; updates.notes = input.reason as string; }
+      if (Object.keys(updates).length === 0) return JSON.stringify({ success: false, message: "Nenhum campo para alterar foi informado." });
+
+      // Coerência: se só startDate mudou e a folga era de um dia, alinha endDate
+      if (updates.startDate !== undefined && updates.endDate === undefined && existing.startDate === existing.endDate) {
+        updates.endDate = updates.startDate;
+        after.endDate = updates.startDate;
+      }
+      updates.updatedAt = new Date();
+      await db.update(folgasTable).set(updates).where(eq(folgasTable.id, folgaId));
+      return JSON.stringify({ success: true, id: folgaId, antes: before, depois: after, message: `✅ Ausência atualizada com sucesso.` });
+    }
+
+    if (name === "editar_evento_agenda") {
+      if (!isManager) return JSON.stringify({ error: "Apenas gestores podem editar eventos da agenda" });
+      const eventId = input.eventId as string;
+      const [existing] = await db
+        .select({ id: agendaEventsTable.id, status: agendaEventsTable.status, title: agendaEventsTable.title, date: agendaEventsTable.date, endDate: agendaEventsTable.endDate, startTime: agendaEventsTable.startTime, endTime: agendaEventsTable.endTime, location: agendaEventsTable.location, notes: agendaEventsTable.notes })
+        .from(agendaEventsTable)
+        .where(and(
+          eq(agendaEventsTable.id, eventId),
+          ctx.operationId ? eq(agendaEventsTable.operationId, ctx.operationId) : sql`true`,
+        ))
+        .limit(1);
+      if (!existing) return JSON.stringify({ success: false, message: "Evento não encontrado. Use consultar_agenda para obter o ID." });
+      if (["CANCELLED", "COMPLETED"].includes(existing.status))
+        return JSON.stringify({ success: false, message: `Evento com status "${existing.status}" não pode ser editado.` });
+
+      const updates: Partial<typeof agendaEventsTable.$inferInsert> = {};
+      const before: Record<string, unknown> = {};
+      const after: Record<string, unknown> = {};
+      if (input.titulo !== undefined) { before.titulo = existing.title; after.titulo = input.titulo; updates.title = input.titulo as string; }
+      if (input.data !== undefined) { before.data = existing.date; after.data = input.data; updates.date = input.data as string; }
+      if (input.dataFim !== undefined) { before.dataFim = existing.endDate; after.dataFim = input.dataFim; updates.endDate = input.dataFim as string; }
+      if (input.horaInicio !== undefined) { before.horaInicio = existing.startTime; after.horaInicio = input.horaInicio; updates.startTime = input.horaInicio as string; }
+      if (input.horaFim !== undefined) { before.horaFim = existing.endTime; after.horaFim = input.horaFim; updates.endTime = input.horaFim as string; }
+      if (input.local !== undefined) { before.local = existing.location; after.local = input.local; updates.location = input.local as string; }
+      if (input.descricao !== undefined) { before.descricao = existing.notes; after.descricao = input.descricao; updates.notes = input.descricao as string; }
+      if (Object.keys(updates).length === 0) return JSON.stringify({ success: false, message: "Nenhum campo para alterar foi informado." });
+
+      updates.updatedAt = new Date();
+      await db.update(agendaEventsTable).set(updates).where(eq(agendaEventsTable.id, eventId));
+      return JSON.stringify({ success: true, id: eventId, antes: before, depois: after, message: `✅ Evento "${existing.title}" atualizado com sucesso.` });
+    }
+
+    if (name === "editar_aviso") {
+      if (!isManager) return JSON.stringify({ error: "Apenas gestores podem editar avisos" });
+      const noticeId = input.noticeId as string;
+      const [existing] = await db
+        .select({ id: noticesTable.id, status: noticesTable.status, title: noticesTable.title, content: noticesTable.content, type: noticesTable.type, urgency: noticesTable.urgency, requiresConfirmation: noticesTable.requiresConfirmation })
+        .from(noticesTable)
+        .where(and(
+          eq(noticesTable.id, noticeId),
+          ctx.operationId ? eq(noticesTable.operationId, ctx.operationId) : sql`true`,
+        ))
+        .limit(1);
+      if (!existing) return JSON.stringify({ success: false, message: "Aviso não encontrado. Use consultar_avisos para obter o ID." });
+      if (existing.status !== "DRAFT")
+        return JSON.stringify({ success: false, message: `Apenas avisos em rascunho podem ser editados. Este aviso está com status "${existing.status}".` });
+
+      const updates: Partial<typeof noticesTable.$inferInsert> = {};
+      const before: Record<string, unknown> = {};
+      const after: Record<string, unknown> = {};
+      if (input.title !== undefined) { before.title = existing.title; after.title = input.title; updates.title = input.title as string; }
+      if (input.content !== undefined) { before.content = existing.content; after.content = input.content; updates.content = input.content as string; }
+      if (input.type !== undefined) { before.type = existing.type; after.type = input.type; updates.type = input.type as typeof existing.type; }
+      if (input.urgency !== undefined) { before.urgency = existing.urgency; after.urgency = input.urgency; updates.urgency = input.urgency as typeof existing.urgency; }
+      if (input.requiresConfirmation !== undefined) { before.requiresConfirmation = existing.requiresConfirmation; after.requiresConfirmation = input.requiresConfirmation; updates.requiresConfirmation = input.requiresConfirmation as boolean; }
+      if (Object.keys(updates).length === 0) return JSON.stringify({ success: false, message: "Nenhum campo para alterar foi informado." });
+
+      await db.update(noticesTable).set(updates).where(eq(noticesTable.id, noticeId));
+      return JSON.stringify({ success: true, id: noticeId, antes: before, depois: after, message: `✅ Aviso "${existing.title ?? "(sem título)"}" (rascunho) atualizado com sucesso.` });
+    }
+
+    if (name === "editar_reconhecimento") {
+      if (!isManager) return JSON.stringify({ error: "Apenas gestores podem editar reconhecimentos" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const recognitionId = input.recognitionId as string;
+      const [existing] = await db
+        .select({ id: recognitionsTable.id, type: recognitionsTable.type, title: recognitionsTable.title, message: recognitionsTable.message })
+        .from(recognitionsTable)
+        .where(and(eq(recognitionsTable.id, recognitionId), eq(recognitionsTable.organizationId, ctx.organizationId)))
+        .limit(1);
+      if (!existing) return JSON.stringify({ success: false, message: "Reconhecimento não encontrado. Use consultar_reconhecimentos para obter o ID." });
+
+      const updates: Partial<typeof recognitionsTable.$inferInsert> = {};
+      const before: Record<string, unknown> = {};
+      const after: Record<string, unknown> = {};
+      if (input.type !== undefined) { before.type = existing.type; after.type = input.type; updates.type = input.type as string; }
+      if (input.title !== undefined) { before.title = existing.title; after.title = input.title; updates.title = input.title as string; }
+      if (input.message !== undefined) { before.message = existing.message; after.message = input.message; updates.message = input.message as string; }
+      if (Object.keys(updates).length === 0) return JSON.stringify({ success: false, message: "Nenhum campo para alterar foi informado." });
+
+      updates.updatedAt = new Date();
+      await db.update(recognitionsTable).set(updates).where(eq(recognitionsTable.id, recognitionId));
+      return JSON.stringify({ success: true, id: recognitionId, antes: before, depois: after, message: `🎉 Reconhecimento "${existing.title}" atualizado com sucesso.` });
     }
 
     return JSON.stringify({ error: `Ferramenta desconhecida: ${name}` });
