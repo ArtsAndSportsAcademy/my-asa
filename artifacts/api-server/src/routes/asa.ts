@@ -365,6 +365,35 @@ Sempre respeite o modo de preferência: Silenciosa, Equilibrada ou Proativa.
 
 ⸻
 
+Detecção de Intenções Operacionais (Sprint 05)
+
+Você SEMPRE monitora o que as pessoas dizem para identificar intenções operacionais implícitas. Quando detectar qualquer um dos padrões abaixo, reaja imediatamente — sem esperar ser perguntada.
+
+→ Ensaios e eventos ("Amanhã temos ensaio às 09h", "vamos ter um treino", "reunião na sexta")
+   Responda: "🔍 Detectei um possível ensaio. Deseja que eu crie um rascunho?
+   📅 [título/tipo detectado]
+   ⏰ [horário mencionado se houver]
+   📍 [local se mencionado]
+   Posso criar agora — só confirme ou ajuste os detalhes."
+   → Use criar_ensaio_rascunho após confirmação.
+
+→ Trocas de escala ("Amanda vai trocar com Carol", "fulano vai cobrir fulana", "vou cobrir o plantão de X")
+   Responda: "🔄 Detectei uma possível troca de escala entre [nome1] e [nome2]. Deseja que eu crie uma solicitação formal?"
+   → Use consultar_membros para resolver os nomes, depois criar_solicitacao_troca após confirmação.
+
+→ Ausências e no-shows ("Arthur vai faltar amanhã", "fulano não vem hoje", "vou precisar faltar", "faltei")
+   Responda: "📋 Detectei uma possível ausência de [nome] em [data]. Deseja que eu registre?"
+   → Use consultar_membros, depois registrar_ausencia após confirmação.
+
+Regras obrigatórias para detecção:
+1. NUNCA execute a ação sem confirmação explícita ("sim", "pode criar", "faz isso").
+2. Sempre resolva os nomes via consultar_membros antes de agir.
+3. Se a data não for mencionada, pergunte antes de continuar.
+4. Se detectar mais de uma intenção, trate uma de cada vez.
+5. Após criar, informe onde o item foi registrado e como acompanhar.
+
+⸻
+
 Princípios
 
 1. Confirme ações importantes antes de executar.
@@ -715,6 +744,38 @@ const ASA_TOOLS: Tool[] = [
       type: "object" as const,
       properties: {
         type: { type: "string", description: "Tipo de marco: TIME_OF_HOUSE ou ALL (padrão: ALL)" },
+      },
+    },
+  },
+  // ── Sprint 05 — Conversas Inteligentes ──────────────────────────────────────
+  {
+    name: "registrar_ausencia",
+    description: "Registra uma ausência (no-show) de um membro em uma data específica. Use consultar_membros ANTES para obter o userId correto. Confirme com o usuário antes de executar.",
+    input_schema: {
+      type: "object" as const,
+      required: ["userId", "date"],
+      properties: {
+        userId:   { type: "string", description: "ID do membro ausente (obtido via consultar_membros)" },
+        userName: { type: "string", description: "Nome do membro (para confirmação na resposta)" },
+        date:     { type: "string", description: "Data da ausência (YYYY-MM-DD)" },
+        type:     { type: "string", description: "Tipo: NO_SHOW (padrão) | DAY_OFF | OUTRO" },
+        reason:   { type: "string", description: "Motivo da ausência (opcional)" },
+      },
+    },
+  },
+  {
+    name: "criar_solicitacao_troca",
+    description: "Cria uma solicitação formal de troca de escala entre dois membros. Use consultar_membros ANTES para resolver os dois nomes. Confirme com o usuário antes de executar.",
+    input_schema: {
+      type: "object" as const,
+      required: ["userId1", "userName1", "userId2", "userName2", "date"],
+      properties: {
+        userId1:   { type: "string", description: "ID do primeiro membro (obtido via consultar_membros)" },
+        userName1: { type: "string", description: "Nome do primeiro membro" },
+        userId2:   { type: "string", description: "ID do segundo membro (obtido via consultar_membros)" },
+        userName2: { type: "string", description: "Nome do segundo membro" },
+        date:      { type: "string", description: "Data da troca (YYYY-MM-DD)" },
+        notes:     { type: "string", description: "Detalhes adicionais sobre a troca (opcional)" },
       },
     },
   },
@@ -1503,6 +1564,81 @@ async function executeTool(
       } catch {
         return JSON.stringify({ error: "Não foi possível consultar o clima agora." });
       }
+    }
+
+    // ── registrar_ausencia (Sprint 05) ───────────────────────────────────────
+    if (name === "registrar_ausencia") {
+      if (!isManager) return JSON.stringify({ error: "Sem permissão para registrar ausências" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      if (!ctx.operationId) return JSON.stringify({ error: "Selecione uma operação antes de registrar ausências" });
+
+      const targetUserId = input.userId as string;
+      const date         = input.date   as string;
+      const absType      = ((input.type as string | undefined) ?? "NO_SHOW") as "NO_SHOW" | "DAY_OFF" | "OUTRO";
+      const reason       = input.reason as string | undefined;
+      const displayName  = (input.userName as string | undefined) ?? targetUserId;
+
+      const [folga] = await db.insert(folgasTable).values({
+        userId:      targetUserId,
+        operationId: ctx.operationId,
+        type:        absType,
+        startDate:   date,
+        endDate:     date,
+        status:      "ACTIVE",
+        origem:      "MANUAL",
+        createdBy:   ctx.userId,
+        notes:       reason ?? `Ausência registrada pela ASA em ${new Date().toLocaleDateString("pt-BR")}`,
+      }).returning();
+
+      return JSON.stringify({
+        registered: true,
+        id: folga.id,
+        member: displayName,
+        date,
+        type: absType,
+        message: `📋 Ausência de ${displayName} registrada para ${date}. Você pode acompanhar na página de Folgas.`,
+      });
+    }
+
+    // ── criar_solicitacao_troca (Sprint 05) ──────────────────────────────────
+    if (name === "criar_solicitacao_troca") {
+      if (!isManager) return JSON.stringify({ error: "Sem permissão para criar solicitações de troca" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      if (!ctx.operationId) return JSON.stringify({ error: "Selecione uma operação antes de criar solicitações" });
+
+      const n1   = input.userName1 as string;
+      const n2   = input.userName2 as string;
+      const date = input.date      as string;
+      const notes = input.notes    as string | undefined;
+
+      const [task] = await db.insert(tasksTable).values({
+        organizationId: ctx.organizationId,
+        operationId:    ctx.operationId,
+        title:          `🔄 Troca de escala: ${n1} ↔ ${n2}`,
+        description:    [
+          `Solicitação de troca de escala detectada pela ASA.`,
+          ``,
+          `• Membros: ${n1} e ${n2}`,
+          `• Data: ${date}`,
+          notes ? `• Detalhes: ${notes}` : null,
+          ``,
+          `Verifique as escalas e confirme ou ajuste a troca conforme necessário.`,
+        ].filter(Boolean).join("\n"),
+        creatorId:      ctx.userId,
+        assigneeId:     ctx.userId,
+        dueDate:        date,
+        status:         "CREATED",
+        priority:       "MEDIUM",
+        origin:         "MANUAL",
+      }).returning();
+
+      return JSON.stringify({
+        created: true,
+        id: task.id,
+        members: [n1, n2],
+        date,
+        message: `🔄 Solicitação de troca entre ${n1} e ${n2} registrada para ${date}. Uma tarefa foi criada para acompanhamento — você pode gerenciá-la na página de Tarefas.`,
+      });
     }
 
     return JSON.stringify({ error: `Ferramenta desconhecida: ${name}` });

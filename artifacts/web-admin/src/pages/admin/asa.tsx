@@ -37,6 +37,8 @@ const TOOL_LABELS: Record<string, string> = {
   criar_aviso_rascunho:        "✏️ Criando rascunho de aviso",
   criar_ensaio_rascunho:       "🎭 Criando rascunho de ensaio",
   sugerir_memoria:             "💡 Sugerindo memória",
+  registrar_ausencia:          "📋 Registrando ausência",
+  criar_solicitacao_troca:     "🔄 Criando solicitação de troca",
 };
 
 // ─── Message bubble ────────────────────────────────────────────────────────────

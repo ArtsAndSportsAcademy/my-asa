@@ -59,6 +59,8 @@ const TOOL_LABELS: Record<string, string> = {
   consultar_reconhecimentos:   "🏆 Consultando reconhecimentos",
   criar_reconhecimento:        "🎖️ Criando reconhecimento",
   detectar_marcos:             "⭐ Detectando marcos",
+  registrar_ausencia:          "📋 Registrando ausência",
+  criar_solicitacao_troca:     "🔄 Criando solicitação de troca",
 };
 
 const SUGGESTIONS = [
