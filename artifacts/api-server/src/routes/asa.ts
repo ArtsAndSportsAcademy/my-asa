@@ -367,6 +367,29 @@ Sempre respeite o modo de preferência: Silenciosa, Equilibrada ou Proativa.
 
 ⸻
 
+Estatísticas e Inteligência Operacional (Sprint 09)
+
+Você tem acesso a dados históricos e pode responder perguntas analíticas.
+
+Mapeamento de perguntas → tools:
+• "Como está a operação?" / "Painel geral" → consultar_estatisticas
+• "Quem tem se destacado?" / "KPIs da semana" → consultar_indicadores
+• "Quem tem mais atividades?" / "Desempenho da equipe" → consultar_desempenho
+• "Quantas ausências tivemos?" / "Padrão de faltas" → consultar_ausencias_historicas
+• "Como estão as tarefas?" / "Taxa de conclusão" → consultar_tarefas_historicas
+• "Quem está sobrecarregado?" / "Distribuição histórica" → consultar_carga_historica
+
+Ao apresentar estatísticas:
+• Use emojis de categoria: 📈 atividades, 📌 tarefas, 🌴 ausências, 🏆 reconhecimentos, ⚠️ conflitos.
+• Destaque sempre o TOP e o pior indicador para contextualizar.
+• Se detectar desequilíbrio de carga → alerte e ofereça sugerir_cobertura ou redistribuição.
+• Se taxa de conclusão de tarefas < 50% → alerte como risco operacional.
+• Se houver membro com > 3 ausências no período → mencione e ofereça consultar_historico_membro.
+
+Sempre explique o que o número significa em contexto operacional — não apenas liste dados brutos.
+
+⸻
+
 Mensagens Inteligentes (Sprint 08)
 
 Você pode analisar mensagens de grupos e threads operacionais.
@@ -828,6 +851,78 @@ const ASA_TOOLS: Tool[] = [
       type: "object" as const,
       properties: {
         type: { type: "string", description: "Tipo de marco: TIME_OF_HOUSE ou ALL (padrão: ALL)" },
+      },
+    },
+  },
+  // ── Sprint 09 — Estatísticas e Inteligência Operacional ──────────────────────
+  {
+    name: "consultar_estatisticas",
+    description: "Retorna um snapshot estatístico da operação: total de atividades escaladas, tarefas por status, ausências registradas, reconhecimentos e posições abertas. Use quando perguntarem 'como está a operação' ou pedirem um painel geral.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        dateFrom: { type: "string", description: "Data início (YYYY-MM-DD). Padrão: início do mês atual." },
+        dateTo:   { type: "string", description: "Data fim (YYYY-MM-DD). Padrão: hoje." },
+      },
+    },
+  },
+  {
+    name: "consultar_indicadores",
+    description: "Retorna KPIs operacionais: top performer (mais atividades), membro com mais ausências, taxa de conclusão de tarefas, cobertura das escalas, número de conflitos detectados. Ideal para o resumo executivo do supervisor.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        dateFrom: { type: "string", description: "Data início (YYYY-MM-DD). Padrão: últimos 30 dias." },
+        dateTo:   { type: "string", description: "Data fim (YYYY-MM-DD). Padrão: hoje." },
+      },
+    },
+  },
+  {
+    name: "consultar_desempenho",
+    description: "Analisa o desempenho individual ou coletivo: atividades realizadas, tarefas concluídas, tarefas atrasadas e ausências por membro. Ordena do melhor para o pior desempenho. Use para responder 'quem tem se destacado?' ou 'quem tem mais atrasos?'",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        dateFrom: { type: "string", description: "Data início (YYYY-MM-DD). Padrão: últimos 30 dias." },
+        dateTo:   { type: "string", description: "Data fim (YYYY-MM-DD). Padrão: hoje." },
+        userId:   { type: "string", description: "ID do membro específico (opcional — omitir para toda a operação)" },
+        limit:    { type: "number", description: "Máximo de membros no ranking (padrão: 10)" },
+      },
+    },
+  },
+  {
+    name: "consultar_ausencias_historicas",
+    description: "Analisa o histórico de ausências: total por período, ranking de membros com mais ausências, distribuição por tipo (NO_SHOW/DAY_OFF/OUTRO) e períodos com maior concentração. Detecta padrões e sazonalidade.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        dateFrom: { type: "string", description: "Data início (YYYY-MM-DD). Padrão: últimos 90 dias." },
+        dateTo:   { type: "string", description: "Data fim (YYYY-MM-DD). Padrão: hoje." },
+        limit:    { type: "number", description: "Máximo de membros no ranking (padrão: 10)" },
+      },
+    },
+  },
+  {
+    name: "consultar_tarefas_historicas",
+    description: "Analisa o histórico de tarefas: taxa de conclusão, tarefas atrasadas vs concluídas, membros com mais atrasos, tempo médio de conclusão e gargalos recorrentes. Use para responder 'como está a produtividade?'",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        dateFrom: { type: "string", description: "Data início (YYYY-MM-DD). Padrão: últimos 30 dias." },
+        dateTo:   { type: "string", description: "Data fim (YYYY-MM-DD). Padrão: hoje." },
+        limit:    { type: "number", description: "Máximo de membros no ranking (padrão: 10)" },
+      },
+    },
+  },
+  {
+    name: "consultar_carga_historica",
+    description: "Mostra a distribuição histórica de carga de trabalho: atividades por membro ao longo do tempo, operações com maior demanda, semanas mais intensas. Ajuda a identificar sobrecarga crônica e desequilíbrios.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        dateFrom: { type: "string", description: "Data início (YYYY-MM-DD). Padrão: últimos 30 dias." },
+        dateTo:   { type: "string", description: "Data fim (YYYY-MM-DD). Padrão: hoje." },
+        limit:    { type: "number", description: "Máximo de membros (padrão: 15)" },
       },
     },
   },
@@ -1872,6 +1967,298 @@ async function executeTool(
       } catch {
         return JSON.stringify({ error: "Não foi possível consultar o clima agora." });
       }
+    }
+
+    // ── Sprint 09 helpers ─────────────────────────────────────────────────────
+    const today09   = new Date().toISOString().slice(0, 10);
+    const month09   = today09.slice(0, 7) + "-01";
+    const days30ago = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+    const days90ago = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+
+    // ── consultar_estatisticas (Sprint 09) ────────────────────────────────────
+    if (name === "consultar_estatisticas") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const from = (input.dateFrom as string | undefined) ?? month09;
+      const to   = (input.dateTo   as string | undefined) ?? today09;
+      const opFilter = ctx.operationId ? sql`and operation_id = ${ctx.operationId}` : sql``;
+
+      // Activities
+      const [actTotal] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(scaleAllocationsTable)
+        .where(and(
+          inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]),
+          sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`,
+        ));
+
+      // Tasks by status
+      const taskStats = await db
+        .select({ status: tasksTable.status, count: sql<number>`count(*)::int` })
+        .from(tasksTable)
+        .where(and(eq(tasksTable.organizationId, ctx.organizationId), sql`date(created_at) between ${from} and ${to}`))
+        .groupBy(tasksTable.status);
+
+      // Absences
+      const [absTotal] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(folgasTable)
+        .where(and(
+          ctx.operationId ? eq(folgasTable.operationId, ctx.operationId) : sql`true`,
+          eq(folgasTable.status, "ACTIVE"),
+          lte(folgasTable.startDate, to),
+          gte(folgasTable.endDate, from),
+        ));
+
+      // Recognitions
+      const [recTotal] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(recognitionsTable)
+        .where(and(eq(recognitionsTable.organizationId, ctx.organizationId), sql`date(created_at) between ${from} and ${to}`));
+
+      // Open positions
+      const [openPos] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(scaleAllocationsTable)
+        .innerJoin(scalesTable, eq(scaleAllocationsTable.scaleId, scalesTable.id))
+        .where(and(
+          ctx.operationId ? eq(scalesTable.operationId, ctx.operationId) : sql`true`,
+          inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"]),
+          eq(scaleAllocationsTable.status, "OPEN"),
+        ));
+
+      const taskMap = Object.fromEntries(taskStats.map(t => [t.status, t.count]));
+      const taskDone = taskMap["DONE"] ?? 0;
+      const taskTotal = taskStats.reduce((s, t) => s + t.count, 0);
+      const completionRate = taskTotal > 0 ? Math.round((taskDone / taskTotal) * 100) : 0;
+
+      return JSON.stringify({
+        periodo: { de: from, ate: to },
+        atividades: actTotal?.count ?? 0,
+        tarefas: { total: taskTotal, concluidas: taskDone, pendentes: (taskMap["CREATED"] ?? 0) + (taskMap["IN_PROGRESS"] ?? 0), atrasadas: taskMap["CHANGES_REQUESTED"] ?? 0, taxa_conclusao: `${completionRate}%` },
+        ausencias: absTotal?.count ?? 0,
+        reconhecimentos: recTotal?.count ?? 0,
+        posicoes_abertas: openPos?.count ?? 0,
+        message: `📈 Período ${from} → ${to}: ${actTotal?.count ?? 0} atividades, ${taskTotal} tarefas (${completionRate}% concluídas), ${absTotal?.count ?? 0} ausências, ${recTotal?.count ?? 0} reconhecimentos.`,
+      });
+    }
+
+    // ── consultar_indicadores (Sprint 09) ─────────────────────────────────────
+    if (name === "consultar_indicadores") {
+      if (!isManager) return JSON.stringify({ error: "Exclusivo para gestores" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const from = (input.dateFrom as string | undefined) ?? days30ago;
+      const to   = (input.dateTo   as string | undefined) ?? today09;
+
+      // Top performer: most activities
+      const topActivity = await db
+        .select({ userId: scaleAllocationsTable.userId, count: sql<number>`count(*)::int` })
+        .from(scaleAllocationsTable)
+        .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
+        .groupBy(scaleAllocationsTable.userId)
+        .orderBy(desc(sql`count(*)`))
+        .limit(3);
+
+      // Most absences
+      const topAbsence = await db
+        .select({ userId: folgasTable.userId, count: sql<number>`count(*)::int` })
+        .from(folgasTable)
+        .where(and(ctx.operationId ? eq(folgasTable.operationId, ctx.operationId) : sql`true`, eq(folgasTable.status, "ACTIVE"), lte(folgasTable.startDate, to), gte(folgasTable.endDate, from)))
+        .groupBy(folgasTable.userId)
+        .orderBy(desc(sql`count(*)`))
+        .limit(3);
+
+      // Task completion
+      const [totalTasks] = await db.select({ count: sql<number>`count(*)::int` }).from(tasksTable).where(and(eq(tasksTable.organizationId, ctx.organizationId), sql`date(created_at) between ${from} and ${to}`));
+      const [doneTasks]  = await db.select({ count: sql<number>`count(*)::int` }).from(tasksTable).where(and(eq(tasksTable.organizationId, ctx.organizationId), eq(tasksTable.status, "DONE"), sql`date(updated_at) between ${from} and ${to}`));
+      const completionRate = totalTasks?.count > 0 ? Math.round(((doneTasks?.count ?? 0) / totalTasks.count) * 100) : 0;
+
+      // Resolve names
+      const allIds = [...new Set([...topActivity.map(a => a.userId), ...topAbsence.map(a => a.userId)].filter(Boolean))] as string[];
+      const nameMap = new Map((await (allIds.length > 0 ? db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(inArray(usersTable.id, allIds)) : Promise.resolve([]))).map(u => [u.id, u.name]));
+
+      return JSON.stringify({
+        periodo: { de: from, ate: to },
+        top_performer: topActivity.map(a => ({ nome: nameMap.get(a.userId!) ?? a.userId, atividades: a.count })),
+        mais_ausencias: topAbsence.map(a => ({ nome: nameMap.get(a.userId!) ?? a.userId, ausencias: a.count })),
+        taxa_conclusao_tarefas: `${completionRate}%`,
+        total_tarefas: totalTasks?.count ?? 0,
+        tarefas_concluidas: doneTasks?.count ?? 0,
+        message: `📊 KPIs ${from} → ${to}: top performer ${nameMap.get(topActivity[0]?.userId!) ?? "—"} (${topActivity[0]?.count ?? 0} atividades), taxa conclusão de tarefas ${completionRate}%, ${topAbsence[0]?.count ?? 0} ausências máx./membro.`,
+      });
+    }
+
+    // ── consultar_desempenho (Sprint 09) ──────────────────────────────────────
+    if (name === "consultar_desempenho") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const from  = (input.dateFrom as string | undefined) ?? days30ago;
+      const to    = (input.dateTo   as string | undefined) ?? today09;
+      const limit = (input.limit    as number | undefined) ?? 10;
+      const uid   = input.userId as string | undefined;
+
+      const actFilter = uid
+        ? and(eq(scaleAllocationsTable.userId, uid), inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`)
+        : and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`);
+      const allocByMember = await db
+        .select({ userId: scaleAllocationsTable.userId, atividades: sql<number>`count(*)::int` })
+        .from(scaleAllocationsTable)
+        .where(actFilter)
+        .groupBy(scaleAllocationsTable.userId)
+        .orderBy(desc(sql`count(*)`))
+        .limit(limit);
+
+      const doneTskFilter = uid
+        ? and(eq(tasksTable.organizationId, ctx.organizationId), eq(tasksTable.assigneeId, uid), eq(tasksTable.status, "DONE"), sql`date(updated_at) between ${from} and ${to}`)
+        : and(eq(tasksTable.organizationId, ctx.organizationId), eq(tasksTable.status, "DONE"), sql`date(updated_at) between ${from} and ${to}`);
+      const doneByMember = await db
+        .select({ assigneeId: tasksTable.assigneeId, concluidas: sql<number>`count(*)::int` })
+        .from(tasksTable).where(doneTskFilter).groupBy(tasksTable.assigneeId).limit(limit);
+      const doneMap = new Map(doneByMember.map(t => [t.assigneeId, t.concluidas]));
+
+      const delayedByMember = await db
+        .select({ assigneeId: tasksTable.assigneeId, atrasadas: sql<number>`count(*)::int` })
+        .from(tasksTable)
+        .where(and(eq(tasksTable.organizationId, ctx.organizationId), uid ? eq(tasksTable.assigneeId, uid) : sql`true`, inArray(tasksTable.status, ["CREATED", "IN_PROGRESS"]), sql`${tasksTable.dueDate} < ${today09}`))
+        .groupBy(tasksTable.assigneeId).limit(limit);
+      const delayMap = new Map(delayedByMember.map(t => [t.assigneeId, t.atrasadas]));
+
+      const absFilter = uid
+        ? and(eq(folgasTable.userId, uid), eq(folgasTable.status, "ACTIVE"), lte(folgasTable.startDate, to), gte(folgasTable.endDate, from))
+        : and(ctx.operationId ? eq(folgasTable.operationId, ctx.operationId) : sql`true`, eq(folgasTable.status, "ACTIVE"), lte(folgasTable.startDate, to), gte(folgasTable.endDate, from));
+      const absByMember = await db
+        .select({ userId: folgasTable.userId, ausencias: sql<number>`count(*)::int` })
+        .from(folgasTable).where(absFilter).groupBy(folgasTable.userId).limit(limit);
+      const absMap = new Map(absByMember.map(f => [f.userId, f.ausencias]));
+
+      const userIds = [...new Set(allocByMember.map(a => a.userId).filter(Boolean))] as string[];
+      const nameMap = new Map((userIds.length > 0 ? await db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(inArray(usersTable.id, userIds)) : []).map(u => [u.id, u.name]));
+
+      const desempenho = allocByMember.filter(a => a.userId).map(a => ({
+        membro:     nameMap.get(a.userId!) ?? a.userId,
+        atividades: a.atividades,
+        concluidas: doneMap.get(a.userId!) ?? 0,
+        atrasadas:  delayMap.get(a.userId!) ?? 0,
+        ausencias:  absMap.get(a.userId!) ?? 0,
+        score:      a.atividades + (doneMap.get(a.userId!) ?? 0) - (delayMap.get(a.userId!) ?? 0) * 2 - (absMap.get(a.userId!) ?? 0),
+      })).sort((a, b) => b.score - a.score);
+
+      if (desempenho.length === 0) return JSON.stringify({ total: 0, message: "Nenhum dado de desempenho encontrado.", desempenho: [] });
+      return JSON.stringify({ total: desempenho.length, periodo: { de: from, ate: to }, message: `📊 Desempenho de ${desempenho.length} membro(s) — ${from} → ${to}.`, desempenho });
+    }
+
+    // ── consultar_ausencias_historicas (Sprint 09) ────────────────────────────
+    if (name === "consultar_ausencias_historicas") {
+      if (!isManager) return JSON.stringify({ error: "Exclusivo para gestores" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const from  = (input.dateFrom as string | undefined) ?? days90ago;
+      const to    = (input.dateTo   as string | undefined) ?? today09;
+      const limit = (input.limit    as number | undefined) ?? 10;
+
+      const byMember = await db
+        .select({ userId: folgasTable.userId, userName: usersTable.name, total: sql<number>`count(*)::int`, noShow: sql<number>`sum(case when type='NO_SHOW' then 1 else 0 end)::int`, dayOff: sql<number>`sum(case when type='DAY_OFF' then 1 else 0 end)::int` })
+        .from(folgasTable)
+        .leftJoin(usersTable, eq(folgasTable.userId, usersTable.id))
+        .where(and(ctx.operationId ? eq(folgasTable.operationId, ctx.operationId) : sql`true`, eq(folgasTable.status, "ACTIVE"), lte(folgasTable.startDate, to), gte(folgasTable.endDate, from)))
+        .groupBy(folgasTable.userId, usersTable.name)
+        .orderBy(desc(sql`count(*)`))
+        .limit(limit);
+
+      const [totalRow] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(folgasTable)
+        .where(and(ctx.operationId ? eq(folgasTable.operationId, ctx.operationId) : sql`true`, eq(folgasTable.status, "ACTIVE"), lte(folgasTable.startDate, to), gte(folgasTable.endDate, from)));
+
+      if (byMember.length === 0) return JSON.stringify({ total: 0, message: "Nenhuma ausência registrada no período.", ranking: [] });
+      return JSON.stringify({
+        total: totalRow?.count ?? 0,
+        periodo: { de: from, ate: to },
+        message: `🌴 ${totalRow?.count ?? 0} ausência(s) no período. Top: ${byMember[0]?.userName ?? "—"} com ${byMember[0]?.total} ausências.`,
+        ranking: byMember.map(r => ({ membro: r.userName ?? r.userId, total: r.total, no_show: r.noShow, day_off: r.dayOff })),
+      });
+    }
+
+    // ── consultar_tarefas_historicas (Sprint 09) ──────────────────────────────
+    if (name === "consultar_tarefas_historicas") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const from  = (input.dateFrom as string | undefined) ?? days30ago;
+      const to    = (input.dateTo   as string | undefined) ?? today09;
+      const limit = (input.limit    as number | undefined) ?? 10;
+
+      const byMember = await db
+        .select({
+          assigneeId: tasksTable.assigneeId,
+          nome:       usersTable.name,
+          total:      sql<number>`count(*)::int`,
+          concluidas: sql<number>`sum(case when status='DONE' then 1 else 0 end)::int`,
+          atrasadas:  sql<number>`sum(case when status in ('CREATED','IN_PROGRESS') and due_date < ${today09} then 1 else 0 end)::int`,
+        })
+        .from(tasksTable)
+        .leftJoin(usersTable, eq(tasksTable.assigneeId, usersTable.id))
+        .where(and(eq(tasksTable.organizationId, ctx.organizationId), ctx.operationId ? eq(tasksTable.operationId, ctx.operationId) : sql`true`, sql`date(${tasksTable.createdAt}) between ${from} and ${to}`))
+        .groupBy(tasksTable.assigneeId, usersTable.name)
+        .orderBy(desc(sql`count(*)`))
+        .limit(limit);
+
+      const [totals] = await db
+        .select({
+          total:      sql<number>`count(*)::int`,
+          concluidas: sql<number>`sum(case when status='DONE' then 1 else 0 end)::int`,
+          atrasadas:  sql<number>`sum(case when status in ('CREATED','IN_PROGRESS') and due_date < ${today09} then 1 else 0 end)::int`,
+        })
+        .from(tasksTable)
+        .where(and(eq(tasksTable.organizationId, ctx.organizationId), sql`date(${tasksTable.createdAt}) between ${from} and ${to}`));
+
+      const txConc = totals?.total > 0 ? Math.round(((totals?.concluidas ?? 0) / totals.total) * 100) : 0;
+      return JSON.stringify({
+        total: totals?.total ?? 0,
+        concluidas: totals?.concluidas ?? 0,
+        atrasadas: totals?.atrasadas ?? 0,
+        taxa_conclusao: `${txConc}%`,
+        periodo: { de: from, ate: to },
+        message: `📌 ${totals?.total ?? 0} tarefas no período: ${txConc}% concluídas, ${totals?.atrasadas ?? 0} atrasadas.`,
+        por_membro: byMember.map(r => ({ membro: r.nome ?? r.assigneeId ?? "—", total: r.total, concluidas: r.concluidas, atrasadas: r.atrasadas, taxa: r.total > 0 ? `${Math.round((r.concluidas / r.total) * 100)}%` : "—" })),
+      });
+    }
+
+    // ── consultar_carga_historica (Sprint 09) ─────────────────────────────────
+    if (name === "consultar_carga_historica") {
+      if (!isManager) return JSON.stringify({ error: "Exclusivo para gestores" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const from  = (input.dateFrom as string | undefined) ?? days30ago;
+      const to    = (input.dateTo   as string | undefined) ?? today09;
+      const limit = (input.limit    as number | undefined) ?? 15;
+
+      const byMember = await db
+        .select({ userId: scaleAllocationsTable.userId, nome: usersTable.name, atividades: sql<number>`count(*)::int` })
+        .from(scaleAllocationsTable)
+        .leftJoin(usersTable, eq(scaleAllocationsTable.userId, usersTable.id))
+        .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
+        .groupBy(scaleAllocationsTable.userId, usersTable.name)
+        .orderBy(desc(sql`count(*)`))
+        .limit(limit);
+
+      const [avgRow] = await db
+        .select({ media: sql<number>`avg(cnt)::numeric(6,1)` })
+        .from(
+          db.select({ userId: scaleAllocationsTable.userId, cnt: sql<number>`count(*)` })
+            .from(scaleAllocationsTable)
+            .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFIRMED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
+            .groupBy(scaleAllocationsTable.userId)
+            .as("sub"),
+        );
+
+      if (byMember.length === 0) return JSON.stringify({ total: 0, message: "Nenhuma atividade registrada no período.", carga: [] });
+      const max = byMember[0]?.atividades ?? 0;
+      const min = byMember[byMember.length - 1]?.atividades ?? 0;
+      return JSON.stringify({
+        periodo: { de: from, ate: to },
+        membros: byMember.length,
+        media_atividades: Number(avgRow?.media ?? 0),
+        max_atividades:   max,
+        min_atividades:   min,
+        desequilibrio:    max - min > (Number(avgRow?.media ?? 0) * 0.5) ? "⚠️ Desequilíbrio de carga detectado" : "✅ Carga relativamente equilibrada",
+        message: `📊 Carga ${from} → ${to}: média ${avgRow?.media ?? 0} atividades/membro. Top: ${byMember[0]?.nome ?? "—"} com ${max}. Menor: ${byMember[byMember.length - 1]?.nome ?? "—"} com ${min}.`,
+        carga: byMember.map(r => ({ membro: r.nome ?? r.userId ?? "—", atividades: r.atividades })),
+      });
     }
 
     // ── Sprint 08 shared helper ───────────────────────────────────────────────

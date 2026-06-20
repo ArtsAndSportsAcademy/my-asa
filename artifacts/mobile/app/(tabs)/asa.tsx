@@ -78,6 +78,12 @@ const TOOL_LABELS: Record<string, string> = {
   detectar_trocas:                "🔄 Detectando trocas",
   resumir_conversa:               "📋 Resumindo conversa",
   destacar_itens:                 "⚠️ Destacando itens importantes",
+  consultar_estatisticas:         "📈 Consultando estatísticas",
+  consultar_indicadores:          "📊 Consultando indicadores",
+  consultar_desempenho:           "🏅 Analisando desempenho",
+  consultar_ausencias_historicas: "🌴 Analisando histórico de ausências",
+  consultar_tarefas_historicas:   "📌 Analisando histórico de tarefas",
+  consultar_carga_historica:      "📊 Analisando carga histórica",
 };
 
 const SUGGESTIONS = [
