@@ -70,6 +70,7 @@ export default function UsersPage() {
   const [filterSpec, setFilterSpec] = useState("");
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [createdUser, setCreatedUser] = useState<User | null>(null);
   const [editUser, setEditUser] = useState<User | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
 
@@ -100,10 +101,11 @@ export default function UsersPage() {
         },
       },
       {
-        onSuccess: () => {
+        onSuccess: (res) => {
           toast({ title: "Usuário criado com sucesso" });
           setCreateOpen(false);
           setCreateForm({ name: "", email: "", password: "", specialization: "", birthDate: "" });
+          if (res?.user) setCreatedUser(res.user as User);
           invalidate();
         },
         onError: (err: any) => {
@@ -224,6 +226,7 @@ export default function UsersPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
+                <TableHead>Nome de usuário</TableHead>
                 <TableHead>E-mail</TableHead>
                 <TableHead>Especialização</TableHead>
                 <TableHead>Status</TableHead>
@@ -235,6 +238,7 @@ export default function UsersPage() {
                 [...Array(4)].map((_, i) => (
                   <TableRow key={i}>
                     <TableCell><div className="h-4 bg-muted animate-pulse rounded w-36" /></TableCell>
+                    <TableCell><div className="h-4 bg-muted animate-pulse rounded w-32" /></TableCell>
                     <TableCell><div className="h-4 bg-muted animate-pulse rounded w-48" /></TableCell>
                     <TableCell><div className="h-4 bg-muted animate-pulse rounded w-24" /></TableCell>
                     <TableCell><div className="h-4 bg-muted animate-pulse rounded w-16" /></TableCell>
@@ -243,7 +247,7 @@ export default function UsersPage() {
                 ))
               ) : filteredUsers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={isAdmin ? 5 : 4} className="py-0">
+                  <TableCell colSpan={isAdmin ? 6 : 5} className="py-0">
                     <AsaEmptyState
                       title={users.length === 0 ? "Nenhum membro cadastrado ainda! 👋" : "Nenhum membro corresponde ao filtro"}
                       subtitle={users.length === 0
@@ -257,6 +261,13 @@ export default function UsersPage() {
                 filteredUsers.map((user) => (
                   <TableRow key={user.id} className={user.status === "INACTIVE" ? "opacity-60" : ""}>
                     <TableCell className="font-medium">{user.name}</TableCell>
+                    <TableCell>
+                      {user.username ? (
+                        <code className="text-sm font-mono text-muted-foreground">{user.username}</code>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{user.email}</TableCell>
                     <TableCell>
                       {user.specialization ? (
@@ -379,6 +390,43 @@ export default function UsersPage() {
             <Button onClick={handleCreate} disabled={createMutation.isPending}>
               {createMutation.isPending ? "Criando..." : "Criar usuário"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!createdUser} onOpenChange={(o) => !o && setCreatedUser(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Usuário criado</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              O nome de usuário foi gerado automaticamente. Use-o para informar o login a{" "}
+              <strong className="text-foreground">{createdUser?.name}</strong>.
+            </p>
+            <div className="space-y-2">
+              <Label>Nome de usuário (login)</Label>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 rounded-md border bg-muted px-3 py-2 text-sm font-mono">
+                  {createdUser?.username ?? "—"}
+                </code>
+                {createdUser?.username && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard?.writeText(createdUser.username ?? "");
+                      toast({ title: "Nome de usuário copiado" });
+                    }}
+                  >
+                    Copiar
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setCreatedUser(null)}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
