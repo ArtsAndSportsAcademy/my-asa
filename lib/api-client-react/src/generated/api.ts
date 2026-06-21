@@ -95,6 +95,7 @@ import type {
   GetAgendaEvent200,
   GetDailyBook200,
   GetDailyBookDelta200,
+  GetEligibleSupervisors200,
   GetFolgasGridParams,
   GetMyHistoryParams,
   GetMyTasksParams,
@@ -1217,6 +1218,83 @@ export const useCreateOperationalGroup = <TError = ErrorType<BadRequestResponse 
       > => {
       return useMutation(getCreateOperationalGroupMutationOptions(options));
     }
+
+export const getGetEligibleSupervisorsUrl = () => {
+
+
+
+
+  return `/api/operational-groups/eligible-supervisors`
+}
+
+/**
+ * @summary List users eligible to be group supervisors (Admin only)
+ */
+export const getEligibleSupervisors = async ( options?: RequestInit): Promise<GetEligibleSupervisors200> => {
+
+  return customFetch<GetEligibleSupervisors200>(getGetEligibleSupervisorsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEligibleSupervisorsQueryKey = () => {
+    return [
+    `/api/operational-groups/eligible-supervisors`
+    ] as const;
+    }
+
+
+export const getGetEligibleSupervisorsQueryOptions = <TData = Awaited<ReturnType<typeof getEligibleSupervisors>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEligibleSupervisors>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEligibleSupervisorsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEligibleSupervisors>>> = ({ signal }) => getEligibleSupervisors({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEligibleSupervisors>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetEligibleSupervisorsQueryResult = NonNullable<Awaited<ReturnType<typeof getEligibleSupervisors>>>
+export type GetEligibleSupervisorsQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary List users eligible to be group supervisors (Admin only)
+ */
+
+export function useGetEligibleSupervisors<TData = Awaited<ReturnType<typeof getEligibleSupervisors>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEligibleSupervisors>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetEligibleSupervisorsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getGetOperationalGroupUrl = (id: string,) => {
 

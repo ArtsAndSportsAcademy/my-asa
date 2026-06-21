@@ -131,6 +131,11 @@ export const GetCurrentOrganizationResponse = zod.object({
   "name": zod.string(),
   "photoUrl": zod.string().nullish()
 })).optional().describe('Membros ativos do grupo (presente apenas no detalhe do grupo).'),
+  "supervisors": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "photoUrl": zod.string().nullish()
+})).optional().describe('Supervisores ativos do grupo (presente apenas no detalhe do grupo).'),
   "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED']),
   "supervisorId": zod.string().nullish(),
   "createdAt": zod.string().optional(),
@@ -257,6 +262,11 @@ export const GetOperationalGroupsResponse = zod.object({
   "name": zod.string(),
   "photoUrl": zod.string().nullish()
 })).optional().describe('Membros ativos do grupo (presente apenas no detalhe do grupo).'),
+  "supervisors": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "photoUrl": zod.string().nullish()
+})).optional().describe('Supervisores ativos do grupo (presente apenas no detalhe do grupo).'),
   "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED']),
   "supervisorId": zod.string().nullish(),
   "createdAt": zod.string().optional(),
@@ -274,6 +284,18 @@ export const CreateOperationalGroupBody = zod.object({
   "operationId": zod.string().nullish().describe('Obrigatório quando scope=OPERATION.'),
   "operationIds": zod.array(zod.string()).optional().describe('Operações cobertas quando scope=MULTI.'),
   "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED']).optional()
+})
+
+
+/**
+ * @summary List users eligible to be group supervisors (Admin only)
+ */
+export const GetEligibleSupervisorsResponse = zod.object({
+  "supervisors": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "photoUrl": zod.string().nullish()
+}))
 })
 
 
@@ -297,6 +319,11 @@ export const GetOperationalGroupResponse = zod.object({
   "name": zod.string(),
   "photoUrl": zod.string().nullish()
 })).optional().describe('Membros ativos do grupo (presente apenas no detalhe do grupo).'),
+  "supervisors": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "photoUrl": zod.string().nullish()
+})).optional().describe('Supervisores ativos do grupo (presente apenas no detalhe do grupo).'),
   "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED']),
   "supervisorId": zod.string().nullish(),
   "createdAt": zod.string().optional(),
@@ -329,6 +356,11 @@ export const UpdateOperationalGroupResponse = zod.object({
   "name": zod.string(),
   "photoUrl": zod.string().nullish()
 })).optional().describe('Membros ativos do grupo (presente apenas no detalhe do grupo).'),
+  "supervisors": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "photoUrl": zod.string().nullish()
+})).optional().describe('Supervisores ativos do grupo (presente apenas no detalhe do grupo).'),
   "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED']),
   "supervisorId": zod.string().nullish(),
   "createdAt": zod.string().optional(),
@@ -361,6 +393,11 @@ export const UpdateOperationalGroupStatusResponse = zod.object({
   "name": zod.string(),
   "photoUrl": zod.string().nullish()
 })).optional().describe('Membros ativos do grupo (presente apenas no detalhe do grupo).'),
+  "supervisors": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "photoUrl": zod.string().nullish()
+})).optional().describe('Supervisores ativos do grupo (presente apenas no detalhe do grupo).'),
   "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED']),
   "supervisorId": zod.string().nullish(),
   "createdAt": zod.string().optional(),
@@ -467,6 +504,11 @@ export const GetUserContextResponse = zod.object({
   "name": zod.string(),
   "photoUrl": zod.string().nullish()
 })).optional().describe('Membros ativos do grupo (presente apenas no detalhe do grupo).'),
+  "supervisors": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "photoUrl": zod.string().nullish()
+})).optional().describe('Supervisores ativos do grupo (presente apenas no detalhe do grupo).'),
   "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED']),
   "supervisorId": zod.string().nullish(),
   "createdAt": zod.string().optional(),

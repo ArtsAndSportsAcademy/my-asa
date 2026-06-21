@@ -110,6 +110,12 @@ export type OperationalGroupMembersItem = {
   photoUrl?: string | null;
 };
 
+export type OperationalGroupSupervisorsItem = {
+  id: string;
+  name: string;
+  photoUrl?: string | null;
+};
+
 export type OperationalGroupStatus = typeof OperationalGroupStatus[keyof typeof OperationalGroupStatus];
 
 
@@ -129,6 +135,8 @@ export interface OperationalGroup {
   operationIds?: string[];
   /** Membros ativos do grupo (presente apenas no detalhe do grupo). */
   members?: OperationalGroupMembersItem[];
+  /** Supervisores ativos do grupo (presente apenas no detalhe do grupo). */
+  supervisors?: OperationalGroupSupervisorsItem[];
   status: OperationalGroupStatus;
   supervisorId?: string | null;
   createdAt?: string;
@@ -2711,6 +2719,16 @@ export type GetOperationalGroups200 = {
 
 export type CreateOperationalGroup201 = {
   group: OperationalGroup;
+};
+
+export type GetEligibleSupervisors200SupervisorsItem = {
+  id: string;
+  name: string;
+  photoUrl?: string | null;
+};
+
+export type GetEligibleSupervisors200 = {
+  supervisors: GetEligibleSupervisors200SupervisorsItem[];
 };
 
 export type GetOperationalGroup200 = {

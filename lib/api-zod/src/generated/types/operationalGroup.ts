@@ -8,6 +8,7 @@
 import type { OperationalGroupMembersItem } from './operationalGroupMembersItem';
 import type { OperationalGroupScope } from './operationalGroupScope';
 import type { OperationalGroupStatus } from './operationalGroupStatus';
+import type { OperationalGroupSupervisorsItem } from './operationalGroupSupervisorsItem';
 
 export interface OperationalGroup {
   id: string;
@@ -19,6 +20,8 @@ export interface OperationalGroup {
   operationIds?: string[];
   /** Membros ativos do grupo (presente apenas no detalhe do grupo). */
   members?: OperationalGroupMembersItem[];
+  /** Supervisores ativos do grupo (presente apenas no detalhe do grupo). */
+  supervisors?: OperationalGroupSupervisorsItem[];
   status: OperationalGroupStatus;
   supervisorId?: string | null;
   createdAt?: string;

@@ -86,6 +86,33 @@ export async function loadGroupMembers(groupId: string, restrictOperationIds?: s
   return [...map.values()];
 }
 
+/**
+ * Supervisores ativos (role=SUPERVISOR_A/B) de um grupo, com nome e foto.
+ * Usado no detalhe do grupo para listar/remover os supervisores atuais.
+ * Se `restrictOperationIds` for informado, retorna apenas supervisores cuja
+ * operação (user_roles.operationId) esteja nessa lista — evita vazamento entre
+ * operações em grupos amplos (MULTI/ALL) para callers não-admin.
+ */
+export async function loadGroupSupervisors(groupId: string, restrictOperationIds?: string[]) {
+  const conditions = [
+    eq(userRolesTable.groupId, groupId),
+    eq(userRolesTable.active, true),
+    or(eq(userRolesTable.role, "SUPERVISOR_A"), eq(userRolesTable.role, "SUPERVISOR_B")),
+  ];
+  if (restrictOperationIds) {
+    if (restrictOperationIds.length === 0) return [];
+    conditions.push(inArray(userRolesTable.operationId, restrictOperationIds));
+  }
+  const rows = await db
+    .select({ id: usersTable.id, name: usersTable.name, photoUrl: usersTable.photoUrl })
+    .from(userRolesTable)
+    .innerJoin(usersTable, eq(usersTable.id, userRolesTable.userId))
+    .where(and(...conditions));
+  const map = new Map<string, { id: string; name: string; photoUrl: string | null }>();
+  for (const r of rows) map.set(r.id, r);
+  return [...map.values()];
+}
+
 /** Acrescenta a lista de operações cobertas ao grupo (para o cliente). */
 export async function serializeGroup(group: OperationalGroup, organizationId: string) {
   const operationIds = await groupCoveredOperationIds(group, organizationId);
@@ -344,6 +371,37 @@ export async function removeGroupMemberCore(actor: GroupActor, id: string, userI
   return group;
 }
 
+/**
+ * Lista usuários da organização que já são supervisores (role SUPERVISOR_A/B ativo),
+ * para o admin escolher ao adicionar um supervisor a um grupo. Registrado ANTES de
+ * "/operational-groups/:id" para não ser capturado como um id.
+ */
+router.get("/operational-groups/eligible-supervisors", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
+  const log = requestLogger("organization", req.requestId, req.correlationId);
+  const { organizationId } = req.user!;
+
+  try {
+    const rows = await db
+      .select({ id: usersTable.id, name: usersTable.name, photoUrl: usersTable.photoUrl })
+      .from(userRolesTable)
+      .innerJoin(usersTable, eq(usersTable.id, userRolesTable.userId))
+      .where(
+        and(
+          eq(usersTable.organizationId, organizationId),
+          eq(usersTable.status, "ACTIVE"),
+          eq(userRolesTable.active, true),
+          or(eq(userRolesTable.role, "SUPERVISOR_A"), eq(userRolesTable.role, "SUPERVISOR_B")),
+        ),
+      );
+    const map = new Map<string, { id: string; name: string; photoUrl: string | null }>();
+    for (const r of rows) map.set(r.id, r);
+    res.json({ supervisors: [...map.values()] });
+  } catch (err) {
+    log.error({ err }, "Error listing eligible supervisors");
+    res.status(500).json({ error: "INTERNAL_ERROR" });
+  }
+});
+
 router.get("/operational-groups/:id", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger("organization", req.requestId, req.correlationId);
   const { role, sub, organizationId } = req.user!;
@@ -380,7 +438,8 @@ router.get("/operational-groups/:id", requireAuth, requireOrganization, async (r
 
     const serialized = await serializeGroup(group, organizationId);
     const members = await loadGroupMembers(group.id, memberRestriction);
-    res.json({ group: { ...serialized, members } });
+    const supervisors = await loadGroupSupervisors(group.id, memberRestriction);
+    res.json({ group: { ...serialized, members, supervisors } });
   } catch (err) {
     log.error({ err }, "Error getting group");
     res.status(500).json({ error: "INTERNAL_ERROR" });

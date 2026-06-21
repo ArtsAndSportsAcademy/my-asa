@@ -10,6 +10,7 @@ import {
   useUpdateOperationalGroup,
   useUpdateOperationalGroupStatus,
   useListUsers,
+  useGetEligibleSupervisors,
   useAddGroupMember,
   useRemoveGroupMember,
   useAddGroupSupervisor,
@@ -54,10 +55,12 @@ export default function GroupsPage() {
   const { data: opsData } = useGetOperations();
   const { data: groupsData, isLoading, error } = useGetOperationalGroups();
   const { data: usersData } = useListUsers();
+  const { data: eligibleSupervisorsData } = useGetEligibleSupervisors();
 
   const operations: Operation[] = opsData?.operations ?? [];
   const groups: OperationalGroup[] = groupsData?.groups ?? [];
   const users: User[] = usersData?.users ?? [];
+  const eligibleSupervisors = eligibleSupervisorsData?.supervisors ?? [];
 
   const createMutation = useCreateOperationalGroup();
   const updateMutation = useUpdateOperationalGroup();
@@ -88,6 +91,8 @@ export default function GroupsPage() {
   const detailGroup = detailData?.group;
   const groupMembers = detailGroup?.members ?? [];
   const memberIds = useMemo(() => new Set(groupMembers.map((m) => m.id)), [groupMembers]);
+  const groupSupervisors = detailGroup?.supervisors ?? [];
+  const groupSupervisorIds = useMemo(() => new Set(groupSupervisors.map((s) => s.id)), [groupSupervisors]);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: getGetOperationalGroupsQueryKey() });
   const invalidateDetail = () => {
@@ -194,8 +199,19 @@ export default function GroupsPage() {
     addSupervisorMutation.mutate(
       { id: membersGroup.id, data: { userId: addSupervisorUserId } },
       {
-        onSuccess: () => { toast({ title: "Supervisor adicionado" }); setAddSupervisorUserId(""); invalidate(); },
+        onSuccess: () => { toast({ title: "Supervisor adicionado" }); setAddSupervisorUserId(""); invalidateDetail(); invalidate(); },
         onError: (err: any) => toast({ title: err?.response?.data?.message ?? "Erro ao adicionar supervisor", variant: "destructive" }),
+      }
+    );
+  };
+
+  const handleRemoveSupervisor = (userId: string) => {
+    if (!membersGroup) return;
+    removeSupervisorMutation.mutate(
+      { id: membersGroup.id, userId },
+      {
+        onSuccess: () => { toast({ title: "Supervisor removido" }); invalidateDetail(); invalidate(); },
+        onError: (err: any) => toast({ title: err?.response?.data?.message ?? "Erro ao remover supervisor", variant: "destructive" }),
       }
     );
   };
@@ -444,12 +460,18 @@ export default function GroupsPage() {
               <div className="flex gap-2">
                 <Select value={addSupervisorUserId} onValueChange={setAddSupervisorUserId}>
                   <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Selecionar usuário" />
+                    <SelectValue placeholder="Selecionar supervisor" />
                   </SelectTrigger>
                   <SelectContent>
-                    {users.filter((u) => u.status === "ACTIVE").map((u) => (
-                      <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                    ))}
+                    {eligibleSupervisors.filter((s) => !groupSupervisorIds.has(s.id)).length === 0 ? (
+                      <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum supervisor disponível</div>
+                    ) : (
+                      eligibleSupervisors
+                        .filter((s) => !groupSupervisorIds.has(s.id))
+                        .map((s) => (
+                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                        ))
+                    )}
                   </SelectContent>
                 </Select>
                 <Button
@@ -460,6 +482,32 @@ export default function GroupsPage() {
                   <UserPlus className="w-4 h-4" />
                 </Button>
               </div>
+              {groupSupervisors.length === 0 ? (
+                <p className="text-sm text-muted-foreground border rounded-md px-3 py-3 text-center">
+                  Nenhum supervisor neste grupo ainda.
+                </p>
+              ) : (
+                <div className="border rounded-md divide-y">
+                  {groupSupervisors.map((s) => (
+                    <div key={s.id} className="flex items-center justify-between px-3 py-2">
+                      <span className="text-sm flex items-center gap-2">
+                        <Shield className="w-3.5 h-3.5 text-primary" />
+                        {s.name}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive hover:text-destructive"
+                        onClick={() => handleRemoveSupervisor(s.id)}
+                        disabled={removeSupervisorMutation.isPending}
+                        aria-label={`Remover supervisor ${s.name}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="space-y-3">

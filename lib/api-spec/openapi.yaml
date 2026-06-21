@@ -347,6 +347,38 @@ paths:
         "422":
           $ref: "#/components/responses/UnprocessableEntity"
 
+  /operational-groups/eligible-supervisors:
+    get:
+      operationId: getEligibleSupervisors
+      tags: [organization]
+      summary: List users eligible to be group supervisors (Admin only)
+      responses:
+        "200":
+          description: Lista de supervisores da organização
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  supervisors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        photoUrl:
+                          type: string
+                          nullable: true
+                      required: [id, name]
+                required: [supervisors]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /operational-groups/{id}:
     get:
       operationId: getOperationalGroup
@@ -5090,6 +5122,20 @@ components:
         members:
           type: array
           description: Membros ativos do grupo (presente apenas no detalhe do grupo).
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              photoUrl:
+                type: string
+                nullable: true
+            required: [id, name]
+        supervisors:
+          type: array
+          description: Supervisores ativos do grupo (presente apenas no detalhe do grupo).
           items:
             type: object
             properties:
