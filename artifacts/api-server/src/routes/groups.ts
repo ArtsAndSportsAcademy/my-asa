@@ -124,6 +124,226 @@ async function loadGroupInOrg(id: string, organizationId: string): Promise<Opera
   return null;
 }
 
+// ── Cores reutilizáveis (HTTP + ASA) ─────────────────────────────────────────
+// Encapsulam permissão + validação + mutação para que as rotas HTTP e a ASA
+// compartilhem exatamente a mesma lógica (evita drift de regras de escopo).
+
+export type GroupActor = { role: string; userId: string; organizationId: string };
+
+export class GroupActionError extends Error {
+  status: number;
+  code: string;
+  constructor(status: number, code: string, message: string) {
+    super(message);
+    this.name = "GroupActionError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
+/** Cria grupo. ADMIN: qualquer escopo. SUPERVISOR: só OPERATION da própria operação. */
+export async function createGroupCore(
+  actor: GroupActor,
+  input: { name?: string; scope?: string; operationId?: string | null; operationIds?: string[]; status?: string },
+): Promise<OperationalGroup> {
+  const { role, userId: sub, organizationId } = actor;
+  const name = input.name;
+  const scope: GroupScope = GROUP_SCOPES.includes(input.scope as GroupScope) ? (input.scope as GroupScope) : "OPERATION";
+  const operationId = input.operationId ?? undefined;
+  const operationIds: string[] = Array.isArray(input.operationIds) ? input.operationIds : [];
+
+  if (!name?.trim()) throw new GroupActionError(400, "BAD_REQUEST", "name é obrigatório");
+
+  const isAdmin = role === "ADMIN";
+  const isSupervisor = role === "SUPERVISOR_A" || role === "SUPERVISOR_B";
+  if (!isAdmin && !isSupervisor) throw new GroupActionError(403, "FORBIDDEN", "Sem permissão para criar grupos");
+  if (scope !== "OPERATION" && !isAdmin) throw new GroupActionError(403, "FORBIDDEN", "Apenas o Admin pode criar grupos amplos");
+
+  const resolvedStatus: GroupStatus = GROUP_STATUSES.includes(input.status as GroupStatus) ? (input.status as GroupStatus) : "ACTIVE";
+
+  if (scope === "OPERATION") {
+    if (!operationId) throw new GroupActionError(400, "BAD_REQUEST", "operationId é obrigatório para grupos de operação");
+    const operation = await db.query.operationsTable.findFirst({
+      where: and(eq(operationsTable.id, operationId), eq(operationsTable.organizationId, organizationId)),
+    });
+    if (!operation) throw new GroupActionError(404, "NOT_FOUND", "Operação não encontrada");
+    if (isSupervisor) {
+      const supOps = await supervisedOperationIds(sub);
+      if (!supOps.includes(operationId)) throw new GroupActionError(403, "FORBIDDEN", "Você não supervisiona esta operação");
+    }
+    if (resolvedStatus === "ACTIVE" && operation.status !== "ACTIVE") {
+      throw new GroupActionError(422, "UNPROCESSABLE", "Grupo ativo requer uma operação ativa. A operação atual está " + operation.status);
+    }
+    const [group] = await db
+      .insert(operationalGroupsTable)
+      .values({
+        organizationId,
+        operationId,
+        scope: "OPERATION",
+        name: name.trim(),
+        status: resolvedStatus,
+        supervisorId: isSupervisor ? sub : undefined,
+      })
+      .returning();
+    await recordAudit({
+      actorId: sub,
+      action: "GROUP_CREATED",
+      targetResource: `group:${group!.id}`,
+      metadata: { name, operationId, scope, status: resolvedStatus },
+    });
+    return group!;
+  }
+
+  if (scope === "MULTI") {
+    const uniqueOps = [...new Set(operationIds.filter(Boolean))];
+    if (uniqueOps.length < 1) throw new GroupActionError(400, "BAD_REQUEST", "Selecione ao menos uma operação para o grupo de várias operações");
+    const validOps = await db.query.operationsTable.findMany({
+      where: and(eq(operationsTable.organizationId, organizationId), inArray(operationsTable.id, uniqueOps)),
+    });
+    if (validOps.length !== uniqueOps.length) throw new GroupActionError(404, "NOT_FOUND", "Uma ou mais operações não foram encontradas nesta organização");
+    const [group] = await db
+      .insert(operationalGroupsTable)
+      .values({ organizationId, operationId: null, scope: "MULTI", name: name.trim(), status: resolvedStatus })
+      .returning();
+    await db.insert(groupOperationsTable).values(uniqueOps.map((opId) => ({ groupId: group!.id, operationId: opId })));
+    await recordAudit({
+      actorId: sub,
+      action: "GROUP_CREATED",
+      targetResource: `group:${group!.id}`,
+      metadata: { name, scope, operationIds: uniqueOps, status: resolvedStatus },
+    });
+    return group!;
+  }
+
+  // scope === "ALL"
+  const [group] = await db
+    .insert(operationalGroupsTable)
+    .values({ organizationId, operationId: null, scope: "ALL", name: name.trim(), status: resolvedStatus })
+    .returning();
+  await recordAudit({
+    actorId: sub,
+    action: "GROUP_CREATED",
+    targetResource: `group:${group!.id}`,
+    metadata: { name, scope, status: resolvedStatus },
+  });
+  return group!;
+}
+
+/** Carrega grupo na org e garante que o ator pode gerenciá-lo (admin tudo; supervisor só OPERATION da sua operação). */
+async function loadManageableGroup(actor: GroupActor, id: string): Promise<OperationalGroup> {
+  const group = await loadGroupInOrg(id, actor.organizationId);
+  if (!group) throw new GroupActionError(404, "NOT_FOUND", "Grupo não encontrado");
+  const supOps = actor.role === "ADMIN" ? [] : await supervisedOperationIds(actor.userId);
+  if (!canManageGroup(group, actor.role, supOps)) {
+    throw new GroupActionError(403, "FORBIDDEN", "Sem permissão para gerenciar este grupo");
+  }
+  return group;
+}
+
+/** Renomeia um grupo. name vazio = no-op (mantém compatibilidade do PATCH HTTP). */
+export async function renameGroupCore(actor: GroupActor, id: string, name?: string): Promise<OperationalGroup> {
+  await loadManageableGroup(actor, id);
+  const updates: Partial<{ name: string; updatedAt: Date }> = { updatedAt: new Date() };
+  if (name?.trim()) updates.name = name.trim();
+  const [updated] = await db
+    .update(operationalGroupsTable)
+    .set(updates)
+    .where(eq(operationalGroupsTable.id, id))
+    .returning();
+  await recordAudit({ actorId: actor.userId, action: "GROUP_UPDATED", targetResource: `group:${id}` });
+  return updated!;
+}
+
+/** Altera o status de um grupo (ACTIVE/INACTIVE/ARCHIVED). "Remover" = ARCHIVED. */
+export async function setGroupStatusCore(actor: GroupActor, id: string, status: string): Promise<OperationalGroup> {
+  if (!GROUP_STATUSES.includes(status as GroupStatus)) {
+    throw new GroupActionError(400, "BAD_REQUEST", `status deve ser: ${GROUP_STATUSES.join(", ")}`);
+  }
+  const group = await loadManageableGroup(actor, id);
+  if (status === "ACTIVE" && group.scope === "OPERATION" && group.operationId) {
+    const operation = await db.query.operationsTable.findFirst({ where: eq(operationsTable.id, group.operationId) });
+    if (operation?.status !== "ACTIVE") {
+      throw new GroupActionError(422, "UNPROCESSABLE", "Grupo ativo requer uma operação ativa. A operação está " + (operation?.status ?? "não encontrada"));
+    }
+  }
+  const [updated] = await db
+    .update(operationalGroupsTable)
+    .set({ status: status as GroupStatus, updatedAt: new Date() })
+    .where(eq(operationalGroupsTable.id, id))
+    .returning();
+  await recordAudit({
+    actorId: actor.userId,
+    action: "GROUP_UPDATED",
+    targetResource: `group:${id}`,
+    metadata: { from: group.status, to: status },
+  });
+  return updated!;
+}
+
+/** Adiciona um membro ao grupo, validando a operação coberta. */
+export async function addGroupMemberCore(actor: GroupActor, id: string, userId: string) {
+  if (!userId) throw new GroupActionError(400, "BAD_REQUEST", "userId é obrigatório");
+  const group = await loadManageableGroup(actor, id);
+
+  const targetUser = await db.query.usersTable.findFirst({
+    where: and(eq(usersTable.id, userId), eq(usersTable.organizationId, actor.organizationId)),
+  });
+  if (!targetUser) throw new GroupActionError(404, "NOT_FOUND", "Usuário não encontrado na organização");
+
+  const covered = await groupCoveredOperationIds(group, actor.organizationId);
+  const targetRoles = await db.query.userRolesTable.findMany({
+    where: and(eq(userRolesTable.userId, userId), eq(userRolesTable.active, true)),
+  });
+  const targetOps = [...new Set(targetRoles.map((r) => r.operationId))];
+
+  let membershipOperationId: string | undefined;
+  if (group.scope === "OPERATION") {
+    if (!group.operationId || !targetOps.includes(group.operationId)) {
+      throw new GroupActionError(422, "UNPROCESSABLE", "Este usuário não pertence à operação do grupo");
+    }
+    membershipOperationId = group.operationId;
+  } else {
+    membershipOperationId = targetOps.find((opId) => covered.includes(opId));
+    if (!membershipOperationId) {
+      throw new GroupActionError(422, "UNPROCESSABLE", "Este usuário não pertence a nenhuma operação coberta por este grupo");
+    }
+  }
+
+  const existing = await db.query.userRolesTable.findFirst({
+    where: and(
+      eq(userRolesTable.userId, userId),
+      eq(userRolesTable.groupId, group.id),
+      eq(userRolesTable.role, "MEMBER"),
+      eq(userRolesTable.active, true),
+    ),
+  });
+  if (existing) throw new GroupActionError(409, "CONFLICT", "Usuário já é membro deste grupo");
+
+  const [newRole] = await db
+    .insert(userRolesTable)
+    .values({ userId, operationId: membershipOperationId, groupId: group.id, role: "MEMBER", active: true })
+    .returning();
+  await recordAudit({ actorId: actor.userId, action: "MEMBER_ADDED", targetResource: `group:${group.id}:user:${userId}` });
+  return { role: newRole!, group };
+}
+
+/** Remove (desativa) um membro do grupo. */
+export async function removeGroupMemberCore(actor: GroupActor, id: string, userId: string): Promise<OperationalGroup> {
+  const group = await loadManageableGroup(actor, id);
+  const roleRecord = await db.query.userRolesTable.findFirst({
+    where: and(
+      eq(userRolesTable.userId, userId),
+      eq(userRolesTable.groupId, id),
+      eq(userRolesTable.role, "MEMBER"),
+      eq(userRolesTable.active, true),
+    ),
+  });
+  if (!roleRecord) throw new GroupActionError(404, "NOT_FOUND", "Membro não encontrado no grupo");
+  await db.update(userRolesTable).set({ active: false }).where(eq(userRolesTable.id, roleRecord.id));
+  await recordAudit({ actorId: actor.userId, action: "MEMBER_REMOVED", targetResource: `group:${id}:user:${userId}` });
+  return group;
+}
+
 router.get("/operational-groups/:id", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger("organization", req.requestId, req.correlationId);
   const { role, sub, organizationId } = req.user!;
@@ -170,145 +390,25 @@ router.get("/operational-groups/:id", requireAuth, requireOrganization, async (r
 router.post("/operational-groups", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger("organization", req.requestId, req.correlationId);
   const { role, sub, organizationId } = req.user!;
-  const { name, operationId, status } = req.body;
-  const operationIds: string[] = Array.isArray(req.body.operationIds) ? req.body.operationIds : [];
-  const scope: GroupScope = GROUP_SCOPES.includes(req.body.scope) ? req.body.scope : "OPERATION";
-
-  if (!name?.trim()) {
-    res.status(400).json({ error: "BAD_REQUEST", message: "name é obrigatório" });
-    return;
-  }
-
-  const isAdmin = role === "ADMIN";
-  const isSupervisor = role === "SUPERVISOR_A" || role === "SUPERVISOR_B";
-  if (!isAdmin && !isSupervisor) {
-    res.status(403).json({ error: "FORBIDDEN", message: "Sem permissão para criar grupos" });
-    return;
-  }
-
-  if (scope !== "OPERATION" && !isAdmin) {
-    res.status(403).json({ error: "FORBIDDEN", message: "Apenas o Admin pode criar grupos amplos" });
-    return;
-  }
-
-  const resolvedStatus: GroupStatus = GROUP_STATUSES.includes(status) ? status : "ACTIVE";
 
   try {
-    if (scope === "OPERATION") {
-      if (!operationId) {
-        res.status(400).json({ error: "BAD_REQUEST", message: "operationId é obrigatório para grupos de operação" });
-        return;
-      }
-      const operation = await db.query.operationsTable.findFirst({
-        where: and(eq(operationsTable.id, operationId), eq(operationsTable.organizationId, organizationId)),
-      });
-      if (!operation) {
-        res.status(404).json({ error: "NOT_FOUND", message: "Operação não encontrada" });
-        return;
-      }
-      if (isSupervisor) {
-        const supOps = await supervisedOperationIds(sub);
-        if (!supOps.includes(operationId)) {
-          res.status(403).json({ error: "FORBIDDEN", message: "Você não supervisiona esta operação" });
-          return;
-        }
-      }
-      if (resolvedStatus === "ACTIVE" && operation.status !== "ACTIVE") {
-        res.status(422).json({
-          error: "UNPROCESSABLE",
-          message: "Grupo ativo requer uma operação ativa. A operação atual está " + operation.status,
-        });
-        return;
-      }
-
-      const [group] = await db
-        .insert(operationalGroupsTable)
-        .values({
-          organizationId,
-          operationId,
-          scope: "OPERATION",
-          name: (name as string).trim(),
-          status: resolvedStatus,
-          supervisorId: isSupervisor ? sub : undefined,
-        })
-        .returning();
-
-      await recordAudit({
-        actorId: sub,
-        action: "GROUP_CREATED",
-        targetResource: `group:${group!.id}`,
-        metadata: { name, operationId, scope, status: resolvedStatus },
-      });
-      log.info({ groupId: group!.id, scope }, "Operation group created");
-      res.status(201).json({ group: await serializeGroup(group!, organizationId) });
-      return;
-    }
-
-    // Grupos amplos (apenas Admin): MULTI ou ALL.
-    if (scope === "MULTI") {
-      const uniqueOps = [...new Set(operationIds.filter(Boolean))];
-      if (uniqueOps.length < 1) {
-        res.status(400).json({ error: "BAD_REQUEST", message: "Selecione ao menos uma operação para o grupo de várias operações" });
-        return;
-      }
-      const validOps = await db.query.operationsTable.findMany({
-        where: and(
-          eq(operationsTable.organizationId, organizationId),
-          inArray(operationsTable.id, uniqueOps),
-        ),
-      });
-      if (validOps.length !== uniqueOps.length) {
-        res.status(404).json({ error: "NOT_FOUND", message: "Uma ou mais operações não foram encontradas nesta organização" });
-        return;
-      }
-
-      const [group] = await db
-        .insert(operationalGroupsTable)
-        .values({
-          organizationId,
-          operationId: null,
-          scope: "MULTI",
-          name: (name as string).trim(),
-          status: resolvedStatus,
-        })
-        .returning();
-
-      await db.insert(groupOperationsTable).values(
-        uniqueOps.map((opId) => ({ groupId: group!.id, operationId: opId })),
-      );
-
-      await recordAudit({
-        actorId: sub,
-        action: "GROUP_CREATED",
-        targetResource: `group:${group!.id}`,
-        metadata: { name, scope, operationIds: uniqueOps, status: resolvedStatus },
-      });
-      log.info({ groupId: group!.id, scope }, "Multi-operation group created");
-      res.status(201).json({ group: await serializeGroup(group!, organizationId) });
-      return;
-    }
-
-    // scope === "ALL"
-    const [group] = await db
-      .insert(operationalGroupsTable)
-      .values({
-        organizationId,
-        operationId: null,
-        scope: "ALL",
-        name: (name as string).trim(),
-        status: resolvedStatus,
-      })
-      .returning();
-
-    await recordAudit({
-      actorId: sub,
-      action: "GROUP_CREATED",
-      targetResource: `group:${group!.id}`,
-      metadata: { name, scope, status: resolvedStatus },
-    });
-    log.info({ groupId: group!.id, scope }, "All-operations group created");
-    res.status(201).json({ group: await serializeGroup(group!, organizationId) });
+    const group = await createGroupCore(
+      { role, userId: sub, organizationId },
+      {
+        name: req.body.name,
+        scope: req.body.scope,
+        operationId: req.body.operationId,
+        operationIds: Array.isArray(req.body.operationIds) ? req.body.operationIds : [],
+        status: req.body.status,
+      },
+    );
+    log.info({ groupId: group.id, scope: group.scope }, "Group created");
+    res.status(201).json({ group: await serializeGroup(group, organizationId) });
   } catch (err) {
+    if (err instanceof GroupActionError) {
+      res.status(err.status).json({ error: err.code, message: err.message });
+      return;
+    }
     log.error({ err }, "Error creating group");
     res.status(500).json({ error: "INTERNAL_ERROR" });
   }
@@ -318,37 +418,15 @@ router.patch("/operational-groups/:id", requireAuth, requireOrganization, async 
   const log = requestLogger("organization", req.requestId, req.correlationId);
   const { role, sub, organizationId } = req.user!;
   const id = req.params.id as string;
-  const { name } = req.body;
 
   try {
-    const group = await loadGroupInOrg(id, organizationId);
-    if (!group) {
-      res.status(404).json({ error: "NOT_FOUND" });
-      return;
-    }
-    const supOps = role === "ADMIN" ? [] : await supervisedOperationIds(sub);
-    if (!canManageGroup(group, role, supOps)) {
-      res.status(403).json({ error: "FORBIDDEN", message: "Sem permissão para editar este grupo" });
-      return;
-    }
-
-    const updates: Partial<{ name: string; updatedAt: Date }> = { updatedAt: new Date() };
-    if (name?.trim()) updates.name = (name as string).trim();
-
-    const [updated] = await db
-      .update(operationalGroupsTable)
-      .set(updates)
-      .where(eq(operationalGroupsTable.id, id))
-      .returning();
-
-    await recordAudit({
-      actorId: sub,
-      action: "GROUP_UPDATED",
-      targetResource: `group:${id}`,
-    });
-
-    res.json({ group: await serializeGroup(updated!, organizationId) });
+    const updated = await renameGroupCore({ role, userId: sub, organizationId }, id, req.body.name);
+    res.json({ group: await serializeGroup(updated, organizationId) });
   } catch (err) {
+    if (err instanceof GroupActionError) {
+      res.status(err.status).json({ error: err.code, message: err.message });
+      return;
+    }
     log.error({ err }, "Error updating group");
     res.status(500).json({ error: "INTERNAL_ERROR" });
   }
@@ -358,53 +436,15 @@ router.patch("/operational-groups/:id/status", requireAuth, requireOrganization,
   const log = requestLogger("organization", req.requestId, req.correlationId);
   const { role, sub, organizationId } = req.user!;
   const id = req.params.id as string;
-  const { status } = req.body;
-
-  if (!GROUP_STATUSES.includes(status)) {
-    res.status(400).json({ error: "BAD_REQUEST", message: `status deve ser: ${GROUP_STATUSES.join(", ")}` });
-    return;
-  }
 
   try {
-    const group = await loadGroupInOrg(id, organizationId);
-    if (!group) {
-      res.status(404).json({ error: "NOT_FOUND" });
-      return;
-    }
-    const supOps = role === "ADMIN" ? [] : await supervisedOperationIds(sub);
-    if (!canManageGroup(group, role, supOps)) {
-      res.status(403).json({ error: "FORBIDDEN", message: "Sem permissão para alterar este grupo" });
-      return;
-    }
-
-    if (status === "ACTIVE" && group.scope === "OPERATION" && group.operationId) {
-      const operation = await db.query.operationsTable.findFirst({
-        where: eq(operationsTable.id, group.operationId),
-      });
-      if (operation?.status !== "ACTIVE") {
-        res.status(422).json({
-          error: "UNPROCESSABLE",
-          message: "Grupo ativo requer uma operação ativa. A operação está " + (operation?.status ?? "não encontrada"),
-        });
-        return;
-      }
-    }
-
-    const [updated] = await db
-      .update(operationalGroupsTable)
-      .set({ status: status as GroupStatus, updatedAt: new Date() })
-      .where(eq(operationalGroupsTable.id, id))
-      .returning();
-
-    await recordAudit({
-      actorId: sub,
-      action: "GROUP_UPDATED",
-      targetResource: `group:${id}`,
-      metadata: { from: group.status, to: status },
-    });
-
-    res.json({ group: await serializeGroup(updated!, organizationId) });
+    const updated = await setGroupStatusCore({ role, userId: sub, organizationId }, id, req.body.status);
+    res.json({ group: await serializeGroup(updated, organizationId) });
   } catch (err) {
+    if (err instanceof GroupActionError) {
+      res.status(err.status).json({ error: err.code, message: err.message });
+      return;
+    }
     log.error({ err }, "Error updating group status");
     res.status(500).json({ error: "INTERNAL_ERROR" });
   }
@@ -414,86 +454,16 @@ router.post("/operational-groups/:id/members", requireAuth, requireOrganization,
   const log = requestLogger("organization", req.requestId, req.correlationId);
   const { role, sub, organizationId } = req.user!;
   const id = req.params.id as string;
-  const { userId } = req.body;
-
-  if (!userId) {
-    res.status(400).json({ error: "BAD_REQUEST", message: "userId é obrigatório" });
-    return;
-  }
 
   try {
-    const group = await loadGroupInOrg(id, organizationId);
-    if (!group) {
-      res.status(404).json({ error: "NOT_FOUND", message: "Grupo não encontrado" });
-      return;
-    }
-    const supOps = role === "ADMIN" ? [] : await supervisedOperationIds(sub);
-    if (!canManageGroup(group, role, supOps)) {
-      res.status(403).json({ error: "FORBIDDEN", message: "Sem permissão para gerenciar membros deste grupo" });
-      return;
-    }
-
-    const targetUser = await db.query.usersTable.findFirst({
-      where: and(eq(usersTable.id, userId), eq(usersTable.organizationId, organizationId)),
-    });
-    if (!targetUser) {
-      res.status(404).json({ error: "NOT_FOUND", message: "Usuário não encontrado na organização" });
-      return;
-    }
-
-    // Define a operação "home" da associação (user_roles.operation_id é obrigatório).
-    const covered = await groupCoveredOperationIds(group, organizationId);
-    const targetRoles = await db.query.userRolesTable.findMany({
-      where: and(eq(userRolesTable.userId, userId), eq(userRolesTable.active, true)),
-    });
-    const targetOps = [...new Set(targetRoles.map((r) => r.operationId))];
-
-    let membershipOperationId: string | undefined;
-    if (group.scope === "OPERATION") {
-      if (!group.operationId || !targetOps.includes(group.operationId)) {
-        res.status(422).json({ error: "UNPROCESSABLE", message: "Este usuário não pertence à operação do grupo" });
-        return;
-      }
-      membershipOperationId = group.operationId;
-    } else {
-      // Grupos amplos (MULTI/ALL): o membro DEVE pertencer a uma operação coberta pelo grupo.
-      membershipOperationId = targetOps.find((opId) => covered.includes(opId));
-      if (!membershipOperationId) {
-        res.status(422).json({
-          error: "UNPROCESSABLE",
-          message: "Este usuário não pertence a nenhuma operação coberta por este grupo",
-        });
-        return;
-      }
-    }
-
-    const existing = await db.query.userRolesTable.findFirst({
-      where: and(
-        eq(userRolesTable.userId, userId),
-        eq(userRolesTable.groupId, group.id),
-        eq(userRolesTable.role, "MEMBER"),
-        eq(userRolesTable.active, true),
-      ),
-    });
-    if (existing) {
-      res.status(409).json({ error: "CONFLICT", message: "Usuário já é membro deste grupo" });
-      return;
-    }
-
-    const [newRole] = await db
-      .insert(userRolesTable)
-      .values({ userId, operationId: membershipOperationId, groupId: group.id, role: "MEMBER", active: true })
-      .returning();
-
-    await recordAudit({
-      actorId: sub,
-      action: "MEMBER_ADDED",
-      targetResource: `group:${group.id}:user:${userId}`,
-    });
-
-    log.info({ groupId: group.id, userId }, "Member added to group");
+    const { role: newRole } = await addGroupMemberCore({ role, userId: sub, organizationId }, id, req.body.userId);
+    log.info({ groupId: id, userId: req.body.userId }, "Member added to group");
     res.status(201).json({ role: newRole });
   } catch (err) {
+    if (err instanceof GroupActionError) {
+      res.status(err.status).json({ error: err.code, message: err.message });
+      return;
+    }
     log.error({ err }, "Error adding member");
     res.status(500).json({ error: "INTERNAL_ERROR" });
   }
@@ -506,41 +476,14 @@ router.delete("/operational-groups/:id/members/:userId", requireAuth, requireOrg
   const userId = req.params.userId as string;
 
   try {
-    const group = await loadGroupInOrg(id, organizationId);
-    if (!group) {
-      res.status(404).json({ error: "NOT_FOUND", message: "Grupo não encontrado" });
-      return;
-    }
-    const supOps = role === "ADMIN" ? [] : await supervisedOperationIds(sub);
-    if (!canManageGroup(group, role, supOps)) {
-      res.status(403).json({ error: "FORBIDDEN", message: "Sem permissão para gerenciar membros deste grupo" });
-      return;
-    }
-
-    const roleRecord = await db.query.userRolesTable.findFirst({
-      where: and(
-        eq(userRolesTable.userId, userId),
-        eq(userRolesTable.groupId, id),
-        eq(userRolesTable.role, "MEMBER"),
-        eq(userRolesTable.active, true),
-      ),
-    });
-    if (!roleRecord) {
-      res.status(404).json({ error: "NOT_FOUND", message: "Membro não encontrado no grupo" });
-      return;
-    }
-
-    await db.update(userRolesTable).set({ active: false }).where(eq(userRolesTable.id, roleRecord.id));
-
-    await recordAudit({
-      actorId: sub,
-      action: "MEMBER_REMOVED",
-      targetResource: `group:${id}:user:${userId}`,
-    });
-
+    await removeGroupMemberCore({ role, userId: sub, organizationId }, id, userId);
     log.info({ groupId: id, userId }, "Member removed from group");
     res.status(204).send();
   } catch (err) {
+    if (err instanceof GroupActionError) {
+      res.status(err.status).json({ error: err.code, message: err.message });
+      return;
+    }
     log.error({ err }, "Error removing member");
     res.status(500).json({ error: "INTERNAL_ERROR" });
   }

@@ -28,5 +28,11 @@ No GET de detalhe do grupo, a lista de membros tem que ser filtrada por escopo p
 
 **Why:** em grupo amplo (MULTI/ALL), devolver todos os membros expõe gente de outra operação a um supervisor de uma operação coberta — vazamento cross-operation. Vale para qualquer endpoint que liste membros de grupo amplo.
 
+## Cores compartilhados HTTP + ASA (anti-drift)
+`groups.ts` expõe cores reutilizáveis (`createGroupCore`/`renameGroupCore`/`setGroupStatusCore`/`addGroupMemberCore`/`removeGroupMemberCore`) com `GroupActionError(status,code,message)`. Tanto as rotas HTTP quanto as ferramentas ASA (criar/editar/remover grupo e membros) chamam o MESMO core, montando um `GroupActor={role,userId,organizationId}`. HTTP mapeia `GroupActionError→res.status`; ASA mapeia `→ {error: msg}`.
+
+**Why:** ter a regra de permissão/escopo num só lugar evita que a ASA contorne validações ou divirja do HTTP. Ator vem sempre de `ctx`/`req.user` → ASA não pode escalar papel.
+**How to apply:** ao mudar regra de grupo, edite o core (não o handler). ASA `editar_grupo` só chama `renameGroupCore` se `input.name` truthy; `renameGroupCore` tolera name vazio (no-op) para manter o 200 antigo do PATCH. `remover_grupo` = `setGroupStatusCore(...,"ARCHIVED")`. Supervisor criando via ASA usa `ctx.operationId` como operationId.
+
 ## ASA — consultar_grupo
 Resolve grupo por nome (reusa `normalizeName`), filtra grupos que cobrem `ctx.operationId`, e ao listar membros filtra por `user_roles.operationId === ctx.operationId` quando há operação atual — para não trazer membros de outra operação ao montar escala da operação corrente. Depois usa `criar_entradas_escala_lote` (um por membro), nunca um a um.

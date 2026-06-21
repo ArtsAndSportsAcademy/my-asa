@@ -31,6 +31,14 @@ import {
   groupOperationsTable,
 } from "@workspace/db";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
+import {
+  GroupActionError,
+  createGroupCore,
+  renameGroupCore,
+  setGroupStatusCore,
+  addGroupMemberCore,
+  removeGroupMemberCore,
+} from "./groups.js";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { createNotification, sendNotification } from "../services/notificationService.js";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -602,6 +610,27 @@ Quando o usuário pedir para montar escala/atividade para um GRUPO pelo nome (ex
 
 ⸻
 
+Gerir GRUPOS e MEMBROS (CRUD)${isManager ? "" : "\n[Seção não aplicável ao seu papel atual]"}
+
+${isManager ? `Você pode criar, editar, remover grupos e gerir os membros dentro deles. Regras de papel:
+• SUPERVISOR: só grupos da operação atual (scope OPERATION). criar_grupo usa automaticamente a operação atual.
+• ADMIN: além dos da operação, pode criar grupos amplos — scope MULTI (com operationIds das operações cobertas) ou scope ALL (todas as operações da organização).
+
+Ferramentas:
+• criar_grupo(name, scope?, operationIds?) — cria o grupo.
+• editar_grupo(groupId, name?, status?) — renomeia e/ou muda status (ACTIVE/INACTIVE/ARCHIVED).
+• remover_grupo(groupId) — arquiva o grupo (status ARCHIVED); é a forma de "remover".
+• adicionar_membro_grupo(groupId, userId) — o membro precisa pertencer a uma operação coberta pelo grupo.
+• remover_membro_grupo(groupId, userId) — tira o membro do grupo.
+
+Fluxo obrigatório:
+1. LOCALIZAR: para editar/remover/gerir membros, use consultar_grupo para obter o groupId (e os membros em "members"). Para achar um userId a adicionar, use consultar_membros.
+2. CONFIRMAR: descreva a ação (o que será criado/alterado/removido) e PEÇA CONFIRMAÇÃO explícita antes de executar. Nunca aja sem confirmação.
+3. EXECUTAR: só então chame a ferramenta. A ferramenta valida permissões e escopo e devolve erro amigável se algo não for permitido.
+4. RELATAR: confirme o resultado de forma simples.` : ""}
+
+⸻
+
 Edição de entidades por conversa
 
 Quando o usuário pedir para MUDAR, ALTERAR, CORRIGIR, REMARCAR, TROCAR ou ATUALIZAR algo que já existe (uma tarefa, folga/ausência, ensaio/bloco de agenda, aviso em rascunho ou reconhecimento), siga SEMPRE este fluxo:
@@ -925,6 +954,69 @@ const ASA_TOOLS: Tool[] = [
       required: ["query"],
       properties: {
         query: { type: "string", description: "Nome ou parte do nome do grupo a buscar" },
+      },
+    },
+  },
+  {
+    name: "criar_grupo",
+    description: "Cria um grupo. SUPERVISOR só cria grupos da operação atual (scope OPERATION). ADMIN pode criar grupos amplos: várias operações (scope MULTI + operationIds) ou todas (scope ALL). Confirme com o usuário antes de criar.",
+    input_schema: {
+      type: "object" as const,
+      required: ["name"],
+      properties: {
+        name: { type: "string", description: "Nome do grupo" },
+        scope: { type: "string", description: "OPERATION (operação atual), MULTI (várias operações) ou ALL (todas). Padrão OPERATION." },
+        operationIds: { type: "array", items: { type: "string" }, description: "IDs das operações cobertas (somente scope MULTI; apenas ADMIN)" },
+      },
+    },
+  },
+  {
+    name: "editar_grupo",
+    description: "Edita um grupo existente: renomeia e/ou muda o status (ACTIVE/INACTIVE/ARCHIVED). Use consultar_grupo antes para obter o groupId. Confirme com o usuário antes de editar.",
+    input_schema: {
+      type: "object" as const,
+      required: ["groupId"],
+      properties: {
+        groupId: { type: "string", description: "ID do grupo (obtido via consultar_grupo)" },
+        name: { type: "string", description: "Novo nome (opcional)" },
+        status: { type: "string", description: "Novo status: ACTIVE, INACTIVE ou ARCHIVED (opcional)" },
+      },
+    },
+  },
+  {
+    name: "remover_grupo",
+    description: "Remove (arquiva) um grupo, definindo o status como ARCHIVED. Use consultar_grupo antes para obter o groupId. Confirme com o usuário antes de remover.",
+    input_schema: {
+      type: "object" as const,
+      required: ["groupId"],
+      properties: {
+        groupId: { type: "string", description: "ID do grupo (obtido via consultar_grupo)" },
+      },
+    },
+  },
+  {
+    name: "adicionar_membro_grupo",
+    description: "Adiciona um membro a um grupo. Use consultar_grupo para o groupId e consultar_membros para o userId. O membro deve pertencer a uma operação coberta pelo grupo. Confirme com o usuário antes.",
+    input_schema: {
+      type: "object" as const,
+      required: ["groupId", "userId"],
+      properties: {
+        groupId: { type: "string", description: "ID do grupo (obtido via consultar_grupo)" },
+        userId: { type: "string", description: "ID do membro a adicionar (obtido via consultar_membros)" },
+        userName: { type: "string", description: "Nome do membro (para confirmação)" },
+      },
+    },
+  },
+  {
+    name: "remover_membro_grupo",
+    description: "Remove um membro de um grupo. Use consultar_grupo para o groupId (os membros vêm em 'members' com userId). Confirme com o usuário antes de remover.",
+    input_schema: {
+      type: "object" as const,
+      required: ["groupId", "userId"],
+      properties: {
+        groupId: { type: "string", description: "ID do grupo (obtido via consultar_grupo)" },
+        userId: { type: "string", description: "ID do membro a remover (obtido via consultar_grupo em 'members')" },
+        userName: { type: "string", description: "Nome do membro (para confirmação)" },
       },
     },
   },
@@ -2786,6 +2878,63 @@ export async function executeTool(
         // Lista pronta de membros resolvidos sem ambiguidade (para ações em lote)
         membrosResolvidos: encontrados.map((r) => r.member),
       });
+    }
+
+    // ── criar_grupo / editar_grupo / remover_grupo / membros ────────────────────
+    if (
+      name === "criar_grupo" ||
+      name === "editar_grupo" ||
+      name === "remover_grupo" ||
+      name === "adicionar_membro_grupo" ||
+      name === "remover_membro_grupo"
+    ) {
+      if (!isManager) return JSON.stringify({ error: "Sem permissão para gerenciar grupos" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const actor = { role: ctx.userRole, userId: ctx.userId, organizationId: ctx.organizationId };
+      try {
+        if (name === "criar_grupo") {
+          const scope = ((input.scope as string) ?? "OPERATION").toUpperCase();
+          const group = await createGroupCore(actor, {
+            name: input.name as string,
+            scope,
+            // Supervisor cria sempre na operação atual; ADMIN usa operationIds para MULTI.
+            operationId: scope === "OPERATION" ? ctx.operationId : undefined,
+            operationIds: Array.isArray(input.operationIds) ? (input.operationIds as string[]) : [],
+          });
+          return JSON.stringify({ success: true, message: `Grupo "${group.name}" criado.`, group: { id: group.id, name: group.name, scope: group.scope, status: group.status } });
+        }
+        if (name === "editar_grupo") {
+          const groupId = input.groupId as string;
+          if (!groupId) return JSON.stringify({ error: "groupId é obrigatório" });
+          let group;
+          if (input.name) group = await renameGroupCore(actor, groupId, input.name as string);
+          if (input.status) group = await setGroupStatusCore(actor, groupId, (input.status as string).toUpperCase());
+          if (!group) return JSON.stringify({ error: "Informe ao menos name ou status para editar" });
+          return JSON.stringify({ success: true, message: `Grupo "${group.name}" atualizado.`, group: { id: group.id, name: group.name, scope: group.scope, status: group.status } });
+        }
+        if (name === "remover_grupo") {
+          const groupId = input.groupId as string;
+          if (!groupId) return JSON.stringify({ error: "groupId é obrigatório" });
+          const group = await setGroupStatusCore(actor, groupId, "ARCHIVED");
+          return JSON.stringify({ success: true, message: `Grupo "${group.name}" arquivado (removido).`, group: { id: group.id, name: group.name, status: group.status } });
+        }
+        if (name === "adicionar_membro_grupo") {
+          const groupId = input.groupId as string;
+          const userId = input.userId as string;
+          if (!groupId || !userId) return JSON.stringify({ error: "groupId e userId são obrigatórios" });
+          const { group } = await addGroupMemberCore(actor, groupId, userId);
+          return JSON.stringify({ success: true, message: `Membro adicionado ao grupo "${group.name}".` });
+        }
+        // remover_membro_grupo
+        const groupId = input.groupId as string;
+        const userId = input.userId as string;
+        if (!groupId || !userId) return JSON.stringify({ error: "groupId e userId são obrigatórios" });
+        const group = await removeGroupMemberCore(actor, groupId, userId);
+        return JSON.stringify({ success: true, message: `Membro removido do grupo "${group.name}".` });
+      } catch (err) {
+        if (err instanceof GroupActionError) return JSON.stringify({ error: err.message });
+        return JSON.stringify({ error: err instanceof Error ? err.message : "Erro ao gerenciar grupo" });
+      }
     }
 
     // ── consultar_grupo ───────────────────────────────────────────────────────
