@@ -113,6 +113,8 @@ export * from './dailyBookWithScenes';
 export * from './deleteDailyBookBlock200';
 export * from './deleteDailyBookPosition200';
 export * from './deleteDailyBookScene200';
+export * from './deleteShowBook200';
+export * from './deleteShowBook409';
 export * from './deliveryAssignmentItem';
 export * from './deliveryAssignmentItemChecklistProgress';
 export * from './deliveryDetail';

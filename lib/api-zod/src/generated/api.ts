@@ -827,6 +827,18 @@ export const UpdateShowBookResponse = zod.object({
 
 
 /**
+ * @summary Apagar definitivamente o livro do show
+ */
+export const DeleteShowBookParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const DeleteShowBookResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+/**
  * @summary Publicar ou arquivar livro do show
  */
 export const UpdateShowBookStatusParams = zod.object({

@@ -2808,6 +2808,14 @@ export type UpdateShowBook200 = {
   showBook: ShowBook;
 };
 
+export type DeleteShowBook200 = {
+  success: boolean;
+};
+
+export type DeleteShowBook409 = {
+  error: string;
+};
+
 export type UpdateShowBookStatus200 = {
   showBook: ShowBook;
 };

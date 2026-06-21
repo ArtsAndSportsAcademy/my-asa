@@ -13,8 +13,12 @@ import {
   showBookPositionLibraryRefsTable,
   libraryDocumentsTable,
   usersTable,
+  scalesTable,
+  agendaEventsTable,
+  dailyBooksTable,
+  operationsTable,
 } from "@workspace/db";
-import { requireAuth, requireOrganization } from "../middlewares/auth.js";
+import { requireAuth, requireOrganization, requireRole } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
 import { eventBus } from "../lib/event-bus.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
@@ -202,6 +206,59 @@ router.patch("/show-books/:id/status", requireAuth, requireOrganization, async (
     res.json({ showBook: updated });
   } catch (err) {
     res.status(500).json({ error: "Erro ao atualizar status" });
+  }
+});
+
+router.delete("/show-books/:id", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
+  const id = req.params.id as string;
+  const organizationId = req.user!.organizationId;
+  try {
+    const book = await getShowBookOrFail(id, res);
+    if (!book) return;
+
+    const [op] = await db
+      .select({ id: operationsTable.id })
+      .from(operationsTable)
+      .where(and(eq(operationsTable.id, book.operationId), eq(operationsTable.organizationId, organizationId)))
+      .limit(1);
+    if (!op) {
+      res.status(404).json({ error: "Livro do Show não encontrado" });
+      return;
+    }
+
+    const [inScale] = await db.select({ id: scalesTable.id }).from(scalesTable).where(eq(scalesTable.showBookId, id)).limit(1);
+    const [inAgenda] = await db.select({ id: agendaEventsTable.id }).from(agendaEventsTable).where(eq(agendaEventsTable.showBookId, id)).limit(1);
+    const [inDaily] = await db.select({ id: dailyBooksTable.id }).from(dailyBooksTable).where(eq(dailyBooksTable.showBookId, id)).limit(1);
+    if (inScale || inAgenda || inDaily) {
+      const usos: string[] = [];
+      if (inScale) usos.push("escalas");
+      if (inAgenda) usos.push("agenda");
+      if (inDaily) usos.push("livro do dia");
+      res.status(409).json({
+        error: `Este livro está a ser usado em ${usos.join(", ")}. Arquive-o em vez de apagar, ou remova primeiro essas ligações.`,
+      });
+      return;
+    }
+
+    await db.transaction(async (tx) => {
+      const roles = await tx.select({ id: showBookRolesTable.id }).from(showBookRolesTable).where(eq(showBookRolesTable.showBookId, id));
+      const roleIds = roles.map((r) => r.id);
+      if (roleIds.length > 0) {
+        await tx.delete(showBookLinesTable).where(inArray(showBookLinesTable.positionId, roleIds));
+      }
+      await tx.delete(showBookRolesTable).where(eq(showBookRolesTable.showBookId, id));
+      await tx.delete(showBookBlocksTable).where(eq(showBookBlocksTable.showBookId, id));
+      await tx.delete(showBookScenesTable).where(eq(showBookScenesTable.showBookId, id));
+      await tx.delete(showBookVersionsTable).where(eq(showBookVersionsTable.showBookId, id));
+      await tx.delete(showBooksTable).where(eq(showBooksTable.id, id));
+    });
+
+    eventBus.emit("showbook.deleted", { showBookId: id, operationId: book.operationId });
+    const log = requestLogger("show_book", (req as any).requestId ?? "", (req as any).correlationId ?? "");
+    log.info({ showBookId: id }, "Livro do Show apagado");
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao apagar o livro" });
   }
 });
 

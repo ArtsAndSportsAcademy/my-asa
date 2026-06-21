@@ -80,6 +80,8 @@ import type {
   DeleteDailyBookBlock200,
   DeleteDailyBookPosition200,
   DeleteDailyBookScene200,
+  DeleteShowBook200,
+  DeleteShowBook409,
   DeliveryDetailResponse,
   DeliveryListResponse,
   DeliveryMembersResponse,
@@ -2845,6 +2847,76 @@ export const useUpdateShowBook = <TError = ErrorType<BadRequestResponse | Unauth
         TContext
       > => {
       return useMutation(getUpdateShowBookMutationOptions(options));
+    }
+
+export const getDeleteShowBookUrl = (id: string,) => {
+
+
+
+
+  return `/api/show-books/${id}`
+}
+
+/**
+ * @summary Apagar definitivamente o livro do show
+ */
+export const deleteShowBook = async (id: string, options?: RequestInit): Promise<DeleteShowBook200> => {
+
+  return customFetch<DeleteShowBook200>(getDeleteShowBookUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteShowBookMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | DeleteShowBook409>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBook>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteShowBook>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteShowBook'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteShowBook>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteShowBook(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteShowBookMutationResult = NonNullable<Awaited<ReturnType<typeof deleteShowBook>>>
+
+    export type DeleteShowBookMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | DeleteShowBook409>
+
+    /**
+ * @summary Apagar definitivamente o livro do show
+ */
+export const useDeleteShowBook = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | DeleteShowBook409>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBook>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteShowBook>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteShowBookMutationOptions(options));
     }
 
 export const getUpdateShowBookStatusUrl = (id: string,) => {

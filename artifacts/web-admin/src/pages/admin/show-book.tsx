@@ -6,6 +6,7 @@ import {
   useListShowBookVersions,
   useCreateShowBook,
   useUpdateShowBookStatus,
+  useDeleteShowBook,
   useCreateShowBookScene,
   useUpdateShowBookScene,
   useDeleteShowBookScene,
@@ -815,6 +816,7 @@ export default function ShowBookPage() {
   const [, setLocation] = useLocation();
   const auth = useAuth();
   const isAdmin = auth.roles.some((r) => r.role === "ADMIN" || r.role === "SUPERVISOR_A");
+  const isFullAdmin = auth.roles.some((r) => r.role === "ADMIN");
 
   const operationId = auth.roles.find((r) => r.operationId)?.operationId;
 
@@ -825,6 +827,7 @@ export default function ShowBookPage() {
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [selectedPositionId, setSelectedPositionId] = useState<string | null>(null);
   const [selectedPositionName, setSelectedPositionName] = useState<string>("");
   const [refsSheetOpen, setRefsSheetOpen] = useState(false);
@@ -881,6 +884,7 @@ export default function ShowBookPage() {
 
   const createMutation = useCreateShowBook();
   const statusMutation = useUpdateShowBookStatus();
+  const deleteMutation = useDeleteShowBook();
   const createSceneMutation = useCreateShowBookScene();
   const updateSceneMutation = useUpdateShowBookScene();
   const deleteSceneMutation = useDeleteShowBookScene();
@@ -939,6 +943,25 @@ export default function ShowBookPage() {
       {
         onSuccess: () => { toast({ title: "Status atualizado" }); setStatusOpen(false); invalidateAll(); },
         onError: () => failToast("Erro ao atualizar status"),
+      }
+    );
+  };
+
+  const handleDelete = () => {
+    if (!selectedId) return;
+    deleteMutation.mutate(
+      { id: selectedId },
+      {
+        onSuccess: () => {
+          toast({ title: "Livro apagado" });
+          setDeleteOpen(false);
+          setSelectedId(null);
+          invalidateAll();
+        },
+        onError: (err: any) => {
+          const msg = err?.error ?? err?.response?.data?.error ?? "Erro ao apagar o livro";
+          failToast(msg);
+        },
       }
     );
   };
@@ -1212,6 +1235,11 @@ export default function ShowBookPage() {
                     <Button size="sm" variant="outline" onClick={() => setStatusOpen(true)}>
                       <Settings className="h-3.5 w-3.5 mr-1.5" /> Status
                     </Button>
+                    {isFullAdmin && (
+                      <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={() => setDeleteOpen(true)}>
+                        <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Apagar
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
@@ -1490,6 +1518,31 @@ export default function ShowBookPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setStatusOpen(false)}>Cancelar</Button>
             <Button onClick={handleStatus} disabled={statusMutation.isPending}>Confirmar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: apagar livro */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Apagar Livro do Show</DialogTitle></DialogHeader>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-start gap-2 text-sm text-muted-foreground">
+              <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+              <p>
+                Esta ação é <strong>permanente</strong>. O livro <strong>{selectedBook?.title}</strong> e todo o seu conteúdo
+                (cenas, blocos, posições e linhas) serão apagados de vez. Não é possível desfazer.
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Se o livro estiver a ser usado em escalas, agenda ou livro do dia, não será possível apagar — nesse caso, arquive-o.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancelar</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleteMutation.isPending}>
+              <Trash2 className="h-4 w-4 mr-1.5" /> Apagar de vez
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

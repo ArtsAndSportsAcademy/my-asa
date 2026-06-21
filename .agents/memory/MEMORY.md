@@ -26,6 +26,7 @@
 - [Escopo da verificação typecheck](typecheck-validation-scope.md) — validação typecheck cobre libs+api-server+mobile; web-admin/mockup falham por erros de lib pré-existentes (React 19 @types/react dup)
 - [Daily Book drift de schema no DEV](daily-book-dev-schema-drift.md) — tabelas daily_book_* no DEV estavam numa geração antiga; recriar via psql p/ testar a rota real; generate não é transacional (deixa órfãos)
 - [Login por username](login-username.md) — login passou de email→username; util de geração em lib/db/src/username.ts; backfill idempotente; column users.username unique nullable
+- [Apagar Livro do Show — FKs sem cascade](show-book-delete-fks.md) — show_books sem cascade; bloquear se em uso (scales/agenda/daily) e apagar filhos em ordem na transação; só ADMIN
 - [GET group detail escopo](group-detail-scope-restriction.md) — aplicar memberRestriction a members E supervisors no detalhe do grupo, senão vaza cross-operation p/ não-admin
 - [Modelo de escopo de grupos](group-scope-model.md) — OPERATION/MULTI/ALL; cobertura idêntica em groupCoveredOperationIds(API) e groupCoverageOps(ASA); supervisor só OPERATION da sua op; membro de grupo amplo exige operação coberta
 - [Escala semanal — grade por data](scales-grid-grouping.md) — linhas geradas têm manualDate null + agendaEventId; grade deve coalescer manualDate ?? eventDate (endpoint precisa leftJoin agenda_events) senão somem

@@ -121,6 +121,10 @@ export type EventPayloadMap = {
     showBookId: string;
     version: number;
   };
+  "showbook.deleted": {
+    showBookId: string;
+    operationId: string;
+  };
 
   "scale.published": {
     scaleId: string;
