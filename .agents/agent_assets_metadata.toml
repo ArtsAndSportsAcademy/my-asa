@@ -36,3 +36,9 @@ id = "jSG8zZ52bfbi3xiQ1CUiC"
 uri = "file://attached_assets/ChatGPT_Image_19_jun_2026,_07_13_47_p.m._1781963887961.png"
 type = "image"
 title = "Sprite Sheet — 20 poses da Asa"
+
+[[outputs]]
+id = "rLMXjCOdameJ3BQjPY3In"
+uri = "file://docs/MANUAL.md"
+type = "text"
+title = "Manual do MyASA 2.0"
