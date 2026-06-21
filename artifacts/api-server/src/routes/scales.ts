@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, inArray, gte, lte, desc } from "drizzle-orm";
+import { eq, and, inArray, gte, lte, desc, isNotNull } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   scalesTable,
@@ -321,20 +321,53 @@ router.post("/scales/:id/regenerate", requireAuth, requireOrganization, async (r
       res.status(409).json({ error: "Apenas escalas em Rascunho podem ser regeradas" });
       return;
     }
-    if (!scale.agendaEventId) {
-      res.status(400).json({ error: "Escala não possui agendaEventId para regenerar" });
-      return;
-    }
 
-    // Delete existing allocations (cascade deletes candidates + exceptions)
+    // Auto-gerar é um auxílio OPCIONAL sobre um fluxo majoritariamente manual:
+    // só remove alocações geradas pelo motor (agendaEventId != null), preservando
+    // as entradas manuais (manualDate/manualLabel, agendaEventId == null).
     await db
       .delete(scaleAllocationsTable)
-      .where(eq(scaleAllocationsTable.scaleId, id));
+      .where(
+        and(
+          eq(scaleAllocationsTable.scaleId, id),
+          isNotNull(scaleAllocationsTable.agendaEventId)
+        )
+      );
     await db
       .delete(allocationExceptionsTable)
       .where(eq(allocationExceptionsTable.scaleId, id));
 
-    // Rerun engine only if show book is linked (escalas de show com posições)
+    // Determinar pares (evento, show book) a processar:
+    // - escala de show: o próprio agendaEventId/showBookId da escala
+    // - escala por período (modelo antigo): eventos da agenda no período da
+    //   semana que possuam show book vinculado.
+    const targets: { agendaEventId: string; showBookId: string }[] = [];
+    if (scale.agendaEventId) {
+      // Escala de show/evento: só roda o motor se houver show book vinculado;
+      // caso contrário não há posições a gerar (fluxo manual).
+      if (scale.showBookId) {
+        targets.push({ agendaEventId: scale.agendaEventId, showBookId: scale.showBookId });
+      }
+    } else {
+      const events = await db
+        .select({
+          id: agendaEventsTable.id,
+          showBookId: agendaEventsTable.showBookId,
+        })
+        .from(agendaEventsTable)
+        .where(
+          and(
+            eq(agendaEventsTable.operationId, scale.operationId),
+            isNotNull(agendaEventsTable.showBookId),
+            gte(agendaEventsTable.date, scale.periodStart),
+            lte(agendaEventsTable.date, scale.periodEnd)
+          )
+        );
+      for (const e of events) {
+        if (e.showBookId) targets.push({ agendaEventId: e.id, showBookId: e.showBookId });
+      }
+    }
+
     let engineResult = {
       totalPositions: 0,
       assignedPositions: 0,
@@ -342,20 +375,18 @@ router.post("/scales/:id/regenerate", requireAuth, requireOrganization, async (r
       conflictPositions: 0,
     };
 
-    if (scale.showBookId) {
+    for (const t of targets) {
       const fullResult = await runCoverageEngine(
-        scale.agendaEventId,
-        scale.showBookId,
+        t.agendaEventId,
+        t.showBookId,
         scale.operationId,
         scale.groupId ?? undefined
       );
-      await persistEngineResult(id, scale.agendaEventId, fullResult);
-      engineResult = {
-        totalPositions: fullResult.totalPositions,
-        assignedPositions: fullResult.assignedPositions,
-        openPositions: fullResult.openPositions,
-        conflictPositions: fullResult.conflictPositions,
-      };
+      await persistEngineResult(id, t.agendaEventId, fullResult);
+      engineResult.totalPositions += fullResult.totalPositions;
+      engineResult.assignedPositions += fullResult.assignedPositions;
+      engineResult.openPositions += fullResult.openPositions;
+      engineResult.conflictPositions += fullResult.conflictPositions;
     }
 
     // Update generatedAt

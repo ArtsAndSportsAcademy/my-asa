@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListScales,
@@ -16,11 +16,13 @@ import {
   useSetPublishDeadline,
   useDuplicatePreviousWeek,
   useGetScaleHistory,
+  useListScaleExceptions,
   getListScalesQueryKey,
   getListScaleAllocationsQueryKey,
   getListFolgasQueryKey,
   getListUsersQueryKey,
   getScaleHistoryQueryKey,
+  getListScaleExceptionsQueryKey,
 } from "@workspace/api-client-react";
 import type {
   ScaleSummary,
@@ -238,6 +240,16 @@ export default function ScalesPage() {
     { query: { enabled: showHistory && !!selectedScale?.id } }
   );
 
+  const { data: exceptionsData, isLoading: exceptionsLoading } = useListScaleExceptions(
+    selectedScale?.id ?? "",
+    {
+      query: {
+        queryKey: getListScaleExceptionsQueryKey(selectedScale?.id ?? ""),
+        enabled: showHealth && !!selectedScale?.id,
+      },
+    }
+  );
+
   // ── Mutations ──────────────────────────────────────────────────────────────
   const createWeekMut = useCreateWeekScale();
   const publishMut = usePublishScale();
@@ -268,36 +280,52 @@ export default function ScalesPage() {
   // ── Derived: scales filtered by year + tab, grouped into weeks ───────────
   const allScales = useMemo(() => scalesData?.scales ?? [], [scalesData]);
 
+  // Keep the open scale's summary (coverage counts/status) in sync with the
+  // refreshed backend list after regenerate / manual entry / publish actions.
+  useEffect(() => {
+    if (!selectedScale) return;
+    const fresh = allScales.find((s) => s.id === selectedScale.id);
+    if (!fresh) return;
+    if (
+      fresh.status !== selectedScale.status ||
+      fresh.assignedCount !== selectedScale.assignedCount ||
+      fresh.openCount !== selectedScale.openCount ||
+      fresh.conflictCount !== selectedScale.conflictCount ||
+      fresh.exceptionCount !== selectedScale.exceptionCount ||
+      fresh.totalAllocations !== selectedScale.totalAllocations
+    ) {
+      setSelectedScale(fresh);
+    }
+  }, [allScales, selectedScale]);
+
   const weeksByMonth = useMemo(() => {
-    const filtered = allScales.filter((s) => {
-      if (s.status === "ARCHIVED") return false;
+    // Index existing scales by their week's Thursday (filtered by year + op tab).
+    const scalesByThu = new Map<string, ScaleSummary[]>();
+    for (const s of allScales) {
+      if (s.status === "ARCHIVED") continue;
+      if (opTab !== "all" && s.operationId !== opTab) continue;
       const thu = thursdayOf(s.periodStart);
-      if (parseDate(thu).getFullYear() !== year) return false;
-      if (opTab !== "all" && s.operationId !== opTab) return false;
-      return true;
-    });
+      if (parseDate(thu).getFullYear() !== year) continue;
+      const list = scalesByThu.get(thu) ?? [];
+      list.push(s);
+      scalesByThu.set(thu, list);
+    }
 
+    // Build the FULL year matrix of weeks (Thu→Wed), independent of whether a
+    // scale already exists — so "+ OPERAÇÃO" works on any week of the year.
     const weeks = new Map<string, WeekRow>();
-    function ensureWeek(thu: string): WeekRow {
-      if (!weeks.has(thu)) {
-        weeks.set(thu, {
-          key: thu,
-          periodStart: thu,
-          periodEnd: addDays(thu, 6),
-          monthIdx: parseDate(thu).getMonth(),
-          scales: [],
-        });
-      }
-      return weeks.get(thu)!;
+    let cursor = thursdayOf(`${year}-01-01`);
+    if (parseDate(cursor).getFullYear() < year) cursor = addDays(cursor, 7);
+    while (parseDate(cursor).getFullYear() === year) {
+      weeks.set(cursor, {
+        key: cursor,
+        periodStart: cursor,
+        periodEnd: addDays(cursor, 6),
+        monthIdx: parseDate(cursor).getMonth(),
+        scales: scalesByThu.get(cursor) ?? [],
+      });
+      cursor = addDays(cursor, 7);
     }
-
-    for (const s of filtered) {
-      ensureWeek(thursdayOf(s.periodStart)).scales.push(s);
-    }
-
-    // Always show the current week if it belongs to the selected year.
-    const currentThu = thursdayOf(toISO(new Date()));
-    if (parseDate(currentThu).getFullYear() === year) ensureWeek(currentThu);
 
     const byMonth = new Map<number, WeekRow[]>();
     for (const w of weeks.values()) {
@@ -509,9 +537,13 @@ export default function ScalesPage() {
       const result = await regenerateMut.mutateAsync({ id: selectedScale.id });
       toast({
         title: "Auto-gerado",
-        description: `${result.engine.assignedPositions}/${result.engine.totalPositions} posições alocadas.`,
+        description:
+          result.engine.totalPositions === 0
+            ? "Nenhuma cobertura automática disponível para esta semana. Continue manualmente."
+            : `${result.engine.assignedPositions}/${result.engine.totalPositions} posições alocadas.`,
       });
       invalidateAllocations();
+      invalidateScales();
     } catch { toast({ title: "Erro ao gerar automaticamente", variant: "destructive" }); }
   }
 
@@ -1005,32 +1037,77 @@ export default function ScalesPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Saúde da escala</DialogTitle>
-            <DialogDescription>Resumo de cobertura desta semana.</DialogDescription>
+            <DialogDescription>Cobertura e lacunas desta semana.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            {weekDays.map((d) => {
-              const entries = entriesCountByDate.get(d) ?? 0;
-              const unavail = unavailableCountByDate.get(d) ?? 0;
-              const card = fmtDayCard(d);
-              return (
-                <div key={d} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
-                  <span className="text-sm capitalize">
-                    {card.wd} {card.day}/{card.mon}
-                  </span>
-                  <div className="flex items-center gap-3 text-sm">
-                    <span className={entries === 0 ? "text-amber-600" : "text-foreground"}>
-                      {entries} entrada(s)
-                    </span>
-                    {unavail > 0 && <span className="text-red-500">● {unavail} fora</span>}
-                  </div>
+          <div className="space-y-4">
+            {/* Coverage summary from the backend scale summary */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-lg border border-border px-3 py-2 text-center">
+                <div className="text-lg font-semibold text-foreground">{selectedScale.assignedCount}</div>
+                <div className="text-xs text-muted-foreground">Alocadas</div>
+              </div>
+              <div className="rounded-lg border border-border px-3 py-2 text-center">
+                <div className={`text-lg font-semibold ${selectedScale.openCount > 0 ? "text-amber-600" : "text-foreground"}`}>
+                  {selectedScale.openCount}
                 </div>
-              );
-            })}
-            <div className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2 text-sm font-medium">
-              <span className="flex items-center gap-1.5">
-                <CalendarRange className="h-4 w-4" /> Total na semana
-              </span>
-              <span>{totalEntries} entrada(s)</span>
+                <div className="text-xs text-muted-foreground">Em aberto</div>
+              </div>
+              <div className="rounded-lg border border-border px-3 py-2 text-center">
+                <div className={`text-lg font-semibold ${selectedScale.conflictCount > 0 ? "text-red-500" : "text-foreground"}`}>
+                  {selectedScale.conflictCount}
+                </div>
+                <div className="text-xs text-muted-foreground">Conflitos</div>
+              </div>
+            </div>
+
+            {/* Real backend lacunas (allocation exceptions) */}
+            <div className="space-y-2">
+              <div className="text-sm font-medium flex items-center gap-1.5">
+                <AlertTriangle className="h-4 w-4 text-amber-500" /> Lacunas
+              </div>
+              {exceptionsLoading ? (
+                <p className="text-sm text-muted-foreground">Carregando…</p>
+              ) : (exceptionsData?.exceptions?.length ?? 0) === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhuma lacuna registrada.</p>
+              ) : (
+                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                  {exceptionsData!.exceptions.map((ex) => (
+                    <div key={ex.id} className="rounded-lg border border-border px-3 py-2 text-sm">
+                      <div className="font-medium">{ex.positionName ?? ex.type}</div>
+                      <div className="text-xs text-muted-foreground">{ex.reason}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Per-day breakdown from actual entries + folgas */}
+            <div className="space-y-2">
+              <div className="text-sm font-medium flex items-center gap-1.5">
+                <CalendarRange className="h-4 w-4" /> Por dia
+              </div>
+              {weekDays.map((d) => {
+                const entries = entriesCountByDate.get(d) ?? 0;
+                const unavail = unavailableCountByDate.get(d) ?? 0;
+                const card = fmtDayCard(d);
+                return (
+                  <div key={d} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                    <span className="text-sm capitalize">
+                      {card.wd} {card.day}/{card.mon}
+                    </span>
+                    <div className="flex items-center gap-3 text-sm">
+                      <span className={entries === 0 ? "text-amber-600" : "text-foreground"}>
+                        {entries} entrada(s)
+                      </span>
+                      {unavail > 0 && <span className="text-red-500">● {unavail} fora</span>}
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2 text-sm font-medium">
+                <span>Total na semana</span>
+                <span>{totalEntries} entrada(s)</span>
+              </div>
             </div>
           </div>
         </DialogContent>
