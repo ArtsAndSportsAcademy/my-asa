@@ -37,6 +37,7 @@ O login (mobile + web-admin) usa `username` em vez de `email`. Email continua ex
 - `PATCH /users/:id` aceita `username`: self **ou** admin podem editar (nome/email/birthDate continuam admin-only; specialization admin/supervisor). Unicidade é **global** (username é o login), conflito → 409.
 - UI: web-admin dialog de edição (admin) + mobile `app/(tabs)/index.tsx` (modal de auto-edição). `UserUpdate` no openapi ganhou `username` — regenerar orval.
 
-## Credenciais demo (após backfill)
-- Admin: `cris.fontana` / Teste@123 — Supervisor: `rafael.torres` / Teste@123.
-- Seed simples (myasa.demo): `admin.demo`, `supervisor.demo`, `membro.01..05` / myasa123.
+## Usuários demo (após backfill)
+- Os scripts de seed geram usuários demo cujos usernames seguem o padrão de geração
+  (ex.: admin/supervisor/membros). As SENHAS demo ficam definidas apenas no código dos
+  seeds (`lib/db/src/schema/seed.ts`, `seed-simulation.ts`) — NÃO armazenar senhas aqui.

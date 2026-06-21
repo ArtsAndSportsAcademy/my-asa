@@ -1,4 +1,5 @@
-- [Dev e Prod compartilham o MESMO banco](dev-prod-shared-db.md) — DATABASE_URL global; apagar/escrever em dev afeta o app publicado; pgEnum exige ALTER TYPE no banco
+- [Dev e Prod usam bancos SEPARADOS](dev-prod-shared-db.md) — executeSql prod é read-only; mutar prod só via bootstrap guardado no app; pgEnum exige ALTER TYPE no banco
+- [web-admin auto-refresh de token](web-admin-token-refresh.md) — access token expira em 15min; cliente DEVE registrar setAuthRefreshHandler senão tudo dá 401 após 15min
 - [MyASA 2.0 — Estado do Projeto](myasa-estado-projeto.md) — Audit TS completo; zero erros em api-server, mobile, web-admin (exceto pré-existentes acordados)
 - [LOG_DOMAIN extension pattern](log-domain-pattern.md) — ao criar nova rota, adicionar entrada no LOG_DOMAIN de lib/shared/src/constants.ts antes de usar requestLogger
 - [Push (Expo) e jobs recorrentes](push-and-scheduling.md) — push best-effort nunca lança, status real por token; sem cron (setTimeout pós-listen, não no boot); drizzle generate captura todo o drift

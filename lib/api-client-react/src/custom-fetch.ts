@@ -44,6 +44,47 @@ export function setAuthTokenGetter(getter: AuthTokenGetter | null): void {
   _authTokenGetter = getter;
 }
 
+/**
+ * A handler invoked when an authenticated request fails with 401. It should
+ * use the stored refresh token to obtain a new access token, persist it, and
+ * return it (so the original request can be retried). Returning null means the
+ * session could not be refreshed and the request should fail as Unauthorized.
+ */
+export type AuthRefreshHandler = () => Promise<string | null>;
+
+let _refreshHandler: AuthRefreshHandler | null = null;
+let _refreshInFlight: Promise<string | null> | null = null;
+
+/**
+ * Register a handler that refreshes the access token after a 401. When set,
+ * customFetch transparently refreshes the token and retries the request once.
+ * Pass `null` to clear the handler.
+ */
+export function setAuthRefreshHandler(handler: AuthRefreshHandler | null): void {
+  _refreshHandler = handler;
+}
+
+// Auth endpoints must never trigger the refresh-and-retry loop, otherwise a
+// failing refresh would recurse indefinitely.
+function isAuthEndpoint(url: string): boolean {
+  return url.includes("/api/auth/login") || url.includes("/api/auth/refresh");
+}
+
+// Deduplicate concurrent refreshes: many requests can 401 at once, but only a
+// single refresh call should run; all callers await the same promise.
+function runRefresh(): Promise<string | null> {
+  if (!_refreshHandler) return Promise.resolve(null);
+  if (!_refreshInFlight) {
+    _refreshInFlight = Promise.resolve()
+      .then(() => _refreshHandler!())
+      .catch(() => null)
+      .finally(() => {
+        _refreshInFlight = null;
+      });
+  }
+  return _refreshInFlight;
+}
+
 function isRequest(input: RequestInfo | URL): input is Request {
   return typeof Request !== "undefined" && input instanceof Request;
 }
@@ -359,8 +400,23 @@ export async function customFetch<T = unknown>(
   }
 
   const requestInfo = { method, url: resolveUrl(input) };
+  const tokenAttached = headers.has("authorization");
 
-  const response = await fetch(input, { ...init, method, headers });
+  let response = await fetch(input, { ...init, method, headers });
+
+  // Transparently refresh an expired access token and retry once.
+  if (
+    response.status === 401 &&
+    tokenAttached &&
+    _refreshHandler &&
+    !isAuthEndpoint(requestInfo.url)
+  ) {
+    const newToken = await runRefresh();
+    if (newToken) {
+      headers.set("authorization", `Bearer ${newToken}`);
+      response = await fetch(input, { ...init, method, headers });
+    }
+  }
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);

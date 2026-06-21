@@ -1,5 +1,10 @@
 import { useState, useEffect, ReactNode } from "react";
-import { setAuthTokenGetter, getMe } from "@workspace/api-client-react";
+import {
+  setAuthTokenGetter,
+  setAuthRefreshHandler,
+  getMe,
+  refreshToken as refreshTokenRequest,
+} from "@workspace/api-client-react";
 import type { User, UserRole } from "@workspace/api-client-react";
 import { AuthContext } from "./authContext";
 
@@ -27,16 +32,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
+    setAuthTokenGetter(() => localStorage.getItem("myasa_access_token"));
+    setAuthRefreshHandler(async () => {
+      const storedRefresh = localStorage.getItem("myasa_refresh_token");
+      if (!storedRefresh) return null;
+      try {
+        const tokens = await refreshTokenRequest({ refreshToken: storedRefresh });
+        localStorage.setItem("myasa_access_token", tokens.accessToken);
+        localStorage.setItem("myasa_refresh_token", tokens.refreshToken);
+        return tokens.accessToken;
+      } catch {
+        clearStorage();
+        setState({ user: null, roles: [], isAuthenticated: false, isLoading: false });
+        return null;
+      }
+    });
+
     const token = localStorage.getItem("myasa_access_token");
     const userStr = localStorage.getItem("myasa_user");
     const rolesStr = localStorage.getItem("myasa_roles");
 
+    const cleanup = () => {
+      setAuthRefreshHandler(null);
+    };
+
     if (!token || !userStr || !rolesStr) {
       setState(s => ({ ...s, isLoading: false }));
-      return;
+      return cleanup;
     }
-
-    setAuthTokenGetter(() => localStorage.getItem("myasa_access_token"));
 
     getMe()
       .then(() => {
@@ -56,6 +79,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearStorage();
         setState({ user: null, roles: [], isAuthenticated: false, isLoading: false });
       });
+
+    return cleanup;
   }, []);
 
   const login = (accessToken: string, refreshToken: string, user: User, roles: UserRole[]) => {
@@ -63,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("myasa_refresh_token", refreshToken);
     localStorage.setItem("myasa_user", JSON.stringify(user));
     localStorage.setItem("myasa_roles", JSON.stringify(roles));
-    setAuthTokenGetter(() => accessToken);
+    setAuthTokenGetter(() => localStorage.getItem("myasa_access_token"));
     setState({ user, roles, isAuthenticated: true, isLoading: false });
   };
 

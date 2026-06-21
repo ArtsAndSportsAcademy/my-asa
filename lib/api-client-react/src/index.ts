@@ -7,5 +7,5 @@ export * from "./insights-manual";
 export * from "./notifications-manual";
 export * from "./scale-entries-manual";
 export * from "./users-manual";
-export { setBaseUrl, setAuthTokenGetter, customFetch } from "./custom-fetch";
-export type { AuthTokenGetter } from "./custom-fetch";
+export { setBaseUrl, setAuthTokenGetter, setAuthRefreshHandler, customFetch } from "./custom-fetch";
+export type { AuthTokenGetter, AuthRefreshHandler } from "./custom-fetch";
