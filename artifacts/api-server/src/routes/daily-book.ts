@@ -294,17 +294,44 @@ export function planRoleAssignments(
   return [{ userId: assignedUserId, status: assignedUserId ? "ASSIGNED" : "OPEN" }];
 }
 
+// Regra: a mesma pessoa não pode ocupar duas posições dentro da MESMA cena (pode em cenas
+// diferentes). Quando o planeamento escolhe alguém que já está noutra posição da cena, esse
+// segundo lugar vira buraco (OPEN) — assim a pessoa só aparece uma vez na cena e o lugar
+// duplicado fica visível para o gestor preencher com outra pessoa. Muta `assignedInScene`.
+export function dedupAssignmentsForScene(
+  planned: PlannedAssignment[],
+  assignedInScene: Set<string>
+): PlannedAssignment[] {
+  return planned.map((a) => {
+    if (!a.userId) return a;
+    if (assignedInScene.has(a.userId)) {
+      return { userId: null, status: "OPEN" as const };
+    }
+    assignedInScene.add(a.userId);
+    return a;
+  });
+}
+
 // Cria os assignments de um papel: usa o resolvedor (regras + disponibilidade) quando
 // o papel tem linhas configuradas; senão cai na escala (compatibilidade com papéis legados).
+// Quando o papel pertence a uma cena, aplica a regra de não-duplicar pessoa na mesma cena.
 async function createAssignmentsForRole(
   dailyBookId: string,
   positionId: string,
   roleId: string,
   byRole: Map<string, RoleResolution>,
-  allocationMap: Record<string, string | null>
+  allocationMap: Record<string, string | null>,
+  sceneKey: string | null,
+  assignedByScene: Map<string, Set<string>>
 ) {
   const planned = planRoleAssignments(byRole.get(roleId), roleId, allocationMap);
-  for (const a of planned) {
+  let finalPlanned = planned;
+  if (sceneKey) {
+    let set = assignedByScene.get(sceneKey);
+    if (!set) { set = new Set<string>(); assignedByScene.set(sceneKey, set); }
+    finalPlanned = dedupAssignmentsForScene(planned, set);
+  }
+  for (const a of finalPlanned) {
     await db.insert(dailyBookAssignmentsTable).values({ dailyBookId, positionId, userId: a.userId, status: a.status });
   }
 }
@@ -363,7 +390,8 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
     const roles = await db
       .select()
       .from(showBookRolesTable)
-      .where(eq(showBookRolesTable.showBookId, showBookId));
+      .where(eq(showBookRolesTable.showBookId, showBookId))
+      .orderBy(showBookRolesTable.order, showBookRolesTable.id);
 
     let allocations: { positionId: string | null; userId: string | null }[] = [];
     if (scaleId) {
@@ -422,6 +450,11 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
       blockIdMap[block.id] = dbBlock!.id;
     }
 
+    // Mapa bloco→cena (origem) para aplicar a regra de não-duplicar pessoa na mesma cena.
+    const sceneByBlock: Record<string, string | null> = {};
+    blocks.forEach((b) => { sceneByBlock[b.id] = b.sceneId ?? null; });
+    const assignedByScene = new Map<string, Set<string>>();
+
     let positionsCount = 0;
     for (const role of roles) {
       const [dbPos] = await db
@@ -435,7 +468,8 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
         })
         .returning();
       positionsCount++;
-      await createAssignmentsForRole(dailyBookId, dbPos!.id, role.id, byRole, allocationMap);
+      const sceneKey = role.blockId ? sceneByBlock[role.blockId] ?? null : null;
+      await createAssignmentsForRole(dailyBookId, dbPos!.id, role.id, byRole, allocationMap, sceneKey, assignedByScene);
     }
 
     const fullTree = await buildDailyBookTree(dailyBookId);
@@ -497,7 +531,7 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
     const showBookId = event.showBookId;
     const scenes = await db.select().from(showBookScenesTable).where(eq(showBookScenesTable.showBookId, showBookId)).orderBy(showBookScenesTable.order);
     const blocks = await db.select().from(showBookBlocksTable).where(eq(showBookBlocksTable.showBookId, showBookId)).orderBy(showBookBlocksTable.order);
-    const roles = await db.select().from(showBookRolesTable).where(eq(showBookRolesTable.showBookId, showBookId));
+    const roles = await db.select().from(showBookRolesTable).where(eq(showBookRolesTable.showBookId, showBookId)).orderBy(showBookRolesTable.order, showBookRolesTable.id);
 
     let allocations: { positionId: string | null; userId: string | null }[] = [];
     if (book.scaleId) {
@@ -525,9 +559,13 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
       const [dbBlock] = await db.insert(dailyBookBlocksTable).values({ dailyBookId: id, name: block.name, order: block.order, sourceBlockId: block.id, sceneId: block.sceneId ? sceneIdMap[block.sceneId] ?? null : null }).returning();
       blockIdMap[block.id] = dbBlock!.id;
     }
+    const sceneByBlock: Record<string, string | null> = {};
+    blocks.forEach((b) => { sceneByBlock[b.id] = b.sceneId ?? null; });
+    const assignedByScene = new Map<string, Set<string>>();
     for (const role of roles) {
       const [dbPos] = await db.insert(dailyBookPositionsTable).values({ dailyBookId: id, name: role.name, minimumCoverage: role.minimumCoverage, sourceRoleId: role.id, blockId: role.blockId ? blockIdMap[role.blockId] ?? null : null }).returning();
-      await createAssignmentsForRole(id, dbPos!.id, role.id, byRole, allocationMap);
+      const sceneKey = role.blockId ? sceneByBlock[role.blockId] ?? null : null;
+      await createAssignmentsForRole(id, dbPos!.id, role.id, byRole, allocationMap, sceneKey, assignedByScene);
     }
 
     const fullTree = await buildDailyBookTree(id);
