@@ -373,7 +373,7 @@ export default function ScalesPage() {
     const result = new Map<string, Map<string, ScaleAllocationWithCandidates[]>>();
     for (const a of allocations) {
       if (!a.userId) continue;
-      const date = (a as any).manualDate as string | null;
+      const date = ((a as any).manualDate ?? (a as any).eventDate) as string | null;
       if (!date) continue;
       if (!result.has(date)) result.set(date, new Map());
       const byMember = result.get(date)!;
@@ -873,30 +873,56 @@ export default function ScalesPage() {
                 </div>
 
                 <div className="p-2 space-y-1.5">
-                  {memberEntries.map((e) => (
-                    <div
-                      key={e.id}
-                      className="group relative rounded-lg bg-primary/10 border border-primary/20 px-2 py-1.5"
-                    >
-                      <p className="text-xs font-semibold uppercase leading-tight truncate pr-4">
-                        {(e as any).manualLabel ?? "—"}
-                      </p>
-                      {((e as any).startTime || (e as any).endTime) && (
-                        <p className="text-[10px] text-muted-foreground">
-                          {fmtTime((e as any).startTime)}
-                          {(e as any).endTime ? ` – ${fmtTime((e as any).endTime)}` : ""}
+                  {memberEntries.map((e) => {
+                    const generated = !!(e as any).agendaEventId;
+                    const label =
+                      (e as any).manualLabel ??
+                      (e as any).eventTitle ??
+                      (e as any).positionName ??
+                      "—";
+                    const role = (e as any).positionName as string | null;
+                    const start = (e as any).startTime ?? (e as any).eventStartTime;
+                    const end = (e as any).endTime ?? (e as any).eventEndTime;
+                    return (
+                      <div
+                        key={e.id}
+                        className={`group relative rounded-lg border px-2 py-1.5 ${
+                          generated
+                            ? "bg-amber-500/10 border-amber-500/30"
+                            : "bg-primary/10 border-primary/20"
+                        }`}
+                      >
+                        <p className="text-xs font-semibold uppercase leading-tight truncate pr-4">
+                          {label}
                         </p>
-                      )}
-                      {isManager && (
-                        <button
-                          onClick={() => handleDeleteEntry(e.id)}
-                          className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                        {generated && role && label !== role && (
+                          <p className="text-[10px] text-muted-foreground truncate">{role}</p>
+                        )}
+                        {(start || end) && (
+                          <p className="text-[10px] text-muted-foreground">
+                            {fmtTime(start)}
+                            {end ? ` – ${fmtTime(end)}` : ""}
+                          </p>
+                        )}
+                        {generated && (
+                          <Badge
+                            variant="outline"
+                            className="mt-1 text-[9px] text-amber-600 border-amber-500/40 px-1 py-0"
+                          >
+                            Auto
+                          </Badge>
+                        )}
+                        {isManager && (
+                          <button
+                            onClick={() => handleDeleteEntry(e.id)}
+                            className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
 
                   {isManager && !unavailable && (
                     <button

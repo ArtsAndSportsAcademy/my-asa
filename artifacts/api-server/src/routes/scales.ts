@@ -624,10 +624,15 @@ router.get("/scales/:id/allocations", requireAuth, requireOrganization, async (r
         endTime: scaleAllocationsTable.endTime,
         positionName: showBookRolesTable.name,
         userName: usersTable.name,
+        eventDate: agendaEventsTable.date,
+        eventTitle: agendaEventsTable.title,
+        eventStartTime: agendaEventsTable.startTime,
+        eventEndTime: agendaEventsTable.endTime,
       })
       .from(scaleAllocationsTable)
       .leftJoin(showBookRolesTable, eq(scaleAllocationsTable.positionId, showBookRolesTable.id))
       .leftJoin(usersTable, eq(scaleAllocationsTable.userId, usersTable.id))
+      .leftJoin(agendaEventsTable, eq(scaleAllocationsTable.agendaEventId, agendaEventsTable.id))
       .where(eq(scaleAllocationsTable.scaleId, id));
 
     // Fetch candidates per allocation
