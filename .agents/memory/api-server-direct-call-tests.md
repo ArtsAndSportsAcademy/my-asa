@@ -15,3 +15,13 @@ O artifact `artifacts/api-server` NÃO tem framework de testes (sem vitest/jest,
 **Why:** importar `asa.ts` é seguro — ele só monta um `Router`, o `app.listen` fica em `index.ts`. Importar dispara o import de `@workspace/integrations-anthropic-ai`, mas isso não exige API key em tempo de import.
 
 **How to apply:** sempre remover os arquivos temporários (entry de teste, build script, dist-test/) ao final e re-rodar o typecheck, pois um `.ts` deixado em `src/` entra no typecheck do projeto.
+
+## Variante PERSISTENTE (testes de regressão que ficam no repo)
+Para testes que devem PERMANECER, coloque-os em `artifacts/api-server/tests/` (FORA de `src/`).
+Isso NÃO polui nada porque `tsconfig.json` tem `include: ["src"]` (logo `pnpm typecheck` não vê tests/)
+e `build.mjs` só usa `src/index.ts` como entryPoint (logo não entram no bundle de produção).
+Runner: `tests/run-tests.mjs` (copia external/banner/plugin-pino do build.mjs, bundla a entry de teste
+para `tests/.dist/` com outdir, roda com node e apaga `.dist` no fim). Script `"test"` no package.json.
+**Why:** o api-server não tem framework de teste; e um `.ts` em `src/` quebraria typecheck/build.
+**How to apply:** importe alvos com extensão `.js` (ex.: `../src/routes/daily-book.js`); o esbuild resolve.
+Faça seed/cleanup no banco dev com TAG única + `finally`; chame `pool.end()` antes de `process.exit`.

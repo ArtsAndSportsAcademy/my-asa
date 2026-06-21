@@ -258,6 +258,42 @@ async function writeDailyBookAudit(
   }
 }
 
+export interface PlannedAssignment {
+  userId: string | null;
+  status: "ASSIGNED" | "OPEN";
+}
+
+// Decide (puro, sem efeitos no banco) quais assignments um papel deve receber, a partir da
+// resolução por papel (regras + disponibilidade) e da alocação manual da escala. Regras:
+// - papel COM linhas e pessoas resolvidas → 1 ASSIGNED por pessoa;
+// - papel COM linhas, sem pessoas, mas com linha DESCOBERTA hoje → 1 OPEN (buraco real);
+// - papel COM linhas todas INATIVAS hoje → nenhum buraco; só honra alocação manual, se houver;
+// - papel SEM linhas → fallback na escala (compat papéis legados).
+export function planRoleAssignments(
+  rr: RoleResolution | undefined,
+  roleId: string,
+  allocationMap: Record<string, string | null>
+): PlannedAssignment[] {
+  if (rr && rr.hasLines) {
+    if (rr.people.length > 0) {
+      return rr.people.map((person) => ({ userId: person.userId, status: "ASSIGNED" as const }));
+    }
+    if (rr.hasUncoveredLine) {
+      // Linha ativa hoje sem ninguém disponível: buraco real.
+      return [{ userId: null, status: "OPEN" }];
+    }
+    // Todas as linhas estão INATIVAS hoje (ex.: dia da semana que não atua): o papel não
+    // participa. Não geramos buraco; honramos apenas uma alocação manual da escala, se houver.
+    const manualUserId = allocationMap[roleId] ?? null;
+    if (manualUserId) {
+      return [{ userId: manualUserId, status: "ASSIGNED" }];
+    }
+    return [];
+  }
+  const assignedUserId = allocationMap[roleId] ?? null;
+  return [{ userId: assignedUserId, status: assignedUserId ? "ASSIGNED" : "OPEN" }];
+}
+
 // Cria os assignments de um papel: usa o resolvedor (regras + disponibilidade) quando
 // o papel tem linhas configuradas; senão cai na escala (compatibilidade com papéis legados).
 async function createAssignmentsForRole(
@@ -267,29 +303,10 @@ async function createAssignmentsForRole(
   byRole: Map<string, RoleResolution>,
   allocationMap: Record<string, string | null>
 ) {
-  const rr = byRole.get(roleId);
-  if (rr && rr.hasLines) {
-    if (rr.people.length > 0) {
-      for (const person of rr.people) {
-        await db.insert(dailyBookAssignmentsTable).values({ dailyBookId, positionId, userId: person.userId, status: "ASSIGNED" });
-      }
-      return;
-    }
-    if (rr.hasUncoveredLine) {
-      // Linha ativa hoje sem ninguém disponível: buraco real.
-      await db.insert(dailyBookAssignmentsTable).values({ dailyBookId, positionId, userId: null, status: "OPEN" });
-      return;
-    }
-    // Todas as linhas estão INATIVAS hoje (ex.: dia da semana que não atua): o papel não
-    // participa. Não geramos buraco; honramos apenas uma alocação manual da escala, se houver.
-    const manualUserId = allocationMap[roleId] ?? null;
-    if (manualUserId) {
-      await db.insert(dailyBookAssignmentsTable).values({ dailyBookId, positionId, userId: manualUserId, status: "ASSIGNED" });
-    }
-    return;
+  const planned = planRoleAssignments(byRole.get(roleId), roleId, allocationMap);
+  for (const a of planned) {
+    await db.insert(dailyBookAssignmentsTable).values({ dailyBookId, positionId, userId: a.userId, status: a.status });
   }
-  const assignedUserId = allocationMap[roleId] ?? null;
-  await db.insert(dailyBookAssignmentsTable).values({ dailyBookId, positionId, userId: assignedUserId, status: assignedUserId ? "ASSIGNED" : "OPEN" });
 }
 
 router.post("/daily-book/generate", requireAuth, requireOrganization, async (req, res) => {
