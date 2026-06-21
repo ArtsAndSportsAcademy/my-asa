@@ -410,8 +410,15 @@ export type ShowBookSceneWithBlocks = ShowBookScene & {
   blocks: ShowBookBlockWithPositions[];
 };
 
+export interface ShowBookMemberRef {
+  id: string;
+  name: string;
+}
+
 export type ShowBookWithTree = ShowBook & {
   scenes: ShowBookSceneWithBlocks[];
+  /** Nomes resolvidos dos membros referenciados nas configurações das linhas */
+  memberDirectory?: ShowBookMemberRef[];
 };
 
 export interface ShowBookPositionRef {

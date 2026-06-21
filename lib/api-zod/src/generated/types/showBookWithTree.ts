@@ -6,8 +6,11 @@
  * OpenAPI spec version: 0.3.0
  */
 import type { ShowBook } from './showBook';
+import type { ShowBookMemberRef } from './showBookMemberRef';
 import type { ShowBookSceneWithBlocks } from './showBookSceneWithBlocks';
 
 export type ShowBookWithTree = ShowBook & {
   scenes: ShowBookSceneWithBlocks[];
+  /** Nomes resolvidos dos membros referenciados nas configurações das linhas */
+  memberDirectory?: ShowBookMemberRef[];
 };

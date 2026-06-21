@@ -13,6 +13,7 @@ import type {
   ShowBookBlockWithPositions,
   ShowBookPositionWithLines,
   ShowBookPositionRefWithDoc,
+  ShowBookMemberRef,
 } from "@workspace/api-client-react";
 import React, { useState, useCallback, useMemo } from "react";
 import {
@@ -46,6 +47,64 @@ const LINE_TYPE_LABELS: Record<string, string> = {
   CHARACTER: "Por Personagem",
   MANUAL: "Manual",
 };
+
+const WEEKDAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+type ConfigRow = { label: string; value: string };
+
+function buildConfigRows(
+  type: string,
+  config: Record<string, unknown> | null | undefined,
+  nameOf: (id: string) => string,
+): ConfigRow[] {
+  const c = (config ?? {}) as Record<string, unknown>;
+  switch (type) {
+    case "FIXED_PERSON": {
+      const userId = c.userId as string | null | undefined;
+      return [{ label: "Titular", value: userId ? nameOf(userId) : "— não definido" }];
+    }
+    case "TITULAR_SUBSTITUTE": {
+      const titularId = c.titularId as string | null | undefined;
+      const subs = Array.isArray(c.substituteIds) ? (c.substituteIds as string[]) : [];
+      return [
+        { label: "Titular", value: titularId ? nameOf(titularId) : "— não definido" },
+        {
+          label: "Substitutos",
+          value: subs.length ? subs.map(nameOf).join(", ") : "— nenhum",
+        },
+      ];
+    }
+    case "ROTATION": {
+      const ids = Array.isArray(c.memberIds) ? (c.memberIds as string[]) : [];
+      return [
+        {
+          label: "Rodízio",
+          value: ids.length ? ids.map((id, i) => `${i + 1}. ${nameOf(id)}`).join("  ") : "— nenhum membro",
+        },
+      ];
+    }
+    case "DAY_OF_WEEK": {
+      const days = Array.isArray(c.days) ? (c.days as number[]) : [];
+      const sorted = [...days].sort((a, b) => a - b);
+      return [
+        {
+          label: "Dias",
+          value: sorted.length ? sorted.map((d) => WEEKDAY_LABELS[d] ?? `?${d}`).join(", ") : "— nenhum dia",
+        },
+      ];
+    }
+    case "FUNCTION": {
+      const fn = (c.functionLabel as string | undefined)?.trim();
+      return [{ label: "Função", value: fn || "— não definida" }];
+    }
+    case "CHARACTER": {
+      const ch = (c.characterName as string | undefined)?.trim();
+      return [{ label: "Personagem", value: ch || "— não definido" }];
+    }
+    default:
+      return [];
+  }
+}
 
 const DOC_TYPE_LABELS: Record<string, string> = {
   OPERATIONAL_PROCEDURE: "Procedimento",
@@ -93,6 +152,17 @@ export default function ShowBookScreen() {
     { query: { queryKey: getGetShowBookQueryKey(selectedBookId ?? ""), enabled: !!selectedBookId } }
   );
   const selectedBook = bookData?.showBook;
+
+  const memberNameById = useMemo(() => {
+    const map: Record<string, string> = {};
+    const dir = (selectedBook as { memberDirectory?: ShowBookMemberRef[] } | undefined)?.memberDirectory ?? [];
+    dir.forEach((m) => { map[m.id] = m.name; });
+    return map;
+  }, [selectedBook]);
+  const nameOf = useCallback(
+    (id: string) => memberNameById[id] ?? "Membro removido",
+    [memberNameById],
+  );
 
   const { data: refsData, refetch: refetchRefs } = useListShowBookRefs(
     selectedBookId ?? "",
@@ -195,6 +265,25 @@ export default function ShowBookScreen() {
       gap: 6,
     },
     lineType: { fontSize: 11, color: colors.mutedForeground, fontStyle: "italic" },
+    configBox: {
+      marginLeft: 52,
+      marginRight: 10,
+      marginTop: 2,
+      marginBottom: 2,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      backgroundColor: colors.muted,
+      borderRadius: 8,
+      gap: 3,
+    },
+    configRow: { flexDirection: "row", alignItems: "flex-start", gap: 6 },
+    configLabel: {
+      fontSize: 10,
+      fontWeight: "600",
+      color: colors.mutedForeground,
+      width: 78,
+    },
+    configValue: { fontSize: 11, color: colors.foreground, flex: 1, lineHeight: 16 },
     refRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -357,12 +446,27 @@ export default function ShowBookScreen() {
                                     </View>
                                   )}
                                 </View>
-                                {pos.lines?.map((line) => (
-                                  <View key={line.id} style={styles.lineRow}>
-                                    <Feather name="arrow-right" size={10} color={colors.mutedForeground} />
-                                    <Text style={styles.lineType}>{LINE_TYPE_LABELS[line.type] ?? line.type}</Text>
-                                  </View>
-                                ))}
+                                {pos.lines?.map((line) => {
+                                  const configRows = buildConfigRows(line.type, line.config, nameOf);
+                                  return (
+                                    <View key={line.id}>
+                                      <View style={styles.lineRow}>
+                                        <Feather name="arrow-right" size={10} color={colors.mutedForeground} />
+                                        <Text style={styles.lineType}>{LINE_TYPE_LABELS[line.type] ?? line.type}</Text>
+                                      </View>
+                                      {configRows.length > 0 && (
+                                        <View style={styles.configBox}>
+                                          {configRows.map((row) => (
+                                            <View key={row.label} style={styles.configRow}>
+                                              <Text style={styles.configLabel}>{row.label}</Text>
+                                              <Text style={styles.configValue}>{row.value}</Text>
+                                            </View>
+                                          ))}
+                                        </View>
+                                      )}
+                                    </View>
+                                  );
+                                })}
                                 {posRefs.map((ref) => (
                                   <Pressable
                                     key={ref.id}

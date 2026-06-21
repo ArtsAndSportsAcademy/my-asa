@@ -353,6 +353,7 @@ export * from './showBookLibraryDocSummaryType';
 export * from './showBookLine';
 export * from './showBookLineConfig';
 export * from './showBookLineType';
+export * from './showBookMemberRef';
 export * from './showBookPosition';
 export * from './showBookPositionRef';
 export * from './showBookPositionRefCreate';

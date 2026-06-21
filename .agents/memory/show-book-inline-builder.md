@@ -16,3 +16,9 @@ description: Como o Livro do Show (web-admin) edita estrutura inline sem Motivo,
 **LineUpdate.type:** originalmente LineUpdate só tinha config/order/changeType — NÃO dava para trocar o tipo via PATCH. Foi adicionado `type` ao schema (openapi) e ao handler PATCH lines. Se um position não tiver line ainda, o seletor de tipo cria uma (createLine).
 
 Mobile (`artifacts/mobile/app/(tabs)/show-book.tsx`) é read-only e lê a mesma forma; não precisa mudar quando o web-admin muda.
+
+**Config por tipo de linha (`line.config` jsonb):** FIXED_PERSON `{userId}`; TITULAR_SUBSTITUTE `{titularId, substituteIds[]}`; ROTATION `{memberIds[], executionCounts{}}`; DAY_OF_WEEK `{days:number[]}` (0=Dom..6=Sáb); FUNCTION `{functionLabel}`; CHARACTER `{characterName}`; MANUAL `{}`. Mesma forma do `seed.ts`. Salva via PATCH lines com `changeType:"CONFIG"` (reason opcional → DEFAULT). Editor inline expansível por linha no web-admin; auto-save a cada alteração.
+
+**memberDirectory:** o GET `/show-books/:id` resolve todos os userIds referenciados nos configs e devolve `memberDirectory: {id,name}[]` em `ShowBookWithTree`.
+**Why:** mobile (membro comum) NÃO pode chamar `listUsers` (403), então precisa do diretório embutido para exibir nomes. Web-admin usa `useListUsers` direto (é admin).
+**How to apply:** qualquer render read-only de config (mobile) resolve nomes via `memberDirectory`, nunca via listUsers.

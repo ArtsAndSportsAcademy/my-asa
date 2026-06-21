@@ -22,17 +22,20 @@ import {
   useAddShowBookPositionRef,
   useDeleteShowBookPositionRef,
   useListLibraryDocuments,
+  useListUsers,
   getListShowBooksQueryKey,
   getGetShowBookQueryKey,
   getListShowBookVersionsQueryKey,
   getListShowBookPositionRefsQueryKey,
   getListLibraryDocumentsQueryKey,
+  getListUsersQueryKey,
 } from "@workspace/api-client-react";
 import type {
   ShowBook,
   ShowBookVersion,
   ShowBookPositionRefWithDoc,
   LibraryDocumentItem,
+  User,
 } from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
@@ -49,6 +52,7 @@ import { useLocation } from "wouter";
 import {
   Plus, History, BookOpen, Layers, Settings, Trash2, Library,
   Pencil, Check, X, ChevronUp, ChevronDown, LayoutGrid,
+  Sliders, UserPlus, Star,
 } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = { DRAFT: "Rascunho", PUBLISHED: "Publicado", ARCHIVED: "Arquivado" };
@@ -87,6 +91,250 @@ const LINE_TYPE_COLORS: Record<string, string> = {
   TITULAR_SUBSTITUTE: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/30",
 };
 const DEFAULT_LINE_TYPE = "MANUAL";
+
+// Tipos de linha que possuem configuração editável
+const CONFIGURABLE_TYPES = new Set([
+  "FIXED_PERSON", "TITULAR_SUBSTITUTE", "ROTATION", "DAY_OF_WEEK", "FUNCTION", "CHARACTER",
+]);
+
+const WEEKDAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+type LineConfig = {
+  userId?: string | null;
+  titularId?: string | null;
+  substituteIds?: string[];
+  memberIds?: string[];
+  executionCounts?: Record<string, number>;
+  days?: number[];
+  functionLabel?: string;
+  characterName?: string;
+};
+
+type Member = { id: string; name: string };
+
+function memberName(members: Member[], id?: string | null): string {
+  if (!id) return "";
+  return members.find((m) => m.id === id)?.name ?? "(membro removido)";
+}
+
+// Resumo legível da config (mostrado no cabeçalho da linha)
+function configSummary(type: string, config: LineConfig, members: Member[]): string {
+  switch (type) {
+    case "FIXED_PERSON":
+      return config.userId ? memberName(members, config.userId) : "sem titular";
+    case "TITULAR_SUBSTITUTE": {
+      const tit = config.titularId ? memberName(members, config.titularId) : "—";
+      const subs = (config.substituteIds ?? []).length;
+      return `${tit}${subs ? ` +${subs} subst.` : ""}`;
+    }
+    case "ROTATION": {
+      const n = (config.memberIds ?? []).length;
+      return n ? `${n} no rodízio` : "sem pessoas";
+    }
+    case "DAY_OF_WEEK": {
+      const days = config.days ?? [];
+      return days.length ? days.slice().sort((a, b) => a - b).map((d) => WEEKDAY_LABELS[d]).join(", ") : "sem dias";
+    }
+    case "FUNCTION":
+      return config.functionLabel?.trim() || "sem função";
+    case "CHARACTER":
+      return config.characterName?.trim() || "sem personagem";
+    default:
+      return "";
+  }
+}
+
+function configIncomplete(type: string, config: LineConfig): boolean {
+  switch (type) {
+    case "FIXED_PERSON": return !config.userId;
+    case "TITULAR_SUBSTITUTE": return !config.titularId;
+    case "ROTATION": return (config.memberIds ?? []).length < 2;
+    case "DAY_OF_WEEK": return (config.days ?? []).length === 0;
+    case "FUNCTION": return !config.functionLabel?.trim();
+    case "CHARACTER": return !config.characterName?.trim();
+    default: return false;
+  }
+}
+
+// Seletor de uma pessoa
+function PersonPicker({
+  value, members, onChange, placeholder = "Selecionar pessoa",
+}: { value?: string | null; members: Member[]; onChange: (id: string | null) => void; placeholder?: string }) {
+  return (
+    <Select value={value ?? "__none"} onValueChange={(v) => onChange(v === "__none" ? null : v)}>
+      <SelectTrigger className="h-7 text-xs w-56"><SelectValue placeholder={placeholder} /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="__none" className="text-xs text-muted-foreground">Ninguém</SelectItem>
+        {members.map((m) => (
+          <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+// Lista ordenável de pessoas (rodízio / substitutos)
+function PeopleOrderedList({
+  ids, members, onChange, ordered = true,
+}: { ids: string[]; members: Member[]; onChange: (ids: string[]) => void; ordered?: boolean }) {
+  const available = members.filter((m) => !ids.includes(m.id));
+  const move = (i: number, dir: -1 | 1) => {
+    const t = i + dir;
+    if (t < 0 || t >= ids.length) return;
+    const next = ids.slice();
+    [next[i], next[t]] = [next[t]!, next[i]!];
+    onChange(next);
+  };
+  return (
+    <div className="flex flex-col gap-1">
+      {ids.length === 0 && <p className="text-[11px] text-muted-foreground">Nenhuma pessoa adicionada.</p>}
+      {ids.map((id, i) => (
+        <div key={id} className="flex items-center gap-1.5 text-xs">
+          {ordered && (
+            <span className="w-4 text-right text-[10px] text-muted-foreground tabular-nums">{i + 1}.</span>
+          )}
+          <span className="flex-1 truncate">{memberName(members, id)}</span>
+          {ordered && (
+            <ReorderButtons
+              onUp={() => move(i, -1)}
+              onDown={() => move(i, 1)}
+              canUp={i > 0}
+              canDown={i < ids.length - 1}
+            />
+          )}
+          <button
+            onClick={() => onChange(ids.filter((x) => x !== id))}
+            className="p-0.5 text-muted-foreground hover:text-destructive"
+            title="Remover"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ))}
+      {available.length > 0 && (
+        <Select value="__add" onValueChange={(v) => { if (v !== "__add") onChange([...ids, v]); }}>
+          <SelectTrigger className="h-7 text-xs w-56 mt-0.5">
+            <span className="flex items-center gap-1 text-muted-foreground"><UserPlus className="h-3 w-3" /> Adicionar pessoa</span>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__add" className="text-xs text-muted-foreground" disabled>Adicionar pessoa</SelectItem>
+            {available.map((m) => (
+              <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+    </div>
+  );
+}
+
+// Seletor de dias da semana
+function WeekdayPicker({ days, onChange }: { days: number[]; onChange: (days: number[]) => void }) {
+  const toggle = (d: number) => {
+    onChange(days.includes(d) ? days.filter((x) => x !== d) : [...days, d].sort((a, b) => a - b));
+  };
+  return (
+    <div className="flex flex-wrap gap-1">
+      {WEEKDAY_LABELS.map((label, d) => {
+        const active = days.includes(d);
+        return (
+          <button
+            key={d}
+            onClick={() => toggle(d)}
+            className={`h-7 w-9 rounded text-[11px] border transition-colors ${
+              active ? "bg-primary text-primary-foreground border-primary" : "bg-card text-muted-foreground hover:bg-muted/50"
+            }`}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// Campo de texto com commit no blur (função / personagem)
+function ConfigTextField({
+  value, placeholder, onSave,
+}: { value: string; placeholder: string; onSave: (v: string) => void }) {
+  const [draft, setDraft] = useState(value);
+  return (
+    <Input
+      value={draft}
+      placeholder={placeholder}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => { if (draft.trim() !== value) onSave(draft.trim()); }}
+      onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+      className="h-7 text-xs w-64"
+    />
+  );
+}
+
+// Editor de configuração da linha conforme o tipo
+function LineConfigEditor({
+  type, config, members, onSave,
+}: { type: string; config: LineConfig; members: Member[]; onSave: (config: LineConfig) => void }) {
+  switch (type) {
+    case "FIXED_PERSON":
+      return (
+        <div className="flex items-center gap-2">
+          <Label className="text-[11px] text-muted-foreground w-16">Titular</Label>
+          <PersonPicker value={config.userId} members={members} onChange={(id) => onSave({ ...config, userId: id })} />
+        </div>
+      );
+    case "TITULAR_SUBSTITUTE":
+      return (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <Label className="text-[11px] text-muted-foreground w-16 flex items-center gap-1"><Star className="h-3 w-3" /> Titular</Label>
+            <PersonPicker value={config.titularId} members={members} onChange={(id) => onSave({ ...config, titularId: id })} />
+          </div>
+          <div className="flex items-start gap-2">
+            <Label className="text-[11px] text-muted-foreground w-16 pt-1">Substitutos</Label>
+            <PeopleOrderedList
+              ids={config.substituteIds ?? []}
+              members={members.filter((m) => m.id !== config.titularId)}
+              onChange={(ids) => onSave({ ...config, substituteIds: ids })}
+            />
+          </div>
+        </div>
+      );
+    case "ROTATION":
+      return (
+        <div className="flex items-start gap-2">
+          <Label className="text-[11px] text-muted-foreground w-16 pt-1">Ordem</Label>
+          <PeopleOrderedList
+            ids={config.memberIds ?? []}
+            members={members}
+            onChange={(ids) => onSave({ ...config, memberIds: ids, executionCounts: config.executionCounts ?? {} })}
+          />
+        </div>
+      );
+    case "DAY_OF_WEEK":
+      return (
+        <div className="flex items-center gap-2">
+          <Label className="text-[11px] text-muted-foreground w-16">Dias</Label>
+          <WeekdayPicker days={config.days ?? []} onChange={(days) => onSave({ ...config, days })} />
+        </div>
+      );
+    case "FUNCTION":
+      return (
+        <div className="flex items-center gap-2">
+          <Label className="text-[11px] text-muted-foreground w-16">Função</Label>
+          <ConfigTextField value={config.functionLabel ?? ""} placeholder="Ex.: Operador de luz" onSave={(v) => onSave({ ...config, functionLabel: v })} />
+        </div>
+      );
+    case "CHARACTER":
+      return (
+        <div className="flex items-center gap-2">
+          <Label className="text-[11px] text-muted-foreground w-16">Personagem</Label>
+          <ConfigTextField value={config.characterName ?? ""} placeholder="Ex.: Palhaço" onSave={(v) => onSave({ ...config, characterName: v })} />
+        </div>
+      );
+    default:
+      return null;
+  }
+}
 
 // ── Editable inline text ──────────────────────────────────────────────────────
 function EditableName({
@@ -160,6 +408,7 @@ function ReorderButtons({
 
 type Actions = {
   isAdmin: boolean;
+  members: Member[];
   updateScene: (sceneId: string, name: string) => void;
   deleteScene: (sceneId: string) => void;
   addBlock: (sceneId: string, name: string) => void;
@@ -169,6 +418,7 @@ type Actions = {
   updatePositionName: (positionId: string, name: string) => void;
   updatePositionCoverage: (positionId: string, coverage: number) => void;
   setLineType: (positionId: string, lineId: string | null, type: string) => void;
+  updateLineConfig: (lineId: string, config: LineConfig) => void;
   deletePosition: (positionId: string) => void;
   reorder: (kind: "scene" | "block" | "position", items: any[], index: number, dir: "up" | "down") => void;
   openRefs: (positionId: string, name: string) => void;
@@ -180,8 +430,14 @@ function LineRow({
 }: { pos: any; siblings: any[]; index: number; actions: Actions }) {
   const line = pos.lines?.[0];
   const type = line?.type ?? DEFAULT_LINE_TYPE;
+  const config: LineConfig = (line?.config ?? {}) as LineConfig;
   const refCount = pos.refsCount ?? 0;
   const [coverage, setCoverage] = useState(String(pos.minimumCoverage ?? 1));
+  const [configOpen, setConfigOpen] = useState(false);
+
+  const hasConfig = CONFIGURABLE_TYPES.has(type);
+  const incomplete = hasConfig && configIncomplete(type, config);
+  const summary = hasConfig ? configSummary(type, config, actions.members) : "";
 
   const commitCoverage = () => {
     const n = parseInt(coverage, 10);
@@ -190,69 +446,103 @@ function LineRow({
   };
 
   return (
-    <div className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/40 group">
-      <EditableName
-        value={pos.name}
-        onSave={(v) => actions.updatePositionName(pos.id, v)}
-        className="text-sm font-medium"
-        disabled={!actions.isAdmin}
-      />
-      {actions.isAdmin ? (
-        <Select value={type} onValueChange={(v) => actions.setLineType(pos.id, line?.id ?? null, v)}>
-          <SelectTrigger className={`h-6 text-[11px] px-2 w-auto gap-1 border ${LINE_TYPE_COLORS[type] ?? ""}`}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {LINE_TYPE_OPTIONS.map((o) => (
-              <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      ) : (
-        <Badge variant="outline" className={`text-[10px] ${LINE_TYPE_COLORS[type] ?? ""}`}>
-          {LINE_TYPE_LABELS[type] ?? type}
-        </Badge>
-      )}
+    <div className="rounded hover:bg-muted/40 group">
+      <div className="flex items-center gap-2 py-1.5 px-2">
+        <EditableName
+          value={pos.name}
+          onSave={(v) => actions.updatePositionName(pos.id, v)}
+          className="text-sm font-medium"
+          disabled={!actions.isAdmin}
+        />
+        {actions.isAdmin ? (
+          <Select value={type} onValueChange={(v) => actions.setLineType(pos.id, line?.id ?? null, v)}>
+            <SelectTrigger className={`h-6 text-[11px] px-2 w-auto gap-1 border ${LINE_TYPE_COLORS[type] ?? ""}`}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {LINE_TYPE_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <Badge variant="outline" className={`text-[10px] ${LINE_TYPE_COLORS[type] ?? ""}`}>
+            {LINE_TYPE_LABELS[type] ?? type}
+          </Badge>
+        )}
 
-      {actions.isAdmin ? (
-        <div className="flex items-center gap-1">
-          <Input
-            type="number"
-            min={1}
-            value={coverage}
-            onChange={(e) => setCoverage(e.target.value)}
-            onBlur={commitCoverage}
-            onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-            className="h-6 w-14 text-[11px] px-1 py-0 text-center"
+        {/* Botão de configuração / resumo */}
+        {hasConfig && (
+          actions.isAdmin && line?.id ? (
+            <button
+              onClick={() => setConfigOpen((o) => !o)}
+              className={`flex items-center gap-1 h-6 px-1.5 rounded border text-[11px] transition-colors ${
+                incomplete
+                  ? "border-amber-500/40 text-amber-600 dark:text-amber-300 bg-amber-500/10"
+                  : "border-border text-muted-foreground hover:bg-muted/60"
+              }`}
+              title="Configurar linha"
+            >
+              <Sliders className="h-3 w-3" />
+              <span className="max-w-[160px] truncate">{summary}</span>
+            </button>
+          ) : (
+            <span className="text-[11px] text-muted-foreground truncate max-w-[200px]">{summary}</span>
+          )
+        )}
+
+        {actions.isAdmin ? (
+          <div className="flex items-center gap-1">
+            <Input
+              type="number"
+              min={1}
+              value={coverage}
+              onChange={(e) => setCoverage(e.target.value)}
+              onBlur={commitCoverage}
+              onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+              className="h-6 w-14 text-[11px] px-1 py-0 text-center"
+            />
+            <span className="text-[11px] text-muted-foreground">pessoas</span>
+          </div>
+        ) : (
+          <span className="text-[11px] text-muted-foreground">{pos.minimumCoverage} pessoas</span>
+        )}
+
+        <div className="flex-1" />
+
+        {refCount > 0 && (
+          <span className="flex items-center gap-0.5 text-[11px] text-primary">
+            <Library className="h-3 w-3" /> {refCount}
+          </span>
+        )}
+
+        {actions.isAdmin && (
+          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100">
+            <ReorderButtons
+              onUp={() => actions.reorder("position", siblings, index, "up")}
+              onDown={() => actions.reorder("position", siblings, index, "down")}
+              canUp={index > 0}
+              canDown={index < siblings.length - 1}
+            />
+            <button onClick={() => actions.openRefs(pos.id, pos.name)} className="p-0.5 text-muted-foreground hover:text-primary" title="Referências oficiais">
+              <Library className="h-3.5 w-3.5" />
+            </button>
+            <button onClick={() => actions.deletePosition(pos.id)} className="p-0.5 text-muted-foreground hover:text-destructive" title="Remover linha">
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Editor de configuração inline */}
+      {actions.isAdmin && hasConfig && configOpen && line?.id && (
+        <div className="mx-2 mb-2 ml-6 px-3 py-2.5 rounded-lg border bg-muted/20 flex flex-col gap-2">
+          <LineConfigEditor
+            type={type}
+            config={config}
+            members={actions.members}
+            onSave={(c) => actions.updateLineConfig(line.id, c)}
           />
-          <span className="text-[11px] text-muted-foreground">pessoas</span>
-        </div>
-      ) : (
-        <span className="text-[11px] text-muted-foreground">{pos.minimumCoverage} pessoas</span>
-      )}
-
-      <div className="flex-1" />
-
-      {refCount > 0 && (
-        <span className="flex items-center gap-0.5 text-[11px] text-primary">
-          <Library className="h-3 w-3" /> {refCount}
-        </span>
-      )}
-
-      {actions.isAdmin && (
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100">
-          <ReorderButtons
-            onUp={() => actions.reorder("position", siblings, index, "up")}
-            onDown={() => actions.reorder("position", siblings, index, "down")}
-            canUp={index > 0}
-            canDown={index < siblings.length - 1}
-          />
-          <button onClick={() => actions.openRefs(pos.id, pos.name)} className="p-0.5 text-muted-foreground hover:text-primary" title="Referências oficiais">
-            <Library className="h-3.5 w-3.5" />
-          </button>
-          <button onClick={() => actions.deletePosition(pos.id)} className="p-0.5 text-muted-foreground hover:text-destructive" title="Remover linha">
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
         </div>
       )}
     </div>
@@ -431,6 +721,13 @@ export default function ShowBookPage() {
     query: { enabled: !!selectedId, queryKey: getGetShowBookQueryKey(selectedId ?? "") },
   });
   const selectedBook = bookData?.showBook;
+
+  const { data: usersData } = useListUsers({
+    query: { enabled: !!selectedId && isAdmin, queryKey: getListUsersQueryKey() },
+  });
+  const members: Member[] = ((usersData?.users ?? []) as User[])
+    .filter((u) => u.status === "ACTIVE")
+    .map((u) => ({ id: u.id, name: u.name }));
 
   const { data: versionsData } = useListShowBookVersions(selectedId ?? "", {
     query: { enabled: !!selectedId && versionsOpen, queryKey: getListShowBookVersionsQueryKey(selectedId ?? "") },
@@ -635,6 +932,14 @@ export default function ShowBookPage() {
     }
   };
 
+  const updateLineConfig = (lineId: string, config: LineConfig) => {
+    if (!selectedId) return;
+    updateLineMutation.mutate(
+      { id: selectedId, lineId, data: { config: config as any, changeType: "CONFIG" } },
+      { onSuccess: invalidateAll, onError: () => failToast("Erro ao salvar configuração") }
+    );
+  };
+
   const deletePosition = (positionId: string) => {
     if (!selectedId) return;
     deletePositionMutation.mutate(
@@ -695,9 +1000,10 @@ export default function ShowBookPage() {
 
   const actions: Actions = {
     isAdmin,
+    members,
     updateScene, deleteScene,
     addBlock, updateBlock, deleteBlock,
-    addLine, updatePositionName, updatePositionCoverage, setLineType, deletePosition,
+    addLine, updatePositionName, updatePositionCoverage, setLineType, updateLineConfig, deletePosition,
     reorder, openRefs: handleOpenRefs,
   };
 

@@ -5355,7 +5355,21 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/ShowBookSceneWithBlocks"
+            memberDirectory:
+              type: array
+              description: Nomes resolvidos dos membros referenciados nas configurações das linhas
+              items:
+                $ref: "#/components/schemas/ShowBookMemberRef"
           required: [scenes]
+
+    ShowBookMemberRef:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+      required: [id, name]
 
     ShowBookScene:
       type: object

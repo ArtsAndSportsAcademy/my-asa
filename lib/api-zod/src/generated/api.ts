@@ -696,7 +696,11 @@ export const GetShowBookResponse = zod.object({
 }))
 })))
 })))
-})))
+}))),
+  "memberDirectory": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string()
+})).optional().describe('Nomes resolvidos dos membros referenciados nas configurações das linhas')
 }))
 })
 

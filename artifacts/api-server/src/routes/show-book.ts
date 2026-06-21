@@ -12,6 +12,7 @@ import {
   userTagsTable,
   showBookPositionLibraryRefsTable,
   libraryDocumentsTable,
+  usersTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
@@ -86,6 +87,39 @@ async function buildShowBookTree(showBookId: string) {
   });
 
   return scenes.map((s) => ({ ...s, blocks: blocksByScene[s.id] ?? [] }));
+}
+
+// Coleta todos os userIds referenciados nas configs das linhas e resolve seus nomes.
+function collectUserIdsFromConfig(config: unknown): string[] {
+  if (!config || typeof config !== "object") return [];
+  const c = config as Record<string, unknown>;
+  const ids: string[] = [];
+  if (typeof c.userId === "string") ids.push(c.userId);
+  if (typeof c.titularId === "string") ids.push(c.titularId);
+  if (Array.isArray(c.substituteIds)) ids.push(...c.substituteIds.filter((x): x is string => typeof x === "string"));
+  if (Array.isArray(c.memberIds)) ids.push(...c.memberIds.filter((x): x is string => typeof x === "string"));
+  return ids;
+}
+
+async function buildMemberDirectory(
+  scenes: Awaited<ReturnType<typeof buildShowBookTree>>
+): Promise<{ id: string; name: string }[]> {
+  const userIds = new Set<string>();
+  for (const scene of scenes) {
+    for (const block of scene.blocks) {
+      for (const pos of block.positions) {
+        for (const line of pos.lines) {
+          collectUserIdsFromConfig(line.config).forEach((id) => userIds.add(id));
+        }
+      }
+    }
+  }
+  if (userIds.size === 0) return [];
+  const rows = await db
+    .select({ id: usersTable.id, name: usersTable.name })
+    .from(usersTable)
+    .where(inArray(usersTable.id, Array.from(userIds)));
+  return rows;
 }
 
 async function bumpVersion(
@@ -163,7 +197,8 @@ router.get("/show-books/:id", requireAuth, requireOrganization, async (req, res)
     const book = await getShowBookOrFail(id, res);
     if (!book) return;
     const tree = await buildShowBookTree(id);
-    res.json({ showBook: { ...book, scenes: tree } });
+    const memberDirectory = await buildMemberDirectory(tree);
+    res.json({ showBook: { ...book, scenes: tree, memberDirectory } });
   } catch (err) {
     res.status(500).json({ error: "Erro ao buscar livro" });
   }
