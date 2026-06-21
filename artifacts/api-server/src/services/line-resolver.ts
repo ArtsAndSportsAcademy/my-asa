@@ -20,7 +20,7 @@ async function fetchAllLines(positionIds: string[]) {
         .select()
         .from(showBookLinesTable)
         .where(eq(showBookLinesTable.positionId, pid))
-        .orderBy(showBookLinesTable.order)
+        .orderBy(showBookLinesTable.order, showBookLinesTable.id)
     )
   );
   const map: Record<string, (typeof showBookLinesTable.$inferSelect)[]> = {};
@@ -32,17 +32,17 @@ export async function buildShowBookTree(showBookId: string) {
   const scenes = await db
     .select().from(showBookScenesTable)
     .where(eq(showBookScenesTable.showBookId, showBookId))
-    .orderBy(showBookScenesTable.order);
+    .orderBy(showBookScenesTable.order, showBookScenesTable.id);
 
   const blocks = await db
     .select().from(showBookBlocksTable)
     .where(eq(showBookBlocksTable.showBookId, showBookId))
-    .orderBy(showBookBlocksTable.order);
+    .orderBy(showBookBlocksTable.order, showBookBlocksTable.id);
 
   const positions = await db
     .select().from(showBookRolesTable)
     .where(eq(showBookRolesTable.showBookId, showBookId))
-    .orderBy(showBookRolesTable.order);
+    .orderBy(showBookRolesTable.order, showBookRolesTable.id);
 
   const linesMap = await fetchAllLines(positions.map((p) => p.id));
 
@@ -180,17 +180,23 @@ function resolveLine(
   line: { id: string; type: string; config: unknown },
   weekday: number,
   unavailable: Set<string>,
-  nameOf: (id: string) => string
+  nameOf: (id: string) => string,
+  excluded: Set<string> = new Set()
 ): ResolvedLine {
   const cfg = (line.config && typeof line.config === "object" ? line.config : {}) as Record<string, unknown>;
   const person = (id: string): ResolvedPerson => ({ userId: id, name: nameOf(id) });
+  // "Bloqueado" = de folga/restrição (unavailable) OU já escalado noutra posição da mesma
+  // cena (excluded). Ambos fazem a escolha saltar para o próximo candidato da lista.
+  const blocked = (id: string) => unavailable.has(id) || excluded.has(id);
+  const blockReason = (id: string) =>
+    unavailable.has(id) ? "indisponível" : "já escalado nesta cena";
 
   switch (line.type) {
     case "FIXED_PERSON": {
       const id = typeof cfg.userId === "string" ? cfg.userId : "";
       if (!id) return { lineId: line.id, type: line.type, status: "UNCOVERED", people: [], note: "Sem pessoa definida" };
-      if (unavailable.has(id)) {
-        return { lineId: line.id, type: line.type, status: "UNCOVERED", people: [], note: `${nameOf(id)} indisponível e sem substituto` };
+      if (blocked(id)) {
+        return { lineId: line.id, type: line.type, status: "UNCOVERED", people: [], note: `${nameOf(id)} ${blockReason(id)} e sem substituto` };
       }
       return { lineId: line.id, type: line.type, status: "COVERED", people: [person(id)] };
     }
@@ -204,11 +210,11 @@ function resolveLine(
       if (order.length === 0) {
         return { lineId: line.id, type: line.type, status: "UNCOVERED", people: [], note: "Sem titular definido" };
       }
-      const chosen = order.find((id) => !unavailable.has(id));
+      const chosen = order.find((id) => !blocked(id));
       if (!chosen) {
         return { lineId: line.id, type: line.type, status: "UNCOVERED", people: [], note: "Titular e substitutos indisponíveis" };
       }
-      const note = chosen === titularId ? undefined : `Titular indisponível — usando ${nameOf(chosen)}`;
+      const note = chosen === titularId ? undefined : `Titular ${blockReason(titularId)} — usando ${nameOf(chosen)}`;
       return { lineId: line.id, type: line.type, status: "COVERED", people: [person(chosen)], note };
     }
 
@@ -224,7 +230,7 @@ function resolveLine(
       }
       const available = memberIds
         .map((id, idx) => ({ id, idx, count: asNum(counts[id]) }))
-        .filter((m) => !unavailable.has(m.id))
+        .filter((m) => !blocked(m.id))
         .sort((a, b) => (a.count - b.count) || (a.idx - b.idx));
       if (available.length === 0) {
         return { lineId: line.id, type: line.type, status: "UNCOVERED", people: [], note: "Todos do rodízio indisponíveis" };
@@ -246,8 +252,8 @@ function resolveLine(
         : {}) as Record<string, unknown>;
       const assigned = assignments[String(weekday)];
       if (typeof assigned === "string" && assigned) {
-        if (unavailable.has(assigned)) {
-          return { lineId: line.id, type: line.type, status: "UNCOVERED", people: [], note: `${nameOf(assigned)} indisponível e sem substituto` };
+        if (blocked(assigned)) {
+          return { lineId: line.id, type: line.type, status: "UNCOVERED", people: [], note: `${nameOf(assigned)} ${blockReason(assigned)} e sem substituto` };
         }
         return { lineId: line.id, type: line.type, status: "COVERED", people: [person(assigned)] };
       }
@@ -279,7 +285,8 @@ function resolveLine(
 export async function resolveShowBookCast(
   showBookId: string,
   operationId: string,
-  dateISO: string
+  dateISO: string,
+  opts: { dedupPerScene?: boolean } = {}
 ): Promise<ResolveResult> {
   const tree = await buildShowBookTree(showBookId);
   const weekday = weekdayOf(dateISO);
@@ -308,24 +315,33 @@ export async function resolveShowBookCast(
   const unavailable = await getUnavailableUserIds(operationId, dateISO);
 
   let uncoveredCount = 0;
-  const scenes: ResolvedScene[] = tree.map((scene) => ({
-    sceneId: scene.id,
-    name: scene.name,
-    blocks: scene.blocks.map((block) => ({
-      blockId: block.id,
-      name: block.name,
-      positions: block.positions.map((pos) => ({
-        positionId: pos.id,
-        name: pos.name,
-        minimumCoverage: pos.minimumCoverage ?? 1,
-        lines: pos.lines.map((line) => {
-          const resolved = resolveLine(line, weekday, unavailable, nameOf);
-          if (resolved.status === "UNCOVERED") uncoveredCount += 1;
-          return resolved;
-        }),
+  const scenes: ResolvedScene[] = tree.map((scene) => {
+    // Quando dedupPerScene está ligado, uma pessoa escolhida numa posição passa a
+    // ficar "excluída" das posições seguintes da MESMA cena, forçando a escolha a
+    // saltar para o próximo substituto/membro do rodízio (até não haver ninguém).
+    const excluded = opts.dedupPerScene ? new Set<string>() : undefined;
+    return {
+      sceneId: scene.id,
+      name: scene.name,
+      blocks: scene.blocks.map((block) => ({
+        blockId: block.id,
+        name: block.name,
+        positions: block.positions.map((pos) => ({
+          positionId: pos.id,
+          name: pos.name,
+          minimumCoverage: pos.minimumCoverage ?? 1,
+          lines: pos.lines.map((line) => {
+            const resolved = resolveLine(line, weekday, unavailable, nameOf, excluded);
+            if (resolved.status === "UNCOVERED") uncoveredCount += 1;
+            if (excluded) {
+              for (const p of resolved.people) excluded.add(p.userId);
+            }
+            return resolved;
+          }),
+        })),
       })),
-    })),
-  }));
+    };
+  });
 
   return { date: dateISO, weekday, scenes, uncoveredCount };
 }
@@ -353,9 +369,10 @@ export interface RoleResolution {
 export async function resolveAssignmentsByRole(
   showBookId: string,
   operationId: string,
-  dateISO: string
+  dateISO: string,
+  opts: { dedupPerScene?: boolean } = {}
 ): Promise<{ byRole: Map<string, RoleResolution>; result: ResolveResult }> {
-  const result = await resolveShowBookCast(showBookId, operationId, dateISO);
+  const result = await resolveShowBookCast(showBookId, operationId, dateISO, opts);
   const byRole = new Map<string, RoleResolution>();
   for (const scene of result.scenes) {
     for (const block of scene.blocks) {

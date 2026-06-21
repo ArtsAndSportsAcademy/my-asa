@@ -1,18 +1,18 @@
 ---
-name: Livro do Dia — pessoa única por cena
-description: Regra de negócio: a mesma pessoa não pode ocupar 2 posições na MESMA cena ao gerar/regenerar
+name: Livro do Dia — pessoa única por cena (com cadeia de substitutos)
+description: Regra de negócio: a mesma pessoa não ocupa 2 posições na MESMA cena; quando ocupada, puxa o próximo substituto/rodízio até esgotar
 ---
 
-# Livro do Dia: não duplicar pessoa na mesma cena
+# Livro do Dia: pessoa única por cena, encadeando substitutos
 
-**Regra de negócio:** ao gerar/regenerar o Livro do Dia, a mesma pessoa não pode ocupar duas posições dentro da MESMA cena (pode em cenas diferentes). A segunda ocorrência vira buraco OPEN (userId null), preservando o lugar como visível para o gestor preencher com outra pessoa.
+**Regra de negócio:** ao gerar/regenerar o Livro do Dia, a mesma pessoa não pode ocupar duas posições dentro da MESMA cena (pode em cenas diferentes). Quando a pessoa preferida já está escalada noutra posição da mesma cena, o lugar tenta o PRÓXIMO da sua cadeia (titular→substituto→seguinte→…) tal como faz com indisponibilidade (folga/atestado). Só fica vazio (OPEN) quando a cadeia se esgota.
 
-**Why:** a usuária pediu explicitamente (jun/2026) — o auto-resolver escolhia a mesma pessoa para vários papéis da mesma cena, gerando linhas duplicadas no livro.
+**Why:** a usuária pediu (jun/2026): primeiro "não repetir na cena", depois refinou para "encadear substitutos com consciência da cena" — quem já está noutra posição é tratado como indisponível para as posições seguintes daquela cena, puxando o próximo.
 
 **How to apply:**
-- Hierarquia: cena → bloco → papel(posição) → assignment(userId). O sceneId de um papel obtém-se por `block.sceneId` (block do showbook), via `role.blockId`.
-- Implementado em `artifacts/api-server/src/routes/daily-book.ts`: `dedupAssignmentsForScene(planned, Set<userId>)` aplicado dentro de `createAssignmentsForRole`, que mantém um `Map<sceneId, Set<userId>>` por geração.
-- Aplicar nos DOIS fluxos: `POST /daily-book/generate` e `POST /daily-book/:id/regenerate`. Esquecer um deles deixa a regra inconsistente.
-- Papel sem bloco/cena (sceneKey null) → não deduplica (não pertence a nenhuma cena).
-- Os papéis são lidos com `orderBy(showBookRolesTable.order, id)` para que seja sempre o mesmo lugar a ficar ASSIGNED vs OPEN (determinismo).
-- ATENÇÃO: a regra vale só na geração. A edição manual (PATCH de assignment) ainda permite duplicar; se a regra passar a ser global, validar também aí.
+- A cadeia é responsabilidade do RESOLVER, não de uma limpeza posterior. "Já escalado nesta cena" é tratado igual a "indisponível": some-se ao conjunto de bloqueados antes de escolher o ocupante de cada linha. Tipos com cadeia (titular+substitutos, rodízio) saltam bloqueados; tipos sem alternativa (pessoa fixa, dia-da-semana) ficam OPEN se a única pessoa estiver bloqueada.
+- A ocupação acumula-se na ordem determinística cena→bloco→posição→linha; por isso as queries da árvore do showbook desempatam por `order, id` (empate de `order` mudaria quem mantém o titular).
+- Papéis LEGADOS/MANUAIS (escala, sem linhas/cadeia) não têm como puxar substituto: para esses mantém-se uma dedup pós-resolução que vira a 2ª ocorrência em OPEN. Invariante crítico: essa dedup pós-hoc NUNCA pode tocar papéis resolvidos por linhas (senão abriria vaga já corretamente resolvida e o contador de rodízio avançaria para quem ficou OPEN). Pré-carregar a ocupação da cena com as pessoas das linhas torna a dedup manual independente da ordem do loop.
+- Aplicar nos DOIS fluxos: generate E regenerate. Esquecer um deixa a regra inconsistente.
+- O contador de rodízio (rotationWinners) é colhido do resultado do resolver; como papéis de linha nunca viram OPEN depois, o contador reflete sempre quem realmente ficou escalado.
+- Fora de escopo: a edição manual (PATCH de assignment) ainda permite duplicar; o preview do Livro do Show não aplica a regra (default desligado).

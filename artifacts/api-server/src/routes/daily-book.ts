@@ -312,9 +312,33 @@ export function dedupAssignmentsForScene(
   });
 }
 
+// Pré-popula a ocupação por cena com as pessoas dos papéis resolvidos por LINHAS, para que
+// papéis legados/manuais (escala) não dupliquem essas pessoas na mesma cena, independentemente
+// da ordem em que são processados no loop.
+function buildSceneOccupancyFromResolver(
+  roles: { id: string; blockId: string | null }[],
+  sceneByBlock: Record<string, string | null>,
+  byRole: Map<string, RoleResolution>
+): Map<string, Set<string>> {
+  const map = new Map<string, Set<string>>();
+  for (const role of roles) {
+    const sceneKey = role.blockId ? sceneByBlock[role.blockId] ?? null : null;
+    if (!sceneKey) continue;
+    const rr = byRole.get(role.id);
+    if (rr && rr.hasLines && rr.people.length > 0) {
+      let set = map.get(sceneKey);
+      if (!set) { set = new Set<string>(); map.set(sceneKey, set); }
+      for (const p of rr.people) set.add(p.userId);
+    }
+  }
+  return map;
+}
+
 // Cria os assignments de um papel: usa o resolvedor (regras + disponibilidade) quando
 // o papel tem linhas configuradas; senão cai na escala (compatibilidade com papéis legados).
-// Quando o papel pertence a uma cena, aplica a regra de não-duplicar pessoa na mesma cena.
+// Papéis resolvidos por linhas já vêm sem duplicatas na cena (o resolver puxou o próximo
+// substituto/rodízio). Para papéis legados/manuais não há cadeia: aqui deduplicamos contra a
+// ocupação da cena — a 2ª ocorrência da pessoa vira OPEN (vazio).
 async function createAssignmentsForRole(
   dailyBookId: string,
   positionId: string,
@@ -324,9 +348,11 @@ async function createAssignmentsForRole(
   sceneKey: string | null,
   assignedByScene: Map<string, Set<string>>
 ) {
-  const planned = planRoleAssignments(byRole.get(roleId), roleId, allocationMap);
+  const rr = byRole.get(roleId);
+  const fromResolver = !!(rr && rr.hasLines && rr.people.length > 0);
+  const planned = planRoleAssignments(rr, roleId, allocationMap);
   let finalPlanned = planned;
-  if (sceneKey) {
+  if (sceneKey && !fromResolver) {
     let set = assignedByScene.get(sceneKey);
     if (!set) { set = new Set<string>(); assignedByScene.set(sceneKey, set); }
     finalPlanned = dedupAssignmentsForScene(planned, set);
@@ -405,7 +431,8 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
     allocations.forEach((a) => { if (a.positionId) allocationMap[a.positionId] = a.userId ?? null; });
 
     // Resolve o elenco por papel pelas regras das linhas + disponibilidade na data do evento.
-    const { byRole, result } = await resolveAssignmentsByRole(showBookId, event.operationId, event.date);
+    // dedupPerScene: não repetir a mesma pessoa na mesma cena — puxa o próximo substituto/rodízio.
+    const { byRole, result } = await resolveAssignmentsByRole(showBookId, event.operationId, event.date, { dedupPerScene: true });
     // Persistimos o vencedor de cada linha ROTATION agora, na geração, para que a publicação
     // avance o contador exatamente para quem ficou escalado (e não re-resolva).
     const rotationWinners = collectRotationWinners(result);
@@ -453,7 +480,7 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
     // Mapa bloco→cena (origem) para aplicar a regra de não-duplicar pessoa na mesma cena.
     const sceneByBlock: Record<string, string | null> = {};
     blocks.forEach((b) => { sceneByBlock[b.id] = b.sceneId ?? null; });
-    const assignedByScene = new Map<string, Set<string>>();
+    const assignedByScene = buildSceneOccupancyFromResolver(roles, sceneByBlock, byRole);
 
     let positionsCount = 0;
     for (const role of roles) {
@@ -544,7 +571,8 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
     allocations.forEach((a) => { if (a.positionId) allocationMap[a.positionId] = a.userId ?? null; });
 
     // Resolve o elenco por papel pelas regras das linhas + disponibilidade na data do evento.
-    const { byRole, result } = await resolveAssignmentsByRole(showBookId, event.operationId, event.date);
+    // dedupPerScene: não repetir a mesma pessoa na mesma cena — puxa o próximo substituto/rodízio.
+    const { byRole, result } = await resolveAssignmentsByRole(showBookId, event.operationId, event.date, { dedupPerScene: true });
     const rotationWinners = collectRotationWinners(result);
 
     const newVersion = book.version + 1;
@@ -561,7 +589,7 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
     }
     const sceneByBlock: Record<string, string | null> = {};
     blocks.forEach((b) => { sceneByBlock[b.id] = b.sceneId ?? null; });
-    const assignedByScene = new Map<string, Set<string>>();
+    const assignedByScene = buildSceneOccupancyFromResolver(roles, sceneByBlock, byRole);
     for (const role of roles) {
       const [dbPos] = await db.insert(dailyBookPositionsTable).values({ dailyBookId: id, name: role.name, minimumCoverage: role.minimumCoverage, sourceRoleId: role.id, blockId: role.blockId ? blockIdMap[role.blockId] ?? null : null }).returning();
       const sceneKey = role.blockId ? sceneByBlock[role.blockId] ?? null : null;
