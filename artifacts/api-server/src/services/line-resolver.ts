@@ -387,31 +387,37 @@ export async function resolveAssignmentsByRole(
 }
 
 /**
- * Avança os contadores de rodízio (config.executionCounts) das linhas ROTATION
- * conforme o elenco resolvido na data. Deve ser chamado UMA vez quando a escala do
- * dia é efetivada (publicação do Livro do Dia). Best-effort.
+ * Mapa lineId → userId do vencedor do rodízio de cada linha ROTATION, extraído de um
+ * elenco já resolvido. Persistido na GERAÇÃO do Livro do Dia para que a publicação
+ * avance o contador exatamente para quem ficou escalado na linha (e não re-resolva,
+ * o que poderia escolher outra pessoa se a disponibilidade mudar entre gerar e publicar).
  */
-export async function advanceRotationCounts(
-  showBookId: string,
-  operationId: string,
-  dateISO: string
-): Promise<number> {
-  const result = await resolveShowBookCast(showBookId, operationId, dateISO);
-  const advances: { lineId: string; userId: string }[] = [];
+export type RotationWinners = Record<string, string>;
+
+export function collectRotationWinners(result: ResolveResult): RotationWinners {
+  const winners: RotationWinners = {};
   for (const scene of result.scenes) {
     for (const block of scene.blocks) {
       for (const pos of block.positions) {
         for (const line of pos.lines) {
-          if (line.rotationAdvanceUserId) {
-            advances.push({ lineId: line.lineId, userId: line.rotationAdvanceUserId });
-          }
+          if (line.rotationAdvanceUserId) winners[line.lineId] = line.rotationAdvanceUserId;
         }
       }
     }
   }
-  if (advances.length === 0) return 0;
+  return winners;
+}
 
-  const lineIds = advances.map((a) => a.lineId);
+/**
+ * Avança os contadores de rodízio (config.executionCounts) das linhas ROTATION a partir
+ * de um mapa de vencedores já decidido (tipicamente persistido na geração). Deve ser
+ * chamado UMA vez quando a escala do dia é efetivada (publicação do Livro do Dia).
+ * Best-effort.
+ */
+export async function advanceRotationCountsFromWinners(winners: RotationWinners): Promise<number> {
+  const lineIds = Object.keys(winners);
+  if (lineIds.length === 0) return 0;
+
   const lines = await db
     .select()
     .from(showBookLinesTable)
@@ -419,8 +425,9 @@ export async function advanceRotationCounts(
   const byId = new Map(lines.map((l) => [l.id, l]));
 
   let updated = 0;
-  for (const adv of advances) {
-    const line = byId.get(adv.lineId);
+  for (const lineId of lineIds) {
+    const userId = winners[lineId]!;
+    const line = byId.get(lineId);
     if (!line) continue;
     const cfg = (line.config && typeof line.config === "object"
       ? { ...(line.config as Record<string, unknown>) }
@@ -428,10 +435,24 @@ export async function advanceRotationCounts(
     const counts = { ...((cfg.executionCounts && typeof cfg.executionCounts === "object"
       ? cfg.executionCounts
       : {}) as Record<string, number>) };
-    counts[adv.userId] = asNum(counts[adv.userId]) + 1;
+    counts[userId] = asNum(counts[userId]) + 1;
     cfg.executionCounts = counts;
-    await db.update(showBookLinesTable).set({ config: cfg as any }).where(eq(showBookLinesTable.id, adv.lineId));
+    await db.update(showBookLinesTable).set({ config: cfg as any }).where(eq(showBookLinesTable.id, lineId));
     updated += 1;
   }
   return updated;
+}
+
+/**
+ * Avança os contadores de rodízio re-resolvendo a data. Mantido para compatibilidade
+ * (ex.: Livros gerados antes de persistirmos os vencedores). Prefira persistir os
+ * vencedores na geração e usar `advanceRotationCountsFromWinners` na publicação.
+ */
+export async function advanceRotationCounts(
+  showBookId: string,
+  operationId: string,
+  dateISO: string
+): Promise<number> {
+  const result = await resolveShowBookCast(showBookId, operationId, dateISO);
+  return advanceRotationCountsFromWinners(collectRotationWinners(result));
 }

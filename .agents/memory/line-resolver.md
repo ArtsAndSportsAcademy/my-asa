@@ -40,10 +40,14 @@ Regra por papel em `createAssignmentsForRole`:
 **Why:** INATIVO ≠ buraco; tratar dia-sem-atuação como OPEN inflava falsos buracos.
 **How to apply:** ao mexer na geração, preservar a granularidade de status (hasUncoveredLine/hasActiveLine em RoleResolution), não só "tem pessoa ou não".
 
-## Avanço de rodízio na publicação (tradeoff conhecido)
-`advanceRotationCounts` é chamado best-effort no `/publish` (DRAFT→PUBLISHED, acontece uma vez;
-regenerate é bloqueado após publicar) e RE-RESOLVE a data para incrementar `config.executionCounts`.
-**Why:** publish ocorre uma vez, então não há dupla contagem; re-resolver evita persistir vencedores no schema.
-**Tradeoff:** se a disponibilidade mudar ENTRE generate e publish, o contador pode avançar para pessoa
-diferente da que ficou no assignment gerado. Aceitável para v1 (publish costuma seguir o generate de perto).
-Se virar problema, persistir os vencedores de rodízio na geração e ler no publish.
+## Avanço de rodízio na publicação (vencedores persistidos na geração)
+A geração/regeneração do Livro do Dia persiste os vencedores de cada linha ROTATION em
+`dailyBook.snapshotJson.rotationWinners` (`{ [lineId]: userId }`), via `collectRotationWinners`.
+A publicação (`/publish`, DRAFT→PUBLISHED, acontece uma vez) lê esse mapa e chama
+`advanceRotationCountsFromWinners` para incrementar `config.executionCounts`.
+**Why:** garante que o contador avance para quem REALMENTE ficou escalado na linha, mesmo que a
+disponibilidade mude entre gerar e publicar (antes re-resolvia no publish e podia escolher outra pessoa).
+**Compat:** Livros gerados antes desta mudança não têm `rotationWinners` no snapshot → fallback
+para `advanceRotationCounts` (re-resolve a data). `snapshotJson` é regravado no republish, mas o
+rodízio só avança no publish (antes de qualquer republish), então não há perda nem dupla contagem.
+**How to apply:** ao mexer no snapshot do Livro do Dia, preservar a chave `rotationWinners` ao lado de `scenes`.

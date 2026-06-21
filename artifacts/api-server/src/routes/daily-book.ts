@@ -26,7 +26,10 @@ import { notifyMany } from "../services/notificationService.js";
 import {
   resolveAssignmentsByRole,
   advanceRotationCounts,
+  advanceRotationCountsFromWinners,
+  collectRotationWinners,
   type RoleResolution,
+  type RotationWinners,
 } from "../services/line-resolver.js";
 
 const router: IRouter = Router();
@@ -357,7 +360,10 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
     allocations.forEach((a) => { if (a.positionId) allocationMap[a.positionId] = a.userId ?? null; });
 
     // Resolve o elenco por papel pelas regras das linhas + disponibilidade na data do evento.
-    const { byRole } = await resolveAssignmentsByRole(showBookId, event.operationId, event.date);
+    const { byRole, result } = await resolveAssignmentsByRole(showBookId, event.operationId, event.date);
+    // Persistimos o vencedor de cada linha ROTATION agora, na geração, para que a publicação
+    // avance o contador exatamente para quem ficou escalado (e não re-resolva).
+    const rotationWinners = collectRotationWinners(result);
 
     const [dailyBook] = await db
       .insert(dailyBooksTable)
@@ -416,7 +422,7 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
     }
 
     const fullTree = await buildDailyBookTree(dailyBookId);
-    const snapshotJson = { scenes: fullTree };
+    const snapshotJson = { scenes: fullTree, rotationWinners };
     await db
       .update(dailyBooksTable)
       .set({ snapshotJson: snapshotJson as any })
@@ -487,7 +493,8 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
     allocations.forEach((a) => { if (a.positionId) allocationMap[a.positionId] = a.userId ?? null; });
 
     // Resolve o elenco por papel pelas regras das linhas + disponibilidade na data do evento.
-    const { byRole } = await resolveAssignmentsByRole(showBookId, event.operationId, event.date);
+    const { byRole, result } = await resolveAssignmentsByRole(showBookId, event.operationId, event.date);
+    const rotationWinners = collectRotationWinners(result);
 
     const newVersion = book.version + 1;
 
@@ -507,7 +514,7 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
     }
 
     const fullTree = await buildDailyBookTree(id);
-    const snapshotJson = { scenes: fullTree };
+    const snapshotJson = { scenes: fullTree, rotationWinners };
 
     const [updated] = await db
       .update(dailyBooksTable)
@@ -551,7 +558,19 @@ router.post("/daily-book/:id/publish", requireAuth, requireOrganization, async (
       .returning();
 
     // Efetivação da escala do dia: avança os contadores de rodízio uma única vez (DRAFT→PUBLISHED).
-    if (book.showBookId && book.agendaEventId) {
+    // Usamos os vencedores persistidos na geração para garantir que o contador avance para quem
+    // de fato ficou escalado na linha — mesmo que a disponibilidade tenha mudado entre gerar e publicar.
+    const snapshot = (book.snapshotJson as Record<string, unknown> | null) ?? null;
+    const storedWinners =
+      snapshot && snapshot.rotationWinners && typeof snapshot.rotationWinners === "object"
+        ? (snapshot.rotationWinners as RotationWinners)
+        : null;
+    if (storedWinners) {
+      advanceRotationCountsFromWinners(storedWinners).catch((e) =>
+        console.error("rotation advance failed", e)
+      );
+    } else if (book.showBookId && book.agendaEventId) {
+      // Compat: Livros gerados antes de persistirmos os vencedores re-resolvem a data.
       const [ev] = await db
         .select({ operationId: agendaEventsTable.operationId, date: agendaEventsTable.date })
         .from(agendaEventsTable)
