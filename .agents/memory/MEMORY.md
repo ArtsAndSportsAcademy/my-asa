@@ -14,6 +14,7 @@
 - [Folga type enum](folga-type-enum.md) — usar DAY_OFF/NO_SHOW/RECESSO/AFASTAMENTO/RESTRICAO/OUTRO; nomes PT intuitivos (FOLGA/FERIAS) quebram com erro de enum
 - [Message thread + primeira msg](web-admin-bearer-fetch.md) — createMessageThread retorna {thread:{id}} e ignora initialMessage; enviar 1ª msg com useSendMessage({threadId,data:{content}}) após criar
 - [drizzle-kit push requer TTY](drizzle-push-tty.md) — push-force falha em ambiente não-interativo; alternativa: executeSql via code_execution sandbox com CREATE TABLE IF NOT EXISTS
+- [migrate baseline no DB compartilhado](migrate-baseline-shared-db.md) — journal vazio no DB compartilhado faz `migrate` recriar objetos (DefineEnum); baseline de _journal.json em __drizzle_migrations; baseline de task agent NÃO migra (DB isolado)
 - [tasksTable.status enum — sem DONE](tasks-status-enum.md) — valid: EXPIRED|CANCELLED|COMPLETED|APPROVED|CREATED|IN_PROGRESS|READY_FOR_APPROVAL|CHANGES_REQUESTED; não existe "DONE"
 - [Anthropic SDK subpath import — pnpm](anthropic-sdk-subpath.md) — @anthropic-ai/sdk/resources/* não acessível via pnpm symlink; usar tipos locais com content:any compatíveis estruturalmente
 - [Drizzle and() + ctx property narrowing](drizzle-and-ctx-narrowing.md) — ctx.operationId/organizationId não narrowed por TypeScript (objeto); usar ctx.operationId! dentro de eq(); and()! dentro de .where()
