@@ -29,6 +29,12 @@ import {
   getListShowBookPositionRefsQueryKey,
   getListLibraryDocumentsQueryKey,
   getListUsersQueryKey,
+  useResolveShowBook,
+} from "@workspace/api-client-react";
+import type {
+  ResolveResult,
+  ResolvedScene,
+  ResolvedLine,
 } from "@workspace/api-client-react";
 import type {
   ShowBook,
@@ -52,7 +58,7 @@ import { useLocation } from "wouter";
 import {
   Plus, History, BookOpen, Layers, Settings, Trash2, Library,
   Pencil, Check, X, ChevronUp, ChevronDown, LayoutGrid,
-  Sliders, UserPlus, Star,
+  Sliders, UserPlus, Star, CalendarCheck, AlertTriangle, UserCheck,
 } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = { DRAFT: "Rascunho", PUBLISHED: "Publicado", ARCHIVED: "Arquivado" };
@@ -117,6 +123,7 @@ type LineConfig = {
   dayAssignments?: Record<string, string>;
   functionLabel?: string;
   characterName?: string;
+  fixedForDay?: boolean;
 };
 
 type Member = { id: string; name: string };
@@ -323,13 +330,24 @@ function LineConfigEditor({
       );
     case "ROTATION":
       return (
-        <div className="flex items-start gap-2">
-          <Label className="text-[11px] text-muted-foreground w-16 pt-1">Ordem</Label>
-          <PeopleOrderedList
-            ids={config.memberIds ?? []}
-            members={members}
-            onChange={(ids) => onSave({ ...config, memberIds: ids, executionCounts: config.executionCounts ?? {} })}
-          />
+        <div className="flex flex-col gap-2">
+          <div className="flex items-start gap-2">
+            <Label className="text-[11px] text-muted-foreground w-16 pt-1">Ordem</Label>
+            <PeopleOrderedList
+              ids={config.memberIds ?? []}
+              members={members}
+              onChange={(ids) => onSave({ ...config, memberIds: ids, executionCounts: config.executionCounts ?? {} })}
+            />
+          </div>
+          <label className="flex items-center gap-2 pl-[4.5rem] text-[11px] text-muted-foreground cursor-pointer">
+            <input
+              type="checkbox"
+              className="h-3.5 w-3.5 accent-primary"
+              checked={config.fixedForDay !== false}
+              onChange={(e) => onSave({ ...config, fixedForDay: e.target.checked })}
+            />
+            Fixo do dia (mesma pessoa em todos os shows do dia)
+          </label>
         </div>
       );
     case "DAY_OF_WEEK":
@@ -727,6 +745,70 @@ function SceneCard({
   );
 }
 
+function ResolveLineRow({ line }: { line: ResolvedLine }) {
+  const isUncovered = line.status === "UNCOVERED";
+  const isInactive = line.status === "INACTIVE";
+  return (
+    <div className="flex items-start justify-between gap-2 text-sm py-1">
+      <div className="flex items-center gap-2 min-w-0">
+        {isUncovered ? (
+          <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
+        ) : isInactive ? (
+          <X className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        ) : (
+          <UserCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+        )}
+        <span className={isInactive ? "text-muted-foreground" : ""}>
+          {line.people.length > 0
+            ? line.people.map((p) => p.name).join(", ")
+            : isUncovered
+              ? "Sem cobertura"
+              : line.note ?? "—"}
+        </span>
+        {line.fixedForDay && line.people.length > 0 && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-300 border border-amber-500/30 shrink-0">
+            Fixo do dia
+          </span>
+        )}
+      </div>
+      {line.note && line.people.length > 0 && (
+        <span className="text-xs text-muted-foreground shrink-0">{line.note}</span>
+      )}
+    </div>
+  );
+}
+
+function ResolveSceneView({ scene }: { scene: ResolvedScene }) {
+  return (
+    <div className="border rounded-lg p-3">
+      <h4 className="text-sm font-semibold mb-2">{scene.name}</h4>
+      <div className="flex flex-col gap-3">
+        {scene.blocks.map((block) => (
+          <div key={block.blockId}>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+              {block.name}
+            </p>
+            <div className="flex flex-col gap-2 pl-2">
+              {block.positions.map((pos) => (
+                <div key={pos.positionId}>
+                  <p className="text-xs font-medium">{pos.name}</p>
+                  <div className="pl-2">
+                    {pos.lines.length === 0 ? (
+                      <p className="text-xs text-muted-foreground py-1">Sem linhas configuradas</p>
+                    ) : (
+                      pos.lines.map((line) => <ResolveLineRow key={line.lineId} line={line} />)
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function ShowBookPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -748,6 +830,8 @@ export default function ShowBookPage() {
   const [refsSheetOpen, setRefsSheetOpen] = useState(false);
   const [refSearchQuery, setRefSearchQuery] = useState("");
   const [newSceneName, setNewSceneName] = useState("");
+  const [resolveOpen, setResolveOpen] = useState(false);
+  const [resolveDate, setResolveDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   const { data: bookData } = useGetShowBook(selectedId ?? "", {
     query: { enabled: !!selectedId, queryKey: getGetShowBookQueryKey(selectedId ?? "") },
@@ -765,6 +849,12 @@ export default function ShowBookPage() {
     query: { enabled: !!selectedId && versionsOpen, queryKey: getListShowBookVersionsQueryKey(selectedId ?? "") },
   });
   const versions: ShowBookVersion[] = versionsData?.versions ?? [];
+
+  const { data: resolution, isLoading: resolveLoading } = useResolveShowBook(
+    selectedId ?? "",
+    resolveDate,
+    { query: { enabled: !!selectedId && resolveOpen && !!resolveDate } }
+  );
 
   const { data: refsData, isLoading: refsLoading } = useListShowBookPositionRefs(
     selectedId ?? "",
@@ -1113,6 +1203,9 @@ export default function ShowBookPage() {
                 </div>
                 {isAdmin && (
                   <div className="flex gap-2 shrink-0">
+                    <Button size="sm" variant="outline" onClick={() => setResolveOpen(true)}>
+                      <CalendarCheck className="h-3.5 w-3.5 mr-1.5" /> Conferir por data
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => setVersionsOpen(true)}>
                       <History className="h-3.5 w-3.5 mr-1.5" /> Histórico
                     </Button>
@@ -1161,6 +1254,52 @@ export default function ShowBookPage() {
           )}
         </div>
       </div>
+
+      {/* Sheet: conferência por data */}
+      <Sheet open={resolveOpen} onOpenChange={setResolveOpen}>
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Conferência por data</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4 flex flex-col gap-4">
+            <div className="flex items-end gap-2">
+              <div className="flex flex-col gap-1">
+                <Label className="text-xs">Data do show</Label>
+                <Input
+                  type="date"
+                  value={resolveDate}
+                  onChange={(e) => setResolveDate(e.target.value)}
+                  className="h-9 w-44"
+                />
+              </div>
+              {resolution && (
+                resolution.uncoveredCount > 0 ? (
+                  <Badge variant="destructive" className="mb-1">
+                    <AlertTriangle className="h-3 w-3 mr-1" />
+                    {resolution.uncoveredCount} linha(s) sem cobertura
+                  </Badge>
+                ) : (
+                  <Badge className="mb-1">
+                    <Check className="h-3 w-3 mr-1" /> Tudo coberto
+                  </Badge>
+                )
+              )}
+            </div>
+
+            {resolveLoading ? (
+              <p className="text-sm text-muted-foreground">Resolvendo elenco…</p>
+            ) : !resolution || resolution.scenes.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhuma cena para resolver nesta data.</p>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {resolution.scenes.map((scene) => (
+                  <ResolveSceneView key={scene.sceneId} scene={scene} />
+                ))}
+              </div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Sheet: histórico de versões */}
       <Sheet open={versionsOpen} onOpenChange={setVersionsOpen}>

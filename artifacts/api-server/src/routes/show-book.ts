@@ -18,6 +18,7 @@ import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
 import { eventBus } from "../lib/event-bus.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
+import { buildShowBookTree, collectUserIdsFromConfig, resolveShowBookCast } from "../services/line-resolver.js";
 
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"] as const;
 
@@ -32,78 +33,6 @@ async function getShowBookOrFail(id: string, res: any) {
     return null;
   }
   return book;
-}
-
-async function fetchAllLines(positionIds: string[]) {
-  if (positionIds.length === 0) return {} as Record<string, (typeof showBookLinesTable.$inferSelect)[]>;
-  const allLines = await Promise.all(
-    positionIds.map((pid) =>
-      db
-        .select()
-        .from(showBookLinesTable)
-        .where(eq(showBookLinesTable.positionId, pid))
-        .orderBy(showBookLinesTable.order)
-    )
-  );
-  const map: Record<string, (typeof showBookLinesTable.$inferSelect)[]> = {};
-  positionIds.forEach((pid, idx) => { map[pid] = allLines[idx] ?? []; });
-  return map;
-}
-
-async function buildShowBookTree(showBookId: string) {
-  const scenes = await db
-    .select().from(showBookScenesTable)
-    .where(eq(showBookScenesTable.showBookId, showBookId))
-    .orderBy(showBookScenesTable.order);
-
-  const blocks = await db
-    .select().from(showBookBlocksTable)
-    .where(eq(showBookBlocksTable.showBookId, showBookId))
-    .orderBy(showBookBlocksTable.order);
-
-  const positions = await db
-    .select().from(showBookRolesTable)
-    .where(eq(showBookRolesTable.showBookId, showBookId))
-    .orderBy(showBookRolesTable.order);
-
-  const linesMap = await fetchAllLines(positions.map((p) => p.id));
-
-  const posWithLines = positions.map((p) => ({ ...p, lines: linesMap[p.id] ?? [] }));
-
-  const posByBlock: Record<string, typeof posWithLines> = {};
-  posWithLines.forEach((p) => {
-    const key = p.blockId ?? "__none";
-    if (!posByBlock[key]) posByBlock[key] = [];
-    posByBlock[key]!.push(p);
-  });
-
-  const blocksWithPos = blocks.map((b) => ({ ...b, positions: posByBlock[b.id] ?? [] }));
-
-  const blocksByScene: Record<string, typeof blocksWithPos> = {};
-  blocksWithPos.forEach((b) => {
-    const key = b.sceneId ?? "__none";
-    if (!blocksByScene[key]) blocksByScene[key] = [];
-    blocksByScene[key]!.push(b);
-  });
-
-  return scenes.map((s) => ({ ...s, blocks: blocksByScene[s.id] ?? [] }));
-}
-
-// Coleta todos os userIds referenciados nas configs das linhas e resolve seus nomes.
-function collectUserIdsFromConfig(config: unknown): string[] {
-  if (!config || typeof config !== "object") return [];
-  const c = config as Record<string, unknown>;
-  const ids: string[] = [];
-  if (typeof c.userId === "string") ids.push(c.userId);
-  if (typeof c.titularId === "string") ids.push(c.titularId);
-  if (Array.isArray(c.substituteIds)) ids.push(...c.substituteIds.filter((x): x is string => typeof x === "string"));
-  if (Array.isArray(c.memberIds)) ids.push(...c.memberIds.filter((x): x is string => typeof x === "string"));
-  if (c.dayAssignments && typeof c.dayAssignments === "object") {
-    for (const v of Object.values(c.dayAssignments as Record<string, unknown>)) {
-      if (typeof v === "string") ids.push(v);
-    }
-  }
-  return ids;
 }
 
 async function buildMemberDirectory(
@@ -206,6 +135,32 @@ router.get("/show-books/:id", requireAuth, requireOrganization, async (req, res)
     res.json({ showBook: { ...book, scenes: tree, memberDirectory } });
   } catch (err) {
     res.status(500).json({ error: "Erro ao buscar livro" });
+  }
+});
+
+// Conferência: resolve quem ocupa cada linha numa data específica (folgas, ordem e rodízio).
+router.get("/show-books/:id/resolve", requireAuth, requireOrganization, async (req, res) => {
+  const id = req.params.id as string;
+  const date = (req.query.date as string) ?? "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    res.status(400).json({ error: "date (YYYY-MM-DD) é obrigatório" });
+    return;
+  }
+  // Valida data de calendário real (rejeita 2026-13-40 etc.)
+  const parsed = new Date(`${date}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) {
+    res.status(400).json({ error: "date inválida" });
+    return;
+  }
+  try {
+    const book = await getShowBookOrFail(id, res);
+    if (!book) return;
+    const resolution = await resolveShowBookCast(id, book.operationId, date);
+    res.json({ resolution });
+  } catch (err) {
+    const log = requestLogger("show_book", req.requestId ?? "", req.correlationId ?? "");
+    log.error({ err, showBookId: id, date }, "Erro ao resolver elenco por data");
+    res.status(500).json({ error: "Erro ao resolver elenco por data" });
   }
 });
 
