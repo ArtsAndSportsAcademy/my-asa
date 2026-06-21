@@ -5,12 +5,17 @@
  * MyASA 2.0 API
  * OpenAPI spec version: 0.3.0
  */
+import type { OperationalGroupScope } from './operationalGroupScope';
 import type { OperationalGroupStatus } from './operationalGroupStatus';
 
 export interface OperationalGroup {
   id: string;
   name: string;
-  operationId: string;
+  organizationId?: string | null;
+  operationId?: string | null;
+  scope: OperationalGroupScope;
+  /** Operações cobertas pelo grupo (calculado a partir do escopo). */
+  operationIds?: string[];
   status: OperationalGroupStatus;
   supervisorId?: string | null;
   createdAt?: string;

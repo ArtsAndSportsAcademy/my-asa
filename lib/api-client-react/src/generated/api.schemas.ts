@@ -95,6 +95,15 @@ export interface Operation {
   updatedAt?: string;
 }
 
+export type OperationalGroupScope = typeof OperationalGroupScope[keyof typeof OperationalGroupScope];
+
+
+export const OperationalGroupScope = {
+  OPERATION: 'OPERATION',
+  MULTI: 'MULTI',
+  ALL: 'ALL',
+} as const;
+
 export type OperationalGroupStatus = typeof OperationalGroupStatus[keyof typeof OperationalGroupStatus];
 
 
@@ -107,7 +116,11 @@ export const OperationalGroupStatus = {
 export interface OperationalGroup {
   id: string;
   name: string;
-  operationId: string;
+  organizationId?: string | null;
+  operationId?: string | null;
+  scope: OperationalGroupScope;
+  /** Operações cobertas pelo grupo (calculado a partir do escopo). */
+  operationIds?: string[];
   status: OperationalGroupStatus;
   supervisorId?: string | null;
   createdAt?: string;
@@ -271,6 +284,18 @@ export interface OperationStatusUpdate {
   status: OperationStatusUpdateStatus;
 }
 
+/**
+ * OPERATION (uma operação, padrão), MULTI (várias) ou ALL (todas). MULTI/ALL são exclusivos do Admin.
+ */
+export type GroupCreateScope = typeof GroupCreateScope[keyof typeof GroupCreateScope];
+
+
+export const GroupCreateScope = {
+  OPERATION: 'OPERATION',
+  MULTI: 'MULTI',
+  ALL: 'ALL',
+} as const;
+
 export type GroupCreateStatus = typeof GroupCreateStatus[keyof typeof GroupCreateStatus];
 
 
@@ -282,7 +307,12 @@ export const GroupCreateStatus = {
 
 export interface GroupCreate {
   name: string;
-  operationId: string;
+  /** OPERATION (uma operação, padrão), MULTI (várias) ou ALL (todas). MULTI/ALL são exclusivos do Admin. */
+  scope?: GroupCreateScope;
+  /** Obrigatório quando scope=OPERATION. */
+  operationId?: string | null;
+  /** Operações cobertas quando scope=MULTI. */
+  operationIds?: string[];
   status?: GroupCreateStatus;
 }
 

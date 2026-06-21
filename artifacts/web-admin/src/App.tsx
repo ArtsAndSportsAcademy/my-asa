@@ -35,6 +35,7 @@ import AdminRequestsPage from "@/pages/admin/requests";
 import SupervisorRequestsPage from "@/pages/supervisor/requests";
 import SupervisorDelegationsPage from "@/pages/supervisor/delegations";
 import EquipePage from "@/pages/supervisor/equipe";
+import SupervisorGruposPage from "@/pages/supervisor/grupos";
 import AdminTasksPage from "@/pages/admin/tasks";
 import SupervisorTasksPage from "@/pages/supervisor/tasks";
 import AdminInsightsPage from "@/pages/admin/insights";
@@ -210,6 +211,7 @@ function Router() {
       <RoleRoute path="/supervisor/requests" component={SupervisorRequestsPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/supervisor/delegations" component={SupervisorDelegationsPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/supervisor/equipe" component={EquipePage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
+      <RoleRoute path="/supervisor/grupos" component={SupervisorGruposPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/admin/tasks" component={AdminTasksPage} roles={["ADMIN"]} />
       <RoleRoute path="/supervisor/tasks" component={SupervisorTasksPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/admin/insights" component={AdminInsightsPage} roles={["ADMIN"]} />

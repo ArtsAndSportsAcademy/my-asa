@@ -5,10 +5,12 @@ import {
   organizationsTable,
   operationsTable,
   operationalGroupsTable,
+  userRolesTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { getUserContext } from "../lib/auth.service.js";
 import { requestLogger } from "../lib/logger.js";
+import { supervisedOperationIds, groupCoveredOperationIds, serializeGroup } from "./groups.js";
 
 const router: IRouter = Router();
 
@@ -76,18 +78,46 @@ router.get("/operations", requireAuth, requireOrganization, async (req, res) => 
 router.get("/operational-groups", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger("organization", req.requestId, req.correlationId);
   try {
-    const role = req.user!.role;
-    let groups = await db.query.operationalGroupsTable.findMany();
+    const { role, sub, organizationId } = req.user!;
 
-    if (role === "SUPERVISOR_A" || role === "SUPERVISOR_B") {
-      const myGroupIds = req.user!.operationIds;
-      groups = groups.filter((g) => myGroupIds.some((id) => id === g.operationId));
-    } else if (role === "MEMBER") {
-      const myGroupIds = req.user!.operationIds;
-      groups = groups.filter((g) => myGroupIds.some((id) => id === g.operationId));
+    // Considera apenas grupos da organização atual.
+    const orgOps = await db.query.operationsTable.findMany({
+      where: eq(operationsTable.organizationId, organizationId),
+    });
+    const orgOpIds = new Set(orgOps.map((o) => o.id));
+
+    let groups = await db.query.operationalGroupsTable.findMany();
+    groups = groups.filter((g) =>
+      g.organizationId === organizationId || (g.operationId ? orgOpIds.has(g.operationId) : false),
+    );
+
+    if (role !== "ADMIN") {
+      // Supervisor vê grupos da sua operação + grupos amplos que cobrem sua operação.
+      // Membro vê grupos em que participa + grupos amplos que cobrem sua operação.
+      const supOps = role === "MEMBER" ? [] : await supervisedOperationIds(sub);
+      const myOps = role === "MEMBER" ? req.user!.operationIds : supOps;
+
+      const visible: typeof groups = [];
+      for (const g of groups) {
+        const covered = await groupCoveredOperationIds(g, organizationId);
+        if (covered.some((opId) => myOps.includes(opId))) {
+          visible.push(g);
+        } else if (role === "MEMBER") {
+          const isMember = await db.query.userRolesTable.findFirst({
+            where: and(
+              eq(userRolesTable.userId, sub),
+              eq(userRolesTable.groupId, g.id),
+              eq(userRolesTable.active, true),
+            ),
+          });
+          if (isMember) visible.push(g);
+        }
+      }
+      groups = visible;
     }
 
-    res.json({ groups });
+    const serialized = await Promise.all(groups.map((g) => serializeGroup(g, organizationId)));
+    res.json({ groups: serialized });
   } catch (err) {
     log.error({ err }, "Error getting operational groups");
     res.status(500).json({ error: "Internal Server Error" });

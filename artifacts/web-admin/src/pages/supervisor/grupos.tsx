@@ -5,13 +5,9 @@ import {
   useGetOperationalGroups,
   getGetOperationalGroupsQueryKey,
   useCreateOperationalGroup,
-  useUpdateOperationalGroup,
   useUpdateOperationalGroupStatus,
   useListUsers,
   useAddGroupMember,
-  useRemoveGroupMember,
-  useAddGroupSupervisor,
-  useRemoveGroupSupervisor,
 } from "@workspace/api-client-react";
 import type { Operation, OperationalGroup, User } from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
@@ -23,9 +19,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useLocation } from "wouter";
-import { Plus, MoreHorizontal, Pencil, Users, AlertCircle, Trash2, Shield, UserPlus, RefreshCw, Briefcase } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Plus, MoreHorizontal, Users, AlertCircle, UserPlus, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const GROUP_STATUS_LABELS: Record<string, string> = {
@@ -36,18 +31,9 @@ const GROUP_STATUS_LABELS: Record<string, string> = {
 
 const GROUP_STATUS_OPTIONS = ["ACTIVE", "INACTIVE", "ARCHIVED"] as const;
 
-const SCOPE_LABELS: Record<string, string> = {
-  OPERATION: "Uma operação",
-  MULTI: "Várias operações",
-  ALL: "Todas as operações",
-};
-
-const SCOPE_OPTIONS = ["OPERATION", "MULTI", "ALL"] as const;
-
-export default function GroupsPage() {
+export default function SupervisorGruposPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
 
   const { data: opsData } = useGetOperations();
   const { data: groupsData, isLoading, error } = useGetOperationalGroups();
@@ -58,75 +44,47 @@ export default function GroupsPage() {
   const users: User[] = usersData?.users ?? [];
 
   const createMutation = useCreateOperationalGroup();
-  const updateMutation = useUpdateOperationalGroup();
   const updateStatusMutation = useUpdateOperationalGroupStatus();
   const addMemberMutation = useAddGroupMember();
-  const removeMemberMutation = useRemoveGroupMember();
-  const addSupervisorMutation = useAddGroupSupervisor();
-  const removeSupervisorMutation = useRemoveGroupSupervisor();
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [editGroup, setEditGroup] = useState<OperationalGroup | null>(null);
   const [statusGroup, setStatusGroup] = useState<OperationalGroup | null>(null);
   const [membersGroup, setMembersGroup] = useState<OperationalGroup | null>(null);
 
-  const [createForm, setCreateForm] = useState({ name: "", scope: "OPERATION", operationId: "", operationIds: [] as string[], status: "ACTIVE" });
-  const [editName, setEditName] = useState("");
+  const [createForm, setCreateForm] = useState({ name: "", operationId: "", status: "ACTIVE" });
   const [newStatus, setNewStatus] = useState("");
   const [addMemberUserId, setAddMemberUserId] = useState("");
-  const [addSupervisorUserId, setAddSupervisorUserId] = useState("");
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: getGetOperationalGroupsQueryKey() });
 
   const getOperationName = (opId: string) => operations.find((o) => o.id === opId)?.name ?? opId.slice(0, 8);
 
-  const handleCreate = () => {
-    const { name, scope, operationId, operationIds, status } = createForm;
-    if (!name.trim()) {
-      toast({ title: "Nome é obrigatório", variant: "destructive" });
-      return;
-    }
-    if (scope === "OPERATION" && !operationId) {
-      toast({ title: "Selecione a operação do grupo", variant: "destructive" });
-      return;
-    }
-    if (scope === "MULTI" && operationIds.length < 1) {
-      toast({ title: "Selecione ao menos uma operação", variant: "destructive" });
-      return;
-    }
-    const data: Record<string, unknown> = { name: name.trim(), scope, status };
-    if (scope === "OPERATION") data.operationId = operationId;
-    if (scope === "MULTI") data.operationIds = operationIds;
-    createMutation.mutate(
-      { data: data as never },
-      {
-        onSuccess: () => {
-          toast({ title: "Grupo criado com sucesso" });
-          setCreateOpen(false);
-          setCreateForm({ name: "", scope: "OPERATION", operationId: "", operationIds: [], status: "ACTIVE" });
-          invalidate();
-        },
-        onError: (err: any) => toast({ title: err?.response?.data?.message ?? "Erro ao criar grupo", variant: "destructive" }),
-      }
-    );
-  };
+  // Supervisor só gere grupos da própria operação (scope OPERATION).
+  const ownGroups = groups.filter((g) => g.scope === "OPERATION");
 
   const describeCoverage = (group: OperationalGroup): string => {
     if (group.scope === "ALL") return "Todas as operações";
     const ids = group.operationIds ?? (group.operationId ? [group.operationId] : []);
     if (ids.length === 0) return "—";
-    const names = ids.map((id) => getOperationName(id));
-    if (names.length <= 2) return names.join(", ");
-    return `${names.slice(0, 2).join(", ")} +${names.length - 2}`;
+    return ids.map((id) => getOperationName(id)).join(", ");
   };
 
-  const handleEdit = () => {
-    if (!editGroup || !editName.trim()) return;
-    updateMutation.mutate(
-      { id: editGroup.id, data: { name: editName.trim() } },
+  const handleCreate = () => {
+    const { name, operationId, status } = createForm;
+    if (!name.trim() || !operationId) {
+      toast({ title: "Nome e operação são obrigatórios", variant: "destructive" });
+      return;
+    }
+    createMutation.mutate(
+      { data: { name: name.trim(), scope: "OPERATION", operationId, status: status as never } },
       {
-        onSuccess: () => { toast({ title: "Grupo atualizado" }); setEditGroup(null); invalidate(); },
-        onError: () => toast({ title: "Erro ao atualizar grupo", variant: "destructive" }),
+        onSuccess: () => {
+          toast({ title: "Grupo criado com sucesso" });
+          setCreateOpen(false);
+          setCreateForm({ name: "", operationId: "", status: "ACTIVE" });
+          invalidate();
+        },
+        onError: (err: any) => toast({ title: err?.response?.data?.message ?? "Erro ao criar grupo", variant: "destructive" }),
       }
     );
   };
@@ -153,22 +111,11 @@ export default function GroupsPage() {
     );
   };
 
-  const handleAddSupervisor = () => {
-    if (!membersGroup || !addSupervisorUserId) return;
-    addSupervisorMutation.mutate(
-      { id: membersGroup.id, data: { userId: addSupervisorUserId } },
-      {
-        onSuccess: () => { toast({ title: "Supervisor adicionado" }); setAddSupervisorUserId(""); invalidate(); },
-        onError: (err: any) => toast({ title: err?.response?.data?.message ?? "Erro ao adicionar supervisor", variant: "destructive" }),
-      }
-    );
-  };
-
   return (
-    <AdminLayout title="Grupos Operacionais" subtitle="Organize equipes dentro das operações">
+    <AdminLayout title="Grupos da Operação" subtitle="Crie e organize grupos dentro da sua operação">
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <p className="text-sm text-muted-foreground">{groups.length} grupo(s) encontrado(s)</p>
+          <p className="text-sm text-muted-foreground">{ownGroups.length} grupo(s) na sua operação</p>
           <Button onClick={() => setCreateOpen(true)} size="sm">
             <Plus className="w-4 h-4 mr-2" />
             Novo Grupo
@@ -187,8 +134,7 @@ export default function GroupsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
-                <TableHead>Abrangência</TableHead>
-                <TableHead>Operações</TableHead>
+                <TableHead>Operação</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-[80px]">Ações</TableHead>
               </TableRow>
@@ -197,24 +143,21 @@ export default function GroupsPage() {
               {isLoading ? (
                 [...Array(3)].map((_, i) => (
                   <TableRow key={i}>
-                    {[...Array(5)].map((_, j) => (
+                    {[...Array(4)].map((_, j) => (
                       <TableCell key={j}><div className="h-4 bg-muted animate-pulse rounded w-32" /></TableCell>
                     ))}
                   </TableRow>
                 ))
-              ) : groups.length === 0 ? (
+              ) : ownGroups.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
-                    Nenhum grupo criado ainda. Crie o primeiro grupo para organizar sua equipe na operação.
+                  <TableCell colSpan={4} className="text-center py-10 text-muted-foreground">
+                    Nenhum grupo criado ainda. Crie o primeiro grupo para organizar sua equipe.
                   </TableCell>
                 </TableRow>
               ) : (
-                groups.map((group) => (
+                ownGroups.map((group) => (
                   <TableRow key={group.id}>
                     <TableCell className="font-medium">{group.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{SCOPE_LABELS[group.scope] ?? group.scope}</Badge>
-                    </TableCell>
                     <TableCell className="text-muted-foreground text-sm">{describeCoverage(group)}</TableCell>
                     <TableCell>
                       <Badge variant={group.status === "ACTIVE" ? "default" : group.status === "ARCHIVED" ? "destructive" : "secondary"}>
@@ -229,23 +172,13 @@ export default function GroupsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => { setEditGroup(group); setEditName(group.name); }}>
-                            <Pencil className="w-4 h-4 mr-2" />
-                            Editar nome
-                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => { setStatusGroup(group); setNewStatus(group.status); }}>
                             <RefreshCw className="w-4 h-4 mr-2" />
                             Mudar status
                           </DropdownMenuItem>
-                          <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => setMembersGroup(group)}>
                             <Users className="w-4 h-4 mr-2" />
-                            Gerenciar equipe
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => setLocation("/admin/operations")}>
-                            <Briefcase className="w-4 h-4 mr-2" />
-                            Ver Operação
+                            Gerenciar membros
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -260,7 +193,7 @@ export default function GroupsPage() {
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Novo Grupo Operacional</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Novo Grupo da Operação</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label>Nome do grupo</Label>
@@ -271,69 +204,16 @@ export default function GroupsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Abrangência</Label>
-              <Select value={createForm.scope} onValueChange={(v) => setCreateForm((f) => ({ ...f, scope: v, operationId: "", operationIds: [] }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Label>Operação</Label>
+              <Select value={createForm.operationId} onValueChange={(v) => setCreateForm((f) => ({ ...f, operationId: v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione uma operação" /></SelectTrigger>
                 <SelectContent>
-                  {SCOPE_OPTIONS.map((s) => (
-                    <SelectItem key={s} value={s}>{SCOPE_LABELS[s]}</SelectItem>
+                  {operations.map((op) => (
+                    <SelectItem key={op.id} value={op.id}>{op.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">
-                {createForm.scope === "OPERATION" && "O grupo pertence a uma única operação."}
-                {createForm.scope === "MULTI" && "O grupo cobre as operações que você escolher."}
-                {createForm.scope === "ALL" && "O grupo cobre todas as operações da organização."}
-              </p>
             </div>
-
-            {createForm.scope === "OPERATION" && (
-              <div className="space-y-2">
-                <Label>Operação</Label>
-                <Select value={createForm.operationId} onValueChange={(v) => setCreateForm((f) => ({ ...f, operationId: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Selecione uma operação" /></SelectTrigger>
-                  <SelectContent>
-                    {operations.map((op) => (
-                      <SelectItem key={op.id} value={op.id}>{op.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {createForm.scope === "MULTI" && (
-              <div className="space-y-2">
-                <Label>Operações cobertas</Label>
-                <div className="max-h-48 overflow-y-auto rounded-md border divide-y">
-                  {operations.length === 0 ? (
-                    <p className="p-3 text-sm text-muted-foreground">Nenhuma operação disponível.</p>
-                  ) : (
-                    operations.map((op) => {
-                      const checked = createForm.operationIds.includes(op.id);
-                      return (
-                        <label key={op.id} className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-muted/50">
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4"
-                            checked={checked}
-                            onChange={(e) =>
-                              setCreateForm((f) => ({
-                                ...f,
-                                operationIds: e.target.checked
-                                  ? [...f.operationIds, op.id]
-                                  : f.operationIds.filter((id) => id !== op.id),
-                              }))
-                            }
-                          />
-                          {op.name}
-                        </label>
-                      );
-                    })
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">{createForm.operationIds.length} operação(ões) selecionada(s)</p>
-              </div>
-            )}
             <div className="space-y-2">
               <Label>Status inicial</Label>
               <Select value={createForm.status} onValueChange={(v) => setCreateForm((f) => ({ ...f, status: v }))}>
@@ -350,22 +230,6 @@ export default function GroupsPage() {
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
             <Button onClick={handleCreate} disabled={createMutation.isPending}>
               {createMutation.isPending ? "Criando..." : "Criar grupo"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!editGroup} onOpenChange={(o) => !o && setEditGroup(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Editar Grupo</DialogTitle></DialogHeader>
-          <div className="space-y-2 py-2">
-            <Label>Nome</Label>
-            <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditGroup(null)}>Cancelar</Button>
-            <Button onClick={handleEdit} disabled={updateMutation.isPending}>
-              {updateMutation.isPending ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -397,35 +261,9 @@ export default function GroupsPage() {
       <Sheet open={!!membersGroup} onOpenChange={(o) => !o && setMembersGroup(null)}>
         <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>Equipe — {membersGroup?.name}</SheetTitle>
+            <SheetTitle>Membros — {membersGroup?.name}</SheetTitle>
           </SheetHeader>
-          <div className="mt-6 space-y-8">
-            <div className="space-y-3">
-              <p className="text-sm font-semibold flex items-center gap-2">
-                <Shield className="w-4 h-4 text-primary" />
-                Adicionar Supervisor
-              </p>
-              <div className="flex gap-2">
-                <Select value={addSupervisorUserId} onValueChange={setAddSupervisorUserId}>
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Selecionar usuário" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {users.filter((u) => u.status === "ACTIVE").map((u) => (
-                      <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  size="sm"
-                  onClick={handleAddSupervisor}
-                  disabled={!addSupervisorUserId || addSupervisorMutation.isPending}
-                >
-                  <UserPlus className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-
+          <div className="mt-6 space-y-6">
             <div className="space-y-3">
               <p className="text-sm font-semibold flex items-center gap-2">
                 <Users className="w-4 h-4 text-primary" />
@@ -453,7 +291,7 @@ export default function GroupsPage() {
             </div>
 
             <div className="text-xs text-muted-foreground border-t pt-4">
-              Use os dropdowns acima para adicionar membros e supervisores a este grupo. Para remover, use a tela de papéis do usuário.
+              Adicione membros da sua operação a este grupo. A gestão de supervisores do grupo é feita pelo administrador.
             </div>
           </div>
         </SheetContent>

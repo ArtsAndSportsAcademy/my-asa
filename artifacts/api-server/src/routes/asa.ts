@@ -27,6 +27,8 @@ import {
   libraryCategoriesTable,
   libraryViewsTable,
   userNotificationsTable,
+  operationalGroupsTable,
+  groupOperationsTable,
 } from "@workspace/db";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
@@ -589,6 +591,17 @@ Quando o usuário citar VÁRIOS membros numa mesma frase (separados por vírgula
 
 ⸻
 
+Montar escala por GRUPO (Task 114)
+
+Quando o usuário pedir para montar escala/atividade para um GRUPO pelo nome (ex: "escala a Equipe de Palco para o ensaio de sábado", "coloca o grupo Acrobacias na atividade X"):
+1. RESOLVER O GRUPO: chame consultar_grupo(query="nome do grupo"). Ele entende grupos da operação atual e grupos amplos (várias/todas operações) que cobrem a operação. Devolve "members" (com userId e name) e "membrosResolvidos".
+2. Se found=false → diga que não achou o grupo e ofereça listar os grupos disponíveis. Se ambiguous=true → mostre os grupos parecidos ("groups") e peça para o usuário escolher.
+3. Se o grupo não tiver membros ativos → avise e não monte escala vazia.
+4. RESUMIR + CONFIRMAR: liste os membros do grupo e o que será criado para cada um, e PEÇA CONFIRMAÇÃO antes de executar.
+5. EXECUTAR: após confirmação, use criar_entradas_escala_lote (uma entrada por membro do grupo) — não chame criar_entrada_escala um por um.
+
+⸻
+
 Edição de entidades por conversa
 
 Quando o usuário pedir para MUDAR, ALTERAR, CORRIGIR, REMARCAR, TROCAR ou ATUALIZAR algo que já existe (uma tarefa, folga/ausência, ensaio/bloco de agenda, aviso em rascunho ou reconhecimento), siga SEMPRE este fluxo:
@@ -901,6 +914,17 @@ const ASA_TOOLS: Tool[] = [
       required: ["query"],
       properties: {
         query: { type: "string", description: "Nome, apelido ou parte do nome a buscar" },
+      },
+    },
+  },
+  {
+    name: "consultar_grupo",
+    description: "Resolve um grupo pelo nome (ex: 'Equipe de Palco', 'Acrobacias') dentro da operação atual e devolve os membros ativos com seus userIds. Considera grupos da operação e grupos amplos (várias/todas as operações) que cobrem a operação atual. Use ANTES de montar escala por grupo: pega os membros e depois cria uma entrada para cada um com criar_entrada_escala.",
+    input_schema: {
+      type: "object" as const,
+      required: ["query"],
+      properties: {
+        query: { type: "string", description: "Nome ou parte do nome do grupo a buscar" },
       },
     },
   },
@@ -1867,6 +1891,162 @@ async function loadOrgMembersAndMemories(ctx: ToolCtx): Promise<{ users: MemberM
   return { users: [...userMap.values()], memories };
 }
 
+type GroupMatch = { id: string; name: string; scope: string };
+
+/** Operações cobertas por um grupo (OPERATION→[operationId]; MULTI→group_operations; ALL→todas da org). */
+async function groupCoverageOps(group: GroupMatch, organizationId: string): Promise<string[]> {
+  if (group.scope === "ALL") {
+    const ops = await db
+      .select({ id: operationsTable.id })
+      .from(operationsTable)
+      .where(eq(operationsTable.organizationId, organizationId));
+    return ops.map((o) => o.id);
+  }
+  if (group.scope === "MULTI") {
+    const links = await db
+      .select({ operationId: groupOperationsTable.operationId })
+      .from(groupOperationsTable)
+      .where(eq(groupOperationsTable.groupId, group.id));
+    return links.map((l) => l.operationId);
+  }
+  const [g] = await db
+    .select({ operationId: operationalGroupsTable.operationId })
+    .from(operationalGroupsTable)
+    .where(eq(operationalGroupsTable.id, group.id))
+    .limit(1);
+  return g?.operationId ? [g.operationId] : [];
+}
+
+/**
+ * Resolve um grupo pelo nome dentro do escopo da operação atual e devolve os membros ativos.
+ * Considera grupos da operação (OPERATION) e grupos amplos (MULTI/ALL) que cobrem a operação atual.
+ * Não aborta — devolve sempre um resultado estruturado.
+ */
+async function coreResolverGrupo(
+  ctx: ToolCtx,
+  query: string,
+): Promise<{
+  found: boolean;
+  ambiguous: boolean;
+  group: GroupMatch | null;
+  groups: GroupMatch[];
+  members: MemberMatch[];
+  message: string;
+}> {
+  if (!ctx.organizationId) {
+    return { found: false, ambiguous: false, group: null, groups: [], members: [], message: "Organização não configurada" };
+  }
+
+  // Operações da organização (para mapear grupos amplos/ALL).
+  const orgOps = await db
+    .select({ id: operationsTable.id })
+    .from(operationsTable)
+    .where(eq(operationsTable.organizationId, ctx.organizationId));
+  const orgOpIds = new Set(orgOps.map((o) => o.id));
+
+  // Todos os grupos ativos visíveis à organização.
+  const allGroups = await db
+    .select({
+      id: operationalGroupsTable.id,
+      name: operationalGroupsTable.name,
+      scope: operationalGroupsTable.scope,
+      organizationId: operationalGroupsTable.organizationId,
+      operationId: operationalGroupsTable.operationId,
+    })
+    .from(operationalGroupsTable)
+    .where(eq(operationalGroupsTable.status, "ACTIVE"));
+
+  // Mantém apenas grupos da organização atual que cobrem a operação atual.
+  const inScope: GroupMatch[] = [];
+  for (const g of allGroups) {
+    const belongsToOrg =
+      g.organizationId === ctx.organizationId || (g.operationId ? orgOpIds.has(g.operationId) : false);
+    if (!belongsToOrg) continue;
+    const match: GroupMatch = { id: g.id, name: g.name, scope: g.scope };
+    if (ctx.operationId) {
+      const covered = await groupCoverageOps(match, ctx.organizationId);
+      if (!covered.includes(ctx.operationId)) continue;
+    }
+    inScope.push(match);
+  }
+
+  // Pontuação por nome (reaproveita normalizeName).
+  const normQuery = normalizeName(query);
+  const scored = inScope
+    .map((g) => {
+      const normName = normalizeName(g.name);
+      let score = 0;
+      if (normName === normQuery) score = 100;
+      else {
+        const nameWords = normName.split(" ");
+        const qWords = normQuery.split(" ").filter(Boolean);
+        for (const qw of qWords) {
+          for (const nw of nameWords) {
+            if (nw === qw) score += 40;
+            else if (nw.startsWith(qw) && qw.length >= 3) score += 25;
+            else if (nw.includes(qw) && qw.length >= 3) score += 12;
+          }
+        }
+      }
+      return { ...g, score };
+    })
+    .filter((g) => g.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
+
+  if (scored.length === 0) {
+    return {
+      found: false, ambiguous: false, group: null, groups: [], members: [],
+      message: `Nenhum grupo encontrado para "${query}" nesta operação.`,
+    };
+  }
+
+  const ambiguous = scored.length > 1 && scored[0]!.score === scored[1]!.score;
+  if (ambiguous) {
+    return {
+      found: true, ambiguous: true, group: null,
+      groups: scored.map((g) => ({ id: g.id, name: g.name, scope: g.scope })),
+      members: [],
+      message: `Encontrei ${scored.length} grupos com nomes parecidos com "${query}". Qual você quer dizer?`,
+    };
+  }
+
+  const top = scored[0]!;
+  const group: GroupMatch = { id: top.id, name: top.name, scope: top.scope };
+
+  // Membros ativos do grupo (user_roles role=MEMBER, groupId, active).
+  // Quando há operação atual, restringe aos membros dessa operação — para montar escala
+  // da operação corrente não faz sentido trazer membros de outra operação (grupos amplos).
+  const memberConds = [
+    eq(userRolesTable.groupId, group.id),
+    eq(userRolesTable.role, "MEMBER"),
+    eq(userRolesTable.active, true),
+    ne(usersTable.status, "INACTIVE"),
+  ];
+  if (ctx.operationId) {
+    memberConds.push(eq(userRolesTable.operationId, ctx.operationId));
+  }
+  const memberRows = await db
+    .select({ id: usersTable.id, name: usersTable.name })
+    .from(userRolesTable)
+    .innerJoin(usersTable, eq(usersTable.id, userRolesTable.userId))
+    .where(and(...memberConds));
+  const memberMap = new Map<string, MemberMatch>();
+  for (const m of memberRows) memberMap.set(m.id, m);
+  const members = [...memberMap.values()];
+
+  return {
+    found: true,
+    ambiguous: false,
+    group,
+    groups: [group],
+    members,
+    message: members.length > 0
+      ? `Grupo "${group.name}": ${members.length} membro(s) — ${members.map((m) => m.name).join(", ")}`
+      : `Grupo "${group.name}" não tem membros ativos.`,
+  };
+}
+
 // ── Cores de operação (lançam Error com mensagem amigável em caso de falha) ──────
 
 async function coreCriarTarefa(
@@ -2605,6 +2785,25 @@ export async function executeTool(
         resultados: resolutions,
         // Lista pronta de membros resolvidos sem ambiguidade (para ações em lote)
         membrosResolvidos: encontrados.map((r) => r.member),
+      });
+    }
+
+    // ── consultar_grupo ───────────────────────────────────────────────────────
+    if (name === "consultar_grupo") {
+      const rawQuery = ((input.query as string) ?? "").trim();
+      if (!rawQuery) return JSON.stringify({ error: "query é obrigatória" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+
+      const r = await coreResolverGrupo(ctx, rawQuery);
+      return JSON.stringify({
+        found: r.found,
+        ambiguous: r.ambiguous,
+        message: r.message,
+        group: r.group,
+        groups: r.groups,
+        members: r.members,
+        // Lista pronta de membros (para montar escala em lote, um criar_entrada_escala por membro)
+        membrosResolvidos: r.members,
       });
     }
 

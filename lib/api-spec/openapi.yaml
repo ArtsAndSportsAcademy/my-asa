@@ -5073,8 +5073,20 @@ components:
           type: string
         name:
           type: string
+        organizationId:
+          type: string
+          nullable: true
         operationId:
           type: string
+          nullable: true
+        scope:
+          type: string
+          enum: [OPERATION, MULTI, ALL]
+        operationIds:
+          type: array
+          description: Operações cobertas pelo grupo (calculado a partir do escopo).
+          items:
+            type: string
         status:
           type: string
           enum: [ACTIVE, INACTIVE, ARCHIVED]
@@ -5085,7 +5097,7 @@ components:
           type: string
         updatedAt:
           type: string
-      required: [id, name, operationId, status]
+      required: [id, name, scope, status]
 
     LoginRequest:
       type: object
@@ -5281,12 +5293,23 @@ components:
       properties:
         name:
           type: string
+        scope:
+          type: string
+          description: OPERATION (uma operação, padrão), MULTI (várias) ou ALL (todas). MULTI/ALL são exclusivos do Admin.
+          enum: [OPERATION, MULTI, ALL]
         operationId:
           type: string
+          description: Obrigatório quando scope=OPERATION.
+          nullable: true
+        operationIds:
+          type: array
+          description: Operações cobertas quando scope=MULTI.
+          items:
+            type: string
         status:
           type: string
           enum: [ACTIVE, INACTIVE, ARCHIVED]
-      required: [name, operationId]
+      required: [name]
 
     GroupUpdate:
       type: object

@@ -5,7 +5,7 @@ import {
   BookOpen, CalendarDays, ShieldCheck, ClipboardList, BookMarked,
   LayoutDashboard, Bell, Clock, MessageSquare, Package, Library,
   FileText, CheckSquare, TrendingUp, AlertTriangle, ClipboardCheck, ArrowLeftRight,
-  Shield, Sparkles, Palmtree, Trophy,
+  Shield, Sparkles, Palmtree, Trophy, Boxes,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -112,6 +112,7 @@ const SUPERVISOR_NAV: NavGroup[] = [
     label: "GESTÃO",
     items: [
       { href: "/supervisor/equipe", icon: Users2,  label: "Equipe"          },
+      { href: "/supervisor/grupos", icon: Boxes,   label: "Grupos"          },
       { href: "/admin/mural",       icon: Trophy,  label: "Mural da Equipe" },
     ],
   },

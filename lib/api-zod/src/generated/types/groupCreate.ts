@@ -5,10 +5,16 @@
  * MyASA 2.0 API
  * OpenAPI spec version: 0.3.0
  */
+import type { GroupCreateScope } from './groupCreateScope';
 import type { GroupCreateStatus } from './groupCreateStatus';
 
 export interface GroupCreate {
   name: string;
-  operationId: string;
+  /** OPERATION (uma operação, padrão), MULTI (várias) ou ALL (todas). MULTI/ALL são exclusivos do Admin. */
+  scope?: GroupCreateScope;
+  /** Obrigatório quando scope=OPERATION. */
+  operationId?: string | null;
+  /** Operações cobertas quando scope=MULTI. */
+  operationIds?: string[];
   status?: GroupCreateStatus;
 }

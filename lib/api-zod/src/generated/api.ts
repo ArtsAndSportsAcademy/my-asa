@@ -122,7 +122,10 @@ export const GetCurrentOrganizationResponse = zod.object({
   "groups": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "operationId": zod.string(),
+  "organizationId": zod.string().nullish(),
+  "operationId": zod.string().nullish(),
+  "scope": zod.enum(['OPERATION', 'MULTI', 'ALL']),
+  "operationIds": zod.array(zod.string()).optional().describe('Operações cobertas pelo grupo (calculado a partir do escopo).'),
   "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED']),
   "supervisorId": zod.string().nullish(),
   "createdAt": zod.string().optional(),
@@ -240,7 +243,10 @@ export const GetOperationalGroupsResponse = zod.object({
   "groups": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "operationId": zod.string(),
+  "organizationId": zod.string().nullish(),
+  "operationId": zod.string().nullish(),
+  "scope": zod.enum(['OPERATION', 'MULTI', 'ALL']),
+  "operationIds": zod.array(zod.string()).optional().describe('Operações cobertas pelo grupo (calculado a partir do escopo).'),
   "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED']),
   "supervisorId": zod.string().nullish(),
   "createdAt": zod.string().optional(),
@@ -254,7 +260,9 @@ export const GetOperationalGroupsResponse = zod.object({
  */
 export const CreateOperationalGroupBody = zod.object({
   "name": zod.string(),
-  "operationId": zod.string(),
+  "scope": zod.enum(['OPERATION', 'MULTI', 'ALL']).optional().describe('OPERATION (uma operação, padrão), MULTI (várias) ou ALL (todas). MULTI\/ALL são exclusivos do Admin.'),
+  "operationId": zod.string().nullish().describe('Obrigatório quando scope=OPERATION.'),
+  "operationIds": zod.array(zod.string()).optional().describe('Operações cobertas quando scope=MULTI.'),
   "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED']).optional()
 })
 
@@ -270,7 +278,10 @@ export const GetOperationalGroupResponse = zod.object({
   "group": zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "operationId": zod.string(),
+  "organizationId": zod.string().nullish(),
+  "operationId": zod.string().nullish(),
+  "scope": zod.enum(['OPERATION', 'MULTI', 'ALL']),
+  "operationIds": zod.array(zod.string()).optional().describe('Operações cobertas pelo grupo (calculado a partir do escopo).'),
   "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED']),
   "supervisorId": zod.string().nullish(),
   "createdAt": zod.string().optional(),
@@ -294,7 +305,10 @@ export const UpdateOperationalGroupResponse = zod.object({
   "group": zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "operationId": zod.string(),
+  "organizationId": zod.string().nullish(),
+  "operationId": zod.string().nullish(),
+  "scope": zod.enum(['OPERATION', 'MULTI', 'ALL']),
+  "operationIds": zod.array(zod.string()).optional().describe('Operações cobertas pelo grupo (calculado a partir do escopo).'),
   "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED']),
   "supervisorId": zod.string().nullish(),
   "createdAt": zod.string().optional(),
@@ -318,7 +332,10 @@ export const UpdateOperationalGroupStatusResponse = zod.object({
   "group": zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "operationId": zod.string(),
+  "organizationId": zod.string().nullish(),
+  "operationId": zod.string().nullish(),
+  "scope": zod.enum(['OPERATION', 'MULTI', 'ALL']),
+  "operationIds": zod.array(zod.string()).optional().describe('Operações cobertas pelo grupo (calculado a partir do escopo).'),
   "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED']),
   "supervisorId": zod.string().nullish(),
   "createdAt": zod.string().optional(),
@@ -416,7 +433,10 @@ export const GetUserContextResponse = zod.object({
   "groups": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "operationId": zod.string(),
+  "organizationId": zod.string().nullish(),
+  "operationId": zod.string().nullish(),
+  "scope": zod.enum(['OPERATION', 'MULTI', 'ALL']),
+  "operationIds": zod.array(zod.string()).optional().describe('Operações cobertas pelo grupo (calculado a partir do escopo).'),
   "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED']),
   "supervisorId": zod.string().nullish(),
   "createdAt": zod.string().optional(),
