@@ -25,3 +25,4 @@
 - [Login por username](login-username.md) — login passou de email→username; util de geração em lib/db/src/username.ts; backfill idempotente; column users.username unique nullable
 - [Forced password change](forced-password-change.md) — mustChangePassword DEVE ser enforced no servidor (middleware global após /auth), não só no gate do cliente (burlável via storage)
 - [Livro do Show — construtor inline](show-book-inline-builder.md) — web-admin usa edição inline (sem modais/Motivo); reason opcional p/ scene/block/position/line; LineUpdate aceita `type`
+- [Modelo de papéis no cadastro](role-model-cadastro.md) — só 3 papéis no formulário: Admin/Supervisor(=SUPERVISOR_A)/Membro·Elenco; NÃO expor SUPERVISOR_B

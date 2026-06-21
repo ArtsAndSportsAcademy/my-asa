@@ -56,8 +56,7 @@ const ALL_SPECIALIZATIONS = [
 
 const ROLE_OPTIONS = [
   { value: "MEMBER",       label: "Membro / Elenco" },
-  { value: "SUPERVISOR_B", label: "Supervisor" },
-  { value: "SUPERVISOR_A", label: "Supervisor Sênior" },
+  { value: "SUPERVISOR_A", label: "Supervisor" },
   { value: "ADMIN",        label: "Administrador" },
 ] as const;
 
