@@ -275,7 +275,7 @@ router.get("/folgas/grid", requireAuth, requireOrganization, async (req, res) =>
     const lastDay = `${yr}-${String(mo).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
 
     const members = await db
-      .select({
+      .selectDistinct({
         userId: userRolesTable.userId,
         name:   usersTable.name,
       })
