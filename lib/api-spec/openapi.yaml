@@ -5087,6 +5087,20 @@ components:
           description: Operações cobertas pelo grupo (calculado a partir do escopo).
           items:
             type: string
+        members:
+          type: array
+          description: Membros ativos do grupo (presente apenas no detalhe do grupo).
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              photoUrl:
+                type: string
+                nullable: true
+            required: [id, name]
         status:
           type: string
           enum: [ACTIVE, INACTIVE, ARCHIVED]

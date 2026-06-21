@@ -293,6 +293,7 @@ export * from './operationalCoverage';
 export * from './operationalException';
 export * from './operationalExceptionType';
 export * from './operationalGroup';
+export * from './operationalGroupMembersItem';
 export * from './operationalGroupScope';
 export * from './operationalGroupStatus';
 export * from './operationalHealth';

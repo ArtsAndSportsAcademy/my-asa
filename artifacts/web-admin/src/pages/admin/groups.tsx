@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetOperations,
   useGetOperationalGroups,
   getGetOperationalGroupsQueryKey,
+  useGetOperationalGroup,
+  getGetOperationalGroupQueryKey,
   useCreateOperationalGroup,
   useUpdateOperationalGroup,
   useUpdateOperationalGroupStatus,
@@ -25,7 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useLocation } from "wouter";
-import { Plus, MoreHorizontal, Pencil, Users, AlertCircle, Trash2, Shield, UserPlus, RefreshCw, Briefcase } from "lucide-react";
+import { Plus, MoreHorizontal, Pencil, Users, AlertCircle, Trash2, Shield, UserPlus, RefreshCw, Briefcase, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const GROUP_STATUS_LABELS: Record<string, string> = {
@@ -73,10 +75,33 @@ export default function GroupsPage() {
   const [createForm, setCreateForm] = useState({ name: "", scope: "OPERATION", operationId: "", operationIds: [] as string[], status: "ACTIVE" });
   const [editName, setEditName] = useState("");
   const [newStatus, setNewStatus] = useState("");
-  const [addMemberUserId, setAddMemberUserId] = useState("");
+  const [memberSearch, setMemberSearch] = useState("");
   const [addSupervisorUserId, setAddSupervisorUserId] = useState("");
 
+  // Detalhe do grupo aberto (inclui a lista de membros ativos).
+  const { data: detailData } = useGetOperationalGroup(membersGroup?.id ?? "", {
+    query: {
+      enabled: !!membersGroup,
+      queryKey: getGetOperationalGroupQueryKey(membersGroup?.id ?? ""),
+    },
+  });
+  const detailGroup = detailData?.group;
+  const groupMembers = detailGroup?.members ?? [];
+  const memberIds = useMemo(() => new Set(groupMembers.map((m) => m.id)), [groupMembers]);
+
   const invalidate = () => queryClient.invalidateQueries({ queryKey: getGetOperationalGroupsQueryKey() });
+  const invalidateDetail = () => {
+    if (membersGroup) queryClient.invalidateQueries({ queryKey: getGetOperationalGroupQueryKey(membersGroup.id) });
+  };
+
+  // Usuários ativos que ainda não são membros, filtrados pela busca por nome.
+  const candidateUsers = useMemo(() => {
+    const q = memberSearch.trim().toLowerCase();
+    return users
+      .filter((u) => u.status === "ACTIVE" && !memberIds.has(u.id))
+      .filter((u) => (q ? u.name.toLowerCase().includes(q) : true))
+      .slice(0, 30);
+  }, [users, memberIds, memberSearch]);
 
   const getOperationName = (opId: string) => operations.find((o) => o.id === opId)?.name ?? opId.slice(0, 8);
 
@@ -142,13 +167,24 @@ export default function GroupsPage() {
     );
   };
 
-  const handleAddMember = () => {
-    if (!membersGroup || !addMemberUserId) return;
+  const handleAddMember = (userId: string) => {
+    if (!membersGroup || !userId) return;
     addMemberMutation.mutate(
-      { id: membersGroup.id, data: { userId: addMemberUserId } },
+      { id: membersGroup.id, data: { userId } },
       {
-        onSuccess: () => { toast({ title: "Membro adicionado" }); setAddMemberUserId(""); invalidate(); },
+        onSuccess: () => { toast({ title: "Membro adicionado" }); setMemberSearch(""); invalidateDetail(); },
         onError: (err: any) => toast({ title: err?.response?.data?.message ?? "Erro ao adicionar membro", variant: "destructive" }),
+      }
+    );
+  };
+
+  const handleRemoveMember = (userId: string) => {
+    if (!membersGroup) return;
+    removeMemberMutation.mutate(
+      { id: membersGroup.id, userId },
+      {
+        onSuccess: () => { toast({ title: "Membro removido" }); invalidateDetail(); },
+        onError: (err: any) => toast({ title: err?.response?.data?.message ?? "Erro ao remover membro", variant: "destructive" }),
       }
     );
   };
@@ -428,32 +464,72 @@ export default function GroupsPage() {
 
             <div className="space-y-3">
               <p className="text-sm font-semibold flex items-center gap-2">
-                <Users className="w-4 h-4 text-primary" />
+                <UserPlus className="w-4 h-4 text-primary" />
                 Adicionar Membro
               </p>
-              <div className="flex gap-2">
-                <Select value={addMemberUserId} onValueChange={setAddMemberUserId}>
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Selecionar usuário" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {users.filter((u) => u.status === "ACTIVE").map((u) => (
-                      <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  size="sm"
-                  onClick={handleAddMember}
-                  disabled={!addMemberUserId || addMemberMutation.isPending}
-                >
-                  <UserPlus className="w-4 h-4" />
-                </Button>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  className="pl-8"
+                  placeholder="Buscar pessoa pelo nome..."
+                  value={memberSearch}
+                  onChange={(e) => setMemberSearch(e.target.value)}
+                />
               </div>
+              {memberSearch.trim() && (
+                <div className="border rounded-md divide-y max-h-56 overflow-y-auto">
+                  {candidateUsers.length === 0 ? (
+                    <p className="text-sm text-muted-foreground px-3 py-3">Ninguém encontrado.</p>
+                  ) : (
+                    candidateUsers.map((u) => (
+                      <button
+                        key={u.id}
+                        type="button"
+                        className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-muted/50 disabled:opacity-50"
+                        onClick={() => handleAddMember(u.id)}
+                        disabled={addMemberMutation.isPending}
+                      >
+                        <span>{u.name}</span>
+                        <UserPlus className="w-4 h-4 text-primary" />
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-sm font-semibold flex items-center gap-2">
+                <Users className="w-4 h-4 text-primary" />
+                Membros do grupo ({groupMembers.length})
+              </p>
+              {groupMembers.length === 0 ? (
+                <p className="text-sm text-muted-foreground border rounded-md px-3 py-4 text-center">
+                  Nenhum membro ainda. Use a busca acima para adicionar pessoas.
+                </p>
+              ) : (
+                <div className="border rounded-md divide-y">
+                  {groupMembers.map((m) => (
+                    <div key={m.id} className="flex items-center justify-between px-3 py-2">
+                      <span className="text-sm">{m.name}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive hover:text-destructive"
+                        onClick={() => handleRemoveMember(m.id)}
+                        disabled={removeMemberMutation.isPending}
+                        aria-label={`Remover ${m.name}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="text-xs text-muted-foreground border-t pt-4">
-              Use os dropdowns acima para adicionar membros e supervisores a este grupo. Para remover, use a tela de papéis do usuário.
+              Adicione ou remova membros (de qualquer operação coberta) e supervisores deste grupo.
             </div>
           </div>
         </SheetContent>

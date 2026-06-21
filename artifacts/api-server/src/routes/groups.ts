@@ -60,6 +60,32 @@ export async function groupCoveredOperationIds(group: OperationalGroup, organiza
   return group.operationId ? [group.operationId] : [];
 }
 
+/**
+ * Membros ativos (role=MEMBER) de um grupo, com nome e foto.
+ * Se `restrictOperationIds` for informado, retorna apenas membros cuja
+ * operação "home" (user_roles.operationId) esteja nessa lista — usado para
+ * evitar vazamento entre operações em grupos amplos (MULTI/ALL).
+ */
+export async function loadGroupMembers(groupId: string, restrictOperationIds?: string[]) {
+  const conditions = [
+    eq(userRolesTable.groupId, groupId),
+    eq(userRolesTable.role, "MEMBER"),
+    eq(userRolesTable.active, true),
+  ];
+  if (restrictOperationIds) {
+    if (restrictOperationIds.length === 0) return [];
+    conditions.push(inArray(userRolesTable.operationId, restrictOperationIds));
+  }
+  const rows = await db
+    .select({ id: usersTable.id, name: usersTable.name, photoUrl: usersTable.photoUrl })
+    .from(userRolesTable)
+    .innerJoin(usersTable, eq(usersTable.id, userRolesTable.userId))
+    .where(and(...conditions));
+  const map = new Map<string, { id: string; name: string; photoUrl: string | null }>();
+  for (const r of rows) map.set(r.id, r);
+  return [...map.values()];
+}
+
 /** Acrescenta a lista de operações cobertas ao grupo (para o cliente). */
 export async function serializeGroup(group: OperationalGroup, organizationId: string) {
   const operationIds = await groupCoveredOperationIds(group, organizationId);
@@ -110,6 +136,9 @@ router.get("/operational-groups/:id", requireAuth, requireOrganization, async (r
       return;
     }
 
+    // ADMIN vê todos os membros; supervisor/membro só veem membros das
+    // operações que supervisionam (evita vazamento entre operações em grupos amplos).
+    let memberRestriction: string[] | undefined;
     if (role !== "ADMIN") {
       const supOps = await supervisedOperationIds(sub);
       const covered = await groupCoveredOperationIds(group, organizationId);
@@ -125,9 +154,13 @@ router.get("/operational-groups/:id", requireAuth, requireOrganization, async (r
         res.status(403).json({ error: "FORBIDDEN", message: "Grupo fora do escopo" });
         return;
       }
+      // Restringe a visão de membros às operações supervisionadas que o grupo cobre.
+      memberRestriction = covered.filter((opId) => supOps.includes(opId));
     }
 
-    res.json({ group: await serializeGroup(group, organizationId) });
+    const serialized = await serializeGroup(group, organizationId);
+    const members = await loadGroupMembers(group.id, memberRestriction);
+    res.json({ group: { ...serialized, members } });
   } catch (err) {
     log.error({ err }, "Error getting group");
     res.status(500).json({ error: "INTERNAL_ERROR" });

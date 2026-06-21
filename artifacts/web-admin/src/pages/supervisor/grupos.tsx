@@ -1,13 +1,17 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetOperations,
   useGetOperationalGroups,
   getGetOperationalGroupsQueryKey,
+  useGetOperationalGroup,
+  getGetOperationalGroupQueryKey,
   useCreateOperationalGroup,
+  useUpdateOperationalGroup,
   useUpdateOperationalGroupStatus,
   useListUsers,
   useAddGroupMember,
+  useRemoveGroupMember,
 } from "@workspace/api-client-react";
 import type { Operation, OperationalGroup, User } from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
@@ -20,7 +24,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, Users, AlertCircle, UserPlus, RefreshCw } from "lucide-react";
+import { Plus, MoreHorizontal, Users, AlertCircle, UserPlus, RefreshCw, Pencil, Trash2, Search, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const GROUP_STATUS_LABELS: Record<string, string> = {
@@ -44,18 +48,36 @@ export default function SupervisorGruposPage() {
   const users: User[] = usersData?.users ?? [];
 
   const createMutation = useCreateOperationalGroup();
+  const updateMutation = useUpdateOperationalGroup();
   const updateStatusMutation = useUpdateOperationalGroupStatus();
   const addMemberMutation = useAddGroupMember();
+  const removeMemberMutation = useRemoveGroupMember();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [statusGroup, setStatusGroup] = useState<OperationalGroup | null>(null);
+  const [editGroup, setEditGroup] = useState<OperationalGroup | null>(null);
   const [membersGroup, setMembersGroup] = useState<OperationalGroup | null>(null);
 
   const [createForm, setCreateForm] = useState({ name: "", operationId: "", status: "ACTIVE" });
   const [newStatus, setNewStatus] = useState("");
-  const [addMemberUserId, setAddMemberUserId] = useState("");
+  const [editName, setEditName] = useState("");
+  const [memberSearch, setMemberSearch] = useState("");
+
+  // Detalhe do grupo aberto (inclui a lista de membros ativos).
+  const { data: detailData } = useGetOperationalGroup(membersGroup?.id ?? "", {
+    query: {
+      enabled: !!membersGroup,
+      queryKey: getGetOperationalGroupQueryKey(membersGroup?.id ?? ""),
+    },
+  });
+  const detailGroup = detailData?.group;
+  const groupMembers = detailGroup?.members ?? [];
+  const memberIds = useMemo(() => new Set(groupMembers.map((m) => m.id)), [groupMembers]);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: getGetOperationalGroupsQueryKey() });
+  const invalidateDetail = () => {
+    if (membersGroup) queryClient.invalidateQueries({ queryKey: getGetOperationalGroupQueryKey(membersGroup.id) });
+  };
 
   const getOperationName = (opId: string) => operations.find((o) => o.id === opId)?.name ?? opId.slice(0, 8);
 
@@ -68,6 +90,15 @@ export default function SupervisorGruposPage() {
     if (ids.length === 0) return "—";
     return ids.map((id) => getOperationName(id)).join(", ");
   };
+
+  // Usuários ativos que ainda não são membros, filtrados pela busca por nome.
+  const candidateUsers = useMemo(() => {
+    const q = memberSearch.trim().toLowerCase();
+    return users
+      .filter((u) => u.status === "ACTIVE" && !memberIds.has(u.id))
+      .filter((u) => (q ? u.name.toLowerCase().includes(q) : true))
+      .slice(0, 30);
+  }, [users, memberIds, memberSearch]);
 
   const handleCreate = () => {
     const { name, operationId, status } = createForm;
@@ -89,6 +120,17 @@ export default function SupervisorGruposPage() {
     );
   };
 
+  const handleEditName = () => {
+    if (!editGroup || !editName.trim()) return;
+    updateMutation.mutate(
+      { id: editGroup.id, data: { name: editName.trim() } },
+      {
+        onSuccess: () => { toast({ title: "Nome atualizado" }); setEditGroup(null); invalidate(); },
+        onError: (err: any) => toast({ title: err?.response?.data?.message ?? "Erro ao renomear grupo", variant: "destructive" }),
+      }
+    );
+  };
+
   const handleStatusChange = () => {
     if (!statusGroup || !newStatus) return;
     updateStatusMutation.mutate(
@@ -100,13 +142,24 @@ export default function SupervisorGruposPage() {
     );
   };
 
-  const handleAddMember = () => {
-    if (!membersGroup || !addMemberUserId) return;
+  const handleAddMember = (userId: string) => {
+    if (!membersGroup || !userId) return;
     addMemberMutation.mutate(
-      { id: membersGroup.id, data: { userId: addMemberUserId } },
+      { id: membersGroup.id, data: { userId } },
       {
-        onSuccess: () => { toast({ title: "Membro adicionado" }); setAddMemberUserId(""); invalidate(); },
+        onSuccess: () => { toast({ title: "Membro adicionado" }); setMemberSearch(""); invalidateDetail(); },
         onError: (err: any) => toast({ title: err?.response?.data?.message ?? "Erro ao adicionar membro", variant: "destructive" }),
+      }
+    );
+  };
+
+  const handleRemoveMember = (userId: string) => {
+    if (!membersGroup) return;
+    removeMemberMutation.mutate(
+      { id: membersGroup.id, userId },
+      {
+        onSuccess: () => { toast({ title: "Membro removido" }); invalidateDetail(); },
+        onError: (err: any) => toast({ title: err?.response?.data?.message ?? "Erro ao remover membro", variant: "destructive" }),
       }
     );
   };
@@ -172,11 +225,15 @@ export default function SupervisorGruposPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => { setEditGroup(group); setEditName(group.name); }}>
+                            <Pencil className="w-4 h-4 mr-2" />
+                            Renomear
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => { setStatusGroup(group); setNewStatus(group.status); }}>
                             <RefreshCw className="w-4 h-4 mr-2" />
                             Mudar status
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setMembersGroup(group)}>
+                          <DropdownMenuItem onClick={() => { setMembersGroup(group); setMemberSearch(""); }}>
                             <Users className="w-4 h-4 mr-2" />
                             Gerenciar membros
                           </DropdownMenuItem>
@@ -235,6 +292,26 @@ export default function SupervisorGruposPage() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={!!editGroup} onOpenChange={(o) => !o && setEditGroup(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Renomear Grupo</DialogTitle></DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label>Nome do grupo</Label>
+            <Input
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleEditName()}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditGroup(null)}>Cancelar</Button>
+            <Button onClick={handleEditName} disabled={!editName.trim() || updateMutation.isPending}>
+              {updateMutation.isPending ? "Salvando..." : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!statusGroup} onOpenChange={(o) => !o && setStatusGroup(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Mudar Status — {statusGroup?.name}</DialogTitle></DialogHeader>
@@ -266,32 +343,72 @@ export default function SupervisorGruposPage() {
           <div className="mt-6 space-y-6">
             <div className="space-y-3">
               <p className="text-sm font-semibold flex items-center gap-2">
-                <Users className="w-4 h-4 text-primary" />
+                <UserPlus className="w-4 h-4 text-primary" />
                 Adicionar Membro
               </p>
-              <div className="flex gap-2">
-                <Select value={addMemberUserId} onValueChange={setAddMemberUserId}>
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Selecionar usuário" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {users.filter((u) => u.status === "ACTIVE").map((u) => (
-                      <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  size="sm"
-                  onClick={handleAddMember}
-                  disabled={!addMemberUserId || addMemberMutation.isPending}
-                >
-                  <UserPlus className="w-4 h-4" />
-                </Button>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  className="pl-8"
+                  placeholder="Buscar pessoa pelo nome..."
+                  value={memberSearch}
+                  onChange={(e) => setMemberSearch(e.target.value)}
+                />
               </div>
+              {memberSearch.trim() && (
+                <div className="border rounded-md divide-y max-h-56 overflow-y-auto">
+                  {candidateUsers.length === 0 ? (
+                    <p className="text-sm text-muted-foreground px-3 py-3">Ninguém encontrado.</p>
+                  ) : (
+                    candidateUsers.map((u) => (
+                      <button
+                        key={u.id}
+                        type="button"
+                        className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-muted/50 disabled:opacity-50"
+                        onClick={() => handleAddMember(u.id)}
+                        disabled={addMemberMutation.isPending}
+                      >
+                        <span>{u.name}</span>
+                        <UserPlus className="w-4 h-4 text-primary" />
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-sm font-semibold flex items-center gap-2">
+                <Users className="w-4 h-4 text-primary" />
+                Membros do grupo ({groupMembers.length})
+              </p>
+              {groupMembers.length === 0 ? (
+                <p className="text-sm text-muted-foreground border rounded-md px-3 py-4 text-center">
+                  Nenhum membro ainda. Use a busca acima para adicionar pessoas.
+                </p>
+              ) : (
+                <div className="border rounded-md divide-y">
+                  {groupMembers.map((m) => (
+                    <div key={m.id} className="flex items-center justify-between px-3 py-2">
+                      <span className="text-sm">{m.name}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive hover:text-destructive"
+                        onClick={() => handleRemoveMember(m.id)}
+                        disabled={removeMemberMutation.isPending}
+                        aria-label={`Remover ${m.name}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="text-xs text-muted-foreground border-t pt-4">
-              Adicione membros da sua operação a este grupo. A gestão de supervisores do grupo é feita pelo administrador.
+              Adicione ou remova membros da sua operação neste grupo. A gestão de supervisores do grupo é feita pelo administrador.
             </div>
           </div>
         </SheetContent>

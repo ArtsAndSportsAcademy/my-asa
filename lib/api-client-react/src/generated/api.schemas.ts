@@ -104,6 +104,12 @@ export const OperationalGroupScope = {
   ALL: 'ALL',
 } as const;
 
+export type OperationalGroupMembersItem = {
+  id: string;
+  name: string;
+  photoUrl?: string | null;
+};
+
 export type OperationalGroupStatus = typeof OperationalGroupStatus[keyof typeof OperationalGroupStatus];
 
 
@@ -121,6 +127,8 @@ export interface OperationalGroup {
   scope: OperationalGroupScope;
   /** Operações cobertas pelo grupo (calculado a partir do escopo). */
   operationIds?: string[];
+  /** Membros ativos do grupo (presente apenas no detalhe do grupo). */
+  members?: OperationalGroupMembersItem[];
   status: OperationalGroupStatus;
   supervisorId?: string | null;
   createdAt?: string;

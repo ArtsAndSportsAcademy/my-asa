@@ -23,5 +23,10 @@ Continua em `user_roles` (role=MEMBER, groupId, operationId). Para grupo amplo, 
 
 **Why:** permitir adicionar membro fora da cobertura quebra a coerência (grupo MULTI com gente de operação não coberta) e contamina a montagem de escala.
 
+## Visão de membros no detalhe do grupo (anti-vazamento)
+No GET de detalhe do grupo, a lista de membros tem que ser filtrada por escopo para NÃO-admin: supervisor/membro só pode ver membros das operações que supervisiona (interseção entre cobertura do grupo e operações supervisionadas). Só ADMIN vê todos.
+
+**Why:** em grupo amplo (MULTI/ALL), devolver todos os membros expõe gente de outra operação a um supervisor de uma operação coberta — vazamento cross-operation. Vale para qualquer endpoint que liste membros de grupo amplo.
+
 ## ASA — consultar_grupo
 Resolve grupo por nome (reusa `normalizeName`), filtra grupos que cobrem `ctx.operationId`, e ao listar membros filtra por `user_roles.operationId === ctx.operationId` quando há operação atual — para não trazer membros de outra operação ao montar escala da operação corrente. Depois usa `criar_entradas_escala_lote` (um por membro), nunca um a um.
