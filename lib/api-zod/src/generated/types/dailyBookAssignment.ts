@@ -12,6 +12,7 @@ export interface DailyBookAssignment {
   dailyBookId: string;
   positionId: string;
   userId?: string | null;
+  userName?: string | null;
   status: DailyBookAssignmentStatus;
   createdAt: string;
   updatedAt: string;

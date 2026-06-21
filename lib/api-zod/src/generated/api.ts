@@ -2064,6 +2064,7 @@ export const GetDailyBookResponse = zod.object({
   "dailyBookId": zod.string(),
   "positionId": zod.string(),
   "userId": zod.string().nullish(),
+  "userName": zod.string().nullish(),
   "status": zod.enum(['ASSIGNED', 'AT_RISK', 'OPEN', 'REMOVED']),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
@@ -2399,6 +2400,7 @@ export const PatchDailyBookAssignmentResponse = zod.object({
   "dailyBookId": zod.string(),
   "positionId": zod.string(),
   "userId": zod.string().nullish(),
+  "userName": zod.string().nullish(),
   "status": zod.enum(['ASSIGNED', 'AT_RISK', 'OPEN', 'REMOVED']),
   "createdAt": zod.string(),
   "updatedAt": zod.string()

@@ -516,7 +516,8 @@ export default function DailyBookScreen() {
                                                   <Feather name="user" size={10} color={colors.mutedForeground} />
                                                   <Text style={styles.assignmentName} numberOfLines={1}>
                                                     {assignment.userId
-                                                      ? assignment.userId.slice(0, 8)
+                                                      ? assignment.userName ||
+                                                        assignment.userId.slice(0, 8)
                                                       : "Não escalado"}
                                                   </Text>
                                                   <View

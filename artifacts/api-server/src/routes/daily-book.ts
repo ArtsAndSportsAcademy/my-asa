@@ -16,6 +16,7 @@ import {
   agendaEventsTable,
   operationalChangesTable,
   historyEventsTable,
+  usersTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization, requireRole } from "../middlewares/auth.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
@@ -78,8 +79,27 @@ async function buildDailyBookTree(dailyBookId: string) {
         )
     : [];
 
-  const assignmentsByPosition: Record<string, typeof assignments> = {};
-  assignments.forEach((a) => {
+  const assignedUserIds = [
+    ...new Set(assignments.map((a) => a.userId).filter((id): id is string => !!id)),
+  ];
+  const nameByUserId: Record<string, string> = {};
+  if (assignedUserIds.length > 0) {
+    const users = await db
+      .select({ id: usersTable.id, name: usersTable.name })
+      .from(usersTable)
+      .where(inArray(usersTable.id, assignedUserIds));
+    users.forEach((u) => {
+      nameByUserId[u.id] = u.name;
+    });
+  }
+
+  const assignmentsWithNames = assignments.map((a) => ({
+    ...a,
+    userName: a.userId ? nameByUserId[a.userId] ?? null : null,
+  }));
+
+  const assignmentsByPosition: Record<string, typeof assignmentsWithNames> = {};
+  assignmentsWithNames.forEach((a) => {
     if (!assignmentsByPosition[a.positionId]) assignmentsByPosition[a.positionId] = [];
     assignmentsByPosition[a.positionId]!.push(a);
   });

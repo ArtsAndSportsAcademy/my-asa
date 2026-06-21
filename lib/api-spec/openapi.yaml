@@ -6363,6 +6363,9 @@ components:
         userId:
           type: string
           nullable: true
+        userName:
+          type: string
+          nullable: true
         status:
           type: string
           enum: [ASSIGNED, AT_RISK, OPEN, REMOVED]
