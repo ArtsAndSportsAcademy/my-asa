@@ -169,6 +169,10 @@ export type EventPayloadMap = {
   "scale.updated": {
     scaleId: string;
   };
+  "scale.deleted": {
+    scaleId: string;
+    operationId: string;
+  };
   "scale.allocation.overridden": {
     scaleId: string;
     allocationId: string;

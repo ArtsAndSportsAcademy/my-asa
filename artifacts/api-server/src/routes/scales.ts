@@ -201,7 +201,7 @@ router.get("/scales/my-allocations", requireAuth, requireOrganization, async (re
   try {
     const conditions = [eq(scaleAllocationsTable.userId, userId)];
 
-    const allocations = await db
+    const rows = await db
       .select({
         id: scaleAllocationsTable.id,
         scaleId: scaleAllocationsTable.scaleId,
@@ -217,13 +217,36 @@ router.get("/scales/my-allocations", requireAuth, requireOrganization, async (re
         eventType: agendaEventsTable.type,
         scaleTitle: scalesTable.title,
         scaleStatus: scalesTable.status,
+        manualDate: scaleAllocationsTable.manualDate,
+        manualLabel: scaleAllocationsTable.manualLabel,
+        manualStartTime: scaleAllocationsTable.startTime,
+        manualEndTime: scaleAllocationsTable.endTime,
       })
       .from(scaleAllocationsTable)
       .leftJoin(showBookRolesTable, eq(scaleAllocationsTable.positionId, showBookRolesTable.id))
       .leftJoin(agendaEventsTable, eq(scaleAllocationsTable.agendaEventId, agendaEventsTable.id))
       .leftJoin(scalesTable, eq(scaleAllocationsTable.scaleId, scalesTable.id))
-      .where(and(...conditions))
-      .orderBy(agendaEventsTable.date);
+      .where(and(...conditions));
+
+    // Coalesce manual-entry fields (old MyASA model) over engine/agenda fields.
+    const allocations = rows
+      .map((r) => ({
+        id: r.id,
+        scaleId: r.scaleId,
+        agendaEventId: r.agendaEventId,
+        positionId: r.positionId,
+        status: r.status,
+        positionName: r.positionName,
+        eventTitle: r.eventTitle ?? r.manualLabel,
+        eventDate: r.eventDate ?? r.manualDate,
+        eventStartTime: r.eventStartTime ?? r.manualStartTime,
+        eventEndTime: r.eventEndTime ?? r.manualEndTime,
+        eventLocation: r.eventLocation,
+        eventType: r.eventType,
+        scaleTitle: r.scaleTitle,
+        scaleStatus: r.scaleStatus,
+      }))
+      .sort((a, b) => (a.eventDate ?? "").localeCompare(b.eventDate ?? ""));
 
     res.json({ allocations });
   } catch (err) {
@@ -364,7 +387,7 @@ router.patch("/scales/:id", requireAuth, requireOrganization, async (req, res) =
   const log = requestLogger("scale", req.requestId, req.correlationId);
   const id = req.params["id"] as string;
   const user = req.user!;
-  const { title } = req.body;
+  const { title, publishDeadline } = req.body as { title?: string; publishDeadline?: string | null };
 
   try {
     const scale = await getScaleOrFail(id, res);
@@ -377,9 +400,15 @@ router.patch("/scales/:id", requireAuth, requireOrganization, async (req, res) =
       }
     }
 
+    const patch: Partial<typeof scalesTable.$inferInsert> = { updatedAt: new Date() };
+    if (title !== undefined) patch.title = title ?? scale.title;
+    if (publishDeadline !== undefined) {
+      patch.publishDeadline = publishDeadline ? new Date(publishDeadline) : null;
+    }
+
     const [updated] = await db
       .update(scalesTable)
-      .set({ title: title ?? scale.title, updatedAt: new Date() })
+      .set(patch)
       .where(eq(scalesTable.id, id))
       .returning();
 
@@ -852,5 +881,142 @@ router.patch(
     }
   }
 );
+
+// DELETE /api/scales/:id — apagar escala em rascunho
+router.delete("/scales/:id", requireAuth, requireOrganization, async (req, res) => {
+  const log = requestLogger("scale", req.requestId, req.correlationId);
+  const id = req.params["id"] as string;
+  const user = req.user!;
+  const userId = user.sub;
+
+  try {
+    const scale = await getScaleOrFail(id, res);
+    if (!scale) return;
+
+    if (!MANAGER_ROLES.includes(user.role)) {
+      if (!(await hasActiveResponsibility(userId, scale.operationId, "SCALES"))) {
+        res.status(403).json({ error: "Forbidden" });
+        return;
+      }
+    }
+
+    if (scale.status !== "DRAFT") {
+      res.status(409).json({ error: "Apenas escalas em Rascunho podem ser apagadas" });
+      return;
+    }
+
+    // Cascade deletes allocations/candidates/exceptions via FK onDelete: cascade
+    await db.delete(allocationExceptionsTable).where(eq(allocationExceptionsTable.scaleId, id));
+    await db.delete(scaleAllocationsTable).where(eq(scaleAllocationsTable.scaleId, id));
+    await db.delete(scalesTable).where(eq(scalesTable.id, id));
+
+    eventBus.emit("scale.deleted", { scaleId: id, operationId: scale.operationId });
+    res.json({ ok: true });
+  } catch (err) {
+    log.error({ err }, "erro ao apagar escala");
+    res.status(500).json({ error: "Erro ao apagar escala" });
+  }
+});
+
+// POST /api/scales/:id/duplicate-previous — copiar entradas manuais da semana anterior
+router.post("/scales/:id/duplicate-previous", requireAuth, requireOrganization, async (req, res) => {
+  const log = requestLogger("scale", req.requestId, req.correlationId);
+  const id = req.params["id"] as string;
+  const user = req.user!;
+  const userId = user.sub;
+
+  try {
+    const scale = await getScaleOrFail(id, res);
+    if (!scale) return;
+
+    if (!MANAGER_ROLES.includes(user.role)) {
+      if (!(await hasActiveResponsibility(userId, scale.operationId, "SCALES"))) {
+        res.status(403).json({ error: "Forbidden" });
+        return;
+      }
+    }
+
+    if (scale.status === "ARCHIVED") {
+      res.status(409).json({ error: "Escala arquivada não pode ser modificada" });
+      return;
+    }
+
+    // Compute previous week's period (shift -7 days)
+    const shiftDays = (d: string, days: number): string => {
+      const dt = new Date(d + "T00:00:00Z");
+      dt.setUTCDate(dt.getUTCDate() + days);
+      return dt.toISOString().slice(0, 10);
+    };
+    const prevStart = shiftDays(scale.periodStart, -7);
+    const prevEnd = shiftDays(scale.periodEnd, -7);
+
+    // Find previous-week scale for same operation
+    const [prevScale] = await db
+      .select()
+      .from(scalesTable)
+      .where(
+        and(
+          eq(scalesTable.operationId, scale.operationId),
+          eq(scalesTable.periodStart, prevStart),
+          eq(scalesTable.periodEnd, prevEnd),
+        )
+      )
+      .orderBy(desc(scalesTable.createdAt))
+      .limit(1);
+
+    if (!prevScale) {
+      res.status(404).json({ error: "Não há escala da semana anterior para esta operação" });
+      return;
+    }
+
+    // Copy manual entries (those with manualDate) shifted +7 days
+    const prevEntries = await db
+      .select()
+      .from(scaleAllocationsTable)
+      .where(
+        and(
+          eq(scaleAllocationsTable.scaleId, prevScale.id),
+          eq(scaleAllocationsTable.status, "MANUAL_OVERRIDE"),
+        )
+      );
+
+    const toCopy = prevEntries.filter((e) => e.manualDate);
+    let copied = 0;
+    if (toCopy.length > 0) {
+      await db.insert(scaleAllocationsTable).values(
+        toCopy.map((e) => ({
+          scaleId: id,
+          agendaEventId: null,
+          userId: e.userId,
+          status: "MANUAL_OVERRIDE" as const,
+          manualDate: shiftDays(e.manualDate!, 7),
+          manualLabel: e.manualLabel,
+          startTime: e.startTime,
+          endTime: e.endTime,
+          notes: e.notes,
+          overriddenBy: userId,
+          overrideReason: "Duplicada da semana anterior",
+        }))
+      );
+      copied = toCopy.length;
+    }
+
+    await db.update(scalesTable).set({ updatedAt: new Date() }).where(eq(scalesTable.id, id));
+
+    writeHistoryEvent({
+      category: "SCALE", action: "duplicated",
+      title: "Escala duplicada da semana anterior",
+      narrative: `${copied} entrada(s) copiada(s) da semana anterior.`,
+      entityType: "scale", entityId: id,
+      actorId: userId, actorType: "HUMAN",
+      operationId: scale.operationId,
+    }).catch(() => {});
+
+    res.json({ ok: true, copied });
+  } catch (err) {
+    log.error({ err }, "erro ao duplicar semana anterior");
+    res.status(500).json({ error: "Erro ao duplicar semana anterior" });
+  }
+});
 
 export default router;

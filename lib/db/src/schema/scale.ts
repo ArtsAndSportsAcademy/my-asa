@@ -28,6 +28,7 @@ export const scalesTable = pgTable("scales", {
   periodStart: date("period_start", { mode: "string" }).notNull(),
   periodEnd: date("period_end", { mode: "string" }).notNull(),
   status: scaleStatusEnum("status").notNull().default("DRAFT"),
+  publishDeadline: timestamp("publish_deadline", { withTimezone: true }),
   generatedAt: timestamp("generated_at", { withTimezone: true }),
   generatedBy: uuid("generated_by").references(() => usersTable.id),
   publishedAt: timestamp("published_at", { withTimezone: true }),

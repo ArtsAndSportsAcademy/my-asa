@@ -6,6 +6,7 @@ export * from "./delegations-manual";
 export * from "./insights-manual";
 export * from "./notifications-manual";
 export * from "./scale-entries-manual";
+export * from "./scale-actions-manual";
 export * from "./users-manual";
 export { setBaseUrl, setAuthTokenGetter, setAuthRefreshHandler, customFetch } from "./custom-fetch";
 export type { AuthTokenGetter, AuthRefreshHandler } from "./custom-fetch";
