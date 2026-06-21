@@ -7,7 +7,11 @@
  *   (b) papéis SEM linhas caem no fallback da escala (alocação manual / OPEN);
  *   (c) o vencedor capturado na geração é estável mesmo que a disponibilidade mude
  *       antes da publicação ("gerar → publicar" não re-resolve o preenchimento);
- *   (d) o rodízio escolhe o de MENOR contador entre os disponíveis.
+ *   (d) o rodízio escolhe o de MENOR contador entre os disponíveis;
+ *   (e) PESSOA FIXA (FIXED_PERSON): disponível → COBERTO; indisponível e sem
+ *       substituto → buraco (OPEN);
+ *   (f) TITULAR/SUBSTITUTO (TITULAR_SUBSTITUTE): titular disponível → titular;
+ *       titular de folga → primeiro substituto disponível; todos indisponíveis → buraco.
  *
  * Segue o padrão de testes por chamada direta do api-server (sem framework): semeia
  * o banco de dev, chama as funções reais, faz asserts e limpa tudo no final.
@@ -102,6 +106,10 @@ async function run() {
   const u2A = await mkUser("r2A");
   const u2B = await mkUser("r2B");
   const u2C = await mkUser("r2C");
+  const uFixed = await mkUser("fixed");
+  const uTit = await mkUser("titular");
+  const uSub1 = await mkUser("sub1");
+  const uSub2 = await mkUser("sub2");
 
   const [showBook] = await db
     .insert(showBooksTable)
@@ -156,6 +164,17 @@ async function run() {
   await mkLine(roleRotD, "ROTATION", {
     memberIds: [u2A, u2B, u2C],
     executionCounts: { [u2A]: 2, [u2B]: 0, [u2C]: 1 },
+  });
+
+  // Papel (e): FIXED_PERSON com uFixed (sem substituto).
+  const roleFixed = await mkRole("PapelPessoaFixa", 4);
+  await mkLine(roleFixed, "FIXED_PERSON", { userId: uFixed });
+
+  // Papel (f): TITULAR_SUBSTITUTE com titular uTit e substitutos [uSub1, uSub2].
+  const roleTitSub = await mkRole("PapelTitularSubstituto", 5);
+  await mkLine(roleTitSub, "TITULAR_SUBSTITUTE", {
+    titularId: uTit,
+    substituteIds: [uSub1, uSub2],
   });
 
   const createdFolgaIds: string[] = [];
@@ -281,17 +300,100 @@ async function run() {
       );
       await clearFolgas();
     }
+
+    // ─── (e) FIXED_PERSON: pessoa disponível → COBERTO; indisponível → buraco ──────
+    console.log("(e) pessoa fixa disponível → coberta; indisponível → buraco");
+    {
+      // Pessoa disponível → COBERTO com ela.
+      const r1 = await resolveAssignmentsByRole(showBookId, operationId, baseDate);
+      const rr1 = r1.byRole.get(roleFixed);
+      assert(!!rr1, "(e) papel pessoa fixa deve estar na resolução");
+      eqAssert(rr1!.hasLines, true, "(e) hasLines");
+      eqAssert(rr1!.hasActiveLine, true, "(e) hasActiveLine (atua hoje)");
+      eqAssert(rr1!.hasUncoveredLine, false, "(e) sem buraco com pessoa disponível");
+      eqAssert(rr1!.people.map((p) => p.userId), [uFixed], "(e) pessoa fixa coberta");
+      eqAssert(
+        planRoleAssignments(rr1, roleFixed, {}),
+        [{ userId: uFixed, status: "ASSIGNED" }],
+        "(e) assignment da pessoa fixa",
+      );
+
+      // Pessoa fixa indisponível e sem substituto → buraco (UNCOVERED → OPEN).
+      await addFolga(uFixed, baseDate);
+      const r2 = await resolveAssignmentsByRole(showBookId, operationId, baseDate);
+      const rr2 = r2.byRole.get(roleFixed);
+      eqAssert(rr2!.hasActiveLine, true, "(e) ainda ativa hoje mesmo indisponível");
+      eqAssert(rr2!.hasUncoveredLine, true, "(e) buraco real (pessoa indisponível)");
+      eqAssert(rr2!.people.length, 0, "(e) sem pessoas quando indisponível");
+      eqAssert(
+        planRoleAssignments(rr2, roleFixed, {}),
+        [{ userId: null, status: "OPEN" }],
+        "(e) indisponível sem substituto → OPEN",
+      );
+      await clearFolgas();
+    }
+
+    // ─── (f) TITULAR_SUBSTITUTE: cai para o substituto quando o titular falta ──────
+    console.log("(f) titular/substituto → titular; folga do titular cai no substituto");
+    {
+      // Titular disponível → escolhe o titular.
+      const r1 = await resolveAssignmentsByRole(showBookId, operationId, baseDate);
+      const rr1 = r1.byRole.get(roleTitSub);
+      assert(!!rr1, "(f) papel titular/substituto deve estar na resolução");
+      eqAssert(rr1!.hasLines, true, "(f) hasLines");
+      eqAssert(rr1!.hasUncoveredLine, false, "(f) sem buraco com titular disponível");
+      eqAssert(rr1!.people.map((p) => p.userId), [uTit], "(f) escolhe o titular");
+      eqAssert(
+        planRoleAssignments(rr1, roleTitSub, {}),
+        [{ userId: uTit, status: "ASSIGNED" }],
+        "(f) assignment do titular",
+      );
+
+      // Titular de folga → cai no primeiro substituto disponível (uSub1).
+      await addFolga(uTit, baseDate);
+      const r2 = await resolveAssignmentsByRole(showBookId, operationId, baseDate);
+      const rr2 = r2.byRole.get(roleTitSub);
+      eqAssert(rr2!.hasUncoveredLine, false, "(f) sem buraco: há substituto");
+      eqAssert(rr2!.people.map((p) => p.userId), [uSub1], "(f) cai no primeiro substituto");
+      eqAssert(
+        planRoleAssignments(rr2, roleTitSub, {}),
+        [{ userId: uSub1, status: "ASSIGNED" }],
+        "(f) assignment do primeiro substituto",
+      );
+
+      // Titular e primeiro substituto de folga → cai no segundo substituto (uSub2).
+      await addFolga(uSub1, baseDate);
+      const r3 = await resolveAssignmentsByRole(showBookId, operationId, baseDate);
+      const rr3 = r3.byRole.get(roleTitSub);
+      eqAssert(rr3!.people.map((p) => p.userId), [uSub2], "(f) cai no segundo substituto");
+
+      // Todos indisponíveis → buraco (UNCOVERED → OPEN).
+      await addFolga(uSub2, baseDate);
+      const r4 = await resolveAssignmentsByRole(showBookId, operationId, baseDate);
+      const rr4 = r4.byRole.get(roleTitSub);
+      eqAssert(rr4!.hasActiveLine, true, "(f) ativa hoje mesmo todos indisponíveis");
+      eqAssert(rr4!.hasUncoveredLine, true, "(f) buraco real (todos indisponíveis)");
+      eqAssert(rr4!.people.length, 0, "(f) sem pessoas quando todos indisponíveis");
+      eqAssert(
+        planRoleAssignments(rr4, roleTitSub, {}),
+        [{ userId: null, status: "OPEN" }],
+        "(f) titular e substitutos indisponíveis → OPEN",
+      );
+      await clearFolgas();
+    }
   } finally {
     // ─── Cleanup (ordem respeita FKs) ──────────────────────────────────────────────
     await clearFolgas();
     await db.delete(showBookLinesTable).where(eq(showBookLinesTable.positionId, roleDow));
     await db.delete(showBookLinesTable).where(eq(showBookLinesTable.positionId, roleRotC));
     await db.delete(showBookLinesTable).where(eq(showBookLinesTable.positionId, roleRotD));
+    await db.delete(showBookLinesTable).where(eq(showBookLinesTable.positionId, roleFixed));
+    await db.delete(showBookLinesTable).where(eq(showBookLinesTable.positionId, roleTitSub));
     await db.delete(showBookRolesTable).where(eq(showBookRolesTable.showBookId, showBookId));
     await db.delete(showBookBlocksTable).where(eq(showBookBlocksTable.showBookId, showBookId));
     await db.delete(showBookScenesTable).where(eq(showBookScenesTable.showBookId, showBookId));
     await db.delete(showBooksTable).where(eq(showBooksTable.id, showBookId));
-    for (const id of [uDow, uManual, uRotA, uRotB, u2A, u2B, u2C]) {
+    for (const id of [uDow, uManual, uRotA, uRotB, u2A, u2B, u2C, uFixed, uTit, uSub1, uSub2]) {
       await db.delete(usersTable).where(eq(usersTable.id, id));
     }
     await db.delete(operationsTable).where(eq(operationsTable.id, operationId));
