@@ -23,3 +23,4 @@
 - [Asa — multi-membro e lote](asa-batch-tools.md) — extrair "cores" reutilizáveis; single + _lote chamam o mesmo core; consultar_membros aceita listas; runBatch nunca aborta no 1º erro
 - [api-server direct-call tests](api-server-direct-call-tests.md) — sem framework de teste; exportar handler + entry temp em src/ + bundle esbuild (plugin pino exige outdir, não outfile)
 - [Login por username](login-username.md) — login passou de email→username; util de geração em lib/db/src/username.ts; backfill idempotente; column users.username unique nullable
+- [Forced password change](forced-password-change.md) — mustChangePassword DEVE ser enforced no servidor (middleware global após /auth), não só no gate do cliente (burlável via storage)

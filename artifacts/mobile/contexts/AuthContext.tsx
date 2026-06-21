@@ -13,6 +13,7 @@ export interface AuthUser {
   photoUrl: string | null;
   status: string;
   organizationId: string;
+  mustChangePassword?: boolean;
 }
 
 export interface AuthRole {
@@ -32,6 +33,7 @@ interface AuthContextType {
   isLoading: boolean;
   signIn: (accessToken: string, refreshToken: string, user: AuthUser, roles: AuthRole[]) => Promise<void>;
   signOut: () => Promise<void>;
+  markPasswordChanged: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -42,6 +44,7 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   signIn: async () => {},
   signOut: async () => {},
+  markPasswordChanged: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -113,6 +116,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setRoles([]);
   };
 
+  const markPasswordChanged = async () => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, mustChangePassword: false };
+      void AsyncStorage.setItem("myasa_user", JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -123,6 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         signIn,
         signOut,
+        markPasswordChanged,
       }}
     >
       {children}

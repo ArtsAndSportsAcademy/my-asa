@@ -11,9 +11,10 @@ import type { UserStatus } from './userStatus';
 export interface User {
   id: string;
   name: string;
-  email: string;
+  email?: string | null;
   username?: string | null;
   photoUrl?: string | null;
+  mustChangePassword?: boolean;
   status: UserStatus;
   specialization?: UserSpecialization;
   organizationId: string;

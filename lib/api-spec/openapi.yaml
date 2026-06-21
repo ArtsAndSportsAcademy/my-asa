@@ -655,6 +655,35 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
+  /users/me/password:
+    post:
+      operationId: changeMyPassword
+      tags: [users]
+      summary: Change the authenticated user's password (clears mustChangePassword)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordBody"
+      responses:
+        "200":
+          description: Password changed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required: [ok]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /users/{id}:
     get:
       operationId: getUser
@@ -4961,12 +4990,15 @@ components:
           type: string
         email:
           type: string
+          nullable: true
         username:
           type: string
           nullable: true
         photoUrl:
           type: string
           nullable: true
+        mustChangePassword:
+          type: boolean
         status:
           type: string
           enum: [ACTIVE, INACTIVE]
@@ -4980,7 +5012,7 @@ components:
           type: string
         updatedAt:
           type: string
-      required: [id, name, email, status, organizationId]
+      required: [id, name, status, organizationId]
 
     UserRole:
       type: object
@@ -5154,6 +5186,7 @@ components:
         email:
           type: string
           format: email
+          nullable: true
         password:
           type: string
           minLength: 6
@@ -5161,7 +5194,17 @@ components:
           type: string
           nullable: true
           enum: [PERFORMER, PROFESSOR, TRAINER, PHYSIOTHERAPIST, STRENGTH_COACH, TECHNICAL_OPERATOR, CHOREOGRAPHER, OTHER]
-      required: [name, email, password]
+      required: [name, password]
+
+    ChangePasswordBody:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+          minLength: 6
+      required: [currentPassword, newPassword]
 
     UserUpdate:
       type: object

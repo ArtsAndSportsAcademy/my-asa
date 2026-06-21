@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useGetMyActiveDelegations } from "@workspace/api-client-react";
 import Login from "@/pages/login";
+import ForcePasswordChange from "@/pages/force-password-change";
 import AdminHome from "@/pages/admin/home";
 import UsersPage from "@/pages/admin/users";
 import OperationsPage from "@/pages/admin/operations";
@@ -234,13 +235,21 @@ function Router() {
   );
 }
 
+function AuthGate() {
+  const { isAuthenticated, isLoading, user } = useAuth();
+  if (!isLoading && isAuthenticated && user?.mustChangePassword) {
+    return <ForcePasswordChange />;
+  }
+  return <Router />;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <Router />
+            <AuthGate />
           </WouterRouter>
         </AuthProvider>
         <Toaster />

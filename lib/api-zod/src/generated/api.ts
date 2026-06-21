@@ -30,9 +30,10 @@ export const LoginResponse = zod.object({
   "user": zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "email": zod.string(),
+  "email": zod.string().nullish(),
   "username": zod.string().nullish(),
   "photoUrl": zod.string().nullish(),
+  "mustChangePassword": zod.boolean().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
   "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
   "organizationId": zod.string(),
@@ -78,9 +79,10 @@ export const GetMeResponse = zod.object({
   "user": zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "email": zod.string(),
+  "email": zod.string().nullish(),
   "username": zod.string().nullish(),
   "photoUrl": zod.string().nullish(),
+  "mustChangePassword": zod.boolean().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
   "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
   "organizationId": zod.string(),
@@ -379,9 +381,10 @@ export const GetUserContextResponse = zod.object({
   "user": zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "email": zod.string(),
+  "email": zod.string().nullish(),
   "username": zod.string().nullish(),
   "photoUrl": zod.string().nullish(),
+  "mustChangePassword": zod.boolean().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
   "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
   "organizationId": zod.string(),
@@ -429,9 +432,10 @@ export const ListUsersResponse = zod.object({
   "users": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "email": zod.string(),
+  "email": zod.string().nullish(),
   "username": zod.string().nullish(),
   "photoUrl": zod.string().nullish(),
+  "mustChangePassword": zod.boolean().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
   "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
   "organizationId": zod.string(),
@@ -450,9 +454,26 @@ export const createUserBodyPasswordMin = 6;
 
 export const CreateUserBody = zod.object({
   "name": zod.string(),
-  "email": zod.string().email(),
+  "email": zod.string().email().nullish(),
   "password": zod.string().min(createUserBodyPasswordMin),
   "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish()
+})
+
+
+/**
+ * @summary Change the authenticated user's password (clears mustChangePassword)
+ */
+export const changeMyPasswordBodyNewPasswordMin = 6;
+
+
+
+export const ChangeMyPasswordBody = zod.object({
+  "currentPassword": zod.string(),
+  "newPassword": zod.string().min(changeMyPasswordBodyNewPasswordMin)
+})
+
+export const ChangeMyPasswordResponse = zod.object({
+  "ok": zod.boolean()
 })
 
 
@@ -467,9 +488,10 @@ export const GetUserResponse = zod.object({
   "user": zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "email": zod.string(),
+  "email": zod.string().nullish(),
   "username": zod.string().nullish(),
   "photoUrl": zod.string().nullish(),
+  "mustChangePassword": zod.boolean().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
   "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
   "organizationId": zod.string(),
@@ -497,9 +519,10 @@ export const UpdateUserResponse = zod.object({
   "user": zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "email": zod.string(),
+  "email": zod.string().nullish(),
   "username": zod.string().nullish(),
   "photoUrl": zod.string().nullish(),
+  "mustChangePassword": zod.boolean().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
   "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
   "organizationId": zod.string(),
@@ -524,9 +547,10 @@ export const UpdateUserStatusResponse = zod.object({
   "user": zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "email": zod.string(),
+  "email": zod.string().nullish(),
   "username": zod.string().nullish(),
   "photoUrl": zod.string().nullish(),
+  "mustChangePassword": zod.boolean().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
   "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
   "organizationId": zod.string(),

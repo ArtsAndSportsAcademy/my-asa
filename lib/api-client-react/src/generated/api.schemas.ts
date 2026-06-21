@@ -39,9 +39,10 @@ export const UserSpecialization = {
 export interface User {
   id: string;
   name: string;
-  email: string;
+  email?: string | null;
   username?: string | null;
   photoUrl?: string | null;
+  mustChangePassword?: boolean;
   status: UserStatus;
   specialization?: UserSpecialization;
   organizationId: string;
@@ -170,10 +171,16 @@ export const UserCreateSpecialization = {
 
 export interface UserCreate {
   name: string;
-  email: string;
+  email?: string | null;
   /** @minLength 6 */
   password: string;
   specialization?: UserCreateSpecialization;
+}
+
+export interface ChangePasswordBody {
+  currentPassword: string;
+  /** @minLength 6 */
+  newPassword: string;
 }
 
 export type UserUpdateSpecialization = typeof UserUpdateSpecialization[keyof typeof UserUpdateSpecialization] | null;
@@ -2673,6 +2680,10 @@ export type ListUsers200 = {
 
 export type CreateUser201 = {
   user: User;
+};
+
+export type ChangeMyPassword200 = {
+  ok: boolean;
 };
 
 export type GetUser200 = {

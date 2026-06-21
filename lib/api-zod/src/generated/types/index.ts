@@ -53,6 +53,8 @@ export * from './cancelAgendaEvent200';
 export * from './cancelDailyBook200';
 export * from './cancelDailyBookRequest';
 export * from './cancelTaskBody';
+export * from './changeMyPassword200';
+export * from './changePasswordBody';
 export * from './completeAgendaEvent200';
 export * from './confirmAgendaEvent200';
 export * from './conflictResponse';

@@ -23,19 +23,25 @@ SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient();
 
 function RootLayoutNav() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+
+  const mustChangePassword = !!user?.mustChangePassword;
 
   useEffect(() => {
     if (isLoading) return;
     const inTabsGroup = segments[0] === "(tabs)";
+    const onForceChange = segments[0] === "force-password-change";
+
     if (!isAuthenticated && inTabsGroup) {
       router.replace("/login");
-    } else if (isAuthenticated && !inTabsGroup) {
+    } else if (isAuthenticated && mustChangePassword && !onForceChange) {
+      router.replace("/force-password-change");
+    } else if (isAuthenticated && !mustChangePassword && !inTabsGroup) {
       router.replace("/(tabs)");
     }
-  }, [isAuthenticated, isLoading, segments]);
+  }, [isAuthenticated, isLoading, mustChangePassword, segments]);
 
   if (isLoading) return <LoadingScreen />;
 
@@ -43,6 +49,7 @@ function RootLayoutNav() {
     <Stack>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen name="force-password-change" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="+not-found" />
     </Stack>
   );

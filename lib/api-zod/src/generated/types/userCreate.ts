@@ -9,7 +9,7 @@ import type { UserCreateSpecialization } from './userCreateSpecialization';
 
 export interface UserCreate {
   name: string;
-  email: string;
+  email?: string | null;
   /** @minLength 6 */
   password: string;
   specialization?: UserCreateSpecialization;

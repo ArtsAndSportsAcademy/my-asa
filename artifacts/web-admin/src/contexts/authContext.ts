@@ -11,6 +11,7 @@ interface AuthState {
 export interface AuthContextType extends AuthState {
   login: (accessToken: string, refreshToken: string, user: User, roles: UserRole[]) => void;
   logout: () => void;
+  markPasswordChanged: () => void;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);

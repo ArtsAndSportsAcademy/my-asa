@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, pgEnum, date } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, pgEnum, date, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -44,9 +44,10 @@ export const usersTable = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   organizationId: uuid("organization_id").notNull(),
   name: text("name").notNull(),
-  email: text("email").notNull().unique(),
+  email: text("email").unique(),
   username: text("username").unique(),
   passwordHash: text("password_hash"),
+  mustChangePassword: boolean("must_change_password").notNull().default(false),
   photoUrl: text("photo_url"),
   status: userStatusEnum("status").notNull().default("ACTIVE"),
   specialization: text("specialization").$type<UserSpecialization | null>(),

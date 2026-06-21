@@ -62,11 +62,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     getMe()
-      .then(() => {
+      .then((result) => {
         try {
+          const freshUser = (result?.user as User | undefined) ?? (JSON.parse(userStr) as User);
+          const freshRoles = (result?.roles as UserRole[] | undefined) ?? (JSON.parse(rolesStr) as UserRole[]);
+          localStorage.setItem("myasa_user", JSON.stringify(freshUser));
+          localStorage.setItem("myasa_roles", JSON.stringify(freshRoles));
           setState({
-            user: JSON.parse(userStr),
-            roles: JSON.parse(rolesStr),
+            user: freshUser,
+            roles: freshRoles,
             isAuthenticated: true,
             isLoading: false,
           });
@@ -97,8 +101,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ user: null, roles: [], isAuthenticated: false, isLoading: false });
   };
 
+  const markPasswordChanged = () => {
+    setState((s) => {
+      if (!s.user) return s;
+      const updatedUser = { ...s.user, mustChangePassword: false };
+      localStorage.setItem("myasa_user", JSON.stringify(updatedUser));
+      return { ...s, user: updatedUser };
+    });
+  };
+
   return (
-    <AuthContext.Provider value={{ ...state, login, logout }}>
+    <AuthContext.Provider value={{ ...state, login, logout, markPasswordChanged }}>
       {children}
     </AuthContext.Provider>
   );

@@ -7,6 +7,8 @@ import {
   useUpdateUser,
   useUpdateUserStatus,
   useDeleteUser,
+  useAddUserRole,
+  useGetOperations,
 } from "@workspace/api-client-react";
 import type { User } from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
@@ -52,6 +54,13 @@ const ALL_SPECIALIZATIONS = [
   "OTHER",
 ] as const;
 
+const ROLE_OPTIONS = [
+  { value: "MEMBER",       label: "Membro / Elenco" },
+  { value: "SUPERVISOR_B", label: "Supervisor" },
+  { value: "SUPERVISOR_A", label: "Supervisor Sênior" },
+  { value: "ADMIN",        label: "Administrador" },
+] as const;
+
 export default function UsersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -66,6 +75,10 @@ export default function UsersPage() {
   const updateMutation = useUpdateUser();
   const statusMutation = useUpdateUserStatus();
   const deleteMutation = useDeleteUser();
+  const assignRoleMutation = useAddUserRole();
+
+  const { data: opsData } = useGetOperations();
+  const operations = opsData?.operations ?? [];
 
   const [filterSpec, setFilterSpec] = useState("");
 
@@ -74,7 +87,7 @@ export default function UsersPage() {
   const [editUser, setEditUser] = useState<User | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
 
-  const [createForm, setCreateForm] = useState({ name: "", email: "", password: "", specialization: "", birthDate: "" });
+  const [createForm, setCreateForm] = useState({ name: "", password: "", role: "MEMBER", operationId: "", specialization: "", birthDate: "" });
   const [editForm, setEditForm] = useState({ name: "", email: "", username: "", specialization: "", birthDate: "" });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
@@ -84,17 +97,24 @@ export default function UsersPage() {
     return true;
   });
 
+  const resetCreateForm = () =>
+    setCreateForm({ name: "", password: "", role: "MEMBER", operationId: "", specialization: "", birthDate: "" });
+
   const handleCreate = () => {
-    const { name, email, password, specialization } = createForm;
-    if (!name.trim() || !email.trim() || !password) {
-      toast({ title: "Preencha todos os campos obrigatórios", variant: "destructive" });
+    const { name, password, role, operationId, specialization } = createForm;
+    if (!name.trim() || !password) {
+      toast({ title: "Preencha nome e senha provisória", variant: "destructive" });
+      return;
+    }
+    const effectiveOperationId = operationId || operations[0]?.id;
+    if (!effectiveOperationId) {
+      toast({ title: "Cadastre uma operação antes de criar usuários", variant: "destructive" });
       return;
     }
     createMutation.mutate(
       {
         data: {
           name: name.trim(),
-          email: email.trim(),
           password,
           specialization: (specialization || undefined) as any,
           ...(createForm.birthDate ? { birthDate: createForm.birthDate as any } : {}),
@@ -102,11 +122,34 @@ export default function UsersPage() {
       },
       {
         onSuccess: (res) => {
-          toast({ title: "Usuário criado com sucesso" });
-          setCreateOpen(false);
-          setCreateForm({ name: "", email: "", password: "", specialization: "", birthDate: "" });
-          if (res?.user) setCreatedUser(res.user as User);
-          invalidate();
+          const newUser = res?.user as User | undefined;
+          if (!newUser) {
+            toast({ title: "Usuário criado, mas não foi possível definir o papel", variant: "destructive" });
+            setCreateOpen(false);
+            resetCreateForm();
+            invalidate();
+            return;
+          }
+          assignRoleMutation.mutate(
+            { id: newUser.id, data: { operationId: effectiveOperationId, role: role as any } },
+            {
+              onSuccess: () => {
+                toast({ title: "Usuário criado com sucesso" });
+                setCreateOpen(false);
+                resetCreateForm();
+                setCreatedUser(newUser);
+                invalidate();
+              },
+              onError: (err: any) => {
+                const msg = err?.response?.data?.message ?? "Usuário criado, mas falhou ao definir o papel";
+                toast({ title: msg, variant: "destructive" });
+                setCreateOpen(false);
+                resetCreateForm();
+                setCreatedUser(newUser);
+                invalidate();
+              },
+            }
+          );
         },
         onError: (err: any) => {
           const msg = err?.response?.data?.message ?? "Erro ao criar usuário";
@@ -180,7 +223,7 @@ export default function UsersPage() {
     setEditUser(user);
     setEditForm({
       name: user.name,
-      email: user.email,
+      email: user.email ?? "",
       username: user.username ?? "",
       specialization: user.specialization ?? "",
       birthDate: (user as any).birthDate ?? "",
@@ -346,22 +389,42 @@ export default function UsersPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>E-mail</Label>
-              <Input
-                type="email"
-                placeholder="ana@minhaasa.com.br"
-                value={createForm.email}
-                onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))}
-              />
+              <Label>Papel</Label>
+              <select
+                className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                value={createForm.role}
+                onChange={(e) => setCreateForm((f) => ({ ...f, role: e.target.value }))}
+              >
+                {ROLE_OPTIONS.map((r) => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
+              </select>
             </div>
+            {operations.length > 1 && (
+              <div className="space-y-2">
+                <Label>Operação</Label>
+                <select
+                  className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  value={createForm.operationId || operations[0]?.id || ""}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, operationId: e.target.value }))}
+                >
+                  {operations.map((op: any) => (
+                    <option key={op.id} value={op.id}>{op.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Senha provisória</Label>
               <Input
                 type="password"
-                placeholder="Mínimo 8 caracteres"
+                placeholder="Mínimo 6 caracteres"
                 value={createForm.password}
                 onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))}
               />
+              <p className="text-xs text-muted-foreground">
+                A pessoa será obrigada a criar uma senha própria no primeiro acesso.
+              </p>
             </div>
             <div className="space-y-2">
               <Label>Especialização <span className="text-muted-foreground text-xs">(opcional)</span></Label>

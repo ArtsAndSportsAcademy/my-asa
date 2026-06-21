@@ -29,11 +29,13 @@ import responsibilitiesRouter from "./responsibilities";
 import anthropicRouter from "./anthropic/index";
 import asaRouter from "./asa";
 import folgasRouter from "./folgas";
+import { blockIfMustChangePassword } from "../middlewares/mustChangePassword.js";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use("/auth", authRouter);
+router.use(blockIfMustChangePassword);
 router.use(organizationRouter);
 router.use(usersRouter);
 router.use(rolesRouter);

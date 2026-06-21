@@ -92,8 +92,8 @@ router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), as
   const log = requestLogger("teams", req.requestId, req.correlationId);
   const { name, email, password, specialization, birthDate } = req.body;
 
-  if (!name?.trim() || !email?.trim() || !password) {
-    res.status(400).json({ error: "BAD_REQUEST", message: "name, email e password são obrigatórios" });
+  if (!name?.trim() || !password) {
+    res.status(400).json({ error: "BAD_REQUEST", message: "name e password são obrigatórios" });
     return;
   }
 
@@ -104,13 +104,15 @@ router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), as
   }
 
   try {
-    const normalizedEmail = (email as string).toLowerCase().trim();
-    const existing = await db.query.usersTable.findFirst({
-      where: eq(usersTable.email, normalizedEmail),
-    });
-    if (existing) {
-      res.status(409).json({ error: "CONFLICT", message: "E-mail já cadastrado" });
-      return;
+    const normalizedEmail = email?.trim() ? (email as string).toLowerCase().trim() : null;
+    if (normalizedEmail) {
+      const existing = await db.query.usersTable.findFirst({
+        where: eq(usersTable.email, normalizedEmail),
+      });
+      if (existing) {
+        res.status(409).json({ error: "CONFLICT", message: "E-mail já cadastrado" });
+        return;
+      }
     }
 
     const usernameBase = normalizeUsernameBase(name as string);
@@ -132,6 +134,7 @@ router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), as
         email: normalizedEmail,
         username,
         passwordHash,
+        mustChangePassword: true,
         status: "ACTIVE",
         specialization: specialization ?? null,
         birthDate: (birthDate as string | undefined) ?? null,
@@ -149,6 +152,55 @@ router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), as
     res.status(201).json({ user: safeUser(newUser!) });
   } catch (err) {
     log.error({ err }, "Error creating user");
+    res.status(500).json({ error: "INTERNAL_ERROR" });
+  }
+});
+
+router.post("/users/me/password", requireAuth, async (req, res) => {
+  const log = requestLogger("teams", req.requestId, req.correlationId);
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    res.status(400).json({ error: "BAD_REQUEST", message: "currentPassword e newPassword são obrigatórios" });
+    return;
+  }
+  if ((newPassword as string).length < 6) {
+    res.status(400).json({ error: "BAD_REQUEST", message: "A nova senha deve ter ao menos 6 caracteres" });
+    return;
+  }
+
+  try {
+    const me = await db.query.usersTable.findFirst({
+      where: eq(usersTable.id, req.user!.sub),
+    });
+    if (!me || !me.passwordHash) {
+      res.status(404).json({ error: "NOT_FOUND", message: "Usuário não encontrado" });
+      return;
+    }
+
+    const valid = await bcrypt.compare(currentPassword as string, me.passwordHash);
+    if (!valid) {
+      res.status(401).json({ error: "INVALID_CREDENTIALS", message: "Senha atual incorreta" });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword as string, 12);
+    await db
+      .update(usersTable)
+      .set({ passwordHash, mustChangePassword: false, updatedAt: new Date() })
+      .where(eq(usersTable.id, me.id));
+
+    await recordAudit({
+      actorId: me.id,
+      action: "USER_UPDATED",
+      targetResource: `user:${me.id}`,
+      metadata: { change: "password" },
+    });
+
+    log.info({ userId: me.id }, "Password changed");
+    res.json({ ok: true });
+  } catch (err) {
+    log.error({ err }, "Error changing password");
     res.status(500).json({ error: "INTERNAL_ERROR" });
   }
 });
