@@ -14,6 +14,8 @@ import {
   libraryDocumentsTable,
   usersTable,
   scalesTable,
+  scaleAllocationsTable,
+  allocationExceptionsTable,
   agendaEventsTable,
   dailyBooksTable,
   operationsTable,
@@ -88,6 +90,34 @@ async function bumpVersion(
   const log = requestLogger("show_book", requestId ?? "", correlationId ?? "");
   log.info({ showBookId, version: newVersion, changeType }, "Nova versão criada");
   return newVersion;
+}
+
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+// Apaga posições (papéis) por completo, resolvendo as FKs que não têm cascade:
+// as linhas pertencem à posição (apagar) e o histórico de escala aponta para ela
+// (desligar, preservando os registos). As refs de biblioteca têm cascade no schema.
+async function purgePositions(tx: Tx, positionIds: string[]) {
+  if (positionIds.length === 0) return;
+  await tx.delete(showBookLinesTable).where(inArray(showBookLinesTable.positionId, positionIds));
+  await tx.update(scaleAllocationsTable).set({ positionId: null }).where(inArray(scaleAllocationsTable.positionId, positionIds));
+  await tx.update(allocationExceptionsTable).set({ positionId: null }).where(inArray(allocationExceptionsTable.positionId, positionIds));
+  await tx.delete(showBookRolesTable).where(inArray(showBookRolesTable.id, positionIds));
+}
+
+// Confirma que a posição pertence ao livro (evita IDOR cross-showbook em mutações).
+async function positionInShowBook(positionId: string, showBookId: string): Promise<boolean> {
+  const [row] = await db.select({ id: showBookRolesTable.id }).from(showBookRolesTable)
+    .where(and(eq(showBookRolesTable.id, positionId), eq(showBookRolesTable.showBookId, showBookId)));
+  return !!row;
+}
+
+// Confirma que a linha pertence a uma posição do livro (linha→posição→livro).
+async function lineInShowBook(lineId: string, showBookId: string): Promise<boolean> {
+  const [row] = await db.select({ id: showBookLinesTable.id }).from(showBookLinesTable)
+    .innerJoin(showBookRolesTable, eq(showBookLinesTable.positionId, showBookRolesTable.id))
+    .where(and(eq(showBookLinesTable.id, lineId), eq(showBookRolesTable.showBookId, showBookId)));
+  return !!row;
 }
 
 router.get("/show-books", requireAuth, requireOrganization, async (req, res) => {
@@ -326,11 +356,30 @@ router.delete("/show-books/:id/scenes/:sceneId", requireAuth, requireOrganizatio
   const sceneId = req.params.sceneId as string;
   const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
-    await db.delete(showBookScenesTable)
+    const [owned] = await db.select({ id: showBookScenesTable.id }).from(showBookScenesTable)
       .where(and(eq(showBookScenesTable.id, sceneId), eq(showBookScenesTable.showBookId, showBookId)));
+    if (!owned) { res.status(404).json({ error: "Cena não encontrada" }); return; }
+    await db.transaction(async (tx) => {
+      const blocks = await tx.select({ id: showBookBlocksTable.id })
+        .from(showBookBlocksTable)
+        .where(and(eq(showBookBlocksTable.sceneId, sceneId), eq(showBookBlocksTable.showBookId, showBookId)));
+      const blockIds = blocks.map((b) => b.id);
+      if (blockIds.length > 0) {
+        const positions = await tx.select({ id: showBookRolesTable.id })
+          .from(showBookRolesTable)
+          .where(and(inArray(showBookRolesTable.blockId, blockIds), eq(showBookRolesTable.showBookId, showBookId)));
+        await purgePositions(tx, positions.map((p) => p.id));
+        await tx.delete(showBookBlocksTable)
+          .where(and(inArray(showBookBlocksTable.id, blockIds), eq(showBookBlocksTable.showBookId, showBookId)));
+      }
+      await tx.delete(showBookScenesTable)
+        .where(and(eq(showBookScenesTable.id, sceneId), eq(showBookScenesTable.showBookId, showBookId)));
+    });
     await bumpVersion(showBookId, "STRUCTURAL", reason, req.user!.sub, req.requestId, req.correlationId);
     res.status(204).send();
   } catch (err) {
+    requestLogger("show_book", req.requestId ?? "", req.correlationId ?? "")
+      .error({ err, showBookId, sceneId }, "Erro ao remover cena");
     res.status(500).json({ error: "Erro ao remover cena" });
   }
 });
@@ -343,6 +392,11 @@ router.post("/show-books/:id/blocks", requireAuth, requireOrganization, async (r
   try {
     const book = await getShowBookOrFail(showBookId, res);
     if (!book) return;
+    if (sceneId) {
+      const [scene] = await db.select({ id: showBookScenesTable.id }).from(showBookScenesTable)
+        .where(and(eq(showBookScenesTable.id, sceneId), eq(showBookScenesTable.showBookId, showBookId)));
+      if (!scene) { res.status(404).json({ error: "Cena não encontrada" }); return; }
+    }
     const [block] = await db
       .insert(showBookBlocksTable)
       .values({ showBookId, name, order, sceneId: sceneId ?? null })
@@ -382,11 +436,22 @@ router.delete("/show-books/:id/blocks/:blockId", requireAuth, requireOrganizatio
   const blockId = req.params.blockId as string;
   const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
-    await db.delete(showBookBlocksTable)
+    const [owned] = await db.select({ id: showBookBlocksTable.id }).from(showBookBlocksTable)
       .where(and(eq(showBookBlocksTable.id, blockId), eq(showBookBlocksTable.showBookId, showBookId)));
+    if (!owned) { res.status(404).json({ error: "Bloco não encontrado" }); return; }
+    await db.transaction(async (tx) => {
+      const positions = await tx.select({ id: showBookRolesTable.id })
+        .from(showBookRolesTable)
+        .where(and(eq(showBookRolesTable.blockId, blockId), eq(showBookRolesTable.showBookId, showBookId)));
+      await purgePositions(tx, positions.map((p) => p.id));
+      await tx.delete(showBookBlocksTable)
+        .where(and(eq(showBookBlocksTable.id, blockId), eq(showBookBlocksTable.showBookId, showBookId)));
+    });
     await bumpVersion(showBookId, "STRUCTURAL", reason, req.user!.sub, req.requestId, req.correlationId);
     res.status(204).send();
   } catch (err) {
+    requestLogger("show_book", req.requestId ?? "", req.correlationId ?? "")
+      .error({ err, showBookId, blockId }, "Erro ao remover bloco");
     res.status(500).json({ error: "Erro ao remover bloco" });
   }
 });
@@ -399,6 +464,11 @@ router.post("/show-books/:id/positions", requireAuth, requireOrganization, async
   try {
     const book = await getShowBookOrFail(showBookId, res);
     if (!book) return;
+    if (blockId) {
+      const [block] = await db.select({ id: showBookBlocksTable.id }).from(showBookBlocksTable)
+        .where(and(eq(showBookBlocksTable.id, blockId), eq(showBookBlocksTable.showBookId, showBookId)));
+      if (!block) { res.status(404).json({ error: "Bloco não encontrado" }); return; }
+    }
     const [position] = await db
       .insert(showBookRolesTable)
       .values({
@@ -445,11 +515,17 @@ router.delete("/show-books/:id/positions/:positionId", requireAuth, requireOrgan
   const positionId = req.params.positionId as string;
   const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
-    await db.delete(showBookRolesTable)
+    const [owned] = await db.select({ id: showBookRolesTable.id }).from(showBookRolesTable)
       .where(and(eq(showBookRolesTable.id, positionId), eq(showBookRolesTable.showBookId, showBookId)));
+    if (!owned) { res.status(404).json({ error: "Posição não encontrada" }); return; }
+    await db.transaction(async (tx) => {
+      await purgePositions(tx, [positionId]);
+    });
     await bumpVersion(showBookId, "STRUCTURAL", reason, req.user!.sub, req.requestId, req.correlationId);
     res.status(204).send();
   } catch (err) {
+    requestLogger("show_book", req.requestId ?? "", req.correlationId ?? "")
+      .error({ err, showBookId, positionId }, "Erro ao remover posição");
     res.status(500).json({ error: "Erro ao remover posição" });
   }
 });
@@ -461,6 +537,9 @@ router.post("/show-books/:id/positions/:positionId/lines", requireAuth, requireO
   if (!type) { res.status(400).json({ error: "type é obrigatório" }); return; }
   const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
+    if (!(await positionInShowBook(positionId, showBookId))) {
+      res.status(404).json({ error: "Posição não encontrada" }); return;
+    }
     const [line] = await db
       .insert(showBookLinesTable)
       .values({ positionId, type, config: config ?? {}, order: order ?? 0 })
@@ -468,6 +547,8 @@ router.post("/show-books/:id/positions/:positionId/lines", requireAuth, requireO
     await bumpVersion(showBookId, "STRUCTURAL", reason, req.user!.sub, req.requestId, req.correlationId);
     res.status(201).json({ line });
   } catch (err) {
+    requestLogger("show_book", req.requestId ?? "", req.correlationId ?? "")
+      .error({ err, showBookId, positionId }, "Erro ao criar linha");
     res.status(500).json({ error: "Erro ao criar linha" });
   }
 });
@@ -478,6 +559,9 @@ router.patch("/show-books/:id/lines/:lineId", requireAuth, requireOrganization, 
   const { type, config, order, changeType } = req.body;
   const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
+    if (!(await lineInShowBook(lineId, showBookId))) {
+      res.status(404).json({ error: "Linha não encontrada" }); return;
+    }
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (type !== undefined) updates.type = type;
     if (config !== undefined) updates.config = config;
@@ -501,10 +585,15 @@ router.delete("/show-books/:id/lines/:lineId", requireAuth, requireOrganization,
   const lineId = req.params.lineId as string;
   const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
+    if (!(await lineInShowBook(lineId, showBookId))) {
+      res.status(404).json({ error: "Linha não encontrada" }); return;
+    }
     await db.delete(showBookLinesTable).where(eq(showBookLinesTable.id, lineId));
     await bumpVersion(showBookId, "STRUCTURAL", reason, req.user!.sub, req.requestId, req.correlationId);
     res.status(204).send();
   } catch (err) {
+    requestLogger("show_book", req.requestId ?? "", req.correlationId ?? "")
+      .error({ err, showBookId, lineId }, "Erro ao remover linha");
     res.status(500).json({ error: "Erro ao remover linha" });
   }
 });
@@ -637,6 +726,9 @@ router.post("/show-books/:id/positions/:positionId/refs", requireAuth, requireOr
   try {
     const book = await getShowBookOrFail(showBookId, res);
     if (!book) return;
+    if (!(await positionInShowBook(positionId, showBookId))) {
+      res.status(404).json({ error: "Posição não encontrada" }); return;
+    }
     const [doc] = await db.select().from(libraryDocumentsTable).where(eq(libraryDocumentsTable.id, documentId)).limit(1);
     if (!doc) { res.status(404).json({ error: "Documento não encontrado" }); return; }
     if (doc.status === "ARCHIVED") { res.status(400).json({ error: "Documento arquivado não pode ser referenciado" }); return; }
@@ -675,11 +767,19 @@ router.delete("/show-books/:id/positions/:positionId/refs/:refId", requireAuth, 
     const [ref] = await db
       .select()
       .from(showBookPositionLibraryRefsTable)
-      .where(and(eq(showBookPositionLibraryRefsTable.id, refId), eq(showBookPositionLibraryRefsTable.positionId, positionId)))
+      .where(and(
+        eq(showBookPositionLibraryRefsTable.id, refId),
+        eq(showBookPositionLibraryRefsTable.positionId, positionId),
+        eq(showBookPositionLibraryRefsTable.showBookId, showBookId),
+      ))
       .limit(1);
     if (!ref) { res.status(404).json({ error: "Referência não encontrada" }); return; }
     await db.delete(showBookPositionLibraryRefsTable)
-      .where(and(eq(showBookPositionLibraryRefsTable.id, refId), eq(showBookPositionLibraryRefsTable.positionId, positionId)));
+      .where(and(
+        eq(showBookPositionLibraryRefsTable.id, refId),
+        eq(showBookPositionLibraryRefsTable.positionId, positionId),
+        eq(showBookPositionLibraryRefsTable.showBookId, showBookId),
+      ));
     await writeHistoryEvent({
       category: "OPERATIONAL_CHANGE",
       action: "ref_removed",
