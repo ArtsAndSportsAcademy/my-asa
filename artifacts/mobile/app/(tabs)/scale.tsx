@@ -22,12 +22,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { AsaEmptyState } from "@/components/AsaEmptyState";
 
-import {
-  ALLOCATION_STATUS_LABELS,
-  ALLOCATION_STATUS_COLORS,
-  SCALE_STATUS_LABELS,
-  EVENT_TYPE_ICONS,
-} from "@/lib/operational-constants";
+import { SCALE_STATUS_LABELS } from "@/lib/operational-constants";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -57,12 +52,14 @@ const FOLGA_TYPE_LABELS: Record<string, string> = {
   OUTRO:       "Outro",
 };
 
+// Old model: week runs Thursday → Wednesday
+const WEEKDAY_LABELS = ["QUI", "SEX", "SÁB", "DOM", "SEG", "TER", "QUA"];
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return "—";
-  const [year, month, day] = dateStr.split("-");
-  return `${day}/${month}/${year}`;
+function formatShort(dateStr: string): string {
+  const [, month, day] = dateStr.split("-");
+  return `${day}/${month}`;
 }
 
 function formatTime(timeStr: string | null | undefined): string {
@@ -70,141 +67,175 @@ function formatTime(timeStr: string | null | undefined): string {
   return timeStr.slice(0, 5);
 }
 
-function isUpcoming(dateStr: string | null | undefined): boolean {
-  if (!dateStr) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const eventDate = new Date(dateStr + "T00:00:00");
-  return eventDate >= today;
+function addDays(dateStr: string, n: number): string {
+  const d = new Date(dateStr + "T00:00:00");
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
 }
 
-function isDateInFolga(date: string, folgas: FolgaItem[]): boolean {
-  return folgas.some(
-    (f) => f.status === "ACTIVE" && f.startDate <= date && date <= f.endDate
+function thursdayOf(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00");
+  const dow = d.getDay(); // Thursday=4
+  const diff = (dow - 4 + 7) % 7;
+  d.setDate(d.getDate() - diff);
+  return d.toISOString().slice(0, 10);
+}
+
+function folgaTypeOn(date: string, folgas: FolgaItem[]): string | null {
+  const f = folgas.find(
+    (x) => x.status === "ACTIVE" && x.startDate <= date && date <= x.endDate
   );
+  return f ? f.type : null;
 }
 
-// ─── Folga Card ───────────────────────────────────────────────────────────────
+// ─── Day row ───────────────────────────────────────────────────────────────────
 
-function FolgaCard({ folga, colors }: { folga: FolgaItem; colors: ReturnType<typeof useColors> }) {
-  const isSingleDay = folga.startDate === folga.endDate;
-  const periodoLabel = isSingleDay
-    ? formatDate(folga.startDate)
-    : `${formatDate(folga.startDate)} — ${formatDate(folga.endDate)}`;
-
+function DayRow({
+  label,
+  date,
+  entries,
+  folgaType,
+  colors,
+}: {
+  label: string;
+  date: string;
+  entries: MyAllocation[];
+  folgaType: string | null;
+  colors: ReturnType<typeof useColors>;
+}) {
+  const hasEntries = entries.length > 0;
   return (
-    <View style={[styles.folgaCard, { backgroundColor: colors.card, borderColor: "#86efac" }]}>
-      <View style={styles.folgaHeader}>
-        <Text style={styles.folgaEmoji}>🌴</Text>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.folgaTitle, { color: "#16a34a" }]}>
-            Você está de folga neste período
-          </Text>
-          <Text style={[styles.folgaMeta, { color: "#15803d" }]}>
-            {FOLGA_TYPE_LABELS[folga.type] ?? folga.type} · {periodoLabel}
-          </Text>
-        </View>
+    <View style={[styles.dayRow, { borderBottomColor: colors.border }]}>
+      <View style={styles.dayPill}>
+        <Text style={[styles.dayLabel, { color: colors.mutedForeground }]}>{label}</Text>
+        <Text style={[styles.dayDate, { color: colors.foreground }]}>{formatShort(date)}</Text>
       </View>
-      {folga.notes && (
-        <Text style={[styles.folgaNotes, { color: "#166534" }]} numberOfLines={2}>
-          {folga.notes}
-        </Text>
-      )}
+
+      <View style={styles.dayBody}>
+        {folgaType && (
+          <View style={[styles.folgaBadge, { backgroundColor: "#dcfce7" }]}>
+            <Text style={styles.folgaBadgeText}>
+              🌴 {FOLGA_TYPE_LABELS[folgaType] ?? folgaType}
+            </Text>
+          </View>
+        )}
+
+        {hasEntries ? (
+          entries.map((e) => (
+            <View
+              key={e.id}
+              style={[styles.entry, { backgroundColor: colors.card, borderColor: colors.border }]}
+            >
+              <Text style={[styles.entryTitle, { color: colors.foreground }]} numberOfLines={1}>
+                {e.eventTitle ?? "Escala"}
+              </Text>
+              <View style={styles.entryMeta}>
+                {e.eventStartTime && (
+                  <View style={styles.metaItem}>
+                    <Feather name="clock" size={11} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
+                      {formatTime(e.eventStartTime)}
+                      {e.eventEndTime ? ` — ${formatTime(e.eventEndTime)}` : ""}
+                    </Text>
+                  </View>
+                )}
+                {e.eventLocation && (
+                  <View style={styles.metaItem}>
+                    <Feather name="map-pin" size={11} color={colors.mutedForeground} />
+                    <Text
+                      style={[styles.metaText, { color: colors.mutedForeground }]}
+                      numberOfLines={1}
+                    >
+                      {e.eventLocation}
+                    </Text>
+                  </View>
+                )}
+                {e.positionName && (
+                  <View style={styles.metaItem}>
+                    <Feather name="user-check" size={11} color={colors.primary} />
+                    <Text style={[styles.metaText, { color: colors.primary }]}>
+                      {e.positionName}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          ))
+        ) : (
+          !folgaType && (
+            <Text style={[styles.emptyDay, { color: colors.mutedForeground }]}>Sem escala</Text>
+          )
+        )}
+      </View>
     </View>
   );
 }
 
-// ─── Allocation Card ──────────────────────────────────────────────────────────
+// ─── Week card ─────────────────────────────────────────────────────────────────
 
-function AllocationCard({
-  alloc,
+function WeekCard({
+  weekStart,
+  allocations,
+  folgas,
   colors,
-  hasFolga,
 }: {
-  alloc: MyAllocation;
+  weekStart: string;
+  allocations: MyAllocation[];
+  folgas: FolgaItem[];
   colors: ReturnType<typeof useColors>;
-  hasFolga?: boolean;
 }) {
-  const iconName = EVENT_TYPE_ICONS[alloc.eventType ?? ""] ?? "calendar";
-  const statusColor = ALLOCATION_STATUS_COLORS[alloc.status] ?? "#6B7280";
+  const weekEnd = addDays(weekStart, 6);
+
+  const byDate = useMemo(() => {
+    const m = new Map<string, MyAllocation[]>();
+    for (const a of allocations) {
+      if (!a.eventDate) continue;
+      const list = m.get(a.eventDate) ?? [];
+      list.push(a);
+      m.set(a.eventDate, list);
+    }
+    for (const list of m.values()) {
+      list.sort((x, y) =>
+        (x.eventStartTime ?? "").localeCompare(y.eventStartTime ?? "")
+      );
+    }
+    return m;
+  }, [allocations]);
+
+  const status = allocations.find((a) => a.scaleStatus)?.scaleStatus ?? null;
 
   return (
-    <View
-      style={[
-        styles.card,
-        { backgroundColor: colors.card, borderColor: colors.border },
-      ]}
-    >
-      {/* Date pill + status + optional folga indicator */}
-      <View style={styles.cardHeader}>
-        <View style={styles.cardHeaderLeft}>
-          <View style={[styles.datePill, { backgroundColor: colors.primary + "15" }]}>
-            <Text style={[styles.datePillText, { color: colors.primary }]}>
-              {formatDate(alloc.eventDate)}
-            </Text>
-          </View>
-          {hasFolga && (
-            <View style={[styles.folgaBadge, { backgroundColor: "#dcfce7" }]}>
-              <Text style={styles.folgaBadgeText}>🌴 Folga</Text>
-            </View>
-          )}
-        </View>
-        <View style={[styles.statusBadge, { backgroundColor: statusColor + "20" }]}>
-          <Text style={[styles.statusText, { color: statusColor }]}>
-            {ALLOCATION_STATUS_LABELS[alloc.status] ?? alloc.status}
+    <View style={[styles.weekCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={styles.weekHeader}>
+        <View style={styles.weekHeaderLeft}>
+          <Feather name="calendar" size={15} color={colors.primary} />
+          <Text style={[styles.weekTitle, { color: colors.foreground }]}>
+            Escala {formatShort(weekStart)} a {formatShort(weekEnd)}
           </Text>
         </View>
+        {status && (
+          <View style={[styles.statusBadge, { backgroundColor: colors.muted }]}>
+            <Text style={[styles.statusText, { color: colors.mutedForeground }]}>
+              {SCALE_STATUS_LABELS[status] ?? status}
+            </Text>
+          </View>
+        )}
       </View>
 
-      {/* Event info */}
-      <View style={styles.cardBody}>
-        <View style={styles.iconRow}>
-          <Feather name={iconName as any} size={14} color={colors.mutedForeground} />
-          <Text style={[styles.eventTitle, { color: colors.foreground }]} numberOfLines={1}>
-            {alloc.eventTitle ?? "Evento"}
-          </Text>
-        </View>
-
-        {/* Time + Location */}
-        {(alloc.eventStartTime || alloc.eventLocation) && (
-          <View style={styles.metaRow}>
-            {alloc.eventStartTime && (
-              <View style={styles.metaItem}>
-                <Feather name="clock" size={12} color={colors.mutedForeground} />
-                <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
-                  {formatTime(alloc.eventStartTime)}
-                  {alloc.eventEndTime ? ` — ${formatTime(alloc.eventEndTime)}` : ""}
-                </Text>
-              </View>
-            )}
-            {alloc.eventLocation && (
-              <View style={styles.metaItem}>
-                <Feather name="map-pin" size={12} color={colors.mutedForeground} />
-                <Text style={[styles.metaText, { color: colors.mutedForeground }]} numberOfLines={1}>
-                  {alloc.eventLocation}
-                </Text>
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* Position */}
-        {alloc.positionName && (
-          <View style={styles.positionRow}>
-            <Feather name="user-check" size={12} color={colors.primary} />
-            <Text style={[styles.positionText, { color: colors.primary }]}>
-              {alloc.positionName}
-            </Text>
-          </View>
-        )}
-
-        {/* Scale info */}
-        {alloc.scaleTitle && (
-          <Text style={[styles.scaleLabel, { color: colors.mutedForeground }]} numberOfLines={1}>
-            Escala: {alloc.scaleTitle}
-            {alloc.scaleStatus ? ` · ${SCALE_STATUS_LABELS[alloc.scaleStatus] ?? alloc.scaleStatus}` : ""}
-          </Text>
-        )}
+      <View>
+        {WEEKDAY_LABELS.map((label, i) => {
+          const date = addDays(weekStart, i);
+          return (
+            <DayRow
+              key={date}
+              label={label}
+              date={date}
+              entries={byDate.get(date) ?? []}
+              folgaType={folgaTypeOn(date, folgas)}
+              colors={colors}
+            />
+          );
+        })}
       </View>
     </View>
   );
@@ -234,7 +265,6 @@ export default function ScaleScreen() {
     },
   });
 
-  // Fetch current user's active folgas
   const folgaParams = {
     ...(isManager && operationId ? { operationId } : {}),
     ...(userId ? { userId } : {}),
@@ -251,13 +281,6 @@ export default function ScaleScreen() {
     [folgaData]
   );
 
-  // Upcoming active folgas (end date >= today or start date >= today)
-  const today = new Date().toISOString().slice(0, 10);
-  const upcomingFolgas = useMemo(
-    () => activeFolgas.filter((f) => f.endDate >= today),
-    [activeFolgas, today]
-  );
-
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await queryClient.invalidateQueries({
@@ -267,26 +290,40 @@ export default function ScaleScreen() {
     setRefreshing(false);
   }, [queryClient, refetch]);
 
-  const allAllocations = data?.allocations ?? [];
-  const displayed = activeFilter === "upcoming"
-    ? allAllocations.filter((a) => isUpcoming(a.eventDate))
-    : allAllocations;
+  const allAllocations = useMemo(() => data?.allocations ?? [], [data]);
 
-  // Folgas that have no allocations on any day in their range (pure rest days)
-  const allocationDates = useMemo(
-    () => new Set(allAllocations.map((a) => a.eventDate).filter(Boolean)),
-    [allAllocations]
-  );
-
-  const pureFolgas = useMemo(
-    () => upcomingFolgas.filter((f) => {
-      // Check if there's any allocation overlapping this folga's range
-      for (const d of allocationDates) {
-        if (d && f.startDate <= d && d <= f.endDate) return false;
+  // Group into weeks (Thu→Wed); inject folga-only weeks too.
+  const weeks = useMemo(() => {
+    const byWeek = new Map<string, MyAllocation[]>();
+    for (const a of allAllocations) {
+      if (!a.eventDate) continue;
+      const ws = thursdayOf(a.eventDate);
+      const list = byWeek.get(ws) ?? [];
+      list.push(a);
+      byWeek.set(ws, list);
+    }
+    for (const f of activeFolgas) {
+      if (f.status !== "ACTIVE") continue;
+      let cursor = thursdayOf(f.startDate);
+      while (cursor <= f.endDate) {
+        if (!byWeek.has(cursor)) byWeek.set(cursor, []);
+        cursor = addDays(cursor, 7);
       }
-      return true;
-    }),
-    [upcomingFolgas, allocationDates]
+    }
+    return Array.from(byWeek.entries())
+      .map(([weekStart, allocations]) => ({ weekStart, allocations }))
+      .sort((a, b) => a.weekStart.localeCompare(b.weekStart));
+  }, [allAllocations, activeFolgas]);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const displayedWeeks =
+    activeFilter === "upcoming"
+      ? weeks.filter((w) => addDays(w.weekStart, 6) >= today)
+      : weeks;
+
+  const activeFolgaCount = useMemo(
+    () => activeFolgas.filter((f) => f.endDate >= today).length,
+    [activeFolgas, today]
   );
 
   return (
@@ -304,8 +341,8 @@ export default function ScaleScreen() {
       >
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Minha Escala</Text>
         <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>
-          {allAllocations.length} alocaç{allAllocations.length === 1 ? "ão" : "ões"} no total
-          {upcomingFolgas.length > 0 && ` · 🌴 ${upcomingFolgas.length} folga${upcomingFolgas.length > 1 ? "s" : ""} ativa${upcomingFolgas.length > 1 ? "s" : ""}`}
+          {allAllocations.length} entrada{allAllocations.length === 1 ? "" : "s"} no total
+          {activeFolgaCount > 0 && ` · 🌴 ${activeFolgaCount} folga${activeFolgaCount > 1 ? "s" : ""} ativa${activeFolgaCount > 1 ? "s" : ""}`}
         </Text>
 
         {/* Filter tabs */}
@@ -355,33 +392,24 @@ export default function ScaleScreen() {
           <View style={styles.centered}>
             <ActivityIndicator color={colors.primary} />
           </View>
+        ) : displayedWeeks.length === 0 ? (
+          <AsaEmptyState
+            title={activeFilter === "upcoming" ? "Nenhuma escala futura ainda 📅" : "Nenhuma escala registrada ainda 📅"}
+            subtitle={activeFilter === "upcoming"
+              ? "Quando o supervisor publicar sua escala, cada semana aparece aqui dia a dia!"
+              : "Você ainda não foi alocado em nenhuma escala. Fique ligado! 😊"}
+            pose="planejando"
+          />
         ) : (
-          <>
-            {/* Pure folga cards — rest days with no allocations */}
-            {activeFilter === "upcoming" && pureFolgas.map((f) => (
-              <FolgaCard key={f.id} folga={f} colors={colors} />
-            ))}
-
-            {/* Allocation cards with folga indicators */}
-            {displayed.length === 0 && pureFolgas.length === 0 ? (
-              <AsaEmptyState
-                title={activeFilter === "upcoming" ? "Nenhuma escala futura ainda 📅" : "Nenhuma escala registrada ainda 📅"}
-                subtitle={activeFilter === "upcoming"
-                  ? "Quando o supervisor publicar sua escala, eu apareço aqui com tudo organizado!"
-                  : "Você ainda não foi alocado em nenhuma escala. Fique ligado! 😊"}
-                pose="planejando"
-              />
-            ) : (
-              displayed.map((alloc) => (
-                <AllocationCard
-                  key={alloc.id}
-                  alloc={alloc}
-                  colors={colors}
-                  hasFolga={isDateInFolga(alloc.eventDate ?? "", activeFolgas)}
-                />
-              ))
-            )}
-          </>
+          displayedWeeks.map((w) => (
+            <WeekCard
+              key={w.weekStart}
+              weekStart={w.weekStart}
+              allocations={w.allocations}
+              folgas={activeFolgas}
+              colors={colors}
+            />
+          ))
         )}
       </ScrollView>
     </View>
@@ -416,77 +444,53 @@ const styles = StyleSheet.create({
   scrollContent: { padding: 16, gap: 12 },
   centered: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 60 },
 
-  // Folga Card
-  folgaCard: {
-    borderRadius: 12,
-    borderWidth: 1.5,
-    padding: 14,
-    gap: 6,
-  },
-  folgaHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-  },
-  folgaEmoji: { fontSize: 20, marginTop: 1 },
-  folgaTitle: { fontSize: 14, fontWeight: "700" },
-  folgaMeta: { fontSize: 12, marginTop: 2 },
-  folgaNotes: { fontSize: 11, marginTop: 4, fontStyle: "italic", paddingLeft: 30 },
-
-  // Allocation Card
-  card: {
+  // Week card
+  weekCard: {
     borderRadius: 12,
     borderWidth: 1,
-    overflow: "hidden",
+    padding: 14,
   },
-  cardHeader: {
+  weekHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 8,
+    marginBottom: 8,
   },
-  cardHeaderLeft: {
+  weekHeaderLeft: { flexDirection: "row", alignItems: "center", gap: 6, flex: 1 },
+  weekTitle: { fontSize: 14, fontWeight: "700" },
+  statusBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  statusText: { fontSize: 11, fontWeight: "600" },
+
+  // Day row
+  dayRow: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    flex: 1,
+    gap: 10,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  datePill: {
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  datePillText: { fontSize: 12, fontWeight: "600" },
+  dayPill: { width: 48, alignItems: "center" },
+  dayLabel: { fontSize: 10, fontWeight: "700" },
+  dayDate: { fontSize: 12, fontWeight: "600", marginTop: 1 },
+  dayBody: { flex: 1, gap: 6 },
+  emptyDay: { fontSize: 12, paddingVertical: 2 },
+
   folgaBadge: {
+    alignSelf: "flex-start",
     borderRadius: 6,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
-  folgaBadgeText: { fontSize: 10, fontWeight: "600", color: "#16a34a" },
-  statusBadge: {
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+  folgaBadgeText: { fontSize: 11, fontWeight: "600", color: "#16a34a" },
+
+  // Entry
+  entry: {
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
-  statusText: { fontSize: 11, fontWeight: "600" },
-  cardBody: {
-    paddingHorizontal: 14,
-    paddingBottom: 14,
-    gap: 5,
-  },
-  iconRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  eventTitle: { fontSize: 15, fontWeight: "600", flex: 1 },
-  metaRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 2 },
+  entryTitle: { fontSize: 14, fontWeight: "600" },
+  entryMeta: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 4 },
   metaItem: { flexDirection: "row", alignItems: "center", gap: 4 },
-  metaText: { fontSize: 12 },
-  positionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    marginTop: 4,
-  },
-  positionText: { fontSize: 13, fontWeight: "600" },
-  scaleLabel: { fontSize: 11, marginTop: 2 },
+  metaText: { fontSize: 11 },
 });

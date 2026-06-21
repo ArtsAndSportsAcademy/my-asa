@@ -1,15 +1,14 @@
 ---
-name: FolgaItem field names (API shape)
-description: The shape returned by /api/folgas (useListFolgas / FolgaItem) — field names that bite when consuming folga availability
+name: Folga availability pitfall
+description: The non-obvious trap when building per-day availability from folgas (field names + status value)
 ---
 
-# FolgaItem shape from useListFolgas
+# Folga availability pitfall
 
-`GET /api/folgas` returns items typed as `FolgaItem` with these date/status fields:
-- `startDate` / `endDate` (ISO strings) — NOT `dateFrom`/`dateTo` and NOT a single `date`.
-- `status` — for "is this person unavailable" checks, the active value is `"ACTIVE"` (not `APPROVED`).
-- `type` — folgaTypeEnum: DAY_OFF/NO_SHOW/RECESSO/AFASTAMENTO/RESTRICAO/OUTRO.
+When building a date→user availability/indisponibilidade map from `useListFolgas`:
+- Range fields are `startDate`/`endDate` — NOT `dateFrom`/`dateTo` and NOT a single `date`.
+- "Currently unavailable" is `status === "ACTIVE"` — NOT `APPROVED`.
 
-**Why:** Building availability maps (date→userId→type) by reading `f.dateFrom/f.dateTo/f.date` silently yields an empty map (those fields don't exist), so every member falsely shows "available". This was a real blocker in the admin scales page.
+**Why:** Reading `f.dateFrom/f.dateTo/f.date` silently yields an empty map (those keys don't exist), so every member falsely shows "available". This was a real blocker in the admin scales page and member week views.
 
-**How to apply:** When expanding a folga across a date range for availability indicators, iterate `buildDateRange(startDate, endDate)` and filter `status === "ACTIVE"`. Import the `FolgaItem` type from `@workspace/api-client-react` instead of using `any` to catch field drift at compile time.
+**How to apply:** Iterate `buildDateRange(startDate, endDate)` and filter `status === "ACTIVE"`. Type the items as `FolgaItem` (from `@workspace/api-client-react`) instead of `any` so field drift fails at compile time.

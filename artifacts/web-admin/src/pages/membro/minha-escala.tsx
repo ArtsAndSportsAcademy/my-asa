@@ -19,10 +19,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 
-import {
-  ALLOCATION_STATUS_LABELS,
-  SCALE_STATUS_LABELS,
-} from "@/lib/operational-constants";
+import { SCALE_STATUS_LABELS } from "@/lib/operational-constants";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -52,12 +49,8 @@ const FOLGA_TYPE_LABELS: Record<string, string> = {
   OUTRO:       "Outro",
 };
 
-const ALLOCATION_STATUS_BADGES: Record<string, string> = {
-  ASSIGNED:        "bg-green-100 text-green-700 border-green-200",
-  OPEN:            "bg-gray-100 text-gray-600 border-gray-200",
-  CONFLICT:        "bg-amber-100 text-amber-700 border-amber-200",
-  MANUAL_OVERRIDE: "bg-purple-100 text-purple-700 border-purple-200",
-};
+// Old model: week runs Thursday → Wednesday
+const WEEKDAY_LABELS = ["QUI", "SEX", "SÁB", "DOM", "SEG", "TER", "QUA"];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -67,119 +60,175 @@ function formatDate(dateStr: string | null | undefined): string {
   return `${day}/${month}/${year}`;
 }
 
+function formatShort(dateStr: string): string {
+  const [, month, day] = dateStr.split("-");
+  return `${day}/${month}`;
+}
+
 function formatTime(timeStr: string | null | undefined): string {
   if (!timeStr) return "";
   return timeStr.slice(0, 5);
 }
 
-function isUpcoming(dateStr: string | null | undefined): boolean {
-  if (!dateStr) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const eventDate = new Date(dateStr + "T00:00:00");
-  return eventDate >= today;
+function addDays(dateStr: string, n: number): string {
+  const d = new Date(dateStr + "T00:00:00");
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
 }
 
-function isDateInFolga(date: string, folgas: FolgaLike[]): boolean {
-  return folgas.some(
-    (f) => f.status === "ACTIVE" && f.startDate <= date && date <= f.endDate
+// Snap any date back to its week's Thursday (old MyASA model)
+function thursdayOf(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00");
+  const dow = d.getDay(); // 0=Sun..6=Sat; Thursday=4
+  const diff = (dow - 4 + 7) % 7;
+  d.setDate(d.getDate() - diff);
+  return d.toISOString().slice(0, 10);
+}
+
+function folgaTypeOn(date: string, folgas: FolgaLike[]): string | null {
+  const f = folgas.find(
+    (x) => x.status === "ACTIVE" && x.startDate <= date && date <= x.endDate
   );
+  return f ? f.type : null;
 }
 
-// ─── Folga Card ───────────────────────────────────────────────────────────────
+// ─── Day row (within a week) ───────────────────────────────────────────────────
 
-function FolgaCard({ folga }: { folga: FolgaLike }) {
-  const isSingleDay = folga.startDate === folga.endDate;
-  const periodoLabel = isSingleDay
-    ? formatDate(folga.startDate)
-    : `${formatDate(folga.startDate)} — ${formatDate(folga.endDate)}`;
-
+function DayRow({
+  label,
+  date,
+  entries,
+  folgaType,
+}: {
+  label: string;
+  date: string;
+  entries: MyAllocation[];
+  folgaType: string | null;
+}) {
+  const hasEntries = entries.length > 0;
   return (
-    <Card className="border border-green-300 bg-green-50/60">
-      <CardContent className="p-4 space-y-1.5">
-        <div className="flex items-start gap-3">
-          <Palmtree className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-green-700">
-              Você está de folga neste período
-            </p>
-            <p className="text-xs text-green-700/80 mt-0.5">
-              {FOLGA_TYPE_LABELS[folga.type] ?? folga.type} · {periodoLabel}
-            </p>
-          </div>
-        </div>
-        {folga.notes && (
-          <p className="text-xs italic text-green-800 line-clamp-2 pl-8">{folga.notes}</p>
+    <div className="flex gap-3 py-2.5 border-b last:border-b-0">
+      {/* Day pill */}
+      <div className="w-14 shrink-0 text-center">
+        <p className="text-[11px] font-semibold text-muted-foreground">{label}</p>
+        <p className="text-xs font-medium">{formatShort(date)}</p>
+      </div>
+
+      {/* Day body */}
+      <div className="flex-1 min-w-0 space-y-1.5">
+        {folgaType && (
+          <Badge className="bg-green-100 text-green-700 border border-green-200 text-xs gap-1">
+            <Palmtree className="w-3 h-3" />
+            {FOLGA_TYPE_LABELS[folgaType] ?? folgaType}
+          </Badge>
         )}
-      </CardContent>
-    </Card>
+
+        {hasEntries ? (
+          entries.map((e) => (
+            <div key={e.id} className="rounded-md border bg-card px-3 py-2">
+              <p className="text-sm font-semibold leading-tight">
+                {e.eventTitle ?? "Escala"}
+              </p>
+              <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
+                {e.eventStartTime && (
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Clock className="w-3 h-3" />
+                    {formatTime(e.eventStartTime)}
+                    {e.eventEndTime ? ` — ${formatTime(e.eventEndTime)}` : ""}
+                  </span>
+                )}
+                {e.eventLocation && (
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <MapPin className="w-3 h-3" />
+                    {e.eventLocation}
+                  </span>
+                )}
+                {e.positionName && (
+                  <span className="flex items-center gap-1 text-xs text-primary font-medium">
+                    <UserCheck className="w-3 h-3" />
+                    {e.positionName}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))
+        ) : (
+          !folgaType && (
+            <p className="text-xs text-muted-foreground/70 py-1">Sem escala</p>
+          )
+        )}
+      </div>
+    </div>
   );
 }
 
-// ─── Allocation Card ──────────────────────────────────────────────────────────
+// ─── Week card ─────────────────────────────────────────────────────────────────
 
-function AllocationCard({ alloc, hasFolga }: { alloc: MyAllocation; hasFolga?: boolean }) {
-  const statusClass = ALLOCATION_STATUS_BADGES[alloc.status] ?? "bg-gray-100 text-gray-600 border-gray-200";
+function WeekCard({
+  weekStart,
+  allocations,
+  folgas,
+}: {
+  weekStart: string;
+  allocations: MyAllocation[];
+  folgas: FolgaLike[];
+}) {
+  const weekEnd = addDays(weekStart, 6);
+
+  const byDate = useMemo(() => {
+    const m = new Map<string, MyAllocation[]>();
+    for (const a of allocations) {
+      if (!a.eventDate) continue;
+      const list = m.get(a.eventDate) ?? [];
+      list.push(a);
+      m.set(a.eventDate, list);
+    }
+    for (const list of m.values()) {
+      list.sort((x, y) =>
+        (x.eventStartTime ?? "").localeCompare(y.eventStartTime ?? "")
+      );
+    }
+    return m;
+  }, [allocations]);
+
+  // status: most-relevant scale status present this week
+  const status = allocations.find((a) => a.scaleStatus)?.scaleStatus ?? null;
+  const totalEntries = allocations.length;
 
   return (
     <Card className="border">
-      <CardContent className="p-4 space-y-2">
-        {/* Header row: date pill + folga indicator + status */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="outline" className="text-xs font-semibold gap-1">
-              <Calendar className="w-3 h-3" />
-              {formatDate(alloc.eventDate)}
-            </Badge>
-            {hasFolga && (
-              <Badge className="bg-green-100 text-green-700 border border-green-200 text-xs gap-1">
-                <Palmtree className="w-3 h-3" />
-                Folga
-              </Badge>
-            )}
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-semibold">
+              Escala {formatShort(weekStart)} a {formatShort(weekEnd)}
+            </h3>
           </div>
-          <Badge variant="outline" className={`text-xs ${statusClass}`}>
-            {ALLOCATION_STATUS_LABELS[alloc.status] ?? alloc.status}
-          </Badge>
-        </div>
-
-        {/* Event title */}
-        <h3 className="text-base font-semibold leading-tight">
-          {alloc.eventTitle ?? "Evento"}
-        </h3>
-
-        {/* Meta */}
-        <div className="flex flex-wrap gap-x-4 gap-y-1">
-          {alloc.eventStartTime && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Clock className="w-3 h-3" />
-              {formatTime(alloc.eventStartTime)}
-              {alloc.eventEndTime ? ` — ${formatTime(alloc.eventEndTime)}` : ""}
-            </div>
-          )}
-          {alloc.eventLocation && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <MapPin className="w-3 h-3" />
-              {alloc.eventLocation}
-            </div>
-          )}
-          {alloc.positionName && (
-            <div className="flex items-center gap-1 text-xs text-primary font-medium">
-              <UserCheck className="w-3 h-3" />
-              {alloc.positionName}
-            </div>
+          {status && (
+            <Badge variant="outline" className="text-xs">
+              {SCALE_STATUS_LABELS[status] ?? status}
+            </Badge>
           )}
         </div>
+        <p className="text-xs text-muted-foreground mb-2">
+          {totalEntries} entrada{totalEntries === 1 ? "" : "s"} nesta semana
+        </p>
 
-        {/* Scale info */}
-        {alloc.scaleTitle && (
-          <p className="text-xs text-muted-foreground">
-            Escala: {alloc.scaleTitle}
-            {alloc.scaleStatus
-              ? ` · ${SCALE_STATUS_LABELS[alloc.scaleStatus] ?? alloc.scaleStatus}`
-              : ""}
-          </p>
-        )}
+        <div>
+          {WEEKDAY_LABELS.map((label, i) => {
+            const date = addDays(weekStart, i);
+            return (
+              <DayRow
+                key={date}
+                label={label}
+                date={date}
+                entries={byDate.get(date) ?? []}
+                folgaType={folgaTypeOn(date, folgas)}
+              />
+            );
+          })}
+        </div>
       </CardContent>
     </Card>
   );
@@ -223,38 +272,48 @@ export default function MinhaEscalaPage() {
     [folgaData]
   );
 
+  const allAllocations = useMemo(() => data?.allocations ?? [], [data]);
+
+  // Group allocations into weeks (Thu→Wed). Inject weeks that only have folgas too.
+  const weeks = useMemo(() => {
+    const byWeek = new Map<string, MyAllocation[]>();
+    for (const a of allAllocations) {
+      if (!a.eventDate) continue;
+      const ws = thursdayOf(a.eventDate);
+      const list = byWeek.get(ws) ?? [];
+      list.push(a);
+      byWeek.set(ws, list);
+    }
+    for (const f of activeFolgas) {
+      if (f.status !== "ACTIVE") continue;
+      let cursor = thursdayOf(f.startDate);
+      const end = f.endDate;
+      // walk week-by-week across the folga span
+      while (cursor <= end) {
+        if (!byWeek.has(cursor)) byWeek.set(cursor, []);
+        cursor = addDays(cursor, 7);
+      }
+    }
+    return Array.from(byWeek.entries())
+      .map(([weekStart, allocations]) => ({ weekStart, allocations }))
+      .sort((a, b) => a.weekStart.localeCompare(b.weekStart));
+  }, [allAllocations, activeFolgas]);
+
   const today = new Date().toISOString().slice(0, 10);
-  const upcomingFolgas = useMemo(
-    () => activeFolgas.filter((f) => f.endDate >= today),
+  const displayedWeeks =
+    activeFilter === "upcoming"
+      ? weeks.filter((w) => addDays(w.weekStart, 6) >= today)
+      : weeks;
+
+  const activeFolgaCount = useMemo(
+    () => activeFolgas.filter((f) => f.endDate >= today).length,
     [activeFolgas, today]
   );
 
-  const allAllocations = data?.allocations ?? [];
-  const displayed =
-    activeFilter === "upcoming"
-      ? allAllocations.filter((a) => isUpcoming(a.eventDate))
-      : allAllocations;
-
-  const allocationDates = useMemo(
-    () => new Set(allAllocations.map((a) => a.eventDate).filter(Boolean)),
-    [allAllocations]
-  );
-
-  const pureFolgas = useMemo(
-    () =>
-      upcomingFolgas.filter((f) => {
-        for (const d of allocationDates) {
-          if (d && f.startDate <= d && d <= f.endDate) return false;
-        }
-        return true;
-      }),
-    [upcomingFolgas, allocationDates]
-  );
-
   const subtitle =
-    `${allAllocations.length} alocaç${allAllocations.length === 1 ? "ão" : "ões"} no total` +
-    (upcomingFolgas.length > 0
-      ? ` · ${upcomingFolgas.length} folga${upcomingFolgas.length > 1 ? "s" : ""} ativa${upcomingFolgas.length > 1 ? "s" : ""}`
+    `${allAllocations.length} entrada${allAllocations.length === 1 ? "" : "s"} no total` +
+    (activeFolgaCount > 0
+      ? ` · ${activeFolgaCount} folga${activeFolgaCount > 1 ? "s" : ""} ativa${activeFolgaCount > 1 ? "s" : ""}`
       : "");
 
   return (
@@ -290,36 +349,30 @@ export default function MinhaEscalaPage() {
               </p>
             </CardContent>
           </Card>
+        ) : displayedWeeks.length === 0 ? (
+          <div className="text-center py-16">
+            <Calendar className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-sm font-medium">
+              {activeFilter === "upcoming"
+                ? "Nenhuma escala futura ainda"
+                : "Nenhuma escala registrada ainda"}
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {activeFilter === "upcoming"
+                ? "Quando o supervisor publicar sua escala, cada semana aparecerá aqui dia a dia."
+                : "Você ainda não foi alocado em nenhuma escala. Fique ligado!"}
+            </p>
+          </div>
         ) : (
           <div className="space-y-3">
-            {/* Pure folga cards — rest days with no allocations */}
-            {activeFilter === "upcoming" &&
-              pureFolgas.map((f) => <FolgaCard key={f.id} folga={f} />)}
-
-            {/* Allocation cards with folga indicators */}
-            {displayed.length === 0 && pureFolgas.length === 0 ? (
-              <div className="text-center py-16">
-                <Calendar className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-sm font-medium">
-                  {activeFilter === "upcoming"
-                    ? "Nenhuma escala futura ainda"
-                    : "Nenhuma escala registrada ainda"}
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {activeFilter === "upcoming"
-                    ? "Quando o supervisor publicar sua escala, tudo aparecerá aqui organizado."
-                    : "Você ainda não foi alocado em nenhuma escala. Fique ligado!"}
-                </p>
-              </div>
-            ) : (
-              displayed.map((alloc) => (
-                <AllocationCard
-                  key={alloc.id}
-                  alloc={alloc}
-                  hasFolga={isDateInFolga(alloc.eventDate ?? "", activeFolgas)}
-                />
-              ))
-            )}
+            {displayedWeeks.map((w) => (
+              <WeekCard
+                key={w.weekStart}
+                weekStart={w.weekStart}
+                allocations={w.allocations}
+                folgas={activeFolgas}
+              />
+            ))}
           </div>
         )}
       </div>
