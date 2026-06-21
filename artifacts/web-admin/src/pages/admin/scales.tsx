@@ -937,7 +937,8 @@ export default function ScalesPage() {
 
                 <div className="p-2 space-y-1.5">
                   {memberEntries.map((e) => {
-                    const generated = !!(e as any).agendaEventId;
+                    const agendaParticipant = !!(e as any).isAgendaParticipant;
+                    const generated = !agendaParticipant && !!(e as any).agendaEventId;
                     const label =
                       (e as any).manualLabel ??
                       (e as any).eventTitle ??
@@ -950,7 +951,9 @@ export default function ScalesPage() {
                       <div
                         key={e.id}
                         className={`group relative rounded-lg border px-2 py-1.5 ${
-                          generated
+                          agendaParticipant
+                            ? "bg-sky-500/10 border-sky-500/30"
+                            : generated
                             ? "bg-amber-500/10 border-amber-500/30"
                             : "bg-primary/10 border-primary/20"
                         }`}
@@ -967,6 +970,14 @@ export default function ScalesPage() {
                             {end ? ` – ${fmtTime(end)}` : ""}
                           </p>
                         )}
+                        {agendaParticipant && (
+                          <Badge
+                            variant="outline"
+                            className="mt-1 text-[9px] text-sky-600 border-sky-500/40 px-1 py-0"
+                          >
+                            Agenda
+                          </Badge>
+                        )}
                         {generated && (
                           <Badge
                             variant="outline"
@@ -975,7 +986,7 @@ export default function ScalesPage() {
                             Auto
                           </Badge>
                         )}
-                        {isManager && (
+                        {isManager && !agendaParticipant && (
                           <button
                             onClick={() => handleDeleteEntry(e.id)}
                             className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"

@@ -29,6 +29,13 @@
       "when": 1782007144060,
       "tag": "0003_add_scale_publish_deadline",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1782049874531,
+      "tag": "0004_add_agenda_event_participants",
+      "breakpoints": true
     }
   ]
 }

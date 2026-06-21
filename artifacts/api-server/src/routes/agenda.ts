@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
-import { eq, and, gte, lte } from "drizzle-orm";
+import { eq, and, gte, lte, inArray } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { agendaEventsTable, usersTable, operationsTable } from "@workspace/db";
+import { agendaEventsTable, agendaEventParticipantsTable, usersTable, operationsTable } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
 import { eventBus } from "../lib/event-bus.js";
@@ -28,6 +28,37 @@ async function getEventOrFail(id: string, res: any) {
     return null;
   }
   return event;
+}
+
+// Retorna os IDs de participantes de um evento.
+async function getParticipantIds(eventId: string): Promise<string[]> {
+  const rows = await db
+    .select({ userId: agendaEventParticipantsTable.userId })
+    .from(agendaEventParticipantsTable)
+    .where(eq(agendaEventParticipantsTable.eventId, eventId));
+  return rows.map((r) => r.userId);
+}
+
+// Substitui o conjunto de participantes de um evento (delete-all + insert).
+// Valida que cada usuário pertence à MESMA organização do evento (evita injeção cross-org).
+async function setParticipants(eventId: string, operationId: string, userIds: string[]): Promise<void> {
+  await db.delete(agendaEventParticipantsTable).where(eq(agendaEventParticipantsTable.eventId, eventId));
+  const unique = Array.from(new Set(userIds.filter((id) => typeof id === "string" && id.length > 0)));
+  if (unique.length === 0) return;
+  const [op] = await db
+    .select({ organizationId: operationsTable.organizationId })
+    .from(operationsTable)
+    .where(eq(operationsTable.id, operationId))
+    .limit(1);
+  if (!op) return;
+  const validUsers = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(and(inArray(usersTable.id, unique), eq(usersTable.organizationId, op.organizationId)));
+  const validIds = validUsers.map((u) => u.id);
+  if (validIds.length > 0) {
+    await db.insert(agendaEventParticipantsTable).values(validIds.map((userId) => ({ eventId, userId })));
+  }
 }
 
 // ─── GET /agenda/events ───────────────────────────────────────────────────────
@@ -61,7 +92,22 @@ router.get("/agenda/events", requireAuth, requireOrganization, async (req, res) 
         ? await db.select().from(agendaEventsTable).where(and(...conditions))
         : await db.select().from(agendaEventsTable);
 
-    res.json({ events });
+    // Anexa participantIds (somente para gestores; membros não recebem essa lista).
+    let eventsOut: unknown[] = events;
+    if (isMgr && events.length > 0) {
+      const eventIds = events.map((e) => e.id);
+      const partRows = await db
+        .select({ eventId: agendaEventParticipantsTable.eventId, userId: agendaEventParticipantsTable.userId })
+        .from(agendaEventParticipantsTable)
+        .where(inArray(agendaEventParticipantsTable.eventId, eventIds));
+      const partMap: Record<string, string[]> = {};
+      for (const r of partRows) {
+        (partMap[r.eventId] ??= []).push(r.userId);
+      }
+      eventsOut = events.map((e) => ({ ...e, participantIds: partMap[e.id] ?? [] }));
+    }
+
+    res.json({ events: eventsOut });
   } catch (err) {
     res.status(500).json({ error: "Erro ao listar eventos" });
   }
@@ -76,7 +122,7 @@ router.post("/agenda/events", requireAuth, requireOrganization, async (req, res)
     return;
   }
 
-  const { operationId, showBookId, groupId, type, title, date, endDate, startTime, endTime, location, notes, visibility } =
+  const { operationId, showBookId, groupId, type, title, date, endDate, startTime, endTime, location, notes, visibility, participantIds } =
     req.body;
   if (!operationId || !type || !title || !date) {
     res.status(400).json({ error: "operationId, type, title e date são obrigatórios" });
@@ -107,10 +153,14 @@ router.post("/agenda/events", requireAuth, requireOrganization, async (req, res)
         createdBy: userId,
       })
       .returning();
+    if (Array.isArray(participantIds)) {
+      await setParticipants(event!.id, operationId, participantIds);
+    }
     eventBus.emit("agenda.event.created", { eventId: event!.id, operationId, type, date });
     const log = requestLogger("agenda", req.requestId, req.correlationId);
     log.info({ eventId: event!.id, type, date }, "Evento de agenda criado");
-    res.status(201).json({ event });
+    const persistedParticipantIds = await getParticipantIds(event!.id);
+    res.status(201).json({ event: { ...event, participantIds: persistedParticipantIds } });
   } catch (err) {
     res.status(500).json({ error: "Erro ao criar evento" });
   }
@@ -131,7 +181,13 @@ router.get("/agenda/events/:id", requireAuth, requireOrganization, async (req, r
         return;
       }
     }
-    res.json({ event });
+    // participantIds somente para gestores.
+    if (isManager(userRole)) {
+      const participantIds = await getParticipantIds(event.id);
+      res.json({ event: { ...event, participantIds } });
+    } else {
+      res.json({ event });
+    }
   } catch (err) {
     res.status(500).json({ error: "Erro ao buscar evento" });
   }
@@ -154,7 +210,7 @@ router.patch("/agenda/events/:id", requireAuth, requireOrganization, async (req,
       res.status(409).json({ error: "Evento em estado terminal — não pode ser alterado" });
       return;
     }
-    const { title, date, endDate, startTime, endTime, location, notes, showBookId, groupId, visibility } = req.body;
+    const { title, date, endDate, startTime, endTime, location, notes, showBookId, groupId, visibility, participantIds } = req.body;
     const changedFields: string[] = [];
     if (title !== undefined && title !== event.title) changedFields.push("title");
     if (date !== undefined && date !== event.date) changedFields.push("date");
@@ -175,10 +231,14 @@ router.patch("/agenda/events/:id", requireAuth, requireOrganization, async (req,
       .set(updates as any)
       .where(eq(agendaEventsTable.id, id))
       .returning();
+    if (Array.isArray(participantIds)) {
+      await setParticipants(id, event.operationId, participantIds);
+    }
     if (changedFields.length > 0) {
       eventBus.emit("agenda.event.changed", { eventId: id, changedFields });
     }
-    res.json({ event: updated });
+    const finalParticipantIds = await getParticipantIds(id);
+    res.json({ event: { ...updated, participantIds: finalParticipantIds } });
   } catch (err) {
     res.status(500).json({ error: "Erro ao atualizar evento" });
   }

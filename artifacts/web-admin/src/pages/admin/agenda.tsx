@@ -10,8 +10,10 @@ import {
   useCancelAgendaEvent,
   useCompleteAgendaEvent,
   getListAgendaEventsQueryKey,
+  useListUsers,
+  getListUsersQueryKey,
 } from "@workspace/api-client-react";
-import type { AgendaEvent } from "@workspace/api-client-react";
+import type { AgendaEvent, User as UserModel } from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
 import { AsaEmptyState } from "@/components/AsaEmptyState";
 import { Button } from "@/components/ui/button";
@@ -350,12 +352,14 @@ interface EventFormState {
   title: string; type: string; date: string; endDate: string;
   startTime: string; endTime: string; location: string; notes: string;
   visibility: "OPERATION" | "MANAGEMENT";
+  participantIds: string[];
 }
 
 const emptyForm: EventFormState = {
   title: "", type: "SHOW", date: "", endDate: "",
   startTime: "", endTime: "", location: "", notes: "",
   visibility: "OPERATION",
+  participantIds: [],
 };
 
 // ─── Main page ────────────────────────────────────────────────────────────────
@@ -407,6 +411,25 @@ export default function AgendaPage() {
 
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: getListAgendaEventsQueryKey({ operationId }) });
+
+  // ── Membros da operação (para escolher participantes) ──
+  const { data: usersData } = useListUsers({
+    query: { queryKey: getListUsersQueryKey() },
+  });
+  const members = useMemo<{ id: string; name: string }[]>(() => {
+    return (usersData?.users ?? [])
+      .filter((u: UserModel) => u.status !== "INACTIVE")
+      .map((u: UserModel) => ({ id: u.id, name: u.name }))
+      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  }, [usersData]);
+
+  const toggleParticipant = (userId: string) =>
+    setForm((f) => ({
+      ...f,
+      participantIds: f.participantIds.includes(userId)
+        ? f.participantIds.filter((id) => id !== userId)
+        : [...f.participantIds, userId],
+    }));
 
   // ── Mutations ──
   const createMutation = useCreateAgendaEvent();
@@ -470,7 +493,8 @@ export default function AgendaPage() {
           endTime: form.endTime || undefined, location: form.location || undefined,
           notes: form.notes || undefined,
           visibility: form.visibility as any,
-        },
+          participantIds: form.participantIds,
+        } as any,
       },
       {
         onSuccess: () => { toast({ title: "Evento criado" }); setCreateOpen(false); setForm(emptyForm); invalidate(); },
@@ -490,7 +514,8 @@ export default function AgendaPage() {
           endTime: form.endTime || undefined, location: form.location || undefined,
           notes: form.notes || undefined,
           visibility: form.visibility as any,
-        },
+          participantIds: form.participantIds,
+        } as any,
       },
       {
         onSuccess: () => { toast({ title: "Evento atualizado" }); setEditEvent(null); setForm(emptyForm); invalidate(); },
@@ -541,6 +566,7 @@ export default function AgendaPage() {
       startTime: event.startTime ?? "", endTime: event.endTime ?? "",
       location: event.location ?? "", notes: event.notes ?? "",
       visibility: (event.visibility as "OPERATION" | "MANAGEMENT") ?? "OPERATION",
+      participantIds: ((event as any).participantIds as string[] | undefined) ?? [],
     });
   };
 
@@ -850,6 +876,47 @@ export default function AgendaPage() {
                   : "Todos os membros da operação poderão ver este evento."}
               </p>
             </div>
+            <div className="col-span-2">
+              <div className="flex items-center justify-between">
+                <Label>Participantes</Label>
+                <button
+                  type="button"
+                  className="text-xs text-primary hover:underline"
+                  onClick={() =>
+                    setForm((f) => ({
+                      ...f,
+                      participantIds:
+                        f.participantIds.length === members.length ? [] : members.map((m) => m.id),
+                    }))
+                  }
+                >
+                  {form.participantIds.length === members.length && members.length > 0
+                    ? "Limpar"
+                    : "Selecionar todos"}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground mb-1.5">
+                Quem você marcar aqui aparece automaticamente na Escala Semanal.
+              </p>
+              <div className="max-h-40 overflow-y-auto rounded-lg border p-2 space-y-0.5">
+                {members.length === 0 && (
+                  <p className="text-xs text-muted-foreground py-1">Nenhum membro disponível.</p>
+                )}
+                {members.map((m) => (
+                  <label
+                    key={m.id}
+                    className="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-muted cursor-pointer text-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={form.participantIds.includes(m.id)}
+                      onChange={() => toggleParticipant(m.id)}
+                    />
+                    <span className="truncate">{m.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
@@ -920,6 +987,47 @@ export default function AgendaPage() {
                   ? "Apenas supervisores e administradores verão este evento."
                   : "Todos os membros da operação poderão ver este evento."}
               </p>
+            </div>
+            <div className="col-span-2">
+              <div className="flex items-center justify-between">
+                <Label>Participantes</Label>
+                <button
+                  type="button"
+                  className="text-xs text-primary hover:underline"
+                  onClick={() =>
+                    setForm((f) => ({
+                      ...f,
+                      participantIds:
+                        f.participantIds.length === members.length ? [] : members.map((m) => m.id),
+                    }))
+                  }
+                >
+                  {form.participantIds.length === members.length && members.length > 0
+                    ? "Limpar"
+                    : "Selecionar todos"}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground mb-1.5">
+                Quem você marcar aqui aparece automaticamente na Escala Semanal.
+              </p>
+              <div className="max-h-40 overflow-y-auto rounded-lg border p-2 space-y-0.5">
+                {members.length === 0 && (
+                  <p className="text-xs text-muted-foreground py-1">Nenhum membro disponível.</p>
+                )}
+                {members.map((m) => (
+                  <label
+                    key={m.id}
+                    className="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-muted cursor-pointer text-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={form.participantIds.includes(m.id)}
+                      onChange={() => toggleParticipant(m.id)}
+                    />
+                    <span className="truncate">{m.name}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
           <DialogFooter>

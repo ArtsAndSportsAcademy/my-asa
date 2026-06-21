@@ -20,6 +20,9 @@ Cada vez que orval roda (`pnpm codegen`), ele sobrescreve `lib/api-client-react/
 - `requests-manual.ts` — useListRequests, useListPendingRequests, useDecideRequest, tipos RequestItem/RequestDecisionType/DecideRequestInput
 - `delegations-manual.ts` — useListDelegations, useCreateDelegation, useCancelDelegation, getListDelegationsQueryKey, tipo DelegationItem
 
+## Passthrough sem regenerar spec
+Mutations geradas pelo orval fazem `JSON.stringify(body)` do objeto inteiro, então campos EXTRA no body (ex.: `participantIds`) chegam ao backend sem precisar regenerar a OpenAPI — basta passar `body as any`. Da mesma forma, campos extras na resposta podem ser lidos via `(resp as any).campo`. Evita o risco de regen apagar hooks manuais.
+
 ## Shapes importantes
 - `useDecideRequest(options?)` aceita `{ mutation?: UseMutationOptions<...> }` (chave `mutation`), não opções diretas
 - `DelegationItem.id` (não `delegationId`), `DelegationItem.delegateeName` (não `delegateName`)

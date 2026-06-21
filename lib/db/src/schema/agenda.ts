@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, pgEnum, date, time } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, pgEnum, date, time, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { operationsTable, operationalGroupsTable } from "./organization.js";
@@ -50,3 +50,16 @@ export const insertAgendaEventSchema = createInsertSchema(agendaEventsTable).omi
 });
 export type InsertAgendaEvent = z.infer<typeof insertAgendaEventSchema>;
 export type AgendaEvent = typeof agendaEventsTable.$inferSelect;
+
+// Participantes escolhidos diretamente no evento da agenda.
+// Aparecem automaticamente como células na Escala Semanal (composição em tempo de leitura).
+export const agendaEventParticipantsTable = pgTable("agenda_event_participants", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  eventId: uuid("event_id").notNull().references(() => agendaEventsTable.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  uniqEventUser: unique("agenda_event_participants_event_user_unique").on(t.eventId, t.userId),
+}));
+
+export type AgendaEventParticipant = typeof agendaEventParticipantsTable.$inferSelect;

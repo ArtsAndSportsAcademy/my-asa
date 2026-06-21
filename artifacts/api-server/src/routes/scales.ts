@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, inArray, gte, lte, desc, isNotNull } from "drizzle-orm";
+import { eq, and, inArray, gte, lte, desc, isNotNull, ne } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   scalesTable,
@@ -7,6 +7,7 @@ import {
   allocationCandidatesTable,
   allocationExceptionsTable,
   agendaEventsTable,
+  agendaEventParticipantsTable,
   showBookRolesTable,
   usersTable,
 } from "@workspace/db";
@@ -668,7 +669,53 @@ router.get("/scales/:id/allocations", requireAuth, requireOrganization, async (r
       candidates: (candidateMap[a.id] ?? []).sort((x, y) => x.rank - y.rank),
     }));
 
-    res.json({ allocations: allocationsWithCandidates });
+    // Células virtuais: participantes escolhidos diretamente no evento da agenda.
+    // Aparecem automaticamente na escala (composição em tempo de leitura, sem cópia/sync).
+    const agendaParticipants = await db
+      .select({
+        eventId: agendaEventsTable.id,
+        eventDate: agendaEventsTable.date,
+        eventTitle: agendaEventsTable.title,
+        eventStartTime: agendaEventsTable.startTime,
+        eventEndTime: agendaEventsTable.endTime,
+        userId: agendaEventParticipantsTable.userId,
+        userName: usersTable.name,
+      })
+      .from(agendaEventParticipantsTable)
+      .innerJoin(agendaEventsTable, eq(agendaEventParticipantsTable.eventId, agendaEventsTable.id))
+      .leftJoin(usersTable, eq(agendaEventParticipantsTable.userId, usersTable.id))
+      .where(
+        and(
+          eq(agendaEventsTable.operationId, scale.operationId),
+          gte(agendaEventsTable.date, scale.periodStart),
+          lte(agendaEventsTable.date, scale.periodEnd),
+          ne(agendaEventsTable.status, "CANCELLED"),
+        ),
+      );
+
+    const virtualRows = agendaParticipants.map((p) => ({
+      id: `agp:${p.eventId}:${p.userId}`,
+      agendaEventId: p.eventId,
+      positionId: null,
+      userId: p.userId,
+      status: "AGENDA_PARTICIPANT",
+      overrideReason: null,
+      notes: null,
+      manualDate: p.eventDate,
+      manualLabel: p.eventTitle,
+      startTime: p.eventStartTime,
+      endTime: p.eventEndTime,
+      positionName: null,
+      userName: p.userName,
+      eventDate: p.eventDate,
+      eventTitle: p.eventTitle,
+      eventStartTime: p.eventStartTime,
+      eventEndTime: p.eventEndTime,
+      isAgendaParticipant: true,
+      candidates: [] as [],
+    }));
+
+    res.json({ allocations: [...allocationsWithCandidates, ...virtualRows] });
   } catch (err) {
     log.error({ err }, "erro ao buscar alocações");
     res.status(500).json({ error: "Erro interno" });
