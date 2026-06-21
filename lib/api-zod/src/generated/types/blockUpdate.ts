@@ -11,5 +11,5 @@ export interface BlockUpdate {
   name?: string;
   order?: number;
   changeType?: BlockUpdateChangeType;
-  reason: string;
+  reason?: string;
 }

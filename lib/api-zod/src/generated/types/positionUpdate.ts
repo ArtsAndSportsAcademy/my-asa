@@ -13,5 +13,5 @@ export interface PositionUpdate {
   minimumCoverage?: number;
   tagsJson?: string[];
   changeType?: PositionUpdateChangeType;
-  reason: string;
+  reason?: string;
 }

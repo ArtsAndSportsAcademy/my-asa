@@ -10,5 +10,5 @@ export interface SceneCreate {
   name: string;
   order: number;
   isOptional?: boolean;
-  reason: string;
+  reason?: string;
 }

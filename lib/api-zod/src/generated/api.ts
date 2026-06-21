@@ -789,7 +789,7 @@ export const CreateShowBookSceneBody = zod.object({
   "name": zod.string(),
   "order": zod.number(),
   "isOptional": zod.boolean().optional(),
-  "reason": zod.string()
+  "reason": zod.string().optional()
 })
 
 
@@ -806,7 +806,7 @@ export const UpdateShowBookSceneBody = zod.object({
   "order": zod.number().optional(),
   "isOptional": zod.boolean().optional(),
   "changeType": zod.enum(['STRUCTURAL', 'CONFIG']).optional(),
-  "reason": zod.string()
+  "reason": zod.string().optional()
 })
 
 export const UpdateShowBookSceneResponse = zod.object({
@@ -831,7 +831,7 @@ export const DeleteShowBookSceneParams = zod.object({
 })
 
 export const DeleteShowBookSceneBody = zod.object({
-  "reason": zod.string()
+  "reason": zod.string().optional()
 })
 
 
@@ -846,7 +846,7 @@ export const CreateShowBookBlockBody = zod.object({
   "name": zod.string(),
   "order": zod.number(),
   "sceneId": zod.string().nullish(),
-  "reason": zod.string()
+  "reason": zod.string().optional()
 })
 
 
@@ -862,7 +862,7 @@ export const UpdateShowBookBlockBody = zod.object({
   "name": zod.string().optional(),
   "order": zod.number().optional(),
   "changeType": zod.enum(['STRUCTURAL', 'CONFIG']).optional(),
-  "reason": zod.string()
+  "reason": zod.string().optional()
 })
 
 export const UpdateShowBookBlockResponse = zod.object({
@@ -887,7 +887,7 @@ export const DeleteShowBookBlockParams = zod.object({
 })
 
 export const DeleteShowBookBlockBody = zod.object({
-  "reason": zod.string()
+  "reason": zod.string().optional()
 })
 
 
@@ -904,7 +904,7 @@ export const CreateShowBookPositionBody = zod.object({
   "blockId": zod.string().nullish(),
   "minimumCoverage": zod.number().optional(),
   "tagsJson": zod.array(zod.string()).optional(),
-  "reason": zod.string()
+  "reason": zod.string().optional()
 })
 
 
@@ -922,7 +922,7 @@ export const UpdateShowBookPositionBody = zod.object({
   "minimumCoverage": zod.number().optional(),
   "tagsJson": zod.array(zod.string()).optional(),
   "changeType": zod.enum(['STRUCTURAL', 'CONFIG']).optional(),
-  "reason": zod.string()
+  "reason": zod.string().optional()
 })
 
 export const UpdateShowBookPositionResponse = zod.object({
@@ -949,7 +949,7 @@ export const DeleteShowBookPositionParams = zod.object({
 })
 
 export const DeleteShowBookPositionBody = zod.object({
-  "reason": zod.string()
+  "reason": zod.string().optional()
 })
 
 
@@ -965,7 +965,7 @@ export const CreateShowBookLineBody = zod.object({
   "type": zod.enum(['FIXED_PERSON', 'TITULAR_SUBSTITUTE', 'ROTATION', 'DAY_OF_WEEK', 'FUNCTION', 'CHARACTER', 'MANUAL']),
   "config": zod.record(zod.string(), zod.unknown()).optional(),
   "order": zod.number().optional(),
-  "reason": zod.string()
+  "reason": zod.string().optional()
 })
 
 
@@ -978,10 +978,11 @@ export const UpdateShowBookLineParams = zod.object({
 })
 
 export const UpdateShowBookLineBody = zod.object({
+  "type": zod.enum(['FIXED_PERSON', 'TITULAR_SUBSTITUTE', 'ROTATION', 'DAY_OF_WEEK', 'FUNCTION', 'CHARACTER', 'MANUAL']).optional(),
   "config": zod.record(zod.string(), zod.unknown()).optional(),
   "order": zod.number().optional(),
   "changeType": zod.enum(['STRUCTURAL', 'CONFIG']).optional(),
-  "reason": zod.string()
+  "reason": zod.string().optional()
 })
 
 export const UpdateShowBookLineResponse = zod.object({
@@ -1006,7 +1007,7 @@ export const DeleteShowBookLineParams = zod.object({
 })
 
 export const DeleteShowBookLineBody = zod.object({
-  "reason": zod.string()
+  "reason": zod.string().optional()
 })
 
 

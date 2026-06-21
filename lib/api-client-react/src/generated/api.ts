@@ -174,6 +174,7 @@ import type {
   OperationStatusUpdate,
   OperationUpdate,
   OperationalPanel,
+  OptionalReasonPayload,
   OverrideAllocation200,
   PatchDailyBookAssignment200,
   PatchScaleMeta200,
@@ -3077,7 +3078,7 @@ export const getDeleteShowBookSceneUrl = (id: string,
  */
 export const deleteShowBookScene = async (id: string,
     sceneId: string,
-    reasonPayload: ReasonPayload, options?: RequestInit): Promise<void> => {
+    optionalReasonPayload: OptionalReasonPayload, options?: RequestInit): Promise<void> => {
 
   return customFetch<void>(getDeleteShowBookSceneUrl(id,sceneId),
   {
@@ -3085,7 +3086,7 @@ export const deleteShowBookScene = async (id: string,
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(
-      reasonPayload,)
+      optionalReasonPayload,)
   }
 );}
 
@@ -3093,8 +3094,8 @@ export const deleteShowBookScene = async (id: string,
 
 
 export const getDeleteShowBookSceneMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookScene>>, TError,{id: string;sceneId: string;data: BodyType<ReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookScene>>, TError,{id: string;sceneId: string;data: BodyType<ReasonPayload>}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookScene>>, TError,{id: string;sceneId: string;data: BodyType<OptionalReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookScene>>, TError,{id: string;sceneId: string;data: BodyType<OptionalReasonPayload>}, TContext> => {
 
 const mutationKey = ['deleteShowBookScene'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -3106,7 +3107,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteShowBookScene>>, {id: string;sceneId: string;data: BodyType<ReasonPayload>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteShowBookScene>>, {id: string;sceneId: string;data: BodyType<OptionalReasonPayload>}> = (props) => {
           const {id,sceneId,data} = props ?? {};
 
           return  deleteShowBookScene(id,sceneId,data,requestOptions)
@@ -3120,18 +3121,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type DeleteShowBookSceneMutationResult = NonNullable<Awaited<ReturnType<typeof deleteShowBookScene>>>
-    export type DeleteShowBookSceneMutationBody = BodyType<ReasonPayload>
+    export type DeleteShowBookSceneMutationBody = BodyType<OptionalReasonPayload>
     export type DeleteShowBookSceneMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>
 
     /**
  * @summary Remover cena (mudança estrutural)
  */
 export const useDeleteShowBookScene = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookScene>>, TError,{id: string;sceneId: string;data: BodyType<ReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookScene>>, TError,{id: string;sceneId: string;data: BodyType<OptionalReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof deleteShowBookScene>>,
         TError,
-        {id: string;sceneId: string;data: BodyType<ReasonPayload>},
+        {id: string;sceneId: string;data: BodyType<OptionalReasonPayload>},
         TContext
       > => {
       return useMutation(getDeleteShowBookSceneMutationOptions(options));
@@ -3297,7 +3298,7 @@ export const getDeleteShowBookBlockUrl = (id: string,
  */
 export const deleteShowBookBlock = async (id: string,
     blockId: string,
-    reasonPayload: ReasonPayload, options?: RequestInit): Promise<void> => {
+    optionalReasonPayload: OptionalReasonPayload, options?: RequestInit): Promise<void> => {
 
   return customFetch<void>(getDeleteShowBookBlockUrl(id,blockId),
   {
@@ -3305,7 +3306,7 @@ export const deleteShowBookBlock = async (id: string,
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(
-      reasonPayload,)
+      optionalReasonPayload,)
   }
 );}
 
@@ -3313,8 +3314,8 @@ export const deleteShowBookBlock = async (id: string,
 
 
 export const getDeleteShowBookBlockMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookBlock>>, TError,{id: string;blockId: string;data: BodyType<ReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookBlock>>, TError,{id: string;blockId: string;data: BodyType<ReasonPayload>}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookBlock>>, TError,{id: string;blockId: string;data: BodyType<OptionalReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookBlock>>, TError,{id: string;blockId: string;data: BodyType<OptionalReasonPayload>}, TContext> => {
 
 const mutationKey = ['deleteShowBookBlock'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -3326,7 +3327,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteShowBookBlock>>, {id: string;blockId: string;data: BodyType<ReasonPayload>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteShowBookBlock>>, {id: string;blockId: string;data: BodyType<OptionalReasonPayload>}> = (props) => {
           const {id,blockId,data} = props ?? {};
 
           return  deleteShowBookBlock(id,blockId,data,requestOptions)
@@ -3340,18 +3341,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type DeleteShowBookBlockMutationResult = NonNullable<Awaited<ReturnType<typeof deleteShowBookBlock>>>
-    export type DeleteShowBookBlockMutationBody = BodyType<ReasonPayload>
+    export type DeleteShowBookBlockMutationBody = BodyType<OptionalReasonPayload>
     export type DeleteShowBookBlockMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
 
     /**
  * @summary Remover bloco
  */
 export const useDeleteShowBookBlock = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookBlock>>, TError,{id: string;blockId: string;data: BodyType<ReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookBlock>>, TError,{id: string;blockId: string;data: BodyType<OptionalReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof deleteShowBookBlock>>,
         TError,
-        {id: string;blockId: string;data: BodyType<ReasonPayload>},
+        {id: string;blockId: string;data: BodyType<OptionalReasonPayload>},
         TContext
       > => {
       return useMutation(getDeleteShowBookBlockMutationOptions(options));
@@ -3517,7 +3518,7 @@ export const getDeleteShowBookPositionUrl = (id: string,
  */
 export const deleteShowBookPosition = async (id: string,
     positionId: string,
-    reasonPayload: ReasonPayload, options?: RequestInit): Promise<void> => {
+    optionalReasonPayload: OptionalReasonPayload, options?: RequestInit): Promise<void> => {
 
   return customFetch<void>(getDeleteShowBookPositionUrl(id,positionId),
   {
@@ -3525,7 +3526,7 @@ export const deleteShowBookPosition = async (id: string,
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(
-      reasonPayload,)
+      optionalReasonPayload,)
   }
 );}
 
@@ -3533,8 +3534,8 @@ export const deleteShowBookPosition = async (id: string,
 
 
 export const getDeleteShowBookPositionMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookPosition>>, TError,{id: string;positionId: string;data: BodyType<ReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookPosition>>, TError,{id: string;positionId: string;data: BodyType<ReasonPayload>}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookPosition>>, TError,{id: string;positionId: string;data: BodyType<OptionalReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookPosition>>, TError,{id: string;positionId: string;data: BodyType<OptionalReasonPayload>}, TContext> => {
 
 const mutationKey = ['deleteShowBookPosition'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -3546,7 +3547,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteShowBookPosition>>, {id: string;positionId: string;data: BodyType<ReasonPayload>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteShowBookPosition>>, {id: string;positionId: string;data: BodyType<OptionalReasonPayload>}> = (props) => {
           const {id,positionId,data} = props ?? {};
 
           return  deleteShowBookPosition(id,positionId,data,requestOptions)
@@ -3560,18 +3561,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type DeleteShowBookPositionMutationResult = NonNullable<Awaited<ReturnType<typeof deleteShowBookPosition>>>
-    export type DeleteShowBookPositionMutationBody = BodyType<ReasonPayload>
+    export type DeleteShowBookPositionMutationBody = BodyType<OptionalReasonPayload>
     export type DeleteShowBookPositionMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
 
     /**
  * @summary Remover posição
  */
 export const useDeleteShowBookPosition = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookPosition>>, TError,{id: string;positionId: string;data: BodyType<ReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookPosition>>, TError,{id: string;positionId: string;data: BodyType<OptionalReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof deleteShowBookPosition>>,
         TError,
-        {id: string;positionId: string;data: BodyType<ReasonPayload>},
+        {id: string;positionId: string;data: BodyType<OptionalReasonPayload>},
         TContext
       > => {
       return useMutation(getDeleteShowBookPositionMutationOptions(options));
@@ -3739,7 +3740,7 @@ export const getDeleteShowBookLineUrl = (id: string,
  */
 export const deleteShowBookLine = async (id: string,
     lineId: string,
-    reasonPayload: ReasonPayload, options?: RequestInit): Promise<void> => {
+    optionalReasonPayload: OptionalReasonPayload, options?: RequestInit): Promise<void> => {
 
   return customFetch<void>(getDeleteShowBookLineUrl(id,lineId),
   {
@@ -3747,7 +3748,7 @@ export const deleteShowBookLine = async (id: string,
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(
-      reasonPayload,)
+      optionalReasonPayload,)
   }
 );}
 
@@ -3755,8 +3756,8 @@ export const deleteShowBookLine = async (id: string,
 
 
 export const getDeleteShowBookLineMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookLine>>, TError,{id: string;lineId: string;data: BodyType<ReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookLine>>, TError,{id: string;lineId: string;data: BodyType<ReasonPayload>}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookLine>>, TError,{id: string;lineId: string;data: BodyType<OptionalReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookLine>>, TError,{id: string;lineId: string;data: BodyType<OptionalReasonPayload>}, TContext> => {
 
 const mutationKey = ['deleteShowBookLine'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -3768,7 +3769,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteShowBookLine>>, {id: string;lineId: string;data: BodyType<ReasonPayload>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteShowBookLine>>, {id: string;lineId: string;data: BodyType<OptionalReasonPayload>}> = (props) => {
           const {id,lineId,data} = props ?? {};
 
           return  deleteShowBookLine(id,lineId,data,requestOptions)
@@ -3782,18 +3783,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type DeleteShowBookLineMutationResult = NonNullable<Awaited<ReturnType<typeof deleteShowBookLine>>>
-    export type DeleteShowBookLineMutationBody = BodyType<ReasonPayload>
+    export type DeleteShowBookLineMutationBody = BodyType<OptionalReasonPayload>
     export type DeleteShowBookLineMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
 
     /**
  * @summary Remover linha
  */
 export const useDeleteShowBookLine = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookLine>>, TError,{id: string;lineId: string;data: BodyType<ReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteShowBookLine>>, TError,{id: string;lineId: string;data: BodyType<OptionalReasonPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof deleteShowBookLine>>,
         TError,
-        {id: string;lineId: string;data: BodyType<ReasonPayload>},
+        {id: string;lineId: string;data: BodyType<OptionalReasonPayload>},
         TContext
       > => {
       return useMutation(getDeleteShowBookLineMutationOptions(options));

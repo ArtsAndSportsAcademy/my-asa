@@ -12,5 +12,5 @@ export interface SceneUpdate {
   order?: number;
   isOptional?: boolean;
   changeType?: SceneUpdateChangeType;
-  reason: string;
+  reason?: string;
 }

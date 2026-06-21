@@ -555,7 +555,7 @@ export interface SceneCreate {
   name: string;
   order: number;
   isOptional?: boolean;
-  reason: string;
+  reason?: string;
 }
 
 export type SceneUpdateChangeType = typeof SceneUpdateChangeType[keyof typeof SceneUpdateChangeType];
@@ -571,14 +571,14 @@ export interface SceneUpdate {
   order?: number;
   isOptional?: boolean;
   changeType?: SceneUpdateChangeType;
-  reason: string;
+  reason?: string;
 }
 
 export interface BlockCreate {
   name: string;
   order: number;
   sceneId?: string | null;
-  reason: string;
+  reason?: string;
 }
 
 export type BlockUpdateChangeType = typeof BlockUpdateChangeType[keyof typeof BlockUpdateChangeType];
@@ -593,7 +593,7 @@ export interface BlockUpdate {
   name?: string;
   order?: number;
   changeType?: BlockUpdateChangeType;
-  reason: string;
+  reason?: string;
 }
 
 export interface PositionCreate {
@@ -602,7 +602,7 @@ export interface PositionCreate {
   blockId?: string | null;
   minimumCoverage?: number;
   tagsJson?: string[];
-  reason: string;
+  reason?: string;
 }
 
 export type PositionUpdateChangeType = typeof PositionUpdateChangeType[keyof typeof PositionUpdateChangeType];
@@ -619,7 +619,7 @@ export interface PositionUpdate {
   minimumCoverage?: number;
   tagsJson?: string[];
   changeType?: PositionUpdateChangeType;
-  reason: string;
+  reason?: string;
 }
 
 export type LineCreateType = typeof LineCreateType[keyof typeof LineCreateType];
@@ -641,8 +641,21 @@ export interface LineCreate {
   type: LineCreateType;
   config?: LineCreateConfig;
   order?: number;
-  reason: string;
+  reason?: string;
 }
+
+export type LineUpdateType = typeof LineUpdateType[keyof typeof LineUpdateType];
+
+
+export const LineUpdateType = {
+  FIXED_PERSON: 'FIXED_PERSON',
+  TITULAR_SUBSTITUTE: 'TITULAR_SUBSTITUTE',
+  ROTATION: 'ROTATION',
+  DAY_OF_WEEK: 'DAY_OF_WEEK',
+  FUNCTION: 'FUNCTION',
+  CHARACTER: 'CHARACTER',
+  MANUAL: 'MANUAL',
+} as const;
 
 export type LineUpdateConfig = { [key: string]: unknown };
 
@@ -655,10 +668,11 @@ export const LineUpdateChangeType = {
 } as const;
 
 export interface LineUpdate {
+  type?: LineUpdateType;
   config?: LineUpdateConfig;
   order?: number;
   changeType?: LineUpdateChangeType;
-  reason: string;
+  reason?: string;
 }
 
 export type TagCreateCategory = typeof TagCreateCategory[keyof typeof TagCreateCategory];
@@ -689,6 +703,10 @@ export interface UserTagAssign {
 
 export interface ReasonPayload {
   reason: string;
+}
+
+export interface OptionalReasonPayload {
+  reason?: string;
 }
 
 export type AgendaEventType = typeof AgendaEventType[keyof typeof AgendaEventType];

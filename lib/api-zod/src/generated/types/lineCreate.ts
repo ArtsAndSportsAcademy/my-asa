@@ -12,5 +12,5 @@ export interface LineCreate {
   type: LineCreateType;
   config?: LineCreateConfig;
   order?: number;
-  reason: string;
+  reason?: string;
 }

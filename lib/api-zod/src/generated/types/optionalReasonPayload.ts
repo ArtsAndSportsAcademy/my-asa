@@ -6,9 +6,6 @@
  * OpenAPI spec version: 0.3.0
  */
 
-export interface BlockCreate {
-  name: string;
-  order: number;
-  sceneId?: string | null;
+export interface OptionalReasonPayload {
   reason?: string;
 }

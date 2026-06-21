@@ -7,10 +7,12 @@
  */
 import type { LineUpdateChangeType } from './lineUpdateChangeType';
 import type { LineUpdateConfig } from './lineUpdateConfig';
+import type { LineUpdateType } from './lineUpdateType';
 
 export interface LineUpdate {
+  type?: LineUpdateType;
   config?: LineUpdateConfig;
   order?: number;
   changeType?: LineUpdateChangeType;
-  reason: string;
+  reason?: string;
 }

@@ -12,5 +12,5 @@ export interface PositionCreate {
   blockId?: string | null;
   minimumCoverage?: number;
   tagsJson?: string[];
-  reason: string;
+  reason?: string;
 }

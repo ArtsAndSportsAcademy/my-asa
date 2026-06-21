@@ -1150,7 +1150,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ReasonPayload"
+              $ref: "#/components/schemas/OptionalReasonPayload"
       responses:
         "204":
           description: Cena removida
@@ -1253,7 +1253,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ReasonPayload"
+              $ref: "#/components/schemas/OptionalReasonPayload"
       responses:
         "204":
           description: Bloco removido
@@ -1354,7 +1354,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ReasonPayload"
+              $ref: "#/components/schemas/OptionalReasonPayload"
       responses:
         "204":
           description: Posição removida
@@ -1460,7 +1460,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ReasonPayload"
+              $ref: "#/components/schemas/OptionalReasonPayload"
       responses:
         "204":
           description: Linha removida
@@ -5636,7 +5636,7 @@ components:
           type: boolean
         reason:
           type: string
-      required: [name, order, reason]
+      required: [name, order]
 
     SceneUpdate:
       type: object
@@ -5652,7 +5652,7 @@ components:
           enum: [STRUCTURAL, CONFIG]
         reason:
           type: string
-      required: [reason]
+      required: []
 
     BlockCreate:
       type: object
@@ -5666,7 +5666,7 @@ components:
           nullable: true
         reason:
           type: string
-      required: [name, order, reason]
+      required: [name, order]
 
     BlockUpdate:
       type: object
@@ -5680,7 +5680,7 @@ components:
           enum: [STRUCTURAL, CONFIG]
         reason:
           type: string
-      required: [reason]
+      required: []
 
     PositionCreate:
       type: object
@@ -5700,7 +5700,7 @@ components:
             type: string
         reason:
           type: string
-      required: [name, order, reason]
+      required: [name, order]
 
     PositionUpdate:
       type: object
@@ -5720,7 +5720,7 @@ components:
           enum: [STRUCTURAL, CONFIG]
         reason:
           type: string
-      required: [reason]
+      required: []
 
     LineCreate:
       type: object
@@ -5735,11 +5735,14 @@ components:
           type: integer
         reason:
           type: string
-      required: [type, reason]
+      required: [type]
 
     LineUpdate:
       type: object
       properties:
+        type:
+          type: string
+          enum: [FIXED_PERSON, TITULAR_SUBSTITUTE, ROTATION, DAY_OF_WEEK, FUNCTION, CHARACTER, MANUAL]
         config:
           type: object
           additionalProperties: true
@@ -5750,7 +5753,7 @@ components:
           enum: [STRUCTURAL, CONFIG]
         reason:
           type: string
-      required: [reason]
+      required: []
 
     TagCreate:
       type: object
@@ -5775,6 +5778,13 @@ components:
         reason:
           type: string
       required: [reason]
+
+    OptionalReasonPayload:
+      type: object
+      properties:
+        reason:
+          type: string
+      required: []
 
     # ── Agenda — Schemas ──────────────────────────────────────────────────────
 

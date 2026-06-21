@@ -20,6 +20,8 @@ import { writeHistoryEvent } from "../lib/history-helper.js";
 
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"] as const;
 
+const DEFAULT_STRUCTURAL_REASON = "Edição estrutural (sem motivo informado)";
+
 const router: IRouter = Router();
 
 async function getShowBookOrFail(id: string, res: any) {
@@ -226,9 +228,9 @@ router.get("/show-books/:id/versions", requireAuth, requireOrganization, async (
 
 router.post("/show-books/:id/scenes", requireAuth, requireOrganization, async (req, res) => {
   const showBookId = req.params.id as string;
-  const { name, order, isOptional, reason } = req.body;
+  const { name, order, isOptional } = req.body;
   if (!name || order === undefined) { res.status(400).json({ error: "name e order são obrigatórios" }); return; }
-  if (!reason) { res.status(400).json({ error: "reason é obrigatório para mudança estrutural" }); return; }
+  const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
     const book = await getShowBookOrFail(showBookId, res);
     if (!book) return;
@@ -246,8 +248,8 @@ router.post("/show-books/:id/scenes", requireAuth, requireOrganization, async (r
 router.patch("/show-books/:id/scenes/:sceneId", requireAuth, requireOrganization, async (req, res) => {
   const showBookId = req.params.id as string;
   const sceneId = req.params.sceneId as string;
-  const { name, order, isOptional, reason, changeType } = req.body;
-  if (!reason) { res.status(400).json({ error: "reason é obrigatório" }); return; }
+  const { name, order, isOptional, changeType } = req.body;
+  const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (name !== undefined) updates.name = name;
@@ -270,8 +272,7 @@ router.patch("/show-books/:id/scenes/:sceneId", requireAuth, requireOrganization
 router.delete("/show-books/:id/scenes/:sceneId", requireAuth, requireOrganization, async (req, res) => {
   const showBookId = req.params.id as string;
   const sceneId = req.params.sceneId as string;
-  const { reason } = req.body;
-  if (!reason) { res.status(400).json({ error: "reason é obrigatório" }); return; }
+  const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
     await db.delete(showBookScenesTable)
       .where(and(eq(showBookScenesTable.id, sceneId), eq(showBookScenesTable.showBookId, showBookId)));
@@ -284,9 +285,9 @@ router.delete("/show-books/:id/scenes/:sceneId", requireAuth, requireOrganizatio
 
 router.post("/show-books/:id/blocks", requireAuth, requireOrganization, async (req, res) => {
   const showBookId = req.params.id as string;
-  const { name, order, sceneId, reason } = req.body;
+  const { name, order, sceneId } = req.body;
   if (!name || order === undefined) { res.status(400).json({ error: "name e order são obrigatórios" }); return; }
-  if (!reason) { res.status(400).json({ error: "reason é obrigatório" }); return; }
+  const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
     const book = await getShowBookOrFail(showBookId, res);
     if (!book) return;
@@ -304,8 +305,8 @@ router.post("/show-books/:id/blocks", requireAuth, requireOrganization, async (r
 router.patch("/show-books/:id/blocks/:blockId", requireAuth, requireOrganization, async (req, res) => {
   const showBookId = req.params.id as string;
   const blockId = req.params.blockId as string;
-  const { name, order, reason, changeType } = req.body;
-  if (!reason) { res.status(400).json({ error: "reason é obrigatório" }); return; }
+  const { name, order, changeType } = req.body;
+  const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (name !== undefined) updates.name = name;
@@ -327,8 +328,7 @@ router.patch("/show-books/:id/blocks/:blockId", requireAuth, requireOrganization
 router.delete("/show-books/:id/blocks/:blockId", requireAuth, requireOrganization, async (req, res) => {
   const showBookId = req.params.id as string;
   const blockId = req.params.blockId as string;
-  const { reason } = req.body;
-  if (!reason) { res.status(400).json({ error: "reason é obrigatório" }); return; }
+  const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
     await db.delete(showBookBlocksTable)
       .where(and(eq(showBookBlocksTable.id, blockId), eq(showBookBlocksTable.showBookId, showBookId)));
@@ -341,9 +341,9 @@ router.delete("/show-books/:id/blocks/:blockId", requireAuth, requireOrganizatio
 
 router.post("/show-books/:id/positions", requireAuth, requireOrganization, async (req, res) => {
   const showBookId = req.params.id as string;
-  const { name, order, blockId, minimumCoverage, tagsJson, reason } = req.body;
+  const { name, order, blockId, minimumCoverage, tagsJson } = req.body;
   if (!name || order === undefined) { res.status(400).json({ error: "name e order são obrigatórios" }); return; }
-  if (!reason) { res.status(400).json({ error: "reason é obrigatório" }); return; }
+  const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
     const book = await getShowBookOrFail(showBookId, res);
     if (!book) return;
@@ -366,8 +366,8 @@ router.post("/show-books/:id/positions", requireAuth, requireOrganization, async
 router.patch("/show-books/:id/positions/:positionId", requireAuth, requireOrganization, async (req, res) => {
   const showBookId = req.params.id as string;
   const positionId = req.params.positionId as string;
-  const { name, minimumCoverage, tagsJson, order, reason, changeType } = req.body;
-  if (!reason) { res.status(400).json({ error: "reason é obrigatório" }); return; }
+  const { name, minimumCoverage, tagsJson, order, changeType } = req.body;
+  const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (name !== undefined) updates.name = name;
@@ -391,8 +391,7 @@ router.patch("/show-books/:id/positions/:positionId", requireAuth, requireOrgani
 router.delete("/show-books/:id/positions/:positionId", requireAuth, requireOrganization, async (req, res) => {
   const showBookId = req.params.id as string;
   const positionId = req.params.positionId as string;
-  const { reason } = req.body;
-  if (!reason) { res.status(400).json({ error: "reason é obrigatório" }); return; }
+  const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
     await db.delete(showBookRolesTable)
       .where(and(eq(showBookRolesTable.id, positionId), eq(showBookRolesTable.showBookId, showBookId)));
@@ -406,9 +405,9 @@ router.delete("/show-books/:id/positions/:positionId", requireAuth, requireOrgan
 router.post("/show-books/:id/positions/:positionId/lines", requireAuth, requireOrganization, async (req, res) => {
   const showBookId = req.params.id as string;
   const positionId = req.params.positionId as string;
-  const { type, config, order, reason } = req.body;
+  const { type, config, order } = req.body;
   if (!type) { res.status(400).json({ error: "type é obrigatório" }); return; }
-  if (!reason) { res.status(400).json({ error: "reason é obrigatório" }); return; }
+  const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
     const [line] = await db
       .insert(showBookLinesTable)
@@ -424,10 +423,11 @@ router.post("/show-books/:id/positions/:positionId/lines", requireAuth, requireO
 router.patch("/show-books/:id/lines/:lineId", requireAuth, requireOrganization, async (req, res) => {
   const showBookId = req.params.id as string;
   const lineId = req.params.lineId as string;
-  const { config, order, reason, changeType } = req.body;
-  if (!reason) { res.status(400).json({ error: "reason é obrigatório" }); return; }
+  const { type, config, order, changeType } = req.body;
+  const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
     const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (type !== undefined) updates.type = type;
     if (config !== undefined) updates.config = config;
     if (order !== undefined) updates.order = order;
     const [updated] = await db
@@ -447,8 +447,7 @@ router.patch("/show-books/:id/lines/:lineId", requireAuth, requireOrganization, 
 router.delete("/show-books/:id/lines/:lineId", requireAuth, requireOrganization, async (req, res) => {
   const showBookId = req.params.id as string;
   const lineId = req.params.lineId as string;
-  const { reason } = req.body;
-  if (!reason) { res.status(400).json({ error: "reason é obrigatório" }); return; }
+  const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
     await db.delete(showBookLinesTable).where(eq(showBookLinesTable.id, lineId));
     await bumpVersion(showBookId, "STRUCTURAL", reason, req.user!.sub, req.requestId, req.correlationId);

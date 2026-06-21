@@ -5,14 +5,19 @@ import {
   useGetShowBook,
   useListShowBookVersions,
   useCreateShowBook,
-  useUpdateShowBook,
   useUpdateShowBookStatus,
   useCreateShowBookScene,
+  useUpdateShowBookScene,
   useDeleteShowBookScene,
   useCreateShowBookBlock,
+  useUpdateShowBookBlock,
   useDeleteShowBookBlock,
   useCreateShowBookPosition,
+  useUpdateShowBookPosition,
   useDeleteShowBookPosition,
+  useCreateShowBookLine,
+  useUpdateShowBookLine,
+  useDeleteShowBookLine,
   useListShowBookPositionRefs,
   useAddShowBookPositionRef,
   useDeleteShowBookPositionRef,
@@ -42,8 +47,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import {
-  Plus, ChevronRight, ChevronDown, History, BookOpen, Layers, Layout,
-  AlignLeft, Settings, Trash2, Library,
+  Plus, History, BookOpen, Layers, Settings, Trash2, Library,
+  Pencil, Check, X, ChevronUp, ChevronDown, LayoutGrid,
 } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = { DRAFT: "Rascunho", PUBLISHED: "Publicado", ARCHIVED: "Arquivado" };
@@ -67,47 +72,335 @@ const DOC_STATUS_VARIANTS: Record<string, "default" | "secondary" | "outline"> =
   DRAFT: "secondary", PUBLISHED: "default", UPDATED: "default", ARCHIVED: "outline",
 };
 
-function TreeNode({
-  label, icon: Icon, depth = 0, onDelete, deleteLabel, onRefs, children, badge,
+const LINE_TYPE_LABELS: Record<string, string> = {
+  FIXED_PERSON: "Titular fixo",
+  TITULAR_SUBSTITUTE: "Titular + substitutos",
+  ROTATION: "Rodízio",
+  DAY_OF_WEEK: "Por dia da semana",
+  FUNCTION: "Por função",
+  CHARACTER: "Por personagem",
+  MANUAL: "Manual",
+};
+const LINE_TYPE_OPTIONS = Object.entries(LINE_TYPE_LABELS).map(([value, label]) => ({ value, label }));
+const LINE_TYPE_COLORS: Record<string, string> = {
+  ROTATION: "bg-purple-500/15 text-purple-600 dark:text-purple-300 border-purple-500/30",
+  TITULAR_SUBSTITUTE: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/30",
+};
+const DEFAULT_LINE_TYPE = "MANUAL";
+
+// ── Editable inline text ──────────────────────────────────────────────────────
+function EditableName({
+  value, onSave, className = "", placeholder, disabled,
 }: {
-  label: string; icon: React.ElementType; depth?: number; onDelete?: () => void;
-  deleteLabel?: string; onRefs?: () => void; children?: React.ReactNode; badge?: string;
+  value: string; onSave: (v: string) => void; className?: string; placeholder?: string; disabled?: boolean;
 }) {
-  const [open, setOpen] = useState(true);
-  const hasChildren = !!children;
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  if (disabled) return <span className={className}>{value}</span>;
+
+  if (editing) {
+    const commit = () => {
+      const trimmed = draft.trim();
+      if (trimmed && trimmed !== value) onSave(trimmed);
+      setEditing(false);
+    };
+    return (
+      <span className="flex items-center gap-1">
+        <Input
+          autoFocus
+          value={draft}
+          placeholder={placeholder}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commit();
+            if (e.key === "Escape") { setDraft(value); setEditing(false); }
+          }}
+          className="h-7 text-sm py-0"
+        />
+        <button onClick={commit} className="p-0.5 text-emerald-600 hover:opacity-70" title="Salvar">
+          <Check className="h-3.5 w-3.5" />
+        </button>
+        <button onClick={() => { setDraft(value); setEditing(false); }} className="p-0.5 text-muted-foreground hover:opacity-70" title="Cancelar">
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </span>
+    );
+  }
+
   return (
-    <div>
-      <div
-        className="flex items-center gap-1 py-1 px-2 rounded hover:bg-muted/50 group cursor-pointer"
-        style={{ paddingLeft: `${8 + depth * 16}px` }}
-        onClick={() => hasChildren && setOpen((o) => !o)}
+    <span className="flex items-center gap-1 group/name">
+      <span className={className}>{value}</span>
+      <button
+        onClick={() => { setDraft(value); setEditing(true); }}
+        className="opacity-0 group-hover/name:opacity-100 p-0.5 text-muted-foreground hover:text-primary"
+        title="Renomear"
       >
-        {hasChildren ? (
-          open ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />
-        ) : <span className="w-3" />}
-        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-        <span className="text-sm flex-1 truncate">{label}</span>
-        {badge && <span className="text-xs text-muted-foreground">cob.{badge}</span>}
-        {onRefs && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onRefs(); }}
-            className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-primary rounded"
-            title="Referências oficiais"
-          >
-            <Library className="h-3 w-3" />
+        <Pencil className="h-3 w-3" />
+      </button>
+    </span>
+  );
+}
+
+// ── Reorder arrows ────────────────────────────────────────────────────────────
+function ReorderButtons({
+  onUp, onDown, canUp, canDown,
+}: { onUp: () => void; onDown: () => void; canUp: boolean; canDown: boolean }) {
+  return (
+    <div className="flex flex-col">
+      <button onClick={onUp} disabled={!canUp} className="p-0 disabled:opacity-20 text-muted-foreground hover:text-foreground" title="Mover para cima">
+        <ChevronUp className="h-3.5 w-3.5" />
+      </button>
+      <button onClick={onDown} disabled={!canDown} className="p-0 disabled:opacity-20 text-muted-foreground hover:text-foreground" title="Mover para baixo">
+        <ChevronDown className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
+type Actions = {
+  isAdmin: boolean;
+  updateScene: (sceneId: string, name: string) => void;
+  deleteScene: (sceneId: string) => void;
+  addBlock: (sceneId: string, name: string) => void;
+  updateBlock: (blockId: string, name: string) => void;
+  deleteBlock: (blockId: string) => void;
+  addLine: (blockId: string, name: string, type: string) => void;
+  updatePositionName: (positionId: string, name: string) => void;
+  updatePositionCoverage: (positionId: string, coverage: number) => void;
+  setLineType: (positionId: string, lineId: string | null, type: string) => void;
+  deletePosition: (positionId: string) => void;
+  reorder: (kind: "scene" | "block" | "position", items: any[], index: number, dir: "up" | "down") => void;
+  openRefs: (positionId: string, name: string) => void;
+};
+
+// ── Single line (= posição + sua linha de tipo) ───────────────────────────────
+function LineRow({
+  pos, siblings, index, actions,
+}: { pos: any; siblings: any[]; index: number; actions: Actions }) {
+  const line = pos.lines?.[0];
+  const type = line?.type ?? DEFAULT_LINE_TYPE;
+  const refCount = pos.refsCount ?? 0;
+  const [coverage, setCoverage] = useState(String(pos.minimumCoverage ?? 1));
+
+  const commitCoverage = () => {
+    const n = parseInt(coverage, 10);
+    if (!isNaN(n) && n >= 1 && n !== pos.minimumCoverage) actions.updatePositionCoverage(pos.id, n);
+    else setCoverage(String(pos.minimumCoverage ?? 1));
+  };
+
+  return (
+    <div className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/40 group">
+      <EditableName
+        value={pos.name}
+        onSave={(v) => actions.updatePositionName(pos.id, v)}
+        className="text-sm font-medium"
+        disabled={!actions.isAdmin}
+      />
+      {actions.isAdmin ? (
+        <Select value={type} onValueChange={(v) => actions.setLineType(pos.id, line?.id ?? null, v)}>
+          <SelectTrigger className={`h-6 text-[11px] px-2 w-auto gap-1 border ${LINE_TYPE_COLORS[type] ?? ""}`}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {LINE_TYPE_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : (
+        <Badge variant="outline" className={`text-[10px] ${LINE_TYPE_COLORS[type] ?? ""}`}>
+          {LINE_TYPE_LABELS[type] ?? type}
+        </Badge>
+      )}
+
+      {actions.isAdmin ? (
+        <div className="flex items-center gap-1">
+          <Input
+            type="number"
+            min={1}
+            value={coverage}
+            onChange={(e) => setCoverage(e.target.value)}
+            onBlur={commitCoverage}
+            onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+            className="h-6 w-14 text-[11px] px-1 py-0 text-center"
+          />
+          <span className="text-[11px] text-muted-foreground">pessoas</span>
+        </div>
+      ) : (
+        <span className="text-[11px] text-muted-foreground">{pos.minimumCoverage} pessoas</span>
+      )}
+
+      <div className="flex-1" />
+
+      {refCount > 0 && (
+        <span className="flex items-center gap-0.5 text-[11px] text-primary">
+          <Library className="h-3 w-3" /> {refCount}
+        </span>
+      )}
+
+      {actions.isAdmin && (
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100">
+          <ReorderButtons
+            onUp={() => actions.reorder("position", siblings, index, "up")}
+            onDown={() => actions.reorder("position", siblings, index, "down")}
+            canUp={index > 0}
+            canDown={index < siblings.length - 1}
+          />
+          <button onClick={() => actions.openRefs(pos.id, pos.name)} className="p-0.5 text-muted-foreground hover:text-primary" title="Referências oficiais">
+            <Library className="h-3.5 w-3.5" />
           </button>
-        )}
-        {onDelete && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-destructive rounded"
-            title={deleteLabel}
-          >
-            <Trash2 className="h-3 w-3" />
+          <button onClick={() => actions.deletePosition(pos.id)} className="p-0.5 text-muted-foreground hover:text-destructive" title="Remover linha">
+            <Trash2 className="h-3.5 w-3.5" />
           </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Block (= bloco com suas linhas) ───────────────────────────────────────────
+function BlockCard({
+  block, siblings, index, actions,
+}: { block: any; siblings: any[]; index: number; actions: Actions }) {
+  const positions: any[] = block.positions ?? [];
+  const [newName, setNewName] = useState("");
+  const [newType, setNewType] = useState(DEFAULT_LINE_TYPE);
+
+  const addLine = () => {
+    if (!newName.trim()) return;
+    actions.addLine(block.id, newName.trim(), newType);
+    setNewName("");
+  };
+
+  return (
+    <div className="border rounded-lg bg-card">
+      <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/30 rounded-t-lg">
+        <Layers className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <EditableName
+          value={block.name}
+          onSave={(v) => actions.updateBlock(block.id, v)}
+          className="text-sm font-semibold"
+          disabled={!actions.isAdmin}
+        />
+        <Badge variant="secondary" className="text-[10px]">
+          {positions.length} {positions.length === 1 ? "linha" : "linhas"}
+        </Badge>
+        <div className="flex-1" />
+        {actions.isAdmin && (
+          <div className="flex items-center gap-0.5">
+            <ReorderButtons
+              onUp={() => actions.reorder("block", siblings, index, "up")}
+              onDown={() => actions.reorder("block", siblings, index, "down")}
+              canUp={index > 0}
+              canDown={index < siblings.length - 1}
+            />
+            <button onClick={() => actions.deleteBlock(block.id)} className="p-0.5 text-muted-foreground hover:text-destructive" title="Remover bloco">
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
         )}
       </div>
-      {hasChildren && open && <div>{children}</div>}
+
+      <div className="px-2 py-1.5">
+        {positions.length === 0 && (
+          <p className="text-xs text-muted-foreground px-2 py-1.5">Nenhuma linha neste bloco ainda.</p>
+        )}
+        {positions.map((pos, i) => (
+          <LineRow key={pos.id} pos={pos} siblings={positions} index={i} actions={actions} />
+        ))}
+
+        {actions.isAdmin && (
+          <div className="flex items-center gap-2 mt-1.5 px-2">
+            <Input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") addLine(); }}
+              placeholder="Nova linha (ex.: Personagem A)"
+              className="h-8 text-sm flex-1"
+            />
+            <Select value={newType} onValueChange={setNewType}>
+              <SelectTrigger className="h-8 text-xs w-44 shrink-0"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {LINE_TYPE_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button size="sm" variant="outline" className="h-8 px-2 shrink-0" onClick={addLine} disabled={!newName.trim()}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Scene (= cena com seus blocos) ────────────────────────────────────────────
+function SceneCard({
+  scene, siblings, index, actions,
+}: { scene: any; siblings: any[]; index: number; actions: Actions }) {
+  const blocks: any[] = scene.blocks ?? [];
+  const [newBlock, setNewBlock] = useState("");
+
+  const addBlock = () => {
+    if (!newBlock.trim()) return;
+    actions.addBlock(scene.id, newBlock.trim());
+    setNewBlock("");
+  };
+
+  return (
+    <div className="border rounded-lg bg-muted/10">
+      <div className="flex items-center gap-2 px-3 py-2.5 border-b">
+        <LayoutGrid className="h-4 w-4 text-primary shrink-0" />
+        <EditableName
+          value={scene.name}
+          onSave={(v) => actions.updateScene?.(scene.id, v)}
+          className="text-base font-semibold"
+          disabled={!actions.isAdmin}
+        />
+        {scene.isOptional && <span className="text-[10px] text-muted-foreground">opcional</span>}
+        <div className="flex-1" />
+        {actions.isAdmin && (
+          <div className="flex items-center gap-0.5">
+            <ReorderButtons
+              onUp={() => actions.reorder("scene", siblings, index, "up")}
+              onDown={() => actions.reorder("scene", siblings, index, "down")}
+              canUp={index > 0}
+              canDown={index < siblings.length - 1}
+            />
+            <button onClick={() => actions.deleteScene?.(scene.id)} className="p-0.5 text-muted-foreground hover:text-destructive" title="Remover cena">
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="p-3 flex flex-col gap-2">
+        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          <Layers className="h-3.5 w-3.5" /> Construtor de Blocos
+          <span className="ml-auto">{blocks.length} {blocks.length === 1 ? "bloco" : "blocos"}</span>
+        </div>
+        {blocks.map((block, i) => (
+          <BlockCard key={block.id} block={block} siblings={blocks} index={i} actions={actions} />
+        ))}
+
+        {actions.isAdmin && (
+          <div className="flex items-center gap-2 mt-1">
+            <Input
+              value={newBlock}
+              onChange={(e) => setNewBlock(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") addBlock(); }}
+              placeholder="Nome do bloco (ex.: Abertura, Cena Principal...)"
+              className="h-8 text-sm flex-1"
+            />
+            <Button size="sm" variant="outline" className="h-8 shrink-0" onClick={addBlock} disabled={!newBlock.trim()}>
+              <Plus className="h-4 w-4 mr-1" /> Bloco
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -128,15 +421,11 @@ export default function ShowBookPage() {
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
-  const [addSceneOpen, setAddSceneOpen] = useState(false);
-  const [addBlockOpen, setAddBlockOpen] = useState(false);
-  const [addPositionOpen, setAddPositionOpen] = useState(false);
-  const [activeSceneId, setActiveSceneId] = useState<string | null>(null);
-  const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
   const [selectedPositionId, setSelectedPositionId] = useState<string | null>(null);
   const [selectedPositionName, setSelectedPositionName] = useState<string>("");
   const [refsSheetOpen, setRefsSheetOpen] = useState(false);
   const [refSearchQuery, setRefSearchQuery] = useState("");
+  const [newSceneName, setNewSceneName] = useState("");
 
   const { data: bookData } = useGetShowBook(selectedId ?? "", {
     query: { enabled: !!selectedId, queryKey: getGetShowBookQueryKey(selectedId ?? "") },
@@ -174,15 +463,19 @@ export default function ShowBookPage() {
   const createMutation = useCreateShowBook();
   const statusMutation = useUpdateShowBookStatus();
   const createSceneMutation = useCreateShowBookScene();
+  const updateSceneMutation = useUpdateShowBookScene();
   const deleteSceneMutation = useDeleteShowBookScene();
   const createBlockMutation = useCreateShowBookBlock();
+  const updateBlockMutation = useUpdateShowBookBlock();
   const deleteBlockMutation = useDeleteShowBookBlock();
   const createPositionMutation = useCreateShowBookPosition();
+  const updatePositionMutation = useUpdateShowBookPosition();
   const deletePositionMutation = useDeleteShowBookPosition();
+  const createLineMutation = useCreateShowBookLine();
+  const updateLineMutation = useUpdateShowBookLine();
+  const deleteLineMutation = useDeleteShowBookLine();
   const addRefMutation = useAddShowBookPositionRef();
   const deleteRefMutation = useDeleteShowBookPositionRef();
-
-  void useUpdateShowBook;
 
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: getListShowBooksQueryKey({ operationId }) });
@@ -199,13 +492,12 @@ export default function ShowBookPage() {
 
   const [createForm, setCreateForm] = useState({ title: "", description: "" });
   const [statusForm, setStatusForm] = useState({ status: "PUBLISHED", reason: "" });
-  const [sceneForm, setSceneForm] = useState({ name: "", order: "1", reason: "" });
-  const [blockForm, setBlockForm] = useState({ name: "", order: "1", reason: "" });
-  const [positionForm, setPositionForm] = useState({ name: "", minimumCoverage: "1", reason: "" });
+
+  const failToast = (msg: string) => toast({ title: msg, variant: "destructive" });
 
   const handleCreate = () => {
-    if (!operationId) { toast({ title: "Nenhuma operação ativa", variant: "destructive" }); return; }
-    if (!createForm.title.trim()) { toast({ title: "Título obrigatório", variant: "destructive" }); return; }
+    if (!operationId) { failToast("Nenhuma operação ativa"); return; }
+    if (!createForm.title.trim()) { failToast("Título obrigatório"); return; }
     createMutation.mutate(
       { data: { operationId, title: createForm.title.trim(), description: createForm.description || undefined, type: "STRUCTURED" } },
       {
@@ -216,98 +508,160 @@ export default function ShowBookPage() {
           invalidateAll();
           setSelectedId(data.showBook.id);
         },
-        onError: () => toast({ title: "Erro ao criar livro", variant: "destructive" }),
+        onError: () => failToast("Erro ao criar livro"),
       }
     );
   };
 
   const handleStatus = () => {
-    if (!selectedId || !statusForm.reason) { toast({ title: "Motivo obrigatório", variant: "destructive" }); return; }
+    if (!selectedId || !statusForm.reason) { failToast("Motivo obrigatório"); return; }
     statusMutation.mutate(
       { id: selectedId, data: { status: statusForm.status as any, reason: statusForm.reason } },
       {
         onSuccess: () => { toast({ title: "Status atualizado" }); setStatusOpen(false); invalidateAll(); },
-        onError: () => toast({ title: "Erro ao atualizar status", variant: "destructive" }),
+        onError: () => failToast("Erro ao atualizar status"),
       }
     );
   };
 
-  const handleAddScene = () => {
-    if (!selectedId || !sceneForm.name.trim() || !sceneForm.reason.trim()) {
-      toast({ title: "Nome e motivo são obrigatórios", variant: "destructive" }); return;
-    }
+  // ── Builder actions ─────────────────────────────────────────────────────────
+  const addScene = () => {
+    if (!selectedId || !newSceneName.trim()) return;
+    const order = (selectedBook?.scenes?.length ?? 0) + 1;
     createSceneMutation.mutate(
-      { id: selectedId, data: { name: sceneForm.name.trim(), order: parseInt(sceneForm.order), reason: sceneForm.reason } },
+      { id: selectedId, data: { name: newSceneName.trim(), order } },
       {
-        onSuccess: () => { toast({ title: "Cena adicionada" }); setAddSceneOpen(false); setSceneForm({ name: "", order: "1", reason: "" }); invalidateAll(); },
-        onError: () => toast({ title: "Erro ao adicionar cena", variant: "destructive" }),
+        onSuccess: () => { setNewSceneName(""); invalidateAll(); },
+        onError: () => failToast("Erro ao adicionar cena"),
       }
     );
   };
 
-  const handleDeleteScene = (sceneId: string) => {
+  const updateScene = (sceneId: string, name: string) => {
     if (!selectedId) return;
-    const reason = window.prompt("Motivo da remoção:");
-    if (!reason) return;
+    updateSceneMutation.mutate(
+      { id: selectedId, sceneId, data: { name } },
+      { onSuccess: invalidateAll, onError: () => failToast("Erro ao renomear cena") }
+    );
+  };
+
+  const deleteScene = (sceneId: string) => {
+    if (!selectedId) return;
     deleteSceneMutation.mutate(
-      { id: selectedId, sceneId, data: { reason } },
-      {
-        onSuccess: () => { toast({ title: "Cena removida" }); invalidateAll(); },
-        onError: () => toast({ title: "Erro ao remover cena", variant: "destructive" }),
-      }
+      { id: selectedId, sceneId, data: {} },
+      { onSuccess: () => { toast({ title: "Cena removida" }); invalidateAll(); }, onError: () => failToast("Erro ao remover cena") }
     );
   };
 
-  const handleAddBlock = () => {
-    if (!selectedId || !blockForm.name.trim() || !blockForm.reason.trim()) {
-      toast({ title: "Nome e motivo são obrigatórios", variant: "destructive" }); return;
-    }
+  const addBlock = (sceneId: string, name: string) => {
+    if (!selectedId) return;
+    const scene = selectedBook?.scenes?.find((s: any) => s.id === sceneId);
+    const order = (scene?.blocks?.length ?? 0) + 1;
     createBlockMutation.mutate(
-      { id: selectedId, data: { name: blockForm.name.trim(), order: parseInt(blockForm.order), sceneId: activeSceneId ?? undefined, reason: blockForm.reason } },
-      {
-        onSuccess: () => { toast({ title: "Bloco adicionado" }); setAddBlockOpen(false); setBlockForm({ name: "", order: "1", reason: "" }); invalidateAll(); },
-        onError: () => toast({ title: "Erro ao adicionar bloco", variant: "destructive" }),
-      }
+      { id: selectedId, data: { name, order, sceneId } },
+      { onSuccess: invalidateAll, onError: () => failToast("Erro ao adicionar bloco") }
     );
   };
 
-  const handleDeleteBlock = (blockId: string) => {
+  const updateBlock = (blockId: string, name: string) => {
     if (!selectedId) return;
-    const reason = window.prompt("Motivo da remoção:");
-    if (!reason) return;
+    updateBlockMutation.mutate(
+      { id: selectedId, blockId, data: { name } },
+      { onSuccess: invalidateAll, onError: () => failToast("Erro ao renomear bloco") }
+    );
+  };
+
+  const deleteBlock = (blockId: string) => {
+    if (!selectedId) return;
     deleteBlockMutation.mutate(
-      { id: selectedId, blockId, data: { reason } },
-      {
-        onSuccess: () => { toast({ title: "Bloco removido" }); invalidateAll(); },
-        onError: () => toast({ title: "Erro ao remover bloco", variant: "destructive" }),
-      }
+      { id: selectedId, blockId, data: {} },
+      { onSuccess: () => { toast({ title: "Bloco removido" }); invalidateAll(); }, onError: () => failToast("Erro ao remover bloco") }
     );
   };
 
-  const handleAddPosition = () => {
-    if (!selectedId || !positionForm.name.trim() || !positionForm.reason.trim()) {
-      toast({ title: "Nome e motivo são obrigatórios", variant: "destructive" }); return;
-    }
-    createPositionMutation.mutate(
-      { id: selectedId, data: { name: positionForm.name.trim(), order: 1, blockId: activeBlockId ?? undefined, minimumCoverage: parseInt(positionForm.minimumCoverage), reason: positionForm.reason } },
-      {
-        onSuccess: () => { toast({ title: "Posição adicionada" }); setAddPositionOpen(false); setPositionForm({ name: "", minimumCoverage: "1", reason: "" }); invalidateAll(); },
-        onError: () => toast({ title: "Erro ao adicionar posição", variant: "destructive" }),
-      }
-    );
-  };
-
-  const handleDeletePosition = (positionId: string) => {
+  const addLine = (blockId: string, name: string, type: string) => {
     if (!selectedId) return;
-    const reason = window.prompt("Motivo da remoção:");
-    if (!reason) return;
-    deletePositionMutation.mutate(
-      { id: selectedId, positionId, data: { reason } },
+    const block = selectedBook?.scenes
+      ?.flatMap((s: any) => s.blocks ?? [])
+      .find((b: any) => b.id === blockId);
+    const order = (block?.positions?.length ?? 0) + 1;
+    createPositionMutation.mutate(
+      { id: selectedId, data: { name, order, blockId, minimumCoverage: 1 } },
       {
-        onSuccess: () => { toast({ title: "Posição removida" }); invalidateAll(); },
-        onError: () => toast({ title: "Erro ao remover posição", variant: "destructive" }),
+        onSuccess: (data: any) => {
+          const positionId = data?.position?.id;
+          if (positionId) {
+            createLineMutation.mutate(
+              { id: selectedId, positionId, data: { type: type as any } },
+              { onSuccess: invalidateAll, onError: invalidateAll }
+            );
+          } else {
+            invalidateAll();
+          }
+        },
+        onError: () => failToast("Erro ao adicionar linha"),
       }
     );
+  };
+
+  const updatePositionName = (positionId: string, name: string) => {
+    if (!selectedId) return;
+    updatePositionMutation.mutate(
+      { id: selectedId, positionId, data: { name } },
+      { onSuccess: invalidateAll, onError: () => failToast("Erro ao renomear linha") }
+    );
+  };
+
+  const updatePositionCoverage = (positionId: string, coverage: number) => {
+    if (!selectedId) return;
+    updatePositionMutation.mutate(
+      { id: selectedId, positionId, data: { minimumCoverage: coverage } },
+      { onSuccess: invalidateAll, onError: () => failToast("Erro ao atualizar cobertura") }
+    );
+  };
+
+  const setLineType = (positionId: string, lineId: string | null, type: string) => {
+    if (!selectedId) return;
+    if (lineId) {
+      updateLineMutation.mutate(
+        { id: selectedId, lineId, data: { type: type as any } },
+        { onSuccess: invalidateAll, onError: () => failToast("Erro ao atualizar tipo") }
+      );
+    } else {
+      createLineMutation.mutate(
+        { id: selectedId, positionId, data: { type: type as any } },
+        { onSuccess: invalidateAll, onError: () => failToast("Erro ao definir tipo") }
+      );
+    }
+  };
+
+  const deletePosition = (positionId: string) => {
+    if (!selectedId) return;
+    deletePositionMutation.mutate(
+      { id: selectedId, positionId, data: {} },
+      { onSuccess: () => { toast({ title: "Linha removida" }); invalidateAll(); }, onError: () => failToast("Erro ao remover linha") }
+    );
+  };
+
+  const reorder = (kind: "scene" | "block" | "position", items: any[], index: number, dir: "up" | "down") => {
+    if (!selectedId) return;
+    const target = index + (dir === "up" ? -1 : 1);
+    if (target < 0 || target >= items.length) return;
+    const a = items[index];
+    const b = items[target];
+    const aOrder = a.order ?? index;
+    const bOrder = b.order ?? target;
+    const opts = { onSuccess: invalidateAll, onError: () => failToast("Erro ao reordenar") };
+    if (kind === "scene") {
+      updateSceneMutation.mutate({ id: selectedId, sceneId: a.id, data: { order: bOrder } }, { onError: opts.onError });
+      updateSceneMutation.mutate({ id: selectedId, sceneId: b.id, data: { order: aOrder } }, opts);
+    } else if (kind === "block") {
+      updateBlockMutation.mutate({ id: selectedId, blockId: a.id, data: { order: bOrder } }, { onError: opts.onError });
+      updateBlockMutation.mutate({ id: selectedId, blockId: b.id, data: { order: aOrder } }, opts);
+    } else {
+      updatePositionMutation.mutate({ id: selectedId, positionId: a.id, data: { order: bOrder } }, { onError: opts.onError });
+      updatePositionMutation.mutate({ id: selectedId, positionId: b.id, data: { order: aOrder } }, opts);
+    }
   };
 
   const handleOpenRefs = (posId: string, posName: string) => {
@@ -323,7 +677,7 @@ export default function ShowBookPage() {
       { id: selectedId, positionId: selectedPositionId, data: { documentId } },
       {
         onSuccess: () => { toast({ title: "Referência adicionada" }); invalidateRefs(); },
-        onError: () => toast({ title: "Erro ao adicionar referência", variant: "destructive" }),
+        onError: () => failToast("Erro ao adicionar referência"),
       }
     );
   };
@@ -334,9 +688,17 @@ export default function ShowBookPage() {
       { id: selectedId, positionId: selectedPositionId, refId },
       {
         onSuccess: () => { toast({ title: "Referência removida" }); invalidateRefs(); },
-        onError: () => toast({ title: "Erro ao remover referência", variant: "destructive" }),
+        onError: () => failToast("Erro ao remover referência"),
       }
     );
+  };
+
+  const actions: Actions = {
+    isAdmin,
+    updateScene, deleteScene,
+    addBlock, updateBlock, deleteBlock,
+    addLine, updatePositionName, updatePositionCoverage, setLineType, deletePosition,
+    reorder, openRefs: handleOpenRefs,
   };
 
   return (
@@ -425,78 +787,35 @@ export default function ShowBookPage() {
 
               <Separator />
 
-              {isAdmin && (
-                <div className="flex gap-2 flex-wrap">
-                  <Button size="sm" variant="outline" onClick={() => setAddSceneOpen(true)}>
-                    <Plus className="h-3.5 w-3.5 mr-1" /> Cena
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => { setActiveSceneId(null); setAddBlockOpen(true); }}>
-                    <Plus className="h-3.5 w-3.5 mr-1" /> Bloco
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => { setActiveBlockId(null); setAddPositionOpen(true); }}>
-                    <Plus className="h-3.5 w-3.5 mr-1" /> Posição
-                  </Button>
-                </div>
-              )}
-
-              <div className="border rounded-lg p-2 bg-muted/10">
+              <div className="flex flex-col gap-3">
                 {selectedBook.scenes && selectedBook.scenes.length > 0 ? (
-                  selectedBook.scenes.map((scene: any) => (
-                    <TreeNode
+                  selectedBook.scenes.map((scene: any, i: number) => (
+                    <SceneCard
                       key={scene.id}
-                      label={scene.name}
-                      icon={Layers}
-                      onDelete={isAdmin ? () => handleDeleteScene(scene.id) : undefined}
-                      deleteLabel="Remover cena"
-                    >
-                      {isAdmin && (
-                        <div className="flex gap-1 ml-8 my-1">
-                          <Button size="sm" variant="ghost" className="h-6 text-xs"
-                            onClick={() => { setActiveSceneId(scene.id); setAddBlockOpen(true); }}>
-                            <Plus className="h-3 w-3 mr-0.5" /> Bloco
-                          </Button>
-                        </div>
-                      )}
-                      {scene.blocks?.map((block: any) => (
-                        <TreeNode
-                          key={block.id}
-                          label={block.name}
-                          icon={Layout}
-                          depth={1}
-                          onDelete={isAdmin ? () => handleDeleteBlock(block.id) : undefined}
-                          deleteLabel="Remover bloco"
-                        >
-                          {isAdmin && (
-                            <div className="flex gap-1 ml-12 my-1">
-                              <Button size="sm" variant="ghost" className="h-6 text-xs"
-                                onClick={() => { setActiveBlockId(block.id); setAddPositionOpen(true); }}>
-                                <Plus className="h-3 w-3 mr-0.5" /> Posição
-                              </Button>
-                            </div>
-                          )}
-                          {block.positions?.map((pos: any) => (
-                            <TreeNode
-                              key={pos.id}
-                              label={pos.name}
-                              icon={AlignLeft}
-                              depth={2}
-                              badge={String(pos.minimumCoverage)}
-                              onDelete={isAdmin ? () => handleDeletePosition(pos.id) : undefined}
-                              deleteLabel="Remover posição"
-                              onRefs={() => handleOpenRefs(pos.id, pos.name)}
-                            >
-                              {pos.lines?.map((line: any) => (
-                                <TreeNode key={line.id} label={line.type} icon={AlignLeft} depth={3} />
-                              ))}
-                            </TreeNode>
-                          ))}
-                        </TreeNode>
-                      ))}
-                    </TreeNode>
+                      scene={scene}
+                      siblings={selectedBook.scenes as any[]}
+                      index={i}
+                      actions={actions}
+                    />
                   ))
                 ) : (
-                  <div className="text-sm text-muted-foreground text-center py-6">
-                    Nenhuma cena criada ainda — use os botões acima para estruturar o Livro do Show
+                  <div className="text-sm text-muted-foreground text-center py-6 border rounded-lg bg-muted/10">
+                    Nenhuma cena criada ainda — adicione a primeira cena abaixo para estruturar o Livro do Show
+                  </div>
+                )}
+
+                {isAdmin && (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={newSceneName}
+                      onChange={(e) => setNewSceneName(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") addScene(); }}
+                      placeholder="Nome da cena (ex.: Ato I — Abertura)"
+                      className="h-9 text-sm flex-1"
+                    />
+                    <Button size="sm" variant="outline" className="h-9 shrink-0" onClick={addScene} disabled={!newSceneName.trim()}>
+                      <Plus className="h-4 w-4 mr-1" /> Cena
+                    </Button>
                   </div>
                 )}
               </div>
@@ -694,54 +1013,6 @@ export default function ShowBookPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setStatusOpen(false)}>Cancelar</Button>
             <Button onClick={handleStatus} disabled={statusMutation.isPending}>Confirmar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog: adicionar cena */}
-      <Dialog open={addSceneOpen} onOpenChange={setAddSceneOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Adicionar Cena</DialogTitle></DialogHeader>
-          <div className="flex flex-col gap-3">
-            <div><Label>Nome *</Label><Input value={sceneForm.name} onChange={(e) => setSceneForm((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Ato I — Abertura" /></div>
-            <div><Label>Ordem</Label><Input type="number" value={sceneForm.order} onChange={(e) => setSceneForm((f) => ({ ...f, order: e.target.value }))} /></div>
-            <div><Label>Motivo *</Label><Input value={sceneForm.reason} onChange={(e) => setSceneForm((f) => ({ ...f, reason: e.target.value }))} placeholder="Justificativa da mudança estrutural" /></div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddSceneOpen(false)}>Cancelar</Button>
-            <Button onClick={handleAddScene} disabled={createSceneMutation.isPending}>Adicionar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog: adicionar bloco */}
-      <Dialog open={addBlockOpen} onOpenChange={setAddBlockOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Adicionar Bloco{activeSceneId && " à Cena"}</DialogTitle></DialogHeader>
-          <div className="flex flex-col gap-3">
-            <div><Label>Nome *</Label><Input value={blockForm.name} onChange={(e) => setBlockForm((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Palco principal" /></div>
-            <div><Label>Ordem</Label><Input type="number" value={blockForm.order} onChange={(e) => setBlockForm((f) => ({ ...f, order: e.target.value }))} /></div>
-            <div><Label>Motivo *</Label><Input value={blockForm.reason} onChange={(e) => setBlockForm((f) => ({ ...f, reason: e.target.value }))} placeholder="Justificativa da mudança estrutural" /></div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddBlockOpen(false)}>Cancelar</Button>
-            <Button onClick={handleAddBlock} disabled={createBlockMutation.isPending}>Adicionar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog: adicionar posição */}
-      <Dialog open={addPositionOpen} onOpenChange={setAddPositionOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Adicionar Posição</DialogTitle></DialogHeader>
-          <div className="flex flex-col gap-3">
-            <div><Label>Nome *</Label><Input value={positionForm.name} onChange={(e) => setPositionForm((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Diretor de Palco" /></div>
-            <div><Label>Cobertura mínima</Label><Input type="number" min={1} value={positionForm.minimumCoverage} onChange={(e) => setPositionForm((f) => ({ ...f, minimumCoverage: e.target.value }))} /></div>
-            <div><Label>Motivo *</Label><Input value={positionForm.reason} onChange={(e) => setPositionForm((f) => ({ ...f, reason: e.target.value }))} placeholder="Justificativa da mudança estrutural" /></div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddPositionOpen(false)}>Cancelar</Button>
-            <Button onClick={handleAddPosition} disabled={createPositionMutation.isPending}>Adicionar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
