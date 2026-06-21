@@ -7,5 +7,5 @@
  */
 
 export interface CancelDailyBookRequest {
-  reason: string;
+  reason?: string;
 }

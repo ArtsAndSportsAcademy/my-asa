@@ -39,6 +39,7 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   ChevronRight, ChevronDown, BookOpen, Layers, Layout, AlignLeft,
   Users, Trash2, Play, RefreshCw, Send, RotateCcw, CheckCircle, XCircle, User, AlertTriangle,
+  Check, X,
 } from "lucide-react";
 import { useListUsers } from "@workspace/api-client-react";
 import { useListAgendaEvents } from "@workspace/api-client-react";
@@ -169,60 +170,77 @@ function AssignmentRow({
   onSwap: (assignmentId: string, userId: string | null) => void;
   canEdit: boolean;
 }) {
-  const [swapOpen, setSwapOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(assignment.userId ?? null);
 
   const statusClass = ASSIGNMENT_STATUS_COLORS[assignment.status] ?? "";
   const currentUser = users.find((u) => u.id === assignment.userId);
 
+  const startEditing = () => {
+    setSelectedUserId(assignment.userId ?? null);
+    setEditing(true);
+  };
+  const confirm = () => {
+    onSwap(assignment.id, selectedUserId);
+    setEditing(false);
+  };
+  const cancel = () => {
+    setSelectedUserId(assignment.userId ?? null);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1.5 px-2 py-1" style={{ paddingLeft: `${8 + 4 * 16}px` }}>
+        <User className="h-3 w-3 text-muted-foreground shrink-0" />
+        <Select
+          value={selectedUserId ?? "__none"}
+          onValueChange={(v) => setSelectedUserId(v === "__none" ? null : v)}
+        >
+          <SelectTrigger className="h-7 text-xs flex-1">
+            <SelectValue placeholder="Selecione um escalado..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none">— Sem escalado —</SelectItem>
+            {users.map((u) => (
+              <SelectItem key={u.id} value={u.id}>{u.name ?? u.id}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <button onClick={confirm} className="p-1 rounded hover:bg-green-100 hover:text-green-700" title="Confirmar">
+          <Check className="h-3.5 w-3.5" />
+        </button>
+        <button onClick={cancel} className="p-1 rounded hover:bg-muted hover:text-destructive" title="Cancelar">
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-2 px-2 py-0.5 group" style={{ paddingLeft: `${8 + 4 * 16}px` }}>
       <User className="h-3 w-3 text-muted-foreground shrink-0" />
-      <span className="text-xs text-muted-foreground flex-1">
+      <button
+        type="button"
+        disabled={!canEdit || assignment.status === "REMOVED"}
+        onClick={startEditing}
+        className={`text-xs text-muted-foreground flex-1 text-left truncate ${canEdit && assignment.status !== "REMOVED" ? "hover:text-primary cursor-pointer" : "cursor-default"}`}
+        title={canEdit && assignment.status !== "REMOVED" ? "Clique para trocar o escalado" : undefined}
+      >
         {currentUser?.name ?? assignment.userId ?? "Não escalado"}
-      </span>
+      </button>
       <span className={`text-xs px-1.5 py-0.5 rounded-full ${statusClass}`}>
         {ASSIGNMENT_STATUS_LABELS[assignment.status] ?? assignment.status}
       </span>
       {canEdit && assignment.status !== "REMOVED" && (
         <button
-          onClick={() => setSwapOpen(true)}
+          onClick={startEditing}
           className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-primary rounded text-xs"
           title="Trocar escalado"
         >
           <RefreshCw className="h-3 w-3" />
         </button>
       )}
-      <Dialog open={swapOpen} onOpenChange={setSwapOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Trocar Escalado — {position.name}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <Label>Novo escalado</Label>
-            <Select
-              value={selectedUserId ?? "__none"}
-              onValueChange={(v) => setSelectedUserId(v === "__none" ? null : v)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um usuário..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none">— Sem escalado —</SelectItem>
-                {users.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>{u.name ?? u.id}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSwapOpen(false)}>Cancelar</Button>
-            <Button onClick={() => { onSwap(assignment.id, selectedUserId); setSwapOpen(false); }}>
-              Confirmar troca
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
@@ -348,9 +366,9 @@ export default function AdminDailyBookPage() {
   };
 
   const handleCancel = async () => {
-    if (!selectedId || !cancelReason.trim()) return;
+    if (!selectedId) return;
     try {
-      await cancelMutation.mutateAsync({ id: selectedId, data: { reason: cancelReason } });
+      await cancelMutation.mutateAsync({ id: selectedId, data: cancelReason.trim() ? { reason: cancelReason } : {} });
       toast({ title: "Livro do Dia cancelado." });
       setCancelOpen(false);
       setCancelReason("");
@@ -797,10 +815,10 @@ export default function AdminDailyBookPage() {
           </DialogHeader>
           <div className="space-y-3 py-2">
             <p className="text-sm text-muted-foreground">
-              O Livro do Dia será cancelado. Esta ação requer um motivo obrigatório.
+              O Livro do Dia será cancelado. Você pode informar um motivo (opcional).
             </p>
             <div>
-              <Label>Motivo do cancelamento <span className="text-destructive">*</span></Label>
+              <Label>Motivo do cancelamento <span className="text-muted-foreground font-normal">(opcional)</span></Label>
               <Textarea
                 className="mt-1"
                 placeholder="Ex: Show cancelado por força maior..."
@@ -815,7 +833,7 @@ export default function AdminDailyBookPage() {
             <Button
               variant="destructive"
               onClick={handleCancel}
-              disabled={!cancelReason.trim() || cancelMutation.isPending}
+              disabled={cancelMutation.isPending}
             >
               <XCircle className="h-3.5 w-3.5 mr-1" />
               {cancelMutation.isPending ? "Cancelando..." : "Confirmar Cancelamento"}

@@ -261,7 +261,7 @@ export default function SupervisorDailyBookPage() {
   }, [queryClient]);
 
   const handleRepublish = async () => {
-    if (!selectedId || !republishReason.trim()) return;
+    if (!selectedId) return;
     try {
       const result = await republishMutation.mutateAsync({ id: selectedId });
       toast({ title: `Republicado! Versão ${(result as any).dailyBook?.version}` });
@@ -510,7 +510,7 @@ export default function SupervisorDailyBookPage() {
             </div>
 
             <div>
-              <Label>Motivo da republicação <span className="text-destructive">*</span></Label>
+              <Label>Motivo da republicação <span className="text-muted-foreground font-normal">(opcional)</span></Label>
               <Textarea
                 className="mt-1"
                 placeholder="Ex: Troca de escalado por imprevisto de última hora..."
@@ -526,7 +526,7 @@ export default function SupervisorDailyBookPage() {
             </Button>
             <Button
               onClick={handleRepublish}
-              disabled={!republishReason.trim() || hasLiveChanges === false || isDeltaLoading || republishMutation.isPending}
+              disabled={hasLiveChanges === false || isDeltaLoading || republishMutation.isPending}
             >
               <RotateCcw className="h-3.5 w-3.5 mr-1" />
               {republishMutation.isPending ? "Publicando..." : "Republicar"}

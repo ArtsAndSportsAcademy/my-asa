@@ -1096,7 +1096,7 @@ export interface DailyBookGenerateRequest {
 }
 
 export interface CancelDailyBookRequest {
-  reason: string;
+  reason?: string;
 }
 
 export interface DailyBookAssignmentPatchRequest {

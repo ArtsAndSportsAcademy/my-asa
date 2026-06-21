@@ -26,6 +26,10 @@ import { notifyMany } from "../services/notificationService.js";
 const router: IRouter = Router();
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
 
+// Estilo MyASA antigo: o operador não precisa digitar "Motivo" nas ações do dia.
+// Quando nenhum motivo é informado, o sistema grava um texto padrão na auditoria/delta.
+const DEFAULT_DAY_REASON = "Ajuste operacional do dia (sem motivo informado)";
+
 async function getDailyBookOrFail(id: string, res: any) {
   const [book] = await db
     .select()
@@ -496,7 +500,7 @@ router.post("/daily-book/:id/publish", requireAuth, requireOrganization, async (
       entityType: "daily_book", entityId: id,
       actorId: userId, actorType: "HUMAN",
     }).catch(() => {});
-    await writeDailyBookAudit(id, userId, "publish", { status: book.status }, { status: "PUBLISHED", reason: reason ?? null });
+    await writeDailyBookAudit(id, userId, "publish", { status: book.status }, { status: "PUBLISHED", reason: reason?.trim() || DEFAULT_DAY_REASON });
     // notify assigned users
     db.select({ userId: dailyBookAssignmentsTable.userId })
       .from(dailyBookAssignmentsTable)
@@ -577,7 +581,7 @@ router.post("/daily-book/:id/republish", requireAuth, requireOrganization, async
       entityType: "daily_book", entityId: id,
       actorId: userId, actorType: "HUMAN",
     }).catch(() => {});
-    await writeDailyBookAudit(id, userId, "republish", { version: previousVersion, snapshot: prevSnapshot }, { version: newVersion, delta, reason: reason ?? null });
+    await writeDailyBookAudit(id, userId, "republish", { version: previousVersion, snapshot: prevSnapshot }, { version: newVersion, delta, reason: reason?.trim() || DEFAULT_DAY_REASON });
     // notify assigned users of changes
     db.select({ userId: dailyBookAssignmentsTable.userId })
       .from(dailyBookAssignmentsTable)
@@ -637,16 +641,13 @@ router.post("/daily-book/:id/cancel", requireAuth, requireOrganization, requireR
       res.status(409).json({ error: "Livro já está cancelado" });
       return;
     }
-    if (!reason || reason.trim().length === 0) {
-      res.status(400).json({ error: "Motivo do cancelamento é obrigatório" });
-      return;
-    }
+    const cancelReason = reason?.trim() || DEFAULT_DAY_REASON;
     const [updated] = await db
       .update(dailyBooksTable)
       .set({ status: "CANCELLED", cancelledAt: new Date(), cancelledBy: userId, updatedAt: new Date() })
       .where(eq(dailyBooksTable.id, id))
       .returning();
-    await writeDailyBookAudit(id, userId, "cancel", { status: book.status }, { status: "CANCELLED", reason });
+    await writeDailyBookAudit(id, userId, "cancel", { status: book.status }, { status: "CANCELLED", reason: cancelReason });
     res.json({ dailyBook: updated });
   } catch (err) {
     res.status(500).json({ error: "Erro ao cancelar Livro do Dia" });

@@ -2199,7 +2199,7 @@ export const CancelDailyBookParams = zod.object({
 })
 
 export const CancelDailyBookBody = zod.object({
-  "reason": zod.string()
+  "reason": zod.string().optional()
 })
 
 export const CancelDailyBookResponse = zod.object({
