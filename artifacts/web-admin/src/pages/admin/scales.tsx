@@ -23,6 +23,8 @@ import {
   getListUsersQueryKey,
   getScaleHistoryQueryKey,
   getListScaleExceptionsQueryKey,
+  useListAgendaEvents,
+  getListAgendaEventsQueryKey,
 } from "@workspace/api-client-react";
 import type {
   ScaleSummary,
@@ -30,6 +32,7 @@ import type {
   User as UserModel,
   Operation,
   FolgaItem,
+  AgendaEvent,
 } from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
@@ -58,6 +61,10 @@ const STATUS_VARIANTS: Record<string, "default" | "secondary" | "outline" | "des
 const FOLGA_LABELS: Record<string, string> = {
   DAY_OFF: "FOLGA", NO_SHOW: "NO SHOW", RECESSO: "RECESSO",
   AFASTAMENTO: "AFASTAMENTO", RESTRICAO: "RESTRIÇÃO", OUTRO: "OUTRO",
+};
+const AGENDA_TYPE_LABELS: Record<string, string> = {
+  SHOW: "Show", REHEARSAL: "Ensaio", MEETING: "Reunião",
+  OPERATIONAL_BLOCK: "Bloqueio", COLLECTIVE_VACATION: "Férias coletivas",
 };
 const MONTHS = [
   "JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO",
@@ -201,6 +208,9 @@ export default function ScalesPage() {
   const [addEntryForm, setAddEntryForm] = useState<AddEntryFormState>({
     memberId: "", memberName: "", date: "", label: "", startTime: "", endTime: "", notes: "", force: false,
   });
+  const [showAddAgenda, setShowAddAgenda] = useState(false);
+  const [agendaEventId, setAgendaEventId] = useState<string>("");
+  const [agendaMemberIds, setAgendaMemberIds] = useState<Set<string>>(new Set());
 
   // ── Queries ──────────────────────────────────────────────────────────────
   const { data: opsData } = useGetOperations();
@@ -234,6 +244,19 @@ export default function ScalesPage() {
   const { data: folgasData } = useListFolgas(folgasParams as any, {
     query: { queryKey: getListFolgasQueryKey(folgasParams as any), enabled: folgasEnabled },
   });
+
+  const agendaParams = {
+    operationId: selectedScale?.operationId,
+    from: selectedScale?.periodStart,
+    to: selectedScale?.periodEnd,
+  };
+  const { data: agendaData } = useListAgendaEvents(agendaParams as any, {
+    query: { queryKey: getListAgendaEventsQueryKey(agendaParams as any), enabled: folgasEnabled },
+  });
+  const agendaEvents = useMemo<AgendaEvent[]>(
+    () => (agendaData?.events ?? []) as AgendaEvent[],
+    [agendaData]
+  );
 
   const { data: historyData, isLoading: historyLoading } = useGetScaleHistory(
     selectedScale?.id ?? "",
@@ -572,6 +595,43 @@ export default function ScalesPage() {
     }
   }
 
+  function openAddFromAgenda() {
+    setAgendaEventId("");
+    setAgendaMemberIds(new Set());
+    setShowAddAgenda(true);
+  }
+  function toggleAgendaMember(memberId: string) {
+    setAgendaMemberIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(memberId)) next.delete(memberId);
+      else next.add(memberId);
+      return next;
+    });
+  }
+  async function handleAddFromAgenda() {
+    if (!selectedScale?.id || !agendaEventId || agendaMemberIds.size === 0) return;
+    const ev = agendaEvents.find((e) => e.id === agendaEventId);
+    if (!ev) return;
+    try {
+      for (const memberId of agendaMemberIds) {
+        await createEntryMut.mutateAsync({
+          scaleId: selectedScale.id,
+          memberId,
+          date: ev.date,
+          label: ev.title,
+          startTime: ev.startTime || undefined,
+          endTime: ev.endTime || undefined,
+          notes: ev.location || undefined,
+        } as any);
+      }
+      toast({ title: `Atividade adicionada para ${agendaMemberIds.size} pessoa(s)` });
+      invalidateAllocations();
+      setShowAddAgenda(false);
+    } catch (e: any) {
+      toast({ title: e?.message ?? "Erro ao adicionar da agenda", variant: "destructive" });
+    }
+  }
+
   async function handleDeleteEntry(entryId: string) {
     if (!selectedScale?.id) return;
     try {
@@ -836,6 +896,9 @@ export default function ScalesPage() {
         </div>
         {isManager && (
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={openAddFromAgenda}>
+              <CalendarRange className="h-4 w-4 mr-1" /> Adicionar da agenda
+            </Button>
             <Button variant="outline" size="sm" onClick={handleRegenerate} disabled={regenerateMut.isPending}>
               <Zap className="h-4 w-4 mr-1" /> Auto-gerar
             </Button>
@@ -1013,6 +1076,104 @@ export default function ScalesPage() {
       </Dialog>
 
       {/* Publish deadline dialog */}
+      <Dialog open={showAddAgenda} onOpenChange={setShowAddAgenda}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Adicionar da agenda</DialogTitle>
+            <DialogDescription>
+              <span className="capitalize">{fmtWeekdayLong(daySelected)}</span>, {fmtDDMM(daySelected)} · escolha a atividade e para quem ela aparece
+            </DialogDescription>
+          </DialogHeader>
+
+          {(() => {
+            const dayAgenda = agendaEvents.filter(
+              (e) => e.date === daySelected && e.type !== "SHOW" && e.status !== "CANCELLED"
+            );
+            if (dayAgenda.length === 0) {
+              return (
+                <p className="text-sm text-muted-foreground py-4">
+                  Nenhuma atividade da agenda neste dia (os shows já entram sozinhos).
+                </p>
+              );
+            }
+            return (
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-xs">Atividade</Label>
+                  <div className="mt-1 space-y-1.5 max-h-40 overflow-y-auto">
+                    {dayAgenda.map((e) => {
+                      const sel = agendaEventId === e.id;
+                      return (
+                        <button
+                          key={e.id}
+                          onClick={() => setAgendaEventId(e.id)}
+                          className={`w-full text-left rounded-lg border px-3 py-2 transition-colors ${
+                            sel ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
+                          }`}
+                        >
+                          <p className="text-sm font-medium">{e.title}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {AGENDA_TYPE_LABELS[e.type] ?? e.type}
+                            {e.startTime ? ` · ${fmtTime(e.startTime)}` : ""}
+                            {e.endTime ? ` – ${fmtTime(e.endTime)}` : ""}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Para quem aparece</Label>
+                    <button
+                      className="text-[11px] text-muted-foreground hover:text-foreground"
+                      onClick={() =>
+                        setAgendaMemberIds(
+                          agendaMemberIds.size === members.length
+                            ? new Set()
+                            : new Set(members.map((m) => m.userId))
+                        )
+                      }
+                    >
+                      {agendaMemberIds.size === members.length ? "Limpar" : "Selecionar todos"}
+                    </button>
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-1.5 max-h-44 overflow-y-auto">
+                    {members.map((m) => {
+                      const sel = agendaMemberIds.has(m.userId);
+                      return (
+                        <button
+                          key={m.userId}
+                          onClick={() => toggleAgendaMember(m.userId)}
+                          className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                            sel
+                              ? "border-primary bg-primary/10 text-foreground"
+                              : "border-border text-muted-foreground hover:border-primary/40"
+                          }`}
+                        >
+                          {m.userName}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddAgenda(false)}>Cancelar</Button>
+            <Button
+              onClick={handleAddFromAgenda}
+              disabled={!agendaEventId || agendaMemberIds.size === 0 || createEntryMut.isPending}
+            >
+              Adicionar{agendaMemberIds.size > 0 ? ` (${agendaMemberIds.size})` : ""}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={showDeadline} onOpenChange={setShowDeadline}>
         <DialogContent>
           <DialogHeader>
