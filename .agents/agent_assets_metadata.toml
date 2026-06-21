@@ -42,3 +42,9 @@ id = "rLMXjCOdameJ3BQjPY3In"
 uri = "file://docs/MANUAL.md"
 type = "text"
 title = "Manual do MyASA 2.0"
+
+[[outputs]]
+id = "JgMwjKsMgDS0LXQ5-YMao"
+uri = "file://docs/MANUAL.pdf"
+type = "pdf"
+title = "MyASA 2.0 — Manual (PDF)"
