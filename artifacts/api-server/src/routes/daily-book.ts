@@ -22,6 +22,11 @@ import { writeHistoryEvent } from "../lib/history-helper.js";
 import { hasActiveResponsibility } from "../lib/delegation-check.js";
 import { eventBus } from "../lib/event-bus.js";
 import { notifyMany } from "../services/notificationService.js";
+import {
+  resolveAssignmentsByRole,
+  advanceRotationCounts,
+  type RoleResolution,
+} from "../services/line-resolver.js";
 
 const router: IRouter = Router();
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
@@ -230,6 +235,40 @@ async function writeDailyBookAudit(
   }
 }
 
+// Cria os assignments de um papel: usa o resolvedor (regras + disponibilidade) quando
+// o papel tem linhas configuradas; senão cai na escala (compatibilidade com papéis legados).
+async function createAssignmentsForRole(
+  dailyBookId: string,
+  positionId: string,
+  roleId: string,
+  byRole: Map<string, RoleResolution>,
+  allocationMap: Record<string, string | null>
+) {
+  const rr = byRole.get(roleId);
+  if (rr && rr.hasLines) {
+    if (rr.people.length > 0) {
+      for (const person of rr.people) {
+        await db.insert(dailyBookAssignmentsTable).values({ dailyBookId, positionId, userId: person.userId, status: "ASSIGNED" });
+      }
+      return;
+    }
+    if (rr.hasUncoveredLine) {
+      // Linha ativa hoje sem ninguém disponível: buraco real.
+      await db.insert(dailyBookAssignmentsTable).values({ dailyBookId, positionId, userId: null, status: "OPEN" });
+      return;
+    }
+    // Todas as linhas estão INATIVAS hoje (ex.: dia da semana que não atua): o papel não
+    // participa. Não geramos buraco; honramos apenas uma alocação manual da escala, se houver.
+    const manualUserId = allocationMap[roleId] ?? null;
+    if (manualUserId) {
+      await db.insert(dailyBookAssignmentsTable).values({ dailyBookId, positionId, userId: manualUserId, status: "ASSIGNED" });
+    }
+    return;
+  }
+  const assignedUserId = allocationMap[roleId] ?? null;
+  await db.insert(dailyBookAssignmentsTable).values({ dailyBookId, positionId, userId: assignedUserId, status: assignedUserId ? "ASSIGNED" : "OPEN" });
+}
+
 router.post("/daily-book/generate", requireAuth, requireOrganization, async (req, res) => {
   const { agendaEventId, scaleId: explicitScaleId, operationId: bodyOperationId } = req.body;
   if (!agendaEventId) {
@@ -297,6 +336,9 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
     const allocationMap: Record<string, string | null> = {};
     allocations.forEach((a) => { if (a.positionId) allocationMap[a.positionId] = a.userId ?? null; });
 
+    // Resolve o elenco por papel pelas regras das linhas + disponibilidade na data do evento.
+    const { byRole } = await resolveAssignmentsByRole(showBookId, event.operationId, event.date);
+
     const [dailyBook] = await db
       .insert(dailyBooksTable)
       .values({
@@ -350,14 +392,7 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
         })
         .returning();
       positionsCount++;
-      const assignedUserId = allocationMap[role.id] ?? null;
-      const status = assignedUserId ? "ASSIGNED" : "OPEN";
-      await db.insert(dailyBookAssignmentsTable).values({
-        dailyBookId,
-        positionId: dbPos!.id,
-        userId: assignedUserId,
-        status,
-      });
+      await createAssignmentsForRole(dailyBookId, dbPos!.id, role.id, byRole, allocationMap);
     }
 
     const fullTree = await buildDailyBookTree(dailyBookId);
@@ -431,6 +466,9 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
     const allocationMap: Record<string, string | null> = {};
     allocations.forEach((a) => { if (a.positionId) allocationMap[a.positionId] = a.userId ?? null; });
 
+    // Resolve o elenco por papel pelas regras das linhas + disponibilidade na data do evento.
+    const { byRole } = await resolveAssignmentsByRole(showBookId, event.operationId, event.date);
+
     const newVersion = book.version + 1;
 
     const sceneIdMap: Record<string, string> = {};
@@ -445,8 +483,7 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
     }
     for (const role of roles) {
       const [dbPos] = await db.insert(dailyBookPositionsTable).values({ dailyBookId: id, name: role.name, minimumCoverage: role.minimumCoverage, sourceRoleId: role.id, blockId: role.blockId ? blockIdMap[role.blockId] ?? null : null }).returning();
-      const assignedUserId = allocationMap[role.id] ?? null;
-      await db.insert(dailyBookAssignmentsTable).values({ dailyBookId: id, positionId: dbPos!.id, userId: assignedUserId, status: assignedUserId ? "ASSIGNED" : "OPEN" });
+      await createAssignmentsForRole(id, dbPos!.id, role.id, byRole, allocationMap);
     }
 
     const fullTree = await buildDailyBookTree(id);
@@ -492,6 +529,21 @@ router.post("/daily-book/:id/publish", requireAuth, requireOrganization, async (
       .set({ status: "PUBLISHED", publishedAt: new Date(), publishedBy: userId, updatedAt: new Date() })
       .where(eq(dailyBooksTable.id, id))
       .returning();
+
+    // Efetivação da escala do dia: avança os contadores de rodízio uma única vez (DRAFT→PUBLISHED).
+    if (book.showBookId && book.agendaEventId) {
+      const [ev] = await db
+        .select({ operationId: agendaEventsTable.operationId, date: agendaEventsTable.date })
+        .from(agendaEventsTable)
+        .where(eq(agendaEventsTable.id, book.agendaEventId))
+        .limit(1);
+      if (ev?.operationId && ev.date) {
+        advanceRotationCounts(book.showBookId, ev.operationId, ev.date).catch((e) =>
+          console.error("rotation advance failed", e)
+        );
+      }
+    }
+
     eventBus.emit("daily-book.published", { dailyBookId: id, version: updated!.version, publishedBy: userId });
     writeHistoryEvent({
       category: "DAILY_BOOK", action: "published",

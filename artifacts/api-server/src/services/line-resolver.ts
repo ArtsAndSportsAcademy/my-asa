@@ -329,3 +329,109 @@ export async function resolveShowBookCast(
 
   return { date: dateISO, weekday, scenes, uncoveredCount };
 }
+
+// ─── Mapa por papel (para alimentar o Livro do Dia) ───────────────────────────
+
+export interface RoleResolution {
+  /** Pessoas concretas (deduplicadas) somando todas as linhas COBERTAS do papel. */
+  people: ResolvedPerson[];
+  /** userIds cujo contador de rodízio deveria avançar quando o livro for efetivado. */
+  rotationAdvanceUserIds: string[];
+  /** O papel tem ao menos uma linha configurada (senão, cair na escala). */
+  hasLines: boolean;
+  /** Há ao menos uma linha que DEVERIA ter alguém hoje, mas ninguém está disponível (buraco real). */
+  hasUncoveredLine: boolean;
+  /** Há ao menos uma linha que requer cobertura hoje (COBERTA ou DESCOBERTA). */
+  hasActiveLine: boolean;
+}
+
+/**
+ * Resolve o elenco por PAPEL (showBookRole) numa data, agregando as linhas de cada
+ * papel. Usado para preencher os assignments do Livro do Dia automaticamente.
+ * A chave do mapa é o id do papel (= positionId do Livro do Show).
+ */
+export async function resolveAssignmentsByRole(
+  showBookId: string,
+  operationId: string,
+  dateISO: string
+): Promise<{ byRole: Map<string, RoleResolution>; result: ResolveResult }> {
+  const result = await resolveShowBookCast(showBookId, operationId, dateISO);
+  const byRole = new Map<string, RoleResolution>();
+  for (const scene of result.scenes) {
+    for (const block of scene.blocks) {
+      for (const pos of block.positions) {
+        const seen = new Set<string>();
+        const people: ResolvedPerson[] = [];
+        const rotationAdvanceUserIds: string[] = [];
+        let hasUncoveredLine = false;
+        let hasActiveLine = false;
+        for (const line of pos.lines) {
+          for (const p of line.people) {
+            if (!seen.has(p.userId)) { seen.add(p.userId); people.push(p); }
+          }
+          if (line.rotationAdvanceUserId) rotationAdvanceUserIds.push(line.rotationAdvanceUserId);
+          if (line.status === "UNCOVERED") { hasUncoveredLine = true; hasActiveLine = true; }
+          else if (line.status === "COVERED") { hasActiveLine = true; }
+        }
+        byRole.set(pos.positionId, {
+          people,
+          rotationAdvanceUserIds,
+          hasLines: pos.lines.length > 0,
+          hasUncoveredLine,
+          hasActiveLine,
+        });
+      }
+    }
+  }
+  return { byRole, result };
+}
+
+/**
+ * Avança os contadores de rodízio (config.executionCounts) das linhas ROTATION
+ * conforme o elenco resolvido na data. Deve ser chamado UMA vez quando a escala do
+ * dia é efetivada (publicação do Livro do Dia). Best-effort.
+ */
+export async function advanceRotationCounts(
+  showBookId: string,
+  operationId: string,
+  dateISO: string
+): Promise<number> {
+  const result = await resolveShowBookCast(showBookId, operationId, dateISO);
+  const advances: { lineId: string; userId: string }[] = [];
+  for (const scene of result.scenes) {
+    for (const block of scene.blocks) {
+      for (const pos of block.positions) {
+        for (const line of pos.lines) {
+          if (line.rotationAdvanceUserId) {
+            advances.push({ lineId: line.lineId, userId: line.rotationAdvanceUserId });
+          }
+        }
+      }
+    }
+  }
+  if (advances.length === 0) return 0;
+
+  const lineIds = advances.map((a) => a.lineId);
+  const lines = await db
+    .select()
+    .from(showBookLinesTable)
+    .where(inArray(showBookLinesTable.id, lineIds));
+  const byId = new Map(lines.map((l) => [l.id, l]));
+
+  let updated = 0;
+  for (const adv of advances) {
+    const line = byId.get(adv.lineId);
+    if (!line) continue;
+    const cfg = (line.config && typeof line.config === "object"
+      ? { ...(line.config as Record<string, unknown>) }
+      : {}) as Record<string, unknown>;
+    const counts = { ...((cfg.executionCounts && typeof cfg.executionCounts === "object"
+      ? cfg.executionCounts
+      : {}) as Record<string, number>) };
+    counts[adv.userId] = asNum(counts[adv.userId]) + 1;
+    cfg.executionCounts = counts;
+    await db.update(showBookLinesTable).set({ config: cfg as any }).where(eq(showBookLinesTable.id, adv.lineId));
+    updated += 1;
+  }
+  return updated;
+}

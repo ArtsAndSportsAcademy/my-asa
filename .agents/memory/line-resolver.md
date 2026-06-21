@@ -29,13 +29,21 @@ do Livro do Show numa data específica.
 - Endpoint `GET /show-books/:id/resolve?date=YYYY-MM-DD` valida data de calendário real
   (reserializa e compara) além do regex.
 
-## Daily Book NÃO usa as configs das linhas
-O Livro do Dia (`daily-book.ts`) é um SNAPSHOT gerado de Show Book + Escala PUBLICADA: as
-atribuições (`assignments`) vêm da **Escala** (scale allocations → positions), não das configs
-de linha. Logo "alimentar o Livro do Dia" com o resolvedor = trocar o fluxo escala→resolvedor
-na geração — mudança de longo alcance que exige consentimento do usuário, não fazer silenciosamente.
+## Livro do Dia é preenchido pelo resolvedor (com fallback de escala)
+`daily-book.ts` (generate/regenerate) preenche os `assignments` por PAPEL via
+`resolveAssignmentsByRole` (positionId do resolvedor === showBookRole.id === dailyBook.sourceRoleId).
+Regra por papel em `createAssignmentsForRole`:
+- papel COM linhas e pessoas resolvidas → 1 assignment ASSIGNED por pessoa (deduplicada);
+- papel COM linhas, sem pessoas, mas com linha UNCOVERED (ativa hoje sem ninguém disponível) → 1 OPEN (buraco real);
+- papel COM linhas todas INATIVAS hoje (ex.: DAY_OF_WEEK fora do dia) → NÃO gera buraco; só honra alocação manual da escala se houver;
+- papel SEM linhas → fallback na escala publicada (compat papéis legados).
+**Why:** INATIVO ≠ buraco; tratar dia-sem-atuação como OPEN inflava falsos buracos.
+**How to apply:** ao mexer na geração, preservar a granularidade de status (hasUncoveredLine/hasActiveLine em RoleResolution), não só "tem pessoa ou não".
 
-## Status do que falta no Task #97
-Feito: resolvedor + endpoint + hook `useResolveShowBook` + painel "Conferir por data" no web-admin
-+ flag "fixo do dia" (config.fixedForDay em ROTATION, default true; badge na conferência).
-Falta: alimentar Livro do Dia (decisão de arquitetura pendente) e visão do membro (web+mobile leitura).
+## Avanço de rodízio na publicação (tradeoff conhecido)
+`advanceRotationCounts` é chamado best-effort no `/publish` (DRAFT→PUBLISHED, acontece uma vez;
+regenerate é bloqueado após publicar) e RE-RESOLVE a data para incrementar `config.executionCounts`.
+**Why:** publish ocorre uma vez, então não há dupla contagem; re-resolver evita persistir vencedores no schema.
+**Tradeoff:** se a disponibilidade mudar ENTRE generate e publish, o contador pode avançar para pessoa
+diferente da que ficou no assignment gerado. Aceitável para v1 (publish costuma seguir o generate de perto).
+Se virar problema, persistir os vencedores de rodízio na geração e ler no publish.
