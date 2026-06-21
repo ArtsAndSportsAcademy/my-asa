@@ -23,6 +23,7 @@
 - [Duas tabelas de notificação](notification-tables.md) — `notifications`=push(FCM); `user_notifications`=sino in-app (createNotification/getUnreadCount); a 2ª pode não estar migrada e falha silenciosa em try/catch
 - [Asa — multi-membro e lote](asa-batch-tools.md) — extrair "cores" reutilizáveis; single + _lote chamam o mesmo core; consultar_membros aceita listas; runBatch nunca aborta no 1º erro
 - [api-server direct-call tests](api-server-direct-call-tests.md) — sem framework de teste; exportar handler + entry temp em src/ + bundle esbuild (plugin pino exige outdir, não outfile)
+- [Escopo da verificação typecheck](typecheck-validation-scope.md) — validação typecheck cobre libs+api-server+mobile; web-admin/mockup falham por erros de lib pré-existentes (React 19 @types/react dup)
 - [Daily Book drift de schema no DEV](daily-book-dev-schema-drift.md) — tabelas daily_book_* no DEV estavam numa geração antiga; recriar via psql p/ testar a rota real; generate não é transacional (deixa órfãos)
 - [Login por username](login-username.md) — login passou de email→username; util de geração em lib/db/src/username.ts; backfill idempotente; column users.username unique nullable
 - [Modelo de escopo de grupos](group-scope-model.md) — OPERATION/MULTI/ALL; cobertura idêntica em groupCoveredOperationIds(API) e groupCoverageOps(ASA); supervisor só OPERATION da sua op; membro de grupo amplo exige operação coberta
