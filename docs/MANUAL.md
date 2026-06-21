@@ -279,6 +279,137 @@ A ASA é a coordenadora virtual inteligente, disponível no painel e no app.
 - **Expressiva:** a avatar muda de pose (analisando, feliz, festiva) conforme a
   tarefa.
 
+### 6.1. Como a ASA age com segurança
+Antes de detalhar os comandos, três regras importantes:
+- **Confirmação obrigatória:** para qualquer ação que cria, edita, remove,
+  publica ou notifica, a ASA **resume o que vai fazer e pede sua confirmação**
+  ("sim, pode criar") antes de executar.
+- **Rascunhos:** avisos, ensaios e blocos são criados como **rascunho** — só
+  ficam visíveis aos membros depois de **publicados/confirmados**.
+- **Ações em lote nunca travam:** se um item de um lote falhar, ela **continua**
+  com os demais e mostra o que deu certo e o que falhou.
+
+### 6.2. Catálogo completo de comandos da ASA
+A ASA tem **77 comandos**. Abaixo, organizados por tipo.
+
+#### 🔎 Consultar (informações da operação e pessoas)
+- **consultar_agenda** — eventos da agenda (shows, ensaios, reuniões).
+- **consultar_escalas** — sua escala pessoal (gestor pode ver a de outro membro).
+- **consultar_responsabilidades** — responsabilidades, inclusive sem responsável.
+- **consultar_notificacoes** — notificações pendentes/recentes.
+- **consultar_avisos** — avisos da organização (rascunho/publicado/cancelado).
+- **consultar_tarefas** — tarefas suas (gestor vê de toda a equipe).
+- **consultar_folgas** — folgas/ausências registradas, com filtros.
+- **consultar_ausencias_do_dia** — "quem está de folga hoje?".
+- **consultar_disponibilidade** — se um membro está livre em uma data.
+- **consultar_aniversarios** — aniversários dos membros.
+- **consultar_clima** — clima e recomendações (agasalho, guarda-chuva).
+- **consultar_biblioteca** — pesquisa documentos, regras e procedimentos.
+- **consultar_membros** — encontra a pessoa certa pelo nome/apelido.
+- **consultar_reconhecimentos** — histórico de elogios e marcos.
+- **consultar_leituras_biblioteca** — quem leu (ou não leu) um documento.
+- **consultar_posicoes_abertas** — vagas/lacunas de cobertura nas escalas.
+- **consultar_tarefas_criticas** — tarefas atrasadas ou vencendo (gestores).
+- **consultar_conflitos** — conflitos (ex.: pessoa de folga escalada).
+- **consultar_carga_operacional** — quem está sobrecarregado ou disponível.
+- **consultar_riscos_operacionais** — panorama de riscos do dia.
+- **consultar_historico_membro** — perfil de conquistas de um membro.
+- **consultar_marcos** — marcos futuros (tempo de casa, aniversários).
+- **consultar_memorias** — termos, apelidos e regras que a ASA aprendeu.
+
+#### 📊 Resumos, relatórios e indicadores
+- **gerar_resumo_do_dia** — resumo do dia (escala, tarefas, ausências, clima).
+- **gerar_relatorio_asa** — relatório executivo semanal ou mensal.
+- **consultar_estatisticas** — snapshot geral da operação.
+- **consultar_indicadores** — KPIs (top performer, cobertura, conclusão, etc.).
+- **consultar_desempenho** — ranking de desempenho individual/coletivo.
+
+#### 📈 Análise histórica e padrões
+- **consultar_tendencias** — padrões temporais (dias/meses mais críticos).
+- **consultar_padroes** — o que se repete e onde está o problema.
+- **consultar_riscos_recorrentes** — riscos frequentes classificados (alto/médio/baixo).
+- **consultar_ausencias_historicas** — histórico e sazonalidade de ausências.
+- **consultar_tarefas_historicas** — produtividade e gargalos de tarefas.
+- **consultar_carga_historica** — distribuição de carga ao longo do tempo.
+- **consultar_aprendizados** — conhecimento acumulado pela ASA.
+- **detectar_marcos** — quem atinge um marco hoje (tempo de casa).
+- **detectar_conquistas** — marcos de atividades/tarefas (50, 100...).
+
+#### 📚 Documentos da biblioteca
+- **resumir_documento** — resume um documento em linguagem clara.
+- **comparar_documentos** — compara dois documentos ou duas versões.
+- **consultar_perguntas_frequentes** — tópicos e documentos mais relevantes.
+- **consultar_documentos_populares** — documentos que precisam de atenção.
+- **sugerir_leituras** — sugere documentos relevantes para um tema.
+
+#### 💬 Análise de conversas (mensagens)
+- **analisar_conversa** — busca mensagens de um grupo/thread para análise.
+- **detectar_eventos** — encontra menções a ensaios/reuniões nas conversas.
+- **detectar_tarefas** — encontra tarefas implícitas ("fulano fica responsável").
+- **detectar_ausencias** — encontra menções a faltas/afastamentos.
+- **detectar_trocas** — encontra combinações de troca de escala.
+- **resumir_conversa** — resumo operacional de uma conversa.
+- **destacar_itens** — destaca itens importantes categorizados.
+
+#### ➕ Criar (individual)
+- **criar_aviso_rascunho** — cria aviso (em rascunho).
+- **criar_ensaio_rascunho** — cria ensaio na agenda (em rascunho).
+- **criar_bloco_agenda** — cria bloco operacional (preparação, montagem, etc.).
+- **criar_entrada_escala** — escala um membro em um dia/atividade.
+- **criar_tarefa** — cria tarefa com responsável e prazo.
+- **criar_reconhecimento** — cria um elogio/marco para um membro.
+- **criar_reconhecimento_automatico** — reconhecimento por conquista detectada.
+- **registrar_ausencia** — registra folga/afastamento (um dia ou período).
+- **criar_solicitacao_troca** — cria pedido de troca entre dois membros.
+
+#### ➕➕ Criar em lote (várias de uma vez)
+- **criar_tarefas_lote** — mesma tarefa para vários membros (ou várias tarefas).
+- **registrar_ausencias_lote** — várias folgas/ausências de uma vez.
+- **criar_reconhecimentos_lote** — parabeniza vários membros de uma vez.
+- **criar_entradas_escala_lote** — escala vários membros na mesma atividade.
+- **adicionar_participantes_evento** — adiciona vários participantes a um evento.
+
+#### ✏️ Editar
+- **editar_tarefa** — muda título, responsável, prazo ou prioridade.
+- **editar_ausencia** — muda datas, tipo ou motivo de uma folga.
+- **editar_evento_agenda** — remarca/altera um ensaio ou bloco.
+- **editar_aviso** — ajusta um aviso (apenas enquanto está em rascunho).
+- **editar_reconhecimento** — ajusta tipo, título ou mensagem de um elogio.
+
+#### 🗑️ Remover, cancelar e desfazer
+- **cancelar_ausencia** — remove uma folga registrada.
+- **cancelar_tarefa** — cancela (ou marca como concluída) uma tarefa.
+- **remover_entrada_escala** — remove uma entrada manual da escala.
+- **desfazer_lote** — reverte os itens criados na última ação em lote.
+
+#### 📣 Publicar e notificar
+- **publicar_aviso** — publica um aviso que estava em rascunho.
+- **publicar_escala** — publica uma escala que estava em rascunho.
+- **enviar_push** — envia notificação no celular a um ou mais membros (gestores).
+
+#### 🧭 Sugestões e memória
+- **sugerir_cobertura** — sugere quem pode cobrir uma posição/atividade.
+- **sugerir_memoria** — ensina à ASA um novo termo ou regra (fica para aprovação).
+
+### 6.3. O que a ASA **não** faz (limites atuais)
+- **Não apaga** eventos da agenda nem avisos já criados — nesses casos ela
+  **edita** (ou você cancela pelo painel). A remoção direta existe apenas para
+  **folgas**, **tarefas** e **entradas manuais da escala**.
+- **Editar aviso** só funciona enquanto ele está em **rascunho**; depois de
+  publicado, não dá para editar pela ASA.
+- **Tarefas** já **aprovadas, concluídas ou canceladas** não podem ser editadas.
+- Algumas ações são **exclusivas de gestores** (ex.: enviar push, ver tarefas
+  críticas, publicar).
+
+### 6.4. Exemplos do que você pode pedir
+- "Escale João, Pedro e Ana para o ensaio de sábado." → criação **em lote**.
+- "Dá folga pra Amanda de 01/07 a 20/07." → ausência por **período**.
+- "Muda o prazo da tarefa de limpeza para sexta." → **edição** específica.
+- "Cancela a folga da Carla de quarta." → **remoção** específica.
+- "Parabeniza o time todo pelo show de ontem." → reconhecimentos **em lote**.
+- "Desfaz isso que você acabou de criar." → **desfazer lote**.
+- "Quem está de folga hoje?" / "Quais os riscos de hoje?" → **consultas**.
+
 ---
 
 ## 7. Conceitos importantes
