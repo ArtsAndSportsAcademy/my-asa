@@ -85,12 +85,20 @@ const LINE_TYPE_LABELS: Record<string, string> = {
   CHARACTER: "Por personagem",
   MANUAL: "Manual",
 };
-const LINE_TYPE_OPTIONS = Object.entries(LINE_TYPE_LABELS).map(([value, label]) => ({ value, label }));
+// Tipos de linha oferecidos ao montar/editar uma linha (modelo simplificado).
+const SELECTABLE_LINE_TYPES = ["TITULAR_SUBSTITUTE", "ROTATION", "DAY_OF_WEEK"];
+// Opções para um dropdown, incluindo o tipo atual da linha caso seja legado.
+function lineTypeOptions(current?: string): { value: string; label: string }[] {
+  const values = current && !SELECTABLE_LINE_TYPES.includes(current)
+    ? [current, ...SELECTABLE_LINE_TYPES]
+    : SELECTABLE_LINE_TYPES;
+  return values.map((value) => ({ value, label: LINE_TYPE_LABELS[value] ?? value }));
+}
 const LINE_TYPE_COLORS: Record<string, string> = {
   ROTATION: "bg-purple-500/15 text-purple-600 dark:text-purple-300 border-purple-500/30",
   TITULAR_SUBSTITUTE: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/30",
 };
-const DEFAULT_LINE_TYPE = "MANUAL";
+const DEFAULT_LINE_TYPE = "TITULAR_SUBSTITUTE";
 
 // Tipos de linha que possuem configuração editável
 const CONFIGURABLE_TYPES = new Set([
@@ -106,6 +114,7 @@ type LineConfig = {
   memberIds?: string[];
   executionCounts?: Record<string, number>;
   days?: number[];
+  dayAssignments?: Record<string, string>;
   functionLabel?: string;
   characterName?: string;
 };
@@ -132,6 +141,15 @@ function configSummary(type: string, config: LineConfig, members: Member[]): str
       return n ? `${n} no rodízio` : "sem pessoas";
     }
     case "DAY_OF_WEEK": {
+      const assignments = config.dayAssignments ?? {};
+      const entries = Object.entries(assignments).filter(([, id]) => !!id);
+      if (entries.length > 0) {
+        return entries
+          .sort(([a], [b]) => Number(a) - Number(b))
+          .map(([d, id]) => `${WEEKDAY_LABELS[Number(d)]}: ${memberName(members, id)}`)
+          .join(", ");
+      }
+      // Compat: linhas antigas que só tinham dias (sem pessoas)
       const days = config.days ?? [];
       return days.length ? days.slice().sort((a, b) => a - b).map((d) => WEEKDAY_LABELS[d]).join(", ") : "sem dias";
     }
@@ -149,7 +167,9 @@ function configIncomplete(type: string, config: LineConfig): boolean {
     case "FIXED_PERSON": return !config.userId;
     case "TITULAR_SUBSTITUTE": return !config.titularId;
     case "ROTATION": return (config.memberIds ?? []).length < 2;
-    case "DAY_OF_WEEK": return (config.days ?? []).length === 0;
+    case "DAY_OF_WEEK":
+      return Object.values(config.dayAssignments ?? {}).filter(Boolean).length === 0
+        && (config.days ?? []).length === 0;
     case "FUNCTION": return !config.functionLabel?.trim();
     case "CHARACTER": return !config.characterName?.trim();
     default: return false;
@@ -228,27 +248,29 @@ function PeopleOrderedList({
   );
 }
 
-// Seletor de dias da semana
-function WeekdayPicker({ days, onChange }: { days: number[]; onChange: (days: number[]) => void }) {
-  const toggle = (d: number) => {
-    onChange(days.includes(d) ? days.filter((x) => x !== d) : [...days, d].sort((a, b) => a - b));
+// Atribuição de pessoa por dia da semana
+function WeekdayPeoplePicker({
+  assignments, members, onChange,
+}: { assignments: Record<string, string>; members: Member[]; onChange: (next: Record<string, string>) => void }) {
+  const setDay = (d: number, id: string | null) => {
+    const next = { ...assignments };
+    if (id) next[String(d)] = id;
+    else delete next[String(d)];
+    onChange(next);
   };
   return (
-    <div className="flex flex-wrap gap-1">
-      {WEEKDAY_LABELS.map((label, d) => {
-        const active = days.includes(d);
-        return (
-          <button
-            key={d}
-            onClick={() => toggle(d)}
-            className={`h-7 w-9 rounded text-[11px] border transition-colors ${
-              active ? "bg-primary text-primary-foreground border-primary" : "bg-card text-muted-foreground hover:bg-muted/50"
-            }`}
-          >
-            {label}
-          </button>
-        );
-      })}
+    <div className="flex flex-col gap-1.5">
+      {WEEKDAY_LABELS.map((label, d) => (
+        <div key={d} className="flex items-center gap-2">
+          <span className="text-[11px] text-muted-foreground w-9">{label}</span>
+          <PersonPicker
+            value={assignments[String(d)] ?? null}
+            members={members}
+            onChange={(id) => setDay(d, id)}
+            placeholder="— ninguém"
+          />
+        </div>
+      ))}
     </div>
   );
 }
@@ -312,9 +334,19 @@ function LineConfigEditor({
       );
     case "DAY_OF_WEEK":
       return (
-        <div className="flex items-center gap-2">
-          <Label className="text-[11px] text-muted-foreground w-16">Dias</Label>
-          <WeekdayPicker days={config.days ?? []} onChange={(days) => onSave({ ...config, days })} />
+        <div className="flex items-start gap-2">
+          <Label className="text-[11px] text-muted-foreground w-16 pt-1">Por dia</Label>
+          <WeekdayPeoplePicker
+            assignments={config.dayAssignments ?? {}}
+            members={members}
+            onChange={(dayAssignments) =>
+              onSave({
+                ...config,
+                dayAssignments,
+                days: Object.keys(dayAssignments).map(Number).sort((a, b) => a - b),
+              })
+            }
+          />
         </div>
       );
     case "FUNCTION":
@@ -460,7 +492,7 @@ function LineRow({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {LINE_TYPE_OPTIONS.map((o) => (
+              {lineTypeOptions(type).map((o) => (
                 <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
               ))}
             </SelectContent>
@@ -612,7 +644,7 @@ function BlockCard({
             <Select value={newType} onValueChange={setNewType}>
               <SelectTrigger className="h-8 text-xs w-44 shrink-0"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {LINE_TYPE_OPTIONS.map((o) => (
+                {lineTypeOptions(newType).map((o) => (
                   <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
                 ))}
               </SelectContent>

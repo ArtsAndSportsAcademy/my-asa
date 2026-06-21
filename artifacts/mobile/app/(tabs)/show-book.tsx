@@ -84,6 +84,19 @@ function buildConfigRows(
       ];
     }
     case "DAY_OF_WEEK": {
+      const assignments =
+        c.dayAssignments && typeof c.dayAssignments === "object"
+          ? (c.dayAssignments as Record<string, string>)
+          : {};
+      const entries = Object.entries(assignments)
+        .filter(([, id]) => !!id)
+        .sort(([a], [b]) => Number(a) - Number(b));
+      if (entries.length > 0) {
+        return entries.map(([d, id]) => ({
+          label: WEEKDAY_LABELS[Number(d)] ?? `?${d}`,
+          value: nameOf(id),
+        }));
+      }
       const days = Array.isArray(c.days) ? (c.days as number[]) : [];
       const sorted = [...days].sort((a, b) => a - b);
       return [

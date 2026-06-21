@@ -98,6 +98,11 @@ function collectUserIdsFromConfig(config: unknown): string[] {
   if (typeof c.titularId === "string") ids.push(c.titularId);
   if (Array.isArray(c.substituteIds)) ids.push(...c.substituteIds.filter((x): x is string => typeof x === "string"));
   if (Array.isArray(c.memberIds)) ids.push(...c.memberIds.filter((x): x is string => typeof x === "string"));
+  if (c.dayAssignments && typeof c.dayAssignments === "object") {
+    for (const v of Object.values(c.dayAssignments as Record<string, unknown>)) {
+      if (typeof v === "string") ids.push(v);
+    }
+  }
   return ids;
 }
 

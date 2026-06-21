@@ -17,7 +17,13 @@ description: Como o Livro do Show (web-admin) edita estrutura inline sem Motivo,
 
 Mobile (`artifacts/mobile/app/(tabs)/show-book.tsx`) é read-only e lê a mesma forma; não precisa mudar quando o web-admin muda.
 
-**Config por tipo de linha (`line.config` jsonb):** FIXED_PERSON `{userId}`; TITULAR_SUBSTITUTE `{titularId, substituteIds[]}`; ROTATION `{memberIds[], executionCounts{}}`; DAY_OF_WEEK `{days:number[]}` (0=Dom..6=Sáb); FUNCTION `{functionLabel}`; CHARACTER `{characterName}`; MANUAL `{}`. Mesma forma do `seed.ts`. Salva via PATCH lines com `changeType:"CONFIG"` (reason opcional → DEFAULT). Editor inline expansível por linha no web-admin; auto-save a cada alteração.
+**Config por tipo de linha (`line.config` jsonb):** FIXED_PERSON `{userId}`; TITULAR_SUBSTITUTE `{titularId, substituteIds[]}`; ROTATION `{memberIds[], executionCounts{}}`; DAY_OF_WEEK `{dayAssignments: Record<weekday,userId>, days:number[]}` (0=Dom..6=Sáb); FUNCTION `{functionLabel}`; CHARACTER `{characterName}`; MANUAL `{}`. Salva via PATCH lines com `changeType:"CONFIG"` (reason opcional → DEFAULT). Editor inline expansível por linha no web-admin; auto-save a cada alteração.
+
+**DAY_OF_WEEK — quem trabalha em cada dia:** o tipo evoluiu de "só escolher dias" (`days:number[]`) para "atribuir uma pessoa por dia da semana" (`dayAssignments` keyed por número do weekday "0".."6"). O editor grava AMBOS: `dayAssignments` (fonte de verdade) e `days` derivado das chaves (compat). Render (summary/incomplete no web e mobile) faz dual-read: usa `dayAssignments` se houver; senão cai pro `days[]` legado pra não marcar linha antiga como vazia/incompleta.
+**Why:** linhas antigas só tinham dias sem pessoas; restringir leitura a `dayAssignments` regrediria elas pra "sem dias".
+**How to apply:** qualquer leitura de DAY_OF_WEEK deve checar `dayAssignments` primeiro e ter fallback `days[]`. `collectUserIdsFromConfig` (api-server) inclui os valores de `dayAssignments` no memberDirectory.
+
+**Tipos selecionáveis (UI):** o dropdown só oferece 3 — TITULAR_SUBSTITUTE, ROTATION, DAY_OF_WEEK (via `SELECTABLE_LINE_TYPES`/`lineTypeOptions(current)`). Tipos legados (FIXED_PERSON/FUNCTION/CHARACTER/MANUAL) ainda renderizam e o `lineTypeOptions(current)` injeta o tipo atual da linha pra não prendê-la. DEFAULT_LINE_TYPE = TITULAR_SUBSTITUTE.
 
 **memberDirectory:** o GET `/show-books/:id` resolve todos os userIds referenciados nos configs e devolve `memberDirectory: {id,name}[]` em `ShowBookWithTree`.
 **Why:** mobile (membro comum) NÃO pode chamar `listUsers` (403), então precisa do diretório embutido para exibir nomes. Web-admin usa `useListUsers` direto (é admin).
