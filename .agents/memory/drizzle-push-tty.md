@@ -11,7 +11,15 @@ description: drizzle-kit push (mesmo com --force) falha em TTY não-interativo; 
 
 O drizzle-kit usa prompts interativos (enquête) para resolver conflitos de schema (ex: novos enums, renomeações). O ambiente de execução dos agentes não tem TTY.
 
-## Como aplicar
+## Solução adotada (preferida): generate + migrate
+
+`push` foi **substituído** pelo fluxo não-interativo `generate` + `migrate`:
+- `pnpm --filter @workspace/db run generate` — cria a migration SQL a partir do schema
+- `pnpm --filter @workspace/db run migrate` — aplica via `drizzle-orm/node-postgres/migrator` (script `lib/db/src/migrate.ts`), 100% sem TTY
+
+O `scripts/post-merge.sh` agora roda `migrate` (antes tinha `echo "skipping drizzle push"` → causa raiz do drift que "desandava sozinho"). O DB tem baseline em `drizzle.__drizzle_migrations` (migrations 0000-0004 marcadas como aplicadas). `push` (diff) ainda serve para reparo manual quando o DB drifta, MAS trava no TTY se houver conflito de coluna/rename — só roda sem prompts quando o diff é só de adições puras (CREATE).
+
+## Como aplicar (reparo manual antigo, via SQL direto)
 
 Para adicionar **novas tabelas sem migration files**, use o sandbox `code_execution` com `executeSql`:
 
