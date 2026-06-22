@@ -40,6 +40,30 @@ export const SPECIALIZATION_LABELS: Record<UserSpecialization, string> = {
   OTHER:              "Outro",
 };
 
+// ─── Quem aparece nas escalas e na grade de folgas ────────────────────────────
+// Única fonte de verdade para "membro escalável" (Performer comum). Administradores
+// (role=ADMIN) e membros especiais (specialization preenchida e != PERFORMER) não
+// fazem parte do elenco escalável e não devem aparecer em escalas nem na grade de
+// folgas. Use estes predicados em TODOS os pontos para evitar divergência de regra.
+
+/** Membro especial: especialização preenchida e diferente de PERFORMER. */
+export function isSpecialSpecialization(
+  specialization: UserSpecialization | string | null | undefined
+): boolean {
+  return specialization != null && specialization !== "PERFORMER";
+}
+
+/**
+ * Membro escalável (Performer comum): NÃO é administrador e NÃO é especial.
+ * `isAdmin` deve ser calculado pelo chamador a partir dos papéis (role=ADMIN).
+ */
+export function isSchedulableMember(args: {
+  isAdmin: boolean;
+  specialization: UserSpecialization | string | null | undefined;
+}): boolean {
+  return !args.isAdmin && !isSpecialSpecialization(args.specialization);
+}
+
 export const usersTable = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   organizationId: uuid("organization_id").notNull(),

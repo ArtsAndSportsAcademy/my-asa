@@ -7,6 +7,7 @@ import {
   usersTable,
   operationsTable,
   userRolesTable,
+  isSchedulableMember,
 } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
@@ -71,6 +72,42 @@ async function validateManagerScope(
   }
 
   return null;
+}
+
+/**
+ * Filtra folgas para manter apenas as de membros escaláveis (Performers comuns),
+ * removendo administradores (role=ADMIN na operação) e membros especiais
+ * (specialization preenchida e != PERFORMER). Usado no contexto de escalas, onde
+ * folgas de admins/especiais não devem aparecer de forma alguma.
+ */
+async function filterSchedulableFolgas<T extends { userId: string; operationId: string }>(
+  rows: T[]
+): Promise<T[]> {
+  if (rows.length === 0) return rows;
+  const ids = [...new Set(rows.map((r) => r.userId))];
+
+  const uRows = await db
+    .select({ id: usersTable.id, specialization: usersTable.specialization })
+    .from(usersTable)
+    .where(inArray(usersTable.id, ids));
+  const specMap = new Map(uRows.map((u) => [u.id, u.specialization]));
+
+  const adminRows = await db
+    .select({ userId: userRolesTable.userId, operationId: userRolesTable.operationId })
+    .from(userRolesTable)
+    .where(and(
+      inArray(userRolesTable.userId, ids),
+      eq(userRolesTable.role, "ADMIN"),
+      eq(userRolesTable.active, true),
+    ));
+  const adminPairs = new Set(adminRows.map((r) => `${r.userId}|${r.operationId}`));
+
+  return rows.filter((r) =>
+    isSchedulableMember({
+      isAdmin: adminPairs.has(`${r.userId}|${r.operationId}`),
+      specialization: specMap.get(r.userId) ?? null,
+    })
+  );
 }
 
 /**
@@ -234,8 +271,16 @@ router.get("/folgas", requireAuth, requireOrganization, async (req, res) => {
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(folgasTable.startDate));
 
-    log.info({ count: rows.length, role: user.role }, "folgas listadas");
-    res.json({ folgas: rows });
+    // Contexto de escala (admin/supervisores): a lista de folgas alimenta as escalas,
+    // então administradores e membros especiais não devem aparecer. Membros vendo as
+    // próprias folgas (else branch acima) não são filtrados.
+    let visibleRows = rows;
+    if (MANAGER_ROLES.includes(user.role) && rows.length > 0) {
+      visibleRows = await filterSchedulableFolgas(rows);
+    }
+
+    log.info({ count: visibleRows.length, role: user.role }, "folgas listadas");
+    res.json({ folgas: visibleRows });
   } catch (err) {
     log.error({ err }, "erro ao listar folgas");
     res.status(500).json({ error: "Internal Server Error" });
@@ -274,10 +319,11 @@ router.get("/folgas/grid", requireAuth, requireOrganization, async (req, res) =>
     const daysInMonth = new Date(yr, mo, 0).getDate();
     const lastDay = `${yr}-${String(mo).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
 
-    const members = await db
+    const allMembers = await db
       .selectDistinct({
-        userId: userRolesTable.userId,
-        name:   usersTable.name,
+        userId:         userRolesTable.userId,
+        name:           usersTable.name,
+        specialization: usersTable.specialization,
       })
       .from(userRolesTable)
       .innerJoin(usersTable, eq(userRolesTable.userId, usersTable.id))
@@ -286,6 +332,21 @@ router.get("/folgas/grid", requireAuth, requireOrganization, async (req, res) =>
         eq(userRolesTable.active, true),
       ))
       .orderBy(usersTable.name);
+
+    // Administradores e membros especiais não fazem parte do elenco escalável.
+    const adminRows = await db
+      .select({ userId: userRolesTable.userId })
+      .from(userRolesTable)
+      .where(and(
+        eq(userRolesTable.operationId, operationId),
+        eq(userRolesTable.active, true),
+        eq(userRolesTable.role, "ADMIN"),
+      ));
+    const adminSet = new Set(adminRows.map((r) => r.userId));
+
+    const members = allMembers.filter((m) =>
+      isSchedulableMember({ isAdmin: adminSet.has(m.userId), specialization: m.specialization })
+    );
 
     const memberIds = members.map((m) => m.userId);
 

@@ -15,6 +15,7 @@ import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
 import { eventBus } from "../lib/event-bus.js";
 import { runCoverageEngine, persistEngineResult } from "../services/coverage-engine.js";
+import { getNonSchedulableUserIds } from "../services/scheduling-eligibility.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { hasActiveResponsibility } from "../lib/delegation-check.js";
 import { notifyMany } from "../services/notificationService.js";
@@ -658,16 +659,27 @@ router.get("/scales/:id/allocations", requireAuth, requireOrganization, async (r
             .where(inArray(allocationCandidatesTable.allocationId, allocationIds))
         : [];
 
+    // Administradores e membros especiais não fazem parte do elenco escalável.
+    // Mesmo que existam alocações/candidatos gravados para eles (legado), deixam de
+    // ser exibidos (filtro de exibição, sem apagar dados).
+    const nonSchedulable = await getNonSchedulableUserIds([
+      ...allocations.map((a) => a.userId),
+      ...candidates.map((c) => c.userId),
+    ]);
+
     const candidateMap: Record<string, typeof candidates> = {};
     candidates.forEach((c) => {
+      if (c.userId && nonSchedulable.has(c.userId)) return;
       if (!candidateMap[c.allocationId]) candidateMap[c.allocationId] = [];
       candidateMap[c.allocationId]!.push(c);
     });
 
-    const allocationsWithCandidates = allocations.map((a) => ({
-      ...a,
-      candidates: (candidateMap[a.id] ?? []).sort((x, y) => x.rank - y.rank),
-    }));
+    const allocationsWithCandidates = allocations
+      .filter((a) => !(a.userId && nonSchedulable.has(a.userId)))
+      .map((a) => ({
+        ...a,
+        candidates: (candidateMap[a.id] ?? []).sort((x, y) => x.rank - y.rank),
+      }));
 
     // Células virtuais: participantes escolhidos diretamente no evento da agenda.
     // Aparecem automaticamente na escala (composição em tempo de leitura, sem cópia/sync).

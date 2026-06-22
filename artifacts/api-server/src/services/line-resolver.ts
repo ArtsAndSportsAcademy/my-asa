@@ -6,8 +6,10 @@ import {
   showBookRolesTable,
   showBookLinesTable,
   usersTable,
+  userRolesTable,
   restrictionsTable,
   folgasTable,
+  isSchedulableMember,
 } from "@workspace/db";
 
 // ─── Tree building (shared with show-book route) ──────────────────────────────
@@ -303,16 +305,38 @@ export async function resolveShowBookCast(
     }
   }
   const nameMap = new Map<string, string>();
+  // Administradores e membros especiais não fazem parte do elenco escalável; mesmo
+  // que estejam configurados numa linha, são tratados como indisponíveis (a linha
+  // salta para o próximo substituto/rodízio ou fica descoberta).
+  const nonSchedulable = new Set<string>();
   if (userIds.size > 0) {
+    const ids = Array.from(userIds);
     const rows = await db
-      .select({ id: usersTable.id, name: usersTable.name })
+      .select({ id: usersTable.id, name: usersTable.name, specialization: usersTable.specialization })
       .from(usersTable)
-      .where(inArray(usersTable.id, Array.from(userIds)));
+      .where(inArray(usersTable.id, ids));
     rows.forEach((r) => nameMap.set(r.id, r.name));
+
+    const adminRows = await db
+      .select({ userId: userRolesTable.userId })
+      .from(userRolesTable)
+      .where(and(
+        inArray(userRolesTable.userId, ids),
+        eq(userRolesTable.role, "ADMIN"),
+        eq(userRolesTable.active, true),
+      ));
+    const adminSet = new Set(adminRows.map((r) => r.userId));
+    const specMap = new Map(rows.map((r) => [r.id, r.specialization]));
+    for (const id of ids) {
+      if (!isSchedulableMember({ isAdmin: adminSet.has(id), specialization: specMap.get(id) ?? null })) {
+        nonSchedulable.add(id);
+      }
+    }
   }
   const nameOf = (id: string) => nameMap.get(id) ?? "—";
 
   const unavailable = await getUnavailableUserIds(operationId, dateISO);
+  for (const id of nonSchedulable) unavailable.add(id);
 
   let uncoveredCount = 0;
   const scenes: ResolvedScene[] = tree.map((scene) => {

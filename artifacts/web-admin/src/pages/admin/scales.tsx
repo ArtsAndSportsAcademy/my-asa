@@ -381,10 +381,19 @@ export default function ScalesPage() {
   }, [weeksByMonth]);
 
   // ── Derived: members ────────────────────────────────────────────────────
+  // Apenas membros escaláveis (Performers comuns) figuram nas escalas:
+  // administradores (isAdmin) e membros especiais (specialization != PERFORMER)
+  // são excluídos, em consonância com o filtro do servidor.
   const members = useMemo<{ userId: string; userName: string }[]>(() => {
     const opId = selectedScale?.operationId;
     return (usersData?.users ?? [])
       .filter((u: UserModel) => u.status !== "INACTIVE")
+      .filter((u: UserModel) => {
+        const isAdmin = (u as { isAdmin?: boolean }).isAdmin === true;
+        const spec = u.specialization;
+        const isSpecial = spec != null && spec !== "PERFORMER";
+        return !isAdmin && !isSpecial;
+      })
       .filter((u: UserModel) => {
         if (!opId) return true;
         const opIds = (u as { operationIds?: string[] }).operationIds;

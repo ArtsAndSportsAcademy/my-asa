@@ -27,15 +27,20 @@ async function attachOperationIds(users: (typeof usersTable.$inferSelect)[]) {
     where: and(eq(userRolesTable.active, true), inArray(userRolesTable.userId, ids)),
   });
   const opsByUser = new Map<string, Set<string>>();
+  const adminUsers = new Set<string>();
   for (const r of roles) {
+    if (r.role === "ADMIN") adminUsers.add(r.userId);
     if (!r.operationId) continue;
     const set = opsByUser.get(r.userId) ?? new Set<string>();
     set.add(r.operationId);
     opsByUser.set(r.userId, set);
   }
+  // `isAdmin` permite ao frontend excluir administradores das escalas/folgas
+  // (não fazem parte do elenco escalável), sem precisar buscar papéis por usuário.
   return users.map((u) => ({
     ...safeUser(u),
     operationIds: [...(opsByUser.get(u.id) ?? [])],
+    isAdmin: adminUsers.has(u.id),
   }));
 }
 

@@ -45,3 +45,4 @@
 - [ASA — escopo de operação](asa-escopo-operacao.md) — ASA usava só a 1ª operação do gestor: não achava membros de outras operações e gravava folga na operação errada
 - [ASA — parsing do input das tools no streaming](asa-streaming-tool-input.md) — input_json_delta vem em FRAGMENTOS; parsear cada um isolado deixa input vazio → tools chamadas com args "" em loop ("não acha")
 - [ASA — data atual no system prompt](asa-data-atual-prompt.md) — sem a data de hoje, o modelo assume ano padrão (2025) e grava folgas/tarefas no ano errado → somem da tabela do ano corrente
+- [Membro escalável (Performer)](schedulable-member-predicate.md) — admins e especiais ocultos de escalas/folgas; predicado isSchedulableMember em @workspace/db; filtro de exibição, não apaga
