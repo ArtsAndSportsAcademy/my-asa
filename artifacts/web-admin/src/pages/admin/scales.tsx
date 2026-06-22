@@ -953,7 +953,8 @@ export default function ScalesPage() {
                 <div className="p-2 space-y-1.5">
                   {memberEntries.map((e) => {
                     const agendaParticipant = !!(e as any).isAgendaParticipant;
-                    const generated = !agendaParticipant && !!(e as any).agendaEventId;
+                    const dailyBookParticipant = !!(e as any).isDailyBookParticipant;
+                    const generated = !agendaParticipant && !dailyBookParticipant && !!(e as any).agendaEventId;
                     const label =
                       (e as any).manualLabel ??
                       (e as any).eventTitle ??
@@ -966,7 +967,9 @@ export default function ScalesPage() {
                       <div
                         key={e.id}
                         className={`group relative rounded-lg border px-2 py-1.5 ${
-                          agendaParticipant
+                          dailyBookParticipant
+                            ? "bg-emerald-500/10 border-emerald-500/30"
+                            : agendaParticipant
                             ? "bg-sky-500/10 border-sky-500/30"
                             : generated
                             ? "bg-amber-500/10 border-amber-500/30"
@@ -976,7 +979,7 @@ export default function ScalesPage() {
                         <p className="text-xs font-semibold uppercase leading-tight truncate pr-4">
                           {label}
                         </p>
-                        {generated && role && label !== role && (
+                        {(generated || dailyBookParticipant) && role && label !== role && (
                           <p className="text-[10px] text-muted-foreground truncate">{role}</p>
                         )}
                         {(start || end) && (
@@ -1001,7 +1004,15 @@ export default function ScalesPage() {
                             Auto
                           </Badge>
                         )}
-                        {isManager && !agendaParticipant && (
+                        {dailyBookParticipant && (
+                          <Badge
+                            variant="outline"
+                            className="mt-1 text-[9px] text-emerald-600 border-emerald-500/40 px-1 py-0"
+                          >
+                            Livro do Dia
+                          </Badge>
+                        )}
+                        {isManager && !agendaParticipant && !dailyBookParticipant && (
                           <button
                             onClick={() => handleDeleteEntry(e.id)}
                             className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"

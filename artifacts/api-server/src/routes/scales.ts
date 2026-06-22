@@ -9,6 +9,10 @@ import {
   agendaEventsTable,
   agendaEventParticipantsTable,
   showBookRolesTable,
+  showBooksTable,
+  dailyBooksTable,
+  dailyBookPositionsTable,
+  dailyBookAssignmentsTable,
   usersTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
@@ -727,7 +731,77 @@ router.get("/scales/:id/allocations", requireAuth, requireOrganization, async (r
       candidates: [] as [],
     }));
 
-    res.json({ allocations: [...allocationsWithCandidates, ...virtualRows] });
+    // Células virtuais: cast do LIVRO DO DIA publicado. Quem foi colocado num show
+    // (no Livro do Dia) aparece automaticamente na escala desse dia, com o bloco do
+    // show. Composição em tempo de leitura — sem cópia/sync e sem mudar o esquema.
+    const dailyBookCast = await db
+      .select({
+        dailyBookId: dailyBooksTable.id,
+        roleId: dailyBookPositionsTable.sourceRoleId,
+        positionName: dailyBookPositionsTable.name,
+        userId: dailyBookAssignmentsTable.userId,
+        userName: usersTable.name,
+        eventDate: agendaEventsTable.date,
+        eventTitle: agendaEventsTable.title,
+        eventStartTime: agendaEventsTable.startTime,
+        eventEndTime: agendaEventsTable.endTime,
+        showTitle: showBooksTable.title,
+      })
+      .from(dailyBookAssignmentsTable)
+      .innerJoin(dailyBookPositionsTable, eq(dailyBookAssignmentsTable.positionId, dailyBookPositionsTable.id))
+      .innerJoin(dailyBooksTable, eq(dailyBookAssignmentsTable.dailyBookId, dailyBooksTable.id))
+      .innerJoin(agendaEventsTable, eq(dailyBooksTable.agendaEventId, agendaEventsTable.id))
+      .leftJoin(showBooksTable, eq(dailyBooksTable.showBookId, showBooksTable.id))
+      .leftJoin(usersTable, eq(dailyBookAssignmentsTable.userId, usersTable.id))
+      .where(
+        and(
+          eq(agendaEventsTable.operationId, scale.operationId),
+          gte(agendaEventsTable.date, scale.periodStart),
+          lte(agendaEventsTable.date, scale.periodEnd),
+          inArray(dailyBooksTable.status, ["PUBLISHED", "REPUBLISHED"]),
+          inArray(dailyBookAssignmentsTable.status, ["ASSIGNED", "AT_RISK"]),
+          eq(dailyBookPositionsTable.isRemoved, false),
+          isNotNull(dailyBookAssignmentsTable.userId),
+        ),
+      );
+
+    // Dedup: se já existe uma alocação REAL para o mesmo (pessoa + data + papel),
+    // não duplicar com o bloco virtual do Livro do Dia.
+    const realKeys = new Set(
+      allocationsWithCandidates.map(
+        (a) => `${a.userId}|${a.manualDate ?? a.eventDate}|${a.positionId ?? ""}`,
+      ),
+    );
+    const castNonSchedulable = await getNonSchedulableUserIds(
+      dailyBookCast.map((c) => c.userId).filter((u): u is string => !!u),
+    );
+
+    const dailyBookRows = dailyBookCast
+      .filter((c) => !!c.userId && !castNonSchedulable.has(c.userId))
+      .filter((c) => !realKeys.has(`${c.userId}|${c.eventDate}|${c.roleId ?? ""}`))
+      .map((c) => ({
+        id: `db:${c.dailyBookId}:${c.userId}:${c.roleId ?? "x"}`,
+        agendaEventId: null,
+        positionId: c.roleId,
+        userId: c.userId,
+        status: "ASSIGNED",
+        overrideReason: null,
+        notes: null,
+        manualDate: c.eventDate,
+        manualLabel: c.showTitle ?? c.eventTitle ?? "SHOW",
+        startTime: c.eventStartTime,
+        endTime: c.eventEndTime,
+        positionName: c.positionName,
+        userName: c.userName,
+        eventDate: c.eventDate,
+        eventTitle: c.eventTitle,
+        eventStartTime: c.eventStartTime,
+        eventEndTime: c.eventEndTime,
+        isDailyBookParticipant: true,
+        candidates: [] as [],
+      }));
+
+    res.json({ allocations: [...allocationsWithCandidates, ...virtualRows, ...dailyBookRows] });
   } catch (err) {
     log.error({ err }, "erro ao buscar alocações");
     res.status(500).json({ error: "Erro interno" });
