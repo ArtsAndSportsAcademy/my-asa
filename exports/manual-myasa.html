@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<style>
+  @page {
+    size: A4;
+    margin: 22mm 18mm 20mm 18mm;
+    @bottom-center {
+      content: "Manual do MyASA  ·  página " counter(page) " de " counter(pages);
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      font-size: 8.5pt;
+      color: #9aa0ac;
+    }
+  }
+  @page :first { margin: 0; @bottom-center { content: ""; } }
+
+  * { box-sizing: border-box; }
+  html { -weasy-hyphens: none; }
+  body {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    color: #1b2233;
+    font-size: 10.5pt;
+    line-height: 1.55;
+    margin: 0;
+  }
+
+  /* ---------- CAPA ---------- */
+  .cover {
+    height: 297mm;
+    background: linear-gradient(150deg, #7c3aed 0%, #5b21b6 55%, #2e1065 100%);
+    color: #ffffff;
+    padding: 38mm 24mm;
+    position: relative;
+  }
+  .cover .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    font-size: 10pt;
+    opacity: .8;
+    margin-bottom: 14mm;
+  }
+  .cover h1 {
+    font-size: 48pt;
+    line-height: 1.02;
+    margin: 0 0 6mm 0;
+    font-weight: 800;
+  }
+  .cover .sub {
+    font-size: 15pt;
+    font-weight: 400;
+    opacity: .92;
+    max-width: 130mm;
+    line-height: 1.5;
+  }
+  .cover .avatar {
+    position: absolute;
+    right: 20mm;
+    bottom: 34mm;
+    width: 58mm;
+    height: 58mm;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid rgba(255,255,255,.35);
+    background: rgba(255,255,255,.12);
+  }
+  .cover .footer {
+    position: absolute;
+    left: 24mm;
+    bottom: 22mm;
+    font-size: 10.5pt;
+    opacity: .85;
+  }
+  .cover .pill {
+    display: inline-block;
+    border: 1px solid rgba(255,255,255,.5);
+    border-radius: 999px;
+    padding: 4px 14px;
+    font-size: 9pt;
+    margin-bottom: 30mm;
+    letter-spacing: 1px;
+  }
+
+  /* ---------- TÍTULOS ---------- */
+  h2 {
+    font-size: 20pt;
+    color: #4c1d95;
+    margin: 0 0 2mm 0;
+    padding-top: 2mm;
+    border-bottom: 3px solid #ede9fe;
+    padding-bottom: 3mm;
+  }
+  h2 .num {
+    display: inline-block;
+    background: #7c3aed;
+    color: #fff;
+    border-radius: 8px;
+    width: 30px; height: 30px;
+    text-align: center;
+    line-height: 30px;
+    font-size: 13pt;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  h3 {
+    font-size: 13.5pt;
+    color: #5b21b6;
+    margin: 7mm 0 2mm 0;
+  }
+  h4 { font-size: 11pt; color: #1b2233; margin: 4mm 0 1mm 0; }
+  p { margin: 0 0 2.5mm 0; }
+  .lead { font-size: 11.5pt; color: #3a4254; }
+  a { color: #6d28d9; text-decoration: none; }
+
+  .section { page-break-before: always; }
+
+  /* ---------- CAIXAS ---------- */
+  .card {
+    border: 1px solid #e5e7eb;
+    border-left: 4px solid #7c3aed;
+    border-radius: 10px;
+    padding: 5mm 6mm;
+    margin: 4mm 0;
+    background: #fcfbff;
+    page-break-inside: avoid;
+  }
+  .card h4 { margin-top: 0; color: #4c1d95; font-size: 12pt; }
+  .card .meta { font-size: 8.5pt; color: #6b7280; margin-bottom: 2mm; }
+
+  .grid { display: table; width: 100%; border-spacing: 0 0; }
+  .note {
+    background: #f5f3ff;
+    border: 1px solid #ddd6fe;
+    border-radius: 10px;
+    padding: 4mm 5mm;
+    margin: 4mm 0;
+    font-size: 10pt;
+    page-break-inside: avoid;
+  }
+  .note strong { color: #5b21b6; }
+
+  ul { margin: 1mm 0 3mm 0; padding-left: 5mm; }
+  li { margin: 0 0 1mm 0; }
+
+  /* ---------- BADGES DE PERFIL ---------- */
+  .who { margin: 1mm 0 0 0; }
+  .badge {
+    display: inline-block;
+    font-size: 7.8pt;
+    font-weight: 700;
+    letter-spacing: .4px;
+    border-radius: 999px;
+    padding: 2px 9px;
+    margin-right: 4px;
+    text-transform: uppercase;
+  }
+  .b-admin { background: #ede9fe; color: #5b21b6; }
+  .b-sup   { background: #dbeafe; color: #1e40af; }
+  .b-mem   { background: #dcfce7; color: #166534; }
+  .b-all   { background: #f3f4f6; color: #374151; }
+
+  /* ---------- TABELAS ---------- */
+  table.t { width: 100%; border-collapse: collapse; margin: 3mm 0; font-size: 9.5pt; }
+  table.t th {
+    background: #4c1d95; color: #fff; text-align: left;
+    padding: 3mm 3mm; font-size: 9pt;
+  }
+  table.t td { border-bottom: 1px solid #ececf1; padding: 2.5mm 3mm; vertical-align: top; }
+  table.t tr:nth-child(even) td { background: #faf9fe; }
+
+  /* ---------- SUMÁRIO ---------- */
+  .toc { margin-top: 4mm; }
+  .toc-item {
+    display: flex; justify-content: space-between;
+    border-bottom: 1px dotted #d6d3e0;
+    padding: 2.4mm 0;
+    font-size: 11pt;
+  }
+  .toc-item .t-num { color: #7c3aed; font-weight: 700; width: 9mm; display:inline-block; }
+  .toc-item .t-title { flex: 1; }
+</style>
+</head>
+<body>
+
+<!-- ===================== CAPA ===================== -->
+<div class="cover">
+  <div class="pill">GUIA OFICIAL · VERSÃO 2.0</div>
+  <div class="eyebrow">Manual do utilizador</div>
+  <h1>MyASA</h1>
+  <div class="sub">O guia completo da sua plataforma de gestão de operações e espetáculos — o que cada parte faz, para que serve e como usar no dia a dia.</div>
+  <img class="avatar" src="file:///home/runner/workspace/artifacts/mobile/assets/images/asa-avatar.png" alt="ASA">
+  <div class="footer">Atualizado em junho de 2026 · Aplicações: Web (gestão) e Telemóvel (equipa)</div>
+</div>
+
+<!-- ===================== SUMÁRIO ===================== -->
+<div class="section">
+  <h2>Índice</h2>
+  <div class="toc">
+    <div class="toc-item"><span><span class="t-num">1</span><span class="t-title">O que é o MyASA</span></span></div>
+    <div class="toc-item"><span><span class="t-num">2</span><span class="t-title">Perfis de utilizador (quem pode fazer o quê)</span></span></div>
+    <div class="toc-item"><span><span class="t-num">3</span><span class="t-title">Conceitos essenciais</span></span></div>
+    <div class="toc-item"><span><span class="t-num">4</span><span class="t-title">Onde está cada coisa (Web vs. Telemóvel)</span></span></div>
+    <div class="toc-item"><span><span class="t-num">5</span><span class="t-title">Operação do dia a dia</span></span></div>
+    <div class="toc-item"><span><span class="t-num">6</span><span class="t-title">Planeamento e escalas</span></span></div>
+    <div class="toc-item"><span><span class="t-num">7</span><span class="t-title">Conhecimento: Livro do Show, Livro do Dia e Biblioteca</span></span></div>
+    <div class="toc-item"><span><span class="t-num">8</span><span class="t-title">Comunicação: Avisos e Mensagens</span></span></div>
+    <div class="toc-item"><span><span class="t-num">9</span><span class="t-title">Autosserviço da equipa: Solicitações, Folgas, Tarefas</span></span></div>
+    <div class="toc-item"><span><span class="t-num">10</span><span class="t-title">Organização: Operações, Grupos, Utilizadores e Delegações</span></span></div>
+    <div class="toc-item"><span><span class="t-num">11</span><span class="t-title">Acompanhamento: Painéis, Indicadores, Histórico e Auditoria</span></span></div>
+    <div class="toc-item"><span><span class="t-num">12</span><span class="t-title">A ASA — o seu assistente inteligente</span></span></div>
+    <div class="toc-item"><span><span class="t-num">13</span><span class="t-title">Glossário rápido</span></span></div>
+  </div>
+</div>
+
+<!-- ===================== 1. O QUE É ===================== -->
+<div class="section">
+  <h2><span class="num">1</span>O que é o MyASA</h2>
+  <p class="lead">O MyASA é a plataforma que junta, num só lugar, tudo o que é preciso para planear e conduzir uma operação ou espetáculo: quem trabalha, quando, em que posição, o que tem de ser feito e como toda a gente comunica.</p>
+  <p>Em vez de ter horários numa folha, recados num grupo de mensagens e tarefas espalhadas, o MyASA reúne tudo de forma organizada e ligada. Cada pessoa vê exatamente o que lhe diz respeito, e a gestão tem uma visão completa do que está a acontecer.</p>
+
+  <p>O MyASA existe em duas aplicações que partilham a mesma informação em tempo real:</p>
+  <div class="card">
+    <h4>Aplicação Web (gestão)</h4>
+    <p class="meta">Pensada para administradores e supervisores.</p>
+    <p>É o "centro de controlo". Aqui cria-se e publica-se tudo: escalas, eventos, avisos, tarefas, o Livro do Show, utilizadores e grupos. Tem painéis e relatórios para acompanhar a saúde da operação.</p>
+  </div>
+  <div class="card">
+    <h4>Aplicação de Telemóvel (equipa)</h4>
+    <p class="meta">Pensada para todos os membros da equipa, no terreno.</p>
+    <p>É o "dia a dia na mão". Cada pessoa vê a sua escala, as suas tarefas, faz check-in, lê avisos, troca mensagens, pede folgas e fala com a ASA — tudo a partir do telemóvel.</p>
+  </div>
+
+  <div class="note"><strong>Ideia central:</strong> o trabalho de planeamento acontece sobretudo na Web; a execução no terreno acontece no Telemóvel. As duas estão sempre sincronizadas — o que se publica na Web aparece de imediato no telemóvel da equipa.</div>
+</div>
+
+<!-- ===================== 2. PERFIS ===================== -->
+<div class="section">
+  <h2><span class="num">2</span>Perfis de utilizador</h2>
+  <p class="lead">O que cada pessoa vê e pode fazer depende do seu perfil. Isto garante que cada um tem as ferramentas certas — sem ruído nem confusão.</p>
+
+  <table class="t">
+    <tr><th style="width:26%">Perfil</th><th>O que pode fazer</th></tr>
+    <tr><td><span class="badge b-admin">Administrador</span></td><td>Acesso total. Configura a operação de raiz: cria operações, grupos e utilizadores, define o Livro do Show, gere escalas, avisos, tarefas, e vê todos os painéis, indicadores e auditoria.</td></tr>
+    <tr><td><span class="badge b-sup">Supervisor</span></td><td>Faz a gestão do dia a dia da sua área/equipa: aprova solicitações, gere check-ins, cria avisos e tarefas, acompanha a sua equipa e delega responsabilidades. Vê a mesma informação que o administrador, mas limitada aos seus grupos e operações.</td></tr>
+    <tr><td><span class="badge b-mem">Membro</span></td><td>Foca-se no seu trabalho: consulta a sua escala e o Livro do Dia, cumpre tarefas, faz check-in, lê e confirma avisos, pede folgas/trocas e comunica pela aplicação.</td></tr>
+  </table>
+
+  <h3>Capitão (membro com delegação)</h3>
+  <p>Um <strong>Capitão</strong> não é um perfil separado: é um membro a quem um supervisor delegou temporariamente uma responsabilidade específica — por exemplo, fazer os check-ins da pista ou publicar um aviso. Enquanto a delegação estiver ativa, esse membro ganha acesso a essa função extra, sem deixar de ser membro.</p>
+  <div class="note"><strong>Como ler este manual:</strong> ao longo das próximas páginas, cada funcionalidade tem etiquetas a indicar quem a usa — <span class="badge b-admin">Admin</span> <span class="badge b-sup">Supervisor</span> <span class="badge b-mem">Membro</span> ou <span class="badge b-all">Todos</span>.</p>
+</div>
+
+<!-- ===================== 3. CONCEITOS ===================== -->
+<div class="section">
+  <h2><span class="num">3</span>Conceitos essenciais</h2>
+  <p class="lead">Estes são os termos que aparecem em todo o lado. Perceber estes seis conceitos torna o resto do manual muito fácil de seguir.</p>
+
+  <div class="card"><h4>Operação</h4><p>É a unidade principal de negócio — por exemplo, um espetáculo, uma unidade ou um local. Tudo o resto (equipas, escalas, eventos) pertence a uma operação. Um utilizador pode estar ligado a uma ou mais operações.</p></div>
+  <div class="card"><h4>Grupo</h4><p>Conjunto de pessoas dentro de uma operação (uma equipa, uma área, uma função). Os grupos definem quem o supervisor gere e quem vê o quê.</p></div>
+  <div class="card"><h4>Escala</h4><p>O plano de quem trabalha, quando e em que posição. É montada por semanas operacionais e, depois de pronta, é <em>publicada</em> para a equipa ver.</p></div>
+  <div class="card"><h4>Livro do Show</h4><p>A estrutura <strong>permanente e oficial</strong> do espetáculo: as cenas, os blocos e as posições que existem sempre. É o "molde" a partir do qual se monta cada dia. <span class="who"><span class="badge b-admin">Admin</span> <span class="badge b-sup">Supervisor</span></span></p></div>
+  <div class="card"><h4>Livro do Dia</h4><p>O "guião" concreto de um dia específico, gerado a partir da escala e do Livro do Show: quem está em cada posição naquele dia, com as trocas de última hora. <span class="who"><span class="badge b-all">Todos</span></span></p></div>
+  <div class="card"><h4>Check-in</h4><p>O registo de presença: confirma que o membro chegou e está pronto para a sua posição. Permite à gestão ver a cobertura real em tempo real.</p></div>
+
+  <div class="note"><strong>Livro do Show vs. Livro do Dia (a diferença mais importante):</strong> o <em>Livro do Show</em> é o molde fixo do espetáculo (não muda todos os dias); o <em>Livro do Dia</em> é a aplicação desse molde a uma data concreta, já com as pessoas e as alterações daquele dia.</div>
+</div>
+
+<!-- ===================== 4. ONDE ESTÁ CADA COISA ===================== -->
+<div class="section">
+  <h2><span class="num">4</span>Onde está cada coisa</h2>
+  <p class="lead">Um mapa rápido para saber em que aplicação encontra cada funcionalidade e onde clicar.</p>
+
+  <h3>Telemóvel — as 5 abas de baixo</h3>
+  <table class="t">
+    <tr><th style="width:24%">Aba</th><th>Para que serve</th></tr>
+    <tr><td><strong>Meu Dia</strong></td><td>O seu painel pessoal do dia: check-in, tarefas e a sua escala de hoje.</td></tr>
+    <tr><td><strong>Avisos</strong></td><td>Comunicados oficiais para ler e confirmar.</td></tr>
+    <tr><td><strong>Central</strong></td><td>Caixa de notificações (alertas, aprovações, tarefas atribuídas).</td></tr>
+    <tr><td><strong>Mensagens</strong></td><td>Conversas diretas e em grupo.</td></tr>
+    <tr><td><strong>Mais</strong></td><td>Porta de entrada para tudo o resto (ver abaixo).</td></tr>
+  </table>
+  <p>Dentro de <strong>Mais</strong>, as funcionalidades estão organizadas por temas: <em>Operacional</em> (Escala, Solicitações, Folgas, Livro do Dia, Entregas, Tarefas, Painel, Responsabilidades), <em>Consulta</em> (Livro do Show, Agenda, Biblioteca), <em>Registo</em> (Histórico, Indicadores), <em>Inteligência</em> (ASA) e <em>Perfil</em>.</p>
+
+  <h3>Web — o menu lateral</h3>
+  <p>Na aplicação Web, o menu lateral muda conforme o perfil e está agrupado por temas: <em>Painéis</em>, <em>Operação</em>, <em>Organização</em>, <em>Conhecimento</em>, <em>Planeamento</em>, <em>Comunicação</em>, <em>Governança</em> e <em>Inteligência</em>. Quanto maior a responsabilidade do perfil, mais secções aparecem.</p>
+
+  <div class="note"><strong>Nota sobre visibilidade:</strong> alguns ecrãs são só para gestão (por exemplo, o <em>Painel</em>, os <em>Indicadores</em> e o <em>Livro do Show</em> no telemóvel). Os membros não veem essas opções no menu — veem apenas o que precisam para o seu dia.</div>
+</div>
+
+<!-- ===================== 5. OPERAÇÃO ===================== -->
+<div class="section">
+  <h2><span class="num">5</span>Operação do dia a dia</h2>
+  <p class="lead">As ferramentas que mantêm a operação a funcionar enquanto o dia decorre.</p>
+
+  <div class="card"><h4>Meu Dia</h4><p class="meta">Telemóvel · Web</p>
+    <p><strong>Para que serve:</strong> é o ponto de partida de cada membro. Mostra, num só ecrã, o estado do check-in, as tarefas do dia, a escala de hoje e os avisos por ler.</p>
+    <p><strong>Como funciona:</strong> o membro vê as suas atribuições específicas; a gestão vê um resumo. É o ecrã onde se "abre o dia".</p>
+    <div class="who"><span class="badge b-all">Todos</span></div>
+  </div>
+
+  <div class="card"><h4>Check-ins</h4><p class="meta">Web · (delegável a Capitães)</p>
+    <p><strong>Para que serve:</strong> registar e acompanhar a presença de quem está escalado.</p>
+    <p><strong>Como funciona:</strong> a gestão (ou um Capitão com delegação) confirma a entrada de cada membro e vê o estado atual e o histórico, percebendo de imediato se há posições por cobrir.</p>
+    <div class="who"><span class="badge b-admin">Admin</span> <span class="badge b-sup">Supervisor</span></div>
+  </div>
+
+  <div class="card"><h4>Entregas</h4><p class="meta">Telemóvel · Web</p>
+    <p><strong>Para que serve:</strong> controlar materiais, equipamento ou conteúdos que têm de ser entregues, recolhidos ou conferidos durante a operação.</p>
+    <p><strong>Como funciona:</strong> a gestão define checklists de itens; o membro confirma a receção ou a entrega de cada um.</p>
+    <div class="who"><span class="badge b-all">Todos</span></div>
+  </div>
+
+  <div class="card"><h4>Responsabilidades</h4><p class="meta">Telemóvel · Web</p>
+    <p><strong>Para que serve:</strong> diretório de funções permanentes — quem é responsável por cada área (manutenção, artístico, check-ins, aprovações, etc.).</p>
+    <p><strong>Como funciona:</strong> qualquer pessoa pode consultar quem trata de quê; a gestão vê também estatísticas de cobertura (quantas funções estão por atribuir). Algumas responsabilidades desbloqueiam acessos de "Capitão".</p>
+    <div class="who"><span class="badge b-all">Todos</span></div>
+  </div>
+
+  <div class="card"><h4>Indisponibilidades / Restrições</h4><p class="meta">Web</p>
+    <p><strong>Para que serve:</strong> registar períodos em que um membro não pode ser escalado, por motivos fixos ou temporários.</p>
+    <p><strong>Como funciona:</strong> estas restrições são tidas em conta automaticamente quando se geram as escalas, evitando alocar pessoas indisponíveis.</p>
+    <div class="who"><span class="badge b-admin">Admin</span> <span class="badge b-sup">Supervisor</span></div>
+  </div>
+</div>
+
+<!-- ===================== 6. PLANEAMENTO ===================== -->
+<div class="section">
+  <h2><span class="num">6</span>Planeamento e escalas</h2>
+  <p class="lead">Como se planeia quem trabalha e quando, antes do dia chegar.</p>
+
+  <div class="card"><h4>Agenda</h4><p class="meta">Telemóvel · Web</p>
+    <p><strong>Para que serve:</strong> o calendário-mestre de eventos — shows, ensaios e reuniões.</p>
+    <p><strong>Como funciona:</strong> a gestão agenda os eventos; estes servem de base para gerar as escalas. A equipa consulta a agenda e pode filtrar por estado (confirmado, cancelado, concluído).</p>
+    <div class="who"><span class="badge b-all">Todos</span> <span style="font-size:8.5pt;color:#6b7280">(criar/editar: gestão)</span></div>
+  </div>
+
+  <div class="card"><h4>Escalas</h4><p class="meta">Web (gestão) · Telemóvel (consulta)</p>
+    <p><strong>Para que serve:</strong> montar o plano de quem trabalha, quando e em que posição.</p>
+    <p><strong>Como funciona:</strong> a gestão cria a semana operacional, pode gerar alocações automaticamente com o motor de cobertura, ajusta entradas manualmente e, no fim, <em>publica</em> o rascunho. Só depois de publicada é que a equipa a vê.</p>
+    <div class="who"><span class="badge b-admin">Admin</span> <span class="badge b-sup">Supervisor</span> <span class="badge b-mem">Membro (vê a sua)</span></div>
+  </div>
+
+  <div class="card"><h4>Minha Escala</h4><p class="meta">Telemóvel · Web</p>
+    <p><strong>Para que serve:</strong> a vista individual do membro sobre os seus horários.</p>
+    <p><strong>Como funciona:</strong> mostra os turnos confirmados, folgas e eventos para os quais foi escalado. Pode filtrar por data.</p>
+    <div class="who"><span class="badge b-mem">Membro</span></div>
+  </div>
+
+  <div class="note"><strong>Boa prática:</strong> uma escala em <em>rascunho</em> ainda não é vista pela equipa. Publique apenas quando estiver pronta — assim evita confusões com versões intermédias.</div>
+</div>
+
+<!-- ===================== 7. CONHECIMENTO ===================== -->
+<div class="section">
+  <h2><span class="num">7</span>Conhecimento</h2>
+  <p class="lead">A "memória oficial" da operação: como o espetáculo é estruturado, o que acontece em cada dia e onde estão os documentos.</p>
+
+  <div class="card"><h4>Livro do Show</h4><p class="meta">Web (gestão) · Telemóvel (consulta de gestão)</p>
+    <p><strong>Para que serve:</strong> definir a estrutura permanente do espetáculo — as cenas, os blocos e as posições padrão, com os documentos de referência associados (manuais, referências de personagens).</p>
+    <p><strong>Como funciona:</strong> a gestão constrói esta estrutura uma vez e mantém-na atualizada. Serve de molde para gerar o Livro do Dia. Cada alteração (adicionar/remover cenas, blocos ou posições) fica registada para auditoria.</p>
+    <div class="who"><span class="badge b-admin">Admin</span> <span class="badge b-sup">Supervisor</span></div>
+  </div>
+
+  <div class="card"><h4>Livro do Dia</h4><p class="meta">Telemóvel · Web</p>
+    <p><strong>Para que serve:</strong> o guião de execução de um dia específico — a sequência de cenas/blocos com as pessoas em cada posição naquele dia.</p>
+    <p><strong>Como funciona:</strong> é gerado a partir da escala e do Livro do Show. A gestão controla trocas de membros e publica as alterações; o membro vê em tempo real a sua posição e eventuais trocas de última hora.</p>
+    <div class="who"><span class="badge b-all">Todos</span></div>
+  </div>
+
+  <div class="card"><h4>Biblioteca</h4><p class="meta">Telemóvel · Web</p>
+    <p><strong>Para que serve:</strong> repositório central de manuais, procedimentos e políticas (segurança, integração, regras).</p>
+    <p><strong>Como funciona:</strong> a gestão organiza os documentos por categorias; a equipa pesquisa e consulta o que está liberado para o seu perfil.</p>
+    <div class="who"><span class="badge b-all">Todos</span></div>
+  </div>
+</div>
+
+<!-- ===================== 8. COMUNICAÇÃO ===================== -->
+<div class="section">
+  <h2><span class="num">8</span>Comunicação</h2>
+  <p class="lead">Como a informação circula entre a gestão e a equipa — de forma oficial (Avisos) ou em conversa (Mensagens).</p>
+
+  <div class="card"><h4>Avisos</h4><p class="meta">Telemóvel · Web</p>
+    <p><strong>Para que serve:</strong> comunicados oficiais em massa, com níveis de urgência.</p>
+    <p><strong>Como funciona:</strong> a gestão (ou um Capitão com delegação) cria o aviso, escolhe a urgência, pode segmentar por grupos e exigir <em>confirmação de leitura</em>. O membro lê e confirma que está ciente — assim a gestão sabe quem já viu.</p>
+    <div class="who"><span class="badge b-admin">Admin</span> <span class="badge b-sup">Supervisor</span> <span class="badge b-mem">Membro (lê/confirma)</span></div>
+  </div>
+
+  <div class="card"><h4>Mensagens</h4><p class="meta">Telemóvel · Web</p>
+    <p><strong>Para que serve:</strong> conversas diretas ou em grupo entre a gestão e a equipa.</p>
+    <p><strong>Como funciona:</strong> as conversas podem estar ligadas a um contexto (um evento, uma tarefa). A gestão pode encerrar conversas quando o assunto fica resolvido.</p>
+    <div class="who"><span class="badge b-all">Todos</span></div>
+  </div>
+
+  <div class="card"><h4>Central de Notificações</h4><p class="meta">Telemóvel</p>
+    <p><strong>Para que serve:</strong> a caixa de entrada de todos os alertas do sistema.</p>
+    <p><strong>Como funciona:</strong> reúne avisos, tarefas atribuídas e pedidos de aprovação, com um contador de não lidos. As notificações importantes chegam também como <em>push</em> ao telemóvel.</p>
+    <div class="who"><span class="badge b-all">Todos</span></div>
+  </div>
+</div>
+
+<!-- ===================== 9. AUTOSSERVIÇO ===================== -->
+<div class="section">
+  <h2><span class="num">9</span>Autosserviço da equipa</h2>
+  <p class="lead">As ferramentas que dão autonomia aos membros — pedir, registar e cumprir — com a gestão a decidir e acompanhar.</p>
+
+  <div class="card"><h4>Solicitações</h4><p class="meta">Telemóvel · Web</p>
+    <p><strong>Para que serve:</strong> o canal formal para o membro pedir folgas, trocas de escala ou outras necessidades.</p>
+    <p><strong>Como funciona:</strong> o membro cria o pedido e acompanha o estado; a gestão (ou um delegado) vê uma secção "Para Decidir" e aprova, recusa ou propõe uma alternativa.</p>
+    <div class="who"><span class="badge b-mem">Membro (pede)</span> <span class="badge b-sup">Supervisor (decide)</span></div>
+  </div>
+
+  <div class="card"><h4>Folgas</h4><p class="meta">Telemóvel (consulta) · Web (gestão)</p>
+    <p><strong>Para que serve:</strong> gerir ausências programadas — folgas, recessos e afastamentos.</p>
+    <p><strong>Como funciona:</strong> na Web há uma grelha mensal para visualizar e registar ausências; estas entram automaticamente no motor de escalas, evitando escalar quem está ausente. A equipa consulta as ausências para planear cobertura.</p>
+    <div class="who"><span class="badge b-admin">Admin</span> <span class="badge b-sup">Supervisor</span> <span class="badge b-mem">Membro (consulta)</span></div>
+  </div>
+
+  <div class="card"><h4>Tarefas</h4><p class="meta">Telemóvel · Web</p>
+    <p><strong>Para que serve:</strong> gerir atividades com prazos, prioridades e, quando preciso, recolha de evidências (fotos/ficheiros).</p>
+    <p><strong>Como funciona:</strong> a gestão cria e delega tarefas; o membro vê o que tem para fazer, anexa evidências e marca como concluído. Algumas tarefas exigem aprovação — a gestão vê uma secção "Para Aprovar" para validar.</p>
+    <div class="who"><span class="badge b-sup">Supervisor (atribui/aprova)</span> <span class="badge b-mem">Membro (executa)</span></div>
+  </div>
+</div>
+
+<!-- ===================== 10. ORGANIZAÇÃO ===================== -->
+<div class="section">
+  <h2><span class="num">10</span>Organização e estrutura</h2>
+  <p class="lead">A configuração de base: quem existe no sistema, como está agrupado e quem responde por quê. Sobretudo trabalho de administração.</p>
+
+  <div class="card"><h4>Operações</h4><p class="meta">Web</p>
+    <p><strong>Para que serve:</strong> cadastrar as unidades de negócio (espetáculos/locais) que existem no sistema.</p>
+    <p><strong>Como funciona:</strong> define-se o nome, o logótipo e o estado (ativa/inativa) de cada operação. Tudo o resto pertence a uma operação.</p>
+    <div class="who"><span class="badge b-admin">Admin</span></div>
+  </div>
+
+  <div class="card"><h4>Grupos</h4><p class="meta">Web</p>
+    <p><strong>Para que serve:</strong> organizar membros e supervisores em equipas/áreas.</p>
+    <p><strong>Como funciona:</strong> os grupos definem o âmbito de visibilidade e gestão — ou seja, quem cada supervisor acompanha e que informação cada pessoa vê.</p>
+    <div class="who"><span class="badge b-admin">Admin</span> <span class="badge b-sup">Supervisor (os seus)</span></div>
+  </div>
+
+  <div class="card"><h4>Utilizadores</h4><p class="meta">Web</p>
+    <p><strong>Para que serve:</strong> gerir as pessoas — cadastro, perfis, cargos/funções e estado de acesso.</p>
+    <p><strong>Como funciona:</strong> aqui criam-se e editam-se as contas, atribuem-se cargos e controla-se quem tem acesso. O acesso é feito por nome de utilizador.</p>
+    <div class="who"><span class="badge b-admin">Admin</span></div>
+  </div>
+
+  <div class="card"><h4>Delegações</h4><p class="meta">Web</p>
+    <p><strong>Para que serve:</strong> transferir temporariamente uma responsabilidade de supervisor para um membro de confiança (o "Capitão").</p>
+    <p><strong>Como funciona:</strong> o supervisor escolhe a responsabilidade (ex.: aprovação de tarefas, check-ins, avisos) e a quem a delega. Enquanto durar, esse membro ganha esse acesso específico.</p>
+    <div class="who"><span class="badge b-sup">Supervisor</span></div>
+  </div>
+
+  <div class="card"><h4>Aprovações entre Supervisores</h4><p class="meta">Web</p>
+    <p><strong>Para que serve:</strong> tratar pedidos que precisam de consenso entre supervisores de áreas diferentes.</p>
+    <p><strong>Como funciona:</strong> gere os fluxos de governança em que uma decisão precisa da validação de mais do que um supervisor.</p>
+    <div class="who"><span class="badge b-admin">Admin</span> <span class="badge b-sup">Supervisor</span></div>
+  </div>
+</div>
+
+<!-- ===================== 11. ACOMPANHAMENTO ===================== -->
+<div class="section">
+  <h2><span class="num">11</span>Acompanhamento e controlo</h2>
+  <p class="lead">Onde a gestão vê a "saúde" da operação, mede o desempenho e audita o que aconteceu.</p>
+
+  <div class="card"><h4>Início (Dashboard)</h4><p class="meta">Web · Telemóvel</p>
+    <p><strong>Para que serve:</strong> a página de entrada com o resumo do mais importante.</p>
+    <p><strong>Como funciona:</strong> mostra a saúde da operação, os check-ins do dia, as pendências de solicitações e os próximos eventos. Para o membro, é um boas-vindas com atalhos rápidos.</p>
+    <div class="who"><span class="badge b-all">Todos</span></div>
+  </div>
+
+  <div class="card"><h4>Painel Operacional</h4><p class="meta">Web · Telemóvel (só gestão)</p>
+    <p><strong>Para que serve:</strong> monitorização em tempo real da operação.</p>
+    <p><strong>Como funciona:</strong> mostra percentagens de cobertura, conflitos críticos (posições por preencher) e alertas urgentes — por exemplo, eventos nas próximas 48h ainda sem Livro publicado.</p>
+    <div class="who"><span class="badge b-admin">Admin</span> <span class="badge b-sup">Supervisor</span></div>
+  </div>
+
+  <div class="card"><h4>Indicadores</h4><p class="meta">Web · Telemóvel (só gestão)</p>
+    <p><strong>Para que serve:</strong> métricas e gráficos de desempenho.</p>
+    <p><strong>Como funciona:</strong> apresenta taxas de presença (atrasos/faltas), conclusão de tarefas e distribuição de carga de trabalho, ajudando a tomar decisões com base em dados.</p>
+    <div class="who"><span class="badge b-admin">Admin</span> <span class="badge b-sup">Supervisor</span></div>
+  </div>
+
+  <div class="card"><h4>Histórico</h4><p class="meta">Web · Telemóvel</p>
+    <p><strong>Para que serve:</strong> a linha do tempo das atividades.</p>
+    <p><strong>Como funciona:</strong> na gestão, regista quem fez cada alteração no sistema (auditoria); para o membro, é o seu registo pessoal de check-ins e tarefas concluídas.</p>
+    <div class="who"><span class="badge b-all">Todos</span></div>
+  </div>
+
+  <div class="card"><h4>Auditoria</h4><p class="meta">Web</p>
+    <p><strong>Para que serve:</strong> verificar a integridade e o controlo de versões — em especial do Livro do Show.</p>
+    <p><strong>Como funciona:</strong> permite analisar as versões e as alterações dos processos, garantindo conformidade e rasto de tudo o que mudou.</p>
+    <div class="who"><span class="badge b-admin">Admin</span></div>
+  </div>
+
+  <div class="card"><h4>Mural da Equipa</h4><p class="meta">Web</p>
+    <p><strong>Para que serve:</strong> reconhecimento e espírito de equipa.</p>
+    <p><strong>Como funciona:</strong> destaca conquistas, aniversariantes e bons exemplos da operação.</p>
+    <div class="who"><span class="badge b-admin">Admin</span> <span class="badge b-sup">Supervisor</span></div>
+  </div>
+</div>
+
+<!-- ===================== 12. ASA ===================== -->
+<div class="section">
+  <h2><span class="num">12</span>A ASA — o seu assistente inteligente</h2>
+  <p class="lead">A ASA é o coordenador virtual do MyASA. Em vez de procurar a informação por vários ecrãs, basta perguntar — em linguagem normal — e a ASA responde, explica e, para a gestão, até ajuda a executar.</p>
+
+  <h3>O que a ASA faz por cada perfil</h3>
+  <div class="card"><h4>Para o Membro — um guia</h4>
+    <p>Explica mudanças de posição, lista o que está pendente e responde a perguntas como "O que tenho de fazer hoje?" ou "Quando é a minha próxima folga?".</p>
+    <div class="who"><span class="badge b-mem">Membro</span></div>
+  </div>
+  <div class="card"><h4>Para o Supervisor — um copiloto</h4>
+    <p>Identifica riscos de cobertura ("o membro X está de folga mas tem tarefas"), sugere substituições e prepara rascunhos de rotina (avisos, tarefas) a partir de um simples pedido.</p>
+    <div class="who"><span class="badge b-sup">Supervisor</span></div>
+  </div>
+  <div class="card"><h4>Para o Administrador — um analista</h4>
+    <p>Identifica tendências de longo prazo, quebras na saúde da operação e padrões de faltas ou de conclusão de tarefas.</p>
+    <div class="who"><span class="badge b-admin">Admin</span></div>
+  </div>
+
+  <h3>O que a ASA consegue consultar e fazer</h3>
+  <p>A ASA está ligada à informação real do MyASA. Entre outras coisas, consegue:</p>
+  <ul>
+    <li><strong>Consultar</strong> membros, escalas, agenda, folgas, histórico e até o clima (para prever impactos no espetáculo).</li>
+    <li><strong>Analisar</strong> estatísticas e tendências, resumir conversas e gerar relatórios.</li>
+    <li><strong>Pesquisar</strong> na Biblioteca e recordar factos da organização ("memórias").</li>
+    <li><strong>Executar</strong> ações (para a gestão): criar uma tarefa, publicar um aviso ou uma escala, registar uma ausência.</li>
+  </ul>
+
+  <div class="note"><strong>No telemóvel:</strong> a ASA tem um avatar com poses que mudam conforme o contexto — por exemplo, "a analisar" quando está a consultar dados, ou um alerta de chuva quando o tempo pode afetar o espetáculo. Mostra também pequenas etiquetas a indicar o que está a verificar (ex.: "A consultar escalas"), para perceber o que está a acontecer.</div>
+
+  <div class="note"><strong>Segurança:</strong> a ASA respeita sempre o perfil de quem pergunta. Um membro nunca vê, através da ASA, informação que não lhe é destinada, e só a gestão pode pedir ações de escrita (criar/publicar).</div>
+</div>
+
+<!-- ===================== 13. GLOSSÁRIO ===================== -->
+<div class="section">
+  <h2><span class="num">13</span>Glossário rápido</h2>
+  <table class="t">
+    <tr><th style="width:30%">Termo</th><th>Significado</th></tr>
+    <tr><td><strong>Operação</strong></td><td>A unidade principal (espetáculo/local) a que tudo pertence.</td></tr>
+    <tr><td><strong>Grupo</strong></td><td>Equipa ou área de pessoas dentro de uma operação.</td></tr>
+    <tr><td><strong>Escala</strong></td><td>Plano de quem trabalha, quando e em que posição.</td></tr>
+    <tr><td><strong>Semana operacional</strong></td><td>O período (ex.: de quinta a quarta) em que se organiza a escala.</td></tr>
+    <tr><td><strong>Publicar</strong></td><td>Tornar algo (escala, livro, aviso) visível para a equipa. Antes disso é "rascunho".</td></tr>
+    <tr><td><strong>Livro do Show</strong></td><td>Estrutura fixa do espetáculo: cenas, blocos e posições padrão.</td></tr>
+    <tr><td><strong>Livro do Dia</strong></td><td>O guião de um dia concreto, com as pessoas em cada posição.</td></tr>
+    <tr><td><strong>Check-in</strong></td><td>Registo de presença de um membro escalado.</td></tr>
+    <tr><td><strong>Folga</strong></td><td>Ausência programada (folga, recesso, afastamento, etc.).</td></tr>
+    <tr><td><strong>Solicitação</strong></td><td>Pedido formal de um membro (folga, troca…) para a gestão decidir.</td></tr>
+    <tr><td><strong>Delegação</strong></td><td>Passar temporariamente uma responsabilidade a um membro de confiança.</td></tr>
+    <tr><td><strong>Capitão</strong></td><td>Membro que recebeu uma delegação e ganhou um acesso extra temporário.</td></tr>
+    <tr><td><strong>Cobertura</strong></td><td>Quanto das posições necessárias estão preenchidas.</td></tr>
+    <tr><td><strong>ASA</strong></td><td>O assistente inteligente que consulta dados, explica e ajuda a executar.</td></tr>
+    <tr><td><strong>Push</strong></td><td>Notificação que chega ao telemóvel mesmo com a app fechada.</td></tr>
+  </table>
+
+  <div class="note" style="margin-top:8mm;text-align:center;background:#4c1d95;color:#fff;border-color:#4c1d95;">
+    <strong style="color:#fff;font-size:12pt;">MyASA</strong><br>
+    A sua operação organizada, comunicada e sob controlo — na Web e no telemóvel.
+  </div>
+</div>
+
+</body>
+</html>
