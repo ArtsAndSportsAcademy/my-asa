@@ -1961,18 +1961,43 @@ function resolveOneMember(
   };
 }
 
-/** Carrega os usuários ativos da operação/organização + memórias aprovadas (para apelidos). */
+/**
+ * Carrega os usuários ativos visíveis ao solicitante + memórias aprovadas (para apelidos).
+ * Escopo: ADMIN enxerga toda a organização; demais (supervisores/membros) enxergam TODAS
+ * as operações onde têm papel ativo — não só a "operação atual" — para que um gestor de
+ * várias operações consiga encontrar membros de qualquer uma delas.
+ */
 async function loadOrgMembersAndMemories(ctx: ToolCtx): Promise<{ users: MemberMatch[]; memories: { key: string; value: string }[] }> {
-  const allUsers = await db
-    .select({ id: usersTable.id, name: usersTable.name })
-    .from(usersTable)
-    .innerJoin(userRolesTable, eq(userRolesTable.userId, usersTable.id))
-    .where(and(
-      ctx.operationId ? eq(userRolesTable.operationId, ctx.operationId) : sql`true`,
-      ne(usersTable.status, "INACTIVE"),
-    ));
+  let memberRows: MemberMatch[];
+  if (ctx.userRole === "ADMIN" && ctx.organizationId) {
+    memberRows = await db
+      .select({ id: usersTable.id, name: usersTable.name })
+      .from(usersTable)
+      .where(and(
+        eq(usersTable.organizationId, ctx.organizationId),
+        ne(usersTable.status, "INACTIVE"),
+      ));
+  } else {
+    const myOpRows = await db
+      .select({ operationId: userRolesTable.operationId })
+      .from(userRolesTable)
+      .where(and(eq(userRolesTable.userId, ctx.userId), eq(userRolesTable.active, true)));
+    const myOpIds = Array.from(
+      new Set(myOpRows.map((r) => r.operationId).filter((x): x is string => !!x))
+    );
+    memberRows = await db
+      .select({ id: usersTable.id, name: usersTable.name })
+      .from(usersTable)
+      .innerJoin(userRolesTable, eq(userRolesTable.userId, usersTable.id))
+      .where(and(
+        myOpIds.length > 0
+          ? inArray(userRolesTable.operationId, myOpIds)
+          : (ctx.operationId ? eq(userRolesTable.operationId, ctx.operationId) : sql`true`),
+        ne(usersTable.status, "INACTIVE"),
+      ));
+  }
   const userMap = new Map<string, MemberMatch>();
-  for (const u of allUsers) userMap.set(u.id, u);
+  for (const u of memberRows) userMap.set(u.id, u);
 
   const memories = ctx.organizationId
     ? await db
@@ -2178,8 +2203,16 @@ async function coreRegistrarAusencia(
   p: { userId?: string; startDate?: string; endDate?: string; date?: string; type?: string; reason?: string },
 ): Promise<{ id: string; startDate: string; endDate: string; type: string; isSingleDay: boolean }> {
   if (!ctx.organizationId) throw new Error("Organização não configurada");
-  if (!ctx.operationId) throw new Error("Selecione uma operação antes de registrar ausências");
   if (!p.userId) throw new Error("userId é obrigatório");
+  // A folga deve ficar na operação do MEMBRO (não na operação atual do gestor),
+  // para que gestores de várias operações registrem no lugar certo.
+  const [memberRole] = await db
+    .select({ operationId: userRolesTable.operationId })
+    .from(userRolesTable)
+    .where(and(eq(userRolesTable.userId, p.userId), eq(userRolesTable.active, true)))
+    .limit(1);
+  const targetOperationId = memberRole?.operationId ?? ctx.operationId;
+  if (!targetOperationId) throw new Error("Não foi possível determinar a operação do membro");
   const startDate = ((p.startDate ?? p.date) as string | undefined) ?? "";
   if (!startDate) throw new Error("startDate é obrigatório");
   const endDate = (p.endDate ?? startDate) as string;
@@ -2188,7 +2221,7 @@ async function coreRegistrarAusencia(
   const absType = ((p.type as string | undefined) ?? defaultType) as typeof folgasTable.$inferInsert["type"];
   const [folga] = await db.insert(folgasTable).values({
     userId: p.userId,
-    operationId: ctx.operationId,
+    operationId: targetOperationId,
     type: absType,
     startDate,
     endDate,
