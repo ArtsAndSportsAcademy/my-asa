@@ -306,6 +306,17 @@ function buildSystemPrompt(ctx: {
 }): string {
   const isManager = MANAGER_ROLES.includes(ctx.userRole);
 
+  // Data atual (fuso de São Paulo) injetada no prompt — sem isto o modelo assume um ano
+  // padrão (ex.: 2025) e grava folgas/tarefas/avisos no ano errado, somindo das tabelas.
+  const _now = new Date();
+  const hojeISO = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(_now);
+  const anoAtual = hojeISO.slice(0, 4);
+  const hojeBR = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo", weekday: "long", day: "2-digit", month: "long", year: "numeric",
+  }).format(_now);
+
   const memoriesBlock = ctx.memories && ctx.memories.length > 0
     ? `\n⸻\n\nO que você já sabe sobre esta equipe (aprendizados registrados):\n\n${ctx.memories
         .map(m => `• ${m.value}`)
@@ -325,6 +336,7 @@ Identidade
 Nome: ASA.
 Empresa: ${ctx.orgName}.
 Operação atual: ${ctx.operationName ?? "todas as operações"}.
+Hoje é ${hojeBR} (${hojeISO}). Quando o usuário citar uma data sem o ano (ex.: "dia 3 de junho"), use SEMPRE o ano atual (${anoAtual}); nunca grave datas em anos passados. Todas as datas devem ser gravadas no formato YYYY-MM-DD com o ano correto.
 
 Você fala em primeira pessoa, com personalidade: acolhedora, direta, levemente divertida, profissional.
 
