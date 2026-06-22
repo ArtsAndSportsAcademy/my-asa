@@ -19,6 +19,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import {
   useListFolgas,
   useGetFolgasGrid,
@@ -112,7 +113,13 @@ function FillPeriodModal({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
-        <View style={[styles.modalCard, { backgroundColor: colors.card }]}>
+        <View style={[styles.modalCard, { backgroundColor: colors.card, maxHeight: "90%" }]}>
+          <KeyboardAwareScrollViewCompat
+            contentContainerStyle={{ gap: 8 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            bottomOffset={24}
+          >
           <Text style={[styles.modalTitle, { color: colors.foreground }]}>Preencher Período</Text>
 
           {!preselectedUserId && (
@@ -178,6 +185,7 @@ function FillPeriodModal({
               </Text>
             </TouchableOpacity>
           </View>
+          </KeyboardAwareScrollViewCompat>
         </View>
       </View>
     </Modal>
@@ -229,6 +237,7 @@ function ManagerGridView({
 }) {
   const colors = useColors();
   const qc = useQueryClient();
+  const insets = useSafeAreaInsets();
   const today = new Date();
   const todayDay = today.getDate();
   const todayMonth = today.getMonth() + 1;
@@ -314,9 +323,14 @@ function ManagerGridView({
 
   return (
     <>
-      <ScrollView horizontal showsHorizontalScrollIndicator>
-        <View>
-          {/* Header row */}
+      <ScrollView
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <ScrollView horizontal showsHorizontalScrollIndicator>
+          <View>
+            {/* Header row */}
           <View style={[styles.gridRow, { borderBottomWidth: 1, borderColor: colors.border }]}>
             <View style={[styles.memberCell, { backgroundColor: colors.card }]}>
               <Text style={[styles.headerText, { color: colors.mutedForeground }]}>Membro</Text>
@@ -347,11 +361,7 @@ function ManagerGridView({
           </View>
 
           {/* Member rows */}
-          <ScrollView
-            refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
-            scrollEnabled={false}
-          >
-            {members.map((m) => (
+          {members.map((m) => (
               <View key={m.userId} style={[styles.gridRow, { borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border }]}>
                 <View style={[styles.memberCell, { backgroundColor: colors.card }]}>
                   <Text style={[styles.memberName, { color: colors.foreground }]} numberOfLines={1}>
@@ -396,8 +406,8 @@ function ManagerGridView({
                 </TouchableOpacity>
               </View>
             ))}
-          </ScrollView>
-        </View>
+          </View>
+        </ScrollView>
       </ScrollView>
 
       {fillModal.visible && (

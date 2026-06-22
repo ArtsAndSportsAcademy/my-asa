@@ -17,6 +17,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { AsaEmptyState } from "@/components/AsaEmptyState";
 import { AsaConfirmModal } from "@/components/AsaConfirmModal";
+import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import {
   useGetMyTasks,
   useStartTask,
@@ -477,10 +478,11 @@ export default function TarefasScreen() {
   ];
 
   return (
-    <ScrollView
+    <KeyboardAwareScrollViewCompat
       style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{ paddingBottom: insets.bottom + 100, paddingTop: insets.top + 16 }}
       showsVerticalScrollIndicator={false}
+      bottomOffset={24}
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
     >
       {/* Filtro de status */}
@@ -576,7 +578,7 @@ export default function TarefasScreen() {
           ))
         )}
       </View>
-    </ScrollView>
+    </KeyboardAwareScrollViewCompat>
   );
 }
 

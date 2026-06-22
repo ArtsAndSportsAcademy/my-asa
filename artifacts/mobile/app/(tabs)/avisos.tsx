@@ -28,6 +28,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
 import { AsaAvatar } from "@/components/AsaAvatar";
+import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -378,7 +379,11 @@ export default function AvisosScreen() {
             </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }} keyboardShouldPersistTaps="handled">
+          <KeyboardAwareScrollViewCompat
+            contentContainerStyle={{ padding: 20, gap: 16, paddingBottom: insets.bottom + 48 }}
+            keyboardShouldPersistTaps="handled"
+            bottomOffset={24}
+          >
             {/* Urgência */}
             <View style={{ gap: 6 }}>
               <Text style={{ color: colors.mutedForeground, fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.6 }}>Urgência</Text>
@@ -427,7 +432,7 @@ export default function AvisosScreen() {
                 style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, color: colors.foreground, fontSize: 15, minHeight: 120 }}
               />
             </View>
-          </ScrollView>
+          </KeyboardAwareScrollViewCompat>
         </View>
       </Modal>
     </View>

@@ -17,6 +17,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { useColors } from "@/hooks/useColors";
 import { AsaEmptyState } from "@/components/AsaEmptyState";
+import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import {
   useListRequests,
   useCreateRequest,
@@ -382,7 +383,12 @@ export default function SolicitacoesScreen() {
             </Pressable>
           </View>
 
-          <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+          <KeyboardAwareScrollViewCompat
+            style={styles.modalBody}
+            contentContainerStyle={{ paddingBottom: 48 }}
+            showsVerticalScrollIndicator={false}
+            bottomOffset={24}
+          >
             {/* Tipo */}
             <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Tipo de solicitação</Text>
             <Pressable
@@ -444,25 +450,27 @@ export default function SolicitacoesScreen() {
                 <Text style={styles.submitText}>Enviar Solicitação</Text>
               )}
             </Pressable>
-          </ScrollView>
+          </KeyboardAwareScrollViewCompat>
         </View>
 
         {/* Selector: tipo */}
         <Modal visible={showTypeSelector} transparent animationType="fade">
           <Pressable style={styles.overlay} onPress={() => setShowTypeSelector(false)}>
             <View style={[styles.selectorSheet, { backgroundColor: colors.card }]}>
-              {REQUEST_TYPES.map((t) => (
-                <TouchableOpacity
-                  key={t.value}
-                  style={[styles.selectorItem, { borderBottomColor: colors.border }]}
-                  onPress={() => { setSelectedType(t.value); setShowTypeSelector(false); }}
-                >
-                  <Text style={[styles.selectorText, { color: colors.foreground }]}>{t.label}</Text>
-                  {selectedType === t.value && (
-                    <Feather name="check" size={16} color={colors.primary} />
-                  )}
-                </TouchableOpacity>
-              ))}
+              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                {REQUEST_TYPES.map((t) => (
+                  <TouchableOpacity
+                    key={t.value}
+                    style={[styles.selectorItem, { borderBottomColor: colors.border }]}
+                    onPress={() => { setSelectedType(t.value); setShowTypeSelector(false); }}
+                  >
+                    <Text style={[styles.selectorText, { color: colors.foreground }]}>{t.label}</Text>
+                    {selectedType === t.value && (
+                      <Feather name="check" size={16} color={colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             </View>
           </Pressable>
         </Modal>
@@ -471,18 +479,20 @@ export default function SolicitacoesScreen() {
         <Modal visible={showOpSelector} transparent animationType="fade">
           <Pressable style={styles.overlay} onPress={() => setShowOpSelector(false)}>
             <View style={[styles.selectorSheet, { backgroundColor: colors.card }]}>
-              {operations.map((op) => (
-                <TouchableOpacity
-                  key={op.id}
-                  style={[styles.selectorItem, { borderBottomColor: colors.border }]}
-                  onPress={() => { setSelectedOperationId(op.id); setShowOpSelector(false); }}
-                >
-                  <Text style={[styles.selectorText, { color: colors.foreground }]}>{op.name}</Text>
-                  {selectedOperationId === op.id && (
-                    <Feather name="check" size={16} color={colors.primary} />
-                  )}
-                </TouchableOpacity>
-              ))}
+              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                {operations.map((op) => (
+                  <TouchableOpacity
+                    key={op.id}
+                    style={[styles.selectorItem, { borderBottomColor: colors.border }]}
+                    onPress={() => { setSelectedOperationId(op.id); setShowOpSelector(false); }}
+                  >
+                    <Text style={[styles.selectorText, { color: colors.foreground }]}>{op.name}</Text>
+                    {selectedOperationId === op.id && (
+                      <Feather name="check" size={16} color={colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             </View>
           </Pressable>
         </Modal>
