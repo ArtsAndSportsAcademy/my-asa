@@ -5440,43 +5440,58 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
       });
 
       let assistantContent: MessageParam["content"] = [];
-      const textBlocks: { type: "text"; text: string }[] = [];
-      const toolUseBlocks: Array<{ type: "tool_use"; id: string; name: string; input: Record<string, unknown> }> = [];
+      type TextBlock = { type: "text"; text: string };
+      type ToolUseBlock = { type: "tool_use"; id: string; name: string; input: Record<string, unknown> };
+      const blocksByIndex: Record<number, TextBlock | ToolUseBlock> = {};
+      // A Anthropic envia o input das tools em FRAGMENTOS (input_json_delta) que precisam
+      // ser CONCATENADOS e só então parseados uma única vez. Parsear cada fragmento isolado
+      // falha (ex.: `{"qu`) e deixava o input vazio — causa de consultar_membros ser
+      // chamado com query "" em loop ("consulta muitas vezes e não acha").
+      const jsonBufByIndex: Record<number, string> = {};
 
       for await (const event of stream) {
         if (event.type === "content_block_start") {
           if (event.content_block.type === "text") {
-            textBlocks.push({ type: "text", text: "" });
+            blocksByIndex[event.index] = { type: "text", text: "" };
           } else if (event.content_block.type === "tool_use") {
-            toolUseBlocks.push({
+            blocksByIndex[event.index] = {
               type: "tool_use",
               id: event.content_block.id,
               name: event.content_block.name,
               input: {},
-            });
+            };
+            jsonBufByIndex[event.index] = "";
           }
         } else if (event.type === "content_block_delta") {
           if (event.delta.type === "text_delta") {
-            const lastText = textBlocks[textBlocks.length - 1];
-            if (lastText) lastText.text += event.delta.text;
+            const b = blocksByIndex[event.index];
+            if (b && b.type === "text") b.text += event.delta.text;
             fullResponse += event.delta.text;
             res.write(`data: ${JSON.stringify({ content: event.delta.text })}\n\n`);
           } else if (event.delta.type === "input_json_delta") {
-            const lastTool = toolUseBlocks[toolUseBlocks.length - 1];
-            if (lastTool) {
-              try {
-                const partial = JSON.parse(event.delta.partial_json || "{}");
-                lastTool.input = { ...lastTool.input, ...partial };
-              } catch {}
+            jsonBufByIndex[event.index] =
+              (jsonBufByIndex[event.index] ?? "") + (event.delta.partial_json ?? "");
+          }
+        } else if (event.type === "content_block_stop") {
+          const b = blocksByIndex[event.index];
+          if (b && b.type === "tool_use") {
+            const raw = (jsonBufByIndex[event.index] ?? "").trim();
+            try {
+              b.input = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+            } catch {
+              b.input = {};
             }
           }
         } else if (event.type === "message_stop") {
-          assistantContent = [
-            ...textBlocks,
-            ...toolUseBlocks,
-          ];
+          assistantContent = Object.keys(blocksByIndex)
+            .map(Number)
+            .sort((a, b) => a - b)
+            .map((i) => blocksByIndex[i]!);
         }
       }
+
+      const toolUseBlocks = (assistantContent as Array<TextBlock | ToolUseBlock>)
+        .filter((b): b is ToolUseBlock => b.type === "tool_use");
 
       if (toolUseBlocks.length === 0) {
         continueLoop = false;

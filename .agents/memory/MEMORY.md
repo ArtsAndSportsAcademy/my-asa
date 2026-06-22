@@ -42,3 +42,4 @@
 - [Seletor de operação no Livro do Show](show-book-operation-selector.md) — escopar listagens por operação via auth.roles filtrado por MANAGER_ROLES + nomes via useGetOperations
 - [ASA — um membro em várias datas](asa-membro-multidata.md) — não repetir consultar_membros por data; usar registrar_ausencias_lote (1 item/data) para folgas multi-dia
 - [ASA — escopo de operação](asa-escopo-operacao.md) — ASA usava só a 1ª operação do gestor: não achava membros de outras operações e gravava folga na operação errada
+- [ASA — parsing do input das tools no streaming](asa-streaming-tool-input.md) — input_json_delta vem em FRAGMENTOS; parsear cada um isolado deixa input vazio → tools chamadas com args "" em loop ("não acha")
