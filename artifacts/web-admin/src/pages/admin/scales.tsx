@@ -17,12 +17,14 @@ import {
   useDuplicatePreviousWeek,
   useGetScaleHistory,
   useListScaleExceptions,
+  useListTasks,
   getListScalesQueryKey,
   getListScaleAllocationsQueryKey,
   getListFolgasQueryKey,
   getListUsersQueryKey,
   getScaleHistoryQueryKey,
   getListScaleExceptionsQueryKey,
+  getListTasksQueryKey,
   useListAgendaEvents,
   getListAgendaEventsQueryKey,
 } from "@workspace/api-client-react";
@@ -33,6 +35,7 @@ import type {
   Operation,
   FolgaItem,
   AgendaEvent,
+  TaskItem,
 } from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
@@ -133,6 +136,69 @@ function fmtTime(t?: string | null) {
   if (!t) return "";
   return t.slice(0, 5);
 }
+
+// ─── Tempo livre (deteção de buracos) ───────────────────────────────────────
+// Janela padrão do "dia de trabalho" usada para detetar tempo livre. Mantida
+// como constante (sem mudar o esquema) para ser prod-safe e fácil de afinar.
+const WORK_DAY_START_MIN = 9 * 60; // 09:00
+const WORK_DAY_END_MIN = 18 * 60; // 18:00
+const MIN_FREE_GAP_MIN = 60; // só sugerir buracos de pelo menos 1 hora
+
+function hhmmToMin(t?: string | null): number | null {
+  if (!t) return null;
+  const m = /^(\d{2}):(\d{2})/.exec(t);
+  if (!m) return null;
+  return parseInt(m[1]!, 10) * 60 + parseInt(m[2]!, 10);
+}
+function minToHHMM(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+interface FreeGap {
+  start: string; // HH:MM
+  end: string; // HH:MM
+}
+
+// Calcula os intervalos livres de um membro num dia, dentro da janela padrão,
+// a partir dos blocos que têm hora de início e fim.
+function computeFreeGaps(
+  entries: ScaleAllocationWithCandidates[]
+): FreeGap[] {
+  const intervals: { s: number; e: number }[] = [];
+  for (const e of entries) {
+    const s = hhmmToMin((e as any).startTime ?? (e as any).eventStartTime);
+    const en = hhmmToMin((e as any).endTime ?? (e as any).eventEndTime);
+    // Se um bloco não tem horário, não dá para saber o tempo realmente livre:
+    // ocultamos as sugestões para não induzir preenchimento indevido.
+    if (s == null || en == null) return [];
+    const cs = Math.max(s, WORK_DAY_START_MIN);
+    const ce = Math.min(en, WORK_DAY_END_MIN);
+    if (ce > cs) intervals.push({ s: cs, e: ce });
+  }
+  intervals.sort((a, b) => a.s - b.s);
+  // Merge sobrepostos
+  const merged: { s: number; e: number }[] = [];
+  for (const iv of intervals) {
+    const last = merged[merged.length - 1];
+    if (last && iv.s <= last.e) last.e = Math.max(last.e, iv.e);
+    else merged.push({ ...iv });
+  }
+  // Complemento dentro da janela
+  const gaps: FreeGap[] = [];
+  let cursor = WORK_DAY_START_MIN;
+  for (const iv of merged) {
+    if (iv.s - cursor >= MIN_FREE_GAP_MIN) {
+      gaps.push({ start: minToHHMM(cursor), end: minToHHMM(iv.s) });
+    }
+    cursor = Math.max(cursor, iv.e);
+  }
+  if (WORK_DAY_END_MIN - cursor >= MIN_FREE_GAP_MIN) {
+    gaps.push({ start: minToHHMM(cursor), end: minToHHMM(WORK_DAY_END_MIN) });
+  }
+  return gaps;
+}
 function fmtDateTime(d: string): string {
   return new Date(d).toLocaleString("pt-BR", {
     day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
@@ -211,6 +277,13 @@ export default function ScalesPage() {
   const [showAddAgenda, setShowAddAgenda] = useState(false);
   const [agendaEventId, setAgendaEventId] = useState<string>("");
   const [agendaMemberIds, setAgendaMemberIds] = useState<Set<string>>(new Set());
+  const [freeSlot, setFreeSlot] = useState<{
+    memberId: string;
+    memberName: string;
+    date: string;
+    start: string;
+    end: string;
+  } | null>(null);
 
   // ── Queries ──────────────────────────────────────────────────────────────
   const { data: opsData } = useGetOperations();
@@ -272,6 +345,18 @@ export default function ScalesPage() {
       },
     }
   );
+
+  // Tarefas pendentes da operação, para sugerir no tempo livre.
+  const tasksParams = {
+    operationId: selectedScale?.operationId,
+    status: "CREATED,IN_PROGRESS",
+  };
+  const { data: tasksData } = useListTasks(tasksParams as any, {
+    query: {
+      queryKey: getListTasksQueryKey(tasksParams as any),
+      enabled: folgasEnabled && !!selectedScale?.operationId,
+    },
+  });
 
   // ── Mutations ──────────────────────────────────────────────────────────────
   const createWeekMut = useCreateWeekScale();
@@ -430,6 +515,20 @@ export default function ScalesPage() {
     }
     return m;
   }, [entriesByDateMember]);
+
+  // userId → tarefas pendentes (para sugerir no tempo livre)
+  const pendingTasksByMember = useMemo(() => {
+    const m = new Map<string, TaskItem[]>();
+    for (const t of (tasksData?.tasks ?? []) as TaskItem[]) {
+      if (!t.assigneeId) continue;
+      if (!m.has(t.assigneeId)) m.set(t.assigneeId, []);
+      m.get(t.assigneeId)!.push(t);
+    }
+    for (const list of m.values()) {
+      list.sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)));
+    }
+    return m;
+  }, [tasksData]);
 
   // date → userId → folgaType
   const folgaByDateMember = useMemo(() => {
@@ -607,6 +706,26 @@ export default function ScalesPage() {
       setShowAddEntry(false);
     } catch (e: any) {
       toast({ title: e?.message ?? "Erro ao adicionar entrada", variant: "destructive" });
+    }
+  }
+
+  async function handleFillFreeSlot(label: string, notes?: string) {
+    if (!selectedScale?.id || !freeSlot) return;
+    try {
+      await createEntryMut.mutateAsync({
+        scaleId: selectedScale.id,
+        memberId: freeSlot.memberId,
+        date: freeSlot.date,
+        label,
+        startTime: freeSlot.start || undefined,
+        endTime: freeSlot.end || undefined,
+        notes: notes || undefined,
+      } as any);
+      toast({ title: "Tempo livre preenchido" });
+      invalidateAllocations();
+      setFreeSlot(null);
+    } catch (e: any) {
+      toast({ title: e?.message ?? "Erro ao preencher tempo livre", variant: "destructive" });
     }
   }
 
@@ -931,6 +1050,10 @@ export default function ScalesPage() {
             const folgaType = dayFolgas.get(m.userId);
             const unavailable = !!folgaType;
             const memberEntries = dayEntries.get(m.userId) ?? [];
+            const freeGaps =
+              isManager && !unavailable && status !== "ARCHIVED"
+                ? computeFreeGaps(memberEntries)
+                : [];
             return (
               <div
                 key={m.userId}
@@ -1039,6 +1162,32 @@ export default function ScalesPage() {
                     );
                   })}
 
+                  {freeGaps.map((g) => (
+                    <button
+                      key={`free-${g.start}-${g.end}`}
+                      onClick={() =>
+                        setFreeSlot({
+                          memberId: m.userId,
+                          memberName: m.userName,
+                          date: daySelected,
+                          start: g.start,
+                          end: g.end,
+                        })
+                      }
+                      className="w-full rounded-lg border border-dashed border-muted-foreground/30 bg-muted/20 px-2 py-1.5 text-left hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                    >
+                      <p className="text-[10px] font-semibold uppercase text-muted-foreground tracking-wide">
+                        Tempo livre
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {g.start} – {g.end}
+                      </p>
+                      <span className="mt-0.5 inline-flex items-center gap-0.5 text-[10px] text-primary">
+                        <Plus className="h-3 w-3" /> Preencher
+                      </span>
+                    </button>
+                  ))}
+
                   {isManager && !unavailable && (
                     <button
                       onClick={() => openAddEntry(m.userId, m.userName, daySelected, false)}
@@ -1122,6 +1271,73 @@ export default function ScalesPage() {
             <Button variant="outline" onClick={() => setShowAddEntry(false)}>Cancelar</Button>
             <Button onClick={handleAddEntry} disabled={!addEntryForm.label || createEntryMut.isPending}>
               Adicionar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Free-time fill dialog */}
+      <Dialog open={!!freeSlot} onOpenChange={(o) => !o && setFreeSlot(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Preencher tempo livre</DialogTitle>
+            <DialogDescription>
+              {freeSlot?.memberName} · {freeSlot && fmtDDMM(freeSlot.date)} ·{" "}
+              {freeSlot?.start} – {freeSlot?.end}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-xs text-muted-foreground">Sugestão rápida</Label>
+              <Button
+                variant="outline"
+                className="w-full justify-start mt-1"
+                disabled={createEntryMut.isPending}
+                onClick={() => handleFillFreeSlot("ADM")}
+              >
+                <Plus className="h-4 w-4 mr-2" /> ADM (trabalho administrativo)
+              </Button>
+            </div>
+            {(() => {
+              const tasks = freeSlot
+                ? pendingTasksByMember.get(freeSlot.memberId) ?? []
+                : [];
+              if (tasks.length === 0) {
+                return (
+                  <p className="text-xs text-muted-foreground">
+                    Sem tarefas pendentes para esta pessoa.
+                  </p>
+                );
+              }
+              return (
+                <div>
+                  <Label className="text-xs text-muted-foreground">
+                    Tarefas pendentes
+                  </Label>
+                  <div className="mt-1 space-y-1.5 max-h-60 overflow-y-auto">
+                    {tasks.map((t) => (
+                      <button
+                        key={t.id}
+                        disabled={createEntryMut.isPending}
+                        onClick={() =>
+                          handleFillFreeSlot(`Tarefa: ${t.title}`, t.title)
+                        }
+                        className="w-full rounded-lg border border-border px-3 py-2 text-left hover:border-primary/40 hover:bg-primary/5 transition-colors disabled:opacity-50"
+                      >
+                        <p className="text-sm font-medium leading-tight">{t.title}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {t.priority} · vence {fmtDDMM(String(t.dueDate).slice(0, 10))}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFreeSlot(null)}>
+              Cancelar
             </Button>
           </DialogFooter>
         </DialogContent>
