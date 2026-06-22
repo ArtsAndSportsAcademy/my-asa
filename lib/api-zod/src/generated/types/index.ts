@@ -6,6 +6,11 @@
  * OpenAPI spec version: 0.3.0
  */
 
+export * from './activity';
+export * from './activityAssignee';
+export * from './activityAssigneeInput';
+export * from './activityCreate';
+export * from './activityUpdate';
 export * from './addGroupMember201';
 export * from './addGroupSupervisor201';
 export * from './addShowBookPositionRef201';
@@ -60,6 +65,7 @@ export * from './confirmAgendaEvent200';
 export * from './conflictResponse';
 export * from './coverageMetric';
 export * from './coverageMetricStatus';
+export * from './createActivity201';
 export * from './createAgendaEvent201';
 export * from './createAsaMemoryRequest';
 export * from './createAsaMemoryRequestType';
@@ -110,6 +116,7 @@ export * from './dailyBookSceneWithBlocks';
 export * from './dailyBookSnapshotJson';
 export * from './dailyBookStatus';
 export * from './dailyBookWithScenes';
+export * from './deleteActivity200';
 export * from './deleteDailyBookBlock200';
 export * from './deleteDailyBookPosition200';
 export * from './deleteDailyBookScene200';
@@ -144,6 +151,8 @@ export * from './folgasGridResponse';
 export * from './forbiddenResponse';
 export * from './generateDailyBook201';
 export * from './generateScale201';
+export * from './getActivities200';
+export * from './getActivitiesParams';
 export * from './getAgendaEvent200';
 export * from './getDailyBook200';
 export * from './getDailyBookDelta200';
@@ -402,6 +411,7 @@ export * from './toggleFolgaCell200';
 export * from './tokensResponse';
 export * from './unauthorizedResponse';
 export * from './unprocessableEntityResponse';
+export * from './updateActivity200';
 export * from './updateAgendaEvent200';
 export * from './updateAsaMemoryRequest';
 export * from './updateAsaMemoryRequestStatus';

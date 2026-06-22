@@ -29,6 +29,7 @@ import responsibilitiesRouter from "./responsibilities";
 import anthropicRouter from "./anthropic/index";
 import asaRouter from "./asa";
 import folgasRouter from "./folgas";
+import activitiesRouter from "./activities";
 import { blockIfMustChangePassword } from "../middlewares/mustChangePassword.js";
 
 const router: IRouter = Router();
@@ -64,5 +65,6 @@ router.use(responsibilitiesRouter);
 router.use(anthropicRouter);
 router.use(asaRouter);
 router.use(folgasRouter);
+router.use(activitiesRouter);
 
 export default router;

@@ -5,7 +5,7 @@ import {
   BookOpen, CalendarDays, ShieldCheck, ClipboardList, BookMarked,
   LayoutDashboard, Bell, Clock, MessageSquare, Package, Library,
   FileText, CheckSquare, TrendingUp, AlertTriangle, ClipboardCheck, ArrowLeftRight,
-  Shield, Sparkles, Palmtree, Trophy, Boxes,
+  Shield, Sparkles, Palmtree, Trophy, Boxes, CalendarClock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -39,6 +39,7 @@ const ADMIN_NAV: NavGroup[] = [
     label: "OPERAÇÃO",
     items: [
       { href: "/admin/scales",                  icon: ClipboardList,   label: "Escalas"                      },
+      { href: "/admin/activities",              icon: CalendarClock,   label: "Atividades"                   },
       { href: "/admin/daily-book",              icon: BookMarked,      label: "Livro do Dia"                 },
       { href: "/admin/responsibilities",        icon: Users,           label: "Responsabilidades"            },
       { href: "/admin/requests",                icon: FileText,        label: "Solicitações"                 },

@@ -16,6 +16,7 @@ import ShowBookPage from "@/pages/admin/show-book";
 import AgendaPage from "@/pages/admin/agenda";
 import AuditoriaPage from "@/pages/admin/auditoria";
 import ScalesPage from "@/pages/admin/scales";
+import ActivitiesPage from "@/pages/admin/activities";
 import DailyBookPage from "@/pages/admin/daily-book";
 import SupervisorDailyBookPage from "@/pages/supervisor/daily-book";
 import AdminOperationalPanel from "@/pages/admin/operational-panel";
@@ -192,6 +193,7 @@ function Router() {
       <ProtectedRoute path="/admin/agenda" component={AgendaPage} />
       <RoleRoute path="/admin/auditoria" component={AuditoriaPage} roles={["ADMIN"]} />
       <RoleRoute path="/admin/scales" component={ScalesPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
+      <RoleRoute path="/admin/activities" component={ActivitiesPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/admin/daily-book" component={DailyBookPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/supervisor/daily-book" component={SupervisorDailyBookPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/admin/operational-panel" component={AdminOperationalPanel} roles={["ADMIN"]} />

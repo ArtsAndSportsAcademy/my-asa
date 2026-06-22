@@ -954,7 +954,12 @@ export default function ScalesPage() {
                   {memberEntries.map((e) => {
                     const agendaParticipant = !!(e as any).isAgendaParticipant;
                     const dailyBookParticipant = !!(e as any).isDailyBookParticipant;
-                    const generated = !agendaParticipant && !dailyBookParticipant && !!(e as any).agendaEventId;
+                    const recurringActivity = !!(e as any).isRecurringActivity;
+                    const generated =
+                      !agendaParticipant &&
+                      !dailyBookParticipant &&
+                      !recurringActivity &&
+                      !!(e as any).agendaEventId;
                     const label =
                       (e as any).manualLabel ??
                       (e as any).eventTitle ??
@@ -971,6 +976,8 @@ export default function ScalesPage() {
                             ? "bg-emerald-500/10 border-emerald-500/30"
                             : agendaParticipant
                             ? "bg-sky-500/10 border-sky-500/30"
+                            : recurringActivity
+                            ? "bg-violet-500/10 border-violet-500/30"
                             : generated
                             ? "bg-amber-500/10 border-amber-500/30"
                             : "bg-primary/10 border-primary/20"
@@ -1012,7 +1019,15 @@ export default function ScalesPage() {
                             Livro do Dia
                           </Badge>
                         )}
-                        {isManager && !agendaParticipant && !dailyBookParticipant && (
+                        {recurringActivity && (
+                          <Badge
+                            variant="outline"
+                            className="mt-1 text-[9px] text-violet-600 border-violet-500/40 px-1 py-0"
+                          >
+                            Atividade
+                          </Badge>
+                        )}
+                        {isManager && !agendaParticipant && !dailyBookParticipant && !recurringActivity && (
                           <button
                             onClick={() => handleDeleteEntry(e.id)}
                             className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"

@@ -20,6 +20,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  ActivityCreate,
+  ActivityUpdate,
   AddGroupMember201,
   AddGroupSupervisor201,
   AddShowBookPositionRef201,
@@ -54,6 +56,7 @@ import type {
   CompleteAgendaEvent200,
   ConfirmAgendaEvent200,
   ConflictResponse,
+  CreateActivity201,
   CreateAgendaEvent201,
   CreateAsaMemoryRequest,
   CreateDeliveryRequest,
@@ -77,6 +80,7 @@ import type {
   DailyBookAssignmentPatchRequest,
   DailyBookGenerateRequest,
   DailyBookScenesReorderRequest,
+  DeleteActivity200,
   DeleteDailyBookBlock200,
   DeleteDailyBookPosition200,
   DeleteDailyBookScene200,
@@ -94,6 +98,8 @@ import type {
   ForbiddenResponse,
   GenerateDailyBook201,
   GenerateScale201,
+  GetActivities200,
+  GetActivitiesParams,
   GetAgendaEvent200,
   GetDailyBook200,
   GetDailyBookDelta200,
@@ -221,6 +227,7 @@ import type {
   TokensResponse,
   UnauthorizedResponse,
   UnprocessableEntityResponse,
+  UpdateActivity200,
   UpdateAgendaEvent200,
   UpdateAsaMemoryRequest,
   UpdateAsaPreferencesRequest,
@@ -13460,5 +13467,302 @@ export const useResetFolgasGrid = <TError = ErrorType<BadRequestResponse | Unaut
         TContext
       > => {
       return useMutation(getResetFolgasGridMutationOptions(options));
+    }
+
+export const getGetActivitiesUrl = (params?: GetActivitiesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/activities?${stringifiedParams}` : `/api/activities`
+}
+
+/**
+ * @summary List recurring/one-off activities for manageable operations
+ */
+export const getActivities = async (params?: GetActivitiesParams, options?: RequestInit): Promise<GetActivities200> => {
+
+  return customFetch<GetActivities200>(getGetActivitiesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetActivitiesQueryKey = (params?: GetActivitiesParams,) => {
+    return [
+    `/api/activities`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetActivitiesQueryOptions = <TData = Awaited<ReturnType<typeof getActivities>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(params?: GetActivitiesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getActivities>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetActivitiesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getActivities>>> = ({ signal }) => getActivities(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getActivities>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetActivitiesQueryResult = NonNullable<Awaited<ReturnType<typeof getActivities>>>
+export type GetActivitiesQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary List recurring/one-off activities for manageable operations
+ */
+
+export function useGetActivities<TData = Awaited<ReturnType<typeof getActivities>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+ params?: GetActivitiesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getActivities>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetActivitiesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateActivityUrl = () => {
+
+
+
+
+  return `/api/activities`
+}
+
+/**
+ * @summary Create a recurring or one-off activity
+ */
+export const createActivity = async (activityCreate: ActivityCreate, options?: RequestInit): Promise<CreateActivity201> => {
+
+  return customFetch<CreateActivity201>(getCreateActivityUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      activityCreate,)
+  }
+);}
+
+
+
+
+export const getCreateActivityMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createActivity>>, TError,{data: BodyType<ActivityCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createActivity>>, TError,{data: BodyType<ActivityCreate>}, TContext> => {
+
+const mutationKey = ['createActivity'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createActivity>>, {data: BodyType<ActivityCreate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createActivity(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateActivityMutationResult = NonNullable<Awaited<ReturnType<typeof createActivity>>>
+    export type CreateActivityMutationBody = BodyType<ActivityCreate>
+    export type CreateActivityMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>
+
+    /**
+ * @summary Create a recurring or one-off activity
+ */
+export const useCreateActivity = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createActivity>>, TError,{data: BodyType<ActivityCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createActivity>>,
+        TError,
+        {data: BodyType<ActivityCreate>},
+        TContext
+      > => {
+      return useMutation(getCreateActivityMutationOptions(options));
+    }
+
+export const getUpdateActivityUrl = (id: string,) => {
+
+
+
+
+  return `/api/activities/${id}`
+}
+
+/**
+ * @summary Update an activity and (optionally) its assignees
+ */
+export const updateActivity = async (id: string,
+    activityUpdate: ActivityUpdate, options?: RequestInit): Promise<UpdateActivity200> => {
+
+  return customFetch<UpdateActivity200>(getUpdateActivityUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      activityUpdate,)
+  }
+);}
+
+
+
+
+export const getUpdateActivityMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateActivity>>, TError,{id: string;data: BodyType<ActivityUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateActivity>>, TError,{id: string;data: BodyType<ActivityUpdate>}, TContext> => {
+
+const mutationKey = ['updateActivity'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateActivity>>, {id: string;data: BodyType<ActivityUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateActivity(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateActivityMutationResult = NonNullable<Awaited<ReturnType<typeof updateActivity>>>
+    export type UpdateActivityMutationBody = BodyType<ActivityUpdate>
+    export type UpdateActivityMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Update an activity and (optionally) its assignees
+ */
+export const useUpdateActivity = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateActivity>>, TError,{id: string;data: BodyType<ActivityUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateActivity>>,
+        TError,
+        {id: string;data: BodyType<ActivityUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateActivityMutationOptions(options));
+    }
+
+export const getDeleteActivityUrl = (id: string,) => {
+
+
+
+
+  return `/api/activities/${id}`
+}
+
+/**
+ * @summary Delete an activity
+ */
+export const deleteActivity = async (id: string, options?: RequestInit): Promise<DeleteActivity200> => {
+
+  return customFetch<DeleteActivity200>(getDeleteActivityUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteActivityMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteActivity>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteActivity>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteActivity'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteActivity>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteActivity(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteActivityMutationResult = NonNullable<Awaited<ReturnType<typeof deleteActivity>>>
+
+    export type DeleteActivityMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Delete an activity
+ */
+export const useDeleteActivity = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteActivity>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteActivity>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteActivityMutationOptions(options));
     }
 

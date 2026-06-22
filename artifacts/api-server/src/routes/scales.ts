@@ -15,8 +15,12 @@ import {
   dailyBookPositionsTable,
   dailyBookAssignmentsTable,
   usersTable,
+  userRolesTable,
+  recurringActivitiesTable,
+  recurringActivityAssigneesTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
+import { loadGroupMembers } from "./groups.js";
 import { requestLogger } from "../lib/logger.js";
 import { eventBus } from "../lib/event-bus.js";
 import { runCoverageEngine, persistEngineResult } from "../services/coverage-engine.js";
@@ -806,7 +810,162 @@ router.get("/scales/:id/allocations", requireAuth, requireOrganization, async (r
         candidates: [] as [],
       }));
 
-    res.json({ allocations: [...allocationsWithCandidates, ...virtualRows, ...dailyBookRows] });
+    // Células virtuais: ATIVIDADES recorrentes/avulsas. Quem está designado (direto
+    // ou via grupo) aparece automaticamente na escala nas datas correspondentes.
+    // Composição em tempo de leitura — sem cópia/sync e sem mudar o esquema.
+    const recurringRows: Array<{
+      id: string;
+      agendaEventId: null;
+      positionId: null;
+      userId: string;
+      status: string;
+      overrideReason: null;
+      notes: null;
+      manualDate: string;
+      manualLabel: string;
+      startTime: string | null;
+      endTime: string | null;
+      positionName: null;
+      userName: string | null;
+      eventDate: string;
+      eventTitle: string;
+      eventStartTime: string | null;
+      eventEndTime: string | null;
+      isRecurringActivity: true;
+      candidates: [];
+    }> = [];
+
+    const activities = await db
+      .select()
+      .from(recurringActivitiesTable)
+      .where(
+        and(
+          eq(recurringActivitiesTable.operationId, scale.operationId),
+          eq(recurringActivitiesTable.active, true),
+        ),
+      );
+
+    if (activities.length > 0) {
+      const activityIds = activities.map((a) => a.id);
+      const assignees = await db
+        .select()
+        .from(recurringActivityAssigneesTable)
+        .where(inArray(recurringActivityAssigneesTable.activityId, activityIds));
+
+      const directUserIds = [
+        ...new Set(assignees.map((a) => a.userId).filter((x): x is string => !!x)),
+      ];
+      const directUsers = directUserIds.length
+        ? await db
+            .select({ id: usersTable.id, name: usersTable.name })
+            .from(usersTable)
+            .where(inArray(usersTable.id, directUserIds))
+        : [];
+      const directUserName = new Map(directUsers.map((u) => [u.id, u.name]));
+
+      // Cache de membros de grupos, restrito à operação da escala.
+      const groupMembersCache = new Map<string, { id: string; name: string }[]>();
+      const resolveGroup = async (groupId: string) => {
+        let members = groupMembersCache.get(groupId);
+        if (!members) {
+          const loaded = await loadGroupMembers(groupId, [scale.operationId]);
+          members = loaded.map((m) => ({ id: m.id, name: m.name }));
+          groupMembersCache.set(groupId, members);
+        }
+        return members;
+      };
+
+      // Membros válidos da operação da escala (defesa em profundidade: descarta
+      // designados diretos que não pertençam à operação, evitando vazamento
+      // cross-operation mesmo que existam dados antigos fora de escopo).
+      const opMemberRows = await db
+        .select({ userId: userRolesTable.userId })
+        .from(userRolesTable)
+        .where(
+          and(
+            eq(userRolesTable.operationId, scale.operationId),
+            eq(userRolesTable.active, true),
+          ),
+        );
+      const opMemberIds = new Set(opMemberRows.map((r) => r.userId));
+
+      // activityId -> Map(userId -> userName)
+      const activityUsers = new Map<string, Map<string, string | null>>();
+      for (const act of activities) activityUsers.set(act.id, new Map());
+      for (const a of assignees) {
+        const target = activityUsers.get(a.activityId)!;
+        if (a.userId) {
+          if (opMemberIds.has(a.userId)) {
+            target.set(a.userId, directUserName.get(a.userId) ?? null);
+          }
+        } else if (a.groupId) {
+          const members = await resolveGroup(a.groupId);
+          for (const m of members) target.set(m.id, m.name);
+        }
+      }
+
+      // Datas do período da escala.
+      const periodDates: string[] = [];
+      const start = new Date(scale.periodStart + "T00:00:00Z");
+      const end = new Date(scale.periodEnd + "T00:00:00Z");
+      for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+        periodDates.push(d.toISOString().slice(0, 10));
+      }
+
+      for (const act of activities) {
+        const users = activityUsers.get(act.id)!;
+        if (users.size === 0) continue;
+        let dates: string[];
+        if (act.weekday != null) {
+          const wd = act.weekday;
+          dates = periodDates.filter(
+            (ds) => new Date(ds + "T00:00:00Z").getUTCDay() === wd,
+          );
+        } else if (act.specificDate) {
+          dates =
+            act.specificDate >= scale.periodStart && act.specificDate <= scale.periodEnd
+              ? [act.specificDate]
+              : [];
+        } else {
+          dates = [];
+        }
+        for (const ds of dates) {
+          for (const [userId, userName] of users) {
+            if (nonSchedulable.has(userId)) continue;
+            recurringRows.push({
+              id: `rec:${act.id}:${ds}:${userId}`,
+              agendaEventId: null,
+              positionId: null,
+              userId,
+              status: "RECURRING_ACTIVITY",
+              overrideReason: null,
+              notes: null,
+              manualDate: ds,
+              manualLabel: act.title,
+              startTime: act.startTime,
+              endTime: act.endTime,
+              positionName: null,
+              userName,
+              eventDate: ds,
+              eventTitle: act.title,
+              eventStartTime: act.startTime,
+              eventEndTime: act.endTime,
+              isRecurringActivity: true,
+              candidates: [],
+            });
+          }
+        }
+      }
+    }
+
+    res.json({
+      allocations: [
+        ...allocationsWithCandidates,
+        ...virtualRows,
+        ...dailyBookRows,
+        ...recurringRows,
+      ],
+    });
   } catch (err) {
     log.error({ err }, "erro ao buscar alocações");
     res.status(500).json({ error: "Erro interno" });

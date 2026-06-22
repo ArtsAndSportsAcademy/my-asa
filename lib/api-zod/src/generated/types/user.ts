@@ -18,6 +18,10 @@ export interface User {
   status: UserStatus;
   specialization?: UserSpecialization;
   organizationId: string;
+  /** Operações às quais o utilizador pertence (via papéis ativos). */
+  operationIds?: string[];
+  /** Verdadeiro se o utilizador tem papel ADMIN (não faz parte do elenco escalável). */
+  isAdmin?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

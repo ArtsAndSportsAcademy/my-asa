@@ -23,3 +23,4 @@ export * from "./conversations.js";
 export * from "./messages.js";
 export * from "./asa.js";
 export * from "./folgas.js";
+export * from "./activities.js";

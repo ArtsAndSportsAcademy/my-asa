@@ -38,6 +38,8 @@ tags:
     description: "ASA — Assistente Inteligente do MyASA"
   - name: folgas
     description: "Folgas — ausências operacionais registradas"
+  - name: activities
+    description: "Atividades recorrentes e avulsas que alimentam a Escala"
 
 security:
   - bearerAuth: []
@@ -4998,6 +5000,125 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /activities:
+    get:
+      operationId: getActivities
+      tags: [activities]
+      summary: List recurring/one-off activities for manageable operations
+      parameters:
+        - name: operationId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Activities list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  activities:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Activity"
+                required: [activities]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createActivity
+      tags: [activities]
+      summary: Create a recurring or one-off activity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActivityCreate"
+      responses:
+        "201":
+          description: Activity created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  activity:
+                    $ref: "#/components/schemas/Activity"
+                required: [activity]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /activities/{id}:
+    patch:
+      operationId: updateActivity
+      tags: [activities]
+      summary: Update an activity and (optionally) its assignees
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActivityUpdate"
+      responses:
+        "200":
+          description: Activity updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  activity:
+                    $ref: "#/components/schemas/Activity"
+                required: [activity]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteActivity
+      tags: [activities]
+      summary: Delete an activity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Activity deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                required: [ok]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -5089,6 +5210,14 @@ components:
           enum: [PERFORMER, PROFESSOR, TRAINER, PHYSIOTHERAPIST, STRENGTH_COACH, TECHNICAL_OPERATOR, CHOREOGRAPHER, OTHER]
         organizationId:
           type: string
+        operationIds:
+          type: array
+          items:
+            type: string
+          description: "Operações às quais o utilizador pertence (via papéis ativos)."
+        isAdmin:
+          type: boolean
+          description: "Verdadeiro se o utilizador tem papel ADMIN (não faz parte do elenco escalável)."
         createdAt:
           type: string
         updatedAt:
@@ -8674,6 +8803,67 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/FolgaItem"
+    ActivityAssignee:
+      type: object
+      required: [id]
+      properties:
+        id: { type: string }
+        userId: { type: string, nullable: true }
+        groupId: { type: string, nullable: true }
+        userName: { type: string, nullable: true }
+        groupName: { type: string, nullable: true }
+    Activity:
+      type: object
+      required: [id, organizationId, operationId, title, active, assignees, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        organizationId: { type: string }
+        operationId: { type: string }
+        title: { type: string }
+        weekday: { type: integer, nullable: true }
+        specificDate: { type: string, format: date, nullable: true }
+        startTime: { type: string, nullable: true }
+        endTime: { type: string, nullable: true }
+        active: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        assignees:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityAssignee"
+    ActivityAssigneeInput:
+      type: object
+      properties:
+        userId: { type: string, nullable: true }
+        groupId: { type: string, nullable: true }
+    ActivityCreate:
+      type: object
+      required: [operationId, title]
+      properties:
+        operationId: { type: string }
+        title: { type: string }
+        weekday: { type: integer, nullable: true }
+        specificDate: { type: string, format: date, nullable: true }
+        startTime: { type: string, nullable: true }
+        endTime: { type: string, nullable: true }
+        active: { type: boolean }
+        assignees:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityAssigneeInput"
+    ActivityUpdate:
+      type: object
+      properties:
+        title: { type: string }
+        weekday: { type: integer, nullable: true }
+        specificDate: { type: string, format: date, nullable: true }
+        startTime: { type: string, nullable: true }
+        endTime: { type: string, nullable: true }
+        active: { type: boolean }
+        assignees:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityAssigneeInput"
     CreateFolgaRequest:
       type: object
       required: [userId, operationId, type, startDate, endDate]

@@ -46,6 +46,10 @@ export interface User {
   status: UserStatus;
   specialization?: UserSpecialization;
   organizationId: string;
+  /** Operações às quais o utilizador pertence (via papéis ativos). */
+  operationIds?: string[];
+  /** Verdadeiro se o utilizador tem papel ADMIN (não faz parte do elenco escalável). */
+  isAdmin?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -2582,6 +2586,55 @@ export interface FolgaListResponse {
   folgas: FolgaItem[];
 }
 
+export interface ActivityAssignee {
+  id: string;
+  userId?: string | null;
+  groupId?: string | null;
+  userName?: string | null;
+  groupName?: string | null;
+}
+
+export interface Activity {
+  id: string;
+  organizationId: string;
+  operationId: string;
+  title: string;
+  weekday?: number | null;
+  specificDate?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+  assignees: ActivityAssignee[];
+}
+
+export interface ActivityAssigneeInput {
+  userId?: string | null;
+  groupId?: string | null;
+}
+
+export interface ActivityCreate {
+  operationId: string;
+  title: string;
+  weekday?: number | null;
+  specificDate?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  active?: boolean;
+  assignees?: ActivityAssigneeInput[];
+}
+
+export interface ActivityUpdate {
+  title?: string;
+  weekday?: number | null;
+  specificDate?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  active?: boolean;
+  assignees?: ActivityAssigneeInput[];
+}
+
 export type CreateFolgaRequestType = typeof CreateFolgaRequestType[keyof typeof CreateFolgaRequestType];
 
 
@@ -3259,5 +3312,25 @@ month: number;
 export type ResetFolgasGrid200 = {
   ok?: boolean;
   cancelled?: number;
+};
+
+export type GetActivitiesParams = {
+operationId?: string;
+};
+
+export type GetActivities200 = {
+  activities: Activity[];
+};
+
+export type CreateActivity201 = {
+  activity: Activity;
+};
+
+export type UpdateActivity200 = {
+  activity: Activity;
+};
+
+export type DeleteActivity200 = {
+  ok: boolean;
 };
 
