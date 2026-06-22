@@ -1,7 +1,5 @@
 import { BlurView } from "expo-blur";
-import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Tabs } from "expo-router";
-import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
@@ -11,48 +9,18 @@ import { useColors } from "@/hooks/useColors";
 import { useUnreadMessagesCount } from "@/hooks/useUnreadMessages";
 import { useGetUnreadCount } from "@workspace/api-client-react";
 
-// IMPORTANT: iOS 26 uses NativeTabs for native tabs with liquid glass support.
-// NativeTabs intentionally does NOT use custom design tokens — liquid glass
-// is a system-level appearance provided by iOS and cannot be overridden.
-// Custom brand colors are applied only on the ClassicTabLayout path (older iOS / Android / web).
+// 5 abas primárias: Meu Dia, Avisos, Central, Mensagens, Mais.
+// Todos os demais ecrãs continuam roteáveis (a partir do hub "Mais"), mas
+// ocultos da barra. Cada ecrã renderiza o seu próprio cabeçalho (insets.top),
+// por isso o cabeçalho do navegador fica desativado (headerShown: false) para
+// não duplicar.
+//
+// NOTA: trocámos os NativeTabs (iOS 26, API experimental "unstable") pela barra
+// clássica em todas as plataformas. Com 6+ abas, os NativeTabs criavam uma aba
+// "More" nativa preta e quebrada (a Escala e o Mais caíam lá dentro) e os ecrãs
+// não abriam. A barra clássica mantém o visual limpo (blur no iOS) e abre tudo.
 
-// ─── Native (iOS 26+) ─────────────────────────────────────────────────────────
-// Shows 5 primary tabs + Mais. All other screens remain routable but hidden.
-
-function NativeTabLayout() {
-  return (
-    <NativeTabs>
-      <NativeTabs.Trigger name="meu-dia">
-        <Icon sf={{ default: "sun.max", selected: "sun.max.fill" }} />
-        <Label>Meu Dia</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="avisos">
-        <Icon sf={{ default: "bell", selected: "bell.fill" }} />
-        <Label>Avisos</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="notificacoes">
-        <Icon sf={{ default: "tray", selected: "tray.fill" }} />
-        <Label>Central</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="mensagens">
-        <Icon sf={{ default: "message", selected: "message.fill" }} />
-        <Label>Mensagens</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="scale">
-        <Icon sf={{ default: "list.clipboard", selected: "list.clipboard.fill" }} />
-        <Label>Escala</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="mais">
-        <Icon sf={{ default: "ellipsis", selected: "ellipsis.circle.fill" }} />
-        <Label>Mais</Label>
-      </NativeTabs.Trigger>
-    </NativeTabs>
-  );
-}
-
-// ─── Classic (older iOS / Android / web) ──────────────────────────────────────
-
-function ClassicTabLayout() {
+export default function TabLayout() {
   const colors = useColors();
   const colorScheme = useColorScheme();
   const unreadMessages = useUnreadMessagesCount();
@@ -80,7 +48,7 @@ function ClassicTabLayout() {
       screenOptions={{
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.mutedForeground,
-        headerShown: true,
+        headerShown: false,
         tabBarStyle: {
           position: "absolute",
           backgroundColor: isIOS ? "transparent" : colors.background,
@@ -92,7 +60,7 @@ function ClassicTabLayout() {
         tabBarBackground,
       }}
     >
-      {/* ── Primary 5 tabs ── */}
+      {/* ── 5 abas primárias ── */}
       <Tabs.Screen
         name="meu-dia"
         options={{
@@ -143,20 +111,6 @@ function ClassicTabLayout() {
             ),
         }}
       />
-      {/* Escala: tab primária no iOS nativo (NativeTabLayout); oculta no Classic para não criar overflow */}
-      <Tabs.Screen
-        name="scale"
-        options={{
-          title: "Escala",
-          ...(isIOS
-            ? {
-                tabBarIcon: ({ color }) => (
-                  <SymbolView name="list.clipboard" tintColor={color} size={24} />
-                ),
-              }
-            : { tabBarButton: () => null }),
-        }}
-      />
       <Tabs.Screen
         name="mais"
         options={{
@@ -170,7 +124,8 @@ function ClassicTabLayout() {
         }}
       />
 
-      {/* ── Secondary screens — roteáveis mas ocultos da tab bar ── */}
+      {/* ── Ecrãs secundários — roteáveis (via "Mais") mas ocultos da barra ── */}
+      <Tabs.Screen name="scale"        options={{ tabBarButton: () => null, title: "Escala"        }} />
       <Tabs.Screen name="index"        options={{ tabBarButton: () => null, title: "Home"          }} />
       <Tabs.Screen name="panel"        options={{ tabBarButton: () => null, title: "Painel"        }} />
       <Tabs.Screen name="agenda"       options={{ tabBarButton: () => null, title: "Agenda"        }} />
@@ -184,17 +139,8 @@ function ClassicTabLayout() {
       <Tabs.Screen name="tarefas"          options={{ tabBarButton: () => null, title: "Tarefas"           }} />
       <Tabs.Screen name="responsabilidades" options={{ tabBarButton: () => null, title: "Responsabilidades" }} />
       <Tabs.Screen name="insights"         options={{ tabBarButton: () => null, title: "Indicadores"        }} />
-      <Tabs.Screen name="asa"              options={{ tabBarButton: () => null, title: "ASA"               }} />
+      <Tabs.Screen name="asa"              options={{ tabBarButton: () => null, title: "ASA", tabBarStyle: { display: "none" } }} />
       <Tabs.Screen name="historico-asa"   options={{ tabBarButton: () => null, title: "Histórico ASA"      }} />
     </Tabs>
   );
-}
-
-// ─── Entry point ──────────────────────────────────────────────────────────────
-
-export default function TabLayout() {
-  if (Platform.OS === "ios" && isLiquidGlassAvailable()) {
-    return <NativeTabLayout />;
-  }
-  return <ClassicTabLayout />;
 }

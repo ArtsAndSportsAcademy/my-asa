@@ -27,6 +27,7 @@ const SECTIONS: { title: string; items: SectionItem[] }[] = [
   {
     title: "Operacional",
     items: [
+      { label: "Escala",        subtitle: "Escala completa da operação", icon: "list", route: "/(tabs)/scale" },
       { label: "Solicitações",  icon: "inbox",       route: "/(tabs)/solicitacoes" },
       { label: "Folgas",        subtitle: "Ausências e dias de descanso", icon: "calendar", route: "/(tabs)/folgas" },
       { label: "Livro do Dia",  subtitle: "Roteiro operacional do dia",       icon: "file-text", route: "/(tabs)/daily-book"   },
@@ -84,7 +85,7 @@ export default function MaisScreen() {
       style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{
         paddingBottom: insets.bottom + 100,
-        paddingTop: 16,
+        paddingTop: insets.top + 16,
       }}
       showsVerticalScrollIndicator={false}
     >

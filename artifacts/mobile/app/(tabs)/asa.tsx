@@ -472,7 +472,7 @@ export default function AsaScreen() {
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: colors.background }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 88 : 0}
+      keyboardVerticalOffset={0}
     >
       {/* ── Header ── */}
       <View style={[styles.header, {

@@ -273,7 +273,7 @@ export default function AsaPage() {
 
   return (
     <AdminLayout title="ASA" subtitle="Assistente inteligente operacional da ASA">
-      <div className="flex flex-col h-[calc(100vh-12rem)] max-w-3xl mx-auto">
+      <div className="flex flex-col h-[calc(100dvh-14rem)] min-h-0 max-w-3xl mx-auto">
 
         {/* ── Header Card ── */}
         <div className="flex items-center justify-between mb-4 p-4 rounded-xl bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/10">

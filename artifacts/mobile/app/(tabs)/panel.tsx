@@ -56,7 +56,7 @@ export default function PanelScreen() {
 
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    content: { padding: 16, paddingBottom: insets.bottom + 100 },
+    content: { padding: 16, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 100 },
     header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
     title: { fontSize: 20, fontWeight: "700", color: colors.foreground },
     subtitle: { fontSize: 12, color: colors.mutedForeground, marginTop: 2 },

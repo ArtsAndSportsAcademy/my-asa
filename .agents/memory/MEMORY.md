@@ -37,3 +37,4 @@
 - [Livro do Show — construtor inline](show-book-inline-builder.md) — web-admin usa edição inline (sem modais/Motivo); reason opcional p/ scene/block/position/line; LineUpdate aceita `type`
 - [Modelo de papéis no cadastro](role-model-cadastro.md) — só 3 papéis no formulário: Admin/Supervisor(=SUPERVISOR_A)/Membro·Elenco; NÃO expor SUPERVISOR_B
 - [Livro do Dia — estilo antigo (sem Motivo)](daily-book-inline-no-reason.md) — publish/republish/cancel não exigem reason (DEFAULT_DAY_REASON); swap inline sem Dialog; CancelDailyBookRequest.reason opcional no openapi
+- [Mobile tabs — NativeTabs overflow e safe-area](mobile-tabs-native-overflow.md) — máx 5 abas; usar Tabs clássico (não NativeTabs); headerShown:false exige insets.top em todo ecrã; ASA web usa dvh-14rem
