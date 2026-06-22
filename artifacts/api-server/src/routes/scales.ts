@@ -690,6 +690,33 @@ router.get("/scales/:id/allocations", requireAuth, requireOrganization, async (r
         candidates: (candidateMap[a.id] ?? []).sort((x, y) => x.rank - y.rank),
       }));
 
+    // Membros válidos da operação da escala (defesa em profundidade: descarta
+    // designados/participantes que não pertençam à operação, evitando vazamento
+    // cross-operation mesmo que existam dados antigos fora de escopo).
+    const opMemberRows = await db
+      .select({ userId: userRolesTable.userId })
+      .from(userRolesTable)
+      .where(
+        and(
+          eq(userRolesTable.operationId, scale.operationId),
+          eq(userRolesTable.active, true),
+        ),
+      );
+    const opMemberIds = new Set(opMemberRows.map((r) => r.userId));
+
+    // Dedup: chaves de alocações REAIS já existentes. Para fontes virtuais usamos
+    // (pessoa + data + papel); para a agenda usamos (pessoa + evento da agenda).
+    const realKeys = new Set(
+      allocationsWithCandidates.map(
+        (a) => `${a.userId}|${a.manualDate ?? a.eventDate}|${a.positionId ?? ""}`,
+      ),
+    );
+    const realAgendaKeys = new Set(
+      allocationsWithCandidates
+        .filter((a) => a.agendaEventId && a.userId)
+        .map((a) => `${a.userId}|${a.agendaEventId}`),
+    );
+
     // Células virtuais: participantes escolhidos diretamente no evento da agenda.
     // Aparecem automaticamente na escala (composição em tempo de leitura, sem cópia/sync).
     const agendaParticipants = await db
@@ -714,7 +741,20 @@ router.get("/scales/:id/allocations", requireAuth, requireOrganization, async (r
         ),
       );
 
-    const virtualRows = agendaParticipants.map((p) => ({
+    // Admins/membros especiais não fazem parte do elenco escalável.
+    const agendaNonSchedulable = await getNonSchedulableUserIds(
+      agendaParticipants.map((p) => p.userId).filter((u): u is string => !!u),
+    );
+
+    const virtualRows = agendaParticipants
+      .filter(
+        (p) =>
+          !!p.userId &&
+          opMemberIds.has(p.userId) &&
+          !agendaNonSchedulable.has(p.userId) &&
+          !realAgendaKeys.has(`${p.userId}|${p.eventId}`),
+      )
+      .map((p) => ({
       id: `agp:${p.eventId}:${p.userId}`,
       agendaEventId: p.eventId,
       positionId: null,
@@ -774,13 +814,8 @@ router.get("/scales/:id/allocations", requireAuth, requireOrganization, async (r
         ),
       );
 
-    // Dedup: se já existe uma alocação REAL para o mesmo (pessoa + data + papel),
-    // não duplicar com o bloco virtual do Livro do Dia.
-    const realKeys = new Set(
-      allocationsWithCandidates.map(
-        (a) => `${a.userId}|${a.manualDate ?? a.eventDate}|${a.positionId ?? ""}`,
-      ),
-    );
+    // Dedup contra alocações REAIS reutiliza `realKeys` (pessoa + data + papel),
+    // já calculado acima, para não duplicar o bloco virtual do Livro do Dia.
     const castNonSchedulable = await getNonSchedulableUserIds(
       dailyBookCast.map((c) => c.userId).filter((u): u is string => !!u),
     );
@@ -875,19 +910,8 @@ router.get("/scales/:id/allocations", requireAuth, requireOrganization, async (r
         return members;
       };
 
-      // Membros válidos da operação da escala (defesa em profundidade: descarta
-      // designados diretos que não pertençam à operação, evitando vazamento
-      // cross-operation mesmo que existam dados antigos fora de escopo).
-      const opMemberRows = await db
-        .select({ userId: userRolesTable.userId })
-        .from(userRolesTable)
-        .where(
-          and(
-            eq(userRolesTable.operationId, scale.operationId),
-            eq(userRolesTable.active, true),
-          ),
-        );
-      const opMemberIds = new Set(opMemberRows.map((r) => r.userId));
+      // `opMemberIds` (membros ativos da operação) já calculado acima — defesa em
+      // profundidade para descartar designados diretos fora da operação.
 
       // activityId -> Map(userId -> userName)
       const activityUsers = new Map<string, Map<string, string | null>>();

@@ -49,3 +49,4 @@
 - [ASA — data atual no system prompt](asa-data-atual-prompt.md) — sem a data de hoje, o modelo assume ano padrão (2025) e grava folgas/tarefas no ano errado → somem da tabela do ano corrente
 - [Membro escalável (Performer)](schedulable-member-predicate.md) — admins e especiais ocultos de escalas/folgas; predicado isSchedulableMember em @workspace/db; filtro de exibição, não apaga
 - [Designados escopados à operação](assignee-operation-scoping.md) — pessoas/grupos atribuídos não podem vazar entre operações; validar na escrita (POST/PATCH, grupo ligado à org) E na leitura (defesa em profundidade no merge da escala)
+- [Fontes virtuais da escala — dedup e escopo](scale-virtual-rows-dedup-scope.md) — toda fonte que põe pessoas na escala precisa de escopo de operação + exclusão de admins + dedup com chave certa (agenda: userId|agendaEventId)
