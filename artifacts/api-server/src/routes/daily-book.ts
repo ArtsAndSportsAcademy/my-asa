@@ -535,6 +535,8 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
           dailyBookId,
           name: block.name,
           order: block.order,
+          startTime: block.startTime,
+          endTime: block.endTime,
           sourceBlockId: block.id,
           sceneId: block.sceneId ? sceneIdMap[block.sceneId] ?? null : null,
         })
@@ -649,7 +651,7 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
     }
     const blockIdMap: Record<string, string> = {};
     for (const block of blocks) {
-      const [dbBlock] = await db.insert(dailyBookBlocksTable).values({ dailyBookId: id, name: block.name, order: block.order, sourceBlockId: block.id, sceneId: block.sceneId ? sceneIdMap[block.sceneId] ?? null : null }).returning();
+      const [dbBlock] = await db.insert(dailyBookBlocksTable).values({ dailyBookId: id, name: block.name, order: block.order, startTime: block.startTime, endTime: block.endTime, sourceBlockId: block.id, sceneId: block.sceneId ? sceneIdMap[block.sceneId] ?? null : null }).returning();
       blockIdMap[block.id] = dbBlock!.id;
     }
     const sceneByBlock: Record<string, string | null> = {};

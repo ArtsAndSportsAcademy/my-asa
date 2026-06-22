@@ -10,5 +10,7 @@ export interface BlockCreate {
   name: string;
   order: number;
   sceneId?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
   reason?: string;
 }

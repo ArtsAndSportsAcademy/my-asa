@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListShowBooks,
@@ -60,7 +60,7 @@ import { useLocation } from "wouter";
 import {
   Plus, History, BookOpen, Layers, Settings, Trash2, Library,
   Pencil, Check, X, ChevronUp, ChevronDown, LayoutGrid,
-  Sliders, UserPlus, Star, CalendarCheck, AlertTriangle, UserCheck,
+  Sliders, UserPlus, Star, CalendarCheck, AlertTriangle, UserCheck, Clock,
 } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = { DRAFT: "Rascunho", PUBLISHED: "Publicado", ARCHIVED: "Arquivado" };
@@ -473,6 +473,7 @@ type Actions = {
   deleteScene: (sceneId: string) => void;
   addBlock: (sceneId: string, name: string) => void;
   updateBlock: (blockId: string, name: string) => void;
+  updateBlockTimes: (blockId: string, startTime: string | null, endTime: string | null) => void;
   deleteBlock: (blockId: string) => void;
   addLine: (blockId: string, name: string, type: string) => void;
   updatePositionName: (positionId: string, name: string) => void;
@@ -616,6 +617,14 @@ function BlockCard({
   const positions: any[] = block.positions ?? [];
   const [newName, setNewName] = useState("");
   const [newType, setNewType] = useState(DEFAULT_LINE_TYPE);
+  const [startTime, setStartTime] = useState<string>(block.startTime ?? "");
+  const [endTime, setEndTime] = useState<string>(block.endTime ?? "");
+  useEffect(() => { setStartTime(block.startTime ?? ""); }, [block.startTime]);
+  useEffect(() => { setEndTime(block.endTime ?? ""); }, [block.endTime]);
+  const saveTimes = (s: string, e: string) => {
+    if ((s || null) === (block.startTime ?? null) && (e || null) === (block.endTime ?? null)) return;
+    actions.updateBlockTimes(block.id, s || null, e || null);
+  };
 
   const addLine = () => {
     if (!newName.trim()) return;
@@ -633,6 +642,28 @@ function BlockCard({
           className="text-sm font-semibold"
           disabled={!actions.isAdmin}
         />
+        <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          <input
+            type="time"
+            value={startTime}
+            disabled={!actions.isAdmin}
+            onChange={(e) => setStartTime(e.target.value)}
+            onBlur={() => saveTimes(startTime, endTime)}
+            className="h-6 w-[72px] rounded border bg-background px-1 text-[11px] disabled:opacity-60"
+            title="Hora de início"
+          />
+          <span>–</span>
+          <input
+            type="time"
+            value={endTime}
+            disabled={!actions.isAdmin}
+            onChange={(e) => setEndTime(e.target.value)}
+            onBlur={() => saveTimes(startTime, endTime)}
+            className="h-6 w-[72px] rounded border bg-background px-1 text-[11px] disabled:opacity-60"
+            title="Hora de fim"
+          />
+        </div>
         <Badge variant="secondary" className="text-[10px]">
           {positions.length} {positions.length === 1 ? "linha" : "linhas"}
         </Badge>
@@ -1037,6 +1068,14 @@ export default function ShowBookPage() {
     );
   };
 
+  const updateBlockTimes = (blockId: string, startTime: string | null, endTime: string | null) => {
+    if (!selectedId) return;
+    updateBlockMutation.mutate(
+      { id: selectedId, blockId, data: { startTime, endTime } },
+      { onSuccess: invalidateAll, onError: () => failToast("Erro ao guardar horário") }
+    );
+  };
+
   const deleteBlock = (blockId: string) => {
     if (!selectedId) return;
     deleteBlockMutation.mutate(
@@ -1171,7 +1210,7 @@ export default function ShowBookPage() {
     isAdmin,
     members,
     updateScene, deleteScene,
-    addBlock, updateBlock, deleteBlock,
+    addBlock, updateBlock, updateBlockTimes, deleteBlock,
     addLine, updatePositionName, updatePositionCoverage, setLineType, updateLineConfig, deletePosition,
     reorder, openRefs: handleOpenRefs,
   };

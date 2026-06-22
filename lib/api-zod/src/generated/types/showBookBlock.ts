@@ -12,6 +12,8 @@ export interface ShowBookBlock {
   sceneId?: string | null;
   name: string;
   order: number;
+  startTime?: string | null;
+  endTime?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }

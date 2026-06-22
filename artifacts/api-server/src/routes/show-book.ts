@@ -29,6 +29,10 @@ import { buildShowBookTree, collectUserIdsFromConfig, resolveShowBookCast } from
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"] as const;
 
 const DEFAULT_STRUCTURAL_REASON = "Edição estrutural (sem motivo informado)";
+function isValidBlockTime(v: unknown): boolean {
+  if (v === undefined || v === null || v === "") return true;
+  return typeof v === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
+}
 
 const router: IRouter = Router();
 
@@ -386,8 +390,9 @@ router.delete("/show-books/:id/scenes/:sceneId", requireAuth, requireOrganizatio
 
 router.post("/show-books/:id/blocks", requireAuth, requireOrganization, async (req, res) => {
   const showBookId = req.params.id as string;
-  const { name, order, sceneId } = req.body;
+  const { name, order, sceneId, startTime, endTime } = req.body;
   if (!name || order === undefined) { res.status(400).json({ error: "name e order são obrigatórios" }); return; }
+  if (!isValidBlockTime(startTime) || !isValidBlockTime(endTime)) { res.status(400).json({ error: "Horário inválido (use HH:MM)" }); return; }
   const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
     const book = await getShowBookOrFail(showBookId, res);
@@ -399,7 +404,7 @@ router.post("/show-books/:id/blocks", requireAuth, requireOrganization, async (r
     }
     const [block] = await db
       .insert(showBookBlocksTable)
-      .values({ showBookId, name, order, sceneId: sceneId ?? null })
+      .values({ showBookId, name, order, sceneId: sceneId ?? null, startTime: startTime ?? null, endTime: endTime ?? null })
       .returning();
     await bumpVersion(showBookId, "STRUCTURAL", reason, req.user!.sub, req.requestId, req.correlationId);
     res.status(201).json({ block });
@@ -411,12 +416,15 @@ router.post("/show-books/:id/blocks", requireAuth, requireOrganization, async (r
 router.patch("/show-books/:id/blocks/:blockId", requireAuth, requireOrganization, async (req, res) => {
   const showBookId = req.params.id as string;
   const blockId = req.params.blockId as string;
-  const { name, order, changeType } = req.body;
+  const { name, order, changeType, startTime, endTime } = req.body;
+  if (!isValidBlockTime(startTime) || !isValidBlockTime(endTime)) { res.status(400).json({ error: "Horário inválido (use HH:MM)" }); return; }
   const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (name !== undefined) updates.name = name;
     if (order !== undefined) updates.order = order;
+    if (startTime !== undefined) updates.startTime = startTime;
+    if (endTime !== undefined) updates.endTime = endTime;
     const [updated] = await db
       .update(showBookBlocksTable)
       .set(updates as any)

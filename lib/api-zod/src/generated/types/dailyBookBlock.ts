@@ -12,6 +12,8 @@ export interface DailyBookBlock {
   sceneId?: string | null;
   name: string;
   order: number;
+  startTime?: string | null;
+  endTime?: string | null;
   sourceBlockId?: string | null;
   isRemoved: boolean;
   createdAt: string;

@@ -11,6 +11,7 @@ import {
   showBookRolesTable,
   showBooksTable,
   dailyBooksTable,
+  dailyBookBlocksTable,
   dailyBookPositionsTable,
   dailyBookAssignmentsTable,
   usersTable,
@@ -746,9 +747,13 @@ router.get("/scales/:id/allocations", requireAuth, requireOrganization, async (r
         eventStartTime: agendaEventsTable.startTime,
         eventEndTime: agendaEventsTable.endTime,
         showTitle: showBooksTable.title,
+        blockName: dailyBookBlocksTable.name,
+        blockStartTime: dailyBookBlocksTable.startTime,
+        blockEndTime: dailyBookBlocksTable.endTime,
       })
       .from(dailyBookAssignmentsTable)
       .innerJoin(dailyBookPositionsTable, eq(dailyBookAssignmentsTable.positionId, dailyBookPositionsTable.id))
+      .leftJoin(dailyBookBlocksTable, eq(dailyBookPositionsTable.blockId, dailyBookBlocksTable.id))
       .innerJoin(dailyBooksTable, eq(dailyBookAssignmentsTable.dailyBookId, dailyBooksTable.id))
       .innerJoin(agendaEventsTable, eq(dailyBooksTable.agendaEventId, agendaEventsTable.id))
       .leftJoin(showBooksTable, eq(dailyBooksTable.showBookId, showBooksTable.id))
@@ -788,9 +793,9 @@ router.get("/scales/:id/allocations", requireAuth, requireOrganization, async (r
         overrideReason: null,
         notes: null,
         manualDate: c.eventDate,
-        manualLabel: c.showTitle ?? c.eventTitle ?? "SHOW",
-        startTime: c.eventStartTime,
-        endTime: c.eventEndTime,
+        manualLabel: c.blockName ?? c.showTitle ?? c.eventTitle ?? "SHOW",
+        startTime: c.blockStartTime ?? c.eventStartTime,
+        endTime: c.blockEndTime ?? c.eventEndTime,
         positionName: c.positionName,
         userName: c.userName,
         eventDate: c.eventDate,

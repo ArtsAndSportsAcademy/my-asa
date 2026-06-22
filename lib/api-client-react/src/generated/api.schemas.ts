@@ -403,6 +403,8 @@ export interface ShowBookBlock {
   sceneId?: string | null;
   name: string;
   order: number;
+  startTime?: string | null;
+  endTime?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -631,6 +633,8 @@ export interface BlockCreate {
   name: string;
   order: number;
   sceneId?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
   reason?: string;
 }
 
@@ -646,6 +650,8 @@ export interface BlockUpdate {
   name?: string;
   order?: number;
   changeType?: BlockUpdateChangeType;
+  startTime?: string | null;
+  endTime?: string | null;
   reason?: string;
 }
 
@@ -1090,6 +1096,8 @@ export interface DailyBookBlock {
   sceneId?: string | null;
   name: string;
   order: number;
+  startTime?: string | null;
+  endTime?: string | null;
   sourceBlockId?: string | null;
   isRemoved: boolean;
   createdAt: string;

@@ -11,5 +11,7 @@ export interface BlockUpdate {
   name?: string;
   order?: number;
   changeType?: BlockUpdateChangeType;
+  startTime?: string | null;
+  endTime?: string | null;
   reason?: string;
 }

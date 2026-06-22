@@ -5547,6 +5547,12 @@ components:
           type: string
         order:
           type: integer
+        startTime:
+          type: string
+          nullable: true
+        endTime:
+          type: string
+          nullable: true
         createdAt:
           type: string
         updatedAt:
@@ -5810,6 +5816,12 @@ components:
         sceneId:
           type: string
           nullable: true
+        startTime:
+          type: string
+          nullable: true
+        endTime:
+          type: string
+          nullable: true
         reason:
           type: string
       required: [name, order]
@@ -5824,6 +5836,12 @@ components:
         changeType:
           type: string
           enum: [STRUCTURAL, CONFIG]
+        startTime:
+          type: string
+          nullable: true
+        endTime:
+          type: string
+          nullable: true
         reason:
           type: string
       required: []
@@ -6450,6 +6468,12 @@ components:
           type: string
         order:
           type: integer
+        startTime:
+          type: string
+          nullable: true
+        endTime:
+          type: string
+          nullable: true
         sourceBlockId:
           type: string
           nullable: true

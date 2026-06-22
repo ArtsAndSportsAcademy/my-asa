@@ -763,6 +763,8 @@ export const GetShowBookResponse = zod.object({
   "sceneId": zod.string().nullish(),
   "name": zod.string(),
   "order": zod.number(),
+  "startTime": zod.string().nullish(),
+  "endTime": zod.string().nullish(),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()
 }).and(zod.object({
@@ -954,6 +956,8 @@ export const CreateShowBookBlockBody = zod.object({
   "name": zod.string(),
   "order": zod.number(),
   "sceneId": zod.string().nullish(),
+  "startTime": zod.string().nullish(),
+  "endTime": zod.string().nullish(),
   "reason": zod.string().optional()
 })
 
@@ -970,6 +974,8 @@ export const UpdateShowBookBlockBody = zod.object({
   "name": zod.string().optional(),
   "order": zod.number().optional(),
   "changeType": zod.enum(['STRUCTURAL', 'CONFIG']).optional(),
+  "startTime": zod.string().nullish(),
+  "endTime": zod.string().nullish(),
   "reason": zod.string().optional()
 })
 
@@ -980,6 +986,8 @@ export const UpdateShowBookBlockResponse = zod.object({
   "sceneId": zod.string().nullish(),
   "name": zod.string(),
   "order": zod.number(),
+  "startTime": zod.string().nullish(),
+  "endTime": zod.string().nullish(),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()
 })
@@ -2149,6 +2157,8 @@ export const GetDailyBookResponse = zod.object({
   "sceneId": zod.string().nullish(),
   "name": zod.string(),
   "order": zod.number(),
+  "startTime": zod.string().nullish(),
+  "endTime": zod.string().nullish(),
   "sourceBlockId": zod.string().nullish(),
   "isRemoved": zod.boolean(),
   "createdAt": zod.string(),
@@ -2470,6 +2480,8 @@ export const DeleteDailyBookBlockResponse = zod.object({
   "sceneId": zod.string().nullish(),
   "name": zod.string(),
   "order": zod.number(),
+  "startTime": zod.string().nullish(),
+  "endTime": zod.string().nullish(),
   "sourceBlockId": zod.string().nullish(),
   "isRemoved": zod.boolean(),
   "createdAt": zod.string(),

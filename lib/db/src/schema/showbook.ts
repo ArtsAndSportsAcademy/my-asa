@@ -45,6 +45,8 @@ export const showBookBlocksTable = pgTable("show_book_blocks", {
   sceneId: uuid("scene_id").references(() => showBookScenesTable.id),
   name: text("name").notNull(),
   order: integer("order").notNull(),
+  startTime: text("start_time"),
+  endTime: text("end_time"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
