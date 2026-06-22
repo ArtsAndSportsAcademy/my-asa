@@ -27,6 +27,7 @@
 - [Daily Book drift de schema no DEV](daily-book-dev-schema-drift.md) — tabelas daily_book_* no DEV estavam numa geração antiga; recriar via psql p/ testar a rota real; generate não é transacional (deixa órfãos)
 - [Login por username](login-username.md) — login passou de email→username; util de geração em lib/db/src/username.ts; backfill idempotente; column users.username unique nullable
 - [Apagar Livro do Show — FKs sem cascade](show-book-delete-fks.md) — show_books sem cascade; bloquear se em uso (scales/agenda/daily) e apagar filhos em ordem na transação; só ADMIN
+- [Livro do Dia — gerar por Show + data](daily-book-generate-by-date.md) — sem mudar esquema (deploy não migra); evento interno cosmético; auth legado valida event.operationId, não o body
 - [Livro do Dia — pessoa única por cena](daily-book-scene-dedup.md) — quem já está noutra posição da cena conta como indisponível: resolver puxa próximo substituto/rodízio até esgotar (então OPEN); dedup pós-hoc só para papéis manuais
 - [GET group detail escopo](group-detail-scope-restriction.md) — aplicar memberRestriction a members E supervisors no detalhe do grupo, senão vaza cross-operation p/ não-admin
 - [Modelo de escopo de grupos](group-scope-model.md) — OPERATION/MULTI/ALL; cobertura idêntica em groupCoveredOperationIds(API) e groupCoverageOps(ASA); supervisor só OPERATION da sua op; membro de grupo amplo exige operação coberta

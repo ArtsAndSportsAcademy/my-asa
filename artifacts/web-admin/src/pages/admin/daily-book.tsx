@@ -42,7 +42,6 @@ import {
   Check, X,
 } from "lucide-react";
 import { useListUsers } from "@workspace/api-client-react";
-import { useListAgendaEvents } from "@workspace/api-client-react";
 import { useListShowBooks } from "@workspace/api-client-react";
 import type { ShowBook } from "@workspace/api-client-react";
 
@@ -255,7 +254,7 @@ export default function AdminDailyBookPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [generateOpen, setGenerateOpen] = useState(false);
   const [selectedShowBookId, setSelectedShowBookId] = useState<string | null>(null);
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
   const [publishComment, setPublishComment] = useState("");
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -283,9 +282,6 @@ export default function AdminDailyBookPage() {
     query: { enabled: !!selectedId, queryKey: getGetDailyBookQueryKey(selectedId ?? "") },
   });
   const selectedBook = (bookData as any)?.dailyBook as DailyBookWithScenes | undefined;
-
-  const { data: eventsData } = useListAgendaEvents({ operationId });
-  const events: { id: string; title: string; showBookId?: string | null }[] = (eventsData as any)?.events ?? [];
 
   const { data: showBooksData } = useListShowBooks({ operationId });
   const showBooks: ShowBook[] = (showBooksData as any)?.showBooks ?? [];
@@ -317,13 +313,14 @@ export default function AdminDailyBookPage() {
   }, [queryClient]);
 
   const handleGenerate = async () => {
-    if (!selectedEventId) return;
+    if (!selectedShowBookId || !selectedDate) return;
     try {
-      const result = await generateMutation.mutateAsync({ data: { agendaEventId: selectedEventId } });
+      const result = await generateMutation.mutateAsync({ data: { showBookId: selectedShowBookId, date: selectedDate } as any });
       const newBook = (result as any).dailyBook;
       toast({ title: "Livro do Dia gerado com sucesso!" });
       setGenerateOpen(false);
-      setSelectedEventId(null);
+      setSelectedShowBookId(null);
+      setSelectedDate(null);
       invalidate();
       if (newBook?.id) setSelectedId(newBook.id);
     } catch {
@@ -475,7 +472,7 @@ export default function AdminDailyBookPage() {
             {isLoading ? (
               <div className="p-4 text-center text-sm text-muted-foreground">Carregando...</div>
             ) : books.length === 0 ? (
-              <div className="p-4 text-center text-sm text-muted-foreground">Nenhum Livro do Dia gerado ainda. Gere o primeiro livro a partir de um evento da Agenda.</div>
+              <div className="p-4 text-center text-sm text-muted-foreground">Nenhum Livro do Dia gerado ainda. Gere o primeiro escolhendo um Livro do Show e uma data.</div>
             ) : (
               books.map((book) => {
                 const showBook = showBooks.find((sb) => sb.id === book.showBookId);
@@ -633,7 +630,7 @@ export default function AdminDailyBookPage() {
                     const sb = showBooks.find((s) => s.id === selectedBook.showBookId);
                     return sb
                       ? <p className="text-xs text-muted-foreground">Show Book: <span className="font-medium">{sb.title}</span></p>
-                      : <p className="text-xs text-muted-foreground">Evento: <span className="font-mono">{selectedBook.agendaEventId.slice(0, 8)}</span></p>;
+                      : <p className="text-xs text-muted-foreground">Livro do Show não definido</p>;
                   })()}
                 </div>
                 <TabsList className="h-8">
@@ -872,7 +869,7 @@ export default function AdminDailyBookPage() {
       </Dialog>
 
       {/* Dialog — Gerar Livro do Dia */}
-      <Dialog open={generateOpen} onOpenChange={(o) => { setGenerateOpen(o); if (!o) { setSelectedShowBookId(null); setSelectedEventId(null); } }}>
+      <Dialog open={generateOpen} onOpenChange={(o) => { setGenerateOpen(o); if (!o) { setSelectedShowBookId(null); setSelectedDate(null); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Gerar Livro do Dia</DialogTitle>
@@ -882,7 +879,7 @@ export default function AdminDailyBookPage() {
               <Label className="mb-1.5 block">Livro do Show</Label>
               <Select
                 value={selectedShowBookId ?? ""}
-                onValueChange={(v) => { setSelectedShowBookId(v); setSelectedEventId(null); }}
+                onValueChange={(v) => { setSelectedShowBookId(v); }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o livro do show..." />
@@ -896,30 +893,20 @@ export default function AdminDailyBookPage() {
             </div>
             {selectedShowBookId && (
               <div>
-                <Label className="mb-1.5 block">Data / Evento</Label>
-                <Select value={selectedEventId ?? ""} onValueChange={setSelectedEventId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o evento..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {events
-                      .filter((e) => e.showBookId === selectedShowBookId)
-                      .map((e) => (
-                        <SelectItem key={e.id} value={e.id}>
-                          {e.title ?? e.id}
-                        </SelectItem>
-                      ))}
-                    {events.filter((e) => e.showBookId === selectedShowBookId).length === 0 && (
-                      <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum evento vinculado a este show book</div>
-                    )}
-                  </SelectContent>
-                </Select>
+                <Label className="mb-1.5 block">Data</Label>
+                <input
+                  type="date"
+                  value={selectedDate ?? ""}
+                  onChange={(e) => setSelectedDate(e.target.value || null)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                />
+                <p className="mt-1.5 text-xs text-muted-foreground">O livro reconhece quem está de folga ou com restrição nesta data.</p>
               </div>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setGenerateOpen(false); setSelectedShowBookId(null); setSelectedEventId(null); }}>Cancelar</Button>
-            <Button onClick={handleGenerate} disabled={!selectedEventId || generateMutation.isPending}>
+            <Button variant="outline" onClick={() => { setGenerateOpen(false); setSelectedShowBookId(null); setSelectedDate(null); }}>Cancelar</Button>
+            <Button onClick={handleGenerate} disabled={!selectedShowBookId || !selectedDate || generateMutation.isPending}>
               {generateMutation.isPending ? "Gerando..." : "Gerar"}
             </Button>
           </DialogFooter>

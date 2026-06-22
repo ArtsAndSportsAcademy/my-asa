@@ -363,22 +363,87 @@ async function createAssignmentsForRole(
 }
 
 router.post("/daily-book/generate", requireAuth, requireOrganization, async (req, res) => {
-  const { agendaEventId, scaleId: explicitScaleId, operationId: bodyOperationId } = req.body;
-  if (!agendaEventId) {
-    res.status(400).json({ error: "agendaEventId é obrigatório" });
-    return;
-  }
+  const {
+    agendaEventId: bodyAgendaEventId,
+    scaleId: explicitScaleId,
+    showBookId: bodyShowBookId,
+    date: bodyDate,
+  } = req.body;
   const user = req.user!;
   const userId = user.sub;
 
-  if (!MANAGER_ROLES.includes(user.role)) {
-    const opId = bodyOperationId ?? null;
-    if (!opId || !(await hasActiveResponsibility(userId, opId, "DAILY_BOOK"))) {
-      res.status(403).json({ error: "Forbidden", message: "Apenas supervisores ou delegados com responsabilidade de Livro do Dia podem gerar" });
-      return;
-    }
+  // Dois modos de geração:
+  //  (1) por DATA (novo): escolhe-se o Livro do Show + a data. A operação vem do próprio
+  //      Livro do Show e a disponibilidade (folgas/restrições) é resolvida pela data. Nos
+  //      bastidores reutilizamos/criamos um evento de agenda interno (visibility MANAGEMENT)
+  //      apenas para carregar showBook+operação+data — o utilizador nunca lida com a agenda.
+  //  (2) por EVENTO (legado): mantém o comportamento antigo via agendaEventId.
+  if (!bodyAgendaEventId && (!bodyShowBookId || !bodyDate)) {
+    res.status(400).json({ error: "Informe o Livro do Show e a data" });
+    return;
+  }
+  // Não aceitamos payload ambíguo: ou modo por data, ou modo legado por evento.
+  if (bodyAgendaEventId && (bodyShowBookId || bodyDate)) {
+    res.status(400).json({ error: "Envie apenas o Livro do Show + data, ou apenas um evento — não ambos" });
+    return;
   }
   try {
+    let agendaEventId: string = bodyAgendaEventId ?? "";
+
+    if (!agendaEventId) {
+      const [sb] = await db.select().from(showBooksTable).where(eq(showBooksTable.id, bodyShowBookId)).limit(1);
+      if (!sb) { res.status(404).json({ error: "Show Book não encontrado" }); return; }
+
+      if (!MANAGER_ROLES.includes(user.role)) {
+        if (!(await hasActiveResponsibility(userId, sb.operationId, "DAILY_BOOK"))) {
+          res.status(403).json({ error: "Forbidden", message: "Apenas supervisores ou delegados com responsabilidade de Livro do Dia podem gerar" });
+          return;
+        }
+      }
+
+      // Reutiliza um evento existente para este Livro do Show + data; senão cria um interno.
+      const [existing] = await db
+        .select({ id: agendaEventsTable.id })
+        .from(agendaEventsTable)
+        .where(and(
+          eq(agendaEventsTable.showBookId, bodyShowBookId),
+          eq(agendaEventsTable.date, bodyDate),
+          eq(agendaEventsTable.operationId, sb.operationId),
+        ))
+        .limit(1);
+      if (existing) {
+        agendaEventId = existing.id;
+      } else {
+        const [created] = await db
+          .insert(agendaEventsTable)
+          .values({
+            operationId: sb.operationId,
+            showBookId: bodyShowBookId,
+            type: "SHOW",
+            title: sb.title,
+            date: bodyDate,
+            status: "CONFIRMED",
+            visibility: "MANAGEMENT",
+            createdBy: userId,
+          })
+          .returning({ id: agendaEventsTable.id });
+        agendaEventId = created!.id;
+      }
+    } else if (!MANAGER_ROLES.includes(user.role)) {
+      // Auth do modo legado: validar contra a operação REAL do evento, nunca um operationId
+      // vindo do cliente (evita bypass com evento de outra operação).
+      const [ev] = await db
+        .select({ operationId: agendaEventsTable.operationId })
+        .from(agendaEventsTable)
+        .where(eq(agendaEventsTable.id, agendaEventId))
+        .limit(1);
+      if (!ev) { res.status(404).json({ error: "Evento não encontrado" }); return; }
+      if (!(await hasActiveResponsibility(userId, ev.operationId, "DAILY_BOOK"))) {
+        res.status(403).json({ error: "Forbidden", message: "Apenas supervisores ou delegados com responsabilidade de Livro do Dia podem gerar" });
+        return;
+      }
+    }
+
     const [event] = await db.select().from(agendaEventsTable).where(eq(agendaEventsTable.id, agendaEventId)).limit(1);
     if (!event) { res.status(404).json({ error: "Evento não encontrado" }); return; }
 
