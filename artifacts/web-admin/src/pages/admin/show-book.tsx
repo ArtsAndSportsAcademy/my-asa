@@ -24,6 +24,7 @@ import {
   useDeleteShowBookPositionRef,
   useListLibraryDocuments,
   useListUsers,
+  useGetOperations,
   getListShowBooksQueryKey,
   getGetShowBookQueryKey,
   getListShowBookVersionsQueryKey,
@@ -826,9 +827,24 @@ export default function ShowBookPage() {
   const isAdmin = auth.roles.some((r) => ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"].includes(r.role));
   const isFullAdmin = auth.roles.some((r) => r.role === "ADMIN");
 
-  const operationId = auth.roles.find((r) => r.operationId)?.operationId;
+  const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
+  const myOperationIds = Array.from(
+    new Set(
+      auth.roles
+        .filter((r) => MANAGER_ROLES.includes(r.role) && r.operationId)
+        .map((r) => r.operationId as string)
+    )
+  );
+  const { data: operationsData } = useGetOperations();
+  const myOperations = (operationsData?.operations ?? []).filter((o) => myOperationIds.includes(o.id));
 
-  const { data: listData, isLoading } = useListShowBooks({ operationId });
+  const [selectedOperationId, setSelectedOperationId] = useState<string | null>(null);
+  const operationId = selectedOperationId ?? myOperationIds[0];
+
+  const { data: listData, isLoading } = useListShowBooks(
+    { operationId: operationId ?? "" },
+    { query: { enabled: !!operationId, queryKey: getListShowBooksQueryKey({ operationId: operationId ?? "" }) } }
+  );
   const books: ShowBook[] = listData?.showBooks ?? [];
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -909,7 +925,7 @@ export default function ShowBookPage() {
   const deleteRefMutation = useDeleteShowBookPositionRef();
 
   const invalidateAll = () => {
-    queryClient.invalidateQueries({ queryKey: getListShowBooksQueryKey({ operationId }) });
+    queryClient.invalidateQueries({ queryKey: getListShowBooksQueryKey({ operationId: operationId ?? "" }) });
     if (selectedId) queryClient.invalidateQueries({ queryKey: getGetShowBookQueryKey(selectedId) });
   };
 
@@ -1173,6 +1189,24 @@ export default function ShowBookPage() {
       <div className="flex gap-4 h-full">
         {/* Lista de livros */}
         <div className="w-72 shrink-0 flex flex-col gap-2">
+          {myOperations.length > 1 && (
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-muted-foreground">Operação</span>
+              <Select
+                value={operationId ?? ""}
+                onValueChange={(v) => { setSelectedOperationId(v); setSelectedId(null); }}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Selecione a operação" />
+                </SelectTrigger>
+                <SelectContent>
+                  {myOperations.map((o) => (
+                    <SelectItem key={o.id} value={o.id} className="text-xs">{o.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-muted-foreground">Livros</span>
             {isAdmin && (
