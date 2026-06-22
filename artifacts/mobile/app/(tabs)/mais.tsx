@@ -40,7 +40,7 @@ const SECTIONS: { title: string; items: SectionItem[] }[] = [
   {
     title: "Consulta",
     items: [
-      { label: "Livro do Show", subtitle: "Estrutura oficial do espetáculo", icon: "book-open", route: "/(tabs)/show-book"  },
+      { label: "Livro do Show", subtitle: "Estrutura oficial do espetáculo", icon: "book-open", route: "/(tabs)/show-book", managerOnly: true },
       { label: "Agenda",        icon: "calendar",   route: "/(tabs)/agenda"     },
       { label: "Biblioteca",    icon: "book",       route: "/(tabs)/biblioteca" },
     ],

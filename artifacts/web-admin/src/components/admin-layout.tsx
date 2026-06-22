@@ -201,7 +201,6 @@ const MEMBER_NAV: NavGroup[] = [
     label: "CONHECIMENTO",
     items: [
       { href: "/membro/biblioteca", icon: Library,  label: "Biblioteca"    },
-      { href: "/admin/show-book",   icon: BookOpen, label: "Livro do Show" },
     ],
   },
   {
