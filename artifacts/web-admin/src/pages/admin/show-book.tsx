@@ -429,10 +429,18 @@ function EditableName({
 
   return (
     <span className="flex items-center gap-1 group/name">
-      <span className={className}>{value}</span>
       <button
+        type="button"
         onClick={() => { setDraft(value); setEditing(true); }}
-        className="opacity-0 group-hover/name:opacity-100 p-0.5 text-muted-foreground hover:text-primary"
+        className={`text-left rounded-sm hover:text-primary hover:underline decoration-dotted underline-offset-2 ${className}`}
+        title="Clique para renomear"
+      >
+        {value}
+      </button>
+      <button
+        type="button"
+        onClick={() => { setDraft(value); setEditing(true); }}
+        className="shrink-0 p-0.5 text-muted-foreground/60 hover:text-primary"
         title="Renomear"
       >
         <Pencil className="h-3 w-3" />
@@ -815,7 +823,7 @@ export default function ShowBookPage() {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const auth = useAuth();
-  const isAdmin = auth.roles.some((r) => r.role === "ADMIN" || r.role === "SUPERVISOR_A");
+  const isAdmin = auth.roles.some((r) => ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"].includes(r.role));
   const isFullAdmin = auth.roles.some((r) => r.role === "ADMIN");
 
   const operationId = auth.roles.find((r) => r.operationId)?.operationId;
