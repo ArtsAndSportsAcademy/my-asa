@@ -11,8 +11,9 @@ import {
 
 // ─── Types & constants ────────────────────────────────────────────────────────
 
-export type GridType = "NO_SHOW" | "RECESSO" | "OUTRO";
+export type GridType = "DAY_OFF" | "NO_SHOW" | "RECESSO" | "OUTRO";
 export const GRID_TYPES: { value: GridType; label: string; abbr: string; bg: string; text: string }[] = [
+  { value: "DAY_OFF", label: "Folga",   abbr: "F",  bg: "bg-blue-100", text: "text-blue-800" },
   { value: "NO_SHOW", label: "No-show", abbr: "NS", bg: "bg-red-100", text: "text-red-800" },
   { value: "RECESSO", label: "Recesso", abbr: "R",  bg: "bg-orange-100", text: "text-orange-800" },
   { value: "OUTRO",   label: "Outro",   abbr: "O",  bg: "bg-gray-200",  text: "text-gray-700" },
