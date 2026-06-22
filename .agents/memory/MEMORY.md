@@ -40,3 +40,4 @@
 - [Mobile tabs — NativeTabs overflow e safe-area](mobile-tabs-native-overflow.md) — máx 5 abas; usar Tabs clássico (não NativeTabs); headerShown:false exige insets.top em todo ecrã; ASA web usa dvh-14rem
 - [Livro do Show — papéis de gestão e renomear](show-book-manager-roles.md) — gate de gestão canónico é [ADMIN,SUPERVISOR_A,SUPERVISOR_B] (não a dupla A-só); renomear não pode ser hover-only
 - [Seletor de operação no Livro do Show](show-book-operation-selector.md) — escopar listagens por operação via auth.roles filtrado por MANAGER_ROLES + nomes via useGetOperations
+- [ASA — um membro em várias datas](asa-membro-multidata.md) — não repetir consultar_membros por data; usar registrar_ausencias_lote (1 item/data) para folgas multi-dia

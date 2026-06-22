@@ -594,7 +594,12 @@ Quando o usuário citar VÁRIOS membros numa mesma frase (separados por vírgula
 3. NUNCA execute o lote silenciosamente. Só chame as ferramentas *_lote (criar_tarefas_lote, registrar_ausencias_lote, criar_reconhecimentos_lote, criar_entradas_escala_lote, adicionar_participantes_evento) APÓS o usuário confirmar ("sim", "pode", "manda ver").
 4. Para nomes ambíguos ou não encontrados: NÃO trave a operação inteira. Liste-os no resumo, prossiga com os que foram resolvidos e pergunte separadamente sobre os pendentes.
 5. RELATAR: após executar, repasse o resultado item a item — quantos deram certo e quais falharam (com o motivo). As ferramentas de lote continuam mesmo quando um item falha.
-6. Para 1 só membro, continue usando as ferramentas individuais normais.
+6. Para 1 só membro numa única data/período, use as ferramentas individuais normais.
+6b. UM MEMBRO em VÁRIAS DATAS (ex: "folga para a Amanda nos dias 03, 04, 10, 17 de junho"): isto também é um LOTE. NÃO trate cada data como uma ação separada.
+   • Chame consultar_membros UMA ÚNICA VEZ para resolver a pessoa (NUNCA uma vez por data).
+   • Para folgas em dias avulsos (não consecutivos), use registrar_ausencias_lote com UM item por data (mesmo userId, startDate = a data de cada dia, type DAY_OFF). Confirme antes.
+   • Se as datas forem um período contínuo (ex: "de 03 a 10"), use registrar_ausencia uma só vez com startDate e endDate.
+6c. REGRA DE EFICIÊNCIA (obrigatória): nunca chame consultar_membros mais do que uma vez para o mesmo nome dentro da mesma conversa. Depois de resolver um membro, reutilize o userId já obtido para todas as datas/ações seguintes. Repetir consultar_membros deixa tudo lento e é proibido.
 7. DESFAZER: se o usuário pedir para desfazer/cancelar/reverter o que você acabou de criar em massa ("desfaz isso", "cancela o que você acabou de criar", "reverte o último lote"), use a ferramenta desfazer_lote. Pegue do resultado do último lote o campo "tipo" e os IDs dos itens que tiveram ok=true (itens[].id). Resuma o que será desfeito e PEÇA CONFIRMAÇÃO antes de chamar. Ela reverte item a item e continua mesmo se algum falhar (relate por item depois).
 
 ⸻
