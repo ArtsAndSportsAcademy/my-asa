@@ -382,11 +382,17 @@ export default function ScalesPage() {
 
   // ── Derived: members ────────────────────────────────────────────────────
   const members = useMemo<{ userId: string; userName: string }[]>(() => {
+    const opId = selectedScale?.operationId;
     return (usersData?.users ?? [])
       .filter((u: UserModel) => u.status !== "INACTIVE")
+      .filter((u: UserModel) => {
+        if (!opId) return true;
+        const opIds = (u as { operationIds?: string[] }).operationIds;
+        return Array.isArray(opIds) && opIds.includes(opId);
+      })
       .map((u: UserModel) => ({ userId: u.id, userName: u.name }))
       .sort((a, b) => a.userName.localeCompare(b.userName, "pt-BR"));
-  }, [usersData]);
+  }, [usersData, selectedScale]);
 
   // ── Derived: allocations / manual entries ────────────────────────────────
   const allocations = useMemo(() => allocationsData?.allocations ?? [], [allocationsData]);

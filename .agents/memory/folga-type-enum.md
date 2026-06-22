@@ -9,3 +9,5 @@ Ao criar/registrar uma folga (`useCreateFolga`, `CreateFolgaRequest.type`), os v
 **Why:** os nomes intuitivos em PT (`FOLGA`, `FERIAS`) NÃO existem no contrato; enviá-los causa erro de enum no backend/DB (500). Padrão idêntico ao de `tasks-status-enum.md` e `notice-type-enum.md`.
 
 **How to apply:** copiar os valores/labels de `artifacts/web-admin/src/pages/admin/folgas.tsx` (TYPE_LABELS) ou de `CreateFolgaRequestType` em `lib/api-client-react/src/generated/api.schemas.ts`. Default razoável: `DAY_OFF`.
+
+**Default de tipo no registro de ausência (ASA coreRegistrarAusencia):** sem `type` explícito → dia único = `DAY_OFF` (folga); período multi-dia = `AFASTAMENTO`. **Why:** "No-show" era o default de dia único e o produto pediu folga como padrão; multi-dia continua AFASTAMENTO (não era no-show, não mexer).

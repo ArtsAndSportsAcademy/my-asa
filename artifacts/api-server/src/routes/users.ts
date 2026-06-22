@@ -15,6 +15,30 @@ function safeUser(user: typeof usersTable.$inferSelect) {
   return safe;
 }
 
+/**
+ * Anexa a cada usuário a lista de operações (operationIds) onde tem papel ATIVO.
+ * Permite ao frontend escopar listagens por operação (ex.: montar a escala de uma
+ * operação sem mostrar membros de outra operação da mesma organização).
+ */
+async function attachOperationIds(users: (typeof usersTable.$inferSelect)[]) {
+  const ids = users.map((u) => u.id);
+  if (ids.length === 0) return [];
+  const roles = await db.query.userRolesTable.findMany({
+    where: and(eq(userRolesTable.active, true), inArray(userRolesTable.userId, ids)),
+  });
+  const opsByUser = new Map<string, Set<string>>();
+  for (const r of roles) {
+    if (!r.operationId) continue;
+    const set = opsByUser.get(r.userId) ?? new Set<string>();
+    set.add(r.operationId);
+    opsByUser.set(r.userId, set);
+  }
+  return users.map((u) => ({
+    ...safeUser(u),
+    operationIds: [...(opsByUser.get(u.id) ?? [])],
+  }));
+}
+
 router.get("/users", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger("teams", req.requestId, req.correlationId);
   const { role, sub, organizationId } = req.user!;
@@ -29,7 +53,7 @@ router.get("/users", requireAuth, requireOrganization, async (req, res) => {
       const users = await db.query.usersTable.findMany({
         where: eq(usersTable.organizationId, organizationId),
       });
-      res.json({ users: users.map(safeUser) });
+      res.json({ users: await attachOperationIds(users) });
       return;
     }
 
@@ -56,7 +80,7 @@ router.get("/users", requireAuth, requireOrganization, async (req, res) => {
     const users = await db.query.usersTable.findMany({
       where: and(eq(usersTable.organizationId, organizationId), inArray(usersTable.id, memberUserIds)),
     });
-    res.json({ users: users.map(safeUser) });
+    res.json({ users: await attachOperationIds(users) });
   } catch (err) {
     log.error({ err }, "Error listing users");
     res.status(500).json({ error: "INTERNAL_ERROR" });

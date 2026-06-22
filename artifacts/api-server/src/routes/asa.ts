@@ -1621,7 +1621,7 @@ const ASA_TOOLS: Tool[] = [
         startDate: { type: "string", description: "Data de início (YYYY-MM-DD)" },
         endDate:   { type: "string", description: "Data de fim (YYYY-MM-DD). Se omitido, usa startDate (um único dia)" },
         date:      { type: "string", description: "Alias para startDate — use startDate de preferência" },
-        type:      { type: "string", description: "Tipo: NO_SHOW (falta avulsa, padrão) | DAY_OFF | AFASTAMENTO (doença, cirurgia) | RECESSO | RESTRICAO | OUTRO. Para períodos multi-dia, padrão automático é AFASTAMENTO" },
+        type:      { type: "string", description: "Tipo: DAY_OFF (folga) | NO_SHOW (falta avulsa) | AFASTAMENTO (doença, cirurgia) | RECESSO | RESTRICAO | OUTRO. Sem tipo explícito: dia único = DAY_OFF (folga); período multi-dia = AFASTAMENTO." },
         reason:    { type: "string", description: "Motivo (opcional)" },
       },
     },
@@ -1687,7 +1687,7 @@ const ASA_TOOLS: Tool[] = [
               userName:  { type: "string", description: "Nome do membro (para o resumo)" },
               startDate: { type: "string", description: "Data de início (YYYY-MM-DD)" },
               endDate:   { type: "string", description: "Data de fim (YYYY-MM-DD). Se omitido, usa startDate" },
-              type:      { type: "string", description: "NO_SHOW (padrão dia único) | DAY_OFF | AFASTAMENTO (padrão multi-dia) | RECESSO | RESTRICAO | OUTRO" },
+              type:      { type: "string", description: "DAY_OFF (folga) | NO_SHOW (falta avulsa) | AFASTAMENTO (doença) | RECESSO | RESTRICAO | OUTRO. Sem tipo: dia único = DAY_OFF; multi-dia = AFASTAMENTO." },
               reason:    { type: "string", description: "Motivo (opcional)" },
             },
           },
@@ -2229,7 +2229,7 @@ async function coreRegistrarAusencia(
   if (!startDate) throw new Error("startDate é obrigatório");
   const endDate = (p.endDate ?? startDate) as string;
   const isSingleDay = startDate === endDate;
-  const defaultType = isSingleDay ? "NO_SHOW" : "AFASTAMENTO";
+  const defaultType = isSingleDay ? "DAY_OFF" : "AFASTAMENTO";
   const absType = ((p.type as string | undefined) ?? defaultType) as typeof folgasTable.$inferInsert["type"];
   const [folga] = await db.insert(folgasTable).values({
     userId: p.userId,
