@@ -1060,6 +1060,7 @@ export interface DailyBook {
   version: number;
   snapshotJson?: DailyBookSnapshotJson;
   republishDeltaJson?: DailyBookRepublishDeltaJson;
+  publishComment?: string | null;
   publishedAt?: string | null;
   publishedBy?: string | null;
   generatedAt?: string | null;
@@ -1151,6 +1152,10 @@ export interface DailyBookGenerateRequest {
 
 export interface CancelDailyBookRequest {
   reason?: string;
+}
+
+export interface PublishDailyBookRequest {
+  comment?: string | null;
 }
 
 export interface DailyBookAssignmentPatchRequest {

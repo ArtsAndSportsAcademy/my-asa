@@ -1,0 +1,1 @@
+ALTER TABLE "daily_books" ADD COLUMN "publish_comment" text;

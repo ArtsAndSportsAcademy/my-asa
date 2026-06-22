@@ -228,6 +228,26 @@ export default function DailyBookScreen() {
     bookCardRow: { flexDirection: "row", alignItems: "center", gap: 8 },
     bookTitle: { flex: 1, fontSize: 14, fontWeight: "600", color: colors.foreground },
     bookMeta: { fontSize: 12, color: colors.mutedForeground, marginTop: 2 },
+    commentBanner: {
+      flexDirection: "row",
+      gap: 8,
+      marginHorizontal: 16,
+      marginTop: 12,
+      padding: 10,
+      borderRadius: 10,
+      backgroundColor: colors.primary + "10",
+      borderWidth: 1,
+      borderColor: colors.primary + "33",
+    },
+    commentLabel: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: colors.primary,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+      marginBottom: 2,
+    },
+    commentText: { fontSize: 13, color: colors.foreground, lineHeight: 18 },
     versionBadge: {
       paddingHorizontal: 6,
       paddingVertical: 2,
@@ -401,6 +421,18 @@ export default function DailyBookScreen() {
           <>
             <View style={{ height: 12 }} />
             <View style={styles.separator} />
+
+            {selectedBook?.publishComment ? (
+              <View style={styles.commentBanner}>
+                <Feather name="message-square" size={14} color={colors.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.commentLabel}>
+                    Comentário · v{selectedBook.version}
+                  </Text>
+                  <Text style={styles.commentText}>{selectedBook.publishComment}</Text>
+                </View>
+              </View>
+            ) : null}
 
             {bookLoading ? (
               <View style={{ padding: 32, alignItems: "center" }}>

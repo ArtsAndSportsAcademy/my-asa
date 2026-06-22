@@ -2076,6 +2076,7 @@ export const ListDailyBookResponse = zod.object({
   "republishDeltaJson": zod.object({
 
 }).passthrough().nullish(),
+  "publishComment": zod.string().nullish(),
   "publishedAt": zod.string().nullish(),
   "publishedBy": zod.string().nullish(),
   "generatedAt": zod.string().nullish(),
@@ -2120,6 +2121,7 @@ export const GetDailyBookResponse = zod.object({
   "republishDeltaJson": zod.object({
 
 }).passthrough().nullish(),
+  "publishComment": zod.string().nullish(),
   "publishedAt": zod.string().nullish(),
   "publishedBy": zod.string().nullish(),
   "generatedAt": zod.string().nullish(),
@@ -2187,6 +2189,10 @@ export const PublishDailyBookParams = zod.object({
   "id": zod.coerce.string()
 })
 
+export const PublishDailyBookBody = zod.object({
+  "comment": zod.string().nullish()
+})
+
 export const PublishDailyBookResponse = zod.object({
   "dailyBook": zod.object({
   "id": zod.string(),
@@ -2201,6 +2207,7 @@ export const PublishDailyBookResponse = zod.object({
   "republishDeltaJson": zod.object({
 
 }).passthrough().nullish(),
+  "publishComment": zod.string().nullish(),
   "publishedAt": zod.string().nullish(),
   "publishedBy": zod.string().nullish(),
   "generatedAt": zod.string().nullish(),
@@ -2222,6 +2229,10 @@ export const RepublishDailyBookParams = zod.object({
   "id": zod.coerce.string()
 })
 
+export const RepublishDailyBookBody = zod.object({
+  "comment": zod.string().nullish()
+})
+
 export const RepublishDailyBookResponse = zod.object({
   "dailyBook": zod.object({
   "id": zod.string(),
@@ -2236,6 +2247,7 @@ export const RepublishDailyBookResponse = zod.object({
   "republishDeltaJson": zod.object({
 
 }).passthrough().nullish(),
+  "publishComment": zod.string().nullish(),
   "publishedAt": zod.string().nullish(),
   "publishedBy": zod.string().nullish(),
   "generatedAt": zod.string().nullish(),
@@ -2286,6 +2298,7 @@ export const ExecuteDailyBookResponse = zod.object({
   "republishDeltaJson": zod.object({
 
 }).passthrough().nullish(),
+  "publishComment": zod.string().nullish(),
   "publishedAt": zod.string().nullish(),
   "publishedBy": zod.string().nullish(),
   "generatedAt": zod.string().nullish(),
@@ -2325,6 +2338,7 @@ export const CancelDailyBookResponse = zod.object({
   "republishDeltaJson": zod.object({
 
 }).passthrough().nullish(),
+  "publishComment": zod.string().nullish(),
   "publishedAt": zod.string().nullish(),
   "publishedBy": zod.string().nullish(),
   "generatedAt": zod.string().nullish(),
@@ -2360,6 +2374,7 @@ export const RegenerateDailyBookResponse = zod.object({
   "republishDeltaJson": zod.object({
 
 }).passthrough().nullish(),
+  "publishComment": zod.string().nullish(),
   "publishedAt": zod.string().nullish(),
   "publishedBy": zod.string().nullish(),
   "generatedAt": zod.string().nullish(),

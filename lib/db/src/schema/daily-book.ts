@@ -23,6 +23,7 @@ export const dailyBooksTable = pgTable("daily_books", {
   version: integer("version").notNull().default(1),
   snapshotJson: jsonb("snapshot_json").$type<Record<string, unknown>>().default({}),
   republishDeltaJson: jsonb("republish_delta_json").$type<Record<string, unknown>>(),
+  publishComment: text("publish_comment"),
   publishedAt: timestamp("published_at", { withTimezone: true }),
   publishedBy: uuid("published_by").references(() => usersTable.id),
   generatedAt: timestamp("generated_at", { withTimezone: true }),

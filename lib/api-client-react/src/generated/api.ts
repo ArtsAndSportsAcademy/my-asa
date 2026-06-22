@@ -184,6 +184,7 @@ import type {
   PositionCreate,
   PositionUpdate,
   PublishDailyBook200,
+  PublishDailyBookRequest,
   PublishDeliveryRequest,
   PublishScale200,
   ReasonPayload,
@@ -6568,14 +6569,16 @@ export const getPublishDailyBookUrl = (id: string,) => {
 /**
  * @summary Publicar Livro do Dia (DRAFT → PUBLISHED)
  */
-export const publishDailyBook = async (id: string, options?: RequestInit): Promise<PublishDailyBook200> => {
+export const publishDailyBook = async (id: string,
+    publishDailyBookRequest?: PublishDailyBookRequest, options?: RequestInit): Promise<PublishDailyBook200> => {
 
   return customFetch<PublishDailyBook200>(getPublishDailyBookUrl(id),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      publishDailyBookRequest,)
   }
 );}
 
@@ -6583,8 +6586,8 @@ export const publishDailyBook = async (id: string, options?: RequestInit): Promi
 
 
 export const getPublishDailyBookMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishDailyBook>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof publishDailyBook>>, TError,{id: string}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishDailyBook>>, TError,{id: string;data?: BodyType<PublishDailyBookRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof publishDailyBook>>, TError,{id: string;data?: BodyType<PublishDailyBookRequest>}, TContext> => {
 
 const mutationKey = ['publishDailyBook'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -6596,10 +6599,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof publishDailyBook>>, {id: string}> = (props) => {
-          const {id} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof publishDailyBook>>, {id: string;data?: BodyType<PublishDailyBookRequest>}> = (props) => {
+          const {id,data} = props ?? {};
 
-          return  publishDailyBook(id,requestOptions)
+          return  publishDailyBook(id,data,requestOptions)
         }
 
 
@@ -6610,18 +6613,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type PublishDailyBookMutationResult = NonNullable<Awaited<ReturnType<typeof publishDailyBook>>>
-
+    export type PublishDailyBookMutationBody = BodyType<PublishDailyBookRequest> | undefined
     export type PublishDailyBookMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>
 
     /**
  * @summary Publicar Livro do Dia (DRAFT → PUBLISHED)
  */
 export const usePublishDailyBook = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishDailyBook>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishDailyBook>>, TError,{id: string;data?: BodyType<PublishDailyBookRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof publishDailyBook>>,
         TError,
-        {id: string},
+        {id: string;data?: BodyType<PublishDailyBookRequest>},
         TContext
       > => {
       return useMutation(getPublishDailyBookMutationOptions(options));
@@ -6638,14 +6641,16 @@ export const getRepublishDailyBookUrl = (id: string,) => {
 /**
  * @summary Republicar Livro do Dia com diff/delta
  */
-export const republishDailyBook = async (id: string, options?: RequestInit): Promise<RepublishDailyBook200> => {
+export const republishDailyBook = async (id: string,
+    publishDailyBookRequest?: PublishDailyBookRequest, options?: RequestInit): Promise<RepublishDailyBook200> => {
 
   return customFetch<RepublishDailyBook200>(getRepublishDailyBookUrl(id),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      publishDailyBookRequest,)
   }
 );}
 
@@ -6653,8 +6658,8 @@ export const republishDailyBook = async (id: string, options?: RequestInit): Pro
 
 
 export const getRepublishDailyBookMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof republishDailyBook>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof republishDailyBook>>, TError,{id: string}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof republishDailyBook>>, TError,{id: string;data?: BodyType<PublishDailyBookRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof republishDailyBook>>, TError,{id: string;data?: BodyType<PublishDailyBookRequest>}, TContext> => {
 
 const mutationKey = ['republishDailyBook'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -6666,10 +6671,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof republishDailyBook>>, {id: string}> = (props) => {
-          const {id} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof republishDailyBook>>, {id: string;data?: BodyType<PublishDailyBookRequest>}> = (props) => {
+          const {id,data} = props ?? {};
 
-          return  republishDailyBook(id,requestOptions)
+          return  republishDailyBook(id,data,requestOptions)
         }
 
 
@@ -6680,18 +6685,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type RepublishDailyBookMutationResult = NonNullable<Awaited<ReturnType<typeof republishDailyBook>>>
-
+    export type RepublishDailyBookMutationBody = BodyType<PublishDailyBookRequest> | undefined
     export type RepublishDailyBookMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>
 
     /**
  * @summary Republicar Livro do Dia com diff/delta
  */
 export const useRepublishDailyBook = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof republishDailyBook>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof republishDailyBook>>, TError,{id: string;data?: BodyType<PublishDailyBookRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof republishDailyBook>>,
         TError,
-        {id: string},
+        {id: string;data?: BodyType<PublishDailyBookRequest>},
         TContext
       > => {
       return useMutation(getRepublishDailyBookMutationOptions(options));

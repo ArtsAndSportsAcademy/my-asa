@@ -616,7 +616,8 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
 
 router.post("/daily-book/:id/publish", requireAuth, requireOrganization, async (req, res) => {
   const id = req.params.id as string;
-  const { reason } = req.body;
+  const { reason, comment } = req.body;
+  const publishComment = typeof comment === "string" && comment.trim() ? comment.trim() : null;
   const userId = req.user!.sub;
   const user = req.user!;
   try {
@@ -636,7 +637,7 @@ router.post("/daily-book/:id/publish", requireAuth, requireOrganization, async (
     }
     const [updated] = await db
       .update(dailyBooksTable)
-      .set({ status: "PUBLISHED", publishedAt: new Date(), publishedBy: userId, updatedAt: new Date() })
+      .set({ status: "PUBLISHED", publishComment, publishedAt: new Date(), publishedBy: userId, updatedAt: new Date() })
       .where(eq(dailyBooksTable.id, id))
       .returning();
 
@@ -701,7 +702,8 @@ router.post("/daily-book/:id/publish", requireAuth, requireOrganization, async (
 
 router.post("/daily-book/:id/republish", requireAuth, requireOrganization, async (req, res) => {
   const id = req.params.id as string;
-  const { reason } = req.body;
+  const { reason, comment } = req.body;
+  const publishComment = typeof comment === "string" && comment.trim() ? comment.trim() : null;
   const userId = req.user!.sub;
   const user = req.user!;
   try {
@@ -738,6 +740,7 @@ router.post("/daily-book/:id/republish", requireAuth, requireOrganization, async
       .set({
         status: "REPUBLISHED",
         version: newVersion,
+        publishComment,
         publishedAt: new Date(),
         publishedBy: userId,
         republishDeltaJson: delta as any,

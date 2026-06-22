@@ -228,6 +228,7 @@ export default function SupervisorDailyBookPage() {
   const [rightTab, setRightTab] = useState<"coverage" | "delta" | "history">("coverage");
   const [republishOpen, setRepublishOpen] = useState(false);
   const [republishReason, setRepublishReason] = useState("");
+  const [republishComment, setRepublishComment] = useState("");
   const [executeOpen, setExecuteOpen] = useState(false);
 
   const { data: listData, isLoading } = useListDailyBook(
@@ -263,10 +264,11 @@ export default function SupervisorDailyBookPage() {
   const handleRepublish = async () => {
     if (!selectedId) return;
     try {
-      const result = await republishMutation.mutateAsync({ id: selectedId });
+      const result = await republishMutation.mutateAsync({ id: selectedId, data: { comment: republishComment.trim() || null } });
       toast({ title: `Republicado! Versão ${(result as any).dailyBook?.version}` });
       setRepublishOpen(false);
       setRepublishReason("");
+      setRepublishComment("");
       invalidate(selectedId);
       setRightTab("delta");
     } catch (e: any) {
@@ -376,6 +378,11 @@ export default function SupervisorDailyBookPage() {
                       ? `Publicado em ${new Date(selectedBook.publishedAt).toLocaleString("pt-BR")}`
                       : "Não publicado"}
                   </div>
+                  {selectedBook.publishComment && (
+                    <div className="text-xs text-foreground italic mt-0.5">
+                      “{selectedBook.publishComment}”
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {canRepublish && (
@@ -510,6 +517,17 @@ export default function SupervisorDailyBookPage() {
             </div>
 
             <div>
+              <Label>Comentário <span className="text-muted-foreground font-normal">(versão do show, opcional)</span></Label>
+              <Textarea
+                className="mt-1"
+                placeholder="Ex: Versão revisada após troca de elenco..."
+                value={republishComment}
+                onChange={(e) => setRepublishComment(e.target.value)}
+                rows={2}
+              />
+            </div>
+
+            <div>
               <Label>Motivo da republicação <span className="text-muted-foreground font-normal">(opcional)</span></Label>
               <Textarea
                 className="mt-1"
@@ -521,7 +539,7 @@ export default function SupervisorDailyBookPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setRepublishOpen(false); setRepublishReason(""); }}>
+            <Button variant="outline" onClick={() => { setRepublishOpen(false); setRepublishReason(""); setRepublishComment(""); }}>
               Cancelar
             </Button>
             <Button

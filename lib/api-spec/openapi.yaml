@@ -2627,6 +2627,12 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublishDailyBookRequest"
       responses:
         "200":
           description: Livro publicado
@@ -2656,6 +2662,12 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublishDailyBookRequest"
       responses:
         "200":
           description: Livro republicado com delta
@@ -6369,6 +6381,9 @@ components:
         republishDeltaJson:
           type: object
           nullable: true
+        publishComment:
+          type: string
+          nullable: true
         publishedAt:
           type: string
           nullable: true
@@ -6554,6 +6569,13 @@ components:
       properties:
         reason:
           type: string
+
+    PublishDailyBookRequest:
+      type: object
+      properties:
+        comment:
+          type: string
+          nullable: true
 
     DailyBookAssignmentPatchRequest:
       type: object

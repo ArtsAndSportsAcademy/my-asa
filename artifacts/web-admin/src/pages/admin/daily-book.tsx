@@ -257,9 +257,11 @@ export default function AdminDailyBookPage() {
   const [selectedShowBookId, setSelectedShowBookId] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [publishComment, setPublishComment] = useState("");
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [republishOpen, setRepublishOpen] = useState(false);
+  const [republishComment, setRepublishComment] = useState("");
   const [centerTab, setCenterTab] = useState<"cena" | "bloco" | "posicao">("cena");
   const [rightTab, setRightTab] = useState<"impacto" | "alteracoes" | "historico" | "delta">("impacto");
   const [filterStatus, setFilterStatus] = useState<string>("__all");
@@ -332,9 +334,10 @@ export default function AdminDailyBookPage() {
   const handlePublish = async () => {
     if (!selectedId) return;
     try {
-      await publishMutation.mutateAsync({ id: selectedId });
+      await publishMutation.mutateAsync({ id: selectedId, data: { comment: publishComment.trim() || null } });
       toast({ title: "Livro do Dia publicado!" });
       setPublishOpen(false);
+      setPublishComment("");
       invalidate(selectedId);
     } catch {
       toast({ title: "Erro ao publicar", variant: "destructive" });
@@ -344,9 +347,10 @@ export default function AdminDailyBookPage() {
   const handleRepublish = async () => {
     if (!selectedId) return;
     try {
-      const result = await republishMutation.mutateAsync({ id: selectedId });
+      const result = await republishMutation.mutateAsync({ id: selectedId, data: { comment: republishComment.trim() || null } });
       toast({ title: `Republicado com delta. Versão ${(result as any).dailyBook?.version}` });
       setRepublishOpen(false);
+      setRepublishComment("");
       invalidate(selectedId);
       setRightTab("delta");
     } catch (e: any) {
@@ -514,6 +518,11 @@ export default function AdminDailyBookPage() {
                     {STATUS_LABELS[selectedBook.status] ?? selectedBook.status} v{selectedBook.version}
                   </Badge>
                 </div>
+                {selectedBook.publishComment && (
+                  <p className="text-xs text-muted-foreground italic mb-1">
+                    “{selectedBook.publishComment}”
+                  </p>
+                )}
                 <div className="flex flex-wrap gap-1 mt-2">
                   {canPublish && (
                     <Button size="sm" className="h-7 text-xs" onClick={() => setPublishOpen(true)}>
@@ -753,7 +762,7 @@ export default function AdminDailyBookPage() {
       </div>
 
       {/* Dialog — Publicar */}
-      <Dialog open={publishOpen} onOpenChange={setPublishOpen}>
+      <Dialog open={publishOpen} onOpenChange={(o) => { setPublishOpen(o); if (!o) setPublishComment(""); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirmar Publicação</DialogTitle>
@@ -761,6 +770,16 @@ export default function AdminDailyBookPage() {
           <p className="text-sm text-muted-foreground py-2">
             O Livro do Dia será publicado e ficará visível para os membros escalados. Deseja continuar?
           </p>
+          <div>
+            <Label>Comentário <span className="text-muted-foreground font-normal">(versão do show, opcional)</span></Label>
+            <Textarea
+              className="mt-1"
+              placeholder="Ex: Versão com elenco reduzido para a sessão de tarde..."
+              value={publishComment}
+              onChange={(e) => setPublishComment(e.target.value)}
+              rows={3}
+            />
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPublishOpen(false)}>Cancelar</Button>
             <Button onClick={handlePublish} disabled={publishMutation.isPending}>
@@ -792,9 +811,19 @@ export default function AdminDailyBookPage() {
                 </div>
               </>
             )}
+            <div>
+              <Label>Comentário <span className="text-muted-foreground font-normal">(versão do show, opcional)</span></Label>
+              <Textarea
+                className="mt-1"
+                placeholder="Ex: Versão revisada após troca de elenco..."
+                value={republishComment}
+                onChange={(e) => setRepublishComment(e.target.value)}
+                rows={3}
+              />
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRepublishOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => { setRepublishOpen(false); setRepublishComment(""); }}>Cancelar</Button>
             <Button
               variant="outline"
               onClick={handleRepublish}

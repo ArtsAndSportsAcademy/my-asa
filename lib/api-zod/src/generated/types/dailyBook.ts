@@ -18,6 +18,7 @@ export interface DailyBook {
   version: number;
   snapshotJson?: DailyBookSnapshotJson;
   republishDeltaJson?: DailyBookRepublishDeltaJson;
+  publishComment?: string | null;
   publishedAt?: string | null;
   publishedBy?: string | null;
   generatedAt?: string | null;

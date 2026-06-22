@@ -43,6 +43,13 @@
       "when": 1782061422568,
       "tag": "0005_group_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1782134534787,
+      "tag": "0006_goofy_cerise",
+      "breakpoints": true
     }
   ]
 }

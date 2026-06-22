@@ -322,6 +322,7 @@ export * from './positionCreate';
 export * from './positionUpdate';
 export * from './positionUpdateChangeType';
 export * from './publishDailyBook200';
+export * from './publishDailyBookRequest';
 export * from './publishDeliveryRequest';
 export * from './publishScale200';
 export * from './reasonPayload';
