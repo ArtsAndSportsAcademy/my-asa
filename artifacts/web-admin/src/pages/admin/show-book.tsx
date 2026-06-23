@@ -6,6 +6,7 @@ import {
   useGetShowBook,
   useListShowBookVersions,
   useCreateShowBook,
+  useUpdateShowBook,
   useUpdateShowBookStatus,
   useDeleteShowBook,
   useCreateShowBookScene,
@@ -948,6 +949,7 @@ export default function ShowBookPage() {
   const statusMutation = useUpdateShowBookStatus();
   const deleteMutation = useDeleteShowBook();
   const createSceneMutation = useCreateShowBookScene();
+  const updateBookMutation = useUpdateShowBook();
   const updateSceneMutation = useUpdateShowBookScene();
   const deleteSceneMutation = useDeleteShowBookScene();
   const createBlockMutation = useCreateShowBookBlock();
@@ -1050,6 +1052,17 @@ export default function ShowBookPage() {
       {
         onSuccess: () => { setNewSceneName(""); invalidateAll(); },
         onError: () => failToast("Erro ao adicionar cena"),
+      }
+    );
+  };
+
+  const renameBook = (title: string) => {
+    if (!selectedId) return;
+    updateBookMutation.mutate(
+      { id: selectedId, data: { title, reason: "Renomeação" } },
+      {
+        onSuccess: () => { toast({ title: "Nome atualizado" }); invalidateAll(); },
+        onError: () => failToast("Erro ao renomear livro"),
       }
     );
   };
@@ -1317,7 +1330,12 @@ export default function ShowBookPage() {
             <div className="flex flex-col gap-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <h2 className="text-lg font-semibold">{selectedBook.title}</h2>
+                  <EditableName
+                    value={selectedBook.title}
+                    onSave={renameBook}
+                    disabled={!isAdmin}
+                    className="text-lg font-semibold"
+                  />
                   {selectedBook.description && <p className="text-sm text-muted-foreground">{selectedBook.description}</p>}
                   <div className="flex items-center gap-2 mt-1">
                     <Badge variant={STATUS_VARIANTS[selectedBook.status]}>{STATUS_LABELS[selectedBook.status]}</Badge>
