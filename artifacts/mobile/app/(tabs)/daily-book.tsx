@@ -16,7 +16,7 @@ import type {
   DailyBookPositionWithAssignments,
   DailyBookAssignment,
 } from "@workspace/api-client-react";
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -29,6 +29,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useLocalSearchParams } from "expo-router";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
@@ -74,8 +75,10 @@ export default function DailyBookScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const auth = useAuth();
+  const { eventId, eventNonce } = useLocalSearchParams<{ eventId?: string; eventNonce?: string }>();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
+  const [eventNotFound, setEventNotFound] = useState(false);
   const [expandedScenes, setExpandedScenes] = useState<Record<string, boolean>>({});
   const [expandedBlocks, setExpandedBlocks] = useState<Record<string, boolean>>({});
 
@@ -103,6 +106,26 @@ export default function DailyBookScreen() {
   const visibleBooks = isCapitaoDailyBook
     ? books
     : books.filter((b) => b.status === "PUBLISHED" || b.status === "REPUBLISHED");
+
+  // Abrir automaticamente o Livro do Dia do show vindo da escala (?eventId=...).
+  // O eventNonce muda a cada toque na escala, permitindo reabrir o mesmo show
+  // mesmo depois de o utilizador ter escolhido outro livro à mão.
+  const appliedNonceRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!eventId) return;
+    if (listLoading) return; // aguardar a lista carregar antes de decidir
+    const nonceKey = eventNonce ?? eventId;
+    if (appliedNonceRef.current === nonceKey) return;
+    appliedNonceRef.current = nonceKey;
+    const match = visibleBooks.find((b) => b.agendaEventId === eventId);
+    if (match) {
+      setSelectedBookId(match.id);
+      setEventNotFound(false);
+    } else {
+      setSelectedBookId(null);
+      setEventNotFound(true);
+    }
+  }, [eventId, eventNonce, listLoading, visibleBooks]);
 
   const {
     data: bookData,
@@ -379,6 +402,17 @@ export default function DailyBookScreen() {
       <ScrollView
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       >
+        {eventNotFound && !selectedBookId && (
+          <View style={styles.commentBanner}>
+            <Feather name="info" size={14} color={colors.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.commentText}>
+                Ainda não há Livro do Dia publicado para este show. Escolha outro abaixo ou volte mais tarde.
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Book selector */}
         <Text style={styles.sectionTitle}>Selecionar Livro</Text>
         {visibleBooks.length === 0 ? (

@@ -10,6 +10,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import React, { useState, useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -17,6 +18,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
@@ -96,12 +98,14 @@ function DayRow({
   entries,
   folgaType,
   colors,
+  onOpenEvent,
 }: {
   label: string;
   date: string;
   entries: MyAllocation[];
   folgaType: string | null;
   colors: ReturnType<typeof useColors>;
+  onOpenEvent: (agendaEventId: string) => void;
 }) {
   const hasEntries = entries.length > 0;
   return (
@@ -122,13 +126,23 @@ function DayRow({
 
         {hasEntries ? (
           entries.map((e) => (
-            <View
+            <Pressable
               key={e.id}
-              style={[styles.entry, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => onOpenEvent(e.agendaEventId)}
+              style={({ pressed }) => [
+                styles.entry,
+                { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
+              ]}
             >
-              <Text style={[styles.entryTitle, { color: colors.foreground }]} numberOfLines={1}>
-                {e.eventTitle ?? "Escala"}
-              </Text>
+              <View style={styles.entryHeader}>
+                <Text
+                  style={[styles.entryTitle, { color: colors.foreground, flex: 1 }]}
+                  numberOfLines={1}
+                >
+                  {e.eventTitle ?? "Escala"}
+                </Text>
+                <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+              </View>
               <View style={styles.entryMeta}>
                 {e.eventStartTime && (
                   <View style={styles.metaItem}>
@@ -159,7 +173,10 @@ function DayRow({
                   </View>
                 )}
               </View>
-            </View>
+              <Text style={[styles.entryHint, { color: colors.primary }]}>
+                Ver Livro do Dia →
+              </Text>
+            </Pressable>
           ))
         ) : (
           !folgaType && (
@@ -178,11 +195,13 @@ function WeekCard({
   allocations,
   folgas,
   colors,
+  onOpenEvent,
 }: {
   weekStart: string;
   allocations: MyAllocation[];
   folgas: FolgaItem[];
   colors: ReturnType<typeof useColors>;
+  onOpenEvent: (agendaEventId: string) => void;
 }) {
   const weekEnd = addDays(weekStart, 6);
 
@@ -233,6 +252,7 @@ function WeekCard({
               entries={byDate.get(date) ?? []}
               folgaType={folgaTypeOn(date, folgas)}
               colors={colors}
+              onOpenEvent={onOpenEvent}
             />
           );
         })}
@@ -247,7 +267,18 @@ export default function ScaleScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const auth = useAuth();
+  const router = useRouter();
   const queryClient = useQueryClient();
+
+  const openEvent = useCallback(
+    (agendaEventId: string) => {
+      router.push({
+        pathname: "/(tabs)/daily-book",
+        params: { eventId: agendaEventId, eventNonce: String(Date.now()) },
+      });
+    },
+    [router]
+  );
   const [refreshing, setRefreshing] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterValue>("upcoming");
 
@@ -408,6 +439,7 @@ export default function ScaleScreen() {
               allocations={w.allocations}
               folgas={activeFolgas}
               colors={colors}
+              onOpenEvent={openEvent}
             />
           ))
         )}
@@ -489,8 +521,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
+  entryHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
   entryTitle: { fontSize: 14, fontWeight: "600" },
   entryMeta: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 4 },
+  entryHint: { fontSize: 11, fontWeight: "600", marginTop: 6 },
   metaItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   metaText: { fontSize: 11 },
 });
