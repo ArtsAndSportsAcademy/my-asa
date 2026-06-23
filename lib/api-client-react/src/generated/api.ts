@@ -81,6 +81,7 @@ import type {
   DailyBookGenerateRequest,
   DailyBookScenesReorderRequest,
   DeleteActivity200,
+  DeleteDailyBook200,
   DeleteDailyBookBlock200,
   DeleteDailyBookPosition200,
   DeleteDailyBookScene200,
@@ -6564,6 +6565,76 @@ export function useGetDailyBook<TData = Awaited<ReturnType<typeof getDailyBook>>
 
 
 
+
+export const getDeleteDailyBookUrl = (id: string,) => {
+
+
+
+
+  return `/api/daily-book/${id}`
+}
+
+/**
+ * @summary Apagar Livro do Dia
+ */
+export const deleteDailyBook = async (id: string, options?: RequestInit): Promise<DeleteDailyBook200> => {
+
+  return customFetch<DeleteDailyBook200>(getDeleteDailyBookUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteDailyBookMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDailyBook>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteDailyBook>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteDailyBook'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteDailyBook>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteDailyBook(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteDailyBookMutationResult = NonNullable<Awaited<ReturnType<typeof deleteDailyBook>>>
+
+    export type DeleteDailyBookMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Apagar Livro do Dia
+ */
+export const useDeleteDailyBook = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDailyBook>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteDailyBook>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteDailyBookMutationOptions(options));
+    }
 
 export const getPublishDailyBookUrl = (id: string,) => {
 

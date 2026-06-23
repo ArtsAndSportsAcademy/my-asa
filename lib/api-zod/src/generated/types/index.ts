@@ -117,6 +117,7 @@ export * from './dailyBookSnapshotJson';
 export * from './dailyBookStatus';
 export * from './dailyBookWithScenes';
 export * from './deleteActivity200';
+export * from './deleteDailyBook200';
 export * from './deleteDailyBookBlock200';
 export * from './deleteDailyBookPosition200';
 export * from './deleteDailyBookScene200';

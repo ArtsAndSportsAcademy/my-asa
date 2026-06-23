@@ -2211,6 +2211,18 @@ export const GetDailyBookResponse = zod.object({
 
 
 /**
+ * @summary Apagar Livro do Dia
+ */
+export const DeleteDailyBookParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const DeleteDailyBookResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+/**
  * @summary Publicar Livro do Dia (DRAFT → PUBLISHED)
  */
 export const PublishDailyBookParams = zod.object({

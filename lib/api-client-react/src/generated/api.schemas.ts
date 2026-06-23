@@ -3113,6 +3113,10 @@ export type GetDailyBook200 = {
   dailyBook: DailyBookWithScenes;
 };
 
+export type DeleteDailyBook200 = {
+  success: boolean;
+};
+
 export type PublishDailyBook200 = {
   dailyBook: DailyBook;
 };

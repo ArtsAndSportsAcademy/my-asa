@@ -6,6 +6,7 @@ import {
   useGetDailyBookDelta,
   useRepublishDailyBook,
   useExecuteDailyBook,
+  useDeleteDailyBook,
   getListDailyBookQueryKey,
   getGetDailyBookQueryKey,
   getGetDailyBookDeltaQueryKey,
@@ -30,7 +31,7 @@ import { useListUsers } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import {
   BookOpen, Layers, Layout, User, CheckCircle, AlertTriangle, XCircle,
-  ChevronRight, ChevronDown, Play, RotateCcw, Eye, Bell,
+  ChevronRight, ChevronDown, Play, RotateCcw, Eye, Bell, Trash2,
 } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -230,6 +231,7 @@ export default function SupervisorDailyBookPage() {
   const [republishReason, setRepublishReason] = useState("");
   const [republishComment, setRepublishComment] = useState("");
   const [executeOpen, setExecuteOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const { data: listData, isLoading } = useListDailyBook(
     {},
@@ -255,6 +257,7 @@ export default function SupervisorDailyBookPage() {
 
   const republishMutation = useRepublishDailyBook();
   const executeMutation = useExecuteDailyBook();
+  const deleteMutation = useDeleteDailyBook();
 
   const invalidate = useCallback((id?: string) => {
     queryClient.invalidateQueries({ queryKey: getListDailyBookQueryKey({}) });
@@ -285,6 +288,19 @@ export default function SupervisorDailyBookPage() {
       invalidate(selectedId);
     } catch {
       toast({ title: "Erro ao executar", variant: "destructive" });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedId) return;
+    try {
+      await deleteMutation.mutateAsync({ id: selectedId });
+      toast({ title: "Livro do Dia apagado!" });
+      setDeleteOpen(false);
+      setSelectedId(null);
+      invalidate();
+    } catch (e: any) {
+      toast({ title: e?.response?.data?.error ?? "Erro ao apagar", variant: "destructive" });
     }
   };
 
@@ -393,6 +409,11 @@ export default function SupervisorDailyBookPage() {
                   {canExecute && (
                     <Button size="sm" onClick={() => setExecuteOpen(true)}>
                       <Play className="h-3.5 w-3.5 mr-1" /> Executar
+                    </Button>
+                  )}
+                  {isSupervisor && (
+                    <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={() => setDeleteOpen(true)}>
+                      <Trash2 className="h-3.5 w-3.5 mr-1" /> Apagar
                     </Button>
                   )}
                 </div>
@@ -567,6 +588,25 @@ export default function SupervisorDailyBookPage() {
             <Button onClick={handleExecute} disabled={executeMutation.isPending}>
               <Play className="h-3.5 w-3.5 mr-1" />
               {executeMutation.isPending ? "Aguarde..." : "Confirmar Execução"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Apagar Livro do Dia</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground py-2">
+            Esta ação apaga definitivamente este Livro do Dia e todas as suas cenas, blocos, posições e escalações. Não pode ser desfeita.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancelar</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleteMutation.isPending}>
+              <Trash2 className="h-3.5 w-3.5 mr-1" />
+              {deleteMutation.isPending ? "Apagando..." : "Apagar definitivamente"}
             </Button>
           </DialogFooter>
         </DialogContent>

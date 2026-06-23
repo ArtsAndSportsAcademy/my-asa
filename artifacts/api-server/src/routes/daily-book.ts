@@ -919,6 +919,52 @@ router.post("/daily-book/:id/cancel", requireAuth, requireOrganization, requireR
   }
 });
 
+router.delete("/daily-book/:id", requireAuth, requireOrganization, async (req, res) => {
+  const id = req.params.id as string;
+  const userId = req.user!.sub;
+  const user = req.user!;
+  try {
+    const book = await getDailyBookOrFail(id, res);
+    if (!book) return;
+
+    // Confirma que o ator pode operar este Livro do Dia (responsável do show,
+    // capitão com delegação, ou gestor da operação no modo legado).
+    let operationId: string | null = null;
+    let show: ShowResponsibilityRef | null = null;
+    if (book.showBookId) {
+      const loaded = await loadShowRef(book.showBookId);
+      if (loaded) { operationId = loaded.operationId; show = loaded.ref; }
+    }
+    if (!operationId && book.scaleId) {
+      const [sr] = await db.select({ operationId: scalesTable.operationId }).from(scalesTable).where(eq(scalesTable.id, book.scaleId)).limit(1);
+      operationId = sr?.operationId ?? null;
+    }
+    if (!operationId && book.agendaEventId) {
+      const [ev] = await db.select({ operationId: agendaEventsTable.operationId }).from(agendaEventsTable).where(eq(agendaEventsTable.id, book.agendaEventId)).limit(1);
+      operationId = ev?.operationId ?? null;
+    }
+    if (!operationId || !(await canOperateDailyBook(user, operationId, show))) {
+      res.status(403).json({ error: "Sem permissão para apagar este Livro do Dia" });
+      return;
+    }
+
+    // Apaga em ordem dentro de uma transação (robusto mesmo que o banco não
+    // tenha as FKs com ON DELETE CASCADE).
+    await db.transaction(async (tx) => {
+      await tx.delete(dailyBookAssignmentsTable).where(eq(dailyBookAssignmentsTable.dailyBookId, id));
+      await tx.delete(dailyBookPositionsTable).where(eq(dailyBookPositionsTable.dailyBookId, id));
+      await tx.delete(dailyBookBlocksTable).where(eq(dailyBookBlocksTable.dailyBookId, id));
+      await tx.delete(dailyBookScenesTable).where(eq(dailyBookScenesTable.dailyBookId, id));
+      await tx.delete(dailyBooksTable).where(eq(dailyBooksTable.id, id));
+    });
+
+    await writeDailyBookAudit(id, userId, "delete", { status: book.status, version: book.version }, null);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao apagar Livro do Dia" });
+  }
+});
+
 router.get("/daily-book", requireAuth, requireOrganization, async (req, res) => {
   const { agendaEventId, status, groupId } = req.query as Record<string, string | undefined>;
   try {
