@@ -15,6 +15,7 @@ import {
   userRolesTable,
   recurringActivitiesTable,
   recurringActivityAssigneesTable,
+  folgasTable,
 } from "@workspace/db";
 import { loadGroupMembers } from "../routes/groups.js";
 import { getNonSchedulableUserIds } from "./scheduling-eligibility.js";
@@ -339,6 +340,33 @@ export async function resolveScaleAllocations(scale: ScaleForMerge) {
       periodDates.push(d.toISOString().slice(0, 10));
     }
 
+    // Folgas/restrições ACTIVE da operação que tocam o período da escala.
+    // Quem estiver indisponível numa data NÃO recebe a atividade recorrente.
+    const folgas = await db
+      .select({
+        userId: folgasTable.userId,
+        startDate: folgasTable.startDate,
+        endDate: folgasTable.endDate,
+      })
+      .from(folgasTable)
+      .where(
+        and(
+          eq(folgasTable.operationId, scale.operationId),
+          eq(folgasTable.status, "ACTIVE"),
+          lte(folgasTable.startDate, scale.periodEnd),
+          gte(folgasTable.endDate, scale.periodStart),
+        ),
+      );
+    const folgasByUser = new Map<string, Array<{ start: string; end: string }>>();
+    for (const f of folgas) {
+      if (!f.userId) continue;
+      const list = folgasByUser.get(f.userId) ?? [];
+      list.push({ start: f.startDate, end: f.endDate });
+      folgasByUser.set(f.userId, list);
+    }
+    const isUnavailable = (userId: string, ds: string): boolean =>
+      (folgasByUser.get(userId) ?? []).some((f) => f.start <= ds && ds <= f.end);
+
     for (const act of activities) {
       const users = activityUsers.get(act.id)!;
       if (users.size === 0) continue;
@@ -359,6 +387,7 @@ export async function resolveScaleAllocations(scale: ScaleForMerge) {
       for (const ds of dates) {
         for (const [userId, userName] of users) {
           if (nonSchedulable.has(userId)) continue;
+          if (isUnavailable(userId, ds)) continue;
           recurringRows.push({
             id: `rec:${act.id}:${ds}:${userId}`,
             agendaEventId: null,

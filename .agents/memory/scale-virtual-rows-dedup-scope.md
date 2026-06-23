@@ -1,5 +1,5 @@
 ---
-name: Fontes virtuais da escala — dedup e escopo
+name: Fontes virtuais da escala — dedup, escopo e folgas
 description: como juntar fontes (agenda, livro do dia, atividades) na escala em tempo de leitura sem duplicar nem vazar entre operações
 ---
 
@@ -10,6 +10,7 @@ O endpoint de alocações da escala compõe, em tempo de leitura, várias fontes
 3. **Dedup contra alocações reais — chave certa por fonte:**
    - Agenda: `userId|agendaEventId` (NÃO `userId|data|positionId`, senão dois eventos no mesmo dia colidem).
    - Livro do Dia: `userId|data|roleId`.
+4. **Excluir folgas/restrições ACTIVE (fontes AUTO-DERIVADAS):** atividades recorrentes são geradas automaticamente por dia da semana/data, sem passar pelo line-resolver — por isso DEVEM saltar quem tem folga ACTIVE (qualquer type: DAY_OFF/NO_SHOW/RECESSO/AFASTAMENTO/RESTRICAO/OUTRO) a cobrir a data (`startDate <= ds <= endDate`). Carregar folgas da operação que tocam o período UMA vez (Map userId→intervalos) e filtrar no loop por data. O cast do Livro do Dia já resolve folgas na geração (line-resolver); a agenda é escolha manual explícita, NÃO filtrar.
 
 Calcular `opMemberIds`, `realKeys` (pessoa|data|papel) e `realAgendaKeys` (pessoa|evento) UMA vez no topo, logo após montar as alocações reais, e reutilizar em todas as fontes — evita queries e definições duplicadas.
 
