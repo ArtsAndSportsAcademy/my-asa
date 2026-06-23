@@ -31,6 +31,7 @@ import {
   groupOperationsTable,
 } from "@workspace/db";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
+import { resolveScaleAllocations, computeFreeGaps } from "../services/scale-merge.js";
 import {
   GroupActionError,
   createGroupCore,
@@ -480,6 +481,24 @@ Sempre explique o que o número significa em contexto operacional — não apena
 
 ⸻
 
+Escala automática e Tempo Livre
+
+A escala monta-se quase sozinha. Além das entradas fixas/manuais, ela junta automaticamente (em tempo de leitura) quatro fontes:
+• Livro do Dia publicado — quem foi escalado num show recebe os blocos do show (boas-vindas, maquiagem, preparação, etc.), com data e horas.
+• Agenda — participantes de eventos/reuniões entram na escala no dia do evento.
+• Atividades recorrentes/avulsas — quem está designado (direto ou por grupo) aparece nos dias certos (ex: aula toda quarta-feira).
+• Alocações manuais — o que o gestor adiciona à mão (têm sempre prioridade).
+
+A ferramenta consultar_escalas JÁ reflete tudo isto — cada entrada traz um campo "origem" (Livro do Dia, Agenda, Atividade recorrente ou Escala manual/fixo). Por isso NUNCA diga que "não há nada na escala" sem antes consultar: os blocos automáticos podem não estar gravados como entradas fixas, mas aparecem na escala do dia.
+
+Tempo livre (buracos na agenda do dia):
+• "Quem tem tempo livre na quinta?" / "A Fulana está livre amanhã?" / "Onde dá para encaixar uma tarefa?" → consultar_tempo_livre.
+• Considera a janela de trabalho 07:40–18:00 e só mostra buracos de pelo menos 1 hora.
+• Não conta quem está de folga, nem dias em que algum bloco não tem horário definido (sem hora não dá para saber o tempo realmente livre).
+• Para PREENCHER um buraco, use criar_entrada_escala (ex: ADM, preparação, ensaio) ou criar_tarefa — SEMPRE confirmando com o gestor antes de executar.
+
+⸻
+
 Mensagens Inteligentes (Sprint 08)
 
 Você pode analisar mensagens de grupos e threads operacionais.
@@ -777,7 +796,7 @@ const ASA_TOOLS: Tool[] = [
   },
   {
     name: "consultar_escalas",
-    description: "Consulta a escala pessoal do usuário — suas entradas e alocações confirmadas. Use para responder 'minha escala', 'onde estou na escala', 'o que tenho essa semana'. Gestores podem consultar a escala de outro membro via userId.",
+    description: "Consulta a escala de um membro EXATAMENTE como aparece no ecrã: entradas fixas/manuais + blocos automáticos do Livro do Dia, da agenda e de atividades recorrentes. Cada entrada traz o campo 'origem'. Use para 'minha escala', 'onde estou na escala', 'o que a Fulana tem essa semana'. Gestores podem consultar outro membro via userId.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -785,6 +804,17 @@ const ASA_TOOLS: Tool[] = [
         dateFrom: { type: "string", description: "Data início (YYYY-MM-DD). Padrão: hoje." },
         dateTo:   { type: "string", description: "Data fim (YYYY-MM-DD). Padrão: +14 dias." },
         limit:    { type: "number", description: "Máximo de entradas (padrão: 20)" },
+      },
+    },
+  },
+  {
+    name: "consultar_tempo_livre",
+    description: "Detecta o TEMPO LIVRE (buracos na agenda do dia) dos membros escalados, dentro da janela de trabalho 07:40–18:00, mostrando só buracos de pelo menos 1 hora. Use para 'quem tem tempo livre [dia]?', 'a Fulana está livre amanhã?', 'onde dá para encaixar uma tarefa/ADM?'. Ignora quem está de folga e dias com blocos sem horário. Para PREENCHER um buraco, depois use criar_entrada_escala ou criar_tarefa — sempre com confirmação.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        date:   { type: "string", description: "Data (YYYY-MM-DD). Padrão: hoje." },
+        userId: { type: "string", description: "ID do membro (opcional — gestores: calcula só para esse membro; sem userId calcula para todos). Use consultar_membros para obter." },
       },
     },
   },
@@ -2489,7 +2519,7 @@ export async function executeTool(
 
       // Find scales covering the requested period
       const scales = await db
-        .select({ id: scalesTable.id, title: scalesTable.title, periodStart: scalesTable.periodStart, periodEnd: scalesTable.periodEnd, status: scalesTable.status })
+        .select({ id: scalesTable.id, title: scalesTable.title, operationId: scalesTable.operationId, periodStart: scalesTable.periodStart, periodEnd: scalesTable.periodEnd, status: scalesTable.status })
         .from(scalesTable)
         .where(and(
           ctx.operationId ? eq(scalesTable.operationId, ctx.operationId) : sql`true`,
@@ -2504,52 +2534,135 @@ export async function executeTool(
         return JSON.stringify({ found: false, message: `Nenhuma escala ativa encontrada para ${dateFrom} → ${dateTo}.`, entradas: [] });
       }
 
-      const scaleIds = scales.map(s => s.id);
+      // Compõe a escala EXATAMENTE como o ecrã (alocações reais + Livro do Dia +
+      // agenda + atividades recorrentes) e filtra para o membro e a janela pedida.
+      const entries: Array<{
+        id: string; escala: string; periodo: string; data: string;
+        atividade: string | null; inicio: string | null; fim: string | null;
+        status: string; origem: string; obs: string | null;
+      }> = [];
+      for (const s of scales) {
+        if (!s.operationId) continue;
+        const merged = await resolveScaleAllocations({
+          id: s.id, operationId: s.operationId, periodStart: s.periodStart, periodEnd: s.periodEnd,
+        });
+        for (const row of merged) {
+          const r = row as Record<string, any>;
+          if (r["userId"] !== targetUserId) continue;
+          const data = (r["manualDate"] ?? r["eventDate"]) as string | null;
+          if (!data || data < dateFrom || data > dateTo) continue;
+          entries.push({
+            id:        String(r["id"]),
+            escala:    s.title,
+            periodo:   `${s.periodStart} → ${s.periodEnd}`,
+            data,
+            atividade: (r["manualLabel"] ?? r["eventTitle"]) ?? null,
+            inicio:    (r["startTime"] ?? r["eventStartTime"]) ?? null,
+            fim:       (r["endTime"] ?? r["eventEndTime"]) ?? null,
+            status:    String(r["status"]),
+            origem:    r["isDailyBookParticipant"] ? "Livro do Dia"
+                     : r["isAgendaParticipant"]    ? "Agenda"
+                     : r["isRecurringActivity"]    ? "Atividade recorrente"
+                     : "Escala (manual/fixo)",
+            obs:       (r["notes"] ?? null) as string | null,
+          });
+        }
+      }
 
-      // Get user allocations in those scales
-      const allocations = await db
-        .select({
-          id:           scaleAllocationsTable.id,
-          scaleId:      scaleAllocationsTable.scaleId,
-          status:       scaleAllocationsTable.status,
-          manualDate:   scaleAllocationsTable.manualDate,
-          manualLabel:  scaleAllocationsTable.manualLabel,
-          startTime:    scaleAllocationsTable.startTime,
-          endTime:      scaleAllocationsTable.endTime,
-          notes:        scaleAllocationsTable.notes,
-          agendaEventId:scaleAllocationsTable.agendaEventId,
-        })
-        .from(scaleAllocationsTable)
-        .where(and(
-          eq(scaleAllocationsTable.userId, targetUserId),
-          inArray(scaleAllocationsTable.scaleId, scaleIds),
-          inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]),
-        ))
-        .orderBy(scaleAllocationsTable.manualDate)
-        .limit(limit);
+      entries.sort((a, b) => String(a.data).localeCompare(String(b.data)));
+      const limited = entries.slice(0, limit);
 
-      if (allocations.length === 0) {
+      if (limited.length === 0) {
         const userName = targetUserId === ctx.userId ? "Você não está" : "Este membro não está";
         return JSON.stringify({ found: false, message: `${userName} alocado(a) em nenhuma escala entre ${dateFrom} e ${dateTo}.`, entradas: [] });
       }
 
-      const scaleMap = new Map(scales.map(s => [s.id, s]));
-      const entries = allocations.map(a => {
-        const scale = scaleMap.get(a.scaleId);
-        return {
-          id:        a.id,
-          escala:    scale?.title ?? a.scaleId,
-          periodo:   scale ? `${scale.periodStart} → ${scale.periodEnd}` : null,
-          data:      a.manualDate,
-          atividade: a.manualLabel,
-          inicio:    a.startTime,
-          fim:       a.endTime,
-          status:    a.status,
-          obs:       a.notes,
-        };
+      return JSON.stringify({ found: true, total: limited.length, entradas: limited });
+    }
+
+    if (name === "consultar_tempo_livre") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      if (!ctx.operationId)   return JSON.stringify({ error: "Operação não configurada" });
+      const date = (input.date as string) ?? new Date().toISOString().slice(0, 10);
+      // Gestor: userId opcional (sem ele = todos). Membro: sempre só ele mesmo.
+      const onlyUserId = isManager ? ((input.userId as string) || null) : ctx.userId;
+
+      const [scale] = await db
+        .select({ id: scalesTable.id, operationId: scalesTable.operationId, periodStart: scalesTable.periodStart, periodEnd: scalesTable.periodEnd })
+        .from(scalesTable)
+        .where(and(
+          eq(scalesTable.operationId, ctx.operationId),
+          inArray(scalesTable.status, ["DRAFT", "PUBLISHED", "REPUBLISHED"]),
+          lte(scalesTable.periodStart, date),
+          gte(scalesTable.periodEnd,   date),
+        ))
+        .orderBy(desc(scalesTable.periodStart))
+        .limit(1);
+
+      if (!scale || !scale.operationId) {
+        return JSON.stringify({ found: false, date, message: `Nenhuma escala ativa cobre ${date}.`, membros: [] });
+      }
+
+      const merged = await resolveScaleAllocations({
+        id: scale.id, operationId: scale.operationId, periodStart: scale.periodStart, periodEnd: scale.periodEnd,
       });
 
-      return JSON.stringify({ found: true, total: entries.length, entradas: entries });
+      // Agrupa blocos do dia por membro
+      const byUser = new Map<string, { name: string | null; blocks: Array<{ startTime: string | null; endTime: string | null; label: string | null }> }>();
+      for (const row of merged) {
+        const r = row as Record<string, any>;
+        const d = (r["manualDate"] ?? r["eventDate"]) as string | null;
+        if (d !== date) continue;
+        const uid = r["userId"] as string | null;
+        if (!uid) continue;
+        if (onlyUserId && uid !== onlyUserId) continue;
+        let u = byUser.get(uid);
+        if (!u) { u = { name: (r["userName"] ?? null) as string | null, blocks: [] }; byUser.set(uid, u); }
+        u.blocks.push({
+          startTime: (r["startTime"] ?? r["eventStartTime"]) ?? null,
+          endTime:   (r["endTime"] ?? r["eventEndTime"]) ?? null,
+          label:     (r["manualLabel"] ?? r["eventTitle"]) ?? null,
+        });
+      }
+
+      if (byUser.size === 0) {
+        return JSON.stringify({ found: false, date, message: onlyUserId ? `Esse membro não tem blocos na escala em ${date}.` : `Ninguém está escalado em ${date}.`, membros: [] });
+      }
+
+      // Folgas ACTIVE que cobrem a data → membro indisponível (não conta tempo livre)
+      const folgaRows = await db
+        .select({ userId: folgasTable.userId, type: folgasTable.type })
+        .from(folgasTable)
+        .where(and(
+          eq(folgasTable.operationId, scale.operationId),
+          eq(folgasTable.status, "ACTIVE"),
+          lte(folgasTable.startDate, date),
+          gte(folgasTable.endDate,   date),
+        ));
+      const unavailable = new Set(folgaRows.map(f => f.userId).filter((x): x is string => !!x));
+
+      const membros: Array<{ userId: string; nome: string | null; livres: Array<{ inicio: string; fim: string }>; blocos: Array<{ inicio: string; fim: string; atividade: string | null }> }> = [];
+      for (const [userId, info] of byUser) {
+        if (unavailable.has(userId)) continue;
+        const gaps = computeFreeGaps(info.blocks);
+        if (gaps.length === 0) continue;
+        membros.push({
+          userId,
+          nome: info.name,
+          livres: gaps.map(g => ({ inicio: g.start, fim: g.end })),
+          blocos: info.blocks
+            .filter(b => b.startTime && b.endTime)
+            .map(b => ({ inicio: b.startTime as string, fim: b.endTime as string, atividade: b.label })),
+        });
+      }
+
+      membros.sort((a, b) => String(a.nome ?? "").localeCompare(String(b.nome ?? "")));
+
+      if (membros.length === 0) {
+        return JSON.stringify({ found: false, date, janela: "07:40–18:00", message: onlyUserId ? `Sem tempo livre relevante (≥ 1h) em ${date}.` : `Ninguém tem tempo livre relevante (≥ 1h) em ${date}.`, membros: [] });
+      }
+
+      return JSON.stringify({ found: true, date, janela: "07:40–18:00", total: membros.length, membros });
     }
 
     if (name === "consultar_responsabilidades") {

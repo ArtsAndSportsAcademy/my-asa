@@ -1,15 +1,20 @@
 ---
 name: Tempo livre na escala (deteção de buracos)
-description: Como/onde se deteta "tempo livre" por pessoa na escala e porquê é frontend-only
+description: Como/onde se deteta "tempo livre" por pessoa na escala (frontend + backend partilhado) e porquê
 ---
 
-A deteção de "tempo livre" (buracos) por pessoa/dia na escala é **read-time no frontend**, sem schema novo e sem backend novo.
+A deteção de "tempo livre" (buracos) por pessoa/dia na escala é **read-time, sem schema novo**. A regra existe em DOIS sítios que têm de ficar em sincronia:
+- Frontend: `artifacts/web-admin/src/pages/admin/scales.tsx` (constantes da janela do dia).
+- Backend: `artifacts/api-server/src/services/scale-merge.ts` — `computeFreeGaps(blocks)` + `WORK_DAY_START_MIN`(07:40) / `WORK_DAY_END_MIN`(18:00) / `MIN_FREE_GAP_MIN`(60). Tem comentário "MANTER EM SINCRONIA" com scales.tsx.
 
-**Regra:** tempo livre = complemento dos blocos com hora dentro de uma janela de dia padrão (constantes em scales.tsx: início/fim/gap mínimo). Preenche-se reutilizando o POST de entrada manual (status MANUAL_OVERRIDE) com as horas do buraco; sugere ADM ou tarefa pendente (GET /tasks por operationId+status, agrupada por assigneeId).
+O mesmo serviço também exporta `resolveScaleAllocations(scale)` — a mesclagem read-time da escala (alocações reais + Livro do Dia + agenda + atividades recorrentes), extraída do endpoint GET /api/scales/:id/allocations. A ASA reutiliza ambos: `consultar_escalas` (visão mesclada, campo "origem") e `consultar_tempo_livre`.
 
-**Why:** não existe conceito de jornada/working hours no esquema; adicionar coluna seria possível (aditivo é prod-safe) mas a constante é mais simples e igualmente prod-safe. O objetivo era não partir a app publicada.
+**Regra:** tempo livre = complemento dos blocos com hora dentro da janela do dia. Preenche-se reutilizando entrada manual/tarefa.
+
+**Why:** não existe conceito de jornada/working hours no esquema; constante é mais simples e prod-safe (não partir a app publicada; prod não corre migrações).
 
 **How to apply:**
-- Se um bloco do dia não tiver horário, NÃO sugerir tempo livre (bail-out devolvendo lista vazia) — senão a UI sugere um buraco grande mesmo havendo ocupação real não-horária.
-- Só mostrar slots a gestores, em pessoa sem folga, e escala não ARQUIVADA.
-- Para mudar a janela do dia, é só editar as constantes (não há migração).
+- Bloco do dia sem horário → NÃO sugerir tempo livre (bail-out lista vazia).
+- Quem está de folga ACTIVE na data não conta. CRÍTICO: filtrar folgas por `operationId` (folgasTable tem operationId notNull) — senão folga noutra operação marca falso "indisponível".
+- Só gestores; pessoa sem folga; escala não ARQUIVADA.
+- Mudar a janela = editar as constantes nos DOIS ficheiros (não há migração).
