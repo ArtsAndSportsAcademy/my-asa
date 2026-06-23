@@ -9,5 +9,7 @@
 export interface ShowBookUpdate {
   title?: string;
   description?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
   reason: string;
 }

@@ -220,14 +220,20 @@ router.get("/show-books/:id/resolve", requireAuth, requireOrganization, async (r
 
 router.patch("/show-books/:id", requireAuth, requireOrganization, async (req, res) => {
   const id = req.params.id as string;
-  const { title, description, reason } = req.body;
+  const { title, description, startTime, endTime, reason } = req.body;
   if (!reason) { res.status(400).json({ error: "reason é obrigatório" }); return; }
   try {
     const book = await requireShowManage(req, res);
     if (!book) return;
     const [updated] = await db
       .update(showBooksTable)
-      .set({ title: title ?? book.title, description: description ?? book.description, updatedAt: new Date() })
+      .set({
+        title: title ?? book.title,
+        description: description ?? book.description,
+        startTime: "startTime" in req.body ? (startTime || null) : book.startTime,
+        endTime: "endTime" in req.body ? (endTime || null) : book.endTime,
+        updatedAt: new Date(),
+      })
       .where(eq(showBooksTable.id, id))
       .returning();
     res.json({ showBook: updated });

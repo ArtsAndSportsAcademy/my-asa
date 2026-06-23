@@ -5923,6 +5923,12 @@ components:
         description:
           type: string
           nullable: true
+        startTime:
+          type: string
+          nullable: true
+        endTime:
+          type: string
+          nullable: true
         reason:
           type: string
       required: [reason]

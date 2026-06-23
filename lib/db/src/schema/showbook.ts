@@ -24,6 +24,9 @@ export const showBooksTable = pgTable("show_books", {
   type: showBookTypeEnum("type").notNull().default("STRUCTURED"),
   version: integer("version").notNull().default(1),
   status: showBookStatusEnum("status").notNull().default("DRAFT"),
+  // Horário único do show inteiro (não por bloco). Aditivo e anulável (prod-safe).
+  startTime: text("start_time"),
+  endTime: text("end_time"),
   // Responsável por este show (supervisor). Null = sem responsável definido → comportamento
   // legado por operação (qualquer gestor da operação opera). Aditivo e anulável (prod-safe).
   responsibleId: uuid("responsible_id").references(() => usersTable.id),

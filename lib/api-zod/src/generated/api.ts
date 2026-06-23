@@ -825,6 +825,8 @@ export const UpdateShowBookParams = zod.object({
 export const UpdateShowBookBody = zod.object({
   "title": zod.string().optional(),
   "description": zod.string().nullish(),
+  "startTime": zod.string().nullish(),
+  "endTime": zod.string().nullish(),
   "reason": zod.string()
 })
 

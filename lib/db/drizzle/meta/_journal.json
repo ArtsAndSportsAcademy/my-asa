@@ -50,6 +50,13 @@
       "when": 1782134534787,
       "tag": "0006_goofy_cerise",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1782255594999,
+      "tag": "0007_mysterious_maximus",
+      "breakpoints": true
     }
   ]
 }

@@ -475,7 +475,6 @@ type Actions = {
   deleteScene: (sceneId: string) => void;
   addBlock: (sceneId: string, name: string) => void;
   updateBlock: (blockId: string, name: string) => void;
-  updateBlockTimes: (blockId: string, startTime: string | null, endTime: string | null) => void;
   deleteBlock: (blockId: string) => void;
   addLine: (blockId: string, name: string, type: string) => void;
   updatePositionName: (positionId: string, name: string) => void;
@@ -612,6 +611,48 @@ function LineRow({
   );
 }
 
+// ── Editor de horário único do show ───────────────────────────────────────────
+function ShowTimeEditor({
+  startTime, endTime, disabled, onSave,
+}: {
+  startTime: string | null; endTime: string | null; disabled: boolean;
+  onSave: (s: string | null, e: string | null) => void;
+}) {
+  const [start, setStart] = useState<string>(startTime ?? "");
+  const [end, setEnd] = useState<string>(endTime ?? "");
+  useEffect(() => { setStart(startTime ?? ""); }, [startTime]);
+  useEffect(() => { setEnd(endTime ?? ""); }, [endTime]);
+  const save = (s: string, e: string) => {
+    if ((s || null) === (startTime ?? null) && (e || null) === (endTime ?? null)) return;
+    onSave(s || null, e || null);
+  };
+  return (
+    <div className="flex items-center gap-1.5 mt-2 text-xs text-muted-foreground">
+      <Clock className="h-3.5 w-3.5" />
+      <span>Horário do show:</span>
+      <input
+        type="time"
+        value={start}
+        disabled={disabled}
+        onChange={(e) => setStart(e.target.value)}
+        onBlur={() => save(start, end)}
+        className="h-7 w-[80px] rounded border bg-background px-1.5 text-xs disabled:opacity-60"
+        title="Hora de início"
+      />
+      <span>–</span>
+      <input
+        type="time"
+        value={end}
+        disabled={disabled}
+        onChange={(e) => setEnd(e.target.value)}
+        onBlur={() => save(start, end)}
+        className="h-7 w-[80px] rounded border bg-background px-1.5 text-xs disabled:opacity-60"
+        title="Hora de fim"
+      />
+    </div>
+  );
+}
+
 // ── Block (= bloco com suas linhas) ───────────────────────────────────────────
 function BlockCard({
   block, siblings, index, actions,
@@ -619,14 +660,6 @@ function BlockCard({
   const positions: any[] = block.positions ?? [];
   const [newName, setNewName] = useState("");
   const [newType, setNewType] = useState(DEFAULT_LINE_TYPE);
-  const [startTime, setStartTime] = useState<string>(block.startTime ?? "");
-  const [endTime, setEndTime] = useState<string>(block.endTime ?? "");
-  useEffect(() => { setStartTime(block.startTime ?? ""); }, [block.startTime]);
-  useEffect(() => { setEndTime(block.endTime ?? ""); }, [block.endTime]);
-  const saveTimes = (s: string, e: string) => {
-    if ((s || null) === (block.startTime ?? null) && (e || null) === (block.endTime ?? null)) return;
-    actions.updateBlockTimes(block.id, s || null, e || null);
-  };
 
   const addLine = () => {
     if (!newName.trim()) return;
@@ -644,28 +677,6 @@ function BlockCard({
           className="text-sm font-semibold"
           disabled={!actions.isAdmin}
         />
-        <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-          <Clock className="h-3 w-3" />
-          <input
-            type="time"
-            value={startTime}
-            disabled={!actions.isAdmin}
-            onChange={(e) => setStartTime(e.target.value)}
-            onBlur={() => saveTimes(startTime, endTime)}
-            className="h-6 w-[72px] rounded border bg-background px-1 text-[11px] disabled:opacity-60"
-            title="Hora de início"
-          />
-          <span>–</span>
-          <input
-            type="time"
-            value={endTime}
-            disabled={!actions.isAdmin}
-            onChange={(e) => setEndTime(e.target.value)}
-            onBlur={() => saveTimes(startTime, endTime)}
-            className="h-6 w-[72px] rounded border bg-background px-1 text-[11px] disabled:opacity-60"
-            title="Hora de fim"
-          />
-        </div>
         <Badge variant="secondary" className="text-[10px]">
           {positions.length} {positions.length === 1 ? "linha" : "linhas"}
         </Badge>
@@ -1067,6 +1078,17 @@ export default function ShowBookPage() {
     );
   };
 
+  const updateShowTime = (startTime: string | null, endTime: string | null) => {
+    if (!selectedId) return;
+    updateBookMutation.mutate(
+      { id: selectedId, data: { startTime, endTime, reason: "Horário do show" } },
+      {
+        onSuccess: () => { toast({ title: "Horário atualizado" }); invalidateAll(); },
+        onError: () => failToast("Erro ao atualizar horário"),
+      }
+    );
+  };
+
   const updateScene = (sceneId: string, name: string) => {
     if (!selectedId) return;
     updateSceneMutation.mutate(
@@ -1098,14 +1120,6 @@ export default function ShowBookPage() {
     updateBlockMutation.mutate(
       { id: selectedId, blockId, data: { name } },
       { onSuccess: invalidateAll, onError: () => failToast("Erro ao renomear bloco") }
-    );
-  };
-
-  const updateBlockTimes = (blockId: string, startTime: string | null, endTime: string | null) => {
-    if (!selectedId) return;
-    updateBlockMutation.mutate(
-      { id: selectedId, blockId, data: { startTime, endTime } },
-      { onSuccess: invalidateAll, onError: () => failToast("Erro ao guardar horário") }
     );
   };
 
@@ -1243,7 +1257,7 @@ export default function ShowBookPage() {
     isAdmin,
     members,
     updateScene, deleteScene,
-    addBlock, updateBlock, updateBlockTimes, deleteBlock,
+    addBlock, updateBlock, deleteBlock,
     addLine, updatePositionName, updatePositionCoverage, setLineType, updateLineConfig, deletePosition,
     reorder, openRefs: handleOpenRefs,
   };
@@ -1342,6 +1356,12 @@ export default function ShowBookPage() {
                     <span className="text-xs text-muted-foreground">Versão {selectedBook.version}</span>
                     <span className="text-xs text-muted-foreground">· {selectedBook.type}</span>
                   </div>
+                  <ShowTimeEditor
+                    startTime={(selectedBook as any).startTime ?? null}
+                    endTime={(selectedBook as any).endTime ?? null}
+                    disabled={!isAdmin}
+                    onSave={updateShowTime}
+                  />
                   {isFullAdmin && (
                     <div className="flex items-center gap-2 mt-2">
                       <span className="text-xs text-muted-foreground">Responsável:</span>
