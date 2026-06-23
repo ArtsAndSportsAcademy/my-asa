@@ -134,7 +134,7 @@ function canManageGroup(group: OperationalGroup, role: string, supOps: string[])
 }
 
 /** Carrega um grupo garantindo que pertence à organização do usuário. */
-async function loadGroupInOrg(id: string, organizationId: string): Promise<OperationalGroup | null> {
+export async function loadGroupInOrg(id: string, organizationId: string): Promise<OperationalGroup | null> {
   const group = await db.query.operationalGroupsTable.findFirst({
     where: eq(operationalGroupsTable.id, id),
   });

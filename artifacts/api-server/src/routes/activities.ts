@@ -12,7 +12,7 @@ import {
 import { requireAuth, requireOrganization, requireRole } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
-import { supervisedOperationIds, groupCoveredOperationIds } from "./groups.js";
+import { supervisedOperationIds, groupCoveredOperationIds, loadGroupInOrg } from "./groups.js";
 
 const router: IRouter = Router();
 
@@ -92,17 +92,13 @@ async function assigneesOutOfScope(
   }
 
   if (groupIds.length > 0) {
-    const groups = await db
-      .select()
-      .from(operationalGroupsTable)
-      .where(
-        and(
-          inArray(operationalGroupsTable.id, groupIds),
-          eq(operationalGroupsTable.organizationId, organizationId),
-        ),
-      );
-    if (groups.length !== groupIds.length) return true;
-    for (const g of groups) {
+    // Resolver cada grupo via loadGroupInOrg: garante pertença à org de forma
+    // SEGURA, tolerando grupos OPERATION legados com organization_id NULL (caem
+    // para a operação na org), mas REJEITANDO ALL/MULTI sem org (evita IDOR
+    // cross-org, pois groupCoveredOperationIds(ALL) usa a org do caller).
+    for (const groupId of groupIds) {
+      const g = await loadGroupInOrg(groupId, organizationId);
+      if (!g) return true;
       const covered = await groupCoveredOperationIds(g, organizationId);
       if (!covered.includes(operationId)) return true;
     }

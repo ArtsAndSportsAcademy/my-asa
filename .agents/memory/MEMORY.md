@@ -51,3 +51,4 @@
 - [Designados escopados à operação](assignee-operation-scoping.md) — pessoas/grupos atribuídos não podem vazar entre operações; validar na escrita (POST/PATCH, grupo ligado à org) E na leitura (defesa em profundidade no merge da escala)
 - [Fontes virtuais da escala — dedup e escopo](scale-virtual-rows-dedup-scope.md) — toda fonte que põe pessoas na escala precisa de escopo de operação + exclusão de admins + dedup com chave certa (agenda: userId|agendaEventId)
 - [Tempo livre na escala](scale-free-time-detection.md) — buracos ≥1h SÓ entre 1ª e última atividade de cada pessoa (sem janela fixa); read-time front+back (scale-merge.ts) idênticos; ASA consultar_tempo_livre
+- [Grupos legados com organization_id NULL](group-null-org-legacy.md) — grupos OPERATION antigos têm org NULL; validar via loadGroupInOrg (rejeita ALL/MULTI sem org), nunca filtrar org no WHERE
