@@ -493,7 +493,7 @@ A ferramenta consultar_escalas JÁ reflete tudo isto — cada entrada traz um ca
 
 Tempo livre (buracos na agenda do dia):
 • "Quem tem tempo livre na quinta?" / "A Fulana está livre amanhã?" / "Onde dá para encaixar uma tarefa?" → consultar_tempo_livre.
-• Considera a janela de trabalho 07:40–18:00 e só mostra buracos de pelo menos 1 hora.
+• O dia de cada pessoa vai da PRIMEIRA até a ÚLTIMA atividade dela (como num check-in/check-out) — não há horário fixo, cada um pode ter um horário diferente. O tempo livre são só os buracos ENTRE atividades (≥ 1 hora); nunca antes da 1ª nem depois da última.
 • Não conta quem está de folga, nem dias em que algum bloco não tem horário definido (sem hora não dá para saber o tempo realmente livre).
 • Para PREENCHER um buraco, use criar_entrada_escala (ex: ADM, preparação, ensaio) ou criar_tarefa — SEMPRE confirmando com o gestor antes de executar.
 
@@ -809,7 +809,7 @@ const ASA_TOOLS: Tool[] = [
   },
   {
     name: "consultar_tempo_livre",
-    description: "Detecta o TEMPO LIVRE (buracos na agenda do dia) dos membros escalados, dentro da janela de trabalho 07:40–18:00, mostrando só buracos de pelo menos 1 hora. Use para 'quem tem tempo livre [dia]?', 'a Fulana está livre amanhã?', 'onde dá para encaixar uma tarefa/ADM?'. Ignora quem está de folga e dias com blocos sem horário. Para PREENCHER um buraco, depois use criar_entrada_escala ou criar_tarefa — sempre com confirmação.",
+    description: "Detecta o TEMPO LIVRE (buracos na agenda do dia) dos membros escalados. O dia de cada pessoa vai da primeira até a última atividade dela (sem horário fixo; cada um pode ter horário diferente) e só mostra buracos ENTRE atividades de pelo menos 1 hora. Use para 'quem tem tempo livre [dia]?', 'a Fulana está livre amanhã?', 'onde dá para encaixar uma tarefa/ADM?'. Ignora quem está de folga e dias com blocos sem horário. Para PREENCHER um buraco, depois use criar_entrada_escala ou criar_tarefa — sempre com confirmação.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -2659,10 +2659,10 @@ export async function executeTool(
       membros.sort((a, b) => String(a.nome ?? "").localeCompare(String(b.nome ?? "")));
 
       if (membros.length === 0) {
-        return JSON.stringify({ found: false, date, janela: "07:40–18:00", message: onlyUserId ? `Sem tempo livre relevante (≥ 1h) em ${date}.` : `Ninguém tem tempo livre relevante (≥ 1h) em ${date}.`, membros: [] });
+        return JSON.stringify({ found: false, date, criterio: "tempo livre = buracos ≥ 1h entre a primeira e a última atividade de cada pessoa", message: onlyUserId ? `Sem tempo livre relevante (≥ 1h) em ${date}.` : `Ninguém tem tempo livre relevante (≥ 1h) em ${date}.`, membros: [] });
       }
 
-      return JSON.stringify({ found: true, date, janela: "07:40–18:00", total: membros.length, membros });
+      return JSON.stringify({ found: true, date, criterio: "tempo livre = buracos ≥ 1h entre a primeira e a última atividade de cada pessoa", total: membros.length, membros });
     }
 
     if (name === "consultar_responsabilidades") {

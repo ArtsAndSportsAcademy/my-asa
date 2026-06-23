@@ -395,9 +395,10 @@ export async function resolveScaleAllocations(scale: ScaleForMerge) {
 
 // ─── Fase 5 — Tempo livre (deteção de buracos) ──────────────────────────────
 // MANTER EM SINCRONIA com artifacts/web-admin/src/pages/admin/scales.tsx
-// (WORK_DAY_START_MIN / WORK_DAY_END_MIN / MIN_FREE_GAP_MIN e computeFreeGaps).
-export const WORK_DAY_START_MIN = 7 * 60 + 40; // 07:40
-export const WORK_DAY_END_MIN = 18 * 60; // 18:00
+// (MIN_FREE_GAP_MIN e computeFreeGaps).
+// O "dia de trabalho" de cada pessoa vai da PRIMEIRA até a ÚLTIMA atividade dela
+// nesse dia (como num check-in/check-out) — não há janela fixa. Por isso o tempo
+// livre são apenas os buracos ENTRE atividades; nunca antes da 1ª nem depois da última.
 export const MIN_FREE_GAP_MIN = 60; // só sugerir buracos de pelo menos 1 hora
 
 export interface FreeGap {
@@ -419,9 +420,10 @@ function minToHHMM(min: number): string {
 }
 
 /**
- * A partir dos blocos de um membro num dia, calcula os intervalos livres dentro
- * da janela padrão. Se algum bloco não tiver horário, devolve [] (não dá para
- * saber o tempo realmente livre) — mesmo comportamento da grelha do ecrã.
+ * A partir dos blocos de um membro num dia, calcula os intervalos livres ENTRE
+ * a primeira e a última atividade dele nesse dia. Se algum bloco não tiver
+ * horário, devolve [] (não dá para saber o tempo realmente livre) — mesmo
+ * comportamento da grelha do ecrã.
  */
 export function computeFreeGaps(
   blocks: Array<{ startTime?: string | null; endTime?: string | null }>,
@@ -431,10 +433,9 @@ export function computeFreeGaps(
     const s = hhmmToMin(b.startTime);
     const en = hhmmToMin(b.endTime);
     if (s == null || en == null) return [];
-    const cs = Math.max(s, WORK_DAY_START_MIN);
-    const ce = Math.min(en, WORK_DAY_END_MIN);
-    if (ce > cs) intervals.push({ s: cs, e: ce });
+    if (en > s) intervals.push({ s, e: en });
   }
+  if (intervals.length === 0) return [];
   intervals.sort((a, b) => a.s - b.s);
   const merged: { s: number; e: number }[] = [];
   for (const iv of intervals) {
@@ -442,16 +443,14 @@ export function computeFreeGaps(
     if (last && iv.s <= last.e) last.e = Math.max(last.e, iv.e);
     else merged.push({ ...iv });
   }
+  // Buracos só ENTRE atividades (da 1ª à última); fora desse intervalo não conta.
   const gaps: FreeGap[] = [];
-  let cursor = WORK_DAY_START_MIN;
-  for (const iv of merged) {
-    if (iv.s - cursor >= MIN_FREE_GAP_MIN) {
-      gaps.push({ start: minToHHMM(cursor), end: minToHHMM(iv.s) });
+  for (let i = 1; i < merged.length; i++) {
+    const gapStart = merged[i - 1]!.e;
+    const gapEnd = merged[i]!.s;
+    if (gapEnd - gapStart >= MIN_FREE_GAP_MIN) {
+      gaps.push({ start: minToHHMM(gapStart), end: minToHHMM(gapEnd) });
     }
-    cursor = Math.max(cursor, iv.e);
-  }
-  if (WORK_DAY_END_MIN - cursor >= MIN_FREE_GAP_MIN) {
-    gaps.push({ start: minToHHMM(cursor), end: minToHHMM(WORK_DAY_END_MIN) });
   }
   return gaps;
 }
