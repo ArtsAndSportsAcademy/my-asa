@@ -14,13 +14,14 @@ import {
   showBookBlocksTable,
   showBookRolesTable,
   agendaEventsTable,
+  operationsTable,
   operationalChangesTable,
   historyEventsTable,
   usersTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization, requireRole } from "../middlewares/auth.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
-import { canOperateDailyBook, type ShowResponsibilityRef } from "../lib/show-responsibility.js";
+import { canOperateDailyBook, canViewDailyBook, type ShowResponsibilityRef } from "../lib/show-responsibility.js";
 import { eventBus } from "../lib/event-bus.js";
 import { notifyMany } from "../services/notificationService.js";
 import {
@@ -47,6 +48,67 @@ async function loadShowRef(
 // Estilo MyASA antigo: o operador não precisa digitar "Motivo" nas ações do dia.
 // Quando nenhum motivo é informado, o sistema grava um texto padrão na auditoria/delta.
 const DEFAULT_DAY_REASON = "Ajuste operacional do dia (sem motivo informado)";
+
+/**
+ * Resolve o contexto de operação de um Livro do Dia e decide se o ator pode lê-lo.
+ * Reúne a derivação operação→organização e a regra canViewDailyBook num só sítio,
+ * para que detalhe e delta apliquem exatamente o mesmo escopo.
+ */
+async function resolveDailyBookReadContext(
+  actor: { sub: string; role: string; operationIds: string[]; organizationId?: string | null },
+  book: { agendaEventId: string; showBookId: string | null; status: string },
+): Promise<{
+  ok: boolean;
+  operationId: string;
+  operationName: string;
+  eventTitle: string;
+  eventDate: string;
+  showTitle: string | null;
+} | null> {
+  const [ev] = await db
+    .select({
+      operationId: agendaEventsTable.operationId,
+      operationName: operationsTable.name,
+      eventTitle: agendaEventsTable.title,
+      eventDate: agendaEventsTable.date,
+      organizationId: operationsTable.organizationId,
+    })
+    .from(agendaEventsTable)
+    .innerJoin(operationsTable, eq(agendaEventsTable.operationId, operationsTable.id))
+    .where(eq(agendaEventsTable.id, book.agendaEventId))
+    .limit(1);
+  if (!ev) return null;
+
+  let showTitle: string | null = null;
+  let showResponsibleId: string | null = null;
+  if (book.showBookId) {
+    const [sb] = await db
+      .select({ title: showBooksTable.title, responsibleId: showBooksTable.responsibleId })
+      .from(showBooksTable)
+      .where(eq(showBooksTable.id, book.showBookId))
+      .limit(1);
+    showTitle = sb?.title ?? null;
+    showResponsibleId = sb?.responsibleId ?? null;
+  }
+
+  const ok =
+    ev.organizationId === (actor.organizationId as string) &&
+    (await canViewDailyBook(
+      actor as any,
+      ev.operationId,
+      book.status,
+      book.showBookId ? { id: book.showBookId, responsibleId: showResponsibleId } : null,
+    ));
+
+  return {
+    ok,
+    operationId: ev.operationId,
+    operationName: ev.operationName,
+    eventTitle: ev.eventTitle,
+    eventDate: ev.eventDate,
+    showTitle,
+  };
+}
 
 async function getDailyBookOrFail(id: string, res: any) {
   const [book] = await db
@@ -967,8 +1029,12 @@ router.delete("/daily-book/:id", requireAuth, requireOrganization, async (req, r
 
 router.get("/daily-book", requireAuth, requireOrganization, async (req, res) => {
   const { agendaEventId, status, groupId } = req.query as Record<string, string | undefined>;
+  const actor = req.user!;
   try {
-    const conditions: ReturnType<typeof eq>[] = [];
+    // Escopo de organização: só livros cujo evento pertence a uma operação da org.
+    const conditions: ReturnType<typeof eq>[] = [
+      eq(operationsTable.organizationId, actor.organizationId as string),
+    ];
     if (agendaEventId) conditions.push(eq(dailyBooksTable.agendaEventId, agendaEventId));
     if (status) conditions.push(eq(dailyBooksTable.status, status as any));
     if (groupId) {
@@ -984,11 +1050,46 @@ router.get("/daily-book", requireAuth, requireOrganization, async (req, res) => 
       conditions.push(inArray(dailyBooksTable.scaleId, scaleIds));
     }
 
-    const books = conditions.length > 0
-      ? await db.select().from(dailyBooksTable).where(and(...conditions))
-      : await db.select().from(dailyBooksTable);
+    const rows = await db
+      .select({
+        book: dailyBooksTable,
+        operationId: agendaEventsTable.operationId,
+        operationName: operationsTable.name,
+        eventTitle: agendaEventsTable.title,
+        eventDate: agendaEventsTable.date,
+        showTitle: showBooksTable.title,
+        showResponsibleId: showBooksTable.responsibleId,
+      })
+      .from(dailyBooksTable)
+      .innerJoin(agendaEventsTable, eq(dailyBooksTable.agendaEventId, agendaEventsTable.id))
+      .innerJoin(operationsTable, eq(agendaEventsTable.operationId, operationsTable.id))
+      .leftJoin(showBooksTable, eq(dailyBooksTable.showBookId, showBooksTable.id))
+      .where(and(...conditions));
 
-    res.json({ dailyBooks: books });
+    // Filtro de visibilidade por papel/operação (escopo por operação).
+    const visibility = await Promise.all(
+      rows.map((r) =>
+        canViewDailyBook(
+          actor,
+          r.operationId,
+          r.book.status,
+          r.book.showBookId ? { id: r.book.showBookId, responsibleId: r.showResponsibleId } : null,
+        ),
+      ),
+    );
+
+    const dailyBooks = rows
+      .filter((_, i) => visibility[i])
+      .map((r) => ({
+        ...r.book,
+        operationId: r.operationId,
+        operationName: r.operationName,
+        eventTitle: r.eventTitle,
+        eventDate: r.eventDate,
+        showTitle: r.showTitle,
+      }));
+
+    res.json({ dailyBooks });
   } catch (err) {
     res.status(500).json({ error: "Erro ao listar Livros do Dia" });
   }
@@ -996,11 +1097,33 @@ router.get("/daily-book", requireAuth, requireOrganization, async (req, res) => 
 
 router.get("/daily-book/:id", requireAuth, requireOrganization, async (req, res) => {
   const id = req.params.id as string;
+  const actor = req.user!;
   try {
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
+
+    const ctx = await resolveDailyBookReadContext(actor, book);
+    if (!ctx) {
+      res.status(404).json({ error: "Evento do Livro do Dia não encontrado" });
+      return;
+    }
+    if (!ctx.ok) {
+      res.status(403).json({ error: "FORBIDDEN", message: "Livro do Dia fora do seu escopo" });
+      return;
+    }
+
     const tree = await buildDailyBookTree(id);
-    res.json({ dailyBook: { ...book, scenes: tree } });
+    res.json({
+      dailyBook: {
+        ...book,
+        operationId: ctx.operationId,
+        operationName: ctx.operationName,
+        eventTitle: ctx.eventTitle,
+        eventDate: ctx.eventDate,
+        showTitle: ctx.showTitle,
+        scenes: tree,
+      },
+    });
   } catch (err) {
     res.status(500).json({ error: "Erro ao buscar Livro do Dia" });
   }
@@ -1008,9 +1131,20 @@ router.get("/daily-book/:id", requireAuth, requireOrganization, async (req, res)
 
 router.get("/daily-book/:id/delta", requireAuth, requireOrganization, async (req, res) => {
   const id = req.params.id as string;
+  const actor = req.user!;
   try {
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
+
+    const ctx = await resolveDailyBookReadContext(actor, book);
+    if (!ctx) {
+      res.status(404).json({ error: "Evento do Livro do Dia não encontrado" });
+      return;
+    }
+    if (!ctx.ok) {
+      res.status(403).json({ error: "FORBIDDEN", message: "Livro do Dia fora do seu escopo" });
+      return;
+    }
 
     const currentTree = await buildDailyBookTree(id);
     const currentSnapshot = { scenes: currentTree };

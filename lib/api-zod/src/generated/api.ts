@@ -2114,7 +2114,12 @@ export const ListDailyBookResponse = zod.object({
   "cancelledAt": zod.string().nullish(),
   "cancelledBy": zod.string().nullish(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "operationId": zod.string().nullish(),
+  "operationName": zod.string().nullish(),
+  "eventTitle": zod.string().nullish(),
+  "eventDate": zod.string().nullish(),
+  "showTitle": zod.string().nullish()
 }))
 })
 
@@ -2159,7 +2164,12 @@ export const GetDailyBookResponse = zod.object({
   "cancelledAt": zod.string().nullish(),
   "cancelledBy": zod.string().nullish(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "operationId": zod.string().nullish(),
+  "operationName": zod.string().nullish(),
+  "eventTitle": zod.string().nullish(),
+  "eventDate": zod.string().nullish(),
+  "showTitle": zod.string().nullish()
 }).and(zod.object({
   "scenes": zod.array(zod.object({
   "id": zod.string(),
@@ -2259,7 +2269,12 @@ export const PublishDailyBookResponse = zod.object({
   "cancelledAt": zod.string().nullish(),
   "cancelledBy": zod.string().nullish(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "operationId": zod.string().nullish(),
+  "operationName": zod.string().nullish(),
+  "eventTitle": zod.string().nullish(),
+  "eventDate": zod.string().nullish(),
+  "showTitle": zod.string().nullish()
 })
 })
 
@@ -2299,7 +2314,12 @@ export const RepublishDailyBookResponse = zod.object({
   "cancelledAt": zod.string().nullish(),
   "cancelledBy": zod.string().nullish(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "operationId": zod.string().nullish(),
+  "operationName": zod.string().nullish(),
+  "eventTitle": zod.string().nullish(),
+  "eventDate": zod.string().nullish(),
+  "showTitle": zod.string().nullish()
 }),
   "delta": zod.object({
   "additions": zod.array(zod.object({
@@ -2350,7 +2370,12 @@ export const ExecuteDailyBookResponse = zod.object({
   "cancelledAt": zod.string().nullish(),
   "cancelledBy": zod.string().nullish(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "operationId": zod.string().nullish(),
+  "operationName": zod.string().nullish(),
+  "eventTitle": zod.string().nullish(),
+  "eventDate": zod.string().nullish(),
+  "showTitle": zod.string().nullish()
 })
 })
 
@@ -2390,7 +2415,12 @@ export const CancelDailyBookResponse = zod.object({
   "cancelledAt": zod.string().nullish(),
   "cancelledBy": zod.string().nullish(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "operationId": zod.string().nullish(),
+  "operationName": zod.string().nullish(),
+  "eventTitle": zod.string().nullish(),
+  "eventDate": zod.string().nullish(),
+  "showTitle": zod.string().nullish()
 })
 })
 
@@ -2426,7 +2456,12 @@ export const RegenerateDailyBookResponse = zod.object({
   "cancelledAt": zod.string().nullish(),
   "cancelledBy": zod.string().nullish(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "operationId": zod.string().nullish(),
+  "operationName": zod.string().nullish(),
+  "eventTitle": zod.string().nullish(),
+  "eventDate": zod.string().nullish(),
+  "showTitle": zod.string().nullish()
 })
 })
 

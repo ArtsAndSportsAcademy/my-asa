@@ -17,6 +17,7 @@ import {
   getGetDailyBookQueryKey,
   getGetDailyBookDeltaQueryKey,
 } from "@workspace/api-client-react";
+import { groupDailyBooksByOperation, dailyBookLabel } from "@/lib/daily-book-grouping";
 import type {
   DailyBook,
   DailyBookWithScenes,
@@ -474,28 +475,36 @@ export default function AdminDailyBookPage() {
             ) : books.length === 0 ? (
               <div className="p-4 text-center text-sm text-muted-foreground">Nenhum Livro do Dia gerado ainda. Gere o primeiro escolhendo um Livro do Show e uma data.</div>
             ) : (
-              books.map((book) => {
-                const showBook = showBooks.find((sb) => sb.id === book.showBookId);
-                const bookLabel = showBook?.title ?? book.agendaEventId.slice(0, 8);
-                return (
-                  <button
-                    key={book.id}
-                    onClick={() => setSelectedId(book.id)}
-                    className={`w-full text-left px-3 py-2.5 border-b hover:bg-muted/50 transition-colors ${selectedId === book.id ? "bg-muted" : ""}`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <BookOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <span className="text-sm font-medium truncate flex-1">{bookLabel}</span>
-                      <Badge variant={STATUS_VARIANTS[book.status] ?? "secondary"} className="text-xs shrink-0">
-                        v{book.version}
-                      </Badge>
-                    </div>
-                    <div className="mt-0.5 text-xs text-muted-foreground pl-5">
-                      {STATUS_LABELS[book.status] ?? book.status}
-                    </div>
-                  </button>
-                );
-              })
+              groupDailyBooksByOperation(books).map((group) => (
+                <div key={group.operationName}>
+                  <div className="px-3 py-1.5 bg-muted/40 text-xs font-semibold text-muted-foreground sticky top-0">
+                    {group.operationName}
+                  </div>
+                  {group.items.map((book) => {
+                    const showBook = showBooks.find((sb) => sb.id === book.showBookId);
+                    const label = showBook?.title ?? dailyBookLabel(book);
+                    return (
+                      <button
+                        key={book.id}
+                        onClick={() => setSelectedId(book.id)}
+                        className={`w-full text-left px-3 py-2.5 border-b hover:bg-muted/50 transition-colors ${selectedId === book.id ? "bg-muted" : ""}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <BookOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="text-sm font-medium truncate flex-1">{label}</span>
+                          <Badge variant={STATUS_VARIANTS[book.status] ?? "secondary"} className="text-xs shrink-0">
+                            v{book.version}
+                          </Badge>
+                        </div>
+                        <div className="mt-0.5 text-xs text-muted-foreground pl-5">
+                          {STATUS_LABELS[book.status] ?? book.status}
+                          {book.eventDate ? ` · ${new Date(book.eventDate + "T00:00:00").toLocaleDateString("pt-BR")}` : ""}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              ))
             )}
           </div>
         </div>

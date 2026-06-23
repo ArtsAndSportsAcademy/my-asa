@@ -107,6 +107,23 @@ export default function DailyBookScreen() {
     ? books
     : books.filter((b) => b.status === "PUBLISHED" || b.status === "REPUBLISHED");
 
+  // Agrupar por operação para listagem organizada e legível.
+  const groupedBooks = useMemo(() => {
+    const map = new Map<string, { operationName: string; items: DailyBook[] }>();
+    for (const b of visibleBooks) {
+      const key = b.operationId ?? "__none__";
+      const name = b.operationName ?? "Sem operação";
+      if (!map.has(key)) map.set(key, { operationName: name, items: [] });
+      map.get(key)!.items.push(b);
+    }
+    return Array.from(map.values()).sort((a, b) =>
+      a.operationName.localeCompare(b.operationName, "pt-BR"),
+    );
+  }, [visibleBooks]);
+
+  const bookLabel = (b: DailyBook): string =>
+    b.showTitle || b.eventTitle || `Evento ${b.agendaEventId.slice(0, 8)}`;
+
   // Abrir automaticamente o Livro do Dia do show vindo da escala (?eventId=...).
   // O eventNonce muda a cada toque na escala, permitindo reabrir o mesmo show
   // mesmo depois de o utilizador ter escolhido outro livro à mão.
@@ -237,6 +254,14 @@ export default function DailyBookScreen() {
       paddingHorizontal: 16,
       paddingTop: 16,
       paddingBottom: 6,
+    },
+    groupTitle: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: colors.foreground,
+      paddingHorizontal: 16,
+      paddingTop: 14,
+      paddingBottom: 4,
     },
     bookCard: {
       marginHorizontal: 16,
@@ -421,33 +446,43 @@ export default function DailyBookScreen() {
             <Text style={styles.emptyText}>Nenhum Livro do Dia publicado ainda. Aguarde o supervisor gerar o livro do próximo evento.</Text>
           </View>
         ) : (
-          visibleBooks.map((book) => {
-            const selected = selectedBookId === book.id;
-            const statusColor = STATUS_COLORS[book.status] ?? "#6B7280";
-            return (
-              <Pressable
-                key={book.id}
-                style={[styles.bookCard, selected && styles.bookCardSelected]}
-                onPress={() => setSelectedBookId(book.id)}
-              >
-                <View style={styles.bookCardRow}>
-                  <Feather name="book-open" size={16} color={statusColor} />
-                  <Text style={styles.bookTitle} numberOfLines={1}>
-                    Evento {book.agendaEventId.slice(0, 8)}
-                  </Text>
-                  <View style={styles.versionBadge}>
-                    <Text style={styles.versionText}>v{book.version}</Text>
-                  </View>
-                </View>
-                <Text style={styles.bookMeta}>{STATUS_LABELS[book.status] ?? book.status}</Text>
-                {book.publishedAt && (
-                  <Text style={styles.bookMeta}>
-                    {new Date(book.publishedAt).toLocaleString("pt-BR")}
-                  </Text>
-                )}
-              </Pressable>
-            );
-          })
+          groupedBooks.map((group) => (
+            <View key={group.operationName}>
+              <Text style={styles.groupTitle}>{group.operationName}</Text>
+              {group.items.map((book) => {
+                const selected = selectedBookId === book.id;
+                const statusColor = STATUS_COLORS[book.status] ?? "#6B7280";
+                return (
+                  <Pressable
+                    key={book.id}
+                    style={[styles.bookCard, selected && styles.bookCardSelected]}
+                    onPress={() => setSelectedBookId(book.id)}
+                  >
+                    <View style={styles.bookCardRow}>
+                      <Feather name="book-open" size={16} color={statusColor} />
+                      <Text style={styles.bookTitle} numberOfLines={1}>
+                        {bookLabel(book)}
+                      </Text>
+                      <View style={styles.versionBadge}>
+                        <Text style={styles.versionText}>v{book.version}</Text>
+                      </View>
+                    </View>
+                    {book.eventDate && (
+                      <Text style={styles.bookMeta}>
+                        {new Date(book.eventDate + "T00:00:00").toLocaleDateString("pt-BR")}
+                      </Text>
+                    )}
+                    <Text style={styles.bookMeta}>{STATUS_LABELS[book.status] ?? book.status}</Text>
+                    {book.publishedAt && (
+                      <Text style={styles.bookMeta}>
+                        {new Date(book.publishedAt).toLocaleString("pt-BR")}
+                      </Text>
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
+          ))
         )}
 
         {/* Detail section */}

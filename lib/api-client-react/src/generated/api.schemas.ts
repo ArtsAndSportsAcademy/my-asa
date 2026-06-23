@@ -1085,6 +1085,11 @@ export interface DailyBook {
   cancelledBy?: string | null;
   createdAt: string;
   updatedAt: string;
+  operationId?: string | null;
+  operationName?: string | null;
+  eventTitle?: string | null;
+  eventDate?: string | null;
+  showTitle?: string | null;
 }
 
 export interface DailyBookScene {

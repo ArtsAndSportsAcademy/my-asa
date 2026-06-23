@@ -5,6 +5,7 @@ import {
   getListDailyBookQueryKey,
   getGetDailyBookQueryKey,
 } from "@workspace/api-client-react";
+import { groupDailyBooksByOperation, dailyBookLabel } from "@/lib/daily-book-grouping";
 import type {
   DailyBook,
   DailyBookWithScenes,
@@ -158,8 +159,7 @@ export default function MembroLivroDoDiaPage() {
     if (selectedBookId) refetchBook();
   };
 
-  const formatBookTitle = (book: DailyBook) =>
-    `Evento ${book.agendaEventId.slice(0, 8)}`;
+  const formatBookTitle = (book: DailyBook) => dailyBookLabel(book);
 
   return (
     <AdminLayout title="Livro do Dia" subtitle="O roteiro do dia e seus escalamentos">
@@ -191,8 +191,11 @@ export default function MembroLivroDoDiaPage() {
             </p>
           </div>
         ) : (
+          groupDailyBooksByOperation(visibleBooks).map((group) => (
+          <div key={group.operationName} className="space-y-2">
+            <h3 className="text-sm font-bold text-foreground pt-1">{group.operationName}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {visibleBooks.map((book) => {
+            {group.items.map((book) => {
               const selected = selectedBookId === book.id;
               return (
                 <button
@@ -221,6 +224,14 @@ export default function MembroLivroDoDiaPage() {
                     >
                       {STATUS_LABELS[book.status] ?? book.status}
                     </span>
+                    {book.eventDate && (
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(book.eventDate + "T00:00:00").toLocaleDateString("pt-BR", {
+                          day: "2-digit",
+                          month: "short",
+                        })}
+                      </span>
+                    )}
                     {book.publishedAt && (
                       <span className="text-xs text-muted-foreground">
                         {new Date(book.publishedAt).toLocaleString("pt-BR", {
@@ -236,6 +247,8 @@ export default function MembroLivroDoDiaPage() {
               );
             })}
           </div>
+          </div>
+          ))
         )}
 
         {/* ── Detail ── */}

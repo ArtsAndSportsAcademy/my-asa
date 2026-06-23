@@ -6596,6 +6596,21 @@ components:
           type: string
         updatedAt:
           type: string
+        operationId:
+          type: string
+          nullable: true
+        operationName:
+          type: string
+          nullable: true
+        eventTitle:
+          type: string
+          nullable: true
+        eventDate:
+          type: string
+          nullable: true
+        showTitle:
+          type: string
+          nullable: true
       required: [id, agendaEventId, status, version, createdAt, updatedAt]
 
     DailyBookScene:
