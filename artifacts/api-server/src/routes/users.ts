@@ -27,6 +27,7 @@ async function attachOperationIds(users: (typeof usersTable.$inferSelect)[]) {
     where: and(eq(userRolesTable.active, true), inArray(userRolesTable.userId, ids)),
   });
   const opsByUser = new Map<string, Set<string>>();
+  const supByUser = new Map<string, Set<string>>();
   const adminUsers = new Set<string>();
   for (const r of roles) {
     if (r.role === "ADMIN") adminUsers.add(r.userId);
@@ -34,12 +35,20 @@ async function attachOperationIds(users: (typeof usersTable.$inferSelect)[]) {
     const set = opsByUser.get(r.userId) ?? new Set<string>();
     set.add(r.operationId);
     opsByUser.set(r.userId, set);
+    // Operações onde o utilizador é supervisor (A/B). Permite ao frontend
+    // mostrar só supervisores elegíveis ao escolher o responsável de um show.
+    if (r.role === "SUPERVISOR_A" || r.role === "SUPERVISOR_B") {
+      const sup = supByUser.get(r.userId) ?? new Set<string>();
+      sup.add(r.operationId);
+      supByUser.set(r.userId, sup);
+    }
   }
   // `isAdmin` permite ao frontend excluir administradores das escalas/folgas
   // (não fazem parte do elenco escalável), sem precisar buscar papéis por usuário.
   return users.map((u) => ({
     ...safeUser(u),
     operationIds: [...(opsByUser.get(u.id) ?? [])],
+    supervisorOperationIds: [...(supByUser.get(u.id) ?? [])],
     isAdmin: adminUsers.has(u.id),
   }));
 }

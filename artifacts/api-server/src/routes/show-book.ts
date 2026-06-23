@@ -13,6 +13,7 @@ import {
   showBookPositionLibraryRefsTable,
   libraryDocumentsTable,
   usersTable,
+  userRolesTable,
   scalesTable,
   scaleAllocationsTable,
   allocationExceptionsTable,
@@ -277,6 +278,27 @@ router.patch("/show-books/:id/responsible", requireAuth, requireOrganization, re
     if (responsibleId) {
       const [u] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, responsibleId)).limit(1);
       if (!u) { res.status(404).json({ error: "Utilizador responsável não encontrado" }); return; }
+      // O responsável de um show TEM de ser um supervisor (A/B) da operação do
+      // show. Sem esta validação, atribuir um membro/capitão como responsável
+      // promovê-lo-ia a controlo total do show (escalada de privilégio), pois
+      // canManageShowBook/canOperateDailyBook dão direitos a quem casa com
+      // responsibleId.
+      const [sup] = await db
+        .select({ id: userRolesTable.id })
+        .from(userRolesTable)
+        .where(
+          and(
+            eq(userRolesTable.userId, responsibleId),
+            eq(userRolesTable.operationId, book.operationId),
+            eq(userRolesTable.active, true),
+            inArray(userRolesTable.role, ["SUPERVISOR_A", "SUPERVISOR_B"]),
+          ),
+        )
+        .limit(1);
+      if (!sup) {
+        res.status(400).json({ error: "O responsável tem de ser um supervisor da operação do show" });
+        return;
+      }
     }
     const [updated] = await db
       .update(showBooksTable)

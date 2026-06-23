@@ -5242,6 +5242,11 @@ components:
           items:
             type: string
           description: "Operações às quais o utilizador pertence (via papéis ativos)."
+        supervisorOperationIds:
+          type: array
+          items:
+            type: string
+          description: "Operações onde o utilizador é supervisor (A/B); usado para escolher o responsável de um show."
         isAdmin:
           type: boolean
           description: "Verdadeiro se o utilizador tem papel ADMIN (não faz parte do elenco escalável)."

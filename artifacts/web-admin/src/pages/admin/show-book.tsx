@@ -922,6 +922,19 @@ export default function ShowBookPage() {
     .filter((u) => u.status === "ACTIVE")
     .map((u) => ({ id: u.id, name: u.name }));
 
+  // O responsável de um show tem de ser supervisor (A/B) da operação do show.
+  // Mostrar só candidatos elegíveis evita atribuir um membro por engano (o
+  // backend rejeita, mas filtrar a lista previne a confusão na origem).
+  const responsibleOperationId = selectedBook?.operationId ?? operationId;
+  const eligibleResponsibles: Member[] = ((usersData?.users ?? []) as User[])
+    .filter((u) => u.status === "ACTIVE")
+    .filter((u) =>
+      responsibleOperationId
+        ? (u.supervisorOperationIds ?? []).includes(responsibleOperationId)
+        : false,
+    )
+    .map((u) => ({ id: u.id, name: u.name }));
+
   const { data: versionsData } = useListShowBookVersions(selectedId ?? "", {
     query: { enabled: !!selectedId && versionsOpen, queryKey: getListShowBookVersionsQueryKey(selectedId ?? "") },
   });
@@ -1369,7 +1382,7 @@ export default function ShowBookPage() {
                         <SelectTrigger className="h-7 w-56 text-xs"><SelectValue placeholder="Sem responsável" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__none__">Sem responsável (legado)</SelectItem>
-                          {members.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                          {eligibleResponsibles.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>

@@ -38,6 +38,7 @@ export const LoginResponse = zod.object({
   "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
   "organizationId": zod.string(),
   "operationIds": zod.array(zod.string()).optional().describe('Operações às quais o utilizador pertence (via papéis ativos).'),
+  "supervisorOperationIds": zod.array(zod.string()).optional().describe('Operações onde o utilizador é supervisor (A\/B); usado para escolher o responsável de um show.'),
   "isAdmin": zod.boolean().optional().describe('Verdadeiro se o utilizador tem papel ADMIN (não faz parte do elenco escalável).'),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()
@@ -89,6 +90,7 @@ export const GetMeResponse = zod.object({
   "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
   "organizationId": zod.string(),
   "operationIds": zod.array(zod.string()).optional().describe('Operações às quais o utilizador pertence (via papéis ativos).'),
+  "supervisorOperationIds": zod.array(zod.string()).optional().describe('Operações onde o utilizador é supervisor (A\/B); usado para escolher o responsável de um show.'),
   "isAdmin": zod.boolean().optional().describe('Verdadeiro se o utilizador tem papel ADMIN (não faz parte do elenco escalável).'),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()
@@ -472,6 +474,7 @@ export const GetUserContextResponse = zod.object({
   "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
   "organizationId": zod.string(),
   "operationIds": zod.array(zod.string()).optional().describe('Operações às quais o utilizador pertence (via papéis ativos).'),
+  "supervisorOperationIds": zod.array(zod.string()).optional().describe('Operações onde o utilizador é supervisor (A\/B); usado para escolher o responsável de um show.'),
   "isAdmin": zod.boolean().optional().describe('Verdadeiro se o utilizador tem papel ADMIN (não faz parte do elenco escalável).'),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()
@@ -538,6 +541,7 @@ export const ListUsersResponse = zod.object({
   "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
   "organizationId": zod.string(),
   "operationIds": zod.array(zod.string()).optional().describe('Operações às quais o utilizador pertence (via papéis ativos).'),
+  "supervisorOperationIds": zod.array(zod.string()).optional().describe('Operações onde o utilizador é supervisor (A\/B); usado para escolher o responsável de um show.'),
   "isAdmin": zod.boolean().optional().describe('Verdadeiro se o utilizador tem papel ADMIN (não faz parte do elenco escalável).'),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()
@@ -596,6 +600,7 @@ export const GetUserResponse = zod.object({
   "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
   "organizationId": zod.string(),
   "operationIds": zod.array(zod.string()).optional().describe('Operações às quais o utilizador pertence (via papéis ativos).'),
+  "supervisorOperationIds": zod.array(zod.string()).optional().describe('Operações onde o utilizador é supervisor (A\/B); usado para escolher o responsável de um show.'),
   "isAdmin": zod.boolean().optional().describe('Verdadeiro se o utilizador tem papel ADMIN (não faz parte do elenco escalável).'),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()
@@ -629,6 +634,7 @@ export const UpdateUserResponse = zod.object({
   "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
   "organizationId": zod.string(),
   "operationIds": zod.array(zod.string()).optional().describe('Operações às quais o utilizador pertence (via papéis ativos).'),
+  "supervisorOperationIds": zod.array(zod.string()).optional().describe('Operações onde o utilizador é supervisor (A\/B); usado para escolher o responsável de um show.'),
   "isAdmin": zod.boolean().optional().describe('Verdadeiro se o utilizador tem papel ADMIN (não faz parte do elenco escalável).'),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()
@@ -659,6 +665,7 @@ export const UpdateUserStatusResponse = zod.object({
   "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
   "organizationId": zod.string(),
   "operationIds": zod.array(zod.string()).optional().describe('Operações às quais o utilizador pertence (via papéis ativos).'),
+  "supervisorOperationIds": zod.array(zod.string()).optional().describe('Operações onde o utilizador é supervisor (A\/B); usado para escolher o responsável de um show.'),
   "isAdmin": zod.boolean().optional().describe('Verdadeiro se o utilizador tem papel ADMIN (não faz parte do elenco escalável).'),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()

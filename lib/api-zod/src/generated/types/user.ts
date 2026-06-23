@@ -20,6 +20,8 @@ export interface User {
   organizationId: string;
   /** Operações às quais o utilizador pertence (via papéis ativos). */
   operationIds?: string[];
+  /** Operações onde o utilizador é supervisor (A/B); usado para escolher o responsável de um show. */
+  supervisorOperationIds?: string[];
   /** Verdadeiro se o utilizador tem papel ADMIN (não faz parte do elenco escalável). */
   isAdmin?: boolean;
   createdAt?: string;

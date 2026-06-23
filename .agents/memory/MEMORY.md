@@ -56,3 +56,4 @@
 - [No-show removido da UI = Folga](no-show-removido.md) — NO_SHOW tirado dos seletores (= Folga); enum mantido no banco (prod-safe); dados antigos exibidos como Folga; ASA usa DAY_OFF
 - [Deep-link para aba com nonce](deeplink-tab-nonce.md) — atalho escala→Livro do Dia via param eventId; enviar eventNonce p/ re-disparar useEffect ao reabrir o mesmo item; sem match limpa seleção
 - [Escopo de operação na leitura do Livro do Dia](daily-book-operation-scope.md) — GETs vazavam tudo; derivar operação via join agenda_events→operations e usar canViewDailyBook/resolveDailyBookReadContext (403 fora do escopo)
+- [Responsável do show = supervisor obrigatório](show-responsible-supervisor.md) — responsibleId tem de ser SUPERVISOR_A/B ativo da operação senão escala privilégio; DELETE daily-book é gestor-only (capitão delegado opera mas não apaga); User expõe supervisorOperationIds

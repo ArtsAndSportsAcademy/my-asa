@@ -981,7 +981,7 @@ router.post("/daily-book/:id/cancel", requireAuth, requireOrganization, requireR
   }
 });
 
-router.delete("/daily-book/:id", requireAuth, requireOrganization, async (req, res) => {
+router.delete("/daily-book/:id", requireAuth, requireOrganization, requireRole("ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"), async (req, res) => {
   const id = req.params.id as string;
   const userId = req.user!.sub;
   const user = req.user!;
@@ -989,13 +989,13 @@ router.delete("/daily-book/:id", requireAuth, requireOrganization, async (req, r
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
 
-    // Confirma que o ator pode operar este Livro do Dia (responsável do show,
-    // capitão com delegação, ou gestor da operação no modo legado).
+    // Apagar é destrutivo: restrito a gestores (ADMIN ou supervisor da
+    // operação). Capitães com delegação podem operar (gerar/publicar) mas NÃO
+    // podem apagar — por isso usamos um gate de gestor, não canOperateDailyBook.
     let operationId: string | null = null;
-    let show: ShowResponsibilityRef | null = null;
     if (book.showBookId) {
       const loaded = await loadShowRef(book.showBookId);
-      if (loaded) { operationId = loaded.operationId; show = loaded.ref; }
+      if (loaded) operationId = loaded.operationId;
     }
     if (!operationId && book.scaleId) {
       const [sr] = await db.select({ operationId: scalesTable.operationId }).from(scalesTable).where(eq(scalesTable.id, book.scaleId)).limit(1);
@@ -1005,7 +1005,10 @@ router.delete("/daily-book/:id", requireAuth, requireOrganization, async (req, r
       const [ev] = await db.select({ operationId: agendaEventsTable.operationId }).from(agendaEventsTable).where(eq(agendaEventsTable.id, book.agendaEventId)).limit(1);
       operationId = ev?.operationId ?? null;
     }
-    if (!operationId || !(await canOperateDailyBook(user, operationId, show))) {
+    const isManagerInScope =
+      user.role === "ADMIN" ||
+      (operationId !== null && user.operationIds.includes(operationId));
+    if (!operationId || !isManagerInScope) {
       res.status(403).json({ error: "Sem permissão para apagar este Livro do Dia" });
       return;
     }
