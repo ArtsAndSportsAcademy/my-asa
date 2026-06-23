@@ -5599,6 +5599,10 @@ components:
         status:
           type: string
           enum: [DRAFT, PUBLISHED, ARCHIVED]
+        responsibleId:
+          type: string
+          nullable: true
+          description: ID do supervisor responsavel por este show (null = sem responsavel definido)
         createdBy:
           type: string
         createdAt:

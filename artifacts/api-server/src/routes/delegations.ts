@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, and, isNull, isNotNull, or, lte, gte, desc } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { delegationsTable, usersTable, operationsTable, noticesTable, noticeRecipientsTable } from "@workspace/db";
+import { delegationsTable, usersTable, operationsTable, noticesTable, noticeRecipientsTable, showBooksTable } from "@workspace/db";
 import type { DelegatedResponsibility } from "@workspace/db/schema";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
@@ -87,10 +87,13 @@ router.get("/delegations", requireAuth, requireOrganization, async (req, res): P
         revokedAt: delegationsTable.revokedAt,
         reason: delegationsTable.reason,
         responsibilities: delegationsTable.responsibilities,
+        showBookId: delegationsTable.showBookId,
+        showBookTitle: showBooksTable.title,
         createdAt: delegationsTable.createdAt,
       })
       .from(delegationsTable)
       .innerJoin(operationsTable, eq(delegationsTable.operationId, operationsTable.id))
+      .leftJoin(showBooksTable, eq(delegationsTable.showBookId, showBooksTable.id))
       .where(whereClause)
       .orderBy(desc(delegationsTable.createdAt));
 
@@ -120,6 +123,8 @@ router.get("/delegations", requireAuth, requireOrganization, async (req, res): P
       endDate: toDateStr(r.validUntil),
       reason: r.reason ?? null,
       responsibilities: r.responsibilities as DelegatedResponsibility[],
+      showBookId: r.showBookId ?? null,
+      showBookTitle: r.showBookTitle ?? null,
       status: resolveStatus(r.validFrom, r.validUntil, r.revokedAt),
       createdAt: r.createdAt,
     }));
@@ -150,9 +155,12 @@ router.get("/delegations/my-active", requireAuth, requireOrganization, async (re
         validUntil: delegationsTable.validUntil,
         responsibilities: delegationsTable.responsibilities,
         reason: delegationsTable.reason,
+        showBookId: delegationsTable.showBookId,
+        showBookTitle: showBooksTable.title,
       })
       .from(delegationsTable)
       .innerJoin(operationsTable, eq(delegationsTable.operationId, operationsTable.id))
+      .leftJoin(showBooksTable, eq(delegationsTable.showBookId, showBooksTable.id))
       .where(
         and(
           eq(delegationsTable.delegateeId, userId),
@@ -181,6 +189,8 @@ router.get("/delegations/my-active", requireAuth, requireOrganization, async (re
       endDate: toDateStr(r.validUntil),
       responsibilities: r.responsibilities as DelegatedResponsibility[],
       reason: r.reason ?? null,
+      showBookId: r.showBookId ?? null,
+      showBookTitle: r.showBookTitle ?? null,
     }));
 
     res.json({ delegations });
@@ -234,13 +244,31 @@ router.post("/delegations", requireAuth, requireOrganization, async (req, res): 
     return;
   }
 
+  const showBookId = (req.body as { showBookId?: string | null }).showBookId ?? null;
+
   try {
+    // Delegação com escopo de show: o supervisor só pode delegar shows pelos
+    // quais é o responsável definido, e o show tem de pertencer à operação.
+    if (showBookId) {
+      const [sb] = await db
+        .select({ id: showBooksTable.id, operationId: showBooksTable.operationId, responsibleId: showBooksTable.responsibleId })
+        .from(showBooksTable)
+        .where(eq(showBooksTable.id, showBookId))
+        .limit(1);
+      if (!sb) { res.status(404).json({ error: "Not Found", message: "Livro do Show não encontrado" }); return; }
+      if (sb.operationId !== operationId) { res.status(400).json({ error: "Bad Request", message: "O show não pertence a esta operação" }); return; }
+      if (sb.responsibleId !== user.sub) {
+        res.status(403).json({ error: "Forbidden", message: "Só pode delegar shows pelos quais é responsável" });
+        return;
+      }
+    }
     const [delegation] = await db
       .insert(delegationsTable)
       .values({
         delegatorId: user.sub,
         delegateeId: delegateId,
         operationId,
+        showBookId,
         validFrom: fromDateStr(startDate),
         validUntil: fromDateStr(endDate),
         reason: reason ?? null,
@@ -323,6 +351,7 @@ router.post("/delegations", requireAuth, requireOrganization, async (req, res): 
         supervisorId: delegation!.delegatorId,
         delegateId: delegation!.delegateeId,
         operationId: delegation!.operationId,
+        showBookId: delegation!.showBookId ?? null,
         startDate: toDateStr(delegation!.validFrom),
         endDate: toDateStr(delegation!.validUntil),
         reason: delegation!.reason ?? null,

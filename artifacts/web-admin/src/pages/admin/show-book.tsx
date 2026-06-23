@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListShowBooks,
+  useAssignShowBookResponsible,
   useGetShowBook,
   useListShowBookVersions,
   useCreateShowBook,
@@ -877,6 +878,12 @@ export default function ShowBookPage() {
     { query: { enabled: !!operationId, queryKey: getListShowBooksQueryKey({ operationId: operationId ?? "" }) } }
   );
   const books: ShowBook[] = listData?.showBooks ?? [];
+  const currentUserId = auth.user?.id ?? null;
+  // Admin total vê todos os shows; gestor não-admin vê só os shows pelos quais é
+  // responsável + os sem responsável (comportamento legado por operação).
+  const visibleBooks: ShowBook[] = isFullAdmin
+    ? books
+    : books.filter((b) => !b.responsibleId || b.responsibleId === currentUserId);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [versionsOpen, setVersionsOpen] = useState(false);
@@ -954,6 +961,7 @@ export default function ShowBookPage() {
   const deleteLineMutation = useDeleteShowBookLine();
   const addRefMutation = useAddShowBookPositionRef();
   const deleteRefMutation = useDeleteShowBookPositionRef();
+  const assignResponsibleMutation = useAssignShowBookResponsible();
 
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: getListShowBooksQueryKey({ operationId: operationId ?? "" }) });
@@ -972,6 +980,18 @@ export default function ShowBookPage() {
   const [statusForm, setStatusForm] = useState({ status: "PUBLISHED", reason: "" });
 
   const failToast = (msg: string) => toast({ title: msg, variant: "destructive" });
+
+  const handleAssignResponsible = (val: string) => {
+    if (!selectedId) return;
+    const responsibleId = val === "__none__" ? null : val;
+    assignResponsibleMutation.mutate(
+      { id: selectedId, responsibleId },
+      {
+        onSuccess: () => { toast({ title: "Responsável atualizado" }); invalidateAll(); },
+        onError: () => failToast("Erro ao definir responsável"),
+      }
+    );
+  };
 
   const handleCreate = () => {
     if (!operationId) { failToast("Nenhuma operação ativa"); return; }
@@ -1258,14 +1278,14 @@ export default function ShowBookPage() {
             <div className="flex-1 flex items-center justify-center">
               <div className="w-5 h-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
             </div>
-          ) : books.length === 0 ? (
+          ) : visibleBooks.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-2 text-muted-foreground">
               <BookOpen className="h-8 w-8 opacity-30" />
               <p className="text-sm">Nenhum Livro do Show criado ainda. Crie o primeiro livro para estruturar a produção da sua operação.</p>
             </div>
           ) : (
             <div className="flex flex-col gap-1">
-              {books.map((book) => (
+              {visibleBooks.map((book) => (
                 <button
                   key={book.id}
                   onClick={() => setSelectedId(book.id)}
@@ -1304,6 +1324,18 @@ export default function ShowBookPage() {
                     <span className="text-xs text-muted-foreground">Versão {selectedBook.version}</span>
                     <span className="text-xs text-muted-foreground">· {selectedBook.type}</span>
                   </div>
+                  {isFullAdmin && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-xs text-muted-foreground">Responsável:</span>
+                      <Select value={selectedBook.responsibleId ?? "__none__"} onValueChange={handleAssignResponsible}>
+                        <SelectTrigger className="h-7 w-56 text-xs"><SelectValue placeholder="Sem responsável" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">Sem responsável (legado)</SelectItem>
+                          {members.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
                 {isAdmin && (
                   <div className="flex gap-2 shrink-0">

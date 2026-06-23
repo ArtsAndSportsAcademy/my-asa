@@ -16,6 +16,8 @@ export interface ShowBook {
   type: ShowBookType;
   version: number;
   status: ShowBookStatus;
+  /** ID do supervisor responsavel por este show (null = sem responsavel definido) */
+  responsibleId?: string | null;
   createdBy: string;
   createdAt?: string;
   updatedAt?: string;

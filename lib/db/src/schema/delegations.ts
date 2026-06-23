@@ -2,6 +2,7 @@ import { pgTable, text, uuid, timestamp } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { usersTable } from "./identity.js";
 import { operationsTable } from "./organization.js";
+import { showBooksTable } from "./showbook.js";
 
 export type DelegatedResponsibility =
   | "CHECK_INS"
@@ -27,6 +28,9 @@ export const delegationsTable = pgTable("delegations", {
   delegatorId: uuid("delegator_id").notNull().references(() => usersTable.id),
   delegateeId: uuid("delegatee_id").notNull().references(() => usersTable.id),
   operationId: uuid("operation_id").notNull().references(() => operationsTable.id),
+  // Quando definido, a delegação aplica-se APENAS a este Livro do Show (capitão de um show).
+  // Null = delegação ao nível da operação inteira (comportamento legado, retrocompatível).
+  showBookId: uuid("show_book_id").references(() => showBooksTable.id),
   validFrom: timestamp("valid_from", { withTimezone: true }).notNull(),
   validUntil: timestamp("valid_until", { withTimezone: true }).notNull(),
   revokedAt: timestamp("revoked_at", { withTimezone: true }),

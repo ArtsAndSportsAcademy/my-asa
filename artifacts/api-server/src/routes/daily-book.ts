@@ -20,7 +20,7 @@ import {
 } from "@workspace/db";
 import { requireAuth, requireOrganization, requireRole } from "../middlewares/auth.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
-import { hasActiveResponsibility } from "../lib/delegation-check.js";
+import { canOperateDailyBook, type ShowResponsibilityRef } from "../lib/show-responsibility.js";
 import { eventBus } from "../lib/event-bus.js";
 import { notifyMany } from "../services/notificationService.js";
 import {
@@ -33,7 +33,16 @@ import {
 } from "../services/line-resolver.js";
 
 const router: IRouter = Router();
-const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
+async function loadShowRef(
+  showBookId: string,
+): Promise<{ ref: ShowResponsibilityRef; operationId: string } | null> {
+  const [sb] = await db
+    .select({ id: showBooksTable.id, responsibleId: showBooksTable.responsibleId, operationId: showBooksTable.operationId })
+    .from(showBooksTable)
+    .where(eq(showBooksTable.id, showBookId))
+    .limit(1);
+  return sb ? { ref: { id: sb.id, responsibleId: sb.responsibleId }, operationId: sb.operationId } : null;
+}
 
 // Estilo MyASA antigo: o operador não precisa digitar "Motivo" nas ações do dia.
 // Quando nenhum motivo é informado, o sistema grava um texto padrão na auditoria/delta.
@@ -394,11 +403,9 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
       const [sb] = await db.select().from(showBooksTable).where(eq(showBooksTable.id, bodyShowBookId)).limit(1);
       if (!sb) { res.status(404).json({ error: "Show Book não encontrado" }); return; }
 
-      if (!MANAGER_ROLES.includes(user.role)) {
-        if (!(await hasActiveResponsibility(userId, sb.operationId, "DAILY_BOOK"))) {
-          res.status(403).json({ error: "Forbidden", message: "Apenas supervisores ou delegados com responsabilidade de Livro do Dia podem gerar" });
-          return;
-        }
+      if (!(await canOperateDailyBook(user, sb.operationId, { id: sb.id, responsibleId: sb.responsibleId }))) {
+        res.status(403).json({ error: "Forbidden", message: "Apenas o responsável por este show, um capitão delegado ou um admin podem gerar o Livro do Dia" });
+        return;
       }
 
       // Reutiliza um evento existente para este Livro do Show + data; senão cria um interno.
@@ -429,17 +436,18 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
           .returning({ id: agendaEventsTable.id });
         agendaEventId = created!.id;
       }
-    } else if (!MANAGER_ROLES.includes(user.role)) {
+    } else {
       // Auth do modo legado: validar contra a operação REAL do evento, nunca um operationId
       // vindo do cliente (evita bypass com evento de outra operação).
       const [ev] = await db
-        .select({ operationId: agendaEventsTable.operationId })
+        .select({ operationId: agendaEventsTable.operationId, showBookId: agendaEventsTable.showBookId })
         .from(agendaEventsTable)
         .where(eq(agendaEventsTable.id, agendaEventId))
         .limit(1);
       if (!ev) { res.status(404).json({ error: "Evento não encontrado" }); return; }
-      if (!(await hasActiveResponsibility(userId, ev.operationId, "DAILY_BOOK"))) {
-        res.status(403).json({ error: "Forbidden", message: "Apenas supervisores ou delegados com responsabilidade de Livro do Dia podem gerar" });
+      const loaded = ev.showBookId ? await loadShowRef(ev.showBookId) : null;
+      if (!(await canOperateDailyBook(user, ev.operationId, loaded?.ref ?? null))) {
+        res.status(403).json({ error: "Forbidden", message: "Apenas o responsável por este show, um capitão delegado ou um admin podem gerar o Livro do Dia" });
         return;
       }
     }
@@ -597,14 +605,13 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
 
-    if (!MANAGER_ROLES.includes(user.role)) {
-      let allowed = false;
-      if (book.agendaEventId) {
-        const [ev] = await db.select({ operationId: agendaEventsTable.operationId }).from(agendaEventsTable).where(eq(agendaEventsTable.id, book.agendaEventId)).limit(1);
-        if (ev?.operationId && await hasActiveResponsibility(userId, ev.operationId, "DAILY_BOOK")) allowed = true;
-      }
-      if (!allowed) {
-        res.status(403).json({ error: "Forbidden", message: "Apenas supervisores ou delegados com responsabilidade de Livro do Dia podem regenerar" });
+    if (user.role !== "ADMIN") {
+      const [ev] = book.agendaEventId
+        ? await db.select({ operationId: agendaEventsTable.operationId, showBookId: agendaEventsTable.showBookId }).from(agendaEventsTable).where(eq(agendaEventsTable.id, book.agendaEventId)).limit(1)
+        : [undefined];
+      const loaded = ev?.showBookId ? await loadShowRef(ev.showBookId) : null;
+      if (!ev?.operationId || !(await canOperateDailyBook(user, ev.operationId, loaded?.ref ?? null))) {
+        res.status(403).json({ error: "Forbidden", message: "Apenas o responsável por este show, um capitão delegado ou um admin podem regenerar o Livro do Dia" });
         return;
       }
     }
@@ -690,13 +697,20 @@ router.post("/daily-book/:id/publish", requireAuth, requireOrganization, async (
   try {
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
-    if (!MANAGER_ROLES.includes(user.role)) {
-      let allowed = false;
-      if (book.scaleId) {
-        const [sr] = await db.select({ operationId: scalesTable.operationId }).from(scalesTable).where(eq(scalesTable.id, book.scaleId)).limit(1);
-        if (sr && await hasActiveResponsibility(userId, sr.operationId, "DAILY_BOOK")) allowed = true;
+    if (user.role !== "ADMIN") {
+      let operationId: string | null = null;
+      let show: ShowResponsibilityRef | null = null;
+      if (book.showBookId) {
+        const loaded = await loadShowRef(book.showBookId);
+        if (loaded) { operationId = loaded.operationId; show = loaded.ref; }
       }
-      if (!allowed) { res.status(403).json({ error: "Forbidden", message: "Acesso restrito a supervisores ou delegados" }); return; }
+      if (!operationId && book.scaleId) {
+        const [sr] = await db.select({ operationId: scalesTable.operationId }).from(scalesTable).where(eq(scalesTable.id, book.scaleId)).limit(1);
+        operationId = sr?.operationId ?? null;
+      }
+      if (!operationId || !(await canOperateDailyBook(user, operationId, show))) {
+        res.status(403).json({ error: "Forbidden", message: "Acesso restrito ao responsável do show, capitão delegado ou admin" }); return;
+      }
     }
     if (!["DRAFT"].includes(book.status)) {
       res.status(409).json({ error: `Livro em status ${book.status} não pode ser publicado diretamente` });
@@ -776,13 +790,20 @@ router.post("/daily-book/:id/republish", requireAuth, requireOrganization, async
   try {
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
-    if (!MANAGER_ROLES.includes(user.role)) {
-      let allowed = false;
-      if (book.scaleId) {
-        const [sr] = await db.select({ operationId: scalesTable.operationId }).from(scalesTable).where(eq(scalesTable.id, book.scaleId)).limit(1);
-        if (sr && await hasActiveResponsibility(userId, sr.operationId, "DAILY_BOOK")) allowed = true;
+    if (user.role !== "ADMIN") {
+      let operationId: string | null = null;
+      let show: ShowResponsibilityRef | null = null;
+      if (book.showBookId) {
+        const loaded = await loadShowRef(book.showBookId);
+        if (loaded) { operationId = loaded.operationId; show = loaded.ref; }
       }
-      if (!allowed) { res.status(403).json({ error: "Forbidden", message: "Acesso restrito a supervisores ou delegados" }); return; }
+      if (!operationId && book.scaleId) {
+        const [sr] = await db.select({ operationId: scalesTable.operationId }).from(scalesTable).where(eq(scalesTable.id, book.scaleId)).limit(1);
+        operationId = sr?.operationId ?? null;
+      }
+      if (!operationId || !(await canOperateDailyBook(user, operationId, show))) {
+        res.status(403).json({ error: "Forbidden", message: "Acesso restrito ao responsável do show, capitão delegado ou admin" }); return;
+      }
     }
     if (!["PUBLISHED", "REPUBLISHED"].includes(book.status)) {
       res.status(409).json({ error: "Somente livros PUBLICADOS ou REPUBLICADOS podem ser republicados" });

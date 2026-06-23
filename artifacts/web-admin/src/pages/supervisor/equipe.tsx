@@ -18,6 +18,8 @@ import {
   getListUsersQueryKey,
   ALL_RESPONSIBILITIES,
   RESPONSIBILITY_LABELS,
+  useListShowBooks,
+  getListShowBooksQueryKey,
 } from "@workspace/api-client-react";
 import type { DelegatedResponsibility, UserUpdateSpecialization } from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
@@ -271,7 +273,18 @@ function DelegationForm({ member, operations, onDone }: { member: Member; operat
   const [endDate, setEndDate] = useState("");
   const [reason, setReason] = useState("");
   const [selected, setSelected] = useState<DelegatedResponsibility[]>([]);
+  const [showBookId, setShowBookId] = useState<string>("");
   const [error, setError] = useState("");
+  const auth = useAuth();
+  const myId = auth.user?.id ?? null;
+
+  const dailyBookSelected = selected.includes("DAILY_BOOK" as DelegatedResponsibility);
+  const { data: showBooksData } = useListShowBooks(
+    { operationId },
+    { query: { enabled: !!operationId && dailyBookSelected, queryKey: getListShowBooksQueryKey({ operationId }) } }
+  );
+  // Só shows pelos quais este supervisor é o responsável podem ser delegados.
+  const myShowBooks = (showBooksData?.showBooks ?? []).filter((b) => b.responsibleId === myId);
 
   const toggle = (r: DelegatedResponsibility) =>
     setSelected((p) => (p.includes(r) ? p.filter((x) => x !== r) : [...p, r]));
@@ -298,6 +311,7 @@ function DelegationForm({ member, operations, onDone }: { member: Member; operat
         endDate,
         reason: reason.trim() || undefined,
         responsibilities: selected,
+        showBookId: dailyBookSelected && showBookId ? showBookId : undefined,
       } as any,
       {
         onSuccess: () => {
@@ -342,6 +356,19 @@ function DelegationForm({ member, operations, onDone }: { member: Member; operat
           ))}
         </div>
       </div>
+      {dailyBookSelected && (
+        <div className="space-y-1.5">
+          <Label>Livro do Dia — show específico (opcional)</Label>
+          <Select value={showBookId || "__all__"} onValueChange={(v) => setShowBookId(v === "__all__" ? "" : v)}>
+            <SelectTrigger><SelectValue placeholder="Todos os shows da operação" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos os shows da operação</SelectItem>
+              {myShowBooks.map((b) => <SelectItem key={b.id} value={b.id}>{b.title}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">Deixe em "Todos" para delegar o Livro do Dia de toda a operação, ou escolha um show pelo qual é responsável para limitar a delegação a esse capitão.</p>
+        </div>
+      )}
       <div className="space-y-1.5">
         <Label>Motivo (opcional)</Label>
         <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="Ex: ausência planejada" />

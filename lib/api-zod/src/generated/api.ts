@@ -724,6 +724,7 @@ export const ListShowBooksResponse = zod.object({
   "type": zod.enum(['SIMPLE', 'STRUCTURED']),
   "version": zod.number(),
   "status": zod.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
+  "responsibleId": zod.string().nullish().describe('ID do supervisor responsavel por este show (null = sem responsavel definido)'),
   "createdBy": zod.string(),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()
@@ -758,6 +759,7 @@ export const GetShowBookResponse = zod.object({
   "type": zod.enum(['SIMPLE', 'STRUCTURED']),
   "version": zod.number(),
   "status": zod.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
+  "responsibleId": zod.string().nullish().describe('ID do supervisor responsavel por este show (null = sem responsavel definido)'),
   "createdBy": zod.string(),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()
@@ -835,6 +837,7 @@ export const UpdateShowBookResponse = zod.object({
   "type": zod.enum(['SIMPLE', 'STRUCTURED']),
   "version": zod.number(),
   "status": zod.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
+  "responsibleId": zod.string().nullish().describe('ID do supervisor responsavel por este show (null = sem responsavel definido)'),
   "createdBy": zod.string(),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()
@@ -875,6 +878,7 @@ export const UpdateShowBookStatusResponse = zod.object({
   "type": zod.enum(['SIMPLE', 'STRUCTURED']),
   "version": zod.number(),
   "status": zod.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
+  "responsibleId": zod.string().nullish().describe('ID do supervisor responsavel por este show (null = sem responsavel definido)'),
   "createdBy": zod.string(),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()

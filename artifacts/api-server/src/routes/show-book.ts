@@ -25,6 +25,7 @@ import { requestLogger } from "../lib/logger.js";
 import { eventBus } from "../lib/event-bus.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { buildShowBookTree, collectUserIdsFromConfig, resolveShowBookCast } from "../services/line-resolver.js";
+import { canManageShowBook } from "../lib/show-responsibility.js";
 
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"] as const;
 
@@ -40,6 +41,21 @@ async function getShowBookOrFail(id: string, res: any) {
   const [book] = await db.select().from(showBooksTable).where(eq(showBooksTable.id, id)).limit(1);
   if (!book) {
     res.status(404).json({ error: "Livro do Show não encontrado" });
+    return null;
+  }
+  return book;
+}
+
+// Guard de mutação: carrega o livro (via req.params.id) e confirma que o ator
+// pode geri-lo (admin, responsável definido, ou qualquer gestor se não houver
+// responsável). Devolve o livro ou null (já tendo respondido 404/403).
+async function requireShowManage(req: any, res: any) {
+  const id = req.params.id as string;
+  const book = await getShowBookOrFail(id, res);
+  if (!book) return null;
+  const actor = { sub: req.user!.sub, role: req.user!.role, operationIds: req.user!.operationIds };
+  if (!canManageShowBook(actor, { id: book.id, responsibleId: book.responsibleId }, book.operationId)) {
+    res.status(403).json({ error: "Forbidden", message: "Apenas o responsável por este show (ou um admin) pode editá-lo" });
     return null;
   }
   return book;
@@ -207,7 +223,7 @@ router.patch("/show-books/:id", requireAuth, requireOrganization, async (req, re
   const { title, description, reason } = req.body;
   if (!reason) { res.status(400).json({ error: "reason é obrigatório" }); return; }
   try {
-    const book = await getShowBookOrFail(id, res);
+    const book = await requireShowManage(req, res);
     if (!book) return;
     const [updated] = await db
       .update(showBooksTable)
@@ -228,6 +244,8 @@ router.patch("/show-books/:id/status", requireAuth, requireOrganization, async (
   }
   if (!reason) { res.status(400).json({ error: "reason é obrigatório" }); return; }
   try {
+    const guard = await requireShowManage(req, res);
+    if (!guard) return;
     const [updated] = await db
       .update(showBooksTable)
       .set({ status, updatedAt: new Date() })
@@ -240,6 +258,30 @@ router.patch("/show-books/:id/status", requireAuth, requireOrganization, async (
     res.json({ showBook: updated });
   } catch (err) {
     res.status(500).json({ error: "Erro ao atualizar status" });
+  }
+});
+
+// Atribuir/limpar o responsável de um show (apenas ADMIN).
+router.patch("/show-books/:id/responsible", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
+  const id = req.params.id as string;
+  const { responsibleId } = req.body as { responsibleId?: string | null };
+  try {
+    const book = await getShowBookOrFail(id, res);
+    if (!book) return;
+    if (responsibleId) {
+      const [u] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, responsibleId)).limit(1);
+      if (!u) { res.status(404).json({ error: "Utilizador responsável não encontrado" }); return; }
+    }
+    const [updated] = await db
+      .update(showBooksTable)
+      .set({ responsibleId: responsibleId ?? null, updatedAt: new Date() })
+      .where(eq(showBooksTable.id, id))
+      .returning();
+    const log = requestLogger("show_book", req.requestId ?? "", req.correlationId ?? "");
+    log.info({ showBookId: id, responsibleId: responsibleId ?? null }, "Responsável do show atualizado");
+    res.json({ showBook: updated });
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao definir responsável" });
   }
 });
 
@@ -318,8 +360,8 @@ router.post("/show-books/:id/scenes", requireAuth, requireOrganization, async (r
   if (!name || order === undefined) { res.status(400).json({ error: "name e order são obrigatórios" }); return; }
   const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
-    const book = await getShowBookOrFail(showBookId, res);
-    if (!book) return;
+    const guard = await requireShowManage(req, res);
+    if (!guard) return;
     const [scene] = await db
       .insert(showBookScenesTable)
       .values({ showBookId, name, order, isOptional: isOptional ?? false })
@@ -337,6 +379,8 @@ router.patch("/show-books/:id/scenes/:sceneId", requireAuth, requireOrganization
   const { name, order, isOptional, changeType } = req.body;
   const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
+    const guard = await requireShowManage(req, res);
+    if (!guard) return;
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (name !== undefined) updates.name = name;
     if (order !== undefined) updates.order = order;
@@ -360,6 +404,8 @@ router.delete("/show-books/:id/scenes/:sceneId", requireAuth, requireOrganizatio
   const sceneId = req.params.sceneId as string;
   const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
+    const guard = await requireShowManage(req, res);
+    if (!guard) return;
     const [owned] = await db.select({ id: showBookScenesTable.id }).from(showBookScenesTable)
       .where(and(eq(showBookScenesTable.id, sceneId), eq(showBookScenesTable.showBookId, showBookId)));
     if (!owned) { res.status(404).json({ error: "Cena não encontrada" }); return; }
@@ -395,8 +441,8 @@ router.post("/show-books/:id/blocks", requireAuth, requireOrganization, async (r
   if (!isValidBlockTime(startTime) || !isValidBlockTime(endTime)) { res.status(400).json({ error: "Horário inválido (use HH:MM)" }); return; }
   const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
-    const book = await getShowBookOrFail(showBookId, res);
-    if (!book) return;
+    const guard = await requireShowManage(req, res);
+    if (!guard) return;
     if (sceneId) {
       const [scene] = await db.select({ id: showBookScenesTable.id }).from(showBookScenesTable)
         .where(and(eq(showBookScenesTable.id, sceneId), eq(showBookScenesTable.showBookId, showBookId)));
@@ -420,6 +466,8 @@ router.patch("/show-books/:id/blocks/:blockId", requireAuth, requireOrganization
   if (!isValidBlockTime(startTime) || !isValidBlockTime(endTime)) { res.status(400).json({ error: "Horário inválido (use HH:MM)" }); return; }
   const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
+    const guard = await requireShowManage(req, res);
+    if (!guard) return;
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (name !== undefined) updates.name = name;
     if (order !== undefined) updates.order = order;
@@ -444,6 +492,8 @@ router.delete("/show-books/:id/blocks/:blockId", requireAuth, requireOrganizatio
   const blockId = req.params.blockId as string;
   const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
+    const guard = await requireShowManage(req, res);
+    if (!guard) return;
     const [owned] = await db.select({ id: showBookBlocksTable.id }).from(showBookBlocksTable)
       .where(and(eq(showBookBlocksTable.id, blockId), eq(showBookBlocksTable.showBookId, showBookId)));
     if (!owned) { res.status(404).json({ error: "Bloco não encontrado" }); return; }
@@ -470,8 +520,8 @@ router.post("/show-books/:id/positions", requireAuth, requireOrganization, async
   if (!name || order === undefined) { res.status(400).json({ error: "name e order são obrigatórios" }); return; }
   const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
-    const book = await getShowBookOrFail(showBookId, res);
-    if (!book) return;
+    const guard = await requireShowManage(req, res);
+    if (!guard) return;
     if (blockId) {
       const [block] = await db.select({ id: showBookBlocksTable.id }).from(showBookBlocksTable)
         .where(and(eq(showBookBlocksTable.id, blockId), eq(showBookBlocksTable.showBookId, showBookId)));
@@ -499,6 +549,8 @@ router.patch("/show-books/:id/positions/:positionId", requireAuth, requireOrgani
   const { name, minimumCoverage, tagsJson, order, changeType } = req.body;
   const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
+    const guard = await requireShowManage(req, res);
+    if (!guard) return;
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (name !== undefined) updates.name = name;
     if (minimumCoverage !== undefined) updates.minimumCoverage = minimumCoverage;
@@ -523,6 +575,8 @@ router.delete("/show-books/:id/positions/:positionId", requireAuth, requireOrgan
   const positionId = req.params.positionId as string;
   const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
+    const guard = await requireShowManage(req, res);
+    if (!guard) return;
     const [owned] = await db.select({ id: showBookRolesTable.id }).from(showBookRolesTable)
       .where(and(eq(showBookRolesTable.id, positionId), eq(showBookRolesTable.showBookId, showBookId)));
     if (!owned) { res.status(404).json({ error: "Posição não encontrada" }); return; }
@@ -545,6 +599,8 @@ router.post("/show-books/:id/positions/:positionId/lines", requireAuth, requireO
   if (!type) { res.status(400).json({ error: "type é obrigatório" }); return; }
   const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
+    const guard = await requireShowManage(req, res);
+    if (!guard) return;
     if (!(await positionInShowBook(positionId, showBookId))) {
       res.status(404).json({ error: "Posição não encontrada" }); return;
     }
@@ -567,6 +623,8 @@ router.patch("/show-books/:id/lines/:lineId", requireAuth, requireOrganization, 
   const { type, config, order, changeType } = req.body;
   const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
+    const guard = await requireShowManage(req, res);
+    if (!guard) return;
     if (!(await lineInShowBook(lineId, showBookId))) {
       res.status(404).json({ error: "Linha não encontrada" }); return;
     }
@@ -593,6 +651,8 @@ router.delete("/show-books/:id/lines/:lineId", requireAuth, requireOrganization,
   const lineId = req.params.lineId as string;
   const reason: string = req.body.reason || DEFAULT_STRUCTURAL_REASON;
   try {
+    const guard = await requireShowManage(req, res);
+    if (!guard) return;
     if (!(await lineInShowBook(lineId, showBookId))) {
       res.status(404).json({ error: "Linha não encontrada" }); return;
     }

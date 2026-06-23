@@ -45,6 +45,8 @@ export interface DelegationItem {
   endDate: string;
   reason?: string | null;
   responsibilities: DelegatedResponsibility[];
+  showBookId?: string | null;
+  showBookTitle?: string | null;
   status: "PENDING" | "ACTIVE" | "EXPIRED" | "CANCELLED";
   createdAt: string;
 }
@@ -59,6 +61,8 @@ export interface ActiveDelegationItem {
   endDate: string;
   responsibilities: DelegatedResponsibility[];
   reason?: string | null;
+  showBookId?: string | null;
+  showBookTitle?: string | null;
 }
 
 export interface CreateDelegationInput {
@@ -68,6 +72,7 @@ export interface CreateDelegationInput {
   endDate: string;
   reason?: string;
   responsibilities: DelegatedResponsibility[];
+  showBookId?: string | null;
 }
 
 // ─── Query Keys ───────────────────────────────────────────────────────────────
