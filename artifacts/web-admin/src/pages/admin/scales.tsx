@@ -140,7 +140,7 @@ function fmtTime(t?: string | null) {
 // ─── Tempo livre (deteção de buracos) ───────────────────────────────────────
 // Janela padrão do "dia de trabalho" usada para detetar tempo livre. Mantida
 // como constante (sem mudar o esquema) para ser prod-safe e fácil de afinar.
-const WORK_DAY_START_MIN = 9 * 60; // 09:00
+const WORK_DAY_START_MIN = 7 * 60 + 40; // 07:40
 const WORK_DAY_END_MIN = 18 * 60; // 18:00
 const MIN_FREE_GAP_MIN = 60; // só sugerir buracos de pelo menos 1 hora
 
