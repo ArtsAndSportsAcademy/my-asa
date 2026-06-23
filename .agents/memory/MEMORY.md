@@ -57,4 +57,4 @@
 - [Deep-link para aba com nonce](deeplink-tab-nonce.md) — atalho escala→Livro do Dia via param eventId; enviar eventNonce p/ re-disparar useEffect ao reabrir o mesmo item; sem match limpa seleção
 - [Escopo de operação na leitura do Livro do Dia](daily-book-operation-scope.md) — GETs vazavam tudo; derivar operação via join agenda_events→operations e usar canViewDailyBook/resolveDailyBookReadContext (403 fora do escopo)
 - [Responsável do show = supervisor obrigatório](show-responsible-supervisor.md) — responsibleId tem de ser supervisor ativo da operação (senão escala privilégio); apagar Livro do Dia é gestor-only (capitão delegado opera mas não apaga)
-- [Visibilidade do Livro do Dia: supervisor=operação, não show](daily-book-supervisor-op-level.md) — DECISÃO do utilizador: supervisor vê TODOS os livros das suas operações; só o capitão delegado é scoped-ao-show; não confundir os dois
+- [Visibilidade do Livro do Dia: supervisor=show, admin=tudo](daily-book-supervisor-op-level.md) — DECISÃO do utilizador: supervisor vê SÓ os livros de que é responsável (via canOperateDailyBook); admin gere e vê tudo; agrupar por operação é só UI, não muda visibilidade

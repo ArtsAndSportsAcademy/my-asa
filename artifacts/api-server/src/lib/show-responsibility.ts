@@ -93,12 +93,14 @@ export async function canOperateDailyBook(
 }
 
 /**
- * Quem pode VER (ler) um Livro do Dia. Escopado por operação:
- * - Admin vê tudo;
- * - Gestor (SUPERVISOR_A/B) vê os livros das SUAS operações (qualquer estado);
+ * Quem pode VER (ler) um Livro do Dia. Escopado por show (não por operação):
+ * - Admin vê tudo (é quem gere a atribuição de responsáveis);
+ * - Supervisor vê apenas os livros que PODE OPERAR — o show de que é responsável,
+ *   um show que lhe foi delegado pelo responsável, ou (legado) qualquer show SEM
+ *   responsável definido na sua operação. NÃO vê os shows de outro supervisor.
  * - Membro vê apenas livros PUBLICADOS/REPUBLICADOS da SUA operação (só leitura);
- * - Capitão delegado vê o livro do show que lhe foi delegado, mesmo em rascunho
- *   (reaproveita exatamente a mesma regra de canOperateDailyBook).
+ * - Capitão (MEMBER) delegado vê o livro do show que lhe foi delegado, mesmo em
+ *   rascunho (via canOperateDailyBook).
  */
 export async function canViewDailyBook(
   actor: ActorLite,
@@ -109,8 +111,9 @@ export async function canViewDailyBook(
   if (actor.role === "ADMIN") return true;
   const inScope = actor.operationIds.includes(operationId);
   const published = status === "PUBLISHED" || status === "REPUBLISHED";
-  if (MANAGER_ROLES.has(actor.role) && inScope) return true;
-  if (inScope && published) return true;
-  // Rascunho ou fora do escopo de papel: só por delegação ativa de DAILY_BOOK.
+  // Membro (não-gestor): livros publicados da sua operação.
+  if (!MANAGER_ROLES.has(actor.role) && inScope && published) return true;
+  // Supervisores ficam restritos aos shows que podem operar; capitães (MEMBER)
+  // veem o show delegado mesmo em rascunho. Tudo o resto é negado.
   return canOperateDailyBook(actor, operationId, show);
 }
