@@ -33,7 +33,7 @@ import { AsaConfirmDialog } from "@/components/AsaConfirmDialog";
 
 const TYPE_LABELS: Record<string, string> = {
   DAY_OFF:     "Folga",
-  NO_SHOW:     "No-show",
+  NO_SHOW:     "Folga",
   RECESSO:     "Recesso",
   AFASTAMENTO: "Afastamento",
   RESTRICAO:   "Restrição",
@@ -43,7 +43,6 @@ const TYPE_LABELS: Record<string, string> = {
 const TYPE_OPTIONS = [
   { value: "__all__", label: "Todos os tipos" },
   { value: "DAY_OFF",     label: "Folga" },
-  { value: "NO_SHOW",     label: "No-show" },
   { value: "RECESSO",     label: "Recesso" },
   { value: "AFASTAMENTO", label: "Afastamento" },
   { value: "RESTRICAO",   label: "Restrição" },
@@ -61,7 +60,7 @@ const ORIGEM_LABELS: Record<string, string> = {
 };
 
 const GRID_TYPE_OPTIONS = [
-  { value: "NO_SHOW", label: "NS — No-show" },
+  { value: "DAY_OFF", label: "F — Folga" },
   { value: "RECESSO", label: "R — Recesso" },
   { value: "OUTRO",   label: "O — Outro" },
 ];
@@ -216,7 +215,7 @@ function FillPeriodDialog({
   const [userId,    setUserId]    = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate,   setEndDate]   = useState("");
-  const [type,      setType]      = useState("NO_SHOW");
+  const [type,      setType]      = useState("DAY_OFF");
 
   const { mutate: bulkFill, isPending } = useBulkFillFolgas({
     mutation: {

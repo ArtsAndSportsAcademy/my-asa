@@ -1070,7 +1070,7 @@ export default function MeuDiaScreen() {
                       </Text>
                       <View style={{ backgroundColor: "#D1FAE5", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
                         <Text style={{ fontSize: 11, fontWeight: "600", color: "#065F46" }}>
-                          {f.type === "DAY_OFF" ? "Folga" : f.type === "NO_SHOW" ? "No-show" : f.type === "RECESSO" ? "Recesso" : f.type === "AFASTAMENTO" ? "Afastamento" : f.type}
+                          {f.type === "DAY_OFF" ? "Folga" : f.type === "NO_SHOW" ? "Folga" : f.type === "RECESSO" ? "Recesso" : f.type === "AFASTAMENTO" ? "Afastamento" : f.type}
                         </Text>
                       </View>
                     </View>

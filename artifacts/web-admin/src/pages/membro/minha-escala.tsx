@@ -42,7 +42,7 @@ const FILTER_TABS: { label: string; value: FilterValue }[] = [
 
 const FOLGA_TYPE_LABELS: Record<string, string> = {
   DAY_OFF:     "Folga",
-  NO_SHOW:     "No-show",
+  NO_SHOW:     "Folga",
   RECESSO:     "Recesso",
   AFASTAMENTO: "Afastamento",
   RESTRICAO:   "Restrição",

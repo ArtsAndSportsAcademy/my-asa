@@ -97,7 +97,6 @@ const TASK_STATUS_LABELS: Record<string, string> = {
 
 const FOLGA_TYPES = [
   { value: "DAY_OFF",     label: "Folga" },
-  { value: "NO_SHOW",     label: "No-show" },
   { value: "RECESSO",     label: "Recesso" },
   { value: "AFASTAMENTO", label: "Afastamento" },
   { value: "RESTRICAO",   label: "Restrição" },

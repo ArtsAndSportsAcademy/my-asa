@@ -34,7 +34,7 @@ const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
 
 const TYPE_LABELS: Record<string, string> = {
   DAY_OFF:     "Folga",
-  NO_SHOW:     "No-show",
+  NO_SHOW:     "Folga",
   RECESSO:     "Recesso",
   AFASTAMENTO: "Afastamento",
   RESTRICAO:   "Restrição",
@@ -42,13 +42,13 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const GRID_TYPES = [
-  { value: "NO_SHOW", abbr: "NS", label: "No-show",   color: "#ef4444", bg: "#fee2e2" },
+  { value: "DAY_OFF", abbr: "F",  label: "Folga",     color: "#3b82f6", bg: "#dbeafe" },
   { value: "RECESSO", abbr: "R",  label: "Recesso",   color: "#f97316", bg: "#ffedd5" },
   { value: "OUTRO",   abbr: "O",  label: "Outro",     color: "#6b7280", bg: "#f3f4f6" },
 ] as const;
 
 const TYPE_COLORS: Record<string, { color: string; bg: string; abbr: string }> = {
-  NO_SHOW:     { color: "#ef4444", bg: "#fee2e2", abbr: "NS" },
+  NO_SHOW:     { color: "#3b82f6", bg: "#dbeafe", abbr: "F" },
   RECESSO:     { color: "#f97316", bg: "#ffedd5", abbr: "R" },
   OUTRO:       { color: "#6b7280", bg: "#f3f4f6", abbr: "O" },
   DAY_OFF:     { color: "#3b82f6", bg: "#dbeafe", abbr: "F" },
@@ -86,7 +86,7 @@ function FillPeriodModal({
   const [userId,    setUserId]    = useState(preselectedUserId ?? "");
   const [startDate, setStartDate] = useState("");
   const [endDate,   setEndDate]   = useState("");
-  const [type,      setType]      = useState<string>("NO_SHOW");
+  const [type,      setType]      = useState<string>("DAY_OFF");
 
   const { mutate: bulkFill, isPending } = useBulkFillFolgas({
     mutation: {

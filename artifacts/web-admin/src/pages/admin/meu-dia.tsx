@@ -499,7 +499,7 @@ export default function MeuDiaPage() {
                           )}
                         </div>
                         <Badge variant="outline" className="shrink-0 text-xs bg-green-50 text-green-700 border-green-200">
-                          {f.type === "DAY_OFF" ? "Folga" : f.type === "NO_SHOW" ? "No-show" : f.type === "RECESSO" ? "Recesso" : f.type === "AFASTAMENTO" ? "Afastamento" : f.type}
+                          {f.type === "DAY_OFF" ? "Folga" : f.type === "NO_SHOW" ? "Folga" : f.type === "RECESSO" ? "Recesso" : f.type === "AFASTAMENTO" ? "Afastamento" : f.type}
                         </Badge>
                       </CardContent>
                     </Card>

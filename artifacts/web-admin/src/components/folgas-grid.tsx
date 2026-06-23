@@ -11,16 +11,15 @@ import {
 
 // ─── Types & constants ────────────────────────────────────────────────────────
 
-export type GridType = "DAY_OFF" | "NO_SHOW" | "RECESSO" | "OUTRO";
+export type GridType = "DAY_OFF" | "RECESSO" | "OUTRO";
 export const GRID_TYPES: { value: GridType; label: string; abbr: string; bg: string; text: string }[] = [
   { value: "DAY_OFF", label: "Folga",   abbr: "F",  bg: "bg-blue-100", text: "text-blue-800" },
-  { value: "NO_SHOW", label: "No-show", abbr: "NS", bg: "bg-red-100", text: "text-red-800" },
   { value: "RECESSO", label: "Recesso", abbr: "R",  bg: "bg-orange-100", text: "text-orange-800" },
   { value: "OUTRO",   label: "Outro",   abbr: "O",  bg: "bg-gray-200",  text: "text-gray-700" },
 ];
 
 const ALL_TYPE_INFO: Record<string, { abbr: string; bg: string; text: string }> = {
-  NO_SHOW:     { abbr: "NS", bg: "bg-red-100",    text: "text-red-800" },
+  NO_SHOW:     { abbr: "F",  bg: "bg-blue-100",   text: "text-blue-800" },
   RECESSO:     { abbr: "R",  bg: "bg-orange-100",  text: "text-orange-800" },
   OUTRO:       { abbr: "O",  bg: "bg-gray-200",    text: "text-gray-700" },
   DAY_OFF:     { abbr: "F",  bg: "bg-blue-100",    text: "text-blue-800" },

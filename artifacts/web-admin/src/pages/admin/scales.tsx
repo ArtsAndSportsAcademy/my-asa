@@ -62,7 +62,7 @@ const STATUS_VARIANTS: Record<string, "default" | "secondary" | "outline" | "des
   DRAFT: "secondary", PUBLISHED: "default", REPUBLISHED: "default", ARCHIVED: "outline",
 };
 const FOLGA_LABELS: Record<string, string> = {
-  DAY_OFF: "FOLGA", NO_SHOW: "NO SHOW", RECESSO: "RECESSO",
+  DAY_OFF: "FOLGA", NO_SHOW: "FOLGA", RECESSO: "RECESSO",
   AFASTAMENTO: "AFASTAMENTO", RESTRICAO: "RESTRIÇÃO", OUTRO: "OUTRO",
 };
 const AGENDA_TYPE_LABELS: Record<string, string> = {
