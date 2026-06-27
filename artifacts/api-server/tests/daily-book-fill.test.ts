@@ -626,6 +626,18 @@ async function runIntegrationD() {
     const eList = await httpJson(port, "GET", `/api/show-books`, tokenAdminE);
     const eIds = ((eList.json?.showBooks ?? []) as any[]).map((b) => b.id);
     assert(!eIds.includes(showAId) && !eIds.includes(showBId), "(d) listagem do admin de outra org NÃO inclui shows alheios");
+
+    // Mutação de referências restrita ao RESPONSÁVEL do show (canManageShowBook),
+    // não apenas ao papel: supervisor não-responsável da mesma operação é barrado.
+    const tokenSupB = signAccessToken({ sub: supB, jti: "t", organizationId: orgId, role: "SUPERVISOR_A", operationIds: [operationId] });
+    const fakeId = "00000000-0000-0000-0000-000000000000";
+    const bRefAdd = await httpJson(port, "POST", `/api/show-books/${showAId}/positions/${fakeId}/refs`, tokenSupB, { documentId: fakeId });
+    eqAssert(bRefAdd.status, 403, "(d) supervisor não-responsável NÃO adiciona referência no show de outro (403)");
+    const bRefDel = await httpJson(port, "DELETE", `/api/show-books/${showAId}/positions/${fakeId}/refs/${fakeId}`, tokenSupB);
+    eqAssert(bRefDel.status, 403, "(d) supervisor não-responsável NÃO remove referência no show de outro (403)");
+    // O responsável passa o guard de gestão (falha depois por posição inexistente: 404, não 403).
+    const aRefAdd = await httpJson(port, "POST", `/api/show-books/${showAId}/positions/${fakeId}/refs`, tokenSupA, { documentId: fakeId });
+    eqAssert(aRefAdd.status, 404, "(d) responsável passa o guard de gestão de referências (404 posição, não 403)");
   } finally {
     await db.delete(showBooksTable).where(eq(showBooksTable.id, showAId));
     await db.delete(showBooksTable).where(eq(showBooksTable.id, showBId));

@@ -27,3 +27,9 @@ da operação antes de devolver) para cobrir leitura E mutação de uma vez; apl
 eixo (2) num guard de leitura partilhado por todos os GET de detalhe; na listagem,
 filtrar a org no SQL (join a operations) e depois a visibilidade. Padrão equivalente
 já existe no Livro do Dia (derivar operação via join e comparar `organizationId`).
+
+**Cuidado com as mutações.** TODAS as rotas de escrita de show-book (incluindo as
+de referências de posição — refs add/remove) têm de passar pelo guard de gestão
+(canManageShowBook / requireShowManage), não basta verificar o papel (MANAGER_ROLES):
+um supervisor que NÃO é responsável pelo show, mesmo sendo da operação, não pode
+editar. Endpoints novos de mutação herdam sempre o guard, nunca só o filtro de papel.

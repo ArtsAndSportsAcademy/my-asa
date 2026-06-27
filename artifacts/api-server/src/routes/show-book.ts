@@ -861,15 +861,12 @@ router.post("/show-books/:id/positions/:positionId/refs", requireAuth, requireOr
   const showBookId = req.params.id as string;
   const positionId = req.params.positionId as string;
   const { documentId, label } = req.body;
-  const role = req.user!.role as string;
-  if (!MANAGER_ROLES.includes(role as any)) {
-    res.status(403).json({ error: "Sem permissão" }); return;
-  }
   if (!documentId) {
     res.status(400).json({ error: "documentId é obrigatório" }); return;
   }
   try {
-    const book = await getShowBookOrFail(req, res);
+    // Gestão restrita ao responsável do show (ou admin / gestor legado sem responsável).
+    const book = await requireShowManage(req, res);
     if (!book) return;
     if (!(await positionInShowBook(positionId, showBookId))) {
       res.status(404).json({ error: "Posição não encontrada" }); return;
@@ -902,12 +899,9 @@ router.delete("/show-books/:id/positions/:positionId/refs/:refId", requireAuth, 
   const showBookId = req.params.id as string;
   const positionId = req.params.positionId as string;
   const refId = req.params.refId as string;
-  const role = req.user!.role as string;
-  if (!MANAGER_ROLES.includes(role as any)) {
-    res.status(403).json({ error: "Sem permissão" }); return;
-  }
   try {
-    const book = await getShowBookOrFail(req, res);
+    // Gestão restrita ao responsável do show (ou admin / gestor legado sem responsável).
+    const book = await requireShowManage(req, res);
     if (!book) return;
     const [ref] = await db
       .select()
