@@ -93,6 +93,29 @@ export async function canOperateDailyBook(
 }
 
 /**
+ * Quem pode VER (ler) um Livro do Show (estrutura: cenas, blocos, posições,
+ * linhas, versões, refs e a conferência por data). Escopado por operação +
+ * responsabilidade:
+ * - Admin vê tudo;
+ * - Membro (não-gestor) vê os shows da SUA operação (qualquer estado), tal como
+ *   hoje no app — o escopo de responsabilidade restringe gestores, não membros;
+ * - Supervisor vê apenas os shows que pode operar (o de que é responsável, um
+ *   que lhe foi delegado, ou — no legado sem responsável — qualquer show da sua
+ *   operação). NÃO vê o show de que outro supervisor é responsável.
+ */
+export async function canViewShowBook(
+  actor: ActorLite,
+  show: ShowResponsibilityRef,
+  showOperationId: string,
+): Promise<boolean> {
+  if (actor.role === "ADMIN") return true;
+  if (!MANAGER_ROLES.has(actor.role)) {
+    return actor.operationIds.includes(showOperationId);
+  }
+  return canOperateDailyBook(actor, showOperationId, { id: show.id, responsibleId: show.responsibleId });
+}
+
+/**
  * Quem pode VER (ler) um Livro do Dia. Escopado por show (não por operação):
  * - Admin vê tudo (é quem gere a atribuição de responsáveis);
  * - Supervisor vê apenas os livros que PODE OPERAR — o show de que é responsável,

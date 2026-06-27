@@ -26,7 +26,7 @@ import { requestLogger } from "../lib/logger.js";
 import { eventBus } from "../lib/event-bus.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { buildShowBookTree, collectUserIdsFromConfig, resolveShowBookCast } from "../services/line-resolver.js";
-import { canManageShowBook } from "../lib/show-responsibility.js";
+import { canManageShowBook, canViewShowBook } from "../lib/show-responsibility.js";
 
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"] as const;
 
@@ -38,9 +38,21 @@ function isValidBlockTime(v: unknown): boolean {
 
 const router: IRouter = Router();
 
-async function getShowBookOrFail(id: string, res: any) {
+async function getShowBookOrFail(req: any, res: any) {
+  const id = req.params.id as string;
   const [book] = await db.select().from(showBooksTable).where(eq(showBooksTable.id, id)).limit(1);
   if (!book) {
+    res.status(404).json({ error: "Livro do Show não encontrado" });
+    return null;
+  }
+  // Isolamento multi-tenant: o show tem de pertencer à organização do ator. Usa
+  // 404 (e não 403) para não revelar a existência de shows de outra organização.
+  const [op] = await db
+    .select({ organizationId: operationsTable.organizationId })
+    .from(operationsTable)
+    .where(eq(operationsTable.id, book.operationId))
+    .limit(1);
+  if (!op || op.organizationId !== req.user!.organizationId) {
     res.status(404).json({ error: "Livro do Show não encontrado" });
     return null;
   }
@@ -51,12 +63,26 @@ async function getShowBookOrFail(id: string, res: any) {
 // pode geri-lo (admin, responsável definido, ou qualquer gestor se não houver
 // responsável). Devolve o livro ou null (já tendo respondido 404/403).
 async function requireShowManage(req: any, res: any) {
-  const id = req.params.id as string;
-  const book = await getShowBookOrFail(id, res);
+  const book = await getShowBookOrFail(req, res);
   if (!book) return null;
   const actor = { sub: req.user!.sub, role: req.user!.role, operationIds: req.user!.operationIds };
   if (!canManageShowBook(actor, { id: book.id, responsibleId: book.responsibleId }, book.operationId)) {
     res.status(403).json({ error: "Forbidden", message: "Apenas o responsável por este show (ou um admin) pode editá-lo" });
+    return null;
+  }
+  return book;
+}
+
+// Guard de leitura: carrega o livro (via req.params.id) e confirma que o ator
+// pode vê-lo (admin; membro da operação do show; ou supervisor que o pode
+// operar). Impede que um não-admin leia, via API direta, shows de outra
+// operação ou o show de que outro supervisor é responsável.
+async function requireShowView(req: any, res: any) {
+  const book = await getShowBookOrFail(req, res);
+  if (!book) return null;
+  const actor = { sub: req.user!.sub, role: req.user!.role, operationIds: req.user!.operationIds };
+  if (!(await canViewShowBook(actor, { id: book.id, responsibleId: book.responsibleId }, book.operationId))) {
+    res.status(403).json({ error: "Forbidden", message: "Sem permissão para ver este Livro do Show" });
     return null;
   }
   return book;
@@ -144,9 +170,27 @@ async function lineInShowBook(lineId: string, showBookId: string): Promise<boole
 router.get("/show-books", requireAuth, requireOrganization, async (req, res) => {
   const { operationId } = req.query as { operationId?: string };
   try {
-    const books = operationId
-      ? await db.select().from(showBooksTable).where(eq(showBooksTable.operationId, operationId))
-      : await db.select().from(showBooksTable);
+    // Isolamento multi-tenant: filtra SEMPRE pela organização do ator no SQL
+    // (via join a operations), para que nem mesmo um admin veja shows de outra org.
+    const orgId = req.user!.organizationId;
+    const rows = await db
+      .select({ book: showBooksTable })
+      .from(showBooksTable)
+      .innerJoin(operationsTable, eq(showBooksTable.operationId, operationsTable.id))
+      .where(
+        operationId
+          ? and(eq(showBooksTable.operationId, operationId), eq(operationsTable.organizationId, orgId))
+          : eq(operationsTable.organizationId, orgId),
+      );
+    const all = rows.map((r) => r.book);
+    // Escopo de leitura: filtra ao nível do servidor para que um não-admin só
+    // receba os shows que pode ver (a sua operação / a sua responsabilidade),
+    // mesmo chamando a API diretamente sem (ou com outro) operationId.
+    const actor = { sub: req.user!.sub, role: req.user!.role, operationIds: req.user!.operationIds };
+    const visible = await Promise.all(
+      all.map((b) => canViewShowBook(actor, { id: b.id, responsibleId: b.responsibleId }, b.operationId)),
+    );
+    const books = all.filter((_, i) => visible[i]);
     res.json({ showBooks: books });
   } catch (err) {
     res.status(500).json({ error: "Erro interno ao listar livros" });
@@ -183,7 +227,7 @@ router.post("/show-books", requireAuth, requireOrganization, async (req, res) =>
 router.get("/show-books/:id", requireAuth, requireOrganization, async (req, res) => {
   const id = req.params.id as string;
   try {
-    const book = await getShowBookOrFail(id, res);
+    const book = await requireShowView(req, res);
     if (!book) return;
     const tree = await buildShowBookTree(id);
     const memberDirectory = await buildMemberDirectory(tree);
@@ -208,7 +252,7 @@ router.get("/show-books/:id/resolve", requireAuth, requireOrganization, async (r
     return;
   }
   try {
-    const book = await getShowBookOrFail(id, res);
+    const book = await requireShowView(req, res);
     if (!book) return;
     // dedupPerScene: a mesma pessoa não pode ocupar dois papéis na mesma cena —
     // quem já foi escalado numa posição é saltado nas seguintes (puxa o próximo
@@ -276,7 +320,7 @@ router.patch("/show-books/:id/responsible", requireAuth, requireOrganization, re
   const id = req.params.id as string;
   const { responsibleId } = req.body as { responsibleId?: string | null };
   try {
-    const book = await getShowBookOrFail(id, res);
+    const book = await getShowBookOrFail(req, res);
     if (!book) return;
     if (responsibleId) {
       const [u] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, responsibleId)).limit(1);
@@ -320,7 +364,7 @@ router.delete("/show-books/:id", requireAuth, requireOrganization, requireRole("
   const id = req.params.id as string;
   const organizationId = req.user!.organizationId;
   try {
-    const book = await getShowBookOrFail(id, res);
+    const book = await getShowBookOrFail(req, res);
     if (!book) return;
 
     const [op] = await db
@@ -372,7 +416,7 @@ router.delete("/show-books/:id", requireAuth, requireOrganization, requireRole("
 router.get("/show-books/:id/versions", requireAuth, requireOrganization, async (req, res) => {
   const id = req.params.id as string;
   try {
-    const book = await getShowBookOrFail(id, res);
+    const book = await requireShowView(req, res);
     if (!book) return;
     const versions = await db
       .select()
@@ -782,6 +826,8 @@ router.get("/show-books/:id/positions/:positionId/refs", requireAuth, requireOrg
   const role = req.user!.role as string;
   const isManager = MANAGER_ROLES.includes(role as any);
   try {
+    const book = await requireShowView(req, res);
+    if (!book) return;
     const baseWhere = and(
       eq(showBookPositionLibraryRefsTable.positionId, positionId),
       eq(showBookPositionLibraryRefsTable.showBookId, showBookId)
@@ -823,7 +869,7 @@ router.post("/show-books/:id/positions/:positionId/refs", requireAuth, requireOr
     res.status(400).json({ error: "documentId é obrigatório" }); return;
   }
   try {
-    const book = await getShowBookOrFail(showBookId, res);
+    const book = await getShowBookOrFail(req, res);
     if (!book) return;
     if (!(await positionInShowBook(positionId, showBookId))) {
       res.status(404).json({ error: "Posição não encontrada" }); return;
@@ -861,7 +907,7 @@ router.delete("/show-books/:id/positions/:positionId/refs/:refId", requireAuth, 
     res.status(403).json({ error: "Sem permissão" }); return;
   }
   try {
-    const book = await getShowBookOrFail(showBookId, res);
+    const book = await getShowBookOrFail(req, res);
     if (!book) return;
     const [ref] = await db
       .select()
@@ -901,7 +947,7 @@ router.get("/show-books/:id/refs", requireAuth, requireOrganization, async (req,
   const role = req.user!.role as string;
   const isManager = MANAGER_ROLES.includes(role as any);
   try {
-    const book = await getShowBookOrFail(showBookId, res);
+    const book = await requireShowView(req, res);
     if (!book) return;
     const baseWhere = eq(showBookPositionLibraryRefsTable.showBookId, showBookId);
     const rows = await db

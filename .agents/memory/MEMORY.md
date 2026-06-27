@@ -54,6 +54,7 @@
 - [Grupos legados com organization_id NULL](group-null-org-legacy.md) — grupos OPERATION antigos têm org NULL; validar via loadGroupInOrg (rejeita ALL/MULTI sem org), nunca filtrar org no WHERE
 - [Horário único por show](show-time-model.md) — hora vive em showBooksTable.startTime/endTime (não por bloco); escala mostra nome+hora do show; fallback show??bloco??evento
 - [No-show removido da UI = Folga](no-show-removido.md) — NO_SHOW tirado dos seletores (= Folga); enum mantido no banco (prod-safe); dados antigos exibidos como Folga; ASA usa DAY_OFF
+- [Escopo de leitura do Livro do Show](show-book-read-scope.md) — todo GET de show-book precisa de canViewShowBook/requireShowView (não só requireAuth); UI filtra mas servidor tem de filtrar também
 - [Deep-link para aba com nonce](deeplink-tab-nonce.md) — atalho escala→Livro do Dia via param eventId; enviar eventNonce p/ re-disparar useEffect ao reabrir o mesmo item; sem match limpa seleção
 - [Escopo de operação na leitura do Livro do Dia](daily-book-operation-scope.md) — GETs vazavam tudo; derivar operação via join agenda_events→operations e usar canViewDailyBook/resolveDailyBookReadContext (403 fora do escopo)
 - [Responsável do show = supervisor obrigatório](show-responsible-supervisor.md) — responsibleId tem de ser supervisor ativo da operação (senão escala privilégio); apagar Livro do Dia é gestor-only (capitão delegado opera mas não apaga)

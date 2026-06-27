@@ -550,10 +550,101 @@ async function runIntegrationC() {
   }
 }
 
+// ─── (d) integração HTTP: escopo de LEITURA do Livro do Show ─────────────────────
+// Garante que um não-admin não lê, via API direta, shows fora do seu escopo:
+//  - supervisor A NÃO vê (nem resolve por data) o show de que B é responsável (403),
+//    mas vê o seu; a listagem é filtrada no servidor (A só recebe o seu show);
+//  - membro da operação vê os shows da operação (qualquer responsável);
+//  - utilizador de OUTRA operação não vê o show (403, cross-operation).
+async function runIntegrationD() {
+  console.log("(d) integração HTTP: escopo de leitura do Livro do Show por operação/responsabilidade");
+  const TAG = `sbview_${Date.now()}`;
+  const server = http.createServer(app);
+  await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+  const port = (server.address() as { port: number }).port;
+
+  const [org] = await db.insert(organizationsTable).values({ name: `${TAG}_org` }).returning();
+  const orgId = org!.id;
+  const [op1] = await db.insert(operationsTable).values({ organizationId: orgId, name: `${TAG}_op1` }).returning();
+  const [op2] = await db.insert(operationsTable).values({ organizationId: orgId, name: `${TAG}_op2` }).returning();
+  const operationId = op1!.id;
+  const operation2Id = op2!.id;
+  const mk = async (label: string) => {
+    const [u] = await db.insert(usersTable).values({ organizationId: orgId, name: `${TAG}_${label}` }).returning();
+    return u!.id;
+  };
+  const supA = await mk("supA");
+  const supB = await mk("supB");
+  const memC = await mk("memC");
+  const memD = await mk("memD");
+
+  const [sbA] = await db.insert(showBooksTable).values({ operationId, title: `${TAG}_showA`, createdBy: supA, responsibleId: supA }).returning();
+  const [sbB] = await db.insert(showBooksTable).values({ operationId, title: `${TAG}_showB`, createdBy: supB, responsibleId: supB }).returning();
+  const showAId = sbA!.id;
+  const showBId = sbB!.id;
+
+  const tokenSupA = signAccessToken({ sub: supA, jti: "t", organizationId: orgId, role: "SUPERVISOR_A", operationIds: [operationId] });
+  const tokenMemC = signAccessToken({ sub: memC, jti: "t", organizationId: orgId, role: "MEMBER", operationIds: [operationId] });
+  const tokenMemD = signAccessToken({ sub: memD, jti: "t", organizationId: orgId, role: "MEMBER", operationIds: [operation2Id] });
+
+  // Admin de OUTRA organização (isolamento multi-tenant).
+  const [org2] = await db.insert(organizationsTable).values({ name: `${TAG}_org2` }).returning();
+  const org2Id = org2!.id;
+  const [adminE0] = await db.insert(usersTable).values({ organizationId: org2Id, name: `${TAG}_adminE` }).returning();
+  const adminE = adminE0!.id;
+  const tokenAdminE = signAccessToken({ sub: adminE, jti: "t", organizationId: org2Id, role: "ADMIN", operationIds: [] });
+
+  try {
+    // Supervisor A vê o SEU show, mas não o show de que B é responsável.
+    const aOwn = await httpJson(port, "GET", `/api/show-books/${showAId}`, tokenSupA);
+    eqAssert(aOwn.status, 200, "(d) supervisor A vê o seu próprio show (200)");
+    const aOther = await httpJson(port, "GET", `/api/show-books/${showBId}`, tokenSupA);
+    eqAssert(aOther.status, 403, "(d) supervisor A NÃO vê o show de que B é responsável (403)");
+    const aResolve = await httpJson(port, "GET", `/api/show-books/${showBId}/resolve?date=2026-07-06`, tokenSupA);
+    eqAssert(aResolve.status, 403, "(d) supervisor A NÃO resolve por data o show de B (403)");
+
+    // Listagem filtrada no servidor: A só recebe o seu show.
+    const aList = await httpJson(port, "GET", `/api/show-books`, tokenSupA);
+    eqAssert(aList.status, 200, "(d) listagem responde 200");
+    const aIds = ((aList.json?.showBooks ?? []) as any[]).map((b) => b.id);
+    assert(aIds.includes(showAId), "(d) listagem de A inclui o seu show");
+    assert(!aIds.includes(showBId), "(d) listagem de A NÃO inclui o show de B");
+
+    // Membro da operação vê os shows da operação (independente do responsável).
+    const cOnA = await httpJson(port, "GET", `/api/show-books/${showAId}`, tokenMemC);
+    eqAssert(cOnA.status, 200, "(d) membro da operação vê show A (200)");
+    const cOnB = await httpJson(port, "GET", `/api/show-books/${showBId}`, tokenMemC);
+    eqAssert(cOnB.status, 200, "(d) membro da operação vê show B (200)");
+
+    // Utilizador de OUTRA operação não vê o show (cross-operation).
+    const dOnA = await httpJson(port, "GET", `/api/show-books/${showAId}`, tokenMemD);
+    eqAssert(dOnA.status, 403, "(d) utilizador de outra operação NÃO vê o show (403)");
+
+    // Admin de OUTRA organização não vê nem lista o show (isolamento multi-tenant).
+    const eOnA = await httpJson(port, "GET", `/api/show-books/${showAId}`, tokenAdminE);
+    eqAssert(eOnA.status, 404, "(d) admin de outra org NÃO vê o show (404)");
+    const eList = await httpJson(port, "GET", `/api/show-books`, tokenAdminE);
+    const eIds = ((eList.json?.showBooks ?? []) as any[]).map((b) => b.id);
+    assert(!eIds.includes(showAId) && !eIds.includes(showBId), "(d) listagem do admin de outra org NÃO inclui shows alheios");
+  } finally {
+    await db.delete(showBooksTable).where(eq(showBooksTable.id, showAId));
+    await db.delete(showBooksTable).where(eq(showBooksTable.id, showBId));
+    for (const id of [supA, supB, memC, memD, adminE]) {
+      await db.delete(usersTable).where(eq(usersTable.id, id));
+    }
+    await db.delete(operationsTable).where(eq(operationsTable.id, operationId));
+    await db.delete(operationsTable).where(eq(operationsTable.id, operation2Id));
+    await db.delete(organizationsTable).where(eq(organizationsTable.id, orgId));
+    await db.delete(organizationsTable).where(eq(organizationsTable.id, org2Id));
+    await new Promise<void>((r) => server.close(() => r()));
+  }
+}
+
 (async () => {
   try {
     await run();
     await runIntegrationC();
+    await runIntegrationD();
   } catch (err) {
     console.error("Erro inesperado nos testes:", err);
     failures.push(`erro inesperado: ${(err as Error)?.message ?? err}`);
