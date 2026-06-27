@@ -2693,6 +2693,8 @@ export type FolgasGridMemberTotals = {[key: string]: number};
 export interface FolgasGridMember {
   userId: string;
   name: string;
+  groupId?: string | null;
+  groupName?: string | null;
   days: FolgasGridMemberDays;
   totals: FolgasGridMemberTotals;
 }

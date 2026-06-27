@@ -8948,6 +8948,8 @@ components:
       properties:
         userId: { type: string }
         name: { type: string }
+        groupId: { type: string, nullable: true }
+        groupName: { type: string, nullable: true }
         days:
           type: object
           additionalProperties: { type: string }

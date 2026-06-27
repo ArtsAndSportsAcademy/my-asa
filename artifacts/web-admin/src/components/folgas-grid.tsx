@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from "react";
+import { Fragment, useRef, useState, useCallback, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
@@ -221,9 +221,12 @@ interface FolgasGridProps {
   year: number;
   month: number;
   memberFilter?: string;
+  groupBy?: boolean;
 }
 
-export function FolgasGrid({ operationId, year, month, memberFilter }: FolgasGridProps) {
+const NO_GROUP_LABEL = "Sem grupo";
+
+export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = false }: FolgasGridProps) {
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -237,10 +240,22 @@ export function FolgasGrid({ operationId, year, month, memberFilter }: FolgasGri
     { query: { enabled: !!operationId } } as any,
   );
 
-  const members = (data?.members ?? []).filter((m) => {
+  const filteredMembers = (data?.members ?? []).filter((m) => {
     if (!memberFilter) return true;
     return m.name.toLowerCase().includes(memberFilter.toLowerCase());
   });
+  // Quando agrupado, ordenamos por grupo (alfabético, "Sem grupo" no fim) e
+  // depois por nome. A ordem do array é usada também pela seleção por arraste.
+  const members = groupBy
+    ? [...filteredMembers].sort((a, b) => {
+        const aNo = a.groupName ? 0 : 1;
+        const bNo = b.groupName ? 0 : 1;
+        if (aNo !== bNo) return aNo - bNo;
+        const g = (a.groupName ?? "").localeCompare(b.groupName ?? "", "pt");
+        if (g !== 0) return g;
+        return a.name.localeCompare(b.name, "pt");
+      })
+    : filteredMembers;
   const daysInMonth = data?.daysInMonth ?? 30;
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -477,8 +492,24 @@ export function FolgasGrid({ operationId, year, month, memberFilter }: FolgasGri
             </tr>
           </thead>
           <tbody>
-            {members.map((m, rowIdx) => (
-              <tr key={m.userId} className={rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
+            {members.map((m, rowIdx) => {
+              const prev = rowIdx > 0 ? members[rowIdx - 1] : undefined;
+              const showGroupHeader =
+                groupBy && (rowIdx === 0 || (prev?.groupName ?? null) !== (m.groupName ?? null));
+              const groupLabel = m.groupName ?? NO_GROUP_LABEL;
+              return (
+              <Fragment key={m.userId}>
+              {showGroupHeader && (
+                <tr>
+                  <td
+                    colSpan={days.length + 3}
+                    className="sticky left-0 z-10 bg-muted/50 border-b border-border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                  >
+                    {groupLabel}
+                  </td>
+                </tr>
+              )}
+              <tr className={rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
                 <td className={`sticky left-0 z-10 border-r border-b border-border px-3 py-1.5 font-medium truncate max-w-[200px] ${
                   rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50"
                 }`}>
@@ -536,7 +567,9 @@ export function FolgasGrid({ operationId, year, month, memberFilter }: FolgasGri
                   </button>
                 </td>
               </tr>
-            ))}
+              </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>

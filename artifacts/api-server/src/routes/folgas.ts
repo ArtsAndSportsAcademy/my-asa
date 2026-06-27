@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, gte, lte, desc, inArray } from "drizzle-orm";
+import { eq, and, gte, lte, desc, inArray, isNotNull } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
@@ -7,9 +7,11 @@ import {
   usersTable,
   operationsTable,
   userRolesTable,
+  operationalGroupsTable,
   isSchedulableMember,
 } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
+import { groupCoveredOperationIds } from "./groups.js";
 import { requestLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
 import { sendNotification } from "../services/notificationService.js";
@@ -350,6 +352,52 @@ router.get("/folgas/grid", requireAuth, requireOrganization, async (req, res) =>
 
     const memberIds = members.map((m) => m.userId);
 
+    // Grupo (operacional) de cada membro nesta operação — permite ao painel
+    // organizar a grelha por grupos. Um membro sem grupo fica "Sem grupo".
+    // Ligação membro→grupo vem do próprio user_role nesta operação.
+    const memberGroupLinks = memberIds.length > 0
+      ? await db
+          .select({
+            userId:  userRolesTable.userId,
+            groupId: userRolesTable.groupId,
+          })
+          .from(userRolesTable)
+          .where(and(
+            eq(userRolesTable.operationId, operationId),
+            eq(userRolesTable.active, true),
+            isNotNull(userRolesTable.groupId),
+            inArray(userRolesTable.userId, memberIds),
+          ))
+      : [];
+
+    const linkedGroupIds = [...new Set(
+      memberGroupLinks.map((r) => r.groupId).filter((g): g is string => !!g),
+    )];
+
+    // Anti-vazamento: só rotulamos com o grupo se este COBRIR a operação atual
+    // (OPERATION dona / MULTI na cobertura / ALL da organização). Grupos de
+    // outra operação (dados inconsistentes) são ignorados.
+    const allowedGroups = new Map<string, { id: string; name: string }>();
+    if (linkedGroupIds.length > 0) {
+      const groups = await db
+        .select()
+        .from(operationalGroupsTable)
+        .where(inArray(operationalGroupsTable.id, linkedGroupIds));
+      for (const g of groups) {
+        const covered = await groupCoveredOperationIds(g, user.organizationId);
+        if (covered.includes(operationId)) {
+          allowedGroups.set(g.id, { id: g.id, name: g.name });
+        }
+      }
+    }
+
+    const groupByUser = new Map<string, { id: string; name: string }>();
+    for (const link of memberGroupLinks) {
+      if (groupByUser.has(link.userId)) continue;
+      const g = link.groupId ? allowedGroups.get(link.groupId) : undefined;
+      if (g) groupByUser.set(link.userId, g);
+    }
+
     const folgas = memberIds.length > 0
       ? await db
           .select({
@@ -396,7 +444,8 @@ router.get("/folgas/grid", requireAuth, requireOrganization, async (req, res) =>
       for (const type of Object.values(days)) {
         if (type in totals) totals[type]++;
       }
-      return { userId: m.userId, name: m.name, days, totals };
+      const g = groupByUser.get(m.userId) ?? null;
+      return { userId: m.userId, name: m.name, days, totals, groupId: g?.id ?? null, groupName: g?.name ?? null };
     });
 
     log.info({ operationId, yr, mo, members: result.length }, "grade de folgas gerada");

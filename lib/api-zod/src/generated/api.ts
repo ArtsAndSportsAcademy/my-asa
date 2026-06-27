@@ -4989,6 +4989,8 @@ export const GetFolgasGridResponse = zod.object({
   "members": zod.array(zod.object({
   "userId": zod.string(),
   "name": zod.string(),
+  "groupId": zod.string().nullish(),
+  "groupName": zod.string().nullish(),
   "days": zod.record(zod.string(), zod.string()),
   "totals": zod.record(zod.string(), zod.number())
 })),

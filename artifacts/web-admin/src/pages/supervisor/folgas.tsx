@@ -19,7 +19,7 @@ import {
   getGetFolgasGridQueryKey,
 } from "@workspace/api-client-react";
 import { FolgasGrid, MONTH_NAMES } from "@/components/folgas-grid";
-import { Palmtree, Loader2, XCircle, ChevronLeft, ChevronRight, Grid3X3, List } from "lucide-react";
+import { Palmtree, Loader2, XCircle, ChevronLeft, ChevronRight, Grid3X3, List, Users } from "lucide-react";
 import { AsaAvatar } from "@/components/AsaAvatar";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -169,6 +169,7 @@ export default function SupervisorFolgasPage() {
   const [month, setMonth] = useState(today.getMonth() + 1);
 
   const [memberFilter, setMemberFilter] = useState("");
+  const [groupByGroup, setGroupByGroup] = useState(false);
   const [type,     setType]     = useState("__all__");
   const [status,   setStatus]   = useState("ACTIVE");
   const [dateFrom, setDateFrom] = useState("");
@@ -280,6 +281,22 @@ export default function SupervisorFolgasPage() {
                 />
               )}
 
+              {view === "grid" && (
+                <button
+                  type="button"
+                  onClick={() => setGroupByGroup((v) => !v)}
+                  title="Organizar a planilha por grupos"
+                  className={`flex items-center gap-1.5 h-8 px-3 rounded-md border text-sm font-medium transition-colors ${
+                    groupByGroup
+                      ? "bg-primary/10 border-primary/40 text-primary"
+                      : "border-border text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  Por grupo
+                </button>
+              )}
+
               {view === "records" && (
                 <>
                   <Select value={type} onValueChange={setType}>
@@ -320,6 +337,7 @@ export default function SupervisorFolgasPage() {
                 year={year}
                 month={month}
                 memberFilter={memberFilter}
+                groupBy={groupByGroup}
               />
             )}
           </Card>

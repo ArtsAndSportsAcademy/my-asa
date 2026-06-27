@@ -11,6 +11,8 @@ import type { FolgasGridMemberTotals } from './folgasGridMemberTotals';
 export interface FolgasGridMember {
   userId: string;
   name: string;
+  groupId?: string | null;
+  groupName?: string | null;
   days: FolgasGridMemberDays;
   totals: FolgasGridMemberTotals;
 }
