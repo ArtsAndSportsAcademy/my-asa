@@ -2,7 +2,23 @@ import { Router, type IRouter } from "express";
 import { eq, and, inArray, like } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { db } from "@workspace/db";
-import { usersTable, userRolesTable, refreshTokensTable } from "@workspace/db";
+import {
+  usersTable,
+  userRolesTable,
+  refreshTokensTable,
+  deviceTokensTable,
+  notificationsTable,
+  userNotificationsTable,
+  libraryViewsTable,
+  messageThreadParticipantsTable,
+  noticeRecipientsTable,
+  noticeConfirmationsTable,
+  noticeEscalationsTable,
+  securityAuditLogTable,
+  historyEventsTable,
+  historyNarrativesTable,
+  operationalChangesTable,
+} from "@workspace/db";
 import { normalizeUsernameBase, resolveUniqueUsername, validateAndNormalizeUsername } from "@workspace/db";
 import { requireAuth, requireOrganization, requireRole } from "../middlewares/auth.js";
 import { recordAudit } from "../lib/audit.service.js";
@@ -403,8 +419,32 @@ router.delete("/users/:id", requireAuth, requireOrganization, requireRole("ADMIN
 
     try {
       await db.transaction(async (tx) => {
+        // 1) Registos incidentais/pessoais que se acumulam só por existir e navegar
+        //    na app (papéis, sessões, push, notificações, leituras, participação em
+        //    conversas). Não são dados de trabalho partilhados — apagam-se sempre.
+        //    (Tabelas com onDelete: cascade — ex.: participações em agenda, ASA,
+        //    reconhecimentos — são removidas automaticamente ao apagar o utilizador.)
         await tx.delete(userRolesTable).where(eq(userRolesTable.userId, id));
         await tx.delete(refreshTokensTable).where(eq(refreshTokensTable.userId, id));
+        await tx.delete(deviceTokensTable).where(eq(deviceTokensTable.userId, id));
+        await tx.delete(notificationsTable).where(eq(notificationsTable.userId, id));
+        await tx.delete(userNotificationsTable).where(eq(userNotificationsTable.userId, id));
+        await tx.delete(libraryViewsTable).where(eq(libraryViewsTable.userId, id));
+        await tx.delete(messageThreadParticipantsTable).where(eq(messageThreadParticipantsTable.userId, id));
+        // Avisos RECEBIDOS pela pessoa (participação pessoal, não o aviso em si).
+        await tx.delete(noticeConfirmationsTable).where(eq(noticeConfirmationsTable.userId, id));
+        await tx.delete(noticeEscalationsTable).where(eq(noticeEscalationsTable.recipientId, id));
+        await tx.update(noticeEscalationsTable).set({ escalatedBy: null }).where(eq(noticeEscalationsTable.escalatedBy, id));
+        await tx.delete(noticeRecipientsTable).where(eq(noticeRecipientsTable.userId, id));
+        // 2) Colunas de "ator" ANULÁVEIS em registos de auditoria/histórico: preservar
+        //    o registo (útil para a operação) e só remover a atribuição à pessoa.
+        await tx.update(securityAuditLogTable).set({ actorId: null }).where(eq(securityAuditLogTable.actorId, id));
+        await tx.update(historyEventsTable).set({ actorId: null }).where(eq(historyEventsTable.actorId, id));
+        await tx.update(historyNarrativesTable).set({ createdBy: null }).where(eq(historyNarrativesTable.createdBy, id));
+        await tx.update(operationalChangesTable).set({ actorId: null }).where(eq(operationalChangesTable.actorId, id));
+        // 3) Finalmente o utilizador. Se ainda houver FKs (dados de TRABALHO reais —
+        //    p.ex. escalas/tarefas/folgas que ele criou ou em que está alocado), o
+        //    PostgreSQL lança 23503 e devolvemos 409 (a transação reverte tudo).
         await tx.delete(usersTable).where(eq(usersTable.id, id));
       });
     } catch (err) {
@@ -413,7 +453,7 @@ router.delete("/users/:id", requireAuth, requireOrganization, requireRole("ADMIN
         res.status(409).json({
           error: "CONFLICT",
           message:
-            "Não é possível excluir: este usuário possui dados vinculados (tarefas, escalas, registros, etc.). Use 'Desativar' para removê-lo sem apagar o histórico.",
+            "Não é possível excluir: este usuário possui dados de trabalho vinculados (tarefas, escalas, folgas, etc.). Use 'Desativar' para removê-lo sem apagar o histórico.",
         });
         return;
       }

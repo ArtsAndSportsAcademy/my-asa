@@ -53,6 +53,7 @@
 - [Tempo livre na escala](scale-free-time-detection.md) — buracos ≥1h SÓ entre 1ª e última atividade de cada pessoa (sem janela fixa); read-time front+back (scale-merge.ts) idênticos; ASA consultar_tempo_livre
 - [Grupos legados com organization_id NULL](group-null-org-legacy.md) — grupos OPERATION antigos têm org NULL; validar via loadGroupInOrg (rejeita ALL/MULTI sem org), nunca filtrar org no WHERE
 - [Horário único por show](show-time-model.md) — hora vive em showBooksTable.startTime/endTime (não por bloco); escala mostra nome+hora do show; fallback show??bloco??evento
+- [Exclusão de utilizador — limpeza FK](user-delete-cleanup.md) — DELETE /users/:id: apagar pessoal/incidental não-cascade + SET NULL em ator anulável + 409 p/ dados de trabalho; nunca destruir partilhado
 - [No-show removido da UI = Folga](no-show-removido.md) — NO_SHOW tirado dos seletores (= Folga); enum mantido no banco (prod-safe); dados antigos exibidos como Folga; ASA usa DAY_OFF
 - [Escopo de leitura do Livro do Show](show-book-read-scope.md) — todo GET de show-book precisa de canViewShowBook/requireShowView (não só requireAuth); UI filtra mas servidor tem de filtrar também
 - [Deep-link para aba com nonce](deeplink-tab-nonce.md) — atalho escala→Livro do Dia via param eventId; enviar eventNonce p/ re-disparar useEffect ao reabrir o mesmo item; sem match limpa seleção
