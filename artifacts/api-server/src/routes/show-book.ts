@@ -210,7 +210,10 @@ router.get("/show-books/:id/resolve", requireAuth, requireOrganization, async (r
   try {
     const book = await getShowBookOrFail(id, res);
     if (!book) return;
-    const resolution = await resolveShowBookCast(id, book.operationId, date);
+    // dedupPerScene: a mesma pessoa não pode ocupar dois papéis na mesma cena —
+    // quem já foi escalado numa posição é saltado nas seguintes (puxa o próximo
+    // substituto/rodízio). Mantém a Conferência por data coerente com o Livro do Dia.
+    const resolution = await resolveShowBookCast(id, book.operationId, date, { dedupPerScene: true });
     res.json({ resolution });
   } catch (err) {
     const log = requestLogger("show_book", req.requestId ?? "", req.correlationId ?? "");
