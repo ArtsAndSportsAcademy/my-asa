@@ -244,6 +244,16 @@ router.post("/delegations", requireAuth, requireOrganization, async (req, res): 
     return;
   }
 
+  // Posse da operação: o supervisor só pode delegar (por operação ou por show)
+  // dentro das operações que efetivamente supervisiona. Sem esta verificação,
+  // uma delegação por operação inteira (showBookId null) poderia conceder
+  // poderes ao capitão em operações de terceiros (ex.: Livro do Dia de shows
+  // sem responsável, cujo fallback continua a ser por operação).
+  if (!user.operationIds.includes(operationId)) {
+    res.status(403).json({ error: "Forbidden", message: "Só pode delegar operações que supervisiona" });
+    return;
+  }
+
   const showBookId = (req.body as { showBookId?: string | null }).showBookId ?? null;
 
   try {
