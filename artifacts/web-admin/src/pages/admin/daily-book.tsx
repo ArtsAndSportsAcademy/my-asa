@@ -40,7 +40,7 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   ChevronRight, ChevronDown, BookOpen, Layers, Layout, AlignLeft,
   Users, Trash2, Play, RefreshCw, Send, RotateCcw, CheckCircle, XCircle, User, AlertTriangle,
-  Check, X,
+  Check, X, Folder, FolderOpen,
 } from "lucide-react";
 import { useListUsers } from "@workspace/api-client-react";
 import { useListShowBooks } from "@workspace/api-client-react";
@@ -266,6 +266,14 @@ export default function AdminDailyBookPage() {
   const [rightTab, setRightTab] = useState<"impacto" | "alteracoes" | "historico" | "delta">("impacto");
   const [filterStatus, setFilterStatus] = useState<string>("__all");
   const [filterShowBookId, setFilterShowBookId] = useState<string>("__all");
+  const [collapsedOps, setCollapsedOps] = useState<Set<string>>(new Set());
+  const toggleFolder = (opId: string) =>
+    setCollapsedOps((prev) => {
+      const next = new Set(prev);
+      if (next.has(opId)) next.delete(opId);
+      else next.add(opId);
+      return next;
+    });
 
   const listParams = {
     ...(filterStatus !== "__all" ? { status: filterStatus } : {}),

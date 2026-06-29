@@ -1,6 +1,7 @@
 import type { DailyBook } from "@workspace/api-client-react";
 
 export interface DailyBookGroup {
+  operationId: string;
   operationName: string;
   items: DailyBook[];
 }
@@ -16,7 +17,7 @@ export function groupDailyBooksByOperation(books: DailyBook[]): DailyBookGroup[]
   for (const b of books) {
     const key = b.operationId ?? "__none__";
     const operationName = b.operationName ?? "Sem operação";
-    if (!map.has(key)) map.set(key, { operationName, items: [] });
+    if (!map.has(key)) map.set(key, { operationId: key, operationName, items: [] });
     map.get(key)!.items.push(b);
   }
   return Array.from(map.values()).sort((a, b) =>
