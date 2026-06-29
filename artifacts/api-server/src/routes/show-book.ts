@@ -66,7 +66,7 @@ async function requireShowManage(req: any, res: any) {
   const book = await getShowBookOrFail(req, res);
   if (!book) return null;
   const actor = { sub: req.user!.sub, role: req.user!.role, operationIds: req.user!.operationIds };
-  if (!canManageShowBook(actor, { id: book.id, responsibleId: book.responsibleId }, book.operationId)) {
+  if (!(await canManageShowBook(actor, { id: book.id, responsibleId: book.responsibleId }, book.operationId))) {
     res.status(403).json({ error: "Forbidden", message: "Apenas o responsável por este show (ou um admin) pode editá-lo" });
     return null;
   }

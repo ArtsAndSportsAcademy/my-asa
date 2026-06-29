@@ -21,7 +21,7 @@ import {
 } from "@workspace/db";
 import { requireAuth, requireOrganization, requireRole } from "../middlewares/auth.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
-import { canOperateDailyBook, canViewDailyBook, type ShowResponsibilityRef } from "../lib/show-responsibility.js";
+import { canOperateDailyBook, canViewDailyBook, isOperationManager, type ShowResponsibilityRef } from "../lib/show-responsibility.js";
 import { eventBus } from "../lib/event-bus.js";
 import { notifyMany } from "../services/notificationService.js";
 import {
@@ -1006,8 +1006,7 @@ router.delete("/daily-book/:id", requireAuth, requireOrganization, requireRole("
       operationId = ev?.operationId ?? null;
     }
     const isManagerInScope =
-      user.role === "ADMIN" ||
-      (operationId !== null && user.operationIds.includes(operationId));
+      operationId !== null && (await isOperationManager(user, operationId));
     if (!operationId || !isManagerInScope) {
       res.status(403).json({ error: "Sem permissão para apagar este Livro do Dia" });
       return;

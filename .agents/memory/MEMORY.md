@@ -63,3 +63,4 @@
 - [Livro do Show — vista por operação](show-book-folders.md) — GET /show-books sem operationId devolve todos visíveis (escopo no servidor); agrupar por book.operationId; responsável usa selectedBook.operationId
 - [Folgas grid — agrupar por grupo](folgas-grid-group-coverage.md) — rotular membro só se grupo COBRIR a operação (groupCoveredOperationIds); nunca filtrar org no WHERE; groupBy reordena o mesmo array (drag usa índices)
 - [Pessoa em várias operações](multi-operacao-pessoa.md) — user_roles já suporta (1 linha por operação+papel); gerir no diálogo de edição de Usuários; sem mudança de schema; grupo OPERATION exige papel ativo nessa op
+- [Autoridade por operação ≠ operationIds](operation-authority-check.md) — gestor/supervisor por operação: validar papel ATIVO na op exata em user_roles; operationIds do token só prova pertença (agrega todas as ops/papéis)

@@ -1,10 +1,46 @@
 import { eq, and, isNull, lte, gte, or } from "drizzle-orm";
-import { db, delegationsTable } from "@workspace/db";
+import { db, delegationsTable, userRolesTable } from "@workspace/db";
 import type { DelegatedResponsibility } from "@workspace/db/schema";
 
 // Papéis que, na ausência de um responsável definido por show, mantêm o
 // comportamento legado (qualquer gestor da operação pode operar).
 const MANAGER_ROLES = new Set(["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]);
+
+/**
+ * Confirma na BD se o utilizador tem um papel SUPERVISOR_A/B ATIVO nesta
+ * operação EXATA.
+ *
+ * IMPORTANTE: não basta `actor.operationIds.includes(opId)`. O token agrega
+ * TODAS as operações de TODOS os papéis ativos (inclui operações onde o user é
+ * só MEMBER) e `actor.role` é um único papel primário. Logo um supervisor da
+ * operação A que também é membro da operação B passaria num check baseado só em
+ * `operationIds` — escalada de privilégio cross-operation. Por isso validamos o
+ * papel-na-operação na fonte (user_roles).
+ */
+export async function isSupervisorOfOperation(userId: string, operationId: string): Promise<boolean> {
+  const rows = await db
+    .select({ id: userRolesTable.id })
+    .from(userRolesTable)
+    .where(
+      and(
+        eq(userRolesTable.userId, userId),
+        eq(userRolesTable.operationId, operationId),
+        eq(userRolesTable.active, true),
+        or(eq(userRolesTable.role, "SUPERVISOR_A"), eq(userRolesTable.role, "SUPERVISOR_B")),
+      ),
+    )
+    .limit(1);
+  return rows.length > 0;
+}
+
+/**
+ * Quem pode realizar ações de GESTÃO destrutivas/exclusivas de gestor sobre a
+ * operação: ADMIN (global) ou supervisor ATIVO dessa operação exata.
+ */
+export async function isOperationManager(actor: ActorLite, operationId: string): Promise<boolean> {
+  if (actor.role === "ADMIN") return true;
+  return isSupervisorOfOperation(actor.sub, operationId);
+}
 
 export interface ShowResponsibilityRef {
   id: string;
@@ -60,14 +96,16 @@ export async function hasActiveResponsibilityForShow(
  * posições, linhas). Admin pode tudo; se houver responsável definido, só ele
  * (e o admin); se não houver, qualquer gestor DA OPERAÇÃO do show (legado).
  */
-export function canManageShowBook(
+export async function canManageShowBook(
   actor: ActorLite,
   show: ShowResponsibilityRef,
   showOperationId: string,
-): boolean {
+): Promise<boolean> {
   if (actor.role === "ADMIN") return true;
   if (show.responsibleId) return show.responsibleId === actor.sub;
-  return MANAGER_ROLES.has(actor.role) && actor.operationIds.includes(showOperationId);
+  // Legado (sem responsável): qualquer gestor DA OPERAÇÃO, validado por papel
+  // SUPERVISOR_A/B ativo nessa operação exata (não só pertença via token).
+  return isSupervisorOfOperation(actor.sub, showOperationId);
 }
 
 /**
@@ -88,7 +126,9 @@ export async function canOperateDailyBook(
     // Só vale delegação concedida pelo próprio responsável do show.
     return hasActiveResponsibilityForShow(actor.sub, operationId, "DAILY_BOOK", show.id, show.responsibleId);
   }
-  if (MANAGER_ROLES.has(actor.role) && actor.operationIds.includes(operationId)) return true;
+  // Legado (sem responsável): gestor da operação (papel SUPERVISOR_A/B ativo
+  // nessa operação exata, validado na BD) OU capitão com delegação ativa.
+  if (await isSupervisorOfOperation(actor.sub, operationId)) return true;
   return hasActiveResponsibilityForShow(actor.sub, operationId, "DAILY_BOOK", show?.id ?? null);
 }
 

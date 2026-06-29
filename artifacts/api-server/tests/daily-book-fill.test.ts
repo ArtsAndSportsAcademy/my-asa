@@ -36,6 +36,8 @@ import {
   dailyBookBlocksTable,
   dailyBookPositionsTable,
   dailyBookAssignmentsTable,
+  userRolesTable,
+  delegationsTable,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import {
@@ -652,11 +654,88 @@ async function runIntegrationD() {
   }
 }
 
+// ─── (e) Autoridade de supervisor por OPERAÇÃO (sem escalada cross-operation) ──
+// Regressão do bug: ter a operação no token só prova PERTENÇA. Um supervisor da
+// operação A que também é MEMBER da operação B não pode gerir/delegar na op B.
+async function runIntegrationE() {
+  console.log("(e) integração HTTP: autoridade de supervisor por operação (sem escalada cross-operation)");
+  const TAG = `xop_${Date.now()}`;
+  const server = http.createServer(app);
+  await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+  const port = (server.address() as { port: number }).port;
+
+  const [org] = await db.insert(organizationsTable).values({ name: `${TAG}_org` }).returning();
+  const orgId = org!.id;
+  const [op1] = await db.insert(operationsTable).values({ organizationId: orgId, name: `${TAG}_opA` }).returning();
+  const [op2] = await db.insert(operationsTable).values({ organizationId: orgId, name: `${TAG}_opB` }).returning();
+  const opAId = op1!.id;
+  const opBId = op2!.id;
+
+  const mk = async (label: string) => {
+    const [u] = await db.insert(usersTable).values({ organizationId: orgId, name: `${TAG}_${label}` }).returning();
+    return u!.id;
+  };
+  // supX é supervisor ATIVO na op A, mas apenas MEMBER na op B.
+  const supX = await mk("supX");
+  const other = await mk("other"); // alvo da delegação
+  await db.insert(userRolesTable).values([
+    { userId: supX, operationId: opAId, role: "SUPERVISOR_A", active: true },
+    { userId: supX, operationId: opBId, role: "MEMBER", active: true },
+  ]);
+
+  // Shows SEM responsável (caminho legado, onde a autoridade vem do papel-na-op).
+  const [sbA] = await db.insert(showBooksTable).values({ operationId: opAId, title: `${TAG}_showA`, createdBy: supX }).returning();
+  const [sbB] = await db.insert(showBooksTable).values({ operationId: opBId, title: `${TAG}_showB`, createdBy: supX }).returning();
+  const showAId = sbA!.id;
+  const showBId = sbB!.id;
+
+  // O token agrega TODAS as operações dos papéis ativos (A e B) + papel primário.
+  const tokenSupX = signAccessToken({ sub: supX, jti: "t", organizationId: orgId, role: "SUPERVISOR_A", operationIds: [opAId, opBId] });
+  const fakeId = "00000000-0000-0000-0000-000000000000";
+  const window = { startDate: "2026-07-01", endDate: "2026-07-31", responsibilities: ["DAILY_BOOK"] };
+
+  try {
+    // Delegação por operação inteira (showBookId null) na op B → 403.
+    const delBNull = await httpJson(port, "POST", `/api/delegations`, tokenSupX, { ...window, delegateId: other, operationId: opBId, showBookId: null });
+    eqAssert(delBNull.status, 403, "(e) supervisor de A NÃO delega por operação inteira na op B (403)");
+
+    // Delegação com escopo de show num show da op B → 403 (mesma autoridade em falta).
+    const delBShow = await httpJson(port, "POST", `/api/delegations`, tokenSupX, { ...window, delegateId: other, operationId: opBId, showBookId: showBId });
+    eqAssert(delBShow.status, 403, "(e) supervisor de A NÃO delega show da op B (403)");
+
+    // (O controlo positivo de autoridade na op A é coberto pelo `mngA` abaixo, que
+    // não persiste linhas — evita-se delegar de facto, cujos avisos/recipients
+    // automáticos complicariam a limpeza.)
+
+    // Gestão do Livro do Show: editar referências num show SEM responsável da op B → 403.
+    const mngB = await httpJson(port, "POST", `/api/show-books/${showBId}/positions/${fakeId}/refs`, tokenSupX, { documentId: fakeId });
+    eqAssert(mngB.status, 403, "(e) supervisor de A NÃO gere show sem responsável da op B (403)");
+
+    // Controlo positivo: gerir show SEM responsável da op A passa o guard (404 por posição inexistente, não 403).
+    const mngA = await httpJson(port, "POST", `/api/show-books/${showAId}/positions/${fakeId}/refs`, tokenSupX, { documentId: fakeId });
+    eqAssert(mngA.status, 404, "(e) supervisor de A gere show sem responsável da op A (404 posição, não 403)");
+  } finally {
+    await db.delete(delegationsTable).where(eq(delegationsTable.operationId, opAId));
+    await db.delete(delegationsTable).where(eq(delegationsTable.operationId, opBId));
+    await db.delete(showBooksTable).where(eq(showBooksTable.id, showAId));
+    await db.delete(showBooksTable).where(eq(showBooksTable.id, showBId));
+    await db.delete(userRolesTable).where(eq(userRolesTable.userId, supX));
+    for (const id of [supX, other]) {
+      await db.delete(usersTable).where(eq(usersTable.id, id));
+    }
+    await db.delete(operationsTable).where(eq(operationsTable.id, opAId));
+    await db.delete(operationsTable).where(eq(operationsTable.id, opBId));
+    await db.delete(organizationsTable).where(eq(organizationsTable.id, orgId));
+    await new Promise<void>((r) => server.close(() => r()));
+  }
+}
+
 (async () => {
   try {
     await run();
     await runIntegrationC();
     await runIntegrationD();
+    await runIntegrationE();
   } catch (err) {
     console.error("Erro inesperado nos testes:", err);
     failures.push(`erro inesperado: ${(err as Error)?.message ?? err}`);
