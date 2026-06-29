@@ -26,7 +26,7 @@ import { requestLogger } from "../lib/logger.js";
 import { eventBus } from "../lib/event-bus.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { buildShowBookTree, collectUserIdsFromConfig, resolveShowBookCast } from "../services/line-resolver.js";
-import { canManageShowBook, canViewShowBook } from "../lib/show-responsibility.js";
+import { canManageShowBook, canViewShowBook, isOperationManager } from "../lib/show-responsibility.js";
 
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"] as const;
 
@@ -205,6 +205,24 @@ router.post("/show-books", requireAuth, requireOrganization, async (req, res) =>
   }
   const userId = req.user!.sub;
   try {
+    // Isolamento multi-tenant + autorização: a operação alvo tem de pertencer à
+    // organização do ator (404 para não revelar operações de outra org) e o ator
+    // tem de ser gestor dessa operação (admin global ou supervisor ativo). Sem
+    // isto qualquer autenticado criaria Livro do Show em qualquer operação.
+    const [op] = await db
+      .select({ organizationId: operationsTable.organizationId })
+      .from(operationsTable)
+      .where(eq(operationsTable.id, operationId))
+      .limit(1);
+    if (!op || op.organizationId !== req.user!.organizationId) {
+      res.status(404).json({ error: "Operação não encontrada" });
+      return;
+    }
+    const actor = { sub: req.user!.sub, role: req.user!.role, operationIds: req.user!.operationIds };
+    if (!(await isOperationManager(actor, operationId))) {
+      res.status(403).json({ error: "Forbidden", message: "Apenas um gestor desta operação (ou admin) pode criar Livros do Show" });
+      return;
+    }
     const [book] = await db
       .insert(showBooksTable)
       .values({

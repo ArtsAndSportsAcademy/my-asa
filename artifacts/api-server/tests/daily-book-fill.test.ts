@@ -694,6 +694,21 @@ async function runIntegrationE() {
   const fakeId = "00000000-0000-0000-0000-000000000000";
   const window = { startDate: "2026-07-01", endDate: "2026-07-31", responsibilities: ["DAILY_BOOK"] };
 
+  // Livro do Dia mínimo (evento+livro+cena+bloco+posição+alocação) por operação,
+  // ligado ao show SEM responsável, para exercitar os guards de mutação.
+  const seedDailyBook = async (opId: string, sbId: string, tag: string) => {
+    const [ev] = await db.insert(agendaEventsTable).values({ operationId: opId, showBookId: sbId, type: "SHOW", title: `${TAG}_${tag}_ev`, date: "2026-07-10", createdBy: supX }).returning();
+    const [dbk] = await db.insert(dailyBooksTable).values({ agendaEventId: ev!.id, showBookId: sbId, status: "DRAFT" }).returning();
+    const [sc] = await db.insert(dailyBookScenesTable).values({ dailyBookId: dbk!.id, name: "Cena 1", order: 1 }).returning();
+    const [bl] = await db.insert(dailyBookBlocksTable).values({ dailyBookId: dbk!.id, sceneId: sc!.id, name: "Bloco 1", order: 1 }).returning();
+    const [po] = await db.insert(dailyBookPositionsTable).values({ dailyBookId: dbk!.id, blockId: bl!.id, name: "Posição 1" }).returning();
+    const [asg] = await db.insert(dailyBookAssignmentsTable).values({ dailyBookId: dbk!.id, positionId: po!.id, status: "OPEN" }).returning();
+    return { eventId: ev!.id, bookId: dbk!.id, sceneId: sc!.id, blockId: bl!.id, positionId: po!.id, assignmentId: asg!.id };
+  };
+  const dbkB = await seedDailyBook(opBId, showBId, "B");
+  const dbkA = await seedDailyBook(opAId, showAId, "A");
+  let createdShowAId: string | null = null;
+
   try {
     // Delegação por operação inteira (showBookId null) na op B → 403.
     const delBNull = await httpJson(port, "POST", `/api/delegations`, tokenSupX, { ...window, delegateId: other, operationId: opBId, showBookId: null });
@@ -714,7 +729,40 @@ async function runIntegrationE() {
     // Controlo positivo: gerir show SEM responsável da op A passa o guard (404 por posição inexistente, não 403).
     const mngA = await httpJson(port, "POST", `/api/show-books/${showAId}/positions/${fakeId}/refs`, tokenSupX, { documentId: fakeId });
     eqAssert(mngA.status, 404, "(e) supervisor de A gere show sem responsável da op A (404 posição, não 403)");
+
+    // Mutações do Livro do Dia da op B (supX não supervisiona) → 403 em TODAS as rotas.
+    const mAssign = await httpJson(port, "PATCH", `/api/daily-book/${dbkB.bookId}/assignments/${dbkB.assignmentId}`, tokenSupX, { userId: null });
+    eqAssert(mAssign.status, 403, "(e) supX NÃO altera alocação do Livro do Dia da op B (403)");
+    const mPos = await httpJson(port, "DELETE", `/api/daily-book/${dbkB.bookId}/positions/${dbkB.positionId}`, tokenSupX);
+    eqAssert(mPos.status, 403, "(e) supX NÃO remove posição do Livro do Dia da op B (403)");
+    const mScene = await httpJson(port, "DELETE", `/api/daily-book/${dbkB.bookId}/scenes/${dbkB.sceneId}`, tokenSupX);
+    eqAssert(mScene.status, 403, "(e) supX NÃO remove cena do Livro do Dia da op B (403)");
+    const mBlock = await httpJson(port, "DELETE", `/api/daily-book/${dbkB.bookId}/blocks/${dbkB.blockId}`, tokenSupX);
+    eqAssert(mBlock.status, 403, "(e) supX NÃO remove bloco do Livro do Dia da op B (403)");
+    const mReorder = await httpJson(port, "PATCH", `/api/daily-book/${dbkB.bookId}/scenes/reorder`, tokenSupX, { scenes: [{ id: dbkB.sceneId, order: 2 }] });
+    eqAssert(mReorder.status, 403, "(e) supX NÃO reordena cenas do Livro do Dia da op B (403)");
+    const mExec = await httpJson(port, "POST", `/api/daily-book/${dbkB.bookId}/execute`, tokenSupX, {});
+    eqAssert(mExec.status, 403, "(e) supX NÃO executa Livro do Dia da op B (403)");
+    const mCancel = await httpJson(port, "POST", `/api/daily-book/${dbkB.bookId}/cancel`, tokenSupX, {});
+    eqAssert(mCancel.status, 403, "(e) supX NÃO cancela Livro do Dia da op B (403)");
+
+    // Criar Livro do Show: na op B (supX não gere) → 403; na op A (supervisiona) → 201.
+    const sbCreateB = await httpJson(port, "POST", `/api/show-books`, tokenSupX, { operationId: opBId, title: `${TAG}_negB` });
+    eqAssert(sbCreateB.status, 403, "(e) supX NÃO cria Livro do Show na op B (403)");
+    const sbCreateA = await httpJson(port, "POST", `/api/show-books`, tokenSupX, { operationId: opAId, title: `${TAG}_posA` });
+    eqAssert(sbCreateA.status, 201, "(e) supX cria Livro do Show na op A (201)");
+    createdShowAId = sbCreateA.json?.showBook?.id ?? null;
+
+    // Controlo positivo: na op A (que supervisiona) o guard passa; alocação inexistente
+    // devolve 404 (não 403) sem persistir auditoria.
+    const mAssignA = await httpJson(port, "PATCH", `/api/daily-book/${dbkA.bookId}/assignments/${fakeId}`, tokenSupX, { userId: null });
+    eqAssert(mAssignA.status, 404, "(e) supX passa o guard do Livro do Dia da op A (404 alocação, não 403)");
   } finally {
+    if (createdShowAId) await db.delete(showBooksTable).where(eq(showBooksTable.id, createdShowAId));
+    await db.delete(dailyBooksTable).where(eq(dailyBooksTable.id, dbkA.bookId));
+    await db.delete(dailyBooksTable).where(eq(dailyBooksTable.id, dbkB.bookId));
+    await db.delete(agendaEventsTable).where(eq(agendaEventsTable.id, dbkA.eventId));
+    await db.delete(agendaEventsTable).where(eq(agendaEventsTable.id, dbkB.eventId));
     await db.delete(delegationsTable).where(eq(delegationsTable.operationId, opAId));
     await db.delete(delegationsTable).where(eq(delegationsTable.operationId, opBId));
     await db.delete(showBooksTable).where(eq(showBooksTable.id, showAId));

@@ -123,6 +123,41 @@ async function getDailyBookOrFail(id: string, res: any) {
   return book;
 }
 
+/**
+ * Deriva a operação + o ref de responsabilidade do show a partir de um Livro do
+ * Dia (via showBookId → scaleId → agendaEventId) e aplica `canOperateDailyBook`.
+ * Centraliza a autorização de TODAS as mutações do Livro do Dia (assignments,
+ * cenas/blocos/posições, reorder), não só gerar/publicar: sem isto, qualquer
+ * supervisor da org poderia, por chamada direta, mutar o livro de um show de que
+ * outro supervisor é responsável. Responde 403 e devolve false quando barrado.
+ */
+async function requireDailyBookOperate(
+  book: { showBookId: string | null; scaleId: string | null; agendaEventId: string | null },
+  user: { sub: string; role: string; operationIds: string[] },
+  res: any,
+): Promise<boolean> {
+  if (user.role === "ADMIN") return true;
+  let operationId: string | null = null;
+  let show: ShowResponsibilityRef | null = null;
+  if (book.showBookId) {
+    const loaded = await loadShowRef(book.showBookId);
+    if (loaded) { operationId = loaded.operationId; show = loaded.ref; }
+  }
+  if (!operationId && book.scaleId) {
+    const [sr] = await db.select({ operationId: scalesTable.operationId }).from(scalesTable).where(eq(scalesTable.id, book.scaleId)).limit(1);
+    operationId = sr?.operationId ?? null;
+  }
+  if (!operationId && book.agendaEventId) {
+    const [ev] = await db.select({ operationId: agendaEventsTable.operationId }).from(agendaEventsTable).where(eq(agendaEventsTable.id, book.agendaEventId)).limit(1);
+    operationId = ev?.operationId ?? null;
+  }
+  if (!operationId || !(await canOperateDailyBook(user, operationId, show))) {
+    res.status(403).json({ error: "Forbidden", message: "Acesso restrito ao responsável do show, capitão delegado ou admin" });
+    return false;
+  }
+  return true;
+}
+
 async function buildDailyBookTree(dailyBookId: string) {
   const scenes = await db
     .select()
@@ -940,6 +975,7 @@ router.post("/daily-book/:id/execute", requireAuth, requireOrganization, require
   try {
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
+    if (!(await requireDailyBookOperate(book, req.user!, res))) return;
     if (!["PUBLISHED", "REPUBLISHED"].includes(book.status)) {
       res.status(409).json({ error: "Somente livros publicados podem ser executados" });
       return;
@@ -964,6 +1000,7 @@ router.post("/daily-book/:id/cancel", requireAuth, requireOrganization, requireR
   try {
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
+    if (!(await requireDailyBookOperate(book, req.user!, res))) return;
     if (book.status === "CANCELLED") {
       res.status(409).json({ error: "Livro já está cancelado" });
       return;
@@ -1177,6 +1214,7 @@ router.patch("/daily-book/:id/assignments/:assignmentId", requireAuth, requireOr
       res.status(409).json({ error: "Livro em estado terminal não pode ser alterado" });
       return;
     }
+    if (!(await requireDailyBookOperate(book, req.user!, res))) return;
     const [before] = await db.select().from(dailyBookAssignmentsTable).where(eq(dailyBookAssignmentsTable.id, assignmentId)).limit(1);
     const [updated] = await db
       .update(dailyBookAssignmentsTable)
@@ -1205,6 +1243,7 @@ router.delete("/daily-book/:id/positions/:positionId", requireAuth, requireOrgan
       res.status(409).json({ error: "Livro em estado terminal não pode ser alterado" });
       return;
     }
+    if (!(await requireDailyBookOperate(book, req.user!, res))) return;
     const [before] = await db.select().from(dailyBookPositionsTable).where(eq(dailyBookPositionsTable.id, positionId)).limit(1);
     const [updated] = await db
       .update(dailyBookPositionsTable)
@@ -1237,6 +1276,7 @@ router.delete("/daily-book/:id/scenes/:sceneId", requireAuth, requireOrganizatio
       res.status(409).json({ error: "Livro em estado terminal não pode ser alterado" });
       return;
     }
+    if (!(await requireDailyBookOperate(book, req.user!, res))) return;
     const [before] = await db.select().from(dailyBookScenesTable).where(eq(dailyBookScenesTable.id, sceneId)).limit(1);
     const [updatedScene] = await db
       .update(dailyBookScenesTable)
@@ -1281,6 +1321,7 @@ router.delete("/daily-book/:id/blocks/:blockId", requireAuth, requireOrganizatio
       res.status(409).json({ error: "Livro em estado terminal não pode ser alterado" });
       return;
     }
+    if (!(await requireDailyBookOperate(book, req.user!, res))) return;
     const [before] = await db.select().from(dailyBookBlocksTable).where(eq(dailyBookBlocksTable.id, blockId)).limit(1);
     const [updatedBlock] = await db
       .update(dailyBookBlocksTable)
@@ -1320,6 +1361,7 @@ router.patch("/daily-book/:id/scenes/reorder", requireAuth, requireOrganization,
       res.status(409).json({ error: "Livro em estado terminal não pode ser alterado" });
       return;
     }
+    if (!(await requireDailyBookOperate(book, req.user!, res))) return;
     for (const s of scenes) {
       await db
         .update(dailyBookScenesTable)

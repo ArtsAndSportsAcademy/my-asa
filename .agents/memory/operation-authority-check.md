@@ -24,3 +24,13 @@ no caminho legado, criar delegação por operação inteira com showBookId null)
 de passar pela verificação na BD. Leitura por MEMBER (ver shows/livros publicados
 da própria operação) pode continuar a usar operationIds — é pertença legítima, não
 autoridade. Regressão coberta em tests/daily-book-fill.test.ts caso (e).
+
+**TODAS as mutações do Livro do Dia precisam do mesmo guard.** Não basta proteger
+gerar/publicar/apagar: assignments, cenas/blocos/posições, reorder, executar e
+cancelar também mutam o livro de um show de outra operação. Usar o guard central
+que deriva a operação por `showBookId→scaleId→agendaEventId` e aplica
+`canOperateDailyBook` (devolve 403 quando barrado). Criar Livro do Show
+(POST /show-books) exige `isOperationManager` na operação alvo + a operação tem de
+pertencer à org do ator (404 senão) — sem isto qualquer autenticado cria show em
+qualquer operação. Regra geral: rota nova de mutação reutiliza o guard central da
+sua família, nunca confia só em `requireRole`.
