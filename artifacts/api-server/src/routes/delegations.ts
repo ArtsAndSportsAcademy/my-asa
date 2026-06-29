@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, and, isNull, isNotNull, or, lte, gte, desc } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { delegationsTable, usersTable, operationsTable, noticesTable, noticeRecipientsTable, showBooksTable } from "@workspace/db";
+import { delegationsTable, usersTable, operationsTable, noticesTable, noticeRecipientsTable, showBooksTable, userRolesTable } from "@workspace/db";
 import type { DelegatedResponsibility } from "@workspace/db/schema";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
@@ -244,19 +244,31 @@ router.post("/delegations", requireAuth, requireOrganization, async (req, res): 
     return;
   }
 
-  // Posse da operação: o supervisor só pode delegar (por operação ou por show)
-  // dentro das operações que efetivamente supervisiona. Sem esta verificação,
-  // uma delegação por operação inteira (showBookId null) poderia conceder
-  // poderes ao capitão em operações de terceiros (ex.: Livro do Dia de shows
-  // sem responsável, cujo fallback continua a ser por operação).
-  if (!user.operationIds.includes(operationId)) {
-    res.status(403).json({ error: "Forbidden", message: "Só pode delegar operações que supervisiona" });
-    return;
-  }
-
   const showBookId = (req.body as { showBookId?: string | null }).showBookId ?? null;
 
   try {
+    // Autoridade de supervisor na operação: ter `operationId` no token só prova
+    // PERTENÇA (pode ser mero membro). É preciso confirmar na BD um papel
+    // SUPERVISOR_A/B ATIVO nesta operação exata, senão um supervisor de outra
+    // operação poderia delegar (por operação inteira, showBookId null) em
+    // operações que não supervisiona — escalada de privilégio cross-operation.
+    const [supRole] = await db
+      .select({ id: userRolesTable.id })
+      .from(userRolesTable)
+      .where(
+        and(
+          eq(userRolesTable.userId, user.sub),
+          eq(userRolesTable.operationId, operationId),
+          eq(userRolesTable.active, true),
+          or(eq(userRolesTable.role, "SUPERVISOR_A"), eq(userRolesTable.role, "SUPERVISOR_B")),
+        ),
+      )
+      .limit(1);
+    if (!supRole) {
+      res.status(403).json({ error: "Forbidden", message: "Só pode delegar operações que supervisiona" });
+      return;
+    }
+
     // Delegação com escopo de show: o supervisor só pode delegar shows pelos
     // quais é o responsável definido, e o show tem de pertencer à operação.
     if (showBookId) {
