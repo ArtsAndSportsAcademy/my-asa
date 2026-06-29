@@ -32,7 +32,7 @@ import { useListUsers } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import {
   BookOpen, Layers, Layout, User, CheckCircle, AlertTriangle, XCircle,
-  ChevronRight, ChevronDown, Play, RotateCcw, Eye, Bell, Trash2,
+  ChevronRight, ChevronDown, Play, RotateCcw, Eye, Bell, Trash2, Folder, FolderOpen,
 } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -227,6 +227,14 @@ export default function SupervisorDailyBookPage() {
   const isSupervisor = auth.roles.some((r) => ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"].includes(r.role));
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [collapsedOps, setCollapsedOps] = useState<Set<string>>(new Set());
+  const toggleFolder = (opId: string) =>
+    setCollapsedOps((prev) => {
+      const next = new Set(prev);
+      if (next.has(opId)) next.delete(opId);
+      else next.add(opId);
+      return next;
+    });
   const [rightTab, setRightTab] = useState<"coverage" | "delta" | "history">("coverage");
   const [republishOpen, setRepublishOpen] = useState(false);
   const [republishReason, setRepublishReason] = useState("");
@@ -340,34 +348,44 @@ export default function SupervisorDailyBookPage() {
             ) : publishedBooks.length === 0 ? (
               <div className="p-4 text-center text-sm text-muted-foreground">Nenhum Livro do Dia publicado ainda. Aguarde o supervisor gerar e publicar o livro do próximo evento.</div>
             ) : (
-              groupDailyBooksByOperation(publishedBooks).map((group) => (
-                <div key={group.operationName}>
-                  <div className="px-3 py-1.5 bg-muted/40 text-xs font-semibold text-muted-foreground sticky top-0">
-                    {group.operationName}
-                  </div>
-                  {group.items.map((book) => (
+              groupDailyBooksByOperation(publishedBooks).map((group) => {
+                const hasSelected = group.items.some((b) => b.id === selectedId);
+                const collapsed = collapsedOps.has(group.operationId) && !hasSelected;
+                return (
+                  <div key={group.operationId}>
                     <button
-                      key={book.id}
-                      onClick={() => setSelectedId(book.id)}
-                      className={`w-full text-left px-3 py-2.5 border-b hover:bg-muted/50 transition-colors ${selectedId === book.id ? "bg-muted" : ""}`}
+                      onClick={() => toggleFolder(group.operationId)}
+                      className="w-full flex items-center gap-1.5 px-2 py-1.5 bg-muted/40 hover:bg-muted/60 text-left sticky top-0"
                     >
-                      <div className="flex items-center gap-2">
-                        <BookOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="text-sm font-medium truncate flex-1">
-                          {dailyBookLabel(book)}
-                        </span>
-                        <Badge variant={STATUS_VARIANTS[book.status] ?? "secondary"} className="text-xs shrink-0">
-                          v{book.version}
-                        </Badge>
-                      </div>
-                      <div className="mt-0.5 text-xs text-muted-foreground pl-5">
-                        {STATUS_LABELS[book.status] ?? book.status}
-                        {book.eventDate ? ` · ${new Date(book.eventDate + "T00:00:00").toLocaleDateString("pt-BR")}` : book.publishedAt ? ` · ${new Date(book.publishedAt).toLocaleDateString("pt-BR")}` : ""}
-                      </div>
+                      {collapsed ? <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+                      {collapsed ? <Folder className="h-4 w-4 shrink-0 text-muted-foreground" /> : <FolderOpen className="h-4 w-4 shrink-0 text-primary" />}
+                      <span className="text-xs font-semibold text-muted-foreground truncate">{group.operationName}</span>
+                      <span className="text-[10px] text-muted-foreground ml-auto shrink-0">{group.items.length}</span>
                     </button>
-                  ))}
-                </div>
-              ))
+                    {!collapsed && group.items.map((book) => (
+                      <button
+                        key={book.id}
+                        onClick={() => setSelectedId(book.id)}
+                        className={`w-full text-left px-3 py-2.5 border-b hover:bg-muted/50 transition-colors ${selectedId === book.id ? "bg-muted" : ""}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <BookOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="text-sm font-medium truncate flex-1">
+                            {dailyBookLabel(book)}
+                          </span>
+                          <Badge variant={STATUS_VARIANTS[book.status] ?? "secondary"} className="text-xs shrink-0">
+                            v{book.version}
+                          </Badge>
+                        </div>
+                        <div className="mt-0.5 text-xs text-muted-foreground pl-5">
+                          {STATUS_LABELS[book.status] ?? book.status}
+                          {book.eventDate ? ` · ${new Date(book.eventDate + "T00:00:00").toLocaleDateString("pt-BR")}` : book.publishedAt ? ` · ${new Date(book.publishedAt).toLocaleDateString("pt-BR")}` : ""}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
