@@ -8,9 +8,12 @@ import {
   useUpdateUserStatus,
   useDeleteUser,
   useAddUserRole,
+  useListUserRoles,
+  useRemoveUserRole,
+  getListUserRolesQueryKey,
   useGetOperations,
 } from "@workspace/api-client-react";
-import type { User } from "@workspace/api-client-react";
+import type { User, UserRole } from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
 import { AsaEmptyState } from "@/components/AsaEmptyState";
 import { Button } from "@/components/ui/button";
@@ -60,6 +63,16 @@ const ROLE_OPTIONS = [
   { value: "ADMIN",        label: "Administrador" },
 ] as const;
 
+const roleLabel = (role: string): string => {
+  switch (role) {
+    case "ADMIN":        return "Administrador";
+    case "SUPERVISOR_A": return "Supervisor";
+    case "SUPERVISOR_B": return "Supervisor";
+    case "MEMBER":       return "Membro / Elenco";
+    default:             return role;
+  }
+};
+
 export default function UsersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -75,6 +88,7 @@ export default function UsersPage() {
   const statusMutation = useUpdateUserStatus();
   const deleteMutation = useDeleteUser();
   const assignRoleMutation = useAddUserRole();
+  const removeRoleMutation = useRemoveUserRole();
 
   const { data: opsData } = useGetOperations();
   const operations = opsData?.operations ?? [];
@@ -88,6 +102,65 @@ export default function UsersPage() {
 
   const [createForm, setCreateForm] = useState({ name: "", password: "", role: "MEMBER", operationId: "", specialization: "", birthDate: "" });
   const [editForm, setEditForm] = useState({ name: "", email: "", username: "", specialization: "", birthDate: "" });
+  const [addRoleOpId, setAddRoleOpId] = useState("");
+  const [addRoleRole, setAddRoleRole] = useState("MEMBER");
+
+  const editRolesQuery = useListUserRoles(editUser?.id ?? "", {
+    query: { enabled: !!editUser?.id, queryKey: getListUserRolesQueryKey(editUser?.id ?? "") },
+  });
+  const editUserRoles: UserRole[] = (editRolesQuery.data?.roles ?? []).filter((r) => r.active);
+
+  const opName = (operationId: string | null | undefined) =>
+    operations.find((o: any) => o.id === operationId)?.name ?? "Operação";
+
+  const invalidateRoles = () => {
+    if (editUser) {
+      queryClient.invalidateQueries({ queryKey: getListUserRolesQueryKey(editUser.id) });
+    }
+  };
+
+  const handleAddRole = () => {
+    if (!editUser) return;
+    const operationId = addRoleOpId || operations[0]?.id;
+    if (!operationId) {
+      toast({ title: "Cadastre uma operação primeiro", variant: "destructive" });
+      return;
+    }
+    assignRoleMutation.mutate(
+      { id: editUser.id, data: { operationId, role: addRoleRole as any } },
+      {
+        onSuccess: () => {
+          toast({ title: "Operação adicionada à pessoa" });
+          setAddRoleOpId("");
+          setAddRoleRole("MEMBER");
+          invalidateRoles();
+          invalidate();
+        },
+        onError: (err: any) => {
+          const msg = err?.response?.data?.message ?? "Erro ao adicionar operação";
+          toast({ title: msg, variant: "destructive" });
+        },
+      }
+    );
+  };
+
+  const handleRemoveRole = (roleId: string) => {
+    if (!editUser) return;
+    removeRoleMutation.mutate(
+      { id: editUser.id, roleId },
+      {
+        onSuccess: () => {
+          toast({ title: "Operação removida da pessoa" });
+          invalidateRoles();
+          invalidate();
+        },
+        onError: (err: any) => {
+          const msg = err?.response?.data?.message ?? "Erro ao remover operação";
+          toast({ title: msg, variant: "destructive" });
+        },
+      }
+    );
+  };
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
 
@@ -547,6 +620,70 @@ export default function UsersPage() {
                 value={editForm.birthDate}
                 onChange={(e) => setEditForm((f) => ({ ...f, birthDate: e.target.value }))}
               />
+            </div>
+
+            <div className="space-y-2 border-t pt-4">
+              <Label>Operações <span className="text-muted-foreground text-xs">(uma pessoa pode pertencer a várias)</span></Label>
+              {editRolesQuery.isLoading ? (
+                <p className="text-xs text-muted-foreground">A carregar...</p>
+              ) : editUserRoles.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Sem operações atribuídas.</p>
+              ) : (
+                <div className="space-y-2">
+                  {editUserRoles.map((r) => (
+                    <div key={r.id} className="flex items-center justify-between gap-2 rounded-md border px-3 py-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{opName(r.operationId)}</p>
+                        <p className="text-xs text-muted-foreground">{roleLabel(r.role)}</p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        disabled={removeRoleMutation.isPending}
+                        onClick={() => handleRemoveRole(r.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-end gap-2 pt-1">
+                <div className="flex-1 space-y-1">
+                  <Label className="text-xs text-muted-foreground">Operação</Label>
+                  <select
+                    className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    value={addRoleOpId || operations[0]?.id || ""}
+                    onChange={(e) => setAddRoleOpId(e.target.value)}
+                  >
+                    {operations.map((op: any) => (
+                      <option key={op.id} value={op.id}>{op.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex-1 space-y-1">
+                  <Label className="text-xs text-muted-foreground">Papel</Label>
+                  <select
+                    className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    value={addRoleRole}
+                    onChange={(e) => setAddRoleRole(e.target.value)}
+                  >
+                    {ROLE_OPTIONS.map((r) => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={assignRoleMutation.isPending || operations.length === 0}
+                  onClick={handleAddRole}
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Adicionar
+                </Button>
+              </div>
             </div>
           </div>
           <DialogFooter>

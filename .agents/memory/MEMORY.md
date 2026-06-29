@@ -61,3 +61,4 @@
 - [Responsável do show = supervisor obrigatório](show-responsible-supervisor.md) — responsibleId tem de ser supervisor ativo da operação (senão escala privilégio); apagar Livro do Dia é gestor-only (capitão delegado opera mas não apaga)
 - [Visibilidade do Livro do Dia: supervisor=show, admin=tudo](daily-book-supervisor-op-level.md) — DECISÃO do utilizador: supervisor vê SÓ os livros de que é responsável (via canOperateDailyBook); admin gere e vê tudo; agrupar por operação é só UI, não muda visibilidade
 - [Folgas grid — agrupar por grupo](folgas-grid-group-coverage.md) — rotular membro só se grupo COBRIR a operação (groupCoveredOperationIds); nunca filtrar org no WHERE; groupBy reordena o mesmo array (drag usa índices)
+- [Pessoa em várias operações](multi-operacao-pessoa.md) — user_roles já suporta (1 linha por operação+papel); gerir no diálogo de edição de Usuários; sem mudança de schema; grupo OPERATION exige papel ativo nessa op
