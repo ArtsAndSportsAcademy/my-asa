@@ -61,8 +61,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import {
   Plus, History, BookOpen, Layers, Settings, Trash2, Library,
-  Pencil, Check, X, ChevronUp, ChevronDown, LayoutGrid,
+  Pencil, Check, X, ChevronUp, ChevronDown, ChevronRight, LayoutGrid,
   Sliders, UserPlus, Star, CalendarCheck, AlertTriangle, UserCheck, Clock,
+  Folder, FolderOpen,
 } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = { DRAFT: "Rascunho", PUBLISHED: "Publicado", ARCHIVED: "Arquivado" };
@@ -880,15 +881,19 @@ export default function ShowBookPage() {
     )
   );
   const { data: operationsData } = useGetOperations();
-  const myOperations = (operationsData?.operations ?? []).filter((o) => myOperationIds.includes(o.id));
+  // Operações em que o gestor pode CRIAR livros: admin total vê todas as
+  // operações da org; gestor não-admin vê só onde tem papel de gestão.
+  const allOperations = operationsData?.operations ?? [];
+  const manageableOperations = isFullAdmin
+    ? allOperations
+    : allOperations.filter((o) => myOperationIds.includes(o.id));
+  const operationNameById = new Map(allOperations.map((o) => [o.id, o.name]));
 
-  const [selectedOperationId, setSelectedOperationId] = useState<string | null>(null);
-  const operationId = selectedOperationId ?? myOperationIds[0];
-
-  const { data: listData, isLoading } = useListShowBooks(
-    { operationId: operationId ?? "" },
-    { query: { enabled: !!operationId, queryKey: getListShowBooksQueryKey({ operationId: operationId ?? "" }) } }
-  );
+  // Busca TODOS os livros visíveis (sem filtrar por operação) para os agrupar
+  // em pastas por operação. O backend já aplica o escopo de leitura por ator.
+  const { data: listData, isLoading } = useListShowBooks(undefined, {
+    query: { queryKey: getListShowBooksQueryKey() },
+  });
   const books: ShowBook[] = listData?.showBooks ?? [];
   const currentUserId = auth.user?.id ?? null;
   // Admin total vê todos os shows; gestor não-admin vê só os shows pelos quais é
@@ -896,6 +901,33 @@ export default function ShowBookPage() {
   const visibleBooks: ShowBook[] = isFullAdmin
     ? books
     : books.filter((b) => !b.responsibleId || b.responsibleId === currentUserId);
+
+  // Agrupa os livros em pastas por operação. Cada pasta usa o nome da operação
+  // (ou "Operação" como fallback se a operação não estiver acessível).
+  const bookFolders = (() => {
+    const byOp = new Map<string, ShowBook[]>();
+    for (const b of visibleBooks) {
+      const arr = byOp.get(b.operationId) ?? [];
+      arr.push(b);
+      byOp.set(b.operationId, arr);
+    }
+    return Array.from(byOp.entries())
+      .map(([opId, opBooks]) => ({
+        opId,
+        opName: operationNameById.get(opId) ?? "Operação",
+        books: [...opBooks].sort((a, b) => a.title.localeCompare(b.title, "pt")),
+      }))
+      .sort((a, b) => a.opName.localeCompare(b.opName, "pt"));
+  })();
+
+  const [collapsedOps, setCollapsedOps] = useState<Set<string>>(new Set());
+  const toggleFolder = (opId: string) =>
+    setCollapsedOps((prev) => {
+      const next = new Set(prev);
+      if (next.has(opId)) next.delete(opId);
+      else next.add(opId);
+      return next;
+    });
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [versionsOpen, setVersionsOpen] = useState(false);
@@ -925,7 +957,7 @@ export default function ShowBookPage() {
   // O responsável de um show tem de ser supervisor (A/B) da operação do show.
   // Mostrar só candidatos elegíveis evita atribuir um membro por engano (o
   // backend rejeita, mas filtrar a lista previne a confusão na origem).
-  const responsibleOperationId = selectedBook?.operationId ?? operationId;
+  const responsibleOperationId = selectedBook?.operationId;
   const eligibleResponsibles: Member[] = ((usersData?.users ?? []) as User[])
     .filter((u) => u.status === "ACTIVE")
     .filter((u) =>
@@ -990,7 +1022,7 @@ export default function ShowBookPage() {
   const assignResponsibleMutation = useAssignShowBookResponsible();
 
   const invalidateAll = () => {
-    queryClient.invalidateQueries({ queryKey: getListShowBooksQueryKey({ operationId: operationId ?? "" }) });
+    queryClient.invalidateQueries({ queryKey: getListShowBooksQueryKey() });
     if (selectedId) queryClient.invalidateQueries({ queryKey: getGetShowBookQueryKey(selectedId) });
   };
 
@@ -1003,6 +1035,12 @@ export default function ShowBookPage() {
   };
 
   const [createForm, setCreateForm] = useState({ title: "", description: "" });
+  const [createOpId, setCreateOpId] = useState<string>("");
+  const openCreate = (opId?: string) => {
+    setCreateOpId(opId ?? manageableOperations[0]?.id ?? "");
+    setCreateForm({ title: "", description: "" });
+    setCreateOpen(true);
+  };
   const [statusForm, setStatusForm] = useState({ status: "PUBLISHED", reason: "" });
 
   const failToast = (msg: string) => toast({ title: msg, variant: "destructive" });
@@ -1020,10 +1058,10 @@ export default function ShowBookPage() {
   };
 
   const handleCreate = () => {
-    if (!operationId) { failToast("Nenhuma operação ativa"); return; }
+    if (!createOpId) { failToast("Selecione uma operação"); return; }
     if (!createForm.title.trim()) { failToast("Título obrigatório"); return; }
     createMutation.mutate(
-      { data: { operationId, title: createForm.title.trim(), description: createForm.description || undefined, type: "STRUCTURED" } },
+      { data: { operationId: createOpId, title: createForm.title.trim(), description: createForm.description || undefined, type: "STRUCTURED" } },
       {
         onSuccess: (data) => {
           toast({ title: "Livro criado com sucesso" });
@@ -1286,30 +1324,12 @@ export default function ShowBookPage() {
       </div>
 
       <div className="flex gap-4 h-full">
-        {/* Lista de livros */}
-        <div className="w-72 shrink-0 flex flex-col gap-2">
-          {myOperations.length > 1 && (
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-muted-foreground">Operação</span>
-              <Select
-                value={operationId ?? ""}
-                onValueChange={(v) => { setSelectedOperationId(v); setSelectedId(null); }}
-              >
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="Selecione a operação" />
-                </SelectTrigger>
-                <SelectContent>
-                  {myOperations.map((o) => (
-                    <SelectItem key={o.id} value={o.id} className="text-xs">{o.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+        {/* Livros organizados em pastas por operação */}
+        <div className="w-72 shrink-0 flex flex-col gap-2 overflow-y-auto">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-muted-foreground">Livros</span>
+            <span className="text-sm font-medium text-muted-foreground">Livros por operação</span>
             {isAdmin && (
-              <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)}>
+              <Button size="sm" variant="outline" onClick={() => openCreate()}>
                 <Plus className="h-3.5 w-3.5 mr-1" /> Novo
               </Button>
             )}
@@ -1318,28 +1338,61 @@ export default function ShowBookPage() {
             <div className="flex-1 flex items-center justify-center">
               <div className="w-5 h-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
             </div>
-          ) : visibleBooks.length === 0 ? (
+          ) : bookFolders.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-2 text-muted-foreground">
               <BookOpen className="h-8 w-8 opacity-30" />
               <p className="text-sm">Nenhum Livro do Show criado ainda. Crie o primeiro livro para estruturar a produção da sua operação.</p>
             </div>
           ) : (
-            <div className="flex flex-col gap-1">
-              {visibleBooks.map((book) => (
-                <button
-                  key={book.id}
-                  onClick={() => setSelectedId(book.id)}
-                  className={`text-left p-3 rounded-lg border transition-colors ${selectedId === book.id ? "bg-primary/10 border-primary/30" : "bg-card hover:bg-muted/50 border-border"}`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-sm font-medium leading-tight">{book.title}</span>
-                    <Badge variant={STATUS_VARIANTS[book.status]} className="text-[10px] shrink-0">
-                      {STATUS_LABELS[book.status]}
-                    </Badge>
+            <div className="flex flex-col gap-2">
+              {bookFolders.map((folder) => {
+                const collapsed = collapsedOps.has(folder.opId);
+                return (
+                  <div key={folder.opId} className="flex flex-col">
+                    <div className="flex items-center gap-1 group">
+                      <button
+                        onClick={() => toggleFolder(folder.opId)}
+                        className="flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded-md hover:bg-muted/50 text-left"
+                      >
+                        {collapsed ? <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+                        {collapsed ? <Folder className="h-4 w-4 shrink-0 text-muted-foreground" /> : <FolderOpen className="h-4 w-4 shrink-0 text-primary" />}
+                        <span className="text-sm font-medium truncate">{folder.opName}</span>
+                        <span className="text-[10px] text-muted-foreground ml-auto shrink-0">{folder.books.length}</span>
+                      </button>
+                      {isAdmin && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100"
+                          title={`Novo livro em ${folder.opName}`}
+                          onClick={() => openCreate(folder.opId)}
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                    {!collapsed && (
+                      <div className="flex flex-col gap-1 pl-3 mt-1">
+                        {folder.books.map((book) => (
+                          <button
+                            key={book.id}
+                            onClick={() => setSelectedId(book.id)}
+                            className={`text-left p-3 rounded-lg border transition-colors ${selectedId === book.id ? "bg-primary/10 border-primary/30" : "bg-card hover:bg-muted/50 border-border"}`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <span className="text-sm font-medium leading-tight">{book.title}</span>
+                              <Badge variant={STATUS_VARIANTS[book.status]} className="text-[10px] shrink-0">
+                                {STATUS_LABELS[book.status]}
+                              </Badge>
+                            </div>
+                            <span className="text-xs text-muted-foreground mt-1">v{book.version} · {book.type}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <span className="text-xs text-muted-foreground mt-1">v{book.version} · {book.type}</span>
-                </button>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -1642,6 +1695,17 @@ export default function ShowBookPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>Novo Livro do Show</DialogTitle></DialogHeader>
           <div className="flex flex-col gap-3">
+            <div>
+              <Label>Operação *</Label>
+              <Select value={createOpId} onValueChange={setCreateOpId}>
+                <SelectTrigger><SelectValue placeholder="Selecione a operação" /></SelectTrigger>
+                <SelectContent>
+                  {manageableOperations.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <Label>Título *</Label>
               <Input value={createForm.title} onChange={(e) => setCreateForm((f) => ({ ...f, title: e.target.value }))} placeholder="Nome do espetáculo" />
