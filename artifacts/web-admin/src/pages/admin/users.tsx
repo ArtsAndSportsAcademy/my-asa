@@ -58,17 +58,19 @@ const ALL_SPECIALIZATIONS = [
 ] as const;
 
 const ROLE_OPTIONS = [
-  { value: "MEMBER",       label: "Membro / Elenco" },
+  { value: "MEMBER",       label: "Elenco" },
+  { value: "TRAINER",      label: "Treinador" },
   { value: "SUPERVISOR_A", label: "Supervisor" },
-  { value: "ADMIN",        label: "Administrador" },
+  { value: "ADMIN",        label: "Gerência" },
 ] as const;
 
 const roleLabel = (role: string): string => {
   switch (role) {
-    case "ADMIN":        return "Administrador";
+    case "ADMIN":        return "Gerência";
     case "SUPERVISOR_A": return "Supervisor";
     case "SUPERVISOR_B": return "Supervisor";
-    case "MEMBER":       return "Membro / Elenco";
+    case "TRAINER":      return "Treinador";
+    case "MEMBER":       return "Elenco";
     default:             return role;
   }
 };

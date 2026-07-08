@@ -14,4 +14,5 @@ export const RoleCreateRole = {
   SUPERVISOR_A: 'SUPERVISOR_A',
   SUPERVISOR_B: 'SUPERVISOR_B',
   MEMBER: 'MEMBER',
+  TRAINER: 'TRAINER',
 } as const;

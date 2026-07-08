@@ -5270,7 +5270,7 @@ components:
           nullable: true
         role:
           type: string
-          enum: [ADMIN, SUPERVISOR_A, SUPERVISOR_B, MEMBER]
+          enum: [ADMIN, SUPERVISOR_A, SUPERVISOR_B, MEMBER, TRAINER]
         active:
           type: boolean
       required: [id, userId, operationId, role, active]
@@ -5522,7 +5522,7 @@ components:
           nullable: true
         role:
           type: string
-          enum: [ADMIN, SUPERVISOR_A, SUPERVISOR_B, MEMBER]
+          enum: [ADMIN, SUPERVISOR_A, SUPERVISOR_B, MEMBER, TRAINER]
       required: [operationId, role]
 
     OperationCreate:

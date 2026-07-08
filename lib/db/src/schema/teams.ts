@@ -4,7 +4,7 @@ import { z } from "zod/v4";
 import { usersTable } from "./identity.js";
 import { operationsTable, operationalGroupsTable } from "./organization.js";
 
-export const userRoleEnum = pgEnum("user_role", ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B", "MEMBER"]);
+export const userRoleEnum = pgEnum("user_role", ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B", "MEMBER", "TRAINER"]);
 export const restrictionTypeEnum = pgEnum("restriction_type", ["PHYSICAL", "HEALTH", "SCHEDULE", "ROLE", "TECHNICAL", "PERSONAL"]);
 export const restrictionStatusEnum = pgEnum("restriction_status", ["ACTIVE", "EXPIRED"]);
 

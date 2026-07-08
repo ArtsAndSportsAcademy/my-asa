@@ -64,6 +64,7 @@ export const UserRoleRole = {
   SUPERVISOR_A: 'SUPERVISOR_A',
   SUPERVISOR_B: 'SUPERVISOR_B',
   MEMBER: 'MEMBER',
+  TRAINER: 'TRAINER',
 } as const;
 
 export interface UserRole {
@@ -260,6 +261,7 @@ export const RoleCreateRole = {
   SUPERVISOR_A: 'SUPERVISOR_A',
   SUPERVISOR_B: 'SUPERVISOR_B',
   MEMBER: 'MEMBER',
+  TRAINER: 'TRAINER',
 } as const;
 
 export interface RoleCreate {

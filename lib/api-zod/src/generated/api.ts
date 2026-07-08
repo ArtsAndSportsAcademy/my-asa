@@ -48,7 +48,7 @@ export const LoginResponse = zod.object({
   "userId": zod.string(),
   "operationId": zod.string(),
   "groupId": zod.string().nullish(),
-  "role": zod.enum(['ADMIN', 'SUPERVISOR_A', 'SUPERVISOR_B', 'MEMBER']),
+  "role": zod.enum(['ADMIN', 'SUPERVISOR_A', 'SUPERVISOR_B', 'MEMBER', 'TRAINER']),
   "active": zod.boolean()
 }))
 })
@@ -100,7 +100,7 @@ export const GetMeResponse = zod.object({
   "userId": zod.string(),
   "operationId": zod.string(),
   "groupId": zod.string().nullish(),
-  "role": zod.enum(['ADMIN', 'SUPERVISOR_A', 'SUPERVISOR_B', 'MEMBER']),
+  "role": zod.enum(['ADMIN', 'SUPERVISOR_A', 'SUPERVISOR_B', 'MEMBER', 'TRAINER']),
   "active": zod.boolean()
 })),
   "operationIds": zod.array(zod.string())
@@ -484,7 +484,7 @@ export const GetUserContextResponse = zod.object({
   "userId": zod.string(),
   "operationId": zod.string(),
   "groupId": zod.string().nullish(),
-  "role": zod.enum(['ADMIN', 'SUPERVISOR_A', 'SUPERVISOR_B', 'MEMBER']),
+  "role": zod.enum(['ADMIN', 'SUPERVISOR_A', 'SUPERVISOR_B', 'MEMBER', 'TRAINER']),
   "active": zod.boolean()
 })),
   "organization": zod.object({
@@ -686,7 +686,7 @@ export const ListUserRolesResponse = zod.object({
   "userId": zod.string(),
   "operationId": zod.string(),
   "groupId": zod.string().nullish(),
-  "role": zod.enum(['ADMIN', 'SUPERVISOR_A', 'SUPERVISOR_B', 'MEMBER']),
+  "role": zod.enum(['ADMIN', 'SUPERVISOR_A', 'SUPERVISOR_B', 'MEMBER', 'TRAINER']),
   "active": zod.boolean()
 }))
 })
@@ -702,7 +702,7 @@ export const AddUserRoleParams = zod.object({
 export const AddUserRoleBody = zod.object({
   "operationId": zod.string(),
   "groupId": zod.string().nullish(),
-  "role": zod.enum(['ADMIN', 'SUPERVISOR_A', 'SUPERVISOR_B', 'MEMBER'])
+  "role": zod.enum(['ADMIN', 'SUPERVISOR_A', 'SUPERVISOR_B', 'MEMBER', 'TRAINER'])
 })
 
 

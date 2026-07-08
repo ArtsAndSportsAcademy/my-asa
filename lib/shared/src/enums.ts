@@ -3,8 +3,17 @@ export const UserRole = {
   SUPERVISOR_A: "SUPERVISOR_A",
   SUPERVISOR_B: "SUPERVISOR_B",
   MEMBER: "MEMBER",
+  TRAINER: "TRAINER",
 } as const;
 export type UserRole = (typeof UserRole)[keyof typeof UserRole];
+
+export const USER_ROLE_LABELS: Record<string, string> = {
+  ADMIN: "Gerência",
+  SUPERVISOR_A: "Supervisor",
+  SUPERVISOR_B: "Supervisor",
+  TRAINER: "Treinador",
+  MEMBER: "Elenco",
+};
 
 export const UserStatus = {
   ACTIVE: "ACTIVE",

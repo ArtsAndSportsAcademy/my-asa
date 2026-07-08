@@ -44,10 +44,11 @@ const ASINHA_SVG = `<svg viewBox="0 0 100 112" xmlns="http://www.w3.org/2000/svg
 </svg>`;
 
 const ROLE_LABELS: Record<string, string> = {
-  ADMIN: "Administrador",
-  SUPERVISOR_A: "Supervisor Sênior",
+  ADMIN: "Gerência",
+  SUPERVISOR_A: "Supervisor",
   SUPERVISOR_B: "Supervisor",
-  MEMBER: "Membro",
+  TRAINER: "Treinador",
+  MEMBER: "Elenco",
 };
 
 const SPECIALIZATION_LABELS: Record<string, string> = {

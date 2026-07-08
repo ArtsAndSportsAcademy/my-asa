@@ -73,7 +73,7 @@ router.get("/users", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger("teams", req.requestId, req.correlationId);
   const { role, sub, organizationId } = req.user!;
 
-  if (role === "MEMBER") {
+  if (role === "MEMBER" || role === "TRAINER") {
     res.status(403).json({ error: "FORBIDDEN", message: "Membros não podem listar usuários" });
     return;
   }
@@ -122,7 +122,7 @@ router.get("/users/:id", requireAuth, requireOrganization, async (req, res) => {
   const { role, sub, organizationId } = req.user!;
   const id = req.params.id as string;
 
-  if (role === "MEMBER" && id !== sub) {
+  if ((role === "MEMBER" || role === "TRAINER") && id !== sub) {
     res.status(403).json({ error: "FORBIDDEN", message: "Membros só podem ver o próprio perfil" });
     return;
   }

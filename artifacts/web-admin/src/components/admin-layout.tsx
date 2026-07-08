@@ -307,12 +307,12 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
     .filter(Boolean);
 
   const roleLabel = isAdmin
-    ? "Administrador"
+    ? "Gerência"
     : isSupervisor
     ? "Supervisor"
     : isCaptain
     ? "Capitão"
-    : "Membro";
+    : "Elenco";
 
   const navGroups: NavGroup[] = isAdmin
     ? ADMIN_NAV
