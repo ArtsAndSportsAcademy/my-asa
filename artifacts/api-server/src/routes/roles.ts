@@ -13,7 +13,7 @@ router.get("/users/:id/roles", requireAuth, requireOrganization, async (req, res
   const { role: requesterRole, sub, organizationId } = req.user!;
   const id = req.params.id as string;
 
-  if (requesterRole === "MEMBER" && id !== sub) {
+  if ((requesterRole === "MEMBER" || requesterRole === "TRAINER") && id !== sub) {
     res.status(403).json({ error: "FORBIDDEN" });
     return;
   }
@@ -41,7 +41,7 @@ router.post("/users/:id/roles", requireAuth, requireOrganization, requireRole("A
   const log = requestLogger("teams", req.requestId, req.correlationId);
   const id = req.params.id as string;
   const { operationId, groupId, role } = req.body;
-  const VALID_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B", "MEMBER"] as const;
+  const VALID_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B", "MEMBER", "TRAINER"] as const;
 
   if (!operationId || !role) {
     res.status(400).json({ error: "BAD_REQUEST", message: "operationId e role são obrigatórios" });
@@ -100,7 +100,7 @@ router.post("/users/:id/roles", requireAuth, requireOrganization, requireRole("A
         userId: id,
         operationId,
         groupId: groupId ?? null,
-        role: role as "ADMIN" | "SUPERVISOR_A" | "SUPERVISOR_B" | "MEMBER",
+        role: role as "ADMIN" | "SUPERVISOR_A" | "SUPERVISOR_B" | "MEMBER" | "TRAINER",
         active: true,
       })
       .returning();
