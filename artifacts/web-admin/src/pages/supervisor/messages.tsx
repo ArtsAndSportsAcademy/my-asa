@@ -45,7 +45,7 @@ const CONTEXT_LABELS: Record<string, string> = {
 const ROLE_LABELS: Record<string, string> = {
   ADMIN:        "Gerência",
   SUPERVISOR_A: "Supervisor",
-  SUPERVISOR_B: "Supervisor",
+  SUPERVISOR_B: "Supervisor (legado)",
   TRAINER:      "Treinador",
   MEMBER:       "Elenco",
 };

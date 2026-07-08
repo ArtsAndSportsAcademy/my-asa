@@ -21,7 +21,7 @@ export interface AuthRole {
   userId: string;
   operationId: string;
   groupId: string | null;
-  role: "ADMIN" | "SUPERVISOR_A" | "SUPERVISOR_B" | "MEMBER";
+  role: "ADMIN" | "SUPERVISOR_A" | "SUPERVISOR_B" | "MEMBER" | "TRAINER";
   active: boolean;
 }
 

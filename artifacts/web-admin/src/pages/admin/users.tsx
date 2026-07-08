@@ -68,7 +68,7 @@ const roleLabel = (role: string): string => {
   switch (role) {
     case "ADMIN":        return "Gerência";
     case "SUPERVISOR_A": return "Supervisor";
-    case "SUPERVISOR_B": return "Supervisor";
+    case "SUPERVISOR_B": return "Supervisor (legado)";
     case "TRAINER":      return "Treinador";
     case "MEMBER":       return "Elenco";
     default:             return role;

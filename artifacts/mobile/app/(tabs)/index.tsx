@@ -46,7 +46,7 @@ const ASINHA_SVG = `<svg viewBox="0 0 100 112" xmlns="http://www.w3.org/2000/svg
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: "Gerência",
   SUPERVISOR_A: "Supervisor",
-  SUPERVISOR_B: "Supervisor",
+  SUPERVISOR_B: "Supervisor (legado)",
   TRAINER: "Treinador",
   MEMBER: "Elenco",
 };

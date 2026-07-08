@@ -10,7 +10,7 @@ export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 export const USER_ROLE_LABELS: Record<string, string> = {
   ADMIN: "Gerência",
   SUPERVISOR_A: "Supervisor",
-  SUPERVISOR_B: "Supervisor",
+  SUPERVISOR_B: "Supervisor (legado)",
   TRAINER: "Treinador",
   MEMBER: "Elenco",
 };
