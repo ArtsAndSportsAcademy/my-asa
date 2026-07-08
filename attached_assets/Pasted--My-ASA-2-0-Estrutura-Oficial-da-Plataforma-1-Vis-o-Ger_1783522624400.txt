@@ -1,0 +1,238 @@
+# My ASA 2.0
+
+# Estrutura Oficial da Plataforma
+
+---
+
+# 1. Visão Geral
+
+O My ASA é a plataforma central responsável por organizar pessoas, operações e equipes da empresa.
+
+Sua arquitetura é baseada em dois pilares principais:
+
+* **Usuários**: define quem utiliza o sistema e quais são suas responsabilidades.
+* **Estrutura**: define como a empresa está organizada dentro da plataforma.
+
+```text
+MY ASA
+│
+├── Usuários
+│
+└── Estrutura
+    └── Operações
+```
+
+---
+
+# 2. Usuários
+
+Os usuários representam todas as pessoas cadastradas no sistema.
+
+Cada usuário pertence a um único perfil principal.
+
+## Perfis de Usuário
+
+```text
+Usuários
+│
+├── Gerência (Administrador)
+├── Supervisores
+├── Capitães
+├── Treinadores
+└── Elenco
+```
+
+---
+
+## Gerência (Administrador)
+
+A Gerência possui acesso completo ao My ASA.
+
+É responsável por administrar toda a plataforma, incluindo:
+
+* Usuários
+* Operações
+* Equipes
+* Permissões
+* Configurações
+* Indicadores
+* Publicações
+
+Também define quais Operações e Equipes cada Supervisor, Capitão ou Treinador poderá acessar.
+
+---
+
+## Supervisores
+
+Os Supervisores são responsáveis pela gestão operacional.
+
+Cada Supervisor pode atuar em uma ou mais Operações e supervisionar uma ou mais Equipes.
+
+Entre suas responsabilidades estão:
+
+* Organizar escalas
+* Publicar livros
+* Criar ensaios
+* Distribuir tarefas
+* Aprovar solicitações
+* Coordenar equipes
+* Acompanhar a operação
+* Acompanhar Capitães
+
+---
+
+## Capitães
+
+Os Capitães são líderes de equipe.
+
+Eles atuam como referência operacional para o Elenco e auxiliam os Supervisores na organização do dia a dia.
+
+O Capitão não substitui o Supervisor e não possui a gestão completa da operação.
+
+Entre suas responsabilidades podem estar:
+
+* Apoiar a organização da equipe.
+* Auxiliar no cumprimento das escalas.
+* Orientar o Elenco.
+* Acompanhar tarefas da equipe.
+* Informar necessidades ao Supervisor.
+* Receber permissões específicas quando necessário.
+
+Cada Equipe pode possuir nenhum, um ou mais Capitães, conforme definido pela Gerência.
+
+---
+
+## Treinadores
+
+Os Treinadores são responsáveis pelo desenvolvimento técnico, artístico e físico do Elenco.
+
+Seu foco é a formação e evolução dos participantes.
+
+Podem:
+
+* Ministrar aulas.
+* Organizar treinamentos.
+* Registrar presença.
+* Avaliar desempenho.
+* Acompanhar evolução técnica.
+
+Os Treinadores não pertencem ao Elenco e não possuem, por padrão, responsabilidades administrativas sobre a operação.
+
+---
+
+## Elenco
+
+O Elenco representa todos os integrantes que executam as atividades das operações.
+
+Inclui artistas, técnicos, produção, apoio e demais profissionais envolvidos nas atividades operacionais.
+
+Cada integrante acompanha sua rotina através do My ASA, consultando escalas, agenda, livros, tarefas, mensagens e demais informações relacionadas ao seu trabalho.
+
+---
+
+# 3. Estrutura
+
+A Estrutura representa como a empresa está organizada dentro do My ASA.
+
+Ela é composta por Operações e Equipes.
+
+```text
+Estrutura
+│
+└── Operações
+    │
+    ├── Snowland
+    │   ├── Patinação
+    │   ├── Bailarinos
+    │   ├── Teatro
+    │   └── Produção
+    │
+    ├── Acquamotion
+    │   ├── Patinação
+    │   ├── Teatro
+    │   └── Produção
+    │
+    └── Hotelaria
+        ├── Personagens
+        ├── Recreação
+        └── Produção
+```
+
+---
+
+## Operações
+
+As Operações representam cada unidade da empresa.
+
+Cada Operação possui sua própria organização e seus próprios recursos, como:
+
+* Equipes
+* Agenda
+* Escalas
+* Livros
+* Ensaios
+* Tarefas
+* Biblioteca
+* Mensagens
+* IA
+* Configurações
+
+Uma pessoa pode participar de uma ou mais Operações.
+
+---
+
+## Equipes (Grupos)
+
+As Equipes pertencem obrigatoriamente a uma Operação.
+
+Uma Equipe não pode existir sem estar vinculada a uma Operação.
+
+Cada Operação pode possuir quantas Equipes forem necessárias.
+
+Mesmo quando possuem o mesmo nome, as Equipes de Operações diferentes são independentes entre si.
+
+---
+
+# 4. Regras Gerais
+
+* O My ASA é dividido em dois pilares: **Usuários** e **Estrutura**.
+* Todo usuário possui um único perfil principal.
+* Uma pessoa pode participar de uma ou mais Operações.
+* Toda Equipe pertence obrigatoriamente a uma Operação.
+* Um Supervisor pode supervisionar várias Equipes.
+* Um Capitão pertence a uma ou mais Equipes e atua como líder operacional.
+* Um Treinador pode atuar em uma ou mais Operações.
+* Permissões adicionais podem ser concedidas sem alterar o perfil principal do usuário.
+
+---
+
+# Arquitetura Resumida
+
+```text
+MY ASA
+│
+├── Usuários
+│   ├── Gerência
+│   ├── Supervisores
+│   ├── Capitães
+│   ├── Treinadores
+│   └── Elenco
+│
+└── Estrutura
+    └── Operações
+        ├── Snowland
+        │   ├── Patinação
+        │   ├── Bailarinos
+        │   ├── Teatro
+        │   └── Produção
+        │
+        ├── Acquamotion
+        │   ├── Patinação
+        │   ├── Teatro
+        │   └── Produção
+        │
+        └── Hotelaria
+            ├── Personagens
+            ├── Recreação
+            └── Produção
+```

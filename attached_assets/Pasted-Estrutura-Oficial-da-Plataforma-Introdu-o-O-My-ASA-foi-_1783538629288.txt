@@ -1,0 +1,623 @@
+Estrutura Oficial da Plataforma
+
+⸻
+
+Introdução
+
+O My ASA foi desenvolvido para organizar pessoas, operações e processos de forma simples, flexível e escalável.
+
+Sua arquitetura é baseada em dois pilares principais:
+
+* Usuários: quem utiliza o sistema.
+* Estrutura: onde essas pessoas atuam.
+
+A partir desses dois pilares, o sistema organiza funções, responsabilidades, permissões e grupos automaticamente.
+
+⸻
+
+1. Usuários
+
+Os usuários representam todas as pessoas cadastradas no My ASA.
+
+Cada pessoa possui apenas um perfil principal.
+
+Perfis
+
+Usuários
+│
+├── Gerência
+├── Supervisor
+├── Treinador
+└── Elenco
+
+Gerência
+
+Responsável pela administração geral da plataforma.
+
+Pode criar operações, equipes, usuários, grupos, definir responsáveis e configurar o sistema.
+
+⸻
+
+Supervisor
+
+Responsável pela gestão operacional.
+
+Organiza equipes, distribui responsabilidades e acompanha a execução das atividades.
+
+Um Supervisor pode administrar uma ou mais equipes, em uma ou mais operações.
+
+⸻
+
+Treinador
+
+Responsável pelo desenvolvimento técnico e artístico.
+
+Seu foco é acompanhar treinamentos, aulas e evolução dos participantes.
+
+Nesta primeira versão, possui acesso apenas à sua rotina operacional.
+
+⸻
+
+Elenco
+
+Representa todos os integrantes que participam das operações da empresa.
+
+Inclui artistas, técnicos, produção, apoio e demais profissionais.
+
+⸻
+
+2. Estrutura
+
+A Estrutura representa como a empresa está organizada.
+
+Estrutura
+│
+└── Operações
+      │
+      └── Equipes
+
+Operações
+
+As Operações representam cada unidade da empresa.
+
+Exemplos:
+
+* Snowland
+* Acquamotion
+* Hotelaria
+
+Cada Operação possui sua própria organização.
+
+⸻
+
+Equipes
+
+As Equipes pertencem obrigatoriamente a uma Operação.
+
+Exemplos:
+
+Snowland
+
+* Patinação
+* Bailarinos
+* Teatro
+* Produção
+
+Acquamotion
+
+* Patinação
+* Teatro
+* Produção
+
+Uma mesma pessoa pode participar de uma ou mais Equipes e de uma ou mais Operações.
+
+⸻
+
+3. Funções
+
+A Função representa o trabalho que a pessoa exerce.
+
+Exemplos:
+
+* Patinador
+* Bailarino
+* Ator
+* Produção
+* Técnico
+* Professor de Ballet
+* Treinador de Patinação
+
+A Função é independente do perfil.
+
+Exemplo:
+
+Perfil: Elenco
+
+Função: Patinador
+
+⸻
+
+4. Responsabilidades
+
+As Responsabilidades definem quem é o responsável por cada processo da operação.
+
+Exemplos:
+
+* Livro do Dia
+* Livro do Show
+* Escalas
+* Biblioteca
+* Agenda
+* Avisos
+
+Cada responsabilidade possui um responsável definido pelo Supervisor ou pela Gerência.
+
+Exemplo:
+
+Livro do Dia → Teatro
+
+Responsável:
+
+Carolina
+
+Livro do Dia → Musical
+
+Responsável:
+
+Arthur
+
+Escalas
+
+Responsável:
+
+Victor
+
+O responsável recebe automaticamente as permissões necessárias para executar aquela atividade.
+
+⸻
+
+5. Permissões
+
+As permissões determinam o que cada usuário pode fazer dentro do sistema.
+
+Na maioria dos casos, elas são concedidas automaticamente de acordo com as responsabilidades atribuídas.
+
+Exemplo:
+
+Responsável pelo Livro do Dia
+
+↓
+
+Pode editar e publicar apenas o Livro do Dia sob sua responsabilidade.
+
+⸻
+
+6. Grupos
+
+O My ASA possui dois tipos de grupos.
+
+Grupos Operacionais
+
+Pertencem a uma Operação e representam as Equipes.
+
+Exemplo:
+
+Snowland
+
+* Patinação
+* Bailarinos
+* Teatro
+
+⸻
+
+Grupos Inteligentes
+
+São criados automaticamente pelo sistema através de regras.
+
+Exemplos:
+
+* Todo o Elenco
+* Todos os Supervisores
+* Todos os Treinadores
+* Todos os Patinadores
+* Todos os Bailarinos
+* Patinadores do Snowland
+* Supervisores do Acquamotion
+
+Os Grupos Inteligentes são atualizados automaticamente sempre que um usuário muda de perfil, operação, equipe ou função.
+
+⸻
+
+Grupos Personalizados
+
+Também é possível criar grupos manuais.
+
+Exemplos:
+
+* Pocket de Natal
+* Comissão de Marketing
+* Projeto Antonella
+* Evento Especial
+
+Esses grupos podem ser utilizados para mensagens, tarefas, ensaios, avisos e demais funcionalidades.
+
+⸻
+
+Princípios do My ASA
+
+* Cada pessoa possui um único cadastro.
+* Cada pessoa possui um único perfil principal.
+* Uma pessoa pode participar de várias Operações.
+* Uma pessoa pode participar de várias Equipes.
+* Toda Equipe pertence a uma Operação.
+* Um Supervisor pode supervisionar várias Equipes.
+* O Supervisor define os responsáveis pelos processos da sua operação.
+* As permissões são consequência das responsabilidades.
+* O sistema possui Grupos Inteligentes e Grupos Personalizados.
+* O My ASA prioriza simplicidade, flexibilidade e organização.
+
+My ASA 2.0
+
+Como o My ASA Pensa
+
+“O My ASA não organiza apenas informações. Ele organiza pessoas, responsabilidades e operações.”
+
+⸻
+
+A Filosofia do My ASA
+
+O My ASA foi criado para representar o funcionamento real da empresa.
+
+Ao invés de controlar apenas permissões ou cargos, o sistema entende:
+
+* Quem é a pessoa.
+* Onde ela trabalha.
+* O que ela faz.
+* Do que ela é responsável.
+* O que ela pode fazer.
+* Com quem ela trabalha.
+
+Essa lógica permite que o sistema seja simples para o usuário e flexível para empresas de qualquer tamanho.
+
+⸻
+
+1. Quem a pessoa é?
+
+Todo usuário possui um único Perfil.
+
+O Perfil representa quem aquela pessoa é dentro da empresa.
+
+Existem quatro perfis oficiais:
+
+Gerência
+Supervisor
+Treinador
+Elenco
+
+O Perfil muda muito raramente.
+
+Ele representa a posição principal da pessoa dentro da organização.
+
+Exemplo:
+
+Carol → Elenco
+
+Victor → Supervisor
+
+Edu → Treinador
+
+Cris → Gerência
+
+⸻
+
+2. Onde essa pessoa trabalha?
+
+Depois do Perfil, o My ASA identifica onde aquela pessoa atua.
+
+A empresa é organizada em Operações.
+
+Cada Operação possui suas próprias Equipes.
+
+My ASA
+
+↓
+
+Operação
+
+↓
+
+Equipe
+
+Exemplo:
+
+Operação
+
+Snowland
+
+Equipe
+
+Patinação
+
+ou
+
+Operação
+
+Hotelaria
+
+Equipe
+
+Personagens
+
+Uma mesma pessoa pode participar de várias Operações e de várias Equipes.
+
+⸻
+
+3. O que essa pessoa faz?
+
+O Perfil não define a profissão da pessoa.
+
+Quem define isso é a Função.
+
+Exemplos:
+
+* Patinador
+* Bailarino
+* Ator
+* Personagem
+* Produção
+* Técnico
+* Professor de Ballet
+* Treinador de Patinação
+
+Assim, duas pessoas podem possuir o mesmo Perfil e exercer funções completamente diferentes.
+
+Exemplo:
+
+Perfil
+
+Elenco
+
+Funções
+
+Patinador
+
+Ator
+
+Produção
+
+Técnico
+
+Todos pertencem ao Elenco, mas possuem funções distintas.
+
+⸻
+
+4. Do que essa pessoa é responsável?
+
+Esta é uma das ideias centrais do My ASA.
+
+O sistema não pergunta apenas:
+
+“Quem pode fazer?”
+
+Ele pergunta:
+
+“Quem é o responsável por isso?”
+
+Cada processo possui um responsável.
+
+Exemplos:
+
+Livro do Dia
+
+Responsável:
+
+Carolina
+
+Escalas
+
+Responsável:
+
+Victor
+
+Biblioteca
+
+Responsável:
+
+Edu
+
+Agenda
+
+Responsável:
+
+Daniela
+
+O responsável é definido pelo Supervisor ou pela Gerência.
+
+⸻
+
+5. O que essa pessoa pode fazer?
+
+As permissões são consequência das responsabilidades.
+
+Quando alguém se torna responsável por um processo, o sistema concede automaticamente as permissões necessárias.
+
+Exemplo:
+
+Carolina
+
+Responsável pelo Livro do Dia do Teatro.
+
+Ela poderá:
+
+* editar o Livro do Dia do Teatro;
+* publicar o Livro do Dia do Teatro.
+
+Ela não poderá alterar os Livros dos outros espetáculos.
+
+Assim, o sistema evita permissões desnecessárias e mantém a organização da operação.
+
+⸻
+
+6. Com quem essa pessoa trabalha?
+
+O My ASA organiza pessoas através de Grupos.
+
+Existem dois tipos de grupos.
+
+Grupos Operacionais
+
+São as Equipes pertencentes a cada Operação.
+
+Exemplo:
+
+Snowland
+
+* Patinação
+* Teatro
+* Produção
+
+⸻
+
+Grupos Inteligentes
+
+São criados automaticamente pelo sistema através de regras.
+
+Exemplos:
+
+* Todo o Elenco
+* Todos os Supervisores
+* Todos os Treinadores
+* Todos os Patinadores
+* Todos os Bailarinos
+* Patinadores do Snowland
+
+Sempre que uma pessoa muda de Operação, Equipe, Perfil ou Função, esses grupos são atualizados automaticamente.
+
+⸻
+
+Grupos Personalizados
+
+Também podem ser criados grupos específicos para necessidades da operação.
+
+Exemplos:
+
+* Pocket de Natal
+* Comissão de Marketing
+* Evento Especial
+* Projeto Antonella
+
+Esses grupos podem ser utilizados em mensagens, tarefas, avisos, ensaios e demais funcionalidades.
+
+⸻
+
+Como o My ASA toma decisões
+
+Sempre que o sistema precisa responder a uma pergunta, ele segue a mesma lógica.
+
+Quem é?
+
+Perfil.
+
+↓
+
+Onde trabalha?
+
+Operação.
+
+↓
+
+Em qual equipe?
+
+Equipe.
+
+↓
+
+O que faz?
+
+Função.
+
+↓
+
+Do que é responsável?
+
+Responsabilidades.
+
+↓
+
+O que pode fazer?
+
+Permissões.
+
+↓
+
+Com quem trabalha?
+
+Grupos.
+
+Essa sequência é utilizada em toda a plataforma.
+
+⸻
+
+Exemplo Completo
+
+Carolina
+
+Perfil
+
+Elenco
+
+Operação
+
+Snowland
+
+Equipe
+
+Patinação
+
+Função
+
+Patinadora
+
+Responsabilidade
+
+Livro do Dia – Teatro
+
+Permissões
+
+Editar e publicar o Livro do Dia do Teatro.
+
+Grupos
+
+* Patinação
+* Snowland
+* Todo o Elenco
+* Todos os Patinadores
+
+⸻
+
+Os princípios do My ASA
+
+O My ASA foi construído sobre princípios simples:
+
+* Cada pessoa possui um único cadastro.
+* Cada pessoa possui um único Perfil principal.
+* Uma pessoa pode atuar em várias Operações.
+* Uma pessoa pode participar de várias Equipes.
+* Toda Equipe pertence a uma Operação.
+* O Supervisor organiza a operação.
+* A Gerência administra a empresa.
+* O Treinador desenvolve pessoas.
+* O Elenco executa as atividades.
+* As Responsabilidades definem quem cuida de cada processo.
+* As Permissões são consequência das Responsabilidades.
+* Os Grupos conectam automaticamente as pessoas certas.
+
+⸻
+
+A essência do My ASA
+
+O My ASA não foi criado para controlar pessoas.
+
+Ele foi criado para organizar o trabalho de forma clara, distribuindo responsabilidades, conectando equipes e garantindo que cada pessoa tenha acesso apenas ao que realmente precisa para exercer sua função.
+
+Essa filosofia permite que a plataforma cresça junto com a empresa, mantendo sua simplicidade, flexibilidade e organização.
