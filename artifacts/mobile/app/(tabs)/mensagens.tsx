@@ -44,10 +44,11 @@ const CONTEXT_LABELS: Record<string, string> = {
 };
 
 const ROLE_LABELS: Record<string, string> = {
-  ADMIN:        "Admin",
-  SUPERVISOR_A: "Supervisor A",
-  SUPERVISOR_B: "Supervisor B",
-  MEMBER:       "Membro",
+  ADMIN:        "Gerência",
+  SUPERVISOR_A: "Supervisor",
+  SUPERVISOR_B: "Supervisor (legado)",
+  TRAINER:      "Treinador",
+  MEMBER:       "Elenco",
 };
 
 function fmtTime(dt: string | undefined | null): string {
