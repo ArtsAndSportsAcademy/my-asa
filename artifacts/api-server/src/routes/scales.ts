@@ -258,6 +258,46 @@ router.get("/scales/my-allocations", requireAuth, requireOrganization, async (re
   }
 });
 
+// GET /api/scales/suggestions?operationId=&date=YYYY-MM-DD
+// Rota plana (per task spec): encontra a escala activa para a operação e devolve sugestões.
+// DEVE vir antes de /scales/:id para não ser capturada com id="suggestions".
+router.get("/scales/suggestions", requireAuth, requireOrganization, async (req, res) => {
+  const log = requestLogger("scale", req.requestId, req.correlationId);
+  const user = req.user!;
+  const { operationId, date } = req.query as { operationId?: string; date?: string };
+
+  if (!operationId || !date) {
+    res.status(400).json({ error: "operationId e date são obrigatórios" });
+    return;
+  }
+
+  try {
+    const [scale] = await db
+      .select()
+      .from(scalesTable)
+      .where(
+        and(
+          eq(scalesTable.operationId, operationId),
+          lte(scalesTable.periodStart, date),
+          gte(scalesTable.periodEnd, date)
+        )
+      )
+      .orderBy(desc(scalesTable.createdAt))
+      .limit(1);
+
+    if (!scale) {
+      res.json({ suggestions: [] });
+      return;
+    }
+
+    const suggestions = await computeScaleSuggestions(scale, date, user.organizationId);
+    res.json({ suggestions });
+  } catch (err) {
+    log.error({ err }, "erro ao calcular sugestões de escala (plana)");
+    res.status(500).json({ error: "Erro interno" });
+  }
+});
+
 // GET /api/scales/:id — get scale with allocations
 router.get("/scales/:id", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger("scale", req.requestId, req.correlationId);
@@ -1118,45 +1158,6 @@ async function computeScaleSuggestions(
     responsibilities: respByMember.get(m.userId) ?? [],
   }));
 }
-
-// GET /api/scales/suggestions?operationId=&date=YYYY-MM-DD
-// Rota plana: encontra a escala activa para a operação e delega ao helper.
-router.get("/scales/suggestions", requireAuth, requireOrganization, async (req, res) => {
-  const log = requestLogger("scale", req.requestId, req.correlationId);
-  const user = req.user!;
-  const { operationId, date } = req.query as { operationId?: string; date?: string };
-
-  if (!operationId || !date) {
-    res.status(400).json({ error: "operationId e date são obrigatórios" });
-    return;
-  }
-
-  try {
-    const [scale] = await db
-      .select()
-      .from(scalesTable)
-      .where(
-        and(
-          eq(scalesTable.operationId, operationId),
-          lte(scalesTable.periodStart, date),
-          gte(scalesTable.periodEnd, date)
-        )
-      )
-      .orderBy(desc(scalesTable.createdAt))
-      .limit(1);
-
-    if (!scale) {
-      res.json({ suggestions: [] });
-      return;
-    }
-
-    const suggestions = await computeScaleSuggestions(scale, date, user.organizationId);
-    res.json({ suggestions });
-  } catch (err) {
-    log.error({ err }, "erro ao calcular sugestões de escala (plana)");
-    res.status(500).json({ error: "Erro interno" });
-  }
-});
 
 // GET /api/scales/:id/suggestions?date=YYYY-MM-DD
 // Retorna membros com tempo livre e as suas responsabilidades activas para a data indicada.
