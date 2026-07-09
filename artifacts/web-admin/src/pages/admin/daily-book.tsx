@@ -41,8 +41,11 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   ChevronRight, ChevronDown, BookOpen, Layers, Layout, AlignLeft,
   Users, Trash2, Play, RefreshCw, Send, RotateCcw, CheckCircle, XCircle, User, AlertTriangle,
-  Check, X, Folder, FolderOpen,
+  Check, X, Folder, FolderOpen, ChevronsUpDown,
 } from "lucide-react";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { useListUsers, useGetOperations } from "@workspace/api-client-react";
 import { useListShowBooks } from "@workspace/api-client-react";
 import type { ShowBook } from "@workspace/api-client-react";
@@ -249,6 +252,7 @@ export default function AdminDailyBookPage() {
   const [generateOpen, setGenerateOpen] = useState(false);
   const [selectedShowBookId, setSelectedShowBookId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [showPickerOpen, setShowPickerOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [publishComment, setPublishComment] = useState("");
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -909,27 +913,53 @@ export default function AdminDailyBookPage() {
           <div className="space-y-4 py-2">
             <div>
               <Label className="mb-1.5 block">Livro do Show</Label>
-              <Select
-                value={selectedShowBookId ?? ""}
-                onValueChange={(v) => { setSelectedShowBookId(v); }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o livro do show..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(showBooksByOp).sort(([aId], [bId]) =>
-                    (operationNames[aId] ?? aId).localeCompare(operationNames[bId] ?? bId, "pt-BR")
-                  ).map(([opId, books]) => (
-                    books.map((sb) => (
-                      <SelectItem key={sb.id} value={sb.id}>
-                        {Object.keys(showBooksByOp).length > 1
-                          ? `${operationNames[opId] ?? "Operação"} — ${sb.title}`
-                          : sb.title}
-                      </SelectItem>
-                    ))
-                  ))}
-                </SelectContent>
-              </Select>
+              {(() => {
+                const multiOp = Object.keys(showBooksByOp).length > 1;
+                const options = Object.entries(showBooksByOp)
+                  .sort(([aId], [bId]) => (operationNames[aId] ?? aId).localeCompare(operationNames[bId] ?? bId, "pt-BR"))
+                  .flatMap(([opId, books]) =>
+                    books.map((sb) => ({
+                      id: sb.id,
+                      label: multiOp ? `${operationNames[opId] ?? "Operação"} — ${sb.title}` : sb.title,
+                    }))
+                  );
+                const selected = options.find((o) => o.id === selectedShowBookId);
+                return (
+                  <Popover open={showPickerOpen} onOpenChange={setShowPickerOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={showPickerOpen}
+                        className="w-full justify-between font-normal"
+                      >
+                        <span className="truncate">{selected ? selected.label : <span className="text-muted-foreground">Selecione o livro do show...</span>}</span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="p-0" style={{ width: "var(--radix-popover-trigger-width)" }} align="start">
+                      <Command>
+                        <CommandInput placeholder="Buscar por nome..." className="h-9" />
+                        <CommandList>
+                          <CommandEmpty>Nenhum livro encontrado.</CommandEmpty>
+                          <CommandGroup className="max-h-56 overflow-auto">
+                            {options.map((o) => (
+                              <CommandItem
+                                key={o.id}
+                                value={o.label}
+                                onSelect={() => { setSelectedShowBookId(o.id); setShowPickerOpen(false); }}
+                              >
+                                <Check className={cn("mr-2 h-4 w-4", selectedShowBookId === o.id ? "opacity-100" : "opacity-0")} />
+                                {o.label}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                );
+              })()}
             </div>
             {selectedShowBookId && (
               <div>
