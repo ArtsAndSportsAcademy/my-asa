@@ -37,6 +37,7 @@ import {
 const TYPE_LABELS: Record<string, string> = {
   SHOW: "Apresentação", REHEARSAL: "Ensaio", MEETING: "Reunião",
   OPERATIONAL_BLOCK: "Bloco Operacional", COLLECTIVE_VACATION: "Férias Coletivas",
+  EVENTO: "Evento", EXTERNAL_SHOW: "Show Externo", TRAINING: "Treinamento", OTHER: "Outro",
 };
 const TYPE_COLORS: Record<string, string> = {
   SHOW: "bg-violet-100 text-violet-800",
@@ -44,6 +45,10 @@ const TYPE_COLORS: Record<string, string> = {
   MEETING: "bg-amber-100 text-amber-800",
   OPERATIONAL_BLOCK: "bg-indigo-100 text-indigo-800",
   COLLECTIVE_VACATION: "bg-green-100 text-green-800",
+  EVENTO: "bg-pink-100 text-pink-800",
+  EXTERNAL_SHOW: "bg-purple-100 text-purple-800",
+  TRAINING: "bg-cyan-100 text-cyan-800",
+  OTHER: "bg-gray-100 text-gray-800",
 };
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: "Rascunho", CONFIRMED: "Confirmado", SUSPENDED: "Suspenso",
@@ -57,7 +62,7 @@ const VISIBILITY_LABELS: Record<string, string> = {
   OPERATION: "Todos da operação",
   MANAGEMENT: "Somente supervisão e administração",
 };
-const EVENT_TYPES = ["SHOW", "REHEARSAL", "MEETING", "OPERATIONAL_BLOCK", "COLLECTIVE_VACATION"] as const;
+const EVENT_TYPES = ["SHOW", "REHEARSAL", "MEETING", "OPERATIONAL_BLOCK", "COLLECTIVE_VACATION", "EVENTO", "EXTERNAL_SHOW", "TRAINING", "OTHER"] as const;
 const WEEKDAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 
 // ─── Calendar helpers ─────────────────────────────────────────────────────────
@@ -192,6 +197,10 @@ const TYPE_BG_SOLID: Record<string, string> = {
   MEETING:            "bg-amber-500 border-amber-700",
   OPERATIONAL_BLOCK:  "bg-indigo-500 border-indigo-700",
   COLLECTIVE_VACATION:"bg-green-500 border-green-700",
+  EVENTO:             "bg-pink-500 border-pink-700",
+  EXTERNAL_SHOW:      "bg-purple-500 border-purple-700",
+  TRAINING:           "bg-cyan-600 border-cyan-800",
+  OTHER:              "bg-gray-500 border-gray-700",
 };
 
 function timeToMin(t: string): number {

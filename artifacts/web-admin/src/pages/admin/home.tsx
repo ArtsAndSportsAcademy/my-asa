@@ -56,6 +56,10 @@ const EVENT_COLORS: Record<string, { border: string; bg: string; text: string }>
   MEETING:             { border: "border-l-green-500",  bg: "bg-green-50",  text: "text-green-700"  },
   OPERATIONAL_BLOCK:   { border: "border-l-orange-500", bg: "bg-orange-50", text: "text-orange-700" },
   COLLECTIVE_VACATION: { border: "border-l-teal-500",   bg: "bg-teal-50",   text: "text-teal-700"   },
+  EVENTO:              { border: "border-l-pink-500",   bg: "bg-pink-50",   text: "text-pink-700"   },
+  EXTERNAL_SHOW:       { border: "border-l-purple-500", bg: "bg-purple-50", text: "text-purple-700" },
+  TRAINING:            { border: "border-l-cyan-500",   bg: "bg-cyan-50",   text: "text-cyan-700"   },
+  OTHER:               { border: "border-l-gray-400",   bg: "bg-gray-50",   text: "text-gray-600"   },
 };
 const DEFAULT_EVENT_COLOR = { border: "border-l-gray-300", bg: "bg-gray-50", text: "text-gray-500" };
 

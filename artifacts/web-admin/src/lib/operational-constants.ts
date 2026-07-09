@@ -11,6 +11,10 @@ export const EVENT_TYPE_LABELS: Record<string, string> = {
   MEETING:             "Reunião",
   OPERATIONAL_BLOCK:   "Bloco Operacional",
   COLLECTIVE_VACATION: "Férias Coletivas",
+  EVENTO:              "Evento",
+  EXTERNAL_SHOW:       "Show Externo",
+  TRAINING:            "Treinamento",
+  OTHER:               "Outro",
 };
 
 export const EVENT_TYPE_BADGES: Record<string, string> = {
@@ -19,6 +23,10 @@ export const EVENT_TYPE_BADGES: Record<string, string> = {
   MEETING:             "bg-amber-100 text-amber-800",
   OPERATIONAL_BLOCK:   "bg-indigo-100 text-indigo-800",
   COLLECTIVE_VACATION: "bg-green-100 text-green-800",
+  EVENTO:              "bg-pink-100 text-pink-800",
+  EXTERNAL_SHOW:       "bg-purple-100 text-purple-800",
+  TRAINING:            "bg-cyan-100 text-cyan-800",
+  OTHER:               "bg-gray-100 text-gray-800",
 };
 
 export const EXCEPTION_TYPE_LABELS: Record<string, string> = {

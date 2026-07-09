@@ -18,6 +18,10 @@ export const EVENT_TYPE_LABELS: Record<string, string> = {
   MEETING:             "Reunião",
   OPERATIONAL_BLOCK:   "Bloco Op.",
   COLLECTIVE_VACATION: "Férias",
+  EVENTO:              "Evento",
+  EXTERNAL_SHOW:       "Show Externo",
+  TRAINING:            "Treinamento",
+  OTHER:               "Outro",
 };
 
 export const EVENT_TYPE_ICONS: Record<string, string> = {
@@ -26,6 +30,10 @@ export const EVENT_TYPE_ICONS: Record<string, string> = {
   MEETING:             "users",
   OPERATIONAL_BLOCK:   "briefcase",
   COLLECTIVE_VACATION: "sun",
+  EVENTO:              "calendar",
+  EXTERNAL_SHOW:       "map-pin",
+  TRAINING:            "book-open",
+  OTHER:               "more-horizontal",
 };
 
 export const ALLOCATION_STATUS_LABELS: Record<string, string> = {

@@ -7,6 +7,7 @@ import { usersTable } from "./identity.js";
 
 export const agendaEventTypeEnum = pgEnum("agenda_event_type", [
   "SHOW", "REHEARSAL", "MEETING", "OPERATIONAL_BLOCK", "COLLECTIVE_VACATION",
+  "EVENTO", "EXTERNAL_SHOW", "TRAINING", "OTHER",
 ]);
 
 export const agendaEventStatusEnum = pgEnum("agenda_event_status", [
