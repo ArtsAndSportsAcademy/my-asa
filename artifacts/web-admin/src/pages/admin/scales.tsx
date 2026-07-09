@@ -744,16 +744,23 @@ export default function ScalesPage() {
     }
   }
 
-  // Aceitar sugestão: pré-preenche o dialog de bloco manual e fecha o freeSlot dialog
+  // Aceitar sugestão: pré-preenche o dialog de bloco manual com os horários validados
+  // pelo servidor (freeGaps do backend) e fecha o freeSlot dialog.
   function acceptSuggestion(label: string, description?: string) {
     if (!freeSlot) return;
+    // Preferir o primeiro freeGap do backend (validado com folgas) em vez do
+    // cálculo local, para evitar drift entre os dois algoritmos.
+    const serverGaps = suggestionsByMember.get(freeSlot.memberId)?.freeGaps ?? [];
+    const bestGap = serverGaps.find(
+      (g) => g.start === freeSlot.start && g.end === freeSlot.end
+    ) ?? serverGaps[0];
     setAddEntryForm({
       memberId: freeSlot.memberId,
       memberName: freeSlot.memberName,
       date: freeSlot.date,
       label,
-      startTime: freeSlot.start,
-      endTime: freeSlot.end,
+      startTime: bestGap?.start ?? freeSlot.start,
+      endTime: bestGap?.end ?? freeSlot.end,
       notes: description ?? "",
       force: false,
     });

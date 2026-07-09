@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, gte, lte, desc, isNotNull, inArray } from "drizzle-orm";
+import { eq, and, gte, lte, desc, isNotNull, inArray, or, isNull } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   scalesTable,
@@ -1000,11 +1000,170 @@ router.post("/scales/:id/duplicate-previous", requireAuth, requireOrganization, 
   }
 });
 
+// ─── Sugestões: helper partilhado ─────────────────────────────────────────────
+function _hhmmToMin(t?: string | null): number | null {
+  if (!t) return null;
+  const m = /^(\d{1,2}):(\d{2})/.exec(t);
+  if (!m) return null;
+  return parseInt(m[1]!, 10) * 60 + parseInt(m[2]!, 10);
+}
+function _minToHHMM(min: number): string {
+  return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+}
+
+async function computeScaleSuggestions(
+  scale: { id: string; operationId: string },
+  date: string,
+  orgId: string
+) {
+  const allAllocations = await resolveScaleAllocations(scale as any);
+
+  const dayAllocs = allAllocations.filter((a: any) => (a.manualDate ?? a.eventDate) === date);
+
+  const dayFolgas = await db
+    .select({ userId: folgasTable.userId })
+    .from(folgasTable)
+    .where(
+      and(
+        eq(folgasTable.operationId, scale.operationId),
+        eq(folgasTable.status, "ACTIVE"),
+        lte(folgasTable.startDate, date),
+        gte(folgasTable.endDate, date)
+      )
+    );
+  const unavailableIds = new Set(dayFolgas.map((f: any) => f.userId as string));
+
+  const byMember = new Map<string, { userId: string; userName: string; entries: any[] }>();
+  for (const a of dayAllocs) {
+    if (!a.userId || unavailableIds.has(a.userId)) continue;
+    if (!byMember.has(a.userId)) {
+      byMember.set(a.userId, { userId: a.userId, userName: (a as any).userName ?? "", entries: [] });
+    }
+    byMember.get(a.userId)!.entries.push(a);
+  }
+
+  const MIN_GAP = 60;
+  const membersWithGaps: Array<{ userId: string; userName: string; freeGaps: Array<{ start: string; end: string }> }> = [];
+
+  for (const [userId, member] of byMember) {
+    const ivs: { s: number; e: number }[] = [];
+    let ok = true;
+    for (const entry of member.entries) {
+      const s = _hhmmToMin((entry as any).startTime ?? (entry as any).eventStartTime);
+      const e = _hhmmToMin((entry as any).endTime ?? (entry as any).eventEndTime);
+      if (s == null || e == null) { ok = false; break; }
+      if (e > s) ivs.push({ s, e });
+    }
+    if (!ok || ivs.length === 0) continue;
+
+    ivs.sort((a, b) => a.s - b.s);
+    const merged: { s: number; e: number }[] = [];
+    for (const iv of ivs) {
+      const last = merged[merged.length - 1];
+      if (last && iv.s <= last.e) last.e = Math.max(last.e, iv.e);
+      else merged.push({ ...iv });
+    }
+
+    const gaps: Array<{ start: string; end: string }> = [];
+    for (let i = 1; i < merged.length; i++) {
+      const gs = merged[i - 1]!.e;
+      const ge = merged[i]!.s;
+      if (ge - gs >= MIN_GAP) gaps.push({ start: _minToHHMM(gs), end: _minToHHMM(ge) });
+    }
+    if (gaps.length > 0) membersWithGaps.push({ userId, userName: member.userName, freeGaps: gaps });
+  }
+
+  if (membersWithGaps.length === 0) return [];
+
+  const userIds = membersWithGaps.map((m) => m.userId);
+  const assignments = await db
+    .select({
+      memberId: responsibilityAssignmentsTable.memberId,
+      responsibilityId: responsibilityAssignmentsTable.responsibilityId,
+      title: responsibilitiesTable.title,
+      description: responsibilitiesTable.description,
+      category: responsibilitiesTable.category,
+    })
+    .from(responsibilityAssignmentsTable)
+    .innerJoin(responsibilitiesTable, eq(responsibilityAssignmentsTable.responsibilityId, responsibilitiesTable.id))
+    .where(
+      and(
+        inArray(responsibilityAssignmentsTable.memberId, userIds),
+        eq(responsibilityAssignmentsTable.active, true),
+        eq(responsibilitiesTable.active, true),
+        // Escopo: org do utilizador + responsabilidades da operação ou globais (operationId IS NULL)
+        eq(responsibilitiesTable.orgId, orgId),
+        or(
+          eq(responsibilitiesTable.operationId, scale.operationId),
+          isNull(responsibilitiesTable.operationId)
+        )!
+      )
+    );
+
+  const respByMember = new Map<string, Array<{ id: string; title: string; description: string | null; category: string }>>();
+  for (const a of assignments) {
+    if (!respByMember.has(a.memberId)) respByMember.set(a.memberId, []);
+    respByMember.get(a.memberId)!.push({
+      id: a.responsibilityId,
+      title: a.title,
+      description: a.description,
+      category: a.category,
+    });
+  }
+
+  return membersWithGaps.map((m) => ({
+    userId: m.userId,
+    userName: m.userName,
+    freeGaps: m.freeGaps,
+    responsibilities: respByMember.get(m.userId) ?? [],
+  }));
+}
+
+// GET /api/scales/suggestions?operationId=&date=YYYY-MM-DD
+// Rota plana: encontra a escala activa para a operação e delega ao helper.
+router.get("/scales/suggestions", requireAuth, requireOrganization, async (req, res) => {
+  const log = requestLogger("scale", req.requestId, req.correlationId);
+  const user = req.user!;
+  const { operationId, date } = req.query as { operationId?: string; date?: string };
+
+  if (!operationId || !date) {
+    res.status(400).json({ error: "operationId e date são obrigatórios" });
+    return;
+  }
+
+  try {
+    const [scale] = await db
+      .select()
+      .from(scalesTable)
+      .where(
+        and(
+          eq(scalesTable.operationId, operationId),
+          lte(scalesTable.periodStart, date),
+          gte(scalesTable.periodEnd, date)
+        )
+      )
+      .orderBy(desc(scalesTable.createdAt))
+      .limit(1);
+
+    if (!scale) {
+      res.json({ suggestions: [] });
+      return;
+    }
+
+    const suggestions = await computeScaleSuggestions(scale, date, user.organizationId);
+    res.json({ suggestions });
+  } catch (err) {
+    log.error({ err }, "erro ao calcular sugestões de escala (plana)");
+    res.status(500).json({ error: "Erro interno" });
+  }
+});
+
 // GET /api/scales/:id/suggestions?date=YYYY-MM-DD
 // Retorna membros com tempo livre e as suas responsabilidades activas para a data indicada.
 // Membros indisponíveis (folga ACTIVE) são excluídos pelo servidor.
 router.get("/scales/:id/suggestions", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger("scale", req.requestId, req.correlationId);
+  const user = req.user!;
   const id = req.params["id"] as string;
   const { date } = req.query as { date?: string };
 
@@ -1017,129 +1176,7 @@ router.get("/scales/:id/suggestions", requireAuth, requireOrganization, async (r
     const scale = await getScaleOrFail(id, res);
     if (!scale) return;
 
-    // 1. Resolver todas as alocações da escala
-    const allAllocations = await resolveScaleAllocations(scale);
-
-    // 2. Filtrar para a data pedida
-    const dayAllocs = allAllocations.filter((a: any) => {
-      const d = a.manualDate ?? a.eventDate;
-      return d === date;
-    });
-
-    // 3. Folgas ACTIVE que cobrem esta data — excluir esses membros
-    const dayFolgas = await db
-      .select({ userId: folgasTable.userId })
-      .from(folgasTable)
-      .where(
-        and(
-          eq(folgasTable.operationId, scale.operationId),
-          eq(folgasTable.status, "ACTIVE"),
-          lte(folgasTable.startDate, date),
-          gte(folgasTable.endDate, date)
-        )
-      );
-    const unavailableIds = new Set(dayFolgas.map((f: any) => f.userId as string));
-
-    // 4. Agrupar por membro (excluir indisponíveis)
-    const byMember = new Map<string, { userId: string; userName: string; entries: any[] }>();
-    for (const a of dayAllocs) {
-      if (!a.userId) continue;
-      if (unavailableIds.has(a.userId)) continue;
-      if (!byMember.has(a.userId)) {
-        byMember.set(a.userId, { userId: a.userId, userName: (a as any).userName ?? "", entries: [] });
-      }
-      byMember.get(a.userId)!.entries.push(a);
-    }
-
-    // 5. Calcular buracos de tempo livre por membro (mín. 60 min)
-    const MIN_GAP = 60;
-    function toMin(t?: string | null): number | null {
-      if (!t) return null;
-      const m = /^(\d{1,2}):(\d{2})/.exec(t);
-      if (!m) return null;
-      return parseInt(m[1]!, 10) * 60 + parseInt(m[2]!, 10);
-    }
-    function fromMin(min: number): string {
-      return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
-    }
-
-    const membersWithGaps: Array<{ userId: string; userName: string; freeGaps: Array<{ start: string; end: string }> }> = [];
-    for (const [userId, member] of byMember) {
-      const ivs: { s: number; e: number }[] = [];
-      let ok = true;
-      for (const entry of member.entries) {
-        const s = toMin((entry as any).startTime ?? (entry as any).eventStartTime);
-        const e = toMin((entry as any).endTime ?? (entry as any).eventEndTime);
-        if (s == null || e == null) { ok = false; break; }
-        if (e > s) ivs.push({ s, e });
-      }
-      if (!ok || ivs.length === 0) continue;
-
-      ivs.sort((a, b) => a.s - b.s);
-      const merged: { s: number; e: number }[] = [];
-      for (const iv of ivs) {
-        const last = merged[merged.length - 1];
-        if (last && iv.s <= last.e) last.e = Math.max(last.e, iv.e);
-        else merged.push({ ...iv });
-      }
-
-      const gaps: Array<{ start: string; end: string }> = [];
-      for (let i = 1; i < merged.length; i++) {
-        const gapStart = merged[i - 1]!.e;
-        const gapEnd = merged[i]!.s;
-        if (gapEnd - gapStart >= MIN_GAP) {
-          gaps.push({ start: fromMin(gapStart), end: fromMin(gapEnd) });
-        }
-      }
-      if (gaps.length > 0) membersWithGaps.push({ userId, userName: member.userName, freeGaps: gaps });
-    }
-
-    if (membersWithGaps.length === 0) {
-      res.json({ suggestions: [] });
-      return;
-    }
-
-    // 6. Responsabilidades activas para os membros com tempo livre
-    const userIds = membersWithGaps.map((m) => m.userId);
-    const assignments = await db
-      .select({
-        memberId: responsibilityAssignmentsTable.memberId,
-        responsibilityId: responsibilityAssignmentsTable.responsibilityId,
-        title: responsibilitiesTable.title,
-        description: responsibilitiesTable.description,
-        category: responsibilitiesTable.category,
-      })
-      .from(responsibilityAssignmentsTable)
-      .innerJoin(
-        responsibilitiesTable,
-        eq(responsibilityAssignmentsTable.responsibilityId, responsibilitiesTable.id)
-      )
-      .where(
-        and(
-          inArray(responsibilityAssignmentsTable.memberId, userIds),
-          eq(responsibilityAssignmentsTable.active, true),
-          eq(responsibilitiesTable.active, true)
-        )
-      );
-
-    const respByMember = new Map<string, Array<{ id: string; title: string; description: string | null; category: string }>>();
-    for (const a of assignments) {
-      if (!respByMember.has(a.memberId)) respByMember.set(a.memberId, []);
-      respByMember.get(a.memberId)!.push({
-        id: a.responsibilityId,
-        title: a.title,
-        description: a.description,
-        category: a.category,
-      });
-    }
-
-    const suggestions = membersWithGaps.map((m) => ({
-      userId: m.userId,
-      userName: m.userName,
-      freeGaps: m.freeGaps,
-      responsibilities: respByMember.get(m.userId) ?? [],
-    }));
-
+    const suggestions = await computeScaleSuggestions(scale, date, user.organizationId);
     res.json({ suggestions });
   } catch (err) {
     log.error({ err }, "erro ao calcular sugestões de escala");
