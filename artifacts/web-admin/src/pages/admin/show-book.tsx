@@ -63,8 +63,11 @@ import {
   Plus, History, BookOpen, Layers, Settings, Trash2, Library,
   Pencil, Check, X, ChevronUp, ChevronDown, ChevronRight, LayoutGrid,
   Sliders, UserPlus, Star, CalendarCheck, AlertTriangle, UserCheck, Clock,
-  Folder, FolderOpen,
+  Folder, FolderOpen, ChevronsUpDown,
 } from "lucide-react";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 const STATUS_LABELS: Record<string, string> = { DRAFT: "Rascunho", PUBLISHED: "Publicado", ARCHIVED: "Arquivado" };
 const STATUS_VARIANTS: Record<string, "default" | "secondary" | "outline"> = {
@@ -188,20 +191,75 @@ function configIncomplete(type: string, config: LineConfig): boolean {
   }
 }
 
-// Seletor de uma pessoa
+// Seletor de uma pessoa — combobox com busca por texto
 function PersonPicker({
   value, members, onChange, placeholder = "Selecionar pessoa",
 }: { value?: string | null; members: Member[]; onChange: (id: string | null) => void; placeholder?: string }) {
+  const [open, setOpen] = useState(false);
+  const selected = members.find((m) => m.id === value);
   return (
-    <Select value={value ?? "__none"} onValueChange={(v) => onChange(v === "__none" ? null : v)}>
-      <SelectTrigger className="h-7 text-xs w-56"><SelectValue placeholder={placeholder} /></SelectTrigger>
-      <SelectContent>
-        <SelectItem value="__none" className="text-xs text-muted-foreground">Ninguém</SelectItem>
-        {members.map((m) => (
-          <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="h-7 text-xs w-56 justify-between font-normal px-2"
+        >
+          <span className="truncate">{selected ? selected.name : <span className="text-muted-foreground">{placeholder}</span>}</span>
+          <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="p-0 w-56" align="start">
+        <Command>
+          <CommandInput placeholder="Buscar por nome..." className="h-7 text-xs" />
+          <CommandList>
+            <CommandEmpty className="text-xs py-2 text-center">Nenhum resultado.</CommandEmpty>
+            <CommandGroup>
+              <CommandItem value="__none" onSelect={() => { onChange(null); setOpen(false); }} className="text-xs text-muted-foreground">
+                <Check className={cn("mr-2 h-3 w-3", !value ? "opacity-100" : "opacity-0")} />
+                Ninguém
+              </CommandItem>
+              {members.map((m) => (
+                <CommandItem key={m.id} value={m.name} onSelect={() => { onChange(m.id); setOpen(false); }} className="text-xs">
+                  <Check className={cn("mr-2 h-3 w-3", value === m.id ? "opacity-100" : "opacity-0")} />
+                  {m.name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// Combobox para adicionar uma pessoa à lista (busca por texto)
+function AddPersonCombobox({ members, onAdd }: { members: Member[]; onAdd: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="h-7 text-xs w-56 mt-0.5 justify-start gap-1 font-normal text-muted-foreground">
+          <UserPlus className="h-3 w-3" /> Adicionar pessoa
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="p-0 w-56" align="start">
+        <Command>
+          <CommandInput placeholder="Buscar por nome..." className="h-7 text-xs" />
+          <CommandList>
+            <CommandEmpty className="text-xs py-2 text-center">Nenhum resultado.</CommandEmpty>
+            <CommandGroup>
+              {members.map((m) => (
+                <CommandItem key={m.id} value={m.name} onSelect={() => { onAdd(m.id); setOpen(false); }} className="text-xs">
+                  {m.name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -244,17 +302,7 @@ function PeopleOrderedList({
         </div>
       ))}
       {available.length > 0 && (
-        <Select value="__add" onValueChange={(v) => { if (v !== "__add") onChange([...ids, v]); }}>
-          <SelectTrigger className="h-7 text-xs w-56 mt-0.5">
-            <span className="flex items-center gap-1 text-muted-foreground"><UserPlus className="h-3 w-3" /> Adicionar pessoa</span>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__add" className="text-xs text-muted-foreground" disabled>Adicionar pessoa</SelectItem>
-            {available.map((m) => (
-              <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <AddPersonCombobox members={available} onAdd={(id) => onChange([...ids, id])} />
       )}
     </div>
   );
