@@ -11,7 +11,11 @@ import {
   useCreateLibraryCategory,
   getListLibraryDocumentsQueryKey,
   getGetLibraryDocumentQueryKey,
+  getListLibraryCategoriesQueryKey,
+  customFetch,
 } from "@workspace/api-client-react";
+import { useMutation } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
 import type {
   LibraryDocumentItem,
   LibraryDocumentDetail,
@@ -55,6 +59,8 @@ import {
   CheckCircle2,
   Clock,
   FolderOpen,
+  Trash2,
+  Settings2,
 } from "lucide-react";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -91,6 +97,8 @@ function fmtDate(d: string | null | undefined) {
 
 export default function AdminLibraryPage() {
   const qc = useQueryClient();
+  const auth = useAuth();
+  const isManager = auth.roles.some((r) => ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"].includes(r.role));
 
   // ── Filtros ──
   const [search, setSearch] = useState("");
@@ -104,7 +112,7 @@ export default function AdminLibraryPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [showVersion, setShowVersion] = useState(false);
-  const [showCreateCat, setShowCreateCat] = useState(false);
+  const [showManageCat, setShowManageCat] = useState(false);
 
   // ── Formulários ──
   const [form, setForm] = useState({ title: "", type: "", summary: "", body: "", categoryId: "", responsibleId: "" });
@@ -134,6 +142,10 @@ export default function AdminLibraryPage() {
   const versionDoc   = useNewLibraryDocumentVersion();
   const archiveDoc   = useArchiveLibraryDocument();
   const createCat    = useCreateLibraryCategory();
+  const deleteCat    = useMutation({
+    mutationFn: (id: string) => customFetch<void>(`/api/library/categories/${id}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: getListLibraryCategoriesQueryKey() }),
+  });
 
   function invalidate() {
     qc.invalidateQueries({ queryKey: getListLibraryDocumentsQueryKey() });
@@ -191,8 +203,18 @@ export default function AdminLibraryPage() {
     if (!catForm.name) return;
     createCat.mutate(
       { data: { name: catForm.name, description: catForm.description || undefined } },
-      { onSuccess: () => { setShowCreateCat(false); setCatForm({ name: "", description: "" }); qc.invalidateQueries({ queryKey: ["listLibraryCategories"] }); } }
+      { onSuccess: () => { setCatForm({ name: "", description: "" }); qc.invalidateQueries({ queryKey: getListLibraryCategoriesQueryKey() }); } }
     );
+  }
+
+  function handleDeleteCat(id: string) {
+    if (!confirm("Excluir esta categoria? Esta ação não pode ser desfeita.")) return;
+    deleteCat.mutate(id, {
+      onError: (err: any) => {
+        const msg = err?.message ?? "Erro ao excluir categoria";
+        alert(msg.includes("vinculados") ? "Não é possível excluir: há documentos vinculados a esta categoria." : msg);
+      },
+    });
   }
 
   return (
@@ -247,9 +269,11 @@ export default function AdminLibraryPage() {
             <Button size="sm" className="flex-1 h-8 text-xs" onClick={() => setShowCreate(true)}>
               <Plus className="h-3.5 w-3.5 mr-1" /> Novo Documento
             </Button>
-            <Button size="sm" variant="outline" className="h-8 text-xs px-2" onClick={() => setShowCreateCat(true)}>
-              <FolderOpen className="h-3.5 w-3.5" />
-            </Button>
+            {isManager && (
+              <Button size="sm" variant="outline" className="h-8 text-xs px-2" title="Gerenciar Categorias" onClick={() => setShowManageCat(true)}>
+                <Settings2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
           </div>
 
           {/* Lista */}
@@ -526,27 +550,66 @@ export default function AdminLibraryPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Diálogo: Criar Categoria ── */}
-      <Dialog open={showCreateCat} onOpenChange={setShowCreateCat}>
+      {/* ── Diálogo: Gerenciar Categorias ── */}
+      <Dialog open={showManageCat} onOpenChange={setShowManageCat}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Nova Categoria</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <FolderOpen className="h-4 w-4" /> Gerenciar Categorias
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label>Nome *</Label>
-              <Input value={catForm.name} onChange={(e) => setCatForm((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Produção de Palco" />
+            {/* Lista de categorias existentes */}
+            <div>
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">
+                Categorias existentes ({categories.length})
+              </Label>
+              {categories.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-3 border rounded-md">Nenhuma categoria criada ainda.</p>
+              ) : (
+                <div className="border rounded-md divide-y max-h-48 overflow-y-auto">
+                  {categories.map((c) => (
+                    <div key={c.id} className="flex items-center gap-2 px-3 py-2">
+                      <Tag className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{c.name}</p>
+                        {c.description && <p className="text-xs text-muted-foreground truncate">{c.description}</p>}
+                      </div>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleDeleteCat(c.id)}
+                        disabled={deleteCat.isPending}
+                        title="Excluir categoria"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="space-y-1.5">
-              <Label>Descrição</Label>
-              <Input value={catForm.description} onChange={(e) => setCatForm((f) => ({ ...f, description: e.target.value }))} placeholder="Breve descrição" />
+
+            {/* Formulário de nova categoria */}
+            <div className="border-t pt-4 space-y-3">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block">Nova Categoria</Label>
+              <div className="space-y-1.5">
+                <Label>Nome *</Label>
+                <Input value={catForm.name} onChange={(e) => setCatForm((f) => ({ ...f, name: e.target.value }))} placeholder="Ex: Produção de Palco" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Descrição</Label>
+                <Input value={catForm.description} onChange={(e) => setCatForm((f) => ({ ...f, description: e.target.value }))} placeholder="Breve descrição" />
+              </div>
+              <Button onClick={handleCreateCat} disabled={createCat.isPending || !catForm.name} className="w-full" size="sm">
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                {createCat.isPending ? "Criando..." : "Adicionar Categoria"}
+              </Button>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateCat(false)}>Cancelar</Button>
-            <Button onClick={handleCreateCat} disabled={createCat.isPending || !catForm.name}>
-              {createCat.isPending ? "Criando..." : "Criar Categoria"}
-            </Button>
+            <Button variant="outline" onClick={() => setShowManageCat(false)}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

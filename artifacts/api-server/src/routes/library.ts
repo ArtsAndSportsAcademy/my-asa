@@ -77,6 +77,42 @@ router.post("/library/categories", requireAuth, requireOrganization, async (req,
   }
 });
 
+// ─── DELETE /library/categories/:id ──────────────────────────────────────────
+
+router.delete("/library/categories/:id", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  try {
+    const userId = req.user!.sub;
+    const orgId = req.user!.organizationId;
+    const categoryId = req.params.id as string;
+
+    const role = await getUserRole(userId);
+    if (!role || !MANAGER_ROLES.includes(role)) { res.status(403).json({ error: "Sem permissão" }); return; }
+
+    const [cat] = await db
+      .select({ id: libraryCategoriesTable.id })
+      .from(libraryCategoriesTable)
+      .where(and(eq(libraryCategoriesTable.id, categoryId), eq(libraryCategoriesTable.orgId, orgId)))
+      .limit(1);
+    if (!cat) { res.status(404).json({ error: "Categoria não encontrada" }); return; }
+
+    const [linked] = await db
+      .select({ count: libraryDocumentsTable.id })
+      .from(libraryDocumentsTable)
+      .where(eq(libraryDocumentsTable.categoryId, categoryId))
+      .limit(1);
+    if (linked) {
+      res.status(409).json({ error: "Conflict", message: "Existem documentos vinculados a esta categoria. Remova-os antes de excluir." });
+      return;
+    }
+
+    await db.delete(libraryCategoriesTable).where(eq(libraryCategoriesTable.id, categoryId));
+    res.status(204).end();
+  } catch (err) {
+    console.error("[library] DELETE /library/categories/:id", err);
+    res.status(500).json({ error: "Erro interno" });
+  }
+});
+
 // ─── GET /library/documents ──────────────────────────────────────────────────
 
 router.get("/library/documents", requireAuth, requireOrganization, async (req, res): Promise<void> => {
