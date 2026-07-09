@@ -201,22 +201,26 @@ function ManagerHome({ isSupervisor }: { isSupervisor: boolean }) {
       <Greeting name={user?.name?.split(" ")[0] ?? ""} />
 
       {/* Para resolver */}
-      {hasItems && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 text-amber-500" /> Para resolver
-              </span>
-              <Button
-                variant="ghost" size="icon" className="h-6 w-6"
-                onClick={() => refetch()} disabled={isFetching}
-              >
-                <RefreshCw className={`h-3 w-3 ${isFetching ? "animate-spin" : ""}`} />
-              </Button>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xs font-medium text-muted-foreground flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-amber-500" /> Para resolver
+            </span>
+            <Button
+              variant="ghost" size="icon" className="h-6 w-6"
+              onClick={() => refetch()} disabled={isFetching}
+            >
+              <RefreshCw className={`h-3 w-3 ${isFetching ? "animate-spin" : ""}`} />
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!hasItems ? (
+            <div className="flex items-center gap-2 text-sm text-green-600 py-1">
+              <CheckCircle2 className="w-4 h-4" /> Tudo em dia
+            </div>
+          ) : (
             <div className="divide-y">
               {pendingRequests.length > 0 && (
                 <button
@@ -283,9 +287,9 @@ function ManagerHome({ isSupervisor }: { isSupervisor: boolean }) {
                 </button>
               )}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
       {/* Presenças */}
       <Card>
@@ -353,14 +357,16 @@ function ManagerHome({ isSupervisor }: { isSupervisor: boolean }) {
       </Card>
 
       {/* A seguir */}
-      {upcomingEvents.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">
-              A seguir
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xs font-medium text-muted-foreground">
+            A seguir
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {upcomingEvents.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-1">Nenhum evento próximo na agenda.</p>
+          ) : (
             <div className="divide-y">
               {upcomingEvents.slice(0, 5).map((ev) => (
                 <div
@@ -383,9 +389,9 @@ function ManagerHome({ isSupervisor }: { isSupervisor: boolean }) {
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
