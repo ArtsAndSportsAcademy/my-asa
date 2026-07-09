@@ -57,6 +57,9 @@ import MembroBibliotecaPage from "@/pages/membro/biblioteca";
 import MembroLivroDoDiaPage from "@/pages/membro/livro-do-dia";
 import MembroAvisosPage from "@/pages/membro/avisos";
 import MembroSolicitacoesPage from "@/pages/membro/solicitacoes";
+import FolgasIndisponibilidadesPage from "@/pages/admin/folgas-indisponibilidades";
+import ResponsabilidadesDelegacoesPage from "@/pages/admin/responsabilidades-delegacoes";
+import MembroFolgasPage from "@/pages/membro/folgas";
 
 const queryClient = new QueryClient();
 
@@ -234,6 +237,9 @@ function Router() {
       <ProtectedRoute path="/membro/livro-do-dia" component={MembroLivroDoDiaPage} />
       <ProtectedRoute path="/membro/avisos" component={MembroAvisosPage} />
       <ProtectedRoute path="/membro/solicitacoes" component={MembroSolicitacoesPage} />
+      <RoleRoute path="/admin/folgas-indisponibilidades" component={FolgasIndisponibilidadesPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
+      <RoleRoute path="/admin/responsabilidades-delegacoes" component={ResponsabilidadesDelegacoesPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
+      <ProtectedRoute path="/membro/folgas" component={MembroFolgasPage} />
       <Route component={NotFound} />
     </Switch>
   );

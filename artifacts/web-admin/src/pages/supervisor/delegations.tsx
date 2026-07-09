@@ -80,7 +80,7 @@ function ResponsibilityDetail({ delegateName, responsibilities }: { delegateName
   );
 }
 
-export default function SupervisorDelegationsPage() {
+export function DelegationsContent() {
   const queryClient = useQueryClient();
   const [showModal, setShowModal] = useState(false);
   const [cancelId, setCancelId] = useState<string | null>(null);
@@ -168,7 +168,7 @@ export default function SupervisorDelegationsPage() {
   };
 
   return (
-    <AdminLayout title="Delegações" subtitle="Delegue responsabilidades operacionais específicas a membros da equipe">
+    <>
       <div className="p-6 max-w-5xl mx-auto space-y-4">
         <div className="flex items-center justify-between">
           <div>
@@ -406,6 +406,14 @@ export default function SupervisorDelegationsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </>
+  );
+}
+
+export default function SupervisorDelegationsPage() {
+  return (
+    <AdminLayout title="Delegações" subtitle="Delegue responsabilidades operacionais específicas a membros da equipe">
+      <DelegationsContent />
     </AdminLayout>
   );
 }

@@ -285,7 +285,7 @@ function CreateTaskDialog({ onCreated }: { onCreated: () => void }) {
 
 // ─── Página principal ────────────────────────────────────────────────────────
 
-export default function AdminTasksPage() {
+function TasksContent() {
   const { toast } = useToast();
   const [operationId, setOperationId] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("");
@@ -358,7 +358,7 @@ export default function AdminTasksPage() {
   const done = tasks.filter((t) => ["APPROVED", "COMPLETED"].includes(t.status));
 
   return (
-    <AdminLayout title="Tarefas Operacionais" subtitle="Crie, acompanhe e aprove tarefas da operação">
+    <>
       <div className="space-y-6">
         {/* Filtros + Ação */}
         <Card>
@@ -486,6 +486,21 @@ export default function AdminTasksPage() {
           </DialogContent>
         </Dialog>
       </div>
+    </>
+  );
+}
+
+export default function AdminTasksPage() {
+  return (
+    <AdminLayout title="Tarefas">
+      <Tabs defaultValue="tarefas">
+        <TabsList className="mb-4">
+          <TabsTrigger value="tarefas">Tarefas</TabsTrigger>
+          <TabsTrigger value="entregas">Entregas</TabsTrigger>
+        </TabsList>
+        <TabsContent value="tarefas"><TasksContent /></TabsContent>
+        <TabsContent value="entregas"><DeliveriesContent /></TabsContent>
+      </Tabs>
     </AdminLayout>
   );
 }

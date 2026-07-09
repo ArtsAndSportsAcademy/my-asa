@@ -473,7 +473,7 @@ function DeliveryPanel({ deliveryId, onClose }: { deliveryId: string; onClose: (
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function AdminDeliveriesPage() {
+export function DeliveriesContent() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -483,7 +483,7 @@ export default function AdminDeliveriesPage() {
   const filtered = deliveries.filter((d) => !search || d.title.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <AdminLayout title="Entregas">
+    <>
       <div className="flex h-[calc(100vh-64px)] overflow-hidden">
         {/* Sidebar */}
         <div className="w-80 flex flex-col border-r bg-white">
@@ -526,6 +526,14 @@ export default function AdminDeliveriesPage() {
         )}
       </div>
       {createOpen && <CreateDeliveryDialog onClose={() => setCreateOpen(false)} />}
+    </>
+  );
+}
+
+export default function AdminDeliveriesPage() {
+  return (
+    <AdminLayout title="Entregas">
+      <DeliveriesContent />
     </AdminLayout>
   );
 }

@@ -67,7 +67,7 @@ async function fetchOperations() {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function ResponsibilitiesPage() {
+export function ResponsibilitiesContent() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { user, roles } = useAuth();
@@ -148,7 +148,7 @@ export default function ResponsibilitiesPage() {
   }, {});
 
   return (
-    <AdminLayout title="Responsabilidades">
+    <>
       <div className="p-6 max-w-5xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -374,6 +374,14 @@ export default function ResponsibilitiesPage() {
           </div>
         </div>
       )}
+    </>
+  );
+}
+
+export default function ResponsibilitiesPage() {
+  return (
+    <AdminLayout title="Responsabilidades">
+      <ResponsibilitiesContent />
     </AdminLayout>
   );
 }

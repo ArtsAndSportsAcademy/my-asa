@@ -45,7 +45,7 @@ interface RestrictionItem {
 
 interface UserItem { id: string; name: string; }
 
-export default function SupervisorRestrictionsPage() {
+export function RestrictionsContent() {
   const { roles } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -136,7 +136,7 @@ export default function SupervisorRestrictionsPage() {
   };
 
   return (
-    <AdminLayout title="Indisponibilidades" subtitle="Registre e gerencie impedimentos temporários de membros da equipe.">
+    <>
     <div className="max-w-4xl space-y-6">
       <div className="flex justify-end">
         <Button onClick={() => setShowNew(true)} className="gap-2">
@@ -266,6 +266,14 @@ export default function SupervisorRestrictionsPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </>
+  );
+}
+
+export default function SupervisorRestrictionsPage() {
+  return (
+    <AdminLayout title="Indisponibilidades" subtitle="Registre e gerencie impedimentos temporários de membros da equipe.">
+      <RestrictionsContent />
     </AdminLayout>
   );
 }

@@ -303,7 +303,7 @@ function AssignmentDetailDialog({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function MinhasEntregasPage() {
+export function MinhasEntregasContent() {
   const qc = useQueryClient();
   const [tab, setTab] = useState<Tab>("pending");
   const [selected, setSelected] = useState<MyDeliveryAssignmentItem | null>(null);
@@ -358,7 +358,7 @@ export default function MinhasEntregasPage() {
         : "Ótimo! Tudo em dia.";
 
   return (
-    <AdminLayout title="Minhas Entregas" subtitle="Conteúdos e leituras obrigatórias">
+    <>
       <div className="max-w-3xl space-y-4">
         {/* Toolbar */}
         <div className="flex items-center gap-2 flex-wrap">
@@ -417,6 +417,14 @@ export default function MinhasEntregasPage() {
       {selected && (
         <AssignmentDetailDialog assignment={selected} onClose={() => setSelected(null)} />
       )}
+    </>
+  );
+}
+
+export default function MinhasEntregasPage() {
+  return (
+    <AdminLayout title="Minhas Entregas">
+      <MinhasEntregasContent />
     </AdminLayout>
   );
 }

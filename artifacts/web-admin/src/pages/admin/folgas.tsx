@@ -436,7 +436,7 @@ function ResetDialog({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function AdminFolgasPage() {
+export function FolgasContent() {
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -498,7 +498,7 @@ export default function AdminFolgasPage() {
   }
 
   return (
-    <AdminLayout title="Folgas">
+    <>
       <div className="max-w-[1400px] mx-auto px-4 py-8 space-y-6">
 
         {/* Header */}
@@ -816,6 +816,14 @@ export default function AdminFolgasPage() {
         isPending={isCancelling}
         onConfirm={() => cancelTarget && cancelFolga({ id: cancelTarget.id })}
       />
+    </>
+  );
+}
+
+export default function AdminFolgasPage() {
+  return (
+    <AdminLayout title="Folgas">
+      <FolgasContent />
     </AdminLayout>
   );
 }

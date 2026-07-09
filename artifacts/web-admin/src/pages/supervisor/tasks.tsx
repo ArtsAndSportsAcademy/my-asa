@@ -281,7 +281,7 @@ function CreateTaskDialog({ onCreated }: { onCreated: () => void }) {
   );
 }
 
-export default function SupervisorTasksPage() {
+function SupervisorTasksContent() {
   const { toast } = useToast();
   const [operationId, setOperationId] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("");
@@ -329,7 +329,7 @@ export default function SupervisorTasksPage() {
   const done = tasks.filter((t) => ["APPROVED", "COMPLETED"].includes(t.status));
 
   return (
-    <AdminLayout title="Tarefas Operacionais" subtitle="Gerencie e aprove tarefas da operação">
+    <>
       <div className="space-y-6">
         <Card>
           <CardContent className="pt-4 pb-4">
@@ -409,6 +409,21 @@ export default function SupervisorTasksPage() {
           </DialogContent>
         </Dialog>
       </div>
+    </>
+  );
+}
+
+export default function SupervisorTasksPage() {
+  return (
+    <AdminLayout title="Tarefas">
+      <Tabs defaultValue="tarefas">
+        <TabsList className="mb-4">
+          <TabsTrigger value="tarefas">Tarefas</TabsTrigger>
+          <TabsTrigger value="entregas">Entregas</TabsTrigger>
+        </TabsList>
+        <TabsContent value="tarefas"><SupervisorTasksContent /></TabsContent>
+        <TabsContent value="entregas"><SupervisorDeliveriesContent /></TabsContent>
+      </Tabs>
     </AdminLayout>
   );
 }

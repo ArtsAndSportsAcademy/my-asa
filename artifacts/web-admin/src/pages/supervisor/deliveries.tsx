@@ -221,7 +221,7 @@ function SupervisorDeliveryPanel({ deliveryId }: { deliveryId: string }) {
   );
 }
 
-export default function SupervisorDeliveriesPage() {
+export function SupervisorDeliveriesContent() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
@@ -230,7 +230,7 @@ export default function SupervisorDeliveriesPage() {
   const filtered = deliveries.filter((d) => d.status !== "DRAFT" && (!search || d.title.toLowerCase().includes(search.toLowerCase())));
 
   return (
-    <AdminLayout title="Entregas — Supervisor">
+    <>
       <div className="flex h-[calc(100vh-64px)] overflow-hidden">
         <div className="w-80 flex flex-col border-r bg-white">
           <div className="px-4 py-3 border-b">
@@ -264,6 +264,14 @@ export default function SupervisorDeliveriesPage() {
           </div>
         )}
       </div>
+    </>
+  );
+}
+
+export default function SupervisorDeliveriesPage() {
+  return (
+    <AdminLayout title="Entregas">
+      <SupervisorDeliveriesContent />
     </AdminLayout>
   );
 }

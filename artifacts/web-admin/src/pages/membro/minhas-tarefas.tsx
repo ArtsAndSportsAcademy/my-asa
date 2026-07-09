@@ -13,6 +13,8 @@ import {
 import type { TaskItem, TaskEvidence } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import AdminLayout from "@/components/admin-layout";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MinhasEntregasContent } from "@/pages/membro/minhas-entregas";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -489,7 +491,7 @@ function TaskDetailDialog({
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
-export default function MinhasTarefasPage() {
+export function TarefasContent() {
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -561,7 +563,7 @@ export default function MinhasTarefasPage() {
   }
 
   return (
-    <AdminLayout title="Minhas Tarefas" subtitle="O que você precisa fazer">
+    <>
       <div className="max-w-4xl space-y-4">
         {/* Toolbar */}
         <div className="flex items-center gap-2 flex-wrap">
@@ -634,6 +636,21 @@ export default function MinhasTarefasPage() {
           onEvidenceChanged={refreshTasks}
         />
       )}
+    </>
+  );
+}
+
+export default function MinhasTarefasPage() {
+  return (
+    <AdminLayout title="Tarefas">
+      <Tabs defaultValue="tarefas">
+        <TabsList className="mb-4">
+          <TabsTrigger value="tarefas">Tarefas</TabsTrigger>
+          <TabsTrigger value="entregas">Entregas</TabsTrigger>
+        </TabsList>
+        <TabsContent value="tarefas"><TarefasContent /></TabsContent>
+        <TabsContent value="entregas"><MinhasEntregasContent /></TabsContent>
+      </Tabs>
     </AdminLayout>
   );
 }

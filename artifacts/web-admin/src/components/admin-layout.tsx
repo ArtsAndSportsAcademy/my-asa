@@ -3,9 +3,9 @@ import React, { useEffect, useState } from "react";
 import {
   Home, Users, Briefcase, Users2, LogOut, ChevronRight,
   BookOpen, CalendarDays, ShieldCheck, ClipboardList, BookMarked,
-  LayoutDashboard, Bell, Clock, MessageSquare, Package, Library,
-  FileText, CheckSquare, TrendingUp, AlertTriangle, ClipboardCheck, ArrowLeftRight,
-  Shield, Sparkles, Palmtree, Trophy, Boxes, CalendarClock,
+  LayoutDashboard, Bell, MessageSquare, Library,
+  FileText, CheckSquare, TrendingUp, ClipboardCheck,
+  Shield, Sparkles, Palmtree, Trophy, Boxes, CalendarClock, Share2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -20,6 +20,7 @@ interface NavItem {
   href: string;
   icon: React.ElementType;
   label: string;
+  comingSoon?: boolean;
 }
 
 interface NavGroup {
@@ -29,122 +30,109 @@ interface NavGroup {
 
 const ADMIN_NAV: NavGroup[] = [
   {
-    label: "PAINÉIS",
+    label: "INÍCIO",
     items: [
-      { href: "/admin/home",              icon: Home,            label: "Início"             },
-      { href: "/admin/operational-panel", icon: LayoutDashboard, label: "Painel Operacional" },
+      { href: "/admin/home",  icon: Home,   label: "Início" },
+      { href: "/admin/mural", icon: Trophy, label: "Mural"  },
     ],
   },
   {
     label: "OPERAÇÃO",
     items: [
-      { href: "/admin/scales",                  icon: ClipboardList,   label: "Escalas"                      },
-      { href: "/admin/activities",              icon: CalendarClock,   label: "Atividades"                   },
-      { href: "/admin/daily-book",              icon: BookMarked,      label: "Livro do Dia"                 },
-      { href: "/admin/responsibilities",        icon: Users,           label: "Responsabilidades"            },
-      { href: "/admin/requests",                icon: FileText,        label: "Solicitações"                 },
-      { href: "/admin/folgas",                  icon: Palmtree,        label: "Folgas"                       },
-      { href: "/admin/tasks",                   icon: CheckSquare,     label: "Tarefas"                      },
-      { href: "/supervisor/restrictions",       icon: AlertTriangle,   label: "Indisponibilidades"            },
-      { href: "/supervisor/check-ins",          icon: ClipboardCheck,  label: "Check-ins"                    },
-      { href: "/supervisor/supervisor-requests",icon: ArrowLeftRight,  label: "Aprovações entre Supervisores"},
-    ],
-  },
-  {
-    label: "ORGANIZAÇÃO",
-    items: [
-      { href: "/admin/operations", icon: Briefcase, label: "Operações"   },
-      { href: "/admin/groups",     icon: Users2,    label: "Grupos"      },
-      { href: "/admin/users",      icon: Users,     label: "Usuários"    },
-    ],
-  },
-  {
-    label: "CONHECIMENTO",
-    items: [
-      { href: "/admin/show-book", icon: BookOpen, label: "Livro do Show" },
-      { href: "/admin/library",   icon: Library,  label: "Biblioteca"   },
+      { href: "/admin/scales",                       icon: ClipboardList,  label: "Escalas"                    },
+      { href: "/admin/activities",                   icon: CalendarClock,  label: "Atividades"                 },
+      { href: "/admin/daily-book",                   icon: BookMarked,     label: "Livro do Dia"               },
+      { href: "/admin/requests",                     icon: FileText,       label: "Solicitações"               },
+      { href: "/admin/folgas-indisponibilidades",    icon: Palmtree,       label: "Folgas & Indisponib."       },
+      { href: "/admin/tasks",                        icon: CheckSquare,    label: "Tarefas"                    },
+      { href: "/supervisor/check-ins",               icon: ClipboardCheck, label: "Check-ins"                  },
+      { href: "/admin/responsabilidades-delegacoes", icon: ShieldCheck,    label: "Responsabilidades"          },
     ],
   },
   {
     label: "PLANEJAMENTO",
     items: [
-      { href: "/admin/agenda", icon: CalendarDays, label: "Agenda" },
+      { href: "/admin/agenda",    icon: CalendarDays, label: "Agenda"        },
+      { href: "/admin/show-book", icon: BookOpen,     label: "Livro do Show" },
     ],
   },
   {
     label: "COMUNICAÇÃO",
     items: [
-      { href: "/admin/avisos",     icon: Bell,          label: "Avisos"    },
-      { href: "/admin/messages",   icon: MessageSquare, label: "Mensagens" },
-      { href: "/admin/deliveries", icon: Package,       label: "Entregas"  },
+      { href: "/admin/avisos",   icon: Bell,          label: "Avisos"    },
+      { href: "/admin/messages", icon: MessageSquare, label: "Mensagens" },
+      { href: "#",               icon: Share2,         label: "Marketing", comingSoon: true },
     ],
   },
   {
-    label: "GOVERNANÇA",
+    label: "CONHECIMENTO",
     items: [
-      { href: "/admin/history",   icon: Clock,       label: "Histórico" },
-      { href: "/admin/auditoria", icon: ShieldCheck, label: "Auditoria" },
-      { href: "/admin/insights",  icon: TrendingUp,  label: "Indicadores"  },
+      { href: "/admin/library", icon: Library, label: "Biblioteca" },
     ],
   },
   {
-    label: "EQUIPE",
+    label: "GESTÃO",
     items: [
-      { href: "/admin/mural", icon: Trophy, label: "Mural da Equipe" },
+      { href: "/admin/operational-panel", icon: LayoutDashboard, label: "Painel Operacional" },
+      { href: "/admin/insights",          icon: TrendingUp,      label: "Indicadores"        },
     ],
   },
   {
     label: "INTELIGÊNCIA",
     items: [
-      { href: "/admin/asa", icon: Sparkles, label: "ASA" },
+      { href: "/admin/asa", icon: Sparkles, label: "My ASA" },
+    ],
+  },
+  {
+    label: "SISTEMA",
+    items: [
+      { href: "/admin/operations", icon: Briefcase, label: "Operações" },
+      { href: "/admin/groups",     icon: Users2,    label: "Grupos"    },
+      { href: "/admin/users",      icon: Users,     label: "Usuários"  },
     ],
   },
 ];
 
 const SUPERVISOR_NAV: NavGroup[] = [
   {
-    label: "PAINÉIS",
+    label: "INÍCIO",
     items: [
-      { href: "/admin/home",                   icon: Home,            label: "Início"        },
-      { href: "/supervisor/operational-panel", icon: LayoutDashboard, label: "Painel"        },
+      { href: "/admin/home",  icon: Home,   label: "Início" },
+      { href: "/admin/mural", icon: Trophy, label: "Mural"  },
     ],
   },
   {
-    label: "GESTÃO",
+    label: "EQUIPE",
     items: [
-      { href: "/supervisor/equipe", icon: Users2,  label: "Equipe"          },
-      { href: "/supervisor/grupos", icon: Boxes,   label: "Grupos"          },
-      { href: "/admin/mural",       icon: Trophy,  label: "Mural da Equipe" },
+      { href: "/supervisor/equipe", icon: Users2, label: "Equipe"  },
+      { href: "/supervisor/grupos", icon: Boxes,  label: "Grupos"  },
     ],
   },
   {
     label: "OPERAÇÃO",
     items: [
-      { href: "/admin/scales",                 icon: ClipboardList,   label: "Escalas"       },
-      { href: "/supervisor/daily-book",        icon: BookMarked,      label: "Livro do Dia"  },
-      { href: "/supervisor/requests",          icon: FileText,        label: "Solicitações"  },
-      { href: "/supervisor/folgas",            icon: Palmtree,        label: "Folgas"        },
-      { href: "/supervisor/tasks",             icon: CheckSquare,     label: "Tarefas"       },
-      { href: "/admin/responsibilities",         icon: Users,            label: "Responsabilidades"    },
-      { href: "/supervisor/delegations",        icon: ShieldCheck,      label: "Delegações"           },
-      { href: "/supervisor/restrictions",       icon: AlertTriangle,    label: "Indisponibilidades"   },
-      { href: "/supervisor/check-ins",          icon: ClipboardCheck,   label: "Check-ins"            },
-      { href: "/supervisor/supervisor-requests",icon: ArrowLeftRight,   label: "Aprovações entre Supervisores"   },
+      { href: "/admin/scales",                       icon: ClipboardList,  label: "Escalas"             },
+      { href: "/supervisor/daily-book",              icon: BookMarked,     label: "Livro do Dia"        },
+      { href: "/supervisor/requests",                icon: FileText,       label: "Solicitações"        },
+      { href: "/admin/folgas-indisponibilidades",    icon: Palmtree,       label: "Folgas & Indisponib."},
+      { href: "/supervisor/tasks",                   icon: CheckSquare,    label: "Tarefas"             },
+      { href: "/supervisor/check-ins",               icon: ClipboardCheck, label: "Check-ins"           },
+      { href: "/admin/responsabilidades-delegacoes", icon: ShieldCheck,    label: "Responsabilidades"   },
     ],
   },
   {
     label: "PLANEJAMENTO",
     items: [
-      { href: "/admin/agenda",     icon: CalendarDays, label: "Agenda"        },
-      { href: "/admin/show-book",  icon: BookOpen,     label: "Livro do Show" },
+      { href: "/admin/agenda",    icon: CalendarDays, label: "Agenda"        },
+      { href: "/admin/show-book", icon: BookOpen,     label: "Livro do Show" },
     ],
   },
   {
     label: "COMUNICAÇÃO",
     items: [
-      { href: "/supervisor/avisos",     icon: Bell,          label: "Avisos"    },
-      { href: "/supervisor/messages",   icon: MessageSquare, label: "Mensagens" },
-      { href: "/supervisor/deliveries", icon: Package,       label: "Entregas"  },
+      { href: "/supervisor/avisos",   icon: Bell,          label: "Avisos"    },
+      { href: "/supervisor/messages", icon: MessageSquare, label: "Mensagens" },
+      { href: "#",                    icon: Share2,         label: "Marketing", comingSoon: true },
     ],
   },
   {
@@ -156,39 +144,41 @@ const SUPERVISOR_NAV: NavGroup[] = [
   {
     label: "CONTROLE",
     items: [
-      { href: "/supervisor/history",   icon: Clock,       label: "Histórico" },
-      { href: "/supervisor/insights",  icon: TrendingUp,  label: "Indicadores"  },
+      { href: "/supervisor/operational-panel", icon: LayoutDashboard, label: "Painel"      },
+      { href: "/supervisor/insights",          icon: TrendingUp,      label: "Indicadores" },
     ],
   },
   {
     label: "INTELIGÊNCIA",
     items: [
-      { href: "/admin/asa", icon: Sparkles, label: "ASA" },
+      { href: "/admin/asa", icon: Sparkles, label: "My ASA" },
     ],
   },
 ];
 
 const MEMBER_NAV: NavGroup[] = [
   {
-    label: "PAINEL",
+    label: "INÍCIO",
     items: [
-      { href: "/admin/home",    icon: Home,            label: "Início"   },
-      { href: "/admin/meu-dia", icon: LayoutDashboard, label: "Meu Dia"  },
+      { href: "/admin/home",  icon: Home,   label: "Início" },
+      { href: "/admin/mural", icon: Trophy, label: "Mural"  },
     ],
   },
   {
-    label: "OPERAÇÃO",
+    label: "MEU DIA A DIA",
     items: [
-      { href: "/membro/escala",       icon: ClipboardList, label: "Minha Escala"   },
-      { href: "/membro/livro-do-dia", icon: BookMarked,    label: "Livro do Dia"   },
-      { href: "/membro/tarefas",      icon: CheckSquare,   label: "Minhas Tarefas" },
-      { href: "/membro/entregas",     icon: Package,       label: "Minhas Entregas"},
+      { href: "/membro/escala",       icon: ClipboardList, label: "Minha Escala"  },
+      { href: "/membro/livro-do-dia", icon: BookMarked,    label: "Livro do Dia"  },
+      { href: "/membro/tarefas",      icon: CheckSquare,   label: "Tarefas"       },
+      { href: "/membro/folgas",       icon: Palmtree,      label: "Folgas"        },
+      { href: "/membro/solicitacoes", icon: FileText,      label: "Solicitações"  },
     ],
   },
   {
-    label: "AUTOSSERVIÇO",
+    label: "PLANEJAMENTO",
     items: [
-      { href: "/membro/solicitacoes", icon: FileText, label: "Solicitações" },
+      { href: "/admin/agenda",    icon: CalendarDays, label: "Agenda"        },
+      { href: "/admin/show-book", icon: BookOpen,     label: "Livro do Show" },
     ],
   },
   {
@@ -201,19 +191,36 @@ const MEMBER_NAV: NavGroup[] = [
   {
     label: "CONHECIMENTO",
     items: [
-      { href: "/membro/biblioteca", icon: Library,  label: "Biblioteca"    },
-    ],
-  },
-  {
-    label: "PLANEJAMENTO",
-    items: [
-      { href: "/admin/agenda", icon: CalendarDays, label: "Agenda" },
+      { href: "/membro/biblioteca", icon: Library, label: "Biblioteca" },
     ],
   },
   {
     label: "INTELIGÊNCIA",
     items: [
-      { href: "/admin/asa", icon: Sparkles, label: "ASA" },
+      { href: "/admin/asa", icon: Sparkles, label: "My ASA" },
+    ],
+  },
+];
+
+const TRAINER_NAV: NavGroup[] = [
+  {
+    label: "INÍCIO",
+    items: [
+      { href: "/admin/home",  icon: Home,   label: "Início" },
+      { href: "/admin/mural", icon: Trophy, label: "Mural"  },
+    ],
+  },
+  {
+    label: "MEU TRABALHO",
+    items: [
+      { href: "/membro/escala", icon: ClipboardList, label: "Minha Escala" },
+    ],
+  },
+  {
+    label: "COMUNICAÇÃO",
+    items: [
+      { href: "/membro/avisos",    icon: Bell,          label: "Avisos"    },
+      { href: "/membro/mensagens", icon: MessageSquare, label: "Mensagens" },
     ],
   },
 ];
@@ -292,6 +299,7 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
 
   const isAdmin      = userRoles.some((r) => r.role === "ADMIN");
   const isSupervisor = userRoles.some((r) => r.role === "SUPERVISOR_A" || r.role === "SUPERVISOR_B");
+  const isTrainer    = !isAdmin && !isSupervisor && userRoles.some((r) => r.role === "TRAINER");
   const activeDelegations = delegData?.delegations ?? [];
 
   // Responsabilidades únicas das delegações ativas
@@ -299,7 +307,7 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
     ...new Set(activeDelegations.flatMap((d) => d.responsibilities as string[])),
   ];
 
-  const isCaptain = !isAdmin && !isSupervisor && captainResponsibilities.length > 0;
+  const isCaptain = !isAdmin && !isSupervisor && !isTrainer && captainResponsibilities.length > 0;
 
   // Itens do CAPITÃO: apenas responsabilidades recebidas, sem duplicar
   const captainItems: NavItem[] = captainResponsibilities
@@ -310,6 +318,8 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
     ? "Gerência"
     : isSupervisor
     ? "Supervisor"
+    : isTrainer
+    ? "Treinador"
     : isCaptain
     ? "Capitão"
     : "Elenco";
@@ -318,6 +328,8 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
     ? ADMIN_NAV
     : isSupervisor
     ? SUPERVISOR_NAV
+    : isTrainer
+    ? TRAINER_NAV
     : MEMBER_NAV;
 
   const handleLogout = () => {
@@ -363,26 +375,6 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
         </div>
 
         <nav className="flex-1 p-3 space-y-4">
-          {/* Início — apenas para membros e capitães sem grupos de navegação */}
-          {navGroups.length === 0 && (
-          <div>
-            <div className="space-y-0.5">
-              {[{ href: "/admin/home", icon: Home, label: "Início" }].map((item) => {
-                const Icon = item.icon;
-                const active = location === item.href;
-                return (
-                  <Link key={item.href} href={item.href} className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  }`}>
-                    <Icon className="w-4 h-4 shrink-0" />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-          )}
-
           {/* Seção CAPITÃO — só para membros com delegações */}
           {isCaptain && captainItems.length > 0 && (
             <div>
@@ -407,7 +399,7 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
             </div>
           )}
 
-          {/* Nav normal de admin/supervisor */}
+          {/* Nav normal por grupos */}
           {navGroups.map((group) => (
             <div key={group.label}>
               <p className="px-3 mb-1 text-[10px] font-semibold tracking-widest text-muted-foreground/60 uppercase">
@@ -417,6 +409,22 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
                 {group.items.map((item) => {
                   const Icon = item.icon;
                   const active = location === item.href;
+
+                  if (item.comingSoon) {
+                    return (
+                      <div
+                        key={item.href}
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground/40 cursor-default select-none"
+                      >
+                        <Icon className="w-4 h-4 shrink-0" />
+                        {item.label}
+                        <span className="ml-auto text-[9px] font-semibold bg-muted rounded px-1 py-0.5 text-muted-foreground/60">
+                          Em breve
+                        </span>
+                      </div>
+                    );
+                  }
+
                   return (
                     <Link key={item.href} href={item.href} className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                       active
