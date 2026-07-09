@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -7,12 +8,13 @@ import {
   useGetCheckInSummary,
   useListCheckIns,
   useListPendingRequests,
-  useGetMyNotices,
+  useGetMyDay,
   useListTasks,
   useUpdateCheckIn,
   getListCheckInsQueryKey,
   getGetCheckInSummaryQueryKey,
   getListTasksQueryKey,
+  getGetMyDayQueryKey,
 } from "@workspace/api-client-react";
 import type {
   CheckInItem,
@@ -30,12 +32,14 @@ import {
   AlertCircle,
   Bell,
   BookMarked,
+  CalendarDays,
   CheckCircle2,
   CheckSquare,
   ChevronRight,
   ClipboardList,
   Clock,
   FileText,
+  MapPin,
   Package,
   RefreshCw,
   UserCheck,
@@ -43,6 +47,27 @@ import {
   XCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+// ─── Event type colors ─────────────────────────────────────────────────────────
+
+const EVENT_COLORS: Record<string, { border: string; bg: string; text: string }> = {
+  SHOW:                { border: "border-l-blue-500",   bg: "bg-blue-50",   text: "text-blue-700"   },
+  REHEARSAL:           { border: "border-l-violet-500", bg: "bg-violet-50", text: "text-violet-700" },
+  MEETING:             { border: "border-l-green-500",  bg: "bg-green-50",  text: "text-green-700"  },
+  OPERATIONAL_BLOCK:   { border: "border-l-orange-500", bg: "bg-orange-50", text: "text-orange-700" },
+  COLLECTIVE_VACATION: { border: "border-l-teal-500",   bg: "bg-teal-50",   text: "text-teal-700"   },
+};
+const DEFAULT_EVENT_COLOR = { border: "border-l-gray-300", bg: "bg-gray-50", text: "text-gray-500" };
+
+function fmtTime(t: string | null | undefined) {
+  return t ? t.slice(0, 5) : "";
+}
+
+function fmtShortDate(dateStr: string) {
+  return new Date(dateStr + "T00:00:00").toLocaleDateString("pt-BR", {
+    day: "numeric", month: "short",
+  });
+}
 
 // ─── Greeting ─────────────────────────────────────────────────────────────────
 
@@ -56,6 +81,58 @@ function Greeting({ name }: { name: string }) {
           O que precisa de atenção hoje
         </p>
       </div>
+    </div>
+  );
+}
+
+// ─── Event block (colored) ─────────────────────────────────────────────────────
+
+function EventBlock({
+  title,
+  eventType,
+  startTime,
+  endTime,
+  location,
+  clickable,
+  onClick,
+}: {
+  title: string;
+  eventType: string;
+  startTime?: string | null;
+  endTime?: string | null;
+  location?: string | null;
+  clickable?: boolean;
+  onClick?: () => void;
+}) {
+  const col = EVENT_COLORS[eventType] ?? DEFAULT_EVENT_COLOR;
+  return (
+    <div
+      role={clickable ? "button" : undefined}
+      onClick={clickable ? onClick : undefined}
+      className={`border-l-4 ${col.border} ${col.bg} rounded-r-lg px-3 py-2.5 ${
+        clickable ? "cursor-pointer hover:opacity-80 transition-opacity" : ""
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-semibold truncate">{title}</p>
+        {clickable && <ChevronRight className={`w-4 h-4 shrink-0 ${col.text}`} />}
+      </div>
+      {(startTime || location) && (
+        <div className="flex flex-wrap gap-x-3 mt-0.5">
+          {startTime && (
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {fmtTime(startTime)}{endTime ? ` – ${fmtTime(endTime)}` : ""}
+            </span>
+          )}
+          {location && (
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <MapPin className="w-3 h-3" />
+              {location}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -136,6 +213,7 @@ function ManagerHome({ isSupervisor }: { isSupervisor: boolean }) {
 
   const today = new Date().toISOString().slice(0, 10);
   const enabled = !!operationId;
+  const operations = (context?.operations ?? []) as Array<{ id: string; name: string }>;
 
   const { data: panelData, refetch, isFetching } = useGetOperationalPanel({});
   const { data: checkInsData, isLoading: checkInsLoading } = useListCheckIns(
@@ -167,18 +245,38 @@ function ManagerHome({ isSupervisor }: { isSupervisor: boolean }) {
   const lateTasks = activeTasks.filter((t) => new Date(t.dueDate) < new Date());
   const approvalTasks = activeTasks.filter((t) => t.status === "READY_FOR_APPROVAL");
 
+  const todayEvents = useMemo(
+    () => upcomingEvents.filter((ev) => (ev as any).date === today),
+    [upcomingEvents, today]
+  );
+
+  const supervisorTodayEvents = useMemo(
+    () => todayEvents.filter((ev) => (ev as any).operationId === operationId),
+    [todayEvents, operationId]
+  );
+
+  const eventsByOperation = useMemo(() => {
+    const map = new Map<string, OperationalUpcomingEvent[]>();
+    for (const ev of todayEvents) {
+      const opId = (ev as any).operationId as string;
+      if (!opId) continue;
+      if (!map.has(opId)) map.set(opId, []);
+      map.get(opId)!.push(ev);
+    }
+    return map;
+  }, [todayEvents]);
+
+  const [activeOpTab, setActiveOpTab] = useState<string>("");
+  const tabId = activeOpTab || operationId || operations[0]?.id || "";
+
   const updateMutation = useUpdateCheckIn();
   function handleUpdate(userId: string, checkInId: string | null, status: string) {
     updateMutation.mutate(
       { id: checkInId ?? "new", data: { status, userId, operationId, date: today } },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({
-            queryKey: getListCheckInsQueryKey({ date: today, operationId }),
-          });
-          queryClient.invalidateQueries({
-            queryKey: getGetCheckInSummaryQueryKey({ date: today, operationId }),
-          });
+          queryClient.invalidateQueries({ queryKey: getListCheckInsQueryKey({ date: today, operationId }) });
+          queryClient.invalidateQueries({ queryKey: getGetCheckInSummaryQueryKey({ date: today, operationId }) });
           toast({ title: "Status atualizado" });
         },
         onError: () => toast({ title: "Erro ao atualizar", variant: "destructive" }),
@@ -196,11 +294,102 @@ function ManagerHome({ isSupervisor }: { isSupervisor: boolean }) {
     lateTasks.length > 0 ||
     approvalTasks.length > 0;
 
+  const todayLabel = new Date().toLocaleDateString("pt-BR", {
+    weekday: "short", day: "numeric", month: "short",
+  });
+
   return (
     <div className="space-y-5">
       <Greeting name={user?.name?.split(" ")[0] ?? ""} />
 
-      {/* Para resolver */}
+      {/* ── Escala de hoje ─────────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xs font-medium text-muted-foreground flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4 text-primary" /> Escala de hoje
+            </span>
+            <div className="flex items-center gap-2">
+              <span className="font-normal capitalize text-xs">{todayLabel}</span>
+              <Button
+                variant="ghost" size="sm" className="h-6 text-xs px-2"
+                onClick={() => setLocation("/admin/scales")}
+              >
+                Ver completa <ChevronRight className="w-3 h-3 ml-0.5" />
+              </Button>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isSupervisor ? (
+            // Supervisor: eventos da sua operação hoje
+            supervisorTodayEvents.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-2">Sem eventos escalados para hoje.</p>
+            ) : (
+              <div className="space-y-2">
+                {supervisorTodayEvents.map((ev) => (
+                  <EventBlock
+                    key={ev.id}
+                    title={ev.title}
+                    eventType={(ev as any).type}
+                    startTime={(ev as any).startTime}
+                    endTime={(ev as any).endTime}
+                    location={(ev as any).location}
+                  />
+                ))}
+              </div>
+            )
+          ) : (
+            // Admin: abas por operação
+            operations.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-2">Nenhuma operação disponível.</p>
+            ) : (
+              <>
+                {operations.length > 1 && (
+                  <div className="flex gap-1.5 mb-3 flex-wrap">
+                    {operations.map((op) => (
+                      <button
+                        key={op.id}
+                        onClick={() => setActiveOpTab(op.id)}
+                        className={`text-xs px-3 py-1 rounded-full transition-colors font-medium ${
+                          tabId === op.id
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground hover:bg-muted/80"
+                        }`}
+                      >
+                        {op.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {(() => {
+                  const opEvents = eventsByOperation.get(tabId) ?? [];
+                  return opEvents.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-2">
+                      Sem eventos escalados para hoje nesta operação.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {opEvents.map((ev) => (
+                        <EventBlock
+                          key={ev.id}
+                          title={ev.title}
+                          eventType={(ev as any).type}
+                          startTime={(ev as any).startTime}
+                          endTime={(ev as any).endTime}
+                          location={(ev as any).location}
+                        />
+                      ))}
+                    </div>
+                  );
+                })()}
+              </>
+            )
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Para resolver ──────────────────────────────────────────────────── */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-xs font-medium text-muted-foreground flex items-center justify-between">
@@ -231,9 +420,7 @@ function ManagerHome({ isSupervisor }: { isSupervisor: boolean }) {
                     <FileText className="w-4 h-4" /> Solicitações aguardando resposta
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <Badge variant="destructive" className="text-xs">
-                      {pendingRequests.length}
-                    </Badge>
+                    <Badge variant="destructive" className="text-xs">{pendingRequests.length}</Badge>
                     <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
                   </span>
                 </button>
@@ -247,9 +434,7 @@ function ManagerHome({ isSupervisor }: { isSupervisor: boolean }) {
                     <BookMarked className="w-4 h-4" /> Livros do Dia não publicados
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <Badge variant="secondary" className="text-xs">
-                      {pendingBooks.length}
-                    </Badge>
+                    <Badge variant="secondary" className="text-xs">{pendingBooks.length}</Badge>
                     <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
                   </span>
                 </button>
@@ -263,9 +448,7 @@ function ManagerHome({ isSupervisor }: { isSupervisor: boolean }) {
                     <Clock className="w-4 h-4 text-red-500" /> Tarefas atrasadas
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <Badge variant="destructive" className="text-xs">
-                      {lateTasks.length}
-                    </Badge>
+                    <Badge variant="destructive" className="text-xs">{lateTasks.length}</Badge>
                     <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
                   </span>
                 </button>
@@ -291,18 +474,12 @@ function ManagerHome({ isSupervisor }: { isSupervisor: boolean }) {
         </CardContent>
       </Card>
 
-      {/* Presenças */}
+      {/* ── Presenças ──────────────────────────────────────────────────────── */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
             <UserCheck className="h-4 w-4" /> Presenças de hoje
-            <span className="ml-auto text-xs font-normal text-muted-foreground">
-              {new Date().toLocaleDateString("pt-BR", {
-                weekday: "short",
-                day: "numeric",
-                month: "short",
-              })}
-            </span>
+            <span className="ml-auto text-xs font-normal capitalize">{todayLabel}</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -355,113 +532,135 @@ function ManagerHome({ isSupervisor }: { isSupervisor: boolean }) {
           )}
         </CardContent>
       </Card>
-
-      {/* A seguir */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-xs font-medium text-muted-foreground">
-            A seguir
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {upcomingEvents.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-1">Nenhum evento próximo na agenda.</p>
-          ) : (
-            <div className="divide-y">
-              {upcomingEvents.slice(0, 5).map((ev) => (
-                <div
-                  key={ev.id}
-                  className="flex items-center justify-between py-2.5 text-sm"
-                >
-                  <span className="font-medium truncate flex-1 mr-3">{ev.title}</span>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-muted-foreground text-xs">
-                      {new Date(ev.date + "T00:00:00").toLocaleDateString("pt-BR", {
-                        day: "numeric",
-                        month: "short",
-                      })}
-                      {ev.startTime && ` • ${ev.startTime.slice(0, 5)}`}
-                    </span>
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-muted">
-                      {EVENT_TYPE_LABELS[ev.type] ?? ev.type}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
 
-// ─── Member home (web) ────────────────────────────────────────────────────────
+// ─── Member home ───────────────────────────────────────────────────────────────
 
 function MemberHome() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
-  const { data: panelData } = useGetOperationalPanel({});
-  const { data: avisosData } = useGetMyNotices({});
 
-  const upcomingEvents = (panelData?.upcomingEvents ?? []) as OperationalUpcomingEvent[];
-  const myNotices = (avisosData ?? []) as any[];
-  const pendingAvisos = myNotices.filter(
-    (a: any) => a.recipientStatus === "SENT" || a.recipientStatus === "PENDING"
-  );
+  const { data: myDay, isLoading } = useGetMyDay({
+    query: { queryKey: getGetMyDayQueryKey() },
+  });
+
+  const todayActivities = (myDay as any)?.todayActivities ?? [];
+  const futureActivities = ((myDay as any)?.futureActivities ?? []).slice(0, 4);
+  const pendingNotices   = (myDay as any)?.pendingNotices ?? [];
+  const pendingRequests  = (myDay as any)?.complementaryInfo?.pendingRequests ?? [];
+
+  const todayLabel = new Date().toLocaleDateString("pt-BR", {
+    weekday: "long", day: "numeric", month: "long",
+  });
 
   const QUICK_LINKS = [
-    { label: "Minha Escala",    icon: ClipboardList, href: "/membro/escala"       },
-    { label: "Avisos",          icon: Bell,          href: "/membro/avisos"       },
-    { label: "Solicitações",    icon: FileText,      href: "/membro/solicitacoes" },
-    { label: "Minhas Tarefas",  icon: CheckCircle2,  href: "/membro/tarefas"      },
-    { label: "Minhas Entregas", icon: Package,       href: "/membro/entregas"     },
-    { label: "Mensagens",       icon: Activity,      href: "/membro/mensagens"    },
-    { label: "Biblioteca",      icon: BookMarked,    href: "/membro/biblioteca"   },
-    { label: "Livro do Dia",    icon: AlertCircle,   href: "/membro/livro-do-dia" },
+    { label: "Escala",       icon: ClipboardList, href: "/membro/escala"       },
+    { label: "Solicitações", icon: FileText,      href: "/membro/solicitacoes" },
+    { label: "Tarefas",      icon: CheckCircle2,  href: "/membro/tarefas"      },
+    { label: "Entregas",     icon: Package,       href: "/membro/entregas"     },
+    { label: "Avisos",       icon: Bell,          href: "/membro/avisos"       },
+    { label: "Mensagens",    icon: Activity,      href: "/membro/mensagens"    },
   ];
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-5 max-w-2xl">
       <Greeting name={user?.name?.split(" ")[0] ?? ""} />
 
-      <div className="grid grid-cols-3 gap-3">
-        {QUICK_LINKS.map(({ label, icon: Icon, href }) => (
-          <button
-            key={href}
-            onClick={() => setLocation(href)}
-            className="flex flex-col items-center gap-2 p-4 rounded-xl border bg-card hover:border-primary/50 hover:bg-primary/5 transition-colors"
-          >
-            <Icon className="w-5 h-5 text-primary" />
-            <span className="text-xs font-medium">{label}</span>
-          </button>
-        ))}
-      </div>
+      {/* ── Escala do dia ──────────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xs font-medium text-muted-foreground flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4 text-primary" /> Hoje
+            </span>
+            <span className="font-normal capitalize text-xs">{todayLabel}</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex justify-center py-6">
+              <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : todayActivities.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-4 text-center">
+              <CalendarDays className="h-7 w-7 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">Sem escala para hoje</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {todayActivities.map((act: any) => {
+                const hasBook = !!act.dailyBook?.id;
+                return (
+                  <EventBlock
+                    key={act.allocationId}
+                    title={act.eventTitle ?? "Escala"}
+                    eventType={act.eventType}
+                    startTime={act.eventStartTime}
+                    endTime={act.eventEndTime}
+                    location={act.eventLocation}
+                    clickable={hasBook}
+                    onClick={() =>
+                      setLocation(`/membro/livro-do-dia?bookId=${act.dailyBook.id}`)
+                    }
+                  />
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      {pendingAvisos.length > 0 && (
+      {/* ── Para resolver ──────────────────────────────────────────────────── */}
+      {pendingRequests.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-              <Bell className="h-4 w-4 text-amber-500" /> Avisos ativos
+              <AlertCircle className="h-4 w-4 text-amber-500" /> Para resolver
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <button
+              onClick={() => setLocation("/membro/solicitacoes")}
+              className="w-full flex items-center justify-between text-sm hover:text-primary transition-colors"
+            >
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <FileText className="w-4 h-4" /> Solicitações pendentes
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Badge variant="secondary" className="text-xs">{pendingRequests.length}</Badge>
+                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+              </span>
+            </button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Avisos ─────────────────────────────────────────────────────────── */}
+      {pendingNotices.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+              <Bell className="h-4 w-4 text-amber-500" /> Avisos
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {pendingAvisos.slice(0, 3).map((a: any) => (
+              {pendingNotices.slice(0, 3).map((n: any) => (
                 <div
-                  key={a.id}
-                  className="text-sm p-2 rounded-lg bg-amber-50 border border-amber-100"
+                  key={n.id}
+                  className="text-sm p-2.5 rounded-lg bg-amber-50 border border-amber-100"
                 >
-                  {a.title && <p className="font-medium text-amber-900">{a.title}</p>}
-                  {a.content && (
-                    <p className="text-xs text-amber-700 mt-0.5 line-clamp-1">{a.content}</p>
+                  {n.title && <p className="font-medium text-amber-900">{n.title}</p>}
+                  {n.content && (
+                    <p className="text-xs text-amber-700 mt-0.5 line-clamp-1">{n.content}</p>
                   )}
                 </div>
               ))}
             </div>
             <Button
-              variant="ghost" size="sm"
-              className="mt-2 w-full text-xs"
+              variant="ghost" size="sm" className="mt-2 w-full text-xs"
               onClick={() => setLocation("/membro/avisos")}
             >
               Ver todos <ChevronRight className="w-3 h-3 ml-1" />
@@ -470,7 +669,8 @@ function MemberHome() {
         </Card>
       )}
 
-      {upcomingEvents.length > 0 && (
+      {/* ── A seguir ───────────────────────────────────────────────────────── */}
+      {futureActivities.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground">
@@ -479,13 +679,21 @@ function MemberHome() {
           </CardHeader>
           <CardContent>
             <div className="divide-y">
-              {upcomingEvents.slice(0, 5).map((ev) => (
-                <div key={ev.id} className="flex items-center justify-between py-2 text-sm">
-                  <span className="font-medium">{ev.title}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground text-xs">{ev.date}</span>
+              {futureActivities.map((act: any) => (
+                <div
+                  key={act.allocationId}
+                  className="flex items-center justify-between py-2.5 text-sm"
+                >
+                  <span className="font-medium truncate flex-1 mr-3">
+                    {act.eventTitle ?? "Escala"}
+                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs text-muted-foreground">
+                      {fmtShortDate(act.eventDate)}
+                      {act.eventStartTime ? ` • ${fmtTime(act.eventStartTime)}` : ""}
+                    </span>
                     <span className="text-xs px-1.5 py-0.5 rounded bg-muted">
-                      {EVENT_TYPE_LABELS[ev.type] ?? ev.type}
+                      {EVENT_TYPE_LABELS[act.eventType] ?? act.eventType}
                     </span>
                   </div>
                 </div>
@@ -494,6 +702,20 @@ function MemberHome() {
           </CardContent>
         </Card>
       )}
+
+      {/* ── Quick links ────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-3 gap-2.5">
+        {QUICK_LINKS.map(({ label, icon: Icon, href }) => (
+          <button
+            key={href}
+            onClick={() => setLocation(href)}
+            className="flex flex-col items-center gap-2 p-3.5 rounded-xl border bg-card hover:border-primary/50 hover:bg-primary/5 transition-colors"
+          >
+            <Icon className="w-5 h-5 text-primary" />
+            <span className="text-xs font-medium">{label}</span>
+          </button>
+        ))}
+      </div>
 
       <div className="flex items-center gap-3 p-4 rounded-xl bg-primary/5 border border-primary/10 text-sm">
         <img src="/asinha.svg" alt="" className="w-8 h-9 shrink-0 opacity-70" />

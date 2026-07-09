@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useSearch } from "wouter";
 import {
   useListDailyBook,
   useGetDailyBook,
@@ -94,9 +95,15 @@ function SectionHeader({
 export default function MembroLivroDoDiaPage() {
   const { user } = useAuth();
   const currentUserId = user?.id ?? null;
+  const search = useSearch();
+  const bookIdFromUrl = new URLSearchParams(search).get("bookId");
 
-  const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
+  const [selectedBookId, setSelectedBookId] = useState<string | null>(bookIdFromUrl);
   const [expandedScenes, setExpandedScenes] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (bookIdFromUrl) setSelectedBookId(bookIdFromUrl);
+  }, [bookIdFromUrl]);
 
   const {
     data: listData,
