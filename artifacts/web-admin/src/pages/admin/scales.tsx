@@ -27,6 +27,8 @@ import {
   getListTasksQueryKey,
   useListAgendaEvents,
   getListAgendaEventsQueryKey,
+  useListResponsibilities,
+  getListResponsibilitiesQueryKey,
 } from "@workspace/api-client-react";
 import type {
   ScaleSummary,
@@ -36,6 +38,7 @@ import type {
   FolgaItem,
   AgendaEvent,
   TaskItem,
+  ResponsibilityItem,
 } from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
@@ -354,6 +357,14 @@ export default function ScalesPage() {
     },
   });
 
+  // Responsabilidades da operação, para sugerir no tempo livre.
+  const respParams = { operationId: selectedScale?.operationId };
+  const { data: respData } = useListResponsibilities(respParams, {
+    query: {
+      enabled: folgasEnabled && !!selectedScale?.operationId,
+    },
+  });
+
   // ── Mutations ──────────────────────────────────────────────────────────────
   const createWeekMut = useCreateWeekScale();
   const publishMut = usePublishScale();
@@ -511,6 +522,19 @@ export default function ScalesPage() {
     }
     return m;
   }, [entriesByDateMember]);
+
+  // userId → responsabilidades activas (para sugerir no tempo livre)
+  const responsibilitiesByMember = useMemo(() => {
+    const m = new Map<string, ResponsibilityItem[]>();
+    for (const r of (respData?.responsibilities ?? []) as ResponsibilityItem[]) {
+      for (const a of r.assignments) {
+        if (!a.active) continue;
+        if (!m.has(a.memberId)) m.set(a.memberId, []);
+        m.get(a.memberId)!.push(r);
+      }
+    }
+    return m;
+  }, [respData]);
 
   // userId → tarefas pendentes (para sugerir no tempo livre)
   const pendingTasksByMember = useMemo(() => {
@@ -1274,15 +1298,53 @@ export default function ScalesPage() {
 
       {/* Free-time fill dialog */}
       <Dialog open={!!freeSlot} onOpenChange={(o) => !o && setFreeSlot(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Preencher tempo livre</DialogTitle>
+            <DialogTitle>Sugestão de função</DialogTitle>
             <DialogDescription>
               {freeSlot?.memberName} · {freeSlot && fmtDDMM(freeSlot.date)} ·{" "}
               {freeSlot?.start} – {freeSlot?.end}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+            {/* Responsabilidades cadastradas */}
+            {(() => {
+              const resps = freeSlot
+                ? (responsibilitiesByMember.get(freeSlot.memberId) ?? [])
+                : [];
+              if (resps.length > 0) {
+                return (
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Responsabilidades</Label>
+                    <div className="mt-1 space-y-1.5">
+                      {resps.map((r) => (
+                        <button
+                          key={r.id}
+                          disabled={createEntryMut.isPending}
+                          onClick={() =>
+                            handleFillFreeSlot(r.title, r.description ?? undefined)
+                          }
+                          className="w-full rounded-lg border border-border px-3 py-2 text-left hover:border-primary/40 hover:bg-primary/5 transition-colors disabled:opacity-50"
+                        >
+                          <p className="text-sm font-medium leading-tight">{r.title}</p>
+                          {r.description && (
+                            <p className="text-[11px] text-muted-foreground truncate">
+                              {r.description}
+                            </p>
+                          )}
+                          <Badge variant="outline" className="mt-1 text-[10px] px-1.5 py-0">
+                            {r.category}
+                          </Badge>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
+            {/* Sugestão rápida */}
             <div>
               <Label className="text-xs text-muted-foreground">Sugestão rápida</Label>
               <Button
@@ -1294,6 +1356,8 @@ export default function ScalesPage() {
                 <Plus className="h-4 w-4 mr-2" /> ADM (trabalho administrativo)
               </Button>
             </div>
+
+            {/* Tarefas pendentes */}
             {(() => {
               const tasks = freeSlot
                 ? pendingTasksByMember.get(freeSlot.memberId) ?? []
@@ -1310,7 +1374,7 @@ export default function ScalesPage() {
                   <Label className="text-xs text-muted-foreground">
                     Tarefas pendentes
                   </Label>
-                  <div className="mt-1 space-y-1.5 max-h-60 overflow-y-auto">
+                  <div className="mt-1 space-y-1.5">
                     {tasks.map((t) => (
                       <button
                         key={t.id}
