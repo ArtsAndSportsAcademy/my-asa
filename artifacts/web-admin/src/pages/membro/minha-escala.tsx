@@ -6,6 +6,8 @@ import {
   getListFolgasQueryKey,
 } from "@workspace/api-client-react";
 import type { MyAllocation } from "@workspace/api-client-react";
+
+type AllocationWithOp = MyAllocation & { operationId?: string | null; operationName?: string | null };
 import AdminLayout from "@/components/admin-layout";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,6 +19,7 @@ import {
   UserCheck,
   Palmtree,
   RefreshCw,
+  Building2,
 } from "lucide-react";
 
 import { SCALE_STATUS_LABELS } from "@/lib/operational-constants";
@@ -99,11 +102,13 @@ function DayRow({
   date,
   entries,
   folgaType,
+  showOp,
 }: {
   label: string;
   date: string;
-  entries: MyAllocation[];
+  entries: AllocationWithOp[];
   folgaType: string | null;
+  showOp: boolean;
 }) {
   const hasEntries = entries.length > 0;
   return (
@@ -149,6 +154,12 @@ function DayRow({
                     {e.positionName}
                   </span>
                 )}
+                {showOp && e.operationName && (
+                  <span className="flex items-center gap-1 text-xs text-blue-600 font-medium">
+                    <Building2 className="w-3 h-3" />
+                    {e.operationName}
+                  </span>
+                )}
               </div>
             </div>
           ))
@@ -168,15 +179,17 @@ function WeekCard({
   weekStart,
   allocations,
   folgas,
+  showOp,
 }: {
   weekStart: string;
-  allocations: MyAllocation[];
+  allocations: AllocationWithOp[];
   folgas: FolgaLike[];
+  showOp: boolean;
 }) {
   const weekEnd = addDays(weekStart, 6);
 
   const byDate = useMemo(() => {
-    const m = new Map<string, MyAllocation[]>();
+    const m = new Map<string, AllocationWithOp[]>();
     for (const a of allocations) {
       if (!a.eventDate) continue;
       const list = m.get(a.eventDate) ?? [];
@@ -225,6 +238,7 @@ function WeekCard({
                 date={date}
                 entries={byDate.get(date) ?? []}
                 folgaType={folgaTypeOn(date, folgas)}
+                showOp={showOp}
               />
             );
           })}
@@ -240,23 +254,18 @@ export default function MinhaEscalaPage() {
   const auth = useAuth();
   const [activeFilter, setActiveFilter] = useState<FilterValue>("upcoming");
 
-  const operationId = auth.roles.find((r) => r.operationId)?.operationId;
   const userId = auth.user?.id;
-  const userRole = auth.roles[0]?.role;
-  const isManager =
-    userRole === "ADMIN" || userRole === "SUPERVISOR_A" || userRole === "SUPERVISOR_B";
 
-  const queryParams = { operationId };
+  const queryParams = {};
 
   const { data, isLoading, isError } = useListMyAllocations(queryParams, {
     query: {
       queryKey: getListMyAllocationsQueryKey(queryParams),
-      enabled: !!operationId,
+      enabled: !!userId,
     },
   });
 
   const folgaParams = {
-    ...(isManager && operationId ? { operationId } : {}),
     ...(userId ? { userId } : {}),
     status: "ACTIVE",
   };
@@ -272,11 +281,18 @@ export default function MinhaEscalaPage() {
     [folgaData]
   );
 
-  const allAllocations = useMemo(() => data?.allocations ?? [], [data]);
+  const allAllocations = useMemo<AllocationWithOp[]>(
+    () => (data?.allocations as AllocationWithOp[] | undefined) ?? [],
+    [data]
+  );
+  const isMultiOp = useMemo(
+    () => new Set(allAllocations.map((a) => a.operationId).filter(Boolean)).size > 1,
+    [allAllocations]
+  );
 
   // Group allocations into weeks (Thu→Wed). Inject weeks that only have folgas too.
   const weeks = useMemo(() => {
-    const byWeek = new Map<string, MyAllocation[]>();
+    const byWeek = new Map<string, AllocationWithOp[]>();
     for (const a of allAllocations) {
       if (!a.eventDate) continue;
       const ws = thursdayOf(a.eventDate);
@@ -288,7 +304,6 @@ export default function MinhaEscalaPage() {
       if (f.status !== "ACTIVE") continue;
       let cursor = thursdayOf(f.startDate);
       const end = f.endDate;
-      // walk week-by-week across the folga span
       while (cursor <= end) {
         if (!byWeek.has(cursor)) byWeek.set(cursor, []);
         cursor = addDays(cursor, 7);
@@ -371,6 +386,7 @@ export default function MinhaEscalaPage() {
                 weekStart={w.weekStart}
                 allocations={w.allocations}
                 folgas={activeFolgas}
+                showOp={isMultiOp}
               />
             ))}
           </div>

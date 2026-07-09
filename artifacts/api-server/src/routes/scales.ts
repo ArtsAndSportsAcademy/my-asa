@@ -11,6 +11,7 @@ import {
   folgasTable,
   responsibilitiesTable,
   responsibilityAssignmentsTable,
+  operationsTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
@@ -195,15 +196,12 @@ router.post("/scales/generate", requireAuth, requireOrganization, async (req, re
   }
 });
 
-// GET /api/scales/my-allocations — mobile: my allocations
+// GET /api/scales/my-allocations — todas as operações do utilizador
 router.get("/scales/my-allocations", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger("scale", req.requestId, req.correlationId);
   const userId = req.user!.sub;
-  const { operationId } = req.query as Record<string, string | undefined>;
 
   try {
-    const conditions = [eq(scaleAllocationsTable.userId, userId)];
-
     const rows = await db
       .select({
         id: scaleAllocationsTable.id,
@@ -220,6 +218,8 @@ router.get("/scales/my-allocations", requireAuth, requireOrganization, async (re
         eventType: agendaEventsTable.type,
         scaleTitle: scalesTable.title,
         scaleStatus: scalesTable.status,
+        operationId: scalesTable.operationId,
+        operationName: operationsTable.name,
         manualDate: scaleAllocationsTable.manualDate,
         manualLabel: scaleAllocationsTable.manualLabel,
         manualStartTime: scaleAllocationsTable.startTime,
@@ -229,7 +229,8 @@ router.get("/scales/my-allocations", requireAuth, requireOrganization, async (re
       .leftJoin(showBookRolesTable, eq(scaleAllocationsTable.positionId, showBookRolesTable.id))
       .leftJoin(agendaEventsTable, eq(scaleAllocationsTable.agendaEventId, agendaEventsTable.id))
       .leftJoin(scalesTable, eq(scaleAllocationsTable.scaleId, scalesTable.id))
-      .where(and(...conditions));
+      .leftJoin(operationsTable, eq(scalesTable.operationId, operationsTable.id))
+      .where(eq(scaleAllocationsTable.userId, userId));
 
     // Coalesce manual-entry fields (old MyASA model) over engine/agenda fields.
     const allocations = rows
@@ -248,6 +249,8 @@ router.get("/scales/my-allocations", requireAuth, requireOrganization, async (re
         eventType: r.eventType,
         scaleTitle: r.scaleTitle,
         scaleStatus: r.scaleStatus,
+        operationId: r.operationId,
+        operationName: r.operationName,
       }))
       .sort((a, b) => (a.eventDate ?? "").localeCompare(b.eventDate ?? ""));
 

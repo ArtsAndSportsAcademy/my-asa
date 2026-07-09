@@ -6,6 +6,8 @@ import {
   getListFolgasQueryKey,
 } from "@workspace/api-client-react";
 import type { MyAllocation } from "@workspace/api-client-react";
+
+type AllocationWithOp = MyAllocation & { operationId?: string | null; operationName?: string | null };
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useState, useCallback, useMemo } from "react";
 import {
@@ -99,13 +101,15 @@ function DayRow({
   folgaType,
   colors,
   onOpenEvent,
+  showOp,
 }: {
   label: string;
   date: string;
-  entries: MyAllocation[];
+  entries: AllocationWithOp[];
   folgaType: string | null;
   colors: ReturnType<typeof useColors>;
   onOpenEvent: (agendaEventId: string) => void;
+  showOp: boolean;
 }) {
   const hasEntries = entries.length > 0;
   return (
@@ -172,6 +176,14 @@ function DayRow({
                     </Text>
                   </View>
                 )}
+                {showOp && e.operationName && (
+                  <View style={styles.metaItem}>
+                    <Feather name="briefcase" size={11} color="#2563eb" />
+                    <Text style={[styles.metaText, { color: "#2563eb" }]}>
+                      {e.operationName}
+                    </Text>
+                  </View>
+                )}
               </View>
               <Text style={[styles.entryHint, { color: colors.primary }]}>
                 Ver Livro do Dia →
@@ -196,17 +208,19 @@ function WeekCard({
   folgas,
   colors,
   onOpenEvent,
+  showOp,
 }: {
   weekStart: string;
-  allocations: MyAllocation[];
+  allocations: AllocationWithOp[];
   folgas: FolgaItem[];
   colors: ReturnType<typeof useColors>;
   onOpenEvent: (agendaEventId: string) => void;
+  showOp: boolean;
 }) {
   const weekEnd = addDays(weekStart, 6);
 
   const byDate = useMemo(() => {
-    const m = new Map<string, MyAllocation[]>();
+    const m = new Map<string, AllocationWithOp[]>();
     for (const a of allocations) {
       if (!a.eventDate) continue;
       const list = m.get(a.eventDate) ?? [];
@@ -253,6 +267,7 @@ function WeekCard({
               folgaType={folgaTypeOn(date, folgas)}
               colors={colors}
               onOpenEvent={onOpenEvent}
+              showOp={showOp}
             />
           );
         })}
@@ -282,22 +297,18 @@ export default function ScaleScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterValue>("upcoming");
 
-  const operationId = auth.roles.find((r) => r.operationId)?.operationId;
   const userId = auth.user?.id;
-  const userRole = auth.roles[0]?.role;
-  const isManager = userRole === "ADMIN" || userRole === "SUPERVISOR_A" || userRole === "SUPERVISOR_B";
 
-  const queryParams = { operationId };
+  const queryParams = {};
 
   const { data, isLoading, refetch } = useListMyAllocations(queryParams, {
     query: {
       queryKey: getListMyAllocationsQueryKey(queryParams),
-      enabled: !!operationId,
+      enabled: !!userId,
     },
   });
 
   const folgaParams = {
-    ...(isManager && operationId ? { operationId } : {}),
     ...(userId ? { userId } : {}),
     status: "ACTIVE",
   };
@@ -321,11 +332,18 @@ export default function ScaleScreen() {
     setRefreshing(false);
   }, [queryClient, refetch]);
 
-  const allAllocations = useMemo(() => data?.allocations ?? [], [data]);
+  const allAllocations = useMemo<AllocationWithOp[]>(
+    () => (data?.allocations as AllocationWithOp[] | undefined) ?? [],
+    [data]
+  );
+  const isMultiOp = useMemo(
+    () => new Set(allAllocations.map((a) => a.operationId).filter(Boolean)).size > 1,
+    [allAllocations]
+  );
 
   // Group into weeks (Thu→Wed); inject folga-only weeks too.
   const weeks = useMemo(() => {
-    const byWeek = new Map<string, MyAllocation[]>();
+    const byWeek = new Map<string, AllocationWithOp[]>();
     for (const a of allAllocations) {
       if (!a.eventDate) continue;
       const ws = thursdayOf(a.eventDate);
@@ -440,6 +458,7 @@ export default function ScaleScreen() {
               folgas={activeFolgas}
               colors={colors}
               onOpenEvent={openEvent}
+              showOp={isMultiOp}
             />
           ))
         )}
