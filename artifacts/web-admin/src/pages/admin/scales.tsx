@@ -27,8 +27,7 @@ import {
   getListTasksQueryKey,
   useListAgendaEvents,
   getListAgendaEventsQueryKey,
-  useListResponsibilities,
-  getListResponsibilitiesQueryKey,
+  useGetScaleSuggestions,
 } from "@workspace/api-client-react";
 import type {
   ScaleSummary,
@@ -38,7 +37,7 @@ import type {
   FolgaItem,
   AgendaEvent,
   TaskItem,
-  ResponsibilityItem,
+  ScaleSuggestion,
 } from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
@@ -357,13 +356,13 @@ export default function ScalesPage() {
     },
   });
 
-  // Responsabilidades da operação, para sugerir no tempo livre.
-  const respParams = { operationId: selectedScale?.operationId };
-  const { data: respData } = useListResponsibilities(respParams, {
-    query: {
-      enabled: folgasEnabled && !!selectedScale?.operationId,
-    },
-  });
+  // Sugestões de função por disponibilidade (backend valida folgas + responsabilidades).
+  const _suggestDay = selectedDay ?? selectedScale?.periodStart;
+  const { data: suggestionsData } = useGetScaleSuggestions(
+    selectedScale?.id,
+    _suggestDay ?? undefined,
+    { query: { enabled: folgasEnabled && !!selectedScale?.id && !!_suggestDay } }
+  );
 
   // ── Mutations ──────────────────────────────────────────────────────────────
   const createWeekMut = useCreateWeekScale();
@@ -523,18 +522,14 @@ export default function ScalesPage() {
     return m;
   }, [entriesByDateMember]);
 
-  // userId → responsabilidades activas (para sugerir no tempo livre)
-  const responsibilitiesByMember = useMemo(() => {
-    const m = new Map<string, ResponsibilityItem[]>();
-    for (const r of (respData?.responsibilities ?? []) as ResponsibilityItem[]) {
-      for (const a of r.assignments) {
-        if (!a.active) continue;
-        if (!m.has(a.memberId)) m.set(a.memberId, []);
-        m.get(a.memberId)!.push(r);
-      }
+  // userId → sugestão do backend (freeGaps + responsabilidades validadas)
+  const suggestionsByMember = useMemo(() => {
+    const m = new Map<string, ScaleSuggestion>();
+    for (const s of (suggestionsData?.suggestions ?? []) as ScaleSuggestion[]) {
+      m.set(s.userId, s);
     }
     return m;
-  }, [respData]);
+  }, [suggestionsData]);
 
   // userId → tarefas pendentes (para sugerir no tempo livre)
   const pendingTasksByMember = useMemo(() => {
@@ -747,6 +742,23 @@ export default function ScalesPage() {
     } catch (e: any) {
       toast({ title: e?.message ?? "Erro ao preencher tempo livre", variant: "destructive" });
     }
+  }
+
+  // Aceitar sugestão: pré-preenche o dialog de bloco manual e fecha o freeSlot dialog
+  function acceptSuggestion(label: string, description?: string) {
+    if (!freeSlot) return;
+    setAddEntryForm({
+      memberId: freeSlot.memberId,
+      memberName: freeSlot.memberName,
+      date: freeSlot.date,
+      label,
+      startTime: freeSlot.start,
+      endTime: freeSlot.end,
+      notes: description ?? "",
+      force: false,
+    });
+    setFreeSlot(null);
+    setShowAddEntry(true);
   }
 
   function openAddFromAgenda() {
@@ -1307,41 +1319,36 @@ export default function ScalesPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
-            {/* Responsabilidades cadastradas */}
+            {/* Responsabilidades (dados validados pelo servidor: folgas excluídas) */}
             {(() => {
               const resps = freeSlot
-                ? (responsibilitiesByMember.get(freeSlot.memberId) ?? [])
+                ? (suggestionsByMember.get(freeSlot.memberId)?.responsibilities ?? [])
                 : [];
-              if (resps.length > 0) {
-                return (
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Responsabilidades</Label>
-                    <div className="mt-1 space-y-1.5">
-                      {resps.map((r) => (
-                        <button
-                          key={r.id}
-                          disabled={createEntryMut.isPending}
-                          onClick={() =>
-                            handleFillFreeSlot(r.title, r.description ?? undefined)
-                          }
-                          className="w-full rounded-lg border border-border px-3 py-2 text-left hover:border-primary/40 hover:bg-primary/5 transition-colors disabled:opacity-50"
-                        >
-                          <p className="text-sm font-medium leading-tight">{r.title}</p>
-                          {r.description && (
-                            <p className="text-[11px] text-muted-foreground truncate">
-                              {r.description}
-                            </p>
-                          )}
-                          <Badge variant="outline" className="mt-1 text-[10px] px-1.5 py-0">
-                            {r.category}
-                          </Badge>
-                        </button>
-                      ))}
-                    </div>
+              if (resps.length === 0) return null;
+              return (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Responsabilidades</Label>
+                  <div className="mt-1 space-y-1.5">
+                    {resps.map((r) => (
+                      <button
+                        key={r.id}
+                        onClick={() => acceptSuggestion(r.title, r.description ?? undefined)}
+                        className="w-full rounded-lg border border-border px-3 py-2 text-left hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                      >
+                        <p className="text-sm font-medium leading-tight">{r.title}</p>
+                        {r.description && (
+                          <p className="text-[11px] text-muted-foreground truncate">
+                            {r.description}
+                          </p>
+                        )}
+                        <Badge variant="outline" className="mt-1 text-[10px] px-1.5 py-0">
+                          {r.category}
+                        </Badge>
+                      </button>
+                    ))}
                   </div>
-                );
-              }
-              return null;
+                </div>
+              );
             })()}
 
             {/* Sugestão rápida */}

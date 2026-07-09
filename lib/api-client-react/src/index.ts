@@ -11,5 +11,6 @@ export * from "./users-manual";
 export * from "./show-book-resolve-manual";
 export * from "./show-book-responsible-manual";
 export * from "./responsibilities-manual";
+export * from "./scale-suggestions-manual";
 export { setBaseUrl, setAuthTokenGetter, setAuthRefreshHandler, customFetch } from "./custom-fetch";
 export type { AuthTokenGetter, AuthRefreshHandler } from "./custom-fetch";
