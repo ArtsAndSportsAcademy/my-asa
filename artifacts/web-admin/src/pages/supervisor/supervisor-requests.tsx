@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MemberCombobox } from "@/components/member-combobox";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeftRight, Plus, Send, Inbox } from "lucide-react";
 import AdminLayout from "@/components/admin-layout";
@@ -184,12 +185,7 @@ export default function SupervisorInterRequestsPage() {
           <div className="space-y-4 py-2">
             <div>
               <Label>Membro solicitado</Label>
-              <Select value={newForm.memberId} onValueChange={v => setNewForm(f => ({ ...f, memberId: v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecionar membro" /></SelectTrigger>
-                <SelectContent>
-                  {users.map((u) => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <MemberCombobox value={newForm.memberId} onChange={v => setNewForm(f => ({ ...f, memberId: v }))} users={users} placeholder="Selecionar membro" />
             </div>
             <div>
               <Label>Operação do membro (origem)</Label>

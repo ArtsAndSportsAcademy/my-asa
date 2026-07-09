@@ -25,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MemberCombobox } from "@/components/member-combobox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useLocation } from "wouter";
@@ -458,22 +459,13 @@ export default function GroupsPage() {
                 Adicionar Supervisor
               </p>
               <div className="flex gap-2">
-                <Select value={addSupervisorUserId} onValueChange={setAddSupervisorUserId}>
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Selecionar supervisor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {eligibleSupervisors.filter((s) => !groupSupervisorIds.has(s.id)).length === 0 ? (
-                      <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum supervisor disponível</div>
-                    ) : (
-                      eligibleSupervisors
-                        .filter((s) => !groupSupervisorIds.has(s.id))
-                        .map((s) => (
-                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                        ))
-                    )}
-                  </SelectContent>
-                </Select>
+                <MemberCombobox
+                  value={addSupervisorUserId}
+                  onChange={setAddSupervisorUserId}
+                  users={eligibleSupervisors.filter((s) => !groupSupervisorIds.has(s.id))}
+                  placeholder="Selecionar supervisor"
+                  className="flex-1"
+                />
                 <Button
                   size="sm"
                   onClick={handleAddSupervisor}

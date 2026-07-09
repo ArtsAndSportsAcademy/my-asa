@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MemberCombobox } from "@/components/member-combobox";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -193,20 +194,13 @@ function AssignmentRow({
     return (
       <div className="flex items-center gap-1.5 px-2 py-1" style={{ paddingLeft: `${8 + 4 * 16}px` }}>
         <User className="h-3 w-3 text-muted-foreground shrink-0" />
-        <Select
-          value={selectedUserId ?? "__none"}
-          onValueChange={(v) => setSelectedUserId(v === "__none" ? null : v)}
-        >
-          <SelectTrigger className="h-7 text-xs flex-1">
-            <SelectValue placeholder="Selecione um escalado..." />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__none">— Sem escalado —</SelectItem>
-            {users.map((u) => (
-              <SelectItem key={u.id} value={u.id}>{u.name ?? u.id}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <MemberCombobox
+          value={selectedUserId ?? ""}
+          onChange={(v) => setSelectedUserId(v || null)}
+          users={[{ id: "", name: "— Sem escalado —" }, ...users.map(u => ({ id: u.id, name: u.name ?? u.id }))]}
+          placeholder="Selecione um escalado..."
+          className="h-7 text-xs flex-1"
+        />
         <button onClick={confirm} className="p-1 rounded hover:bg-green-100 hover:text-green-700" title="Confirmar">
           <Check className="h-3.5 w-3.5" />
         </button>

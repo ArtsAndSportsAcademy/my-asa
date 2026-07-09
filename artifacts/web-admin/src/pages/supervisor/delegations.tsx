@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MemberCombobox } from "@/components/member-combobox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, X, AlertCircle, Loader2, ShieldCheck, ChevronDown, ChevronUp } from "lucide-react";
@@ -297,16 +298,7 @@ export function DelegationsContent() {
 
             <div className="space-y-1.5">
               <Label>Membro (Capitão) *</Label>
-              <Select value={delegateId} onValueChange={setDelegateId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o membro" />
-                </SelectTrigger>
-                <SelectContent>
-                  {users.map((u) => (
-                    <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <MemberCombobox value={delegateId} onChange={setDelegateId} users={users} placeholder="Selecione o membro" />
             </div>
 
             <div className="grid grid-cols-2 gap-3">

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MemberCombobox } from "@/components/member-combobox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -111,14 +112,7 @@ function FillPeriodDialog({
         <div className="space-y-4 py-2">
           <div className="space-y-1">
             <Label>Membro <span className="text-destructive">*</span></Label>
-            <Select value={userId} onValueChange={setUserId}>
-              <SelectTrigger><SelectValue placeholder="Selecione o membro" /></SelectTrigger>
-              <SelectContent>
-                {members.map((m) => (
-                  <SelectItem key={m.userId} value={m.userId}>{m.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <MemberCombobox value={userId} onChange={setUserId} users={members.map(m => ({ id: m.userId, name: m.name }))} placeholder="Selecione o membro" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
