@@ -24,6 +24,7 @@ import {
 import type { TaskItem, TaskEvidence } from "@workspace/api-client-react";
 import { Plus, CheckCircle2, XCircle, RotateCcw, AlertCircle, Ban, Paperclip, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 import { MemberCombobox } from "@/components/member-combobox";
+import { SupervisorDeliveriesContent } from "@/pages/supervisor/deliveries";
 
 const PRIORITY_LABELS: Record<string, string> = {
   LOW: "Baixa", MEDIUM: "Média", HIGH: "Alta", CRITICAL: "Crítica",

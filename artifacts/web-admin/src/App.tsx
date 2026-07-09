@@ -150,6 +150,15 @@ function ProtectedRoute({ component: Component, path }: { component: React.Compo
   return <Route path={path} component={Component} />;
 }
 
+function TrainerBlockedRoute({ component: Component, path }: { component: React.ComponentType<any>, path: string }) {
+  const { isAuthenticated, isLoading, roles: userRoles } = useAuth();
+  if (isLoading) return <Spinner />;
+  if (!isAuthenticated) return <Redirect to="/login" />;
+  const isTrainer = userRoles.some((r) => r.role === "TRAINER");
+  if (isTrainer) return <AccessDenied />;
+  return <Route path={path} component={Component} />;
+}
+
 function RoleRoute({ component: Component, path, roles }: { component: React.ComponentType<any>, path: string, roles: string[] }) {
   const { isAuthenticated, isLoading, roles: userRoles } = useAuth();
   const { data: delegData, isLoading: delegLoading } = useGetMyActiveDelegations({
@@ -192,8 +201,8 @@ function Router() {
       <RoleRoute path="/admin/users" component={UsersPage} roles={["ADMIN"]} />
       <RoleRoute path="/admin/operations" component={OperationsPage} roles={["ADMIN"]} />
       <RoleRoute path="/admin/groups" component={GroupsPage} roles={["ADMIN"]} />
-      <ProtectedRoute path="/admin/show-book" component={ShowBookPage} />
-      <ProtectedRoute path="/admin/agenda" component={AgendaPage} />
+      <TrainerBlockedRoute path="/admin/show-book" component={ShowBookPage} />
+      <TrainerBlockedRoute path="/admin/agenda" component={AgendaPage} />
       <RoleRoute path="/admin/auditoria" component={AuditoriaPage} roles={["ADMIN"]} />
       <RoleRoute path="/admin/scales" component={ScalesPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/admin/activities" component={ActivitiesPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
@@ -201,7 +210,7 @@ function Router() {
       <RoleRoute path="/supervisor/daily-book" component={SupervisorDailyBookPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/admin/operational-panel" component={AdminOperationalPanel} roles={["ADMIN"]} />
       <RoleRoute path="/supervisor/operational-panel" component={SupervisorOperationalPanel} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <ProtectedRoute path="/admin/meu-dia" component={MeuDiaPage} />
+      <TrainerBlockedRoute path="/admin/meu-dia" component={MeuDiaPage} />
       <RoleRoute path="/admin/avisos" component={AdminAvisosPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/supervisor/avisos" component={SupervisorAvisosPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/admin/history" component={AdminHistoryPage} roles={["ADMIN"]} />
@@ -224,22 +233,22 @@ function Router() {
       <RoleRoute path="/supervisor/restrictions" component={SupervisorRestrictionsPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/supervisor/check-ins" component={SupervisorCheckInsPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/supervisor/supervisor-requests" component={SupervisorInterRequestsPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <ProtectedRoute path="/admin/responsibilities" component={ResponsibilitiesPage} />
-      <ProtectedRoute path="/admin/asa" component={AsaPage} />
+      <TrainerBlockedRoute path="/admin/responsibilities" component={ResponsibilitiesPage} />
+      <TrainerBlockedRoute path="/admin/asa" component={AsaPage} />
       <RoleRoute path="/admin/folgas" component={AdminFolgasPage} roles={["ADMIN"]} />
       <RoleRoute path="/supervisor/folgas" component={SupervisorFolgasPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
       <ProtectedRoute path="/admin/mural" component={MuralPage} />
       <ProtectedRoute path="/membro/escala" component={MinhaEscalaPage} />
-      <ProtectedRoute path="/membro/tarefas" component={MinhasTarefasPage} />
-      <ProtectedRoute path="/membro/entregas" component={MinhasEntregasPage} />
+      <TrainerBlockedRoute path="/membro/tarefas" component={MinhasTarefasPage} />
+      <TrainerBlockedRoute path="/membro/entregas" component={MinhasEntregasPage} />
       <ProtectedRoute path="/membro/mensagens" component={MembroMensagensPage} />
-      <ProtectedRoute path="/membro/biblioteca" component={MembroBibliotecaPage} />
-      <ProtectedRoute path="/membro/livro-do-dia" component={MembroLivroDoDiaPage} />
+      <TrainerBlockedRoute path="/membro/biblioteca" component={MembroBibliotecaPage} />
+      <TrainerBlockedRoute path="/membro/livro-do-dia" component={MembroLivroDoDiaPage} />
       <ProtectedRoute path="/membro/avisos" component={MembroAvisosPage} />
-      <ProtectedRoute path="/membro/solicitacoes" component={MembroSolicitacoesPage} />
+      <TrainerBlockedRoute path="/membro/solicitacoes" component={MembroSolicitacoesPage} />
       <RoleRoute path="/admin/folgas-indisponibilidades" component={FolgasIndisponibilidadesPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/admin/responsabilidades-delegacoes" component={ResponsabilidadesDelegacoesPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <ProtectedRoute path="/membro/folgas" component={MembroFolgasPage} />
+      <TrainerBlockedRoute path="/membro/folgas" component={MembroFolgasPage} />
       <Route component={NotFound} />
     </Switch>
   );
