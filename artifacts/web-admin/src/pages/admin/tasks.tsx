@@ -19,9 +19,10 @@ import {
   useApproveTask,
   useRequestTaskChanges,
   useCancelTask,
+  useUpdateTask,
 } from "@workspace/api-client-react";
 import type { TaskItem } from "@workspace/api-client-react";
-import { Plus, CheckCircle2, XCircle, RotateCcw, Clock, AlertCircle, Ban } from "lucide-react";
+import { Plus, CheckCircle2, XCircle, RotateCcw, Clock, AlertCircle, Ban, Pencil } from "lucide-react";
 import { MemberCombobox } from "@/components/member-combobox";
 import { AsaConfirmDialog } from "@/components/AsaConfirmDialog";
 import { DeliveriesContent } from "@/pages/admin/deliveries";
@@ -58,16 +59,122 @@ const STATUS_COLORS: Record<string, string> = {
   EXPIRED: "bg-red-100 text-red-600 border-red-200",
 };
 
+// ─── Edit Task Dialog ─────────────────────────────────────────────────────────
+
+const FINAL_STATUSES = ["APPROVED", "COMPLETED", "CANCELLED", "EXPIRED"];
+
+function EditTaskDialog({ task, onSaved, onClose }: {
+  task: TaskItem;
+  onSaved: () => void;
+  onClose: () => void;
+}) {
+  const { toast } = useToast();
+  const { data: usersData } = useListUsers();
+  const users = usersData?.users ?? [];
+
+  const [form, setForm] = useState({
+    title: task.title,
+    description: task.description ?? "",
+    assigneeId: task.assigneeId,
+    approverId: task.approverId ?? "",
+    requiresApproval: task.requiresApproval,
+    priority: task.priority as string,
+    dueDate: task.dueDate,
+  });
+
+  const { mutateAsync: updateTask, isPending } = useUpdateTask();
+
+  async function handleSave() {
+    if (!form.title || !form.assigneeId || !form.dueDate) {
+      toast({ title: "Campos obrigatórios", description: "Preencha título, responsável e prazo.", variant: "destructive" });
+      return;
+    }
+    try {
+      await updateTask({ taskId: task.id, data: {
+        title: form.title,
+        description: form.description || undefined,
+        assigneeId: form.assigneeId,
+        approverId: form.requiresApproval && form.approverId ? form.approverId : undefined,
+        requiresApproval: form.requiresApproval,
+        priority: form.priority as any,
+        dueDate: form.dueDate,
+      }});
+      toast({ title: "Tarefa atualizada" });
+      onSaved();
+      onClose();
+    } catch {
+      toast({ title: "Erro ao atualizar tarefa", variant: "destructive" });
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Editar Tarefa</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label>Título *</Label>
+            <Input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Descrição</Label>
+            <Textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} rows={2} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Responsável *</Label>
+              <MemberCombobox value={form.assigneeId} onChange={(v) => setForm((f) => ({ ...f, assigneeId: v }))} users={users} placeholder="Selecionar responsável" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Prazo *</Label>
+              <Input type="date" value={form.dueDate} onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))} />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Prioridade</Label>
+            <Select value={form.priority} onValueChange={(v) => setForm((f) => ({ ...f, priority: v }))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {["LOW","MEDIUM","HIGH","CRITICAL"].map((p) => <SelectItem key={p} value={p}>{PRIORITY_LABELS[p]}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox id="edit-requires-approval" checked={form.requiresApproval} onCheckedChange={(v) => setForm((f) => ({ ...f, requiresApproval: !!v }))} />
+            <Label htmlFor="edit-requires-approval" className="cursor-pointer">Requer aprovação</Label>
+          </div>
+          {form.requiresApproval && (
+            <div className="space-y-1.5">
+              <Label>Aprovador</Label>
+              <MemberCombobox value={form.approverId} onChange={(v) => setForm((f) => ({ ...f, approverId: v }))} users={users} placeholder="Selecionar aprovador" />
+            </div>
+          )}
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={onClose}>Cancelar</Button>
+            <Button onClick={handleSave} disabled={isPending}>
+              {isPending ? "Salvando..." : "Salvar"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Task Card ────────────────────────────────────────────────────────────────
 
-function TaskCard({ task, onApprove, onRequestChanges, onCancel }: {
+function TaskCard({ task, onApprove, onRequestChanges, onCancel, onEdit }: {
   task: TaskItem;
   onApprove: (id: string) => void;
   onRequestChanges: (id: string) => void;
   onCancel: (id: string) => void;
+  onEdit: (task: TaskItem) => void;
 }) {
   const isLate = task.status !== "APPROVED" && task.status !== "COMPLETED" && task.status !== "CANCELLED"
     && new Date(task.dueDate) < new Date();
+  const isEditable = !FINAL_STATUSES.includes(task.status);
 
   return (
     <Card className={`border ${isLate ? "border-red-200 bg-red-50/30" : ""}`}>
@@ -100,6 +207,11 @@ function TaskCard({ task, onApprove, onRequestChanges, onCancel }: {
             </div>
           </div>
           <div className="flex flex-col gap-1.5 shrink-0">
+            {isEditable && (
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => onEdit(task)}>
+                <Pencil className="h-3 w-3 mr-1" /> Editar
+              </Button>
+            )}
             {task.status === "READY_FOR_APPROVAL" && (
               <>
                 <Button size="sm" variant="default" className="h-7 text-xs" onClick={() => onApprove(task.id)}>
@@ -110,7 +222,7 @@ function TaskCard({ task, onApprove, onRequestChanges, onCancel }: {
                 </Button>
               </>
             )}
-            {!["APPROVED", "COMPLETED", "CANCELLED", "EXPIRED"].includes(task.status) && (
+            {isEditable && (
               <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" onClick={() => onCancel(task.id)}>
                 <Ban className="h-3 w-3 mr-1" /> Cancelar
               </Button>
@@ -294,6 +406,7 @@ function TasksContent() {
   const [changesComment, setChangesComment] = useState("");
   const [changesTaskId, setChangesTaskId] = useState<string | null>(null);
   const [cancelTaskId, setCancelTaskId] = useState<string | null>(null);
+  const [editTask, setEditTask] = useState<TaskItem | null>(null);
 
   const { data: opsData } = useGetOperations();
   const operations = opsData?.operations ?? [];
@@ -440,6 +553,7 @@ function TasksContent() {
                       onApprove={handleApprove}
                       onRequestChanges={handleRequestChanges}
                       onCancel={handleCancel}
+                      onEdit={setEditTask}
                     />
                   ))}
                 </div>
@@ -447,6 +561,15 @@ function TasksContent() {
             </TabsContent>
           ))}
         </Tabs>
+
+        {/* Dialog edição */}
+        {editTask && (
+          <EditTaskDialog
+            task={editTask}
+            onSaved={() => { setRefetchKey((k) => k + 1); refetch(); }}
+            onClose={() => setEditTask(null)}
+          />
+        )}
 
         {/* Dialog confirmação cancelamento */}
         <AsaConfirmDialog
