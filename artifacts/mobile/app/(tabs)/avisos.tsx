@@ -147,7 +147,7 @@ export default function AvisosScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <Text style={[styles.headerTitle, { color: colors.foreground, flex: 1 }]}>Avisos</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground, flex: 1 }]}>Mural</Text>
         {unreadCount > 0 && (
           <View style={[styles.badge, { backgroundColor: colors.primary }]}>
             <Text style={styles.badgeText}>{unreadCount}</Text>

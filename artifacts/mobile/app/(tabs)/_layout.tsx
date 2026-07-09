@@ -7,9 +7,8 @@ import { Platform, StyleSheet, View, useColorScheme } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
 import { useUnreadMessagesCount } from "@/hooks/useUnreadMessages";
-import { useGetUnreadCount } from "@workspace/api-client-react";
 
-// 5 abas primárias: Meu Dia, Avisos, Central, Mensagens, Mais.
+// 4 abas primárias: Início, Mural, Mensagens, Mais.
 // Todos os demais ecrãs continuam roteáveis (a partir do hub "Mais"), mas
 // ocultos da barra. Cada ecrã renderiza o seu próprio cabeçalho (insets.top),
 // por isso o cabeçalho do navegador fica desativado (headerShown: false) para
@@ -17,15 +16,13 @@ import { useGetUnreadCount } from "@workspace/api-client-react";
 //
 // NOTA: trocámos os NativeTabs (iOS 26, API experimental "unstable") pela barra
 // clássica em todas as plataformas. Com 6+ abas, os NativeTabs criavam uma aba
-// "More" nativa preta e quebrada (a Escala e o Mais caíam lá dentro) e os ecrãs
-// não abriam. A barra clássica mantém o visual limpo (blur no iOS) e abre tudo.
+// "More" nativa preta e quebrada e os ecrãs não abriam. A barra clássica mantém
+// o visual limpo (blur no iOS) e abre tudo.
 
 export default function TabLayout() {
   const colors = useColors();
   const colorScheme = useColorScheme();
   const unreadMessages = useUnreadMessagesCount();
-  const { data: unreadCountData } = useGetUnreadCount({ refetchInterval: 30_000 });
-  const unreadNotifications = unreadCountData?.count ?? 0;
   const isDark = colorScheme === "dark";
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
@@ -60,41 +57,28 @@ export default function TabLayout() {
         tabBarBackground,
       }}
     >
-      {/* ── 5 abas primárias ── */}
+      {/* ── 4 abas primárias ── */}
       <Tabs.Screen
         name="meu-dia"
         options={{
-          title: "Meu Dia",
+          title: "Início",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="sun.max" tintColor={color} size={24} />
+              <SymbolView name="house" tintColor={color} size={24} />
             ) : (
-              <Feather name="sun" size={22} color={color} />
+              <Feather name="home" size={22} color={color} />
             ),
         }}
       />
       <Tabs.Screen
         name="avisos"
         options={{
-          title: "Avisos",
+          title: "Mural",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="bell" tintColor={color} size={24} />
+              <SymbolView name="megaphone" tintColor={color} size={24} />
             ) : (
-              <Feather name="bell" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
-        name="notificacoes"
-        options={{
-          title: "Central",
-          tabBarBadge: unreadNotifications > 0 ? (unreadNotifications > 99 ? "99+" : unreadNotifications) : undefined,
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="tray" tintColor={color} size={24} />
-            ) : (
-              <Feather name="inbox" size={22} color={color} />
+              <Feather name="layout" size={22} color={color} />
             ),
         }}
       />
@@ -124,23 +108,24 @@ export default function TabLayout() {
         }}
       />
 
-      {/* ── Ecrãs secundários — roteáveis (via "Mais") mas ocultos da barra ── */}
-      <Tabs.Screen name="scale"        options={{ tabBarButton: () => null, title: "Escala"        }} />
-      <Tabs.Screen name="index"        options={{ tabBarButton: () => null, title: "Home"          }} />
-      <Tabs.Screen name="panel"        options={{ tabBarButton: () => null, title: "Painel"        }} />
-      <Tabs.Screen name="agenda"       options={{ tabBarButton: () => null, title: "Agenda"        }} />
-      <Tabs.Screen name="show-book"    options={{ tabBarButton: () => null, title: "Livro do Show" }} />
-      <Tabs.Screen name="daily-book"   options={{ tabBarButton: () => null, title: "Livro do Dia"  }} />
-      <Tabs.Screen name="historico"    options={{ tabBarButton: () => null, title: "Histórico"     }} />
-      <Tabs.Screen name="biblioteca"   options={{ tabBarButton: () => null, title: "Biblioteca"    }} />
-      <Tabs.Screen name="solicitacoes" options={{ tabBarButton: () => null, title: "Solicitações"  }} />
-      <Tabs.Screen name="folgas"       options={{ tabBarButton: () => null, title: "Folgas"         }} />
-      <Tabs.Screen name="entregas"     options={{ tabBarButton: () => null, title: "Entregas"      }} />
-      <Tabs.Screen name="tarefas"          options={{ tabBarButton: () => null, title: "Tarefas"           }} />
+      {/* ── Ecrãs secundários — roteáveis (via "Mais" ou cabeçalho) mas ocultos da barra ── */}
+      <Tabs.Screen name="notificacoes"   options={{ tabBarButton: () => null, title: "Notificações"   }} />
+      <Tabs.Screen name="index"          options={{ tabBarButton: () => null, title: "Perfil"          }} />
+      <Tabs.Screen name="scale"          options={{ tabBarButton: () => null, title: "Escala"          }} />
+      <Tabs.Screen name="panel"          options={{ tabBarButton: () => null, title: "Painel"          }} />
+      <Tabs.Screen name="agenda"         options={{ tabBarButton: () => null, title: "Agenda"          }} />
+      <Tabs.Screen name="show-book"      options={{ tabBarButton: () => null, title: "Livro do Show"   }} />
+      <Tabs.Screen name="daily-book"     options={{ tabBarButton: () => null, title: "Livro do Dia"    }} />
+      <Tabs.Screen name="historico"      options={{ tabBarButton: () => null, title: "Histórico"       }} />
+      <Tabs.Screen name="biblioteca"     options={{ tabBarButton: () => null, title: "Biblioteca"      }} />
+      <Tabs.Screen name="solicitacoes"   options={{ tabBarButton: () => null, title: "Solicitações"    }} />
+      <Tabs.Screen name="folgas"         options={{ tabBarButton: () => null, title: "Folgas"          }} />
+      <Tabs.Screen name="entregas"       options={{ tabBarButton: () => null, title: "Entregas"        }} />
+      <Tabs.Screen name="tarefas"        options={{ tabBarButton: () => null, title: "Tarefas"         }} />
       <Tabs.Screen name="responsabilidades" options={{ tabBarButton: () => null, title: "Responsabilidades" }} />
-      <Tabs.Screen name="insights"         options={{ tabBarButton: () => null, title: "Indicadores"        }} />
-      <Tabs.Screen name="asa"              options={{ tabBarButton: () => null, title: "ASA", tabBarStyle: { display: "none" } }} />
-      <Tabs.Screen name="historico-asa"   options={{ tabBarButton: () => null, title: "Histórico ASA"      }} />
+      <Tabs.Screen name="insights"       options={{ tabBarButton: () => null, title: "Indicadores"     }} />
+      <Tabs.Screen name="asa"            options={{ tabBarButton: () => null, title: "ASA", tabBarStyle: { display: "none" } }} />
+      <Tabs.Screen name="historico-asa"  options={{ tabBarButton: () => null, title: "Histórico ASA"   }} />
     </Tabs>
   );
 }

@@ -19,50 +19,96 @@ type SectionItem = {
   label: string;
   subtitle?: string;
   icon: string;
-  route: string;
-  managerOnly?: boolean;
+  route?: string;
+  disabled?: boolean;
+  badge?: string;
 };
 
-const SECTIONS: { title: string; items: SectionItem[] }[] = [
+type Section = { title: string; items: SectionItem[] };
+
+const MANAGER_SECTIONS: Section[] = [
   {
-    title: "Operacional",
+    title: "Operação",
     items: [
-      { label: "Escala",        subtitle: "Escala completa da operação", icon: "list", route: "/(tabs)/scale" },
-      { label: "Solicitações",  icon: "inbox",       route: "/(tabs)/solicitacoes" },
-      { label: "Folgas",        subtitle: "Ausências e dias de descanso", icon: "calendar", route: "/(tabs)/folgas" },
-      { label: "Livro do Dia",  subtitle: "Roteiro operacional do dia",       icon: "file-text", route: "/(tabs)/daily-book"   },
-      { label: "Entregas",      subtitle: "Materiais e conteúdos atribuídos", icon: "package",   route: "/(tabs)/entregas"     },
-      { label: "Tarefas",       subtitle: "Tarefas atribuídas a você",        icon: "check-square", route: "/(tabs)/tarefas"  },
-      { label: "Painel",            subtitle: "Saúde e cobertura operacional",    icon: "activity",  route: "/(tabs)/panel",                managerOnly: true },
-      { label: "Responsabilidades", subtitle: "Funções permanentes da operação",  icon: "users",     route: "/(tabs)/responsabilidades" },
+      { label: "Escala",        subtitle: "Escala completa da operação",    icon: "list",        route: "/(tabs)/scale"             },
+      { label: "Livro do Dia",  subtitle: "Roteiro operacional do dia",     icon: "file-text",   route: "/(tabs)/daily-book"        },
+      { label: "Tarefas",       subtitle: "Tarefas atribuídas",             icon: "check-square",route: "/(tabs)/tarefas"           },
+      { label: "Folgas & Indisponibilidades", subtitle: "Ausências e restrições", icon: "calendar", route: "/(tabs)/folgas"        },
+      { label: "Solicitações",                                               icon: "inbox",       route: "/(tabs)/solicitacoes"     },
+      { label: "Responsabilidades & Delegações", subtitle: "Funções permanentes da operação", icon: "users", route: "/(tabs)/responsabilidades" },
     ],
   },
   {
-    title: "Consulta",
+    title: "Planejamento",
     items: [
-      { label: "Livro do Show", subtitle: "Estrutura oficial do espetáculo", icon: "book-open", route: "/(tabs)/show-book", managerOnly: true },
-      { label: "Agenda",        icon: "calendar",   route: "/(tabs)/agenda"     },
-      { label: "Biblioteca",    icon: "book",       route: "/(tabs)/biblioteca" },
+      { label: "Agenda",        icon: "calendar",  route: "/(tabs)/agenda"     },
+      { label: "Livro do Show", subtitle: "Estrutura oficial do espetáculo", icon: "book-open", route: "/(tabs)/show-book" },
     ],
   },
   {
-    title: "Registro",
+    title: "Comunicação",
     items: [
-      { label: "Histórico",    icon: "clock",       route: "/(tabs)/historico" },
-      { label: "Indicadores",  subtitle: "Métricas da gestão operacional", icon: "trending-up", route: "/(tabs)/insights", managerOnly: true },
+      { label: "Marketing", subtitle: "Ferramentas de comunicação externa", icon: "send", disabled: true, badge: "Em breve" },
     ],
   },
   {
-    title: "Inteligência",
+    title: "Conhecimento",
+    items: [
+      { label: "Biblioteca", icon: "book", route: "/(tabs)/biblioteca" },
+    ],
+  },
+  {
+    title: "Gestão",
+    items: [
+      { label: "Painel",       subtitle: "Saúde e cobertura operacional",   icon: "activity",    route: "/(tabs)/panel"    },
+      { label: "Indicadores",  subtitle: "Métricas da gestão operacional",  icon: "trending-up", route: "/(tabs)/insights" },
+    ],
+  },
+  {
+    title: "ASA",
     items: [
       { label: "ASA", subtitle: "Assistente operacional inteligente", icon: "cpu", route: "/(tabs)/asa" },
-      { label: "Histórico ASA", subtitle: "Reconhecimentos e memórias registradas", icon: "award", route: "/(tabs)/historico-asa" },
+    ],
+  },
+];
+
+const ELENCO_SECTIONS: Section[] = [
+  {
+    title: "Meu Dia a Dia",
+    items: [
+      { label: "Escala",       subtitle: "Minha escala e atividades",   icon: "list",        route: "/(tabs)/scale"        },
+      { label: "Livro do Dia", subtitle: "Roteiro do dia",              icon: "file-text",   route: "/(tabs)/daily-book"   },
+      { label: "Tarefas",      subtitle: "Tarefas atribuídas a você",   icon: "check-square",route: "/(tabs)/tarefas"      },
+      { label: "Folgas",       subtitle: "Ausências e dias de descanso",icon: "calendar",    route: "/(tabs)/folgas"       },
+      { label: "Solicitações",                                           icon: "inbox",       route: "/(tabs)/solicitacoes" },
     ],
   },
   {
-    title: "Perfil",
+    title: "Planejamento",
     items: [
-      { label: "Meu Perfil", subtitle: "Papel, operação, grupos e delegações", icon: "user", route: "/(tabs)/" },
+      { label: "Agenda", icon: "calendar", route: "/(tabs)/agenda" },
+    ],
+  },
+  {
+    title: "Conhecimento",
+    items: [
+      { label: "Biblioteca",    icon: "book",      route: "/(tabs)/biblioteca" },
+      { label: "Livro do Show", subtitle: "Estrutura oficial do espetáculo", icon: "book-open", route: "/(tabs)/show-book" },
+    ],
+  },
+  {
+    title: "ASA",
+    items: [
+      { label: "ASA", subtitle: "Assistente operacional inteligente", icon: "cpu", route: "/(tabs)/asa" },
+    ],
+  },
+];
+
+const TRAINER_SECTIONS: Section[] = [
+  {
+    title: "Minhas Aulas",
+    items: [
+      { label: "Escala", subtitle: "Minhas aulas e sessões", icon: "list", route: "/(tabs)/scale" },
     ],
   },
 ];
@@ -74,11 +120,13 @@ export default function MaisScreen() {
   const { roles } = useAuth();
 
   const isManager = roles.some((r) => MANAGER_ROLES.includes(r.role));
+  const isTrainer = !isManager && roles.some((r) => r.role === "TRAINER");
 
-  const visibleSections = SECTIONS.map((section) => ({
-    ...section,
-    items: section.items.filter((item) => !item.managerOnly || isManager),
-  })).filter((section) => section.items.length > 0);
+  const sections: Section[] = isManager
+    ? MANAGER_SECTIONS
+    : isTrainer
+    ? TRAINER_SECTIONS
+    : ELENCO_SECTIONS;
 
   return (
     <ScrollView
@@ -89,45 +137,36 @@ export default function MaisScreen() {
       }}
       showsVerticalScrollIndicator={false}
     >
-      {visibleSections.map((section) => (
+      {sections.map((section) => (
         <View key={section.title} style={styles.section}>
-          <Text
-            style={[
-              styles.sectionTitle,
-              { color: colors.mutedForeground },
-            ]}
-          >
+          <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>
             {section.title.toUpperCase()}
           </Text>
-          <View
-            style={[
-              styles.card,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-          >
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             {section.items.map((item, index) => (
-              <React.Fragment key={item.route + item.label}>
+              <React.Fragment key={item.route ?? item.label}>
                 <Pressable
                   style={({ pressed }) => [
                     styles.row,
-                    pressed && { opacity: 0.65 },
+                    item.disabled && styles.rowDisabled,
+                    pressed && !item.disabled && { opacity: 0.65 },
                   ]}
-                  onPress={() => router.push(item.route as any)}
+                  onPress={() => {
+                    if (!item.disabled && item.route) {
+                      router.push(item.route as any);
+                    }
+                  }}
+                  disabled={item.disabled}
                 >
-                  <View
-                    style={[
-                      styles.iconWrap,
-                      { backgroundColor: colors.primary + "18" },
-                    ]}
-                  >
+                  <View style={[styles.iconWrap, { backgroundColor: item.disabled ? colors.muted : colors.primary + "18" }]}>
                     <Feather
                       name={item.icon as any}
                       size={18}
-                      color={colors.primary}
+                      color={item.disabled ? colors.mutedForeground : colors.primary}
                     />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.rowLabel, { color: colors.foreground }]}>
+                    <Text style={[styles.rowLabel, { color: item.disabled ? colors.mutedForeground : colors.foreground }]}>
                       {item.label}
                     </Text>
                     {item.subtitle && (
@@ -136,19 +175,16 @@ export default function MaisScreen() {
                       </Text>
                     )}
                   </View>
-                  <Feather
-                    name="chevron-right"
-                    size={16}
-                    color={colors.mutedForeground}
-                  />
+                  {item.badge ? (
+                    <View style={[styles.badge, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                      <Text style={[styles.badgeText, { color: colors.mutedForeground }]}>{item.badge}</Text>
+                    </View>
+                  ) : !item.disabled ? (
+                    <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                  ) : null}
                 </Pressable>
                 {index < section.items.length - 1 && (
-                  <View
-                    style={[
-                      styles.divider,
-                      { backgroundColor: colors.border },
-                    ]}
-                  />
+                  <View style={[styles.divider, { backgroundColor: colors.border }]} />
                 )}
               </React.Fragment>
             ))}
@@ -183,6 +219,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 12,
   },
+  rowDisabled: {
+    opacity: 0.55,
+  },
   iconWrap: {
     width: 36,
     height: 36,
@@ -201,5 +240,15 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     marginLeft: 64,
+  },
+  badge: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: "600",
   },
 });

@@ -18,6 +18,7 @@ import {
   getNotificationsQueryKey,
   useListFolgas,
   getListFolgasQueryKey,
+  useGetUnreadCount,
 } from "@workspace/api-client-react";
 import type {
   MyDayActivity,
@@ -696,6 +697,11 @@ export default function MeuDiaScreen() {
     return capped.slice(0, 5);
   })();
 
+  const { data: unreadCountData } = useGetUnreadCount({ refetchInterval: 30_000 });
+  const unreadNotifications = unreadCountData?.count ?? 0;
+
+  const firstName = user?.name?.split(" ")[0] ?? "Você";
+
   function handleCheckIn() {
     performCheckInMutation.mutate(undefined, {
       onSuccess: () => {
@@ -738,10 +744,37 @@ export default function MeuDiaScreen() {
           },
         ]}
       >
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Meu Dia</Text>
-        <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>
-          {dayLabel}
-        </Text>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={[styles.headerTitle, { color: colors.foreground }]}>Início</Text>
+            <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>
+              {dayLabel}
+            </Text>
+          </View>
+          <View style={styles.headerActions}>
+            <Pressable
+              style={[styles.headerIconBtn, { backgroundColor: colors.secondary }]}
+              onPress={() => router.push("/(tabs)/notificacoes" as any)}
+            >
+              <Feather name="bell" size={18} color={colors.foreground} />
+              {unreadNotifications > 0 && (
+                <View style={[styles.headerBadge, { backgroundColor: colors.primary }]}>
+                  <Text style={styles.headerBadgeText}>
+                    {unreadNotifications > 99 ? "99+" : String(unreadNotifications)}
+                  </Text>
+                </View>
+              )}
+            </Pressable>
+            <Pressable
+              style={[styles.headerAvatarBtn, { backgroundColor: colors.primary + "22", borderColor: colors.primary + "44" }]}
+              onPress={() => router.push("/(tabs)/" as any)}
+            >
+              <Text style={[styles.headerAvatarText, { color: colors.primary }]}>
+                {firstName.charAt(0).toUpperCase()}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
       </View>
 
       {/* Content */}
@@ -1145,6 +1178,13 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: 1,
   },
+  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
+  headerIconBtn: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" },
+  headerBadge: { position: "absolute", top: -3, right: -3, minWidth: 16, height: 16, borderRadius: 8, alignItems: "center", justifyContent: "center", paddingHorizontal: 3 } as any,
+  headerBadgeText: { color: "#fff", fontSize: 9, fontWeight: "700" } as any,
+  headerAvatarBtn: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", borderWidth: 1 },
+  headerAvatarText: { fontSize: 16, fontWeight: "700" } as any,
   headerTitle: { fontSize: 24, fontWeight: "700", marginBottom: 2 },
   headerSub: { fontSize: 13 },
   asaGreetingCard: {
