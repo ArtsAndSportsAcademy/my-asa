@@ -253,6 +253,7 @@ export default function AdminDailyBookPage() {
   const [selectedShowBookId, setSelectedShowBookId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showPickerOpen, setShowPickerOpen] = useState(false);
+  const [filterShowPickerOpen, setFilterShowPickerOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [publishComment, setPublishComment] = useState("");
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -474,17 +475,38 @@ export default function AdminDailyBookPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={filterShowBookId} onValueChange={setFilterShowBookId}>
-              <SelectTrigger className="h-7 text-xs">
-                <SelectValue placeholder="Todos os show books" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all">Todos</SelectItem>
-                {showBooks.map((sb) => (
-                  <SelectItem key={sb.id} value={sb.id}>{sb.title}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={filterShowPickerOpen} onOpenChange={setFilterShowPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" role="combobox" className="h-7 text-xs justify-between font-normal min-w-[140px]">
+                  <span className="truncate">
+                    {filterShowBookId === "__all"
+                      ? "Todos os shows"
+                      : (showBooks.find((sb) => sb.id === filterShowBookId)?.title ?? "Todos os shows")}
+                  </span>
+                  <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="p-0 w-56" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar livro..." className="h-7 text-xs" />
+                  <CommandList>
+                    <CommandEmpty className="text-xs py-2 text-center">Nenhum resultado.</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem value="__all__todos" onSelect={() => { setFilterShowBookId("__all"); setFilterShowPickerOpen(false); }} className="text-xs">
+                        <Check className={cn("mr-2 h-3 w-3", filterShowBookId === "__all" ? "opacity-100" : "opacity-0")} />
+                        Todos
+                      </CommandItem>
+                      {showBooks.map((sb) => (
+                        <CommandItem key={sb.id} value={sb.title} onSelect={() => { setFilterShowBookId(sb.id); setFilterShowPickerOpen(false); }} className="text-xs">
+                          <Check className={cn("mr-2 h-3 w-3", filterShowBookId === sb.id ? "opacity-100" : "opacity-0")} />
+                          {sb.title}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="flex-1 overflow-y-auto">
             {isLoading ? (
