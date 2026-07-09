@@ -1,302 +1,381 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import {
   useGetOperationalPanel,
   useGetUserContext,
   useGetCheckInSummary,
+  useListCheckIns,
   useListPendingRequests,
   useGetMyNotices,
-  getGetUserContextQueryKey,
+  useListTasks,
+  useUpdateCheckIn,
+  getListCheckInsQueryKey,
   getGetCheckInSummaryQueryKey,
+  getListTasksQueryKey,
 } from "@workspace/api-client-react";
 import type {
-  OperationalException,
-  OperationalPendingBook,
+  CheckInItem,
   OperationalUpcomingEvent,
+  OperationalPendingBook,
 } from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
 import { AsaAvatar } from "@/components/AsaAvatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  HEALTH_CONFIG,
-  EVENT_TYPE_LABELS,
-  EXCEPTION_TYPE_LABELS,
-} from "@/lib/operational-constants";
+import { EVENT_TYPE_LABELS } from "@/lib/operational-constants";
 import {
   Activity,
   AlertCircle,
-  AlertTriangle,
   Bell,
   BookMarked,
-  Briefcase,
   CheckCircle2,
+  CheckSquare,
   ChevronRight,
   ClipboardList,
+  Clock,
   FileText,
   Package,
-  Users2,
-  XCircle,
+  RefreshCw,
   UserCheck,
+  Users,
+  XCircle,
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
-// ─── Shared branded greeting ──────────────────────────────────────────────────
+// ─── Greeting ─────────────────────────────────────────────────────────────────
 
-function BrandedGreeting({ name, subtitle }: { name: string; subtitle: string }) {
+function Greeting({ name }: { name: string }) {
   return (
     <div className="flex items-center gap-4 mb-6 p-5 rounded-xl bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/10">
       <AsaAvatar size="medium" pose="bomdia" />
       <div>
         <p className="text-xl font-serif font-bold text-foreground">Olá, {name}</p>
-        <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          O que precisa de atenção hoje
+        </p>
       </div>
     </div>
   );
 }
 
-// ─── Stat pill ────────────────────────────────────────────────────────────────
+// ─── Check-in row ─────────────────────────────────────────────────────────────
 
-function StatPill({
-  label,
-  value,
-  color = "default",
+const STATUS_CFG: Record<string, { label: string; color: string; dot: string }> = {
+  EXPECTED:   { label: "Aguardando", color: "bg-gray-100 text-gray-600",   dot: "bg-gray-400"  },
+  CHECKED_IN: { label: "Presente",   color: "bg-green-100 text-green-800", dot: "bg-green-500" },
+  LATE:       { label: "Atrasado",   color: "bg-amber-100 text-amber-800", dot: "bg-amber-500" },
+  ABSENT:     { label: "Ausente",    color: "bg-red-100 text-red-800",     dot: "bg-red-500"   },
+  EXCUSED:    { label: "Justificado",color: "bg-blue-100 text-blue-700",   dot: "bg-blue-400"  },
+};
+
+function CheckInRow({
+  item,
+  onUpdate,
+  isUpdating,
 }: {
-  label: string;
-  value: number;
-  color?: "green" | "amber" | "red" | "default";
+  item: CheckInItem;
+  onUpdate: (userId: string, checkInId: string | null, status: string) => void;
+  isUpdating: boolean;
 }) {
-  const colors = {
-    green: "bg-green-100 text-green-800",
-    amber: "bg-amber-100 text-amber-800",
-    red: "bg-red-100 text-red-800",
-    default: "bg-muted text-muted-foreground",
-  };
+  const cfg = STATUS_CFG[item.status] ?? STATUS_CFG.EXPECTED;
   return (
-    <div className="flex items-center justify-between text-sm py-1.5">
-      <span className="text-muted-foreground">{label}</span>
-      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${colors[color]}`}>
-        {value}
+    <div className="px-4 py-3 flex items-center gap-3">
+      <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${cfg.dot}`} />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium truncate">{item.userName}</p>
+        {item.earliestStart && (
+          <span className="text-xs text-muted-foreground">
+            Entrada {item.earliestStart.slice(0, 5)}
+          </span>
+        )}
+      </div>
+      <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0 ${cfg.color}`}>
+        {cfg.label}
       </span>
+      {item.userId && (
+        <div className="flex gap-1 shrink-0">
+          {item.status !== "CHECKED_IN" && (
+            <Button
+              variant="ghost" size="icon" className="h-7 w-7"
+              title="Marcar presente" disabled={isUpdating}
+              onClick={() => onUpdate(item.userId!, item.checkInId, "CHECKED_IN")}
+            >
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+            </Button>
+          )}
+          {item.status !== "ABSENT" && item.status !== "EXCUSED" && (
+            <Button
+              variant="ghost" size="icon" className="h-7 w-7"
+              title="Marcar ausente" disabled={isUpdating}
+              onClick={() => onUpdate(item.userId!, item.checkInId, "ABSENT")}
+            >
+              <XCircle className="h-4 w-4 text-red-500" />
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-// ─── Admin view ───────────────────────────────────────────────────────────────
+// ─── Manager home (Admin + Supervisor) ────────────────────────────────────────
 
-function AdminHomeContent() {
+function ManagerHome({ isSupervisor }: { isSupervisor: boolean }) {
   const [, setLocation] = useLocation();
   const { user, roles } = useAuth();
-  const { data: panelData } = useGetOperationalPanel({});
-  const { data: context } = useGetUserContext({
-    query: { queryKey: getGetUserContextQueryKey() },
-  });
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
-  const operationId = roles.find((r) => r.operationId)?.operationId ?? context?.operations?.[0]?.id;
+  const { data: context } = useGetUserContext({});
+  const operationId =
+    roles.find((r) => r.operationId)?.operationId ??
+    context?.operations?.[0]?.id ??
+    "";
+
   const today = new Date().toISOString().slice(0, 10);
-  const checkInParams = { date: today, operationId: operationId ?? "" };
+  const enabled = !!operationId;
 
-  const { data: checkInData } = useGetCheckInSummary(checkInParams, {
-    query: {
-      enabled: !!operationId,
-      queryKey: getGetCheckInSummaryQueryKey(checkInParams),
-    },
-  });
-  const { data: pendingRequestsData } = useListPendingRequests(
-    { operationId: operationId ?? "" } as any,
-    { query: { enabled: !!operationId } as any }
+  const { data: panelData, refetch, isFetching } = useGetOperationalPanel({});
+  const { data: checkInsData, isLoading: checkInsLoading } = useListCheckIns(
+    { date: today, operationId },
+    { query: { enabled, queryKey: getListCheckInsQueryKey({ date: today, operationId }) } }
+  );
+  const { data: summaryData } = useGetCheckInSummary(
+    { date: today, operationId },
+    { query: { enabled, queryKey: getGetCheckInSummaryQueryKey({ date: today, operationId }) } }
+  );
+  const { data: requestsData } = useListPendingRequests(
+    { operationId } as any,
+    { query: { enabled } as any }
+  );
+  const { data: tasksData } = useListTasks(
+    { operationId: operationId || undefined },
+    { query: { enabled, queryKey: getListTasksQueryKey({ operationId: operationId || undefined }) } }
   );
 
-  const health = panelData?.health;
-  const exceptions = (panelData?.exceptions ?? []) as OperationalException[];
-  const upcomingEvents = (panelData?.upcomingEvents ?? []) as OperationalUpcomingEvent[];
-  const pendingBooks = (panelData?.pendingBooks ?? []) as OperationalPendingBook[];
-  const operations = context?.operations ?? [];
+  const checkIns: CheckInItem[] = checkInsData?.checkIns ?? [];
+  const summary = (summaryData?.summary ?? null) as any;
+  const pendingRequests = requestsData?.requests ?? [];
+  const pendingBooks: OperationalPendingBook[] = (panelData?.pendingBooks ?? []) as any;
+  const upcomingEvents: OperationalUpcomingEvent[] = (panelData?.upcomingEvents ?? []) as any;
+  const tasks = tasksData?.tasks ?? [];
+  const activeTasks = tasks.filter(
+    (t) => !["APPROVED", "COMPLETED", "CANCELLED", "EXPIRED"].includes(t.status)
+  );
+  const lateTasks = activeTasks.filter((t) => new Date(t.dueDate) < new Date());
+  const approvalTasks = activeTasks.filter((t) => t.status === "READY_FOR_APPROVAL");
 
-  const cfg = health
-    ? (HEALTH_CONFIG[health.status as keyof typeof HEALTH_CONFIG] ?? HEALTH_CONFIG.ATTENTION)
-    : null;
+  const updateMutation = useUpdateCheckIn();
+  function handleUpdate(userId: string, checkInId: string | null, status: string) {
+    updateMutation.mutate(
+      { id: checkInId ?? "new", data: { status, userId, operationId, date: today } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: getListCheckInsQueryKey({ date: today, operationId }),
+          });
+          queryClient.invalidateQueries({
+            queryKey: getGetCheckInSummaryQueryKey({ date: today, operationId }),
+          });
+          toast({ title: "Status atualizado" });
+        },
+        onError: () => toast({ title: "Erro ao atualizar", variant: "destructive" }),
+      }
+    );
+  }
 
-  const HEALTH_ICONS = {
-    HEALTHY: CheckCircle2,
-    ATTENTION: AlertCircle,
-    RISK: AlertTriangle,
-    CRITICAL: XCircle,
-  };
-  const HealthIcon = health
-    ? (HEALTH_ICONS[health.status as keyof typeof HEALTH_ICONS] ?? AlertCircle)
-    : Activity;
+  const dailyBookHref = isSupervisor ? "/supervisor/daily-book" : "/admin/daily-book";
+  const requestsHref  = isSupervisor ? "/supervisor/requests"   : "/admin/requests";
+  const tasksHref     = isSupervisor ? "/supervisor/tasks"      : "/admin/tasks";
 
-  const pendingRequests = pendingRequestsData?.requests ?? [];
-  const checkIn = checkInData as any;
+  const hasItems =
+    pendingRequests.length > 0 ||
+    pendingBooks.length > 0 ||
+    lateTasks.length > 0 ||
+    approvalTasks.length > 0;
 
   return (
-    <div className="space-y-6">
-      <BrandedGreeting
-        name={user?.name?.split(" ")[0] ?? "Admin"}
-        subtitle="Visão organizacional — saúde da operação"
-      />
+    <div className="space-y-5">
+      <Greeting name={user?.name?.split(" ")[0] ?? ""} />
 
-      <div className="flex gap-3 flex-wrap">
-        <Button variant="outline" size="sm" onClick={() => setLocation("/admin/operational-panel")}>
-          <Activity className="w-4 h-4 mr-2" /> Painel Completo
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => setLocation("/admin/operations")}>
-          <Briefcase className="w-4 h-4 mr-2" /> Operações
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => setLocation("/admin/groups")}>
-          <Users2 className="w-4 h-4 mr-2" /> Grupos
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => setLocation("/admin/avisos")}>
-          <Bell className="w-4 h-4 mr-2" /> Avisos
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Saúde Operacional */}
-        <Card className={cfg ? `${cfg.border} border-2` : ""}>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-              <Activity className="h-4 w-4" /> Saúde Operacional
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {!health ? (
-              <div className="h-14 bg-muted rounded animate-pulse" />
-            ) : (
-              <div className={`flex items-center gap-3 p-3 rounded-lg ${cfg!.bg}`}>
-                <HealthIcon className={`h-8 w-8 ${cfg!.text} shrink-0`} />
-                <div>
-                  <p className={`text-xl font-bold ${cfg!.text}`}>{cfg!.label}</p>
-                  <p className={`text-xs mt-0.5 ${cfg!.text}`}>
-                    {exceptions.length} exceção(ões)
-                  </p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Check-ins do Dia */}
+      {/* Para resolver */}
+      {hasItems && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-              <UserCheck className="h-4 w-4" /> Check-ins do Dia
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {!checkIn ? (
-              <div className="space-y-1">
-                {["Presentes", "Atrasados", "Ausentes"].map((l) => (
-                  <div key={l} className="h-6 bg-muted rounded animate-pulse" />
-                ))}
-              </div>
-            ) : (
-              <div className="divide-y">
-                <StatPill label="Presentes" value={checkIn.present ?? 0} color="green" />
-                <StatPill label="Atrasados" value={checkIn.late ?? 0} color="amber" />
-                <StatPill label="Ausentes" value={checkIn.absent ?? 0} color="red" />
-              </div>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mt-2 w-full text-xs"
-              onClick={() => setLocation("/admin/operational-panel")}
-            >
-              Ver detalhes <ChevronRight className="w-3 h-3 ml-1" />
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Solicitações e Livros Pendentes */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-              <ClipboardList className="h-4 w-4" /> Pendências
+            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-amber-500" /> Para resolver
+              </span>
+              <Button
+                variant="ghost" size="icon" className="h-6 w-6"
+                onClick={() => refetch()} disabled={isFetching}
+              >
+                <RefreshCw className={`h-3 w-3 ${isFetching ? "animate-spin" : ""}`} />
+              </Button>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="divide-y">
-              <div
-                className="flex items-center justify-between py-1.5 text-sm cursor-pointer hover:text-primary transition-colors"
-                onClick={() => setLocation("/admin/requests")}
-              >
-                <span className="text-muted-foreground flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5" /> Solicitações
-                </span>
-                {pendingRequests.length > 0 ? (
-                  <Badge variant="destructive" className="text-xs">{pendingRequests.length}</Badge>
-                ) : (
-                  <span className="text-xs text-green-600">Em dia</span>
-                )}
-              </div>
-              <div
-                className="flex items-center justify-between py-1.5 text-sm cursor-pointer hover:text-primary transition-colors"
-                onClick={() => setLocation("/admin/daily-book")}
-              >
-                <span className="text-muted-foreground flex items-center gap-1.5">
-                  <BookMarked className="w-3.5 h-3.5" /> Livros
-                </span>
-                {pendingBooks.length > 0 ? (
-                  <Badge variant="secondary" className="text-xs">{pendingBooks.length}</Badge>
-                ) : (
-                  <span className="text-xs text-green-600">Em dia</span>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Operações Ativas */}
-      {operations.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-              <Briefcase className="h-4 w-4" /> Operações
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {operations.map((op) => (
-                <div
-                  key={op.id}
-                  className="flex items-center justify-between p-2.5 rounded-lg border hover:border-primary/50 transition-colors"
+              {pendingRequests.length > 0 && (
+                <button
+                  onClick={() => setLocation(requestsHref)}
+                  className="w-full flex items-center justify-between py-2.5 text-sm hover:text-primary transition-colors"
                 >
-                  <span className="font-medium text-sm truncate flex-1">{op.name}</span>
-                  <Badge
-                    variant="outline"
-                    className={`ml-2 shrink-0 ${
-                      op.status === "ACTIVE"
-                        ? "border-green-500/30 text-green-600 bg-green-500/10"
-                        : ""
-                    }`}
-                  >
-                    {op.status === "ACTIVE" ? "Ativa" : "Arquivada"}
-                  </Badge>
-                </div>
-              ))}
+                  <span className="flex items-center gap-2 text-muted-foreground">
+                    <FileText className="w-4 h-4" /> Solicitações aguardando resposta
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Badge variant="destructive" className="text-xs">
+                      {pendingRequests.length}
+                    </Badge>
+                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                  </span>
+                </button>
+              )}
+              {pendingBooks.length > 0 && (
+                <button
+                  onClick={() => setLocation(dailyBookHref)}
+                  className="w-full flex items-center justify-between py-2.5 text-sm hover:text-primary transition-colors"
+                >
+                  <span className="flex items-center gap-2 text-muted-foreground">
+                    <BookMarked className="w-4 h-4" /> Livros do Dia não publicados
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Badge variant="secondary" className="text-xs">
+                      {pendingBooks.length}
+                    </Badge>
+                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                  </span>
+                </button>
+              )}
+              {lateTasks.length > 0 && (
+                <button
+                  onClick={() => setLocation(tasksHref)}
+                  className="w-full flex items-center justify-between py-2.5 text-sm hover:text-primary transition-colors"
+                >
+                  <span className="flex items-center gap-2 text-muted-foreground">
+                    <Clock className="w-4 h-4 text-red-500" /> Tarefas atrasadas
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Badge variant="destructive" className="text-xs">
+                      {lateTasks.length}
+                    </Badge>
+                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                  </span>
+                </button>
+              )}
+              {approvalTasks.length > 0 && (
+                <button
+                  onClick={() => setLocation(tasksHref)}
+                  className="w-full flex items-center justify-between py-2.5 text-sm hover:text-primary transition-colors"
+                >
+                  <span className="flex items-center gap-2 text-muted-foreground">
+                    <CheckSquare className="w-4 h-4 text-violet-500" /> Tarefas aguardando aprovação
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Badge className="text-xs bg-violet-100 text-violet-700 hover:bg-violet-100">
+                      {approvalTasks.length}
+                    </Badge>
+                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                  </span>
+                </button>
+              )}
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Próximos Eventos */}
+      {/* Presenças */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+            <UserCheck className="h-4 w-4" /> Presenças de hoje
+            <span className="ml-auto text-xs font-normal text-muted-foreground">
+              {new Date().toLocaleDateString("pt-BR", {
+                weekday: "short",
+                day: "numeric",
+                month: "short",
+              })}
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {summary && (
+            <div className="flex flex-wrap gap-2 mb-3">
+              <span className="text-xs px-2.5 py-1 rounded-full bg-green-100 text-green-800 font-medium">
+                ✓ {summary.checkedIn} presentes
+              </span>
+              {summary.late > 0 && (
+                <span className="text-xs px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 font-medium">
+                  ⚠ {summary.late} atrasados
+                </span>
+              )}
+              {summary.absent > 0 && (
+                <span className="text-xs px-2.5 py-1 rounded-full bg-red-100 text-red-800 font-medium">
+                  ✗ {summary.absent} ausentes
+                </span>
+              )}
+              {summary.expected > 0 && (
+                <span className="text-xs px-2.5 py-1 rounded-full bg-muted text-muted-foreground font-medium">
+                  {summary.expected} aguardando
+                </span>
+              )}
+            </div>
+          )}
+          {checkInsLoading ? (
+            <div className="flex justify-center py-6">
+              <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : !operationId ? (
+            <p className="text-sm text-muted-foreground py-3 text-center">
+              Nenhuma operação vinculada ao perfil.
+            </p>
+          ) : checkIns.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-4">
+              <Users className="h-7 w-7 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Ninguém escalado para hoje.</p>
+            </div>
+          ) : (
+            <div className="-mx-6 divide-y max-h-80 overflow-y-auto">
+              {checkIns.map((item) => (
+                <CheckInRow
+                  key={item.userId ?? item.checkInId ?? item.userName}
+                  item={item}
+                  onUpdate={handleUpdate}
+                  isUpdating={updateMutation.isPending}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* A seguir */}
       {upcomingEvents.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground">
-              Próximos Eventos
+              A seguir
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="divide-y">
-              {upcomingEvents.slice(0, 4).map((ev) => (
-                <div key={ev.id} className="flex items-center justify-between py-2 text-sm">
-                  <span className="font-medium">{ev.title}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground text-xs">{ev.date}</span>
+              {upcomingEvents.slice(0, 5).map((ev) => (
+                <div
+                  key={ev.id}
+                  className="flex items-center justify-between py-2.5 text-sm"
+                >
+                  <span className="font-medium truncate flex-1 mr-3">{ev.title}</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-muted-foreground text-xs">
+                      {new Date(ev.date + "T00:00:00").toLocaleDateString("pt-BR", {
+                        day: "numeric",
+                        month: "short",
+                      })}
+                      {ev.startTime && ` • ${ev.startTime.slice(0, 5)}`}
+                    </span>
                     <span className="text-xs px-1.5 py-0.5 rounded bg-muted">
                       {EVENT_TYPE_LABELS[ev.type] ?? ev.type}
                     </span>
@@ -311,189 +390,9 @@ function AdminHomeContent() {
   );
 }
 
-// ─── Supervisor view ──────────────────────────────────────────────────────────
+// ─── Member home (web) ────────────────────────────────────────────────────────
 
-function SupervisorHomeContent() {
-  const [, setLocation] = useLocation();
-  const { user, roles } = useAuth();
-  const { data: panelData } = useGetOperationalPanel({});
-
-  const operationId = roles.find((r) => r.operationId)?.operationId;
-  const today = new Date().toISOString().slice(0, 10);
-  const checkInParams = { date: today, operationId: operationId ?? "" };
-
-  const { data: checkInData } = useGetCheckInSummary(checkInParams, {
-    query: {
-      enabled: !!operationId,
-      queryKey: getGetCheckInSummaryQueryKey(checkInParams),
-    },
-  });
-  const { data: pendingRequestsData } = useListPendingRequests(
-    { operationId: operationId ?? "" } as any,
-    { query: { enabled: !!operationId } as any }
-  );
-
-  const exceptions = (panelData?.exceptions ?? []) as OperationalException[];
-  const upcomingEvents = (panelData?.upcomingEvents ?? []) as OperationalUpcomingEvent[];
-  const pendingBooks = (panelData?.pendingBooks ?? []) as OperationalPendingBook[];
-  const pendingRequests = pendingRequestsData?.requests ?? [];
-  const checkIn = checkInData as any;
-
-  return (
-    <div className="space-y-6">
-      <BrandedGreeting
-        name={user?.name?.split(" ")[0] ?? "Supervisor"}
-        subtitle="O que precisa da sua atenção agora"
-      />
-
-      <div className="flex gap-3 flex-wrap">
-        <Button size="sm" onClick={() => setLocation("/supervisor/daily-book")}>
-          <BookMarked className="w-4 h-4 mr-2" /> Livro do Dia
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => setLocation("/supervisor/requests")}>
-          <FileText className="w-4 h-4 mr-2" /> Solicitações
-          {pendingRequests.length > 0 && (
-            <Badge variant="destructive" className="ml-2 text-xs">{pendingRequests.length}</Badge>
-          )}
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => setLocation("/supervisor/avisos")}>
-          <Bell className="w-4 h-4 mr-2" /> Avisos
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => setLocation("/supervisor/operational-panel")}>
-          <Activity className="w-4 h-4 mr-2" /> Painel
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Check-ins */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-              <UserCheck className="h-4 w-4" /> Check-ins do Dia
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {!checkIn ? (
-              <div className="space-y-1">
-                {["Presentes", "Atrasados", "Ausentes"].map((l) => (
-                  <div key={l} className="h-6 bg-muted rounded animate-pulse" />
-                ))}
-              </div>
-            ) : (
-              <div className="divide-y">
-                <StatPill label="Presentes" value={checkIn.present ?? 0} color="green" />
-                <StatPill label="Atrasados" value={checkIn.late ?? 0} color="amber" />
-                <StatPill label="Ausentes" value={checkIn.absent ?? 0} color="red" />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Exceções Pendentes */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-500" /> Exceções
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {exceptions.length === 0 ? (
-              <div className="flex items-center gap-2 text-sm text-green-600">
-                <CheckCircle2 className="w-4 h-4" /> Tudo em ordem
-              </div>
-            ) : (
-              <div className="space-y-1.5">
-                {exceptions.slice(0, 4).map((ex) => (
-                  <div key={ex.id} className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground truncate flex-1 mr-2">{ex.reason}</span>
-                    <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 shrink-0">
-                      {EXCEPTION_TYPE_LABELS[ex.type] ?? ex.type}
-                    </span>
-                  </div>
-                ))}
-                {exceptions.length > 4 && (
-                  <button
-                    className="text-xs text-primary flex items-center gap-1 hover:underline mt-1"
-                    onClick={() => setLocation("/supervisor/operational-panel")}
-                  >
-                    +{exceptions.length - 4} mais <ChevronRight className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Livros + Solicitações */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-              <ClipboardList className="h-4 w-4" /> Pendências
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="divide-y">
-              <div
-                className="flex items-center justify-between py-1.5 text-sm cursor-pointer hover:text-primary transition-colors"
-                onClick={() => setLocation("/supervisor/requests")}
-              >
-                <span className="text-muted-foreground flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5" /> Solicitações
-                </span>
-                {pendingRequests.length > 0 ? (
-                  <Badge variant="destructive" className="text-xs">{pendingRequests.length}</Badge>
-                ) : (
-                  <span className="text-xs text-green-600">Em dia</span>
-                )}
-              </div>
-              <div
-                className="flex items-center justify-between py-1.5 text-sm cursor-pointer hover:text-primary transition-colors"
-                onClick={() => setLocation("/supervisor/daily-book")}
-              >
-                <span className="text-muted-foreground flex items-center gap-1.5">
-                  <BookMarked className="w-3.5 h-3.5" /> Livros
-                </span>
-                {pendingBooks.length > 0 ? (
-                  <Badge variant="secondary" className="text-xs">{pendingBooks.length}</Badge>
-                ) : (
-                  <span className="text-xs text-green-600">Em dia</span>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Próximos Eventos */}
-      {upcomingEvents.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Próximos Eventos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="divide-y">
-              {upcomingEvents.slice(0, 4).map((ev) => (
-                <div key={ev.id} className="flex items-center justify-between py-2 text-sm">
-                  <span className="font-medium">{ev.title}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground text-xs">{ev.date}</span>
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-muted">
-                      {EVENT_TYPE_LABELS[ev.type] ?? ev.type}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
-}
-
-// ─── Member view (web) ────────────────────────────────────────────────────────
-
-function MemberHomeContent() {
+function MemberHome() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { data: panelData } = useGetOperationalPanel({});
@@ -506,24 +405,20 @@ function MemberHomeContent() {
   );
 
   const QUICK_LINKS = [
-    { label: "Minha Escala", icon: ClipboardList, href: "/membro/escala" },
-    { label: "Avisos", icon: Bell, href: "/membro/avisos" },
-    { label: "Solicitações", icon: FileText, href: "/membro/solicitacoes" },
-    { label: "Minhas Tarefas", icon: CheckCircle2, href: "/membro/tarefas" },
-    { label: "Minhas Entregas", icon: Package, href: "/membro/entregas" },
-    { label: "Mensagens", icon: Activity, href: "/membro/mensagens" },
-    { label: "Biblioteca", icon: BookMarked, href: "/membro/biblioteca" },
-    { label: "Livro do Dia", icon: AlertCircle, href: "/membro/livro-do-dia" },
+    { label: "Minha Escala",    icon: ClipboardList, href: "/membro/escala"       },
+    { label: "Avisos",          icon: Bell,          href: "/membro/avisos"       },
+    { label: "Solicitações",    icon: FileText,      href: "/membro/solicitacoes" },
+    { label: "Minhas Tarefas",  icon: CheckCircle2,  href: "/membro/tarefas"      },
+    { label: "Minhas Entregas", icon: Package,       href: "/membro/entregas"     },
+    { label: "Mensagens",       icon: Activity,      href: "/membro/mensagens"    },
+    { label: "Biblioteca",      icon: BookMarked,    href: "/membro/biblioteca"   },
+    { label: "Livro do Dia",    icon: AlertCircle,   href: "/membro/livro-do-dia" },
   ];
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <BrandedGreeting
-        name={user?.name?.split(" ")[0] ?? ""}
-        subtitle="Sua central de operações"
-      />
+      <Greeting name={user?.name?.split(" ")[0] ?? ""} />
 
-      {/* Quick links */}
       <div className="grid grid-cols-3 gap-3">
         {QUICK_LINKS.map(({ label, icon: Icon, href }) => (
           <button
@@ -537,18 +432,20 @@ function MemberHomeContent() {
         ))}
       </div>
 
-      {/* Avisos ativos */}
       {pendingAvisos.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-              <Bell className="h-4 w-4 text-amber-500" /> Avisos Ativos
+              <Bell className="h-4 w-4 text-amber-500" /> Avisos ativos
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               {pendingAvisos.slice(0, 3).map((a: any) => (
-                <div key={a.id} className="text-sm p-2 rounded-lg bg-amber-50 border border-amber-100">
+                <div
+                  key={a.id}
+                  className="text-sm p-2 rounded-lg bg-amber-50 border border-amber-100"
+                >
                   {a.title && <p className="font-medium text-amber-900">{a.title}</p>}
                   {a.content && (
                     <p className="text-xs text-amber-700 mt-0.5 line-clamp-1">{a.content}</p>
@@ -567,12 +464,11 @@ function MemberHomeContent() {
         </Card>
       )}
 
-      {/* Próximos eventos */}
       {upcomingEvents.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground">
-              Próximos Eventos
+              A seguir
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -593,11 +489,12 @@ function MemberHomeContent() {
         </Card>
       )}
 
-      {/* Mobile nudge */}
       <div className="flex items-center gap-3 p-4 rounded-xl bg-primary/5 border border-primary/10 text-sm">
         <img src="/asinha.svg" alt="" className="w-8 h-9 shrink-0 opacity-70" />
         <p className="text-muted-foreground">
-          Leve sua operação no bolso: o <strong className="text-foreground">app MyASA</strong> traz check-in, notificações e tudo do seu dia no celular.
+          Leve sua operação no bolso: o{" "}
+          <strong className="text-foreground">app MyASA</strong> traz check-in,
+          notificações e tudo do seu dia no celular.
         </p>
       </div>
     </div>
@@ -613,20 +510,12 @@ export default function AdminHome() {
     (r) => r.role === "SUPERVISOR_A" || r.role === "SUPERVISOR_B"
   );
 
-  const subtitle = isAdmin
-    ? "Visão organizacional — saúde da operação"
-    : isSupervisor
-    ? "O que precisa da sua atenção agora"
-    : "Sua central de operações";
-
   return (
-    <AdminLayout title="Início" subtitle={subtitle}>
-      {isAdmin ? (
-        <AdminHomeContent />
-      ) : isSupervisor ? (
-        <SupervisorHomeContent />
+    <AdminLayout title="Início">
+      {isAdmin || isSupervisor ? (
+        <ManagerHome isSupervisor={isSupervisor && !isAdmin} />
       ) : (
-        <MemberHomeContent />
+        <MemberHome />
       )}
     </AdminLayout>
   );

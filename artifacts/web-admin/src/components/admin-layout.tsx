@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import {
   Home, Users, Briefcase, Users2, LogOut, ChevronRight,
   BookOpen, CalendarDays, ShieldCheck, ClipboardList, BookMarked,
-  LayoutDashboard, Bell, MessageSquare, Library,
+  Bell, MessageSquare, Library,
   FileText, CheckSquare, TrendingUp, ClipboardCheck,
   Shield, Sparkles, Palmtree, Trophy, Boxes, CalendarClock, Share2,
 } from "lucide-react";
@@ -73,8 +73,7 @@ const ADMIN_NAV: NavGroup[] = [
   {
     label: "GESTÃO",
     items: [
-      { href: "/admin/operational-panel", icon: LayoutDashboard, label: "Painel Operacional" },
-      { href: "/admin/insights",          icon: TrendingUp,      label: "Indicadores"        },
+      { href: "/admin/insights", icon: TrendingUp, label: "Indicadores" },
     ],
   },
   {
@@ -144,8 +143,7 @@ const SUPERVISOR_NAV: NavGroup[] = [
   {
     label: "CONTROLE",
     items: [
-      { href: "/supervisor/operational-panel", icon: LayoutDashboard, label: "Painel"      },
-      { href: "/supervisor/insights",          icon: TrendingUp,      label: "Indicadores" },
+      { href: "/supervisor/insights", icon: TrendingUp, label: "Indicadores" },
     ],
   },
   {
