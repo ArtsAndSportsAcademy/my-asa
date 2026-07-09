@@ -43,7 +43,7 @@ import {
   Users, Trash2, Play, RefreshCw, Send, RotateCcw, CheckCircle, XCircle, User, AlertTriangle,
   Check, X, Folder, FolderOpen,
 } from "lucide-react";
-import { useListUsers } from "@workspace/api-client-react";
+import { useListUsers, useGetOperations } from "@workspace/api-client-react";
 import { useListShowBooks } from "@workspace/api-client-react";
 import type { ShowBook } from "@workspace/api-client-react";
 
@@ -244,7 +244,6 @@ export default function AdminDailyBookPage() {
   const queryClient = useQueryClient();
   const auth = useAuth();
   const isAdmin = auth.roles.some((r) => r.role === "ADMIN" || r.role === "SUPERVISOR_A" || r.role === "SUPERVISOR_B");
-  const operationId = auth.roles.find((r) => r.operationId)?.operationId;
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [generateOpen, setGenerateOpen] = useState(false);
@@ -286,8 +285,20 @@ export default function AdminDailyBookPage() {
   });
   const selectedBook = (bookData as any)?.dailyBook as DailyBookWithScenes | undefined;
 
-  const { data: showBooksData } = useListShowBooks({ operationId });
+  const { data: showBooksData } = useListShowBooks({});
   const showBooks: ShowBook[] = (showBooksData as any)?.showBooks ?? [];
+
+  const { data: opsData } = useGetOperations();
+  const operationNames: Record<string, string> = Object.fromEntries(
+    ((opsData as any)?.operations ?? []).map((op: any) => [op.id, op.name as string])
+  );
+
+  const showBooksByOp = showBooks.reduce<Record<string, ShowBook[]>>((acc, sb) => {
+    const key = sb.operationId;
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(sb);
+    return acc;
+  }, {});
 
   const { data: usersData } = useListUsers();
   const users: { id: string; name: string | null }[] = (usersData as any)?.users ?? [];
@@ -906,8 +917,16 @@ export default function AdminDailyBookPage() {
                   <SelectValue placeholder="Selecione o livro do show..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {showBooks.map((sb) => (
-                    <SelectItem key={sb.id} value={sb.id}>{sb.title}</SelectItem>
+                  {Object.entries(showBooksByOp).sort(([aId], [bId]) =>
+                    (operationNames[aId] ?? aId).localeCompare(operationNames[bId] ?? bId, "pt-BR")
+                  ).map(([opId, books]) => (
+                    books.map((sb) => (
+                      <SelectItem key={sb.id} value={sb.id}>
+                        {Object.keys(showBooksByOp).length > 1
+                          ? `${operationNames[opId] ?? "Operação"} — ${sb.title}`
+                          : sb.title}
+                      </SelectItem>
+                    ))
                   ))}
                 </SelectContent>
               </Select>
