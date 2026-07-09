@@ -19,11 +19,11 @@ const router: IRouter = Router();
 
 // ─── Permission matrix (MSG-D03) ──────────────────────────────────────────────
 const ALLOWED_TARGETS: Record<RoleValue, RoleValue[]> = {
-  MEMBER:       ["SUPERVISOR_A", "SUPERVISOR_B"],
+  MEMBER:       ["MEMBER", "SUPERVISOR_A", "SUPERVISOR_B", "ADMIN"],
   // note: MEMBER com OPERATIONAL_MESSAGES ganha acesso estendido — ver hasOperationalMessagesDelegation
   SUPERVISOR_A: ["MEMBER", "SUPERVISOR_A", "SUPERVISOR_B", "ADMIN"],
   SUPERVISOR_B: ["MEMBER", "SUPERVISOR_A", "SUPERVISOR_B", "ADMIN"],
-  ADMIN:        ["SUPERVISOR_A", "SUPERVISOR_B", "ADMIN"],
+  ADMIN:        ["MEMBER", "SUPERVISOR_A", "SUPERVISOR_B", "ADMIN"],
 };
 
 async function getUserRole(userId: string): Promise<RoleValue | null> {

@@ -40,9 +40,9 @@ import {
   Send,
   Users,
   Tag,
-  Check,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { MemberCombobox } from "@/components/member-combobox";
 
 // ─── Config ────────────────────────────────────────────────────────────────────
 
@@ -166,22 +166,18 @@ function CreateThreadDialog({ onClose }: { onClose: () => void }) {
   const recipients = recipientsData?.recipients ?? [];
 
   const [title, setTitle] = useState("");
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedId, setSelectedId] = useState("");
   const [contextType, setContextType] = useState("DIRECT");
 
-  const toggleRecipient = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
-  };
+  const recipientUsers = recipients.map((r) => ({ id: r.id, name: r.name ?? r.email ?? r.id }));
 
   const handleCreate = () => {
-    if (!title.trim() || selectedIds.length === 0) return;
+    if (!title.trim() || !selectedId) return;
     createMut.mutate(
       {
         data: {
           title,
-          participantIds: selectedIds,
+          participantIds: [selectedId],
           contextType,
         },
       },
@@ -196,7 +192,7 @@ function CreateThreadDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Nova Conversa</DialogTitle>
         </DialogHeader>
@@ -211,37 +207,13 @@ function CreateThreadDialog({ onClose }: { onClose: () => void }) {
           </div>
 
           <div className="space-y-1.5">
-            <Label>Participantes</Label>
-            <div className="max-h-44 overflow-y-auto border rounded-md divide-y">
-              {recipients.length === 0 && (
-                <p className="text-xs text-muted-foreground p-3 text-center">
-                  Nenhum membro da equipe disponível para nova conversa.
-                </p>
-              )}
-              {recipients.map((r) => {
-                const isSel = selectedIds.includes(r.id);
-                return (
-                  <button
-                    type="button"
-                    key={r.id}
-                    onClick={() => toggleRecipient(r.id)}
-                    className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-muted/50"
-                  >
-                    <span
-                      className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 ${
-                        isSel ? "bg-violet-600 border-violet-600" : "border-border"
-                      }`}
-                    >
-                      {isSel && <Check className="h-3 w-3 text-white" />}
-                    </span>
-                    <div>
-                      <p className="text-sm font-medium">{r.name ?? r.email}</p>
-                      <p className="text-xs text-muted-foreground">{ROLE_LABELS[r.role] ?? r.role}</p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+            <Label>Destinatário</Label>
+            <MemberCombobox
+              value={selectedId}
+              onChange={setSelectedId}
+              users={recipientUsers}
+              placeholder="Buscar por nome..."
+            />
           </div>
 
           <div className="space-y-1.5">
@@ -262,7 +234,7 @@ function CreateThreadDialog({ onClose }: { onClose: () => void }) {
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
           <Button
             onClick={handleCreate}
-            disabled={createMut.isPending || !title.trim() || selectedIds.length === 0}
+            disabled={createMut.isPending || !title.trim() || !selectedId}
             className="bg-violet-700 hover:bg-violet-800 text-white"
           >
             {createMut.isPending ? "Criando..." : "Criar Conversa"}
