@@ -95,6 +95,20 @@ export default function ResponsabilidadesScreen() {
   const uncovered = responsibilities.filter((r) => r.assignments.length === 0).length;
   const withOwner = total - uncovered;
 
+  if (!isManager) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, alignItems: "center", justifyContent: "center", paddingHorizontal: 32 }]}>
+        <Feather name="lock" size={32} color={colors.mutedForeground} />
+        <Text style={{ color: colors.foreground, fontSize: 17, fontWeight: "700", marginTop: 12, textAlign: "center" }}>
+          Responsabilidades & Delegações
+        </Text>
+        <Text style={{ color: colors.mutedForeground, fontSize: 14, marginTop: 8, textAlign: "center", lineHeight: 20 }}>
+          Este ecrã é exclusivo para gestores e supervisores da operação.
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}

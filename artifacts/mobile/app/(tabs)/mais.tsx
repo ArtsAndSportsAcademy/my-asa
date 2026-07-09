@@ -14,6 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
+const SUPERVISOR_ROLES = ["SUPERVISOR_A", "SUPERVISOR_B"];
 
 type SectionItem = {
   label: string;
@@ -26,51 +27,66 @@ type SectionItem = {
 
 type Section = { title: string; items: SectionItem[] };
 
-const MANAGER_SECTIONS: Section[] = [
-  {
-    title: "Operação",
-    items: [
-      { label: "Escala",        subtitle: "Escala completa da operação",    icon: "list",        route: "/(tabs)/scale"             },
-      { label: "Livro do Dia",  subtitle: "Roteiro operacional do dia",     icon: "file-text",   route: "/(tabs)/daily-book"        },
-      { label: "Tarefas",       subtitle: "Tarefas atribuídas",             icon: "check-square",route: "/(tabs)/tarefas"           },
-      { label: "Folgas & Indisponibilidades", subtitle: "Ausências e restrições", icon: "calendar", route: "/(tabs)/folgas"        },
-      { label: "Solicitações",                                               icon: "inbox",       route: "/(tabs)/solicitacoes"     },
-      { label: "Responsabilidades & Delegações", subtitle: "Funções permanentes da operação", icon: "users", route: "/(tabs)/responsabilidades" },
-    ],
-  },
-  {
-    title: "Planejamento",
-    items: [
-      { label: "Agenda",        icon: "calendar",  route: "/(tabs)/agenda"     },
-      { label: "Livro do Show", subtitle: "Estrutura oficial do espetáculo", icon: "book-open", route: "/(tabs)/show-book" },
-    ],
-  },
-  {
-    title: "Comunicação",
-    items: [
-      { label: "Marketing", subtitle: "Ferramentas de comunicação externa", icon: "send", disabled: true, badge: "Em breve" },
-    ],
-  },
-  {
-    title: "Conhecimento",
-    items: [
-      { label: "Biblioteca", icon: "book", route: "/(tabs)/biblioteca" },
-    ],
-  },
-  {
-    title: "Gestão",
-    items: [
-      { label: "Painel",       subtitle: "Saúde e cobertura operacional",   icon: "activity",    route: "/(tabs)/panel"    },
-      { label: "Indicadores",  subtitle: "Métricas da gestão operacional",  icon: "trending-up", route: "/(tabs)/insights" },
-    ],
-  },
-  {
-    title: "ASA",
-    items: [
-      { label: "ASA", subtitle: "Assistente operacional inteligente", icon: "cpu", route: "/(tabs)/asa" },
-    ],
-  },
-];
+function buildManagerSections(isSupervisor: boolean): Section[] {
+  return [
+    {
+      title: "Operação",
+      items: [
+        { label: "Escala",        subtitle: "Escala completa da operação",    icon: "list",        route: "/(tabs)/scale"             },
+        { label: "Atividades",    subtitle: "Atividades da operação",         icon: "activity",    disabled: true, badge: "Em breve" },
+        { label: "Livro do Dia",  subtitle: "Roteiro operacional do dia",     icon: "file-text",   route: "/(tabs)/daily-book"        },
+        { label: "Tarefas",       subtitle: "Tarefas atribuídas",             icon: "check-square",route: "/(tabs)/tarefas"           },
+        { label: "Folgas & Indisponibilidades", subtitle: "Ausências e restrições", icon: "calendar", route: "/(tabs)/folgas"        },
+        { label: "Solicitações",                                               icon: "inbox",       route: "/(tabs)/solicitacoes"     },
+        { label: "Check-ins",     subtitle: "Registo de presença no local",   icon: "map-pin",     disabled: true, badge: "Em breve" },
+        { label: "Responsabilidades & Delegações", subtitle: "Funções permanentes da operação", icon: "users", route: "/(tabs)/responsabilidades" },
+      ],
+    },
+    {
+      title: "Equipe",
+      items: isSupervisor
+        ? [
+            { label: "Equipe",  subtitle: "Membros da operação", icon: "user-check", disabled: true, badge: "Em breve" },
+            { label: "Grupos",  subtitle: "Grupos da operação",  icon: "users",      disabled: true, badge: "Em breve" },
+          ]
+        : [
+            { label: "Equipe",  subtitle: "Membros da operação", icon: "user-check", disabled: true, badge: "Em breve" },
+          ],
+    },
+    {
+      title: "Planejamento",
+      items: [
+        { label: "Agenda",        icon: "calendar",  route: "/(tabs)/agenda"     },
+        { label: "Livro do Show", subtitle: "Estrutura oficial do espetáculo", icon: "book-open", route: "/(tabs)/show-book" },
+      ],
+    },
+    {
+      title: "Comunicação",
+      items: [
+        { label: "Marketing", subtitle: "Ferramentas de comunicação externa", icon: "send", disabled: true, badge: "Em breve" },
+      ],
+    },
+    {
+      title: "Conhecimento",
+      items: [
+        { label: "Biblioteca", icon: "book", route: "/(tabs)/biblioteca" },
+      ],
+    },
+    {
+      title: "Gestão",
+      items: [
+        { label: "Painel",       subtitle: "Saúde e cobertura operacional",   icon: "activity",    route: "/(tabs)/panel"    },
+        { label: "Indicadores",  subtitle: "Métricas da gestão operacional",  icon: "trending-up", route: "/(tabs)/insights" },
+      ],
+    },
+    {
+      title: "ASA",
+      items: [
+        { label: "ASA", subtitle: "Assistente operacional inteligente", icon: "cpu", route: "/(tabs)/asa" },
+      ],
+    },
+  ];
+}
 
 const ELENCO_SECTIONS: Section[] = [
   {
@@ -119,11 +135,12 @@ export default function MaisScreen() {
   const router = useRouter();
   const { roles } = useAuth();
 
-  const isManager = roles.some((r) => MANAGER_ROLES.includes(r.role));
-  const isTrainer = !isManager && roles.some((r) => r.role === "TRAINER");
+  const isManager    = roles.some((r) => MANAGER_ROLES.includes(r.role));
+  const isSupervisor = !roles.some((r) => r.role === "ADMIN") && roles.some((r) => SUPERVISOR_ROLES.includes(r.role));
+  const isTrainer    = !isManager && roles.some((r) => r.role === "TRAINER");
 
   const sections: Section[] = isManager
-    ? MANAGER_SECTIONS
+    ? buildManagerSections(isSupervisor)
     : isTrainer
     ? TRAINER_SECTIONS
     : ELENCO_SECTIONS;
