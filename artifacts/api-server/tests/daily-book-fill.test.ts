@@ -383,6 +383,72 @@ async function run() {
       );
       await clearFolgas();
     }
+
+    // ─── (g) minimumCoverage: padding de vagas OPEN até o mínimo ──────────────────
+    console.log("(g) minimumCoverage — padding de vagas OPEN até o mínimo declarado");
+    {
+      // (g1) Papel com 1 linha FIXED_PERSON coberta + minimumCoverage=2 → [ASSIGNED, OPEN]
+      const { byRole: br1 } = await resolveAssignmentsByRole(showBookId, operationId, baseDate);
+      const rrFixed = br1.get(roleFixed);
+      eqAssert(
+        planRoleAssignments(rrFixed, roleFixed, {}, 2),
+        [{ userId: uFixed, status: "ASSIGNED" }, { userId: null, status: "OPEN" }],
+        "(g1) 1 linha coberta + minimumCoverage=2 → ASSIGNED + OPEN",
+      );
+
+      // (g2) Mesmo papel, minimumCoverage=1 → apenas ASSIGNED (sem padding).
+      eqAssert(
+        planRoleAssignments(rrFixed, roleFixed, {}, 1),
+        [{ userId: uFixed, status: "ASSIGNED" }],
+        "(g2) minimumCoverage=1 → sem padding",
+      );
+
+      // (g3) Papel sem linhas (legado) + minimumCoverage=2, sem escala → [OPEN, OPEN].
+      const rrNone = br1.get(roleNoLines);
+      eqAssert(
+        planRoleAssignments(rrNone, roleNoLines, {}, 2),
+        [{ userId: null, status: "OPEN" }, { userId: null, status: "OPEN" }],
+        "(g3) sem linhas + minimumCoverage=2 → 2×OPEN",
+      );
+
+      // (g4) Papel sem linhas (legado) + escala manual + minimumCoverage=2 → [ASSIGNED, OPEN].
+      eqAssert(
+        planRoleAssignments(rrNone, roleNoLines, { [roleNoLines]: uManual }, 2),
+        [{ userId: uManual, status: "ASSIGNED" }, { userId: null, status: "OPEN" }],
+        "(g4) sem linhas + escala + minimumCoverage=2 → ASSIGNED + OPEN",
+      );
+
+      // (g5) Papel com linha UNCOVERED + minimumCoverage=2 → [OPEN, OPEN].
+      await addFolga(uFixed, baseDate);
+      const { byRole: br2 } = await resolveAssignmentsByRole(showBookId, operationId, baseDate);
+      const rrUncov = br2.get(roleFixed);
+      eqAssert(
+        planRoleAssignments(rrUncov, roleFixed, {}, 2),
+        [{ userId: null, status: "OPEN" }, { userId: null, status: "OPEN" }],
+        "(g5) 1 linha UNCOVERED + minimumCoverage=2 → 2×OPEN",
+      );
+      await clearFolgas();
+
+      // (g6) minimumCoverage=3, 2 linhas com ROTATION ambas cobertas → 2×ASSIGNED + 1×OPEN.
+      // Usa roleRotC (1 linha) como base de rr, mas chama planRoleAssignments com um rr
+      // construído manualmente para simular "2 linhas cobertas".
+      const mockRr2People: import("../src/services/line-resolver.js").RoleResolution = {
+        people: [{ userId: uRotA, name: "A" }, { userId: uRotB, name: "B" }],
+        rotationAdvanceUserIds: [],
+        hasLines: true,
+        hasUncoveredLine: false,
+        hasActiveLine: true,
+      };
+      eqAssert(
+        planRoleAssignments(mockRr2People, "mock", {}, 3),
+        [
+          { userId: uRotA, status: "ASSIGNED" },
+          { userId: uRotB, status: "ASSIGNED" },
+          { userId: null, status: "OPEN" },
+        ],
+        "(g6) 2 linhas cobertas + minimumCoverage=3 → 2×ASSIGNED + 1×OPEN",
+      );
+    }
   } finally {
     // ─── Cleanup (ordem respeita FKs) ──────────────────────────────────────────────
     await clearFolgas();

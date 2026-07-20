@@ -378,15 +378,22 @@ export interface PlannedAssignment {
 export function planRoleAssignments(
   rr: RoleResolution | undefined,
   roleId: string,
-  allocationMap: Record<string, string | null>
+  allocationMap: Record<string, string | null>,
+  minimumCoverage: number = 1
 ): PlannedAssignment[] {
+  const openSlots = (n: number): PlannedAssignment[] =>
+    Array.from({ length: n }, () => ({ userId: null, status: "OPEN" as const }));
+
   if (rr && rr.hasLines) {
     if (rr.people.length > 0) {
-      return rr.people.map((person) => ({ userId: person.userId, status: "ASSIGNED" as const }));
+      // Linhas cobertas → uma vaga ASSIGNED por pessoa + buracos até o mínimo.
+      const result: PlannedAssignment[] = rr.people.map((person) => ({ userId: person.userId, status: "ASSIGNED" as const }));
+      while (result.length < minimumCoverage) result.push({ userId: null, status: "OPEN" });
+      return result;
     }
     if (rr.hasUncoveredLine) {
-      // Linha ativa hoje sem ninguém disponível: buraco real.
-      return [{ userId: null, status: "OPEN" }];
+      // Linha ativa hoje sem ninguém disponível: buraco(s) real(is).
+      return openSlots(Math.max(1, minimumCoverage));
     }
     // Todas as linhas estão INATIVAS hoje (ex.: dia da semana que não atua): o papel não
     // participa. Não geramos buraco; honramos apenas uma alocação manual da escala, se houver.
@@ -396,8 +403,13 @@ export function planRoleAssignments(
     }
     return [];
   }
+  // Caminho legado (papel sem linhas): cai na escala manual e gera minimumCoverage vagas.
   const assignedUserId = allocationMap[roleId] ?? null;
-  return [{ userId: assignedUserId, status: assignedUserId ? "ASSIGNED" : "OPEN" }];
+  const result: PlannedAssignment[] = assignedUserId
+    ? [{ userId: assignedUserId, status: "ASSIGNED" }]
+    : [];
+  while (result.length < Math.max(1, minimumCoverage)) result.push({ userId: null, status: "OPEN" });
+  return result;
 }
 
 // Regra: a mesma pessoa não pode ocupar duas posições dentro da MESMA cena (pode em cenas
@@ -452,11 +464,12 @@ async function createAssignmentsForRole(
   byRole: Map<string, RoleResolution>,
   allocationMap: Record<string, string | null>,
   sceneKey: string | null,
-  assignedByScene: Map<string, Set<string>>
+  assignedByScene: Map<string, Set<string>>,
+  minimumCoverage: number = 1
 ) {
   const rr = byRole.get(roleId);
   const fromResolver = !!(rr && rr.hasLines && rr.people.length > 0);
-  const planned = planRoleAssignments(rr, roleId, allocationMap);
+  const planned = planRoleAssignments(rr, roleId, allocationMap, minimumCoverage);
   let finalPlanned = planned;
   if (sceneKey && !fromResolver) {
     let set = assignedByScene.get(sceneKey);
@@ -668,7 +681,7 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
         .returning();
       positionsCount++;
       const sceneKey = role.blockId ? sceneByBlock[role.blockId] ?? null : null;
-      await createAssignmentsForRole(dailyBookId, dbPos!.id, role.id, byRole, allocationMap, sceneKey, assignedByScene);
+      await createAssignmentsForRole(dailyBookId, dbPos!.id, role.id, byRole, allocationMap, sceneKey, assignedByScene, role.minimumCoverage);
     }
 
     const fullTree = await buildDailyBookTree(dailyBookId);
@@ -764,7 +777,7 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
     for (const role of roles) {
       const [dbPos] = await db.insert(dailyBookPositionsTable).values({ dailyBookId: id, name: role.name, minimumCoverage: role.minimumCoverage, sourceRoleId: role.id, blockId: role.blockId ? blockIdMap[role.blockId] ?? null : null }).returning();
       const sceneKey = role.blockId ? sceneByBlock[role.blockId] ?? null : null;
-      await createAssignmentsForRole(id, dbPos!.id, role.id, byRole, allocationMap, sceneKey, assignedByScene);
+      await createAssignmentsForRole(id, dbPos!.id, role.id, byRole, allocationMap, sceneKey, assignedByScene, role.minimumCoverage);
     }
 
     const fullTree = await buildDailyBookTree(id);
