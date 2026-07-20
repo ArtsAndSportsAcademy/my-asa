@@ -509,6 +509,18 @@ export default function ScalesPage() {
       if (!byMember.has(a.userId)) byMember.set(a.userId, []);
       byMember.get(a.userId)!.push(a);
     }
+    for (const byMember of result.values()) {
+      for (const list of byMember.values()) {
+        list.sort((a, b) => {
+          const ta = (a as any).startTime ?? (a as any).eventStartTime ?? "";
+          const tb = (b as any).startTime ?? (b as any).eventStartTime ?? "";
+          if (!ta && !tb) return 0;
+          if (!ta) return 1;
+          if (!tb) return -1;
+          return ta.localeCompare(tb);
+        });
+      }
+    }
     return result;
   }, [allocations]);
 
