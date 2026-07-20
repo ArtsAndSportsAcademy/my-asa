@@ -10,7 +10,7 @@ import { notifyMany } from "../services/notificationService.js";
 
 const router: IRouter = Router();
 
-const VALID_TYPES = ["SHOW", "REHEARSAL", "MEETING", "OPERATIONAL_BLOCK", "COLLECTIVE_VACATION"] as const;
+const VALID_TYPES = ["SHOW", "REHEARSAL", "MEETING", "OPERATIONAL_BLOCK", "COLLECTIVE_VACATION", "EVENTO", "EXTERNAL_SHOW", "TRAINING", "OTHER"] as const;
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"] as const;
 
 function isManager(role: string): boolean {
