@@ -12,12 +12,13 @@ import {
   responsibilitiesTable,
   responsibilityAssignmentsTable,
   operationsTable,
+  userRolesTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
 import { eventBus } from "../lib/event-bus.js";
 import { runCoverageEngine, persistEngineResult } from "../services/coverage-engine.js";
-import { resolveScaleAllocations } from "../services/scale-merge.js";
+import { resolveScaleAllocations, resolveUserRecurringAllocations } from "../services/scale-merge.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { hasActiveResponsibility } from "../lib/delegation-check.js";
 import { notifyMany } from "../services/notificationService.js";
@@ -202,57 +203,82 @@ router.get("/scales/my-allocations", requireAuth, requireOrganization, async (re
   const userId = req.user!.sub;
 
   try {
-    const rows = await db
-      .select({
-        id: scaleAllocationsTable.id,
-        scaleId: scaleAllocationsTable.scaleId,
-        agendaEventId: scaleAllocationsTable.agendaEventId,
-        positionId: scaleAllocationsTable.positionId,
-        status: scaleAllocationsTable.status,
-        positionName: showBookRolesTable.name,
-        eventTitle: agendaEventsTable.title,
-        eventDate: agendaEventsTable.date,
-        eventStartTime: agendaEventsTable.startTime,
-        eventEndTime: agendaEventsTable.endTime,
-        eventLocation: agendaEventsTable.location,
-        eventType: agendaEventsTable.type,
-        scaleTitle: scalesTable.title,
-        scaleStatus: scalesTable.status,
-        operationId: scalesTable.operationId,
-        operationName: operationsTable.name,
-        manualDate: scaleAllocationsTable.manualDate,
-        manualLabel: scaleAllocationsTable.manualLabel,
-        manualStartTime: scaleAllocationsTable.startTime,
-        manualEndTime: scaleAllocationsTable.endTime,
-      })
-      .from(scaleAllocationsTable)
-      .leftJoin(showBookRolesTable, eq(scaleAllocationsTable.positionId, showBookRolesTable.id))
-      .leftJoin(agendaEventsTable, eq(scaleAllocationsTable.agendaEventId, agendaEventsTable.id))
-      .leftJoin(scalesTable, eq(scaleAllocationsTable.scaleId, scalesTable.id))
-      .leftJoin(operationsTable, eq(scalesTable.operationId, operationsTable.id))
-      .where(eq(scaleAllocationsTable.userId, userId));
+    const [rows, userOps] = await Promise.all([
+      db
+        .select({
+          id: scaleAllocationsTable.id,
+          scaleId: scaleAllocationsTable.scaleId,
+          agendaEventId: scaleAllocationsTable.agendaEventId,
+          positionId: scaleAllocationsTable.positionId,
+          status: scaleAllocationsTable.status,
+          positionName: showBookRolesTable.name,
+          eventTitle: agendaEventsTable.title,
+          eventDate: agendaEventsTable.date,
+          eventStartTime: agendaEventsTable.startTime,
+          eventEndTime: agendaEventsTable.endTime,
+          eventLocation: agendaEventsTable.location,
+          eventType: agendaEventsTable.type,
+          scaleTitle: scalesTable.title,
+          scaleStatus: scalesTable.status,
+          operationId: scalesTable.operationId,
+          operationName: operationsTable.name,
+          manualDate: scaleAllocationsTable.manualDate,
+          manualLabel: scaleAllocationsTable.manualLabel,
+          manualStartTime: scaleAllocationsTable.startTime,
+          manualEndTime: scaleAllocationsTable.endTime,
+        })
+        .from(scaleAllocationsTable)
+        .leftJoin(showBookRolesTable, eq(scaleAllocationsTable.positionId, showBookRolesTable.id))
+        .leftJoin(agendaEventsTable, eq(scaleAllocationsTable.agendaEventId, agendaEventsTable.id))
+        .leftJoin(scalesTable, eq(scaleAllocationsTable.scaleId, scalesTable.id))
+        .leftJoin(operationsTable, eq(scalesTable.operationId, operationsTable.id))
+        .where(eq(scaleAllocationsTable.userId, userId)),
+      db
+        .select({ operationId: userRolesTable.operationId })
+        .from(userRolesTable)
+        .where(and(eq(userRolesTable.userId, userId), eq(userRolesTable.active, true))),
+    ]);
 
     // Coalesce manual-entry fields (old MyASA model) over engine/agenda fields.
-    const allocations = rows
-      .map((r) => ({
-        id: r.id,
-        scaleId: r.scaleId,
-        agendaEventId: r.agendaEventId,
-        positionId: r.positionId,
-        status: r.status,
-        positionName: r.positionName,
-        eventTitle: r.eventTitle ?? r.manualLabel,
-        eventDate: r.eventDate ?? r.manualDate,
-        eventStartTime: r.eventStartTime ?? r.manualStartTime,
-        eventEndTime: r.eventEndTime ?? r.manualEndTime,
-        eventLocation: r.eventLocation,
-        eventType: r.eventType,
-        scaleTitle: r.scaleTitle,
-        scaleStatus: r.scaleStatus,
-        operationId: r.operationId,
-        operationName: r.operationName,
-      }))
-      .sort((a, b) => (a.eventDate ?? "").localeCompare(b.eventDate ?? ""));
+    const realAllocations = rows.map((r) => ({
+      id: r.id,
+      scaleId: r.scaleId,
+      agendaEventId: r.agendaEventId,
+      positionId: r.positionId,
+      status: r.status,
+      positionName: r.positionName,
+      eventTitle: r.eventTitle ?? r.manualLabel,
+      eventDate: r.eventDate ?? r.manualDate,
+      eventStartTime: r.eventStartTime ?? r.manualStartTime,
+      eventEndTime: r.eventEndTime ?? r.manualEndTime,
+      eventLocation: r.eventLocation,
+      eventType: r.eventType,
+      scaleTitle: r.scaleTitle,
+      scaleStatus: r.scaleStatus,
+      operationId: r.operationId,
+      operationName: r.operationName,
+    }));
+
+    // Atividades recorrentes: janela de 7 dias atrás até 90 dias à frente.
+    const now = new Date();
+    const periodStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+    const periodEnd = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+    const operationIds = [...new Set(userOps.map((r) => r.operationId).filter((id): id is string => !!id))];
+
+    const recurringRows = await resolveUserRecurringAllocations(
+      userId,
+      operationIds,
+      periodStart,
+      periodEnd,
+    );
+
+    const allocations = [...realAllocations, ...recurringRows].sort(
+      (a, b) => (a.eventDate ?? "").localeCompare(b.eventDate ?? ""),
+    );
 
     res.json({ allocations });
   } catch (err) {

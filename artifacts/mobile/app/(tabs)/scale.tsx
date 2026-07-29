@@ -7,7 +7,8 @@ import {
 } from "@workspace/api-client-react";
 import type { MyAllocation } from "@workspace/api-client-react";
 
-type AllocationWithOp = MyAllocation & { operationId?: string | null; operationName?: string | null };
+// MyAllocation now includes operationId, operationName and RECURRING_ACTIVITY status.
+type AllocationWithOp = MyAllocation;
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useState, useCallback, useMemo } from "react";
 import {
@@ -129,67 +130,87 @@ function DayRow({
         )}
 
         {hasEntries ? (
-          entries.map((e) => (
-            <Pressable
-              key={e.id}
-              onPress={() => onOpenEvent(e.agendaEventId)}
-              style={({ pressed }) => [
-                styles.entry,
-                { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
-              ]}
-            >
-              <View style={styles.entryHeader}>
-                <Text
-                  style={[styles.entryTitle, { color: colors.foreground, flex: 1 }]}
-                  numberOfLines={1}
-                >
-                  {e.eventTitle ?? "Escala"}
-                </Text>
-                <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-              </View>
-              <View style={styles.entryMeta}>
-                {e.eventStartTime && (
-                  <View style={styles.metaItem}>
-                    <Feather name="clock" size={11} color={colors.mutedForeground} />
-                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
-                      {formatTime(e.eventStartTime)}
-                      {e.eventEndTime ? ` — ${formatTime(e.eventEndTime)}` : ""}
-                    </Text>
-                  </View>
+          entries.map((e) => {
+            const isRecurring = e.status === "RECURRING_ACTIVITY";
+            const canOpenBook = !!e.agendaEventId;
+            return (
+              <Pressable
+                key={e.id}
+                onPress={canOpenBook ? () => onOpenEvent(e.agendaEventId!) : undefined}
+                style={({ pressed }) => [
+                  styles.entry,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: isRecurring ? colors.border : colors.border,
+                    opacity: pressed && canOpenBook ? 0.7 : 1,
+                  },
+                ]}
+              >
+                <View style={styles.entryHeader}>
+                  <Text
+                    style={[styles.entryTitle, { color: colors.foreground, flex: 1 }]}
+                    numberOfLines={1}
+                  >
+                    {e.eventTitle ?? "Escala"}
+                  </Text>
+                  {canOpenBook && (
+                    <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                  )}
+                </View>
+                <View style={styles.entryMeta}>
+                  {e.eventStartTime && (
+                    <View style={styles.metaItem}>
+                      <Feather name="clock" size={11} color={colors.mutedForeground} />
+                      <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
+                        {formatTime(e.eventStartTime)}
+                        {e.eventEndTime ? ` — ${formatTime(e.eventEndTime)}` : ""}
+                      </Text>
+                    </View>
+                  )}
+                  {e.eventLocation && (
+                    <View style={styles.metaItem}>
+                      <Feather name="map-pin" size={11} color={colors.mutedForeground} />
+                      <Text
+                        style={[styles.metaText, { color: colors.mutedForeground }]}
+                        numberOfLines={1}
+                      >
+                        {e.eventLocation}
+                      </Text>
+                    </View>
+                  )}
+                  {e.positionName && (
+                    <View style={styles.metaItem}>
+                      <Feather name="user-check" size={11} color={colors.primary} />
+                      <Text style={[styles.metaText, { color: colors.primary }]}>
+                        {e.positionName}
+                      </Text>
+                    </View>
+                  )}
+                  {isRecurring && (
+                    <View style={styles.metaItem}>
+                      <Feather name="repeat" size={11} color={colors.mutedForeground} />
+                      <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
+                        Recorrente
+                      </Text>
+                    </View>
+                  )}
+                  {showOp && e.operationName && (
+                    <View style={styles.metaItem}>
+                      <Feather name="briefcase" size={11} color="#2563eb" />
+                      <Text style={[styles.metaText, { color: "#2563eb" }]}>
+                        {e.operationName}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                {canOpenBook && (
+                  <Text style={[styles.entryHint, { color: colors.primary }]}>
+                    Ver Livro do Dia →
+                  </Text>
                 )}
-                {e.eventLocation && (
-                  <View style={styles.metaItem}>
-                    <Feather name="map-pin" size={11} color={colors.mutedForeground} />
-                    <Text
-                      style={[styles.metaText, { color: colors.mutedForeground }]}
-                      numberOfLines={1}
-                    >
-                      {e.eventLocation}
-                    </Text>
-                  </View>
-                )}
-                {e.positionName && (
-                  <View style={styles.metaItem}>
-                    <Feather name="user-check" size={11} color={colors.primary} />
-                    <Text style={[styles.metaText, { color: colors.primary }]}>
-                      {e.positionName}
-                    </Text>
-                  </View>
-                )}
-                {showOp && e.operationName && (
-                  <View style={styles.metaItem}>
-                    <Feather name="briefcase" size={11} color="#2563eb" />
-                    <Text style={[styles.metaText, { color: "#2563eb" }]}>
-                      {e.operationName}
-                    </Text>
-                  </View>
-                )}
-              </View>
-              <Text style={[styles.entryHint, { color: colors.primary }]}>
-                Ver Livro do Dia →
-              </Text>
-            </Pressable>
-          ))
+              </Pressable>
+            );
+          })
         ) : (
           !folgaType && (
             <Text style={[styles.emptyDay, { color: colors.mutedForeground }]}>Sem escala</Text>

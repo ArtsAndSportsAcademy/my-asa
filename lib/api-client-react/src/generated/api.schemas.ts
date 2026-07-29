@@ -1019,12 +1019,13 @@ export const MyAllocationStatus = {
   OPEN: 'OPEN',
   CONFLICT: 'CONFLICT',
   MANUAL_OVERRIDE: 'MANUAL_OVERRIDE',
+  RECURRING_ACTIVITY: 'RECURRING_ACTIVITY',
 } as const;
 
 export interface MyAllocation {
   id: string;
-  scaleId: string;
-  agendaEventId: string;
+  scaleId?: string | null;
+  agendaEventId?: string | null;
   positionId?: string | null;
   positionName?: string | null;
   status: MyAllocationStatus;
@@ -1036,6 +1037,8 @@ export interface MyAllocation {
   eventType?: string | null;
   scaleTitle?: string | null;
   scaleStatus?: string | null;
+  operationId?: string | null;
+  operationName?: string | null;
 }
 
 export interface EngineResult {

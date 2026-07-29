@@ -17,6 +17,7 @@ import {
   recurringActivitySchedulesTable,
   recurringActivityAssigneesTable,
   folgasTable,
+  operationsTable,
 } from "@workspace/db";
 import { loadGroupMembers } from "../routes/groups.js";
 import { getNonSchedulableUserIds } from "./scheduling-eligibility.js";
@@ -440,6 +441,197 @@ export async function resolveScaleAllocations(scale: ScaleForMerge) {
     ...dailyBookRows,
     ...recurringRows,
   ];
+}
+
+// ─── Helper: linhas de atividades recorrentes para um utilizador concreto ─────
+/**
+ * Devolve as linhas de atividades recorrentes para um utilizador específico
+ * num intervalo de datas. Usado pelo endpoint GET /api/scales/my-allocations
+ * para que o mobile veja atividades multi-horário como linhas distintas.
+ *
+ * A chave de dedup `rec:<actId>:<schedId>:<date>:<userId>` garante que
+ * dois horários do mesmo dia (08h e 14h) geram IDs diferentes.
+ */
+export async function resolveUserRecurringAllocations(
+  userId: string,
+  operationIds: string[],
+  periodStart: string,
+  periodEnd: string,
+): Promise<Array<{
+  id: string;
+  scaleId: null;
+  agendaEventId: null;
+  positionId: null;
+  positionName: null;
+  status: string;
+  eventTitle: string;
+  eventDate: string;
+  eventStartTime: string | null;
+  eventEndTime: string | null;
+  eventLocation: null;
+  eventType: null;
+  scaleTitle: null;
+  scaleStatus: null;
+  operationId: string;
+  operationName: string | null;
+}>> {
+  if (operationIds.length === 0) return [];
+
+  // Atividades ativas das operações do utilizador.
+  const activities = await db
+    .select({
+      id: recurringActivitiesTable.id,
+      title: recurringActivitiesTable.title,
+      operationId: recurringActivitiesTable.operationId,
+      operationName: operationsTable.name,
+    })
+    .from(recurringActivitiesTable)
+    .leftJoin(operationsTable, eq(recurringActivitiesTable.operationId, operationsTable.id))
+    .where(
+      and(
+        inArray(recurringActivitiesTable.operationId, operationIds),
+        eq(recurringActivitiesTable.active, true),
+      ),
+    );
+
+  if (activities.length === 0) return [];
+
+  const activityIds = activities.map((a) => a.id);
+  const activityMap = new Map(activities.map((a) => [a.id, a]));
+
+  // Assignees (diretos e via grupo).
+  const assignees = await db
+    .select()
+    .from(recurringActivityAssigneesTable)
+    .where(inArray(recurringActivityAssigneesTable.activityId, activityIds));
+
+  // Determinar quais atividades este utilizador está atribuído.
+  const relevantActivityIds = new Set<string>();
+  const groupActivityMap = new Map<string, { activityId: string; operationId: string }[]>();
+
+  for (const a of assignees) {
+    if (a.userId === userId) {
+      relevantActivityIds.add(a.activityId);
+    } else if (a.groupId) {
+      const act = activityMap.get(a.activityId);
+      if (!act) continue;
+      const list = groupActivityMap.get(a.groupId) ?? [];
+      list.push({ activityId: a.activityId, operationId: act.operationId });
+      groupActivityMap.set(a.groupId, list);
+    }
+  }
+
+  // Verificar pertença a grupos.
+  for (const [groupId, items] of groupActivityMap) {
+    const opsNeeded = [...new Set(items.map((i) => i.operationId))];
+    for (const opId of opsNeeded) {
+      const members = await loadGroupMembers(groupId, [opId]);
+      if (members.some((m) => m.id === userId)) {
+        for (const { activityId, operationId: itemOpId } of items) {
+          if (itemOpId === opId) relevantActivityIds.add(activityId);
+        }
+      }
+    }
+  }
+
+  if (relevantActivityIds.size === 0) return [];
+
+  const relevantIds = [...relevantActivityIds];
+
+  // Horários das atividades relevantes.
+  const schedules = await db
+    .select()
+    .from(recurringActivitySchedulesTable)
+    .where(inArray(recurringActivitySchedulesTable.activityId, relevantIds));
+
+  // Folgas ACTIVE do utilizador que tocam o período.
+  const folgas = await db
+    .select({ startDate: folgasTable.startDate, endDate: folgasTable.endDate })
+    .from(folgasTable)
+    .where(
+      and(
+        eq(folgasTable.userId, userId),
+        eq(folgasTable.status, "ACTIVE"),
+        lte(folgasTable.startDate, periodEnd),
+        gte(folgasTable.endDate, periodStart),
+      ),
+    );
+
+  const isUnavailable = (ds: string): boolean =>
+    folgas.some((f) => f.startDate <= ds && ds <= f.endDate);
+
+  // Todas as datas no período.
+  const periodDates: string[] = [];
+  const start = new Date(periodStart + "T00:00:00Z");
+  const end = new Date(periodEnd + "T00:00:00Z");
+  for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+    periodDates.push(d.toISOString().slice(0, 10));
+  }
+
+  const result: Array<{
+    id: string;
+    scaleId: null;
+    agendaEventId: null;
+    positionId: null;
+    positionName: null;
+    status: string;
+    eventTitle: string;
+    eventDate: string;
+    eventStartTime: string | null;
+    eventEndTime: string | null;
+    eventLocation: null;
+    eventType: null;
+    scaleTitle: null;
+    scaleStatus: null;
+    operationId: string;
+    operationName: string | null;
+  }> = [];
+
+  for (const actId of relevantIds) {
+    const act = activityMap.get(actId)!;
+    const actSchedules = schedules.filter((s) => s.activityId === actId);
+
+    for (const sched of actSchedules) {
+      let dates: string[];
+      if (sched.weekday != null) {
+        const wd = sched.weekday;
+        dates = periodDates.filter(
+          (ds) => new Date(ds + "T00:00:00Z").getUTCDay() === wd,
+        );
+      } else if (sched.specificDate) {
+        dates =
+          sched.specificDate >= periodStart && sched.specificDate <= periodEnd
+            ? [sched.specificDate]
+            : [];
+      } else {
+        dates = [];
+      }
+
+      for (const ds of dates) {
+        if (isUnavailable(ds)) continue;
+        result.push({
+          id: `rec:${actId}:${sched.id}:${ds}:${userId}`,
+          scaleId: null,
+          agendaEventId: null,
+          positionId: null,
+          positionName: null,
+          status: "RECURRING_ACTIVITY",
+          eventTitle: act.title,
+          eventDate: ds,
+          eventStartTime: sched.startTime,
+          eventEndTime: sched.endTime,
+          eventLocation: null,
+          eventType: null,
+          scaleTitle: null,
+          scaleStatus: null,
+          operationId: act.operationId,
+          operationName: act.operationName,
+        });
+      }
+    }
+  }
+
+  return result.sort((a, b) => a.eventDate.localeCompare(b.eventDate));
 }
 
 // ─── Fase 5 — Tempo livre (deteção de buracos) ──────────────────────────────

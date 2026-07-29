@@ -6575,8 +6575,10 @@ components:
           type: string
         scaleId:
           type: string
+          nullable: true
         agendaEventId:
           type: string
+          nullable: true
         positionId:
           type: string
           nullable: true
@@ -6585,7 +6587,7 @@ components:
           nullable: true
         status:
           type: string
-          enum: [ASSIGNED, OPEN, CONFLICT, MANUAL_OVERRIDE]
+          enum: [ASSIGNED, OPEN, CONFLICT, MANUAL_OVERRIDE, RECURRING_ACTIVITY]
         eventTitle:
           type: string
           nullable: true
@@ -6610,7 +6612,13 @@ components:
         scaleStatus:
           type: string
           nullable: true
-      required: [id, scaleId, agendaEventId, status]
+        operationId:
+          type: string
+          nullable: true
+        operationName:
+          type: string
+          nullable: true
+      required: [id, status]
 
     EngineResult:
       type: object
