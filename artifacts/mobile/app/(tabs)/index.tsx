@@ -53,6 +53,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 const SPECIALIZATION_LABELS: Record<string, string> = {
   PERFORMER:          "Performer",
+  CONVIDADO:          "Convidado",
   PROFESSOR:          "Professor",
   TRAINER:            "Treinador",
   PHYSIOTHERAPIST:    "Fisioterapeuta",

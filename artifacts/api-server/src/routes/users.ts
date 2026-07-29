@@ -36,6 +36,21 @@ function safeUser(user: typeof usersTable.$inferSelect) {
  * Permite ao frontend escopar listagens por operação (ex.: montar a escala de uma
  * operação sem mostrar membros de outra operação da mesma organização).
  */
+/**
+ * Soft-expiry: convidados cuja data visitUntil já passou são automaticamente
+ * marcados como INACTIVE. Idempotente — não faz nada se já estiver inativo.
+ */
+async function expireVisitors(users: (typeof usersTable.$inferSelect)[]) {
+  const today = new Date().toISOString().split("T")[0]!;
+  const toExpire = users.filter(
+    (u) => u.specialization === "CONVIDADO" && u.status === "ACTIVE" && u.visitUntil && u.visitUntil < today
+  );
+  for (const u of toExpire) {
+    await db.update(usersTable).set({ status: "INACTIVE", updatedAt: new Date() }).where(eq(usersTable.id, u.id));
+    u.status = "INACTIVE"; // mutate in-place so the response já reflete o novo estado
+  }
+}
+
 async function attachOperationIds(users: (typeof usersTable.$inferSelect)[]) {
   const ids = users.map((u) => u.id);
   if (ids.length === 0) return [];
@@ -83,6 +98,7 @@ router.get("/users", requireAuth, requireOrganization, async (req, res) => {
       const users = await db.query.usersTable.findMany({
         where: eq(usersTable.organizationId, organizationId),
       });
+      await expireVisitors(users);
       res.json({ users: await attachOperationIds(users) });
       return;
     }
@@ -110,6 +126,7 @@ router.get("/users", requireAuth, requireOrganization, async (req, res) => {
     const users = await db.query.usersTable.findMany({
       where: and(eq(usersTable.organizationId, organizationId), inArray(usersTable.id, memberUserIds)),
     });
+    await expireVisitors(users);
     res.json({ users: await attachOperationIds(users) });
   } catch (err) {
     log.error({ err }, "Error listing users");
@@ -144,14 +161,14 @@ router.get("/users/:id", requireAuth, requireOrganization, async (req, res) => {
 
 router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
   const log = requestLogger("teams", req.requestId, req.correlationId);
-  const { name, email, password, specialization, birthDate } = req.body;
+  const { name, email, password, specialization, birthDate, visitUntil } = req.body;
 
   if (!name?.trim() || !password) {
     res.status(400).json({ error: "BAD_REQUEST", message: "name e password são obrigatórios" });
     return;
   }
 
-  const VALID_SPECIALIZATIONS = ["PERFORMER", "PROFESSOR", "TRAINER", "PHYSIOTHERAPIST", "STRENGTH_COACH", "TECHNICAL_OPERATOR", "CHOREOGRAPHER", "OTHER"];
+  const VALID_SPECIALIZATIONS = ["PERFORMER", "CONVIDADO", "PROFESSOR", "TRAINER", "PHYSIOTHERAPIST", "STRENGTH_COACH", "TECHNICAL_OPERATOR", "CHOREOGRAPHER", "OTHER"];
   if (specialization && !VALID_SPECIALIZATIONS.includes(specialization)) {
     res.status(400).json({ error: "BAD_REQUEST", message: `specialization inválida. Valores aceitos: ${VALID_SPECIALIZATIONS.join(", ")}` });
     return;
@@ -192,6 +209,7 @@ router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), as
         status: "ACTIVE",
         specialization: specialization ?? null,
         birthDate: (birthDate as string | undefined) ?? null,
+        visitUntil: (visitUntil as string | undefined) ?? null,
       })
       .returning();
 
@@ -262,7 +280,7 @@ router.post("/users/me/password", requireAuth, async (req, res) => {
 router.patch("/users/:id", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger("teams", req.requestId, req.correlationId);
   const id = req.params.id as string;
-  const { name, email, username, specialization, birthDate } = req.body;
+  const { name, email, username, specialization, birthDate, visitUntil } = req.body;
 
   const role = req.user!.role;
   const isAdmin = role === "ADMIN";
@@ -281,9 +299,10 @@ router.patch("/users/:id", requireAuth, requireOrganization, async (req, res) =>
     return;
   }
 
-  // Especialização (função) pode ser editada por admin ou supervisor.
-  if (specialization !== undefined && !isAdmin && !isSupervisor) {
-    res.status(403).json({ error: "FORBIDDEN", message: "Você não tem permissão para editar a especialização." });
+  // Especialização (função) e visitUntil (data de saída de convidados) são campos
+  // exclusivos de admin ou supervisor — não podem ser alterados pelo próprio membro.
+  if ((specialization !== undefined || visitUntil !== undefined) && !isAdmin && !isSupervisor) {
+    res.status(403).json({ error: "FORBIDDEN", message: "Você não tem permissão para editar a especialização ou data de saída." });
     return;
   }
 
@@ -293,7 +312,7 @@ router.patch("/users/:id", requireAuth, requireOrganization, async (req, res) =>
     return;
   }
 
-  const VALID_SPECIALIZATIONS = ["PERFORMER", "PROFESSOR", "TRAINER", "PHYSIOTHERAPIST", "STRENGTH_COACH", "TECHNICAL_OPERATOR", "CHOREOGRAPHER", "OTHER"];
+  const VALID_SPECIALIZATIONS = ["PERFORMER", "CONVIDADO", "PROFESSOR", "TRAINER", "PHYSIOTHERAPIST", "STRENGTH_COACH", "TECHNICAL_OPERATOR", "CHOREOGRAPHER", "OTHER"];
   if (specialization !== undefined && specialization !== null && !VALID_SPECIALIZATIONS.includes(specialization)) {
     res.status(400).json({ error: "BAD_REQUEST", message: `specialization inválida. Valores aceitos: ${VALID_SPECIALIZATIONS.join(", ")}` });
     return;
@@ -338,6 +357,16 @@ router.patch("/users/:id", requireAuth, requireOrganization, async (req, res) =>
     }
     if (birthDate !== undefined) {
       updates.birthDate = (birthDate as string | null) || null;
+    }
+    // visitUntil só é válido para CONVIDADO — usar a especialização efectiva (nova ou atual).
+    // Se a especialização resultante não for CONVIDADO, forçar null independentemente do body.
+    const effectiveSpecialization = specialization !== undefined ? specialization : user.specialization;
+    if (visitUntil !== undefined || specialization !== undefined) {
+      if (effectiveSpecialization === "CONVIDADO") {
+        if (visitUntil !== undefined) updates.visitUntil = (visitUntil as string | null) || null;
+      } else {
+        updates.visitUntil = null; // limpar sempre que a especialização não for CONVIDADO
+      }
     }
 
     const [updated] = await db

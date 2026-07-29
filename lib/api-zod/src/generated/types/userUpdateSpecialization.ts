@@ -11,6 +11,7 @@ export type UserUpdateSpecialization = typeof UserUpdateSpecialization[keyof typ
 
 export const UserUpdateSpecialization = {
   PERFORMER: 'PERFORMER',
+  CONVIDADO: 'CONVIDADO',
   PROFESSOR: 'PROFESSOR',
   TRAINER: 'TRAINER',
   PHYSIOTHERAPIST: 'PHYSIOTHERAPIST',

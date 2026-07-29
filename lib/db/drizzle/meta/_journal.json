@@ -71,6 +71,13 @@
       "when": 1783613230078,
       "tag": "0009_worried_shatterstar",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1785343784422,
+      "tag": "0010_add_visit_until_to_users",
+      "breakpoints": true
     }
   ]
 }

@@ -39,6 +39,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 const SPECIALIZATION_LABELS: Record<string, string> = {
   PERFORMER:          "Performer",
+  CONVIDADO:          "Convidado",
   PROFESSOR:          "Professor",
   TRAINER:            "Treinador",
   PHYSIOTHERAPIST:    "Fisioterapeuta",
@@ -49,6 +50,7 @@ const SPECIALIZATION_LABELS: Record<string, string> = {
 
 const ALL_SPECIALIZATIONS = [
   "PERFORMER",
+  "CONVIDADO",
   "PROFESSOR",
   "TRAINER",
   "PHYSIOTHERAPIST",
@@ -102,8 +104,8 @@ export default function UsersPage() {
   const [editUser, setEditUser] = useState<User | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
 
-  const [createForm, setCreateForm] = useState({ name: "", password: "", role: "MEMBER", operationId: "", specialization: "", birthDate: "" });
-  const [editForm, setEditForm] = useState({ name: "", email: "", username: "", specialization: "", birthDate: "" });
+  const [createForm, setCreateForm] = useState({ name: "", password: "", role: "MEMBER", operationId: "", specialization: "", birthDate: "", visitUntil: "" });
+  const [editForm, setEditForm] = useState({ name: "", email: "", username: "", specialization: "", birthDate: "", visitUntil: "" });
   const [addRoleOpId, setAddRoleOpId] = useState("");
   const [addRoleRole, setAddRoleRole] = useState("MEMBER");
 
@@ -172,7 +174,7 @@ export default function UsersPage() {
   });
 
   const resetCreateForm = () =>
-    setCreateForm({ name: "", password: "", role: "MEMBER", operationId: "", specialization: "", birthDate: "" });
+    setCreateForm({ name: "", password: "", role: "MEMBER", operationId: "", specialization: "", birthDate: "", visitUntil: "" });
 
   const handleCreate = () => {
     const { name, password, role, operationId, specialization } = createForm;
@@ -192,6 +194,7 @@ export default function UsersPage() {
           password,
           specialization: (specialization || undefined) as any,
           ...(createForm.birthDate ? { birthDate: createForm.birthDate as any } : {}),
+          ...(createForm.visitUntil ? { visitUntil: createForm.visitUntil as any } : {}),
         },
       },
       {
@@ -235,7 +238,7 @@ export default function UsersPage() {
 
   const handleEdit = () => {
     if (!editUser) return;
-    const { name, email, username, specialization, birthDate } = editForm;
+    const { name, email, username, specialization, birthDate, visitUntil } = editForm;
     updateMutation.mutate(
       {
         id: editUser.id,
@@ -245,6 +248,7 @@ export default function UsersPage() {
           username: username.trim() || undefined,
           specialization: (specialization || null) as any,
           ...(birthDate !== undefined ? { birthDate: (birthDate || null) as any } : {}),
+          visitUntil: (visitUntil || null) as any,
         },
       },
       {
@@ -301,6 +305,7 @@ export default function UsersPage() {
       username: user.username ?? "",
       specialization: user.specialization ?? "",
       birthDate: (user as any).birthDate ?? "",
+      visitUntil: (user as any).visitUntil ?? "",
     });
   };
 
@@ -388,9 +393,19 @@ export default function UsersPage() {
                     <TableCell className="text-muted-foreground">{user.email}</TableCell>
                     <TableCell>
                       {user.specialization ? (
-                        <Badge variant="outline">
-                          {SPECIALIZATION_LABELS[user.specialization] ?? user.specialization}
-                        </Badge>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <Badge
+                            variant="outline"
+                            className={user.specialization === "CONVIDADO" ? "border-amber-400 text-amber-700 bg-amber-50 dark:bg-amber-950 dark:text-amber-300" : ""}
+                          >
+                            {SPECIALIZATION_LABELS[user.specialization] ?? user.specialization}
+                          </Badge>
+                          {user.specialization === "CONVIDADO" && (user as any).visitUntil && (
+                            <span className="text-xs text-muted-foreground">
+                              até {new Date((user as any).visitUntil + "T12:00:00").toLocaleDateString("pt-BR")}
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-muted-foreground text-sm">—</span>
                       )}
@@ -521,6 +536,19 @@ export default function UsersPage() {
                 onChange={(e) => setCreateForm((f) => ({ ...f, birthDate: e.target.value }))}
               />
             </div>
+            {createForm.specialization === "CONVIDADO" && (
+              <div className="space-y-2">
+                <Label>Convidado até <span className="text-muted-foreground text-xs">(data prevista de saída)</span></Label>
+                <Input
+                  type="date"
+                  value={createForm.visitUntil}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, visitUntil: e.target.value }))}
+                />
+                <p className="text-xs text-amber-600">
+                  Após esta data o convidado será automaticamente marcado como Inativo.
+                </p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
@@ -623,6 +651,19 @@ export default function UsersPage() {
                 onChange={(e) => setEditForm((f) => ({ ...f, birthDate: e.target.value }))}
               />
             </div>
+            {editForm.specialization === "CONVIDADO" && (
+              <div className="space-y-2">
+                <Label>Convidado até <span className="text-muted-foreground text-xs">(data prevista de saída)</span></Label>
+                <Input
+                  type="date"
+                  value={editForm.visitUntil}
+                  onChange={(e) => setEditForm((f) => ({ ...f, visitUntil: e.target.value }))}
+                />
+                <p className="text-xs text-amber-600">
+                  Após esta data o convidado será automaticamente marcado como Inativo.
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2 border-t pt-4">
               <Label>Operações <span className="text-muted-foreground text-xs">(uma pessoa pode pertencer a várias)</span></Label>

@@ -11,6 +11,7 @@ export type UserSpecialization = typeof UserSpecialization[keyof typeof UserSpec
 
 export const UserSpecialization = {
   PERFORMER: 'PERFORMER',
+  CONVIDADO: 'CONVIDADO',
   PROFESSOR: 'PROFESSOR',
   TRAINER: 'TRAINER',
   PHYSIOTHERAPIST: 'PHYSIOTHERAPIST',

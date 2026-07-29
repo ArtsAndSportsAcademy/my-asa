@@ -11,6 +11,7 @@ export type UserCreateSpecialization = typeof UserCreateSpecialization[keyof typ
 
 export const UserCreateSpecialization = {
   PERFORMER: 'PERFORMER',
+  CONVIDADO: 'CONVIDADO',
   PROFESSOR: 'PROFESSOR',
   TRAINER: 'TRAINER',
   PHYSIOTHERAPIST: 'PHYSIOTHERAPIST',

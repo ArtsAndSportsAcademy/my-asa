@@ -27,6 +27,7 @@ export type UserSpecialization = typeof UserSpecialization[keyof typeof UserSpec
 
 export const UserSpecialization = {
   PERFORMER: 'PERFORMER',
+  CONVIDADO: 'CONVIDADO',
   PROFESSOR: 'PROFESSOR',
   TRAINER: 'TRAINER',
   PHYSIOTHERAPIST: 'PHYSIOTHERAPIST',
@@ -45,6 +46,8 @@ export interface User {
   mustChangePassword?: boolean;
   status: UserStatus;
   specialization?: UserSpecialization;
+  /** Data de saída prevista para Convidados (formato YYYY-MM-DD). Nulo para membros fixos. */
+  visitUntil?: string | null;
   organizationId: string;
   /** Operações às quais o utilizador pertence (via papéis ativos). */
   operationIds?: string[];
@@ -196,6 +199,7 @@ export type UserCreateSpecialization = typeof UserCreateSpecialization[keyof typ
 
 export const UserCreateSpecialization = {
   PERFORMER: 'PERFORMER',
+  CONVIDADO: 'CONVIDADO',
   PROFESSOR: 'PROFESSOR',
   TRAINER: 'TRAINER',
   PHYSIOTHERAPIST: 'PHYSIOTHERAPIST',
@@ -211,6 +215,8 @@ export interface UserCreate {
   /** @minLength 6 */
   password: string;
   specialization?: UserCreateSpecialization;
+  /** Data de saída prevista para Convidados (YYYY-MM-DD). */
+  visitUntil?: string | null;
 }
 
 export interface ChangePasswordBody {
@@ -224,6 +230,7 @@ export type UserUpdateSpecialization = typeof UserUpdateSpecialization[keyof typ
 
 export const UserUpdateSpecialization = {
   PERFORMER: 'PERFORMER',
+  CONVIDADO: 'CONVIDADO',
   PROFESSOR: 'PROFESSOR',
   TRAINER: 'TRAINER',
   PHYSIOTHERAPIST: 'PHYSIOTHERAPIST',
@@ -239,6 +246,8 @@ export interface UserUpdate {
   /** Nome de usuário (login). Normalizado: minusculas, sem acentos, espacos viram ponto, apenas letras/numeros/ponto. */
   username?: string;
   specialization?: UserUpdateSpecialization;
+  /** Data de saída prevista para Convidados (YYYY-MM-DD). Enviar null para limpar. */
+  visitUntil?: string | null;
 }
 
 export type UserStatusUpdateStatus = typeof UserStatusUpdateStatus[keyof typeof UserStatusUpdateStatus];

@@ -13,4 +13,6 @@ export interface UserUpdate {
   /** Nome de usuário (login). Normalizado: minusculas, sem acentos, espacos viram ponto, apenas letras/numeros/ponto. */
   username?: string;
   specialization?: UserUpdateSpecialization;
+  /** Data de saída prevista para Convidados (YYYY-MM-DD). Enviar null para limpar. */
+  visitUntil?: string | null;
 }

@@ -5336,7 +5336,11 @@ components:
         specialization:
           type: string
           nullable: true
-          enum: [PERFORMER, PROFESSOR, TRAINER, PHYSIOTHERAPIST, STRENGTH_COACH, TECHNICAL_OPERATOR, CHOREOGRAPHER, OTHER]
+          enum: [PERFORMER, CONVIDADO, PROFESSOR, TRAINER, PHYSIOTHERAPIST, STRENGTH_COACH, TECHNICAL_OPERATOR, CHOREOGRAPHER, OTHER]
+        visitUntil:
+          type: string
+          nullable: true
+          description: "Data de saída prevista para Convidados (formato YYYY-MM-DD). Nulo para membros fixos."
         organizationId:
           type: string
         operationIds:
@@ -5577,7 +5581,11 @@ components:
         specialization:
           type: string
           nullable: true
-          enum: [PERFORMER, PROFESSOR, TRAINER, PHYSIOTHERAPIST, STRENGTH_COACH, TECHNICAL_OPERATOR, CHOREOGRAPHER, OTHER]
+          enum: [PERFORMER, CONVIDADO, PROFESSOR, TRAINER, PHYSIOTHERAPIST, STRENGTH_COACH, TECHNICAL_OPERATOR, CHOREOGRAPHER, OTHER]
+        visitUntil:
+          type: string
+          nullable: true
+          description: "Data de saída prevista para Convidados (YYYY-MM-DD)."
       required: [name, password]
 
     ChangePasswordBody:
@@ -5604,7 +5612,11 @@ components:
         specialization:
           type: string
           nullable: true
-          enum: [PERFORMER, PROFESSOR, TRAINER, PHYSIOTHERAPIST, STRENGTH_COACH, TECHNICAL_OPERATOR, CHOREOGRAPHER, OTHER]
+          enum: [PERFORMER, CONVIDADO, PROFESSOR, TRAINER, PHYSIOTHERAPIST, STRENGTH_COACH, TECHNICAL_OPERATOR, CHOREOGRAPHER, OTHER]
+        visitUntil:
+          type: string
+          nullable: true
+          description: "Data de saída prevista para Convidados (YYYY-MM-DD). Enviar null para limpar."
 
     UserStatusUpdate:
       type: object

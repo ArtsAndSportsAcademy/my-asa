@@ -482,7 +482,8 @@ export default function ScalesPage() {
       .filter((u: UserModel) => {
         const isAdmin = (u as { isAdmin?: boolean }).isAdmin === true;
         const spec = u.specialization;
-        const isSpecial = spec != null && spec !== "PERFORMER";
+        // PERFORMER e CONVIDADO são escaláveis; todas as outras especializações são "especiais"
+        const isSpecial = spec != null && spec !== "PERFORMER" && spec !== "CONVIDADO";
         return !isAdmin && !isSpecial;
       })
       .filter((u: UserModel) => {

@@ -13,4 +13,6 @@ export interface UserCreate {
   /** @minLength 6 */
   password: string;
   specialization?: UserCreateSpecialization;
+  /** Data de saída prevista para Convidados (YYYY-MM-DD). */
+  visitUntil?: string | null;
 }

@@ -17,6 +17,8 @@ export interface User {
   mustChangePassword?: boolean;
   status: UserStatus;
   specialization?: UserSpecialization;
+  /** Data de saída prevista para Convidados (formato YYYY-MM-DD). Nulo para membros fixos. */
+  visitUntil?: string | null;
   organizationId: string;
   /** Operações às quais o utilizador pertence (via papéis ativos). */
   operationIds?: string[];

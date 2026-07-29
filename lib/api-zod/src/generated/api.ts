@@ -35,7 +35,8 @@ export const LoginResponse = zod.object({
   "photoUrl": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
-  "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
+  "specialization": zod.enum(['PERFORMER', 'CONVIDADO', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
+  "visitUntil": zod.string().nullish().describe('Data de saída prevista para Convidados (formato YYYY-MM-DD). Nulo para membros fixos.'),
   "organizationId": zod.string(),
   "operationIds": zod.array(zod.string()).optional().describe('Operações às quais o utilizador pertence (via papéis ativos).'),
   "supervisorOperationIds": zod.array(zod.string()).optional().describe('Operações onde o utilizador é supervisor (A\/B); usado para escolher o responsável de um show.'),
@@ -87,7 +88,8 @@ export const GetMeResponse = zod.object({
   "photoUrl": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
-  "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
+  "specialization": zod.enum(['PERFORMER', 'CONVIDADO', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
+  "visitUntil": zod.string().nullish().describe('Data de saída prevista para Convidados (formato YYYY-MM-DD). Nulo para membros fixos.'),
   "organizationId": zod.string(),
   "operationIds": zod.array(zod.string()).optional().describe('Operações às quais o utilizador pertence (via papéis ativos).'),
   "supervisorOperationIds": zod.array(zod.string()).optional().describe('Operações onde o utilizador é supervisor (A\/B); usado para escolher o responsável de um show.'),
@@ -471,7 +473,8 @@ export const GetUserContextResponse = zod.object({
   "photoUrl": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
-  "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
+  "specialization": zod.enum(['PERFORMER', 'CONVIDADO', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
+  "visitUntil": zod.string().nullish().describe('Data de saída prevista para Convidados (formato YYYY-MM-DD). Nulo para membros fixos.'),
   "organizationId": zod.string(),
   "operationIds": zod.array(zod.string()).optional().describe('Operações às quais o utilizador pertence (via papéis ativos).'),
   "supervisorOperationIds": zod.array(zod.string()).optional().describe('Operações onde o utilizador é supervisor (A\/B); usado para escolher o responsável de um show.'),
@@ -538,7 +541,8 @@ export const ListUsersResponse = zod.object({
   "photoUrl": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
-  "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
+  "specialization": zod.enum(['PERFORMER', 'CONVIDADO', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
+  "visitUntil": zod.string().nullish().describe('Data de saída prevista para Convidados (formato YYYY-MM-DD). Nulo para membros fixos.'),
   "organizationId": zod.string(),
   "operationIds": zod.array(zod.string()).optional().describe('Operações às quais o utilizador pertence (via papéis ativos).'),
   "supervisorOperationIds": zod.array(zod.string()).optional().describe('Operações onde o utilizador é supervisor (A\/B); usado para escolher o responsável de um show.'),
@@ -560,7 +564,8 @@ export const CreateUserBody = zod.object({
   "name": zod.string(),
   "email": zod.string().email().nullish(),
   "password": zod.string().min(createUserBodyPasswordMin),
-  "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish()
+  "specialization": zod.enum(['PERFORMER', 'CONVIDADO', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
+  "visitUntil": zod.string().nullish().describe('Data de saída prevista para Convidados (YYYY-MM-DD).')
 })
 
 
@@ -597,7 +602,8 @@ export const GetUserResponse = zod.object({
   "photoUrl": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
-  "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
+  "specialization": zod.enum(['PERFORMER', 'CONVIDADO', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
+  "visitUntil": zod.string().nullish().describe('Data de saída prevista para Convidados (formato YYYY-MM-DD). Nulo para membros fixos.'),
   "organizationId": zod.string(),
   "operationIds": zod.array(zod.string()).optional().describe('Operações às quais o utilizador pertence (via papéis ativos).'),
   "supervisorOperationIds": zod.array(zod.string()).optional().describe('Operações onde o utilizador é supervisor (A\/B); usado para escolher o responsável de um show.'),
@@ -619,7 +625,8 @@ export const UpdateUserBody = zod.object({
   "name": zod.string().optional(),
   "email": zod.string().email().optional(),
   "username": zod.string().optional().describe('Nome de usuário (login). Normalizado: minusculas, sem acentos, espacos viram ponto, apenas letras\/numeros\/ponto.'),
-  "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish()
+  "specialization": zod.enum(['PERFORMER', 'CONVIDADO', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
+  "visitUntil": zod.string().nullish().describe('Data de saída prevista para Convidados (YYYY-MM-DD). Enviar null para limpar.')
 })
 
 export const UpdateUserResponse = zod.object({
@@ -631,7 +638,8 @@ export const UpdateUserResponse = zod.object({
   "photoUrl": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
-  "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
+  "specialization": zod.enum(['PERFORMER', 'CONVIDADO', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
+  "visitUntil": zod.string().nullish().describe('Data de saída prevista para Convidados (formato YYYY-MM-DD). Nulo para membros fixos.'),
   "organizationId": zod.string(),
   "operationIds": zod.array(zod.string()).optional().describe('Operações às quais o utilizador pertence (via papéis ativos).'),
   "supervisorOperationIds": zod.array(zod.string()).optional().describe('Operações onde o utilizador é supervisor (A\/B); usado para escolher o responsável de um show.'),
@@ -662,7 +670,8 @@ export const UpdateUserStatusResponse = zod.object({
   "photoUrl": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
-  "specialization": zod.enum(['PERFORMER', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
+  "specialization": zod.enum(['PERFORMER', 'CONVIDADO', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
+  "visitUntil": zod.string().nullish().describe('Data de saída prevista para Convidados (formato YYYY-MM-DD). Nulo para membros fixos.'),
   "organizationId": zod.string(),
   "operationIds": zod.array(zod.string()).optional().describe('Operações às quais o utilizador pertence (via papéis ativos).'),
   "supervisorOperationIds": zod.array(zod.string()).optional().describe('Operações onde o utilizador é supervisor (A\/B); usado para escolher o responsável de um show.'),

@@ -10,6 +10,7 @@ export const userStatusEnum = pgEnum("user_status", ["ACTIVE", "INACTIVE"]);
 
 export type UserSpecialization =
   | "PERFORMER"
+  | "CONVIDADO"
   | "PROFESSOR"
   | "TRAINER"
   | "PHYSIOTHERAPIST"
@@ -20,6 +21,7 @@ export type UserSpecialization =
 
 export const ALL_SPECIALIZATIONS: UserSpecialization[] = [
   "PERFORMER",
+  "CONVIDADO",
   "PROFESSOR",
   "TRAINER",
   "PHYSIOTHERAPIST",
@@ -31,6 +33,7 @@ export const ALL_SPECIALIZATIONS: UserSpecialization[] = [
 
 export const SPECIALIZATION_LABELS: Record<UserSpecialization, string> = {
   PERFORMER:          "Performer",
+  CONVIDADO:          "Convidado",
   PROFESSOR:          "Professor",
   TRAINER:            "Treinador",
   PHYSIOTHERAPIST:    "Fisioterapeuta",
@@ -46,11 +49,14 @@ export const SPECIALIZATION_LABELS: Record<UserSpecialization, string> = {
 // fazem parte do elenco escalável e não devem aparecer em escalas nem na grade de
 // folgas. Use estes predicados em TODOS os pontos para evitar divergência de regra.
 
-/** Membro especial: especialização preenchida e diferente de PERFORMER. */
+/**
+ * Membro especial: especialização preenchida e diferente de PERFORMER ou CONVIDADO.
+ * Convidados participam de shows/ensaios e aparecem nas escalas como qualquer performer.
+ */
 export function isSpecialSpecialization(
   specialization: UserSpecialization | string | null | undefined
 ): boolean {
-  return specialization != null && specialization !== "PERFORMER";
+  return specialization != null && specialization !== "PERFORMER" && specialization !== "CONVIDADO";
 }
 
 /**
@@ -76,6 +82,8 @@ export const usersTable = pgTable("users", {
   status: userStatusEnum("status").notNull().default("ACTIVE"),
   specialization: text("specialization").$type<UserSpecialization | null>(),
   birthDate: date("birth_date", { mode: "string" }),
+  /** Data de saída prevista para Convidados (CONVIDADO). Nulo para membros fixos. */
+  visitUntil: date("visit_until", { mode: "string" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
