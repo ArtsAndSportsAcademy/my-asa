@@ -25,12 +25,18 @@ shared DB journal stayed empty. With an empty journal, migrate tries to apply fr
 2. For tables with OLD/drifted structure AND 0 rows, `DROP ... CASCADE` + recreate from the
    migration DDL. NEVER drop a table that has rows (e.g. `daily_books` had 1 row → left as-is;
    it was already a column superset of the migration, so safe).
-3. Baseline the journal: for each entry in `_journal.json`, insert
-   `(hash=sha256(file contents), created_at=when)` into `drizzle.__drizzle_migrations`
-   (guard with `WHERE NOT EXISTS ... created_at=when`).
+3. Baseline the journal: for each entry in `_journal.json`, compute `sha256sum <file>` and
+   insert `(hash, created_at=when)` into **`drizzle.__drizzle_migrations`** — the schema is
+   `drizzle`, NOT `public`. Guard inserts with `WHERE NOT EXISTS (SELECT 1 FROM drizzle.__drizzle_migrations WHERE hash = '...')`.
+   A `public.__drizzle_migrations` also exists but is IGNORED by the migrator.
 4. Verify `pnpm --filter @workspace/db run migrate` prints "Database is in sync"; then
    `runPostMergeSetup()` should return `success:true`.
 
-**Why:** baselining makes migrate a no-op for already-applied migrations; future 0006+ apply
+**Drizzle migrator decision logic (v0.45):** applies a migration if
+`migration.folderMillis > MAX(drizzle.__drizzle_migrations.created_at)`. Hash is stored but
+not used for the skip/apply decision. Assign future migrations a `when` LARGER than the
+current last entry in `_journal.json` to avoid stale-timestamp confusion.
+
+**Why:** baselining makes migrate a no-op for already-applied migrations; future entries apply
 cleanly. Drift reconciliation must be surgical because dev=prod share ONE DATABASE_URL with
 live data (see dev-prod-shared-db.md).
