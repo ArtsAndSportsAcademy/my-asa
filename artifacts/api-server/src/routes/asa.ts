@@ -29,6 +29,9 @@ import {
   userNotificationsTable,
   operationalGroupsTable,
   groupOperationsTable,
+  recurringActivitiesTable,
+  recurringActivitySchedulesTable,
+  recurringActivityAssigneesTable,
 } from "@workspace/db";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { resolveScaleAllocations, computeFreeGaps } from "../services/scale-merge.js";
@@ -39,6 +42,7 @@ import {
   setGroupStatusCore,
   addGroupMemberCore,
   removeGroupMemberCore,
+  supervisedOperationIds,
 } from "./groups.js";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { createNotification, sendNotification } from "../services/notificationService.js";
@@ -646,6 +650,33 @@ Quando o usuário pedir para montar escala/atividade para um GRUPO pelo nome (ex
 
 ⸻
 
+Gerir ATIVIDADES recorrentes/avulsas${isManager ? "" : "\n[Seção não aplicável ao seu papel atual]"}
+
+${isManager ? `Você pode consultar, criar e atualizar atividades que alimentam a escala automática (aulas, ensaios fixos, blocos semanais, etc.).
+
+Ferramentas:
+• consultar_atividades(operationId?) — lista todas as atividades da operação com seus horários e designados.
+• criar_atividade(title, schedules[], assignees?, active?, operationId?) — cria uma nova atividade. schedules é obrigatório e pode ter vários itens de uma vez (ex.: "Seg e Qui às 10h" → [{weekday:1,startTime:"10:00"},{weekday:4,startTime:"10:00"}]).
+• atualizar_atividade(activityId, title?, active?, schedules?, assignees?) — atualiza uma atividade existente. Se schedules for informado, substitui TODOS os horários existentes.
+
+Mapeamento de intenções → tools:
+• "Quais atividades existem?" / "Lista as atividades" → consultar_atividades
+• "Cria uma aula de dança toda terça" → criar_atividade(title, schedules:[{weekday:2}])
+• "Agenda ensaio Seg e Qui às 10h" → criar_atividade(title, schedules:[{weekday:1,startTime:"10:00"},{weekday:4,startTime:"10:00"}])
+• "Desativa a atividade X" / "Muda o horário para quinta" → consultar_atividades → atualizar_atividade
+
+Fluxo obrigatório:
+1. LOCALIZAR (se editar): use consultar_atividades para obter o activityId e os horários atuais.
+2. MOSTRAR: apresente resumo do que será criado/alterado (título, dias/horários, designados).
+3. CONFIRMAR: "Posso criar/atualizar?" — nunca execute sem confirmação explícita.
+4. EXECUTAR: chame criar_atividade ou atualizar_atividade.
+5. RELATAR: confirme o resultado com os horários registrados.
+
+Regras de weekday: 0=Dom, 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sáb.
+Para atividades avulsas (uma data específica), use specificDate (YYYY-MM-DD) em vez de weekday.` : "[seção disponível apenas para gestores]"}
+
+⸻
+
 Gerir GRUPOS e MEMBROS (CRUD)${isManager ? "" : "\n[Seção não aplicável ao seu papel atual]"}
 
 ${isManager ? `Você pode criar, editar, remover grupos e gerir os membros dentro deles. Regras de papel:
@@ -669,7 +700,7 @@ Fluxo obrigatório:
 
 Edição de entidades por conversa
 
-Quando o usuário pedir para MUDAR, ALTERAR, CORRIGIR, REMARCAR, TROCAR ou ATUALIZAR algo que já existe (uma tarefa, folga/ausência, ensaio/bloco de agenda, aviso em rascunho ou reconhecimento), siga SEMPRE este fluxo:
+Quando o usuário pedir para MUDAR, ALTERAR, CORRIGIR, REMARCAR, TROCAR ou ATUALIZAR algo que já existe (uma tarefa, folga/ausência, ensaio/bloco de agenda, aviso em rascunho, reconhecimento ou atividade recorrente), siga SEMPRE este fluxo:
 
 1. LOCALIZAR: identifique o item exato. Use a ferramenta de consulta correspondente (consultar_tarefas, consultar_folgas, consultar_agenda, consultar_avisos, consultar_reconhecimentos) para obter o ID e os valores atuais. Se houver mais de um candidato, pergunte qual antes de prosseguir.
 2. MOSTRAR ANTES/DEPOIS: apresente claramente o que vai mudar, no formato:
@@ -731,7 +762,8 @@ ${isManager
 • Criar e consultar reconhecimentos para membros da equipe
 • Consultar o clima atual
 • Resolver listas de membros e executar ações em lote (tarefas, ausências, reconhecimentos, escala, participantes de evento) com resumo e confirmação antes
-• Sugerir memórias para aprovação e aprender com a equipe`
+• Sugerir memórias para aprovação e aprender com a equipe
+• Consultar, criar e atualizar atividades recorrentes/avulsas com múltiplos horários (schedules) — ex.: aulas, ensaios fixos, blocos semanais`
   : `• Consultar sua escala, tarefas e informações do dia
 • Pesquisar documentos na biblioteca
 • Gerar resumo do dia (escala, tarefas, ausências, clima)
@@ -1896,6 +1928,91 @@ const ASA_TOOLS: Tool[] = [
         type:          { type: "string", description: "Novo tipo do reconhecimento (opcional)" },
         title:         { type: "string", description: "Novo título (opcional)" },
         message:       { type: "string", description: "Nova mensagem (opcional)" },
+      },
+    },
+  },
+  // ── Atividades recorrentes ────────────────────────────────────────────────
+  {
+    name: "consultar_atividades",
+    description: "Lista as atividades recorrentes/avulsas da operação atual (ou de uma operação específica via operationId). Mostra título, horários (schedules com dia da semana ou data específica), designados e status ativo/inativo. Use antes de criar ou editar uma atividade para evitar duplicatas, ou quando o usuário pedir 'quais atividades existem', 'lista as atividades', 'atividades da operação'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        operationId: { type: "string", description: "ID da operação (opcional — padrão: operação do utilizador)" },
+      },
+    },
+  },
+  {
+    name: "criar_atividade",
+    description: "Cria uma atividade recorrente ou avulsa com um ou mais horários (schedules). Cada schedule define o dia (weekday 0=Dom…6=Sáb, OU specificDate YYYY-MM-DD) e opcionalmente horário de início/fim. Use quando o usuário pedir 'cria uma atividade', 'adiciona uma aula', 'agenda uma atividade recorrente'. SEMPRE mostre o resumo da atividade e peça confirmação antes de criar. Pode receber múltiplos schedules de uma vez (ex: 'Seg e Qui às 10h' → [{weekday:1,startTime:'10:00'},{weekday:4,startTime:'10:00'}]).",
+    input_schema: {
+      type: "object" as const,
+      required: ["title", "schedules"],
+      properties: {
+        operationId: { type: "string", description: "ID da operação (opcional — padrão: operação do utilizador)" },
+        title:       { type: "string", description: "Título da atividade" },
+        active:      { type: "boolean", description: "Se a atividade está ativa (padrão: true)" },
+        schedules: {
+          type: "array",
+          description: "Array de horários. Cada item deve ter weekday (0=Dom,1=Seg,2=Ter,3=Qua,4=Qui,5=Sex,6=Sáb) OU specificDate (YYYY-MM-DD), mais startTime/endTime opcionais (HH:MM).",
+          items: {
+            type: "object",
+            properties: {
+              weekday:      { type: "number", description: "Dia da semana 0-6 (0=Dom). Use para atividades recorrentes." },
+              specificDate: { type: "string", description: "Data específica YYYY-MM-DD. Use para atividades avulsas." },
+              startTime:    { type: "string", description: "Horário de início HH:MM (opcional)" },
+              endTime:      { type: "string", description: "Horário de fim HH:MM (opcional)" },
+            },
+          },
+        },
+        assignees: {
+          type: "array",
+          description: "Designados (opcional). Cada item tem userId ou groupId.",
+          items: {
+            type: "object",
+            properties: {
+              userId:  { type: "string", description: "ID de um membro específico (via consultar_membros)" },
+              groupId: { type: "string", description: "ID de um grupo operacional" },
+            },
+          },
+        },
+      },
+    },
+  },
+  {
+    name: "atualizar_atividade",
+    description: "Atualiza uma atividade existente: título, status ativo/inativo, horários (schedules) ou designados. Se schedules for informado, substitui TODOS os horários existentes. Use consultar_atividades ANTES para obter o activityId. SEMPRE mostre o antes/depois e peça confirmação antes de chamar. Envie apenas os campos que mudam.",
+    input_schema: {
+      type: "object" as const,
+      required: ["activityId"],
+      properties: {
+        activityId: { type: "string", description: "ID UUID da atividade (via consultar_atividades)" },
+        title:      { type: "string", description: "Novo título (opcional)" },
+        active:     { type: "boolean", description: "Novo status ativo/inativo (opcional)" },
+        schedules: {
+          type: "array",
+          description: "Novos horários — substitui todos os existentes (opcional). Cada item deve ter weekday (0-6) OU specificDate (YYYY-MM-DD), mais startTime/endTime opcionais (HH:MM).",
+          items: {
+            type: "object",
+            properties: {
+              weekday:      { type: "number", description: "Dia da semana 0-6 (0=Dom)" },
+              specificDate: { type: "string", description: "Data específica YYYY-MM-DD" },
+              startTime:    { type: "string", description: "Horário de início HH:MM (opcional)" },
+              endTime:      { type: "string", description: "Horário de fim HH:MM (opcional)" },
+            },
+          },
+        },
+        assignees: {
+          type: "array",
+          description: "Novos designados — substitui todos os existentes (opcional). Cada item tem userId ou groupId.",
+          items: {
+            type: "object",
+            properties: {
+              userId:  { type: "string", description: "ID de um membro específico (via consultar_membros)" },
+              groupId: { type: "string", description: "ID de um grupo operacional" },
+            },
+          },
+        },
       },
     },
   },
@@ -5446,6 +5563,271 @@ export async function executeTool(
       updates.updatedAt = new Date();
       await db.update(recognitionsTable).set(updates).where(eq(recognitionsTable.id, recognitionId));
       return JSON.stringify({ success: true, id: recognitionId, antes: before, depois: after, message: `🎉 Reconhecimento "${existing.title}" atualizado com sucesso.` });
+    }
+
+    // ── Atividades recorrentes ────────────────────────────────────────────────
+    if (name === "consultar_atividades") {
+      if (!isManager) return JSON.stringify({ error: "Apenas gestores podem consultar atividades" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+
+      const opIdFilter = (input.operationId as string | undefined) ?? ctx.operationId;
+
+      // Determina operações visíveis para o gestor (ADMIN→todas da org; supervisor→só ops com papel SUPERVISOR_A/B nesta org)
+      let allowedOps: string[];
+      if (ctx.userRole === "ADMIN") {
+        const ops = await db.select({ id: operationsTable.id }).from(operationsTable)
+          .where(eq(operationsTable.organizationId, ctx.organizationId));
+        allowedOps = ops.map(o => o.id);
+      } else {
+        const roles = await db.select({ operationId: userRolesTable.operationId })
+          .from(userRolesTable)
+          .innerJoin(operationsTable, eq(operationsTable.id, userRolesTable.operationId))
+          .where(and(
+            eq(userRolesTable.userId, ctx.userId),
+            eq(userRolesTable.active, true),
+            or(eq(userRolesTable.role, "SUPERVISOR_A"), eq(userRolesTable.role, "SUPERVISOR_B")),
+            eq(operationsTable.organizationId, ctx.organizationId),
+          ));
+        allowedOps = [...new Set(roles.map(r => r.operationId).filter((x): x is string => !!x))];
+      }
+      if (opIdFilter) allowedOps = allowedOps.filter(o => o === opIdFilter);
+      if (allowedOps.length === 0) return JSON.stringify({ atividades: [], message: "Nenhuma operação acessível." });
+
+      const rows = await db.select().from(recurringActivitiesTable)
+        .where(inArray(recurringActivitiesTable.operationId, allowedOps));
+      if (rows.length === 0) return JSON.stringify({ atividades: [], message: "Nenhuma atividade encontrada." });
+
+      const ids = rows.map(r => r.id);
+      const [schedules, assignees] = await Promise.all([
+        db.select().from(recurringActivitySchedulesTable)
+          .where(inArray(recurringActivitySchedulesTable.activityId, ids)),
+        db.select().from(recurringActivityAssigneesTable)
+          .where(inArray(recurringActivityAssigneesTable.activityId, ids)),
+      ]);
+
+      const userIds = [...new Set(assignees.map(a => a.userId).filter((x): x is string => !!x))];
+      const groupIds = [...new Set(assignees.map(a => a.groupId).filter((x): x is string => !!x))];
+      const [users, groups] = await Promise.all([
+        userIds.length ? db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(inArray(usersTable.id, userIds)) : Promise.resolve([]),
+        groupIds.length ? db.select({ id: operationalGroupsTable.id, name: operationalGroupsTable.name }).from(operationalGroupsTable).where(inArray(operationalGroupsTable.id, groupIds)) : Promise.resolve([]),
+      ]);
+      const userName = new Map(users.map(u => [u.id, u.name]));
+      const groupName = new Map(groups.map(g => [g.id, g.name]));
+
+      const DOW = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+      const atividades = rows.map(a => ({
+        id: a.id,
+        titulo: a.title,
+        ativa: a.active,
+        operationId: a.operationId,
+        horarios: schedules.filter(s => s.activityId === a.id).map(s => ({
+          id: s.id,
+          diaSemana: s.weekday != null ? DOW[s.weekday] : null,
+          weekday: s.weekday,
+          dataEspecifica: s.specificDate,
+          inicio: s.startTime,
+          fim: s.endTime,
+        })),
+        designados: assignees.filter(x => x.activityId === a.id).map(x => ({
+          userId: x.userId,
+          nome: x.userId ? userName.get(x.userId) ?? null : null,
+          groupId: x.groupId,
+          grupo: x.groupId ? groupName.get(x.groupId) ?? null : null,
+        })),
+      }));
+      return JSON.stringify({ atividades, total: atividades.length });
+    }
+
+    if (name === "criar_atividade") {
+      if (!isManager) return JSON.stringify({ error: "Apenas gestores podem criar atividades" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+
+      const title = (input.title as string | undefined)?.trim();
+      if (!title) return JSON.stringify({ success: false, message: "O título da atividade é obrigatório." });
+
+      const schedulesRaw = (input.schedules as unknown[] | undefined) ?? [];
+      if (!Array.isArray(schedulesRaw) || schedulesRaw.length === 0)
+        return JSON.stringify({ success: false, message: "schedules deve ser um array não-vazio. Informe pelo menos um horário com weekday (0-6) ou specificDate (YYYY-MM-DD)." });
+
+      // Validar schedules
+      const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+      const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+      for (const s of schedulesRaw as Record<string, unknown>[]) {
+        const hasWeekday = typeof s["weekday"] === "number";
+        const hasDate = typeof s["specificDate"] === "string" && DATE_RE.test(s["specificDate"] as string);
+        if (!hasWeekday && !hasDate) return JSON.stringify({ success: false, message: "Cada schedule precisa de weekday (0-6) ou specificDate (YYYY-MM-DD)." });
+        if (hasWeekday && hasDate) return JSON.stringify({ success: false, message: "Informe weekday OU specificDate em cada schedule, não ambos." });
+        if (hasWeekday && ((s["weekday"] as number) < 0 || (s["weekday"] as number) > 6)) return JSON.stringify({ success: false, message: "weekday deve ser 0 (Dom) a 6 (Sáb)." });
+        if (s["startTime"] != null && !TIME_RE.test(s["startTime"] as string)) return JSON.stringify({ success: false, message: "startTime inválido — use HH:MM." });
+        if (s["endTime"] != null && !TIME_RE.test(s["endTime"] as string)) return JSON.stringify({ success: false, message: "endTime inválido — use HH:MM." });
+      }
+
+      // Determina operação
+      let operationId = (input.operationId as string | undefined) ?? ctx.operationId;
+      if (!operationId) return JSON.stringify({ success: false, message: "Operação não configurada. Informe operationId." });
+
+      // Verifica permissão na operação (ADMIN→todas da org; supervisor→só ops com papel SUPERVISOR_A/B nesta org)
+      let allowedOps: string[];
+      if (ctx.userRole === "ADMIN") {
+        const ops = await db.select({ id: operationsTable.id }).from(operationsTable)
+          .where(eq(operationsTable.organizationId, ctx.organizationId));
+        allowedOps = ops.map(o => o.id);
+      } else {
+        const roles = await db.select({ operationId: userRolesTable.operationId })
+          .from(userRolesTable)
+          .innerJoin(operationsTable, eq(operationsTable.id, userRolesTable.operationId))
+          .where(and(
+            eq(userRolesTable.userId, ctx.userId),
+            eq(userRolesTable.active, true),
+            or(eq(userRolesTable.role, "SUPERVISOR_A"), eq(userRolesTable.role, "SUPERVISOR_B")),
+            eq(operationsTable.organizationId, ctx.organizationId),
+          ));
+        allowedOps = [...new Set(roles.map(r => r.operationId).filter((x): x is string => !!x))];
+      }
+      if (!allowedOps.includes(operationId)) return JSON.stringify({ success: false, message: "Sem permissão nesta operação." });
+
+      const created = await db.transaction(async (tx) => {
+        const [activity] = await tx.insert(recurringActivitiesTable).values({
+          organizationId: ctx.organizationId!,
+          operationId,
+          title,
+          active: input.active === false ? false : true,
+        }).returning();
+        await tx.delete(recurringActivitySchedulesTable)
+          .where(eq(recurringActivitySchedulesTable.activityId, activity!.id));
+        await tx.insert(recurringActivitySchedulesTable).values(
+          (schedulesRaw as Record<string, unknown>[]).map(s => ({
+            activityId: activity!.id,
+            weekday: typeof s["weekday"] === "number" ? s["weekday"] as number : null,
+            specificDate: typeof s["specificDate"] === "string" ? s["specificDate"] as string : null,
+            startTime: (s["startTime"] as string | undefined) ?? null,
+            endTime: (s["endTime"] as string | undefined) ?? null,
+          })),
+        );
+        const assigneesRaw = (input.assignees as unknown[] | undefined) ?? [];
+        if (Array.isArray(assigneesRaw) && assigneesRaw.length > 0) {
+          const rows = (assigneesRaw as Record<string, unknown>[])
+            .map(a => ({ activityId: activity!.id, userId: (a["userId"] as string | undefined) ?? null, groupId: (a["groupId"] as string | undefined) ?? null }))
+            .filter(r => r.userId || r.groupId);
+          if (rows.length > 0) await tx.insert(recurringActivityAssigneesTable).values(rows);
+        }
+        return activity!;
+      });
+
+      const DOW = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+      const schedulesInserted = await db.select().from(recurringActivitySchedulesTable)
+        .where(eq(recurringActivitySchedulesTable.activityId, created.id));
+      const horariosDesc = schedulesInserted.map(s =>
+        s.weekday != null
+          ? `${DOW[s.weekday]}${s.startTime ? ` ${s.startTime}` : ""}${s.endTime ? `–${s.endTime}` : ""}`
+          : `${s.specificDate}${s.startTime ? ` ${s.startTime}` : ""}${s.endTime ? `–${s.endTime}` : ""}`
+      ).join(", ");
+      return JSON.stringify({
+        success: true,
+        id: created.id,
+        titulo: created.title,
+        ativa: created.active,
+        horarios: horariosDesc,
+        message: `✅ Atividade "${created.title}" criada com sucesso! Horários: ${horariosDesc}.`,
+      });
+    }
+
+    if (name === "atualizar_atividade") {
+      if (!isManager) return JSON.stringify({ error: "Apenas gestores podem atualizar atividades" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+
+      const activityId = input.activityId as string;
+      if (!activityId) return JSON.stringify({ success: false, message: "activityId é obrigatório." });
+
+      // Carrega atividade verificando escopo (ADMIN→todas da org; supervisor→só ops com papel SUPERVISOR_A/B nesta org)
+      let allowedOps: string[];
+      if (ctx.userRole === "ADMIN") {
+        const ops = await db.select({ id: operationsTable.id }).from(operationsTable)
+          .where(eq(operationsTable.organizationId, ctx.organizationId));
+        allowedOps = ops.map(o => o.id);
+      } else {
+        const roles = await db.select({ operationId: userRolesTable.operationId })
+          .from(userRolesTable)
+          .innerJoin(operationsTable, eq(operationsTable.id, userRolesTable.operationId))
+          .where(and(
+            eq(userRolesTable.userId, ctx.userId),
+            eq(userRolesTable.active, true),
+            or(eq(userRolesTable.role, "SUPERVISOR_A"), eq(userRolesTable.role, "SUPERVISOR_B")),
+            eq(operationsTable.organizationId, ctx.organizationId),
+          ));
+        allowedOps = [...new Set(roles.map(r => r.operationId).filter((x): x is string => !!x))];
+      }
+
+      const [existing] = allowedOps.length > 0
+        ? await db.select().from(recurringActivitiesTable)
+            .where(and(eq(recurringActivitiesTable.id, activityId), inArray(recurringActivitiesTable.operationId, allowedOps)))
+            .limit(1)
+        : [];
+      if (!existing) return JSON.stringify({ success: false, message: "Atividade não encontrada ou sem permissão. Use consultar_atividades para obter o ID correto." });
+
+      const schedulesRaw = input.schedules as unknown[] | undefined;
+      const assigneesRaw = input.assignees as unknown[] | undefined;
+
+      if (schedulesRaw !== undefined) {
+        const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+        const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+        if (!Array.isArray(schedulesRaw) || schedulesRaw.length === 0)
+          return JSON.stringify({ success: false, message: "schedules deve ser um array não-vazio quando informado." });
+        for (const s of schedulesRaw as Record<string, unknown>[]) {
+          const hasWeekday = typeof s["weekday"] === "number";
+          const hasDate = typeof s["specificDate"] === "string" && DATE_RE.test(s["specificDate"] as string);
+          if (!hasWeekday && !hasDate) return JSON.stringify({ success: false, message: "Cada schedule precisa de weekday (0-6) ou specificDate (YYYY-MM-DD)." });
+          if (hasWeekday && hasDate) return JSON.stringify({ success: false, message: "Informe weekday OU specificDate em cada schedule, não ambos." });
+          if (hasWeekday && ((s["weekday"] as number) < 0 || (s["weekday"] as number) > 6)) return JSON.stringify({ success: false, message: "weekday deve ser 0 (Dom) a 6 (Sáb)." });
+          if (s["startTime"] != null && !TIME_RE.test(s["startTime"] as string)) return JSON.stringify({ success: false, message: "startTime inválido — use HH:MM." });
+          if (s["endTime"] != null && !TIME_RE.test(s["endTime"] as string)) return JSON.stringify({ success: false, message: "endTime inválido — use HH:MM." });
+        }
+      }
+
+      // Determine what changes before executing — validate at least one field provided
+      const patch: Record<string, unknown> = { updatedAt: new Date() };
+      const before: Record<string, unknown> = { titulo: existing.title, ativa: existing.active };
+      const after: Record<string, unknown> = {};
+      if (typeof input.title === "string" && (input.title as string).trim()) { patch["title"] = (input.title as string).trim(); after.titulo = patch["title"]; }
+      if (typeof input.active === "boolean") { patch["active"] = input.active; after.ativa = input.active; }
+      if (Array.isArray(schedulesRaw)) after.horarios = "(novo)"; // will be filled after tx
+      if (Array.isArray(assigneesRaw)) after.designados = `${assigneesRaw.length} designado(s)`;
+      if (Object.keys(after).length === 0) return JSON.stringify({ success: false, message: "Nenhum campo para alterar foi informado." });
+
+      const DOW = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+      await db.transaction(async (tx) => {
+        if (Object.keys(patch).length > 1) {
+          await tx.update(recurringActivitiesTable).set(patch).where(eq(recurringActivitiesTable.id, activityId));
+        }
+        if (Array.isArray(schedulesRaw)) {
+          await tx.delete(recurringActivitySchedulesTable)
+            .where(eq(recurringActivitySchedulesTable.activityId, activityId));
+          await tx.insert(recurringActivitySchedulesTable).values(
+            (schedulesRaw as Record<string, unknown>[]).map(s => ({
+              activityId,
+              weekday: typeof s["weekday"] === "number" ? s["weekday"] as number : null,
+              specificDate: typeof s["specificDate"] === "string" ? s["specificDate"] as string : null,
+              startTime: (s["startTime"] as string | undefined) ?? null,
+              endTime: (s["endTime"] as string | undefined) ?? null,
+            })),
+          );
+          after.horarios = (schedulesRaw as Record<string, unknown>[]).map(s =>
+            s["weekday"] != null
+              ? `${DOW[s["weekday"] as number]}${s["startTime"] ? ` ${s["startTime"]}` : ""}${s["endTime"] ? `–${s["endTime"]}` : ""}`
+              : `${s["specificDate"]}${s["startTime"] ? ` ${s["startTime"]}` : ""}${s["endTime"] ? `–${s["endTime"]}` : ""}`
+          ).join(", ");
+        }
+        if (Array.isArray(assigneesRaw)) {
+          await tx.delete(recurringActivityAssigneesTable)
+            .where(eq(recurringActivityAssigneesTable.activityId, activityId));
+          const rows = (assigneesRaw as Record<string, unknown>[])
+            .map(a => ({ activityId, userId: (a["userId"] as string | undefined) ?? null, groupId: (a["groupId"] as string | undefined) ?? null }))
+            .filter(r => r.userId || r.groupId);
+          if (rows.length > 0) await tx.insert(recurringActivityAssigneesTable).values(rows);
+        }
+      });
+
+      return JSON.stringify({ success: true, id: activityId, antes: before, depois: after, message: `✅ Atividade "${existing.title}" atualizada com sucesso.` });
     }
 
     return JSON.stringify({ error: `Ferramenta desconhecida: ${name}` });
