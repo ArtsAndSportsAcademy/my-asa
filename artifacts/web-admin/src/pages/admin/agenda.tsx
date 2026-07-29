@@ -122,7 +122,7 @@ function groupByDate(events: AgendaEvent[]): Record<string, AgendaEvent[]> {
 
 // ─── Month Calendar ───────────────────────────────────────────────────────────
 
-function MonthCalendar({ currentDate, events }: { currentDate: Date; events: AgendaEvent[] }) {
+function MonthCalendar({ currentDate, events, onEventClick }: { currentDate: Date; events: AgendaEvent[]; onEventClick?: (ev: AgendaEvent) => void }) {
   const grid = useMemo(() => buildMonthGrid(currentDate), [currentDate]);
   const byDate = useMemo(() => groupByDate(events), [events]);
   const todayStr = toDateStr(new Date());
@@ -163,9 +163,12 @@ function MonthCalendar({ currentDate, events }: { currentDate: Date; events: Age
                   <div
                     key={ev.id}
                     title={ev.title}
+                    onClick={onEventClick ? () => onEventClick(ev) : undefined}
                     className={`text-[10px] px-1.5 py-0.5 rounded truncate leading-tight font-medium ${
-                      TYPE_COLORS[ev.type] ?? "bg-gray-100 text-gray-800"
-                    } ${ev.visibility === "MANAGEMENT" ? "opacity-70 italic" : ""}`}
+                      onEventClick
+                        ? "cursor-pointer hover:ring-1 hover:ring-primary/40 hover:brightness-95 transition-all"
+                        : "cursor-default"
+                    } ${TYPE_COLORS[ev.type] ?? "bg-gray-100 text-gray-800"} ${ev.visibility === "MANAGEMENT" ? "opacity-70 italic" : ""}`}
                   >
                     {ev.startTime ? `${ev.startTime} ` : ""}
                     {ev.title}
@@ -217,7 +220,7 @@ function evHeight(startTime: string, endTime: string | undefined | null): number
   return Math.max(24, (timeToMin(endTime) - timeToMin(startTime)) * (HOUR_PX / 60));
 }
 
-function WeekCalendar({ currentDate, events }: { currentDate: Date; events: AgendaEvent[] }) {
+function WeekCalendar({ currentDate, events, onEventClick }: { currentDate: Date; events: AgendaEvent[]; onEventClick?: (ev: AgendaEvent) => void }) {
   const days = useMemo(() => buildWeekDays(currentDate), [currentDate]);
   const byDate = useMemo(() => groupByDate(events), [events]);
   const todayStr = toDateStr(new Date());
@@ -263,7 +266,8 @@ function WeekCalendar({ currentDate, events }: { currentDate: Date; events: Agen
               <div key={i} className={`flex-1 border-r last:border-r-0 p-1 space-y-0.5 ${isToday ? "bg-primary/5" : ""}`}>
                 {allDay.map((ev) => (
                   <div key={ev.id}
-                    className={`text-[10px] px-1.5 py-0.5 rounded font-medium truncate cursor-default ${TYPE_COLORS[ev.type] ?? "bg-gray-100 text-gray-700"}`}
+                    onClick={onEventClick ? () => onEventClick(ev) : undefined}
+                    className={`text-[10px] px-1.5 py-0.5 rounded font-medium truncate ${onEventClick ? "cursor-pointer hover:ring-1 hover:ring-primary/40 hover:brightness-95 transition-all" : "cursor-default"} ${TYPE_COLORS[ev.type] ?? "bg-gray-100 text-gray-700"}`}
                     title={ev.title}
                   >
                     {ev.title}
@@ -317,7 +321,8 @@ function WeekCalendar({ currentDate, events }: { currentDate: Date; events: Agen
                 const bgCls = TYPE_BG_SOLID[ev.type] ?? "bg-gray-500 border-gray-700";
                 return (
                   <div key={ev.id}
-                    className={`absolute left-0.5 right-0.5 rounded border-l-2 px-1.5 py-1 text-white overflow-hidden cursor-default ${bgCls} ${ev.visibility === "MANAGEMENT" ? "opacity-70" : ""}`}
+                    onClick={onEventClick ? () => onEventClick(ev) : undefined}
+                    className={`absolute left-0.5 right-0.5 rounded border-l-2 px-1.5 py-1 text-white overflow-hidden ${onEventClick ? "cursor-pointer hover:brightness-110 hover:ring-1 hover:ring-white/40 transition-all" : "cursor-default"} ${bgCls} ${ev.visibility === "MANAGEMENT" ? "opacity-70" : ""}`}
                     style={{ top, height }}
                     title={`${ev.title}${ev.location ? ` · ${ev.location}` : ""}\n${ev.startTime}${ev.endTime ? ` – ${ev.endTime}` : ""}`}
                   >
@@ -691,16 +696,16 @@ export default function AgendaPage() {
         ) : viewMode === "month" ? (
           events.length === 0 && !isLoading ? (
             <div>
-              <MonthCalendar currentDate={calendarDate} events={[]} />
+              <MonthCalendar currentDate={calendarDate} events={[]} onEventClick={isAdmin ? openEdit : undefined} />
               <p className="text-sm text-muted-foreground text-center mt-4">
                 Nenhum evento neste mês.
               </p>
             </div>
           ) : (
-            <MonthCalendar currentDate={calendarDate} events={events} />
+            <MonthCalendar currentDate={calendarDate} events={events} onEventClick={isAdmin ? openEdit : undefined} />
           )
         ) : viewMode === "week" ? (
-          <WeekCalendar currentDate={calendarDate} events={events} />
+          <WeekCalendar currentDate={calendarDate} events={events} onEventClick={isAdmin ? openEdit : undefined} />
         ) : sortedEvents.length === 0 ? (
           <AsaEmptyState
             title="Nenhum evento na agenda ainda 🗓️"
