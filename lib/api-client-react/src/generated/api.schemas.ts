@@ -3171,6 +3171,18 @@ export type DeleteDailyBookPosition200 = {
   position: DailyBookPosition;
 };
 
+export type RestoreDailyBookScene200 = {
+  scene: DailyBookScene;
+};
+
+export type RestoreDailyBookBlock200 = {
+  block: DailyBookBlock;
+};
+
+export type RestoreDailyBookPosition200 = {
+  position: DailyBookPosition;
+};
+
 export type PatchDailyBookAssignment200 = {
   assignment: DailyBookAssignment;
 };

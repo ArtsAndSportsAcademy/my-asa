@@ -12,6 +12,9 @@ import {
   useDeleteDailyBookScene,
   useDeleteDailyBookBlock,
   useDeleteDailyBookPosition,
+  useRestoreDailyBookScene,
+  useRestoreDailyBookBlock,
+  useRestoreDailyBookPosition,
   usePatchDailyBookAssignment,
   getListDailyBookQueryKey,
   getGetDailyBookQueryKey,
@@ -37,6 +40,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { useAuth } from "@/hooks/useAuth";
 import {
   ChevronRight, ChevronDown, BookOpen, Layers, Layout, AlignLeft,
@@ -324,6 +328,9 @@ export default function AdminDailyBookPage() {
   const deleteSceneMutation = useDeleteDailyBookScene();
   const deleteBlockMutation = useDeleteDailyBookBlock();
   const deletePositionMutation = useDeleteDailyBookPosition();
+  const restoreSceneMutation = useRestoreDailyBookScene();
+  const restoreBlockMutation = useRestoreDailyBookBlock();
+  const restorePositionMutation = useRestoreDailyBookPosition();
   const patchAssignmentMutation = usePatchDailyBookAssignment();
 
   const invalidate = useCallback((id?: string) => {
@@ -415,10 +422,29 @@ export default function AdminDailyBookPage() {
 
   const handleDeleteScene = async (sceneId: string) => {
     if (!selectedId) return;
+    const bookId = selectedId;
     try {
-      await deleteSceneMutation.mutateAsync({ id: selectedId, sceneId });
-      toast({ title: "Cena removida do Livro do Dia" });
-      invalidate(selectedId);
+      await deleteSceneMutation.mutateAsync({ id: bookId, sceneId });
+      invalidate(bookId);
+      toast({
+        title: "Cena removida",
+        action: (
+          <ToastAction
+            altText="Desfazer remoção da cena"
+            onClick={async () => {
+              try {
+                await restoreSceneMutation.mutateAsync({ id: bookId, sceneId });
+                invalidate(bookId);
+                toast({ title: "Cena restaurada!" });
+              } catch {
+                toast({ title: "Erro ao restaurar cena", variant: "destructive" });
+              }
+            }}
+          >
+            Desfazer
+          </ToastAction>
+        ),
+      });
     } catch {
       toast({ title: "Erro ao remover cena", variant: "destructive" });
     }
@@ -426,10 +452,29 @@ export default function AdminDailyBookPage() {
 
   const handleDeleteBlock = async (blockId: string) => {
     if (!selectedId) return;
+    const bookId = selectedId;
     try {
-      await deleteBlockMutation.mutateAsync({ id: selectedId, blockId });
-      toast({ title: "Bloco removido do Livro do Dia" });
-      invalidate(selectedId);
+      await deleteBlockMutation.mutateAsync({ id: bookId, blockId });
+      invalidate(bookId);
+      toast({
+        title: "Bloco removido",
+        action: (
+          <ToastAction
+            altText="Desfazer remoção do bloco"
+            onClick={async () => {
+              try {
+                await restoreBlockMutation.mutateAsync({ id: bookId, blockId });
+                invalidate(bookId);
+                toast({ title: "Bloco restaurado!" });
+              } catch {
+                toast({ title: "Erro ao restaurar bloco", variant: "destructive" });
+              }
+            }}
+          >
+            Desfazer
+          </ToastAction>
+        ),
+      });
     } catch {
       toast({ title: "Erro ao remover bloco", variant: "destructive" });
     }
@@ -437,10 +482,29 @@ export default function AdminDailyBookPage() {
 
   const handleDeletePosition = async (positionId: string) => {
     if (!selectedId) return;
+    const bookId = selectedId;
     try {
-      await deletePositionMutation.mutateAsync({ id: selectedId, positionId });
-      toast({ title: "Posição removida do Livro do Dia" });
-      invalidate(selectedId);
+      await deletePositionMutation.mutateAsync({ id: bookId, positionId });
+      invalidate(bookId);
+      toast({
+        title: "Posição removida",
+        action: (
+          <ToastAction
+            altText="Desfazer remoção da posição"
+            onClick={async () => {
+              try {
+                await restorePositionMutation.mutateAsync({ id: bookId, positionId });
+                invalidate(bookId);
+                toast({ title: "Posição restaurada!" });
+              } catch {
+                toast({ title: "Erro ao restaurar posição", variant: "destructive" });
+              }
+            }}
+          >
+            Desfazer
+          </ToastAction>
+        ),
+      });
     } catch {
       toast({ title: "Erro ao remover posição", variant: "destructive" });
     }

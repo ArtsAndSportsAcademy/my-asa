@@ -2941,6 +2941,108 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /daily-book/{id}/scenes/{sceneId}/restore:
+    patch:
+      operationId: restoreDailyBookScene
+      tags: [daily-book]
+      summary: "Restaurar cena removida do Livro do Dia"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sceneId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Cena restaurada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scene:
+                    $ref: "#/components/schemas/DailyBookScene"
+                required: [scene]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /daily-book/{id}/blocks/{blockId}/restore:
+    patch:
+      operationId: restoreDailyBookBlock
+      tags: [daily-book]
+      summary: "Restaurar bloco removido do Livro do Dia"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: blockId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Bloco restaurado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  block:
+                    $ref: "#/components/schemas/DailyBookBlock"
+                required: [block]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /daily-book/{id}/positions/{positionId}/restore:
+    patch:
+      operationId: restoreDailyBookPosition
+      tags: [daily-book]
+      summary: "Restaurar posição removida do Livro do Dia"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: positionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Posição restaurada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  position:
+                    $ref: "#/components/schemas/DailyBookPosition"
+                required: [position]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
   /daily-book/{id}/assignments/{assignmentId}:
     patch:
       operationId: patchDailyBookAssignment

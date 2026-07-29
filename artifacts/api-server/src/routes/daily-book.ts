@@ -1359,6 +1359,120 @@ router.delete("/daily-book/:id/blocks/:blockId", requireAuth, requireOrganizatio
   }
 });
 
+// ── Restauração (undo soft delete) ──────────────────────────────────────────
+
+router.patch("/daily-book/:id/scenes/:sceneId/restore", requireAuth, requireOrganization, requireRole("ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"), async (req, res) => {
+  const id = req.params.id as string;
+  const sceneId = req.params.sceneId as string;
+  const actorId = req.user!.sub;
+  try {
+    const book = await getDailyBookOrFail(id, res);
+    if (!book) return;
+    if (book.status === "EXECUTED" || book.status === "CANCELLED") {
+      res.status(409).json({ error: "Livro em estado terminal não pode ser alterado" });
+      return;
+    }
+    if (!(await requireDailyBookOperate(book, req.user!, res))) return;
+    const [updatedScene] = await db
+      .update(dailyBookScenesTable)
+      .set({ isRemoved: false, updatedAt: new Date() })
+      .where(and(eq(dailyBookScenesTable.id, sceneId), eq(dailyBookScenesTable.dailyBookId, id)))
+      .returning();
+    if (!updatedScene) { res.status(404).json({ error: "Cena não encontrada" }); return; }
+    // Restaurar cascata: blocos e posições da cena
+    const restoredBlocks = await db
+      .update(dailyBookBlocksTable)
+      .set({ isRemoved: false, updatedAt: new Date() })
+      .where(and(eq(dailyBookBlocksTable.sceneId, sceneId), eq(dailyBookBlocksTable.dailyBookId, id), eq(dailyBookBlocksTable.isRemoved, true)))
+      .returning();
+    for (const block of restoredBlocks) {
+      const restoredPositions = await db
+        .update(dailyBookPositionsTable)
+        .set({ isRemoved: false, updatedAt: new Date() })
+        .where(and(eq(dailyBookPositionsTable.blockId, block.id), eq(dailyBookPositionsTable.dailyBookId, id), eq(dailyBookPositionsTable.isRemoved, true)))
+        .returning();
+      for (const pos of restoredPositions) {
+        await db
+          .update(dailyBookAssignmentsTable)
+          .set({ status: "OPEN", updatedAt: new Date() })
+          .where(and(eq(dailyBookAssignmentsTable.positionId, pos.id), eq(dailyBookAssignmentsTable.dailyBookId, id), eq(dailyBookAssignmentsTable.status, "REMOVED")));
+      }
+    }
+    eventBus.emit("daily-book.updated", { dailyBookId: id, changeType: "scene_restored", changedBy: actorId });
+    await writeDailyBookAudit(id, actorId, "scene_restored", { sceneId, isRemoved: true }, { sceneId, isRemoved: false });
+    res.json({ scene: updatedScene });
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao restaurar cena" });
+  }
+});
+
+router.patch("/daily-book/:id/blocks/:blockId/restore", requireAuth, requireOrganization, requireRole("ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"), async (req, res) => {
+  const id = req.params.id as string;
+  const blockId = req.params.blockId as string;
+  const actorId = req.user!.sub;
+  try {
+    const book = await getDailyBookOrFail(id, res);
+    if (!book) return;
+    if (book.status === "EXECUTED" || book.status === "CANCELLED") {
+      res.status(409).json({ error: "Livro em estado terminal não pode ser alterado" });
+      return;
+    }
+    if (!(await requireDailyBookOperate(book, req.user!, res))) return;
+    const [updatedBlock] = await db
+      .update(dailyBookBlocksTable)
+      .set({ isRemoved: false, updatedAt: new Date() })
+      .where(and(eq(dailyBookBlocksTable.id, blockId), eq(dailyBookBlocksTable.dailyBookId, id)))
+      .returning();
+    if (!updatedBlock) { res.status(404).json({ error: "Bloco não encontrado" }); return; }
+    const restoredPositions = await db
+      .update(dailyBookPositionsTable)
+      .set({ isRemoved: false, updatedAt: new Date() })
+      .where(and(eq(dailyBookPositionsTable.blockId, blockId), eq(dailyBookPositionsTable.dailyBookId, id), eq(dailyBookPositionsTable.isRemoved, true)))
+      .returning();
+    for (const pos of restoredPositions) {
+      await db
+        .update(dailyBookAssignmentsTable)
+        .set({ status: "OPEN", updatedAt: new Date() })
+        .where(and(eq(dailyBookAssignmentsTable.positionId, pos.id), eq(dailyBookAssignmentsTable.dailyBookId, id), eq(dailyBookAssignmentsTable.status, "REMOVED")));
+    }
+    eventBus.emit("daily-book.updated", { dailyBookId: id, changeType: "block_restored", changedBy: actorId });
+    await writeDailyBookAudit(id, actorId, "block_restored", { blockId, isRemoved: true }, { blockId, isRemoved: false });
+    res.json({ block: updatedBlock });
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao restaurar bloco" });
+  }
+});
+
+router.patch("/daily-book/:id/positions/:positionId/restore", requireAuth, requireOrganization, requireRole("ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"), async (req, res) => {
+  const id = req.params.id as string;
+  const positionId = req.params.positionId as string;
+  const actorId = req.user!.sub;
+  try {
+    const book = await getDailyBookOrFail(id, res);
+    if (!book) return;
+    if (book.status === "EXECUTED" || book.status === "CANCELLED") {
+      res.status(409).json({ error: "Livro em estado terminal não pode ser alterado" });
+      return;
+    }
+    if (!(await requireDailyBookOperate(book, req.user!, res))) return;
+    const [updatedPosition] = await db
+      .update(dailyBookPositionsTable)
+      .set({ isRemoved: false, updatedAt: new Date() })
+      .where(and(eq(dailyBookPositionsTable.id, positionId), eq(dailyBookPositionsTable.dailyBookId, id)))
+      .returning();
+    if (!updatedPosition) { res.status(404).json({ error: "Posição não encontrada" }); return; }
+    await db
+      .update(dailyBookAssignmentsTable)
+      .set({ status: "OPEN", updatedAt: new Date() })
+      .where(and(eq(dailyBookAssignmentsTable.positionId, positionId), eq(dailyBookAssignmentsTable.dailyBookId, id), eq(dailyBookAssignmentsTable.status, "REMOVED")));
+    eventBus.emit("daily-book.updated", { dailyBookId: id, changeType: "position_restored", changedBy: actorId });
+    await writeDailyBookAudit(id, actorId, "position_restored", { positionId, isRemoved: true }, { positionId, isRemoved: false });
+    res.json({ position: updatedPosition });
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao restaurar posição" });
+  }
+});
+
 router.patch("/daily-book/:id/scenes/reorder", requireAuth, requireOrganization, requireRole("ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"), async (req, res) => {
   const id = req.params.id as string;
   const { scenes } = req.body as { scenes: { id: string; order: number }[] };

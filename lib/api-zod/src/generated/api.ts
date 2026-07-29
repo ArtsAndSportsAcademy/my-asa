@@ -2588,6 +2588,76 @@ export const DeleteDailyBookPositionResponse = zod.object({
 
 
 /**
+ * @summary Restaurar cena removida do Livro do Dia
+ */
+export const RestoreDailyBookSceneParams = zod.object({
+  "id": zod.coerce.string(),
+  "sceneId": zod.coerce.string()
+})
+
+export const RestoreDailyBookSceneResponse = zod.object({
+  "scene": zod.object({
+  "id": zod.string(),
+  "dailyBookId": zod.string(),
+  "name": zod.string(),
+  "order": zod.number(),
+  "sourceSceneId": zod.string().nullish(),
+  "isRemoved": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Restaurar bloco removido do Livro do Dia
+ */
+export const RestoreDailyBookBlockParams = zod.object({
+  "id": zod.coerce.string(),
+  "blockId": zod.coerce.string()
+})
+
+export const RestoreDailyBookBlockResponse = zod.object({
+  "block": zod.object({
+  "id": zod.string(),
+  "dailyBookId": zod.string(),
+  "sceneId": zod.string().nullish(),
+  "name": zod.string(),
+  "order": zod.number(),
+  "startTime": zod.string().nullish(),
+  "endTime": zod.string().nullish(),
+  "sourceBlockId": zod.string().nullish(),
+  "isRemoved": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Restaurar posição removida do Livro do Dia
+ */
+export const RestoreDailyBookPositionParams = zod.object({
+  "id": zod.coerce.string(),
+  "positionId": zod.coerce.string()
+})
+
+export const RestoreDailyBookPositionResponse = zod.object({
+  "position": zod.object({
+  "id": zod.string(),
+  "dailyBookId": zod.string(),
+  "blockId": zod.string().nullish(),
+  "name": zod.string(),
+  "minimumCoverage": zod.number(),
+  "sourceRoleId": zod.string().nullish(),
+  "isRemoved": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
  * @summary Trocar escalado de uma posição
  */
 export const PatchDailyBookAssignmentParams = zod.object({

@@ -206,6 +206,9 @@ import type {
   ResetFolgasGrid200,
   ResetFolgasGridParams,
   ResolveScaleException200,
+  RestoreDailyBookBlock200,
+  RestoreDailyBookPosition200,
+  RestoreDailyBookScene200,
   RoleCreate,
   ScaleGenerateRequest,
   ScalePatchRequest,
@@ -7283,6 +7286,222 @@ export const useDeleteDailyBookPosition = <TError = ErrorType<UnauthorizedRespon
         TContext
       > => {
       return useMutation(getDeleteDailyBookPositionMutationOptions(options));
+    }
+
+export const getRestoreDailyBookSceneUrl = (id: string,
+    sceneId: string,) => {
+
+
+
+
+  return `/api/daily-book/${id}/scenes/${sceneId}/restore`
+}
+
+/**
+ * @summary Restaurar cena removida do Livro do Dia
+ */
+export const restoreDailyBookScene = async (id: string,
+    sceneId: string, options?: RequestInit): Promise<RestoreDailyBookScene200> => {
+
+  return customFetch<RestoreDailyBookScene200>(getRestoreDailyBookSceneUrl(id,sceneId),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+export const getRestoreDailyBookSceneMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreDailyBookScene>>, TError,{id: string;sceneId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof restoreDailyBookScene>>, TError,{id: string;sceneId: string}, TContext> => {
+
+const mutationKey = ['restoreDailyBookScene'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof restoreDailyBookScene>>, {id: string;sceneId: string}> = (props) => {
+          const {id,sceneId} = props ?? {};
+
+          return  restoreDailyBookScene(id,sceneId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RestoreDailyBookSceneMutationResult = NonNullable<Awaited<ReturnType<typeof restoreDailyBookScene>>>
+
+    export type RestoreDailyBookSceneMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Restaurar cena removida do Livro do Dia
+ */
+export const useRestoreDailyBookScene = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreDailyBookScene>>, TError,{id: string;sceneId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof restoreDailyBookScene>>,
+        TError,
+        {id: string;sceneId: string},
+        TContext
+      > => {
+      return useMutation(getRestoreDailyBookSceneMutationOptions(options));
+    }
+
+export const getRestoreDailyBookBlockUrl = (id: string,
+    blockId: string,) => {
+
+
+
+
+  return `/api/daily-book/${id}/blocks/${blockId}/restore`
+}
+
+/**
+ * @summary Restaurar bloco removido do Livro do Dia
+ */
+export const restoreDailyBookBlock = async (id: string,
+    blockId: string, options?: RequestInit): Promise<RestoreDailyBookBlock200> => {
+
+  return customFetch<RestoreDailyBookBlock200>(getRestoreDailyBookBlockUrl(id,blockId),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+export const getRestoreDailyBookBlockMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreDailyBookBlock>>, TError,{id: string;blockId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof restoreDailyBookBlock>>, TError,{id: string;blockId: string}, TContext> => {
+
+const mutationKey = ['restoreDailyBookBlock'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof restoreDailyBookBlock>>, {id: string;blockId: string}> = (props) => {
+          const {id,blockId} = props ?? {};
+
+          return  restoreDailyBookBlock(id,blockId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RestoreDailyBookBlockMutationResult = NonNullable<Awaited<ReturnType<typeof restoreDailyBookBlock>>>
+
+    export type RestoreDailyBookBlockMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Restaurar bloco removido do Livro do Dia
+ */
+export const useRestoreDailyBookBlock = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreDailyBookBlock>>, TError,{id: string;blockId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof restoreDailyBookBlock>>,
+        TError,
+        {id: string;blockId: string},
+        TContext
+      > => {
+      return useMutation(getRestoreDailyBookBlockMutationOptions(options));
+    }
+
+export const getRestoreDailyBookPositionUrl = (id: string,
+    positionId: string,) => {
+
+
+
+
+  return `/api/daily-book/${id}/positions/${positionId}/restore`
+}
+
+/**
+ * @summary Restaurar posição removida do Livro do Dia
+ */
+export const restoreDailyBookPosition = async (id: string,
+    positionId: string, options?: RequestInit): Promise<RestoreDailyBookPosition200> => {
+
+  return customFetch<RestoreDailyBookPosition200>(getRestoreDailyBookPositionUrl(id,positionId),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+export const getRestoreDailyBookPositionMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreDailyBookPosition>>, TError,{id: string;positionId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof restoreDailyBookPosition>>, TError,{id: string;positionId: string}, TContext> => {
+
+const mutationKey = ['restoreDailyBookPosition'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof restoreDailyBookPosition>>, {id: string;positionId: string}> = (props) => {
+          const {id,positionId} = props ?? {};
+
+          return  restoreDailyBookPosition(id,positionId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RestoreDailyBookPositionMutationResult = NonNullable<Awaited<ReturnType<typeof restoreDailyBookPosition>>>
+
+    export type RestoreDailyBookPositionMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Restaurar posição removida do Livro do Dia
+ */
+export const useRestoreDailyBookPosition = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreDailyBookPosition>>, TError,{id: string;positionId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof restoreDailyBookPosition>>,
+        TError,
+        {id: string;positionId: string},
+        TContext
+      > => {
+      return useMutation(getRestoreDailyBookPositionMutationOptions(options));
     }
 
 export const getPatchDailyBookAssignmentUrl = (id: string,
