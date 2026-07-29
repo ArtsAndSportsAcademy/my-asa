@@ -9,6 +9,7 @@ import {
   useRepublishDailyBook,
   useExecuteDailyBook,
   useCancelDailyBook,
+  useRegenerateDailyBook,
   useDeleteDailyBookScene,
   useDeleteDailyBookBlock,
   useDeleteDailyBookPosition,
@@ -33,6 +34,7 @@ import AdminLayout from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MemberCombobox } from "@/components/member-combobox";
 import { Textarea } from "@/components/ui/textarea";
@@ -264,6 +266,7 @@ export default function AdminDailyBookPage() {
   const [cancelReason, setCancelReason] = useState("");
   const [republishOpen, setRepublishOpen] = useState(false);
   const [republishComment, setRepublishComment] = useState("");
+  const [regenerateOpen, setRegenerateOpen] = useState(false);
   const [centerTab, setCenterTab] = useState<"cena" | "bloco" | "posicao">("cena");
   const [rightTab, setRightTab] = useState<"impacto" | "alteracoes" | "historico" | "delta">("impacto");
   const [filterStatus, setFilterStatus] = useState<string>("__all");
@@ -325,6 +328,7 @@ export default function AdminDailyBookPage() {
   const republishMutation = useRepublishDailyBook();
   const executeMutation = useExecuteDailyBook();
   const cancelMutation = useCancelDailyBook();
+  const regenerateMutation = useRegenerateDailyBook();
   const deleteSceneMutation = useDeleteDailyBookScene();
   const deleteBlockMutation = useDeleteDailyBookBlock();
   const deletePositionMutation = useDeleteDailyBookPosition();
@@ -406,6 +410,20 @@ export default function AdminDailyBookPage() {
       invalidate(selectedId);
     } catch {
       toast({ title: "Erro ao cancelar", variant: "destructive" });
+    }
+  };
+
+  const handleRegenerate = async () => {
+    if (!selectedId) return;
+    try {
+      await regenerateMutation.mutateAsync({ id: selectedId });
+      toast({ title: "Livro regenerado com sucesso!" });
+      setRegenerateOpen(false);
+      invalidate(selectedId);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message ?? err?.response?.data?.error ?? "Erro ao regenerar Livro do Dia";
+      toast({ title: msg, variant: "destructive" });
+      setRegenerateOpen(false);
     }
   };
 
@@ -512,6 +530,7 @@ export default function AdminDailyBookPage() {
 
   const canEdit = isAdmin && bookStatus !== "EXECUTED" && bookStatus !== "CANCELLED";
   const canPublish = isAdmin && bookStatus === "DRAFT";
+  const canRegenerate = isAdmin && bookStatus === "DRAFT";
   const canRepublish = isAdmin && (bookStatus === "PUBLISHED" || bookStatus === "REPUBLISHED");
   const canExecute = isAdmin && (bookStatus === "PUBLISHED" || bookStatus === "REPUBLISHED");
   const canCancel = isAdmin && bookStatus !== "CANCELLED" && bookStatus !== "EXECUTED";
@@ -647,6 +666,11 @@ export default function AdminDailyBookPage() {
                   </p>
                 )}
                 <div className="flex flex-wrap gap-1 mt-2">
+                  {canRegenerate && (
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setRegenerateOpen(true)} disabled={regenerateMutation.isPending}>
+                      <RefreshCw className="h-3 w-3 mr-1" /> Regenerar
+                    </Button>
+                  )}
                   {canPublish && (
                     <Button size="sm" className="h-7 text-xs" onClick={() => setPublishOpen(true)}>
                       <Send className="h-3 w-3 mr-1" /> Publicar
@@ -1076,6 +1100,29 @@ export default function AdminDailyBookPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* AlertDialog — Confirmar Regeneração */}
+      <AlertDialog open={regenerateOpen} onOpenChange={setRegenerateOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Regenerar Livro do Dia?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Isso vai apagar todas as atribuições actuais e reconstruir o Livro do Dia
+              a partir do Livro do Show. Use isso quando tiver alterado o elenco ou a
+              estrutura do Show e quiser reflectir as mudanças aqui.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRegenerate}
+              disabled={regenerateMutation.isPending}
+            >
+              {regenerateMutation.isPending ? "Regenerando..." : "Regenerar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </AdminLayout>
   );
