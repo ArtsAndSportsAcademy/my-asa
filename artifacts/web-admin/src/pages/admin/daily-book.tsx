@@ -342,8 +342,12 @@ export default function AdminDailyBookPage() {
       setSelectedDate(null);
       invalidate();
       if (newBook?.id) setSelectedId(newBook.id);
-    } catch {
-      toast({ title: "Erro ao gerar Livro do Dia", variant: "destructive" });
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ??
+        err?.response?.data?.error ??
+        "Erro ao gerar Livro do Dia";
+      toast({ title: msg, variant: "destructive" });
     }
   };
 
@@ -935,7 +939,11 @@ export default function AdminDailyBookPage() {
           <div className="space-y-4 py-2">
             <div>
               <Label className="mb-1.5 block">Livro do Show</Label>
-              {(() => {
+              {showBooks.length === 0 ? (
+                <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                  Nenhum Livro do Show está atribuído à sua conta. Peça ao administrador para definir você como <strong>Responsável</strong> em pelo menos um Livro do Show, ou para remover o responsável atual para que qualquer supervisor da operação possa gerar.
+                </div>
+              ) : (() => {
                 const multiOp = Object.keys(showBooksByOp).length > 1;
                 const options = Object.entries(showBooksByOp)
                   .sort(([aId], [bId]) => (operationNames[aId] ?? aId).localeCompare(operationNames[bId] ?? bId, "pt-BR"))

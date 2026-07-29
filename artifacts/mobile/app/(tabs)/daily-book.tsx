@@ -4,6 +4,8 @@ import {
   useGetDailyBook,
   usePublishDailyBook,
   useRepublishDailyBook,
+  useGenerateDailyBook,
+  useListShowBooks,
   getListDailyBookQueryKey,
   getGetDailyBookQueryKey,
   useGetMyActiveDelegations,
@@ -15,16 +17,20 @@ import type {
   DailyBookBlockWithPositions,
   DailyBookPositionWithAssignments,
   DailyBookAssignment,
+  ShowBook,
 } from "@workspace/api-client-react";
 import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -81,6 +87,10 @@ export default function DailyBookScreen() {
   const [eventNotFound, setEventNotFound] = useState(false);
   const [expandedScenes, setExpandedScenes] = useState<Record<string, boolean>>({});
   const [expandedBlocks, setExpandedBlocks] = useState<Record<string, boolean>>({});
+  const [generateModalVisible, setGenerateModalVisible] = useState(false);
+  const [genShowId, setGenShowId] = useState<string | null>(null);
+  const [genDate, setGenDate] = useState<string>(() => new Date().toISOString().split("T")[0]);
+  const [genShowPickerVisible, setGenShowPickerVisible] = useState(false);
 
   const currentUserId = auth.user?.id ?? null;
   const isSupervisor = auth.roles.some((r) =>
@@ -92,6 +102,12 @@ export default function DailyBookScreen() {
     (d) => (d.responsibilities as string[]).includes("DAILY_BOOK")
   );
   const isCapitaoDailyBook = !!dailyBookDelegation && !isSupervisor;
+
+  const { data: showBooksData } = useListShowBooks({}, { query: { enabled: isSupervisor } } as any);
+  const availableShows: ShowBook[] = (showBooksData as any)?.showBooks ?? [];
+  const selectedGenShow = availableShows.find((s) => s.id === genShowId);
+
+  const generateMutation = useGenerateDailyBook();
 
   const {
     data: listData,
@@ -194,6 +210,28 @@ export default function DailyBookScreen() {
       },
     ]);
   }, [selectedBookId, republishMutation, refetchList, refetchBook]);
+
+  const handleGenerate = useCallback(() => {
+    if (!genShowId || !genDate) return;
+    generateMutation.mutate(
+      { data: { showBookId: genShowId, date: genDate } as any },
+      {
+        onSuccess: () => {
+          Alert.alert("Sucesso", "Livro do Dia gerado com sucesso!");
+          setGenerateModalVisible(false);
+          setGenShowId(null);
+          refetchList();
+        },
+        onError: (err: any) => {
+          const msg =
+            err?.response?.data?.message ??
+            err?.response?.data?.error ??
+            "Não foi possível gerar o Livro do Dia.";
+          Alert.alert("Erro ao gerar", msg);
+        },
+      },
+    );
+  }, [genShowId, genDate, generateMutation, refetchList]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -405,7 +443,18 @@ export default function DailyBookScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Livro do Dia</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <Text style={styles.headerTitle}>Livro do Dia</Text>
+          {isSupervisor && (
+            <TouchableOpacity
+              onPress={() => setGenerateModalVisible(true)}
+              style={{ backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, flexDirection: "row", alignItems: "center", gap: 4 }}
+            >
+              <Feather name="plus" size={13} color="#fff" />
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 12 }}>Gerar</Text>
+            </TouchableOpacity>
+          )}
+        </View>
         <Text style={styles.headerSub}>
           {isSupervisor
             ? "Roteiro operacional do dia"
@@ -443,7 +492,13 @@ export default function DailyBookScreen() {
         {visibleBooks.length === 0 ? (
           <View style={styles.emptyCard}>
             <Feather name="book-open" size={28} color={colors.mutedForeground} />
-            <Text style={styles.emptyText}>Nenhum Livro do Dia publicado ainda. Aguarde o supervisor gerar o livro do próximo evento.</Text>
+            <Text style={styles.emptyText}>
+              {isSupervisor
+                ? availableShows.length === 0
+                  ? "Nenhum Livro do Show está atribuído à sua operação. Peça ao administrador para verificar o responsável dos shows."
+                  : "Nenhum Livro do Dia gerado ainda. Toque em \"Gerar\" para criar o primeiro."
+                : "Nenhum Livro do Dia publicado ainda. Aguarde o supervisor gerar o livro do próximo evento."}
+            </Text>
           </View>
         ) : (
           groupedBooks.map((group) => (
@@ -514,7 +569,7 @@ export default function DailyBookScreen() {
             ) : (isSupervisor || isCapitaoDailyBook) ? (
               <>
                 {/* Supervisor/Capitão: full tree */}
-                {isCapitaoDailyBook && selectedBook.status === "DRAFT" && (
+                {(isSupervisor || isCapitaoDailyBook) && selectedBook.status === "DRAFT" && (
                   <TouchableOpacity
                     onPress={handlePublish}
                     disabled={publishMutation.isPending}
@@ -526,7 +581,7 @@ export default function DailyBookScreen() {
                     </Text>
                   </TouchableOpacity>
                 )}
-                {isCapitaoDailyBook && selectedBook.status === "PUBLISHED" && (
+                {(isSupervisor || isCapitaoDailyBook) && (selectedBook.status === "PUBLISHED" || selectedBook.status === "REPUBLISHED") && (
                   <TouchableOpacity
                     onPress={handleRepublish}
                     disabled={republishMutation.isPending}
@@ -688,6 +743,110 @@ export default function DailyBookScreen() {
         )}
         <View style={{ height: insets.bottom + 80 }} />
       </ScrollView>
+
+      {/* ── Modal de Geração (apenas supervisores) ── */}
+      <Modal
+        visible={generateModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setGenerateModalVisible(false)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" }}
+          onPress={() => setGenerateModalVisible(false)}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={{ backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: insets.bottom + 20 }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}>
+              <Feather name="book-open" size={18} color={colors.primary} />
+              <Text style={{ fontSize: 17, fontWeight: "700", color: colors.foreground, marginLeft: 8 }}>Gerar Livro do Dia</Text>
+              <Pressable onPress={() => setGenerateModalVisible(false)} style={{ marginLeft: "auto" }}>
+                <Feather name="x" size={20} color={colors.mutedForeground} />
+              </Pressable>
+            </View>
+
+            {/* Show picker */}
+            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.mutedForeground, marginBottom: 6, textTransform: "uppercase" }}>Livro do Show</Text>
+            {availableShows.length === 0 ? (
+              <View style={{ backgroundColor: colors.muted, borderRadius: 10, padding: 12, marginBottom: 14 }}>
+                <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>
+                  Nenhum show disponível para a sua operação. Peça ao administrador para verificar o responsável dos Livros do Show.
+                </Text>
+              </View>
+            ) : (
+              <Pressable
+                onPress={() => setGenShowPickerVisible(true)}
+                style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+              >
+                <Text style={{ color: selectedGenShow ? colors.foreground : colors.mutedForeground, fontSize: 14 }} numberOfLines={1}>
+                  {selectedGenShow ? selectedGenShow.title : "Selecionar show…"}
+                </Text>
+                <Feather name="chevron-down" size={15} color={colors.mutedForeground} />
+              </Pressable>
+            )}
+
+            {/* Date input */}
+            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.mutedForeground, marginBottom: 6, textTransform: "uppercase" }}>Data (AAAA-MM-DD)</Text>
+            <TextInput
+              value={genDate}
+              onChangeText={setGenDate}
+              placeholder="2026-07-29"
+              placeholderTextColor={colors.mutedForeground}
+              style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: colors.foreground, backgroundColor: colors.background, marginBottom: 20 }}
+            />
+
+            <TouchableOpacity
+              onPress={handleGenerate}
+              disabled={!genShowId || !genDate || generateMutation.isPending || availableShows.length === 0}
+              style={{
+                backgroundColor: (!genShowId || !genDate || generateMutation.isPending || availableShows.length === 0) ? colors.muted : colors.primary,
+                borderRadius: 12, paddingVertical: 14, alignItems: "center",
+              }}
+            >
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
+                {generateMutation.isPending ? "Gerando…" : "Gerar Livro do Dia"}
+              </Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* ── Show picker interno ── */}
+      <Modal
+        visible={genShowPickerVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setGenShowPickerVisible(false)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" }}
+          onPress={() => setGenShowPickerVisible(false)}
+        >
+          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: "60%", paddingBottom: insets.bottom + 16 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground }}>Escolher Show</Text>
+              <Pressable onPress={() => setGenShowPickerVisible(false)} style={{ marginLeft: "auto" }}>
+                <Feather name="x" size={20} color={colors.mutedForeground} />
+              </Pressable>
+            </View>
+            <FlatList
+              data={availableShows}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <Pressable
+                  onPress={() => { setGenShowId(item.id); setGenShowPickerVisible(false); }}
+                  style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border }}
+                >
+                  <Text style={{ flex: 1, fontSize: 14, color: colors.foreground }}>{item.title}</Text>
+                  {genShowId === item.id && <Feather name="check" size={16} color={colors.primary} />}
+                </Pressable>
+              )}
+            />
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
