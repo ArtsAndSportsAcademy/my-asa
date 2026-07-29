@@ -52,7 +52,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Plus, Send, AlertTriangle, ChevronLeft, ChevronRight, ChevronRight as ChevR,
-  History, ShieldCheck, Trash2, Copy, Clock, Zap, X, CalendarRange,
+  History, ShieldCheck, Trash2, Copy, Clock, Zap, X, CalendarRange, Clipboard,
 } from "lucide-react";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -235,6 +235,15 @@ interface AddEntryFormState {
   force: boolean;
 }
 
+interface ClipboardEntry {
+  id: string;
+  label: string;
+  startTime?: string | null;
+  endTime?: string | null;
+  notes?: string | null;
+  date: string;
+}
+
 // ─── Avatar ───────────────────────────────────────────────────────────────────
 
 function InitialsAvatar({ id, name, dim = false }: { id: string; name: string; dim?: boolean }) {
@@ -282,6 +291,11 @@ export default function ScalesPage() {
     start: string;
     end: string;
   } | null>(null);
+
+  // ── Copy/paste clipboard ─────────────────────────────────────────────────
+  const [scaleClipboard, setScaleClipboard] = useState<ClipboardEntry[]>([]);
+  // Entry IDs currently checked for multi-copy (cleared on day/scale switch)
+  const [selectedEntryIds, setSelectedEntryIds] = useState<Set<string>>(new Set());
 
   // ── Queries ──────────────────────────────────────────────────────────────
   const { data: opsData } = useGetOperations();
@@ -396,6 +410,11 @@ export default function ScalesPage() {
 
   // Keep the open scale's summary (coverage counts/status) in sync with the
   // refreshed backend list after regenerate / manual entry / publish actions.
+  // Clear checkbox selection whenever the user switches day or scale
+  useEffect(() => {
+    setSelectedEntryIds(new Set());
+  }, [selectedScale?.id, selectedDay]);
+
   useEffect(() => {
     if (!selectedScale) return;
     const fresh = allScales.find((s) => s.id === selectedScale.id);
@@ -829,6 +848,87 @@ export default function ScalesPage() {
     }
   }
 
+  // ── Copy / paste helpers ─────────────────────────────────────────────────
+
+  /** Only manual entries (not from agenda, daily book or recurring) can be copied. */
+  function isCopyableEntry(e: ScaleAllocationWithCandidates): boolean {
+    return (
+      !(e as any).isAgendaParticipant &&
+      !(e as any).isDailyBookParticipant &&
+      !(e as any).isRecurringActivity
+    );
+  }
+
+  function toggleEntrySelection(entryId: string) {
+    setSelectedEntryIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(entryId)) next.delete(entryId);
+      else next.add(entryId);
+      return next;
+    });
+  }
+
+  function copyEntriesToClipboard(entries: ScaleAllocationWithCandidates[]) {
+    const items: ClipboardEntry[] = entries.map((e) => ({
+      id: e.id,
+      label:
+        (e as any).manualLabel ??
+        (e as any).eventTitle ??
+        (e as any).positionName ??
+        "—",
+      startTime: (e as any).startTime ?? null,
+      endTime:   (e as any).endTime   ?? null,
+      notes:     (e as any).notes     ?? null,
+      date: ((e as any).manualDate ?? (e as any).eventDate) as string,
+    }));
+    setScaleClipboard(items);
+    setSelectedEntryIds(new Set());
+    toast({ title: `${items.length} atividade(s) copiada(s)` });
+  }
+
+  async function pasteToMember(memberId: string, memberName: string) {
+    if (!selectedScale?.id || scaleClipboard.length === 0) return;
+    let created = 0;
+    let skipped = 0;
+    for (const item of scaleClipboard) {
+      // Dedup: skip if same member already has entry with same date + label + startTime
+      const existing = entriesByDateMember.get(item.date)?.get(memberId) ?? [];
+      const isDuplicate = existing.some((ex) => {
+        const exLabel =
+          (ex as any).manualLabel ??
+          (ex as any).eventTitle ??
+          (ex as any).positionName ??
+          "—";
+        const exStart = (ex as any).startTime ?? "";
+        return exLabel === item.label && exStart === (item.startTime ?? "");
+      });
+      if (isDuplicate) { skipped++; continue; }
+      try {
+        await createEntryMut.mutateAsync({
+          scaleId: selectedScale.id,
+          memberId,
+          date:      item.date,
+          label:     item.label,
+          startTime: item.startTime  || undefined,
+          endTime:   item.endTime    || undefined,
+          notes:     item.notes      || undefined,
+        } as any);
+        created++;
+      } catch { skipped++; }
+    }
+    invalidateAllocations();
+    if (skipped > 0 && created > 0) {
+      toast({
+        title: `${created} colada(s), ${skipped} ignorada(s)`,
+        description: `${skipped} atividade(s) já existiam para ${memberName}.`,
+      });
+    } else if (created > 0) {
+      toast({ title: `${created} atividade(s) colada(s) em ${memberName}` });
+    } else {
+      toast({ title: `Nenhuma atividade nova — tudo já existia para ${memberName}.`, variant: "destructive" });
+    }
+  }
+
   // ── Render: List view ────────────────────────────────────────────────────
   if (view === "list") {
     const tabLabel = opTab === "all" ? "todas as operações" : (opName.get(opTab) ?? "operação");
@@ -1092,6 +1192,23 @@ export default function ScalesPage() {
         )}
       </div>
 
+      {/* Clipboard banner */}
+      {isManager && scaleClipboard.length > 0 && (
+        <div className="flex items-center gap-2 mb-3 rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-sm">
+          <Clipboard className="h-4 w-4 shrink-0 text-amber-600" />
+          <span className="flex-1 text-amber-700">
+            {scaleClipboard.length} atividade(s) copiada(s) — clique em{" "}
+            <strong>Colar</strong> na coluna de um membro para colar
+          </span>
+          <button
+            className="flex items-center gap-1 text-xs text-amber-600 hover:text-amber-800 transition-colors"
+            onClick={() => setScaleClipboard([])}
+          >
+            <X className="h-3 w-3" /> Limpar
+          </button>
+        </div>
+      )}
+
       {/* Member columns */}
       <div className="overflow-x-auto pb-3">
         <div className="flex gap-3 min-w-min">
@@ -1123,6 +1240,22 @@ export default function ScalesPage() {
                       {FOLGA_LABELS[folgaType!] ?? folgaType}
                     </Badge>
                   )}
+                  {/* "Copiar N selecionadas" — shown when this member has checked entries */}
+                  {isManager && (() => {
+                    const sel = memberEntries.filter(
+                      (e) => isCopyableEntry(e) && selectedEntryIds.has(e.id)
+                    );
+                    if (sel.length === 0) return null;
+                    return (
+                      <button
+                        onClick={() => copyEntriesToClipboard(sel)}
+                        className="mt-1 flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/5 px-2 py-0.5 text-[10px] font-medium text-amber-700 hover:bg-amber-500/15 transition-colors"
+                      >
+                        <Copy className="h-3 w-3" />
+                        Copiar {sel.length}
+                      </button>
+                    );
+                  })()}
                 </div>
 
                 <div className="p-2 space-y-1.5">
@@ -1135,6 +1268,9 @@ export default function ScalesPage() {
                       !dailyBookParticipant &&
                       !recurringActivity &&
                       !!(e as any).agendaEventId;
+                    const copyable = isCopyableEntry(e);
+                    const isChecked = selectedEntryIds.has(e.id);
+                    const isInClipboard = scaleClipboard.some((c) => c.id === e.id);
                     const label =
                       (e as any).manualLabel ??
                       (e as any).eventTitle ??
@@ -1147,7 +1283,9 @@ export default function ScalesPage() {
                       <div
                         key={e.id}
                         className={`group relative rounded-lg border px-2 py-1.5 ${
-                          dailyBookParticipant
+                          isInClipboard
+                            ? "bg-amber-400/20 border-amber-500/60 ring-1 ring-amber-400/40"
+                            : dailyBookParticipant
                             ? "bg-emerald-500/10 border-emerald-500/30"
                             : agendaParticipant
                             ? "bg-sky-500/10 border-sky-500/30"
@@ -1158,7 +1296,18 @@ export default function ScalesPage() {
                             : "bg-primary/10 border-primary/20"
                         }`}
                       >
-                        <p className="text-xs font-semibold uppercase leading-tight truncate pr-4">
+                        {/* Checkbox for multi-select (manager + copyable entries only) */}
+                        {isManager && copyable && (
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleEntrySelection(e.id)}
+                            onClick={(ev) => ev.stopPropagation()}
+                            className="absolute top-1.5 left-1.5 h-3 w-3 cursor-pointer accent-amber-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                            style={{ opacity: isChecked ? 1 : undefined }}
+                          />
+                        )}
+                        <p className={`text-xs font-semibold uppercase leading-tight truncate ${isManager && copyable ? "pl-4 pr-8" : "pr-4"}`}>
                           {label}
                         </p>
                         {(generated || dailyBookParticipant) && role && label !== role && (
@@ -1202,6 +1351,17 @@ export default function ScalesPage() {
                             Atividade
                           </Badge>
                         )}
+                        {/* Copy single entry button */}
+                        {isManager && copyable && (
+                          <button
+                            onClick={() => copyEntriesToClipboard([e])}
+                            title="Copiar esta atividade"
+                            className="absolute top-1 right-5 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-amber-600"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </button>
+                        )}
+                        {/* Delete button */}
                         {isManager && !agendaParticipant && !dailyBookParticipant && !recurringActivity && (
                           <button
                             onClick={() => handleDeleteEntry(e.id)}
@@ -1256,6 +1416,18 @@ export default function ScalesPage() {
                       className="w-full text-[10px] text-muted-foreground hover:text-foreground py-1"
                     >
                       + Adicionar mesmo assim
+                    </button>
+                  )}
+
+                  {/* Paste button — visible to manager when clipboard has items */}
+                  {isManager && scaleClipboard.length > 0 && (
+                    <button
+                      onClick={() => pasteToMember(m.userId, m.userName)}
+                      disabled={createEntryMut.isPending}
+                      className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/5 py-1.5 text-[11px] font-medium text-amber-700 hover:bg-amber-500/15 transition-colors disabled:opacity-50"
+                    >
+                      <Clipboard className="h-3 w-3" />
+                      Colar {scaleClipboard.length}
                     </button>
                   )}
 
