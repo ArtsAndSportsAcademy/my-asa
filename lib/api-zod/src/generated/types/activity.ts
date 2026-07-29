@@ -6,18 +6,16 @@
  * OpenAPI spec version: 0.3.0
  */
 import type { ActivityAssignee } from './activityAssignee';
+import type { ActivitySchedule } from './activitySchedule';
 
 export interface Activity {
   id: string;
   organizationId: string;
   operationId: string;
   title: string;
-  weekday?: number | null;
-  specificDate?: Date | null;
-  startTime?: string | null;
-  endTime?: string | null;
   active: boolean;
   createdAt: Date;
   updatedAt: Date;
+  schedules: ActivitySchedule[];
   assignees: ActivityAssignee[];
 }

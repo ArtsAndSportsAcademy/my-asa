@@ -78,6 +78,13 @@
       "when": 1785343784422,
       "tag": "0010_add_visit_until_to_users",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1753826400000,
+      "tag": "0011_activity_schedules",
+      "breakpoints": true
     }
   ]
 }

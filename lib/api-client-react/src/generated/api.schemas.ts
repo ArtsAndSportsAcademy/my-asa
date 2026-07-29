@@ -2608,6 +2608,21 @@ export interface FolgaListResponse {
   folgas: FolgaItem[];
 }
 
+export interface ActivitySchedule {
+  id: string;
+  weekday?: number | null;
+  specificDate?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+}
+
+export interface ActivityScheduleInput {
+  weekday?: number | null;
+  specificDate?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+}
+
 export interface ActivityAssignee {
   id: string;
   userId?: string | null;
@@ -2621,13 +2636,10 @@ export interface Activity {
   organizationId: string;
   operationId: string;
   title: string;
-  weekday?: number | null;
-  specificDate?: string | null;
-  startTime?: string | null;
-  endTime?: string | null;
   active: boolean;
   createdAt: string;
   updatedAt: string;
+  schedules: ActivitySchedule[];
   assignees: ActivityAssignee[];
 }
 
@@ -2639,21 +2651,17 @@ export interface ActivityAssigneeInput {
 export interface ActivityCreate {
   operationId: string;
   title: string;
-  weekday?: number | null;
-  specificDate?: string | null;
-  startTime?: string | null;
-  endTime?: string | null;
   active?: boolean;
+  /** @minItems 1 */
+  schedules: ActivityScheduleInput[];
   assignees?: ActivityAssigneeInput[];
 }
 
 export interface ActivityUpdate {
   title?: string;
-  weekday?: number | null;
-  specificDate?: string | null;
-  startTime?: string | null;
-  endTime?: string | null;
   active?: boolean;
+  /** @minItems 1 */
+  schedules?: ActivityScheduleInput[];
   assignees?: ActivityAssigneeInput[];
 }
 

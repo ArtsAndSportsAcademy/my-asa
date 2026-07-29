@@ -5136,13 +5136,16 @@ export const GetActivitiesResponse = zod.object({
   "organizationId": zod.string(),
   "operationId": zod.string(),
   "title": zod.string(),
-  "weekday": zod.number().nullish(),
-  "specificDate": zod.coerce.date().nullish(),
-  "startTime": zod.string().nullish(),
-  "endTime": zod.string().nullish(),
   "active": zod.boolean(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
+  "schedules": zod.array(zod.object({
+  "id": zod.string(),
+  "weekday": zod.number().nullish(),
+  "specificDate": zod.coerce.date().nullish(),
+  "startTime": zod.string().nullish(),
+  "endTime": zod.string().nullish()
+})),
   "assignees": zod.array(zod.object({
   "id": zod.string(),
   "userId": zod.string().nullish(),
@@ -5157,14 +5160,19 @@ export const GetActivitiesResponse = zod.object({
 /**
  * @summary Create a recurring or one-off activity
  */
+
+
+
 export const CreateActivityBody = zod.object({
   "operationId": zod.string(),
   "title": zod.string(),
+  "active": zod.boolean().optional(),
+  "schedules": zod.array(zod.object({
   "weekday": zod.number().nullish(),
   "specificDate": zod.coerce.date().nullish(),
   "startTime": zod.string().nullish(),
-  "endTime": zod.string().nullish(),
-  "active": zod.boolean().optional(),
+  "endTime": zod.string().nullish()
+})).min(1),
   "assignees": zod.array(zod.object({
   "userId": zod.string().nullish(),
   "groupId": zod.string().nullish()
@@ -5179,13 +5187,18 @@ export const UpdateActivityParams = zod.object({
   "id": zod.coerce.string()
 })
 
+
+
+
 export const UpdateActivityBody = zod.object({
   "title": zod.string().optional(),
+  "active": zod.boolean().optional(),
+  "schedules": zod.array(zod.object({
   "weekday": zod.number().nullish(),
   "specificDate": zod.coerce.date().nullish(),
   "startTime": zod.string().nullish(),
-  "endTime": zod.string().nullish(),
-  "active": zod.boolean().optional(),
+  "endTime": zod.string().nullish()
+})).min(1).optional(),
   "assignees": zod.array(zod.object({
   "userId": zod.string().nullish(),
   "groupId": zod.string().nullish()
@@ -5198,13 +5211,16 @@ export const UpdateActivityResponse = zod.object({
   "organizationId": zod.string(),
   "operationId": zod.string(),
   "title": zod.string(),
-  "weekday": zod.number().nullish(),
-  "specificDate": zod.coerce.date().nullish(),
-  "startTime": zod.string().nullish(),
-  "endTime": zod.string().nullish(),
   "active": zod.boolean(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
+  "schedules": zod.array(zod.object({
+  "id": zod.string(),
+  "weekday": zod.number().nullish(),
+  "specificDate": zod.coerce.date().nullish(),
+  "startTime": zod.string().nullish(),
+  "endTime": zod.string().nullish()
+})),
   "assignees": zod.array(zod.object({
   "id": zod.string(),
   "userId": zod.string().nullish(),

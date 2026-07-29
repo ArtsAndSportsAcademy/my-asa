@@ -10,6 +10,8 @@ export * from './activity';
 export * from './activityAssignee';
 export * from './activityAssigneeInput';
 export * from './activityCreate';
+export * from './activitySchedule';
+export * from './activityScheduleInput';
 export * from './activityUpdate';
 export * from './addGroupMember201';
 export * from './addGroupSupervisor201';

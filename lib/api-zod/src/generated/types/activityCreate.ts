@@ -6,14 +6,13 @@
  * OpenAPI spec version: 0.3.0
  */
 import type { ActivityAssigneeInput } from './activityAssigneeInput';
+import type { ActivityScheduleInput } from './activityScheduleInput';
 
 export interface ActivityCreate {
   operationId: string;
   title: string;
-  weekday?: number | null;
-  specificDate?: Date | null;
-  startTime?: string | null;
-  endTime?: string | null;
   active?: boolean;
+  /** @minItems 1 */
+  schedules: ActivityScheduleInput[];
   assignees?: ActivityAssigneeInput[];
 }

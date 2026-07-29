@@ -14,6 +14,7 @@ import {
   usersTable,
   userRolesTable,
   recurringActivitiesTable,
+  recurringActivitySchedulesTable,
   recurringActivityAssigneesTable,
   folgasTable,
 } from "@workspace/db";
@@ -369,48 +370,65 @@ export async function resolveScaleAllocations(scale: ScaleForMerge) {
     const isUnavailable = (userId: string, ds: string): boolean =>
       (folgasByUser.get(userId) ?? []).some((f) => f.start <= ds && ds <= f.end);
 
+    // Load all schedules for the active activities in one query.
+    const allSchedules = activityIds.length
+      ? await db
+          .select()
+          .from(recurringActivitySchedulesTable)
+          .where(inArray(recurringActivitySchedulesTable.activityId, activityIds))
+      : [];
+    const schedulesByActivity = new Map<string, typeof allSchedules>();
+    for (const s of allSchedules) {
+      const list = schedulesByActivity.get(s.activityId) ?? [];
+      list.push(s);
+      schedulesByActivity.set(s.activityId, list);
+    }
+
     for (const act of activities) {
       const users = activityUsers.get(act.id)!;
       if (users.size === 0) continue;
-      let dates: string[];
-      if (act.weekday != null) {
-        const wd = act.weekday;
-        dates = periodDates.filter(
-          (ds) => new Date(ds + "T00:00:00Z").getUTCDay() === wd,
-        );
-      } else if (act.specificDate) {
-        dates =
-          act.specificDate >= scale.periodStart && act.specificDate <= scale.periodEnd
-            ? [act.specificDate]
-            : [];
-      } else {
-        dates = [];
-      }
-      for (const ds of dates) {
-        for (const [userId, userName] of users) {
-          if (nonSchedulable.has(userId)) continue;
-          if (isUnavailable(userId, ds)) continue;
-          recurringRows.push({
-            id: `rec:${act.id}:${ds}:${userId}`,
-            agendaEventId: null,
-            positionId: null,
-            userId,
-            status: "RECURRING_ACTIVITY",
-            overrideReason: null,
-            notes: null,
-            manualDate: ds,
-            manualLabel: act.title,
-            startTime: act.startTime,
-            endTime: act.endTime,
-            positionName: null,
-            userName,
-            eventDate: ds,
-            eventTitle: act.title,
-            eventStartTime: act.startTime,
-            eventEndTime: act.endTime,
-            isRecurringActivity: true,
-            candidates: [],
-          });
+      const actSchedules = schedulesByActivity.get(act.id) ?? [];
+      for (const sched of actSchedules) {
+        let dates: string[];
+        if (sched.weekday != null) {
+          const wd = sched.weekday;
+          dates = periodDates.filter(
+            (ds) => new Date(ds + "T00:00:00Z").getUTCDay() === wd,
+          );
+        } else if (sched.specificDate) {
+          dates =
+            sched.specificDate >= scale.periodStart && sched.specificDate <= scale.periodEnd
+              ? [sched.specificDate]
+              : [];
+        } else {
+          dates = [];
+        }
+        for (const ds of dates) {
+          for (const [userId, userName] of users) {
+            if (nonSchedulable.has(userId)) continue;
+            if (isUnavailable(userId, ds)) continue;
+            recurringRows.push({
+              id: `rec:${act.id}:${sched.id}:${ds}:${userId}`,
+              agendaEventId: null,
+              positionId: null,
+              userId,
+              status: "RECURRING_ACTIVITY",
+              overrideReason: null,
+              notes: null,
+              manualDate: ds,
+              manualLabel: act.title,
+              startTime: sched.startTime,
+              endTime: sched.endTime,
+              positionName: null,
+              userName,
+              eventDate: ds,
+              eventTitle: act.title,
+              eventStartTime: sched.startTime,
+              eventEndTime: sched.endTime,
+              isRecurringActivity: true,
+              candidates: [],
+            });
+          }
         }
       }
     }

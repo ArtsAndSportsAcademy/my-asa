@@ -8974,6 +8974,22 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/FolgaItem"
+    ActivitySchedule:
+      type: object
+      required: [id]
+      properties:
+        id: { type: string }
+        weekday: { type: integer, nullable: true }
+        specificDate: { type: string, format: date, nullable: true }
+        startTime: { type: string, nullable: true }
+        endTime: { type: string, nullable: true }
+    ActivityScheduleInput:
+      type: object
+      properties:
+        weekday: { type: integer, nullable: true }
+        specificDate: { type: string, format: date, nullable: true }
+        startTime: { type: string, nullable: true }
+        endTime: { type: string, nullable: true }
     ActivityAssignee:
       type: object
       required: [id]
@@ -8985,19 +9001,19 @@ components:
         groupName: { type: string, nullable: true }
     Activity:
       type: object
-      required: [id, organizationId, operationId, title, active, assignees, createdAt, updatedAt]
+      required: [id, organizationId, operationId, title, active, schedules, assignees, createdAt, updatedAt]
       properties:
         id: { type: string }
         organizationId: { type: string }
         operationId: { type: string }
         title: { type: string }
-        weekday: { type: integer, nullable: true }
-        specificDate: { type: string, format: date, nullable: true }
-        startTime: { type: string, nullable: true }
-        endTime: { type: string, nullable: true }
         active: { type: boolean }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+        schedules:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivitySchedule"
         assignees:
           type: array
           items:
@@ -9009,15 +9025,16 @@ components:
         groupId: { type: string, nullable: true }
     ActivityCreate:
       type: object
-      required: [operationId, title]
+      required: [operationId, title, schedules]
       properties:
         operationId: { type: string }
         title: { type: string }
-        weekday: { type: integer, nullable: true }
-        specificDate: { type: string, format: date, nullable: true }
-        startTime: { type: string, nullable: true }
-        endTime: { type: string, nullable: true }
         active: { type: boolean }
+        schedules:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/ActivityScheduleInput"
         assignees:
           type: array
           items:
@@ -9026,11 +9043,12 @@ components:
       type: object
       properties:
         title: { type: string }
-        weekday: { type: integer, nullable: true }
-        specificDate: { type: string, format: date, nullable: true }
-        startTime: { type: string, nullable: true }
-        endTime: { type: string, nullable: true }
         active: { type: boolean }
+        schedules:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/ActivityScheduleInput"
         assignees:
           type: array
           items:

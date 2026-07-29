@@ -3,6 +3,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   recurringActivitiesTable,
+  recurringActivitySchedulesTable,
   recurringActivityAssigneesTable,
   operationsTable,
   usersTable,
@@ -26,6 +27,12 @@ function isValidTime(v: unknown): v is string {
 }
 
 type AssigneeInput = { userId?: string | null; groupId?: string | null };
+type ScheduleInput = {
+  weekday?: number | null;
+  specificDate?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+};
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 /** Operações que o utilizador pode gerir: ADMIN→todas da org; supervisor→as suas. */
@@ -106,6 +113,48 @@ async function assigneesOutOfScope(
   return false;
 }
 
+/**
+ * Valida um array de schedules: cada item deve ter weekday OU specificDate;
+ * devolve uma string de erro ou null se tudo OK.
+ */
+function validateSchedules(schedules: unknown): string | null {
+  if (!Array.isArray(schedules) || schedules.length === 0)
+    return "schedules deve ser um array não-vazio";
+  for (const s of schedules) {
+    const hasWeekday = typeof s.weekday === "number";
+    const hasDate = typeof s.specificDate === "string" && DATE_RE.test(s.specificDate);
+    if (!hasWeekday && !hasDate)
+      return "Cada schedule precisa de weekday (0-6) ou specificDate (YYYY-MM-DD)";
+    if (hasWeekday && hasDate)
+      return "Informe weekday OU specificDate em cada schedule, não ambos";
+    if (hasWeekday && (s.weekday < 0 || s.weekday > 6))
+      return "weekday deve ser 0 (domingo) a 6 (sábado)";
+    if (s.startTime != null && !isValidTime(s.startTime))
+      return "startTime inválido (use HH:MM)";
+    if (s.endTime != null && !isValidTime(s.endTime))
+      return "endTime inválido (use HH:MM)";
+  }
+  return null;
+}
+
+/** Substitui os schedules de uma atividade dentro de uma transação. */
+async function replaceSchedules(tx: Tx, activityId: string, schedules: ScheduleInput[]) {
+  await tx
+    .delete(recurringActivitySchedulesTable)
+    .where(eq(recurringActivitySchedulesTable.activityId, activityId));
+  if (schedules.length > 0) {
+    await tx.insert(recurringActivitySchedulesTable).values(
+      schedules.map((s) => ({
+        activityId,
+        weekday: typeof s.weekday === "number" ? s.weekday : null,
+        specificDate: typeof s.specificDate === "string" ? s.specificDate : null,
+        startTime: s.startTime ?? null,
+        endTime: s.endTime ?? null,
+      })),
+    );
+  }
+}
+
 /** Substitui os designados de uma atividade dentro de uma transação. */
 async function replaceAssignees(
   tx: Tx,
@@ -127,35 +176,54 @@ async function replaceAssignees(
   }
 }
 
-/** Hidrata as atividades com a lista de designados (nomes de utilizadores/grupos). */
+/** Hidrata as atividades com schedules e designados (nomes de utilizadores/grupos). */
 async function hydrate(activities: (typeof recurringActivitiesTable.$inferSelect)[]) {
   if (activities.length === 0) return [];
   const ids = activities.map((a) => a.id);
-  const assignees = await db
-    .select()
-    .from(recurringActivityAssigneesTable)
-    .where(inArray(recurringActivityAssigneesTable.activityId, ids));
+
+  const [schedules, assignees] = await Promise.all([
+    db
+      .select()
+      .from(recurringActivitySchedulesTable)
+      .where(inArray(recurringActivitySchedulesTable.activityId, ids)),
+    db
+      .select()
+      .from(recurringActivityAssigneesTable)
+      .where(inArray(recurringActivityAssigneesTable.activityId, ids)),
+  ]);
 
   const userIds = [...new Set(assignees.map((a) => a.userId).filter((x): x is string => !!x))];
   const groupIds = [...new Set(assignees.map((a) => a.groupId).filter((x): x is string => !!x))];
 
-  const users = userIds.length
-    ? await db
-        .select({ id: usersTable.id, name: usersTable.name })
-        .from(usersTable)
-        .where(inArray(usersTable.id, userIds))
-    : [];
-  const groups = groupIds.length
-    ? await db
-        .select({ id: operationalGroupsTable.id, name: operationalGroupsTable.name })
-        .from(operationalGroupsTable)
-        .where(inArray(operationalGroupsTable.id, groupIds))
-    : [];
+  const [users, groups] = await Promise.all([
+    userIds.length
+      ? db
+          .select({ id: usersTable.id, name: usersTable.name })
+          .from(usersTable)
+          .where(inArray(usersTable.id, userIds))
+      : Promise.resolve([]),
+    groupIds.length
+      ? db
+          .select({ id: operationalGroupsTable.id, name: operationalGroupsTable.name })
+          .from(operationalGroupsTable)
+          .where(inArray(operationalGroupsTable.id, groupIds))
+      : Promise.resolve([]),
+  ]);
+
   const userName = new Map(users.map((u) => [u.id, u.name]));
   const groupName = new Map(groups.map((g) => [g.id, g.name]));
 
   return activities.map((a) => ({
     ...a,
+    schedules: schedules
+      .filter((s) => s.activityId === a.id)
+      .map((s) => ({
+        id: s.id,
+        weekday: s.weekday,
+        specificDate: s.specificDate,
+        startTime: s.startTime,
+        endTime: s.endTime,
+      })),
     assignees: assignees
       .filter((x) => x.activityId === a.id)
       .map((x) => ({
@@ -205,29 +273,15 @@ router.post(
   async (req, res) => {
     const log = requestLogger(LOG_DOMAIN.ACTIVITIES, req.requestId, req.correlationId);
     const { role, sub, organizationId } = req.user!;
-    const { operationId, title, weekday, specificDate, startTime, endTime, active, assignees } =
-      req.body ?? {};
+    const { operationId, title, schedules, active, assignees } = req.body ?? {};
     try {
       if (!operationId || typeof title !== "string" || !title.trim()) {
         res.status(400).json({ error: "operationId e title são obrigatórios" });
         return;
       }
-      const hasWeekday = typeof weekday === "number";
-      const hasDate = typeof specificDate === "string" && DATE_RE.test(specificDate);
-      if (hasWeekday === hasDate) {
-        res.status(400).json({ error: "Informe weekday (0-6) OU specificDate (YYYY-MM-DD)" });
-        return;
-      }
-      if (hasWeekday && (weekday < 0 || weekday > 6)) {
-        res.status(400).json({ error: "weekday deve ser 0 (domingo) a 6 (sábado)" });
-        return;
-      }
-      if (startTime != null && !isValidTime(startTime)) {
-        res.status(400).json({ error: "startTime inválido (use HH:MM)" });
-        return;
-      }
-      if (endTime != null && !isValidTime(endTime)) {
-        res.status(400).json({ error: "endTime inválido (use HH:MM)" });
+      const schedulesErr = validateSchedules(schedules);
+      if (schedulesErr) {
+        res.status(400).json({ error: schedulesErr });
         return;
       }
       const allowed = await manageableOperationIds(role, sub, organizationId);
@@ -251,13 +305,10 @@ router.post(
             organizationId,
             operationId,
             title: title.trim(),
-            weekday: hasWeekday ? weekday : null,
-            specificDate: hasDate ? specificDate : null,
-            startTime: startTime ?? null,
-            endTime: endTime ?? null,
             active: active === false ? false : true,
           })
           .returning();
+        await replaceSchedules(tx, activity!.id, schedules as ScheduleInput[]);
         if (Array.isArray(assignees)) {
           await replaceAssignees(tx, activity!.id, assignees);
         }
@@ -273,7 +324,7 @@ router.post(
   },
 );
 
-// PATCH /api/activities/:id — atualiza campos e (opcional) designados
+// PATCH /api/activities/:id — atualiza campos e (opcional) schedules/designados
 router.patch(
   "/activities/:id",
   requireAuth,
@@ -283,7 +334,7 @@ router.patch(
     const log = requestLogger(LOG_DOMAIN.ACTIVITIES, req.requestId, req.correlationId);
     const { role, sub, organizationId } = req.user!;
     const id = req.params["id"] as string;
-    const { title, weekday, specificDate, startTime, endTime, active, assignees } = req.body ?? {};
+    const { title, schedules, active, assignees } = req.body ?? {};
     try {
       const allowed = await manageableOperationIds(role, sub, organizationId);
       const existing = await loadManageableActivity(id, allowed);
@@ -291,13 +342,12 @@ router.patch(
         res.status(404).json({ error: "Atividade não encontrada" });
         return;
       }
-      if (startTime != null && startTime !== "" && !isValidTime(startTime)) {
-        res.status(400).json({ error: "startTime inválido (use HH:MM)" });
-        return;
-      }
-      if (endTime != null && endTime !== "" && !isValidTime(endTime)) {
-        res.status(400).json({ error: "endTime inválido (use HH:MM)" });
-        return;
+      if (schedules !== undefined) {
+        const schedulesErr = validateSchedules(schedules);
+        if (schedulesErr) {
+          res.status(400).json({ error: schedulesErr });
+          return;
+        }
       }
       if (
         Array.isArray(assignees) &&
@@ -311,15 +361,6 @@ router.patch(
       const patch: Record<string, unknown> = { updatedAt: new Date() };
       if (typeof title === "string" && title.trim()) patch["title"] = title.trim();
       if (typeof active === "boolean") patch["active"] = active;
-      if (startTime !== undefined) patch["startTime"] = startTime || null;
-      if (endTime !== undefined) patch["endTime"] = endTime || null;
-      if (typeof weekday === "number" && weekday >= 0 && weekday <= 6) {
-        patch["weekday"] = weekday;
-        patch["specificDate"] = null;
-      } else if (typeof specificDate === "string" && DATE_RE.test(specificDate)) {
-        patch["specificDate"] = specificDate;
-        patch["weekday"] = null;
-      }
 
       const updated = await db.transaction(async (tx) => {
         const [row] = await tx
@@ -327,6 +368,9 @@ router.patch(
           .set(patch)
           .where(eq(recurringActivitiesTable.id, id))
           .returning();
+        if (Array.isArray(schedules)) {
+          await replaceSchedules(tx, id, schedules as ScheduleInput[]);
+        }
         if (Array.isArray(assignees)) {
           await replaceAssignees(tx, id, assignees);
         }
