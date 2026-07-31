@@ -158,26 +158,26 @@ async function requireDailyBookOperate(
   return true;
 }
 
-async function buildDailyBookTree(dailyBookId: string) {
-  const scenes = await db
+async function buildDailyBookTree(dailyBookId: string, dbLike: typeof db = db) {
+  const scenes = await dbLike
     .select()
     .from(dailyBookScenesTable)
     .where(eq(dailyBookScenesTable.dailyBookId, dailyBookId))
     .orderBy(dailyBookScenesTable.order);
 
-  const blocks = await db
+  const blocks = await dbLike
     .select()
     .from(dailyBookBlocksTable)
     .where(eq(dailyBookBlocksTable.dailyBookId, dailyBookId))
     .orderBy(dailyBookBlocksTable.order);
 
-  const positions = await db
+  const positions = await dbLike
     .select()
     .from(dailyBookPositionsTable)
     .where(eq(dailyBookPositionsTable.dailyBookId, dailyBookId));
 
   const assignments = positions.length > 0
-    ? await db
+    ? await dbLike
         .select()
         .from(dailyBookAssignmentsTable)
         .where(
@@ -193,7 +193,7 @@ async function buildDailyBookTree(dailyBookId: string) {
   ];
   const nameByUserId: Record<string, string> = {};
   if (assignedUserIds.length > 0) {
-    const users = await db
+    const users = await dbLike
       .select({ id: usersTable.id, name: usersTable.name })
       .from(usersTable)
       .where(inArray(usersTable.id, assignedUserIds));
@@ -241,9 +241,17 @@ async function buildDailyBookTree(dailyBookId: string) {
 }
 
 function computeDelta(
-  prevSnapshot: Record<string, unknown>,
+  prevSnapshot: Record<string, unknown> | null | undefined,
   currSnapshot: Record<string, unknown>
 ): Record<string, unknown> {
+  // Guard: if the stored snapshot has no `scenes` array it is either an empty
+  // placeholder ({}) or a pre-feature legacy row ({rotationWinners:…}).
+  // Treat it as "snapshot unavailable" instead of reporting every live scene
+  // as a new addition.
+  if (!prevSnapshot || !Array.isArray(prevSnapshot.scenes)) {
+    return { additions: [], removals: [], swaps: [], structural: [], isEmpty: true, snapshotUnavailable: true };
+  }
+
   const prevScenes = (prevSnapshot.scenes as any[]) ?? [];
   const currScenes = (currSnapshot.scenes as any[]) ?? [];
 
@@ -465,7 +473,8 @@ async function createAssignmentsForRole(
   allocationMap: Record<string, string | null>,
   sceneKey: string | null,
   assignedByScene: Map<string, Set<string>>,
-  minimumCoverage: number = 1
+  minimumCoverage: number = 1,
+  dbLike: typeof db = db
 ) {
   const rr = byRole.get(roleId);
   const fromResolver = !!(rr && rr.hasLines && rr.people.length > 0);
@@ -477,7 +486,7 @@ async function createAssignmentsForRole(
     finalPlanned = dedupAssignmentsForScene(planned, set);
   }
   for (const a of finalPlanned) {
-    await db.insert(dailyBookAssignmentsTable).values({ dailyBookId, positionId, userId: a.userId, status: a.status });
+    await dbLike.insert(dailyBookAssignmentsTable).values({ dailyBookId, positionId, userId: a.userId, status: a.status });
   }
 }
 
@@ -620,82 +629,84 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
     // avance o contador exatamente para quem ficou escalado (e não re-resolva).
     const rotationWinners = collectRotationWinners(result);
 
-    const [dailyBook] = await db
-      .insert(dailyBooksTable)
-      .values({
-        agendaEventId,
-        scaleId: scaleId ?? null,
-        showBookId,
-        status: "DRAFT",
-        version: 1,
-        snapshotJson: {} as any,
-        generatedAt: new Date(),
-        generatedBy: userId,
-      })
-      .returning();
-
-    const dailyBookId = dailyBook!.id;
-
-    const sceneIdMap: Record<string, string> = {};
-    for (const scene of scenes) {
-      const [dbScene] = await db
-        .insert(dailyBookScenesTable)
-        .values({ dailyBookId, name: scene.name, order: scene.order, sourceSceneId: scene.id })
-        .returning();
-      sceneIdMap[scene.id] = dbScene!.id;
-    }
-
-    const blockIdMap: Record<string, string> = {};
-    for (const block of blocks) {
-      const [dbBlock] = await db
-        .insert(dailyBookBlocksTable)
-        .values({
-          dailyBookId,
-          name: block.name,
-          order: block.order,
-          startTime: block.startTime,
-          endTime: block.endTime,
-          sourceBlockId: block.id,
-          sceneId: block.sceneId ? sceneIdMap[block.sceneId] ?? null : null,
-        })
-        .returning();
-      blockIdMap[block.id] = dbBlock!.id;
-    }
-
-    // Mapa bloco→cena (origem) para aplicar a regra de não-duplicar pessoa na mesma cena.
-    const sceneByBlock: Record<string, string | null> = {};
-    blocks.forEach((b) => { sceneByBlock[b.id] = b.sceneId ?? null; });
-    const assignedByScene = buildSceneOccupancyFromResolver(roles, sceneByBlock, byRole);
-
+    // Wrap the entire creation in a transaction so the row with snapshotJson={}
+    // is never visible outside the transaction. On any error, everything rolls
+    // back and the client receives a clean 500.
     let positionsCount = 0;
-    for (const role of roles) {
-      const [dbPos] = await db
-        .insert(dailyBookPositionsTable)
+    const { updatedBook, dailyBookId } = await db.transaction(async (tx) => {
+      const [dailyBook] = await tx
+        .insert(dailyBooksTable)
         .values({
-          dailyBookId,
-          name: role.name,
-          minimumCoverage: role.minimumCoverage,
-          sourceRoleId: role.id,
-          blockId: role.blockId ? blockIdMap[role.blockId] ?? null : null,
+          agendaEventId,
+          scaleId: scaleId ?? null,
+          showBookId,
+          status: "DRAFT",
+          version: 1,
+          snapshotJson: {} as any,
+          generatedAt: new Date(),
+          generatedBy: userId,
         })
         .returning();
-      positionsCount++;
-      const sceneKey = role.blockId ? sceneByBlock[role.blockId] ?? null : null;
-      await createAssignmentsForRole(dailyBookId, dbPos!.id, role.id, byRole, allocationMap, sceneKey, assignedByScene, role.minimumCoverage);
-    }
 
-    const fullTree = await buildDailyBookTree(dailyBookId);
-    const snapshotJson = { scenes: fullTree, rotationWinners };
-    await db
-      .update(dailyBooksTable)
-      .set({ snapshotJson: snapshotJson as any })
-      .where(eq(dailyBooksTable.id, dailyBookId));
+      const dailyBookId = dailyBook!.id;
 
-    const [updatedBook] = await db
-      .select()
-      .from(dailyBooksTable)
-      .where(eq(dailyBooksTable.id, dailyBookId))
-      .limit(1);
+      const sceneIdMap: Record<string, string> = {};
+      for (const scene of scenes) {
+        const [dbScene] = await tx
+          .insert(dailyBookScenesTable)
+          .values({ dailyBookId, name: scene.name, order: scene.order, sourceSceneId: scene.id })
+          .returning();
+        sceneIdMap[scene.id] = dbScene!.id;
+      }
+
+      const blockIdMap: Record<string, string> = {};
+      for (const block of blocks) {
+        const [dbBlock] = await tx
+          .insert(dailyBookBlocksTable)
+          .values({
+            dailyBookId,
+            name: block.name,
+            order: block.order,
+            startTime: block.startTime,
+            endTime: block.endTime,
+            sourceBlockId: block.id,
+            sceneId: block.sceneId ? sceneIdMap[block.sceneId] ?? null : null,
+          })
+          .returning();
+        blockIdMap[block.id] = dbBlock!.id;
+      }
+
+      // Mapa bloco→cena (origem) para aplicar a regra de não-duplicar pessoa na mesma cena.
+      const sceneByBlock: Record<string, string | null> = {};
+      blocks.forEach((b) => { sceneByBlock[b.id] = b.sceneId ?? null; });
+      const assignedByScene = buildSceneOccupancyFromResolver(roles, sceneByBlock, byRole);
+
+      for (const role of roles) {
+        const [dbPos] = await tx
+          .insert(dailyBookPositionsTable)
+          .values({
+            dailyBookId,
+            name: role.name,
+            minimumCoverage: role.minimumCoverage,
+            sourceRoleId: role.id,
+            blockId: role.blockId ? blockIdMap[role.blockId] ?? null : null,
+          })
+          .returning();
+        positionsCount++;
+        const sceneKey = role.blockId ? sceneByBlock[role.blockId] ?? null : null;
+        await createAssignmentsForRole(dailyBookId, dbPos!.id, role.id, byRole, allocationMap, sceneKey, assignedByScene, role.minimumCoverage, tx as unknown as typeof db);
+      }
+
+      const fullTree = await buildDailyBookTree(dailyBookId, tx as unknown as typeof db);
+      const snapshotJson = { scenes: fullTree, rotationWinners };
+      const [updatedBook] = await tx
+        .update(dailyBooksTable)
+        .set({ snapshotJson: snapshotJson as any })
+        .where(eq(dailyBooksTable.id, dailyBookId))
+        .returning();
+
+      return { updatedBook: updatedBook!, dailyBookId };
+    });
 
     eventBus.emit("daily-book.created", { dailyBookId, agendaEventId, scaleId: scaleId ?? null, version: 1 });
     eventBus.emit("daily-book.generated", { dailyBookId, agendaEventId, version: 1, scenesCount: scenes.length, positionsCount });
@@ -731,11 +742,6 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
       return;
     }
 
-    await db.delete(dailyBookAssignmentsTable).where(eq(dailyBookAssignmentsTable.dailyBookId, id));
-    await db.delete(dailyBookPositionsTable).where(eq(dailyBookPositionsTable.dailyBookId, id));
-    await db.delete(dailyBookBlocksTable).where(eq(dailyBookBlocksTable.dailyBookId, id));
-    await db.delete(dailyBookScenesTable).where(eq(dailyBookScenesTable.dailyBookId, id));
-
     const [event] = await db.select().from(agendaEventsTable).where(eq(agendaEventsTable.id, book.agendaEventId)).limit(1);
     if (!event || !event.showBookId) { res.status(400).json({ error: "Evento ou Show Book não encontrado" }); return; }
 
@@ -761,33 +767,44 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
 
     const newVersion = book.version + 1;
 
-    const sceneIdMap: Record<string, string> = {};
-    for (const scene of scenes) {
-      const [dbScene] = await db.insert(dailyBookScenesTable).values({ dailyBookId: id, name: scene.name, order: scene.order, sourceSceneId: scene.id }).returning();
-      sceneIdMap[scene.id] = dbScene!.id;
-    }
-    const blockIdMap: Record<string, string> = {};
-    for (const block of blocks) {
-      const [dbBlock] = await db.insert(dailyBookBlocksTable).values({ dailyBookId: id, name: block.name, order: block.order, startTime: block.startTime, endTime: block.endTime, sourceBlockId: block.id, sceneId: block.sceneId ? sceneIdMap[block.sceneId] ?? null : null }).returning();
-      blockIdMap[block.id] = dbBlock!.id;
-    }
-    const sceneByBlock: Record<string, string | null> = {};
-    blocks.forEach((b) => { sceneByBlock[b.id] = b.sceneId ?? null; });
-    const assignedByScene = buildSceneOccupancyFromResolver(roles, sceneByBlock, byRole);
-    for (const role of roles) {
-      const [dbPos] = await db.insert(dailyBookPositionsTable).values({ dailyBookId: id, name: role.name, minimumCoverage: role.minimumCoverage, sourceRoleId: role.id, blockId: role.blockId ? blockIdMap[role.blockId] ?? null : null }).returning();
-      const sceneKey = role.blockId ? sceneByBlock[role.blockId] ?? null : null;
-      await createAssignmentsForRole(id, dbPos!.id, role.id, byRole, allocationMap, sceneKey, assignedByScene, role.minimumCoverage);
-    }
+    // Wrap delete+insert+update in a transaction so the book is never left in a
+    // partial state (cleared but not yet rebuilt, or rebuilt with snapshotJson={}).
+    const updated = await db.transaction(async (tx) => {
+      await tx.delete(dailyBookAssignmentsTable).where(eq(dailyBookAssignmentsTable.dailyBookId, id));
+      await tx.delete(dailyBookPositionsTable).where(eq(dailyBookPositionsTable.dailyBookId, id));
+      await tx.delete(dailyBookBlocksTable).where(eq(dailyBookBlocksTable.dailyBookId, id));
+      await tx.delete(dailyBookScenesTable).where(eq(dailyBookScenesTable.dailyBookId, id));
 
-    const fullTree = await buildDailyBookTree(id);
-    const snapshotJson = { scenes: fullTree, rotationWinners };
+      const sceneIdMap: Record<string, string> = {};
+      for (const scene of scenes) {
+        const [dbScene] = await tx.insert(dailyBookScenesTable).values({ dailyBookId: id, name: scene.name, order: scene.order, sourceSceneId: scene.id }).returning();
+        sceneIdMap[scene.id] = dbScene!.id;
+      }
+      const blockIdMap: Record<string, string> = {};
+      for (const block of blocks) {
+        const [dbBlock] = await tx.insert(dailyBookBlocksTable).values({ dailyBookId: id, name: block.name, order: block.order, startTime: block.startTime, endTime: block.endTime, sourceBlockId: block.id, sceneId: block.sceneId ? sceneIdMap[block.sceneId] ?? null : null }).returning();
+        blockIdMap[block.id] = dbBlock!.id;
+      }
+      const sceneByBlock: Record<string, string | null> = {};
+      blocks.forEach((b) => { sceneByBlock[b.id] = b.sceneId ?? null; });
+      const assignedByScene = buildSceneOccupancyFromResolver(roles, sceneByBlock, byRole);
+      for (const role of roles) {
+        const [dbPos] = await tx.insert(dailyBookPositionsTable).values({ dailyBookId: id, name: role.name, minimumCoverage: role.minimumCoverage, sourceRoleId: role.id, blockId: role.blockId ? blockIdMap[role.blockId] ?? null : null }).returning();
+        const sceneKey = role.blockId ? sceneByBlock[role.blockId] ?? null : null;
+        await createAssignmentsForRole(id, dbPos!.id, role.id, byRole, allocationMap, sceneKey, assignedByScene, role.minimumCoverage, tx as unknown as typeof db);
+      }
 
-    const [updated] = await db
-      .update(dailyBooksTable)
-      .set({ version: newVersion, generatedAt: new Date(), generatedBy: userId, snapshotJson: snapshotJson as any, updatedAt: new Date() })
-      .where(eq(dailyBooksTable.id, id))
-      .returning();
+      const fullTree = await buildDailyBookTree(id, tx as unknown as typeof db);
+      const snapshotJson = { scenes: fullTree, rotationWinners };
+
+      const [updated] = await tx
+        .update(dailyBooksTable)
+        .set({ version: newVersion, generatedAt: new Date(), generatedBy: userId, snapshotJson: snapshotJson as any, updatedAt: new Date() })
+        .where(eq(dailyBooksTable.id, id))
+        .returning();
+
+      return updated!;
+    });
 
     eventBus.emit("daily-book.generated", { dailyBookId: id, agendaEventId: book.agendaEventId, version: newVersion, scenesCount: scenes.length, positionsCount: roles.length });
 
@@ -1200,8 +1217,22 @@ router.get("/daily-book/:id/delta", requireAuth, requireOrganization, async (req
 
     const currentTree = await buildDailyBookTree(id);
     const currentSnapshot = { scenes: currentTree };
-    const prevSnapshot = (book.snapshotJson as Record<string, unknown>) ?? {};
+    const prevSnapshot = (book.snapshotJson as Record<string, unknown> | null) ?? null;
     const liveDelta = computeDelta(prevSnapshot, currentSnapshot);
+
+    // If the stored snapshot is a legacy/empty placeholder, report no changes
+    // rather than treating every live scene as a new addition.
+    if (liveDelta.snapshotUnavailable) {
+      res.json({
+        version: book.version,
+        status: book.status,
+        liveDelta: null,
+        hasLiveChanges: false,
+        snapshotUnavailable: true,
+        lastRepublishDelta: book.republishDeltaJson ?? null,
+      });
+      return;
+    }
 
     res.json({
       version: book.version,
