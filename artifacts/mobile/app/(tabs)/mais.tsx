@@ -32,14 +32,14 @@ function buildManagerSections(isSupervisor: boolean): Section[] {
     {
       title: "Operação",
       items: [
-        { label: "Escala",        subtitle: "Escala completa da operação",    icon: "list",        route: "/(tabs)/scale"             },
+        { label: "Escala",        subtitle: "Escala completa da operação",    icon: "list",        route: "/(stack)/scale"             },
         { label: "Atividades",    subtitle: "Atividades da operação",         icon: "activity",    disabled: true, badge: "Em breve" },
-        { label: "Livro do Dia",  subtitle: "Roteiro operacional do dia",     icon: "file-text",   route: "/(tabs)/daily-book"        },
-        { label: "Tarefas",       subtitle: "Tarefas atribuídas",             icon: "check-square",route: "/(tabs)/tarefas"           },
-        { label: "Folgas & Indisponibilidades", subtitle: "Ausências e restrições", icon: "calendar", route: "/(tabs)/folgas"        },
-        { label: "Solicitações",                                               icon: "inbox",       route: "/(tabs)/solicitacoes"     },
+        { label: "Livro do Dia",  subtitle: "Roteiro operacional do dia",     icon: "file-text",   route: "/(stack)/daily-book"        },
+        { label: "Tarefas",       subtitle: "Tarefas atribuídas",             icon: "check-square",route: "/(stack)/tarefas"           },
+        { label: "Folgas & Indisponibilidades", subtitle: "Ausências e restrições", icon: "calendar", route: "/(stack)/folgas"        },
+        { label: "Solicitações",                                               icon: "inbox",       route: "/(stack)/solicitacoes"     },
         { label: "Check-ins",     subtitle: "Registo de presença no local",   icon: "map-pin",     disabled: true, badge: "Em breve" },
-        { label: "Responsabilidades & Delegações", subtitle: "Funções permanentes da operação", icon: "users", route: "/(tabs)/responsabilidades" },
+        { label: "Responsabilidades & Delegações", subtitle: "Funções permanentes da operação", icon: "users", route: "/(stack)/responsabilidades" },
       ],
     },
     {
@@ -56,8 +56,8 @@ function buildManagerSections(isSupervisor: boolean): Section[] {
     {
       title: "Planejamento",
       items: [
-        { label: "Agenda",        icon: "calendar",  route: "/(tabs)/agenda"     },
-        { label: "Livro do Show", subtitle: "Estrutura oficial do espetáculo", icon: "book-open", route: "/(tabs)/show-book" },
+        { label: "Agenda",        icon: "calendar",  route: "/(stack)/agenda"     },
+        { label: "Livro do Show", subtitle: "Estrutura oficial do espetáculo", icon: "book-open", route: "/(stack)/show-book" },
       ],
     },
     {
@@ -69,20 +69,20 @@ function buildManagerSections(isSupervisor: boolean): Section[] {
     {
       title: "Conhecimento",
       items: [
-        { label: "Biblioteca", icon: "book", route: "/(tabs)/biblioteca" },
+        { label: "Biblioteca", icon: "book", route: "/(stack)/biblioteca" },
       ],
     },
     {
       title: "Gestão",
       items: [
-        { label: "Painel",       subtitle: "Saúde e cobertura operacional",   icon: "activity",    route: "/(tabs)/panel"    },
-        { label: "Indicadores",  subtitle: "Métricas da gestão operacional",  icon: "trending-up", route: "/(tabs)/insights" },
+        { label: "Painel",       subtitle: "Saúde e cobertura operacional",   icon: "activity",    route: "/(stack)/panel"    },
+        { label: "Indicadores",  subtitle: "Métricas da gestão operacional",  icon: "trending-up", route: "/(stack)/insights" },
       ],
     },
     {
       title: "ASA",
       items: [
-        { label: "ASA", subtitle: "Assistente operacional inteligente", icon: "cpu", route: "/(tabs)/asa" },
+        { label: "ASA", subtitle: "Assistente operacional inteligente", icon: "cpu", route: "/(stack)/asa" },
       ],
     },
   ];
@@ -92,30 +92,30 @@ const ELENCO_SECTIONS: Section[] = [
   {
     title: "Meu Dia a Dia",
     items: [
-      { label: "Escala",       subtitle: "Minha escala e atividades",   icon: "list",        route: "/(tabs)/scale"        },
-      { label: "Livro do Dia", subtitle: "Roteiro do dia",              icon: "file-text",   route: "/(tabs)/daily-book"   },
-      { label: "Tarefas",      subtitle: "Tarefas atribuídas a você",   icon: "check-square",route: "/(tabs)/tarefas"      },
-      { label: "Folgas",       subtitle: "Ausências e dias de descanso",icon: "calendar",    route: "/(tabs)/folgas"       },
-      { label: "Solicitações",                                           icon: "inbox",       route: "/(tabs)/solicitacoes" },
+      { label: "Escala",       subtitle: "Minha escala e atividades",   icon: "list",        route: "/(stack)/scale"        },
+      { label: "Livro do Dia", subtitle: "Roteiro do dia",              icon: "file-text",   route: "/(stack)/daily-book"   },
+      { label: "Tarefas",      subtitle: "Tarefas atribuídas a você",   icon: "check-square",route: "/(stack)/tarefas"      },
+      { label: "Folgas",       subtitle: "Ausências e dias de descanso",icon: "calendar",    route: "/(stack)/folgas"       },
+      { label: "Solicitações",                                           icon: "inbox",       route: "/(stack)/solicitacoes" },
     ],
   },
   {
     title: "Planejamento",
     items: [
-      { label: "Agenda", icon: "calendar", route: "/(tabs)/agenda" },
+      { label: "Agenda", icon: "calendar", route: "/(stack)/agenda" },
     ],
   },
   {
     title: "Conhecimento",
     items: [
-      { label: "Biblioteca",    icon: "book",      route: "/(tabs)/biblioteca" },
-      { label: "Livro do Show", subtitle: "Estrutura oficial do espetáculo", icon: "book-open", route: "/(tabs)/show-book" },
+      { label: "Biblioteca",    icon: "book",      route: "/(stack)/biblioteca" },
+      { label: "Livro do Show", subtitle: "Estrutura oficial do espetáculo", icon: "book-open", route: "/(stack)/show-book" },
     ],
   },
   {
     title: "ASA",
     items: [
-      { label: "ASA", subtitle: "Assistente operacional inteligente", icon: "cpu", route: "/(tabs)/asa" },
+      { label: "ASA", subtitle: "Assistente operacional inteligente", icon: "cpu", route: "/(stack)/asa" },
     ],
   },
 ];
@@ -124,7 +124,7 @@ const TRAINER_SECTIONS: Section[] = [
   {
     title: "Minhas Aulas",
     items: [
-      { label: "Escala", subtitle: "Minhas aulas e sessões", icon: "list", route: "/(tabs)/scale" },
+      { label: "Escala", subtitle: "Minhas aulas e sessões", icon: "list", route: "/(stack)/scale" },
     ],
   },
 ];

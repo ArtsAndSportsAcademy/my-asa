@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useColors } from "@/hooks/useColors";
+import { BackButton } from "@/components/BackButton";
 import { AsaEmptyState } from "@/components/AsaEmptyState";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import {
@@ -220,6 +221,7 @@ export default function SolicitacoesScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
+          <BackButton />
           <Text style={[styles.title, { color: colors.foreground }]}>
             Minhas Solicitações
           </Text>

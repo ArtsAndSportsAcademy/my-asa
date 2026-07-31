@@ -25,6 +25,7 @@ import { useRouter } from "expo-router";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { BackButton } from "@/components/BackButton";
 import { AsaEmptyState } from "@/components/AsaEmptyState";
 
 import { SCALE_STATUS_LABELS } from "@/lib/operational-constants";
@@ -309,7 +310,7 @@ export default function ScaleScreen() {
   const openEvent = useCallback(
     (agendaEventId: string) => {
       router.push({
-        pathname: "/(tabs)/daily-book",
+        pathname: "/(stack)/daily-book",
         params: { eventId: agendaEventId, eventNonce: String(Date.now()) },
       });
     },
@@ -409,7 +410,10 @@ export default function ScaleScreen() {
           },
         ]}
       >
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Minha Escala</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          <BackButton />
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Minha Escala</Text>
+        </View>
         <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>
           {allAllocations.length} entrada{allAllocations.length === 1 ? "" : "s"} no total
           {activeFolgaCount > 0 && ` · 🌴 ${activeFolgaCount} folga${activeFolgaCount > 1 ? "s" : ""} ativa${activeFolgaCount > 1 ? "s" : ""}`}

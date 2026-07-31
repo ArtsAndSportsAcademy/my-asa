@@ -19,6 +19,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { BackButton } from "@/components/BackButton";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import {
   useListFolgas,
@@ -484,6 +485,7 @@ export default function FolgasScreen() {
       <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top }}>
         {/* Header */}
         <View style={styles.header}>
+          <BackButton />
           <View style={[styles.iconWrap, { backgroundColor: colors.primary + "18" }]}>
             <Feather name="calendar" size={20} color={colors.primary} />
           </View>
@@ -556,6 +558,7 @@ export default function FolgasScreen() {
       refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
     >
       <View style={styles.header}>
+        <BackButton />
         <View style={[styles.iconWrap, { backgroundColor: colors.primary + "18" }]}>
           <Feather name="calendar" size={22} color={colors.primary} />
         </View>
@@ -576,7 +579,7 @@ export default function FolgasScreen() {
             <Text style={[styles.empty, { color: colors.mutedForeground }]}>Você não tem folgas registradas.</Text>
             <Pressable
               style={({ pressed }) => [styles.linkBtn, { opacity: pressed ? 0.6 : 1 }]}
-              onPress={() => router.push("/(tabs)/solicitacoes")}
+              onPress={() => router.push("/(stack)/solicitacoes")}
             >
               <Text style={[styles.linkText, { color: colors.primary }]}>Solicitar folga →</Text>
             </Pressable>
@@ -619,7 +622,7 @@ export default function FolgasScreen() {
       {folgas.length > 0 && (
         <Pressable
           style={({ pressed }) => [styles.footerLink, { opacity: pressed ? 0.6 : 1 }]}
-          onPress={() => router.push("/(tabs)/solicitacoes")}
+          onPress={() => router.push("/(stack)/solicitacoes")}
         >
           <Text style={[styles.linkText, { color: colors.primary }]}>+ Solicitar nova folga</Text>
         </Pressable>

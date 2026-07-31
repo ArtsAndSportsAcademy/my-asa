@@ -195,10 +195,10 @@ const RESP_LABELS: Record<string, string> = {
 
 const RESP_ACTIONS: Record<string, { label: string; route?: string; webOnly?: boolean }> = {
   CHECK_INS:            { label: "Check-ins",   webOnly: true },
-  DAILY_BOOK:           { label: "Livro do Dia", route: "/(tabs)/daily-book" },
+  DAILY_BOOK:           { label: "Livro do Dia", route: "/(stack)/daily-book" },
   NOTICES:              { label: "Avisos",       route: "/(tabs)/avisos" },
-  REQUESTS:             { label: "Solicitações", route: "/(tabs)/solicitacoes" },
-  TASK_APPROVALS:       { label: "Tarefas",      route: "/(tabs)/tarefas" },
+  REQUESTS:             { label: "Solicitações", route: "/(stack)/solicitacoes" },
+  TASK_APPROVALS:       { label: "Tarefas",      route: "/(stack)/tarefas" },
   SCALES:               { label: "Escalas",      webOnly: true },
   OPERATIONAL_MESSAGES: { label: "Mensagens",    route: "/(tabs)/mensagens" },
 };
@@ -754,7 +754,7 @@ export default function MeuDiaScreen() {
           <View style={styles.headerActions}>
             <Pressable
               style={[styles.headerIconBtn, { backgroundColor: colors.secondary }]}
-              onPress={() => router.push("/(tabs)/notificacoes" as any)}
+              onPress={() => router.push("/(stack)/notificacoes" as any)}
             >
               <Feather name="bell" size={18} color={colors.foreground} />
               {unreadNotifications > 0 && (
@@ -854,7 +854,7 @@ export default function MeuDiaScreen() {
 
                   {/* Botão Falar com a ASA */}
                   <Pressable
-                    onPress={() => router.push("/(tabs)/asa")}
+                    onPress={() => router.push("/(stack)/asa")}
                     style={({ pressed }) => [
                       styles.asaFalarButton,
                       { backgroundColor: colors.primary + "18", opacity: pressed ? 0.7 : 1 },
@@ -880,7 +880,7 @@ export default function MeuDiaScreen() {
 
             {/* ── Ação Rápida: Nova Solicitação ── */}
             <Pressable
-              onPress={() => router.push("/(tabs)/solicitacoes")}
+              onPress={() => router.push("/(stack)/solicitacoes")}
               style={[
                 styles.quickActionRow,
                 { backgroundColor: colors.card, borderColor: colors.border },
@@ -1007,7 +1007,7 @@ export default function MeuDiaScreen() {
                   <Text style={[styles.subSectionTitle, { color: colors.mutedForeground }]}>
                     Solicitações
                   </Text>
-                  <Pressable onPress={() => router.push("/(tabs)/solicitacoes")}>
+                  <Pressable onPress={() => router.push("/(stack)/solicitacoes")}>
                     <Text style={[styles.subSectionLink, { color: colors.primary }]}>
                       Ver todas
                     </Text>

@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { BackButton } from "@/components/BackButton";
 import { AsaAvatar, type AsaPose } from "@/components/AsaAvatar";
 import { AsaSpeechBubble } from "@/components/AsaSpeechBubble";
 
@@ -481,6 +482,7 @@ export default function AsaScreen() {
         borderBottomColor: colors.border,
       }]}>
         <View style={styles.headerLeft}>
+          <BackButton />
           <AsaAvatar size="small" pose={chatPose} />
           <View>
             <Text style={[styles.headerTitle, { color: colors.foreground }]}>ASA</Text>

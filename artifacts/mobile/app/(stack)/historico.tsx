@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { BackButton } from "@/components/BackButton";
 import { AsaEmptyState } from "@/components/AsaEmptyState";
 
 // ─── Config ────────────────────────────────────────────────────────────────────
@@ -203,6 +204,7 @@ export default function HistoricoScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
+          <BackButton />
           <View style={[styles.headerIcon, { backgroundColor: "#F5F3FF" }]}>
             <Feather name="clock" size={20} color="#7C3AED" />
           </View>

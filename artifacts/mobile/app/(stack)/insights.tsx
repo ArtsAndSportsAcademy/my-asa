@@ -10,6 +10,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
+import { BackButton } from "@/components/BackButton";
 import {
   useGetCheckInInsights,
   useGetRequestInsights,
@@ -217,6 +218,7 @@ export default function InsightsScreen() {
     >
       {/* Header */}
       <View style={s.header}>
+        <BackButton />
         <View>
           <Text style={[s.pageTitle, { color: colors.foreground }]}>Insights</Text>
           <Text style={[s.pageSubtitle, { color: colors.mutedForeground }]}>Desempenho da operação</Text>

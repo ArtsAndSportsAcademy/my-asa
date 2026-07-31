@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useColors } from "@/hooks/useColors";
+import { BackButton } from "@/components/BackButton";
 import { AsaEmptyState } from "@/components/AsaEmptyState";
 import {
   useGetNotifications,
@@ -371,6 +372,7 @@ export default function NotificacoesScreen() {
         ]}
       >
         <View style={styles.headerRow}>
+          <BackButton />
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>
             Notificações
             {totalUnread > 0 && (

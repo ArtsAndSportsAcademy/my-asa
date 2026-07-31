@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { BackButton } from "@/components/BackButton";
 import { useAuth } from "@/contexts/AuthContext";
 import { customFetch } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
@@ -114,6 +115,7 @@ export default function ResponsabilidadesScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 12, borderColor: colors.border }]}>
         <View style={styles.headerLeft}>
+          <BackButton />
           <View style={styles.headerIcon}>
             <Feather name="users" size={20} color="#7C3AED" />
           </View>

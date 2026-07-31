@@ -22,6 +22,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { BackButton } from "@/components/BackButton";
 import { AsaEmptyState } from "@/components/AsaEmptyState";
 
 // ─── Config ────────────────────────────────────────────────────────────────────
@@ -97,7 +98,10 @@ export default function BibliotecaTab() {
     <View style={[s.root, { paddingTop: insets.top }]}>
       {/* ── Header ── */}
       <View style={s.header}>
-        <Text style={s.headerTitle}>Biblioteca</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          <BackButton />
+          <Text style={s.headerTitle}>Biblioteca</Text>
+        </View>
         <Text style={s.headerSub}>Referência oficial da organização</Text>
       </View>
 

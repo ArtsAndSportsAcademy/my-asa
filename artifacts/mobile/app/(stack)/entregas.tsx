@@ -23,6 +23,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { BackButton } from "@/components/BackButton";
 
 // ─── Config ────────────────────────────────────────────────────────────────────
 
@@ -355,6 +356,7 @@ export default function EntregasScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 16, backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <View style={styles.headerLeft}>
+          <BackButton />
           <View style={styles.headerIcon}>
             <Feather name="package" size={20} color="#7C3AED" />
           </View>

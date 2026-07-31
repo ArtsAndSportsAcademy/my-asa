@@ -108,24 +108,6 @@ export default function TabLayout() {
         }}
       />
 
-      {/* ── Ecrãs secundários — roteáveis (via "Mais" ou cabeçalho) mas ocultos da barra ── */}
-      <Tabs.Screen name="notificacoes"   options={{ tabBarButton: () => null, title: "Notificações"   }} />
-      <Tabs.Screen name="index"          options={{ tabBarButton: () => null, title: "Perfil"          }} />
-      <Tabs.Screen name="scale"          options={{ tabBarButton: () => null, title: "Escala"          }} />
-      <Tabs.Screen name="panel"          options={{ tabBarButton: () => null, title: "Painel"          }} />
-      <Tabs.Screen name="agenda"         options={{ tabBarButton: () => null, title: "Agenda"          }} />
-      <Tabs.Screen name="show-book"      options={{ tabBarButton: () => null, title: "Livro do Show"   }} />
-      <Tabs.Screen name="daily-book"     options={{ tabBarButton: () => null, title: "Livro do Dia"    }} />
-      <Tabs.Screen name="historico"      options={{ tabBarButton: () => null, title: "Histórico"       }} />
-      <Tabs.Screen name="biblioteca"     options={{ tabBarButton: () => null, title: "Biblioteca"      }} />
-      <Tabs.Screen name="solicitacoes"   options={{ tabBarButton: () => null, title: "Solicitações"    }} />
-      <Tabs.Screen name="folgas"         options={{ tabBarButton: () => null, title: "Folgas"          }} />
-      <Tabs.Screen name="entregas"       options={{ tabBarButton: () => null, title: "Entregas"        }} />
-      <Tabs.Screen name="tarefas"        options={{ tabBarButton: () => null, title: "Tarefas"         }} />
-      <Tabs.Screen name="responsabilidades" options={{ tabBarButton: () => null, title: "Responsabilidades" }} />
-      <Tabs.Screen name="insights"       options={{ tabBarButton: () => null, title: "Indicadores"     }} />
-      <Tabs.Screen name="asa"            options={{ tabBarButton: () => null, title: "ASA", tabBarStyle: { display: "none" } }} />
-      <Tabs.Screen name="historico-asa"  options={{ tabBarButton: () => null, title: "Histórico ASA"   }} />
     </Tabs>
   );
 }

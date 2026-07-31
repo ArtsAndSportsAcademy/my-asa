@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { BackButton } from "@/components/BackButton";
 import { AsaEmptyState } from "@/components/AsaEmptyState";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -170,7 +171,10 @@ export default function AgendaScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Agenda</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          <BackButton />
+          <Text style={styles.headerTitle}>Agenda</Text>
+        </View>
         <Text style={styles.headerSub}>Consulta de eventos e apresentações</Text>
       </View>
 

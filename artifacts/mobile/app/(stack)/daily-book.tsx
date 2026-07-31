@@ -39,6 +39,7 @@ import { useLocalSearchParams } from "expo-router";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { BackButton } from "@/components/BackButton";
 
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: "Rascunho",
@@ -444,7 +445,10 @@ export default function DailyBookScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <Text style={styles.headerTitle}>Livro do Dia</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <BackButton />
+            <Text style={styles.headerTitle}>Livro do Dia</Text>
+          </View>
           {isSupervisor && (
             <TouchableOpacity
               onPress={() => setGenerateModalVisible(true)}

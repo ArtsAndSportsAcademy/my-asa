@@ -31,14 +31,15 @@ function RootLayoutNav() {
 
   useEffect(() => {
     if (isLoading) return;
-    const inTabsGroup = segments[0] === "(tabs)";
+    // Both (tabs) and (stack) are authenticated groups — treat them equally.
+    const inAppGroup = segments[0] === "(tabs)" || segments[0] === "(stack)";
     const onForceChange = segments[0] === "force-password-change";
 
-    if (!isAuthenticated && inTabsGroup) {
+    if (!isAuthenticated && inAppGroup) {
       router.replace("/login");
     } else if (isAuthenticated && mustChangePassword && !onForceChange) {
       router.replace("/force-password-change");
-    } else if (isAuthenticated && !mustChangePassword && !inTabsGroup) {
+    } else if (isAuthenticated && !mustChangePassword && !inAppGroup) {
       router.replace("/(tabs)");
     }
   }, [isAuthenticated, isLoading, mustChangePassword, segments]);
@@ -48,6 +49,7 @@ function RootLayoutNav() {
   return (
     <Stack>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="(stack)" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen name="force-password-change" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="+not-found" />

@@ -30,6 +30,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { BackButton } from "@/components/BackButton";
 
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: "Rascunho", PUBLISHED: "Publicado", ARCHIVED: "Arquivado",
@@ -379,7 +380,10 @@ export default function ShowBookScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Livro do Show</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          <BackButton />
+          <Text style={styles.headerTitle}>Livro do Show</Text>
+        </View>
         <Text style={styles.headerSub}>Estrutura oficial do espetáculo</Text>
       </View>
 

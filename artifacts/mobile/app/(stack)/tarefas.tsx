@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useColors } from "@/hooks/useColors";
+import { BackButton } from "@/components/BackButton";
 import { AsaEmptyState } from "@/components/AsaEmptyState";
 import { AsaConfirmModal } from "@/components/AsaConfirmModal";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
@@ -485,6 +486,12 @@ export default function TarefasScreen() {
       bottomOffset={24}
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
     >
+      {/* Cabeçalho */}
+      <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 8 }}>
+        <BackButton />
+        <Text style={{ fontSize: 22, fontWeight: "700", color: colors.foreground, flex: 1 }}>Tarefas</Text>
+      </View>
+
       {/* Filtro de status */}
       <ScrollView
         horizontal

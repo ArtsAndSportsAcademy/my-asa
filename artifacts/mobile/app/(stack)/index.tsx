@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { BackButton } from "@/components/BackButton";
 
 const ASINHA_SVG = `<svg viewBox="0 0 100 112" xmlns="http://www.w3.org/2000/svg" fill="none">
   <defs>
@@ -407,6 +408,7 @@ export default function HomeScreen() {
       }
     >
       <View style={styles.header}>
+        <BackButton />
         <View style={styles.brandRow}>
           <SvgXml xml={ASINHA_SVG} width={36} height={40} />
           <View style={styles.greetingBlock}>
