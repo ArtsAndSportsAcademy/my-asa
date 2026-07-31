@@ -1,5 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
+import {
+  setAuthTokenGetter,
+  setAuthRefreshHandler,
+  setBaseUrl,
+  refreshToken as refreshTokenRequest,
+} from "@workspace/api-client-react";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import {
   registerForPushNotificationsAsync,
@@ -62,6 +67,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return await AsyncStorage.getItem("myasa_access_token");
     });
 
+    setAuthRefreshHandler(async () => {
+      const storedRefresh = await AsyncStorage.getItem("myasa_refresh_token");
+      if (!storedRefresh) return null;
+      try {
+        const tokens = await refreshTokenRequest({ refreshToken: storedRefresh });
+        await Promise.all([
+          AsyncStorage.setItem("myasa_access_token", tokens.accessToken),
+          AsyncStorage.setItem("myasa_refresh_token", tokens.refreshToken),
+        ]);
+        setAccessToken(tokens.accessToken);
+        return tokens.accessToken;
+      } catch {
+        // Refresh failed — clear session and force re-login.
+        // Handlers are NOT cleared: they remain registered so that after the
+        // user logs in again they work immediately (no app restart needed).
+        await Promise.all([
+          AsyncStorage.removeItem("myasa_access_token"),
+          AsyncStorage.removeItem("myasa_refresh_token"),
+          AsyncStorage.removeItem("myasa_user"),
+          AsyncStorage.removeItem("myasa_roles"),
+        ]);
+        setAccessToken(null);
+        setUser(null);
+        setRoles([]);
+        return null;
+      }
+    });
+
     (async () => {
       try {
         const [storedToken, storedUser, storedRoles] = await Promise.all([
@@ -110,7 +143,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       AsyncStorage.removeItem("myasa_user"),
       AsyncStorage.removeItem("myasa_roles"),
     ]);
-    setAuthTokenGetter(null);
+    // Handlers remain registered so the next login cycle works immediately
+    // without an app restart. They read from AsyncStorage and will return
+    // null while tokens are absent.
     setAccessToken(null);
     setUser(null);
     setRoles([]);

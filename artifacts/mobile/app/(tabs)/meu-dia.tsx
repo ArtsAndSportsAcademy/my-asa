@@ -1,9 +1,9 @@
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { AsaAvatar, AsaPose, avatarStateToPose } from "@/components/AsaAvatar";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/contexts/AuthContext";
 import {
+  customFetch,
   useGetMyDay,
   getGetMyDayQueryKey,
   useGetMyCheckInStatus,
@@ -531,12 +531,6 @@ function resolveAsaPose(resumo: ResumoDodia | null): AsaPose {
   return avatarStateToPose(resumo.avatarState);
 }
 
-async function getBaseUrl(): Promise<string> {
-  const domain = process.env.EXPO_PUBLIC_DOMAIN;
-  if (domain) return `https://${domain}`;
-  return "";
-}
-
 type ResumoDodia = {
   greeting: string;
   greetingEmoji: string;
@@ -575,39 +569,29 @@ export default function MeuDiaScreen() {
     }
   }
 
-  useEffect(() => {
-    let cancelled = false;
-    async function fetchResumo() {
-      try {
-        const [token, baseUrl] = await Promise.all([
-          AsyncStorage.getItem("myasa_access_token"),
-          getBaseUrl(),
-        ]);
-        const res = await fetch(`${baseUrl}/api/asa/resumo-do-dia`, {
-          headers: { Authorization: `Bearer ${token ?? ""}` },
-        });
-        if (res.ok && !cancelled) {
-          const data = (await res.json()) as ResumoDodia;
-          setResumo((prev) => {
-            const prevState = prev?.avatarState;
-            const newState  = data.avatarState;
-            const isChange  = !prev || prevState !== newState;
-            if (isChange) {
-              if (speechBubbleTimerRef.current) clearTimeout(speechBubbleTimerRef.current);
-              setShowSpeechBubble(true);
-              speechBubbleTimerRef.current = setTimeout(() => setShowSpeechBubble(false), 4000);
-            }
-            return data;
-          });
+  const fetchResumo = useCallback(async () => {
+    try {
+      const data = await customFetch<ResumoDodia>("/api/asa/resumo-do-dia");
+      setResumo((prev) => {
+        const prevState = prev?.avatarState;
+        const newState  = data.avatarState;
+        const isChange  = !prev || prevState !== newState;
+        if (isChange) {
+          if (speechBubbleTimerRef.current) clearTimeout(speechBubbleTimerRef.current);
+          setShowSpeechBubble(true);
+          speechBubbleTimerRef.current = setTimeout(() => setShowSpeechBubble(false), 4000);
         }
-      } catch { /* ignore */ }
-    }
-    fetchResumo();
+        return data;
+      });
+    } catch { /* ignore — refresh handler in AuthContext handles 401 and signs out if needed */ }
+  }, []);
+
+  useEffect(() => {
+    void fetchResumo();
     return () => {
-      cancelled = true;
       if (speechBubbleTimerRef.current) clearTimeout(speechBubbleTimerRef.current);
     };
-  }, []);
+  }, [fetchResumo]);
 
   const { data, isLoading, isError, refetch } = useGetMyDay({
     query: {
@@ -715,14 +699,17 @@ export default function MeuDiaScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await queryClient.invalidateQueries({ queryKey: getGetMyDayQueryKey() });
-    await queryClient.invalidateQueries({ queryKey: getGetMyCheckInStatusQueryKey() });
-    await queryClient.invalidateQueries({ queryKey: getMyActiveDelegationsQueryKey() });
-    await queryClient.invalidateQueries({ queryKey: getGetMyTasksQueryKey() });
-    await queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: getGetMyDayQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetMyCheckInStatusQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getMyActiveDelegationsQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetMyTasksQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] }),
+      fetchResumo(),
+    ]);
     await refetch();
     setRefreshing(false);
-  }, [queryClient, refetch]);
+  }, [queryClient, refetch, fetchResumo]);
 
   const today = new Date().toISOString().slice(0, 10);
   const dayLabel = new Date().toLocaleDateString("pt-BR", {
