@@ -52,7 +52,19 @@ export default function TabLayout() {
           borderTopWidth: isWeb ? 1 : 0,
           borderTopColor: colors.border,
           elevation: 0,
-          ...(isWeb ? { height: 84 } : {}),
+          ...(isWeb
+            ? {
+                height: 84,
+                flexDirection: "row",
+                justifyContent: "space-around",
+                alignItems: "center",
+              }
+            : {}),
+        },
+        tabBarItemStyle: {
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
         },
         tabBarBackground,
       }}
