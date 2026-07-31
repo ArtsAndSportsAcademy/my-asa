@@ -21,8 +21,10 @@ type SectionItem = {
   subtitle?: string;
   icon: string;
   route?: string;
+  onPress?: () => void;
   disabled?: boolean;
   badge?: string;
+  danger?: boolean;
 };
 
 type Section = { title: string; items: SectionItem[] };
@@ -133,7 +135,7 @@ export default function MaisScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { roles } = useAuth();
+  const { roles, signOut } = useAuth();
 
   const isManager    = roles.some((r) => MANAGER_ROLES.includes(r.role));
   const isSupervisor = !roles.some((r) => r.role === "ADMIN") && roles.some((r) => SUPERVISOR_ROLES.includes(r.role));
@@ -145,6 +147,26 @@ export default function MaisScreen() {
     ? TRAINER_SECTIONS
     : ELENCO_SECTIONS;
 
+  const CONTA_SECTION: Section = {
+    title: "Conta",
+    items: [
+      {
+        label: "Meu Perfil",
+        icon: "user",
+        route: "/(stack)/",
+      },
+      {
+        label: "Sair",
+        icon: "log-out",
+        danger: true,
+        onPress: async () => {
+          await signOut();
+          router.replace("/login");
+        },
+      },
+    ],
+  };
+
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
@@ -154,7 +176,7 @@ export default function MaisScreen() {
       }}
       showsVerticalScrollIndicator={false}
     >
-      {sections.map((section) => (
+      {[...sections, CONTA_SECTION].map((section) => (
         <View key={section.title} style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>
             {section.title.toUpperCase()}
@@ -169,21 +191,25 @@ export default function MaisScreen() {
                     pressed && !item.disabled && { opacity: 0.65 },
                   ]}
                   onPress={() => {
-                    if (!item.disabled && item.route) {
-                      router.push(item.route as any);
+                    if (!item.disabled) {
+                      if (item.onPress) {
+                        item.onPress();
+                      } else if (item.route) {
+                        router.push(item.route as any);
+                      }
                     }
                   }}
                   disabled={item.disabled}
                 >
-                  <View style={[styles.iconWrap, { backgroundColor: item.disabled ? colors.muted : colors.primary + "18" }]}>
+                  <View style={[styles.iconWrap, { backgroundColor: item.disabled ? colors.muted : item.danger ? "#ef444418" : colors.primary + "18" }]}>
                     <Feather
                       name={item.icon as any}
                       size={18}
-                      color={item.disabled ? colors.mutedForeground : colors.primary}
+                      color={item.disabled ? colors.mutedForeground : item.danger ? "#ef4444" : colors.primary}
                     />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.rowLabel, { color: item.disabled ? colors.mutedForeground : colors.foreground }]}>
+                    <Text style={[styles.rowLabel, { color: item.disabled ? colors.mutedForeground : item.danger ? "#ef4444" : colors.foreground }]}>
                       {item.label}
                     </Text>
                     {item.subtitle && (

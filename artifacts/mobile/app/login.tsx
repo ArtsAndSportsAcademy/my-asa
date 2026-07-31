@@ -67,7 +67,7 @@ export default function LoginScreen() {
             result.user as Parameters<typeof auth.signIn>[2],
             result.roles as Parameters<typeof auth.signIn>[3],
           );
-          router.replace("/(tabs)");
+          router.replace("/(tabs)/meu-dia");
         },
         onError: (err: unknown) => {
           const apiError = err as { status?: number };

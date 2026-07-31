@@ -40,7 +40,7 @@ function RootLayoutNav() {
     } else if (isAuthenticated && mustChangePassword && !onForceChange) {
       router.replace("/force-password-change");
     } else if (isAuthenticated && !mustChangePassword && !inAppGroup) {
-      router.replace("/(tabs)");
+      router.replace("/(tabs)/meu-dia");
     }
   }, [isAuthenticated, isLoading, mustChangePassword, segments]);
 
