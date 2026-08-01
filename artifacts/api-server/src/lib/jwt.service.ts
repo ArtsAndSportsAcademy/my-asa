@@ -1,8 +1,24 @@
 import jwt from "jsonwebtoken";
 import { createHash, randomBytes } from "node:crypto";
 
-const ACCESS_SECRET = process.env["JWT_ACCESS_SECRET"] ?? "myasa-dev-access-secret";
-const REFRESH_SECRET = process.env["JWT_REFRESH_SECRET"] ?? "myasa-dev-refresh-secret";
+// In production, JWT secrets must be set explicitly — weak fallbacks are never
+// used. In development (NODE_ENV !== "production"), convenient defaults allow
+// running without env config, but tokens signed with those defaults are
+// publicly known and must never reach a real user.
+function requireSecret(envVar: string, devFallback: string): string {
+  const value = process.env[envVar];
+  if (value) return value;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      `${envVar} must be set in production. ` +
+      "Generate a strong random value with: node -e \"console.log(require('crypto').randomBytes(64).toString('hex'))\"",
+    );
+  }
+  return devFallback;
+}
+
+const ACCESS_SECRET = requireSecret("JWT_ACCESS_SECRET", "myasa-dev-access-secret");
+const REFRESH_SECRET = requireSecret("JWT_REFRESH_SECRET", "myasa-dev-refresh-secret");
 const ACCESS_TTL_SECONDS = 15 * 60;
 const REFRESH_TTL_SECONDS = 30 * 24 * 60 * 60;
 
