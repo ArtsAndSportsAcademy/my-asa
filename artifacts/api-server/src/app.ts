@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import cors from "cors";
-import pinoHttp from "pino-http";
+import { pinoHttp } from "pino-http";
+import type { IncomingMessage, ServerResponse } from "http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { correlationIdMiddleware } from "./middlewares/correlation-id";
@@ -14,7 +15,7 @@ app.use(
     logger,
     genReqId: (req) => (req as express.Request).requestId,
     serializers: {
-      req(req) {
+      req(req: IncomingMessage & { id?: unknown; raw?: express.Request }) {
         return {
           id: req.id,
           method: req.method,
@@ -22,7 +23,7 @@ app.use(
           correlationId: (req.raw as express.Request)?.correlationId,
         };
       },
-      res(res) {
+      res(res: ServerResponse) {
         return {
           statusCode: res.statusCode,
         };
