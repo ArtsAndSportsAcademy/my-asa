@@ -5319,7 +5319,13 @@ components:
           type: string
         name:
           type: string
+        preferredName:
+          type: string
+          nullable: true
         email:
+          type: string
+          nullable: true
+        phone:
           type: string
           nullable: true
         username:
@@ -5333,6 +5339,15 @@ components:
         status:
           type: string
           enum: [ACTIVE, INACTIVE]
+        personStatus:
+          type: string
+          enum: [ACTIVE, ON_LEAVE, LEFT, ARCHIVED]
+        professionalProfile:
+          type: string
+          nullable: true
+        primaryFunction:
+          type: string
+          nullable: true
         specialization:
           type: string
           nullable: true
@@ -5343,6 +5358,22 @@ components:
           description: "Data de saída prevista para Convidados (formato YYYY-MM-DD). Nulo para membros fixos."
         organizationId:
           type: string
+        birthDate:
+          type: string
+          nullable: true
+        entryDate:
+          type: string
+          nullable: true
+        adminNotes:
+          type: string
+          nullable: true
+        contactVisibility:
+          type: object
+          properties:
+            email:
+              type: boolean
+            phone:
+              type: boolean
         operationIds:
           type: array
           items:
@@ -5360,7 +5391,7 @@ components:
           type: string
         updatedAt:
           type: string
-      required: [id, name, status, organizationId]
+      required: [id, name, status, personStatus, organizationId]
 
     UserRole:
       type: object
@@ -5594,13 +5625,29 @@ components:
       properties:
         name:
           type: string
+        preferredName:
+          type: string
+          nullable: true
         email:
           type: string
           format: email
           nullable: true
+        phone:
+          type: string
+          nullable: true
         password:
           type: string
           minLength: 6
+          nullable: true
+        personStatus:
+          type: string
+          enum: [ACTIVE, ON_LEAVE, LEFT, ARCHIVED]
+        professionalProfile:
+          type: string
+          nullable: true
+        primaryFunction:
+          type: string
+          nullable: true
         specialization:
           type: string
           nullable: true
@@ -5609,7 +5656,16 @@ components:
           type: string
           nullable: true
           description: "Data de saída prevista para Convidados (YYYY-MM-DD)."
-      required: [name, password]
+        birthDate:
+          type: string
+          nullable: true
+        entryDate:
+          type: string
+          nullable: true
+        adminNotes:
+          type: string
+          nullable: true
+      required: [name]
 
     ChangePasswordBody:
       type: object
@@ -5626,9 +5682,18 @@ components:
       properties:
         name:
           type: string
+        preferredName:
+          type: string
+          nullable: true
         email:
           type: string
           format: email
+        phone:
+          type: string
+          nullable: true
+        photoUrl:
+          type: string
+          nullable: true
         username:
           type: string
           description: "Nome de usuário (login). Normalizado: minusculas, sem acentos, espacos viram ponto, apenas letras/numeros/ponto."
@@ -5640,6 +5705,32 @@ components:
           type: string
           nullable: true
           description: "Data de saída prevista para Convidados (YYYY-MM-DD). Enviar null para limpar."
+
+        birthDate:
+          type: string
+          nullable: true
+        entryDate:
+          type: string
+          nullable: true
+        personStatus:
+          type: string
+          enum: [ACTIVE, ON_LEAVE, LEFT, ARCHIVED]
+        professionalProfile:
+          type: string
+          nullable: true
+        primaryFunction:
+          type: string
+          nullable: true
+        adminNotes:
+          type: string
+          nullable: true
+        contactVisibility:
+          type: object
+          properties:
+            email:
+              type: boolean
+            phone:
+              type: boolean
 
     UserStatusUpdate:
       type: object

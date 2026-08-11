@@ -5,14 +5,23 @@
  * MyASA 2.0 API
  * OpenAPI spec version: 0.3.0
  */
+import type { UserCreatePersonStatus } from './userCreatePersonStatus';
 import type { UserCreateSpecialization } from './userCreateSpecialization';
 
 export interface UserCreate {
   name: string;
+  preferredName?: string | null;
   email?: string | null;
+  phone?: string | null;
   /** @minLength 6 */
-  password: string;
+  password?: string | null;
+  personStatus?: UserCreatePersonStatus;
+  professionalProfile?: string | null;
+  primaryFunction?: string | null;
   specialization?: UserCreateSpecialization;
   /** Data de saída prevista para Convidados (YYYY-MM-DD). */
   visitUntil?: string | null;
+  birthDate?: string | null;
+  entryDate?: string | null;
+  adminNotes?: string | null;
 }

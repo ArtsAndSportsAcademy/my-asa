@@ -5,21 +5,32 @@
  * MyASA 2.0 API
  * OpenAPI spec version: 0.3.0
  */
+import type { UserContactVisibility } from './userContactVisibility';
+import type { UserPersonStatus } from './userPersonStatus';
 import type { UserSpecialization } from './userSpecialization';
 import type { UserStatus } from './userStatus';
 
 export interface User {
   id: string;
   name: string;
+  preferredName?: string | null;
   email?: string | null;
+  phone?: string | null;
   username?: string | null;
   photoUrl?: string | null;
   mustChangePassword?: boolean;
   status: UserStatus;
+  personStatus: UserPersonStatus;
+  professionalProfile?: string | null;
+  primaryFunction?: string | null;
   specialization?: UserSpecialization;
   /** Data de saída prevista para Convidados (formato YYYY-MM-DD). Nulo para membros fixos. */
   visitUntil?: string | null;
   organizationId: string;
+  birthDate?: string | null;
+  entryDate?: string | null;
+  adminNotes?: string | null;
+  contactVisibility?: UserContactVisibility;
   /** Operações às quais o utilizador pertence (via papéis ativos). */
   operationIds?: string[];
   /** Operações onde o utilizador é supervisor (A/B); usado para escolher o responsável de um show. */

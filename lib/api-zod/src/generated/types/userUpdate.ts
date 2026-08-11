@@ -5,14 +5,26 @@
  * MyASA 2.0 API
  * OpenAPI spec version: 0.3.0
  */
+import type { UserUpdateContactVisibility } from './userUpdateContactVisibility';
+import type { UserUpdatePersonStatus } from './userUpdatePersonStatus';
 import type { UserUpdateSpecialization } from './userUpdateSpecialization';
 
 export interface UserUpdate {
   name?: string;
+  preferredName?: string | null;
   email?: string;
+  phone?: string | null;
+  photoUrl?: string | null;
   /** Nome de usuário (login). Normalizado: minusculas, sem acentos, espacos viram ponto, apenas letras/numeros/ponto. */
   username?: string;
   specialization?: UserUpdateSpecialization;
   /** Data de saída prevista para Convidados (YYYY-MM-DD). Enviar null para limpar. */
   visitUntil?: string | null;
+  birthDate?: string | null;
+  entryDate?: string | null;
+  personStatus?: UserUpdatePersonStatus;
+  professionalProfile?: string | null;
+  primaryFunction?: string | null;
+  adminNotes?: string | null;
+  contactVisibility?: UserUpdateContactVisibility;
 }

@@ -22,6 +22,14 @@ export const UserStatus = {
   INACTIVE: 'INACTIVE',
 } as const;
 
+export type PersonStatus = typeof PersonStatus[keyof typeof PersonStatus];
+export const PersonStatus = {
+  ACTIVE: 'ACTIVE',
+  ON_LEAVE: 'ON_LEAVE',
+  LEFT: 'LEFT',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
 export type UserSpecialization = typeof UserSpecialization[keyof typeof UserSpecialization] | null;
 
 
@@ -40,14 +48,23 @@ export const UserSpecialization = {
 export interface User {
   id: string;
   name: string;
+  preferredName?: string | null;
   email?: string | null;
+  phone?: string | null;
   username?: string | null;
   photoUrl?: string | null;
   mustChangePassword?: boolean;
   status: UserStatus;
+  personStatus: PersonStatus;
+  professionalProfile?: string | null;
+  primaryFunction?: string | null;
   specialization?: UserSpecialization;
   /** Data de saída prevista para Convidados (formato YYYY-MM-DD). Nulo para membros fixos. */
   visitUntil?: string | null;
+  birthDate?: string | null;
+  entryDate?: string | null;
+  adminNotes?: string | null;
+  contactVisibility?: { email?: boolean; phone?: boolean };
   organizationId: string;
   /** Operações às quais o utilizador pertence (via papéis ativos). */
   operationIds?: string[];
@@ -219,12 +236,20 @@ export const UserCreateSpecialization = {
 
 export interface UserCreate {
   name: string;
+  preferredName?: string | null;
   email?: string | null;
+  phone?: string | null;
   /** @minLength 6 */
-  password: string;
+  password?: string | null;
+  personStatus?: PersonStatus;
+  professionalProfile?: string | null;
+  primaryFunction?: string | null;
   specialization?: UserCreateSpecialization;
   /** Data de saída prevista para Convidados (YYYY-MM-DD). */
   visitUntil?: string | null;
+  birthDate?: string | null;
+  entryDate?: string | null;
+  adminNotes?: string | null;
 }
 
 export interface ChangePasswordBody {
@@ -250,12 +275,22 @@ export const UserUpdateSpecialization = {
 
 export interface UserUpdate {
   name?: string;
+  preferredName?: string | null;
   email?: string;
+  phone?: string | null;
+  photoUrl?: string | null;
   /** Nome de usuário (login). Normalizado: minusculas, sem acentos, espacos viram ponto, apenas letras/numeros/ponto. */
   username?: string;
   specialization?: UserUpdateSpecialization;
   /** Data de saída prevista para Convidados (YYYY-MM-DD). Enviar null para limpar. */
   visitUntil?: string | null;
+  birthDate?: string | null;
+  entryDate?: string | null;
+  personStatus?: PersonStatus;
+  professionalProfile?: string | null;
+  primaryFunction?: string | null;
+  adminNotes?: string | null;
+  contactVisibility?: { email?: boolean; phone?: boolean };
 }
 
 export type UserStatusUpdateStatus = typeof UserStatusUpdateStatus[keyof typeof UserStatusUpdateStatus];
