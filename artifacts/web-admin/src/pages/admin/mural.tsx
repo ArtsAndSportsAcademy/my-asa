@@ -88,8 +88,10 @@ function NewRecognitionDialog({
   open, onClose, onCreated,
 }: { open: boolean; onClose: () => void; onCreated: () => void }) {
   const { toast } = useToast();
-  const { data: usersData } = useListUsers({ status: "ACTIVE" });
-  const users = (usersData?.users ?? []).map((u: any) => ({ id: u.id, name: u.name }));
+  const { data: usersData } = useListUsers();
+  const users = (usersData?.users ?? [])
+    .filter((u: any) => u.status === "ACTIVE")
+    .map((u: any) => ({ id: u.id, name: u.name }));
 
   const [form, setForm] = useState({ userId: "", type: "", title: "", message: "" });
   const [saving, setSaving] = useState(false);
