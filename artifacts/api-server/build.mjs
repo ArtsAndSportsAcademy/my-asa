@@ -14,8 +14,14 @@ async function buildAll() {
   const distDir = path.resolve(artifactDir, "dist");
   await rm(distDir, { recursive: true, force: true });
 
+  // Vercel needs the exported Express application. Local/VM execution keeps
+  // using the process entrypoint that starts the HTTP server and schedulers.
+  const entryPoint = process.env.VERCEL
+    ? path.resolve(artifactDir, "src/app.ts")
+    : path.resolve(artifactDir, "src/index.ts");
+
   await esbuild({
-    entryPoints: [path.resolve(artifactDir, "src/index.ts")],
+    entryPoints: { index: entryPoint },
     platform: "node",
     bundle: true,
     format: "esm",

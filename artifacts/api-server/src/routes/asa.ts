@@ -33,7 +33,7 @@ import {
   recurringActivitySchedulesTable,
   recurringActivityAssigneesTable,
 } from "@workspace/db";
-import { anthropic } from "@workspace/integrations-anthropic-ai";
+import { getAnthropicClient } from "@workspace/integrations-anthropic-ai";
 import { resolveScaleAllocations, computeFreeGaps } from "../services/scale-merge.js";
 import {
   GroupActionError,
@@ -5938,6 +5938,7 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
   const actionsExecuted: Record<string, unknown>[] = [];
 
   try {
+    const anthropic = getAnthropicClient();
     let continueLoop = true;
     let currentMessages = [...chatMessages];
 
