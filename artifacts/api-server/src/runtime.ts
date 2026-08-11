@@ -1,4 +1,4 @@
-import app from "./app.js";
+import app from "./application.js";
 import { logger } from "./lib/logger.js";
 import { startTaskReminderScheduler } from "./services/taskReminderService.js";
 import { runProdBootstrap } from "./lib/bootstrap.js";

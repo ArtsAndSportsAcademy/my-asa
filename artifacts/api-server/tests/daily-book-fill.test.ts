@@ -45,7 +45,7 @@ import {
   collectRotationWinners,
 } from "../src/services/line-resolver.js";
 import { planRoleAssignments } from "../src/routes/daily-book.js";
-import app from "../src/app.js";
+import app from "../src/application.js";
 import { signAccessToken } from "../src/lib/jwt.service.js";
 
 // ─── Mini harness ──────────────────────────────────────────────────────────────
