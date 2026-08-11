@@ -60,11 +60,11 @@ export default function SupervisorCheckInsPage() {
         body: JSON.stringify({ status, userId, operationId, date, excuseReason: excuseReason ?? null }),
       }),
     onSuccess: () => {
-      toast({ title: "Check-in atualizado" });
+      toast({ title: "Status do dia atualizado" });
       qc.invalidateQueries({ queryKey: ["check-ins-supervisor"] });
     },
     onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : "Erro ao atualizar check-in";
+      const msg = err instanceof Error ? err.message : "Erro ao atualizar o status do dia";
       toast({ title: "Erro", description: msg, variant: "destructive" });
     },
   });
@@ -81,7 +81,7 @@ export default function SupervisorCheckInsPage() {
   };
 
   return (
-    <AdminLayout title="Check-ins do Dia" subtitle="Visualize e corrija a presença do elenco.">
+    <AdminLayout title="Status do Dia" subtitle="Veja quem está pronto e registre atrasos ou imprevistos informados.">
     <div className="max-w-4xl space-y-6">
       <div className="flex justify-end">
         <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-40" />
@@ -107,7 +107,7 @@ export default function SupervisorCheckInsPage() {
       </div>
 
       {isLoading ? (
-        <div className="text-center py-8 text-muted-foreground">Carregando check-ins...</div>
+        <div className="text-center py-8 text-muted-foreground">Carregando status do dia...</div>
       ) : checkIns.length === 0 ? (
         <div className="text-center py-12 border rounded-lg text-muted-foreground">
           <ClipboardCheck className="w-8 h-8 mx-auto mb-2 opacity-40" />
@@ -125,11 +125,11 @@ export default function SupervisorCheckInsPage() {
                   <div>
                     <div className="font-medium">{item.userName}</div>
                     {item.earliestStart && (
-                      <div className="text-xs text-muted-foreground">Entrada prevista: {item.earliestStart}</div>
+                      <div className="text-xs text-muted-foreground">Primeira atividade: {item.earliestStart}</div>
                     )}
                     {item.checkedInAt && (
                       <div className="text-xs text-muted-foreground">
-                        Check-in: {new Date(item.checkedInAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                        Informado às {new Date(item.checkedInAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                       </div>
                     )}
                   </div>
