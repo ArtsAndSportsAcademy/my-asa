@@ -46,3 +46,9 @@ Eliminar os cinco erros de TypeScript identificados antes da criação do ambien
 - A Vercel interpretava a resposta de `fetch` como um tipo `Response` sem as propriedades `ok` e `json`.
 - Foi criado um contrato estrutural mínimo (`JsonFetchResponse`) e aplicado explicitamente às duas respostas da API Open-Meteo.
 - A mudança afeta somente a tipagem de compilação; a chamada de clima e seu comportamento em execução permanecem iguais.
+
+### Bloqueio `Emit skipped`
+
+- Após a correção das consultas de clima, a Vercel passou a informar apenas `src/routes/health.ts: Emit skipped`.
+- O compilador do preset Express ignora o diagnóstico de arquivos de workspace fora do `rootDir`, mas a opção herdada `noEmitOnError: true` ainda impedia a emissão do JavaScript.
+- A API agora define `noEmitOnError: false`. Erros TypeScript reais continuam bloqueando o deploy pela verificação obrigatória do próprio preset Express da Vercel e pelos comandos de validação do projeto.
