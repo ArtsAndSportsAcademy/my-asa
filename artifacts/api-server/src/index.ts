@@ -1,7 +1,7 @@
-import app from "./app";
-import { logger } from "./lib/logger";
-import { startTaskReminderScheduler } from "./services/taskReminderService";
-import { runProdBootstrap } from "./lib/bootstrap";
+import app from "./app.js";
+import { logger } from "./lib/logger.js";
+import { startTaskReminderScheduler } from "./services/taskReminderService.js";
+import { runProdBootstrap } from "./lib/bootstrap.js";
 
 const rawPort = process.env["PORT"];
 

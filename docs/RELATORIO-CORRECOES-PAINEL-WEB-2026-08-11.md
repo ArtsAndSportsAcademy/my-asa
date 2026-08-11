@@ -58,3 +58,9 @@ Eliminar os cinco erros de TypeScript identificados antes da criação do ambien
 - A resposta do serviço Expo Push recebeu um contrato estrutural explícito com `ok`, `status`, `text` e `json`, eliminando a ambiguidade do tipo global `Response` na Vercel.
 - O cliente Anthropic passou a usar as exportações nomeadas `Anthropic` e `ClientOptions`, compatíveis com o mapa de exportações do SDK `0.78.0` e com a resolução de módulos do ambiente Vercel.
 - Não houve alteração nas regras de envio de notificações nem nos parâmetros da integração de IA.
+
+### Compatibilidade ESM em execução
+
+- O primeiro deploy concluído respondeu `500` no endpoint `/api/healthz` porque o Node.js ESM não aceita importação de diretório como `./routes`.
+- As importações relativas ainda sem extensão na entrada da API, no índice de rotas, no bootstrap e na integração Anthropic passaram a apontar explicitamente para arquivos `.js`.
+- Em TypeScript com resolução `bundler`, esses caminhos continuam resolvendo os arquivos-fonte `.ts`; após a emissão, tornam-se caminhos ESM válidos para o Node.js da Vercel.
