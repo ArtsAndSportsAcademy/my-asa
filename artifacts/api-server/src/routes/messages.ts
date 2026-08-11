@@ -47,7 +47,7 @@ async function hasOperationalMessagesDelegation(userId: string): Promise<boolean
         eq(delegationsTable.delegateeId, userId),
         isNull(delegationsTable.revokedAt),
         lte(delegationsTable.validFrom, now),
-        gte(delegationsTable.validUntil, now),
+        or(isNull(delegationsTable.validUntil), gte(delegationsTable.validUntil, now)),
       )
     );
   return rows.some((r) => (r.responsibilities as string[]).includes("OPERATIONAL_MESSAGES"));

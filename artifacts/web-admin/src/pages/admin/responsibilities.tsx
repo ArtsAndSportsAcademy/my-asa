@@ -16,7 +16,7 @@ interface Assignment {
   id: string;
   memberId: string;
   memberName: string;
-  role: "PRIMARY" | "SECONDARY";
+  role: "PRIMARY" | "SECONDARY" | "VIEWER";
   substituteMemberId: string | null;
   substituteName: string | null;
   active: boolean;
@@ -84,7 +84,7 @@ export function ResponsibilitiesContent() {
 
   // Form state
   const [form, setForm] = useState({ title: "", description: "", category: "OPERAÇÃO", operationId: "" });
-  const [assignForm, setAssignForm] = useState({ memberId: "", role: "PRIMARY" as "PRIMARY" | "SECONDARY", substituteMemberId: "" });
+  const [assignForm, setAssignForm] = useState({ memberId: "", role: "PRIMARY" as "PRIMARY" | "SECONDARY" | "VIEWER", substituteMemberId: "" });
 
   const params: Record<string, string> = {};
   if (filterCategory) params.category = filterCategory;
@@ -341,11 +341,12 @@ export function ResponsibilitiesContent() {
                 <Label>Papel</Label>
                 <select
                   value={assignForm.role}
-                  onChange={(e) => setAssignForm((f) => ({ ...f, role: e.target.value as "PRIMARY" | "SECONDARY" }))}
+                  onChange={(e) => setAssignForm((f) => ({ ...f, role: e.target.value as "PRIMARY" | "SECONDARY" | "VIEWER" }))}
                   className="w-full h-9 rounded border border-input bg-background px-2 text-sm"
                 >
                   <option value="PRIMARY">Principal</option>
-                  <option value="SECONDARY">Secundário</option>
+                  <option value="SECONDARY">Auxiliar</option>
+                  <option value="VIEWER">Somente leitura</option>
                 </select>
               </div>
               <div>
@@ -400,6 +401,7 @@ function ResponsibilityCard({
 }) {
   const primary = r.assignments.filter((a) => a.active && a.role === "PRIMARY");
   const secondary = r.assignments.filter((a) => a.active && a.role === "SECONDARY");
+  const viewers = r.assignments.filter((a) => a.active && a.role === "VIEWER");
   const uncovered = r.assignments.length === 0;
 
   return (
@@ -435,7 +437,16 @@ function ResponsibilityCard({
               {secondary.map((a) => (
                 <div key={a.id} className="flex items-center gap-1 bg-blue-50 border border-blue-200 rounded-full px-2 py-0.5 text-xs dark:bg-blue-950/30">
                   <span className="font-medium text-blue-700 dark:text-blue-400">{a.memberName}</span>
-                  <span className="text-blue-500">Secundário</span>
+                  <span className="text-blue-500">Auxiliar</span>
+                  {isAdmin && (
+                    <button onClick={() => onRemoveAssignment(a.id)} className="text-red-400 hover:text-red-600 ml-0.5"><X size={10} /></button>
+                  )}
+                </div>
+              ))}
+              {viewers.map((a) => (
+                <div key={a.id} className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-full px-2 py-0.5 text-xs dark:bg-slate-950/30">
+                  <span className="font-medium text-slate-700 dark:text-slate-300">{a.memberName}</span>
+                  <span className="text-slate-500">Somente leitura</span>
                   {isAdmin && (
                     <button onClick={() => onRemoveAssignment(a.id)} className="text-red-400 hover:text-red-600 ml-0.5"><X size={10} /></button>
                   )}

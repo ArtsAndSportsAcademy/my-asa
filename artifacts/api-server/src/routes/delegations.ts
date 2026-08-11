@@ -35,18 +35,18 @@ const RESPONSIBILITY_LABELS: Record<DelegatedResponsibility, string> = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function toDateStr(d: Date): string {
-  return d.toISOString().slice(0, 10);
+function toDateStr(d: Date | null): string | null {
+  return d ? d.toISOString().slice(0, 10) : null;
 }
 
 function fromDateStr(s: string): Date {
   return new Date(s + "T00:00:00.000Z");
 }
 
-function resolveStatus(validFrom: Date, validUntil: Date, revokedAt: Date | null): string {
+function resolveStatus(validFrom: Date, validUntil: Date | null, revokedAt: Date | null): string {
   if (revokedAt !== null) return "CANCELLED";
   const now = new Date();
-  if (validUntil < now) return "EXPIRED";
+  if (validUntil && validUntil < now) return "EXPIRED";
   if (validFrom <= now) return "ACTIVE";
   return "PENDING";
 }
@@ -166,7 +166,7 @@ router.get("/delegations/my-active", requireAuth, requireOrganization, async (re
           eq(delegationsTable.delegateeId, userId),
           isNull(delegationsTable.revokedAt),
           lte(delegationsTable.validFrom, now),
-          gte(delegationsTable.validUntil, now),
+          or(isNull(delegationsTable.validUntil), gte(delegationsTable.validUntil, now)),
         ),
       );
 
@@ -206,8 +206,8 @@ router.post("/delegations", requireAuth, requireOrganization, async (req, res): 
   const log = requestLogger(LOG_DOMAIN.DELEGATIONS, req.requestId, req.correlationId);
   const user = req.user!;
 
-  if (!SUPERVISOR_ROLES.includes(user.role)) {
-    res.status(403).json({ error: "Forbidden", message: "Apenas supervisores podem criar delegações" });
+  if (!MANAGER_ROLES.includes(user.role)) {
+    res.status(403).json({ error: "Forbidden", message: "Apenas gestão e supervisores podem criar delegações" });
     return;
   }
 
@@ -215,13 +215,13 @@ router.post("/delegations", requireAuth, requireOrganization, async (req, res): 
     delegateId: string;
     operationId: string;
     startDate: string;
-    endDate: string;
+    endDate?: string | null;
     reason?: string;
     responsibilities: string[];
   };
 
-  if (!delegateId || !operationId || !startDate || !endDate) {
-    res.status(400).json({ error: "Bad Request", message: "delegateId, operationId, startDate e endDate são obrigatórios" });
+  if (!delegateId || !operationId || !startDate) {
+    res.status(400).json({ error: "Bad Request", message: "Pessoa, operação e data de início são obrigatórios" });
     return;
   }
 
@@ -234,7 +234,7 @@ router.post("/delegations", requireAuth, requireOrganization, async (req, res): 
     return;
   }
 
-  if (endDate < startDate) {
+  if (endDate && endDate < startDate) {
     res.status(400).json({ error: "Bad Request", message: "endDate deve ser igual ou posterior a startDate" });
     return;
   }
@@ -252,7 +252,7 @@ router.post("/delegations", requireAuth, requireOrganization, async (req, res): 
     // SUPERVISOR_A/B ATIVO nesta operação exata, senão um supervisor de outra
     // operação poderia delegar (por operação inteira, showBookId null) em
     // operações que não supervisiona — escalada de privilégio cross-operation.
-    const [supRole] = await db
+    const [supRole] = user.role === "ADMIN" ? [{ id: "admin" }] : await db
       .select({ id: userRolesTable.id })
       .from(userRolesTable)
       .where(
@@ -292,7 +292,7 @@ router.post("/delegations", requireAuth, requireOrganization, async (req, res): 
         operationId,
         showBookId,
         validFrom: fromDateStr(startDate),
-        validUntil: fromDateStr(endDate),
+        validUntil: endDate ? fromDateStr(endDate) : null,
         reason: reason ?? null,
         responsibilities: validResponsibilities,
       })
@@ -328,7 +328,7 @@ router.post("/delegations", requireAuth, requireOrganization, async (req, res): 
             authorId: user.sub,
             operationId,
             title: `Responsabilidades delegadas em ${opName}`,
-            content: `Você recebeu responsabilidades delegadas em ${opName}.\n\nResponsabilidades: ${respLabels}\nPeríodo: ${startDate} a ${endDate}\nEm nome de: ${user.sub}`,
+            content: `Você recebeu responsabilidades delegadas em ${opName}.\n\nResponsabilidades: ${respLabels}\nPeríodo: ${startDate} a ${endDate ?? "permanente"}\nEm nome de: ${user.sub}`,
             urgency: "INFORMATIVE" as any,
             type: "INFORMATIVE" as any,
             status: "PUBLISHED" as any,
@@ -358,7 +358,7 @@ router.post("/delegations", requireAuth, requireOrganization, async (req, res): 
       userId: delegateId,
       type: "delegation.assigned",
       title: "Responsabilidades delegadas a você",
-      message: `Você recebeu responsabilidades delegadas: ${responsibilityLabels}. Válido de ${startDate} até ${endDate}.`,
+      message: `Você recebeu responsabilidades delegadas: ${responsibilityLabels}. Válido de ${startDate} ${endDate ? `até ${endDate}` : "sem data final"}.`,
       priority: "NORMAL",
       category: "responsibility",
       entityType: "delegation",
@@ -420,7 +420,7 @@ router.patch("/delegations/:id/cancel", requireAuth, requireOrganization, async 
       return;
     }
     const now = new Date();
-    if (existing.validUntil < now) {
+    if (existing.validUntil && existing.validUntil < now) {
       res.status(409).json({ error: "Conflict", message: "Delegação já expirou" });
       return;
     }

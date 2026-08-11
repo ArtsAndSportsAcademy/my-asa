@@ -1,4 +1,4 @@
-import { eq, and, isNull, lte, gte } from "drizzle-orm";
+import { eq, and, isNull, lte, gte, or } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { delegationsTable } from "@workspace/db/schema";
 import type { DelegatedResponsibility } from "@workspace/db/schema";
@@ -18,7 +18,7 @@ export async function isActiveDelegate(userId: string, operationId: string): Pro
         eq(delegationsTable.operationId, operationId),
         isNull(delegationsTable.revokedAt),
         lte(delegationsTable.validFrom, now),
-        gte(delegationsTable.validUntil, now),
+        or(isNull(delegationsTable.validUntil), gte(delegationsTable.validUntil, now)),
       ),
     )
     .limit(1);
@@ -44,7 +44,7 @@ export async function hasActiveResponsibility(
         eq(delegationsTable.operationId, operationId),
         isNull(delegationsTable.revokedAt),
         lte(delegationsTable.validFrom, now),
-        gte(delegationsTable.validUntil, now),
+        or(isNull(delegationsTable.validUntil), gte(delegationsTable.validUntil, now)),
       ),
     )
     .limit(1);
