@@ -40,3 +40,9 @@ Eliminar os cinco erros de TypeScript identificados antes da criação do ambien
 - TypeScript do painel web: aprovado, sem erros.
 - A geração local com Vite depende do binário nativo do Rollup para Windows, ausente nesta instalação local. Essa limitação do ambiente não representa um erro TypeScript nem foi causada por estas mudanças.
 
+## Correção adicional identificada na Vercel
+
+- O deploy do commit `b5ce37b` revelou quatro erros de tipagem nas duas consultas de clima do backend.
+- A Vercel interpretava a resposta de `fetch` como um tipo `Response` sem as propriedades `ok` e `json`.
+- Foi criado um contrato estrutural mínimo (`JsonFetchResponse`) e aplicado explicitamente às duas respostas da API Open-Meteo.
+- A mudança afeta somente a tipagem de compilação; a chamada de clima e seu comportamento em execução permanecem iguais.

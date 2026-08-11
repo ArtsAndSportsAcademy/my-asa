@@ -50,6 +50,10 @@ import { createNotification, sendNotification } from "../services/notificationSe
 type MessageParam = { role: "user" | "assistant"; content: any };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Tool = { name: string; description?: string; input_schema: any };
+type JsonFetchResponse = {
+  ok: boolean;
+  json(): Promise<unknown>;
+};
 
 const router = Router();
 
@@ -205,7 +209,7 @@ async function assembleResumoDodia(
       const wr = await fetch(
         "https://api.open-meteo.com/v1/forecast?latitude=-23.5505&longitude=-46.6333&current=temperature_2m,weathercode&timezone=America/Sao_Paulo",
         { signal: AbortSignal.timeout(4000) },
-      );
+      ) as unknown as JsonFetchResponse;
       if (wr.ok) {
         const wj = await wr.json() as { current: { temperature_2m: number; weathercode: number } };
         const { temperature_2m: temp, weathercode: code } = wj.current;
@@ -3489,7 +3493,7 @@ export async function executeTool(
         const wr = await fetch(
           "https://api.open-meteo.com/v1/forecast?latitude=-23.5505&longitude=-46.6333&current=temperature_2m,weathercode,precipitation,windspeed_10m&hourly=precipitation_probability&timezone=America/Sao_Paulo&forecast_days=1",
           { signal: AbortSignal.timeout(5000) },
-        );
+        ) as unknown as JsonFetchResponse;
         if (!wr.ok) return JSON.stringify({ error: "Serviço de clima indisponível" });
         const wj = await wr.json() as {
           current: { temperature_2m: number; weathercode: number; precipitation: number; windspeed_10m: number };
