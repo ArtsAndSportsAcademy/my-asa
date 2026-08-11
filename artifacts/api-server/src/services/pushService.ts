@@ -12,6 +12,13 @@ const log = domainLogger(LOG_DOMAIN.NOTIFICATIONS);
 
 const EXPO_PUSH_ENDPOINT = "https://exp.host/--/api/v2/push/send";
 
+type ExpoFetchResponse = {
+  ok: boolean;
+  status: number;
+  text(): Promise<string>;
+  json(): Promise<unknown>;
+};
+
 export type DevicePlatform = "IOS" | "ANDROID";
 
 export interface RegisterDeviceTokenInput {
@@ -128,7 +135,7 @@ export async function sendPushToUser(
       },
       body: JSON.stringify(messages),
       signal: AbortSignal.timeout(10_000),
-    });
+    }) as unknown as ExpoFetchResponse;
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");

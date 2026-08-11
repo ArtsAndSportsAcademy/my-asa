@@ -52,3 +52,9 @@ Eliminar os cinco erros de TypeScript identificados antes da criação do ambien
 - Após a correção das consultas de clima, a Vercel passou a informar apenas `src/routes/health.ts: Emit skipped`.
 - O compilador do preset Express ignora o diagnóstico de arquivos de workspace fora do `rootDir`, mas a opção herdada `noEmitOnError: true` ainda impedia a emissão do JavaScript.
 - A API agora define `noEmitOnError: false`. Erros TypeScript reais continuam bloqueando o deploy pela verificação obrigatória do próprio preset Express da Vercel e pelos comandos de validação do projeto.
+
+### Contratos de notificações push e Anthropic
+
+- A resposta do serviço Expo Push recebeu um contrato estrutural explícito com `ok`, `status`, `text` e `json`, eliminando a ambiguidade do tipo global `Response` na Vercel.
+- O cliente Anthropic passou a usar as exportações nomeadas `Anthropic` e `ClientOptions`, compatíveis com o mapa de exportações do SDK `0.78.0` e com a resolução de módulos do ambiente Vercel.
+- Não houve alteração nas regras de envio de notificações nem nos parâmetros da integração de IA.
