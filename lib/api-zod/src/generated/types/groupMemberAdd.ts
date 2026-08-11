@@ -8,4 +8,5 @@
 
 export interface GroupMemberAdd {
   userId: string;
+  isPrimary?: boolean;
 }

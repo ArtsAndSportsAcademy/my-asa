@@ -162,6 +162,9 @@ export const GetCurrentOrganizationResponse = zod.object({
   "groups": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "description": zod.string().nullish(),
+  "color": zod.string().optional(),
+  "icon": zod.string().optional(),
   "organizationId": zod.string().nullish(),
   "operationId": zod.string().nullish(),
   "scope": zod.enum(['OPERATION', 'MULTI', 'ALL']),
@@ -169,7 +172,9 @@ export const GetCurrentOrganizationResponse = zod.object({
   "members": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "photoUrl": zod.string().nullish()
+  "photoUrl": zod.string().nullish(),
+  "isPrimary": zod.boolean().optional(),
+  "startsAt": zod.string().optional()
 })).optional().describe('Membros ativos do grupo (presente apenas no detalhe do grupo).'),
   "supervisors": zod.array(zod.object({
   "id": zod.string(),
@@ -341,6 +346,9 @@ export const GetOperationalGroupsResponse = zod.object({
   "groups": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "description": zod.string().nullish(),
+  "color": zod.string().optional(),
+  "icon": zod.string().optional(),
   "organizationId": zod.string().nullish(),
   "operationId": zod.string().nullish(),
   "scope": zod.enum(['OPERATION', 'MULTI', 'ALL']),
@@ -348,7 +356,9 @@ export const GetOperationalGroupsResponse = zod.object({
   "members": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "photoUrl": zod.string().nullish()
+  "photoUrl": zod.string().nullish(),
+  "isPrimary": zod.boolean().optional(),
+  "startsAt": zod.string().optional()
 })).optional().describe('Membros ativos do grupo (presente apenas no detalhe do grupo).'),
   "supervisors": zod.array(zod.object({
   "id": zod.string(),
@@ -368,6 +378,9 @@ export const GetOperationalGroupsResponse = zod.object({
  */
 export const CreateOperationalGroupBody = zod.object({
   "name": zod.string(),
+  "description": zod.string().nullish(),
+  "color": zod.string().optional(),
+  "icon": zod.string().optional(),
   "scope": zod.enum(['OPERATION', 'MULTI', 'ALL']).optional().describe('OPERATION (uma operação, padrão), MULTI (várias) ou ALL (todas). MULTI\/ALL são exclusivos do Admin.'),
   "operationId": zod.string().nullish().describe('Obrigatório quando scope=OPERATION.'),
   "operationIds": zod.array(zod.string()).optional().describe('Operações cobertas quando scope=MULTI.'),
@@ -398,6 +411,9 @@ export const GetOperationalGroupResponse = zod.object({
   "group": zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "description": zod.string().nullish(),
+  "color": zod.string().optional(),
+  "icon": zod.string().optional(),
   "organizationId": zod.string().nullish(),
   "operationId": zod.string().nullish(),
   "scope": zod.enum(['OPERATION', 'MULTI', 'ALL']),
@@ -405,7 +421,9 @@ export const GetOperationalGroupResponse = zod.object({
   "members": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "photoUrl": zod.string().nullish()
+  "photoUrl": zod.string().nullish(),
+  "isPrimary": zod.boolean().optional(),
+  "startsAt": zod.string().optional()
 })).optional().describe('Membros ativos do grupo (presente apenas no detalhe do grupo).'),
   "supervisors": zod.array(zod.object({
   "id": zod.string(),
@@ -428,13 +446,19 @@ export const UpdateOperationalGroupParams = zod.object({
 })
 
 export const UpdateOperationalGroupBody = zod.object({
-  "name": zod.string().optional()
+  "name": zod.string().optional(),
+  "description": zod.string().nullish(),
+  "color": zod.string().optional(),
+  "icon": zod.string().optional()
 })
 
 export const UpdateOperationalGroupResponse = zod.object({
   "group": zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "description": zod.string().nullish(),
+  "color": zod.string().optional(),
+  "icon": zod.string().optional(),
   "organizationId": zod.string().nullish(),
   "operationId": zod.string().nullish(),
   "scope": zod.enum(['OPERATION', 'MULTI', 'ALL']),
@@ -442,7 +466,9 @@ export const UpdateOperationalGroupResponse = zod.object({
   "members": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "photoUrl": zod.string().nullish()
+  "photoUrl": zod.string().nullish(),
+  "isPrimary": zod.boolean().optional(),
+  "startsAt": zod.string().optional()
 })).optional().describe('Membros ativos do grupo (presente apenas no detalhe do grupo).'),
   "supervisors": zod.array(zod.object({
   "id": zod.string(),
@@ -472,6 +498,9 @@ export const UpdateOperationalGroupStatusResponse = zod.object({
   "group": zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "description": zod.string().nullish(),
+  "color": zod.string().optional(),
+  "icon": zod.string().optional(),
   "organizationId": zod.string().nullish(),
   "operationId": zod.string().nullish(),
   "scope": zod.enum(['OPERATION', 'MULTI', 'ALL']),
@@ -479,7 +508,9 @@ export const UpdateOperationalGroupStatusResponse = zod.object({
   "members": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "photoUrl": zod.string().nullish()
+  "photoUrl": zod.string().nullish(),
+  "isPrimary": zod.boolean().optional(),
+  "startsAt": zod.string().optional()
 })).optional().describe('Membros ativos do grupo (presente apenas no detalhe do grupo).'),
   "supervisors": zod.array(zod.object({
   "id": zod.string(),
@@ -502,7 +533,8 @@ export const AddGroupMemberParams = zod.object({
 })
 
 export const AddGroupMemberBody = zod.object({
-  "userId": zod.string()
+  "userId": zod.string(),
+  "isPrimary": zod.boolean().optional()
 })
 
 
@@ -607,6 +639,9 @@ export const GetUserContextResponse = zod.object({
   "groups": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "description": zod.string().nullish(),
+  "color": zod.string().optional(),
+  "icon": zod.string().optional(),
   "organizationId": zod.string().nullish(),
   "operationId": zod.string().nullish(),
   "scope": zod.enum(['OPERATION', 'MULTI', 'ALL']),
@@ -614,7 +649,9 @@ export const GetUserContextResponse = zod.object({
   "members": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "photoUrl": zod.string().nullish()
+  "photoUrl": zod.string().nullish(),
+  "isPrimary": zod.boolean().optional(),
+  "startsAt": zod.string().optional()
 })).optional().describe('Membros ativos do grupo (presente apenas no detalhe do grupo).'),
   "supervisors": zod.array(zod.object({
   "id": zod.string(),

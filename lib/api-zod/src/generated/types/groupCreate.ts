@@ -10,6 +10,9 @@ import type { GroupCreateStatus } from './groupCreateStatus';
 
 export interface GroupCreate {
   name: string;
+  description?: string | null;
+  color?: string;
+  icon?: string;
   /** OPERATION (uma operação, padrão), MULTI (várias) ou ALL (todas). MULTI/ALL são exclusivos do Admin. */
   scope?: GroupCreateScope;
   /** Obrigatório quando scope=OPERATION. */

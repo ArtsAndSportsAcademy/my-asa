@@ -18,6 +18,21 @@ export const userRolesTable = pgTable("user_roles", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// O vinculo com uma equipe e independente do perfil de acesso. Mantemos
+// user_roles durante a transicao porque Escalas/Folgas ainda o consultam.
+export const teamMembershipsTable = pgTable("team_memberships", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  teamId: uuid("team_id").notNull().references(() => operationalGroupsTable.id),
+  userId: uuid("user_id").notNull().references(() => usersTable.id),
+  isPrimary: boolean("is_primary").notNull().default(false),
+  active: boolean("active").notNull().default(true),
+  startsAt: timestamp("starts_at", { withTimezone: true }).notNull().defaultNow(),
+  endsAt: timestamp("ends_at", { withTimezone: true }),
+  assignedBy: uuid("assigned_by").references(() => usersTable.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const restrictionsTable = pgTable("restrictions", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id").notNull().references(() => usersTable.id),
@@ -33,6 +48,7 @@ export const restrictionsTable = pgTable("restrictions", {
 export const insertUserRoleSchema = createInsertSchema(userRolesTable).omit({ id: true, createdAt: true });
 export type InsertUserRole = z.infer<typeof insertUserRoleSchema>;
 export type UserRole = typeof userRolesTable.$inferSelect;
+export type TeamMembership = typeof teamMembershipsTable.$inferSelect;
 
 export const insertRestrictionSchema = createInsertSchema(restrictionsTable).omit({ id: true, createdAt: true });
 export type InsertRestriction = z.infer<typeof insertRestrictionSchema>;

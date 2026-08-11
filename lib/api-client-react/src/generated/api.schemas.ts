@@ -143,6 +143,8 @@ export type OperationalGroupMembersItem = {
   id: string;
   name: string;
   photoUrl?: string | null;
+  isPrimary?: boolean;
+  startsAt?: string;
 };
 
 export type OperationalGroupSupervisorsItem = {
@@ -163,6 +165,9 @@ export const OperationalGroupStatus = {
 export interface OperationalGroup {
   id: string;
   name: string;
+  description?: string | null;
+  color?: string;
+  icon?: string;
   organizationId?: string | null;
   operationId?: string | null;
   scope: OperationalGroupScope;
@@ -399,6 +404,9 @@ export const GroupCreateStatus = {
 
 export interface GroupCreate {
   name: string;
+  description?: string | null;
+  color?: string;
+  icon?: string;
   /** OPERATION (uma operação, padrão), MULTI (várias) ou ALL (todas). MULTI/ALL são exclusivos do Admin. */
   scope?: GroupCreateScope;
   /** Obrigatório quando scope=OPERATION. */
@@ -410,6 +418,9 @@ export interface GroupCreate {
 
 export interface GroupUpdate {
   name?: string;
+  description?: string | null;
+  color?: string;
+  icon?: string;
 }
 
 export type GroupStatusUpdateStatus = typeof GroupStatusUpdateStatus[keyof typeof GroupStatusUpdateStatus];
@@ -427,6 +438,7 @@ export interface GroupStatusUpdate {
 
 export interface GroupMemberAdd {
   userId: string;
+  isPrimary?: boolean;
 }
 
 export interface GroupSupervisorAdd {

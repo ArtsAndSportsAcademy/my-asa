@@ -7,6 +7,7 @@ import {
   operationsTable,
   operationalGroupsTable,
   groupOperationsTable,
+  teamMembershipsTable,
 } from "@workspace/db";
 import type { OperationalGroup } from "@workspace/db";
 import { requireAuth, requireOrganization, requireRole } from "../middlewares/auth.js";
@@ -67,23 +68,30 @@ export async function groupCoveredOperationIds(group: OperationalGroup, organiza
  * evitar vazamento entre operações em grupos amplos (MULTI/ALL).
  */
 export async function loadGroupMembers(groupId: string, restrictOperationIds?: string[]) {
-  const conditions = [
-    eq(userRolesTable.groupId, groupId),
-    eq(userRolesTable.role, "MEMBER"),
-    eq(userRolesTable.active, true),
-  ];
+  const rows = await db
+    .select({
+      id: usersTable.id,
+      name: usersTable.name,
+      photoUrl: usersTable.photoUrl,
+      isPrimary: teamMembershipsTable.isPrimary,
+      startsAt: teamMembershipsTable.startsAt,
+    })
+    .from(teamMembershipsTable)
+    .innerJoin(usersTable, eq(usersTable.id, teamMembershipsTable.userId))
+    .where(and(eq(teamMembershipsTable.teamId, groupId), eq(teamMembershipsTable.active, true)));
+
+  let allowedUserIds: Set<string> | null = null;
   if (restrictOperationIds) {
     if (restrictOperationIds.length === 0) return [];
-    conditions.push(inArray(userRolesTable.operationId, restrictOperationIds));
+    const roleRows = await db
+      .select({ userId: userRolesTable.userId })
+      .from(userRolesTable)
+      .where(and(eq(userRolesTable.active, true), inArray(userRolesTable.operationId, restrictOperationIds)));
+    allowedUserIds = new Set(roleRows.map((row) => row.userId));
   }
-  const rows = await db
-    .select({ id: usersTable.id, name: usersTable.name, photoUrl: usersTable.photoUrl })
-    .from(userRolesTable)
-    .innerJoin(usersTable, eq(usersTable.id, userRolesTable.userId))
-    .where(and(...conditions));
-  const map = new Map<string, { id: string; name: string; photoUrl: string | null }>();
+  const map = new Map<string, typeof rows[number]>();
   for (const r of rows) map.set(r.id, r);
-  return [...map.values()];
+  return [...map.values()].filter((member) => !allowedUserIds || allowedUserIds.has(member.id));
 }
 
 /**
@@ -171,7 +179,7 @@ export class GroupActionError extends Error {
 /** Cria grupo. ADMIN: qualquer escopo. SUPERVISOR: só OPERATION da própria operação. */
 export async function createGroupCore(
   actor: GroupActor,
-  input: { name?: string; scope?: string; operationId?: string | null; operationIds?: string[]; status?: string },
+  input: { name?: string; description?: string | null; color?: string; icon?: string; scope?: string; operationId?: string | null; operationIds?: string[]; status?: string },
 ): Promise<OperationalGroup> {
   const { role, userId: sub, organizationId } = actor;
   const name = input.name;
@@ -208,6 +216,9 @@ export async function createGroupCore(
         operationId,
         scope: "OPERATION",
         name: name.trim(),
+        description: input.description?.trim() || null,
+        color: input.color || "#6D4AFF",
+        icon: input.icon || "users",
         status: resolvedStatus,
         supervisorId: isSupervisor ? sub : undefined,
       })
@@ -230,7 +241,7 @@ export async function createGroupCore(
     if (validOps.length !== uniqueOps.length) throw new GroupActionError(404, "NOT_FOUND", "Uma ou mais operações não foram encontradas nesta organização");
     const [group] = await db
       .insert(operationalGroupsTable)
-      .values({ organizationId, operationId: null, scope: "MULTI", name: name.trim(), status: resolvedStatus })
+      .values({ organizationId, operationId: null, scope: "MULTI", name: name.trim(), description: input.description?.trim() || null, color: input.color || "#6D4AFF", icon: input.icon || "users", status: resolvedStatus })
       .returning();
     await db.insert(groupOperationsTable).values(uniqueOps.map((opId) => ({ groupId: group!.id, operationId: opId })));
     await recordAudit({
@@ -245,7 +256,7 @@ export async function createGroupCore(
   // scope === "ALL"
   const [group] = await db
     .insert(operationalGroupsTable)
-    .values({ organizationId, operationId: null, scope: "ALL", name: name.trim(), status: resolvedStatus })
+    .values({ organizationId, operationId: null, scope: "ALL", name: name.trim(), description: input.description?.trim() || null, color: input.color || "#6D4AFF", icon: input.icon || "users", status: resolvedStatus })
     .returning();
   await recordAudit({
     actorId: sub,
@@ -268,10 +279,13 @@ async function loadManageableGroup(actor: GroupActor, id: string): Promise<Opera
 }
 
 /** Renomeia um grupo. name vazio = no-op (mantém compatibilidade do PATCH HTTP). */
-export async function renameGroupCore(actor: GroupActor, id: string, name?: string): Promise<OperationalGroup> {
+export async function renameGroupCore(actor: GroupActor, id: string, name?: string, description?: string | null, color?: string, icon?: string): Promise<OperationalGroup> {
   await loadManageableGroup(actor, id);
-  const updates: Partial<{ name: string; updatedAt: Date }> = { updatedAt: new Date() };
+  const updates: Partial<{ name: string; description: string | null; color: string; icon: string; updatedAt: Date }> = { updatedAt: new Date() };
   if (name?.trim()) updates.name = name.trim();
+  if (description !== undefined) updates.description = description?.trim() || null;
+  if (color) updates.color = color;
+  if (icon) updates.icon = icon;
   const [updated] = await db
     .update(operationalGroupsTable)
     .set(updates)
@@ -308,7 +322,7 @@ export async function setGroupStatusCore(actor: GroupActor, id: string, status: 
 }
 
 /** Adiciona um membro ao grupo, validando a operação coberta. */
-export async function addGroupMemberCore(actor: GroupActor, id: string, userId: string) {
+export async function addGroupMemberCore(actor: GroupActor, id: string, userId: string, isPrimary = false) {
   if (!userId) throw new GroupActionError(400, "BAD_REQUEST", "userId é obrigatório");
   const group = await loadManageableGroup(actor, id);
 
@@ -346,6 +360,27 @@ export async function addGroupMemberCore(actor: GroupActor, id: string, userId: 
   });
   if (existing) throw new GroupActionError(409, "CONFLICT", "Usuário já é membro deste grupo");
 
+  const existingMembership = await db.query.teamMembershipsTable.findFirst({
+    where: and(eq(teamMembershipsTable.userId, userId), eq(teamMembershipsTable.teamId, group.id), eq(teamMembershipsTable.active, true)),
+  });
+  if (existingMembership) throw new GroupActionError(409, "CONFLICT", "Pessoa ja pertence a esta equipe");
+
+  const activeMemberships = await db.query.teamMembershipsTable.findMany({
+    where: and(eq(teamMembershipsTable.userId, userId), eq(teamMembershipsTable.active, true)),
+  });
+  const shouldBePrimary = isPrimary || activeMemberships.length === 0;
+  if (shouldBePrimary) {
+    await db.update(teamMembershipsTable)
+      .set({ isPrimary: false, updatedAt: new Date() })
+      .where(and(eq(teamMembershipsTable.userId, userId), eq(teamMembershipsTable.active, true)));
+  }
+  await db.insert(teamMembershipsTable).values({
+    teamId: group.id,
+    userId,
+    isPrimary: shouldBePrimary,
+    assignedBy: actor.userId,
+  });
+
   const [newRole] = await db
     .insert(userRolesTable)
     .values({ userId, operationId: membershipOperationId, groupId: group.id, role: "MEMBER", active: true })
@@ -367,6 +402,9 @@ export async function removeGroupMemberCore(actor: GroupActor, id: string, userI
   });
   if (!roleRecord) throw new GroupActionError(404, "NOT_FOUND", "Membro não encontrado no grupo");
   await db.update(userRolesTable).set({ active: false }).where(eq(userRolesTable.id, roleRecord.id));
+  await db.update(teamMembershipsTable)
+    .set({ active: false, isPrimary: false, endsAt: new Date(), updatedAt: new Date() })
+    .where(and(eq(teamMembershipsTable.teamId, id), eq(teamMembershipsTable.userId, userId), eq(teamMembershipsTable.active, true)));
   await recordAudit({ actorId: actor.userId, action: "MEMBER_REMOVED", targetResource: `group:${id}:user:${userId}` });
   return group;
 }
@@ -459,6 +497,9 @@ router.post("/operational-groups", requireAuth, requireOrganization, async (req,
         operationId: req.body.operationId,
         operationIds: Array.isArray(req.body.operationIds) ? req.body.operationIds : [],
         status: req.body.status,
+        description: req.body.description,
+        color: req.body.color,
+        icon: req.body.icon,
       },
     );
     log.info({ groupId: group.id, scope: group.scope }, "Group created");
@@ -479,7 +520,14 @@ router.patch("/operational-groups/:id", requireAuth, requireOrganization, async 
   const id = req.params.id as string;
 
   try {
-    const updated = await renameGroupCore({ role, userId: sub, organizationId }, id, req.body.name);
+    const updated = await renameGroupCore(
+      { role, userId: sub, organizationId },
+      id,
+      req.body.name,
+      req.body.description,
+      req.body.color,
+      req.body.icon,
+    );
     res.json({ group: await serializeGroup(updated, organizationId) });
   } catch (err) {
     if (err instanceof GroupActionError) {
@@ -515,7 +563,12 @@ router.post("/operational-groups/:id/members", requireAuth, requireOrganization,
   const id = req.params.id as string;
 
   try {
-    const { role: newRole } = await addGroupMemberCore({ role, userId: sub, organizationId }, id, req.body.userId);
+    const { role: newRole } = await addGroupMemberCore(
+      { role, userId: sub, organizationId },
+      id,
+      req.body.userId,
+      req.body.isPrimary === true,
+    );
     log.info({ groupId: id, userId: req.body.userId }, "Member added to group");
     res.status(201).json({ role: newRole });
   } catch (err) {

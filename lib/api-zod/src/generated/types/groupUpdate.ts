@@ -8,4 +8,7 @@
 
 export interface GroupUpdate {
   name?: string;
+  description?: string | null;
+  color?: string;
+  icon?: string;
 }

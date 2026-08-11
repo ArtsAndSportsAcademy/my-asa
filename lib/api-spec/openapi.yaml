@@ -5475,6 +5475,13 @@ components:
           type: string
         name:
           type: string
+        description:
+          type: string
+          nullable: true
+        color:
+          type: string
+        icon:
+          type: string
         organizationId:
           type: string
           nullable: true
@@ -5502,6 +5509,10 @@ components:
               photoUrl:
                 type: string
                 nullable: true
+              isPrimary:
+                type: boolean
+              startsAt:
+                type: string
             required: [id, name]
         supervisors:
           type: array
@@ -5837,6 +5848,13 @@ components:
       properties:
         name:
           type: string
+        description:
+          type: string
+          nullable: true
+        color:
+          type: string
+        icon:
+          type: string
         scope:
           type: string
           description: OPERATION (uma operação, padrão), MULTI (várias) ou ALL (todas). MULTI/ALL são exclusivos do Admin.
@@ -5860,6 +5878,13 @@ components:
       properties:
         name:
           type: string
+        description:
+          type: string
+          nullable: true
+        color:
+          type: string
+        icon:
+          type: string
 
     GroupStatusUpdate:
       type: object
@@ -5874,6 +5899,8 @@ components:
       properties:
         userId:
           type: string
+        isPrimary:
+          type: boolean
       required: [userId]
 
     GroupSupervisorAdd:

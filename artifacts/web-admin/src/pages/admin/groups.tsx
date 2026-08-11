@@ -76,8 +76,9 @@ export default function GroupsPage() {
   const [statusGroup, setStatusGroup] = useState<OperationalGroup | null>(null);
   const [membersGroup, setMembersGroup] = useState<OperationalGroup | null>(null);
 
-  const [createForm, setCreateForm] = useState({ name: "", scope: "OPERATION", operationId: "", operationIds: [] as string[], status: "ACTIVE" });
+  const [createForm, setCreateForm] = useState({ name: "", description: "", color: "#6D4AFF", icon: "users", scope: "OPERATION", operationId: "", operationIds: [] as string[], status: "ACTIVE" });
   const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
   const [newStatus, setNewStatus] = useState("");
   const [memberSearch, setMemberSearch] = useState("");
   const [addSupervisorUserId, setAddSupervisorUserId] = useState("");
@@ -112,7 +113,7 @@ export default function GroupsPage() {
   const getOperationName = (opId: string) => operations.find((o) => o.id === opId)?.name ?? opId.slice(0, 8);
 
   const handleCreate = () => {
-    const { name, scope, operationId, operationIds, status } = createForm;
+    const { name, description, color, icon, scope, operationId, operationIds, status } = createForm;
     if (!name.trim()) {
       toast({ title: "Nome é obrigatório", variant: "destructive" });
       return;
@@ -125,16 +126,16 @@ export default function GroupsPage() {
       toast({ title: "Selecione ao menos uma operação", variant: "destructive" });
       return;
     }
-    const data: Record<string, unknown> = { name: name.trim(), scope, status };
+    const data: Record<string, unknown> = { name: name.trim(), description: description.trim() || null, color, icon, scope, status };
     if (scope === "OPERATION") data.operationId = operationId;
     if (scope === "MULTI") data.operationIds = operationIds;
     createMutation.mutate(
       { data: data as never },
       {
         onSuccess: () => {
-          toast({ title: "Grupo criado com sucesso" });
+          toast({ title: "Equipe criada com sucesso" });
           setCreateOpen(false);
-          setCreateForm({ name: "", scope: "OPERATION", operationId: "", operationIds: [], status: "ACTIVE" });
+          setCreateForm({ name: "", description: "", color: "#6D4AFF", icon: "users", scope: "OPERATION", operationId: "", operationIds: [], status: "ACTIVE" });
           invalidate();
         },
         onError: (err: any) => toast({ title: err?.response?.data?.message ?? "Erro ao criar grupo", variant: "destructive" }),
@@ -154,9 +155,9 @@ export default function GroupsPage() {
   const handleEdit = () => {
     if (!editGroup || !editName.trim()) return;
     updateMutation.mutate(
-      { id: editGroup.id, data: { name: editName.trim() } },
+      { id: editGroup.id, data: { name: editName.trim(), description: editDescription.trim() || null } },
       {
-        onSuccess: () => { toast({ title: "Grupo atualizado" }); setEditGroup(null); invalidate(); },
+        onSuccess: () => { toast({ title: "Equipe atualizada" }); setEditGroup(null); invalidate(); },
         onError: () => toast({ title: "Erro ao atualizar grupo", variant: "destructive" }),
       }
     );
@@ -218,13 +219,13 @@ export default function GroupsPage() {
   };
 
   return (
-    <AdminLayout title="Grupos Operacionais" subtitle="Organize equipes dentro das operações">
+    <AdminLayout title="Equipes da ASA" subtitle="Patinação, Bailarinos, Produção, Gestão e as novas equipes que a ASA criar">
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <p className="text-sm text-muted-foreground">{groups.length} grupo(s) encontrado(s)</p>
+          <p className="text-sm text-muted-foreground">{groups.length} equipe(s) cadastrada(s)</p>
           <Button onClick={() => setCreateOpen(true)} size="sm">
             <Plus className="w-4 h-4 mr-2" />
-            Novo Grupo
+            Nova Equipe
           </Button>
         </div>
 
@@ -258,7 +259,7 @@ export default function GroupsPage() {
               ) : groups.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
-                    Nenhum grupo criado ainda. Crie o primeiro grupo para organizar sua equipe na operação.
+                    Nenhuma equipe criada ainda. Comece por Patinação, Bailarinos, Produção ou Gestão.
                   </TableCell>
                 </TableRow>
               ) : (
@@ -282,7 +283,7 @@ export default function GroupsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => { setEditGroup(group); setEditName(group.name); }}>
+                          <DropdownMenuItem onClick={() => { setEditGroup(group); setEditName(group.name); setEditDescription(group.description ?? ""); }}>
                             <Pencil className="w-4 h-4 mr-2" />
                             Editar nome
                           </DropdownMenuItem>
@@ -313,14 +314,22 @@ export default function GroupsPage() {
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Novo Grupo Operacional</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Nova Equipe</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Nome do grupo</Label>
+              <Label>Nome da equipe</Label>
               <Input
-                placeholder="Ex: Equipe de Palco"
+                placeholder="Ex: Bailarinos"
                 value={createForm.name}
                 onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Descrição</Label>
+              <Input
+                placeholder="Ex: Equipe artística de dança da ASA"
+                value={createForm.description}
+                onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
@@ -334,9 +343,9 @@ export default function GroupsPage() {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                {createForm.scope === "OPERATION" && "O grupo pertence a uma única operação."}
-                {createForm.scope === "MULTI" && "O grupo cobre as operações que você escolher."}
-                {createForm.scope === "ALL" && "O grupo cobre todas as operações da organização."}
+                {createForm.scope === "OPERATION" && "A equipe atua em uma operação."}
+                {createForm.scope === "MULTI" && "A equipe atua nas operações escolhidas."}
+                {createForm.scope === "ALL" && "A equipe é da ASA e pode atuar em todas as operações."}
               </p>
             </div>
 
@@ -402,7 +411,7 @@ export default function GroupsPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
             <Button onClick={handleCreate} disabled={createMutation.isPending}>
-              {createMutation.isPending ? "Criando..." : "Criar grupo"}
+              {createMutation.isPending ? "Criando..." : "Criar equipe"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -410,10 +419,16 @@ export default function GroupsPage() {
 
       <Dialog open={!!editGroup} onOpenChange={(o) => !o && setEditGroup(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Editar Grupo</DialogTitle></DialogHeader>
-          <div className="space-y-2 py-2">
-            <Label>Nome</Label>
-            <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+          <DialogHeader><DialogTitle>Editar Equipe</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Nome</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Descrição</Label>
+              <Input value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditGroup(null)}>Cancelar</Button>
@@ -541,7 +556,7 @@ export default function GroupsPage() {
             <div className="space-y-3">
               <p className="text-sm font-semibold flex items-center gap-2">
                 <Users className="w-4 h-4 text-primary" />
-                Membros do grupo ({groupMembers.length})
+                Pessoas da equipe ({groupMembers.length})
               </p>
               {groupMembers.length === 0 ? (
                 <p className="text-sm text-muted-foreground border rounded-md px-3 py-4 text-center">
@@ -551,7 +566,10 @@ export default function GroupsPage() {
                 <div className="border rounded-md divide-y">
                   {groupMembers.map((m) => (
                     <div key={m.id} className="flex items-center justify-between px-3 py-2">
-                      <span className="text-sm">{m.name}</span>
+                      <span className="flex items-center gap-2 text-sm">
+                        {m.name}
+                        {m.isPrimary && <Badge variant="secondary">Equipe principal</Badge>}
+                      </span>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -569,7 +587,7 @@ export default function GroupsPage() {
             </div>
 
             <div className="text-xs text-muted-foreground border-t pt-4">
-              Adicione ou remova membros (de qualquer operação coberta) e supervisores deste grupo.
+              A primeira equipe de uma pessoa vira a principal. Mudanças ficam preservadas no histórico.
             </div>
           </div>
         </SheetContent>
