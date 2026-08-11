@@ -120,6 +120,14 @@ export const GetCurrentOrganizationResponse = zod.object({
   "operations": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "description": zod.string().nullish(),
+  "clientName": zod.string().nullish(),
+  "locations": zod.array(zod.string()),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "color": zod.string(),
+  "icon": zod.string(),
+  "localCoordinatorId": zod.string().nullish(),
   "organizationId": zod.string(),
   "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']),
   "lateThresholdMinutes": zod.number().nullish(),
@@ -159,6 +167,14 @@ export const GetOperationsResponse = zod.object({
   "operations": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "description": zod.string().nullish(),
+  "clientName": zod.string().nullish(),
+  "locations": zod.array(zod.string()),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "color": zod.string(),
+  "icon": zod.string(),
+  "localCoordinatorId": zod.string().nullish(),
   "organizationId": zod.string(),
   "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']),
   "lateThresholdMinutes": zod.number().nullish(),
@@ -174,6 +190,14 @@ export const GetOperationsResponse = zod.object({
  */
 export const CreateOperationBody = zod.object({
   "name": zod.string(),
+  "description": zod.string().nullish(),
+  "clientName": zod.string().nullish(),
+  "locations": zod.array(zod.string()).optional(),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "color": zod.string().optional(),
+  "icon": zod.string().optional(),
+  "localCoordinatorId": zod.string().nullish(),
   "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']).optional()
 })
 
@@ -189,6 +213,14 @@ export const GetOperationResponse = zod.object({
   "operation": zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "description": zod.string().nullish(),
+  "clientName": zod.string().nullish(),
+  "locations": zod.array(zod.string()),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "color": zod.string(),
+  "icon": zod.string(),
+  "localCoordinatorId": zod.string().nullish(),
   "organizationId": zod.string(),
   "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']),
   "lateThresholdMinutes": zod.number().nullish(),
@@ -208,6 +240,14 @@ export const UpdateOperationParams = zod.object({
 
 export const UpdateOperationBody = zod.object({
   "name": zod.string().optional(),
+  "description": zod.string().nullish(),
+  "clientName": zod.string().nullish(),
+  "locations": zod.array(zod.string()).optional(),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "color": zod.string().optional(),
+  "icon": zod.string().optional(),
+  "localCoordinatorId": zod.string().nullish(),
   "healthThresholds": zod.object({
 
 }).passthrough().nullish(),
@@ -219,6 +259,14 @@ export const UpdateOperationResponse = zod.object({
   "operation": zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "description": zod.string().nullish(),
+  "clientName": zod.string().nullish(),
+  "locations": zod.array(zod.string()),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "color": zod.string(),
+  "icon": zod.string(),
+  "localCoordinatorId": zod.string().nullish(),
   "organizationId": zod.string(),
   "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']),
   "lateThresholdMinutes": zod.number().nullish(),
@@ -244,6 +292,14 @@ export const UpdateOperationStatusResponse = zod.object({
   "operation": zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "description": zod.string().nullish(),
+  "clientName": zod.string().nullish(),
+  "locations": zod.array(zod.string()),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "color": zod.string(),
+  "icon": zod.string(),
+  "localCoordinatorId": zod.string().nullish(),
   "organizationId": zod.string(),
   "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']),
   "lateThresholdMinutes": zod.number().nullish(),
@@ -497,6 +553,14 @@ export const GetUserContextResponse = zod.object({
   "operations": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "description": zod.string().nullish(),
+  "clientName": zod.string().nullish(),
+  "locations": zod.array(zod.string()),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "color": zod.string(),
+  "icon": zod.string(),
+  "localCoordinatorId": zod.string().nullish(),
   "organizationId": zod.string(),
   "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']),
   "lateThresholdMinutes": zod.number().nullish(),
@@ -1725,11 +1789,11 @@ export const ListMyAllocationsQueryParams = zod.object({
 export const ListMyAllocationsResponse = zod.object({
   "allocations": zod.array(zod.object({
   "id": zod.string(),
-  "scaleId": zod.string(),
-  "agendaEventId": zod.string(),
+  "scaleId": zod.string().nullish(),
+  "agendaEventId": zod.string().nullish(),
   "positionId": zod.string().nullish(),
   "positionName": zod.string().nullish(),
-  "status": zod.enum(['ASSIGNED', 'OPEN', 'CONFLICT', 'MANUAL_OVERRIDE']),
+  "status": zod.enum(['ASSIGNED', 'OPEN', 'CONFLICT', 'MANUAL_OVERRIDE', 'RECURRING_ACTIVITY']),
   "eventTitle": zod.string().nullish(),
   "eventDate": zod.string().nullish(),
   "eventStartTime": zod.string().nullish(),
@@ -1737,7 +1801,9 @@ export const ListMyAllocationsResponse = zod.object({
   "eventLocation": zod.string().nullish(),
   "eventType": zod.string().nullish(),
   "scaleTitle": zod.string().nullish(),
-  "scaleStatus": zod.string().nullish()
+  "scaleStatus": zod.string().nullish(),
+  "operationId": zod.string().nullish(),
+  "operationName": zod.string().nullish()
 }))
 })
 

@@ -41,7 +41,10 @@ router.get("/operations/:id", requireAuth, requireOrganization, async (req, res)
 
 router.post("/operations", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
   const log = requestLogger("organization", req.requestId, req.correlationId);
-  const { name, status, healthThresholds } = req.body;
+  const {
+    name, description, clientName, locations, startDate, endDate, color, icon,
+    localCoordinatorId, status, healthThresholds,
+  } = req.body;
 
   if (!name?.trim()) {
     res.status(400).json({ error: "BAD_REQUEST", message: "name é obrigatório" });
@@ -50,12 +53,25 @@ router.post("/operations", requireAuth, requireOrganization, requireRole("ADMIN"
 
   const resolvedStatus: OperationStatus = OPERATION_STATUSES.includes(status) ? status : "DRAFT";
 
+  if (startDate && endDate && endDate < startDate) {
+    res.status(400).json({ error: "BAD_REQUEST", message: "A data final não pode ser anterior à data inicial" });
+    return;
+  }
+
   try {
     const [operation] = await db
       .insert(operationsTable)
       .values({
         organizationId: req.user!.organizationId,
         name: (name as string).trim(),
+        description: typeof description === "string" && description.trim() ? description.trim() : null,
+        clientName: typeof clientName === "string" && clientName.trim() ? clientName.trim() : null,
+        locations: Array.isArray(locations) ? locations.map(String).map((v) => v.trim()).filter(Boolean) : [],
+        startDate: startDate || null,
+        endDate: endDate || null,
+        color: typeof color === "string" && /^#[0-9a-f]{6}$/i.test(color) ? color : "#6D4AFF",
+        icon: typeof icon === "string" && icon.trim() ? icon.trim() : "sparkles",
+        localCoordinatorId: localCoordinatorId || null,
         status: resolvedStatus,
         healthThresholds: healthThresholds ?? {
           scalePublishedDaysAhead: 7,
@@ -83,8 +99,19 @@ router.post("/operations", requireAuth, requireOrganization, requireRole("ADMIN"
 router.patch("/operations/:id", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
   const log = requestLogger(LOG_DOMAIN.ORGANIZATION, req.requestId, req.correlationId);
   const id = req.params.id as string;
-  const { name, healthThresholds, lateThresholdMinutes, timezone } = req.body as {
+  const {
+    name, description, clientName, locations, startDate, endDate, color, icon,
+    localCoordinatorId, healthThresholds, lateThresholdMinutes, timezone,
+  } = req.body as {
     name?: string;
+    description?: string | null;
+    clientName?: string | null;
+    locations?: string[];
+    startDate?: string | null;
+    endDate?: string | null;
+    color?: string;
+    icon?: string;
+    localCoordinatorId?: string | null;
     healthThresholds?: unknown;
     lateThresholdMinutes?: number;
     timezone?: string;
@@ -101,6 +128,32 @@ router.patch("/operations/:id", requireAuth, requireOrganization, requireRole("A
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (name?.trim()) updates["name"] = (name as string).trim();
+    if (description !== undefined) updates["description"] = description?.trim() || null;
+    if (clientName !== undefined) updates["clientName"] = clientName?.trim() || null;
+    if (locations !== undefined) {
+      if (!Array.isArray(locations)) {
+        res.status(400).json({ error: "BAD_REQUEST", message: "locations deve ser uma lista" });
+        return;
+      }
+      updates["locations"] = locations.map(String).map((v) => v.trim()).filter(Boolean);
+    }
+    const resolvedStartDate = startDate !== undefined ? startDate : operation.startDate;
+    const resolvedEndDate = endDate !== undefined ? endDate : operation.endDate;
+    if (resolvedStartDate && resolvedEndDate && resolvedEndDate < resolvedStartDate) {
+      res.status(400).json({ error: "BAD_REQUEST", message: "A data final não pode ser anterior à data inicial" });
+      return;
+    }
+    if (startDate !== undefined) updates["startDate"] = startDate || null;
+    if (endDate !== undefined) updates["endDate"] = endDate || null;
+    if (color !== undefined) {
+      if (!/^#[0-9a-f]{6}$/i.test(color)) {
+        res.status(400).json({ error: "BAD_REQUEST", message: "Cor inválida" });
+        return;
+      }
+      updates["color"] = color;
+    }
+    if (icon !== undefined) updates["icon"] = icon.trim() || "sparkles";
+    if (localCoordinatorId !== undefined) updates["localCoordinatorId"] = localCoordinatorId || null;
     if (healthThresholds !== undefined) updates["healthThresholds"] = healthThresholds;
     if (typeof lateThresholdMinutes === "number" && lateThresholdMinutes >= 0) {
       updates["lateThresholdMinutes"] = lateThresholdMinutes;
@@ -177,9 +230,15 @@ router.patch("/operations/:id/status", requireAuth, requireOrganization, require
       return;
     }
 
+    const now = new Date();
     const [updated] = await db
       .update(operationsTable)
-      .set({ status: status as OperationStatus, updatedAt: new Date() })
+      .set({
+        status: status as OperationStatus,
+        archivedAt: status === "ARCHIVED" ? now : null,
+        archivedBy: status === "ARCHIVED" ? req.user!.sub : null,
+        updatedAt: now,
+      })
       .where(eq(operationsTable.id, id))
       .returning();
 

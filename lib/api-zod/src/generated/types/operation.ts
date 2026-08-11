@@ -10,6 +10,14 @@ import type { OperationStatus } from './operationStatus';
 export interface Operation {
   id: string;
   name: string;
+  description?: string | null;
+  clientName?: string | null;
+  locations: string[];
+  startDate?: string | null;
+  endDate?: string | null;
+  color: string;
+  icon: string;
+  localCoordinatorId?: string | null;
   organizationId: string;
   status: OperationStatus;
   lateThresholdMinutes?: number | null;

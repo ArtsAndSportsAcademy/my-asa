@@ -97,6 +97,14 @@ export const OperationStatus = {
 export interface Operation {
   id: string;
   name: string;
+  description?: string | null;
+  clientName?: string | null;
+  locations: string[];
+  startDate?: string | null;
+  endDate?: string | null;
+  color: string;
+  icon: string;
+  localCoordinatorId?: string | null;
   organizationId: string;
   status: OperationStatus;
   lateThresholdMinutes?: number | null;
@@ -291,6 +299,14 @@ export const OperationCreateStatus = {
 
 export interface OperationCreate {
   name: string;
+  description?: string | null;
+  clientName?: string | null;
+  locations?: string[];
+  startDate?: string | null;
+  endDate?: string | null;
+  color?: string;
+  icon?: string;
+  localCoordinatorId?: string | null;
   status?: OperationCreateStatus;
 }
 
@@ -298,6 +314,14 @@ export type OperationUpdateHealthThresholds = { [key: string]: unknown } | null;
 
 export interface OperationUpdate {
   name?: string;
+  description?: string | null;
+  clientName?: string | null;
+  locations?: string[];
+  startDate?: string | null;
+  endDate?: string | null;
+  color?: string;
+  icon?: string;
+  localCoordinatorId?: string | null;
   healthThresholds?: OperationUpdateHealthThresholds;
   lateThresholdMinutes?: number | null;
   timezone?: string | null;

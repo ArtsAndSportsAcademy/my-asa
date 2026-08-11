@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, jsonb, pgEnum, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, jsonb, pgEnum, integer, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./identity.js";
@@ -19,10 +19,20 @@ export const operationsTable = pgTable("operations", {
   id: uuid("id").primaryKey().defaultRandom(),
   organizationId: uuid("organization_id").notNull().references(() => organizationsTable.id),
   name: text("name").notNull(),
+  description: text("description"),
+  clientName: text("client_name"),
+  locations: jsonb("locations").$type<string[]>().notNull().default([]),
+  startDate: date("start_date", { mode: "string" }),
+  endDate: date("end_date", { mode: "string" }),
+  color: text("color").notNull().default("#6D4AFF"),
+  icon: text("icon").notNull().default("sparkles"),
+  localCoordinatorId: uuid("local_coordinator_id").references(() => usersTable.id),
   status: operationStatusEnum("status").notNull().default("ACTIVE"),
   healthThresholds: jsonb("health_thresholds"),
   lateThresholdMinutes: integer("late_threshold_minutes").notNull().default(15),
   timezone: text("timezone").notNull().default("America/Sao_Paulo"),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  archivedBy: uuid("archived_by").references(() => usersTable.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

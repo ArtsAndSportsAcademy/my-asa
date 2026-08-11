@@ -12,376 +12,259 @@ import AdminLayout from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Separator } from "@/components/ui/separator";
 import { useLocation } from "wouter";
-import { Plus, MoreHorizontal, Pencil, RefreshCw, AlertCircle, Users2, Clock, Globe } from "lucide-react";
+import {
+  Plus, MoreHorizontal, Pencil, RefreshCw, AlertCircle, Users2, MapPin,
+  Building2, CalendarDays, Sparkles, Mountain, Waves, Hotel, Theater, Clock, Globe,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const STATUS_LABELS: Record<string, string> = {
-  DRAFT: "Rascunho",
-  ACTIVE: "Ativa",
-  PAUSED: "Pausada",
-  ARCHIVED: "Arquivada",
+  DRAFT: "Rascunho", ACTIVE: "Ativa", PAUSED: "Pausada", ARCHIVED: "Arquivada",
 };
-
 const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  DRAFT: "secondary",
-  ACTIVE: "default",
-  PAUSED: "outline",
-  ARCHIVED: "destructive",
+  DRAFT: "secondary", ACTIVE: "default", PAUSED: "outline", ARCHIVED: "destructive",
 };
-
 const STATUS_OPTIONS = ["DRAFT", "ACTIVE", "PAUSED", "ARCHIVED"] as const;
-
-const TIMEZONE_OPTIONS = [
-  { value: "America/Sao_Paulo",   label: "América/São Paulo (UTC-3)" },
-  { value: "America/Bahia",       label: "América/Bahia (UTC-3)" },
-  { value: "America/Fortaleza",   label: "América/Fortaleza (UTC-3)" },
-  { value: "America/Recife",      label: "América/Recife (UTC-3)" },
-  { value: "America/Belem",       label: "América/Belém (UTC-3)" },
-  { value: "America/Manaus",      label: "América/Manaus (UTC-4)" },
-  { value: "America/Cuiaba",      label: "América/Cuiabá (UTC-4)" },
-  { value: "America/Porto_Velho", label: "América/Porto Velho (UTC-4)" },
-  { value: "America/Rio_Branco",  label: "América/Rio Branco (UTC-5)" },
-  { value: "America/Noronha",     label: "América/Noronha (UTC-2)" },
-  { value: "UTC",                 label: "UTC (UTC+0)" },
+const ICON_OPTIONS = [
+  { value: "sparkles", label: "Artístico", Icon: Sparkles },
+  { value: "mountain", label: "Parque de neve", Icon: Mountain },
+  { value: "waves", label: "Parque aquático", Icon: Waves },
+  { value: "hotel", label: "Hotelaria", Icon: Hotel },
+  { value: "theater", label: "Espetáculos", Icon: Theater },
 ] as const;
+const ICONS = Object.fromEntries(ICON_OPTIONS.map(({ value, Icon }) => [value, Icon]));
 
-interface EditForm {
+type OperationForm = {
   name: string;
+  description: string;
+  clientName: string;
+  locations: string;
+  startDate: string;
+  endDate: string;
+  color: string;
+  icon: string;
+  status: string;
   lateThresholdMinutes: number;
   timezone: string;
+};
+
+const EMPTY_FORM: OperationForm = {
+  name: "", description: "", clientName: "", locations: "", startDate: "", endDate: "",
+  color: "#6D4AFF", icon: "sparkles", status: "DRAFT", lateThresholdMinutes: 15,
+  timezone: "America/Sao_Paulo",
+};
+
+function locationsToArray(value: string) {
+  return value.split(",").map((item) => item.trim()).filter(Boolean);
+}
+
+function OperationFields({ form, setForm, includeTechnical = false }: {
+  form: OperationForm;
+  setForm: (next: OperationForm) => void;
+  includeTechnical?: boolean;
+}) {
+  const update = <K extends keyof OperationForm>(key: K, value: OperationForm[K]) =>
+    setForm({ ...form, [key]: value });
+
+  return (
+    <div className="space-y-5 py-1">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2 sm:col-span-2">
+          <Label htmlFor="operation-name">Nome da operação</Label>
+          <Input id="operation-name" value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Ex.: Snowland" />
+        </div>
+        <div className="space-y-2 sm:col-span-2">
+          <Label htmlFor="operation-description">Descrição</Label>
+          <Textarea id="operation-description" value={form.description} onChange={(e) => update("description", e.target.value)} placeholder="O que a ASA realiza nesta operação?" rows={3} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="operation-client">Cliente ou empreendimento</Label>
+          <Input id="operation-client" value={form.clientName} onChange={(e) => update("clientName", e.target.value)} placeholder="Ex.: Gramado Parks" />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="operation-locations">Locais</Label>
+          <Input id="operation-locations" value={form.locations} onChange={(e) => update("locations", e.target.value)} placeholder="Separe os locais por vírgula" />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="operation-start">Início</Label>
+          <Input id="operation-start" type="date" value={form.startDate} onChange={(e) => update("startDate", e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="operation-end">Término, se houver</Label>
+          <Input id="operation-end" type="date" value={form.endDate} onChange={(e) => update("endDate", e.target.value)} min={form.startDate || undefined} />
+        </div>
+        <div className="space-y-2">
+          <Label>Ícone</Label>
+          <Select value={form.icon} onValueChange={(value) => update("icon", value)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{ICON_OPTIONS.map(({ value, label, Icon }) => (
+              <SelectItem key={value} value={value}><span className="flex items-center gap-2"><Icon className="h-4 w-4" />{label}</span></SelectItem>
+            ))}</SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="operation-color">Cor de identificação</Label>
+          <div className="flex gap-2">
+            <Input id="operation-color" type="color" value={form.color} onChange={(e) => update("color", e.target.value)} className="h-10 w-14 p-1" />
+            <Input value={form.color} onChange={(e) => update("color", e.target.value)} maxLength={7} />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label>Situação</Label>
+          <Select value={form.status} onValueChange={(value) => update("status", value)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{STATUS_OPTIONS.map((value) => <SelectItem key={value} value={value}>{STATUS_LABELS[value]}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {includeTechnical && (
+        <div className="rounded-xl border bg-muted/30 p-4">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Configuração interna</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2"><Clock className="h-4 w-4" />Referência operacional (minutos)</Label>
+              <Input type="number" min={0} value={form.lateThresholdMinutes} onChange={(e) => update("lateThresholdMinutes", Math.max(0, Number(e.target.value) || 0))} />
+              <p className="text-xs text-muted-foreground">Parâmetro interno; não representa controle de jornada.</p>
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2"><Globe className="h-4 w-4" />Fuso horário</Label>
+              <Input value={form.timezone} onChange={(e) => update("timezone", e.target.value)} />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function OperationsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
-
   const { data, isLoading, error } = useGetOperations();
   const operations: Operation[] = data?.operations ?? [];
-
   const createMutation = useCreateOperation();
   const updateMutation = useUpdateOperation();
   const updateStatusMutation = useUpdateOperationStatus();
-
   const [createOpen, setCreateOpen] = useState(false);
   const [editOp, setEditOp] = useState<Operation | null>(null);
   const [statusOp, setStatusOp] = useState<Operation | null>(null);
-
-  const [createForm, setCreateForm] = useState({ name: "", status: "DRAFT" });
-  const [editForm, setEditForm] = useState<EditForm>({
-    name: "",
-    lateThresholdMinutes: 15,
-    timezone: "America/Sao_Paulo",
-  });
-  const [newStatus, setNewStatus] = useState<string>("");
-
+  const [createForm, setCreateForm] = useState<OperationForm>(EMPTY_FORM);
+  const [editForm, setEditForm] = useState<OperationForm>(EMPTY_FORM);
+  const [newStatus, setNewStatus] = useState("");
   const invalidate = () => queryClient.invalidateQueries({ queryKey: getGetOperationsQueryKey() });
+
+  const apiData = (form: OperationForm) => ({
+    name: form.name.trim(), description: form.description.trim() || null,
+    clientName: form.clientName.trim() || null, locations: locationsToArray(form.locations),
+    startDate: form.startDate || null, endDate: form.endDate || null, color: form.color,
+    icon: form.icon, lateThresholdMinutes: form.lateThresholdMinutes, timezone: form.timezone,
+  });
 
   const openEdit = (op: Operation) => {
     setEditOp(op);
     setEditForm({
-      name: op.name,
-      lateThresholdMinutes: op.lateThresholdMinutes ?? 15,
-      timezone: op.timezone ?? "America/Sao_Paulo",
+      name: op.name, description: op.description ?? "", clientName: op.clientName ?? "",
+      locations: (op.locations ?? []).join(", "), startDate: op.startDate ?? "", endDate: op.endDate ?? "",
+      color: op.color ?? "#6D4AFF", icon: op.icon ?? "sparkles", status: op.status,
+      lateThresholdMinutes: op.lateThresholdMinutes ?? 15, timezone: op.timezone ?? "America/Sao_Paulo",
     });
   };
 
   const handleCreate = () => {
     if (!createForm.name.trim()) return;
-    createMutation.mutate(
-      { data: { name: createForm.name.trim(), status: createForm.status as never } },
-      {
-        onSuccess: () => {
-          toast({ title: "Operação criada com sucesso" });
-          setCreateOpen(false);
-          setCreateForm({ name: "", status: "DRAFT" });
-          invalidate();
-        },
-        onError: () => toast({ title: "Erro ao criar operação", variant: "destructive" }),
-      }
-    );
+    createMutation.mutate({ data: { ...apiData(createForm), status: createForm.status as never } }, {
+      onSuccess: () => { toast({ title: "Operação criada" }); setCreateOpen(false); setCreateForm(EMPTY_FORM); invalidate(); },
+      onError: () => toast({ title: "Não foi possível criar a operação", variant: "destructive" }),
+    });
   };
 
   const handleEdit = () => {
     if (!editOp || !editForm.name.trim()) return;
-    updateMutation.mutate(
-      {
-        id: editOp.id,
-        data: {
-          name: editForm.name.trim(),
-          lateThresholdMinutes: editForm.lateThresholdMinutes,
-          timezone: editForm.timezone,
-        },
-      },
-      {
-        onSuccess: () => {
-          toast({ title: "Operação atualizada" });
-          setEditOp(null);
-          invalidate();
-        },
-        onError: () => toast({ title: "Erro ao atualizar operação", variant: "destructive" }),
-      }
-    );
+    updateMutation.mutate({ id: editOp.id, data: apiData(editForm) }, {
+      onSuccess: () => { toast({ title: "Operação atualizada" }); setEditOp(null); invalidate(); },
+      onError: () => toast({ title: "Não foi possível atualizar a operação", variant: "destructive" }),
+    });
   };
 
   const handleStatusChange = () => {
     if (!statusOp || !newStatus) return;
-    updateStatusMutation.mutate(
-      { id: statusOp.id, data: { status: newStatus as never } },
-      {
-        onSuccess: () => {
-          toast({ title: "Status atualizado" });
-          setStatusOp(null);
-          invalidate();
-        },
-        onError: (err: any) => toast({ title: err?.message ?? "Erro ao atualizar status", variant: "destructive" }),
-      }
-    );
+    updateStatusMutation.mutate({ id: statusOp.id, data: { status: newStatus as never } }, {
+      onSuccess: () => { toast({ title: newStatus === "ARCHIVED" ? "Operação arquivada" : "Situação atualizada" }); setStatusOp(null); invalidate(); },
+      onError: () => toast({ title: "Não foi possível atualizar a situação", variant: "destructive" }),
+    });
   };
 
   return (
-    <AdminLayout title="Operações" subtitle="Gerencie as produções e espetáculos da organização">
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <p className="text-sm text-muted-foreground">{operations.length} operação(ões) encontrada(s)</p>
-          <Button onClick={() => setCreateOpen(true)} size="sm">
-            <Plus className="w-4 h-4 mr-2" />
-            Nova Operação
-          </Button>
-        </div>
-
-        {error && (
-          <div className="flex items-center gap-2 p-4 border border-destructive/30 bg-destructive/10 rounded-lg text-sm text-destructive">
-            <AlertCircle className="w-4 h-4" />
-            Erro ao carregar operações
+    <AdminLayout title="Operações" subtitle="Os ambientes contínuos onde a ASA realiza seu trabalho">
+      <div className="space-y-6">
+        <section className="relative overflow-hidden rounded-2xl border bg-card p-5">
+          <div className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-violet-500 via-fuchsia-500 to-blue-500" />
+          <div className="flex flex-col gap-4 pl-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Estrutura ASA</p>
+              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Snowland, Acquamotion e Hotelaria são operações. Shows, ensaios e eventos vivem dentro delas.</p>
+            </div>
+            <Button onClick={() => setCreateOpen(true)}><Plus className="mr-2 h-4 w-4" />Nova operação</Button>
           </div>
-        )}
+        </section>
 
-        <div className="rounded-lg border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Tolerância</TableHead>
-                <TableHead>Fuso horário</TableHead>
-                <TableHead className="w-[80px]">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                [...Array(3)].map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell><div className="h-4 bg-muted animate-pulse rounded w-40" /></TableCell>
-                    <TableCell><div className="h-4 bg-muted animate-pulse rounded w-20" /></TableCell>
-                    <TableCell><div className="h-4 bg-muted animate-pulse rounded w-16" /></TableCell>
-                    <TableCell><div className="h-4 bg-muted animate-pulse rounded w-32" /></TableCell>
-                    <TableCell />
-                  </TableRow>
-                ))
-              ) : operations.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
-                    Nenhuma operação cadastrada ainda. Crie a primeira operação para começar a estruturar sua produção na ASA.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                operations.map((op) => (
-                  <TableRow key={op.id}>
-                    <TableCell className="font-medium">{op.name}</TableCell>
-                    <TableCell>
-                      <Badge variant={STATUS_VARIANTS[op.status] ?? "secondary"}>
-                        {STATUS_LABELS[op.status] ?? op.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5" />
-                        {op.lateThresholdMinutes ?? 15} min
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Globe className="w-3.5 h-3.5" />
-                        {op.timezone ?? "America/Sao_Paulo"}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openEdit(op)}>
-                            <Pencil className="w-4 h-4 mr-2" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => { setStatusOp(op); setNewStatus(op.status); }}>
-                            <RefreshCw className="w-4 h-4 mr-2" />
-                            Mudar status
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => setLocation("/admin/groups")}>
-                            <Users2 className="w-4 h-4 mr-2" />
-                            Ver Grupos
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+        {error && <div className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"><AlertCircle className="h-4 w-4" />Não foi possível carregar as operações.</div>}
+
+        <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+          {isLoading ? [...Array(3)].map((_, i) => <div key={i} className="h-56 animate-pulse rounded-2xl border bg-muted" />) :
+          operations.length === 0 ? <div className="col-span-full rounded-2xl border border-dashed p-10 text-center text-sm text-muted-foreground">Nenhuma operação cadastrada. Crie o primeiro ambiente de trabalho da ASA.</div> :
+          operations.map((op) => {
+            const Icon = ICONS[op.icon ?? "sparkles"] ?? Sparkles;
+            return (
+              <article key={op.id} className="group overflow-hidden rounded-2xl border bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                <div className="h-1.5" style={{ backgroundColor: op.color ?? "#6D4AFF" }} />
+                <div className="p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 gap-3">
+                      <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl" style={{ backgroundColor: `${op.color ?? "#6D4AFF"}18`, color: op.color ?? "#6D4AFF" }}><Icon className="h-5 w-5" /></div>
+                      <div className="min-w-0"><h2 className="truncate text-lg font-semibold">{op.name}</h2><p className="truncate text-sm text-muted-foreground">{op.clientName || "Operação ASA"}</p></div>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openEdit(op)}><Pencil className="mr-2 h-4 w-4" />Editar cadastro</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setLocation(`/admin/groups?operationId=${op.id}`)}><Users2 className="mr-2 h-4 w-4" />Ver equipes relacionadas</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => { setStatusOp(op); setNewStatus(op.status); }}><RefreshCw className="mr-2 h-4 w-4" />Alterar situação</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <p className="mt-4 line-clamp-2 min-h-10 text-sm text-muted-foreground">{op.description || "Adicione uma descrição para orientar quem consulta esta operação."}</p>
+                  <div className="mt-4 space-y-2 text-xs text-muted-foreground">
+                    <p className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5" />{op.locations?.length ? op.locations.join(" · ") : "Locais ainda não informados"}</p>
+                    <p className="flex items-center gap-2"><CalendarDays className="h-3.5 w-3.5" />{op.startDate ? `Desde ${new Date(`${op.startDate}T12:00:00`).toLocaleDateString("pt-BR")}` : "Operação contínua"}{op.endDate ? ` até ${new Date(`${op.endDate}T12:00:00`).toLocaleDateString("pt-BR")}` : ""}</p>
+                  </div>
+                  <div className="mt-5 flex items-center justify-between border-t pt-4"><Badge variant={STATUS_VARIANTS[op.status] ?? "secondary"}>{STATUS_LABELS[op.status] ?? op.status}</Badge><span className="flex items-center gap-1 text-xs text-muted-foreground"><Building2 className="h-3.5 w-3.5" />ASA</span></div>
+                </div>
+              </article>
+            );
+          })}
         </div>
       </div>
 
-      {/* ── Criar operação ── */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Nova Operação</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label>Nome</Label>
-              <Input
-                placeholder="Ex: Romeu e Julieta 2025"
-                value={createForm.name}
-                onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Status inicial</Label>
-              <Select value={createForm.status} onValueChange={(v) => setCreateForm((f) => ({ ...f, status: v }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_OPTIONS.map((s) => (
-                    <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
-            <Button onClick={handleCreate} disabled={createMutation.isPending}>
-              {createMutation.isPending ? "Criando..." : "Criar"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto"><DialogHeader><DialogTitle>Nova operação</DialogTitle></DialogHeader><OperationFields form={createForm} setForm={setCreateForm} /><DialogFooter><Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button><Button onClick={handleCreate} disabled={!createForm.name.trim() || createMutation.isPending}>{createMutation.isPending ? "Criando..." : "Criar operação"}</Button></DialogFooter></DialogContent>
       </Dialog>
 
-      {/* ── Editar operação ── */}
-      <Dialog open={!!editOp} onOpenChange={(o) => !o && setEditOp(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Editar Operação</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label>Nome</Label>
-              <Input
-                value={editForm.name}
-                onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
-              />
-            </div>
-
-            <Separator />
-
-            <p className="text-xs font-semibold tracking-widest text-muted-foreground/60 uppercase">
-              Configuração de Check-in
-            </p>
-
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Clock className="w-3.5 h-3.5" />
-                Tolerância de atraso (minutos)
-              </Label>
-              <Input
-                type="number"
-                min={0}
-                value={editForm.lateThresholdMinutes}
-                onChange={(e) => {
-                  const v = Math.max(0, parseInt(e.target.value, 10) || 0);
-                  setEditForm((f) => ({ ...f, lateThresholdMinutes: v }));
-                }}
-              />
-              <p className="text-xs text-muted-foreground">
-                Tempo após o início do evento até ser marcado como Atrasado.
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Globe className="w-3.5 h-3.5" />
-                Fuso horário operacional
-              </Label>
-              <Select
-                value={editForm.timezone}
-                onValueChange={(v) => setEditForm((f) => ({ ...f, timezone: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TIMEZONE_OPTIONS.map((tz) => (
-                    <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Fuso usado para calcular presença e atrasos.
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditOp(null)}>Cancelar</Button>
-            <Button onClick={handleEdit} disabled={updateMutation.isPending}>
-              {updateMutation.isPending ? "Salvando..." : "Salvar"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+      <Dialog open={!!editOp} onOpenChange={(open) => !open && setEditOp(null)}>
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto"><DialogHeader><DialogTitle>Editar {editOp?.name}</DialogTitle></DialogHeader><OperationFields form={editForm} setForm={setEditForm} includeTechnical /><DialogFooter><Button variant="outline" onClick={() => setEditOp(null)}>Cancelar</Button><Button onClick={handleEdit} disabled={!editForm.name.trim() || updateMutation.isPending}>{updateMutation.isPending ? "Salvando..." : "Salvar alterações"}</Button></DialogFooter></DialogContent>
       </Dialog>
 
-      {/* ── Mudar status ── */}
-      <Dialog open={!!statusOp} onOpenChange={(o) => !o && setStatusOp(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Mudar Status — {statusOp?.name}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2 py-2">
-            <Label>Novo status</Label>
-            <Select value={newStatus} onValueChange={setNewStatus}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_OPTIONS.map((s) => (
-                  <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setStatusOp(null)}>Cancelar</Button>
-            <Button onClick={handleStatusChange} disabled={updateStatusMutation.isPending}>
-              {updateStatusMutation.isPending ? "Salvando..." : "Confirmar"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+      <Dialog open={!!statusOp} onOpenChange={(open) => !open && setStatusOp(null)}>
+        <DialogContent><DialogHeader><DialogTitle>Alterar situação — {statusOp?.name}</DialogTitle></DialogHeader><div className="space-y-3 py-2"><Label>Nova situação</Label><Select value={newStatus} onValueChange={setNewStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{STATUS_OPTIONS.map((value) => <SelectItem key={value} value={value}>{STATUS_LABELS[value]}</SelectItem>)}</SelectContent></Select>{newStatus === "ARCHIVED" && <p className="rounded-lg bg-amber-500/10 p-3 text-sm text-amber-800">A operação sairá das áreas ativas, mas todo o histórico será preservado.</p>}</div><DialogFooter><Button variant="outline" onClick={() => setStatusOp(null)}>Cancelar</Button><Button onClick={handleStatusChange} disabled={updateStatusMutation.isPending}>Confirmar</Button></DialogFooter></DialogContent>
       </Dialog>
     </AdminLayout>
   );

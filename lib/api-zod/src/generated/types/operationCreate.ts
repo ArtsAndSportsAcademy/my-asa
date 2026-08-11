@@ -9,5 +9,13 @@ import type { OperationCreateStatus } from './operationCreateStatus';
 
 export interface OperationCreate {
   name: string;
+  description?: string | null;
+  clientName?: string | null;
+  locations?: string[];
+  startDate?: string | null;
+  endDate?: string | null;
+  color?: string;
+  icon?: string;
+  localCoordinatorId?: string | null;
   status?: OperationCreateStatus;
 }

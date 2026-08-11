@@ -5397,6 +5397,29 @@ components:
           type: string
         name:
           type: string
+        description:
+          type: string
+          nullable: true
+        clientName:
+          type: string
+          nullable: true
+        locations:
+          type: array
+          items:
+            type: string
+        startDate:
+          type: string
+          nullable: true
+        endDate:
+          type: string
+          nullable: true
+        color:
+          type: string
+        icon:
+          type: string
+        localCoordinatorId:
+          type: string
+          nullable: true
         organizationId:
           type: string
         status:
@@ -5412,7 +5435,7 @@ components:
           type: string
         updatedAt:
           type: string
-      required: [id, name, organizationId, status]
+      required: [id, name, organizationId, status, locations, color, icon]
 
     OperationalGroup:
       type: object
@@ -5644,6 +5667,29 @@ components:
       properties:
         name:
           type: string
+        description:
+          type: string
+          nullable: true
+        clientName:
+          type: string
+          nullable: true
+        locations:
+          type: array
+          items:
+            type: string
+        startDate:
+          type: string
+          nullable: true
+        endDate:
+          type: string
+          nullable: true
+        color:
+          type: string
+        icon:
+          type: string
+        localCoordinatorId:
+          type: string
+          nullable: true
         status:
           type: string
           enum: [DRAFT, ACTIVE, PAUSED, ARCHIVED]
@@ -5654,6 +5700,29 @@ components:
       properties:
         name:
           type: string
+        description:
+          type: string
+          nullable: true
+        clientName:
+          type: string
+          nullable: true
+        locations:
+          type: array
+          items:
+            type: string
+        startDate:
+          type: string
+          nullable: true
+        endDate:
+          type: string
+          nullable: true
+        color:
+          type: string
+        icon:
+          type: string
+        localCoordinatorId:
+          type: string
+          nullable: true
         healthThresholds:
           type: object
           nullable: true

@@ -9,8 +9,8 @@ import type { MyAllocationStatus } from './myAllocationStatus';
 
 export interface MyAllocation {
   id: string;
-  scaleId: string;
-  agendaEventId: string;
+  scaleId?: string | null;
+  agendaEventId?: string | null;
   positionId?: string | null;
   positionName?: string | null;
   status: MyAllocationStatus;
@@ -22,4 +22,6 @@ export interface MyAllocation {
   eventType?: string | null;
   scaleTitle?: string | null;
   scaleStatus?: string | null;
+  operationId?: string | null;
+  operationName?: string | null;
 }
