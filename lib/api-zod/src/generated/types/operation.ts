@@ -24,4 +24,10 @@ export interface Operation {
   timezone?: string | null;
   createdAt?: string;
   updatedAt?: string;
+  activatedAt?: string | null;
+  activatedBy?: string | null;
+  archivedAt?: string | null;
+  archivedBy?: string | null;
+  modulesReviewedAt?: string | null;
+  modulesReviewedBy?: string | null;
 }

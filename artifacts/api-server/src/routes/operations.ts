@@ -7,11 +7,18 @@ import { recordAudit } from "../lib/audit.service.js";
 import { requestLogger } from "../lib/logger.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { LOG_DOMAIN } from "@workspace/shared";
+import {
+  OPERATION_STATUSES,
+  canTransitionOperation,
+  getOperationInOrganization,
+  getOperationReadiness,
+  isDuplicateOperationError,
+  isOperationStatus,
+  operationNameExists,
+  type OperationStatus,
+} from "../services/operation-lifecycle.js";
 
 const router: IRouter = Router();
-
-const OPERATION_STATUSES = ["DRAFT", "ACTIVE", "PAUSED", "ARCHIVED"] as const;
-type OperationStatus = typeof OPERATION_STATUSES[number];
 
 router.get("/operations/:id", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger("organization", req.requestId, req.correlationId);
@@ -27,7 +34,7 @@ router.get("/operations/:id", requireAuth, requireOrganization, async (req, res)
       return;
     }
 
-    if (role !== "ADMIN" && !operationIds.includes(operation.id)) {
+    if (role !== "ADMIN" && (operation.status !== "ACTIVE" || !operationIds.includes(operation.id))) {
       res.status(403).json({ error: "FORBIDDEN", message: "Operação fora do escopo" });
       return;
     }
@@ -43,7 +50,7 @@ router.post("/operations", requireAuth, requireOrganization, requireRole("ADMIN"
   const log = requestLogger("organization", req.requestId, req.correlationId);
   const {
     name, description, clientName, locations, startDate, endDate, color, icon,
-    localCoordinatorId, status, healthThresholds,
+    localCoordinatorId, healthThresholds,
   } = req.body;
 
   if (!name?.trim()) {
@@ -51,14 +58,20 @@ router.post("/operations", requireAuth, requireOrganization, requireRole("ADMIN"
     return;
   }
 
-  const resolvedStatus: OperationStatus = OPERATION_STATUSES.includes(status) ? status : "DRAFT";
-
   if (startDate && endDate && endDate < startDate) {
     res.status(400).json({ error: "BAD_REQUEST", message: "A data final não pode ser anterior à data inicial" });
     return;
   }
 
   try {
+    if (await operationNameExists(req.user!.organizationId, name)) {
+      res.status(409).json({
+        error: "DUPLICATE_OPERATION",
+        message: "Já existe uma operação com este nome.",
+      });
+      return;
+    }
+
     const [operation] = await db
       .insert(operationsTable)
       .values({
@@ -72,7 +85,7 @@ router.post("/operations", requireAuth, requireOrganization, requireRole("ADMIN"
         color: typeof color === "string" && /^#[0-9a-f]{6}$/i.test(color) ? color : "#6D4AFF",
         icon: typeof icon === "string" && icon.trim() ? icon.trim() : "sparkles",
         localCoordinatorId: localCoordinatorId || null,
-        status: resolvedStatus,
+        status: "DRAFT",
         healthThresholds: healthThresholds ?? {
           scalePublishedDaysAhead: 7,
           dailyBookPublishedHoursAhead: 24,
@@ -85,12 +98,19 @@ router.post("/operations", requireAuth, requireOrganization, requireRole("ADMIN"
       actorId: req.user!.sub,
       action: "OPERATION_CREATED",
       targetResource: `operation:${operation!.id}`,
-      metadata: { name, status: resolvedStatus },
+      metadata: { name, status: "DRAFT" },
     });
 
     log.info({ operationId: operation!.id }, "Operation created");
     res.status(201).json({ operation });
   } catch (err) {
+    if (isDuplicateOperationError(err)) {
+      res.status(409).json({
+        error: "DUPLICATE_OPERATION",
+        message: "Já existe uma operação com este nome.",
+      });
+      return;
+    }
     log.error({ err }, "Error creating operation");
     res.status(500).json({ error: "INTERNAL_ERROR" });
   }
@@ -127,7 +147,20 @@ router.patch("/operations/:id", requireAuth, requireOrganization, requireRole("A
     }
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
-    if (name?.trim()) updates["name"] = (name as string).trim();
+    if (name !== undefined) {
+      if (!name.trim()) {
+        res.status(400).json({ error: "BAD_REQUEST", message: "name é obrigatório" });
+        return;
+      }
+      if (await operationNameExists(req.user!.organizationId, name, id)) {
+        res.status(409).json({
+          error: "DUPLICATE_OPERATION",
+          message: "Já existe uma operação com este nome.",
+        });
+        return;
+      }
+      updates["name"] = name.trim();
+    }
     if (description !== undefined) updates["description"] = description?.trim() || null;
     if (clientName !== undefined) updates["clientName"] = clientName?.trim() || null;
     if (locations !== undefined) {
@@ -206,6 +239,13 @@ router.patch("/operations/:id", requireAuth, requireOrganization, requireRole("A
     log.info({ operationId: id }, "Operation updated");
     res.json({ operation: updated });
   } catch (err) {
+    if (isDuplicateOperationError(err)) {
+      res.status(409).json({
+        error: "DUPLICATE_OPERATION",
+        message: "Já existe uma operação com este nome.",
+      });
+      return;
+    }
     log.error({ err }, "Error updating operation");
     res.status(500).json({ error: "INTERNAL_ERROR" });
   }
@@ -216,27 +256,49 @@ router.patch("/operations/:id/status", requireAuth, requireOrganization, require
   const id = req.params.id as string;
   const { status } = req.body;
 
-  if (!OPERATION_STATUSES.includes(status)) {
+  if (!isOperationStatus(status)) {
     res.status(400).json({ error: "BAD_REQUEST", message: `status deve ser: ${OPERATION_STATUSES.join(", ")}` });
     return;
   }
 
   try {
-    const operation = await db.query.operationsTable.findFirst({
-      where: and(eq(operationsTable.id, id), eq(operationsTable.organizationId, req.user!.organizationId)),
-    });
+    const operation = await getOperationInOrganization(id, req.user!.organizationId);
     if (!operation) {
       res.status(404).json({ error: "NOT_FOUND" });
       return;
     }
 
+    const targetStatus: OperationStatus = status;
+    if (!canTransitionOperation(operation.status, targetStatus)) {
+      res.status(409).json({
+        error: "INVALID_OPERATION_TRANSITION",
+        message: `Não é possível alterar a operação de ${operation.status} para ${targetStatus}.`,
+      });
+      return;
+    }
+
+    if (targetStatus === "ACTIVE") {
+      const readiness = await getOperationReadiness(operation);
+      if (!readiness.ready) {
+        res.status(409).json({
+          error: "OPERATION_NOT_READY",
+          message: "Conclua a configuração da operação antes de ativá-la.",
+          readiness,
+        });
+        return;
+      }
+    }
+
     const now = new Date();
+    const isActivation = targetStatus === "ACTIVE" && operation.status !== "ACTIVE";
     const [updated] = await db
       .update(operationsTable)
       .set({
-        status: status as OperationStatus,
-        archivedAt: status === "ARCHIVED" ? now : null,
-        archivedBy: status === "ARCHIVED" ? req.user!.sub : null,
+        status: targetStatus,
+        archivedAt: targetStatus === "ARCHIVED" ? now : null,
+        archivedBy: targetStatus === "ARCHIVED" ? req.user!.sub : null,
+        activatedAt: isActivation ? now : operation.activatedAt,
+        activatedBy: isActivation ? req.user!.sub : operation.activatedBy,
         updatedAt: now,
       })
       .where(eq(operationsTable.id, id))
@@ -246,15 +308,82 @@ router.patch("/operations/:id/status", requireAuth, requireOrganization, require
       actorId: req.user!.sub,
       action: "OPERATION_UPDATED",
       targetResource: `operation:${id}`,
-      metadata: { from: operation.status, to: status },
+      metadata: { from: operation.status, to: targetStatus },
     });
 
-    log.info({ operationId: id, from: operation.status, to: status }, "Operation status changed");
+    void writeHistoryEvent({
+      category: "OPERATIONAL_CHANGE",
+      action: `operation.status.${targetStatus.toLowerCase()}`,
+      title: "Situação da operação alterada",
+      narrative: `Situação alterada de ${operation.status} para ${targetStatus}`,
+      entityType: "operation",
+      entityId: id,
+      actorId: req.user!.sub,
+      operationId: id,
+      orgId: req.user!.organizationId,
+    });
+
+    log.info({ operationId: id, from: operation.status, to: targetStatus }, "Operation status changed");
     res.json({ operation: updated });
   } catch (err) {
     log.error({ err }, "Error updating operation status");
     res.status(500).json({ error: "INTERNAL_ERROR" });
   }
 });
+
+router.get(
+  "/operations/:id/readiness",
+  requireAuth,
+  requireOrganization,
+  requireRole("ADMIN"),
+  async (req, res) => {
+    const id = req.params.id as string;
+    const operation = await getOperationInOrganization(id, req.user!.organizationId);
+    if (!operation) {
+      res.status(404).json({ error: "NOT_FOUND", message: "Operação não encontrada" });
+      return;
+    }
+    res.json({ readiness: await getOperationReadiness(operation) });
+  },
+);
+
+router.patch(
+  "/operations/:id/setup-review",
+  requireAuth,
+  requireOrganization,
+  requireRole("ADMIN"),
+  async (req, res) => {
+    const id = req.params.id as string;
+    const operation = await getOperationInOrganization(id, req.user!.organizationId);
+    if (!operation) {
+      res.status(404).json({ error: "NOT_FOUND", message: "Operação não encontrada" });
+      return;
+    }
+    if (typeof req.body?.reviewed !== "boolean") {
+      res.status(400).json({ error: "BAD_REQUEST", message: "reviewed deve ser verdadeiro ou falso" });
+      return;
+    }
+
+    const now = new Date();
+    const [updated] = await db
+      .update(operationsTable)
+      .set({
+        modulesReviewedAt: req.body.reviewed ? now : null,
+        modulesReviewedBy: req.body.reviewed ? req.user!.sub : null,
+        updatedAt: now,
+      })
+      .where(eq(operationsTable.id, id))
+      .returning();
+
+    await recordAudit({
+      actorId: req.user!.sub,
+      action: "OPERATION_UPDATED",
+      targetResource: `operation:${id}`,
+      metadata: { relatedModulesReviewed: req.body.reviewed },
+    });
+
+    res.json({ operation: updated, readiness: await getOperationReadiness(updated!) });
+  },
+);
 
 export default router;

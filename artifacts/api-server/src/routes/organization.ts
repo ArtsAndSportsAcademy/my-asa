@@ -32,12 +32,14 @@ router.get("/organizations/current", requireAuth, requireOrganization, async (re
         where: eq(operationsTable.organizationId, req.user!.organizationId),
       });
     } else {
+      const { operationIds } = req.user!;
       operations = await db.query.operationsTable.findMany({
         where: and(
           eq(operationsTable.organizationId, req.user!.organizationId),
           eq(operationsTable.status, "ACTIVE"),
         ),
       });
+      operations = operations.filter((operation) => operationIds.includes(operation.id));
     }
 
     const groups = await db.query.operationalGroupsTable.findMany();

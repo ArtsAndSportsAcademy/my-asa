@@ -40,10 +40,13 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);`;
 async function main() {
   const outDir = path.resolve(testsDir, ".dist");
   await rm(outDir, { recursive: true, force: true });
+  const testSources = process.env.TEST_FILE
+    ? [process.env.TEST_FILE]
+    : ["operation-lifecycle.test.ts", "daily-book-fill.test.ts"];
 
   // esbuild-plugin-pino emite múltiplos arquivos → exige outdir (não outfile).
   await esbuild({
-    entryPoints: [path.resolve(testsDir, "daily-book-fill.test.ts")],
+    entryPoints: testSources.map((file) => path.resolve(testsDir, file)),
     platform: "node",
     bundle: true,
     format: "esm",
@@ -56,16 +59,23 @@ async function main() {
     banner: { js: BANNER },
   });
 
-  const entry = path.resolve(outDir, "daily-book-fill.test.mjs");
-  const child = spawn(process.execPath, ["--enable-source-maps", entry], {
-    stdio: "inherit",
-    cwd: artifactDir,
-    env: process.env,
-  });
-  child.on("exit", async (code) => {
-    await rm(outDir, { recursive: true, force: true });
-    process.exit(code ?? 1);
-  });
+  const entries = testSources.map((file) => file.replace(/\.ts$/, ".mjs"));
+  for (const entryName of entries) {
+    const entry = path.resolve(outDir, entryName);
+    const code = await new Promise((resolve) => {
+      const child = spawn(process.execPath, ["--enable-source-maps", entry], {
+        stdio: "inherit",
+        cwd: artifactDir,
+        env: process.env,
+      });
+      child.on("exit", (exitCode) => resolve(exitCode ?? 1));
+    });
+    if (code !== 0) {
+      await rm(outDir, { recursive: true, force: true });
+      process.exit(code);
+    }
+  }
+  await rm(outDir, { recursive: true, force: true });
 }
 
 main().catch((err) => {

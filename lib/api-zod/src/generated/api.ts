@@ -157,7 +157,13 @@ export const GetCurrentOrganizationResponse = zod.object({
   "lateThresholdMinutes": zod.number().nullish(),
   "timezone": zod.string().nullish(),
   "createdAt": zod.string().optional(),
-  "updatedAt": zod.string().optional()
+  "updatedAt": zod.string().optional(),
+  "activatedAt": zod.string().nullish(),
+  "activatedBy": zod.string().nullish(),
+  "archivedAt": zod.string().nullish(),
+  "archivedBy": zod.string().nullish(),
+  "modulesReviewedAt": zod.string().nullish(),
+  "modulesReviewedBy": zod.string().nullish()
 })),
   "groups": zod.array(zod.object({
   "id": zod.string(),
@@ -209,7 +215,13 @@ export const GetOperationsResponse = zod.object({
   "lateThresholdMinutes": zod.number().nullish(),
   "timezone": zod.string().nullish(),
   "createdAt": zod.string().optional(),
-  "updatedAt": zod.string().optional()
+  "updatedAt": zod.string().optional(),
+  "activatedAt": zod.string().nullish(),
+  "activatedBy": zod.string().nullish(),
+  "archivedAt": zod.string().nullish(),
+  "archivedBy": zod.string().nullish(),
+  "modulesReviewedAt": zod.string().nullish(),
+  "modulesReviewedBy": zod.string().nullish()
 }))
 })
 
@@ -226,8 +238,7 @@ export const CreateOperationBody = zod.object({
   "endDate": zod.string().nullish(),
   "color": zod.string().optional(),
   "icon": zod.string().optional(),
-  "localCoordinatorId": zod.string().nullish(),
-  "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']).optional()
+  "localCoordinatorId": zod.string().nullish()
 })
 
 
@@ -255,13 +266,19 @@ export const GetOperationResponse = zod.object({
   "lateThresholdMinutes": zod.number().nullish(),
   "timezone": zod.string().nullish(),
   "createdAt": zod.string().optional(),
-  "updatedAt": zod.string().optional()
+  "updatedAt": zod.string().optional(),
+  "activatedAt": zod.string().nullish(),
+  "activatedBy": zod.string().nullish(),
+  "archivedAt": zod.string().nullish(),
+  "archivedBy": zod.string().nullish(),
+  "modulesReviewedAt": zod.string().nullish(),
+  "modulesReviewedBy": zod.string().nullish()
 })
 })
 
 
 /**
- * @summary Update operation name or health thresholds (Admin only)
+ * @summary Update operation (Admin only)
  */
 export const UpdateOperationParams = zod.object({
   "id": zod.coerce.string()
@@ -301,7 +318,93 @@ export const UpdateOperationResponse = zod.object({
   "lateThresholdMinutes": zod.number().nullish(),
   "timezone": zod.string().nullish(),
   "createdAt": zod.string().optional(),
-  "updatedAt": zod.string().optional()
+  "updatedAt": zod.string().optional(),
+  "activatedAt": zod.string().nullish(),
+  "activatedBy": zod.string().nullish(),
+  "archivedAt": zod.string().nullish(),
+  "archivedBy": zod.string().nullish(),
+  "modulesReviewedAt": zod.string().nullish(),
+  "modulesReviewedBy": zod.string().nullish()
+})
+})
+
+
+/**
+ * @summary Get the activation readiness checklist (Admin only)
+ */
+export const GetOperationReadinessParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetOperationReadinessResponse = zod.object({
+  "readiness": zod.object({
+  "ready": zod.boolean(),
+  "items": zod.array(zod.object({
+  "key": zod.enum(['GENERAL_DATA', 'VISUAL_IDENTITY', 'FIXED_TEAM', 'RESPONSIBILITIES', 'RELATED_MODULES']),
+  "label": zod.string(),
+  "complete": zod.boolean(),
+  "message": zod.string()
+})),
+  "blockers": zod.array(zod.object({
+  "key": zod.enum(['GENERAL_DATA', 'VISUAL_IDENTITY', 'FIXED_TEAM', 'RESPONSIBILITIES', 'RELATED_MODULES']),
+  "label": zod.string(),
+  "complete": zod.boolean(),
+  "message": zod.string()
+}))
+})
+})
+
+
+/**
+ * @summary Confirm or revoke the administrative review of related modules
+ */
+export const UpdateOperationSetupReviewParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateOperationSetupReviewBody = zod.object({
+  "reviewed": zod.boolean()
+})
+
+export const UpdateOperationSetupReviewResponse = zod.object({
+  "operation": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "clientName": zod.string().nullish(),
+  "locations": zod.array(zod.string()),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "color": zod.string(),
+  "icon": zod.string(),
+  "localCoordinatorId": zod.string().nullish(),
+  "organizationId": zod.string(),
+  "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']),
+  "lateThresholdMinutes": zod.number().nullish(),
+  "timezone": zod.string().nullish(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional(),
+  "activatedAt": zod.string().nullish(),
+  "activatedBy": zod.string().nullish(),
+  "archivedAt": zod.string().nullish(),
+  "archivedBy": zod.string().nullish(),
+  "modulesReviewedAt": zod.string().nullish(),
+  "modulesReviewedBy": zod.string().nullish()
+}),
+  "readiness": zod.object({
+  "ready": zod.boolean(),
+  "items": zod.array(zod.object({
+  "key": zod.enum(['GENERAL_DATA', 'VISUAL_IDENTITY', 'FIXED_TEAM', 'RESPONSIBILITIES', 'RELATED_MODULES']),
+  "label": zod.string(),
+  "complete": zod.boolean(),
+  "message": zod.string()
+})),
+  "blockers": zod.array(zod.object({
+  "key": zod.enum(['GENERAL_DATA', 'VISUAL_IDENTITY', 'FIXED_TEAM', 'RESPONSIBILITIES', 'RELATED_MODULES']),
+  "label": zod.string(),
+  "complete": zod.boolean(),
+  "message": zod.string()
+}))
 })
 })
 
@@ -334,7 +437,13 @@ export const UpdateOperationStatusResponse = zod.object({
   "lateThresholdMinutes": zod.number().nullish(),
   "timezone": zod.string().nullish(),
   "createdAt": zod.string().optional(),
-  "updatedAt": zod.string().optional()
+  "updatedAt": zod.string().optional(),
+  "activatedAt": zod.string().nullish(),
+  "activatedBy": zod.string().nullish(),
+  "archivedAt": zod.string().nullish(),
+  "archivedBy": zod.string().nullish(),
+  "modulesReviewedAt": zod.string().nullish(),
+  "modulesReviewedBy": zod.string().nullish()
 })
 })
 
@@ -634,7 +743,13 @@ export const GetUserContextResponse = zod.object({
   "lateThresholdMinutes": zod.number().nullish(),
   "timezone": zod.string().nullish(),
   "createdAt": zod.string().optional(),
-  "updatedAt": zod.string().optional()
+  "updatedAt": zod.string().optional(),
+  "activatedAt": zod.string().nullish(),
+  "activatedBy": zod.string().nullish(),
+  "archivedAt": zod.string().nullish(),
+  "archivedBy": zod.string().nullish(),
+  "modulesReviewedAt": zod.string().nullish(),
+  "modulesReviewedBy": zod.string().nullish()
 })),
   "groups": zod.array(zod.object({
   "id": zod.string(),

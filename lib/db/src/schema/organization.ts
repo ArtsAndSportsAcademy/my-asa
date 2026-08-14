@@ -1,4 +1,5 @@
-import { pgTable, text, uuid, timestamp, jsonb, pgEnum, integer, date } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, jsonb, pgEnum, integer, date, uniqueIndex } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./identity.js";
@@ -27,15 +28,24 @@ export const operationsTable = pgTable("operations", {
   color: text("color").notNull().default("#6D4AFF"),
   icon: text("icon").notNull().default("sparkles"),
   localCoordinatorId: uuid("local_coordinator_id").references(() => usersTable.id),
-  status: operationStatusEnum("status").notNull().default("ACTIVE"),
+  status: operationStatusEnum("status").notNull().default("DRAFT"),
   healthThresholds: jsonb("health_thresholds"),
   lateThresholdMinutes: integer("late_threshold_minutes").notNull().default(15),
   timezone: text("timezone").notNull().default("America/Sao_Paulo"),
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   archivedBy: uuid("archived_by").references(() => usersTable.id),
+  activatedAt: timestamp("activated_at", { withTimezone: true }),
+  activatedBy: uuid("activated_by").references(() => usersTable.id),
+  modulesReviewedAt: timestamp("modules_reviewed_at", { withTimezone: true }),
+  modulesReviewedBy: uuid("modules_reviewed_by").references(() => usersTable.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [
+  uniqueIndex("operations_organization_normalized_name_idx").on(
+    table.organizationId,
+    sql`lower(regexp_replace(btrim(${table.name}), '[[:space:]]+', ' ', 'g'))`,
+  ),
+]);
 
 export const operationalGroupsTable = pgTable("operational_groups", {
   id: uuid("id").primaryKey().defaultRandom(),

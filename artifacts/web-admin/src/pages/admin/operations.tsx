@@ -6,6 +6,9 @@ import {
   useCreateOperation,
   useUpdateOperation,
   useUpdateOperationStatus,
+  useGetOperationReadiness,
+  getGetOperationReadinessQueryKey,
+  useUpdateOperationSetupReview,
 } from "@workspace/api-client-react";
 import type { Operation } from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
@@ -21,6 +24,7 @@ import { useLocation } from "wouter";
 import {
   Plus, MoreHorizontal, Pencil, RefreshCw, AlertCircle, Users2, MapPin,
   Building2, CalendarDays, Sparkles, Mountain, Waves, Hotel, Theater, Clock, Globe,
+  CheckCircle2, Circle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -31,6 +35,12 @@ const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive" | 
   DRAFT: "secondary", ACTIVE: "default", PAUSED: "outline", ARCHIVED: "destructive",
 };
 const STATUS_OPTIONS = ["DRAFT", "ACTIVE", "PAUSED", "ARCHIVED"] as const;
+const STATUS_TRANSITIONS: Record<string, readonly string[]> = {
+  DRAFT: ["ACTIVE", "ARCHIVED"],
+  ACTIVE: ["PAUSED", "ARCHIVED"],
+  PAUSED: ["ACTIVE", "ARCHIVED"],
+  ARCHIVED: ["DRAFT", "ACTIVE"],
+};
 const ICON_OPTIONS = [
   { value: "sparkles", label: "Artístico", Icon: Sparkles },
   { value: "mountain", label: "Parque de neve", Icon: Mountain },
@@ -117,7 +127,7 @@ function OperationFields({ form, setForm, includeTechnical = false }: {
         </div>
         <div className="space-y-2">
           <Label>Situação</Label>
-          <Select value={form.status} onValueChange={(value) => update("status", value)}>
+          <Select value="DRAFT" disabled>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>{STATUS_OPTIONS.map((value) => <SelectItem key={value} value={value}>{STATUS_LABELS[value]}</SelectItem>)}</SelectContent>
           </Select>
@@ -159,6 +169,17 @@ export default function OperationsPage() {
   const [createForm, setCreateForm] = useState<OperationForm>(EMPTY_FORM);
   const [editForm, setEditForm] = useState<OperationForm>(EMPTY_FORM);
   const [newStatus, setNewStatus] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
+  const visibleOperations = operations.filter((operation) =>
+    showArchived ? operation.status === "ARCHIVED" : operation.status !== "ARCHIVED",
+  );
+  const readinessQuery = useGetOperationReadiness(statusOp?.id ?? "", {
+    query: {
+      enabled: Boolean(statusOp && newStatus === "ACTIVE"),
+      queryKey: getGetOperationReadinessQueryKey(statusOp?.id ?? ""),
+    },
+  });
+  const setupReviewMutation = useUpdateOperationSetupReview();
   const invalidate = () => queryClient.invalidateQueries({ queryKey: getGetOperationsQueryKey() });
 
   const apiData = (form: OperationForm) => ({
@@ -180,7 +201,7 @@ export default function OperationsPage() {
 
   const handleCreate = () => {
     if (!createForm.name.trim()) return;
-    createMutation.mutate({ data: { ...apiData(createForm), status: createForm.status as never } }, {
+    createMutation.mutate({ data: apiData(createForm) }, {
       onSuccess: () => { toast({ title: "Operação criada" }); setCreateOpen(false); setCreateForm(EMPTY_FORM); invalidate(); },
       onError: () => toast({ title: "Não foi possível criar a operação", variant: "destructive" }),
     });
@@ -198,7 +219,7 @@ export default function OperationsPage() {
     if (!statusOp || !newStatus) return;
     updateStatusMutation.mutate({ id: statusOp.id, data: { status: newStatus as never } }, {
       onSuccess: () => { toast({ title: newStatus === "ARCHIVED" ? "Operação arquivada" : "Situação atualizada" }); setStatusOp(null); invalidate(); },
-      onError: () => toast({ title: "Não foi possível atualizar a situação", variant: "destructive" }),
+      onError: (error) => toast({ title: error.message || "Não foi possível atualizar a situação", variant: "destructive" }),
     });
   };
 
@@ -212,7 +233,12 @@ export default function OperationsPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Estrutura ASA</p>
               <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Snowland, Acquamotion e Hotelaria são operações. Shows, ensaios e eventos vivem dentro delas.</p>
             </div>
-            <Button onClick={() => setCreateOpen(true)}><Plus className="mr-2 h-4 w-4" />Nova operação</Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowArchived((value) => !value)}>
+                {showArchived ? "Ver operações atuais" : `Arquivadas (${operations.filter((operation) => operation.status === "ARCHIVED").length})`}
+              </Button>
+              {!showArchived && <Button onClick={() => setCreateOpen(true)}><Plus className="mr-2 h-4 w-4" />Nova operação</Button>}
+            </div>
           </div>
         </section>
 
@@ -220,8 +246,8 @@ export default function OperationsPage() {
 
         <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
           {isLoading ? [...Array(3)].map((_, i) => <div key={i} className="h-56 animate-pulse rounded-2xl border bg-muted" />) :
-          operations.length === 0 ? <div className="col-span-full rounded-2xl border border-dashed p-10 text-center text-sm text-muted-foreground">Nenhuma operação cadastrada. Crie o primeiro ambiente de trabalho da ASA.</div> :
-          operations.map((op) => {
+          visibleOperations.length === 0 ? <div className="col-span-full rounded-2xl border border-dashed p-10 text-center text-sm text-muted-foreground">{showArchived ? "Nenhuma operação arquivada." : "Nenhuma operação cadastrada. Crie o primeiro ambiente de trabalho da ASA."}</div> :
+          visibleOperations.map((op) => {
             const Icon = ICONS[op.icon ?? "sparkles"] ?? Sparkles;
             return (
               <article key={op.id} className="group overflow-hidden rounded-2xl border bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
@@ -238,7 +264,7 @@ export default function OperationsPage() {
                         <DropdownMenuItem onClick={() => openEdit(op)}><Pencil className="mr-2 h-4 w-4" />Editar cadastro</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setLocation(`/admin/groups?operationId=${op.id}`)}><Users2 className="mr-2 h-4 w-4" />Ver equipes relacionadas</DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => { setStatusOp(op); setNewStatus(op.status); }}><RefreshCw className="mr-2 h-4 w-4" />Alterar situação</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => { setStatusOp(op); setNewStatus(STATUS_TRANSITIONS[op.status]?.[0] ?? ""); }}><RefreshCw className="mr-2 h-4 w-4" />Alterar situação</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -256,7 +282,7 @@ export default function OperationsPage() {
       </div>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto"><DialogHeader><DialogTitle>Nova operação</DialogTitle></DialogHeader><OperationFields form={createForm} setForm={setCreateForm} /><DialogFooter><Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button><Button onClick={handleCreate} disabled={!createForm.name.trim() || createMutation.isPending}>{createMutation.isPending ? "Criando..." : "Criar operação"}</Button></DialogFooter></DialogContent>
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto"><DialogHeader><DialogTitle>Nova operação</DialogTitle></DialogHeader><OperationFields form={createForm} setForm={setCreateForm} /><p className="text-sm text-muted-foreground">A operação será criada em configuração e só poderá ser ativada depois da revisão.</p><DialogFooter><Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button><Button onClick={handleCreate} disabled={!createForm.name.trim() || createMutation.isPending}>{createMutation.isPending ? "Criando..." : "Criar em configuração"}</Button></DialogFooter></DialogContent>
       </Dialog>
 
       <Dialog open={!!editOp} onOpenChange={(open) => !open && setEditOp(null)}>
@@ -264,7 +290,46 @@ export default function OperationsPage() {
       </Dialog>
 
       <Dialog open={!!statusOp} onOpenChange={(open) => !open && setStatusOp(null)}>
-        <DialogContent><DialogHeader><DialogTitle>Alterar situação — {statusOp?.name}</DialogTitle></DialogHeader><div className="space-y-3 py-2"><Label>Nova situação</Label><Select value={newStatus} onValueChange={setNewStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{STATUS_OPTIONS.map((value) => <SelectItem key={value} value={value}>{STATUS_LABELS[value]}</SelectItem>)}</SelectContent></Select>{newStatus === "ARCHIVED" && <p className="rounded-lg bg-amber-500/10 p-3 text-sm text-amber-800">A operação sairá das áreas ativas, mas todo o histórico será preservado.</p>}</div><DialogFooter><Button variant="outline" onClick={() => setStatusOp(null)}>Cancelar</Button><Button onClick={handleStatusChange} disabled={updateStatusMutation.isPending}>Confirmar</Button></DialogFooter></DialogContent>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Alterar situação — {statusOp?.name}</DialogTitle></DialogHeader>
+          <div className="space-y-3 py-2">
+            <Label>Nova situação</Label>
+            <Select value={newStatus} onValueChange={setNewStatus}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{(STATUS_TRANSITIONS[statusOp?.status ?? ""] ?? STATUS_OPTIONS).map((value) => <SelectItem key={value} value={value}>{STATUS_LABELS[value]}</SelectItem>)}</SelectContent>
+            </Select>
+            {newStatus === "ACTIVE" && (
+              <div className="space-y-3 rounded-xl border bg-violet-500/5 p-4">
+                <p className="text-sm font-medium">Checklist para ativação</p>
+                {readinessQuery.isLoading ? <p className="text-sm text-muted-foreground">Verificando configuração...</p> : readinessQuery.data?.readiness.items.map((item) => (
+                  <div key={item.key} className="flex items-start gap-2 text-sm">
+                    {item.complete ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" /> : <Circle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />}
+                    <div><p className="font-medium">{item.label}</p><p className="text-xs text-muted-foreground">{item.message}</p></div>
+                  </div>
+                ))}
+                {readinessQuery.data && !readinessQuery.data.readiness.items.find((item) => item.key === "RELATED_MODULES")?.complete && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={!statusOp || setupReviewMutation.isPending}
+                    onClick={() => statusOp && setupReviewMutation.mutate(
+                      { id: statusOp.id, data: { reviewed: true } },
+                      { onSuccess: () => void readinessQuery.refetch() },
+                    )}
+                  >
+                    Confirmar revisão dos módulos
+                  </Button>
+                )}
+              </div>
+            )}
+            {newStatus === "ARCHIVED" && <p className="rounded-lg bg-amber-500/10 p-3 text-sm text-amber-800">A operação sairá das áreas ativas, mas todo o histórico será preservado.</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStatusOp(null)}>Cancelar</Button>
+            <Button onClick={handleStatusChange} disabled={updateStatusMutation.isPending || (newStatus === "ACTIVE" && !readinessQuery.data?.readiness.ready)}>Confirmar</Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </AdminLayout>
   );

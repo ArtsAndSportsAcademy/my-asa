@@ -5,7 +5,6 @@
  * MyASA 2.0 API
  * OpenAPI spec version: 0.3.0
  */
-import type { OperationCreateStatus } from './operationCreateStatus';
 
 export interface OperationCreate {
   name: string;
@@ -17,5 +16,4 @@ export interface OperationCreate {
   color?: string;
   icon?: string;
   localCoordinatorId?: string | null;
-  status?: OperationCreateStatus;
 }

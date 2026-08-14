@@ -9,4 +9,5 @@ export {
   AddTaskCommentBody,
   CancelTaskBody,
   RequestTaskChangesBody,
+  UpdateOperationSetupReviewBody,
 } from "./generated/api";

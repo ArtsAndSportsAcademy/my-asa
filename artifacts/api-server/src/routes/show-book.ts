@@ -179,8 +179,15 @@ router.get("/show-books", requireAuth, requireOrganization, async (req, res) => 
       .innerJoin(operationsTable, eq(showBooksTable.operationId, operationsTable.id))
       .where(
         operationId
-          ? and(eq(showBooksTable.operationId, operationId), eq(operationsTable.organizationId, orgId))
-          : eq(operationsTable.organizationId, orgId),
+          ? and(
+              eq(showBooksTable.operationId, operationId),
+              eq(operationsTable.organizationId, orgId),
+              eq(operationsTable.status, "ACTIVE"),
+            )
+          : and(
+              eq(operationsTable.organizationId, orgId),
+              eq(operationsTable.status, "ACTIVE"),
+            ),
       );
     const all = rows.map((r) => r.book);
     // Escopo de leitura: filtra ao nível do servidor para que um não-admin só
@@ -210,12 +217,19 @@ router.post("/show-books", requireAuth, requireOrganization, async (req, res) =>
     // tem de ser gestor dessa operação (admin global ou supervisor ativo). Sem
     // isto qualquer autenticado criaria Livro do Show em qualquer operação.
     const [op] = await db
-      .select({ organizationId: operationsTable.organizationId })
+      .select({ organizationId: operationsTable.organizationId, status: operationsTable.status })
       .from(operationsTable)
       .where(eq(operationsTable.id, operationId))
       .limit(1);
     if (!op || op.organizationId !== req.user!.organizationId) {
       res.status(404).json({ error: "Operação não encontrada" });
+      return;
+    }
+    if (op.status !== "ACTIVE") {
+      res.status(409).json({
+        error: "OPERATION_NOT_ACTIVE",
+        message: "Ative a operação antes de criar Livros do Show.",
+      });
       return;
     }
     const actor = { sub: req.user!.sub, role: req.user!.role, operationIds: req.user!.operationIds };

@@ -80,6 +80,8 @@ paths:
                 $ref: "#/components/schemas/LoginResult"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "401":
           $ref: "#/components/responses/Unauthorized"
 
@@ -199,6 +201,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /operations/{id}:
     get:
@@ -231,7 +235,7 @@ paths:
     patch:
       operationId: updateOperation
       tags: [organization]
-      summary: Update operation name or health thresholds (Admin only)
+      summary: Update operation (Admin only)
       parameters:
         - name: id
           in: path
@@ -261,7 +265,80 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
+  /operations/{id}/readiness:
+    get:
+      operationId: getOperationReadiness
+      tags: [organization]
+      summary: Get the activation readiness checklist (Admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Operation readiness
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  readiness:
+                    $ref: "#/components/schemas/OperationReadiness"
+                required: [readiness]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /operations/{id}/setup-review:
+    patch:
+      operationId: updateOperationSetupReview
+      tags: [organization]
+      summary: Confirm or revoke the administrative review of related modules
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reviewed:
+                  type: boolean
+              required: [reviewed]
+      responses:
+        "200":
+          description: Review status updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  operation:
+                    $ref: "#/components/schemas/Operation"
+                  readiness:
+                    $ref: "#/components/schemas/OperationReadiness"
+                required: [operation, readiness]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /operations/{id}/status:
     patch:
       operationId: updateOperationStatus
@@ -298,6 +375,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /operational-groups:
     get:
@@ -5466,7 +5545,54 @@ components:
           type: string
         updatedAt:
           type: string
+        activatedAt:
+          type: string
+          nullable: true
+        activatedBy:
+          type: string
+          nullable: true
+        archivedAt:
+          type: string
+          nullable: true
+        archivedBy:
+          type: string
+          nullable: true
+        modulesReviewedAt:
+          type: string
+          nullable: true
+        modulesReviewedBy:
+          type: string
+          nullable: true
       required: [id, name, organizationId, status, locations, color, icon]
+
+    OperationReadinessItem:
+      type: object
+      properties:
+        key:
+          type: string
+          enum: [GENERAL_DATA, VISUAL_IDENTITY, FIXED_TEAM, RESPONSIBILITIES, RELATED_MODULES]
+        label:
+          type: string
+        complete:
+          type: boolean
+        message:
+          type: string
+      required: [key, label, complete, message]
+
+    OperationReadiness:
+      type: object
+      properties:
+        ready:
+          type: boolean
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OperationReadinessItem"
+        blockers:
+          type: array
+          items:
+            $ref: "#/components/schemas/OperationReadinessItem"
+      required: [ready, items, blockers]
 
     OperationalGroup:
       type: object
@@ -5792,9 +5918,6 @@ components:
         localCoordinatorId:
           type: string
           nullable: true
-        status:
-          type: string
-          enum: [DRAFT, ACTIVE, PAUSED, ARCHIVED]
       required: [name]
 
     OperationUpdate:
