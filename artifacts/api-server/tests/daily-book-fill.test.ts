@@ -89,7 +89,7 @@ async function run() {
 
   const [op] = await db
     .insert(operationsTable)
-    .values({ organizationId: orgId, name: `${TAG}_op` })
+    .values({ organizationId: orgId, name: `${TAG}_op`, status: "ACTIVE" })
     .returning();
   const operationId = op!.id;
 
@@ -524,7 +524,7 @@ async function runIntegrationC() {
 
   const [org] = await db.insert(organizationsTable).values({ name: `${TAG2}_org` }).returning();
   const orgId = org!.id;
-  const [op] = await db.insert(operationsTable).values({ organizationId: orgId, name: `${TAG2}_op` }).returning();
+  const [op] = await db.insert(operationsTable).values({ organizationId: orgId, name: `${TAG2}_op`, status: "ACTIVE" }).returning();
   const operationId = op!.id;
   const mk = async (label: string) => {
     const [u] = await db.insert(usersTable).values({ organizationId: orgId, name: `${TAG2}_${label}` }).returning();
@@ -633,8 +633,8 @@ async function runIntegrationD() {
 
   const [org] = await db.insert(organizationsTable).values({ name: `${TAG}_org` }).returning();
   const orgId = org!.id;
-  const [op1] = await db.insert(operationsTable).values({ organizationId: orgId, name: `${TAG}_op1` }).returning();
-  const [op2] = await db.insert(operationsTable).values({ organizationId: orgId, name: `${TAG}_op2` }).returning();
+  const [op1] = await db.insert(operationsTable).values({ organizationId: orgId, name: `${TAG}_op1`, status: "ACTIVE" }).returning();
+  const [op2] = await db.insert(operationsTable).values({ organizationId: orgId, name: `${TAG}_op2`, status: "ACTIVE" }).returning();
   const operationId = op1!.id;
   const operation2Id = op2!.id;
   const mk = async (label: string) => {
@@ -732,8 +732,8 @@ async function runIntegrationE() {
 
   const [org] = await db.insert(organizationsTable).values({ name: `${TAG}_org` }).returning();
   const orgId = org!.id;
-  const [op1] = await db.insert(operationsTable).values({ organizationId: orgId, name: `${TAG}_opA` }).returning();
-  const [op2] = await db.insert(operationsTable).values({ organizationId: orgId, name: `${TAG}_opB` }).returning();
+  const [op1] = await db.insert(operationsTable).values({ organizationId: orgId, name: `${TAG}_opA`, status: "ACTIVE" }).returning();
+  const [op2] = await db.insert(operationsTable).values({ organizationId: orgId, name: `${TAG}_opB`, status: "ACTIVE" }).returning();
   const opAId = op1!.id;
   const opBId = op2!.id;
 
