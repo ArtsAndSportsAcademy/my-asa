@@ -6,7 +6,7 @@ import {
   refreshToken as refreshTokenRequest,
 } from "@workspace/api-client-react";
 import type { User, UserRole } from "@workspace/api-client-react";
-import { AuthContext } from "./authContext";
+import { AuthContext } from "./auth-context";
 
 interface AuthState {
   user: User | null;

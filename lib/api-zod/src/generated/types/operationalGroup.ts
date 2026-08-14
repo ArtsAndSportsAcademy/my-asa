@@ -13,6 +13,9 @@ import type { OperationalGroupSupervisorsItem } from './operationalGroupSupervis
 export interface OperationalGroup {
   id: string;
   name: string;
+  description?: string | null;
+  color?: string;
+  icon?: string;
   organizationId?: string | null;
   operationId?: string | null;
   scope: OperationalGroupScope;

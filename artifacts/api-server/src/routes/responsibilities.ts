@@ -310,7 +310,7 @@ router.post("/responsibilities/:id/assignments", requireAuth, requireOrganizatio
     const respId = String(req.params.id);
     const { memberId, role, substituteMemberId, startsAt, endsAt } = req.body as {
       memberId: string;
-      role?: "PRIMARY" | "SECONDARY";
+      role?: "PRIMARY" | "SECONDARY" | "VIEWER";
       substituteMemberId?: string;
       startsAt?: string;
       endsAt?: string;
@@ -324,6 +324,23 @@ router.post("/responsibilities/:id/assignments", requireAuth, requireOrganizatio
       .where(and(eq(responsibilitiesTable.id, respId), eq(responsibilitiesTable.orgId, user.organizationId)));
     if (!resp) { res.status(404).json({ error: "Responsabilidade não encontrada" }); return; }
 
+    const requestedRole = role ?? "PRIMARY";
+    if (requestedRole === "PRIMARY") {
+      const [currentPrimary] = await db
+        .select({ id: responsibilityAssignmentsTable.id })
+        .from(responsibilityAssignmentsTable)
+        .where(and(
+          eq(responsibilityAssignmentsTable.responsibilityId, respId),
+          eq(responsibilityAssignmentsTable.role, "PRIMARY"),
+          eq(responsibilityAssignmentsTable.active, true),
+        ))
+        .limit(1);
+      if (currentPrimary) {
+        res.status(409).json({ error: "Esta responsabilidade ja possui uma pessoa principal. Adicione como auxiliar ou somente leitura." });
+        return;
+      }
+    }
+
     // Get member name for notification
     const [member] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, memberId));
 
@@ -332,7 +349,7 @@ router.post("/responsibilities/:id/assignments", requireAuth, requireOrganizatio
       .values({
         responsibilityId: respId,
         memberId,
-        role: role ?? "PRIMARY",
+        role: requestedRole,
         substituteMemberId: substituteMemberId ?? null,
         startsAt: startsAt ? new Date(startsAt) : null,
         endsAt: endsAt ? new Date(endsAt) : null,

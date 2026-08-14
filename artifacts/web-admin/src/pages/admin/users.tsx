@@ -104,8 +104,16 @@ export default function UsersPage() {
   const [editUser, setEditUser] = useState<User | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
 
-  const [createForm, setCreateForm] = useState({ name: "", password: "", role: "MEMBER", operationId: "", specialization: "", birthDate: "", visitUntil: "" });
-  const [editForm, setEditForm] = useState({ name: "", email: "", username: "", specialization: "", birthDate: "", visitUntil: "" });
+  const [createForm, setCreateForm] = useState({
+    name: "", preferredName: "", phone: "", password: "", createAccess: true,
+    role: "MEMBER", operationId: "", specialization: "", professionalProfile: "MEMBER",
+    primaryFunction: "", birthDate: "", entryDate: "", visitUntil: "",
+  });
+  const [editForm, setEditForm] = useState({
+    name: "", preferredName: "", email: "", phone: "", username: "", specialization: "",
+    professionalProfile: "", primaryFunction: "", personStatus: "ACTIVE",
+    birthDate: "", entryDate: "", visitUntil: "",
+  });
   const [addRoleOpId, setAddRoleOpId] = useState("");
   const [addRoleRole, setAddRoleRole] = useState("MEMBER");
 
@@ -174,26 +182,27 @@ export default function UsersPage() {
   });
 
   const resetCreateForm = () =>
-    setCreateForm({ name: "", password: "", role: "MEMBER", operationId: "", specialization: "", birthDate: "", visitUntil: "" });
+    setCreateForm({ name: "", preferredName: "", phone: "", password: "", createAccess: true, role: "MEMBER", operationId: "", specialization: "", professionalProfile: "MEMBER", primaryFunction: "", birthDate: "", entryDate: "", visitUntil: "" });
 
   const handleCreate = () => {
     const { name, password, role, operationId, specialization } = createForm;
-    if (!name.trim() || !password) {
+    if (!name.trim() || (createForm.createAccess && password.length < 6)) {
       toast({ title: "Preencha nome e senha provisória", variant: "destructive" });
       return;
     }
     const effectiveOperationId = operationId || operations[0]?.id;
-    if (!effectiveOperationId) {
-      toast({ title: "Cadastre uma operação antes de criar usuários", variant: "destructive" });
-      return;
-    }
     createMutation.mutate(
       {
         data: {
           name: name.trim(),
-          password,
+          preferredName: createForm.preferredName.trim() || null,
+          phone: createForm.phone.trim() || null,
+          password: createForm.createAccess ? password : null,
+          professionalProfile: createForm.professionalProfile || null,
+          primaryFunction: createForm.primaryFunction.trim() || null,
           specialization: (specialization || undefined) as any,
           ...(createForm.birthDate ? { birthDate: createForm.birthDate as any } : {}),
+          ...(createForm.entryDate ? { entryDate: createForm.entryDate as any } : {}),
           ...(createForm.visitUntil ? { visitUntil: createForm.visitUntil as any } : {}),
         },
       },
@@ -204,6 +213,14 @@ export default function UsersPage() {
             toast({ title: "Usuário criado, mas não foi possível definir o papel", variant: "destructive" });
             setCreateOpen(false);
             resetCreateForm();
+            invalidate();
+            return;
+          }
+          if (!effectiveOperationId) {
+            toast({ title: createForm.createAccess ? "Pessoa e acesso criados" : "Pessoa cadastrada sem acesso" });
+            setCreateOpen(false);
+            resetCreateForm();
+            setCreatedUser(newUser);
             invalidate();
             return;
           }
@@ -238,16 +255,22 @@ export default function UsersPage() {
 
   const handleEdit = () => {
     if (!editUser) return;
-    const { name, email, username, specialization, birthDate, visitUntil } = editForm;
+    const { name, preferredName, email, phone, username, specialization, professionalProfile, primaryFunction, personStatus, birthDate, entryDate, visitUntil } = editForm;
     updateMutation.mutate(
       {
         id: editUser.id,
         data: {
           name: name.trim() || undefined,
+          preferredName: preferredName.trim() || null,
           email: email.trim() || undefined,
+          phone: phone.trim() || null,
           username: username.trim() || undefined,
+          professionalProfile: professionalProfile || null,
+          primaryFunction: primaryFunction.trim() || null,
+          personStatus: personStatus as any,
           specialization: (specialization || null) as any,
           ...(birthDate !== undefined ? { birthDate: (birthDate || null) as any } : {}),
+          ...(entryDate !== undefined ? { entryDate: (entryDate || null) as any } : {}),
           visitUntil: (visitUntil || null) as any,
         },
       },
@@ -301,10 +324,16 @@ export default function UsersPage() {
     setEditUser(user);
     setEditForm({
       name: user.name,
+      preferredName: user.preferredName ?? "",
       email: user.email ?? "",
+      phone: user.phone ?? "",
       username: user.username ?? "",
       specialization: user.specialization ?? "",
+      professionalProfile: user.professionalProfile ?? "",
+      primaryFunction: user.primaryFunction ?? "",
+      personStatus: user.personStatus ?? "ACTIVE",
       birthDate: (user as any).birthDate ?? "",
+      entryDate: user.entryDate ?? "",
       visitUntil: (user as any).visitUntil ?? "",
     });
   };
@@ -439,18 +468,6 @@ export default function UsersPage() {
                                 <><UserCheck className="w-4 h-4 mr-2" />Ativar</>
                               )}
                             </DropdownMenuItem>
-                            {user.id !== auth.user?.id && (
-                              <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() => setDeleteTarget(user)}
-                                  className="text-destructive focus:text-destructive"
-                                >
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  Excluir
-                                </DropdownMenuItem>
-                              </>
-                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -478,7 +495,15 @@ export default function UsersPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Papel</Label>
+              <div className="grid gap-3 sm:grid-cols-2 mb-4">
+                <div className="space-y-2"><Label>Nome preferido</Label><Input value={createForm.preferredName} onChange={(e) => setCreateForm((f) => ({ ...f, preferredName: e.target.value }))} /></div>
+                <div className="space-y-2"><Label>Telefone</Label><Input value={createForm.phone} onChange={(e) => setCreateForm((f) => ({ ...f, phone: e.target.value }))} /></div>
+                <div className="space-y-2"><Label>Perfil na ASA</Label><select className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm" value={createForm.professionalProfile} onChange={(e) => setCreateForm((f) => ({ ...f, professionalProfile: e.target.value }))}><option value="DIRECTION">Direção</option><option value="MANAGEMENT">Gestão</option><option value="SUPERVISOR">Supervisor</option><option value="MEMBER">Elenco</option><option value="TRAINER_TEACHER">Treinador ou professor</option><option value="GUEST">Convidado</option></select></div>
+                <div className="space-y-2"><Label>Função principal</Label><Input placeholder="Ex.: Patinadora" value={createForm.primaryFunction} onChange={(e) => setCreateForm((f) => ({ ...f, primaryFunction: e.target.value }))} /></div>
+                <div className="space-y-2"><Label>Data de entrada</Label><Input type="date" value={createForm.entryDate} onChange={(e) => setCreateForm((f) => ({ ...f, entryDate: e.target.value }))} /></div>
+              </div>
+              <label className="mb-4 flex items-start gap-3 rounded-lg border p-3 text-sm"><input type="checkbox" className="mt-0.5" checked={createForm.createAccess} onChange={(e) => setCreateForm((f) => ({ ...f, createAccess: e.target.checked, password: e.target.checked ? f.password : "" }))} /><span><strong>Criar acesso agora</strong><span className="mt-0.5 block text-xs text-muted-foreground">Desmarque para cadastrar somente a pessoa. O acesso poderá ser ativado depois.</span></span></label>
+              <Label>Papel técnico inicial</Label>
               <select
                 className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
                 value={createForm.role}
@@ -507,6 +532,7 @@ export default function UsersPage() {
               <Label>Senha provisória</Label>
               <Input
                 type="password"
+                disabled={!createForm.createAccess}
                 placeholder="Mínimo 6 caracteres"
                 value={createForm.password}
                 onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))}
@@ -610,6 +636,14 @@ export default function UsersPage() {
               />
             </div>
             <div className="space-y-2">
+              <div className="grid gap-3 sm:grid-cols-2 mb-4">
+                <div className="space-y-2"><Label>Nome preferido</Label><Input value={editForm.preferredName} onChange={(e) => setEditForm((f) => ({ ...f, preferredName: e.target.value }))} /></div>
+                <div className="space-y-2"><Label>Telefone</Label><Input value={editForm.phone} onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))} /></div>
+                <div className="space-y-2"><Label>Perfil na ASA</Label><select className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm" value={editForm.professionalProfile} onChange={(e) => setEditForm((f) => ({ ...f, professionalProfile: e.target.value }))}><option value="">Não informado</option><option value="DIRECTION">Direção</option><option value="MANAGEMENT">Gestão</option><option value="SUPERVISOR">Supervisor</option><option value="MEMBER">Elenco</option><option value="TRAINER_TEACHER">Treinador ou professor</option><option value="GUEST">Convidado</option></select></div>
+                <div className="space-y-2"><Label>Função principal</Label><Input value={editForm.primaryFunction} onChange={(e) => setEditForm((f) => ({ ...f, primaryFunction: e.target.value }))} /></div>
+                <div className="space-y-2"><Label>Situação da pessoa</Label><select className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm" value={editForm.personStatus} onChange={(e) => setEditForm((f) => ({ ...f, personStatus: e.target.value }))}><option value="ACTIVE">Ativa</option><option value="ON_LEAVE">Afastada</option><option value="LEFT">Desligada</option><option value="ARCHIVED">Arquivada</option></select></div>
+                <div className="space-y-2"><Label>Data de entrada</Label><Input type="date" value={editForm.entryDate} onChange={(e) => setEditForm((f) => ({ ...f, entryDate: e.target.value }))} /></div>
+              </div>
               <Label>E-mail</Label>
               <Input
                 type="email"

@@ -14,4 +14,5 @@ export const MyAllocationStatus = {
   OPEN: 'OPEN',
   CONFLICT: 'CONFLICT',
   MANUAL_OVERRIDE: 'MANUAL_OVERRIDE',
+  RECURRING_ACTIVITY: 'RECURRING_ACTIVITY',
 } as const;

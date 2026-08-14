@@ -161,10 +161,13 @@ router.get("/users/:id", requireAuth, requireOrganization, async (req, res) => {
 
 router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
   const log = requestLogger("teams", req.requestId, req.correlationId);
-  const { name, email, password, specialization, birthDate, visitUntil } = req.body;
+  const {
+    name, preferredName, email, phone, password, specialization, birthDate, visitUntil,
+    entryDate, professionalProfile, primaryFunction, adminNotes, personStatus,
+  } = req.body;
 
-  if (!name?.trim() || !password) {
-    res.status(400).json({ error: "BAD_REQUEST", message: "name e password são obrigatórios" });
+  if (!name?.trim()) {
+    res.status(400).json({ error: "BAD_REQUEST", message: "O nome é obrigatório" });
     return;
   }
 
@@ -186,30 +189,38 @@ router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), as
       }
     }
 
-    const usernameBase = normalizeUsernameBase(name as string);
-    const conflicting = await db.query.usersTable.findMany({
-      columns: { username: true },
-      where: like(usersTable.username, `${usernameBase}%`),
-    });
-    const taken = new Set(
-      conflicting.map((u) => u.username).filter((u): u is string => !!u),
-    );
-    const username = resolveUniqueUsername(usernameBase, taken);
-
-    const passwordHash = await bcrypt.hash(password as string, 12);
+    let username: string | null = null;
+    let passwordHash: string | null = null;
+    if (password) {
+      const usernameBase = normalizeUsernameBase(name as string);
+      const conflicting = await db.query.usersTable.findMany({
+        columns: { username: true },
+        where: like(usersTable.username, `${usernameBase}%`),
+      });
+      const taken = new Set(conflicting.map((u) => u.username).filter((u): u is string => !!u));
+      username = resolveUniqueUsername(usernameBase, taken);
+      passwordHash = await bcrypt.hash(password as string, 12);
+    }
     const [newUser] = await db
       .insert(usersTable)
       .values({
         organizationId: req.user!.organizationId,
         name: (name as string).trim(),
+        preferredName: typeof preferredName === "string" && preferredName.trim() ? preferredName.trim() : null,
         email: normalizedEmail,
+        phone: typeof phone === "string" && phone.trim() ? phone.trim() : null,
         username,
         passwordHash,
-        mustChangePassword: true,
-        status: "ACTIVE",
+        mustChangePassword: !!password,
+        status: password ? "ACTIVE" : "INACTIVE",
+        personStatus: ["ACTIVE", "ON_LEAVE", "LEFT", "ARCHIVED"].includes(personStatus) ? personStatus : "ACTIVE",
+        professionalProfile: typeof professionalProfile === "string" && professionalProfile.trim() ? professionalProfile.trim() : null,
+        primaryFunction: typeof primaryFunction === "string" && primaryFunction.trim() ? primaryFunction.trim() : null,
         specialization: specialization ?? null,
         birthDate: (birthDate as string | undefined) ?? null,
+        entryDate: (entryDate as string | undefined) ?? null,
         visitUntil: (visitUntil as string | undefined) ?? null,
+        adminNotes: typeof adminNotes === "string" && adminNotes.trim() ? adminNotes.trim() : null,
       })
       .returning();
 
@@ -280,7 +291,10 @@ router.post("/users/me/password", requireAuth, async (req, res) => {
 router.patch("/users/:id", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger("teams", req.requestId, req.correlationId);
   const id = req.params.id as string;
-  const { name, email, username, specialization, birthDate, visitUntil } = req.body;
+  const {
+    name, preferredName, email, phone, username, photoUrl, specialization, birthDate, visitUntil,
+    entryDate, professionalProfile, primaryFunction, adminNotes, personStatus, contactVisibility,
+  } = req.body;
 
   const role = req.user!.role;
   const isAdmin = role === "ADMIN";
@@ -294,14 +308,15 @@ router.patch("/users/:id", requireAuth, requireOrganization, async (req, res) =>
   }
 
   // Nome, e-mail e data de nascimento permanecem exclusivos do admin.
-  if ((name !== undefined || email !== undefined || birthDate !== undefined) && !isAdmin) {
+  if ((name !== undefined || birthDate !== undefined || entryDate !== undefined || professionalProfile !== undefined ||
+      primaryFunction !== undefined || adminNotes !== undefined || personStatus !== undefined) && !isAdmin) {
     res.status(403).json({ error: "FORBIDDEN", message: "Apenas administradores podem editar nome, e-mail ou data de nascimento." });
     return;
   }
 
   // Especialização (função) e visitUntil (data de saída de convidados) são campos
   // exclusivos de admin ou supervisor — não podem ser alterados pelo próprio membro.
-  if ((specialization !== undefined || visitUntil !== undefined) && !isAdmin && !isSupervisor) {
+  if ((specialization !== undefined || visitUntil !== undefined) && !isAdmin) {
     res.status(403).json({ error: "FORBIDDEN", message: "Você não tem permissão para editar a especialização ou data de saída." });
     return;
   }
@@ -309,6 +324,13 @@ router.patch("/users/:id", requireAuth, requireOrganization, async (req, res) =>
   // Membros comuns só podem editar o próprio perfil (nome de usuário).
   if (!isAdmin && !isSupervisor && !isSelf) {
     res.status(403).json({ error: "FORBIDDEN", message: "Você não tem permissão para editar este usuário." });
+    return;
+  }
+
+  const selfServiceChange = preferredName !== undefined || email !== undefined || phone !== undefined ||
+    username !== undefined || photoUrl !== undefined || contactVisibility !== undefined;
+  if (selfServiceChange && !isAdmin && !isSelf) {
+    res.status(403).json({ error: "FORBIDDEN", message: "Você só pode editar seus próprios dados de contato e perfil." });
     return;
   }
 
@@ -329,6 +351,7 @@ router.patch("/users/:id", requireAuth, requireOrganization, async (req, res) =>
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (name?.trim()) updates.name = (name as string).trim();
+    if (preferredName !== undefined) updates.preferredName = preferredName?.trim() || null;
     if (email?.trim()) {
       const normalizedEmail = (email as string).toLowerCase().trim();
       const existing = await db.query.usersTable.findFirst({ where: eq(usersTable.email, normalizedEmail) });
@@ -337,6 +360,14 @@ router.patch("/users/:id", requireAuth, requireOrganization, async (req, res) =>
         return;
       }
       updates.email = normalizedEmail;
+    }
+    if (phone !== undefined) updates.phone = phone?.trim() || null;
+    if (photoUrl !== undefined) updates.photoUrl = photoUrl?.trim() || null;
+    if (contactVisibility !== undefined) {
+      updates.contactVisibility = {
+        email: contactVisibility?.email !== false,
+        phone: contactVisibility?.phone !== false,
+      };
     }
     if (username !== undefined) {
       const result = validateAndNormalizeUsername(username);
@@ -357,6 +388,19 @@ router.patch("/users/:id", requireAuth, requireOrganization, async (req, res) =>
     }
     if (birthDate !== undefined) {
       updates.birthDate = (birthDate as string | null) || null;
+    }
+    if (entryDate !== undefined) updates.entryDate = (entryDate as string | null) || null;
+    if (professionalProfile !== undefined) updates.professionalProfile = professionalProfile?.trim() || null;
+    if (primaryFunction !== undefined) updates.primaryFunction = primaryFunction?.trim() || null;
+    if (adminNotes !== undefined) updates.adminNotes = adminNotes?.trim() || null;
+    if (personStatus !== undefined) {
+      if (!["ACTIVE", "ON_LEAVE", "LEFT", "ARCHIVED"].includes(personStatus)) {
+        res.status(400).json({ error: "BAD_REQUEST", message: "Situação da pessoa inválida" });
+        return;
+      }
+      updates.personStatus = personStatus;
+      updates.archivedAt = personStatus === "ARCHIVED" ? new Date() : null;
+      updates.archivedBy = personStatus === "ARCHIVED" ? req.user!.sub : null;
     }
     // visitUntil só é válido para CONVIDADO — usar a especialização efectiva (nova ou atual).
     // Se a especialização resultante não for CONVIDADO, forçar null independentemente do body.

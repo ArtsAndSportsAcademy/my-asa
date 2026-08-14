@@ -78,7 +78,7 @@ export async function hasActiveResponsibilityForShow(
     eq(delegationsTable.operationId, operationId),
     isNull(delegationsTable.revokedAt),
     lte(delegationsTable.validFrom, now),
-    gte(delegationsTable.validUntil, now),
+    or(isNull(delegationsTable.validUntil), gte(delegationsTable.validUntil, now)),
     scopeClause,
   ];
   if (requiredDelegatorId) {

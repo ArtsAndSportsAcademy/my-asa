@@ -42,7 +42,7 @@ export interface DelegationItem {
   operationId: string;
   operationName?: string | null;
   startDate: string;
-  endDate: string;
+  endDate: string | null;
   reason?: string | null;
   responsibilities: DelegatedResponsibility[];
   showBookId?: string | null;
@@ -58,7 +58,7 @@ export interface ActiveDelegationItem {
   operationId: string;
   operationName?: string | null;
   startDate: string;
-  endDate: string;
+  endDate: string | null;
   responsibilities: DelegatedResponsibility[];
   reason?: string | null;
   showBookId?: string | null;
@@ -69,7 +69,7 @@ export interface CreateDelegationInput {
   delegateId: string;
   operationId: string;
   startDate: string;
-  endDate: string;
+  endDate?: string | null;
   reason?: string;
   responsibilities: DelegatedResponsibility[];
   showBookId?: string | null;

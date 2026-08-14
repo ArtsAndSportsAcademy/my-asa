@@ -109,6 +109,7 @@ import type {
   GetMyHistoryParams,
   GetMyTasksParams,
   GetOperation200,
+  GetOperationReadiness200,
   GetOperationalGroup200,
   GetOperationalGroups200,
   GetOperationalPanelParams,
@@ -241,6 +242,8 @@ import type {
   UpdateLibraryDocumentRequest,
   UpdateNoticeRequest,
   UpdateOperation200,
+  UpdateOperationSetupReview200,
+  UpdateOperationSetupReviewBody,
   UpdateOperationStatus200,
   UpdateOperationalGroup200,
   UpdateOperationalGroupStatus200,
@@ -375,7 +378,7 @@ export const login = async (loginRequest: LoginRequest, options?: RequestInit): 
 
 
 
-export const getLoginMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+export const getLoginMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ConflictResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof login>>, TError,{data: BodyType<LoginRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof login>>, TError,{data: BodyType<LoginRequest>}, TContext> => {
 
@@ -404,12 +407,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type LoginMutationResult = NonNullable<Awaited<ReturnType<typeof login>>>
     export type LoginMutationBody = BodyType<LoginRequest>
-    export type LoginMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+    export type LoginMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ConflictResponse>
 
     /**
  * @summary Login with username and password
  */
-export const useLogin = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+export const useLogin = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ConflictResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof login>>, TError,{data: BodyType<LoginRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof login>>,
@@ -819,7 +822,7 @@ export const createOperation = async (operationCreate: OperationCreate, options?
 
 
 
-export const getCreateOperationMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+export const getCreateOperationMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ConflictResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOperation>>, TError,{data: BodyType<OperationCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createOperation>>, TError,{data: BodyType<OperationCreate>}, TContext> => {
 
@@ -848,12 +851,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateOperationMutationResult = NonNullable<Awaited<ReturnType<typeof createOperation>>>
     export type CreateOperationMutationBody = BodyType<OperationCreate>
-    export type CreateOperationMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>
+    export type CreateOperationMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ConflictResponse>
 
     /**
  * @summary Create a new operation (Admin only)
  */
-export const useCreateOperation = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+export const useCreateOperation = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ConflictResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOperation>>, TError,{data: BodyType<OperationCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createOperation>>,
@@ -950,7 +953,7 @@ export const getUpdateOperationUrl = (id: string,) => {
 }
 
 /**
- * @summary Update operation name or health thresholds (Admin only)
+ * @summary Update operation (Admin only)
  */
 export const updateOperation = async (id: string,
     operationUpdate: OperationUpdate, options?: RequestInit): Promise<UpdateOperation200> => {
@@ -968,7 +971,7 @@ export const updateOperation = async (id: string,
 
 
 
-export const getUpdateOperationMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+export const getUpdateOperationMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOperation>>, TError,{id: string;data: BodyType<OperationUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateOperation>>, TError,{id: string;data: BodyType<OperationUpdate>}, TContext> => {
 
@@ -997,12 +1000,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type UpdateOperationMutationResult = NonNullable<Awaited<ReturnType<typeof updateOperation>>>
     export type UpdateOperationMutationBody = BodyType<OperationUpdate>
-    export type UpdateOperationMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+    export type UpdateOperationMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>
 
     /**
- * @summary Update operation name or health thresholds (Admin only)
+ * @summary Update operation (Admin only)
  */
-export const useUpdateOperation = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+export const useUpdateOperation = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOperation>>, TError,{id: string;data: BodyType<OperationUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof updateOperation>>,
@@ -1011,6 +1014,155 @@ export const useUpdateOperation = <TError = ErrorType<UnauthorizedResponse | For
         TContext
       > => {
       return useMutation(getUpdateOperationMutationOptions(options));
+    }
+
+export const getGetOperationReadinessUrl = (id: string,) => {
+
+
+
+
+  return `/api/operations/${id}/readiness`
+}
+
+/**
+ * @summary Get the activation readiness checklist (Admin only)
+ */
+export const getOperationReadiness = async (id: string, options?: RequestInit): Promise<GetOperationReadiness200> => {
+
+  return customFetch<GetOperationReadiness200>(getGetOperationReadinessUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOperationReadinessQueryKey = (id: string,) => {
+    return [
+    `/api/operations/${id}/readiness`
+    ] as const;
+    }
+
+
+export const getGetOperationReadinessQueryOptions = <TData = Awaited<ReturnType<typeof getOperationReadiness>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOperationReadiness>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOperationReadinessQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOperationReadiness>>> = ({ signal }) => getOperationReadiness(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOperationReadiness>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOperationReadinessQueryResult = NonNullable<Awaited<ReturnType<typeof getOperationReadiness>>>
+export type GetOperationReadinessQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+
+/**
+ * @summary Get the activation readiness checklist (Admin only)
+ */
+
+export function useGetOperationReadiness<TData = Awaited<ReturnType<typeof getOperationReadiness>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOperationReadiness>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOperationReadinessQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpdateOperationSetupReviewUrl = (id: string,) => {
+
+
+
+
+  return `/api/operations/${id}/setup-review`
+}
+
+/**
+ * @summary Confirm or revoke the administrative review of related modules
+ */
+export const updateOperationSetupReview = async (id: string,
+    updateOperationSetupReviewBody: UpdateOperationSetupReviewBody, options?: RequestInit): Promise<UpdateOperationSetupReview200> => {
+
+  return customFetch<UpdateOperationSetupReview200>(getUpdateOperationSetupReviewUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateOperationSetupReviewBody,)
+  }
+);}
+
+
+
+
+export const getUpdateOperationSetupReviewMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOperationSetupReview>>, TError,{id: string;data: BodyType<UpdateOperationSetupReviewBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateOperationSetupReview>>, TError,{id: string;data: BodyType<UpdateOperationSetupReviewBody>}, TContext> => {
+
+const mutationKey = ['updateOperationSetupReview'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateOperationSetupReview>>, {id: string;data: BodyType<UpdateOperationSetupReviewBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateOperationSetupReview(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateOperationSetupReviewMutationResult = NonNullable<Awaited<ReturnType<typeof updateOperationSetupReview>>>
+    export type UpdateOperationSetupReviewMutationBody = BodyType<UpdateOperationSetupReviewBody>
+    export type UpdateOperationSetupReviewMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Confirm or revoke the administrative review of related modules
+ */
+export const useUpdateOperationSetupReview = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOperationSetupReview>>, TError,{id: string;data: BodyType<UpdateOperationSetupReviewBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateOperationSetupReview>>,
+        TError,
+        {id: string;data: BodyType<UpdateOperationSetupReviewBody>},
+        TContext
+      > => {
+      return useMutation(getUpdateOperationSetupReviewMutationOptions(options));
     }
 
 export const getUpdateOperationStatusUrl = (id: string,) => {
@@ -1040,7 +1192,7 @@ export const updateOperationStatus = async (id: string,
 
 
 
-export const getUpdateOperationStatusMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+export const getUpdateOperationStatusMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOperationStatus>>, TError,{id: string;data: BodyType<OperationStatusUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateOperationStatus>>, TError,{id: string;data: BodyType<OperationStatusUpdate>}, TContext> => {
 
@@ -1069,12 +1221,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type UpdateOperationStatusMutationResult = NonNullable<Awaited<ReturnType<typeof updateOperationStatus>>>
     export type UpdateOperationStatusMutationBody = BodyType<OperationStatusUpdate>
-    export type UpdateOperationStatusMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+    export type UpdateOperationStatusMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>
 
     /**
  * @summary Change operation status (Admin only)
  */
-export const useUpdateOperationStatus = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+export const useUpdateOperationStatus = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOperationStatus>>, TError,{id: string;data: BodyType<OperationStatusUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof updateOperationStatus>>,

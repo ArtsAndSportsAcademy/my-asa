@@ -80,6 +80,8 @@ paths:
                 $ref: "#/components/schemas/LoginResult"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "401":
           $ref: "#/components/responses/Unauthorized"
 
@@ -199,6 +201,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /operations/{id}:
     get:
@@ -231,7 +235,7 @@ paths:
     patch:
       operationId: updateOperation
       tags: [organization]
-      summary: Update operation name or health thresholds (Admin only)
+      summary: Update operation (Admin only)
       parameters:
         - name: id
           in: path
@@ -261,7 +265,80 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
+  /operations/{id}/readiness:
+    get:
+      operationId: getOperationReadiness
+      tags: [organization]
+      summary: Get the activation readiness checklist (Admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Operation readiness
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  readiness:
+                    $ref: "#/components/schemas/OperationReadiness"
+                required: [readiness]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /operations/{id}/setup-review:
+    patch:
+      operationId: updateOperationSetupReview
+      tags: [organization]
+      summary: Confirm or revoke the administrative review of related modules
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reviewed:
+                  type: boolean
+              required: [reviewed]
+      responses:
+        "200":
+          description: Review status updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  operation:
+                    $ref: "#/components/schemas/Operation"
+                  readiness:
+                    $ref: "#/components/schemas/OperationReadiness"
+                required: [operation, readiness]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /operations/{id}/status:
     patch:
       operationId: updateOperationStatus
@@ -298,6 +375,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /operational-groups:
     get:
@@ -5319,7 +5398,13 @@ components:
           type: string
         name:
           type: string
+        preferredName:
+          type: string
+          nullable: true
         email:
+          type: string
+          nullable: true
+        phone:
           type: string
           nullable: true
         username:
@@ -5333,6 +5418,15 @@ components:
         status:
           type: string
           enum: [ACTIVE, INACTIVE]
+        personStatus:
+          type: string
+          enum: [ACTIVE, ON_LEAVE, LEFT, ARCHIVED]
+        professionalProfile:
+          type: string
+          nullable: true
+        primaryFunction:
+          type: string
+          nullable: true
         specialization:
           type: string
           nullable: true
@@ -5343,6 +5437,22 @@ components:
           description: "Data de saída prevista para Convidados (formato YYYY-MM-DD). Nulo para membros fixos."
         organizationId:
           type: string
+        birthDate:
+          type: string
+          nullable: true
+        entryDate:
+          type: string
+          nullable: true
+        adminNotes:
+          type: string
+          nullable: true
+        contactVisibility:
+          type: object
+          properties:
+            email:
+              type: boolean
+            phone:
+              type: boolean
         operationIds:
           type: array
           items:
@@ -5360,7 +5470,7 @@ components:
           type: string
         updatedAt:
           type: string
-      required: [id, name, status, organizationId]
+      required: [id, name, status, personStatus, organizationId]
 
     UserRole:
       type: object
@@ -5397,6 +5507,29 @@ components:
           type: string
         name:
           type: string
+        description:
+          type: string
+          nullable: true
+        clientName:
+          type: string
+          nullable: true
+        locations:
+          type: array
+          items:
+            type: string
+        startDate:
+          type: string
+          nullable: true
+        endDate:
+          type: string
+          nullable: true
+        color:
+          type: string
+        icon:
+          type: string
+        localCoordinatorId:
+          type: string
+          nullable: true
         organizationId:
           type: string
         status:
@@ -5412,7 +5545,54 @@ components:
           type: string
         updatedAt:
           type: string
-      required: [id, name, organizationId, status]
+        activatedAt:
+          type: string
+          nullable: true
+        activatedBy:
+          type: string
+          nullable: true
+        archivedAt:
+          type: string
+          nullable: true
+        archivedBy:
+          type: string
+          nullable: true
+        modulesReviewedAt:
+          type: string
+          nullable: true
+        modulesReviewedBy:
+          type: string
+          nullable: true
+      required: [id, name, organizationId, status, locations, color, icon]
+
+    OperationReadinessItem:
+      type: object
+      properties:
+        key:
+          type: string
+          enum: [GENERAL_DATA, VISUAL_IDENTITY, FIXED_TEAM, RESPONSIBILITIES, RELATED_MODULES]
+        label:
+          type: string
+        complete:
+          type: boolean
+        message:
+          type: string
+      required: [key, label, complete, message]
+
+    OperationReadiness:
+      type: object
+      properties:
+        ready:
+          type: boolean
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OperationReadinessItem"
+        blockers:
+          type: array
+          items:
+            $ref: "#/components/schemas/OperationReadinessItem"
+      required: [ready, items, blockers]
 
     OperationalGroup:
       type: object
@@ -5420,6 +5600,13 @@ components:
         id:
           type: string
         name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        color:
+          type: string
+        icon:
           type: string
         organizationId:
           type: string
@@ -5448,6 +5635,10 @@ components:
               photoUrl:
                 type: string
                 nullable: true
+              isPrimary:
+                type: boolean
+              startsAt:
+                type: string
             required: [id, name]
         supervisors:
           type: array
@@ -5571,13 +5762,29 @@ components:
       properties:
         name:
           type: string
+        preferredName:
+          type: string
+          nullable: true
         email:
           type: string
           format: email
           nullable: true
+        phone:
+          type: string
+          nullable: true
         password:
           type: string
           minLength: 6
+          nullable: true
+        personStatus:
+          type: string
+          enum: [ACTIVE, ON_LEAVE, LEFT, ARCHIVED]
+        professionalProfile:
+          type: string
+          nullable: true
+        primaryFunction:
+          type: string
+          nullable: true
         specialization:
           type: string
           nullable: true
@@ -5586,7 +5793,16 @@ components:
           type: string
           nullable: true
           description: "Data de saída prevista para Convidados (YYYY-MM-DD)."
-      required: [name, password]
+        birthDate:
+          type: string
+          nullable: true
+        entryDate:
+          type: string
+          nullable: true
+        adminNotes:
+          type: string
+          nullable: true
+      required: [name]
 
     ChangePasswordBody:
       type: object
@@ -5603,9 +5819,18 @@ components:
       properties:
         name:
           type: string
+        preferredName:
+          type: string
+          nullable: true
         email:
           type: string
           format: email
+        phone:
+          type: string
+          nullable: true
+        photoUrl:
+          type: string
+          nullable: true
         username:
           type: string
           description: "Nome de usuário (login). Normalizado: minusculas, sem acentos, espacos viram ponto, apenas letras/numeros/ponto."
@@ -5617,6 +5842,32 @@ components:
           type: string
           nullable: true
           description: "Data de saída prevista para Convidados (YYYY-MM-DD). Enviar null para limpar."
+
+        birthDate:
+          type: string
+          nullable: true
+        entryDate:
+          type: string
+          nullable: true
+        personStatus:
+          type: string
+          enum: [ACTIVE, ON_LEAVE, LEFT, ARCHIVED]
+        professionalProfile:
+          type: string
+          nullable: true
+        primaryFunction:
+          type: string
+          nullable: true
+        adminNotes:
+          type: string
+          nullable: true
+        contactVisibility:
+          type: object
+          properties:
+            email:
+              type: boolean
+            phone:
+              type: boolean
 
     UserStatusUpdate:
       type: object
@@ -5644,9 +5895,29 @@ components:
       properties:
         name:
           type: string
-        status:
+        description:
           type: string
-          enum: [DRAFT, ACTIVE, PAUSED, ARCHIVED]
+          nullable: true
+        clientName:
+          type: string
+          nullable: true
+        locations:
+          type: array
+          items:
+            type: string
+        startDate:
+          type: string
+          nullable: true
+        endDate:
+          type: string
+          nullable: true
+        color:
+          type: string
+        icon:
+          type: string
+        localCoordinatorId:
+          type: string
+          nullable: true
       required: [name]
 
     OperationUpdate:
@@ -5654,6 +5925,29 @@ components:
       properties:
         name:
           type: string
+        description:
+          type: string
+          nullable: true
+        clientName:
+          type: string
+          nullable: true
+        locations:
+          type: array
+          items:
+            type: string
+        startDate:
+          type: string
+          nullable: true
+        endDate:
+          type: string
+          nullable: true
+        color:
+          type: string
+        icon:
+          type: string
+        localCoordinatorId:
+          type: string
+          nullable: true
         healthThresholds:
           type: object
           nullable: true
@@ -5676,6 +5970,13 @@ components:
       type: object
       properties:
         name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        color:
+          type: string
+        icon:
           type: string
         scope:
           type: string
@@ -5700,6 +6001,13 @@ components:
       properties:
         name:
           type: string
+        description:
+          type: string
+          nullable: true
+        color:
+          type: string
+        icon:
+          type: string
 
     GroupStatusUpdate:
       type: object
@@ -5714,6 +6022,8 @@ components:
       properties:
         userId:
           type: string
+        isPrimary:
+          type: boolean
       required: [userId]
 
     GroupSupervisorAdd:

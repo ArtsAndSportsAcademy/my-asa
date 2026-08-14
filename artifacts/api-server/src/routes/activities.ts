@@ -43,11 +43,23 @@ async function manageableOperationIds(
 ): Promise<string[]> {
   if (role === "ADMIN") {
     const ops = await db.query.operationsTable.findMany({
-      where: eq(operationsTable.organizationId, organizationId),
+      where: and(
+        eq(operationsTable.organizationId, organizationId),
+        eq(operationsTable.status, "ACTIVE"),
+      ),
     });
     return ops.map((o) => o.id);
   }
-  return supervisedOperationIds(userId);
+  const supervised = await supervisedOperationIds(userId);
+  if (supervised.length === 0) return [];
+  const active = await db.query.operationsTable.findMany({
+    where: and(
+      eq(operationsTable.organizationId, organizationId),
+      eq(operationsTable.status, "ACTIVE"),
+      inArray(operationsTable.id, supervised),
+    ),
+  });
+  return active.map((operation) => operation.id);
 }
 
 /** Carrega uma atividade dentro do escopo gerível do utilizador, ou null. */

@@ -144,11 +144,11 @@ function EventBlock({
 // ─── Check-in row ─────────────────────────────────────────────────────────────
 
 const STATUS_CFG: Record<string, { label: string; color: string; dot: string }> = {
-  EXPECTED:   { label: "Aguardando", color: "bg-gray-100 text-gray-600",   dot: "bg-gray-400"  },
-  CHECKED_IN: { label: "Presente",   color: "bg-green-100 text-green-800", dot: "bg-green-500" },
-  LATE:       { label: "Atrasado",   color: "bg-amber-100 text-amber-800", dot: "bg-amber-500" },
-  ABSENT:     { label: "Ausente",    color: "bg-red-100 text-red-800",     dot: "bg-red-500"   },
-  EXCUSED:    { label: "Justificado",color: "bg-blue-100 text-blue-700",   dot: "bg-blue-400"  },
+  EXPECTED:   { label: "Não informou", color: "bg-gray-100 text-gray-600",   dot: "bg-gray-400"  },
+  CHECKED_IN: { label: "Pronto",        color: "bg-green-100 text-green-800", dot: "bg-green-500" },
+  LATE:       { label: "Vai se atrasar",color: "bg-amber-100 text-amber-800", dot: "bg-amber-500" },
+  ABSENT:     { label: "Imprevisto",     color: "bg-red-100 text-red-800",     dot: "bg-red-500"   },
+  EXCUSED:    { label: "Informado",      color: "bg-blue-100 text-blue-700",   dot: "bg-blue-400"  },
 };
 
 function CheckInRow({
@@ -168,7 +168,7 @@ function CheckInRow({
         <p className="text-sm font-medium truncate">{item.userName}</p>
         {item.earliestStart && (
           <span className="text-xs text-muted-foreground">
-            Entrada {item.earliestStart.slice(0, 5)}
+            Primeira atividade {item.earliestStart.slice(0, 5)}
           </span>
         )}
       </div>
@@ -180,7 +180,7 @@ function CheckInRow({
           {item.status !== "CHECKED_IN" && (
             <Button
               variant="ghost" size="icon" className="h-7 w-7"
-              title="Marcar presente" disabled={isUpdating}
+              title="Marcar como pronto" disabled={isUpdating}
               onClick={() => onUpdate(item.userId!, item.checkInId, "CHECKED_IN")}
             >
               <CheckCircle2 className="h-4 w-4 text-green-600" />
@@ -189,7 +189,7 @@ function CheckInRow({
           {item.status !== "ABSENT" && item.status !== "EXCUSED" && (
             <Button
               variant="ghost" size="icon" className="h-7 w-7"
-              title="Marcar ausente" disabled={isUpdating}
+              title="Registrar imprevisto" disabled={isUpdating}
               onClick={() => onUpdate(item.userId!, item.checkInId, "ABSENT")}
             >
               <XCircle className="h-4 w-4 text-red-500" />
@@ -482,7 +482,7 @@ function ManagerHome({ isSupervisor }: { isSupervisor: boolean }) {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-            <UserCheck className="h-4 w-4" /> Presenças de hoje
+            <UserCheck className="h-4 w-4" /> Status de hoje
             <span className="ml-auto text-xs font-normal capitalize">{todayLabel}</span>
           </CardTitle>
         </CardHeader>
@@ -490,7 +490,7 @@ function ManagerHome({ isSupervisor }: { isSupervisor: boolean }) {
           {summary && (
             <div className="flex flex-wrap gap-2 mb-3">
               <span className="text-xs px-2.5 py-1 rounded-full bg-green-100 text-green-800 font-medium">
-                ✓ {summary.checkedIn} presentes
+                ✓ {summary.checkedIn} prontos
               </span>
               {summary.late > 0 && (
                 <span className="text-xs px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 font-medium">
@@ -725,7 +725,7 @@ function MemberHome() {
         <img src="/asinha.svg" alt="" className="w-8 h-9 shrink-0 opacity-70" />
         <p className="text-muted-foreground">
           Leve sua operação no bolso: o{" "}
-          <strong className="text-foreground">app MyASA</strong> traz check-in,
+          <strong className="text-foreground">app MyASA</strong> traz seu status do dia,
           notificações e tudo do seu dia no celular.
         </p>
       </div>
@@ -743,7 +743,7 @@ export default function AdminHome() {
   );
 
   return (
-    <AdminLayout title="Início">
+    <AdminLayout title="Pulso do Dia">
       {isAdmin || isSupervisor ? (
         <ManagerHome isSupervisor={isSupervisor && !isAdmin} />
       ) : (

@@ -32,7 +32,8 @@ export const delegationsTable = pgTable("delegations", {
   // Null = delegação ao nível da operação inteira (comportamento legado, retrocompatível).
   showBookId: uuid("show_book_id").references(() => showBooksTable.id),
   validFrom: timestamp("valid_from", { withTimezone: true }).notNull(),
-  validUntil: timestamp("valid_until", { withTimezone: true }).notNull(),
+  // Nulo representa uma delegacao permanente, ate revogacao explicita.
+  validUntil: timestamp("valid_until", { withTimezone: true }),
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
   reason: text("reason"),
   responsibilities: text("responsibilities").array().notNull().default(sql`'{}'`),

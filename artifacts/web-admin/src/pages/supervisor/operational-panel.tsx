@@ -222,7 +222,7 @@ export default function SupervisorOperationalPanel() {
       <Card className="mb-4">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-            <UserCheck className="h-4 w-4" /> Check-ins do Dia
+            <UserCheck className="h-4 w-4" /> Status do Dia
             <span className="ml-auto text-xs font-normal">
               {today.split("-").reverse().join("/")}
             </span>

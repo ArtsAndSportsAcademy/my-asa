@@ -10,10 +10,24 @@ import type { OperationStatus } from './operationStatus';
 export interface Operation {
   id: string;
   name: string;
+  description?: string | null;
+  clientName?: string | null;
+  locations: string[];
+  startDate?: string | null;
+  endDate?: string | null;
+  color: string;
+  icon: string;
+  localCoordinatorId?: string | null;
   organizationId: string;
   status: OperationStatus;
   lateThresholdMinutes?: number | null;
   timezone?: string | null;
   createdAt?: string;
   updatedAt?: string;
+  activatedAt?: string | null;
+  activatedBy?: string | null;
+  archivedAt?: string | null;
+  archivedBy?: string | null;
+  modulesReviewedAt?: string | null;
+  modulesReviewedBy?: string | null;
 }

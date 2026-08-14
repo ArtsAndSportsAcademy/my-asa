@@ -30,14 +30,26 @@ export const LoginResponse = zod.object({
   "user": zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "preferredName": zod.string().nullish(),
   "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
   "username": zod.string().nullish(),
   "photoUrl": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "personStatus": zod.enum(['ACTIVE', 'ON_LEAVE', 'LEFT', 'ARCHIVED']),
+  "professionalProfile": zod.string().nullish(),
+  "primaryFunction": zod.string().nullish(),
   "specialization": zod.enum(['PERFORMER', 'CONVIDADO', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
   "visitUntil": zod.string().nullish().describe('Data de saída prevista para Convidados (formato YYYY-MM-DD). Nulo para membros fixos.'),
   "organizationId": zod.string(),
+  "birthDate": zod.string().nullish(),
+  "entryDate": zod.string().nullish(),
+  "adminNotes": zod.string().nullish(),
+  "contactVisibility": zod.object({
+  "email": zod.boolean().optional(),
+  "phone": zod.boolean().optional()
+}).optional(),
   "operationIds": zod.array(zod.string()).optional().describe('Operações às quais o utilizador pertence (via papéis ativos).'),
   "supervisorOperationIds": zod.array(zod.string()).optional().describe('Operações onde o utilizador é supervisor (A\/B); usado para escolher o responsável de um show.'),
   "isAdmin": zod.boolean().optional().describe('Verdadeiro se o utilizador tem papel ADMIN (não faz parte do elenco escalável).'),
@@ -83,14 +95,26 @@ export const GetMeResponse = zod.object({
   "user": zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "preferredName": zod.string().nullish(),
   "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
   "username": zod.string().nullish(),
   "photoUrl": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "personStatus": zod.enum(['ACTIVE', 'ON_LEAVE', 'LEFT', 'ARCHIVED']),
+  "professionalProfile": zod.string().nullish(),
+  "primaryFunction": zod.string().nullish(),
   "specialization": zod.enum(['PERFORMER', 'CONVIDADO', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
   "visitUntil": zod.string().nullish().describe('Data de saída prevista para Convidados (formato YYYY-MM-DD). Nulo para membros fixos.'),
   "organizationId": zod.string(),
+  "birthDate": zod.string().nullish(),
+  "entryDate": zod.string().nullish(),
+  "adminNotes": zod.string().nullish(),
+  "contactVisibility": zod.object({
+  "email": zod.boolean().optional(),
+  "phone": zod.boolean().optional()
+}).optional(),
   "operationIds": zod.array(zod.string()).optional().describe('Operações às quais o utilizador pertence (via papéis ativos).'),
   "supervisorOperationIds": zod.array(zod.string()).optional().describe('Operações onde o utilizador é supervisor (A\/B); usado para escolher o responsável de um show.'),
   "isAdmin": zod.boolean().optional().describe('Verdadeiro se o utilizador tem papel ADMIN (não faz parte do elenco escalável).'),
@@ -120,16 +144,33 @@ export const GetCurrentOrganizationResponse = zod.object({
   "operations": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "description": zod.string().nullish(),
+  "clientName": zod.string().nullish(),
+  "locations": zod.array(zod.string()),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "color": zod.string(),
+  "icon": zod.string(),
+  "localCoordinatorId": zod.string().nullish(),
   "organizationId": zod.string(),
   "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']),
   "lateThresholdMinutes": zod.number().nullish(),
   "timezone": zod.string().nullish(),
   "createdAt": zod.string().optional(),
-  "updatedAt": zod.string().optional()
+  "updatedAt": zod.string().optional(),
+  "activatedAt": zod.string().nullish(),
+  "activatedBy": zod.string().nullish(),
+  "archivedAt": zod.string().nullish(),
+  "archivedBy": zod.string().nullish(),
+  "modulesReviewedAt": zod.string().nullish(),
+  "modulesReviewedBy": zod.string().nullish()
 })),
   "groups": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "description": zod.string().nullish(),
+  "color": zod.string().optional(),
+  "icon": zod.string().optional(),
   "organizationId": zod.string().nullish(),
   "operationId": zod.string().nullish(),
   "scope": zod.enum(['OPERATION', 'MULTI', 'ALL']),
@@ -137,7 +178,9 @@ export const GetCurrentOrganizationResponse = zod.object({
   "members": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "photoUrl": zod.string().nullish()
+  "photoUrl": zod.string().nullish(),
+  "isPrimary": zod.boolean().optional(),
+  "startsAt": zod.string().optional()
 })).optional().describe('Membros ativos do grupo (presente apenas no detalhe do grupo).'),
   "supervisors": zod.array(zod.object({
   "id": zod.string(),
@@ -159,12 +202,26 @@ export const GetOperationsResponse = zod.object({
   "operations": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "description": zod.string().nullish(),
+  "clientName": zod.string().nullish(),
+  "locations": zod.array(zod.string()),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "color": zod.string(),
+  "icon": zod.string(),
+  "localCoordinatorId": zod.string().nullish(),
   "organizationId": zod.string(),
   "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']),
   "lateThresholdMinutes": zod.number().nullish(),
   "timezone": zod.string().nullish(),
   "createdAt": zod.string().optional(),
-  "updatedAt": zod.string().optional()
+  "updatedAt": zod.string().optional(),
+  "activatedAt": zod.string().nullish(),
+  "activatedBy": zod.string().nullish(),
+  "archivedAt": zod.string().nullish(),
+  "archivedBy": zod.string().nullish(),
+  "modulesReviewedAt": zod.string().nullish(),
+  "modulesReviewedBy": zod.string().nullish()
 }))
 })
 
@@ -174,7 +231,14 @@ export const GetOperationsResponse = zod.object({
  */
 export const CreateOperationBody = zod.object({
   "name": zod.string(),
-  "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']).optional()
+  "description": zod.string().nullish(),
+  "clientName": zod.string().nullish(),
+  "locations": zod.array(zod.string()).optional(),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "color": zod.string().optional(),
+  "icon": zod.string().optional(),
+  "localCoordinatorId": zod.string().nullish()
 })
 
 
@@ -189,18 +253,32 @@ export const GetOperationResponse = zod.object({
   "operation": zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "description": zod.string().nullish(),
+  "clientName": zod.string().nullish(),
+  "locations": zod.array(zod.string()),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "color": zod.string(),
+  "icon": zod.string(),
+  "localCoordinatorId": zod.string().nullish(),
   "organizationId": zod.string(),
   "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']),
   "lateThresholdMinutes": zod.number().nullish(),
   "timezone": zod.string().nullish(),
   "createdAt": zod.string().optional(),
-  "updatedAt": zod.string().optional()
+  "updatedAt": zod.string().optional(),
+  "activatedAt": zod.string().nullish(),
+  "activatedBy": zod.string().nullish(),
+  "archivedAt": zod.string().nullish(),
+  "archivedBy": zod.string().nullish(),
+  "modulesReviewedAt": zod.string().nullish(),
+  "modulesReviewedBy": zod.string().nullish()
 })
 })
 
 
 /**
- * @summary Update operation name or health thresholds (Admin only)
+ * @summary Update operation (Admin only)
  */
 export const UpdateOperationParams = zod.object({
   "id": zod.coerce.string()
@@ -208,6 +286,14 @@ export const UpdateOperationParams = zod.object({
 
 export const UpdateOperationBody = zod.object({
   "name": zod.string().optional(),
+  "description": zod.string().nullish(),
+  "clientName": zod.string().nullish(),
+  "locations": zod.array(zod.string()).optional(),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "color": zod.string().optional(),
+  "icon": zod.string().optional(),
+  "localCoordinatorId": zod.string().nullish(),
   "healthThresholds": zod.object({
 
 }).passthrough().nullish(),
@@ -219,12 +305,106 @@ export const UpdateOperationResponse = zod.object({
   "operation": zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "description": zod.string().nullish(),
+  "clientName": zod.string().nullish(),
+  "locations": zod.array(zod.string()),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "color": zod.string(),
+  "icon": zod.string(),
+  "localCoordinatorId": zod.string().nullish(),
   "organizationId": zod.string(),
   "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']),
   "lateThresholdMinutes": zod.number().nullish(),
   "timezone": zod.string().nullish(),
   "createdAt": zod.string().optional(),
-  "updatedAt": zod.string().optional()
+  "updatedAt": zod.string().optional(),
+  "activatedAt": zod.string().nullish(),
+  "activatedBy": zod.string().nullish(),
+  "archivedAt": zod.string().nullish(),
+  "archivedBy": zod.string().nullish(),
+  "modulesReviewedAt": zod.string().nullish(),
+  "modulesReviewedBy": zod.string().nullish()
+})
+})
+
+
+/**
+ * @summary Get the activation readiness checklist (Admin only)
+ */
+export const GetOperationReadinessParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetOperationReadinessResponse = zod.object({
+  "readiness": zod.object({
+  "ready": zod.boolean(),
+  "items": zod.array(zod.object({
+  "key": zod.enum(['GENERAL_DATA', 'VISUAL_IDENTITY', 'FIXED_TEAM', 'RESPONSIBILITIES', 'RELATED_MODULES']),
+  "label": zod.string(),
+  "complete": zod.boolean(),
+  "message": zod.string()
+})),
+  "blockers": zod.array(zod.object({
+  "key": zod.enum(['GENERAL_DATA', 'VISUAL_IDENTITY', 'FIXED_TEAM', 'RESPONSIBILITIES', 'RELATED_MODULES']),
+  "label": zod.string(),
+  "complete": zod.boolean(),
+  "message": zod.string()
+}))
+})
+})
+
+
+/**
+ * @summary Confirm or revoke the administrative review of related modules
+ */
+export const UpdateOperationSetupReviewParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateOperationSetupReviewBody = zod.object({
+  "reviewed": zod.boolean()
+})
+
+export const UpdateOperationSetupReviewResponse = zod.object({
+  "operation": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "clientName": zod.string().nullish(),
+  "locations": zod.array(zod.string()),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "color": zod.string(),
+  "icon": zod.string(),
+  "localCoordinatorId": zod.string().nullish(),
+  "organizationId": zod.string(),
+  "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']),
+  "lateThresholdMinutes": zod.number().nullish(),
+  "timezone": zod.string().nullish(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional(),
+  "activatedAt": zod.string().nullish(),
+  "activatedBy": zod.string().nullish(),
+  "archivedAt": zod.string().nullish(),
+  "archivedBy": zod.string().nullish(),
+  "modulesReviewedAt": zod.string().nullish(),
+  "modulesReviewedBy": zod.string().nullish()
+}),
+  "readiness": zod.object({
+  "ready": zod.boolean(),
+  "items": zod.array(zod.object({
+  "key": zod.enum(['GENERAL_DATA', 'VISUAL_IDENTITY', 'FIXED_TEAM', 'RESPONSIBILITIES', 'RELATED_MODULES']),
+  "label": zod.string(),
+  "complete": zod.boolean(),
+  "message": zod.string()
+})),
+  "blockers": zod.array(zod.object({
+  "key": zod.enum(['GENERAL_DATA', 'VISUAL_IDENTITY', 'FIXED_TEAM', 'RESPONSIBILITIES', 'RELATED_MODULES']),
+  "label": zod.string(),
+  "complete": zod.boolean(),
+  "message": zod.string()
+}))
 })
 })
 
@@ -244,12 +424,26 @@ export const UpdateOperationStatusResponse = zod.object({
   "operation": zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "description": zod.string().nullish(),
+  "clientName": zod.string().nullish(),
+  "locations": zod.array(zod.string()),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "color": zod.string(),
+  "icon": zod.string(),
+  "localCoordinatorId": zod.string().nullish(),
   "organizationId": zod.string(),
   "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']),
   "lateThresholdMinutes": zod.number().nullish(),
   "timezone": zod.string().nullish(),
   "createdAt": zod.string().optional(),
-  "updatedAt": zod.string().optional()
+  "updatedAt": zod.string().optional(),
+  "activatedAt": zod.string().nullish(),
+  "activatedBy": zod.string().nullish(),
+  "archivedAt": zod.string().nullish(),
+  "archivedBy": zod.string().nullish(),
+  "modulesReviewedAt": zod.string().nullish(),
+  "modulesReviewedBy": zod.string().nullish()
 })
 })
 
@@ -261,6 +455,9 @@ export const GetOperationalGroupsResponse = zod.object({
   "groups": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "description": zod.string().nullish(),
+  "color": zod.string().optional(),
+  "icon": zod.string().optional(),
   "organizationId": zod.string().nullish(),
   "operationId": zod.string().nullish(),
   "scope": zod.enum(['OPERATION', 'MULTI', 'ALL']),
@@ -268,7 +465,9 @@ export const GetOperationalGroupsResponse = zod.object({
   "members": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "photoUrl": zod.string().nullish()
+  "photoUrl": zod.string().nullish(),
+  "isPrimary": zod.boolean().optional(),
+  "startsAt": zod.string().optional()
 })).optional().describe('Membros ativos do grupo (presente apenas no detalhe do grupo).'),
   "supervisors": zod.array(zod.object({
   "id": zod.string(),
@@ -288,6 +487,9 @@ export const GetOperationalGroupsResponse = zod.object({
  */
 export const CreateOperationalGroupBody = zod.object({
   "name": zod.string(),
+  "description": zod.string().nullish(),
+  "color": zod.string().optional(),
+  "icon": zod.string().optional(),
   "scope": zod.enum(['OPERATION', 'MULTI', 'ALL']).optional().describe('OPERATION (uma operação, padrão), MULTI (várias) ou ALL (todas). MULTI\/ALL são exclusivos do Admin.'),
   "operationId": zod.string().nullish().describe('Obrigatório quando scope=OPERATION.'),
   "operationIds": zod.array(zod.string()).optional().describe('Operações cobertas quando scope=MULTI.'),
@@ -318,6 +520,9 @@ export const GetOperationalGroupResponse = zod.object({
   "group": zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "description": zod.string().nullish(),
+  "color": zod.string().optional(),
+  "icon": zod.string().optional(),
   "organizationId": zod.string().nullish(),
   "operationId": zod.string().nullish(),
   "scope": zod.enum(['OPERATION', 'MULTI', 'ALL']),
@@ -325,7 +530,9 @@ export const GetOperationalGroupResponse = zod.object({
   "members": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "photoUrl": zod.string().nullish()
+  "photoUrl": zod.string().nullish(),
+  "isPrimary": zod.boolean().optional(),
+  "startsAt": zod.string().optional()
 })).optional().describe('Membros ativos do grupo (presente apenas no detalhe do grupo).'),
   "supervisors": zod.array(zod.object({
   "id": zod.string(),
@@ -348,13 +555,19 @@ export const UpdateOperationalGroupParams = zod.object({
 })
 
 export const UpdateOperationalGroupBody = zod.object({
-  "name": zod.string().optional()
+  "name": zod.string().optional(),
+  "description": zod.string().nullish(),
+  "color": zod.string().optional(),
+  "icon": zod.string().optional()
 })
 
 export const UpdateOperationalGroupResponse = zod.object({
   "group": zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "description": zod.string().nullish(),
+  "color": zod.string().optional(),
+  "icon": zod.string().optional(),
   "organizationId": zod.string().nullish(),
   "operationId": zod.string().nullish(),
   "scope": zod.enum(['OPERATION', 'MULTI', 'ALL']),
@@ -362,7 +575,9 @@ export const UpdateOperationalGroupResponse = zod.object({
   "members": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "photoUrl": zod.string().nullish()
+  "photoUrl": zod.string().nullish(),
+  "isPrimary": zod.boolean().optional(),
+  "startsAt": zod.string().optional()
 })).optional().describe('Membros ativos do grupo (presente apenas no detalhe do grupo).'),
   "supervisors": zod.array(zod.object({
   "id": zod.string(),
@@ -392,6 +607,9 @@ export const UpdateOperationalGroupStatusResponse = zod.object({
   "group": zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "description": zod.string().nullish(),
+  "color": zod.string().optional(),
+  "icon": zod.string().optional(),
   "organizationId": zod.string().nullish(),
   "operationId": zod.string().nullish(),
   "scope": zod.enum(['OPERATION', 'MULTI', 'ALL']),
@@ -399,7 +617,9 @@ export const UpdateOperationalGroupStatusResponse = zod.object({
   "members": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "photoUrl": zod.string().nullish()
+  "photoUrl": zod.string().nullish(),
+  "isPrimary": zod.boolean().optional(),
+  "startsAt": zod.string().optional()
 })).optional().describe('Membros ativos do grupo (presente apenas no detalhe do grupo).'),
   "supervisors": zod.array(zod.object({
   "id": zod.string(),
@@ -422,7 +642,8 @@ export const AddGroupMemberParams = zod.object({
 })
 
 export const AddGroupMemberBody = zod.object({
-  "userId": zod.string()
+  "userId": zod.string(),
+  "isPrimary": zod.boolean().optional()
 })
 
 
@@ -468,14 +689,26 @@ export const GetUserContextResponse = zod.object({
   "user": zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "preferredName": zod.string().nullish(),
   "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
   "username": zod.string().nullish(),
   "photoUrl": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "personStatus": zod.enum(['ACTIVE', 'ON_LEAVE', 'LEFT', 'ARCHIVED']),
+  "professionalProfile": zod.string().nullish(),
+  "primaryFunction": zod.string().nullish(),
   "specialization": zod.enum(['PERFORMER', 'CONVIDADO', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
   "visitUntil": zod.string().nullish().describe('Data de saída prevista para Convidados (formato YYYY-MM-DD). Nulo para membros fixos.'),
   "organizationId": zod.string(),
+  "birthDate": zod.string().nullish(),
+  "entryDate": zod.string().nullish(),
+  "adminNotes": zod.string().nullish(),
+  "contactVisibility": zod.object({
+  "email": zod.boolean().optional(),
+  "phone": zod.boolean().optional()
+}).optional(),
   "operationIds": zod.array(zod.string()).optional().describe('Operações às quais o utilizador pertence (via papéis ativos).'),
   "supervisorOperationIds": zod.array(zod.string()).optional().describe('Operações onde o utilizador é supervisor (A\/B); usado para escolher o responsável de um show.'),
   "isAdmin": zod.boolean().optional().describe('Verdadeiro se o utilizador tem papel ADMIN (não faz parte do elenco escalável).'),
@@ -497,16 +730,33 @@ export const GetUserContextResponse = zod.object({
   "operations": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "description": zod.string().nullish(),
+  "clientName": zod.string().nullish(),
+  "locations": zod.array(zod.string()),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "color": zod.string(),
+  "icon": zod.string(),
+  "localCoordinatorId": zod.string().nullish(),
   "organizationId": zod.string(),
   "status": zod.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']),
   "lateThresholdMinutes": zod.number().nullish(),
   "timezone": zod.string().nullish(),
   "createdAt": zod.string().optional(),
-  "updatedAt": zod.string().optional()
+  "updatedAt": zod.string().optional(),
+  "activatedAt": zod.string().nullish(),
+  "activatedBy": zod.string().nullish(),
+  "archivedAt": zod.string().nullish(),
+  "archivedBy": zod.string().nullish(),
+  "modulesReviewedAt": zod.string().nullish(),
+  "modulesReviewedBy": zod.string().nullish()
 })),
   "groups": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "description": zod.string().nullish(),
+  "color": zod.string().optional(),
+  "icon": zod.string().optional(),
   "organizationId": zod.string().nullish(),
   "operationId": zod.string().nullish(),
   "scope": zod.enum(['OPERATION', 'MULTI', 'ALL']),
@@ -514,7 +764,9 @@ export const GetUserContextResponse = zod.object({
   "members": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "photoUrl": zod.string().nullish()
+  "photoUrl": zod.string().nullish(),
+  "isPrimary": zod.boolean().optional(),
+  "startsAt": zod.string().optional()
 })).optional().describe('Membros ativos do grupo (presente apenas no detalhe do grupo).'),
   "supervisors": zod.array(zod.object({
   "id": zod.string(),
@@ -536,14 +788,26 @@ export const ListUsersResponse = zod.object({
   "users": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "preferredName": zod.string().nullish(),
   "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
   "username": zod.string().nullish(),
   "photoUrl": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "personStatus": zod.enum(['ACTIVE', 'ON_LEAVE', 'LEFT', 'ARCHIVED']),
+  "professionalProfile": zod.string().nullish(),
+  "primaryFunction": zod.string().nullish(),
   "specialization": zod.enum(['PERFORMER', 'CONVIDADO', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
   "visitUntil": zod.string().nullish().describe('Data de saída prevista para Convidados (formato YYYY-MM-DD). Nulo para membros fixos.'),
   "organizationId": zod.string(),
+  "birthDate": zod.string().nullish(),
+  "entryDate": zod.string().nullish(),
+  "adminNotes": zod.string().nullish(),
+  "contactVisibility": zod.object({
+  "email": zod.boolean().optional(),
+  "phone": zod.boolean().optional()
+}).optional(),
   "operationIds": zod.array(zod.string()).optional().describe('Operações às quais o utilizador pertence (via papéis ativos).'),
   "supervisorOperationIds": zod.array(zod.string()).optional().describe('Operações onde o utilizador é supervisor (A\/B); usado para escolher o responsável de um show.'),
   "isAdmin": zod.boolean().optional().describe('Verdadeiro se o utilizador tem papel ADMIN (não faz parte do elenco escalável).'),
@@ -562,10 +826,18 @@ export const createUserBodyPasswordMin = 6;
 
 export const CreateUserBody = zod.object({
   "name": zod.string(),
+  "preferredName": zod.string().nullish(),
   "email": zod.string().email().nullish(),
-  "password": zod.string().min(createUserBodyPasswordMin),
+  "phone": zod.string().nullish(),
+  "password": zod.string().min(createUserBodyPasswordMin).nullish(),
+  "personStatus": zod.enum(['ACTIVE', 'ON_LEAVE', 'LEFT', 'ARCHIVED']).optional(),
+  "professionalProfile": zod.string().nullish(),
+  "primaryFunction": zod.string().nullish(),
   "specialization": zod.enum(['PERFORMER', 'CONVIDADO', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
-  "visitUntil": zod.string().nullish().describe('Data de saída prevista para Convidados (YYYY-MM-DD).')
+  "visitUntil": zod.string().nullish().describe('Data de saída prevista para Convidados (YYYY-MM-DD).'),
+  "birthDate": zod.string().nullish(),
+  "entryDate": zod.string().nullish(),
+  "adminNotes": zod.string().nullish()
 })
 
 
@@ -597,14 +869,26 @@ export const GetUserResponse = zod.object({
   "user": zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "preferredName": zod.string().nullish(),
   "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
   "username": zod.string().nullish(),
   "photoUrl": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "personStatus": zod.enum(['ACTIVE', 'ON_LEAVE', 'LEFT', 'ARCHIVED']),
+  "professionalProfile": zod.string().nullish(),
+  "primaryFunction": zod.string().nullish(),
   "specialization": zod.enum(['PERFORMER', 'CONVIDADO', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
   "visitUntil": zod.string().nullish().describe('Data de saída prevista para Convidados (formato YYYY-MM-DD). Nulo para membros fixos.'),
   "organizationId": zod.string(),
+  "birthDate": zod.string().nullish(),
+  "entryDate": zod.string().nullish(),
+  "adminNotes": zod.string().nullish(),
+  "contactVisibility": zod.object({
+  "email": zod.boolean().optional(),
+  "phone": zod.boolean().optional()
+}).optional(),
   "operationIds": zod.array(zod.string()).optional().describe('Operações às quais o utilizador pertence (via papéis ativos).'),
   "supervisorOperationIds": zod.array(zod.string()).optional().describe('Operações onde o utilizador é supervisor (A\/B); usado para escolher o responsável de um show.'),
   "isAdmin": zod.boolean().optional().describe('Verdadeiro se o utilizador tem papel ADMIN (não faz parte do elenco escalável).'),
@@ -623,24 +907,49 @@ export const UpdateUserParams = zod.object({
 
 export const UpdateUserBody = zod.object({
   "name": zod.string().optional(),
+  "preferredName": zod.string().nullish(),
   "email": zod.string().email().optional(),
+  "phone": zod.string().nullish(),
+  "photoUrl": zod.string().nullish(),
   "username": zod.string().optional().describe('Nome de usuário (login). Normalizado: minusculas, sem acentos, espacos viram ponto, apenas letras\/numeros\/ponto.'),
   "specialization": zod.enum(['PERFORMER', 'CONVIDADO', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
-  "visitUntil": zod.string().nullish().describe('Data de saída prevista para Convidados (YYYY-MM-DD). Enviar null para limpar.')
+  "visitUntil": zod.string().nullish().describe('Data de saída prevista para Convidados (YYYY-MM-DD). Enviar null para limpar.'),
+  "birthDate": zod.string().nullish(),
+  "entryDate": zod.string().nullish(),
+  "personStatus": zod.enum(['ACTIVE', 'ON_LEAVE', 'LEFT', 'ARCHIVED']).optional(),
+  "professionalProfile": zod.string().nullish(),
+  "primaryFunction": zod.string().nullish(),
+  "adminNotes": zod.string().nullish(),
+  "contactVisibility": zod.object({
+  "email": zod.boolean().optional(),
+  "phone": zod.boolean().optional()
+}).optional()
 })
 
 export const UpdateUserResponse = zod.object({
   "user": zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "preferredName": zod.string().nullish(),
   "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
   "username": zod.string().nullish(),
   "photoUrl": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "personStatus": zod.enum(['ACTIVE', 'ON_LEAVE', 'LEFT', 'ARCHIVED']),
+  "professionalProfile": zod.string().nullish(),
+  "primaryFunction": zod.string().nullish(),
   "specialization": zod.enum(['PERFORMER', 'CONVIDADO', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
   "visitUntil": zod.string().nullish().describe('Data de saída prevista para Convidados (formato YYYY-MM-DD). Nulo para membros fixos.'),
   "organizationId": zod.string(),
+  "birthDate": zod.string().nullish(),
+  "entryDate": zod.string().nullish(),
+  "adminNotes": zod.string().nullish(),
+  "contactVisibility": zod.object({
+  "email": zod.boolean().optional(),
+  "phone": zod.boolean().optional()
+}).optional(),
   "operationIds": zod.array(zod.string()).optional().describe('Operações às quais o utilizador pertence (via papéis ativos).'),
   "supervisorOperationIds": zod.array(zod.string()).optional().describe('Operações onde o utilizador é supervisor (A\/B); usado para escolher o responsável de um show.'),
   "isAdmin": zod.boolean().optional().describe('Verdadeiro se o utilizador tem papel ADMIN (não faz parte do elenco escalável).'),
@@ -665,14 +974,26 @@ export const UpdateUserStatusResponse = zod.object({
   "user": zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "preferredName": zod.string().nullish(),
   "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
   "username": zod.string().nullish(),
   "photoUrl": zod.string().nullish(),
   "mustChangePassword": zod.boolean().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "personStatus": zod.enum(['ACTIVE', 'ON_LEAVE', 'LEFT', 'ARCHIVED']),
+  "professionalProfile": zod.string().nullish(),
+  "primaryFunction": zod.string().nullish(),
   "specialization": zod.enum(['PERFORMER', 'CONVIDADO', 'PROFESSOR', 'TRAINER', 'PHYSIOTHERAPIST', 'STRENGTH_COACH', 'TECHNICAL_OPERATOR', 'CHOREOGRAPHER', 'OTHER']).nullish(),
   "visitUntil": zod.string().nullish().describe('Data de saída prevista para Convidados (formato YYYY-MM-DD). Nulo para membros fixos.'),
   "organizationId": zod.string(),
+  "birthDate": zod.string().nullish(),
+  "entryDate": zod.string().nullish(),
+  "adminNotes": zod.string().nullish(),
+  "contactVisibility": zod.object({
+  "email": zod.boolean().optional(),
+  "phone": zod.boolean().optional()
+}).optional(),
   "operationIds": zod.array(zod.string()).optional().describe('Operações às quais o utilizador pertence (via papéis ativos).'),
   "supervisorOperationIds": zod.array(zod.string()).optional().describe('Operações onde o utilizador é supervisor (A\/B); usado para escolher o responsável de um show.'),
   "isAdmin": zod.boolean().optional().describe('Verdadeiro se o utilizador tem papel ADMIN (não faz parte do elenco escalável).'),
@@ -1725,11 +2046,11 @@ export const ListMyAllocationsQueryParams = zod.object({
 export const ListMyAllocationsResponse = zod.object({
   "allocations": zod.array(zod.object({
   "id": zod.string(),
-  "scaleId": zod.string(),
-  "agendaEventId": zod.string(),
+  "scaleId": zod.string().nullish(),
+  "agendaEventId": zod.string().nullish(),
   "positionId": zod.string().nullish(),
   "positionName": zod.string().nullish(),
-  "status": zod.enum(['ASSIGNED', 'OPEN', 'CONFLICT', 'MANUAL_OVERRIDE']),
+  "status": zod.enum(['ASSIGNED', 'OPEN', 'CONFLICT', 'MANUAL_OVERRIDE', 'RECURRING_ACTIVITY']),
   "eventTitle": zod.string().nullish(),
   "eventDate": zod.string().nullish(),
   "eventStartTime": zod.string().nullish(),
@@ -1737,7 +2058,9 @@ export const ListMyAllocationsResponse = zod.object({
   "eventLocation": zod.string().nullish(),
   "eventType": zod.string().nullish(),
   "scaleTitle": zod.string().nullish(),
-  "scaleStatus": zod.string().nullish()
+  "scaleStatus": zod.string().nullish(),
+  "operationId": zod.string().nullish(),
+  "operationName": zod.string().nullish()
 }))
 })
 

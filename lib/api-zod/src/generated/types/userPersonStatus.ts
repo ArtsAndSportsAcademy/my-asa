@@ -6,12 +6,12 @@
  * OpenAPI spec version: 0.3.0
  */
 
-export type OperationCreateStatus = typeof OperationCreateStatus[keyof typeof OperationCreateStatus];
+export type UserPersonStatus = typeof UserPersonStatus[keyof typeof UserPersonStatus];
 
 
-export const OperationCreateStatus = {
-  DRAFT: 'DRAFT',
+export const UserPersonStatus = {
   ACTIVE: 'ACTIVE',
-  PAUSED: 'PAUSED',
+  ON_LEAVE: 'ON_LEAVE',
+  LEFT: 'LEFT',
   ARCHIVED: 'ARCHIVED',
 } as const;

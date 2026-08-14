@@ -1,8 +1,9 @@
-import { pgTable, text, uuid, timestamp, pgEnum, date, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, pgEnum, date, boolean, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 export const userStatusEnum = pgEnum("user_status", ["ACTIVE", "INACTIVE"]);
+export const personStatusEnum = pgEnum("person_status", ["ACTIVE", "ON_LEAVE", "LEFT", "ARCHIVED"]);
 
 // ─── Especialização Profissional ───────────────────────────────────────────────
 // Identifica quem o usuário é dentro da organização (não altera papéis nem permissões).
@@ -74,16 +75,26 @@ export const usersTable = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   organizationId: uuid("organization_id").notNull(),
   name: text("name").notNull(),
+  preferredName: text("preferred_name"),
   email: text("email").unique(),
+  phone: text("phone"),
   username: text("username").unique(),
   passwordHash: text("password_hash"),
   mustChangePassword: boolean("must_change_password").notNull().default(false),
   photoUrl: text("photo_url"),
+  personStatus: personStatusEnum("person_status").notNull().default("ACTIVE"),
   status: userStatusEnum("status").notNull().default("ACTIVE"),
+  professionalProfile: text("professional_profile"),
+  primaryFunction: text("primary_function"),
   specialization: text("specialization").$type<UserSpecialization | null>(),
   birthDate: date("birth_date", { mode: "string" }),
+  entryDate: date("entry_date", { mode: "string" }),
   /** Data de saída prevista para Convidados (CONVIDADO). Nulo para membros fixos. */
   visitUntil: date("visit_until", { mode: "string" }),
+  adminNotes: text("admin_notes"),
+  contactVisibility: jsonb("contact_visibility").$type<{ email: boolean; phone: boolean }>().notNull().default({ email: true, phone: true }),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  archivedBy: uuid("archived_by"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

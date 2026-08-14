@@ -38,7 +38,8 @@ function StatusBadge({ status }: { status: string }) {
   return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
 }
 
-function fmtDate(s: string) {
+function fmtDate(s: string | null) {
+  if (!s) return "Permanente";
   try {
     const [y, m, d] = s.split("-");
     return `${d}/${m}/${y}`;
@@ -91,6 +92,7 @@ export function DelegationsContent() {
   const [operationId, setOperationId] = useState("");
   const [startDate, setStartDate]   = useState("");
   const [endDate, setEndDate]       = useState("");
+  const [isPermanent, setIsPermanent] = useState(false);
   const [reason, setReason]         = useState("");
   const [selectedResp, setSelectedResp] = useState<DelegatedResponsibility[]>([]);
   const [formError, setFormError]   = useState("");
@@ -106,7 +108,7 @@ export function DelegationsContent() {
   const users       = usersData?.users ?? [];
 
   const resetForm = () => {
-    setDelegateId(""); setOperationId(""); setStartDate(""); setEndDate("");
+    setDelegateId(""); setOperationId(""); setStartDate(""); setEndDate(""); setIsPermanent(false);
     setReason(""); setSelectedResp([]); setFormError("");
   };
 
@@ -123,11 +125,11 @@ export function DelegationsContent() {
   };
 
   const handleCreate = () => {
-    if (!delegateId || !operationId || !startDate || !endDate) {
+    if (!delegateId || !operationId || !startDate || (!isPermanent && !endDate)) {
       setFormError("Preencha todos os campos obrigatórios.");
       return;
     }
-    if (endDate < startDate) {
+    if (!isPermanent && endDate < startDate) {
       setFormError("A data de término deve ser igual ou posterior à data de início.");
       return;
     }
@@ -141,7 +143,7 @@ export function DelegationsContent() {
         delegateId,
         operationId,
         startDate,
-        endDate,
+        endDate: isPermanent ? null : endDate,
         reason: reason || undefined,
         responsibilities: selectedResp,
       },
@@ -308,9 +310,14 @@ export function DelegationsContent() {
               </div>
               <div className="space-y-1.5">
                 <Label>Término *</Label>
-                <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                <Input type="date" value={endDate} disabled={isPermanent} onChange={(e) => setEndDate(e.target.value)} />
               </div>
             </div>
+
+            <label className="flex items-center gap-2 rounded-md border p-3 text-sm cursor-pointer">
+              <Checkbox checked={isPermanent} onCheckedChange={(checked) => setIsPermanent(checked === true)} />
+              Delegação permanente, até ser cancelada
+            </label>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">

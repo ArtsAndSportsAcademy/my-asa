@@ -6,6 +6,7 @@ import {
   scaleAllocationsTable,
   allocationExceptionsTable,
   agendaEventsTable,
+  showBooksTable,
   showBookRolesTable,
   usersTable,
   folgasTable,
@@ -22,18 +23,38 @@ import { resolveScaleAllocations, resolveUserRecurringAllocations } from "../ser
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { hasActiveResponsibility } from "../lib/delegation-check.js";
 import { notifyMany } from "../services/notificationService.js";
+import { getActiveOperationInOrganization } from "../services/operation-lifecycle.js";
 
 const router: IRouter = Router();
-const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
+// ADMIN tem autoridade global; supervisores são validados por Operação abaixo.
+const MANAGER_ROLES = ["ADMIN"];
+
+async function hasScaleAuthority(userId: string, operationId: string): Promise<boolean> {
+  const supervisor = await db.query.userRolesTable.findFirst({
+    where: and(
+      eq(userRolesTable.userId, userId),
+      eq(userRolesTable.operationId, operationId),
+      eq(userRolesTable.active, true),
+      or(eq(userRolesTable.role, "SUPERVISOR_A"), eq(userRolesTable.role, "SUPERVISOR_B")),
+    ),
+  });
+  return !!supervisor || hasActiveResponsibility(userId, operationId, "SCALES");
+}
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
-async function getScaleOrFail(id: string, res: any) {
-  const [scale] = await db
-    .select()
+async function getScaleOrFail(id: string, organizationId: string, res: any) {
+  const [row] = await db
+    .select({ scale: scalesTable })
     .from(scalesTable)
-    .where(eq(scalesTable.id, id))
+    .innerJoin(operationsTable, eq(scalesTable.operationId, operationsTable.id))
+    .where(and(
+      eq(scalesTable.id, id),
+      eq(operationsTable.organizationId, organizationId),
+      eq(operationsTable.status, "ACTIVE"),
+    ))
     .limit(1);
+  const scale = row?.scale;
   if (!scale) {
     res.status(404).json({ error: "Escala não encontrada" });
     return null;
@@ -63,9 +84,39 @@ async function buildScaleSummary(scale: typeof scalesTable.$inferSelect) {
 router.get("/scales", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger("scale", req.requestId, req.correlationId);
   const { operationId, groupId, status, from, to } = req.query as Record<string, string | undefined>;
+  const user = req.user!;
 
   try {
-    const conditions = [];
+    if (!["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"].includes(user.role)) {
+      res.status(403).json({ error: "Forbidden", message: "Acesso restrito à gestão de Escalas" });
+      return;
+    }
+
+    const organizationOperations = await db.query.operationsTable.findMany({
+      where: and(
+        eq(operationsTable.organizationId, user.organizationId),
+        eq(operationsTable.status, "ACTIVE"),
+      ),
+    });
+    const allowedOperationIds = user.role === "ADMIN"
+      ? organizationOperations.map((operation) => operation.id)
+      : (await Promise.all(
+          organizationOperations.map(async (operation) => ({
+            id: operation.id,
+            allowed: await hasScaleAuthority(user.sub, operation.id),
+          })),
+        )).filter((operation) => operation.allowed).map((operation) => operation.id);
+
+    if (operationId && !allowedOperationIds.includes(operationId)) {
+      res.status(403).json({ error: "Forbidden", message: "Operação fora do escopo de Escalas" });
+      return;
+    }
+    if (allowedOperationIds.length === 0) {
+      res.json({ scales: [] });
+      return;
+    }
+
+    const conditions = [inArray(scalesTable.operationId, allowedOperationIds)];
     if (operationId) conditions.push(eq(scalesTable.operationId, operationId));
     if (groupId) conditions.push(eq(scalesTable.groupId, groupId));
     if (status) conditions.push(eq(scalesTable.status, status as any));
@@ -105,7 +156,7 @@ router.post("/scales/generate", requireAuth, requireOrganization, async (req, re
   }
 
   if (!MANAGER_ROLES.includes(user.role)) {
-    if (!(await hasActiveResponsibility(userId, operationId, "SCALES"))) {
+    if (!(await hasScaleAuthority(userId, operationId))) {
       res.status(403).json({ error: "Forbidden", message: "Apenas supervisores ou delegados com responsabilidade de Escalas podem gerar escalas" });
       return;
     }
@@ -113,6 +164,15 @@ router.post("/scales/generate", requireAuth, requireOrganization, async (req, re
 
   try {
     // Derivar período: evento tem prioridade se fornecido
+    const operation = await getActiveOperationInOrganization(operationId, user.organizationId);
+    if (!operation) {
+      res.status(409).json({
+        error: "OPERATION_NOT_ACTIVE",
+        message: "A operação não existe, está em configuração ou foi arquivada.",
+      });
+      return;
+    }
+
     let periodStart: string = bodyPeriodStart ?? "";
     let periodEnd: string = bodyPeriodEnd ?? "";
     let autoTitle = title;
@@ -127,9 +187,32 @@ router.post("/scales/generate", requireAuth, requireOrganization, async (req, re
         res.status(404).json({ error: "Evento de agenda não encontrado" });
         return;
       }
+      if (event.operationId !== operationId) {
+        res.status(409).json({
+          error: "OPERATION_CONTEXT_MISMATCH",
+          message: "O evento selecionado pertence a outra operação.",
+        });
+        return;
+      }
       periodStart = event.date;
       periodEnd = (event as any).endDate ?? event.date;
       if (!autoTitle) autoTitle = `Escala — ${event.title}`;
+    }
+
+    if (showBookId) {
+      const showBook = await db.query.showBooksTable.findFirst({
+        where: and(
+          eq(showBooksTable.id, showBookId),
+          eq(showBooksTable.operationId, operationId),
+        ),
+      });
+      if (!showBook) {
+        res.status(409).json({
+          error: "OPERATION_CONTEXT_MISMATCH",
+          message: "O Livro do Show selecionado não pertence a esta operação.",
+        });
+        return;
+      }
     }
 
     if (!autoTitle) {
@@ -333,7 +416,7 @@ router.get("/scales/:id", requireAuth, requireOrganization, async (req, res) => 
   const id = req.params["id"] as string;
 
   try {
-    const scale = await getScaleOrFail(id, res);
+    const scale = await getScaleOrFail(id, req.user!.organizationId, res);
     if (!scale) return;
 
     const [allocations, exceptions] = await Promise.all([
@@ -379,11 +462,11 @@ router.post("/scales/:id/regenerate", requireAuth, requireOrganization, async (r
   const userId = user.sub;
 
   try {
-    const scale = await getScaleOrFail(id, res);
+    const scale = await getScaleOrFail(id, req.user!.organizationId, res);
     if (!scale) return;
 
     if (!MANAGER_ROLES.includes(user.role)) {
-      if (!(await hasActiveResponsibility(userId, scale.operationId, "SCALES"))) {
+      if (!(await hasScaleAuthority(userId, scale.operationId))) {
         res.status(403).json({ error: "Forbidden", message: "Apenas supervisores ou delegados com responsabilidade de Escalas podem regenerar escalas" });
         return;
       }
@@ -493,11 +576,11 @@ router.patch("/scales/:id", requireAuth, requireOrganization, async (req, res) =
   const { title, publishDeadline } = req.body as { title?: string; publishDeadline?: string | null };
 
   try {
-    const scale = await getScaleOrFail(id, res);
+    const scale = await getScaleOrFail(id, req.user!.organizationId, res);
     if (!scale) return;
 
     if (!MANAGER_ROLES.includes(user.role)) {
-      if (!(await hasActiveResponsibility(user.sub, scale.operationId, "SCALES"))) {
+      if (!(await hasScaleAuthority(user.sub, scale.operationId))) {
         res.status(403).json({ error: "Forbidden", message: "Apenas supervisores ou delegados com responsabilidade de Escalas" });
         return;
       }
@@ -531,11 +614,11 @@ router.post("/scales/:id/publish", requireAuth, requireOrganization, async (req,
   const userId = user.sub;
 
   try {
-    const scale = await getScaleOrFail(id, res);
+    const scale = await getScaleOrFail(id, req.user!.organizationId, res);
     if (!scale) return;
 
     if (!MANAGER_ROLES.includes(user.role)) {
-      if (!(await hasActiveResponsibility(userId, scale.operationId, "SCALES"))) {
+      if (!(await hasScaleAuthority(userId, scale.operationId))) {
         res.status(403).json({ error: "Forbidden", message: "Apenas supervisores ou delegados com responsabilidade de Escalas" });
         return;
       }
@@ -594,11 +677,11 @@ router.post("/scales/:id/republish", requireAuth, requireOrganization, async (re
   const userId = user.sub;
 
   try {
-    const scale = await getScaleOrFail(id, res);
+    const scale = await getScaleOrFail(id, req.user!.organizationId, res);
     if (!scale) return;
 
     if (!MANAGER_ROLES.includes(user.role)) {
-      if (!(await hasActiveResponsibility(userId, scale.operationId, "SCALES"))) {
+      if (!(await hasScaleAuthority(userId, scale.operationId))) {
         res.status(403).json({ error: "Forbidden", message: "Apenas supervisores ou delegados com responsabilidade de Escalas" });
         return;
       }
@@ -656,7 +739,7 @@ router.post("/scales/:id/archive", requireAuth, requireOrganization, async (req,
   const userId = req.user!.sub;
 
   try {
-    const scale = await getScaleOrFail(id, res);
+    const scale = await getScaleOrFail(id, req.user!.organizationId, res);
     if (!scale) return;
 
     const [updated] = await db
@@ -678,7 +761,7 @@ router.get("/scales/:id/allocations", requireAuth, requireOrganization, async (r
   const id = req.params["id"] as string;
 
   try {
-    const scale = await getScaleOrFail(id, res);
+    const scale = await getScaleOrFail(id, req.user!.organizationId, res);
     if (!scale) return;
 
     const allocations = await resolveScaleAllocations(scale);
@@ -703,7 +786,7 @@ router.post("/scales/:id/entries", requireAuth, requireOrganization, async (req,
   }
 
   try {
-    const scale = await getScaleOrFail(id, res);
+    const scale = await getScaleOrFail(id, req.user!.organizationId, res);
     if (!scale) return;
 
     if (scale.status === "ARCHIVED") {
@@ -712,7 +795,7 @@ router.post("/scales/:id/entries", requireAuth, requireOrganization, async (req,
     }
 
     if (!MANAGER_ROLES.includes(user.role)) {
-      if (!(await hasActiveResponsibility(userId, scale.operationId, "SCALES"))) {
+      if (!(await hasScaleAuthority(userId, scale.operationId))) {
         res.status(403).json({ error: "Forbidden" });
         return;
       }
@@ -754,7 +837,7 @@ router.delete("/scales/:id/entries/:entryId", requireAuth, requireOrganization, 
   const userId = user.sub;
 
   try {
-    const scale = await getScaleOrFail(id, res);
+    const scale = await getScaleOrFail(id, req.user!.organizationId, res);
     if (!scale) return;
 
     if (scale.status === "ARCHIVED") {
@@ -763,7 +846,7 @@ router.delete("/scales/:id/entries/:entryId", requireAuth, requireOrganization, 
     }
 
     if (!MANAGER_ROLES.includes(user.role)) {
-      if (!(await hasActiveResponsibility(userId, scale.operationId, "SCALES"))) {
+      if (!(await hasScaleAuthority(userId, scale.operationId))) {
         res.status(403).json({ error: "Forbidden" });
         return;
       }
@@ -793,7 +876,7 @@ router.patch("/scales/:id/allocations/:allocationId", requireAuth, requireOrgani
   }
 
   try {
-    const scale = await getScaleOrFail(id, res);
+    const scale = await getScaleOrFail(id, req.user!.organizationId, res);
     if (!scale) return;
     if (scale.status === "ARCHIVED") {
       res.status(409).json({ error: "Escala arquivada não pode ser modificada" });
@@ -864,7 +947,7 @@ router.get("/scales/:id/exceptions", requireAuth, requireOrganization, async (re
   const id = req.params["id"] as string;
 
   try {
-    const scale = await getScaleOrFail(id, res);
+    const scale = await getScaleOrFail(id, req.user!.organizationId, res);
     if (!scale) return;
 
     const exceptions = await db
@@ -905,7 +988,7 @@ router.patch(
     const userId = req.user!.sub;
 
     try {
-      const scale = await getScaleOrFail(id, res);
+      const scale = await getScaleOrFail(id, req.user!.organizationId, res);
       if (!scale) return;
 
       const [updated] = await db
@@ -940,11 +1023,11 @@ router.delete("/scales/:id", requireAuth, requireOrganization, async (req, res) 
   const userId = user.sub;
 
   try {
-    const scale = await getScaleOrFail(id, res);
+    const scale = await getScaleOrFail(id, req.user!.organizationId, res);
     if (!scale) return;
 
     if (!MANAGER_ROLES.includes(user.role)) {
-      if (!(await hasActiveResponsibility(userId, scale.operationId, "SCALES"))) {
+      if (!(await hasScaleAuthority(userId, scale.operationId))) {
         res.status(403).json({ error: "Forbidden" });
         return;
       }
@@ -976,11 +1059,11 @@ router.post("/scales/:id/duplicate-previous", requireAuth, requireOrganization, 
   const userId = user.sub;
 
   try {
-    const scale = await getScaleOrFail(id, res);
+    const scale = await getScaleOrFail(id, req.user!.organizationId, res);
     if (!scale) return;
 
     if (!MANAGER_ROLES.includes(user.role)) {
-      if (!(await hasActiveResponsibility(userId, scale.operationId, "SCALES"))) {
+      if (!(await hasScaleAuthority(userId, scale.operationId))) {
         res.status(403).json({ error: "Forbidden" });
         return;
       }
@@ -1203,7 +1286,7 @@ router.get("/scales/:id/suggestions", requireAuth, requireOrganization, async (r
   }
 
   try {
-    const scale = await getScaleOrFail(id, res);
+    const scale = await getScaleOrFail(id, req.user!.organizationId, res);
     if (!scale) return;
 
     const suggestions = await computeScaleSuggestions(scale, date, user.organizationId);

@@ -1,2 +1,2 @@
-export { anthropic } from "./client";
-export { batchProcess, batchProcessWithSSE, isRateLimitError, type BatchOptions } from "./batch";
+export { getAnthropicClient } from "./client.js";
+export { batchProcess, batchProcessWithSSE, isRateLimitError, type BatchOptions } from "./batch/index.js";

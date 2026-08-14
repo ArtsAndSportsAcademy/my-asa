@@ -10,4 +10,6 @@ export type OperationalGroupMembersItem = {
   id: string;
   name: string;
   photoUrl?: string | null;
+  isPrimary?: boolean;
+  startsAt?: string;
 };

@@ -45,7 +45,7 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/requests",                     icon: FileText,       label: "Solicitações"               },
       { href: "/admin/folgas-indisponibilidades",    icon: Palmtree,       label: "Folgas & Indisponib."       },
       { href: "/admin/tasks",                        icon: CheckSquare,    label: "Tarefas"                    },
-      { href: "/supervisor/check-ins",               icon: ClipboardCheck, label: "Check-ins"                  },
+      { href: "/supervisor/check-ins",               icon: ClipboardCheck, label: "Status do Dia"             },
       { href: "/admin/responsabilidades-delegacoes", icon: ShieldCheck,    label: "Responsabilidades"          },
     ],
   },
@@ -115,7 +115,7 @@ const SUPERVISOR_NAV: NavGroup[] = [
       { href: "/supervisor/requests",                icon: FileText,       label: "Solicitações"        },
       { href: "/admin/folgas-indisponibilidades",    icon: Palmtree,       label: "Folgas & Indisponib."},
       { href: "/supervisor/tasks",                   icon: CheckSquare,    label: "Tarefas"             },
-      { href: "/supervisor/check-ins",               icon: ClipboardCheck, label: "Check-ins"           },
+      { href: "/supervisor/check-ins",               icon: ClipboardCheck, label: "Status do Dia"       },
       { href: "/admin/responsabilidades-delegacoes", icon: ShieldCheck,    label: "Responsabilidades"   },
     ],
   },
@@ -225,7 +225,7 @@ const TRAINER_NAV: NavGroup[] = [
 
 // Responsabilidade → item de navegação para Capitão
 const RESP_TO_NAV: Record<string, NavItem> = {
-  CHECK_INS:            { href: "/supervisor/check-ins",  icon: ClipboardCheck, label: "Check-ins"     },
+  CHECK_INS:            { href: "/supervisor/check-ins",  icon: ClipboardCheck, label: "Status do Dia" },
   REQUESTS:             { href: "/supervisor/requests",   icon: FileText,       label: "Solicitações"  },
   TASK_APPROVALS:       { href: "/supervisor/tasks",      icon: CheckSquare,    label: "Tarefas"       },
   DAILY_BOOK:           { href: "/supervisor/daily-book", icon: BookMarked,     label: "Livro do Dia"  },

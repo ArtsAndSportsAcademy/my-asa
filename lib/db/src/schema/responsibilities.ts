@@ -18,6 +18,7 @@ export type ResponsibilityCategory = (typeof RESPONSIBILITY_CATEGORIES)[number];
 export const responsibilityAssignmentRoleEnum = pgEnum("responsibility_assignment_role", [
   "PRIMARY",
   "SECONDARY",
+  "VIEWER",
 ]);
 
 export const responsibilitiesTable = pgTable("responsibilities", {

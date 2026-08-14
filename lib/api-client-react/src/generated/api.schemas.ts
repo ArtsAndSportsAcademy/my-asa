@@ -22,6 +22,16 @@ export const UserStatus = {
   INACTIVE: 'INACTIVE',
 } as const;
 
+export type UserPersonStatus = typeof UserPersonStatus[keyof typeof UserPersonStatus];
+
+
+export const UserPersonStatus = {
+  ACTIVE: 'ACTIVE',
+  ON_LEAVE: 'ON_LEAVE',
+  LEFT: 'LEFT',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
 export type UserSpecialization = typeof UserSpecialization[keyof typeof UserSpecialization] | null;
 
 
@@ -37,18 +47,32 @@ export const UserSpecialization = {
   OTHER: 'OTHER',
 } as const;
 
+export type UserContactVisibility = {
+  email?: boolean;
+  phone?: boolean;
+};
+
 export interface User {
   id: string;
   name: string;
+  preferredName?: string | null;
   email?: string | null;
+  phone?: string | null;
   username?: string | null;
   photoUrl?: string | null;
   mustChangePassword?: boolean;
   status: UserStatus;
+  personStatus: UserPersonStatus;
+  professionalProfile?: string | null;
+  primaryFunction?: string | null;
   specialization?: UserSpecialization;
   /** Data de saída prevista para Convidados (formato YYYY-MM-DD). Nulo para membros fixos. */
   visitUntil?: string | null;
   organizationId: string;
+  birthDate?: string | null;
+  entryDate?: string | null;
+  adminNotes?: string | null;
+  contactVisibility?: UserContactVisibility;
   /** Operações às quais o utilizador pertence (via papéis ativos). */
   operationIds?: string[];
   /** Operações onde o utilizador é supervisor (A/B); usado para escolher o responsável de um show. */
@@ -97,12 +121,50 @@ export const OperationStatus = {
 export interface Operation {
   id: string;
   name: string;
+  description?: string | null;
+  clientName?: string | null;
+  locations: string[];
+  startDate?: string | null;
+  endDate?: string | null;
+  color: string;
+  icon: string;
+  localCoordinatorId?: string | null;
   organizationId: string;
   status: OperationStatus;
   lateThresholdMinutes?: number | null;
   timezone?: string | null;
   createdAt?: string;
   updatedAt?: string;
+  activatedAt?: string | null;
+  activatedBy?: string | null;
+  archivedAt?: string | null;
+  archivedBy?: string | null;
+  modulesReviewedAt?: string | null;
+  modulesReviewedBy?: string | null;
+}
+
+export type OperationReadinessItemKey = typeof OperationReadinessItemKey[keyof typeof OperationReadinessItemKey];
+
+
+export const OperationReadinessItemKey = {
+  GENERAL_DATA: 'GENERAL_DATA',
+  VISUAL_IDENTITY: 'VISUAL_IDENTITY',
+  FIXED_TEAM: 'FIXED_TEAM',
+  RESPONSIBILITIES: 'RESPONSIBILITIES',
+  RELATED_MODULES: 'RELATED_MODULES',
+} as const;
+
+export interface OperationReadinessItem {
+  key: OperationReadinessItemKey;
+  label: string;
+  complete: boolean;
+  message: string;
+}
+
+export interface OperationReadiness {
+  ready: boolean;
+  items: OperationReadinessItem[];
+  blockers: OperationReadinessItem[];
 }
 
 export type OperationalGroupScope = typeof OperationalGroupScope[keyof typeof OperationalGroupScope];
@@ -118,6 +180,8 @@ export type OperationalGroupMembersItem = {
   id: string;
   name: string;
   photoUrl?: string | null;
+  isPrimary?: boolean;
+  startsAt?: string;
 };
 
 export type OperationalGroupSupervisorsItem = {
@@ -138,6 +202,9 @@ export const OperationalGroupStatus = {
 export interface OperationalGroup {
   id: string;
   name: string;
+  description?: string | null;
+  color?: string;
+  icon?: string;
   organizationId?: string | null;
   operationId?: string | null;
   scope: OperationalGroupScope;
@@ -194,6 +261,16 @@ export interface UserContext {
   groups: OperationalGroup[];
 }
 
+export type UserCreatePersonStatus = typeof UserCreatePersonStatus[keyof typeof UserCreatePersonStatus];
+
+
+export const UserCreatePersonStatus = {
+  ACTIVE: 'ACTIVE',
+  ON_LEAVE: 'ON_LEAVE',
+  LEFT: 'LEFT',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
 export type UserCreateSpecialization = typeof UserCreateSpecialization[keyof typeof UserCreateSpecialization] | null;
 
 
@@ -211,12 +288,20 @@ export const UserCreateSpecialization = {
 
 export interface UserCreate {
   name: string;
+  preferredName?: string | null;
   email?: string | null;
+  phone?: string | null;
   /** @minLength 6 */
-  password: string;
+  password?: string | null;
+  personStatus?: UserCreatePersonStatus;
+  professionalProfile?: string | null;
+  primaryFunction?: string | null;
   specialization?: UserCreateSpecialization;
   /** Data de saída prevista para Convidados (YYYY-MM-DD). */
   visitUntil?: string | null;
+  birthDate?: string | null;
+  entryDate?: string | null;
+  adminNotes?: string | null;
 }
 
 export interface ChangePasswordBody {
@@ -240,14 +325,39 @@ export const UserUpdateSpecialization = {
   OTHER: 'OTHER',
 } as const;
 
+export type UserUpdatePersonStatus = typeof UserUpdatePersonStatus[keyof typeof UserUpdatePersonStatus];
+
+
+export const UserUpdatePersonStatus = {
+  ACTIVE: 'ACTIVE',
+  ON_LEAVE: 'ON_LEAVE',
+  LEFT: 'LEFT',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export type UserUpdateContactVisibility = {
+  email?: boolean;
+  phone?: boolean;
+};
+
 export interface UserUpdate {
   name?: string;
+  preferredName?: string | null;
   email?: string;
+  phone?: string | null;
+  photoUrl?: string | null;
   /** Nome de usuário (login). Normalizado: minusculas, sem acentos, espacos viram ponto, apenas letras/numeros/ponto. */
   username?: string;
   specialization?: UserUpdateSpecialization;
   /** Data de saída prevista para Convidados (YYYY-MM-DD). Enviar null para limpar. */
   visitUntil?: string | null;
+  birthDate?: string | null;
+  entryDate?: string | null;
+  personStatus?: UserUpdatePersonStatus;
+  professionalProfile?: string | null;
+  primaryFunction?: string | null;
+  adminNotes?: string | null;
+  contactVisibility?: UserUpdateContactVisibility;
 }
 
 export type UserStatusUpdateStatus = typeof UserStatusUpdateStatus[keyof typeof UserStatusUpdateStatus];
@@ -279,25 +389,30 @@ export interface RoleCreate {
   role: RoleCreateRole;
 }
 
-export type OperationCreateStatus = typeof OperationCreateStatus[keyof typeof OperationCreateStatus];
-
-
-export const OperationCreateStatus = {
-  DRAFT: 'DRAFT',
-  ACTIVE: 'ACTIVE',
-  PAUSED: 'PAUSED',
-  ARCHIVED: 'ARCHIVED',
-} as const;
-
 export interface OperationCreate {
   name: string;
-  status?: OperationCreateStatus;
+  description?: string | null;
+  clientName?: string | null;
+  locations?: string[];
+  startDate?: string | null;
+  endDate?: string | null;
+  color?: string;
+  icon?: string;
+  localCoordinatorId?: string | null;
 }
 
 export type OperationUpdateHealthThresholds = { [key: string]: unknown } | null;
 
 export interface OperationUpdate {
   name?: string;
+  description?: string | null;
+  clientName?: string | null;
+  locations?: string[];
+  startDate?: string | null;
+  endDate?: string | null;
+  color?: string;
+  icon?: string;
+  localCoordinatorId?: string | null;
   healthThresholds?: OperationUpdateHealthThresholds;
   lateThresholdMinutes?: number | null;
   timezone?: string | null;
@@ -340,6 +455,9 @@ export const GroupCreateStatus = {
 
 export interface GroupCreate {
   name: string;
+  description?: string | null;
+  color?: string;
+  icon?: string;
   /** OPERATION (uma operação, padrão), MULTI (várias) ou ALL (todas). MULTI/ALL são exclusivos do Admin. */
   scope?: GroupCreateScope;
   /** Obrigatório quando scope=OPERATION. */
@@ -351,6 +469,9 @@ export interface GroupCreate {
 
 export interface GroupUpdate {
   name?: string;
+  description?: string | null;
+  color?: string;
+  icon?: string;
 }
 
 export type GroupStatusUpdateStatus = typeof GroupStatusUpdateStatus[keyof typeof GroupStatusUpdateStatus];
@@ -368,6 +489,7 @@ export interface GroupStatusUpdate {
 
 export interface GroupMemberAdd {
   userId: string;
+  isPrimary?: boolean;
 }
 
 export interface GroupSupervisorAdd {
@@ -2808,6 +2930,19 @@ export type GetOperation200 = {
 
 export type UpdateOperation200 = {
   operation: Operation;
+};
+
+export type GetOperationReadiness200 = {
+  readiness: OperationReadiness;
+};
+
+export type UpdateOperationSetupReviewBody = {
+  reviewed: boolean;
+};
+
+export type UpdateOperationSetupReview200 = {
+  operation: Operation;
+  readiness: OperationReadiness;
 };
 
 export type UpdateOperationStatus200 = {

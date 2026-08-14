@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "pnpm run build",
+  "functions": {
+    "index.mjs": {
+      "includeFiles": "dist/**"
+    }
+  }
+}

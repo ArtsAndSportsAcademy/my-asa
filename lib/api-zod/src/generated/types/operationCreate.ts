@@ -5,9 +5,15 @@
  * MyASA 2.0 API
  * OpenAPI spec version: 0.3.0
  */
-import type { OperationCreateStatus } from './operationCreateStatus';
 
 export interface OperationCreate {
   name: string;
-  status?: OperationCreateStatus;
+  description?: string | null;
+  clientName?: string | null;
+  locations?: string[];
+  startDate?: string | null;
+  endDate?: string | null;
+  color?: string;
+  icon?: string;
+  localCoordinatorId?: string | null;
 }

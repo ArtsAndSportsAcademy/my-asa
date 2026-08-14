@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { pool } from "@workspace/db";
-import { logger } from "./logger";
+import { logger } from "./logger.js";
 
 const log = logger.child({ domain: "bootstrap" });
 
