@@ -5,6 +5,10 @@ import { db } from "@workspace/db";
 import {
   usersTable,
   userRolesTable,
+  operationsTable,
+  operationalGroupsTable,
+  groupOperationsTable,
+  teamMembershipsTable,
   refreshTokensTable,
   deviceTokensTable,
   notificationsTable,
@@ -57,9 +61,27 @@ async function attachOperationIds(users: (typeof usersTable.$inferSelect)[]) {
   const roles = await db.query.userRolesTable.findMany({
     where: and(eq(userRolesTable.active, true), inArray(userRolesTable.userId, ids)),
   });
+  const [memberships, operations] = await Promise.all([
+    db.select({
+      userId: teamMembershipsTable.userId,
+      startsAt: teamMembershipsTable.startsAt,
+      endsAt: teamMembershipsTable.endsAt,
+      scope: operationalGroupsTable.scope,
+      ownerOperationId: operationalGroupsTable.operationId,
+      coveredOperationId: groupOperationsTable.operationId,
+      teamStatus: operationalGroupsTable.status,
+    })
+      .from(teamMembershipsTable)
+      .innerJoin(operationalGroupsTable, eq(operationalGroupsTable.id, teamMembershipsTable.teamId))
+      .leftJoin(groupOperationsTable, eq(groupOperationsTable.groupId, operationalGroupsTable.id))
+      .where(and(eq(teamMembershipsTable.active, true), inArray(teamMembershipsTable.userId, ids))),
+    db.select({ id: operationsTable.id }).from(operationsTable)
+      .where(eq(operationsTable.organizationId, users[0]!.organizationId)),
+  ]);
   const opsByUser = new Map<string, Set<string>>();
   const supByUser = new Map<string, Set<string>>();
   const adminUsers = new Set<string>();
+  const teamOpsByUser = new Map<string, Set<string>>();
   for (const r of roles) {
     if (r.role === "ADMIN") adminUsers.add(r.userId);
     if (!r.operationId) continue;
@@ -74,11 +96,22 @@ async function attachOperationIds(users: (typeof usersTable.$inferSelect)[]) {
       supByUser.set(r.userId, sup);
     }
   }
+  const now = new Date();
+  for (const membership of memberships) {
+    if (membership.teamStatus !== "ACTIVE") continue;
+    if (membership.startsAt > now || (membership.endsAt && membership.endsAt < now)) continue;
+    const target = teamOpsByUser.get(membership.userId) ?? new Set<string>();
+    if (membership.scope === "ALL") operations.forEach((operation) => target.add(operation.id));
+    else if (membership.scope === "MULTI" && membership.coveredOperationId) target.add(membership.coveredOperationId);
+    else if (membership.ownerOperationId) target.add(membership.ownerOperationId);
+    teamOpsByUser.set(membership.userId, target);
+  }
   // `isAdmin` permite ao frontend excluir administradores das escalas/folgas
   // (não fazem parte do elenco escalável), sem precisar buscar papéis por usuário.
   return users.map((u) => ({
     ...safeUser(u),
     operationIds: [...(opsByUser.get(u.id) ?? [])],
+    teamOperationIds: [...(teamOpsByUser.get(u.id) ?? [])],
     supervisorOperationIds: [...(supByUser.get(u.id) ?? [])],
     isAdmin: adminUsers.has(u.id),
   }));

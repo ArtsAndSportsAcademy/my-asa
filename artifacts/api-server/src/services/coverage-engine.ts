@@ -1,7 +1,5 @@
 import { db } from "@workspace/db";
 import {
-  usersTable,
-  userRolesTable,
   restrictionsTable,
   showBookRolesTable,
   userTagsTable,
@@ -10,9 +8,9 @@ import {
   scalesTable,
   allocationCandidatesTable,
   allocationExceptionsTable,
-  isSchedulableMember,
 } from "@workspace/db";
 import { eq, and, lte, gte, inArray } from "drizzle-orm";
+import { loadSchedulableOperationMembers } from "./scheduling-eligibility.js";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Types
@@ -83,35 +81,10 @@ export async function runCoverageEngine(
     .where(eq(showBookRolesTable.showBookId, showBookId))
     .orderBy(showBookRolesTable.order);
 
-  // Fetch eligible members (Layer 1 base query)
-  // Members are users who have a MEMBER/SUPERVISOR role in the operation
-  const roleQuery = groupId
-    ? and(
-        eq(userRolesTable.operationId, operationId),
-        eq(userRolesTable.groupId, groupId),
-        eq(userRolesTable.active, true)
-      )
-    : and(
-        eq(userRolesTable.operationId, operationId),
-        eq(userRolesTable.active, true)
-      );
+  // Layer 1: pessoas vinculadas a Equipes da ASA que cobrem a Operação.
+  const users = await loadSchedulableOperationMembers(operationId, groupId);
 
-  const memberRoles = await db
-    .select({
-      userId: userRolesTable.userId,
-      role: userRolesTable.role,
-      groupId: userRolesTable.groupId,
-    })
-    .from(userRolesTable)
-    .where(roleQuery!);
-
-  // Administradores não fazem parte do elenco escalável.
-  const adminUserIds = new Set(
-    memberRoles.filter((r) => r.role === "ADMIN").map((r) => r.userId)
-  );
-
-  // Get unique user IDs
-  const allMemberIds = [...new Set(memberRoles.map((r) => r.userId))];
+  const memberIds = users.map((member) => member.id);
 
   const noEligibleResult = (): CoverageEngineResult => ({
     agendaEventId,
@@ -135,35 +108,7 @@ export async function runCoverageEngine(
     conflictPositions: 0,
   });
 
-  if (allMemberIds.length === 0) {
-    return noEligibleResult();
-  }
-
-  // Fetch users (com especialização para excluir membros especiais)
-  const users = await db
-    .select({
-      id: usersTable.id,
-      name: usersTable.name,
-      status: usersTable.status,
-      specialization: usersTable.specialization,
-    })
-    .from(usersTable)
-    .where(inArray(usersTable.id, allMemberIds));
-
-  // Mantém apenas membros escaláveis (Performers comuns): exclui administradores
-  // e membros especiais (Professor, Treinador, etc.), que nunca devem ser
-  // sugeridos nem alocados nas escalas.
-  const specByUser = new Map(users.map((u) => [u.id, u.specialization]));
-  const memberIds = allMemberIds.filter((id) =>
-    isSchedulableMember({
-      isAdmin: adminUserIds.has(id),
-      specialization: specByUser.get(id) ?? null,
-    })
-  );
-
-  if (memberIds.length === 0) {
-    return noEligibleResult();
-  }
+  if (memberIds.length === 0) return noEligibleResult();
 
   // Fetch active restrictions for event date
   const restrictions = await db

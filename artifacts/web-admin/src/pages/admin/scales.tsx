@@ -507,7 +507,8 @@ export default function ScalesPage() {
       })
       .filter((u: UserModel) => {
         if (!opId) return true;
-        const opIds = (u as { operationIds?: string[] }).operationIds;
+        const context = u as { teamOperationIds?: string[]; operationIds?: string[] };
+        const opIds = context.teamOperationIds ?? context.operationIds;
         return Array.isArray(opIds) && opIds.includes(opId);
       })
       .map((u: UserModel) => ({ userId: u.id, userName: u.name }))
