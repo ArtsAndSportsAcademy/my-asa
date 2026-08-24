@@ -42,7 +42,7 @@ async function main() {
   await rm(outDir, { recursive: true, force: true });
   const testSources = process.env.TEST_FILE
     ? [process.env.TEST_FILE]
-    : ["operation-lifecycle.test.ts", "daily-book-fill.test.ts"];
+    : ["profile-authorization.test.ts", "operation-lifecycle.test.ts", "daily-book-fill.test.ts"];
 
   // esbuild-plugin-pino emite múltiplos arquivos → exige outdir (não outfile).
   await esbuild({

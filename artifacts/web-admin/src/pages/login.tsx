@@ -39,7 +39,7 @@ export default function Login() {
       { data: { username: data.username.trim().toLowerCase(), password: data.password } },
       {
         onSuccess: (result) => {
-          authenticate(result.accessToken, result.refreshToken, result.user, result.roles);
+          authenticate(result.accessToken, result.refreshToken, result.user, result.roles, (result as any).capabilities ?? []);
           setLocation("/admin/home");
         },
         onError: () => {

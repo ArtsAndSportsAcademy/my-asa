@@ -31,7 +31,7 @@ router.post("/login", async (req, res) => {
     res.json(result);
   } catch (err) {
     if (err instanceof AuthError) {
-      const status = err.code === "USER_INACTIVE" ? 403 : 401;
+      const status = ["USER_INACTIVE", "GUEST_ACCESS_EXPIRED", "ACCOUNT_UNCONFIGURED"].includes(err.code) ? 403 : 401;
       res.status(status).json({ error: err.code, message: err.message });
       return;
     }
@@ -95,7 +95,8 @@ router.get("/me", requireAuth, async (req, res) => {
     res.json(result);
   } catch (err) {
     if (err instanceof AuthError) {
-      res.status(404).json({ error: err.code, message: err.message });
+      const status = err.code === "NOT_FOUND" ? 404 : err.code === "ACCOUNT_UNCONFIGURED" ? 403 : 401;
+      res.status(status).json({ error: err.code, message: err.message });
       return;
     }
     log.error({ err }, "Unexpected error getting me");

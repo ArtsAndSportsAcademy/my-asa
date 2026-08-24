@@ -85,6 +85,16 @@ const RESP_LABELS_WEB: Record<string, string> = {
   SCALES:               "Escalas",
 };
 
+type RouteCapability =
+  | "VIEW_HOME"
+  | "VIEW_OWN_SCHEDULE"
+  | "VIEW_AGENDA"
+  | "VIEW_SHOW_BOOK"
+  | "MANAGE_RESPONSIBILITIES"
+  | "VIEW_MEMBER_WORK"
+  | "VIEW_COMMUNICATION"
+  | "USE_ASA";
+
 // ─── Componentes auxiliares ───────────────────────────────────────────────────
 
 function Spinner() {
@@ -143,19 +153,28 @@ function AccessDenied() {
 
 // ─── Route guards ─────────────────────────────────────────────────────────────
 
-function ProtectedRoute({ component: Component, path }: { component: React.ComponentType<any>, path: string }) {
-  const { isAuthenticated, isLoading } = useAuth();
-  if (isLoading) return <Spinner />;
+function CapabilityRoute({
+  component: Component,
+  path,
+  capability,
+}: {
+  component: React.ComponentType<any>;
+  path: string;
+  capability: RouteCapability;
+}) {
+  const { isAuthenticated, isLoading, capabilities } = useAuth();
+  const { data: delegData, isLoading: delegLoading } = useGetMyActiveDelegations({
+    query: { enabled: !isLoading && isAuthenticated, retry: false } as any,
+  });
+  if (isLoading || delegLoading) return <Spinner />;
   if (!isAuthenticated) return <Redirect to="/login" />;
-  return <Route path={path} component={Component} />;
-}
-
-function TrainerBlockedRoute({ component: Component, path }: { component: React.ComponentType<any>, path: string }) {
-  const { isAuthenticated, isLoading, roles: userRoles } = useAuth();
-  if (isLoading) return <Spinner />;
-  if (!isAuthenticated) return <Redirect to="/login" />;
-  const isTrainer = userRoles.some((r) => r.role === "TRAINER");
-  if (isTrainer) return <AccessDenied />;
+  const hasCapability = capabilities.includes(capability);
+  const delegatedResponsibility = ROUTE_RESPONSIBILITY[path];
+  const hasDelegation = delegatedResponsibility
+    ? (delegData?.delegations ?? []).some((delegation) =>
+        (delegation.responsibilities as string[]).includes(delegatedResponsibility))
+    : false;
+  if (!hasCapability && !hasDelegation) return <AccessDenied />;
   return <Route path={path} component={Component} />;
 }
 
@@ -197,12 +216,12 @@ function Router() {
     <Switch>
       <Route path="/" component={RootRoute} />
       <Route path="/login" component={Login} />
-      <ProtectedRoute path="/admin/home" component={AdminHome} />
+      <CapabilityRoute path="/admin/home" component={AdminHome} capability="VIEW_HOME" />
       <RoleRoute path="/admin/users" component={UsersPage} roles={["ADMIN"]} />
       <RoleRoute path="/admin/operations" component={OperationsPage} roles={["ADMIN"]} />
       <RoleRoute path="/admin/groups" component={GroupsPage} roles={["ADMIN"]} />
-      <TrainerBlockedRoute path="/admin/show-book" component={ShowBookPage} />
-      <TrainerBlockedRoute path="/admin/agenda" component={AgendaPage} />
+      <CapabilityRoute path="/admin/show-book" component={ShowBookPage} capability="VIEW_SHOW_BOOK" />
+      <CapabilityRoute path="/admin/agenda" component={AgendaPage} capability="VIEW_AGENDA" />
       <RoleRoute path="/admin/auditoria" component={AuditoriaPage} roles={["ADMIN"]} />
       <RoleRoute path="/admin/scales" component={ScalesPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/admin/activities" component={ActivitiesPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
@@ -210,7 +229,7 @@ function Router() {
       <RoleRoute path="/supervisor/daily-book" component={SupervisorDailyBookPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/admin/operational-panel" component={AdminOperationalPanel} roles={["ADMIN"]} />
       <RoleRoute path="/supervisor/operational-panel" component={SupervisorOperationalPanel} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <TrainerBlockedRoute path="/admin/meu-dia" component={MeuDiaPage} />
+      <CapabilityRoute path="/admin/meu-dia" component={MeuDiaPage} capability="VIEW_HOME" />
       <RoleRoute path="/admin/avisos" component={AdminAvisosPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/supervisor/avisos" component={SupervisorAvisosPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/admin/history" component={AdminHistoryPage} roles={["ADMIN"]} />
@@ -233,22 +252,22 @@ function Router() {
       <RoleRoute path="/supervisor/restrictions" component={SupervisorRestrictionsPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/supervisor/check-ins" component={SupervisorCheckInsPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/supervisor/supervisor-requests" component={SupervisorInterRequestsPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <TrainerBlockedRoute path="/admin/responsibilities" component={ResponsibilitiesPage} />
-      <TrainerBlockedRoute path="/admin/asa" component={AsaPage} />
+      <CapabilityRoute path="/admin/responsibilities" component={ResponsibilitiesPage} capability="MANAGE_RESPONSIBILITIES" />
+      <CapabilityRoute path="/admin/asa" component={AsaPage} capability="USE_ASA" />
       <RoleRoute path="/admin/folgas" component={AdminFolgasPage} roles={["ADMIN"]} />
       <RoleRoute path="/supervisor/folgas" component={SupervisorFolgasPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <ProtectedRoute path="/admin/mural" component={MuralPage} />
-      <ProtectedRoute path="/membro/escala" component={MinhaEscalaPage} />
-      <TrainerBlockedRoute path="/membro/tarefas" component={MinhasTarefasPage} />
-      <TrainerBlockedRoute path="/membro/entregas" component={MinhasEntregasPage} />
-      <ProtectedRoute path="/membro/mensagens" component={MembroMensagensPage} />
-      <TrainerBlockedRoute path="/membro/biblioteca" component={MembroBibliotecaPage} />
-      <TrainerBlockedRoute path="/membro/livro-do-dia" component={MembroLivroDoDiaPage} />
-      <ProtectedRoute path="/membro/avisos" component={MembroAvisosPage} />
-      <TrainerBlockedRoute path="/membro/solicitacoes" component={MembroSolicitacoesPage} />
+      <CapabilityRoute path="/admin/mural" component={MuralPage} capability="VIEW_COMMUNICATION" />
+      <CapabilityRoute path="/membro/escala" component={MinhaEscalaPage} capability="VIEW_OWN_SCHEDULE" />
+      <CapabilityRoute path="/membro/tarefas" component={MinhasTarefasPage} capability="VIEW_MEMBER_WORK" />
+      <CapabilityRoute path="/membro/entregas" component={MinhasEntregasPage} capability="VIEW_MEMBER_WORK" />
+      <CapabilityRoute path="/membro/mensagens" component={MembroMensagensPage} capability="VIEW_COMMUNICATION" />
+      <CapabilityRoute path="/membro/biblioteca" component={MembroBibliotecaPage} capability="VIEW_MEMBER_WORK" />
+      <CapabilityRoute path="/membro/livro-do-dia" component={MembroLivroDoDiaPage} capability="VIEW_MEMBER_WORK" />
+      <CapabilityRoute path="/membro/avisos" component={MembroAvisosPage} capability="VIEW_COMMUNICATION" />
+      <CapabilityRoute path="/membro/solicitacoes" component={MembroSolicitacoesPage} capability="VIEW_MEMBER_WORK" />
       <RoleRoute path="/admin/folgas-indisponibilidades" component={FolgasIndisponibilidadesPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
       <RoleRoute path="/admin/responsabilidades-delegacoes" component={ResponsabilidadesDelegacoesPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <TrainerBlockedRoute path="/membro/folgas" component={MembroFolgasPage} />
+      <CapabilityRoute path="/membro/folgas" component={MembroFolgasPage} capability="VIEW_MEMBER_WORK" />
       <Route component={NotFound} />
     </Switch>
   );

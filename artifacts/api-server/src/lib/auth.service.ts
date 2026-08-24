@@ -3,7 +3,6 @@ import { eq, and, isNull, gt } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   usersTable,
-  userRolesTable,
   operationsTable,
   operationalGroupsTable,
   organizationsTable,
@@ -17,12 +16,44 @@ import {
 } from "./jwt.service.js";
 import { recordAudit } from "./audit.service.js";
 import { requestLogger } from "./logger.js";
+import { loadAuthorizationContext } from "./authorization.service.js";
+import { selfProfile } from "./person-projection.js";
 
 export interface AuthContext {
   requestId: string;
   correlationId: string;
   ipAddress?: string;
   userAgent?: string;
+}
+
+function isGuestExpired(user: typeof usersTable.$inferSelect): boolean {
+  const today = new Date().toISOString().slice(0, 10);
+  return user.specialization === "CONVIDADO" && !!user.visitUntil && user.visitUntil < today;
+}
+
+async function revokeAllRefreshTokens(userId: string): Promise<void> {
+  await db.update(refreshTokensTable)
+    .set({ revokedAt: new Date() })
+    .where(and(eq(refreshTokensTable.userId, userId), isNull(refreshTokensTable.revokedAt)));
+}
+
+export async function assertUserCanAuthenticate(userId: string) {
+  const user = await db.query.usersTable.findFirst({ where: eq(usersTable.id, userId) });
+  if (!user) throw new AuthError("USER_INACTIVE", "Usuário inativo");
+
+  if (isGuestExpired(user)) {
+    await db.update(usersTable)
+      .set({ status: "INACTIVE", updatedAt: new Date() })
+      .where(eq(usersTable.id, user.id));
+    await revokeAllRefreshTokens(user.id);
+    throw new AuthError("GUEST_ACCESS_EXPIRED", "O acesso temporário deste convidado expirou");
+  }
+
+  if (user.status !== "ACTIVE" || user.personStatus === "LEFT" || user.personStatus === "ARCHIVED") {
+    await revokeAllRefreshTokens(user.id);
+    throw new AuthError("USER_INACTIVE", "Usuário inativo");
+  }
+  return user;
 }
 
 export async function loginUser(
@@ -49,10 +80,7 @@ export async function loginUser(
     throw new AuthError("INVALID_CREDENTIALS", "Nome de usuário ou senha inválidos");
   }
 
-  if (user.status !== "ACTIVE") {
-    log.warn({ userId: user.id }, "Login failed: user inactive");
-    throw new AuthError("USER_INACTIVE", "Usuário inativo");
-  }
+  await assertUserCanAuthenticate(user.id);
 
   const passwordValid = await bcrypt.compare(password, user.passwordHash);
   if (!passwordValid) {
@@ -68,8 +96,11 @@ export async function loginUser(
     throw new AuthError("INVALID_CREDENTIALS", "Nome de usuário ou senha inválidos");
   }
 
-  const { roles, operationIds } = await getUserRolesAndOperations(user.id);
-  const primaryRole = getPrimaryRole(roles);
+  const { roles, operationIds, primaryRole, capabilities } = await loadAuthorizationContext(user.id);
+  if (!primaryRole) {
+    log.warn({ userId: user.id }, "Login failed: account has no active access profile");
+    throw new AuthError("ACCOUNT_UNCONFIGURED", "Conta sem perfil de acesso ativo");
+  }
 
   const accessToken = signAccessToken({
     sub: user.id,
@@ -97,8 +128,7 @@ export async function loginUser(
 
   log.info({ userId: user.id, role: primaryRole }, "Login successful");
 
-  const safeUser = { ...user, passwordHash: undefined };
-  return { user: safeUser, accessToken, refreshToken, roles };
+  return { user: selfProfile(user), accessToken, refreshToken, roles, capabilities };
 }
 
 export async function refreshSession(
@@ -139,16 +169,13 @@ export async function refreshSession(
     .set({ revokedAt: new Date() })
     .where(eq(refreshTokensTable.id, storedToken.id));
 
-  const user = await db.query.usersTable.findFirst({
-    where: eq(usersTable.id, payload.sub),
-  });
+  const user = await assertUserCanAuthenticate(payload.sub);
 
-  if (!user || user.status !== "ACTIVE") {
-    throw new AuthError("USER_INACTIVE", "Usuário inativo");
+  const { roles, operationIds, primaryRole } = await loadAuthorizationContext(user.id);
+  if (!primaryRole) {
+    await revokeAllRefreshTokens(user.id);
+    throw new AuthError("ACCOUNT_UNCONFIGURED", "Conta sem perfil de acesso ativo");
   }
-
-  const { roles, operationIds } = await getUserRolesAndOperations(user.id);
-  const primaryRole = getPrimaryRole(roles);
 
   const accessToken = signAccessToken({
     sub: user.id,
@@ -189,14 +216,11 @@ export async function logoutUser(userId: string, tokenHash: string, ctx: AuthCon
 }
 
 export async function getMe(userId: string) {
-  const user = await db.query.usersTable.findFirst({
-    where: eq(usersTable.id, userId),
-  });
-  if (!user) throw new AuthError("NOT_FOUND", "Usuário não encontrado");
+  const user = await assertUserCanAuthenticate(userId);
 
-  const { roles, operationIds } = await getUserRolesAndOperations(userId);
-  const safeUser = { ...user, passwordHash: undefined };
-  return { user: safeUser, roles, operationIds };
+  const { roles, operationIds, primaryRole, capabilities } = await loadAuthorizationContext(userId);
+  if (!primaryRole) throw new AuthError("ACCOUNT_UNCONFIGURED", "Conta sem perfil de acesso ativo");
+  return { user: selfProfile(user), roles, operationIds, capabilities };
 }
 
 export async function getUserContext(userId: string) {
@@ -205,23 +229,24 @@ export async function getUserContext(userId: string) {
   });
   if (!user) throw new AuthError("NOT_FOUND", "Usuário não encontrado");
 
-  const [org, roles, operations, groups] = await Promise.all([
+  const [org, authorization, operations, groups] = await Promise.all([
     db.query.organizationsTable.findFirst({
       where: eq(organizationsTable.id, user.organizationId),
     }),
-    db.query.userRolesTable.findMany({
-      where: and(eq(userRolesTable.userId, userId), eq(userRolesTable.active, true)),
-    }),
+    loadAuthorizationContext(userId),
     db.query.operationsTable.findMany({
       where: and(
         eq(operationsTable.organizationId, user.organizationId),
         eq(operationsTable.status, "ACTIVE"),
       ),
     }),
-    db.query.operationalGroupsTable.findMany(),
+    db.query.operationalGroupsTable.findMany({
+      where: eq(operationalGroupsTable.organizationId, user.organizationId),
+    }),
   ]);
 
-  const primaryRole = getPrimaryRole(roles);
+  const { primaryRole, roles } = authorization;
+  if (!primaryRole) throw new AuthError("ACCOUNT_UNCONFIGURED", "Conta sem perfil de acesso ativo");
 
   let filteredOperations = operations;
   let filteredGroups = groups;
@@ -231,7 +256,7 @@ export async function getUserContext(userId: string) {
     filteredOperations = operations.filter((o) => myOperationIds.includes(o.id));
     const myGroupIds = roles.map((r) => r.groupId).filter(Boolean) as string[];
     filteredGroups = groups.filter((g) => myGroupIds.includes(g.id));
-  } else if (primaryRole === "MEMBER") {
+  } else if (primaryRole === "MEMBER" || primaryRole === "TRAINER") {
     const myOperationIds = roles.map((r) => r.operationId);
     filteredOperations = operations.filter((o) => myOperationIds.includes(o.id));
     const myGroupIds = roles.map((r) => r.groupId).filter(Boolean) as string[];
@@ -239,28 +264,12 @@ export async function getUserContext(userId: string) {
   }
 
   return {
-    user: { ...user, passwordHash: undefined },
+    user: selfProfile(user),
     roles,
     organization: org,
     operations: filteredOperations,
     groups: filteredGroups,
   };
-}
-
-async function getUserRolesAndOperations(userId: string) {
-  const roles = await db.query.userRolesTable.findMany({
-    where: and(eq(userRolesTable.userId, userId), eq(userRolesTable.active, true)),
-  });
-  const operationIds = [...new Set(roles.map((r) => r.operationId))];
-  return { roles, operationIds };
-}
-
-function getPrimaryRole(roles: typeof userRolesTable.$inferSelect[]): string {
-  const priority = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B", "MEMBER"];
-  for (const p of priority) {
-    if (roles.some((r) => r.role === p)) return p;
-  }
-  return "MEMBER";
 }
 
 export class AuthError extends Error {

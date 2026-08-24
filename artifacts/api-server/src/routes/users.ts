@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, inArray, like } from "drizzle-orm";
+import { eq, and, inArray, isNull, like } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { db } from "@workspace/db";
 import {
@@ -27,35 +27,20 @@ import { normalizeUsernameBase, resolveUniqueUsername, validateAndNormalizeUsern
 import { requireAuth, requireOrganization, requireRole } from "../middlewares/auth.js";
 import { recordAudit } from "../lib/audit.service.js";
 import { requestLogger } from "../lib/logger.js";
+import { adminPerson, selfProfile, supervisorPerson } from "../lib/person-projection.js";
+import { loadAuthorizationContext } from "../lib/authorization.service.js";
 
 const router: IRouter = Router();
-
-function safeUser(user: typeof usersTable.$inferSelect) {
-  const { passwordHash: _pw, ...safe } = user;
-  return safe;
-}
 
 /**
  * Anexa a cada usuário a lista de operações (operationIds) onde tem papel ATIVO.
  * Permite ao frontend escopar listagens por operação (ex.: montar a escala de uma
  * operação sem mostrar membros de outra operação da mesma organização).
  */
-/**
- * Soft-expiry: convidados cuja data visitUntil já passou são automaticamente
- * marcados como INACTIVE. Idempotente — não faz nada se já estiver inativo.
- */
-async function expireVisitors(users: (typeof usersTable.$inferSelect)[]) {
-  const today = new Date().toISOString().split("T")[0]!;
-  const toExpire = users.filter(
-    (u) => u.specialization === "CONVIDADO" && u.status === "ACTIVE" && u.visitUntil && u.visitUntil < today
-  );
-  for (const u of toExpire) {
-    await db.update(usersTable).set({ status: "INACTIVE", updatedAt: new Date() }).where(eq(usersTable.id, u.id));
-    u.status = "INACTIVE"; // mutate in-place so the response já reflete o novo estado
-  }
-}
-
-async function attachOperationIds(users: (typeof usersTable.$inferSelect)[]) {
+async function attachOperationIds(
+  users: (typeof usersTable.$inferSelect)[],
+  projection: "ADMIN" | "SUPERVISOR",
+) {
   const ids = users.map((u) => u.id);
   if (ids.length === 0) return [];
   const roles = await db.query.userRolesTable.findMany({
@@ -82,7 +67,9 @@ async function attachOperationIds(users: (typeof usersTable.$inferSelect)[]) {
   const supByUser = new Map<string, Set<string>>();
   const adminUsers = new Set<string>();
   const teamOpsByUser = new Map<string, Set<string>>();
+  const organizationOperationIds = new Set(operations.map((operation) => operation.id));
   for (const r of roles) {
+    if (!organizationOperationIds.has(r.operationId)) continue;
     if (r.role === "ADMIN") adminUsers.add(r.userId);
     if (!r.operationId) continue;
     const set = opsByUser.get(r.userId) ?? new Set<string>();
@@ -109,12 +96,29 @@ async function attachOperationIds(users: (typeof usersTable.$inferSelect)[]) {
   // `isAdmin` permite ao frontend excluir administradores das escalas/folgas
   // (não fazem parte do elenco escalável), sem precisar buscar papéis por usuário.
   return users.map((u) => ({
-    ...safeUser(u),
+    ...(projection === "ADMIN" ? adminPerson(u) : supervisorPerson(u)),
     operationIds: [...(opsByUser.get(u.id) ?? [])],
     teamOperationIds: [...(teamOpsByUser.get(u.id) ?? [])],
     supervisorOperationIds: [...(supByUser.get(u.id) ?? [])],
     isAdmin: adminUsers.has(u.id),
   }));
+}
+
+async function supervisorCanViewUser(supervisorId: string, targetUserId: string): Promise<boolean> {
+  const authorization = await loadAuthorizationContext(supervisorId);
+  const supervisorRoles = authorization.roles.filter(
+    (role) => role.role === "SUPERVISOR_A" || role.role === "SUPERVISOR_B",
+  );
+  const groupIds = supervisorRoles.map((role) => role.groupId).filter(Boolean) as string[];
+  if (groupIds.length === 0) return false;
+  const targetRole = await db.query.userRolesTable.findFirst({
+    where: and(
+      eq(userRolesTable.userId, targetUserId),
+      eq(userRolesTable.active, true),
+      inArray(userRolesTable.groupId, groupIds),
+    ),
+  });
+  return !!targetRole;
 }
 
 router.get("/users", requireAuth, requireOrganization, async (req, res) => {
@@ -131,13 +135,16 @@ router.get("/users", requireAuth, requireOrganization, async (req, res) => {
       const users = await db.query.usersTable.findMany({
         where: eq(usersTable.organizationId, organizationId),
       });
-      await expireVisitors(users);
-      res.json({ users: await attachOperationIds(users) });
+      res.json({ users: await attachOperationIds(users, "ADMIN") });
       return;
     }
 
     const myRoles = await db.query.userRolesTable.findMany({
-      where: and(eq(userRolesTable.userId, sub), eq(userRolesTable.active, true)),
+      where: and(
+        eq(userRolesTable.userId, sub),
+        eq(userRolesTable.active, true),
+        inArray(userRolesTable.role, ["SUPERVISOR_A", "SUPERVISOR_B"]),
+      ),
     });
     const myGroupIds = myRoles.map((r) => r.groupId).filter(Boolean) as string[];
 
@@ -159,12 +166,21 @@ router.get("/users", requireAuth, requireOrganization, async (req, res) => {
     const users = await db.query.usersTable.findMany({
       where: and(eq(usersTable.organizationId, organizationId), inArray(usersTable.id, memberUserIds)),
     });
-    await expireVisitors(users);
-    res.json({ users: await attachOperationIds(users) });
+    res.json({ users: await attachOperationIds(users, "SUPERVISOR") });
   } catch (err) {
     log.error({ err }, "Error listing users");
     res.status(500).json({ error: "INTERNAL_ERROR" });
   }
+});
+
+router.get("/users/me/permissions", requireAuth, requireOrganization, async (req, res) => {
+  const authorization = await loadAuthorizationContext(req.user!.sub);
+  res.json({
+    primaryRole: authorization.primaryRole,
+    roles: authorization.roles,
+    operationIds: authorization.operationIds,
+    capabilities: authorization.capabilities,
+  });
 });
 
 router.get("/users/:id", requireAuth, requireOrganization, async (req, res) => {
@@ -185,7 +201,16 @@ router.get("/users/:id", requireAuth, requireOrganization, async (req, res) => {
       res.status(404).json({ error: "NOT_FOUND", message: "Usuário não encontrado" });
       return;
     }
-    res.json({ user: safeUser(user) });
+    if (role !== "ADMIN" && id !== sub && !(await supervisorCanViewUser(sub, id))) {
+      res.status(403).json({ error: "FORBIDDEN", message: "Pessoa fora do seu escopo de supervisão" });
+      return;
+    }
+    const projected = role === "ADMIN"
+      ? adminPerson(user)
+      : id === sub
+        ? selfProfile(user)
+        : supervisorPerson(user);
+    res.json({ user: projected });
   } catch (err) {
     log.error({ err }, "Error getting user");
     res.status(500).json({ error: "INTERNAL_ERROR" });
@@ -265,7 +290,7 @@ router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), as
     });
 
     log.info({ userId: newUser!.id }, "User created");
-    res.status(201).json({ user: safeUser(newUser!) });
+    res.status(201).json({ user: adminPerson(newUser!) });
   } catch (err) {
     log.error({ err }, "Error creating user");
     res.status(500).json({ error: "INTERNAL_ERROR" });
@@ -331,7 +356,6 @@ router.patch("/users/:id", requireAuth, requireOrganization, async (req, res) =>
 
   const role = req.user!.role;
   const isAdmin = role === "ADMIN";
-  const isSupervisor = role === "SUPERVISOR_A" || role === "SUPERVISOR_B";
   const isSelf = id === req.user!.sub;
 
   // O nome de usuário pode ser editado pelo próprio usuário ou por um admin.
@@ -354,8 +378,9 @@ router.patch("/users/:id", requireAuth, requireOrganization, async (req, res) =>
     return;
   }
 
-  // Membros comuns só podem editar o próprio perfil (nome de usuário).
-  if (!isAdmin && !isSupervisor && !isSelf) {
+  // Na primeira entrega, supervisores consultam sua equipe, mas alterações de
+  // cadastro administrativo continuam exclusivas da Administração autorizada.
+  if (!isAdmin && !isSelf) {
     res.status(403).json({ error: "FORBIDDEN", message: "Você não tem permissão para editar este usuário." });
     return;
   }
@@ -453,7 +478,14 @@ router.patch("/users/:id", requireAuth, requireOrganization, async (req, res) =>
       .returning();
 
     await recordAudit({ actorId: req.user!.sub, action: "USER_UPDATED", targetResource: `user:${id}` });
-    res.json({ user: safeUser(updated!) });
+    if ((personStatus === "LEFT" || personStatus === "ARCHIVED") && updated) {
+      await db.update(usersTable).set({ status: "INACTIVE" }).where(eq(usersTable.id, id));
+      await db.update(refreshTokensTable)
+        .set({ revokedAt: new Date() })
+        .where(and(eq(refreshTokensTable.userId, id), isNull(refreshTokensTable.revokedAt)));
+      updated.status = "INACTIVE";
+    }
+    res.json({ user: isAdmin ? adminPerson(updated!) : selfProfile(updated!) });
   } catch (err) {
     log.error({ err }, "Error updating user");
     res.status(500).json({ error: "INTERNAL_ERROR" });
@@ -483,12 +515,25 @@ router.patch("/users/:id/status", requireAuth, requireOrganization, requireRole(
       res.status(404).json({ error: "NOT_FOUND" });
       return;
     }
+    if (status === "ACTIVE" && (user.personStatus === "LEFT" || user.personStatus === "ARCHIVED")) {
+      res.status(409).json({
+        error: "PERSON_NOT_ACTIVE",
+        message: "Reative primeiro a situação da pessoa antes de liberar a conta",
+      });
+      return;
+    }
 
     const [updated] = await db
       .update(usersTable)
       .set({ status: status as "ACTIVE" | "INACTIVE", updatedAt: new Date() })
       .where(eq(usersTable.id, id))
       .returning();
+
+    if (status === "INACTIVE") {
+      await db.update(refreshTokensTable)
+        .set({ revokedAt: new Date() })
+        .where(and(eq(refreshTokensTable.userId, id), isNull(refreshTokensTable.revokedAt)));
+    }
 
     await recordAudit({
       actorId: req.user!.sub,
@@ -498,7 +543,7 @@ router.patch("/users/:id/status", requireAuth, requireOrganization, requireRole(
     });
 
     log.info({ userId: id, from: user.status, to: status }, "User status changed");
-    res.json({ user: safeUser(updated!) });
+    res.json({ user: adminPerson(updated!) });
   } catch (err) {
     log.error({ err }, "Error updating user status");
     res.status(500).json({ error: "INTERNAL_ERROR" });

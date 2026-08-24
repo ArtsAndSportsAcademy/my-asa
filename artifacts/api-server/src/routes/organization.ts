@@ -42,7 +42,9 @@ router.get("/organizations/current", requireAuth, requireOrganization, async (re
       operations = operations.filter((operation) => operationIds.includes(operation.id));
     }
 
-    const groups = await db.query.operationalGroupsTable.findMany();
+    const groups = await db.query.operationalGroupsTable.findMany({
+      where: eq(operationalGroupsTable.organizationId, req.user!.organizationId),
+    });
 
     res.json({ organization: org, operations, groups });
   } catch (err) {
