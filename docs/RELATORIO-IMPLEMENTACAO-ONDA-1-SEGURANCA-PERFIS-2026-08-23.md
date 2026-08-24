@@ -4,6 +4,9 @@ Data: 23/08/2026
 Branch: `codex/seguranca-perfis-p0`  
 Destino autorizado: somente branch local/teste/Preview; sem Produção.
 
+Estado: revisada e aprovada pela responsável do produto em 23/08/2026.
+Próxima etapa autorizável: homologação com banco isolado de Preview.
+
 ## Resultado
 
 A Onda 1 foi implementada no núcleo de autenticação, autorização, Pessoas e
