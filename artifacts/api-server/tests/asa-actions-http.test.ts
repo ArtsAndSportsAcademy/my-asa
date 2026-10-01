@@ -2061,6 +2061,7 @@ async function run() {
       if (testResponsibilities.length) {
         await db.delete(responsibilityAssignmentsTable).where(inArray(responsibilityAssignmentsTable.responsibilityId, testResponsibilities.map((item) => item.id)));
       }
+      await db.delete(responsibilitiesTable).where(inArray(responsibilitiesTable.orgId, orgIds));
       if (userIds.length) {
         await db.delete(userNotificationsTable).where(inArray(userNotificationsTable.userId, userIds));
         await db.delete(areaLocalSupervisorsTable).where(inArray(areaLocalSupervisorsTable.supervisorId, userIds));
@@ -2071,7 +2072,6 @@ async function run() {
         if (showBookIds.length) await db.delete(showBooksTable).where(inArray(showBooksTable.id, showBookIds));
         await db.delete(usersTable).where(inArray(usersTable.id, userIds));
       }
-      await db.delete(responsibilitiesTable).where(inArray(responsibilitiesTable.orgId, orgIds));
       await db.delete(areasTable).where(inArray(areasTable.organizationId, orgIds));
       await db.delete(locationsTable).where(inArray(locationsTable.organizationId, orgIds));
       await db.delete(operationsTable).where(inArray(operationsTable.organizationId, orgIds));

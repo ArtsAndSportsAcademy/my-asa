@@ -1141,7 +1141,7 @@ export function resolveAsaCommand(text: string, today: string, isManager: boolea
   }
   if (intent.key === "consultar_responsabilidades_equipe") {
     if (!isManager && role !== "DIR") {
-      return { kind: "unsupported", message: "A consulta de responsabilidades da equipe está disponível somente para gestores autorizados dentro do próprio escopo." };
+      return { kind: "unsupported", message: "A consulta de responsabilidades da equipe está disponível somente Administração, Direção e Supervisão dentro do próprio escopo." };
     }
     const unassigned = /\bsem (responsavel|atribuicao)\b/.test(commandText);
     return { kind: "command", command: { tool: intent.key, input: { unassigned, limit: 50 }, label: intent.label } };
