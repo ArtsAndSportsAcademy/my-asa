@@ -47,3 +47,17 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Local secrets
+.env
+.env.*
+!.env.example
+
+# Scripts temporários de conferência (nunca vão para o repositório)
+.audit-tmp/
+
+# Temporários e registros de execução (nunca vão para o repositório; alguns têm senha de conta de teste)
+.tmp*
+*.log
+*.err
+

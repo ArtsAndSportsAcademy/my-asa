@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  aside a { text-decoration: none; }
+  body { margin: 0; background: #f4f2fa; font-family: Manrope, system-ui, sans-serif; color: #1b1630; }
+  a { color: #6C2BF2; text-decoration: none; }
+  a:hover { color: #4a17b8; text-decoration: underline; }
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 3px solid #6C2BF2; outline-offset: 2px; border-radius: 8px; }
+</style>
+</helmet>
+
+<div style="max-width:1400px;margin:0 auto;padding:44px 28px 88px;display:flex;flex-direction:column;gap:40px">
+
+  <header style="display:flex;flex-direction:column;gap:22px">
+    <div style="display:flex;align-items:flex-start;gap:18px">
+      <img src="assets/asa/consultando.png" alt="My ASA" style="width:52px;height:52px;object-fit:contain;flex:none;margin-top:4px" />
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#6b6482">24 · conteúdo da casa · a base da ASA</div>
+        <h1 style="font-family:Outfit,sans-serif;font-size:38px;line-height:1.05;font-weight:700;margin:0;letter-spacing:-0.02em">Biblioteca</h1>
+        <p style="margin:0;max-width:66ch;font-size:15px;line-height:1.55;color:#5b5473;text-wrap:pretty">Aqui vivem as regras, os procedimentos e os materiais da casa — e é daqui que a ASA responde. Ninguém precisa achar o documento e ler as trinta páginas: pergunta, e a ASA responde citando de onde tirou. Documento sem versão vigente não é citado, e o que a ASA não encontra ela diz que não sabe, em vez de inventar.</p>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:13px 16px;background:#fff;border:1px solid #e6e1f2;border-radius:16px">
+      <span style="font-size:13px;font-weight:600;color:#5b5473;margin-right:4px">Ver como</span>
+      <sc-for list="{{ profileTabs }}" as="tab" hint-placeholder-count="4">
+        <button type="button" onClick="{{ tab.onClick }}" style="{{ tab.style }}">
+          <span style="width:8px;height:8px;border-radius:50%;background:{{ tab.dot }};display:inline-block"></span>
+          <span>{{ tab.name }}</span>
+        </button>
+      </sc-for>
+      <span style="flex:1"></span>
+      <span style="font-size:13px;color:#6b6482">{{ profileHint }}</span>
+    </div>
+  </header>
+
+  <div style="display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start">
+
+    <div style="flex:1 1 900px;min-width:0;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Web · 1920 × 1080</span>
+        <span style="font-size:11.5px;color:#6b6482">exibido a 70% — proporção real de tela</span>
+      </div>
+      <div style="width:1344px;height:756px;border:1px solid #ddd6ee;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="width:1920px;height:1080px;transform:scale(0.7);transform-origin:top left;display:flex">
+
+          <aside style="width:236px;flex:none;background:linear-gradient(180deg,#1c1440 0%,#241a52 100%);display:flex;flex-direction:column;color:#fff">
+            <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 12px">
+              <img src="assets/asa-wing.png" alt="" style="width:26px;height:26px;object-fit:contain" />
+              <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">My ASA</span>
+            </div>
+            <div style="padding:0 12px 10px">
+              <a href="27%20Assistente%20ASA.dc.html" style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border-radius:10px;padding:8px 10px;font-size:11.5px;color:#b9b0da;text-decoration:none;cursor:pointer">
+                <span style="width:11px;height:11px;border:1.5px solid #b9b0da;border-radius:50%"></span>
+                <span>Buscar ou perguntar à ASA</span>
+              </a>
+            </div>
+            <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:12px;padding:2px 10px 10px">
+              <sc-for list="{{ shellNav }}" as="g" hint-placeholder-count="4">
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#7d72a8;padding:0 8px 4px">{{ g.title }}</div>
+                  <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+                    <a href="{{ it.href }}" style="{{ it.style }}">{{ it.label }}</a>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+            <a href="28%20Perfil%20e%20configura%C3%A7%C3%B5es.dc.html" style="border-top:1px solid rgba(255,255,255,.1);padding:12px;display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit">
+              <span style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+              <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                <span style="font-size:12.5px;font-weight:600">{{ personName }}</span>
+                <span style="{{ personChipStyle }}">{{ profileName }}</span>
+              </div>
+            </a>
+          </aside>
+
+          <div style="flex:1;display:flex;flex-direction:column;background:#faf9fe;min-width:0">
+            <header style="display:flex;align-items:center;gap:12px;padding:13px 20px;border-bottom:1px solid #ebe6f6;background:#fff">
+              <div style="display:flex;flex-direction:column;gap:1px">
+                <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">Biblioteca</span>
+                <span style="font-size:11.5px;color:#6b6482">{{ scopeLine }}</span>
+              </div>
+              <span style="flex:1"></span>
+              <span style="{{ pendingChipStyle }}">{{ pendingChip }}</span>
+              <button type="button" onClick="{{ a2 }}" style="{{ uploadStyle }}">{{ uploadLabel }}</button>
+            </header>
+
+            <div style="flex:1;min-height:0;display:flex;min-width:0">
+
+              <div style="width:404px;flex:none;border-right:1px solid #ebe6f6;background:#fff;display:flex;flex-direction:column;min-width:0">
+                <div style="padding:13px 16px 11px;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid #f5f2fa">
+                  <div style="display:flex;align-items:center;gap:8px;background:#faf9fe;border:1px solid #ebe6f6;border-radius:10px;padding:9px 11px">
+                    <span style="width:12px;height:12px;border:1.5px solid #6b6482;border-radius:50%;flex:none"></span>
+                    <span style="font-size:12px;color:#6b6482">Buscar dentro dos documentos</span>
+                  </div>
+                  <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+                    <sc-for list="{{ filters }}" as="f" hint-placeholder-count="4">
+                      <button type="button" onClick="{{ f.onClick }}" style="{{ f.style }}">{{ f.label }}</button>
+                    </sc-for>
+                    <sc-if value="{{ canFolder }}" hint-placeholder-val="{{ false }}">
+                      <span style="flex:1"></span>
+                      <button type="button" onClick="{{ a1 }}" style="cursor:pointer;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;color:#6C2BF2;background:#fff;border:1px dashed #c9b2f5;border-radius:999px;padding:6px 12px">{{ newFolderLabel }}</button>
+                    </sc-if>
+                  </div>
+                </div>
+
+                <div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column">
+                  <span style="{{ folderHintStyle }}">{{ folderHint }}</span>
+                  <sc-for list="{{ sections }}" as="sec" hint-placeholder-count="3">
+                    <div style="display:flex;flex-direction:column">
+                      <div style="{{ sec.headStyle }}">
+                        <span style="{{ sec.handleStyle }}">{{ sec.handle }}</span>
+                        <span style="{{ sec.folderStyle }}">▸</span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">{{ sec.title }}</span>
+                        <span style="flex:1"></span>
+                        <sc-for list="{{ sec.folderActions }}" as="a" hint-placeholder-count="2">
+                          <span style="{{ a.style }}">{{ a.label }}</span>
+                        </sc-for>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6b6482">{{ sec.count }}</span>
+                      </div>
+                      <sc-for list="{{ sec.items }}" as="d" hint-placeholder-count="3">
+                        <button type="button" onClick="{{ d.onClick }}" style="{{ d.rowStyle }}">
+                          <span style="{{ d.iconStyle }}">{{ d.kind }}</span>
+                          <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;text-align:left">
+                            <span style="font-size:13px;font-weight:700;line-height:1.25;text-wrap:pretty">{{ d.title }}</span>
+                            <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+                              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6b6482">{{ d.version }}</span>
+                              <span style="{{ d.stateStyle }}">{{ d.state }}</span>
+                            </span>
+                          </span>
+                        </button>
+                      </sc-for>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div style="flex:1;min-width:0;overflow-y:auto;padding:18px 20px 26px;display:flex;flex-direction:column;gap:13px">
+
+                <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:11px">
+                  <div style="display:flex;align-items:flex-start;gap:13px;flex-wrap:wrap">
+                    <span style="{{ docIconStyle }}">{{ docKind }}</span>
+                    <div style="flex:1 1 300px;min-width:250px;display:flex;flex-direction:column;gap:4px">
+                      <span style="font-family:Outfit,sans-serif;font-size:21px;font-weight:700;line-height:1.18;letter-spacing:-0.01em;text-wrap:pretty">{{ docTitle }}</span>
+                      <span style="font-size:12.5px;color:#6b6482">{{ docMeta }}</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:7px;flex:none;align-items:flex-end">
+                      <span style="{{ docStateStyle }}">{{ docState }}</span>
+                      <a href="assets/livro-oficial.pdf" target="_blank" rel="noopener" style="font-size:12px;font-weight:700;color:#6C2BF2">baixar arquivo</a>
+                      <sc-if value="{{ admOnly }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end">
+                          <sc-for list="{{ admActions }}" as="a" hint-placeholder-count="3">
+                            <span style="{{ a.style }}">{{ a.label }}</span>
+                          </sc-for>
+                        </div>
+                      </sc-if>
+                    </div>
+                  </div>
+                  <span style="font-size:13px;line-height:1.55;color:#4a4363;text-wrap:pretty">{{ docSummary }}</span>
+                  <span style="{{ requiredOriginStyle }}">{{ requiredOrigin }}</span>
+                  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-top:3px;border-top:1px solid #f5f2fa">
+                    <sc-if value="{{ needsRead }}" hint-placeholder-val="{{ false }}">
+                      <div style="flex:1 1 240px;min-width:220px;display:flex;flex-direction:column;gap:5px">
+                        <span style="font-size:11.5px;font-weight:600;color:#6b5a48">{{ readLabel }}</span>
+                        <span style="display:block;height:6px;border-radius:3px;background:#f0dcc7;overflow:hidden">
+                          <span style="{{ readBarStyle }}"></span>
+                        </span>
+                      </div>
+                      <span style="flex:1"></span>
+                      <span style="{{ missingStyle }}">{{ missingLabel }}</span>
+                      <button type="button" onClick="{{ onConfirm }}" style="{{ confirmStyle }}">{{ confirmLabel }}</button>
+                    </sc-if>
+                    <sc-if value="{{ noRead }}" hint-placeholder-val="{{ true }}">
+                      <span style="font-size:12px;color:#6b6482">{{ noReadLine }}</span>
+                    </sc-if>
+                  </div>
+                </div>
+
+                <div style="{{ readerStyle }}">
+                  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid #f0ecf8">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">{{ readerKicker }}</span>
+                    <span style="flex:1"></span>
+                    <span style="font-size:11.5px;color:#6b6482">{{ readerPos }}</span>
+                    <div style="display:flex;gap:6px">
+                      <button type="button" onClick="{{ onPrevPage }}" style="{{ prevStyle }}">anterior</button>
+                      <button type="button" onClick="{{ onNextPage }}" style="{{ nextStyle }}">próxima</button>
+                    </div>
+                  </div>
+                  <div style="display:flex;flex-wrap:wrap;align-items:stretch">
+                    <div style="flex:0 0 208px;min-width:180px;display:flex;flex-direction:column;gap:1px;padding:10px;background:#faf9fe;border-right:1px solid #f0ecf8">
+                      <sc-for list="{{ tocRows }}" as="t" hint-placeholder-count="4">
+                        <button type="button" onClick="{{ t.onClick }}" style="{{ t.style }}">
+                          <span style="{{ t.pStyle }}">{{ t.p }}</span>
+                          <span style="flex:1;min-width:0;text-align:left;line-height:1.3;overflow-wrap:anywhere">{{ t.t }}</span>
+                        </button>
+                      </sc-for>
+                    </div>
+                    <div style="flex:1 1 320px;min-width:280px;display:flex;flex-direction:column;gap:9px;padding:18px 22px 20px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">{{ pageStamp }}</span>
+                      <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600;line-height:1.25;text-wrap:pretty">{{ pageTitle }}</span>
+                      <span style="font-size:13.5px;line-height:1.65;color:#3d3559;text-wrap:pretty">{{ pageBody }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="{{ playerStyle }}">
+                  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid #f0ecf8">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Assistir aqui · 12 min</span>
+                    <span style="flex:1"></span>
+                    <span style="font-size:11.5px;color:#6b6482">{{ chapterPos }}</span>
+                  </div>
+                  <div style="display:flex;flex-wrap:wrap;align-items:stretch">
+                    <div style="flex:1 1 320px;min-width:280px;display:flex;flex-direction:column;gap:10px;padding:16px">
+                      <div style="aspect-ratio:16/9;border-radius:12px;background:linear-gradient(135deg,#1c1440,#2b1f63);display:flex;align-items:center;justify-content:center;gap:12px">
+                        <span style="width:52px;height:52px;border-radius:50%;border:2px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px">▶</span>
+                        <span style="display:flex;flex-direction:column;gap:2px">
+                          <span style="font-size:13px;font-weight:700;color:#fff">{{ chapterTitle }}</span>
+                          <span style="font-size:11.5px;color:#c3bbe6">começa em {{ chapterAt }}</span>
+                        </span>
+                      </div>
+                      <span style="font-size:12px;color:#6b6482;line-height:1.5;text-wrap:pretty">O vídeo roda dentro do app, sem baixar. No parque, com sinal fraco, começa pelo capítulo que você precisa — não pelo começo.</span>
+                    </div>
+                    <div style="flex:0 0 216px;min-width:186px;display:flex;flex-direction:column;gap:1px;padding:10px;background:#faf9fe;border-left:1px solid #f0ecf8">
+                      <sc-for list="{{ chapterRows }}" as="c" hint-placeholder-count="5">
+                        <button type="button" onClick="{{ c.onClick }}" style="{{ c.style }}">
+                          <span style="{{ c.atStyle }}">{{ c.at }}</span>
+                          <span style="flex:1;min-width:0;text-align:left;line-height:1.3;overflow-wrap:anywhere">{{ c.t }}</span>
+                        </button>
+                      </sc-for>
+                    </div>
+                  </div>
+                </div>
+
+
+                <div style="background:#f4edfe;border:1px solid #ddcbfa;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+                  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                    <img src="assets/asa/duvida.png" alt="ASA" style="width:44px;height:44px;object-fit:contain;flex:none" />
+                    <div style="flex:1 1 280px;min-width:240px;display:flex;flex-direction:column;gap:2px">
+                      <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">Pergunte em vez de procurar</span>
+                      <span style="font-size:12px;color:#5f4b8a">{{ askScope }}</span>
+                    </div>
+                  </div>
+                  <div style="display:flex;gap:7px;flex-wrap:wrap">
+                    <sc-for list="{{ askChips }}" as="q" hint-placeholder-count="3">
+                      <button type="button" onClick="{{ q.onClick }}" style="{{ q.style }}">{{ q.label }}</button>
+                    </sc-for>
+                  </div>
+                  <div style="background:#fff;border:1px solid #ddcbfa;border-radius:13px;padding:13px 15px;display:flex;flex-direction:column;gap:9px">
+                    <span style="font-size:12px;font-weight:700;color:#5B23C9">{{ askedQ }}</span>
+                    <span style="font-size:13px;line-height:1.55;color:#1b1630;text-wrap:pretty">{{ askedA }}</span>
+                    <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding-top:7px;border-top:1px solid #f4edfe">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5B23C9;background:#f4edfe;padding:4px 9px;border-radius:6px;flex:none">Fonte</span>
+                      <span style="font-size:12px;font-weight:600;color:#4a4363;min-width:0;text-wrap:pretty">{{ askedSource }}</span>
+                      <span style="flex:1"></span>
+                      <a href="assets/livro-patinacao.pdf" target="_blank" rel="noopener" style="font-size:11.5px;font-weight:700;color:#6C2BF2;flex:none">ver no documento</a>
+                    </div>
+                  </div>
+                  <span style="font-size:11.5px;line-height:1.45;color:#5f4b8a;text-wrap:pretty">{{ askFooter }}</span>
+                </div>
+
+                <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:15px 18px;display:flex;flex-direction:column;gap:11px">
+                  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                    <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">Versões</span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#0A6F68;background:#e3f4f1;padding:4px 9px;border-radius:6px">A ASA só cita a vigente</span>
+                  </div>
+                  <sc-for list="{{ versions }}" as="v" hint-placeholder-count="3">
+                    <div style="{{ v.rowStyle }}">
+                      <span style="{{ v.tagStyle }}">{{ v.tag }}</span>
+                      <div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:1px">
+                        <span style="font-size:12.5px;font-weight:600">{{ v.what }}</span>
+                        <span style="font-size:11px;color:#6b6482">{{ v.who }}</span>
+                      </div>
+                      <span style="{{ v.actionStyle }}">{{ v.action }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+
+                <sc-if value="{{ hasUpload }}" hint-placeholder-val="{{ false }}">
+                  <div style="background:#fff;border:1px dashed #c9b2f5;border-radius:16px;padding:15px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+                    <img src="assets/asa/estudando.png" alt="" style="width:44px;height:44px;object-fit:contain;flex:none" />
+                    <div style="flex:1 1 300px;min-width:250px;display:flex;flex-direction:column;gap:3px">
+                      <span style="font-size:13.5px;font-weight:700">{{ uploadTitle }}</span>
+                      <span style="font-size:12px;line-height:1.5;color:#5b5473;text-wrap:pretty">{{ uploadNote }}</span>
+                    </div>
+                    <button type="button" onClick="{{ a2 }}" style="cursor:pointer;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;color:#fff;background:linear-gradient(135deg,#6C2BF2,#2E3BD6);border:none;border-radius:999px;padding:11px 20px;flex:none">{{ uploadCta }}</button>
+                    <sc-if value="{{ uploadOpts }}" hint-placeholder-val="{{ false }}">
+                      <div style="flex:1 1 100%;display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid #f0ecf8">
+                        <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+                          <span style="font-size:12.5px;font-weight:700">{{ confirmOptTitle }}</span>
+                          <span style="flex:1"></span>
+                          <div style="display:flex;gap:6px;flex-wrap:wrap">
+                            <sc-for list="{{ confirmOpts }}" as="o" hint-placeholder-count="4">
+                              <button type="button" onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button>
+                            </sc-for>
+                          </div>
+                        </div>
+                        <span style="font-size:11.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">{{ confirmOptNote }}</span>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-if>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:0 0 390px;min-width:390px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Mobile · ninguém lê PDF no palco; pergunta</div>
+      <div style="width:390px;height:844px;border-radius:38px;border:1px solid #ddd6ee;background:#fff;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="background:linear-gradient(135deg,#1c1440,#2b1f63);color:#fff;padding:16px 18px 18px;display:flex;align-items:center;gap:10px">
+          <img src="assets/asa-wing.png" alt="" style="width:24px;height:24px;object-fit:contain;flex:none" />
+          <div style="display:flex;flex-direction:column;gap:1px;min-width:0;flex:1">
+            <span style="font-size:16px;font-weight:600;font-family:Outfit,sans-serif">Biblioteca</span>
+            <span style="font-size:11.5px;color:#c4bce0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ mobileScope }}</span>
+          </div>
+          <span style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+        </div>
+
+        <div style="flex:1;padding:14px;background:#faf9fe;display:flex;flex-direction:column;gap:10px;overflow:hidden">
+
+          <div style="background:#f4edfe;border:1px solid #ddcbfa;border-radius:16px;padding:13px;display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <img src="assets/asa/duvida.png" alt="" style="width:34px;height:34px;object-fit:contain;flex:none" />
+              <span style="font-size:12.5px;font-weight:700;color:#5B23C9;flex:1">Pergunte à ASA</span>
+            </div>
+            <div style="background:#fff;border:1px solid #ddcbfa;border-radius:12px;padding:11px 12px;display:flex;flex-direction:column;gap:7px">
+              <span style="font-size:11.5px;font-weight:700;color:#5B23C9">{{ askedQ }}</span>
+              <span style="font-size:12px;line-height:1.5;color:#1b1630;text-wrap:pretty">{{ askedShort }}</span>
+              <span style="font-size:10.5px;color:#6b6482;text-wrap:pretty">{{ askedSource }}</span>
+            </div>
+          </div>
+
+          <sc-if value="{{ needsRead }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#fff8f1;border:1px solid #f2d7bb;border-radius:16px;padding:12px 13px;display:flex;flex-direction:column;gap:9px">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#B4560B">Precisa da sua confirmação</span>
+              <span style="font-size:13px;font-weight:700;line-height:1.3">{{ docTitle }}</span>
+              <span style="font-size:11.5px;color:#8a6c4d">{{ readLabel }}</span>
+              <button type="button" onClick="{{ onConfirm }}" style="{{ confirmMobileStyle }}">{{ confirmLabel }}</button>
+            </div>
+          </sc-if>
+
+          <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;display:flex;flex-direction:column;overflow:hidden">
+            <sc-for list="{{ mobileDocs }}" as="d" hint-placeholder-count="4">
+              <div style="{{ d.rowStyle }}">
+                <span style="{{ d.iconStyle }}">{{ d.kind }}</span>
+                <div style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1">
+                  <span style="font-size:12.5px;font-weight:600;line-height:1.3">{{ d.title }}</span>
+                  <span style="font-size:10.5px;color:#6b6482">{{ d.version }}</span>
+                </div>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6b6482;flex:none">›</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid #ebe6f6;background:#fff;padding:10px 4px 16px">
+          <sc-for list="{{ mobileTabs }}" as="t" hint-placeholder-count="5">
+            <div style="{{ t.style }}">
+              <span style="display:block;width:20px;height:20px;border-radius:7px;border:1.75px solid currentColor;opacity:.75"></span>
+              <span style="font-size:10px;font-weight:600;text-align:center">{{ t.label }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">O que esta tela decide</span>
+    <div style="display:flex;flex-wrap:wrap;gap:12px">
+      <div style="flex:1 1 300px;min-width:260px;display:flex;gap:11px;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:13px 15px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6C2BF2;flex:none;padding-top:2px">01</span>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+          <span style="font-size:13px;font-weight:700;line-height:1.3">A biblioteca é a base da ASA</span>
+          <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Subir um documento aqui não é arquivar: é ensinar. Tudo que entra passa a ser o que a ASA responde quando alguém pergunta — e é por isso que a pasta bagunçada custa caro.</span>
+        </div>
+      </div>
+      <div style="flex:1 1 300px;min-width:260px;display:flex;gap:11px;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:13px 15px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6C2BF2;flex:none;padding-top:2px">02</span>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+          <span style="font-size:13px;font-weight:700;line-height:1.3">Toda resposta vem com a fonte</span>
+          <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">A ASA nunca responde do nada: cita o documento, a versão e a página, com link para o trecho. Se a pessoa quiser conferir, confere em dois toques — a resposta é atalho, não substituto.</span>
+        </div>
+      </div>
+      <div style="flex:1 1 300px;min-width:260px;display:flex;gap:11px;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:13px 15px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6C2BF2;flex:none;padding-top:2px">03</span>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+          <span style="font-size:13px;font-weight:700;line-height:1.3">Só a versão vigente é citada</span>
+          <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Versão antiga fica no histórico, legível, mas a ASA não a usa nunca. É o que impede o pior erro possível: alguém seguir a regra revogada porque a resposta veio confiante.</span>
+        </div>
+      </div>
+      <div style="flex:1 1 300px;min-width:260px;display:flex;gap:11px;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:13px 15px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6C2BF2;flex:none;padding-top:2px">04</span>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+          <span style="font-size:13px;font-weight:700;line-height:1.3">"Não sei" é resposta válida</span>
+          <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Sem documento que sustente, a ASA diz que não encontrou e oferece abrir conversa com quem sabe. Melhor uma dúvida honesta do que uma regra inventada num show de 400 pessoas.</span>
+        </div>
+      </div>
+      <div style="flex:1 1 300px;min-width:260px;display:flex;gap:11px;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:13px 15px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6C2BF2;flex:none;padding-top:2px">05</span>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+          <span style="font-size:13px;font-weight:700;line-height:1.3">Confirmação é opção da publicação, não pasta</span>
+          <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Quem sobe o arquivo marca ali se ele cobra "li e entendi", e de quem: a casa, uma área ou um grupo. O documento fica na pasta que a Administração quiser — a cobrança viaja com ele, não com a pasta. Quem publicou vê quem falta; material de trabalho não pede nada.</span>
+        </div>
+      </div>
+      <div style="flex:1 1 300px;min-width:260px;display:flex;gap:11px;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:13px 15px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6C2BF2;flex:none;padding-top:2px">06</span>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+          <span style="font-size:13px;font-weight:700;line-height:1.3">Só a Administração mexe; o resto pede</span>
+          <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Adicionar, criar pasta, renomear, arrastar para reordenar ou aninhar, substituir versão e apagar são dela — inclusive para a Direção e a supervisão. Todos os outros leem, perguntam à ASA e pedem material, com o pedido registrado. A pasta é para a gente achar; a ASA responde pelo conteúdo, onde ele estiver.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6b6482">{{ footerStamp }}</span>
+</div>
+
+  <sc-if value="{{ toastMsg }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:12px;background:#1c1440;color:#fff;border-radius:14px;padding:13px 18px;box-shadow:0 18px 40px -20px rgba(20,8,60,.7);max-width:560px">
+      <span style="font-size:13.5px;line-height:1.45;flex:1;text-wrap:pretty">{{ toastMsg }}</span>
+      <button type="button" onClick="{{ onFecharToast }}" style="border:none;background:rgba(255,255,255,.16);color:#fff;border-radius:9px;width:28px;height:28px;font-size:13px;cursor:pointer;flex:none">✕</button>
+    </div>
+  </sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1400},&quot;perfilInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ADM&quot;,&quot;DIR&quot;,&quot;SUP&quot;,&quot;MEM&quot;],&quot;default&quot;:&quot;MEM&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Perfil&quot;},&quot;documentoAberto&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;seg&quot;,&quot;conduta&quot;,&quot;checkin&quot;,&quot;figurino&quot;,&quot;coreo&quot;,&quot;contrato&quot;],&quot;default&quot;:&quot;seg&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Conteúdo&quot;}}">
+const PROFILES = [
+  { key: "ADM", name: "Administração", dot: "#6C2BF2", hint: "a única que adiciona, organiza e apaga", person: "Barbara Sorroche" },
+  { key: "DIR", name: "Direção", dot: "#2E63D6", hint: "lê tudo, vê o que falta ler — e pede, não publica", person: "Cris Garcia" },
+  { key: "SUP", name: "Supervisão", dot: "#0E8F86", hint: "lê, pede material e cobra a própria área", person: "Deborah" },
+  { key: "MEM", name: "Elenco", dot: "#C2508F", hint: "pergunta em vez de procurar", person: "Julia" }
+];
+
+const NAV = [
+  { title: "Porta de entrada", items: [
+    ["17", "Início / Meu Dia", ["ADM","DIR","SUP","MEM"], "Meu Dia"]
+  ] },
+  { title: "O dia", items: [
+    ["20", "Agenda", ["ADM","DIR","SUP","MEM"], "Minha agenda"],
+    ["15", "Escalas", ["ADM","DIR","SUP","MEM"], "Minha escala"],
+    ["13", "Shows", ["ADM","DIR","SUP","MEM"], "Shows"],
+    ["14", "Livro do Dia", ["ADM","DIR","SUP","MEM"], "Meus shows"],
+    ["19", "Check-in e ocorrências", ["ADM","DIR","SUP","MEM"], "Check-in"],
+    ["10", "Responsabilidades e tarefas", ["ADM","DIR","SUP","MEM"], "Minhas tarefas"],
+    ["18", "Folgas", ["ADM","DIR","SUP","MEM"], "Minhas folgas"]
+  ] },
+  { title: "Gestão", items: [
+    ["16", "Painel", ["ADM","DIR","SUP"], null],
+    ["06", "Locais", ["ADM","DIR","SUP"], null],
+    ["07", "Pessoas", ["ADM","DIR","SUP"], null],
+    ["08", "Áreas", ["ADM","DIR","SUP","MEM"], "Meu grupo"],
+    ["25", "Reconhecimentos", ["ADM","DIR","SUP"], null]
+  ] },
+  { title: "Comunicação", items: [
+    ["22", "Avisos e Mural", ["ADM","DIR","SUP","MEM"], "Mural"],
+    ["23", "Mensagens", ["ADM","DIR","SUP","MEM"], "Conversas"],
+    ["24", "Biblioteca", ["ADM","DIR","SUP","MEM"], "Biblioteca"]
+  ] }
+];
+
+const NAV_HREF = {
+  "10": "10%20Responsabilidades%20e%20Tarefas.dc.html",
+  "13": "13%20Shows.dc.html",
+  "14": "14%20Livro%20do%20Dia.dc.html",
+  "15": "15%20Escalas.dc.html",
+  "16": "16%20Painel%20e%20indicadores.dc.html",
+  "17": "17%20Meu%20Dia.dc.html",
+  "18": "18%20Folgas.dc.html",
+  "19": "19%20Check-in%20e%20ocorr%C3%AAncias.dc.html",
+  "20": "20%20Agenda.dc.html",
+  "22": "22%20Avisos%20e%20Mural.dc.html",
+  "23": "23%20Mensagens.dc.html",
+  "24": "24%20Biblioteca.dc.html", "25": "25%20Reconhecimentos.dc.html",
+  "27": "27%20Assistente%20ASA.dc.html",
+  "28": "28%20Perfil%20e%20configura%C3%A7%C3%B5es.dc.html",
+  "06": "06%20Locais.dc.html",
+  "07": "07%20Pessoas.dc.html",
+  "08": "08%20%C3%81reas.dc.html"
+};
+
+const MOBILE = {
+  ADM: ["Meu Dia", "Painel", "Escalas", "Mural", "Mais"],
+  DIR: ["Meu Dia", "Painel", "Agenda", "Mural", "Mais"],
+  SUP: ["Meu Dia", "Escalas", "Equipe", "Mural", "Mais"],
+  MEM: ["Meu Dia", "Escala", "Mural", "Conversas", "Mais"]
+};
+
+
+const TOC = {
+  seg: [
+    { p: 1, t: "Quando interromper a cena", body: "Piso molhado, cabo solto, objeto caído no palco: quem está em cena interrompe, sem pedir autorização. Avisa o apoio de palco pelo gesto combinado e sai pela lateral mais próxima. Interromper nunca gera ocorrência contra quem interrompeu." },
+    { p: 4, t: "Palco molhado · item 3.2", body: "O piso é testado por quem está de plantão antes de qualquer retomada. O teste é o mesmo sempre: três passadas na diagonal, com o calçado de cena. Só o supervisor de plantão libera a volta, e a hora da liberação fica registrada no Livro do Dia." },
+    { p: 7, t: "Falta de luz · item 5.1", body: "Ninguém corre no escuro. A luz de emergência acende em até 4 segundos. Se não acender, a Produção dá o comando por rádio e o elenco sai pela lateral direita, em fila, com a mão no ombro de quem vai à frente." },
+    { p: 9, t: "Evacuação do público · anexo B", body: "Só o supervisor de plantão ou a Administração manda evacuar. O elenco nunca fala com o público sobre evacuação: quem fala é o microfone da casa, com o texto deste anexo, lido na íntegra e sem improviso." },
+    { p: 12, t: "As três rotas de Snowland", body: "Rota 1 pela entrada principal, rota 2 pelo corredor técnico, rota 3 pela doca de carga. A rota 2 mudou em agosto por causa da obra: hoje passa pelo camarim coletivo, não mais pelo depósito." }
+  ],
+  conduta: [
+    { p: 1, t: "O que a casa espera", body: "Pontualidade, cuidado com o figurino, respeito entre áreas. Nada aqui é novidade: é o que já se pratica, escrito para que ninguém precise adivinhar." },
+    { p: 3, t: "Redes sociais e imagem", body: "Foto de camarim não sai daqui. Bastidor com figurino só com autorização da Direção. O que acontece no palco é da casa; o que acontece no camarim é das pessoas." },
+    { p: 6, t: "Conflitos entre colegas", body: "Primeiro entre as duas pessoas. Não resolvendo, a supervisão da área. Não resolvendo, a Administração. Cada degrau fica registrado, e nenhum pula o anterior." },
+    { p: 8, t: "O que gera advertência", body: "Falta sem aviso, uso indevido de figurino, exposição de colega. A advertência é sempre escrita e sempre conversada antes de ser registrada." }
+  ],
+  checkin: [
+    { p: 1, t: "Por que existe check-in", body: "Para a supervisão saber, antes da primeira atividade, quem está no local. Não é controle de ponto: é o que permite puxar substituto a tempo." },
+    { p: 2, t: "Quando a pergunta aparece", body: "Duas horas antes da sua primeira atividade do turno, no celular e no Meu Dia. Uma resposta vale para o turno inteiro; o turno da noite pergunta de novo." },
+    { p: 4, t: "Atraso e impossibilidade", body: "Avisar atraso não é falta. O que vira ocorrência é não avisar. Quem avisa com previsão de chegada dá à supervisão a chance de decidir sem substituir ninguém." },
+    { p: 5, t: "Sem sinal no parque", body: "O app não guarda check-in para enviar depois: se ficasse na fila, a supervisão veria você como quem não respondeu. Sem sinal, avise a supervisão por fora do app." }
+  ],
+  figurino: [
+    { p: 1, t: "Antes de vestir", body: "Confira costura, fecho e calçado. Peça com defeito não entra em cena: troque e registre, para a manutenção saber." },
+    { p: 2, t: "Depois do show", body: "Figurino volta ao cabide identificado, nunca à bancada. Peça suada vai para o varal técnico, não para a mala." },
+    { p: 3, t: "Camarim compartilhado", body: "Bancada limpa ao sair, lixo no lixo, espelho livre. O 5S do camarim é do turno inteiro, não de quem sai por último." }
+  ],
+  contrato: [
+    { p: 1, t: "Partes e vigência", body: "Modelo usado pela Administração para contratar elenco, bailarinos e produção por temporada. O elenco vê apenas o próprio contrato assinado, em Pessoas." },
+    { p: 3, t: "Jornada e folgas", body: "Jornada cadastrada em Pessoas, folgas conforme as turmas do mês. Alteração de jornada é aditivo, não acerto verbal." },
+    { p: 5, t: "Rescisão", body: "Prazos, aviso e devolução de figurino e crachá. Desligamento no app exige motivo escrito, e ele fica no histórico da ficha." }
+  ]
+};
+const CHAPTERS = [
+  { at: "0:00", t: "Abertura e posições iniciais" },
+  { at: "2:40", t: "Entrada das posições 1 a 3" },
+  { at: "4:12", t: "Entradas por trás · posições 4 e 7" },
+  { at: "7:05", t: "Portagem central" },
+  { at: "9:30", t: "Saída e blackout" }
+];
+
+const DOCS = [
+  { id: "seg", cat: "regras", kind: "PDF", title: "Segurança de palco e evacuação",
+    version: "v4 · vigente desde 12/08", pages: "14 páginas",
+    read: 51, total: 58, requires: true,
+    summary: "O que fazer quando o palco molha, quando falta luz e quando o público precisa sair. Inclui as três rotas de evacuação de Snowland e quem responde por cada uma em cada horário.",
+    questions: [
+      { q: "O palco está escorregando, posso cancelar a cena?",
+        a: "Sim, e você não precisa autorização para isso. Quem está em cena interrompe e avisa o apoio de palco; a decisão de retomar é do supervisor de plantão, depois do piso secar e ser testado. Isso não gera ocorrência contra você — gera ocorrência do piso.",
+        src: "Segurança de palco e evacuação · v4 · página 4, item 3.2" },
+      { q: "Faltou luz no meio do show, o que eu faço?",
+        a: "Fica parada onde está, não sai correndo do palco no escuro. A luz de emergência acende em 4 segundos; se não acender, a técnica dá o comando por rádio e o elenco sai pela lateral direita, em fila, guiado pelo apoio.",
+        src: "Segurança de palco e evacuação · v4 · página 7, item 5.1" },
+      { q: "Quem manda evacuar o público?",
+        a: "Só o supervisor de plantão ou a Administração. O elenco nunca fala com o público sobre evacuação — quem fala é o microfone da casa, com o texto que está no anexo B.",
+        src: "Segurança de palco e evacuação · v4 · página 9, anexo B" }
+    ],
+    versions: [
+      { tag: "v4", what: "Rota de evacuação da lateral esquerda mudou por causa da obra", who: "Barbara Sorroche · 12 de agosto · vigente", state: "vigente" },
+      { tag: "v3", what: "Incluído o procedimento de palco molhado", who: "Barbara Sorroche · 3 de março · substituída", state: "old" },
+      { tag: "v2", what: "Primeira versão com as três rotas", who: "Cris Garcia · 2024 · substituída", state: "old" }
+    ] },
+  { id: "conduta", cat: "regras", kind: "PDF", title: "Código de conduta da casa",
+    version: "v2 · vigente desde 04/02", pages: "9 páginas",
+    read: 58, total: 58, requires: true,
+    summary: "Como a ASA espera que as pessoas se tratem, no palco e fora dele, e o que acontece quando isso não acontece. Inclui o canal de denúncia e o que é sigiloso.",
+    questions: [
+      { q: "Posso postar foto do show nas minhas redes?",
+        a: "Pode, depois que o show estreou, sem mostrar bastidor com pessoas trocando de roupa e sem marcar colega que não quer aparecer. Ensaio fechado e figurino não estreado não saem daqui.",
+        src: "Código de conduta da casa · v2 · página 5, item 4" }
+    ],
+    versions: [
+      { tag: "v2", what: "Canal de denúncia passou a ser anônimo", who: "Barbara Sorroche · 4 de fevereiro · vigente", state: "vigente" },
+      { tag: "v1", what: "Versão original", who: "Cris Garcia · 2023 · substituída", state: "old" }
+    ] },
+  { id: "checkin", cat: "proc", kind: "PDF", title: "Como funciona o check-in do turno",
+    version: "v3 · vigente desde 28/08", pages: "6 páginas",
+    read: 44, total: 58, requires: false,
+    summary: "O que a casa espera na chegada: o horário que conta, o que fazer quando você vai atrasar, e por que o check-in não é ponto eletrônico.",
+    questions: [
+      { q: "Vou chegar 20 minutos atrasada, o que faço?",
+        a: "Avisa pelo próprio check-in, escolhendo o motivo — trânsito, saúde, imprevisto. Isso não te livra do atraso, mas tira a supervisora do escuro: ela consegue remanejar antes da passagem em vez de descobrir na hora.",
+        src: "Como funciona o check-in do turno · v3 · página 3" }
+    ],
+    versions: [
+      { tag: "v3", what: "Aviso de atraso passou a ter motivo", who: "Barbara Sorroche · 28 de agosto · vigente", state: "vigente" },
+      { tag: "v2", what: "Janela de tolerância de 10 minutos", who: "Barbara Sorroche · junho · substituída", state: "old" }
+    ] },
+  { id: "figurino", cat: "proc", kind: "PDF", title: "Cuidado com figurino e camarim",
+    version: "v1 · vigente desde 15/05", pages: "4 páginas",
+    read: 39, total: 58, requires: false,
+    summary: "Quem lava o quê, o que fazer quando rasga no meio do show, e onde devolver a peça no fim da temporada.",
+    questions: [
+      { q: "Rasgou minha manga no show, e agora?",
+        a: "Termina o show se a peça permitir e leva para a costureira no camarim 2 na mesma noite, com a etiqueta da peça. Não costura por conta própria — a linha errada estraga o tecido e a peça sai de circulação.",
+        src: "Cuidado com figurino e camarim · v1 · página 2" }
+    ],
+    versions: [
+      { tag: "v1", what: "Primeira versão", who: "Deborah · 15 de maio · vigente", state: "vigente" }
+    ] },
+  { id: "coreo", cat: "coreografias", kind: "VID", title: "Cena 5 · marcação completa",
+    version: "atualizado 02/09", pages: "vídeo · 12 min",
+    read: 0, total: 0, requires: false,
+    summary: "Gravação da marcação atual da cena 5, com as entradas por trás que mudaram na última semana. Serve para quem entra na posição e para quem voltou de folga.",
+    questions: [
+      { q: "A cena 5 mudou? Eu estava de folga",
+        a: "Mudou a entrada das posições 4 e 7, que agora passam por trás do praticável em vez de pela lateral. O vídeo mostra a partir de 4:12, e a marcação em PDF está anexa no grupo do elenco.",
+        src: "Cena 5 · marcação completa · gravação de 2 de setembro, 4:12" }
+    ],
+    versions: [
+      { tag: "set", what: "Entradas das posições 4 e 7 por trás", who: "Deborah · 2 de setembro · vigente", state: "vigente" },
+      { tag: "jul", what: "Marcação de estreia", who: "Deborah · julho · substituída", state: "old" }
+    ] },
+  { id: "contrato", cat: "modelo", kind: "DOC", title: "Modelo de contrato de temporada",
+    version: "v5 · vigente desde 01/07", pages: "7 páginas",
+    read: 0, total: 0, requires: false,
+    summary: "Modelo usado para contratar elenco e técnica por temporada. Uso interno da Administração; o elenco vê apenas o próprio contrato assinado, em Pessoas.",
+    questions: [
+      { q: "Onde vejo o meu contrato?",
+        a: "O seu contrato assinado fica no seu cadastro, em Pessoas — não aqui. Esta biblioteca guarda o modelo em branco, que é ferramenta da Administração.",
+        src: "Modelo de contrato de temporada · v5 · uso interno" }
+    ],
+    versions: [
+      { tag: "v5", what: "Cláusula de imagem revisada", who: "Cris Garcia · 1 de julho · vigente", state: "vigente" }
+    ] }
+];
+
+const CATS = [
+  { key: "regras", title: "Regras da casa", depth: 0 },
+  { key: "proc", title: "Procedimentos", depth: 0 },
+  { key: "material", title: "Material de trabalho", depth: 0 },
+  { key: "coreografias", title: "Coreografias por show", depth: 1 },
+  { key: "modelo", title: "Modelos e contratos", depth: 0 }
+];
+
+class Component extends DCLogic {
+  state = { profile: null, doc: null, filter: "todos", asked: 0, confirmed: {}, sec: 0, chap: 0 };
+
+  renderVals() {
+    const active = this.state.profile || this.props.perfilInicial || "MEM";
+    const meta = PROFILES.find(p => p.key === active) || PROFILES[0];
+    const dot = meta.dot;
+    const isAdm = active === "ADM";
+    const isMem = active === "MEM";
+    const isSup = active === "SUP";
+
+    const visible = DOCS.filter(d => !(isMem && d.cat === "modelo"));
+    const docId = this.state.doc || this.props.documentoAberto || "seg";
+    const doc = visible.find(d => d.id === docId) || visible[0];
+
+    const tocList = TOC[doc.id] || [];
+    const secIdx = Math.min(this.state.sec || 0, Math.max(0, tocList.length - 1));
+    const sec = tocList[secIdx] || null;
+    const chapIdx = Math.min(this.state.chap || 0, CHAPTERS.length - 1);
+    const navBtn = (on) => "font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;padding:6px 11px;border-radius:999px;min-height:32px;border:1px solid #e6e1f2;"
+      + (on ? "cursor:pointer;background:#fff;color:#4a2b8f;" : "background:#faf9fe;color:#b9b2c9;cursor:not-allowed;");
+
+    const profileTabs = PROFILES.map(p => ({
+      name: p.name, dot: p.dot,
+      onClick: () => this.setState({ profile: p.key, asked: 0 }),
+      style: "display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-family:Manrope,sans-serif;font-size:13px;font-weight:600;padding:8px 14px;border-radius:999px;"
+        + (p.key === active
+          ? "border:1px solid " + p.dot + ";background:" + p.dot + "14;color:" + p.dot + ";"
+          : "border:1px solid #e6e1f2;background:#fff;color:#5b5473;")
+    }));
+
+    const shellNav = NAV.map(g => ({
+      title: g.title,
+      items: g.items.filter(it => it[2].indexOf(active) >= 0).map(it => ({
+        href: NAV_HREF[it[0]],
+        label: it[1],
+        style: "font-size:12px;font-weight:" + (it[0] === "24" ? "700" : "500") + ";padding:6px 9px;border-radius:8px;"
+          + (it[0] === "24" ? "background:rgba(255,255,255,.14);color:#fff;" : "color:#c3bbe0;")
+      }))
+    })).filter(g => g.items.length);
+
+    const filters = [
+      ["todos", "Todas as pastas"],
+      ["confirmar", isMem ? "Esperando você" : "Leitura em falta"],
+      ["novos", "Mudou esta semana"]
+    ].map(f => ({
+      label: f[1],
+      onClick: () => this.setState({ filter: f[0] }),
+      style: "cursor:pointer;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;border-radius:999px;padding:6px 12px;"
+        + (this.state.filter === f[0]
+          ? "border:1px solid " + dot + ";background:" + dot + "14;color:" + dot + ";"
+          : "border:1px solid #e6e1f2;background:#fff;color:#6b6482;")
+    }));
+
+    const pass = (d) => {
+      if (this.state.filter === "confirmar") return d.requires && (isMem ? !this.state.confirmed[d.id] : d.read < d.total);
+      if (this.state.filter === "novos") return ["seg", "checkin", "coreo"].indexOf(d.id) >= 0;
+      return true;
+    };
+
+    const iconStyle = (d, big) => "flex:none;width:" + (big ? "44px" : "34px") + ";height:" + (big ? "52px" : "40px")
+      + ";border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:"
+      + (big ? "10px" : "9px") + ";font-weight:700;"
+      + (d.kind === "VID" ? "background:#e3f4f1;border:1px solid #cbe9e4;color:#0b6f68;"
+        : d.kind === "DOC" ? "background:#e9effc;border:1px solid #d3ddf6;color:#2a3f77;"
+        : "background:#efe8fd;border:1px solid #ddcbfa;color:#5B23C9;");
+
+    const docState = (d) => {
+      const mineDone = !!this.state.confirmed[d.id];
+      if (!d.requires) return { label: "livre", tone: "mute" };
+      if (isMem) return mineDone ? { label: "você confirmou", tone: "ok" } : { label: "confirme a leitura", tone: "warn" };
+      if (d.read >= d.total) return { label: "todos confirmaram", tone: "ok" };
+      return { label: (d.total - d.read) + " ainda não leram", tone: "warn" };
+    };
+
+    const tone = (t) => t === "ok" ? "color:#0A6F68;background:#e3f4f1;"
+      : t === "warn" ? "color:#B4560B;background:#fdeee4;"
+      : "color:#6b6482;background:#f0eef5;";
+
+    const sections = CATS.map(c => {
+      const items = visible.filter(d => d.cat === c.key && pass(d));
+      return {
+        title: c.title,
+        headStyle: "display:flex;align-items:center;gap:9px;padding:12px 16px 7px;padding-left:" + (16 + c.depth * 14) + "px;",
+        folderStyle: "flex:none;font-family:'JetBrains Mono',monospace;font-size:11px;color:" + (c.depth ? "#6b6482" : "#6b6482") + ";",
+        handle: isAdm ? "⠿" : "",
+        handleStyle: isAdm
+          ? "flex:none;font-family:'JetBrains Mono',monospace;font-size:11px;color:#d8d2e6;cursor:grab;"
+          : "display:none;",
+        folderActions: isAdm ? [["renomear", "#6C2BF2"], ["apagar", "#B4302F"]].map(a => ({
+          label: a[0],
+          style: "flex:none;font-size:10.5px;font-weight:700;color:" + a[1] + ";cursor:pointer;"
+        })) : [],
+        count: items.length ? items.length + (items.length === 1 ? " item" : " itens") : "",
+        items: items.map(d => {
+          const st = docState(d);
+          return {
+            title: d.title,
+            version: d.version,
+            kind: d.kind,
+            onClick: () => this.setState({ doc: d.id, asked: 0, sec: 0, chap: 0 }),
+            rowStyle: "cursor:pointer;display:flex;align-items:center;gap:11px;padding:10px 16px 10px " + (16 + c.depth * 14)
+              + "px;border:none;border-left:3px solid "
+              + (d.id === doc.id ? dot : "transparent") + ";background:" + (d.id === doc.id ? dot + "0d" : "#fff") + ";font-family:Manrope,sans-serif;text-align:left;",
+            iconStyle: iconStyle(d, false),
+            indentStyle: "cursor:pointer;display:flex;align-items:center;gap:11px;padding:10px 16px 10px " + (16 + c.depth * 14) + "px;",
+            state: st.label,
+            stateStyle: "font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 7px;border-radius:5px;flex:none;" + tone(st.tone)
+          };
+        }),
+        n: items.length
+      };
+    }).filter(s => s.n > 0);
+
+    const qi = Math.min(this.state.asked, doc.questions.length - 1);
+    const q = doc.questions[qi];
+    const st = docState(doc);
+    const pct = doc.total ? Math.round((doc.read / doc.total) * 100) : 0;
+    const mineDone = !!this.state.confirmed[doc.id];
+    const pendentes = visible.filter(d => d.requires && (isMem ? !this.state.confirmed[d.id] : d.read < d.total));
+
+    return {
+      a1: () => this.setState({ __toast: "Nova pasta: nome e quem pode ver. Só a Administração cria." }),
+      a2: () => this.setState({ __toast: "Enviar arquivo: escolha o arquivo, a pasta e se ele cobra leitura." }),
+      toastMsg: this.state.__toast || null,
+      onFecharToast: () => this.setState({ __toast: null }),
+      profileTabs: profileTabs,
+      profileHint: meta.hint,
+      profileName: meta.name,
+      personName: meta.person,
+      personChipStyle: "font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:" + dot + ";padding:2px 7px;border-radius:999px;width:fit-content",
+      shellNav: shellNav,
+      scopeLine: (isMem ? "uma biblioteca para a casa inteira · " : "uma biblioteca, sem escopo por área · ") + visible.length + " itens",
+      mobileScope: isMem ? "pergunte, não procure" : visible.length + " itens · a base da ASA",
+      pendingChip: pendentes.length
+        ? (isMem ? pendentes.length + " esperando você" : pendentes.length + " com leitura em falta")
+        : "leitura em dia",
+      pendingChipStyle: "font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 10px;border-radius:999px;"
+        + (pendentes.length ? "color:#B4560B;background:#fdeee4;" : "color:#0A6F68;background:#e3f4f1;"),
+      uploadLabel: isAdm ? "Publicar documento" : "Pedir um material",
+      uploadStyle: "cursor:pointer;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;border-radius:999px;padding:9px 16px;flex:none;"
+        + (isAdm
+          ? "color:#fff;background:linear-gradient(135deg,#6C2BF2,#2E3BD6);border:none;"
+          : "color:" + dot + ";background:#fff;border:1px solid " + dot + ";"),
+      admOnly: isAdm,
+      admActions: [["organizar", "#6C2BF2"], ["substituir versão", "#6C2BF2"], ["apagar", "#B4302F"]].map(a => ({
+        label: a[0],
+        style: "font-size:12px;font-weight:700;color:" + a[1] + ";cursor:pointer;flex:none;"
+      })),
+
+      filters: filters,
+      sections: sections,
+      canFolder: isAdm,
+      newFolderLabel: "＋ nova pasta",
+      folderHint: isAdm
+        ? "Arraste para reordenar ou aninhar. A ASA responde pelo conteúdo — a pasta é para a gente achar, não para ela."
+        : "",
+      folderHintStyle: isAdm ? "font-size:11px;line-height:1.45;color:#6b6482;padding:0 16px 10px;text-wrap:pretty;" : "display:none;",
+
+      readerStyle: (TOC[doc.id] && TOC[doc.id].length)
+        ? "background:#fff;border:1px solid #e6e1f2;border-radius:16px;display:flex;flex-direction:column;overflow:hidden;"
+        : "display:none;",
+      readerKicker: "Ler aqui · " + doc.pages,
+      readerPos: tocList.length ? ("seção " + (secIdx + 1) + " de " + tocList.length) : "",
+      tocRows: tocList.map((t, i) => ({
+        p: String(t.p), t: t.t,
+        onClick: () => this.setState({ sec: i }),
+        style: "cursor:pointer;display:flex;align-items:flex-start;gap:8px;width:100%;text-align:left;border:none;border-radius:9px;padding:8px 9px;font-family:Manrope,sans-serif;font-size:12px;font-weight:600;"
+          + (i === secIdx ? "background:#efe7fd;color:#4a2b8f;" : "background:transparent;color:#5b5473;"),
+        pStyle: "font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;flex:none;min-width:17px;padding-top:1px;color:" + (i === secIdx ? "#6C2BF2" : "#6b6482")
+      })),
+      pageStamp: sec ? ("página " + sec.p + " de " + (doc.pages || "")) : "",
+      pageTitle: sec ? sec.t : "",
+      pageBody: sec ? sec.body : "",
+      onPrevPage: () => this.setState({ sec: Math.max(0, secIdx - 1) }),
+      onNextPage: () => this.setState({ sec: Math.min(tocList.length - 1, secIdx + 1) }),
+      prevStyle: navBtn(secIdx > 0),
+      nextStyle: navBtn(secIdx < tocList.length - 1),
+      playerStyle: doc.kind === "VID"
+        ? "background:#fff;border:1px solid #e6e1f2;border-radius:16px;display:flex;flex-direction:column;overflow:hidden;"
+        : "display:none;",
+      chapterPos: "capítulo " + (chapIdx + 1) + " de " + CHAPTERS.length,
+      chapterTitle: CHAPTERS[chapIdx].t,
+      chapterAt: CHAPTERS[chapIdx].at,
+      chapterRows: CHAPTERS.map((c, i) => ({
+        at: c.at, t: c.t,
+        onClick: () => this.setState({ chap: i }),
+        style: "cursor:pointer;display:flex;align-items:flex-start;gap:8px;width:100%;text-align:left;border:none;border-radius:9px;padding:8px 9px;font-family:Manrope,sans-serif;font-size:12px;font-weight:600;"
+          + (i === chapIdx ? "background:#efe7fd;color:#4a2b8f;" : "background:transparent;color:#5b5473;"),
+        atStyle: "font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;flex:none;padding-top:1px;color:" + (i === chapIdx ? "#6C2BF2" : "#6b6482")
+      })),
+      docTitle: doc.title,
+      docKind: doc.kind,
+      docIconStyle: iconStyle(doc, true),
+      docMeta: doc.version + " · " + doc.pages,
+      docSummary: doc.summary,
+      docState: st.label,
+      docStateStyle: "font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:4px 9px;border-radius:6px;" + tone(st.tone),
+
+      needsRead: doc.requires,
+      noRead: !doc.requires,
+      noReadLine: doc.cat === "material" || doc.cat === "coreografias"
+        ? "Material de trabalho não pede confirmação — ninguém precisa assinar que viu uma marcação."
+        : doc.cat === "modelo"
+          ? "Modelo interno da Administração. Não circula e não pede leitura."
+          : "Este procedimento é referência: a ASA responde por ele, mas ninguém precisa confirmar leitura.",
+      readLabel: isMem
+        ? (mineDone ? "Você confirmou · " + doc.read + " de " + doc.total + " na casa" : doc.read + " de " + doc.total + " já confirmaram")
+        : doc.read + " de " + doc.total + " confirmaram a leitura · " + pct + "%",
+      readBarStyle: "display:block;height:6px;border-radius:3px;width:" + pct + "%;background:#C2600F;",
+      missingLabel: isMem ? "" : "ver os " + (doc.total - doc.read) + " que faltam",
+      missingStyle: isMem ? "display:none;" : "font-size:12px;font-weight:700;color:#B4560B;cursor:pointer;flex:none;text-decoration:underline;",
+      onConfirm: () => this.setState(s => ({ confirmed: Object.assign({}, s.confirmed, { [doc.id]: true }) })),
+      confirmLabel: mineDone ? "leitura confirmada" : "Li e entendi",
+      confirmStyle: mineDone
+        ? "font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#0A6F68;background:#e3f4f1;border:1px solid #cbe9e4;border-radius:999px;padding:9px 15px;flex:none;cursor:default;"
+        : "cursor:pointer;font-family:Manrope,sans-serif;font-size:13px;font-weight:700;color:#fff;background:#C2600F;border:none;border-radius:999px;padding:10px 20px;flex:none;",
+      confirmMobileStyle: mineDone
+        ? "font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#0A6F68;background:#e3f4f1;border:1px solid #cbe9e4;border-radius:999px;padding:11px 14px;cursor:default;"
+        : "cursor:pointer;font-family:Manrope,sans-serif;font-size:13px;font-weight:700;color:#fff;background:#C2600F;border:none;border-radius:999px;padding:12px 16px;",
+
+      askScope: "A ASA responde só pelo que está nesta biblioteca, na versão vigente",
+      askChips: doc.questions.map((item, i) => ({
+        label: item.q,
+        onClick: () => this.setState({ asked: i }),
+        style: "cursor:pointer;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:600;border-radius:999px;padding:7px 13px;text-align:left;"
+          + (i === qi
+            ? "border:1px solid #5B23C9;background:#efe8fd;color:#5B23C9;"
+            : "border:1px solid #ddcbfa;background:#fff;color:#5f4b8a;")
+      })),
+      askedQ: q.q,
+      askedA: q.a,
+      askedShort: q.a.length > 150 ? q.a.slice(0, 148) + "…" : q.a,
+      askedSource: q.src,
+      askFooter: isMem
+        ? "Se a ASA não achar a resposta aqui, ela diz que não sabe e oferece abrir conversa com a supervisão — nunca inventa uma regra."
+        : "Quando muitas pessoas perguntam algo que a ASA não sabe responder, isso aparece no seu painel: é sinal de documento faltando.",
+
+      versions: doc.versions.map(v => ({
+        tag: v.tag,
+        what: v.what,
+        who: v.who,
+        rowStyle: "display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:12px;"
+          + (v.state === "vigente" ? "background:#e3f4f1;border:1px solid #cbe9e4;" : "background:#faf9fe;border:1px solid #f0ecf8;"),
+        tagStyle: "flex:none;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:5px 9px;border-radius:6px;"
+          + (v.state === "vigente" ? "color:#fff;background:#0E8F86;" : "color:#6b6482;background:#f0eef5;"),
+        action: v.state === "vigente" ? "" : (isAdm ? "restaurar · apagar" : "ler"),
+        actionStyle: v.state === "vigente"
+          ? "display:none;"
+          : "flex:none;font-size:11.5px;font-weight:700;color:#6C2BF2;cursor:pointer;"
+      })),
+
+      hasUpload: true,
+      uploadTitle: isAdm ? "Subir, organizar ou substituir" : "Pedir um material para a casa",
+      uploadNote: isAdm
+        ? "PDF, vídeo ou documento — e é só você que faz isso. Você escolhe se pede confirmação de leitura e para quem; a ASA passa a responder por ele no mesmo dia, citando a versão."
+        : "Você não publica nem apaga nada aqui: pede. O pedido chega à Administração com seu nome e fica registrado até ser atendido ou recusado — assim nada se perde e ninguém sobe versão paralela.",
+      uploadCta: isAdm ? "Escolher arquivo" : "Fazer um pedido",
+      uploadOpts: isAdm,
+      confirmOptTitle: "Pedir confirmação de leitura?",
+      confirmOptNote: "Não é pasta: é uma opção da publicação. Marcada, o documento passa a cobrar \"li e entendi\" de quem você escolher — e você vê quem falta, como no aviso.",
+      confirmOpts: [["nao", "Não pede"], ["casa", "Toda a casa"], ["area", "Uma área"], ["grupo", "Um grupo"]].map(o => ({
+        label: o[1],
+        onClick: () => this.setState({ confOpt: o[0] }),
+        style: "cursor:pointer;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;border-radius:999px;padding:7px 12px;"
+          + ((this.state.confOpt || "casa") === o[0]
+            ? "border:1px solid #6C2BF2;background:#efe8fd;color:#5B23C9;"
+            : "border:1px solid #e6e1f2;background:#fff;color:#6b6482;")
+      })),
+      requiredOrigin: doc.requires
+        ? "Confirmação pedida na publicação, para toda a casa — quem publicou escolheu isso, não é uma pasta."
+        : "",
+      requiredOriginStyle: doc.requires
+        ? "font-size:11px;color:#a2917d;text-wrap:pretty;"
+        : "display:none;",
+
+      mobileDocs: visible.slice(0, 4).map((d, i) => ({
+        title: d.title,
+        version: d.version,
+        kind: d.kind,
+        iconStyle: iconStyle(d, false),
+        rowStyle: "display:flex;align-items:center;gap:11px;padding:11px 13px;" + (i ? "border-top:1px solid #f5f2fa;" : "")
+      })),
+      mobileTabs: MOBILE[active].map((label, i) => ({
+        label: label,
+        style: "display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 2px;" + (i === 4 ? "color:" + dot + ";" : "color:#6b6482;")
+      })),
+      footerStamp: "24 Biblioteca · " + meta.name + " · toda resposta com fonte · só a versão vigente é citada · \"não sei\" é resposta válida"
+    };
+  }
+}
+</script>
+</body>
+</html>

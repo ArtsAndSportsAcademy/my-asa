@@ -1,0 +1,1758 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  aside a { text-decoration: none; }
+  body { margin: 0; background: #f4f2fa; font-family: Manrope, system-ui, sans-serif; color: #1b1630; }
+  a { color: #6C2BF2; text-decoration: none; }
+  a:hover { color: #4a17b8; text-decoration: underline; }
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 3px solid #6C2BF2; outline-offset: 2px; border-radius: 8px; }
+</style>
+</helmet>
+
+<div style="max-width:1720px;margin:0 auto;padding:44px 28px 88px;display:flex;flex-direction:column;gap:32px">
+
+  <header style="display:flex;flex-direction:column;gap:22px">
+    <div style="display:flex;align-items:flex-start;gap:18px">
+      <img src="assets/asa-wing.png" alt="My ASA" style="width:52px;height:52px;object-fit:contain;flex:none;margin-top:4px" />
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#6b6482">07 · fundação</div>
+        <h1 style="font-family:Outfit,sans-serif;font-size:38px;line-height:1.05;font-weight:700;margin:0;letter-spacing:-0.02em">Pessoas e acessos</h1>
+        <p style="margin:0;max-width:78ch;font-size:15px;line-height:1.55;color:#5b5473;text-wrap:pretty">A ficha mínima de quem trabalha aqui: <strong>área</strong> (a equipe), <strong>grupo</strong> (quem responde por ela), <strong>perfil</strong> e <strong>situação</strong>. Nível e acesso eram a mesma coisa dita duas vezes — agora é um campo só: o <strong>perfil</strong> diz ao mesmo tempo o que a pessoa responde e o que ela vê. Ninguém pertence a um local — quem trabalha onde é a Escala que diz, e a mesma pessoa pode estar no Snowland hoje e num evento amanhã. Perfil se muda na aba <strong>Acessos</strong>, na matriz, e só a Administração muda. A ficha existe antes de haver login: pessoa não é conta. Desligar tira a pessoa do ASA de uma vez — sai da lista, do grupo, das escalas publicadas e do acesso, no ato; o que sobra dela é o <strong>Histórico</strong>.</p>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:13px 16px;background:#fff;border:1px solid #e6e1f2;border-radius:16px">
+      <span style="font-size:13px;font-weight:600;color:#5b5473;margin-right:4px">Ver como</span>
+      <sc-for list="{{ profileTabs }}" as="tab" hint-placeholder-count="4">
+        <button type="button" onClick="{{ tab.onClick }}" style="{{ tab.style }}">
+          <span style="width:8px;height:8px;border-radius:50%;background:{{ tab.dot }};display:inline-block"></span>
+          <span>{{ tab.name }}</span>
+        </button>
+      </sc-for>
+      <span style="flex:1"></span>
+      <span style="font-size:13px;color:#6b6482">{{ profileHint }}</span>
+    </div>
+  </header>
+
+  <div style="display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start">
+
+    <div style="flex:none;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Web · 1920 × 1080</span>
+        <span style="font-size:11.5px;color:#6b6482">exibido a 70% — proporção real de tela</span>
+      </div>
+      <div style="width:1344px;height:756px;border:1px solid #ddd6ee;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="width:1920px;height:1080px;transform:scale(0.7);transform-origin:top left;display:flex">
+
+          <aside style="width:222px;flex:none;background:linear-gradient(180deg,#1c1440 0%,#241a52 100%);display:flex;flex-direction:column;color:#fff">
+            <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 12px">
+              <img src="assets/asa-wing.png" alt="" style="width:26px;height:26px;object-fit:contain" />
+              <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">My ASA</span>
+            </div>
+            <div style="padding:0 12px 10px">
+              <a href="27%20Assistente%20ASA.dc.html" style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border-radius:10px;padding:8px 10px;font-size:11.5px;color:#b9b0da;text-decoration:none;cursor:pointer">
+                <span style="width:11px;height:11px;border:1.5px solid #b9b0da;border-radius:50%"></span>
+                <span>Buscar ou perguntar à ASA</span>
+              </a>
+            </div>
+            <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:12px;padding:2px 10px 10px">
+              <sc-for list="{{ shellNav }}" as="g" hint-placeholder-count="4">
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#7d72a8;padding:0 8px 4px">{{ g.title }}</div>
+                  <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+                    <a href="{{ it.href }}" style="{{ it.style }}">{{ it.label }}</a>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+            <div style="border-top:1px solid rgba(255,255,255,.1);padding:12px;display:flex;align-items:center;gap:10px">
+              <span style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+              <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                <span style="font-size:12.5px;font-weight:600">{{ personName }}</span>
+                <span style="{{ personChipStyle }}">{{ profileName }}</span>
+              </div>
+            </div>
+          </aside>
+
+          <div style="position:relative;flex:1;display:flex;flex-direction:column;background:#faf9fe;min-width:0">
+
+            <header style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid #ebe6f6;background:#fff">
+              <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">{{ pageTitle }}</span>
+              <span style="flex:1"></span>
+              <span style="{{ readonlyChipStyle }}">somente leitura</span>
+              <span style="font-size:12.5px;color:#6b6482">{{ scopeLabel }}</span>
+              <button type="button" onClick="{{ toggleAsa }}" style="{{ asaBtnStyle }}">
+                <img src="assets/asa/oi.png" alt="ASA" style="width:26px;height:26px;object-fit:contain" />
+                <span>ASA</span>
+              </button>
+            </header>
+
+            <div style="display:flex;align-items:center;gap:6px;padding:0 20px;background:#fff;border-bottom:1px solid #ebe6f6">
+              <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="2">
+                <button type="button" onClick="{{ t.onClick }}" style="{{ t.style }}">{{ t.label }}</button>
+              </sc-for>
+            </div>
+
+            <sc-if value="{{ asaBar }}" hint-placeholder-val="{{ false }}">
+              <div style="{{ asaBar.style }}">
+                <img src="assets/asa/oi.png" alt="" style="width:22px;height:22px;object-fit:contain;flex:none" />
+                <span style="{{ asaBar.chip }}">ASA</span>
+                <span style="{{ asaBar.textStyle }}">{{ asaBar.text }}</span>
+                <span style="flex:1"></span>
+                <button type="button" onClick="{{ asaBar.onOpen }}" style="{{ asaBar.ctaStyle }}">{{ asaBar.cta }}</button>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isLista }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-direction:column;min-height:0;flex:1">
+
+                <div style="display:flex;flex-wrap:wrap;align-items:center;gap:9px;padding:12px 20px;background:#fff;border-bottom:1px solid #ebe6f6">
+                  <div style="display:flex;align-items:center;gap:8px;height:32px;padding:0 11px;border-radius:11px;border:1px solid #e6e1f2;background:#faf9fe;min-width:212px">
+                    <span style="width:11px;height:11px;border:1.5px solid #6b6482;border-radius:50%;flex:none"></span>
+                    <input value="{{ query }}" onChange="{{ onQuery }}" placeholder="Buscar por nome, área ou grupo" style="border:none;background:transparent;outline:none;font-family:Manrope,sans-serif;font-size:12.5px;color:#3c3559;flex:1;min-width:0" />
+                  </div>
+                  <sc-for list="{{ filters }}" as="f" hint-placeholder-count="4">
+                    <button type="button" onClick="{{ f.onClick }}" style="{{ f.style }}">{{ f.label }}</button>
+                  </sc-for>
+                  <span style="flex:1;min-width:20px"></span>
+                  <span style="font-size:12px;color:#6b6482">{{ countLabel }}</span>
+                  <sc-if value="{{ canCreate }}" hint-placeholder-val="{{ false }}">
+                    <button type="button" onClick="{{ onNewPerson }}" style="height:32px;padding:0 14px;border-radius:11px;border:none;background:#6C2BF2;color:#fff;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap">Nova pessoa</button>
+                  </sc-if>
+                </div>
+
+                <div style="flex:1;min-height:0;overflow:auto">
+                  <sc-if value="{{ hasRows }}" hint-placeholder-val="{{ true }}">
+                    <div>
+                      <div style="display:flex;gap:10px;padding:9px 20px;background:#f7f5fd;border-bottom:1px solid #e6e1f2;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:#6b6482;position:sticky;top:0">
+                        <span style="flex:1;min-width:0">Pessoa</span>
+                        <span style="width:146px;flex:none">Área</span>
+                        <span style="width:126px;flex:none">Grupo</span>
+                        <span style="width:78px;flex:none">Desde</span>
+                        <span style="width:132px;flex:none">Perfil</span>
+                        <span style="width:104px;flex:none">Situação</span>
+                        <span style="width:66px;flex:none"></span>
+                      </div>
+                      <sc-for list="{{ rows }}" as="r" hint-placeholder-count="10">
+                        <div style="{{ r.style }}">
+                          <div style="flex:1;min-width:0;display:flex;align-items:center;gap:9px">
+                            <span style="{{ r.avatarStyle }}">{{ r.initials }}</span>
+                            <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                              <span style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</span>
+                              <span style="font-size:10.5px;color:#6b6482;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.sub }}</span>
+                            </div>
+                          </div>
+                          <span style="width:146px;flex:none;font-size:12px;color:#3c3559">
+                            <span style="{{ r.areaStyle }}">{{ r.area }}</span>
+                          </span>
+                          <span style="width:126px;flex:none;font-size:12px">
+                            <span style="{{ r.groupStyle }}">{{ r.group }}</span>
+                          </span>
+                          <span style="width:78px;flex:none;font-family:'JetBrains Mono',monospace;font-size:11px;color:#6b6482">{{ r.since }}</span>
+                          <span style="width:132px;flex:none;display:flex;flex-direction:column;gap:1px">
+                            <span style="{{ r.roleStyle }}">{{ r.role }}</span>
+                            <span style="{{ r.accNoteStyle }}">{{ r.accNote }}</span>
+                          </span>
+                          <span style="width:104px;flex:none"><span style="{{ r.stateStyle }}">{{ r.state }}</span></span>
+                          <span style="width:66px;flex:none;text-align:right">
+                            <button type="button" onClick="{{ r.onOpen }}" style="{{ r.openStyle }}">{{ r.openLabel }}</button>
+                          </span>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ emptyState }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:9px;padding:72px 20px">
+                      <img src="assets/asa/duvida.png" alt="" style="width:46px;height:46px;object-fit:contain" />
+                      <span style="font-size:14px;font-weight:600">{{ emptyState.title }}</span>
+                      <span style="font-size:12.5px;color:#6b6482;text-align:center;max-width:48ch;line-height:1.5">{{ emptyState.body }}</span>
+                      <button type="button" onClick="{{ emptyState.onAct }}" style="{{ emptyState.actStyle }}">{{ emptyState.act }}</button>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isAcessos }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1;min-height:0;overflow:auto;padding:18px 20px 24px;display:flex;flex-direction:column;gap:18px">
+
+                <div style="display:flex;flex-direction:column;gap:5px">
+                  <div style="display:flex;align-items:baseline;gap:12px">
+                    <span style="font-family:Outfit,sans-serif;font-size:19px;font-weight:600">Acessos</span>
+                    <span style="font-size:12.5px;color:#6b6482">o perfil de cada pessoa — e é aqui que se muda</span>
+                  </div>
+                  <span style="font-size:12.5px;line-height:1.5;color:#5b5473;max-width:88ch">{{ accTab.note }}</span>
+                </div>
+
+                <div style="display:flex;flex-wrap:wrap;gap:10px">
+                  <sc-for list="{{ accTab.cards }}" as="c" hint-placeholder-count="4">
+                    <div style="{{ c.style }}">
+                      <span style="{{ c.countStyle }}">{{ c.count }}</span>
+                      <span style="{{ c.nameStyle }}">{{ c.name }}</span>
+                      <span style="font-size:11.5px;line-height:1.45;color:#5b5473">{{ c.scope }}</span>
+                      <span style="font-size:11px;color:#6b6482;line-height:1.4">{{ c.who }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+
+                <sc-if value="{{ accTab.pending }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;flex-direction:column;gap:10px;padding:14px 15px;border-radius:15px;border:1px solid #d9c6fb;background:#f9f6ff">
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                      <span style="{{ accTab.pending.avatarStyle }}">{{ accTab.pending.initials }}</span>
+                      <span style="font-size:13.5px;font-weight:700">{{ accTab.pending.name }}</span>
+                      <span style="{{ accTab.pending.fromStyle }}">{{ accTab.pending.from }}</span>
+                      <span style="font-size:13px;color:#6b6482">→</span>
+                      <span style="{{ accTab.pending.toStyle }}">{{ accTab.pending.to }}</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:4px">
+                      <sc-for list="{{ accTab.pending.lines }}" as="ln" hint-placeholder-count="2">
+                        <div style="display:flex;gap:8px;font-size:12px;line-height:1.45;color:#3c3559">
+                          <span style="color:#6b6482">·</span>
+                          <span>{{ ln }}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+                    <sc-if value="{{ accTab.pending.warn }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;gap:8px;padding:9px 11px;border-radius:11px;border:1px solid #f0d9a8;background:#fdf7e8;color:#5c4310;font-size:11.5px;line-height:1.45">
+                        <span style="opacity:.6">!</span>
+                        <span>{{ accTab.pending.warn }}</span>
+                      </div>
+                    </sc-if>
+                    <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+                      <input value="{{ accTab.pending.why }}" onChange="{{ accTab.pending.onWhy }}" placeholder="Por que o perfil está mudando? Vai para os Registros." style="flex:1;min-width:240px;height:36px;padding:0 12px;border:1px solid #e6e1f2;border-radius:11px;background:#fff;font-family:Manrope,sans-serif;font-size:12.5px;color:#3c3559;outline:none" />
+                      <button type="button" onClick="{{ accTab.pending.onCancel }}" style="height:36px;padding:0 13px;border-radius:11px;border:1px solid #e6e1f2;background:#fff;color:#5b5473;font-size:12.5px;font-weight:600;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap">Cancelar</button>
+                      <button type="button" onClick="{{ accTab.pending.onConfirm }}" style="{{ accTab.pending.confirmStyle }}">{{ accTab.pending.confirmLabel }}</button>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <div style="display:flex;flex-direction:column;gap:9px">
+                  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Quem tem qual perfil</span>
+                    <div style="display:flex;align-items:center;gap:8px;height:30px;padding:0 11px;border-radius:10px;border:1px solid #e6e1f2;background:#fff;min-width:200px">
+                      <span style="width:10px;height:10px;border:1.5px solid #6b6482;border-radius:50%;flex:none"></span>
+                      <input value="{{ accTab.query }}" onChange="{{ accTab.onQuery }}" placeholder="Buscar pessoa" style="border:none;background:transparent;outline:none;font-family:Manrope,sans-serif;font-size:12px;color:#3c3559;flex:1;min-width:0" />
+                    </div>
+                    <span style="flex:1"></span>
+                    <span style="font-size:11.5px;color:#6b6482">{{ accTab.matrixHint }}</span>
+                  </div>
+
+                  <div style="border:1px solid #e6e1f2;border-radius:14px;background:#fff;overflow:hidden">
+                    <div style="display:flex;gap:10px;padding:10px 14px;background:#f7f5fd;border-bottom:1px solid #e6e1f2;align-items:center;position:sticky;top:0">
+                      <span style="flex:1;min-width:0;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:#6b6482">Pessoa</span>
+                      <sc-for list="{{ accTab.matrixCols }}" as="c" hint-placeholder-count="4">
+                        <span style="{{ c.style }}">{{ c.label }}</span>
+                      </sc-for>
+                      <span style="width:96px;flex:none;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:#6b6482;text-align:right">Conta</span>
+                    </div>
+                    <sc-for list="{{ accTab.matrixGroups }}" as="g" hint-placeholder-count="3">
+                      <div>
+                        <div style="display:flex;align-items:center;gap:8px;padding:7px 14px;background:#faf9fe;border-bottom:1px solid #f2eefa">
+                          <span style="{{ g.dot }}"></span>
+                          <span style="font-size:11px;font-weight:700;color:#6b6482">{{ g.title }}</span>
+                          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6b6482">{{ g.count }}</span>
+                        </div>
+                        <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="5">
+                          <div style="{{ r.style }}">
+                            <div style="flex:1;min-width:0;display:flex;align-items:center;gap:9px">
+                              <span style="{{ r.avatarStyle }}">{{ r.initials }}</span>
+                              <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                                <span style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</span>
+                                <span style="font-size:10.5px;color:#6b6482;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.sub }}</span>
+                              </div>
+                            </div>
+                            <sc-for list="{{ r.cells }}" as="cell" hint-placeholder-count="4">
+                              <span style="{{ cell.wrap }}">
+                                <button type="button" onClick="{{ cell.onClick }}" style="{{ cell.style }}">{{ cell.mark }}</button>
+                              </span>
+                            </sc-for>
+                            <span style="width:96px;flex:none;text-align:right">
+                              <span style="{{ r.accStyle }}">{{ r.acc }}</span>
+                            </span>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </sc-for>
+                    <sc-if value="{{ accTab.matrixEmpty }}" hint-placeholder-val="{{ false }}">
+                      <div style="padding:34px 14px;text-align:center;font-size:12.5px;color:#6b6482">{{ accTab.matrixEmpty }}</div>
+                    </sc-if>
+                  </div>
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:9px">
+                  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">O que cada perfil pode</span>
+                    <sc-for list="{{ accTab.legend }}" as="l" hint-placeholder-count="5">
+                      <span style="{{ l.style }}">
+                        <span style="{{ l.dot }}"></span>
+                        <span>{{ l.label }}</span>
+                      </span>
+                    </sc-for>
+                  </div>
+                  <div style="border:1px solid #e6e1f2;border-radius:14px;background:#fff;overflow:hidden">
+                    <div style="display:flex;gap:10px;padding:10px 14px;background:#f7f5fd;border-bottom:1px solid #e6e1f2;align-items:center">
+                      <span style="flex:1;min-width:0;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:#6b6482">Ação</span>
+                      <sc-for list="{{ accTab.cols }}" as="c" hint-placeholder-count="4">
+                        <span style="{{ c.style }}">{{ c.label }}</span>
+                      </sc-for>
+                    </div>
+                    <sc-for list="{{ accTab.capGroups }}" as="g" hint-placeholder-count="3">
+                      <div>
+                        <div style="padding:8px 14px;background:#faf9fe;border-bottom:1px solid #f2eefa;font-size:11px;font-weight:700;color:#6b6482">{{ g.title }}</div>
+                        <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="4">
+                          <div style="display:flex;gap:10px;align-items:center;padding:8px 14px;border-bottom:1px solid #f2eefa">
+                            <span style="flex:1;min-width:0;font-size:12.5px;color:#3c3559">{{ r.k }}</span>
+                            <sc-for list="{{ r.cells }}" as="cell" hint-placeholder-count="4">
+                              <span style="{{ cell.style }}">{{ cell.label }}</span>
+                            </sc-for>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:9px">
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Contas fora de lugar</span>
+                  <sc-for list="{{ accTab.pend }}" as="p" hint-placeholder-count="2">
+                    <div style="display:flex;align-items:center;gap:11px;padding:11px 13px;border:1px solid #f0d9a8;background:#fffdf7;border-radius:13px">
+                      <span style="{{ p.avatarStyle }}">{{ p.initials }}</span>
+                      <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0">
+                        <div style="display:flex;align-items:center;gap:8px">
+                          <span style="font-size:13px;font-weight:700">{{ p.name }}</span>
+                          <span style="{{ p.tagStyle }}">{{ p.tag }}</span>
+                        </div>
+                        <span style="font-size:11.5px;line-height:1.45;color:#5b5473">{{ p.body }}</span>
+                        <span style="font-size:10.5px;color:#6b6482">{{ p.meta }}</span>
+                      </div>
+                      <button type="button" onClick="{{ p.onAct }}" style="{{ p.actStyle }}">{{ p.actLabel }}</button>
+                    </div>
+                  </sc-for>
+                  <sc-if value="{{ accTab.empty }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;align-items:center;gap:10px;padding:14px;border:1px dashed #ddd6ee;background:#faf9fe;border-radius:13px">
+                      <img src="assets/asa-wing.png" alt="" style="width:32px;height:32px;object-fit:contain;flex:none" />
+                      <span style="font-size:12.5px;color:#5b5473">{{ accTab.empty }}</span>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isHistorico }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1;min-height:0;overflow:auto;padding:18px 20px 24px;display:flex;flex-direction:column;gap:14px">
+                <div style="display:flex;flex-direction:column;gap:5px">
+                  <div style="display:flex;align-items:baseline;gap:12px">
+                    <span style="font-family:Outfit,sans-serif;font-size:19px;font-weight:600">Histórico</span>
+                    <span style="font-size:12.5px;color:#6b6482">{{ hist.count }}</span>
+                  </div>
+                  <span style="font-size:12.5px;line-height:1.5;color:#5b5473;max-width:88ch">{{ hist.note }}</span>
+                </div>
+
+                <div style="border:1px solid #e6e1f2;border-radius:14px;background:#fff;overflow:hidden">
+                  <div style="display:flex;gap:10px;padding:9px 14px;background:#f7f5fd;border-bottom:1px solid #e6e1f2;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:#6b6482">
+                    <span style="flex:1;min-width:0">Pessoa</span>
+                    <span style="width:128px;flex:none">Estava em</span>
+                    <span style="width:132px;flex:none">Período</span>
+                    <span style="flex:1;min-width:0">Motivo da saída</span>
+                    <span style="width:96px;flex:none">Desligou</span>
+                    <span style="width:172px;flex:none">Deixou</span>
+                    <span style="width:112px;flex:none"></span>
+                  </div>
+                  <sc-for list="{{ hist.rows }}" as="r" hint-placeholder-count="2">
+                    <div style="{{ r.style }}">
+                      <div style="flex:1;min-width:0;display:flex;align-items:center;gap:9px">
+                        <span style="{{ r.avatarStyle }}">{{ r.initials }}</span>
+                        <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                          <span style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</span>
+                          <span style="font-size:10.5px;color:#6b6482;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.acc }}</span>
+                        </div>
+                      </div>
+                      <div style="width:128px;flex:none;display:flex;flex-direction:column;gap:1px">
+                        <span style="font-size:12px;color:#3c3559">{{ r.group }}</span>
+                        <span style="font-size:10.5px;color:#6b6482">{{ r.area }}</span>
+                      </div>
+                      <span style="width:132px;flex:none;font-family:'JetBrains Mono',monospace;font-size:11px;color:#5b5473">{{ r.period }}</span>
+                      <span style="flex:1;min-width:0;font-size:12px;line-height:1.4;color:#3c3559">{{ r.why }}</span>
+                      <span style="width:96px;flex:none;font-size:11.5px;color:#5b5473">{{ r.by }}</span>
+                      <span style="width:172px;flex:none"><span style="{{ r.holesStyle }}">{{ r.holes }}</span></span>
+                      <div style="width:112px;flex:none;display:flex;gap:6px;justify-content:flex-end">
+                        <button type="button" onClick="{{ r.onView }}" style="height:28px;padding:0 10px;flex:none;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer">ver</button>
+                        <button type="button" onClick="{{ r.onReact }}" style="{{ r.reactStyle }}">Reativar</button>
+                      </div>
+                    </div>
+                  </sc-for>
+                  <sc-if value="{{ hist.empty }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding:34px 14px;text-align:center;font-size:12.5px;color:#6b6482">{{ hist.empty }}</div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ react }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;inset:0;background:rgba(28,20,64,.32);display:flex;align-items:center;justify-content:center;z-index:9;padding:24px">
+                <div style="width:452px;max-width:100%;background:#fff;border-radius:18px;box-shadow:0 26px 60px -30px rgba(40,20,90,.55);display:flex;flex-direction:column">
+                  <div style="display:flex;align-items:center;gap:11px;padding:14px 16px;border-bottom:1px solid #f0ecf9">
+                    <span style="{{ react.avatarStyle }}">{{ react.initials }}</span>
+                    <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0">
+                      <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">{{ react.name }}</span>
+                      <span style="font-size:11.5px;color:#6b6482">{{ react.sub }}</span>
+                    </div>
+                    <button type="button" onClick="{{ react.onClose }}" style="width:28px;height:28px;flex:none;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:14px;cursor:pointer">×</button>
+                  </div>
+                  <div style="padding:15px 16px 17px;display:flex;flex-direction:column;gap:11px">
+                    <span style="font-size:12.5px;line-height:1.5;color:#3c3559">{{ react.question }}</span>
+                    <sc-for list="{{ react.options }}" as="o" hint-placeholder-count="2">
+                      <div style="{{ o.style }}">
+                        <span style="{{ o.titleStyle }}">{{ o.title }}</span>
+                        <span style="font-size:11.5px;line-height:1.5;color:#5b5473">{{ o.body }}</span>
+                        <button type="button" onClick="{{ o.onClick }}" style="{{ o.btnStyle }}">{{ o.label }}</button>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isRegistros }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1;min-height:0;overflow:auto;padding:18px 20px 24px;display:flex;flex-direction:column;gap:14px">
+                <div style="display:flex;align-items:baseline;gap:12px">
+                  <span style="font-family:Outfit,sans-serif;font-size:19px;font-weight:600">Registros</span>
+                  <span style="font-size:12.5px;color:#6b6482">quem entrou, quem mudou de área, quem mudou de perfil, quem saiu</span>
+                </div>
+                <div style="border:1px solid #e6e1f2;border-radius:14px;background:#fff;overflow:hidden">
+                  <div style="display:flex;gap:10px;padding:9px 14px;background:#f7f5fd;border-bottom:1px solid #e6e1f2;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:#6b6482">
+                    <span style="width:96px;flex:none">Quando</span>
+                    <span style="width:132px;flex:none">Pessoa</span>
+                    <span style="width:106px;flex:none">O que mudou</span>
+                    <span style="flex:1">De → para</span>
+                    <span style="width:168px;flex:none">Reflexo</span>
+                    <span style="width:96px;flex:none">Quem</span>
+                  </div>
+                  <sc-for list="{{ logs }}" as="l" hint-placeholder-count="6">
+                    <div style="display:flex;gap:10px;padding:10px 14px;border-bottom:1px solid #f2eefa;font-size:12.5px;align-items:flex-start">
+                      <span style="width:96px;flex:none;color:#6b6482;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.4">{{ l.when }}</span>
+                      <span style="width:132px;flex:none;font-weight:600;line-height:1.4">{{ l.who }}</span>
+                      <span style="width:106px;flex:none;color:#5b5473;line-height:1.4">{{ l.what }}</span>
+                      <span style="flex:1;color:#3c3559;line-height:1.4">{{ l.diff }}</span>
+                      <span style="width:168px;flex:none;color:#6b6482;font-size:11.5px;line-height:1.4">{{ l.effect }}</span>
+                      <span style="width:96px;flex:none;color:#5b5473;font-size:11.5px">{{ l.by }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ det }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;inset:0;background:rgba(28,20,64,.32);display:flex;justify-content:flex-end;z-index:7">
+                <div style="width:512px;max-width:92%;background:#fff;display:flex;flex-direction:column;box-shadow:-24px 0 54px -30px rgba(40,20,90,.5)">
+                  <div style="display:flex;align-items:center;gap:11px;padding:14px 17px;border-bottom:1px solid #f0ecf9">
+                    <span style="{{ det.avatarStyle }}">{{ det.initials }}</span>
+                    <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0">
+                      <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">{{ det.title }}</span>
+                      <span style="font-size:11.5px;color:#6b6482">{{ det.sub }}</span>
+                    </div>
+                    <button type="button" onClick="{{ det.onClose }}" style="width:28px;height:28px;flex:none;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:14px;cursor:pointer">×</button>
+                  </div>
+
+                  <div style="flex:1;overflow:auto;padding:16px 17px 20px;display:flex;flex-direction:column;gap:17px">
+
+                    <div style="display:flex;gap:11px">
+                      <div style="display:flex;flex-direction:column;gap:7px;flex:1">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Nome</span>
+                        <input value="{{ det.nameValue }}" onChange="{{ det.onName }}" readOnly="{{ det.readOnly }}" placeholder="Nome e sobrenome" style="height:36px;padding:0 11px;border:1px solid #e6e1f2;border-radius:11px;background:#faf9fe;font-family:Manrope,sans-serif;font-size:13px;color:#3c3559;outline:none" />
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:7px;width:132px;flex:none">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Na casa desde</span>
+                        <input value="{{ det.sinceValue }}" onChange="{{ det.onSince }}" readOnly="{{ det.readOnly }}" placeholder="mar 2024" style="height:36px;padding:0 11px;border:1px solid #e6e1f2;border-radius:11px;background:#faf9fe;font-family:Manrope,sans-serif;font-size:13px;color:#3c3559;outline:none" />
+                      </div>
+                    </div>
+
+                    <div style="display:flex;flex-direction:column;gap:9px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">{{ det.funcLabel }}</span>
+                      <div style="display:flex;gap:6px;flex-wrap:wrap">
+                        <sc-for list="{{ det.funcs }}" as="f" hint-placeholder-count="4">
+                          <button type="button" onClick="{{ f.onClick }}" style="{{ f.style }}">{{ f.label }}</button>
+                        </sc-for>
+                      </div>
+                      <span style="font-size:11.5px;line-height:1.45;color:#5b5473">{{ det.funcNote }}</span>
+                    </div>
+
+                    <div style="display:flex;flex-direction:column;gap:9px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Grupo · quem responde por ela</span>
+                      <div style="display:flex;flex-direction:column;gap:5px">
+                        <sc-for list="{{ det.groups }}" as="g" hint-placeholder-count="3">
+                          <div onClick="{{ g.onClick }}" style="{{ g.style }}">
+                            <span style="{{ g.dot }}"></span>
+                            <div style="display:flex;flex-direction:column;gap:1px;flex:1;min-width:0">
+                              <span style="font-size:12.5px;font-weight:600">{{ g.name }}</span>
+                              <span style="font-size:10.5px;color:#6b6482">{{ g.note }}</span>
+                            </div>
+                            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#6b6482;flex:none">{{ g.count }}</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                      <sc-if value="{{ det.groupNote }}" hint-placeholder-val="{{ false }}">
+                        <span style="font-size:11.5px;line-height:1.45;color:#5b5473">{{ det.groupNote }}</span>
+                      </sc-if>
+                    </div>
+
+                    <div style="display:flex;flex-direction:column;gap:9px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Situação</span>
+                      <div style="display:flex;gap:5px;flex-wrap:wrap">
+                        <sc-for list="{{ det.states }}" as="s" hint-placeholder-count="3">
+                          <button type="button" onClick="{{ s.onClick }}" style="{{ s.style }}">{{ s.label }}</button>
+                        </sc-for>
+                      </div>
+                      <span style="font-size:11.5px;line-height:1.45;color:#5b5473">{{ det.statesNote }}</span>
+                    </div>
+
+                    <sc-if value="{{ det.dateField }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;flex-direction:column;gap:7px">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">{{ det.dateField.label }}</span>
+                        <input value="{{ det.dateField.value }}" onChange="{{ det.dateField.onChange }}" readOnly="{{ det.readOnly }}" placeholder="12 set" style="height:36px;padding:0 11px;border:1px solid #e6e1f2;border-radius:11px;background:#faf9fe;font-family:Manrope,sans-serif;font-size:13px;color:#3c3559;outline:none" />
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{ det.acc }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;flex-direction:column;gap:11px;padding:13px 14px;border-radius:14px;border:1px solid #e6e1f2;background:#faf9fe">
+                        <div style="display:flex;align-items:center;gap:9px">
+                          <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Perfil e conta</span>
+                          <span style="flex:1"></span>
+                          <span style="{{ det.acc.stateChip }}">{{ det.acc.stateLabel }}</span>
+                        </div>
+
+                        <div style="display:flex;align-items:center;gap:10px;padding:10px 11px;border-radius:11px;background:#fff;border:1px solid #eee9f8">
+                          <span style="{{ det.acc.roleChip }}">{{ det.acc.roleName }}</span>
+                          <span style="font-size:11.5px;line-height:1.4;color:#5b5473;flex:1;min-width:0">{{ det.acc.scopeNote }}</span>
+                          <button type="button" onClick="{{ det.acc.onGoMatrix }}" style="{{ det.acc.matrixBtnStyle }}">{{ det.acc.matrixBtnLabel }}</button>
+                        </div>
+
+                        <div style="display:flex;gap:10px;align-items:flex-end">
+                          <div style="display:flex;flex-direction:column;gap:7px;flex:1;min-width:0">
+                            <span style="font-size:11px;color:#6b6482">Login</span>
+                            <input value="{{ det.acc.loginValue }}" onChange="{{ det.acc.onLogin }}" readOnly="{{ det.acc.loginReadOnly }}" placeholder="nome.sobrenome@asa.com" style="height:34px;padding:0 11px;border:1px solid #e6e1f2;border-radius:10px;background:#fff;font-family:Manrope,sans-serif;font-size:12.5px;color:#3c3559;outline:none" />
+                          </div>
+                          <div style="display:flex;flex-direction:column;gap:7px;width:112px;flex:none">
+                            <span style="font-size:11px;color:#6b6482">Último acesso</span>
+                            <span style="height:34px;display:flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#5b5473">{{ det.acc.last }}</span>
+                          </div>
+                        </div>
+
+                        <div style="display:flex;flex-direction:column;gap:7px">
+                          <span style="font-size:11px;color:#6b6482">Estado da conta</span>
+                          <div style="display:flex;gap:5px;flex-wrap:wrap">
+                            <sc-for list="{{ det.acc.states }}" as="s" hint-placeholder-count="4">
+                              <button type="button" onClick="{{ s.onClick }}" style="{{ s.style }}">{{ s.label }}</button>
+                            </sc-for>
+                          </div>
+                        </div>
+
+                        <sc-if value="{{ det.acc.action }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:11px;background:#fff;border:1px solid #eee9f8">
+                            <span style="font-size:11.5px;line-height:1.45;color:#5b5473;flex:1">{{ det.acc.action.note }}</span>
+                            <button type="button" onClick="{{ det.acc.action.onClick }}" style="height:29px;padding:0 12px;flex:none;border-radius:9px;border:1px solid #ddd0fb;background:#fff;color:#6C2BF2;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap">{{ det.acc.action.label }}</button>
+                          </div>
+                        </sc-if>
+
+                        <sc-if value="{{ det.acc.mismatch }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex;gap:8px;padding:9px 11px;border-radius:11px;border:1px solid #f0d9a8;background:#fdf7e8;color:#5c4310;font-size:11.5px;line-height:1.45">
+                            <span style="opacity:.6">!</span>
+                            <span>{{ det.acc.mismatch }}</span>
+                          </div>
+                        </sc-if>
+
+                        <span style="font-size:11px;line-height:1.45;color:#6b6482">{{ det.acc.foot }}</span>
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{ det.block }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;flex-direction:column;gap:6px;padding:12px 13px;border-radius:12px;border:1px solid #f0bcbc;background:#fdf5f5;color:#7d2626">
+                        <span style="font-size:12.5px;font-weight:700">{{ det.block.title }}</span>
+                        <span style="font-size:12px;line-height:1.5">{{ det.block.body }}</span>
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{ det.reflex }}" hint-placeholder-val="{{ false }}">
+                      <div style="{{ det.reflex.style }}">
+                        <span style="font-size:12.5px;font-weight:700">{{ det.reflex.title }}</span>
+                        <div style="display:flex;flex-direction:column;gap:4px">
+                          <sc-for list="{{ det.reflex.lines }}" as="ln" hint-placeholder-count="3">
+                            <div style="display:flex;gap:8px;font-size:12px;line-height:1.45">
+                              <span style="opacity:.5">·</span>
+                              <span>{{ ln }}</span>
+                            </div>
+                          </sc-for>
+                        </div>
+                      </div>
+                    </sc-if>
+
+                    <div style="display:flex;flex-direction:column;gap:6px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">{{ det.whyLabel }}</span>
+                      <textarea value="{{ det.why }}" onChange="{{ det.onWhy }}" readOnly="{{ det.readOnly }}" placeholder="{{ det.whyPlaceholder }}" style="min-height:54px;resize:vertical;padding:9px 11px;border:1px solid #e6e1f2;border-radius:11px;background:#faf9fe;font-size:12.5px;line-height:1.45;color:#3c3559;font-family:Manrope,sans-serif"></textarea>
+                    </div>
+
+                    <sc-if value="{{ det.history }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;flex-direction:column;gap:7px">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Histórico desta pessoa</span>
+                        <sc-for list="{{ det.history }}" as="h" hint-placeholder-count="3">
+                          <div style="display:flex;gap:9px;align-items:baseline;padding:7px 10px;border-radius:10px;background:#faf9fe;border:1px solid #eee9f8">
+                            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6b6482;flex:none;width:64px">{{ h.when }}</span>
+                            <span style="font-size:11.5px;color:#3c3559;flex:1;line-height:1.45">{{ h.what }}</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+                  </div>
+
+                  <div style="display:flex;align-items:center;gap:9px;padding:13px 17px;border-top:1px solid #f0ecf9;background:#fff">
+                    <span style="font-size:11.5px;color:#6b6482;flex:1;line-height:1.4">{{ det.footNote }}</span>
+                    <button type="button" onClick="{{ det.onClose }}" style="{{ det.cancelStyle }}">Cancelar</button>
+                    <button type="button" onClick="{{ det.onSave }}" style="{{ det.saveStyle }}">{{ det.saveLabel }}</button>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ asaOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;right:0;top:0;bottom:0;width:352px;background:#fff;border-left:1px solid #e6e1f2;box-shadow:-24px 0 48px -34px rgba(40,20,90,.4);display:flex;flex-direction:column;z-index:8">
+                <div style="display:flex;align-items:center;gap:10px;padding:13px 15px;border-bottom:1px solid #f0ecf9">
+                  <img src="assets/asa/estudando.png" alt="" style="width:30px;height:30px;object-fit:contain" />
+                  <div style="display:flex;flex-direction:column;gap:1px;flex:1">
+                    <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">ASA · pessoas</span>
+                    <span style="font-size:11px;color:#6b6482">{{ asaHint }}</span>
+                  </div>
+                  <button type="button" onClick="{{ toggleAsa }}" style="width:26px;height:26px;border-radius:8px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:13px;cursor:pointer">×</button>
+                </div>
+                <div style="flex:1;overflow:auto;padding:14px 15px;display:flex;flex-direction:column;gap:12px">
+                  <div style="padding:12px 13px;background:#f7f3ff;border:1px solid #e5d8fb;border-radius:13px">
+                    <span style="font-size:12.5px;line-height:1.5;color:#3c3559">{{ asaIntro }}</span>
+                  </div>
+                  <sc-for list="{{ asaCards }}" as="c" hint-placeholder-count="3">
+                    <div style="{{ c.style }}">
+                      <div style="display:flex;align-items:center;gap:8px">
+                        <span style="{{ c.tagStyle }}">{{ c.tag }}</span>
+                        <span style="flex:1"></span>
+                        <span style="font-size:10.5px;color:#6b6482;font-family:'JetBrains Mono',monospace">{{ c.conf }}</span>
+                      </div>
+                      <span style="font-size:13px;font-weight:600;line-height:1.4">{{ c.title }}</span>
+                      <span style="font-size:12px;line-height:1.5;color:#5b5473">{{ c.why }}</span>
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;line-height:1.5;color:#6C2BF2">{{ c.nums }}</span>
+                      <sc-if value="{{ c.open }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex;flex-direction:column;gap:4px;padding:9px 10px;background:#faf9fe;border:1px solid #eee9f8;border-radius:10px">
+                          <sc-for list="{{ c.lines }}" as="ln" hint-placeholder-count="3">
+                            <div style="display:flex;gap:7px;font-size:11.5px;line-height:1.45;color:#3c3559">
+                              <span style="color:#6b6482">·</span>
+                              <span>{{ ln }}</span>
+                            </div>
+                          </sc-for>
+                        </div>
+                      </sc-if>
+                      <div style="display:flex;gap:7px;padding-top:2px">
+                        <button type="button" onClick="{{ c.onReflex }}" style="height:29px;padding:0 11px;border-radius:9px;border:1px solid #ddd0fb;background:#fff;color:#6C2BF2;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap">{{ c.reflexLabel }}</button>
+                        <button type="button" onClick="{{ c.onApply }}" style="{{ c.ctaStyle }}">{{ c.cta }}</button>
+                        <span style="flex:1"></span>
+                        <button type="button" onClick="{{ c.onDismiss }}" style="height:29px;padding:0 11px;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:11.5px;font-weight:600;font-family:Manrope,sans-serif;cursor:pointer">Depois</button>
+                      </div>
+                    </div>
+                  </sc-for>
+                  <sc-if value="{{ asaEmpty }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:30px 14px;background:#faf9fe;border:1px dashed #ddd6ee;border-radius:13px">
+                      <img src="assets/asa-wing.png" alt="" style="width:38px;height:38px;object-fit:contain" />
+                      <span style="font-size:12.5px;font-weight:600">Nada pendente aqui</span>
+                      <span style="font-size:11.5px;color:#6b6482;text-align:center;line-height:1.5">{{ asaEmpty }}</span>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-if>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:0 0 390px;min-width:390px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Mobile · segue o Ver como</div>
+      <div style="width:390px;border:1px solid #ddd6ee;border-radius:38px;overflow:hidden;background:#1c1440;padding:9px;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="position:relative;background:#faf9fe;border-radius:30px;overflow:hidden;display:flex;flex-direction:column;height:826px">
+          <sc-if value="{{ moreOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:0;right:0;top:0;bottom:0;z-index:9;background:rgba(28,20,64,.42);display:flex;align-items:flex-end">
+              <div style="width:100%;max-height:88%;overflow-y:auto;background:#faf9fe;border-radius:22px 22px 30px 30px;padding:14px 14px 18px;display:flex;flex-direction:column;gap:12px">
+                <div style="display:flex;align-items:flex-start;gap:10px">
+                  <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0">
+                    <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">{{ moreTitle }}</span>
+                    <span style="font-size:11px;color:#6b6482">{{ moreSub }}</span>
+                  </div>
+                  <button type="button" onClick="{{ onCloseMore }}" style="width:28px;height:28px;flex:none;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:14px;cursor:pointer">×</button>
+                </div>
+                <a href="{{ moreAsa }}" style="display:flex;align-items:center;gap:11px;padding:12px;border-radius:14px;background:#f4edfe;border:1px solid #ddcbfa;text-decoration:none">
+                  <img src="assets/asa/oi.png" alt="" style="width:36px;height:36px;object-fit:contain;flex:none" />
+                  <span style="display:flex;flex-direction:column;gap:1px;min-width:0;flex:1">
+                    <span style="font-size:13px;font-weight:700;color:#5B23C9">Perguntar à ASA</span>
+                    <span style="font-size:11px;color:#5f4b8a">ela resolve sem você procurar a tela</span>
+                  </span>
+                </a>
+                <sc-for list="{{ moreGroups }}" as="g" hint-placeholder-count="4">
+                  <div style="display:flex;flex-direction:column;gap:6px">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482;padding:0 2px">{{ g.title }}</span>
+                    <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+                      <a href="{{ it.href }}" style="{{ it.style }}">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6b6482;flex:none;min-width:17px">{{ it.num }}</span>
+                        <span style="font-size:13px;font-weight:600;flex:1;min-width:0">{{ it.label }}</span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6b6482;flex:none">›</span>
+                      </a>
+                    </sc-for>
+                  </div>
+                </sc-for>
+                <a href="{{ morePerfil }}" style="display:flex;align-items:center;gap:10px;padding:12px;border-radius:14px;background:#fff;border:1px solid #eee9f6;text-decoration:none;color:#1b1630">
+                  <span style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+                  <span style="font-size:13px;font-weight:600;flex:1">Perfil e configurações</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6b6482">›</span>
+                </a>
+              </div>
+            </div>
+          </sc-if>
+          <div style="position:absolute;left:0;right:0;bottom:0;z-index:5;display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid #ebe6f6;background:#fff;padding:9px 4px 12px">
+            <sc-for list="{{ mobileTabs }}" as="t" hint-placeholder-count="5">
+              <a href="{{ t.href }}" onClick="{{ t.onClick }}" style="{{ t.style }}">
+                <span style="display:block;width:19px;height:19px;border-radius:6px;border:1.7px solid currentColor;opacity:.75"></span>
+                <span style="font-size:9.5px;font-weight:600;text-align:center">{{ t.label }}</span>
+              </a>
+            </sc-for>
+          </div>
+          
+          <div style="padding:12px 14px 10px;background:#fff;border-bottom:1px solid #ebe6f6;display:flex;flex-direction:column;gap:2px">
+            <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">{{ mob.title }}</span>
+            <span style="font-size:11.5px;color:#6b6482">{{ mob.sub }}</span>
+          </div>
+          <div style="flex:1;overflow:auto;padding:12px 14px 76px;display:flex;flex-direction:column;gap:11px">
+            <sc-if value="{{ mob.note }}" hint-placeholder-val="{{ false }}">
+              <div style="{{ mob.noteStyle }}">{{ mob.note }}</div>
+            </sc-if>
+
+            <sc-if value="{{ mob.mine }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:11px;padding:13px 14px;background:#fff;border:1px solid #e6e1f2;border-radius:14px">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span style="{{ mob.mine.avatarStyle }}">{{ mob.mine.initials }}</span>
+                  <div style="display:flex;flex-direction:column;gap:1px;flex:1;min-width:0">
+                    <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">{{ mob.mine.name }}</span>
+                    <span style="font-size:11px;color:#6b6482">{{ mob.mine.sub }}</span>
+                  </div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:5px">
+                  <sc-for list="{{ mob.mine.rows }}" as="r" hint-placeholder-count="5">
+                    <div style="display:flex;align-items:baseline;gap:8px">
+                      <span style="font-size:11px;color:#6b6482;flex:1;min-width:0">{{ r.k }}</span>
+                      <span style="font-size:11.5px;font-weight:700;color:#3c3559;text-align:right">{{ r.v }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+                <span style="font-size:11px;line-height:1.45;color:#4a2a9c;background:#f7f3ff;border:1px solid #e5d8fb;border-radius:10px;padding:8px 9px">{{ mob.mine.foot }}</span>
+              </div>
+            </sc-if>
+
+            <sc-for list="{{ mob.cards }}" as="c" hint-placeholder-count="6">
+              <div style="{{ c.style }}">
+                <div style="display:flex;align-items:center;gap:9px">
+                  <span style="{{ c.avatarStyle }}">{{ c.initials }}</span>
+                  <div style="display:flex;flex-direction:column;gap:1px;flex:1;min-width:0">
+                    <span style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</span>
+                    <span style="font-size:10.5px;color:#6b6482;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.meta }}</span>
+                  </div>
+                  <span style="{{ c.chip }}">{{ c.state }}</span>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1720},&quot;perfilInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ADM&quot;,&quot;DIR&quot;,&quot;SUP&quot;,&quot;MEM&quot;],&quot;default&quot;:&quot;ADM&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Demonstração&quot;},&quot;areaObrigatoria&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Regras&quot;}}">
+const PROFILES = [
+  { key: "ADM", name: "Administração", person: "Barbara Sorroche", dot: "#6C2BF2", scope: "Toda a empresa", hint: "Cadastra, muda área, muda perfil e desliga." },
+  { key: "DIR", name: "Direção", person: "Cris Garcia", dot: "#2E63D6", scope: "Leitura geral", hint: "Lê todas as fichas e a matriz, não edita nenhuma." },
+  { key: "SUP", name: "Supervisão", person: "Deborah", dot: "#0E8F86", scope: "Patinadores", hint: "Edita quem é do seu grupo. Não muda perfil de ninguém." },
+  { key: "MEM", name: "Elenco", person: "Julia", dot: "#C2508F", scope: "Minha ficha", hint: "Vê a própria ficha e quem está no seu grupo." }
+];
+
+const NAV = [
+  { title: "Porta de entrada", items: [
+    ["17", "Início / Meu Dia", ["ADM","DIR","SUP","MEM"], "Meu Dia"]
+  ] },
+  { title: "O dia", items: [
+    ["20", "Agenda", ["ADM","DIR","SUP","MEM"], "Minha agenda"],
+    ["15", "Escalas", ["ADM","DIR","SUP","MEM"], "Minha escala"],
+    ["13", "Shows", ["ADM","DIR","SUP","MEM"], "Shows"],
+    ["14", "Livro do Dia", ["ADM","DIR","SUP","MEM"], "Meus shows"],
+    ["19", "Check-in e ocorrências", ["ADM","DIR","SUP","MEM"], "Check-in"],
+    ["10", "Responsabilidades e tarefas", ["ADM","DIR","SUP","MEM"], "Minhas tarefas"],
+    ["18", "Folgas", ["ADM","DIR","SUP","MEM"], "Minhas folgas"]
+  ] },
+  { title: "Gestão", items: [
+    ["16", "Painel", ["ADM","DIR","SUP"], null],
+    ["06", "Locais", ["ADM","DIR","SUP"], null],
+    ["07", "Pessoas", ["ADM","DIR","SUP"], null],
+    ["08", "Áreas", ["ADM","DIR","SUP","MEM"], "Meu grupo"],
+    ["25", "Reconhecimentos", ["ADM","DIR","SUP"], null]
+  ] },
+  { title: "Comunicação", items: [
+    ["22", "Avisos e Mural", ["ADM","DIR","SUP","MEM"], "Mural"],
+    ["23", "Mensagens", ["ADM","DIR","SUP","MEM"], "Conversas"],
+    ["24", "Biblioteca", ["ADM","DIR","SUP","MEM"], "Biblioteca"]
+  ] }
+];
+
+
+const MOBILE_TABS = {
+  ADM: [["17","Meu Dia"],["16","Painel"],["15","Escalas"],["22","Mural"],["mais","Mais"]],
+  DIR: [["17","Meu Dia"],["16","Painel"],["20","Agenda"],["22","Mural"],["mais","Mais"]],
+  SUP: [["17","Meu Dia"],["15","Escalas"],["07","Equipe"],["22","Mural"],["mais","Mais"]],
+  MEM: [["17","Meu Dia"],["15","Escala"],["22","Mural"],["23","Conversas"],["mais","Mais"]]
+};
+
+const NAV_HREF = {
+  "10": "10%20Responsabilidades%20e%20Tarefas.dc.html",
+  "13": "13%20Shows.dc.html",
+  "14": "14%20Livro%20do%20Dia.dc.html",
+  "15": "15%20Escalas.dc.html",
+  "16": "16%20Painel%20e%20indicadores.dc.html",
+  "17": "17%20Meu%20Dia.dc.html",
+  "18": "18%20Folgas.dc.html",
+  "19": "19%20Check-in%20e%20ocorr%C3%AAncias.dc.html",
+  "20": "20%20Agenda.dc.html",
+  "22": "22%20Avisos%20e%20Mural.dc.html",
+  "23": "23%20Mensagens.dc.html",
+  "24": "24%20Biblioteca.dc.html", "25": "25%20Reconhecimentos.dc.html",
+  "27": "27%20Assistente%20ASA.dc.html",
+  "28": "28%20Perfil%20e%20configura%C3%A7%C3%B5es.dc.html",
+  "06": "06%20Locais.dc.html",
+  "07": "07%20Pessoas.dc.html",
+  "08": "08%20%C3%81reas.dc.html"
+};
+
+const AREAS = [
+  { key: "Patinadores", dot: "#7E4BD8" },
+  { key: "Bailarinos", dot: "#0E8F86" },
+  { key: "Produção", dot: "#2E63D6" },
+  { key: "Gestão", dot: "#B06E00" }
+];
+const FUNCS = AREAS.map(a => ({ key: a.key, area: a.key }));
+
+const GROUPS = [
+  { id: 1, name: "Snowland A", func: "Patinadores", lead: "Deborah" },
+  { id: 2, name: "Snowland B", func: "Patinadores", lead: "Deborah" },
+  { id: 3, name: "Snowland", func: "Bailarinos", lead: "Victor Oliveira" },
+  { id: 4, name: "Acquamotion", func: "Bailarinos", lead: "Stephani" },
+  { id: 5, name: "Equipe fixa", func: "Produção", lead: "Rodrigo" },
+  { id: 6, name: "Hotelaria", func: "Produção", lead: "" },
+  { id: 7, name: "Liderança", func: "Gestão", lead: "Barbara Sorroche" }
+];
+
+const STATES = ["Ativa", "Afastada", "Desligada"];
+
+// Um campo só: o perfil. Diz de uma vez o que a pessoa responde e o que ela vê.
+const ROLES = [
+  { key: "ADM", name: "Administração", short: "ADM", dot: "#6C2BF2", company: true, scope: "a ASA inteira, com poder de mudar", duty: "responde pela casa inteira" },
+  { key: "DIR", name: "Direção", short: "Direção", dot: "#2E63D6", company: true, scope: "a ASA inteira, em leitura", duty: "acompanha a casa inteira sem operar" },
+  { key: "SUP", name: "Supervisão", short: "Supervisão", dot: "#0E8F86", company: false, scope: "os grupos que ela supervisiona", duty: "responde por um grupo" },
+  { key: "MEM", name: "Elenco", short: "Elenco", dot: "#C2508F", company: false, scope: "o próprio dia e a própria ficha", duty: "responde pelo próprio dia" }
+];
+const ACC_STATES = ["Sem conta", "Convite enviado", "Ativa", "Bloqueada"];
+const CAPS = [
+  { g: "Pessoas e estrutura", k: "Cadastrar e editar fichas", v: { ADM: "total", DIR: "leitura", SUP: "escopo", MEM: "proprio" } },
+  { g: "Pessoas e estrutura", k: "Mudar o perfil de alguém", v: { ADM: "total", DIR: "leitura", SUP: "fora", MEM: "fora" } },
+  { g: "Pessoas e estrutura", k: "Criar áreas e grupos", v: { ADM: "total", DIR: "leitura", SUP: "fora", MEM: "fora" } },
+  { g: "Pessoas e estrutura", k: "Apontar supervisor de grupo", v: { ADM: "total", DIR: "leitura", SUP: "fora", MEM: "fora" } },
+  { g: "O dia", k: "Montar e publicar a escala", v: { ADM: "total", DIR: "leitura", SUP: "escopo", MEM: "proprio" } },
+  { g: "O dia", k: "Responder folga e solicitação", v: { ADM: "total", DIR: "leitura", SUP: "escopo", MEM: "proprio" } },
+  { g: "O dia", k: "Editar Livro do Show", v: { ADM: "total", DIR: "leitura", SUP: "escopo", MEM: "leitura" } },
+  { g: "O dia", k: "Check-in e ocorrência", v: { ADM: "total", DIR: "leitura", SUP: "escopo", MEM: "proprio" } },
+  { g: "A casa", k: "Publicar aviso e moderar Mural", v: { ADM: "total", DIR: "leitura", SUP: "escopo", MEM: "fora" } },
+  { g: "A casa", k: "Painel", v: { ADM: "total", DIR: "leitura", SUP: "escopo", MEM: "fora" } }
+];
+const TOKENS = {
+  total: ["tudo", "#6C2BF2", "#f2ecfe"],
+  leitura: ["só lê", "#2E63D6", "#eaf0fd"],
+  escopo: ["a área dela", "#0E8F86", "#e2f4f2"],
+  proprio: ["o próprio", "#B06E00", "#fdf1dc"],
+  fora: ["não entra", "#6b6482", "#f4f2fa"]
+};
+const roleMeta = k => ROLES.find(r => r.key === k) || ROLES[3];
+const loginOf = name => (name || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z ]/g, "").trim().split(/ +/).slice(0, 2).join(".") + "@asa.com";
+
+const P = (id, name, func, group, role, state, since, extra) => Object.assign({ id: id, name: name, func: func, group: group, role: role, state: state, since: since, date: "" }, extra || {});
+
+const ACC0 = {
+  "Barbara Sorroche": { acc: "Ativa", last: "hoje 09:12" },
+  "Cris Garcia": { acc: "Ativa", last: "hoje 08:40" },
+  "Deborah": { acc: "Ativa", last: "hoje 07:55" },
+  "Victor Oliveira": { acc: "Ativa", last: "ontem" },
+  "Stephani": { acc: "Ativa", last: "ontem" },
+  "Rodrigo": { acc: "Ativa", last: "3 dias" },
+  "Sarah": { acc: "Convite enviado", last: "nunca", invited: 3 },
+  "Caleb": { acc: "Convite enviado", last: "nunca", invited: 5 },
+  "Esther": { acc: "Sem conta", last: "nunca" },
+  "Vinicius": { acc: "Bloqueada", last: "4 ago" },
+  "Izabel": { acc: "Ativa", last: "11 ago" }
+};
+const withAccess = p => Object.assign({}, p, {
+  acc: p.acc || (ACC0[p.name] || {}).acc || "Ativa",
+  last: p.last || (ACC0[p.name] || {}).last || "esta semana",
+  invited: p.invited || (ACC0[p.name] || {}).invited || 0,
+  login: p.login || loginOf(p.name)
+});
+
+const PEOPLE0 = [
+  P(1, "Carol", "Patinadores", 1, "MEM", "Ativa", "mar 2023"),
+  P(2, "Dani", "Patinadores", 1, "MEM", "Ativa", "jul 2024"),
+  P(3, "Amanda", "Patinadores", 1, "MEM", "Ativa", "set 2024"),
+  P(4, "Daia", "Patinadores", 1, "MEM", "Ativa", "jan 2025"),
+  P(5, "Izabel", "Patinadores", 1, "MEM", "Afastada", "fev 2022", { date: "12 ago" }),
+  P(6, "Sofia", "Patinadores", 1, "MEM", "Ativa", "ago 2022"),
+  P(7, "Julia", "Patinadores", 1, "MEM", "Ativa", "set 2024"),
+  P(8, "Diogo", "Patinadores", 2, "MEM", "Ativa", "nov 2021"),
+  P(9, "Arthur", "Patinadores", 2, "MEM", "Ativa", "nov 2021"),
+  P(10, "Jefferson", "Patinadores", 2, "MEM", "Ativa", "mar 2024"),
+  P(11, "Junior", "Patinadores", 2, "MEM", "Ativa", "abr 2023"),
+  P(12, "Simon", "Patinadores", 2, "MEM", "Ativa", "jun 2023"),
+  P(13, "Kauã", "Patinadores", 2, "MEM", "Ativa", "jan 2025"),
+  P(14, "Caleb", "Patinadores", 2, "MEM", "Ativa", "ago 2026"),
+  P(15, "Deborah", "Patinadores", 1, "SUP", "Ativa", "fev 2019"),
+  P(16, "Louis", "Bailarinos", 3, "MEM", "Ativa", "ago 2022"),
+  P(17, "Cássia", "Bailarinos", 3, "MEM", "Ativa", "jul 2023"),
+  P(18, "Isadora", "Bailarinos", 3, "MEM", "Ativa", "jan 2024"),
+  P(19, "Vinicius", "Bailarinos", 3, "MEM", "Ativa", "abr 2025"),
+  P(20, "Antônio", "Bailarinos", 3, "MEM", "Ativa", "mai 2025"),
+  P(21, "Victor Oliveira", "Bailarinos", 3, "SUP", "Ativa", "jun 2020"),
+  P(22, "Sthefany", "Bailarinos", 4, "MEM", "Ativa", "mar 2024"),
+  P(23, "Mariela", "Bailarinos", 4, "MEM", "Ativa", "ago 2024"),
+  P(24, "Luize", "Bailarinos", 4, "MEM", "Ativa", "set 2023"),
+  P(25, "Victor M.", "Bailarinos", 4, "MEM", "Ativa", "out 2022"),
+  P(26, "Geovani", "Bailarinos", 4, "MEM", "Ativa", "fev 2023"),
+  P(27, "Miguel", "Bailarinos", 4, "MEM", "Ativa", "jan 2022"),
+  P(28, "Daniel", "Bailarinos", 4, "MEM", "Ativa", "jul 2021"),
+  P(29, "Matheus", "Bailarinos", 4, "MEM", "Ativa", "mai 2024"),
+  P(30, "Sarah", "Bailarinos", 4, "MEM", "Ativa", "ago 2026"),
+  P(31, "Stephani", "Bailarinos", 4, "SUP", "Ativa", "abr 2024"),
+  P(32, "Maico", "Produção", 5, "MEM", "Ativa", "fev 2022"),
+  P(33, "Lucas", "Produção", 5, "MEM", "Ativa", "jul 2023"),
+  P(34, "Gabriel", "Produção", 5, "MEM", "Ativa", "mai 2025"),
+  P(35, "Mariza", "Produção", 5, "MEM", "Ativa", "set 2024"),
+  P(36, "Rodrigo", "Produção", 5, "SUP", "Ativa", "jun 2020"),
+  P(37, "Esther", "Bailarinos", 0, "MEM", "Ativa", "ago 2026"),
+  P(38, "Cláudio S.", "Produção", 0, "MEM", "Ativa", "ago 2026"),
+  P(39, "Barbara Sorroche", "Gestão", 7, "ADM", "Ativa", "jan 2017"),
+  P(40, "Cris Garcia", "", 0, "DIR", "Ativa", "mar 2016")
+];
+
+const btn = (on, dot) => "display:flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:11px;white-space:nowrap;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;border:1px solid " + (on ? dot : "#e6e1f2") + ";background:" + (on ? dot + "14" : "#fff") + ";color:" + (on ? dot : "#5b5473");
+const chip = (on, canClick) => "height:30px;padding:0 12px;border-radius:10px;white-space:nowrap;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;cursor:" + (canClick ? "pointer" : "default") + ";border:1px solid " + (on ? "#6C2BF2" : "#e6e1f2") + ";background:" + (on ? "#f2ecfe" : "#fff") + ";color:" + (on ? "#6C2BF2" : canClick ? "#6b6482" : "#c8c0e4");
+const avatar = (size, tone) => "width:" + size + "px;height:" + size + "px;flex:none;border-radius:" + Math.round(size / 3) + "px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:" + (size > 30 ? 12 : 10) + "px;font-weight:700;background:" + tone + "1f;color:" + tone;
+const initialsOf = n => (n || "?").split(" ").map(x => x[0]).join("").slice(0, 2).toUpperCase();
+const first = n => (n || "").split(" ")[0];
+const areaOf = fn => { const f = FUNCS.find(x => x.key === fn); return f ? f.area : ""; };
+const dotOf = ar => { const a = AREAS.find(x => x.key === ar); return a ? a.dot : "#6b6482"; };
+const groupOf = id => GROUPS.find(g => g.id === id);
+const poolOf = ar => GROUPS.filter(g => areaOf(g.func) === ar);
+const soloLead = ar => {
+  const leads = [];
+  poolOf(ar).forEach(g => { if (g.lead && leads.indexOf(g.lead) < 0) leads.push(g.lead); });
+  return leads.length === 1 ? leads[0] : "";
+};
+const leadOfGroup = g => g ? (soloLead(areaOf(g.func)) || g.lead) : "";
+const plural = (n, s, p) => n + " " + (n === 1 ? s : p);
+const leadsOf = name => GROUPS.filter(g => g.lead === name);
+
+class Component extends DCLogic {
+  state = {
+    profile: "ADM", tab: "lista", filter: "Todas", query: "",
+    open: null, draft: null, why: "",
+    accQuery: "", roleChange: null, roleWhy: "", react: null,
+    asa: false, asaCard: null, dismissed: {},
+    people: JSON.parse(JSON.stringify(PEOPLE0)).map(withAccess),
+    logs: [
+      { when: "hoje 10:20", who: "Sarah", what: "Entrada", diff: "cadastrada em Bailarinos · Acquamotion", effect: "Stephani passou a responder por ela", by: "Barbara Sorroche" },
+      { when: "27 ago 14:20", who: "Izabel", what: "Situação", diff: "Ativa → Afastada (27 ago)", effect: "saiu das sugestões da Escala, segue em Patinadores", by: "Deborah" },
+      { when: "22 ago 09:05", who: "Esther", what: "Entrada", diff: "cadastrada em Bailarinos · sem grupo", effect: "não entra em Folgas enquanto não tiver supervisor", by: "Barbara Sorroche" },
+      { when: "12 ago 16:40", who: "Vinicius", what: "Conta", diff: "Ativa → Bloqueada (4 ago)", effect: "fica fora do login até Victor Oliveira desbloquear", by: "Victor Oliveira" },
+      { when: "3 ago 11:15", who: "Caleb", what: "Entrada", diff: "cadastrado em Patinadores · Snowland B", effect: "Deborah passou a responder por ele", by: "Barbara Sorroche" },
+      { when: "24 ago 11:05", who: "Stephani", what: "Perfil", diff: "Elenco → Supervisão", effect: "passou a aprovar a área Bailarinos em Acquamotion", by: "Barbara Sorroche" }
+    ]
+  };
+
+  componentDidMount() {
+    const p = this.props.perfilInicial;
+    if (p && p !== this.state.profile) this.setState({ profile: p });
+  }
+
+  personOf(id) { return this.state.people.find(p => p.id === id); }
+  countIn(gid) { return this.state.people.filter(p => p.group === gid && p.state === "Ativa").length; }
+
+  roleLines(p, to) {
+    const from = p.role;
+    const lines = [];
+    if (to === "SUP") {
+      lines.push("Passa a ver os grupos que supervisiona: revisa escala, responde folga e edita a ficha de quem é da área dela.");
+      lines.push(leadsOf(p.name).length
+        ? "Já é supervisora apontada em " + leadsOf(p.name).map(g => g.name).join(", ") + "."
+        : "Nenhum grupo tem ela como supervisora ainda — fica pendente até a liderança apontar um em Grupos.");
+    }
+    if (to === "MEM") {
+      lines.push("Passa a ver só o próprio dia e a própria ficha.");
+      if (leadsOf(p.name).length) lines.push(leadsOf(p.name).map(g => g.name).join(", ") + " fica sem supervisor apontado.");
+      if (from === "ADM" || from === "DIR") lines.push("Perde a visão da empresa inteira: Painel e a matriz de acessos saem do menu dela.");
+    }
+    if (to === "ADM") lines.push("Passa a poder cadastrar, mudar área, mudar perfil e desligar gente. É o perfil que muda a casa inteira.");
+    if (to === "DIR") lines.push("Passa a ler a ASA inteira sem editar nada: vê todas as fichas, a matriz e o Painel.");
+    if ((to === "ADM" || to === "DIR") && !p.func) lines.push("Sem área, ela não entra em escala nem em folga — perfil de empresa não precisa de área.");
+    if ((to === "ADM" || to === "DIR") && p.func) lines.push("Continua em " + p.func + (p.group ? ", no grupo " + (groupOf(p.group) || {}).name : "") + ": a área é opcional para perfil de empresa, mas não estorva.");
+    if (p.acc !== "Ativa") lines.push("A conta dela está " + p.acc.toLowerCase() + ": o perfil novo só vale quando ela conseguir entrar.");
+    return lines;
+  }
+
+  renderVals() {
+    const self0 = this;
+    const st = this.state;
+    const active = st.profile;
+    const meta = PROFILES.find(p => p.key === active) || PROFILES[0];
+    const isMem = active === "MEM";
+    const isDir = active === "DIR";
+    const isAdm = active === "ADM";
+    const isSup = active === "SUP";
+    const canCreate = isAdm || isSup;
+    const areaObrigatoria = this.props.areaObrigatoria === true;
+    const me = st.people.find(p => p.name === meta.person);
+    const myArea = isSup && me ? areaOf(me.func) : null;
+
+    const profileTabs = PROFILES.map(p => ({
+      name: p.name, dot: p.dot,
+      onClick: () => this.setState({ profile: p.key, tab: "lista", open: null, draft: null, why: "", filter: "Todas", query: "", asa: false, asaCard: null, roleChange: null, roleWhy: "" }),
+      style: btn(p.key === active, p.dot)
+    }));
+
+    const shellNav = NAV.map(g => ({
+      title: g.title,
+      items: g.items.filter(it => it[2].indexOf(active) >= 0).map(it => {
+        const on = it[0] === "07";
+        return {
+          href: NAV_HREF[it[0]],
+          label: (isMem && it[3] ? it[3] : it[1]),
+          style: "font-size:12px;padding:6px 9px;border-radius:9px;color:" + (on ? "#fff" : "#c8c0e4") + ";background:" + (on ? "rgba(255,255,255,.13)" : "transparent") + ";font-weight:" + (on ? 700 : 500)
+        };
+      })
+    }));
+
+    const tabDefs = [["lista", isMem ? "Minha ficha" : "Pessoas"], ["acessos", "Acessos"], ["historico", "Histórico"], ["registros", "Registros"]];
+    const tabs = tabDefs.filter(t => {
+      if (isMem) return t[0] === "lista";
+      if (t[0] === "acessos" || t[0] === "historico") return isAdm || isDir;
+      return true;
+    }).map(t => ({
+      label: t[1],
+      onClick: () => this.setState({ tab: t[0], open: null, react: null }),
+      style: "border:none;background:transparent;font-family:Manrope,sans-serif;font-size:13px;font-weight:" + (st.tab === t[0] ? 700 : 500) + ";color:" + (st.tab === t[0] ? "#6C2BF2" : "#6b6482") + ";padding:11px 4px;margin-right:12px;cursor:pointer;border-bottom:2px solid " + (st.tab === t[0] ? "#6C2BF2" : "transparent")
+    }));
+
+    // Desligamento tira a pessoa do ASA: ela sai da lista, do grupo, da escala e do acesso.
+    // O que sobra dela é o Histórico e os Registros.
+    const gone = st.people.filter(p => p.state === "Desligada");
+    const live = st.people.filter(p => p.state !== "Desligada");
+    const scoped = live.filter(p => {
+      if (isMem) return me && (p.id === me.id || (me.group && p.group === me.group));
+      if (myArea) return areaOf(p.func) === myArea;
+      return true;
+    });
+
+    const FILTERS = ["Todas", "Ativas", "Afastadas", "Sem grupo"];
+    const filters = FILTERS.map(f => ({
+      label: f,
+      onClick: () => this.setState({ filter: f }),
+      style: "height:32px;padding:0 12px;border-radius:11px;white-space:nowrap;font-family:Manrope,sans-serif;font-size:12px;font-weight:700;cursor:pointer;border:1px solid " + (st.filter === f ? "#6C2BF2" : "#e6e1f2") + ";background:" + (st.filter === f ? "#f2ecfe" : "#fff") + ";color:" + (st.filter === f ? "#6C2BF2" : "#6b6482")
+    }));
+
+    const q = st.query.trim().toLowerCase();
+    const filtered = scoped.filter(p => {
+      if (st.filter === "Ativas" && p.state !== "Ativa") return false;
+      if (st.filter === "Afastadas" && p.state !== "Afastada") return false;
+      if (st.filter === "Sem grupo" && (p.group || roleMeta(p.role).company)) return false;
+      if (!q) return true;
+      const g = groupOf(p.group);
+      return (p.name + " " + p.func + " " + (g ? g.name : "")).toLowerCase().indexOf(q) >= 0;
+    });
+
+    const canEditPerson = p => {
+      if (p.state === "Desligada") return false;
+      if (isAdm) return true;
+      if (isSup) return areaOf(p.func) === myArea && p.role === "MEM";
+      return false;
+    };
+
+    const subOf = p => {
+      const g = groupOf(p.group);
+      const lead = leadOfGroup(g);
+      if (p.role === "MEM") return lead ? "responde a " + lead : "sem supervisor";
+      if (p.role === "SUP") { const ls = leadsOf(p.name); return ls.length ? "supervisiona " + ls.map(x => x.name).join(", ") : "supervisão sem grupo apontado"; }
+      return roleMeta(p.role).duty;
+    };
+
+    const rows = filtered.map(p => {
+      const g = groupOf(p.group);
+      const ar = areaOf(p.func);
+      const away = p.state !== "Ativa";
+      const company = roleMeta(p.role).company;
+      return {
+        name: p.name, initials: initialsOf(p.name),
+        avatarStyle: avatar(30, away ? "#6b6482" : dotOf(ar)),
+        sub: subOf(p),
+        area: ar || (company ? "toda a empresa" : "sem área"),
+        areaStyle: ar
+          ? "font-size:12px;color:#3c3559"
+          : company
+            ? "font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:#f2ecfe;color:#6C2BF2"
+            : "font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:#fdf5f5;color:#a12c2c",
+        group: g ? g.name : (company ? "—" : "sem grupo"),
+        groupStyle: (g || company)
+          ? "font-size:11.5px;color:" + (g ? "#3c3559" : "#6b6482")
+          : "font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:#fdf5f5;color:#a12c2c",
+        since: p.since,
+        role: roleMeta(p.role).name,
+        roleStyle: "font-size:11.5px;font-weight:600;color:" + roleMeta(p.role).dot,
+        accNote: p.acc === "Ativa" ? "conta ativa" : p.acc.toLowerCase(),
+        accNoteStyle: "font-size:10px;color:" + (p.acc === "Ativa" ? (p.state === "Desligada" ? "#a12c2c" : "#6b6482") : p.acc === "Bloqueada" ? "#a12c2c" : "#8a6413"),
+        state: p.state + (p.date ? " · " + p.date : ""),
+        stateStyle: "font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;padding:3px 8px;border-radius:999px;background:" + (p.state === "Ativa" ? "#e2f4f2" : p.state === "Afastada" ? "#fdf1dc" : "#f4f2fa") + ";color:" + (p.state === "Ativa" ? "#0b6b64" : p.state === "Afastada" ? "#8a6413" : "#6b6482"),
+        openLabel: canEditPerson(p) ? "editar" : "ver",
+        openStyle: "height:26px;padding:0 10px;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6C2BF2;font-size:11px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer",
+        onOpen: () => this.setState({ open: p.id, draft: JSON.parse(JSON.stringify(p)), why: "" }),
+        style: "display:flex;gap:10px;align-items:center;padding:9px 20px;border-bottom:1px solid #f2eefa;background:" + (away ? "#fdfcff" : "#fff")
+      };
+    });
+
+    let emptyState = false;
+    if (!rows.length) emptyState = {
+      title: q || st.filter !== "Todas" ? "Nenhuma pessoa com esse filtro" : "Nenhuma pessoa cadastrada",
+      body: q || st.filter !== "Todas"
+        ? "Tente outro termo ou volte para Todas — a lista inteira tem " + plural(scoped.length, "pessoa", "pessoas") + "."
+        : "Cadastre a primeira pessoa para que a Escala tenha quem escalar e Folgas tenha de quem cobrar meta.",
+      act: (q || st.filter !== "Todas") ? "Limpar filtros" : (canCreate ? "Cadastrar pessoa" : ""),
+      actStyle: ((q || st.filter !== "Todas") || canCreate) ? "height:32px;padding:0 14px;border-radius:11px;border:none;background:#6C2BF2;color:#fff;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer" : "display:none",
+      onAct: () => { if (q || st.filter !== "Todas") this.setState({ query: "", filter: "Todas" }); else this.newPerson(); }
+    };
+
+    let det = null;
+    if (st.open) {
+      const saved = this.personOf(st.open);
+      const d = st.draft && st.draft.name !== undefined ? st.draft : (saved ? JSON.parse(JSON.stringify(saved)) : null);
+      if (d) {
+        const isNew = !saved;
+        const editable = isNew ? canCreate : canEditPerson(saved);
+        const setD = patch => this.setState({ draft: Object.assign({}, d, patch) });
+        const ar = areaOf(d.func);
+        const dg = groupOf(d.group);
+        const dCompany = roleMeta(d.role).company;
+        const changed = !saved || d.name !== saved.name || d.func !== saved.func || d.group !== saved.group || d.state !== saved.state || d.since !== saved.since || d.date !== saved.date || d.acc !== saved.acc || d.login !== saved.login;
+
+        const lines = [];
+        const desligando = !!(saved && d.state === "Desligada" && saved.state !== "Desligada");
+        const podeSalvar = changed && (!desligando || st.why.trim());
+        if (saved) {
+          if (d.func !== saved.func) lines.push(d.func
+            ? "A área passa a ser " + d.func + ". O grupo antigo não serve mais: escolha um grupo de " + d.func + ", senão ela fica sem supervisor."
+            : "Sai de área: deixa de entrar em escala e em folga. Só faz sentido para perfil de empresa.");
+          if (d.group !== saved.group) lines.push(dg
+            ? "Quem responde por ela passa a ser " + (leadOfGroup(dg) || "ninguém — " + dg.name + " está sem supervisor apontado") + "."
+            : "Sai de grupo: ninguém responde por ela, e ela deixa de aparecer em Folgas.");
+          if (d.state !== saved.state) {
+            if (d.state === "Afastada") lines.push("Afastada sai das sugestões da Escala e a meta de folga dela é pausada, mas ela continua no grupo e na lista do supervisor.");
+            if (d.state === "Desligada") {
+              lines.push("Sai da lista de Pessoas e passa a viver no Histórico. Nada se apaga: ficha, registros e o que ela fez continuam lá.");
+              lines.push("Sai de " + ((groupOf(saved.group) || {}).name || "grupo nenhum") + " na hora — o supervisor deixa de contar com ela.");
+              lines.push("A conta é desativada automaticamente: ela não entra mais no app, nem hoje à noite.");
+              lines.push("Sai também das escalas já publicadas. Cada data em que ela estava escalada fica em aberto, e o buraco vira pendência do supervisor na Escala.");
+            }
+            if (d.state === "Ativa") lines.push("Volta a ser sugerida pela Escala a partir da data que você colocar, e a meta de folga volta a contar.");
+          }
+          if (d.name !== saved.name) lines.push("O nome muda na Escala, em Folgas e nos registros já publicados.");
+          if (d.acc !== saved.acc) lines.push(d.acc === "Bloqueada"
+            ? "Conta bloqueada: ela não entra mais, mas continua na ficha, no grupo e na escala já publicada."
+            : d.acc === "Ativa" && saved.acc === "Bloqueada" ? "Conta desbloqueada: ela volta a entrar com o mesmo login."
+            : "Estado da conta: " + saved.acc.toLowerCase() + " → " + d.acc.toLowerCase() + ".");
+          if (d.login !== saved.login) lines.push("O login muda: o convite e a redefinição de senha passam a ir para " + d.login + ".");
+        } else {
+          lines.push("Nasce na área " + (d.func || "não definida") + (dg ? " no grupo " + dg.name + ", respondendo a " + (leadOfGroup(dg) || "ninguém ainda") : " sem grupo, e sem grupo ninguém responde por ela") + ".");
+          lines.push("Entra como Elenco. Perfil diferente disso se dá na aba Acessos, depois de gravar a ficha.");
+          lines.push("Ela não pertence a nenhum local: onde trabalha é a Escala que decide, dia a dia.");
+        }
+
+        det = {
+          title: d.name || "Nova pessoa",
+          initials: initialsOf(d.name || "?"),
+          avatarStyle: avatar(34, dotOf(ar) || "#6b6482"),
+          sub: isNew ? "ficha nova — nada gravado ainda" : roleMeta(d.role).name + " · " + (d.func ? "área " + d.func + " · " : "") + "na casa desde " + (saved.since || "—"),
+          nameValue: d.name, sinceValue: d.since,
+          onName: e => setD({ name: e.target.value }),
+          onSince: e => setD({ since: e.target.value }),
+          readOnly: !editable,
+          onClose: () => this.setState({ open: null, draft: null, why: "" }),
+          funcLabel: dCompany && !areaObrigatoria ? "Área · opcional neste perfil" : "Área · a equipe",
+          funcs: FUNCS.filter(f => !myArea || f.area === myArea || f.key === d.func)
+            .map(f => ({
+              label: f.key,
+              onClick: () => { if (editable && isAdm) setD({ func: f.key, group: (groupOf(d.group) || {}).func === f.key ? d.group : 0 }); },
+              style: chip(d.func === f.key, editable && isAdm)
+            }))
+            .concat((dCompany && !areaObrigatoria && !myArea) ? [{
+              label: "Sem área",
+              onClick: () => { if (editable && isAdm) setD({ func: "", group: 0 }); },
+              style: chip(!d.func, editable && isAdm)
+            }] : []),
+          funcNote: !isAdm
+            ? "Mudar a área de alguém é da administração."
+            : dCompany && !areaObrigatoria
+              ? "Perfil de empresa responde pela casa inteira, então área é opcional: sem área ela não entra em escala nem em folga."
+              : "A área é a equipe da pessoa e define quem a supervisiona. Trocar a área obriga a escolher um grupo novo.",
+          groups: (d.func ? GROUPS.filter(g => g.func === d.func) : []).concat([{ id: 0, name: "Sem grupo", func: d.func, lead: "" }]).map(g => {
+            const on = d.group === g.id;
+            const lead = g.id ? leadOfGroup(g) : "";
+            return {
+              name: g.name,
+              note: g.id ? (lead ? "supervisor " + lead : "sem supervisor apontado") : (dCompany ? "perfil de empresa não precisa de grupo" : "ninguém responde por ela"),
+              count: g.id ? this.countIn(g.id) + "p" : "—",
+              onClick: () => { if (editable) setD({ group: g.id }); },
+              dot: "width:9px;height:9px;flex:none;border-radius:50%;background:" + (on ? "#6C2BF2" : "#DAD4EA"),
+              style: "display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:11px;cursor:" + (editable ? "pointer" : "default") + ";border:1px solid " + (on ? "#6C2BF2" : "#e6e1f2") + ";background:" + (on ? "#f7f3ff" : "#fff")
+            };
+          }),
+          groupNote: d.role === "SUP" && !leadsOf(d.name).length ? "Ela é Supervisão e nenhum grupo tem ela como supervisora. O grupo se aponta em Grupos, não aqui." : false,
+          states: STATES.filter(s => s !== "Desligada" || isAdm).map(s => ({
+            label: s === "Desligada" ? "Desligar" : s,
+            onClick: () => { if (editable) setD({ state: s, date: s === "Ativa" ? "" : d.date }); },
+            style: s === "Desligada"
+              ? "height:30px;padding:0 12px;border-radius:10px;white-space:nowrap;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;cursor:" + (editable ? "pointer" : "default") + ";border:1px solid " + (d.state === s ? "#a12c2c" : "#f0bcbc") + ";background:" + (d.state === s ? "#fdf5f5" : "#fff") + ";color:#a12c2c"
+              : chip(d.state === s, editable)
+          })),
+          statesNote: isAdm
+            ? "Desligar é definitivo no dia a dia: a pessoa sai da lista, sai do grupo, sai da escala e perde o acesso de uma vez. Ela passa a viver no Histórico."
+            : "Afastar é seu. Desligar é da Administração.",
+          acc: (() => {
+            const accTone = d.acc === "Ativa" ? ["#0b6b64", "#e2f4f2"] : d.acc === "Convite enviado" ? ["#8a6413", "#fdf1dc"] : d.acc === "Bloqueada" ? ["#a12c2c", "#fdf5f5"] : ["#6b6482", "#f4f2fa"];
+            const setAcc = v => { if (isAdm && editable) setD({ acc: v }); };
+            let action = false;
+            if (isAdm && editable) {
+              if (d.acc === "Sem conta") action = { label: "Enviar convite", note: "Ela ainda não tem como entrar no app. O convite vai para o login abaixo.", onClick: () => setD({ acc: "Convite enviado", invited: 0 }) };
+              else if (d.acc === "Convite enviado") action = { label: "Reenviar convite", note: d.invited ? "Convite enviado há " + d.invited + " dias e ainda não aceito." : "Convite enviado agora. Enquanto não aceitar, ela não entra.", onClick: () => setD({ invited: 0 }) };
+              else if (d.acc === "Ativa") action = { label: "Redefinir senha", note: "Ela entra normalmente. Redefinir manda um link novo e derruba a senha antiga.", onClick: () => setD({ last: "senha redefinida" }) };
+              else action = { label: "Desbloquear", note: "Bloqueada não entra no app — a ficha e o histórico continuam intactos.", onClick: () => setD({ acc: "Ativa" }) };
+            }
+            const rm = roleMeta(d.role);
+            return {
+              stateLabel: d.acc,
+              stateChip: "font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;padding:3px 8px;border-radius:999px;color:" + accTone[0] + ";background:" + accTone[1],
+              roleName: rm.name,
+              roleChip: "flex:none;height:28px;display:flex;align-items:center;padding:0 11px;border-radius:9px;font-size:11.5px;font-weight:700;white-space:nowrap;color:" + rm.dot + ";background:" + rm.dot + "14;border:1px solid " + rm.dot + "40",
+              scopeNote: rm.duty.charAt(0).toUpperCase() + rm.duty.slice(1) + " e vê " + rm.scope + ".",
+              matrixBtnLabel: isAdm ? "Mudar na matriz" : "Ver a matriz",
+              matrixBtnStyle: (isAdm || isDir) ? "height:28px;padding:0 11px;flex:none;border-radius:9px;border:1px solid #ddd0fb;background:#fff;color:#6C2BF2;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap" : "display:none",
+              onGoMatrix: () => this.setState({ tab: "acessos", open: null, draft: null, why: "", accQuery: d.name, roleChange: null, roleWhy: "" }),
+              loginValue: d.login || "",
+              onLogin: e => setD({ login: e.target.value }),
+              loginReadOnly: !(isAdm && editable),
+              last: d.last || "nunca",
+              states: d.acc === "Desativada"
+                ? [{ label: "Desativada no desligamento", onClick: () => {}, style: "height:30px;padding:0 12px;border-radius:10px;white-space:nowrap;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;border:1px solid #e6e1f2;background:#f4f2fa;color:#6b6482;cursor:default" }]
+                : ACC_STATES.map(s => ({ label: s, onClick: () => setAcc(s), style: chip(d.acc === s, isAdm && editable) })),
+              action: action,
+              mismatch: d.state === "Ativa" && d.acc === "Sem conta" ? "Pessoa ativa sem conta: ela trabalha aqui e não tem como entrar no app."
+                : false,
+              foot: d.state === "Desligada" ? "Ficha de quem saiu: leitura. A conta foi desativada no desligamento e o perfil parou de valer no mesmo dia."
+                : isAdm ? "O perfil é um campo só: diz o que ela responde e o que ela vê. Ele se muda na aba Acessos, na matriz — aqui é leitura."
+                : isDir ? "Direção lê perfil e conta; mudar é da Administração, na matriz."
+                : isSup ? "Perfil é informação para você. Mudar é da Administração, na aba Acessos."
+                : "Seu perfil é definido pela Administração."
+            };
+          })(),
+          dateField: d.state !== "Ativa" ? {
+            label: d.state === "Afastada" ? "Afastada desde" : "Desligada em",
+            value: d.date,
+            onChange: e => setD({ date: e.target.value })
+          } : false,
+          block: (!isNew && saved.state === "Desligada") ? {
+            title: "Desligada em " + (saved.date || "data não registrada"),
+            body: "Saiu de " + (saved.exitGroup || "nenhum grupo") + " por " + (saved.exitBy || "—") + ". Conta desativada no mesmo dia. A ficha fica em leitura no Histórico — para trazê-la de volta, use Reativar lá."
+          } : (!isNew && roleMeta(saved.role).company && isSup) ? {
+            title: "Ficha de perfil de empresa",
+            body: "Fichas de Administração e Direção são editadas pela própria administração. Você edita área, grupo e situação de quem é Elenco na sua área."
+          } : false,
+          reflex: changed && lines.length ? {
+            title: isNew ? "O que esta ficha passa a valer" : "O que muda quando você salvar",
+            lines: lines,
+            style: "display:flex;flex-direction:column;gap:8px;padding:12px 13px;border-radius:12px;border:1px solid #f0d9a8;background:#fdf7e8;color:#5c4310"
+          } : false,
+          why: st.why,
+          onWhy: e => this.setState({ why: e.target.value }),
+          history: saved ? st.logs.filter(l => l.who === saved.name).map(l => ({ when: l.when, what: l.diff + " — " + l.effect })) : false,
+          whyLabel: desligando ? "Por que está desligando" : "Motivo da mudança (opcional)",
+          whyPlaceholder: desligando
+            ? "Desligamento tira a pessoa do grupo e desativa o acesso — o motivo é obrigatório."
+            : "Se quiser deixar registrado o porquê, escreva aqui. Não é obrigatório.",
+          footNote: !editable ? (isMem ? "Sua ficha é editada pela supervisão." : isDir ? "Direção lê as fichas, não edita." : "Você não edita esta ficha.")
+            : !changed ? "Nada mudou ainda."
+            : desligando ? (st.why.trim() ? "O motivo do desligamento vai para os Registros." : "Desligar uma pessoa exige motivo.")
+            : (st.why.trim() ? "O motivo vai para os Registros junto com o reflexo." : "A mudança e o reflexo vão para os Registros de qualquer forma."),
+          cancelStyle: editable ? "height:34px;padding:0 13px;border-radius:11px;border:1px solid #e6e1f2;background:#fff;color:#5b5473;font-size:12.5px;font-weight:600;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap" : "display:none",
+          saveLabel: !editable ? "Fechar" : !changed ? "Sem mudanças" : (desligando && !st.why.trim()) ? "Escreva o motivo" : (isNew ? "Cadastrar pessoa" : "Salvar ficha"),
+          saveStyle: "height:34px;padding:0 14px;border-radius:11px;border:none;color:#fff;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;white-space:nowrap;background:" + ((!editable || podeSalvar) ? "#6C2BF2" : "#cec5e6") + ";cursor:" + ((!editable || podeSalvar) ? "pointer" : "not-allowed"),
+          onSave: () => {
+            if (!editable) { this.setState({ open: null, draft: null }); return; }
+            if (!changed || (desligando && !st.why.trim())) return;
+            const isExit = saved && d.state === "Desligada" && saved.state !== "Desligada";
+            const rec = JSON.parse(JSON.stringify(d));
+            if (isExit) {
+              // Automático: sem grupo, sem conta, sem escala. O que sobra é o Histórico.
+              rec.exitGroup = (groupOf(saved.group) || {}).name || "";
+              rec.exitBy = meta.person;
+              rec.exitWhy = st.why.trim();
+              rec.group = 0;
+              rec.acc = "Desativada";
+              rec.holes = saved.group ? this.countIn(saved.group) > 4 ? 2 : 1 : 0;
+            }
+            const next = saved ? st.people.map(p => p.id === d.id ? rec : p) : st.people.concat([rec]);
+            const diffs = [];
+            if (isNew) diffs.push("cadastrada em " + (d.func || "sem área") + " · " + (dg ? dg.name : "sem grupo") + " · Elenco");
+            else {
+              if (d.name !== saved.name) diffs.push("nome: " + saved.name + " → " + d.name);
+              if (d.func !== saved.func) diffs.push("área: " + (saved.func || "sem área") + " → " + (d.func || "sem área"));
+              if (d.group !== saved.group) diffs.push("grupo: " + ((groupOf(saved.group) || {}).name || "sem grupo") + " → " + (dg ? dg.name : "sem grupo"));
+              if (d.state !== saved.state) diffs.push("situação: " + saved.state + " → " + d.state + (d.date ? " (" + d.date + ")" : ""));
+              if (d.since !== saved.since) diffs.push("desde: " + saved.since + " → " + d.since);
+              if (d.acc !== saved.acc) diffs.push("conta: " + saved.acc + " → " + d.acc);
+              if (d.login !== saved.login) diffs.push("login: " + saved.login + " → " + d.login);
+            }
+            const entry = {
+              when: "agora", who: d.name,
+              what: isNew ? "Entrada" : isExit ? "Desligamento" : (d.acc !== saved.acc ? "Conta" : d.state !== saved.state ? "Situação" : d.func !== saved.func ? "Área" : d.group !== saved.group ? "Grupo" : "Ficha"),
+              diff: isExit ? "Ativa → Desligada" + (d.date ? " (" + d.date + ")" : "") : diffs.join(" · "),
+              effect: isExit
+                ? "saiu de " + (rec.exitGroup || "nenhum grupo") + ", conta desativada, " + (rec.holes ? plural(rec.holes, "data ficou", "datas ficaram") + " em aberto na escala" : "nenhuma data em aberto")
+                : st.why.trim() || (lines[0] || "sem reflexo na escala"),
+              by: meta.person
+            };
+            this.setState({ people: next, logs: [entry].concat(st.logs), open: null, draft: null, why: "" });
+          }
+        };
+      }
+    }
+
+    const noAccount = live.filter(p => p.acc === "Sem conta" && p.state === "Ativa");
+
+    const aq = st.accQuery.trim().toLowerCase();
+    const matrixPool = live.filter(p => !aq || p.name.toLowerCase().indexOf(aq) >= 0 || (p.func || "").toLowerCase().indexOf(aq) >= 0 || roleMeta(p.role).name.toLowerCase().indexOf(aq) >= 0);
+    const admCount = live.filter(p => p.role === "ADM").length;
+
+    const pendingChange = (() => {
+      if (!st.roleChange) return false;
+      const p = this.personOf(st.roleChange.id);
+      if (!p) return false;
+      const to = st.roleChange.to;
+      const fromMeta = roleMeta(p.role);
+      const toMeta = roleMeta(to);
+      const lastAdm = p.role === "ADM" && to !== "ADM" && admCount <= 1;
+      const ready = st.roleWhy.trim().length > 0 && !lastAdm;
+      return {
+        name: p.name, initials: initialsOf(p.name),
+        avatarStyle: avatar(30, dotOf(areaOf(p.func))),
+        from: fromMeta.name, to: toMeta.name,
+        fromStyle: "height:26px;display:flex;align-items:center;padding:0 10px;border-radius:8px;font-size:11.5px;font-weight:700;color:#6b6482;background:#f4f2fa",
+        toStyle: "height:26px;display:flex;align-items:center;padding:0 10px;border-radius:8px;font-size:11.5px;font-weight:700;color:" + toMeta.dot + ";background:" + toMeta.dot + "14;border:1px solid " + toMeta.dot + "40",
+        lines: this.roleLines(p, to),
+        warn: lastAdm ? "É a única Administração ativa da casa. Se ela sair do perfil, ninguém consegue cadastrar, mudar perfil ou desligar — aponte outra ADM antes." : false,
+        why: st.roleWhy,
+        onWhy: e => this.setState({ roleWhy: e.target.value }),
+        onCancel: () => this.setState({ roleChange: null, roleWhy: "" }),
+        confirmLabel: lastAdm ? "Não permitido" : ready ? "Confirmar perfil" : "Escreva o motivo",
+        confirmStyle: "height:36px;padding:0 15px;border-radius:11px;border:none;color:#fff;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;white-space:nowrap;background:" + (ready ? "#6C2BF2" : "#cec5e6") + ";cursor:" + (ready ? "pointer" : "not-allowed"),
+        onConfirm: () => {
+          if (!ready) return;
+          const entry = {
+            when: "agora", who: p.name, what: "Perfil",
+            diff: "perfil: " + fromMeta.name + " → " + toMeta.name,
+            effect: st.roleWhy.trim(), by: meta.person
+          };
+          this.setState({
+            people: st.people.map(x => x.id === p.id ? Object.assign({}, x, { role: to }) : x),
+            logs: [entry].concat(st.logs), roleChange: null, roleWhy: ""
+          });
+        }
+      };
+    })();
+
+    const matrixAreas = AREAS.map(a => a.key).concat([""]);
+    const matrixGroups = matrixAreas.map(ak => {
+      const list = matrixPool.filter(p => (p.func || "") === ak);
+      return {
+        key: ak,
+        title: ak || "Sem área · perfil de empresa",
+        count: plural(list.length, "pessoa", "pessoas"),
+        dot: "width:9px;height:9px;flex:none;border-radius:3px;background:" + (ak ? dotOf(ak) : "#6b6482"),
+        rows: list.map(p => {
+          const away = p.state !== "Ativa";
+          const pend = st.roleChange && st.roleChange.id === p.id ? st.roleChange.to : null;
+          return {
+            name: p.name, initials: initialsOf(p.name),
+            avatarStyle: avatar(28, away ? "#6b6482" : dotOf(areaOf(p.func))),
+            sub: subOf(p) + (away ? " · " + p.state.toLowerCase() : ""),
+            acc: p.acc === "Ativa" ? "ativa" : p.acc.toLowerCase(),
+            accStyle: "font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;padding:3px 8px;border-radius:999px;background:" + (p.acc === "Ativa" ? "#e2f4f2" : p.acc === "Bloqueada" ? "#fdf5f5" : p.acc === "Convite enviado" ? "#fdf1dc" : "#f4f2fa") + ";color:" + (p.acc === "Ativa" ? "#0b6b64" : p.acc === "Bloqueada" ? "#a12c2c" : p.acc === "Convite enviado" ? "#8a6413" : "#6b6482"),
+            cells: ROLES.map(r => {
+              const on = p.role === r.key;
+              const isPend = pend === r.key;
+              return {
+                wrap: "width:118px;flex:none;display:flex;align-items:center;justify-content:center",
+                mark: on ? "✓" : isPend ? "→" : "",
+                onClick: () => {
+                  if (!isAdm || on) return;
+                  this.setState({ roleChange: { id: p.id, to: r.key }, roleWhy: "" });
+                },
+                style: "width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;font-family:Manrope,sans-serif;cursor:" + (isAdm && !on ? "pointer" : "default")
+                  + ";border:" + (on ? "1px solid " + r.dot : isPend ? "2px dashed " + r.dot : "1px solid #ece7f7")
+                  + ";background:" + (on ? r.dot + "1a" : isPend ? r.dot + "0d" : "#fff")
+                  + ";color:" + (on ? r.dot : r.dot)
+              };
+            }),
+            style: "display:flex;gap:10px;align-items:center;padding:8px 14px;border-bottom:1px solid #f2eefa;background:" + (pend ? "#f9f6ff" : away ? "#fdfcff" : "#fff")
+          };
+        })
+      };
+    }).filter(g => g.rows.length);
+
+    const accTab = {
+      cards: ROLES.map(r => {
+        const list = st.people.filter(p => p.role === r.key && p.state !== "Desligada");
+        return {
+          name: r.name, scope: "vê " + r.scope,
+          count: String(list.length),
+          who: list.length ? list.slice(0, 4).map(p => first(p.name)).join(", ") + (list.length > 4 ? " +" + (list.length - 4) : "") : "ninguém",
+          style: "flex:1 1 190px;min-width:180px;display:flex;flex-direction:column;gap:6px;padding:13px 14px;border-radius:14px;border:1px solid " + r.dot + "40;background:" + r.dot + "0d",
+          countStyle: "font-family:Outfit,sans-serif;font-size:26px;font-weight:700;line-height:1;color:" + r.dot,
+          nameStyle: "font-size:13px;font-weight:700;color:" + r.dot
+        };
+      }),
+      query: st.accQuery,
+      onQuery: e => this.setState({ accQuery: e.target.value }),
+      matrixHint: isAdm ? "clique numa coluna para mudar o perfil de alguém" : "leitura — mudar perfil é da Administração",
+      matrixCols: ROLES.map(r => ({ label: r.name, style: "width:118px;flex:none;text-align:center;font-size:11px;font-weight:700;color:" + r.dot })),
+      matrixGroups: matrixGroups,
+      matrixEmpty: matrixGroups.length ? false : "Ninguém com esse termo.",
+      pending: pendingChange,
+      capGroups: ["Pessoas e estrutura", "O dia", "A casa"].map(g => ({
+        title: g,
+        rows: CAPS.filter(c => c.g === g).map(c => ({
+          k: c.k,
+          cells: ROLES.map(r => {
+            const t = TOKENS[c.v[r.key]] || TOKENS.fora;
+            return { label: t[0], style: "width:118px;flex:none;display:flex;align-items:center;justify-content:center;height:26px;border-radius:8px;font-size:11px;font-weight:700;color:" + t[1] + ";background:" + t[2] };
+          })
+        }))
+      })),
+      cols: ROLES.map(r => ({ label: r.name, style: "width:118px;flex:none;text-align:center;font-size:11px;font-weight:700;color:" + r.dot })),
+      legend: Object.keys(TOKENS).map(k => ({ label: TOKENS[k][0], style: "display:flex;align-items:center;gap:6px;font-size:11px;color:#6b6482", dot: "width:9px;height:9px;border-radius:3px;background:" + TOKENS[k][1] })),
+      pend: noAccount.map(p => ({ p: p, tag: "Ativa sem conta", body: "Trabalha aqui e não tem como entrar no app: nunca recebeu convite." })).map(x => ({
+        name: x.p.name, initials: initialsOf(x.p.name),
+        avatarStyle: avatar(30, dotOf(areaOf(x.p.func))),
+        meta: (x.p.func || "sem área") + " · " + roleMeta(x.p.role).name,
+        tag: x.tag, body: x.body,
+        tagStyle: "font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:3px 8px;border-radius:999px;background:#fdf7e8;color:#8a6413;white-space:nowrap",
+        actLabel: isAdm ? "Abrir a ficha" : "ver a ficha",
+        actStyle: "height:28px;padding:0 12px;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6C2BF2;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap",
+        onAct: () => this.setState({ tab: "lista", open: x.p.id, draft: JSON.parse(JSON.stringify(x.p)), why: "" })
+      })),
+      empty: noAccount.length ? false : "Toda pessoa ativa tem conta. Quem sai perde o acesso no ato do desligamento — isso não depende de ninguém lembrar.",
+      note: isAdm
+        ? "Perfil é um campo só: diz o que a pessoa responde e o que ela vê. A matriz é o lugar de mudar — a ficha só mostra. Uma pessoa, um perfil."
+        : "Leitura: quem tem qual perfil e o que cada perfil pode. Mudar perfil é da Administração."
+    };
+
+    const noGroup = scoped.filter(p => !p.group && p.role === "MEM" && p.state !== "Desligada");
+    const holeList = gone.filter(p => p.holes > 0 && (!myArea || areaOf(p.func) === myArea));
+    const longAway = scoped.filter(p => p.state === "Afastada" && p.date);
+    const noName = scoped.filter(p => !p.name.trim());
+    const supNoGroup = scoped.filter(p => p.role === "SUP" && !leadsOf(p.name).length);
+
+    const asaRaw = [];
+    if (noGroup.length) asaRaw.push({
+      key: "p1", tag: "Sem supervisor", conf: "dado",
+      title: noGroup.length === 1 ? noGroup[0].name + " está sem grupo" : noGroup.length + " pessoas estão sem grupo",
+      why: "Sem grupo ninguém responde por ela: o pedido de folga não tem destino e ela não aparece quando a Escala procura quem pode cobrir.",
+      nums: noGroup.map(p => p.name + " · " + (p.func || "sem área")).join(" · "),
+      lines: ["Proponho um grupo da mesma área.", "Colocar em grupo é aqui na ficha ou em Grupos — dá no mesmo.", "Eu não mexo em ficha de ninguém."],
+      cta: "Abrir a ficha"
+    });
+    if (holeList.length) asaRaw.push({
+      key: "p2", tag: "Buraco na escala", conf: "cruzamento",
+      title: holeList.length === 1
+        ? "O desligamento de " + holeList[0].name + " deixou " + plural(holeList[0].holes, "data em aberto", "datas em aberto")
+        : holeList.reduce((n, p) => n + p.holes, 0) + " datas ficaram em aberto por desligamento",
+      why: "Ela saiu de tudo no ato, inclusive das escalas já publicadas. O buraco é de propósito: é melhor ver a data vazia do que contar com quem não vem.",
+      nums: holeList.map(p => p.name + " · saiu " + (p.date || "sem data") + " · " + plural(p.holes, "data", "datas")).join(" · "),
+      lines: ["Quem cobre é decisão do supervisor, na Escala — não aqui.", "A ficha dela já está no Histórico, com tudo registrado.", "Eu não escalo ninguém no lugar dela."],
+      cta: "Ver no Histórico"
+    });
+    if (longAway.length) asaRaw.push({
+      key: "p3", tag: "Afastamento em aberto", conf: "data",
+      title: longAway.length === 1 ? longAway[0].name + " está afastada desde " + longAway[0].date + " sem data de volta" : longAway.length + " afastamentos sem data de volta",
+      why: "Afastamento sem previsão deixa o grupo planejando com gente que não vem, e a meta de folga fica pausada sem prazo.",
+      nums: longAway.map(p => p.name + " · desde " + p.date).join(" · "),
+      lines: ["Uma data prevista de volta já resolve o planejamento do grupo.", "Se o afastamento virou definitivo, o certo é Desligada.", "Eu não mudo situação de ninguém."],
+      cta: "Abrir a ficha"
+    });
+    if (supNoGroup.length) asaRaw.push({
+      key: "p4", tag: "Supervisão sem grupo", conf: "cruzamento",
+      title: supNoGroup.length === 1 ? supNoGroup[0].name + " tem perfil de Supervisão e não supervisiona nenhum grupo" : supNoGroup.length + " supervisões sem grupo",
+      why: "O perfil de Supervisão dá acesso à área inteira dela. Sem grupo apontado, é acesso largo sem ninguém sob responsabilidade.",
+      nums: supNoGroup.map(p => p.name + " · " + (p.func || "sem área")).join(" · "),
+      lines: ["Ou a liderança aponta um grupo para ela em Grupos, ou o perfil volta a Elenco na matriz.", "Se a área tem um supervisor só, ele já responde por todos os grupos dela.", "Eu não aponto supervisor nem mudo perfil — a escolha é da liderança."],
+      cta: "Abrir a matriz"
+    });
+    const noAccS = scoped.filter(p => p.acc === "Sem conta" && p.state === "Ativa");
+    if (noAccS.length) asaRaw.push({
+      key: "p7", tag: "Ativa sem conta", conf: "cruzamento",
+      title: noAccS.length === 1 ? noAccS[0].name + " trabalha aqui e não consegue entrar no app" : noAccS.length + " pessoas ativas sem conta",
+      why: "Ela está na escala e não vê a própria escala: recebe tudo de boca, e qualquer troca de horário passa longe dela.",
+      nums: noAccS.map(p => p.name + " · " + (p.func || "sem área")).join(" · "),
+      lines: ["Enviar convite é na ficha, no bloco Perfil e conta.", "Ficha existe antes de conta — mas pessoa ativa sem conta é buraco, não escolha.", "Eu não envio convite por você."],
+      cta: "Abrir a ficha"
+    });
+    if (noName.length) asaRaw.push({
+      key: "p5", tag: "Ficha sem nome", conf: "dado",
+      title: "Uma ficha foi salva sem nome",
+      why: "Ficha sem nome aparece em branco na Escala e ninguém sabe quem é.",
+      nums: noName.length + " ficha(s)",
+      lines: ["Abrir e preencher o nome resolve.", "Se foi engano, a administração pode apagar.", "Eu não escrevo nome por você."],
+      cta: "Abrir a ficha"
+    });
+
+    const asaCards = (isMem ? [] : asaRaw).filter(c => !st.dismissed[c.key]).map(c => ({
+      tag: c.tag, conf: c.conf, title: c.title, why: c.why, nums: c.nums, lines: c.lines,
+      open: st.asaCard === c.key,
+      style: "border:1px solid #e6e1f2;border-radius:13px;padding:12px 13px;display:flex;flex-direction:column;gap:8px;background:#fff",
+      tagStyle: "font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:3px 8px;border-radius:999px;background:#f2ecfe;color:#6C2BF2",
+      reflexLabel: st.asaCard === c.key ? "Esconder reflexo" : "Ver reflexo",
+      onReflex: () => this.setState({ asaCard: st.asaCard === c.key ? null : c.key }),
+      cta: canCreate ? c.cta : "Sugerir à administração",
+      ctaStyle: "height:29px;padding:0 12px;border-radius:9px;border:none;background:#1b1630;color:#fff;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap",
+      onApply: () => {
+        if (!canCreate) { this.setState({ dismissed: Object.assign({}, st.dismissed, { [c.key]: true }), asaCard: null }); return; }
+        if (c.key === "p4") {
+          const t = supNoGroup[0];
+          this.setState({ tab: "acessos", asa: false, asaCard: null, accQuery: t ? t.name : "", roleChange: null, roleWhy: "" });
+          return;
+        }
+        if (c.key === "p2") { this.setState({ tab: "historico", asa: false, asaCard: null, open: null, react: null }); return; }
+        const target = c.key === "p1" ? noGroup[0] : c.key === "p3" ? longAway[0] : c.key === "p7" ? noAccS[0] : noName[0];
+        if (target) {
+          this.setState({ open: target.id, draft: JSON.parse(JSON.stringify(target)), why: "Apontado pela ASA", asa: false, asaCard: null, tab: "lista" });
+          return;
+        }
+        this.setState({ dismissed: Object.assign({}, st.dismissed, { [c.key]: true }), asaCard: null });
+      },
+      onDismiss: () => this.setState({ dismissed: Object.assign({}, st.dismissed, { [c.key]: true }), asaCard: null })
+    }));
+
+    const myGroupObj = me ? groupOf(me.group) : null;
+    const mob = {
+      title: isMem ? "Minha ficha" : isDir ? "Pessoas · leitura" : "Pessoas",
+      sub: isMem ? (me ? roleMeta(me.role).name + " · " + (me.func || "sem área") : "") : plural(scoped.filter(p => p.state === "Ativa").length, "pessoa ativa", "pessoas ativas"),
+      note: isMem ? false : "No celular a lista é leitura. Mudar área, grupo, situação ou perfil só no computador, para você ver o reflexo antes.",
+      noteStyle: "padding:10px 12px;border-radius:12px;font-size:11.5px;line-height:1.45;background:#f7f3ff;border:1px solid #e5d8fb;color:#4a2a9c",
+      mine: isMem && me ? {
+        name: me.name, initials: initialsOf(me.name),
+        avatarStyle: avatar(38, dotOf(areaOf(me.func))),
+        sub: roleMeta(me.role).name + " · na casa desde " + me.since,
+        rows: [
+          { k: "Perfil", v: roleMeta(me.role).name },
+          { k: "Área", v: me.func || "sem área" },
+          { k: "Grupo", v: myGroupObj ? myGroupObj.name : "sem grupo" },
+          { k: "Supervisor", v: leadOfGroup(myGroupObj) || "sem supervisor" },
+          { k: "Situação", v: me.state },
+          { k: "Conta", v: me.acc }
+        ],
+        foot: "Seu perfil diz o que você responde e o que você vê — é um campo só. Onde você trabalha em cada dia está na sua Escala."
+      } : false,
+      cards: (isMem ? scoped.filter(p => me && p.id !== me.id) : scoped).slice(0, 14).map(p => {
+        const ar = areaOf(p.func);
+        const g = groupOf(p.group);
+        const company = roleMeta(p.role).company;
+        return {
+          name: p.name, initials: initialsOf(p.name),
+          avatarStyle: avatar(30, p.state === "Ativa" ? dotOf(ar) : "#6b6482"),
+          meta: (p.func || (company ? "toda a empresa" : "sem área")) + " · " + (g ? g.name : company ? "toda a empresa" : "sem grupo"),
+          state: p.state === "Ativa" ? "ativa" : p.state.toLowerCase(),
+          chip: "font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;padding:3px 8px;border-radius:999px;background:" + (p.state === "Ativa" ? "#e2f4f2" : p.state === "Afastada" ? "#fdf1dc" : "#f4f2fa") + ";color:" + (p.state === "Ativa" ? "#0b6b64" : p.state === "Afastada" ? "#8a6413" : "#6b6482"),
+          style: "display:flex;flex-direction:column;gap:8px;padding:11px 12px;background:#fff;border:1px solid " + ((p.group || company) ? "#e6e1f2" : "#f0bcbc") + ";border-radius:13px"
+        };
+      })
+    };
+
+    const histRows = gone.slice().sort((a, b) => (b.id - a.id)).map(p => ({
+      name: p.name, initials: initialsOf(p.name),
+      avatarStyle: avatar(30, "#6b6482"),
+      area: p.func || "sem área",
+      group: p.exitGroup || "sem grupo",
+      period: p.since + " → " + (p.date || "sem data"),
+      by: p.exitBy || "—",
+      why: p.exitWhy || "sem motivo registrado",
+      acc: "conta desativada · último acesso " + (p.last || "nunca"),
+      holes: p.holes ? plural(p.holes, "data em aberto na escala", "datas em aberto na escala") : "nenhuma data em aberto",
+      holesStyle: "font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;padding:3px 8px;border-radius:999px;background:" + (p.holes ? "#fdf7e8" : "#f4f2fa") + ";color:" + (p.holes ? "#8a6413" : "#6b6482"),
+      onView: () => this.setState({ open: p.id, draft: JSON.parse(JSON.stringify(p)), why: "" }),
+      onReact: () => { if (isAdm) this.setState({ react: { id: p.id } }); },
+      reactStyle: isAdm
+        ? "height:28px;padding:0 12px;flex:none;border-radius:9px;border:1px solid #ddd0fb;background:#fff;color:#6C2BF2;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap"
+        : "display:none",
+      style: "display:flex;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid #f2eefa;background:#fff"
+    }));
+
+    const react = (() => {
+      if (!st.react) return false;
+      const p = this.personOf(st.react.id);
+      if (!p) return false;
+      const back = () => {
+        const entry = { when: "agora", who: p.name, what: "Reativação", diff: "Desligada → Ativa · mesma ficha", effect: "voltou sem grupo e sem conta: precisa de grupo e de convite novo", by: meta.person };
+        this.setState({
+          people: st.people.map(x => x.id === p.id ? Object.assign({}, x, { state: "Ativa", date: "", acc: "Sem conta", group: 0, role: "MEM", holes: 0, last: "nunca" }) : x),
+          logs: [entry].concat(st.logs), react: null, tab: "lista", open: null
+        });
+      };
+      const fresh = () => {
+        const id = Math.max.apply(null, st.people.map(x => x.id)) + 1;
+        const entry = { when: "agora", who: p.name, what: "Reativação", diff: "ficha nova · o histórico antigo fica separado", effect: "a passagem anterior dela continua no Histórico, intacta", by: meta.person };
+        this.setState({
+          logs: [entry].concat(st.logs), react: null, tab: "lista",
+          open: id, why: "Voltou para nova temporada",
+          draft: { id: id, name: p.name, func: p.func, group: 0, role: "MEM", state: "Ativa", since: "", date: "", acc: "Sem conta", login: loginOf(p.name), last: "nunca", invited: 0 }
+        });
+      };
+      return {
+        name: p.name, initials: initialsOf(p.name),
+        avatarStyle: avatar(34, dotOf(areaOf(p.func))),
+        sub: "saiu em " + (p.date || "data não registrada") + " · esteve na casa de " + p.since,
+        question: "Ela já passou por aqui. Você quer a mesma ficha de volta ou uma ficha nova?",
+        options: [
+          { title: "Reativar a mesma ficha", body: "O tempo de casa dela continua contando de " + p.since + ", e a passagem anterior fica no mesmo lugar. Volta sem grupo e sem conta: precisa de grupo e de convite novo.", label: "Reativar ficha", onClick: back },
+          { title: "Criar ficha nova", body: "Trata como pessoa nova: tempo de casa começa agora. A passagem antiga fica intacta no Histórico, separada desta.", label: "Ficha nova", onClick: fresh }
+        ].map(o => Object.assign(o, {
+          style: "display:flex;flex-direction:column;gap:6px;padding:13px 14px;border-radius:13px;border:1px solid #e6e1f2;background:#faf9fe",
+          titleStyle: "font-size:13px;font-weight:700",
+          btnStyle: "height:32px;padding:0 13px;align-self:flex-start;border-radius:10px;border:none;background:#6C2BF2;color:#fff;font-size:12px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer"
+        })),
+        onClose: () => this.setState({ react: null })
+      };
+    })();
+
+    return {
+      isHistorico: st.tab === "historico",
+      hist: {
+        note: isAdm
+          ? "Quem é desligado sai de tudo no ato: da lista, do grupo, das escalas publicadas e do acesso. Nada se apaga — a passagem dela fica aqui."
+          : "Leitura: quem já passou pela casa. Desligar e reativar é da Administração.",
+        count: gone.length ? plural(gone.length, "pessoa já saiu", "pessoas já saíram") : "",
+        rows: histRows,
+        empty: histRows.length ? false : "Ninguém saiu da casa ainda."
+      },
+      react: react,
+      profileTabs: profileTabs, profileHint: meta.hint, profileName: meta.name, personName: meta.person,
+      mobileTabs: (function () {
+        const set = MOBILE_TABS[active];
+        const inBar = set.some(t => t[0] === "07");
+        return set.map(t => {
+          const on = inBar ? t[0] === "07" : t[0] === "mais";
+          return {
+            href: t[0] === "mais" ? "#mais" : NAV_HREF[t[0]],
+            label: t[1],
+            onClick: t[0] === "mais"
+              ? ((e) => { if (e && e.preventDefault) e.preventDefault(); self0.setState({ more: true }); })
+              : (() => {}),
+            style: "display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 2px;text-decoration:none;"
+              + (on ? "color:" + meta.dot + ";font-weight:700;" : "color:#6b6482;")
+          };
+        });
+      })(),
+      moreOpen: !!st.more,
+      onCloseMore: () => this.setState({ more: false }),
+      moreTitle: "Tudo no My ASA",
+      moreSub: meta.name + " · " + (isMem ? "o que é seu" : "o que você acessa"),
+      moreGroups: NAV.map(g => ({
+        title: g.title,
+        items: g.items.filter(it => it[2].indexOf(active) >= 0).map(it => ({
+          href: NAV_HREF[it[0]],
+          num: it[0],
+          label: (isMem && it[3]) ? it[3] : it[1],
+          style: "display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:12px;text-decoration:none;color:#1b1630;"
+            + (it[0] === "07" ? "background:" + meta.dot + "14;border:1px solid " + meta.dot + "40;" : "background:#fff;border:1px solid #eee9f6;")
+        }))
+      })).filter(g => g.items.length),
+      morePerfil: NAV_HREF["28"],
+      moreAsa: NAV_HREF["27"],
+      shellNav: shellNav, tabs: tabs,
+      pageTitle: isMem ? "Minha ficha" : "Pessoas e acessos",
+      scopeLabel: meta.scope,
+      canCreate: canCreate && !isMem,
+      onNewPerson: () => this.newPerson(),
+      readonlyChipStyle: (canCreate && !isMem) ? "display:none" : "font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;color:#8a6413;background:#fdf1dc;padding:4px 9px;border-radius:999px",
+      personChipStyle: "font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:" + meta.dot + ";background:" + meta.dot + "26;padding:2px 7px;border-radius:999px;width:fit-content",
+      asaBtnStyle: "display:flex;align-items:center;gap:8px;height:34px;padding:0 12px 0 8px;border-radius:12px;border:1px solid " + (st.asa ? "#6C2BF2" : "#e6e1f2") + ";background:" + (st.asa ? "#f7f3ff" : "#fff") + ";color:#3c3559;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;cursor:pointer",
+      toggleAsa: () => this.setState({ asa: !st.asa }),
+      asaOpen: st.asa,
+      asaHint: isMem ? "sobre a sua ficha" : "sem grupo, afastamento, conta",
+      asaIntro: isMem
+        ? "Eu não mexo na sua ficha. Se algo estiver errado nela, quem corrige é a supervisão."
+        : isDir ? "Leitura: quem está sem supervisor, quais afastamentos estão em aberto e onde conta e situação não batem."
+        : "Eu cruzo cada ficha com os grupos, as datas e as contas. Aponto quem ficou sem quem responda por ela — mudar ficha é você.",
+      asaCards: asaCards,
+      asaEmpty: asaCards.length ? false : (isMem ? "Sua ficha está completa." : "Toda pessoa tem área, grupo, perfil e conta em ordem."),
+      asaBar: (!isMem && asaCards.length) ? {
+        text: asaCards.length + (asaCards.length === 1 ? " ponto de atenção nas fichas" : " pontos de atenção nas fichas") + " · " + asaCards.map(c => c.tag.toLowerCase()).join(", "),
+        style: "display:flex;align-items:center;gap:11px;padding:9px 20px;background:#fdf7e8;border-bottom:1px solid #f0d9a8",
+        chip: "font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:3px 8px;border-radius:999px;background:#fff;color:#8a6413",
+        textStyle: "font-size:12px;font-weight:600;color:#8a6413",
+        cta: "Abrir a ASA",
+        ctaStyle: "height:28px;padding:0 12px;border-radius:9px;border:none;background:#1b1630;color:#fff;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap",
+        onOpen: () => this.setState({ asa: true })
+      } : false,
+      isLista: st.tab === "lista", isRegistros: st.tab === "registros",
+      isAcessos: st.tab === "acessos", accTab: accTab,
+      query: st.query,
+      onQuery: e => this.setState({ query: e.target.value }),
+      filters: filters,
+      countLabel: rows.length === scoped.length ? plural(rows.length, "pessoa", "pessoas") : rows.length + " de " + scoped.length,
+      rows: rows, hasRows: rows.length > 0, emptyState: emptyState,
+      logs: st.logs, det: det, mob: mob
+    };
+  }
+
+  newPerson() {
+    const st = this.state;
+    const id = Math.max.apply(null, st.people.map(p => p.id)) + 1;
+    const me = st.people.find(p => p.name === (PROFILES.find(x => x.key === st.profile) || {}).person);
+    const fn = st.profile === "SUP" && me ? me.func : FUNCS[0].key;
+    this.setState({ open: id, why: "", draft: { id: id, name: "", func: fn, group: 0, role: "MEM", state: "Ativa", since: "", date: "", acc: "Sem conta", login: "", last: "nunca", invited: 0 } });
+  }
+}
+</script>
+</body>
+</html>

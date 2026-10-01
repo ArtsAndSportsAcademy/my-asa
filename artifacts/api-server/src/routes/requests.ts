@@ -16,6 +16,10 @@ import { LOG_DOMAIN } from "@workspace/shared";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { hasActiveResponsibility } from "../lib/delegation-check.js";
 import { sendNotification } from "../services/notificationService.js";
+import { normalizeReason, requireReason } from "../lib/reason.js";
+import { registerUndo } from "../services/undo.js";
+import { canSupervisorAccessPerson, usesAreaLocalScopes } from "../services/area-local-scope.js";
+import { isSupervisorOfOperation } from "../lib/show-responsibility.js";
 
 const router: IRouter = Router();
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
@@ -161,8 +165,10 @@ router.get("/requests/:id", requireAuth, requireOrganization, async (req, res) =
       .select({
         id: requestsTable.id,
         requesterId: requestsTable.requesterId,
+        requesterOrganizationId: usersTable.organizationId,
         requesterName: usersTable.name,
         operationId: requestsTable.operationId,
+        operationOrganizationId: operationsTable.organizationId,
         operationName: operationsTable.name,
         type: requestsTable.type,
         status: requestsTable.status,
@@ -182,6 +188,14 @@ router.get("/requests/:id", requireAuth, requireOrganization, async (req, res) =
       return;
     }
 
+    // Nunca confie apenas no `organizationId` do token: a consulta por ID precisa
+    // provar que a pessoa e a operação da solicitação pertencem à organização.
+    // Retornamos 403, e não o registro, quando o ID existe fora do escopo.
+    if (request.requesterOrganizationId !== user.organizationId || request.operationOrganizationId !== user.organizationId) {
+      res.status(403).json({ error: "Forbidden", message: "Acesso negado" });
+      return;
+    }
+
     // Access control
     const isMember = !MANAGER_ROLES.includes(user.role);
     if (isMember && request.requesterId !== user.sub) {
@@ -189,7 +203,10 @@ router.get("/requests/:id", requireAuth, requireOrganization, async (req, res) =
       return;
     }
     if (!isMember && user.role !== "ADMIN") {
-      // Supervisor — future: validate operation membership. For now, trust org scope via token.
+      if (!(await isSupervisorOfOperation(user.sub, request.operationId))) {
+        res.status(403).json({ error: "Forbidden", message: "Acesso negado" });
+        return;
+      }
     }
 
     // Decisions with supervisor name
@@ -203,6 +220,7 @@ router.get("/requests/:id", requireAuth, requireOrganization, async (req, res) =
         decision: requestDecisionsTable.decision,
         reason: requestDecisionsTable.reason,
         alternativeDetails: requestDecisionsTable.alternativeDetails,
+        revertedAt: requestDecisionsTable.revertedAt,
         deadline: requestDecisionsTable.deadline,
         createdAt: requestDecisionsTable.createdAt,
       })
@@ -212,7 +230,8 @@ router.get("/requests/:id", requireAuth, requireOrganization, async (req, res) =
       .orderBy(desc(requestDecisionsTable.createdAt));
 
     log.info({ requestId: id }, "request detail fetched");
-    res.json({ request: { ...request, decisions } });
+    const { requesterOrganizationId, operationOrganizationId, ...requestPayload } = request;
+    res.json({ request: { ...requestPayload, decisions } });
   } catch (err) {
     log.error({ err }, "Error fetching request");
     res.status(500).json({ error: "Internal Server Error" });
@@ -375,6 +394,12 @@ router.post("/requests/:id/decision", requireAuth, requireOrganization, async (r
       }
     }
 
+    const reasonIsRequired = decision === "DENIED" && ["LEAVE", "SWAP"].includes(existing.type);
+    const decisionReason = reasonIsRequired
+      ? requireReason(res, reason, "negar pedido de folga ou troca")
+      : normalizeReason(reason);
+    if (reasonIsRequired && !decisionReason) return;
+
     const activeStatuses = ["PENDING", "ALTERNATIVE_REJECTED"];
     if (!activeStatuses.includes(existing.status)) {
       res.status(422).json({ error: "Unprocessable", message: "Solicitação não está em estado que aceita decisão" });
@@ -388,19 +413,26 @@ router.post("/requests/:id/decision", requireAuth, requireOrganization, async (r
     };
     const newStatus = statusMap[decision];
 
-    const [decisionRecord] = await db
+    const [operation] = await db.select().from(operationsTable).where(eq(operationsTable.id, existing.operationId));
+    if (operation?.organizationId !== user.organizationId) { res.status(403).json({ error: "Forbidden" }); return; }
+    if (user.role.startsWith("SUPERVISOR") && await usesAreaLocalScopes(user.organizationId) && !await canSupervisorAccessPerson({ supervisorId: user.sub, organizationId: user.organizationId, personId: existing.requesterId })) { res.status(403).json({ error: "Forbidden" }); return; }
+    let undo: Awaited<ReturnType<typeof registerUndo>> | undefined;
+    const decisionRecord = await db.transaction(async (tx) => {
+    const [locked] = await tx.select().from(requestsTable).where(eq(requestsTable.id, id)).for("update");
+    if (!locked || locked.status !== existing.status) throw new Error("Solicitação já foi alterada");
+    const [record] = await tx
       .insert(requestDecisionsTable)
       .values({
         requestId: id,
         supervisorId: user.sub,
         decision: decision as any,
-        reason: reason ?? null,
+        reason: decisionReason,
         alternativeDetails: alternativeDetails ?? null,
         deadline: deadline ? new Date(deadline) : null,
       })
       .returning();
 
-    await db
+    await tx
       .update(requestsTable)
       .set({ status: newStatus as any, updatedAt: new Date() })
       .where(eq(requestsTable.id, id));
@@ -418,20 +450,20 @@ router.post("/requests/:id/decision", requireAuth, requireOrganization, async (r
         const sortedDates = [...existing.targetDates].sort();
         const periodStart = sortedDates[0]!;
         const periodEnd = sortedDates[sortedDates.length - 1]!;
-        await db.insert(restrictionsTable).values({
+        await tx.insert(restrictionsTable).values({
           userId: existing.requesterId,
           type: restrictionType as any,
           periodStart,
           periodEnd,
           status: "ACTIVE",
-          notes: `Criada automaticamente via solicitação aprovada. Motivo: ${reason ?? existing.reason ?? "—"}. Ref: ${id}`,
+          notes: `Criada automaticamente via solicitação aprovada. Motivo: ${decisionReason ?? existing.reason ?? "—"}. Ref: ${id}`,
           createdBy: user.sub,
         }).onConflictDoNothing();
       }
       // Auto-criar folga quando LEAVE aprovada
       if (existing.type === "LEAVE" && existing.targetDates.length > 0) {
         const leaveDates = [...existing.targetDates].sort();
-        await db.insert(folgasTable).values({
+        await tx.insert(folgasTable).values({
           userId: existing.requesterId,
           operationId: existing.operationId,
           type: "DAY_OFF",
@@ -461,16 +493,30 @@ router.post("/requests/:id/decision", requireAuth, requireOrganization, async (r
       category: "REQUEST",
       action: actionMap[decision],
       title: `Solicitação ${labelMap[decision]}`,
-      narrative: `${actorName} ${labelMap[decision]} a solicitação.${reason ? ` Motivo: ${reason}` : ""}`,
+      narrative: `${actorName} ${labelMap[decision]} a solicitação.${decisionReason ? ` Motivo: ${decisionReason}` : ""}`,
       entityType: "request",
       entityId: id,
       actorId: user.sub,
       actorName,
       operationId: existing.operationId,
       orgId: user.organizationId,
+      beforeState: existing,
+      afterState: { ...existing, status: newStatus },
+      metadata: {
+        reason: decisionReason,
+        calculatedReflection: `Solicitação ${existing.type} alterada de ${existing.status} para ${newStatus}.`,
+      },
+    }, tx);
+    if (decision === "DENIED" && existing.type === "LEAVE") {
+      undo = await registerUndo(tx, { organizationId: user.organizationId, actorId: user.sub, kind: "leave_denial", entityId: id, changes: [
+        { table: "request", id, before: { status: existing.status }, after: { status: "DENIED" } },
+        { table: "decision", id: record!.id, before: { revertedAt: null }, after: { revertedAt: null } },
+      ], notifications: [{ userId: existing.requesterId, type: "request.denied", title: "Solicitação recusada", message: "Seu pedido de folga foi recusado. Consulte a decisão no My ASA.", priority: "IMPORTANT", category: "approval", entityType: "request", entityId: id, actionUrl: "/membro/solicitacoes" }] });
+    }
+    return record;
     });
 
-    // notify requester of decision
+    // Reversible leave decisions notify only through the durable 10-second outbox.
     const decisionTitleMap: Record<string, string> = {
       APPROVED: "Solicitação aprovada",
       DENIED: "Solicitação recusada",
@@ -478,10 +524,10 @@ router.post("/requests/:id/decision", requireAuth, requireOrganization, async (r
     };
     const decisionMsgMap: Record<string, string> = {
       APPROVED: `Sua solicitação do tipo ${existing.type} foi aprovada.`,
-      DENIED: `Sua solicitação do tipo ${existing.type} foi recusada.${reason ? ` Motivo: ${reason}` : ""}`,
+      DENIED: `Sua solicitação do tipo ${existing.type} foi recusada.${decisionReason ? ` Motivo: ${decisionReason}` : ""}`,
       ALTERNATIVE_PROPOSED: `Uma alternativa foi proposta para sua solicitação. Verifique e responda.`,
     };
-    sendNotification({
+    if (!undo) sendNotification({
       userId: existing.requesterId,
       type: `request.${decision.toLowerCase()}`,
       title: decisionTitleMap[decision] ?? "Decisão sobre sua solicitação",
@@ -493,7 +539,7 @@ router.post("/requests/:id/decision", requireAuth, requireOrganization, async (r
       actionUrl: `/(tabs)/solicitacoes`,
     }).catch(() => {});
     log.info({ requestId: id, decision, supervisorId: user.sub }, "request decision recorded");
-    res.status(201).json({ decision: decisionRecord });
+    res.status(201).json({ decision: decisionRecord, undo });
   } catch (err) {
     log.error({ err }, "Error recording decision");
     res.status(500).json({ error: "Internal Server Error" });

@@ -1,274 +1,36 @@
-import { Switch, Route, Router as WouterRouter, Redirect, useLocation } from "wouter";
+import { lazy, Suspense } from "react";
+import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/not-found";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { useAuth } from "@/hooks/useAuth";
-import { useGetMyActiveDelegations } from "@workspace/api-client-react";
-import Login from "@/pages/login";
-import ForcePasswordChange from "@/pages/force-password-change";
-import AdminHome from "@/pages/admin/home";
-import UsersPage from "@/pages/admin/users";
-import OperationsPage from "@/pages/admin/operations";
-import GroupsPage from "@/pages/admin/groups";
-import ShowBookPage from "@/pages/admin/show-book";
-import AgendaPage from "@/pages/admin/agenda";
-import AuditoriaPage from "@/pages/admin/auditoria";
-import ScalesPage from "@/pages/admin/scales";
-import ActivitiesPage from "@/pages/admin/activities";
-import DailyBookPage from "@/pages/admin/daily-book";
-import SupervisorDailyBookPage from "@/pages/supervisor/daily-book";
-import AdminOperationalPanel from "@/pages/admin/operational-panel";
-import SupervisorOperationalPanel from "@/pages/supervisor/operational-panel";
-import MeuDiaPage from "@/pages/admin/meu-dia";
-import AdminAvisosPage from "@/pages/admin/avisos";
-import SupervisorAvisosPage from "@/pages/supervisor/avisos";
-import AdminHistoryPage from "@/pages/admin/history";
-import SupervisorHistoryPage from "@/pages/supervisor/history";
-import AdminMessagesPage from "@/pages/admin/messages";
-import SupervisorMessagesPage from "@/pages/supervisor/messages";
-import AdminDeliveriesPage from "@/pages/admin/deliveries";
-import SupervisorDeliveriesPage from "@/pages/supervisor/deliveries";
-import AdminLibraryPage from "@/pages/admin/library";
-import SupervisorLibraryPage from "@/pages/supervisor/library";
-import AdminRequestsPage from "@/pages/admin/requests";
-import SupervisorRequestsPage from "@/pages/supervisor/requests";
-import SupervisorDelegationsPage from "@/pages/supervisor/delegations";
-import EquipePage from "@/pages/supervisor/equipe";
-import SupervisorGruposPage from "@/pages/supervisor/grupos";
-import AdminTasksPage from "@/pages/admin/tasks";
-import SupervisorTasksPage from "@/pages/supervisor/tasks";
-import AdminInsightsPage from "@/pages/admin/insights";
-import SupervisorInsightsPage from "@/pages/supervisor/insights";
-import SupervisorRestrictionsPage from "@/pages/supervisor/restrictions";
-import SupervisorCheckInsPage from "@/pages/supervisor/check-ins";
-import SupervisorInterRequestsPage from "@/pages/supervisor/supervisor-requests";
-import ResponsibilitiesPage from "@/pages/admin/responsibilities";
-import AsaPage from "@/pages/admin/asa";
-import AdminFolgasPage from "@/pages/admin/folgas";
-import SupervisorFolgasPage from "@/pages/supervisor/folgas";
-import MuralPage from "@/pages/admin/mural";
-import MinhaEscalaPage from "@/pages/membro/minha-escala";
-import MinhasTarefasPage from "@/pages/membro/minhas-tarefas";
-import MinhasEntregasPage from "@/pages/membro/minhas-entregas";
-import MembroMensagensPage from "@/pages/membro/mensagens";
-import MembroBibliotecaPage from "@/pages/membro/biblioteca";
-import MembroLivroDoDiaPage from "@/pages/membro/livro-do-dia";
-import MembroAvisosPage from "@/pages/membro/avisos";
-import MembroSolicitacoesPage from "@/pages/membro/solicitacoes";
-import FolgasIndisponibilidadesPage from "@/pages/admin/folgas-indisponibilidades";
-import ResponsabilidadesDelegacoesPage from "@/pages/admin/responsabilidades-delegacoes";
-import MembroFolgasPage from "@/pages/membro/folgas";
+// D5: login e troca obrigatória de senha só carregam quando aparecem (quem já entrou não baixa zod/react-hook-form).
+const Login = lazy(() => import("@/pages/login"));
+import { UndoNotices } from "@/components/undo-notices";
+import { ReasonConfirmation } from "@/components/reason-confirmation";
+const ForcePasswordChange = lazy(() => import("@/pages/force-password-change"));
+import ShellFoundation from "@/components/shell-foundation";
+import "@/shell-foundation.css";
+import "@/shell-foundation-navigation.css";
+import "@/shell-assets.css";
 
 const queryClient = new QueryClient();
+const PrintDayPage = lazy(() => import("@/pages/print-day"));
 
-// ─── Responsabilidade → rota (para acesso por delegação) ──────────────────────
-
-const ROUTE_RESPONSIBILITY: Record<string, string> = {
-  "/supervisor/check-ins":  "CHECK_INS",
-  "/supervisor/requests":   "REQUESTS",
-  "/supervisor/tasks":      "TASK_APPROVALS",
-  "/supervisor/daily-book": "DAILY_BOOK",
-  "/supervisor/avisos":     "NOTICES",
-  "/admin/scales":          "SCALES",
-  "/supervisor/messages":   "OPERATIONAL_MESSAGES",
-};
-
-const RESP_LABELS_WEB: Record<string, string> = {
-  CHECK_INS:            "Check-ins",
-  REQUESTS:             "Solicitações",
-  TASK_APPROVALS:       "Aprovação de Tarefas",
-  DAILY_BOOK:           "Livro do Dia",
-  NOTICES:              "Avisos",
-  OPERATIONAL_MESSAGES: "Mensagens Operacionais",
-  SCALES:               "Escalas",
-};
-
-type RouteCapability =
-  | "VIEW_HOME"
-  | "VIEW_OWN_SCHEDULE"
-  | "VIEW_AGENDA"
-  | "VIEW_SHOW_BOOK"
-  | "MANAGE_RESPONSIBILITIES"
-  | "VIEW_MEMBER_WORK"
-  | "VIEW_COMMUNICATION"
-  | "USE_ASA";
-
-// ─── Componentes auxiliares ───────────────────────────────────────────────────
-
-function Spinner() {
+function PrintDayRoute() {
   return (
-    <div className="min-h-screen bg-muted/20 flex items-center justify-center">
-      <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-    </div>
+    <Suspense fallback={<div role="status" className="min-h-screen flex items-center justify-center">Carregando impressão…</div>}>
+      <PrintDayPage />
+    </Suspense>
   );
 }
-
-function AccessDenied() {
-  const [, setLocation] = useLocation();
-  const { data } = useGetMyActiveDelegations();
-  const allResp = [...new Set(
-    (data?.delegations ?? []).flatMap((d) => d.responsibilities as string[])
-  )];
-
-  return (
-    <div className="min-h-screen bg-muted/20 flex items-center justify-center p-6">
-      <div className="max-w-md w-full bg-card border rounded-xl p-8 text-center space-y-4">
-        <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
-          <svg className="w-6 h-6 text-destructive" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M12 9v2m0 4h.01M12 3a9 9 0 110 18A9 9 0 0112 3z" />
-          </svg>
-        </div>
-        <h2 className="text-xl font-serif font-bold">Acesso restrito</h2>
-        <p className="text-muted-foreground text-sm">
-          Você não tem permissão para acessar esta área.
-        </p>
-        {allResp.length > 0 && (
-          <div className="text-left bg-muted/50 rounded-lg p-4">
-            <p className="text-[10px] font-semibold text-muted-foreground mb-2 uppercase tracking-widest">
-              Suas responsabilidades ativas
-            </p>
-            <ul className="space-y-1.5">
-              {allResp.map((r) => (
-                <li key={r} className="text-sm flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                  {RESP_LABELS_WEB[r] ?? r}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        <button
-          onClick={() => setLocation("/admin/home")}
-          className="w-full bg-primary text-primary-foreground rounded-lg py-2.5 text-sm font-medium hover:bg-primary/90 transition-colors"
-        >
-          Voltar para Meu Dia
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Route guards ─────────────────────────────────────────────────────────────
-
-function CapabilityRoute({
-  component: Component,
-  path,
-  capability,
-}: {
-  component: React.ComponentType<any>;
-  path: string;
-  capability: RouteCapability;
-}) {
-  const { isAuthenticated, isLoading, capabilities } = useAuth();
-  const { data: delegData, isLoading: delegLoading } = useGetMyActiveDelegations({
-    query: { enabled: !isLoading && isAuthenticated, retry: false } as any,
-  });
-  if (isLoading || delegLoading) return <Spinner />;
-  if (!isAuthenticated) return <Redirect to="/login" />;
-  const hasCapability = capabilities.includes(capability);
-  const delegatedResponsibility = ROUTE_RESPONSIBILITY[path];
-  const hasDelegation = delegatedResponsibility
-    ? (delegData?.delegations ?? []).some((delegation) =>
-        (delegation.responsibilities as string[]).includes(delegatedResponsibility))
-    : false;
-  if (!hasCapability && !hasDelegation) return <AccessDenied />;
-  return <Route path={path} component={Component} />;
-}
-
-function RoleRoute({ component: Component, path, roles }: { component: React.ComponentType<any>, path: string, roles: string[] }) {
-  const { isAuthenticated, isLoading, roles: userRoles } = useAuth();
-  const { data: delegData, isLoading: delegLoading } = useGetMyActiveDelegations({
-    query: { enabled: !isLoading && isAuthenticated, retry: false } as any,
-  });
-
-  if (isLoading || delegLoading) return <Spinner />;
-  if (!isAuthenticated) return <Redirect to="/login" />;
-
-  const hasRole = userRoles.some((r) => roles.includes(r.role));
-
-  if (!hasRole) {
-    const required = ROUTE_RESPONSIBILITY[path];
-    const hasDelegation = required
-      ? (delegData?.delegations ?? []).some((d) =>
-          (d.responsibilities as string[]).includes(required)
-        )
-      : false;
-
-    if (!hasDelegation) return <AccessDenied />;
-  }
-
-  return <Route path={path} component={Component} />;
-}
-
-function RootRoute() {
-  const { isAuthenticated, isLoading } = useAuth();
-  if (isLoading) return <Spinner />;
-  return <Redirect to={isAuthenticated ? "/admin/home" : "/login"} />;
-}
-
-// ─── Router ───────────────────────────────────────────────────────────────────
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={RootRoute} />
-      <Route path="/login" component={Login} />
-      <CapabilityRoute path="/admin/home" component={AdminHome} capability="VIEW_HOME" />
-      <RoleRoute path="/admin/users" component={UsersPage} roles={["ADMIN"]} />
-      <RoleRoute path="/admin/operations" component={OperationsPage} roles={["ADMIN"]} />
-      <RoleRoute path="/admin/groups" component={GroupsPage} roles={["ADMIN"]} />
-      <CapabilityRoute path="/admin/show-book" component={ShowBookPage} capability="VIEW_SHOW_BOOK" />
-      <CapabilityRoute path="/admin/agenda" component={AgendaPage} capability="VIEW_AGENDA" />
-      <RoleRoute path="/admin/auditoria" component={AuditoriaPage} roles={["ADMIN"]} />
-      <RoleRoute path="/admin/scales" component={ScalesPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <RoleRoute path="/admin/activities" component={ActivitiesPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <RoleRoute path="/admin/daily-book" component={DailyBookPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <RoleRoute path="/supervisor/daily-book" component={SupervisorDailyBookPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <RoleRoute path="/admin/operational-panel" component={AdminOperationalPanel} roles={["ADMIN"]} />
-      <RoleRoute path="/supervisor/operational-panel" component={SupervisorOperationalPanel} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <CapabilityRoute path="/admin/meu-dia" component={MeuDiaPage} capability="VIEW_HOME" />
-      <RoleRoute path="/admin/avisos" component={AdminAvisosPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <RoleRoute path="/supervisor/avisos" component={SupervisorAvisosPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <RoleRoute path="/admin/history" component={AdminHistoryPage} roles={["ADMIN"]} />
-      <RoleRoute path="/supervisor/history" component={SupervisorHistoryPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <RoleRoute path="/admin/messages" component={AdminMessagesPage} roles={["ADMIN"]} />
-      <RoleRoute path="/supervisor/messages" component={SupervisorMessagesPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <RoleRoute path="/admin/deliveries" component={AdminDeliveriesPage} roles={["ADMIN"]} />
-      <RoleRoute path="/supervisor/deliveries" component={SupervisorDeliveriesPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <RoleRoute path="/admin/library" component={AdminLibraryPage} roles={["ADMIN"]} />
-      <RoleRoute path="/supervisor/library" component={SupervisorLibraryPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <RoleRoute path="/admin/requests" component={AdminRequestsPage} roles={["ADMIN"]} />
-      <RoleRoute path="/supervisor/requests" component={SupervisorRequestsPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <RoleRoute path="/supervisor/delegations" component={SupervisorDelegationsPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <RoleRoute path="/supervisor/equipe" component={EquipePage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <RoleRoute path="/supervisor/grupos" component={SupervisorGruposPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <RoleRoute path="/admin/tasks" component={AdminTasksPage} roles={["ADMIN"]} />
-      <RoleRoute path="/supervisor/tasks" component={SupervisorTasksPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <RoleRoute path="/admin/insights" component={AdminInsightsPage} roles={["ADMIN"]} />
-      <RoleRoute path="/supervisor/insights" component={SupervisorInsightsPage} roles={["SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <RoleRoute path="/supervisor/restrictions" component={SupervisorRestrictionsPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <RoleRoute path="/supervisor/check-ins" component={SupervisorCheckInsPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <RoleRoute path="/supervisor/supervisor-requests" component={SupervisorInterRequestsPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <CapabilityRoute path="/admin/responsibilities" component={ResponsibilitiesPage} capability="MANAGE_RESPONSIBILITIES" />
-      <CapabilityRoute path="/admin/asa" component={AsaPage} capability="USE_ASA" />
-      <RoleRoute path="/admin/folgas" component={AdminFolgasPage} roles={["ADMIN"]} />
-      <RoleRoute path="/supervisor/folgas" component={SupervisorFolgasPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <CapabilityRoute path="/admin/mural" component={MuralPage} capability="VIEW_COMMUNICATION" />
-      <CapabilityRoute path="/membro/escala" component={MinhaEscalaPage} capability="VIEW_OWN_SCHEDULE" />
-      <CapabilityRoute path="/membro/tarefas" component={MinhasTarefasPage} capability="VIEW_MEMBER_WORK" />
-      <CapabilityRoute path="/membro/entregas" component={MinhasEntregasPage} capability="VIEW_MEMBER_WORK" />
-      <CapabilityRoute path="/membro/mensagens" component={MembroMensagensPage} capability="VIEW_COMMUNICATION" />
-      <CapabilityRoute path="/membro/biblioteca" component={MembroBibliotecaPage} capability="VIEW_MEMBER_WORK" />
-      <CapabilityRoute path="/membro/livro-do-dia" component={MembroLivroDoDiaPage} capability="VIEW_MEMBER_WORK" />
-      <CapabilityRoute path="/membro/avisos" component={MembroAvisosPage} capability="VIEW_COMMUNICATION" />
-      <CapabilityRoute path="/membro/solicitacoes" component={MembroSolicitacoesPage} capability="VIEW_MEMBER_WORK" />
-      <RoleRoute path="/admin/folgas-indisponibilidades" component={FolgasIndisponibilidadesPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <RoleRoute path="/admin/responsabilidades-delegacoes" component={ResponsabilidadesDelegacoesPage} roles={["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]} />
-      <CapabilityRoute path="/membro/folgas" component={MembroFolgasPage} capability="VIEW_MEMBER_WORK" />
-      <Route component={NotFound} />
+      <Route path="/login">{() => <Suspense fallback={<div role="status" className="min-h-screen flex items-center justify-center">Carregando…</div>}><Login /></Suspense>}</Route>
+      <Route path="/imprimir" component={PrintDayRoute} />
+      <Route component={ShellFoundation} />
     </Switch>
   );
 }
@@ -276,7 +38,7 @@ function Router() {
 function AuthGate() {
   const { isAuthenticated, isLoading, user } = useAuth();
   if (!isLoading && isAuthenticated && user?.mustChangePassword) {
-    return <ForcePasswordChange />;
+    return <Suspense fallback={<div role="status" className="min-h-screen flex items-center justify-center">Carregando…</div>}><ForcePasswordChange /></Suspense>;
   }
   return <Router />;
 }
@@ -284,14 +46,14 @@ function AuthGate() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
         <AuthProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <AuthGate />
+            <UndoNotices />
+            <ReasonConfirmation />
           </WouterRouter>
         </AuthProvider>
         <Toaster />
-      </TooltipProvider>
     </QueryClientProvider>
   );
 }

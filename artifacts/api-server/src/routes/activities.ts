@@ -14,6 +14,7 @@ import { requireAuth, requireOrganization, requireRole } from "../middlewares/au
 import { requestLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
 import { supervisedOperationIds, groupCoveredOperationIds, loadGroupInOrg } from "./groups.js";
+import { writeHistoryEvent } from "../lib/history-helper.js";
 
 const router: IRouter = Router();
 
@@ -75,6 +76,7 @@ async function loadManageableActivity(
       and(
         eq(recurringActivitiesTable.id, activityId),
         inArray(recurringActivitiesTable.operationId, allowedOps),
+        eq(recurringActivitiesTable.active, true),
       ),
     )
     .limit(1);
@@ -267,7 +269,7 @@ router.get("/activities", requireAuth, requireOrganization, async (req, res) => 
     const rows = await db
       .select()
       .from(recurringActivitiesTable)
-      .where(inArray(recurringActivitiesTable.operationId, allowed));
+      .where(and(inArray(recurringActivitiesTable.operationId, allowed), eq(recurringActivitiesTable.active, true)));
     const activities = await hydrate(rows);
     res.json({ activities });
   } catch (err) {
@@ -324,6 +326,12 @@ router.post(
         if (Array.isArray(assignees)) {
           await replaceAssignees(tx, activity!.id, assignees);
         }
+        await writeHistoryEvent({
+          category: "OPERATIONAL_CHANGE", action: "activity.created", title: "Atividade criada",
+          narrative: `A atividade ${activity!.title} foi criada.`, entityType: "recurring_activity", entityId: activity!.id,
+          actorId: sub, operationId, orgId: organizationId, beforeState: null, afterState: activity!,
+          metadata: { reason: req.body?.reason ?? null },
+        }, tx as any);
         return activity!;
       });
 
@@ -386,6 +394,13 @@ router.patch(
         if (Array.isArray(assignees)) {
           await replaceAssignees(tx, id, assignees);
         }
+        if (!row) throw new Error("Atividade não encontrada");
+        await writeHistoryEvent({
+          category: "OPERATIONAL_CHANGE", action: "activity.updated", title: "Atividade atualizada",
+          narrative: `A atividade ${row.title} foi atualizada.`, entityType: "recurring_activity", entityId: row.id,
+          actorId: sub, operationId: row.operationId, orgId: organizationId, beforeState: existing, afterState: row,
+          metadata: { reason: req.body?.reason ?? null },
+        }, tx as any);
         return row!;
       });
 
@@ -415,7 +430,27 @@ router.delete(
         res.status(404).json({ error: "Atividade não encontrada" });
         return;
       }
-      await db.delete(recurringActivitiesTable).where(eq(recurringActivitiesTable.id, id));
+      await db.transaction(async (tx) => {
+        const [updated] = await tx.update(recurringActivitiesTable)
+          .set({ active: false, updatedAt: new Date() })
+          .where(and(eq(recurringActivitiesTable.id, id), eq(recurringActivitiesTable.active, true)))
+          .returning();
+        if (!updated) throw new Error("Atividade não encontrada");
+        await writeHistoryEvent({
+          category: "OPERATIONAL_CHANGE",
+          action: "activity.deactivated",
+          title: "Atividade desativada",
+          narrative: `A atividade ${updated.title} foi desativada.`,
+          entityType: "recurring_activity",
+          entityId: updated.id,
+          actorId: sub,
+          operationId: updated.operationId,
+          orgId: organizationId,
+          beforeState: existing,
+          afterState: updated,
+          metadata: { reason: req.body?.reason ?? null },
+        }, tx as any);
+      });
       res.json({ ok: true });
     } catch (err) {
       log.error({ err }, "erro ao remover atividade");

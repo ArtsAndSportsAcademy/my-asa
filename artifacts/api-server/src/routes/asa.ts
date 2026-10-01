@@ -1,9 +1,12 @@
+import { randomUUID } from "node:crypto";
 import { Router } from "express";
-import { eq, and, desc, gte, lte, ne, ilike, or, sql, inArray } from "drizzle-orm";
+import { canManageAsaAgenda, parseAsaAgendaDraftNotesRequest, parseAsaAgendaDraftScheduleRequest } from "../services/asa-command-engine.js";
+import { eq, and, asc, desc, gt, gte, lte, ne, ilike, or, sql, inArray, isNull, isNotNull, notExists } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   conversations,
   aiMessages,
+  agendaEventParticipantsTable,
   asaMemoriesTable,
   asaUserPreferencesTable,
   asaAuditLogTable,
@@ -11,19 +14,44 @@ import {
   usersTable,
   userRolesTable,
   agendaEventsTable,
+  operationalCheckInsTable,
   scalesTable,
   scaleAllocationsTable,
   responsibilitiesTable,
+  responsibilityAssignmentsTable,
+  dailyBooksTable,
+  dailyBookScenesTable,
+  dailyBookBlocksTable,
+  dailyBookPositionsTable,
+  dailyBookAssignmentsTable,
+  showBooksTable,
+  showBookScenesTable,
+  showBookBlocksTable,
+  showBookRolesTable,
   notificationsTable,
   noticesTable,
+  noticeRecipientsTable,
   tasksTable,
+  taskCommentsTable,
+  taskEvidencesTable,
+  deliveriesTable,
+  deliveryAssignmentsTable,
   operationsTable,
   folgasTable,
+  requestsTable,
   libraryDocumentsTable,
   organizationsTable,
   messagesTable,
   messageThreadsTable,
+  messageThreadParticipantsTable,
+  announcementCommentsTable,
+  announcementsTable,
+  announcementReadsTable,
+  areaLocalSupervisorsTable,
+  areasTable,
+  locationsTable,
   libraryDocumentVersionsTable,
+  libraryDocumentPageCitationsTable,
   libraryCategoriesTable,
   libraryViewsTable,
   userNotificationsTable,
@@ -33,8 +61,11 @@ import {
   recurringActivitySchedulesTable,
   recurringActivityAssigneesTable,
 } from "@workspace/db";
-import { getAnthropicClient } from "@workspace/integrations-anthropic-ai";
 import { resolveScaleAllocations, computeFreeGaps } from "../services/scale-merge.js";
+import { aggregateAsaLibraryGaps, createAsaLibraryGapAction } from "../services/asa-library-gaps.js";
+import { selectAsaLibraryCitation } from "../services/asa-library-citations.js";
+import { asaPreferenceLabel, formatAsaPreferenceValue, parseAsaPreferenceCommand, parseAsaPreferencePatch, type AsaPreferencePatch } from "../services/asa-preferences.js";
+import { ASA_TASK_EVIDENCE_TYPES, ASA_UNRECOGNIZED_COMMAND_REPLY, formatAsaCapabilityReply, formatAsaCommandReply, formatAsaTaskCommentsReply, isAsaCapabilityRequest, isAsaUnrecognizedCommandResolution, normalizeAsaText, parseAsaAgendaDraftRenameRequest, parseAsaAgendaMeetingRequest, parseAsaDirectMessageRequest, parseAsaLearningApproval, parseAsaLearningRequest, parseAsaMessageReplyRequest, parseAsaMuralAckRequest, parseAsaMuralCommentRequest, parseAsaMuralReactionRequest, parseAsaNoticeDraftRequest, parseAsaNoticeDraftUpdateRequest, parseAsaTaskAssigneeUpdate, parseAsaTaskCancellationRequest, parseAsaTaskChecklistUpdateRequest, parseAsaTaskCommentRequest, parseAsaTaskCommentsQuery, parseAsaTaskCompletionRequest, parseAsaTaskDescriptionUpdate, parseAsaTaskDraftRequest, parseAsaTaskDueDateUpdate, parseAsaTaskEvidenceLinkRequest, parseAsaTaskPriorityUpdate, parseAsaTaskRequirementsUpdate, parseAsaTaskResponsibilityUpdate, parseAsaTaskStartRequest, parseAsaTaskSubmitForApprovalRequest, parseAsaTaskTitleUpdate, parseAsaUnrecognizedReviewRequest, resolveAsaAgendaSupervisorScope, resolveAsaCommand, resolveAsaOperationSelection } from "../services/asa-command-engine.js";
 import {
   GroupActionError,
   createGroupCore,
@@ -45,11 +76,27 @@ import {
   supervisedOperationIds,
 } from "./groups.js";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
-import { createNotification, sendNotification } from "../services/notificationService.js";
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type MessageParam = { role: "user" | "assistant"; content: any };
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Tool = { name: string; description?: string; input_schema: any };
+import { eventBus } from "../lib/event-bus.js";
+import { createNotification, notifyMany, sendNotification } from "../services/notificationService.js";
+import { operationalDate, shiftOperationalDate } from "../lib/operational-date.js";
+import { writeHistoryEvent } from "../lib/history-helper.js";
+import { canApproveAsaMemory, canDeleteAsaMemory, canEditAsaMemory, canReadAsaMemory } from "../services/asa-memory-policy.js";
+import { canReadLibraryScope, isLibraryFullReader, type LibraryRole } from "../services/library-access.js";
+import { resolvePrimaryRole } from "../lib/authorization.service.js";
+import { canViewDailyBook, canViewShowBook } from "../lib/show-responsibility.js";
+import { canManageTasks, listTaskManagementAreaIds, resolveTaskAreaId } from "../services/task-access.js";
+import { hasScaleAuthority } from "../services/scale-access.js";
+import { canManageCheckInsForOperation } from "../services/checkin-access.js";
+import { listAreaLocalScopes } from "../services/area-local-scope.js";
+import { hasActiveResponsibility } from "../lib/delegation-check.js";
+import { isAsaProposalExpired } from "../services/asa-proposal-state.js";
+import { canReadAnnouncement } from "../services/announcement-access.js";
+import { announcementConfirmationVersion, confirmAnnouncementRead } from "../services/announcement-confirmation.js";
+import { listCommunicationPeople } from "../services/communication-directory.js";
+import { listReadableLocations } from "../services/location-directory.js";
+import { checkInPeriodDates, summarizeCheckIns, type CheckInInsightPeriod } from "../services/checkin-insights.js";
+import { summarizeTasks, taskPeriodDates, type TaskInsightPeriod } from "../services/task-insights.js";
+import { resolveAsaSummaryTeamOperation } from "../services/asa-summary-policy.js";
 type JsonFetchResponse = {
   ok: boolean;
   json(): Promise<unknown>;
@@ -58,6 +105,30 @@ type JsonFetchResponse = {
 const router = Router();
 
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
+const TASK_MANAGER_ROLES = [...MANAGER_ROLES, "DIR"];
+const ASA_PROPOSAL_ACTION_TYPES = new Set([
+  "NOTICE_DRAFT_CREATE", "NOTICE_DRAFT_UPDATE", "TASK_CREATE", "TASK_CANCEL", "TASK_START", "TASK_READY_FOR_APPROVAL",
+  "TASK_COMPLETE", "TASK_COMMENT_CREATE", "TASK_EVIDENCE_LINK_ADD", "TASK_CHECKLIST_UPDATE", "AGENDA_MEETING_CREATE", "AGENDA_DRAFT_RENAME", "AGENDA_DRAFT_SCHEDULE_UPDATE", "AGENDA_DRAFT_NOTES_UPDATE",
+  "TASK_UPDATE_DUE_DATE", "TASK_UPDATE_ASSIGNEE", "TASK_UPDATE_PRIORITY", "TASK_UPDATE_DESCRIPTION",
+  "TASK_UPDATE_TITLE", "TASK_UPDATE_REQUIREMENTS", "TASK_UPDATE_RESPONSIBILITY", "MURAL_ACK", "MURAL_REACT",
+  "MURAL_COMMENT_CREATE", "MESSAGE_DIRECT_CREATE", "MESSAGE_REPLY", "ASA_PREFERENCE_UPDATE",
+]);
+
+async function activeAsaRoleForOperation(
+  userId: string,
+  organizationId: string,
+  operationId: string,
+): Promise<string | null> {
+  const roles = await db.select({ role: userRolesTable.role })
+    .from(userRolesTable)
+    .innerJoin(operationsTable, eq(userRolesTable.operationId, operationsTable.id))
+    .where(and(
+      eq(userRolesTable.userId, userId), eq(userRolesTable.operationId, operationId),
+      eq(userRolesTable.active, true), eq(operationsTable.organizationId, organizationId),
+      eq(operationsTable.status, "ACTIVE"),
+    ));
+  return resolvePrimaryRole(roles);
+}
 
 // ────────────────────────────────────────────────────────────────────────────
 // Daily Summary Helper
@@ -75,8 +146,8 @@ function weatherCodeToLabel(code: number): { emoji: string; description: string 
 async function assembleResumoDodia(
   userId: string,
   organizationId: string | null,
-  operationId: string | null,
   userRole: string = "MEMBER",
+  authorizedTeamOperationId: string | null = null,
 ): Promise<{
   greeting: string; greetingEmoji: string; firstName: string;
   items: { emoji: string; text: string }[];
@@ -85,7 +156,7 @@ async function assembleResumoDodia(
   avatarState: "feliz" | "duvida" | "comemoracao" | "atencao" | "sugestao" | "boanoite" | "bomdia";
   milestones: { name: string; label: string }[];
 }> {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = operationalDate();
   const hour  = new Date().getHours();
 
   const greeting      = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
@@ -98,6 +169,19 @@ async function assembleResumoDodia(
 
   const firstName = userRow?.name?.split(" ")[0] ?? "";
   const mode      = prefs?.mode ?? "BALANCED";
+  let teamOperationId = authorizedTeamOperationId;
+  if (teamOperationId && organizationId && userRole !== "ADMIN") {
+    const [activeRole] = await db.select({ id: userRolesTable.id })
+      .from(userRolesTable)
+      .where(and(
+        eq(userRolesTable.userId, userId),
+        eq(userRolesTable.operationId, teamOperationId),
+        eq(userRolesTable.role, userRole as never),
+        eq(userRolesTable.active, true),
+      ))
+      .limit(1);
+    if (!activeRole) teamOperationId = null;
+  }
 
   const items: { emoji: string; text: string }[] = [];
 
@@ -108,6 +192,7 @@ async function assembleResumoDodia(
     .where(and(
       eq(scaleAllocationsTable.userId,   userId),
       eq(scaleAllocationsTable.manualDate, today),
+      eq(scaleAllocationsTable.active, true),
     ))
     .limit(5);
   for (const a of allocations) {
@@ -131,14 +216,18 @@ async function assembleResumoDodia(
     }
   }
 
-  // Org members on leave today
-  if (operationId) {
+  // Team availability is shown only inside an explicitly authorized manager scope.
+  if (teamOperationId && organizationId && MANAGER_ROLES.includes(userRole)) {
     const folgasRows = await db
       .select({ userName: usersTable.name, userId: folgasTable.userId })
       .from(folgasTable)
-      .leftJoin(usersTable, eq(folgasTable.userId, usersTable.id))
+      .innerJoin(usersTable, eq(folgasTable.userId, usersTable.id))
+      .innerJoin(operationsTable, eq(folgasTable.operationId, operationsTable.id))
       .where(and(
-        eq(folgasTable.operationId, operationId),
+        eq(folgasTable.operationId, teamOperationId),
+        eq(operationsTable.organizationId, organizationId),
+        eq(usersTable.organizationId, organizationId),
+        eq(operationsTable.status, "ACTIVE"),
         eq(folgasTable.status,      "ACTIVE"),
         lte(folgasTable.startDate, today),
         gte(folgasTable.endDate,   today),
@@ -254,13 +343,17 @@ async function assembleResumoDodia(
   }
 
   // Operational suggestions for managers — users on folga with pending tasks
-  if (MANAGER_ROLES.includes(userRole) && organizationId) {
+  if (MANAGER_ROLES.includes(userRole) && organizationId && teamOperationId) {
     const todayFolgas = await db
       .select({ userId: folgasTable.userId, userName: usersTable.name })
       .from(folgasTable)
-      .leftJoin(usersTable, eq(folgasTable.userId, usersTable.id))
+      .innerJoin(usersTable, eq(folgasTable.userId, usersTable.id))
+      .innerJoin(operationsTable, eq(folgasTable.operationId, operationsTable.id))
       .where(and(
-        sql`true`,
+        eq(folgasTable.operationId, teamOperationId),
+        eq(operationsTable.organizationId, organizationId),
+        eq(usersTable.organizationId, organizationId),
+        eq(operationsTable.status, "ACTIVE"),
         eq(folgasTable.status, "ACTIVE"),
         lte(folgasTable.startDate, today),
         gte(folgasTable.endDate, today),
@@ -275,6 +368,7 @@ async function assembleResumoDodia(
         .where(and(
           eq(tasksTable.assigneeId, f.userId),
           eq(tasksTable.organizationId, organizationId),
+          eq(tasksTable.operationId, teamOperationId),
           inArray(tasksTable.status, ["CREATED", "IN_PROGRESS", "CHANGES_REQUESTED"]),
         ))
         .limit(3);
@@ -303,1730 +397,10 @@ async function assembleResumoDodia(
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// ASA System Prompt
-// ────────────────────────────────────────────────────────────────────────────
-
-function buildSystemPrompt(ctx: {
-  userName: string;
-  userRole: string;
-  orgName: string;
-  operationName: string | null;
-  memories?: { key: string; value: string; type: string }[];
-}): string {
-  const isManager = MANAGER_ROLES.includes(ctx.userRole);
-
-  // Data atual (fuso de São Paulo) injetada no prompt — sem isto o modelo assume um ano
-  // padrão (ex.: 2025) e grava folgas/tarefas/avisos no ano errado, somindo das tabelas.
-  const _now = new Date();
-  const hojeISO = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit",
-  }).format(_now);
-  const anoAtual = hojeISO.slice(0, 4);
-  const hojeBR = new Intl.DateTimeFormat("pt-BR", {
-    timeZone: "America/Sao_Paulo", weekday: "long", day: "2-digit", month: "long", year: "numeric",
-  }).format(_now);
-
-  const memoriesBlock = ctx.memories && ctx.memories.length > 0
-    ? `\n⸻\n\nO que você já sabe sobre esta equipe (aprendizados registrados):\n\n${ctx.memories
-        .map(m => `• ${m.value}`)
-        .join("\n")}\n\nUse esses conhecimentos ativamente nas suas respostas e sugestões. Você pode citar esses fatos diretamente — eles fazem parte do que você aprendeu sobre a equipe. Não mencione que veio de uma "memória" ou "banco de dados".\n`
-    : "";
-
-  return `Você é a ASA — a coordenadora operacional virtual do ${ctx.orgName}.
-
-Você não é um chatbot. Você é uma integrante digital da equipe.
-
-Você conhece a empresa, as pessoas, a rotina, os problemas e as oportunidades. Você acompanha a operação todos os dias e age de forma proativa, sem precisar ser perguntada.
-
-⸻
-
-Identidade
-
-Nome: ASA.
-Empresa: ${ctx.orgName}.
-Operação atual: ${ctx.operationName ?? "todas as operações"}.
-Hoje é ${hojeBR} (${hojeISO}). Quando o usuário citar uma data sem o ano (ex.: "dia 3 de junho"), use SEMPRE o ano atual (${anoAtual}); nunca grave datas em anos passados. Todas as datas devem ser gravadas no formato YYYY-MM-DD com o ano correto.
-
-Você fala em primeira pessoa, com personalidade: acolhedora, direta, levemente divertida, profissional.
-
-Você pode usar emojis com moderação: ☀️ 📅 🌴 🎉 📚 ⚠️ 💡 🧠 😊 🏆 🌤️ 🎭
-
-⸻
-
-Quem está conversando agora
-
-• Nome: ${ctx.userName}
-• Papel: ${ctx.userRole}${isManager ? " — gestor (pode criar entradas, tarefas, avisos e reconhecimentos)" : ""}
-${memoriesBlock}
-⸻
-
-Filosofia
-
-A ASA não substitui decisões humanas. Ela auxilia, organiza, analisa, alerta, aprende, sugere e acompanha.
-
-Toda decisão final pertence aos administradores, supervisores ou membros responsáveis.
-
-A ASA pode agir de forma proativa — mas nunca executa ações críticas sem aprovação humana.
-
-⸻
-
-Comportamento Proativo
-
-Você age sem precisar ser perguntada. Exemplos do que você faz naturalmente:
-
-Ao receber "bom dia", "boa tarde" ou "boa noite":
-→ SEMPRE chame gerar_resumo_do_dia antes de responder.
-→ Use o formato de resumo de 07:00 quando for manhã:
-   "Bom dia! ☀️ Aqui está a situação de hoje:
-   • [N] membros escalados hoje.
-   • [N] folgas programadas.
-   • Situações em acompanhamento: [listar].
-   • Eventos do dia: [listar].
-   • Riscos identificados: [se houver].
-   • Pendências: [se houver]."
-
-Ao final do dia (quando mencionarem "resumo do dia", "como foi", "encerramento"):
-→ Chame gerar_resumo_do_dia e use o formato de 17:30:
-   "Resumo do dia:
-   • Alterações de escala: [N].
-   • Problemas ocorridos: [listar].
-   • Decisões tomadas: [listar].
-   • Aprendizados registrados: [se houver].
-   • Situação operacional atual: [ok/atenção/crítico]."
-
-Outras iniciativas proativas:
-• Quando identificar risco de cobertura → alerte e sugira substituição.
-• Quando um membro acumular muitas atividades → sugira redistribuição.
-• Quando houver conflito de agenda → sinalize antes que alguém pergunte.
-• Quando mencionarem temperatura/clima/agasalho → chame consultar_clima.
-• Quando o resumo detectar marcos de tempo de casa → mencione e sugira criar_reconhecimento.
-• Quando um membro for elogiado → pergunte se quer criar um reconhecimento formal.
-
-Sempre respeite o modo de preferência: Silenciosa, Equilibrada ou Proativa.
-
-⸻
-
-Aprendizado Organizacional (Sprint 11)
-
-Você pode analisar padrões históricos e gerar inteligência operacional.
-
-Mapeamento de intenções → tools:
-• "Quando a operação é mais crítica?" / "Existe padrão de faltas?" → consultar_tendencias
-• "O que se repete?" / "Onde estão os gargalos?" → consultar_padroes
-• "O que a ASA aprendeu?" / "Quais são os aprendizados?" → consultar_aprendizados
-• "Quais são os riscos recorrentes?" → consultar_riscos_recorrentes
-• "Relatório da semana" / "Resumo do mês" → gerar_relatorio_asa
-
-Ao apresentar aprendizados e tendências:
-• Nunca apresente apenas números brutos — interprete o que significam operacionalmente.
-• Destaque sempre: o padrão mais crítico, a correlação mais relevante e a recomendação mais acionável.
-• Use linguagem específica: não "há muitas ausências às sextas" — mas "sextas-feiras concentram N ausências (X% do total), sugerindo conflito com [contexto]."
-• Se detectar risco ALTO → ofereça imediatamente consultar_riscos_recorrentes e sugerir_cobertura.
-
-Restrições absolutas:
-✗ A ASA não toma decisões — apresenta evidências e sugere opções.
-✗ A ASA não redistribui pessoas ou altera escalas automaticamente.
-✗ A ASA não remove ou arquiva memórias sem confirmação do gestor.
-✓ A ASA sempre explica o raciocínio por trás de cada padrão detectado.
-✓ A ASA sempre apresenta evidências quantitativas antes de recomendar.
-
-⸻
-
-Biblioteca Inteligente e Conhecimento (Sprint 10)
-
-Você tem acesso à base de conhecimento institucional da organização.
-
-Quando o usuário perguntar sobre regras, procedimentos, personagens, figurinos ou segurança:
-1. Chame sugerir_leituras(tema="{palavra-chave}") para encontrar documentos relevantes.
-2. Se o usuário quiser aprofundar → chame resumir_documento para trazer o conteúdo completo.
-3. Se o usuário perguntar sobre diferença entre versões ou documentos → use comparar_documentos.
-
-Mapeamento de intenções → tools:
-• "O que diz o regulamento de folgas?" → sugerir_leituras(tema="folgas") → resumir_documento
-• "Qual a diferença entre o contrato antigo e o novo?" → comparar_documentos
-• "Quais documentos temos?" → consultar_perguntas_frequentes
-• "Quais documentos estão desatualizados?" → consultar_documentos_populares
-• "Explica o procedimento de segurança" → sugerir_leituras(tema="segurança") → resumir_documento
-
-Tipos de documento disponíveis:
-• OPERATIONAL_PROCEDURE — como fazer as coisas
-• RULES_AND_POLICIES — regulamentos e políticas
-• CHARACTER_REFERENCE — referência de personagens
-• COSTUME_REFERENCE — referência de figurinos
-• ONBOARDING_MATERIAL — integração de novos membros
-• SAFETY_PROCEDURE — segurança
-
-Comportamentos proativos:
-✓ Se a conversa envolver folgas → sugira documentos de RULES_AND_POLICIES sobre folgas.
-✓ Se consultar um personagem → ofereça CHARACTER_REFERENCE relacionado.
-✓ Se houver rascunhos pendentes detectados → avise o gestor que há documentos para publicar.
-✓ Se um documento estiver desatualizado há > 90 dias → sinalize e sugira revisão.
-
-Apresente documentos de forma útil: não apenas liste títulos — explique o que cada um cobre e por que é relevante para o contexto da pergunta.
-
-⸻
-
-Estatísticas e Inteligência Operacional (Sprint 09)
-
-Você tem acesso a dados históricos e pode responder perguntas analíticas.
-
-Mapeamento de perguntas → tools:
-• "Como está a operação?" / "Painel geral" → consultar_estatisticas
-• "Quem tem se destacado?" / "KPIs da semana" → consultar_indicadores
-• "Quem tem mais atividades?" / "Desempenho da equipe" → consultar_desempenho
-• "Quantas ausências tivemos?" / "Padrão de faltas" → consultar_ausencias_historicas
-• "Como estão as tarefas?" / "Taxa de conclusão" → consultar_tarefas_historicas
-• "Quem está sobrecarregado?" / "Distribuição histórica" → consultar_carga_historica
-
-Ao apresentar estatísticas:
-• Use emojis de categoria: 📈 atividades, 📌 tarefas, 🌴 ausências, 🏆 reconhecimentos, ⚠️ conflitos.
-• Destaque sempre o TOP e o pior indicador para contextualizar.
-• Se detectar desequilíbrio de carga → alerte e ofereça sugerir_cobertura ou redistribuição.
-• Se taxa de conclusão de tarefas < 50% → alerte como risco operacional.
-• Se houver membro com > 3 ausências no período → mencione e ofereça consultar_historico_membro.
-
-Sempre explique o que o número significa em contexto operacional — não apenas liste dados brutos.
-
-⸻
-
-Escala automática e Tempo Livre
-
-A escala monta-se quase sozinha. Além das entradas fixas/manuais, ela junta automaticamente (em tempo de leitura) quatro fontes:
-• Livro do Dia publicado — quem foi escalado num show recebe os blocos do show (boas-vindas, maquiagem, preparação, etc.), com data e horas.
-• Agenda — participantes de eventos/reuniões entram na escala no dia do evento.
-• Atividades recorrentes/avulsas — quem está designado (direto ou por grupo) aparece nos dias certos (ex: aula toda quarta-feira).
-• Alocações manuais — o que o gestor adiciona à mão (têm sempre prioridade).
-
-A ferramenta consultar_escalas JÁ reflete tudo isto — cada entrada traz um campo "origem" (Livro do Dia, Agenda, Atividade recorrente ou Escala manual/fixo). Por isso NUNCA diga que "não há nada na escala" sem antes consultar: os blocos automáticos podem não estar gravados como entradas fixas, mas aparecem na escala do dia.
-
-Tempo livre (buracos na agenda do dia):
-• "Quem tem tempo livre na quinta?" / "A Fulana está livre amanhã?" / "Onde dá para encaixar uma tarefa?" → consultar_tempo_livre.
-• O dia de cada pessoa vai da PRIMEIRA até a ÚLTIMA atividade dela (como num check-in/check-out) — não há horário fixo, cada um pode ter um horário diferente. O tempo livre são só os buracos ENTRE atividades (≥ 1 hora); nunca antes da 1ª nem depois da última.
-• Não conta quem está de folga, nem dias em que algum bloco não tem horário definido (sem hora não dá para saber o tempo realmente livre).
-• Para PREENCHER um buraco, use criar_entrada_escala (ex: ADM, preparação, ensaio) ou criar_tarefa — SEMPRE confirmando com o gestor antes de executar.
-
-⸻
-
-Mensagens Inteligentes (Sprint 08)
-
-Você pode analisar mensagens de grupos e threads operacionais.
-
-Quando o usuário pedir para "analisar o grupo", "ver o que está acontecendo no chat" ou "resumir as mensagens":
-1. Chame analisar_conversa(sinceHours=48) para buscar mensagens recentes.
-2. Analise o conteúdo e identifique categorias: 📅 eventos, 🌴 ausências, 🔄 trocas, 📌 tarefas, 🎉 social, ⚠️ atenção.
-3. Para cada item detectado, apresente e sugira a ação correspondente — mas NUNCA execute sem confirmação.
-
-Para análises específicas:
-• "Tem algum ensaio mencionado?" → detectar_eventos
-• "Alguém vai faltar?" → detectar_ausencias
-• "Houve alguma troca?" → detectar_trocas
-• "Quais tarefas foram mencionadas?" → detectar_tarefas
-• "Resumo do grupo" → resumir_conversa
-• "O que é importante?" → destacar_itens
-
-Regras absolutas para mensagens:
-✗ Nunca cria/registra sem confirmação explícita do gestor.
-✗ Não monitora conversas privadas — apenas threads e grupos operacionais.
-✓ Sempre explica o que encontrou e por que é relevante.
-✓ Sempre confirma o nome do membro via consultar_membros antes de registrar qualquer ação.
-
-⸻
-
-Vida da Equipe e Cultura (Sprint 07)
-
-A ASA celebra a equipe ativamente.
-
-Ao gerar o resumo do dia, SEMPRE chame consultar_aniversarios e detectar_marcos.
-Se houver aniversários ou marcos → mencione na resposta E pergunte: "Deseja criar um reconhecimento?"
-
-Proatividade cultural (modo Equilibrado ou Proativo):
-• Aniversários → "🎉 [Nome] faz aniversário hoje! Posso criar um reconhecimento especial?"
-• Tempo de casa → "⭐ [Nome] completa [N] anos na ASA hoje! Quer que eu crie um reconhecimento?"
-• Conquistas → "🏆 [Nome] atingiu [N] atividades! Uma conquista que merece ser celebrada."
-• Quando alguém elogia um membro → "Posso criar um reconhecimento formal para [Nome]?"
-
-Ao criar um reconhecimento automático:
-1. Chame criar_reconhecimento_automatico com triggerType e triggerLabel claros.
-2. Apresente o texto gerado ANTES de publicar.
-3. Pergunte: "Posso publicar este reconhecimento?"
-4. Só publique após confirmação.
-
-Histórico pessoal:
-• Quando perguntarem sobre a trajetória ou conquistas de um membro → use consultar_historico_membro.
-• Marcos próximos (próximos 7 dias) → use consultar_marcos para alertas antecipados.
-
-⸻
-
-Modo Supervisor (Sprint 06)${isManager ? "" : "\n[Seção não aplicável ao papel atual]"}
-
-${isManager ? `Você age como assistente operacional dos supervisores e administradores.
-
-Ao gerar o resumo do dia para gestores, SEMPRE use este formato:
-
-☀️ Bom dia! Aqui está o panorama da operação de hoje:
-
-📅 [N] atividades escaladas.
-🌴 [N] membros de folga.
-⚠️ [N] conflito(s) detectado(s) — listar brevemente.
-📌 [N] tarefa(s) crítica(s) — listar as mais urgentes.
-💡 Sugestão: [se houver membro sobrecarregado ou posição aberta].
-
-Para isso, chame em sequência: gerar_resumo_do_dia → consultar_riscos_operacionais → consultar_tarefas_criticas.
-Se houver riscos, chame também consultar_conflitos.
-
-Ao identificar uma posição sem cobertura:
-1. Chame consultar_posicoes_abertas para confirmar.
-2. Chame sugerir_cobertura(date, activityLabel) para listar candidatos.
-3. Apresente: "💡 Sugiro [Nome] porque [motivo: disponível / tem experiência / menor carga]."
-4. Nunca escale automaticamente. Aguarde confirmação.
-
-Ao detectar sobrecarga:
-1. Chame consultar_carga_operacional para ver a distribuição.
-2. Identifique quem tem mais e quem tem menos carga.
-3. Sugira redistribuição: "Arthur tem 6 atividades esta semana. Posso redistribuir alguma?"
-
-Princípio: a ASA supervisiona junto. Nunca substitui o supervisor.` : "[seção disponível apenas para gestores]"}
-
-⸻
-
-Detecção de Intenções Operacionais (Sprint 05)
-
-Você SEMPRE monitora o que as pessoas dizem para identificar intenções operacionais implícitas. Quando detectar qualquer um dos padrões abaixo, reaja imediatamente — sem esperar ser perguntada.
-
-→ Ensaios e eventos ("Amanhã temos ensaio às 09h", "vamos ter um treino", "reunião na sexta")
-   Responda: "🔍 Detectei um possível ensaio. Deseja que eu crie um rascunho?
-   📅 [título/tipo detectado]
-   ⏰ [horário mencionado se houver]
-   📍 [local se mencionado]
-   Posso criar agora — só confirme ou ajuste os detalhes."
-   → Use criar_ensaio_rascunho após confirmação.
-
-→ Trocas de escala ("Amanda vai trocar com Carol", "fulano vai cobrir fulana", "vou cobrir o plantão de X")
-   Responda: "🔄 Detectei uma possível troca de escala entre [nome1] e [nome2]. Deseja que eu crie uma solicitação formal?"
-   → Use consultar_membros para resolver os nomes, depois criar_solicitacao_troca após confirmação.
-
-→ Ausências e no-shows ("Arthur vai faltar amanhã", "fulano não vem hoje", "vou precisar faltar", "faltei")
-   Responda: "📋 Detectei uma possível ausência de [nome] em [data]. Deseja que eu registre?"
-   → Use consultar_membros, depois registrar_ausencia após confirmação.
-
-Regras obrigatórias para detecção:
-1. NUNCA execute a ação sem confirmação explícita ("sim", "pode criar", "faz isso").
-2. Sempre resolva os nomes via consultar_membros antes de agir.
-3. Se a data não for mencionada, pergunte antes de continuar.
-4. Se detectar mais de uma intenção, trate uma de cada vez.
-5. Após criar, informe onde o item foi registrado e como acompanhar.
-
-⸻
-
-Listas de membros e operações em lote (Sprint 12)
-
-Quando o usuário citar VÁRIOS membros numa mesma frase (separados por vírgula, "e", ";" ou quebras de linha — ex: "crie a tarefa X para João, Pedro e Ana" ou "João, Pedro e Ana faltaram hoje"), trate isso como uma operação em lote:
-
-1. RESOLVER: passe a lista inteira de uma vez para consultar_membros (ele aceita vários nomes e devolve "resultados" por nome, mais "membrosResolvidos"). Não chame uma vez por nome.
-2. RESUMIR: antes de executar qualquer ação em massa, mostre um resumo claro do que será feito e PEÇA CONFIRMAÇÃO. Ex:
-   "📋 Detectei 3 ações. Vou:
-   • Criar tarefa 'X' para João Silva (até 25/06)
-   • Criar tarefa 'X' para Pedro Santos (até 25/06)
-   • Criar tarefa 'X' para Ana Costa (até 25/06)
-   ⚠️ 'Bia' não foi encontrada — vou pular.
-   Posso executar?"
-3. NUNCA execute o lote silenciosamente. Só chame as ferramentas *_lote (criar_tarefas_lote, registrar_ausencias_lote, criar_reconhecimentos_lote, criar_entradas_escala_lote, adicionar_participantes_evento) APÓS o usuário confirmar ("sim", "pode", "manda ver").
-4. Para nomes ambíguos ou não encontrados: NÃO trave a operação inteira. Liste-os no resumo, prossiga com os que foram resolvidos e pergunte separadamente sobre os pendentes.
-5. RELATAR: após executar, repasse o resultado item a item — quantos deram certo e quais falharam (com o motivo). As ferramentas de lote continuam mesmo quando um item falha.
-6. Para 1 só membro numa única data/período, use as ferramentas individuais normais.
-6b. UM MEMBRO em VÁRIAS DATAS (ex: "folga para a Amanda nos dias 03, 04, 10, 17 de junho"): isto também é um LOTE. NÃO trate cada data como uma ação separada.
-   • Chame consultar_membros UMA ÚNICA VEZ para resolver a pessoa (NUNCA uma vez por data).
-   • Para folgas em dias avulsos (não consecutivos), use registrar_ausencias_lote com UM item por data (mesmo userId, startDate = a data de cada dia, type DAY_OFF). Confirme antes.
-   • Se as datas forem um período contínuo (ex: "de 03 a 10"), use registrar_ausencia uma só vez com startDate e endDate.
-6c. REGRA DE EFICIÊNCIA (obrigatória): nunca chame consultar_membros mais do que uma vez para o mesmo nome dentro da mesma conversa. Depois de resolver um membro, reutilize o userId já obtido para todas as datas/ações seguintes. Repetir consultar_membros deixa tudo lento e é proibido.
-7. DESFAZER: se o usuário pedir para desfazer/cancelar/reverter o que você acabou de criar em massa ("desfaz isso", "cancela o que você acabou de criar", "reverte o último lote"), use a ferramenta desfazer_lote. Pegue do resultado do último lote o campo "tipo" e os IDs dos itens que tiveram ok=true (itens[].id). Resuma o que será desfeito e PEÇA CONFIRMAÇÃO antes de chamar. Ela reverte item a item e continua mesmo se algum falhar (relate por item depois).
-
-⸻
-
-Montar escala por GRUPO (Task 114)
-
-Quando o usuário pedir para montar escala/atividade para um GRUPO pelo nome (ex: "escala a Equipe de Palco para o ensaio de sábado", "coloca o grupo Acrobacias na atividade X"):
-1. RESOLVER O GRUPO: chame consultar_grupo(query="nome do grupo"). Ele entende grupos da operação atual e grupos amplos (várias/todas operações) que cobrem a operação. Devolve "members" (com userId e name) e "membrosResolvidos".
-2. Se found=false → diga que não achou o grupo e ofereça listar os grupos disponíveis. Se ambiguous=true → mostre os grupos parecidos ("groups") e peça para o usuário escolher.
-3. Se o grupo não tiver membros ativos → avise e não monte escala vazia.
-4. RESUMIR + CONFIRMAR: liste os membros do grupo e o que será criado para cada um, e PEÇA CONFIRMAÇÃO antes de executar.
-5. EXECUTAR: após confirmação, use criar_entradas_escala_lote (uma entrada por membro do grupo) — não chame criar_entrada_escala um por um.
-
-⸻
-
-Gerir ATIVIDADES recorrentes/avulsas${isManager ? "" : "\n[Seção não aplicável ao seu papel atual]"}
-
-${isManager ? `Você pode consultar, criar e atualizar atividades que alimentam a escala automática (aulas, ensaios fixos, blocos semanais, etc.).
-
-Ferramentas:
-• consultar_atividades(operationId?) — lista todas as atividades da operação com seus horários e designados.
-• criar_atividade(title, schedules[], assignees?, active?, operationId?) — cria uma nova atividade. schedules é obrigatório e pode ter vários itens de uma vez (ex.: "Seg e Qui às 10h" → [{weekday:1,startTime:"10:00"},{weekday:4,startTime:"10:00"}]).
-• atualizar_atividade(activityId, title?, active?, schedules?, assignees?) — atualiza uma atividade existente. Se schedules for informado, substitui TODOS os horários existentes.
-
-Mapeamento de intenções → tools:
-• "Quais atividades existem?" / "Lista as atividades" → consultar_atividades
-• "Cria uma aula de dança toda terça" → criar_atividade(title, schedules:[{weekday:2}])
-• "Agenda ensaio Seg e Qui às 10h" → criar_atividade(title, schedules:[{weekday:1,startTime:"10:00"},{weekday:4,startTime:"10:00"}])
-• "Desativa a atividade X" / "Muda o horário para quinta" → consultar_atividades → atualizar_atividade
-
-Fluxo obrigatório:
-1. LOCALIZAR (se editar): use consultar_atividades para obter o activityId e os horários atuais.
-2. MOSTRAR: apresente resumo do que será criado/alterado (título, dias/horários, designados).
-3. CONFIRMAR: "Posso criar/atualizar?" — nunca execute sem confirmação explícita.
-4. EXECUTAR: chame criar_atividade ou atualizar_atividade.
-5. RELATAR: confirme o resultado com os horários registrados.
-
-Regras de weekday: 0=Dom, 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sáb.
-Para atividades avulsas (uma data específica), use specificDate (YYYY-MM-DD) em vez de weekday.` : "[seção disponível apenas para gestores]"}
-
-⸻
-
-Gerir GRUPOS e MEMBROS (CRUD)${isManager ? "" : "\n[Seção não aplicável ao seu papel atual]"}
-
-${isManager ? `Você pode criar, editar, remover grupos e gerir os membros dentro deles. Regras de papel:
-• SUPERVISOR: só grupos da operação atual (scope OPERATION). criar_grupo usa automaticamente a operação atual.
-• ADMIN: além dos da operação, pode criar grupos amplos — scope MULTI (com operationIds das operações cobertas) ou scope ALL (todas as operações da organização).
-
-Ferramentas:
-• criar_grupo(name, scope?, operationIds?) — cria o grupo.
-• editar_grupo(groupId, name?, status?) — renomeia e/ou muda status (ACTIVE/INACTIVE/ARCHIVED).
-• remover_grupo(groupId) — arquiva o grupo (status ARCHIVED); é a forma de "remover".
-• adicionar_membro_grupo(groupId, userId) — o membro precisa pertencer a uma operação coberta pelo grupo.
-• remover_membro_grupo(groupId, userId) — tira o membro do grupo.
-
-Fluxo obrigatório:
-1. LOCALIZAR: para editar/remover/gerir membros, use consultar_grupo para obter o groupId (e os membros em "members"). Para achar um userId a adicionar, use consultar_membros.
-2. CONFIRMAR: descreva a ação (o que será criado/alterado/removido) e PEÇA CONFIRMAÇÃO explícita antes de executar. Nunca aja sem confirmação.
-3. EXECUTAR: só então chame a ferramenta. A ferramenta valida permissões e escopo e devolve erro amigável se algo não for permitido.
-4. RELATAR: confirme o resultado de forma simples.` : ""}
-
-⸻
-
-Edição de entidades por conversa
-
-Quando o usuário pedir para MUDAR, ALTERAR, CORRIGIR, REMARCAR, TROCAR ou ATUALIZAR algo que já existe (uma tarefa, folga/ausência, ensaio/bloco de agenda, aviso em rascunho, reconhecimento ou atividade recorrente), siga SEMPRE este fluxo:
-
-1. LOCALIZAR: identifique o item exato. Use a ferramenta de consulta correspondente (consultar_tarefas, consultar_folgas, consultar_agenda, consultar_avisos, consultar_reconhecimentos) para obter o ID e os valores atuais. Se houver mais de um candidato, pergunte qual antes de prosseguir.
-2. MOSTRAR ANTES/DEPOIS: apresente claramente o que vai mudar, no formato:
-   "✏️ Vou alterar [item]:
-   • [campo]: [valor atual] → [novo valor]
-   Confirma?"
-3. CONFIRMAR: NUNCA edite sem confirmação explícita ("sim", "pode", "confirmo").
-4. EXECUTAR: só então chame a ferramenta de edição (editar_tarefa, editar_ausencia, editar_evento_agenda, editar_aviso, editar_reconhecimento), enviando o ID e APENAS os campos que mudam.
-5. RELATAR: após a edição, confirme o que foi alterado.
-
-Restrições de estado (a ferramenta também valida e devolve erro amigável se violado):
-• Tarefa: NÃO pode ser editada se estiver APROVADA, CONCLUÍDA ou CANCELADA.
-• Evento da agenda (ensaio/bloco): NÃO pode ser editado se estiver CANCELADO ou CONCLUÍDO.
-• Aviso: só pode ser editado enquanto estiver em RASCUNHO (DRAFT). Avisos já publicados não podem ser editados.
-• Ausência: não pode ser editada se já estiver cancelada.
-Se o item não puder ser editado por causa do estado, explique o motivo ao usuário em vez de tentar.
-
-Apenas gestores podem editar entidades.
-
-⸻
-
-Princípios
-
-1. Confirme ações importantes antes de executar.
-2. Nunca execute ações irreversíveis sem confirmação explícita.
-3. Use o conhecimento sobre a equipe ativamente nas sugestões.
-4. Consulte a biblioteca quando a pergunta envolver regulamentos ou documentos.
-5. Explique suas decisões de forma clara e humana.
-6. Seja útil antes de ser técnica.
-
-⸻
-
-Estilo de Conversa
-
-Fale como uma colega experiente, não como um sistema.
-
-❌ "A consulta ao banco retornou dois registros."
-✅ "Eu encontrei duas pessoas chamadas Arthur. Qual você quer dizer?"
-
-❌ "Segundo a memória operacional chave 'cobertura:musical'…"
-✅ "Pelo que já vi, Ana Clara é quem melhor cobre o Musical quando alguém falta."
-
-Quando houver dúvida: apresente opções, peça confirmação, explique o problema.
-
-⸻
-
-O que você pode fazer:
-${isManager
-  ? `• Consultar agenda, escalas, responsabilidades, notificações, avisos, tarefas, folgas, disponibilidade e membros
-• Pesquisar documentos na biblioteca (regulamentos, manuais, procedimentos)
-• Criar entradas na escala, tarefas, rascunhos de aviso e ensaio
-• Registrar ausências, folgas, férias e afastamentos por período (um dia ou múltiplos dias)
-• Cancelar ausências e tarefas registradas
-• Publicar avisos e escalas com confirmação obrigatória
-• Criar blocos operacionais na agenda (preparação, reunião, montagem, treinamento)
-• Verificar quem leu (ou não) documentos da biblioteca
-• Gerar resumo personalizado do dia com análise operacional
-• Consultar aniversários e detectar marcos de tempo de casa
-• Criar e consultar reconhecimentos para membros da equipe
-• Consultar o clima atual
-• Resolver listas de membros e executar ações em lote (tarefas, ausências, reconhecimentos, escala, participantes de evento) com resumo e confirmação antes
-• Sugerir memórias para aprovação e aprender com a equipe
-• Consultar, criar e atualizar atividades recorrentes/avulsas com múltiplos horários (schedules) — ex.: aulas, ensaios fixos, blocos semanais`
-  : `• Consultar sua escala, tarefas e informações do dia
-• Pesquisar documentos na biblioteca
-• Gerar resumo do dia (escala, tarefas, ausências, clima)
-• Consultar aniversários e reconhecimentos da equipe
-• Verificar o clima
-• Sugerir aprendizados para aprovação`}
-
-⸻
-
-Fluxo obrigatório para ações com membros${isManager ? "" : " (não aplicável ao seu papel atual)"}:
-
-1. Use consultar_membros para resolver o nome ANTES de criar qualquer entrada, tarefa ou reconhecimento.
-2. Se houver ambiguidade → "Eu encontrei dois com esse nome. Qual você quer dizer?"
-3. Se o membro estiver de folga ou afastado → avise e peça confirmação.
-4. Após confirmar tudo → "Posso criar isso?" antes de executar.
-
-⸻
-
-Explicabilidade
-
-Ao tomar decisões ou sugestões importantes, estruture assim:
-
-📋 O que encontrei.
-🧠 O que analisei.
-⚠️ Riscos ou conflitos.
-💡 Minha sugestão.
-
-⸻
-
-Restrições
-
-• Não aprova ações sozinha.
-• Não publica conteúdo sozinha.
-• Não altera dados críticos sem confirmação.
-• Não cria memórias permanentes sem aprovação.
-• Não revela o tipo de restrição HEALTH ou PHYSICAL de ninguém pelo nome.
-• Não cita mensagens privadas.
-
-A decisão final é sempre humana.
-
-⸻
-
-Idioma: sempre em português brasileiro.`;
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// ASA Tools
-// ────────────────────────────────────────────────────────────────────────────
-
-const ASA_TOOLS: Tool[] = [
-  {
-    name: "consultar_agenda",
-    description: "Consulta eventos da agenda (shows, ensaios, reuniões) da organização",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        startDate: { type: "string", description: "Data início (YYYY-MM-DD)" },
-        endDate: { type: "string", description: "Data fim (YYYY-MM-DD)" },
-        type: { type: "string", description: "Tipo: SHOW, REHEARSAL, MEETING, OPERATIONAL_BLOCK" },
-      },
-    },
-  },
-  {
-    name: "consultar_escalas",
-    description: "Consulta a escala de um membro EXATAMENTE como aparece no ecrã: entradas fixas/manuais + blocos automáticos do Livro do Dia, da agenda e de atividades recorrentes. Cada entrada traz o campo 'origem'. Use para 'minha escala', 'onde estou na escala', 'o que a Fulana tem essa semana'. Gestores podem consultar outro membro via userId.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        userId:   { type: "string", description: "ID do membro (opcional — somente gestores; padrão: usuário atual)" },
-        dateFrom: { type: "string", description: "Data início (YYYY-MM-DD). Padrão: hoje." },
-        dateTo:   { type: "string", description: "Data fim (YYYY-MM-DD). Padrão: +14 dias." },
-        limit:    { type: "number", description: "Máximo de entradas (padrão: 20)" },
-      },
-    },
-  },
-  {
-    name: "consultar_tempo_livre",
-    description: "Detecta o TEMPO LIVRE (buracos na agenda do dia) dos membros escalados. O dia de cada pessoa vai da primeira até a última atividade dela (sem horário fixo; cada um pode ter horário diferente) e só mostra buracos ENTRE atividades de pelo menos 1 hora. Use para 'quem tem tempo livre [dia]?', 'a Fulana está livre amanhã?', 'onde dá para encaixar uma tarefa/ADM?'. Ignora quem está de folga e dias com blocos sem horário. Para PREENCHER um buraco, depois use criar_entrada_escala ou criar_tarefa — sempre com confirmação.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        date:   { type: "string", description: "Data (YYYY-MM-DD). Padrão: hoje." },
-        userId: { type: "string", description: "ID do membro (opcional — gestores: calcula só para esse membro; sem userId calcula para todos). Use consultar_membros para obter." },
-      },
-    },
-  },
-  {
-    name: "consultar_responsabilidades",
-    description: "Consulta responsabilidades operacionais. Pode filtrar por sem responsável.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        unassigned: { type: "boolean", description: "Se true, retorna apenas sem responsável" },
-        category: { type: "string", description: "Categoria da responsabilidade" },
-      },
-    },
-  },
-  {
-    name: "consultar_notificacoes",
-    description: "Consulta notificações pendentes ou recentes do usuário",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        unreadOnly: { type: "boolean", description: "Se true, apenas não lidas" },
-        limit: { type: "number", description: "Máximo de resultados (padrão: 10)" },
-      },
-    },
-  },
-  {
-    name: "consultar_avisos",
-    description: "Consulta avisos (notices) da organização",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        status: { type: "string", description: "Status: DRAFT, PUBLISHED, CANCELLED" },
-        limit: { type: "number", description: "Máximo de resultados (padrão: 5)" },
-      },
-    },
-  },
-  {
-    name: "consultar_tarefas",
-    description: "Consulta tarefas do usuário atual ('minhas tarefas', 'o que tenho para fazer'). Membros veem apenas as próprias tarefas. Gestores veem todas as da organização ou podem filtrar por membro via userId.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        userId: { type: "string", description: "ID do membro (opcional — somente gestores)" },
-        status: { type: "string", description: "Status: CREATED, IN_PROGRESS, DONE, CHANGES_REQUESTED, CANCELLED" },
-        limit:  { type: "number", description: "Máximo de resultados (padrão: 10)" },
-      },
-    },
-  },
-  {
-    name: "consultar_memorias",
-    description: "Consulta as memórias aprovadas da ASA (termos, apelidos, regras da operação)",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        type: { type: "string", description: "PERSONAL, OPERATIONAL ou OFFICIAL" },
-      },
-    },
-  },
-  {
-    name: "criar_aviso_rascunho",
-    description: "Cria um rascunho de aviso (NÃO publica automaticamente — requer confirmação e publicação manual pelo supervisor)",
-    input_schema: {
-      type: "object" as const,
-      required: ["title", "content", "type"],
-      properties: {
-        title: { type: "string", description: "Título do aviso" },
-        content: { type: "string", description: "Conteúdo do aviso" },
-        type: { type: "string", description: "Tipo: INFORMATIVE, CHANGE, ALERT, EMERGENCY" },
-        urgency: { type: "string", description: "Urgência: LOW, MEDIUM, HIGH, CRITICAL" },
-      },
-    },
-  },
-  {
-    name: "criar_ensaio_rascunho",
-    description: "Cria um rascunho de ensaio na agenda (NÃO confirma automaticamente — requer revisão)",
-    input_schema: {
-      type: "object" as const,
-      required: ["title", "startTime", "endTime"],
-      properties: {
-        title: { type: "string", description: "Título do ensaio" },
-        startTime: { type: "string", description: "Início (ISO 8601)" },
-        endTime: { type: "string", description: "Fim (ISO 8601)" },
-        location: { type: "string", description: "Local" },
-        description: { type: "string", description: "Descrição" },
-      },
-    },
-  },
-  {
-    name: "sugerir_memoria",
-    description: "Sugere que a ASA aprenda um novo termo ou regra operacional (fica pendente de aprovação)",
-    input_schema: {
-      type: "object" as const,
-      required: ["type", "key", "value"],
-      properties: {
-        type: { type: "string", description: "PERSONAL, OPERATIONAL ou OFFICIAL" },
-        key: { type: "string", description: "Termo ou apelido" },
-        value: { type: "string", description: "Significado ou definição" },
-      },
-    },
-  },
-  {
-    name: "consultar_folgas",
-    description: "Consulta folgas registradas (ausências, dias de descanso, recesso, no-show). Pode filtrar por data, usuário e tipo.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        dateFrom:  { type: "string", description: "Data início (YYYY-MM-DD). Se omitida, usa hoje." },
-        dateTo:    { type: "string", description: "Data fim (YYYY-MM-DD). Se omitida, usa dateFrom." },
-        userId:    { type: "string", description: "ID do usuário para filtrar folgas de um membro específico" },
-        type:      { type: "string", description: "Tipo: DAY_OFF, RECESSO, AFASTAMENTO, RESTRICAO, OUTRO" },
-        limit:     { type: "number", description: "Máximo de resultados (padrão: 20)" },
-      },
-    },
-  },
-  {
-    name: "consultar_ausencias_do_dia",
-    description: "Lista todos os membros que estão de folga em uma data específica (padrão: hoje). Ideal para responder 'quem está de folga hoje?'",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        date: { type: "string", description: "Data (YYYY-MM-DD). Padrão: hoje." },
-      },
-    },
-  },
-  {
-    name: "consultar_disponibilidade",
-    description: "Verifica se um membro específico está disponível (sem folga ativa) em uma data",
-    input_schema: {
-      type: "object" as const,
-      required: ["userId", "date"],
-      properties: {
-        userId: { type: "string", description: "ID do membro" },
-        date:   { type: "string", description: "Data a verificar (YYYY-MM-DD)" },
-      },
-    },
-  },
-  {
-    name: "gerar_resumo_do_dia",
-    description: "Gera um resumo personalizado do dia: atividades na escala, tarefas pendentes, ausências, aniversários e clima. Use quando o usuário pedir 'bom dia', 'boa tarde', 'boa noite', ou um resumo do dia.",
-    input_schema: { type: "object" as const, properties: {} },
-  },
-  {
-    name: "consultar_aniversarios",
-    description: "Consulta aniversários dos membros para uma data. Verifica tanto o campo birthDate dos usuários quanto memórias registradas. Usa para alertas proativos e sugestão de reconhecimentos.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        date: { type: "string", description: "Data (YYYY-MM-DD). Padrão: hoje." },
-      },
-    },
-  },
-  {
-    name: "consultar_clima",
-    description: "Consulta o clima atual: temperatura, condição (sol, chuva, nublado) e recomendações. Útil para recomendar agasalho, hidratação ou guarda-chuva.",
-    input_schema: { type: "object" as const, properties: {} },
-  },
-  {
-    name: "consultar_biblioteca",
-    description: "Pesquisa documentos na biblioteca interna da organização: regulamentos, manuais, procedimentos, regras e materiais. Use quando alguém perguntar sobre regras, procedimentos ou 'como funciona X'.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        query: { type: "string", description: "Termo ou pergunta a pesquisar (ex: 'troca de folga', 'regra do gelo')" },
-        type:  { type: "string", description: "Tipo: OPERATIONAL_PROCEDURE, RULES_AND_POLICIES, CHARACTER_REFERENCE, COSTUME_REFERENCE, ONBOARDING_MATERIAL, SAFETY_PROCEDURE" },
-      },
-    },
-  },
-  {
-    name: "consultar_membros",
-    description: "Busca membros da organização por nome, apelido ou parte do nome. Resolve 'Arthur', 'Artur', 'Arthur Alcorte' para o usuário correto. SEMPRE use esta ferramenta antes de criar entradas ou tarefas para obter o userId correto.",
-    input_schema: {
-      type: "object" as const,
-      required: ["query"],
-      properties: {
-        query: { type: "string", description: "Nome, apelido ou parte do nome a buscar" },
-      },
-    },
-  },
-  {
-    name: "consultar_grupo",
-    description: "Resolve um grupo pelo nome (ex: 'Equipe de Palco', 'Acrobacias') dentro da operação atual e devolve os membros ativos com seus userIds. Considera grupos da operação e grupos amplos (várias/todas as operações) que cobrem a operação atual. Use ANTES de montar escala por grupo: pega os membros e depois cria uma entrada para cada um com criar_entrada_escala.",
-    input_schema: {
-      type: "object" as const,
-      required: ["query"],
-      properties: {
-        query: { type: "string", description: "Nome ou parte do nome do grupo a buscar" },
-      },
-    },
-  },
-  {
-    name: "criar_grupo",
-    description: "Cria um grupo. SUPERVISOR só cria grupos da operação atual (scope OPERATION). ADMIN pode criar grupos amplos: várias operações (scope MULTI + operationIds) ou todas (scope ALL). Confirme com o usuário antes de criar.",
-    input_schema: {
-      type: "object" as const,
-      required: ["name"],
-      properties: {
-        name: { type: "string", description: "Nome do grupo" },
-        scope: { type: "string", description: "OPERATION (operação atual), MULTI (várias operações) ou ALL (todas). Padrão OPERATION." },
-        operationIds: { type: "array", items: { type: "string" }, description: "IDs das operações cobertas (somente scope MULTI; apenas ADMIN)" },
-      },
-    },
-  },
-  {
-    name: "editar_grupo",
-    description: "Edita um grupo existente: renomeia e/ou muda o status (ACTIVE/INACTIVE/ARCHIVED). Use consultar_grupo antes para obter o groupId. Confirme com o usuário antes de editar.",
-    input_schema: {
-      type: "object" as const,
-      required: ["groupId"],
-      properties: {
-        groupId: { type: "string", description: "ID do grupo (obtido via consultar_grupo)" },
-        name: { type: "string", description: "Novo nome (opcional)" },
-        status: { type: "string", description: "Novo status: ACTIVE, INACTIVE ou ARCHIVED (opcional)" },
-      },
-    },
-  },
-  {
-    name: "remover_grupo",
-    description: "Remove (arquiva) um grupo, definindo o status como ARCHIVED. Use consultar_grupo antes para obter o groupId. Confirme com o usuário antes de remover.",
-    input_schema: {
-      type: "object" as const,
-      required: ["groupId"],
-      properties: {
-        groupId: { type: "string", description: "ID do grupo (obtido via consultar_grupo)" },
-      },
-    },
-  },
-  {
-    name: "adicionar_membro_grupo",
-    description: "Adiciona um membro a um grupo. Use consultar_grupo para o groupId e consultar_membros para o userId. O membro deve pertencer a uma operação coberta pelo grupo. Confirme com o usuário antes.",
-    input_schema: {
-      type: "object" as const,
-      required: ["groupId", "userId"],
-      properties: {
-        groupId: { type: "string", description: "ID do grupo (obtido via consultar_grupo)" },
-        userId: { type: "string", description: "ID do membro a adicionar (obtido via consultar_membros)" },
-        userName: { type: "string", description: "Nome do membro (para confirmação)" },
-      },
-    },
-  },
-  {
-    name: "remover_membro_grupo",
-    description: "Remove um membro de um grupo. Use consultar_grupo para o groupId (os membros vêm em 'members' com userId). Confirme com o usuário antes de remover.",
-    input_schema: {
-      type: "object" as const,
-      required: ["groupId", "userId"],
-      properties: {
-        groupId: { type: "string", description: "ID do grupo (obtido via consultar_grupo)" },
-        userId: { type: "string", description: "ID do membro a remover (obtido via consultar_grupo em 'members')" },
-        userName: { type: "string", description: "Nome do membro (para confirmação)" },
-      },
-    },
-  },
-  {
-    name: "criar_entrada_escala",
-    description: "Cria uma entrada manual na escala operacional para um membro em uma data. Use consultar_membros primeiro para obter o userId. Sempre confirme com o usuário antes de executar.",
-    input_schema: {
-      type: "object" as const,
-      required: ["userId", "date", "label"],
-      properties: {
-        userId:    { type: "string", description: "ID do membro (obtido via consultar_membros)" },
-        userName:  { type: "string", description: "Nome do membro (para confirmação)" },
-        date:      { type: "string", description: "Data da entrada (YYYY-MM-DD)" },
-        label:     { type: "string", description: "Atividade (ex: Ensaio, Aula de Acrobacia, Reunião, Preparação)" },
-        startTime: { type: "string", description: "Horário de início (HH:MM)" },
-        endTime:   { type: "string", description: "Horário de fim (HH:MM)" },
-        notes:     { type: "string", description: "Observações opcionais" },
-      },
-    },
-  },
-  {
-    name: "criar_tarefa",
-    description: "Cria uma tarefa operacional com responsável e prazo. Use consultar_membros primeiro para obter o assigneeId. Sempre confirme com o usuário antes de executar.",
-    input_schema: {
-      type: "object" as const,
-      required: ["title", "assigneeId", "dueDate"],
-      properties: {
-        title:       { type: "string", description: "Título da tarefa" },
-        description: { type: "string", description: "Descrição detalhada (opcional)" },
-        assigneeId:  { type: "string", description: "ID do responsável (obtido via consultar_membros)" },
-        assigneeName:{ type: "string", description: "Nome do responsável (para confirmação)" },
-        dueDate:     { type: "string", description: "Prazo (YYYY-MM-DD)" },
-        priority:    { type: "string", description: "Prioridade: LOW, MEDIUM, HIGH, CRITICAL (padrão: MEDIUM)" },
-      },
-    },
-  },
-  {
-    name: "consultar_reconhecimentos",
-    description: "Consulta reconhecimentos criados para membros da organização. Mostra histórico de celebrações, marcos e conquistas registradas pela ASA.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        userId: { type: "string", description: "ID do usuário (opcional, para filtrar por membro)" },
-        limit:  { type: "number", description: "Máximo de resultados (padrão: 10)" },
-      },
-    },
-  },
-  {
-    name: "criar_reconhecimento",
-    description: "Cria um reconhecimento personalizado para um membro da equipe (tempo de casa, aniversário, conquista, excelência). Use consultar_membros primeiro. Sempre confirme com o usuário antes de executar.",
-    input_schema: {
-      type: "object" as const,
-      required: ["userId", "type", "title", "message"],
-      properties: {
-        userId:  { type: "string", description: "ID do membro a ser reconhecido (obtido via consultar_membros)" },
-        type:    { type: "string", description: "Tipo: BIRTHDAY, ONE_YEAR, TWO_YEARS, SIX_MONTHS, THREE_MONTHS, TASK_COMPLETED, CUSTOM" },
-        title:   { type: "string", description: "Título do reconhecimento (ex: '1 ano na ASA! 🎉')" },
-        message: { type: "string", description: "Mensagem personalizada e calorosa de reconhecimento" },
-      },
-    },
-  },
-  {
-    name: "detectar_marcos",
-    description: "Detecta marcos dos membros da organização hoje: tempo de casa (3 meses, 6 meses, 1 ano, 2 anos...). Útil para identificar quem deve ser reconhecido.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        type: { type: "string", description: "Tipo de marco: TIME_OF_HOUSE ou ALL (padrão: ALL)" },
-      },
-    },
-  },
-  // ── Push / Notificações ───────────────────────────────────────────────────────
-  {
-    name: "enviar_push",
-    description: "Envia uma notificação push (bandeja do celular) e registra no histórico in-app de um ou mais responsáveis. Use para avisar sobre pendências, lembretes ou alertas operacionais. Exclusivo para gestores. Sempre confirme com o usuário antes de disparar. Use consultar_membros para obter os IDs. Se o membro não tiver dispositivo registrado, o aviso fica só no histórico in-app.",
-    input_schema: {
-      type: "object" as const,
-      required: ["userIds", "title", "message"],
-      properties: {
-        userIds:  { type: "array", items: { type: "string" }, description: "IDs dos membros a notificar (obtidos via consultar_membros)" },
-        title:    { type: "string", description: "Título curto da notificação (ex: 'Lembrete de tarefa')" },
-        message:  { type: "string", description: "Corpo da notificação" },
-        priority: { type: "string", description: "Prioridade: LOW, NORMAL, IMPORTANT, CRITICAL (padrão: NORMAL)" },
-      },
-    },
-  },
-  // ── Publicação ───────────────────────────────────────────────────────────────
-  {
-    name: "publicar_aviso",
-    description: "Publica um aviso que estava em rascunho (DRAFT). ATENÇÃO: esta ação torna o aviso visível para todos os destinatários. Apresente o título/conteúdo do aviso ao gestor e peça confirmação explícita ('sim, publicar') ANTES de executar. Requer o ID do aviso.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        noticeId: { type: "string", description: "ID UUID do aviso a publicar (obtido via criar_aviso_rascunho ou histórico)" },
-      },
-      required: ["noticeId"],
-    },
-  },
-  {
-    name: "publicar_escala",
-    description: "Publica uma escala que estava em rascunho (DRAFT). ATENÇÃO: após a publicação, os membros passam a ver suas alocações. Apresente o título e período da escala ao gestor e peça confirmação explícita ('sim, publicar') ANTES de executar. Requer o ID da escala — use consultar_escalas para encontrá-la.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        scaleId: { type: "string", description: "ID UUID da escala a publicar (obtido via consultar_escalas)" },
-      },
-      required: ["scaleId"],
-    },
-  },
-  // ── Blocos Operacionais ───────────────────────────────────────────────────────
-  {
-    name: "criar_bloco_agenda",
-    description: "Cria um bloco operacional na agenda (preparação, montagem, reunião, manutenção, treinamento, etc.). Criado como rascunho — confirme no web admin para torná-lo visível aos membros. Use quando o usuário disser: 'criar bloco', 'agendar preparação', 'bloco de montagem', 'reservar horário', etc.",
-    input_schema: {
-      type: "object" as const,
-      required: ["titulo", "data"],
-      properties: {
-        titulo:     { type: "string", description: "Título do bloco (ex: 'Preparação Show A', 'Reunião de equipe', 'Manutenção técnica')" },
-        data:       { type: "string", description: "Data do bloco (YYYY-MM-DD)" },
-        horaInicio: { type: "string", description: "Hora de início (HH:MM, ex: '08:00')" },
-        horaFim:    { type: "string", description: "Hora de fim (HH:MM, ex: '10:00')" },
-        descricao:  { type: "string", description: "Descrição ou observações do bloco (opcional)" },
-        local:      { type: "string", description: "Local do bloco (opcional)" },
-      },
-    },
-  },
-  // ── Biblioteca — Rastreamento de Leitura ─────────────────────────────────────
-  {
-    name: "consultar_leituras_biblioteca",
-    description: "Consulta quem leu (ou não leu) um documento da biblioteca. Use para responder: 'Quem ainda não leu o regulamento?', 'Quantas leituras tem o manual?', 'Amanda já leu o documento X?'. Se mostrarNaoLeram=true, lista membros que AINDA NÃO leram o documento.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        documentId:      { type: "string", description: "ID UUID do documento (opcional — se omitido, lista top documentos mais lidos)" },
-        titulo:          { type: "string", description: "Título parcial para buscar o documento por nome (alternativa ao ID)" },
-        mostrarNaoLeram: { type: "boolean", description: "Se true, lista membros que NÃO leram o documento (requer documentId ou titulo)" },
-      },
-    },
-  },
-  // ── Operações de Cancelamento / Remoção ──────────────────────────────────────
-  {
-    name: "cancelar_ausencia",
-    description: "Cancela (remove) uma ausência/folga previamente registrada. Use quando o usuário pedir para remover, cancelar ou desfazer uma folga. Requer o ID da folga — use consultar_folgas para encontrá-lo. SEMPRE confirme com o usuário antes de cancelar.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        folgaId: { type: "string", description: "ID UUID da folga a cancelar" },
-        motivo:  { type: "string", description: "Motivo do cancelamento (opcional)" },
-      },
-      required: ["folgaId"],
-    },
-  },
-  {
-    name: "cancelar_tarefa",
-    description: "Cancela uma tarefa ou marca como concluída. Use quando o usuário pedir para remover, cancelar ou fechar uma tarefa. Requer o ID da tarefa — use consultar_tarefas para encontrá-lo. SEMPRE confirme com o usuário antes de cancelar.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        taskId: { type: "string", description: "ID UUID da tarefa" },
-        acao:   { type: "string", description: "CANCELAR (marca como CANCELLED) ou CONCLUIR (marca como COMPLETED). Padrão: CANCELAR" },
-        motivo: { type: "string", description: "Motivo do cancelamento ou conclusão (opcional)" },
-      },
-      required: ["taskId"],
-    },
-  },
-  {
-    name: "remover_entrada_escala",
-    description: "Remove uma entrada manual da escala (criada via criar_entrada_escala). Apenas entradas MANUAL_OVERRIDE podem ser removidas. Use quando o usuário pedir para remover uma célula ou entrada manual de escala. SEMPRE confirme antes de remover.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        allocationId: { type: "string", description: "ID UUID da alocação a remover" },
-      },
-      required: ["allocationId"],
-    },
-  },
-  // ── Sprint 11 — Aprendizado Organizacional ───────────────────────────────────
-  {
-    name: "consultar_tendencias",
-    description: "Analisa tendências temporais da operação: quais dias da semana concentram mais ausências ou atrasos, quais meses têm maior carga, e como os indicadores evoluem ao longo do tempo. Use para responder 'quando a operação é mais crítica?' ou 'existe algum padrão temporal?'",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        periodo: { type: "string", description: "Janela de análise: '30d' (padrão), '90d', '6m' ou '12m'" },
-        tipo:    { type: "string", description: "Focar em: AUSENCIAS | TAREFAS | ATIVIDADES | TODOS (padrão: TODOS)" },
-      },
-    },
-  },
-  {
-    name: "consultar_padroes",
-    description: "Identifica padrões operacionais recorrentes: membros com comportamento atípico, operações com mais problemas, atividades que geram mais conflitos ou trocas. Responde 'O que se repete?' e 'Onde está o problema?'",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        dateFrom: { type: "string", description: "Data início (YYYY-MM-DD). Padrão: últimos 90 dias." },
-        dateTo:   { type: "string", description: "Data fim (YYYY-MM-DD). Padrão: hoje." },
-        limite:   { type: "number", description: "Máximo de itens por padrão detectado (padrão: 5)" },
-      },
-    },
-  },
-  {
-    name: "consultar_aprendizados",
-    description: "Recupera o conhecimento acumulado pela ASA: memórias institucionais aprovadas e padrões derivados dos dados históricos. Use quando o usuário perguntar 'o que a ASA aprendeu?' ou 'quais são os aprendizados da operação?'",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        scope: { type: "string", description: "Filtrar por escopo de memória (opcional)" },
-      },
-    },
-  },
-  {
-    name: "consultar_riscos_recorrentes",
-    description: "Detecta riscos operacionais que se repetem com frequência: membros com muitas ausências consecutivas, tarefas cronicamente atrasadas, posições abertas frequentes e membros sobrecarregados. Classifica cada risco como ALTO/MÉDIO/BAIXO.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        dateFrom: { type: "string", description: "Data início (YYYY-MM-DD). Padrão: últimos 90 dias." },
-        dateTo:   { type: "string", description: "Data fim (YYYY-MM-DD). Padrão: hoje." },
-      },
-    },
-  },
-  {
-    name: "gerar_relatorio_asa",
-    description: "Gera um relatório operacional estruturado — semanal ou mensal — com todos os indicadores, destaques, riscos e aprendizados. Claude deve formatar como um relatório executivo com seções, emojis e linguagem clara. Use quando pedirem 'relatório da semana', 'resumo do mês' ou 'como foi o período?'",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        tipo:     { type: "string", description: "SEMANAL (padrão) ou MENSAL" },
-        dateFrom: { type: "string", description: "Data início (YYYY-MM-DD). Calculado automaticamente se omitido." },
-        dateTo:   { type: "string", description: "Data fim (YYYY-MM-DD). Padrão: hoje." },
-      },
-    },
-  },
-  // ── Sprint 10 — Biblioteca Inteligente e Conhecimento ────────────────────────
-  {
-    name: "resumir_documento",
-    description: "Busca um documento da biblioteca pelo título ou ID e retorna seu conteúdo para resumo. Use quando o usuário perguntar 'o que diz o documento X?', 'explica o regulamento Y' ou pedir para ler um documento específico. Claude deve resumir o conteúdo em linguagem clara e operacional.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        documentId: { type: "string", description: "ID UUID do documento (opcional se buscar por título)" },
-        titulo:     { type: "string", description: "Título ou trecho do título para busca (opcional se tiver ID)" },
-      },
-    },
-  },
-  {
-    name: "comparar_documentos",
-    description: "Busca dois documentos (ou duas versões do mesmo documento) e retorna ambos os conteúdos lado a lado para Claude comparar diferenças. Use quando o usuário perguntar 'qual a diferença entre X e Y?' ou 'o que mudou na versão nova?'",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        documentId1: { type: "string", description: "ID do primeiro documento (ou do documento a comparar versões)" },
-        documentId2: { type: "string", description: "ID do segundo documento (omitir para comparar versões do mesmo doc)" },
-        titulo1:     { type: "string", description: "Título do primeiro documento (alternativa ao ID)" },
-        titulo2:     { type: "string", description: "Título do segundo documento (alternativa ao ID)" },
-        versao1:     { type: "number", description: "Versão específica para comparar (opcional)" },
-        versao2:     { type: "number", description: "Segunda versão para comparar (opcional)" },
-      },
-    },
-  },
-  {
-    name: "consultar_perguntas_frequentes",
-    description: "Lista os tópicos e documentos da biblioteca mais relevantes com base nos tipos de conteúdo disponíveis. Identifica quais documentos têm múltiplas versões (muito atualizados), quais são onboarding e quais são procedimentos operacionais. Use para responder 'que tipo de informação a organização registra?'",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        tipo: { type: "string", description: "Filtrar por tipo: OPERATIONAL_PROCEDURE | RULES_AND_POLICIES | CHARACTER_REFERENCE | COSTUME_REFERENCE | ONBOARDING_MATERIAL | SAFETY_PROCEDURE (opcional)" },
-      },
-    },
-  },
-  {
-    name: "consultar_documentos_populares",
-    description: "Retorna documentos categorizados por estado: recém-atualizados (UPDATED), desatualizados (PUBLISHED há mais de 90 dias sem revisão), rascunhos pendentes (DRAFT) e arquivados. Identifica gaps na base de conhecimento. Use para 'quais documentos precisam de atenção?'",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        limite: { type: "number", description: "Máximo de documentos por categoria (padrão: 5)" },
-      },
-    },
-  },
-  {
-    name: "sugerir_leituras",
-    description: "Busca documentos relevantes para um tema específico. Use quando o usuário perguntar sobre um assunto que pode estar documentado (folgas, figurinos, personagens, segurança, procedimentos) ou quando a conversa atual envolve um tópico com documentos relacionados.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        tema:  { type: "string", description: "Tema ou palavra-chave para buscar nos documentos (ex: 'folga', 'figurino', 'segurança')" },
-        tipo:  { type: "string", description: "Filtrar por tipo de documento (opcional)" },
-        limit: { type: "number", description: "Número máximo de sugestões (padrão: 5)" },
-      },
-      required: ["tema"],
-    },
-  },
-  // ── Sprint 09 — Estatísticas e Inteligência Operacional ──────────────────────
-  {
-    name: "consultar_estatisticas",
-    description: "Retorna um snapshot estatístico da operação: total de atividades escaladas, tarefas por status, ausências registradas, reconhecimentos e posições abertas. Use quando perguntarem 'como está a operação' ou pedirem um painel geral.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        dateFrom: { type: "string", description: "Data início (YYYY-MM-DD). Padrão: início do mês atual." },
-        dateTo:   { type: "string", description: "Data fim (YYYY-MM-DD). Padrão: hoje." },
-      },
-    },
-  },
-  {
-    name: "consultar_indicadores",
-    description: "Retorna KPIs operacionais: top performer (mais atividades), membro com mais ausências, taxa de conclusão de tarefas, cobertura das escalas, número de conflitos detectados. Ideal para o resumo executivo do supervisor.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        dateFrom: { type: "string", description: "Data início (YYYY-MM-DD). Padrão: últimos 30 dias." },
-        dateTo:   { type: "string", description: "Data fim (YYYY-MM-DD). Padrão: hoje." },
-      },
-    },
-  },
-  {
-    name: "consultar_desempenho",
-    description: "Analisa o desempenho individual ou coletivo: atividades realizadas, tarefas concluídas, tarefas atrasadas e ausências por membro. Ordena do melhor para o pior desempenho. Use para responder 'quem tem se destacado?' ou 'quem tem mais atrasos?'",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        dateFrom: { type: "string", description: "Data início (YYYY-MM-DD). Padrão: últimos 30 dias." },
-        dateTo:   { type: "string", description: "Data fim (YYYY-MM-DD). Padrão: hoje." },
-        userId:   { type: "string", description: "ID do membro específico (opcional — omitir para toda a operação)" },
-        limit:    { type: "number", description: "Máximo de membros no ranking (padrão: 10)" },
-      },
-    },
-  },
-  {
-    name: "consultar_ausencias_historicas",
-    description: "Analisa o histórico de ausências: total por período, ranking de membros com mais ausências, distribuição por tipo (NO_SHOW/DAY_OFF/OUTRO) e períodos com maior concentração. Detecta padrões e sazonalidade.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        dateFrom: { type: "string", description: "Data início (YYYY-MM-DD). Padrão: últimos 90 dias." },
-        dateTo:   { type: "string", description: "Data fim (YYYY-MM-DD). Padrão: hoje." },
-        limit:    { type: "number", description: "Máximo de membros no ranking (padrão: 10)" },
-      },
-    },
-  },
-  {
-    name: "consultar_tarefas_historicas",
-    description: "Analisa o histórico de tarefas: taxa de conclusão, tarefas atrasadas vs concluídas, membros com mais atrasos, tempo médio de conclusão e gargalos recorrentes. Use para responder 'como está a produtividade?'",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        dateFrom: { type: "string", description: "Data início (YYYY-MM-DD). Padrão: últimos 30 dias." },
-        dateTo:   { type: "string", description: "Data fim (YYYY-MM-DD). Padrão: hoje." },
-        limit:    { type: "number", description: "Máximo de membros no ranking (padrão: 10)" },
-      },
-    },
-  },
-  {
-    name: "consultar_carga_historica",
-    description: "Mostra a distribuição histórica de carga de trabalho: atividades por membro ao longo do tempo, operações com maior demanda, semanas mais intensas. Ajuda a identificar sobrecarga crônica e desequilíbrios.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        dateFrom: { type: "string", description: "Data início (YYYY-MM-DD). Padrão: últimos 30 dias." },
-        dateTo:   { type: "string", description: "Data fim (YYYY-MM-DD). Padrão: hoje." },
-        limit:    { type: "number", description: "Máximo de membros (padrão: 15)" },
-      },
-    },
-  },
-  // ── Sprint 08 — Mensagens Inteligentes ───────────────────────────────────────
-  {
-    name: "analisar_conversa",
-    description: "Busca as mensagens recentes de um grupo ou thread operacional e as retorna para análise. Use quando o usuário pedir para analisar um canal, grupo ou conversa. Após receber as mensagens, identifique ensaios, tarefas, ausências, trocas e outros eventos operacionais.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        threadId: { type: "string", description: "ID do thread de mensagens (opcional)" },
-        groupId:  { type: "string", description: "ID do grupo operacional (opcional)" },
-        limit:    { type: "number", description: "Número de mensagens a buscar (padrão: 30)" },
-        sinceHours: { type: "number", description: "Buscar mensagens das últimas N horas (padrão: 48)" },
-      },
-    },
-  },
-  {
-    name: "detectar_eventos",
-    description: "Analisa mensagens recentes e detecta menções a ensaios, reuniões ou eventos. Retorna as mensagens que contêm palavras-chave como 'ensaio', 'reunião', 'apresentação', horários e datas. Claude deve extrair: hora, data, tipo de evento e sugerir criar_ensaio_rascunho se confirmado.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        threadId:   { type: "string", description: "ID do thread (opcional)" },
-        groupId:    { type: "string", description: "ID do grupo (opcional)" },
-        limit:      { type: "number", description: "Mensagens a buscar (padrão: 50)" },
-        sinceHours: { type: "number", description: "Janela de tempo em horas (padrão: 72)" },
-      },
-    },
-  },
-  {
-    name: "detectar_tarefas",
-    description: "Analisa mensagens recentes e detecta menções a tarefas implícitas: 'X precisa fazer Y', 'X fica responsável por Y', 'alguém pode fazer Y'. Retorna mensagens com padrões de responsabilidade. Claude deve extrair: responsável, tarefa, prazo (se mencionado) e sugerir criação.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        threadId:   { type: "string", description: "ID do thread (opcional)" },
-        groupId:    { type: "string", description: "ID do grupo (opcional)" },
-        limit:      { type: "number", description: "Mensagens a buscar (padrão: 50)" },
-        sinceHours: { type: "number", description: "Janela de tempo em horas (padrão: 72)" },
-      },
-    },
-  },
-  {
-    name: "detectar_ausencias",
-    description: "Analisa mensagens recentes e detecta menções a ausências: 'X não vai vir', 'X vai faltar', 'X está afastado'. Retorna mensagens com padrões de ausência. Claude deve extrair: membro, data e sugerir registrar_ausencia se confirmado.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        threadId:   { type: "string", description: "ID do thread (opcional)" },
-        groupId:    { type: "string", description: "ID do grupo (opcional)" },
-        limit:      { type: "number", description: "Mensagens a buscar (padrão: 50)" },
-        sinceHours: { type: "number", description: "Janela de tempo em horas (padrão: 72)" },
-      },
-    },
-  },
-  {
-    name: "detectar_trocas",
-    description: "Analisa mensagens recentes e detecta menções a trocas de escala: 'X troca com Y', 'X e Y vão trocar'. Retorna mensagens com padrões de troca. Claude deve extrair: os dois membros, a data e sugerir criar_solicitacao_troca se confirmado.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        threadId:   { type: "string", description: "ID do thread (opcional)" },
-        groupId:    { type: "string", description: "ID do grupo (opcional)" },
-        limit:      { type: "number", description: "Mensagens a buscar (padrão: 50)" },
-        sinceHours: { type: "number", description: "Janela de tempo em horas (padrão: 72)" },
-      },
-    },
-  },
-  {
-    name: "resumir_conversa",
-    description: "Busca e estrutura as mensagens de um grupo/thread para gerar um resumo operacional. Claude deve produzir: total de mensagens, participantes, ensaios detectados, ausências, tarefas e trocas mencionadas.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        threadId:   { type: "string", description: "ID do thread (opcional)" },
-        groupId:    { type: "string", description: "ID do grupo (opcional)" },
-        limit:      { type: "number", description: "Mensagens a analisar (padrão: 50)" },
-        sinceHours: { type: "number", description: "Janela de tempo em horas (padrão: 48)" },
-      },
-    },
-  },
-  {
-    name: "destacar_itens",
-    description: "Analisa mensagens e destaca itens operacionais importantes categorizados: ensaios, ausências, trocas, tarefas, aniversários e mudanças operacionais. Retorna cada item com categoria, remetente, conteúdo e sugestão de ação.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        threadId:   { type: "string", description: "ID do thread (opcional)" },
-        groupId:    { type: "string", description: "ID do grupo (opcional)" },
-        limit:      { type: "number", description: "Mensagens a analisar (padrão: 50)" },
-        sinceHours: { type: "number", description: "Janela de tempo em horas (padrão: 72)" },
-      },
-    },
-  },
-  // ── Sprint 07 — Vida da Equipe e Cultura Organizacional ─────────────────────
-  {
-    name: "detectar_conquistas",
-    description: "Detecta conquistas de membros: marcos de 50 ou 100 atividades escaladas, 50 ou 100 tarefas concluídas. Retorna lista de membros que atingiram ou estão próximos de marcos. Use ao gerar o resumo do dia ou quando perguntarem sobre conquistas da equipe.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        userId: { type: "string", description: "ID do membro específico (opcional — omitir para toda a organização)" },
-        limit:  { type: "number", description: "Máximo de resultados (padrão: 20)" },
-      },
-    },
-  },
-  {
-    name: "consultar_marcos",
-    description: "Consulta marcos de tempo de casa e aniversários para os próximos N dias. Diferente de detectar_marcos (que verifica hoje): este retorna marcos futuros para planejamento. Excelente para alertas antecipados.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        daysAhead: { type: "number", description: "Dias à frente para verificar (padrão: 7)" },
-      },
-    },
-  },
-  {
-    name: "criar_reconhecimento_automatico",
-    description: "Cria um reconhecimento formal para um membro baseado em conquista detectada automaticamente (aniversário, tempo de casa, marco de atividades). Sempre pede confirmação antes de publicar.",
-    input_schema: {
-      type: "object" as const,
-      required: ["userId", "userName", "triggerType", "triggerLabel"],
-      properties: {
-        userId:       { type: "string", description: "ID do membro" },
-        userName:     { type: "string", description: "Nome do membro para exibição" },
-        triggerType:  { type: "string", description: "Tipo do gatilho: BIRTHDAY | TIME_OF_HOUSE | ACHIEVEMENT" },
-        triggerLabel: { type: "string", description: "Descrição do gatilho: 'Aniversário', '2 anos na ASA', '100 apresentações'" },
-        customMessage:{ type: "string", description: "Mensagem personalizada (opcional — ASA gera automaticamente se omitido)" },
-      },
-    },
-  },
-  {
-    name: "consultar_historico_membro",
-    description: "Retorna o perfil de conquistas de um membro: reconhecimentos recebidos, tempo de casa, marcos atingidos, atividades realizadas e tarefas concluídas.",
-    input_schema: {
-      type: "object" as const,
-      required: ["userId"],
-      properties: {
-        userId:   { type: "string", description: "ID do membro" },
-        userName: { type: "string", description: "Nome do membro (para exibição)" },
-      },
-    },
-  },
-  // ── Sprint 06 — Assistente do Supervisor ────────────────────────────────────
-  {
-    name: "consultar_riscos_operacionais",
-    description: "Analisa a operação e detecta riscos: membros com tarefas atrasadas, membros de folga com atividades, excesso de carga, pendências críticas. Use quando o supervisor pedir um panorama de riscos ou ao gerar o resumo do dia.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        date: { type: "string", description: "Data de análise (YYYY-MM-DD). Padrão: hoje." },
-      },
-    },
-  },
-  {
-    name: "consultar_posicoes_abertas",
-    description: "Lista posições em aberto nas escalas ativas da operação (alocações sem responsável definido). Ideal para alertar sobre lacunas de cobertura.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        limit: { type: "number", description: "Máximo de resultados (padrão: 20)" },
-      },
-    },
-  },
-  {
-    name: "consultar_tarefas_criticas",
-    description: "Lista tarefas críticas: atrasadas (vencidas), vencendo hoje ou amanhã, ou com responsável indisponível. Exclusivo para gestores.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        daysAhead: { type: "number", description: "Dias à frente para alertar (padrão: 2 — hoje e amanhã)" },
-        limit:     { type: "number", description: "Máximo de resultados (padrão: 15)" },
-      },
-    },
-  },
-  {
-    name: "consultar_conflitos",
-    description: "Detecta conflitos operacionais: membros de folga com atividades na escala, sobreposições de agenda, disponibilidade comprometida. Retorna lista de conflitos com nome do membro, tipo e data.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        dateFrom: { type: "string", description: "Data início (YYYY-MM-DD). Padrão: hoje." },
-        dateTo:   { type: "string", description: "Data fim (YYYY-MM-DD). Padrão: +7 dias." },
-      },
-    },
-  },
-  {
-    name: "sugerir_cobertura",
-    description: "Sugere membros disponíveis para cobrir uma posição ou atividade. Considera folgas, carga atual e experiência prévia. Sempre deixa a decisão final para o supervisor.",
-    input_schema: {
-      type: "object" as const,
-      required: ["date"],
-      properties: {
-        date:          { type: "string", description: "Data da cobertura necessária (YYYY-MM-DD)" },
-        activityLabel: { type: "string", description: "Nome da atividade a cobrir (opcional — para filtrar por experiência)" },
-        excludeUserId: { type: "string", description: "ID do membro a excluir da sugestão (o que vai faltar)" },
-      },
-    },
-  },
-  {
-    name: "consultar_carga_operacional",
-    description: "Mostra a carga de trabalho por membro: número de atividades na escala e tarefas pendentes. Útil para identificar quem está sobrecarregado ou disponível para mais.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        dateFrom: { type: "string", description: "Data início (YYYY-MM-DD). Padrão: hoje." },
-        dateTo:   { type: "string", description: "Data fim (YYYY-MM-DD). Padrão: +7 dias." },
-        limit:    { type: "number", description: "Máximo de membros (padrão: 20)" },
-      },
-    },
-  },
-  // ── Sprint 05 — Conversas Inteligentes ──────────────────────────────────────
-  {
-    name: "registrar_ausencia",
-    description: "Registra ausência, folga, férias, afastamento ou licença de um membro. Suporta um dia único OU períodos longos (ex: 'Amanda afastada de 01/07 a 20/07'). Use consultar_membros ANTES para obter o userId correto. Para detectar: se o usuário mencionar 'férias', 'afastamento', 'licença', 'recesso' → use AFASTAMENTO ou RECESSO. SEMPRE confirme antes de executar.",
-    input_schema: {
-      type: "object" as const,
-      required: ["userId", "startDate"],
-      properties: {
-        userId:    { type: "string", description: "ID do membro (obtido via consultar_membros)" },
-        userName:  { type: "string", description: "Nome do membro (para confirmação na resposta)" },
-        startDate: { type: "string", description: "Data de início (YYYY-MM-DD)" },
-        endDate:   { type: "string", description: "Data de fim (YYYY-MM-DD). Se omitido, usa startDate (um único dia)" },
-        date:      { type: "string", description: "Alias para startDate — use startDate de preferência" },
-        type:      { type: "string", description: "Tipo: DAY_OFF (folga) | AFASTAMENTO (doença, cirurgia) | RECESSO | RESTRICAO | OUTRO. Sem tipo explícito: dia único = DAY_OFF (folga); período multi-dia = AFASTAMENTO." },
-        reason:    { type: "string", description: "Motivo (opcional)" },
-      },
-    },
-  },
-  {
-    name: "criar_solicitacao_troca",
-    description: "Cria uma solicitação formal de troca de escala entre dois membros. Use consultar_membros ANTES para resolver os dois nomes. Confirme com o usuário antes de executar.",
-    input_schema: {
-      type: "object" as const,
-      required: ["userId1", "userName1", "userId2", "userName2", "date"],
-      properties: {
-        userId1:   { type: "string", description: "ID do primeiro membro (obtido via consultar_membros)" },
-        userName1: { type: "string", description: "Nome do primeiro membro" },
-        userId2:   { type: "string", description: "ID do segundo membro (obtido via consultar_membros)" },
-        userName2: { type: "string", description: "Nome do segundo membro" },
-        date:      { type: "string", description: "Data da troca (YYYY-MM-DD)" },
-        notes:     { type: "string", description: "Detalhes adicionais sobre a troca (opcional)" },
-      },
-    },
-  },
-  // ── Sprint 12 — Multi-membro e operações em lote ────────────────────────────
-  {
-    name: "criar_tarefas_lote",
-    description: "Cria VÁRIAS tarefas de uma vez (uma por membro/item). Use quando o usuário pedir a mesma tarefa para vários membros (ex: 'crie a tarefa X para João, Pedro e Ana') ou várias tarefas diferentes. Resolva os nomes via consultar_membros ANTES. SEMPRE resuma o que será criado e peça confirmação antes de chamar esta ferramenta. Continua mesmo se um item falhar.",
-    input_schema: {
-      type: "object" as const,
-      required: ["tarefas"],
-      properties: {
-        tarefas: {
-          type: "array",
-          description: "Lista de tarefas a criar",
-          items: {
-            type: "object",
-            required: ["title", "assigneeId", "dueDate"],
-            properties: {
-              title:        { type: "string", description: "Título da tarefa" },
-              description:  { type: "string", description: "Descrição (opcional)" },
-              assigneeId:   { type: "string", description: "ID do responsável (via consultar_membros)" },
-              assigneeName: { type: "string", description: "Nome do responsável (para o resumo)" },
-              dueDate:      { type: "string", description: "Prazo (YYYY-MM-DD)" },
-              priority:     { type: "string", description: "LOW | MEDIUM (padrão) | HIGH | CRITICAL" },
-            },
-          },
-        },
-      },
-    },
-  },
-  {
-    name: "registrar_ausencias_lote",
-    description: "Registra VÁRIAS ausências/folgas/afastamentos de uma vez (uma por membro). Use quando o usuário listar vários membros ausentes (ex: 'João, Pedro e Ana faltaram hoje'). Resolva os nomes via consultar_membros ANTES. SEMPRE resuma e peça confirmação antes de executar. Continua mesmo se um item falhar.",
-    input_schema: {
-      type: "object" as const,
-      required: ["ausencias"],
-      properties: {
-        ausencias: {
-          type: "array",
-          description: "Lista de ausências a registrar",
-          items: {
-            type: "object",
-            required: ["userId", "startDate"],
-            properties: {
-              userId:    { type: "string", description: "ID do membro (via consultar_membros)" },
-              userName:  { type: "string", description: "Nome do membro (para o resumo)" },
-              startDate: { type: "string", description: "Data de início (YYYY-MM-DD)" },
-              endDate:   { type: "string", description: "Data de fim (YYYY-MM-DD). Se omitido, usa startDate" },
-              type:      { type: "string", description: "DAY_OFF (folga) | AFASTAMENTO (doença) | RECESSO | RESTRICAO | OUTRO. Sem tipo: dia único = DAY_OFF; multi-dia = AFASTAMENTO." },
-              reason:    { type: "string", description: "Motivo (opcional)" },
-            },
-          },
-        },
-      },
-    },
-  },
-  {
-    name: "criar_reconhecimentos_lote",
-    description: "Cria VÁRIOS reconhecimentos de uma vez (um por membro). Use quando o usuário quiser reconhecer vários membros (ex: 'parabenize João, Pedro e Ana pelo evento'). Resolva os nomes via consultar_membros ANTES. SEMPRE resuma e peça confirmação antes de executar. Continua mesmo se um item falhar.",
-    input_schema: {
-      type: "object" as const,
-      required: ["reconhecimentos"],
-      properties: {
-        reconhecimentos: {
-          type: "array",
-          description: "Lista de reconhecimentos a criar",
-          items: {
-            type: "object",
-            required: ["userId", "type", "title", "message"],
-            properties: {
-              userId:   { type: "string", description: "ID do membro (via consultar_membros)" },
-              userName: { type: "string", description: "Nome do membro (para o resumo)" },
-              type:     { type: "string", description: "Tipo do reconhecimento" },
-              title:    { type: "string", description: "Título do reconhecimento" },
-              message:  { type: "string", description: "Mensagem do reconhecimento" },
-            },
-          },
-        },
-      },
-    },
-  },
-  {
-    name: "criar_entradas_escala_lote",
-    description: "Cria VÁRIAS entradas de escala de uma vez (uma por membro). Use quando o usuário quiser escalar vários membros para a mesma atividade/data (ex: 'escale João, Pedro e Ana para o ensaio de sábado'). Resolva os nomes via consultar_membros ANTES. SEMPRE resuma e peça confirmação antes de executar. Requer uma escala ativa cobrindo a data. Continua mesmo se um item falhar.",
-    input_schema: {
-      type: "object" as const,
-      required: ["entradas"],
-      properties: {
-        entradas: {
-          type: "array",
-          description: "Lista de entradas de escala a criar",
-          items: {
-            type: "object",
-            required: ["userId", "date", "label"],
-            properties: {
-              userId:    { type: "string", description: "ID do membro (via consultar_membros)" },
-              userName:  { type: "string", description: "Nome do membro (para o resumo)" },
-              date:      { type: "string", description: "Data da atividade (YYYY-MM-DD)" },
-              label:     { type: "string", description: "Nome/atividade da entrada" },
-              startTime: { type: "string", description: "Horário de início (opcional)" },
-              endTime:   { type: "string", description: "Horário de fim (opcional)" },
-              notes:     { type: "string", description: "Observações (opcional)" },
-            },
-          },
-        },
-      },
-    },
-  },
-  {
-    name: "adicionar_participantes_evento",
-    description: "Adiciona VÁRIOS participantes a um evento da agenda de uma vez (ex: 'adicione todo o time ao ensaio de sábado'). Identifique o evento por eventId (via consultar_agenda) OU por eventoTitulo + data. Resolva os nomes dos participantes via consultar_membros ANTES. Cada participante vira uma entrada de escala vinculada ao evento. SEMPRE resuma e peça confirmação antes de executar. Continua mesmo se um participante falhar.",
-    input_schema: {
-      type: "object" as const,
-      required: ["participantes"],
-      properties: {
-        eventId:      { type: "string", description: "ID do evento da agenda (via consultar_agenda). Preferencial." },
-        eventoTitulo: { type: "string", description: "Título do evento (alternativa ao eventId, combinar com data)" },
-        data:         { type: "string", description: "Data do evento YYYY-MM-DD (usada com eventoTitulo, ou como data da entrada)" },
-        participantes: {
-          type: "array",
-          description: "Lista de membros a adicionar como participantes",
-          items: {
-            type: "object",
-            required: ["userId"],
-            properties: {
-              userId:   { type: "string", description: "ID do membro (via consultar_membros)" },
-              userName: { type: "string", description: "Nome do membro (para o resumo)" },
-            },
-          },
-        },
-      },
-    },
-  },
-  {
-    name: "desfazer_lote",
-    description: "Desfaz (cancela/remove) os itens criados na ÚLTIMA execução em lote. Use quando o usuário pedir para desfazer, cancelar ou reverter o que você acabou de criar em massa (ex: 'desfaz isso', 'cancela o que você acabou de criar', 'reverte o último lote'). Pegue do resultado do último lote o campo 'tipo' e os IDs dos itens com sucesso (itens[].id onde ok=true). SEMPRE resuma o que será desfeito e peça confirmação antes de chamar. Reusa os cancelamentos individuais item a item e continua mesmo se um item falhar.",
-    input_schema: {
-      type: "object" as const,
-      required: ["tipo", "ids"],
-      properties: {
-        tipo: { type: "string", description: "Tipo do lote a desfazer (campo 'tipo' devolvido pela ferramenta de lote): tarefas | ausencias | reconhecimentos | entradas_escala | participantes_evento" },
-        ids:  {
-          type: "array",
-          description: "IDs dos itens criados no lote (itens[].id, apenas os que tiveram ok=true)",
-          items: { type: "string" },
-        },
-      },
-    },
-  },
-  // ── Edição de entidades por conversa ────────────────────────────────────────
-  {
-    name: "editar_tarefa",
-    description: "Edita uma tarefa existente (título, descrição, responsável, prazo ou prioridade). Use quando o usuário pedir para mudar/alterar/corrigir/atualizar uma tarefa (ex: 'mude o prazo da tarefa X para sexta', 'troque o responsável'). Use consultar_tarefas ANTES para obter o taskId. Tarefas APROVADAS, CONCLUÍDAS ou CANCELADAS NÃO podem ser editadas. SEMPRE mostre o antes/depois e peça confirmação explícita antes de chamar esta ferramenta. Envie apenas os campos que mudam.",
-    input_schema: {
-      type: "object" as const,
-      required: ["taskId"],
-      properties: {
-        taskId:       { type: "string", description: "ID UUID da tarefa (via consultar_tarefas)" },
-        title:        { type: "string", description: "Novo título (opcional)" },
-        description:  { type: "string", description: "Nova descrição (opcional)" },
-        assigneeId:   { type: "string", description: "ID do novo responsável (via consultar_membros) (opcional)" },
-        assigneeName: { type: "string", description: "Nome do novo responsável (para o resumo) (opcional)" },
-        dueDate:      { type: "string", description: "Novo prazo YYYY-MM-DD (opcional)" },
-        priority:     { type: "string", description: "Nova prioridade: LOW | MEDIUM | HIGH | CRITICAL (opcional)" },
-      },
-    },
-  },
-  {
-    name: "editar_ausencia",
-    description: "Edita uma ausência/folga existente (datas, tipo ou motivo). Use quando o usuário pedir para mudar/corrigir uma folga (ex: 'a folga da Amanda é na quinta, não na quarta', 'mude o tipo para afastamento'). Use consultar_folgas ANTES para obter o folgaId. Ausências CANCELADAS não podem ser editadas. SEMPRE mostre o antes/depois e peça confirmação antes de chamar esta ferramenta. Envie apenas os campos que mudam.",
-    input_schema: {
-      type: "object" as const,
-      required: ["folgaId"],
-      properties: {
-        folgaId:   { type: "string", description: "ID UUID da folga (via consultar_folgas)" },
-        startDate: { type: "string", description: "Nova data de início YYYY-MM-DD (opcional)" },
-        endDate:   { type: "string", description: "Nova data de fim YYYY-MM-DD (opcional)" },
-        type:      { type: "string", description: "Novo tipo: DAY_OFF | AFASTAMENTO | RECESSO | RESTRICAO | OUTRO (opcional)" },
-        reason:    { type: "string", description: "Novo motivo/observação (opcional)" },
-      },
-    },
-  },
-  {
-    name: "editar_evento_agenda",
-    description: "Edita um evento da agenda existente — ensaio ou bloco operacional (título, data, horários, local ou descrição). Use quando o usuário pedir para mudar/remarcar/alterar um ensaio ou bloco (ex: 'mude o ensaio de sábado para domingo', 'o bloco começa às 9h'). Use consultar_agenda ANTES para obter o eventId. Eventos CANCELADOS ou CONCLUÍDOS não podem ser editados. SEMPRE mostre o antes/depois e peça confirmação antes de chamar esta ferramenta. Envie apenas os campos que mudam.",
-    input_schema: {
-      type: "object" as const,
-      required: ["eventId"],
-      properties: {
-        eventId:    { type: "string", description: "ID UUID do evento (via consultar_agenda)" },
-        titulo:     { type: "string", description: "Novo título (opcional)" },
-        data:       { type: "string", description: "Nova data YYYY-MM-DD (opcional)" },
-        dataFim:    { type: "string", description: "Nova data de fim YYYY-MM-DD (opcional)" },
-        horaInicio: { type: "string", description: "Novo horário de início HH:MM (opcional)" },
-        horaFim:    { type: "string", description: "Novo horário de fim HH:MM (opcional)" },
-        local:      { type: "string", description: "Novo local (opcional)" },
-        descricao:  { type: "string", description: "Nova descrição/observações (opcional)" },
-      },
-    },
-  },
-  {
-    name: "editar_aviso",
-    description: "Edita um aviso que ainda está em rascunho (DRAFT) — título, conteúdo, tipo, urgência ou confirmação. Use quando o usuário pedir para corrigir/ajustar um aviso ANTES de publicá-lo. Use consultar_avisos ANTES para obter o noticeId. Apenas avisos em RASCUNHO podem ser editados; avisos já publicados NÃO podem. SEMPRE mostre o antes/depois e peça confirmação antes de chamar esta ferramenta. Envie apenas os campos que mudam.",
-    input_schema: {
-      type: "object" as const,
-      required: ["noticeId"],
-      properties: {
-        noticeId:             { type: "string", description: "ID UUID do aviso (via consultar_avisos)" },
-        title:                { type: "string", description: "Novo título (opcional)" },
-        content:              { type: "string", description: "Novo conteúdo (opcional)" },
-        type:                 { type: "string", description: "Novo tipo: INFORMATIVE | IMPORTANT | PERSISTENT | ESCALATED (opcional)" },
-        urgency:              { type: "string", description: "Nova urgência: INFORMATIVE | IMPORTANT | CRITICAL (opcional)" },
-        requiresConfirmation: { type: "boolean", description: "Exige confirmação de leitura (opcional)" },
-      },
-    },
-  },
-  {
-    name: "editar_reconhecimento",
-    description: "Edita um reconhecimento existente (tipo, título ou mensagem). Use quando o usuário pedir para corrigir/ajustar um reconhecimento já criado. Use consultar_reconhecimentos ANTES para obter o recognitionId. SEMPRE mostre o antes/depois e peça confirmação antes de chamar esta ferramenta. Envie apenas os campos que mudam.",
-    input_schema: {
-      type: "object" as const,
-      required: ["recognitionId"],
-      properties: {
-        recognitionId: { type: "string", description: "ID UUID do reconhecimento (via consultar_reconhecimentos)" },
-        type:          { type: "string", description: "Novo tipo do reconhecimento (opcional)" },
-        title:         { type: "string", description: "Novo título (opcional)" },
-        message:       { type: "string", description: "Nova mensagem (opcional)" },
-      },
-    },
-  },
-  // ── Atividades recorrentes ────────────────────────────────────────────────
-  {
-    name: "consultar_atividades",
-    description: "Lista as atividades recorrentes/avulsas da operação atual (ou de uma operação específica via operationId). Mostra título, horários (schedules com dia da semana ou data específica), designados e status ativo/inativo. Use antes de criar ou editar uma atividade para evitar duplicatas, ou quando o usuário pedir 'quais atividades existem', 'lista as atividades', 'atividades da operação'.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        operationId: { type: "string", description: "ID da operação (opcional — padrão: operação do utilizador)" },
-      },
-    },
-  },
-  {
-    name: "criar_atividade",
-    description: "Cria uma atividade recorrente ou avulsa com um ou mais horários (schedules). Cada schedule define o dia (weekday 0=Dom…6=Sáb, OU specificDate YYYY-MM-DD) e opcionalmente horário de início/fim. Use quando o usuário pedir 'cria uma atividade', 'adiciona uma aula', 'agenda uma atividade recorrente'. SEMPRE mostre o resumo da atividade e peça confirmação antes de criar. Pode receber múltiplos schedules de uma vez (ex: 'Seg e Qui às 10h' → [{weekday:1,startTime:'10:00'},{weekday:4,startTime:'10:00'}]).",
-    input_schema: {
-      type: "object" as const,
-      required: ["title", "schedules"],
-      properties: {
-        operationId: { type: "string", description: "ID da operação (opcional — padrão: operação do utilizador)" },
-        title:       { type: "string", description: "Título da atividade" },
-        active:      { type: "boolean", description: "Se a atividade está ativa (padrão: true)" },
-        schedules: {
-          type: "array",
-          description: "Array de horários. Cada item deve ter weekday (0=Dom,1=Seg,2=Ter,3=Qua,4=Qui,5=Sex,6=Sáb) OU specificDate (YYYY-MM-DD), mais startTime/endTime opcionais (HH:MM).",
-          items: {
-            type: "object",
-            properties: {
-              weekday:      { type: "number", description: "Dia da semana 0-6 (0=Dom). Use para atividades recorrentes." },
-              specificDate: { type: "string", description: "Data específica YYYY-MM-DD. Use para atividades avulsas." },
-              startTime:    { type: "string", description: "Horário de início HH:MM (opcional)" },
-              endTime:      { type: "string", description: "Horário de fim HH:MM (opcional)" },
-            },
-          },
-        },
-        assignees: {
-          type: "array",
-          description: "Designados (opcional). Cada item tem userId ou groupId.",
-          items: {
-            type: "object",
-            properties: {
-              userId:  { type: "string", description: "ID de um membro específico (via consultar_membros)" },
-              groupId: { type: "string", description: "ID de um grupo operacional" },
-            },
-          },
-        },
-      },
-    },
-  },
-  {
-    name: "atualizar_atividade",
-    description: "Atualiza uma atividade existente: título, status ativo/inativo, horários (schedules) ou designados. Se schedules for informado, substitui TODOS os horários existentes. Use consultar_atividades ANTES para obter o activityId. SEMPRE mostre o antes/depois e peça confirmação antes de chamar. Envie apenas os campos que mudam.",
-    input_schema: {
-      type: "object" as const,
-      required: ["activityId"],
-      properties: {
-        activityId: { type: "string", description: "ID UUID da atividade (via consultar_atividades)" },
-        title:      { type: "string", description: "Novo título (opcional)" },
-        active:     { type: "boolean", description: "Novo status ativo/inativo (opcional)" },
-        schedules: {
-          type: "array",
-          description: "Novos horários — substitui todos os existentes (opcional). Cada item deve ter weekday (0-6) OU specificDate (YYYY-MM-DD), mais startTime/endTime opcionais (HH:MM).",
-          items: {
-            type: "object",
-            properties: {
-              weekday:      { type: "number", description: "Dia da semana 0-6 (0=Dom)" },
-              specificDate: { type: "string", description: "Data específica YYYY-MM-DD" },
-              startTime:    { type: "string", description: "Horário de início HH:MM (opcional)" },
-              endTime:      { type: "string", description: "Horário de fim HH:MM (opcional)" },
-            },
-          },
-        },
-        assignees: {
-          type: "array",
-          description: "Novos designados — substitui todos os existentes (opcional). Cada item tem userId ou groupId.",
-          items: {
-            type: "object",
-            properties: {
-              userId:  { type: "string", description: "ID de um membro específico (via consultar_membros)" },
-              groupId: { type: "string", description: "ID de um grupo operacional" },
-            },
-          },
-        },
-      },
-    },
-  },
-];
-
-// ────────────────────────────────────────────────────────────────────────────
 // Shared helpers — resolução multi-membro + cores de operação (single + lote)
 // ────────────────────────────────────────────────────────────────────────────
 
-type ToolCtx = { userId: string; organizationId: string | null; userRole: string; operationId: string | null };
+type ToolCtx = { userId: string; organizationId: string | null; userRole: string; operationId: string | null; operationIds?: string[] };
 
 function normalizeName(s: string): string {
   return s
@@ -2541,7 +915,9 @@ async function coreRemoverEntradaEscala(
   if (!existing) throw new Error("Entrada de escala não encontrada");
   if (existing.status !== "MANUAL_OVERRIDE")
     throw new Error(`Apenas entradas manuais podem ser removidas via ASA. Esta entrada tem status "${existing.status}".`);
-  await db.delete(scaleAllocationsTable).where(eq(scaleAllocationsTable.id, allocationId));
+  await db.update(scaleAllocationsTable)
+    .set({ active: false, updatedAt: new Date() })
+    .where(and(eq(scaleAllocationsTable.id, allocationId), eq(scaleAllocationsTable.active, true)));
   return { id: allocationId, label: existing.manualLabel ?? allocationId };
 }
 
@@ -2603,36 +979,378 @@ function summarizeBatch(noun: string, results: BatchItemResult[]): { total: numb
 export async function executeTool(
   name: string,
   input: Record<string, unknown>,
-  ctx: { userId: string; organizationId: string | null; userRole: string; operationId: string | null }
+  ctx: { userId: string; organizationId: string | null; userRole: string; operationId: string | null; operationIds?: string[] }
 ): Promise<string> {
   const isManager = MANAGER_ROLES.includes(ctx.userRole);
 
   try {
     if (name === "consultar_agenda") {
-      const limit = 10;
-      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      if (!ctx.organizationId || !ctx.operationId) return JSON.stringify({ error: "Selecione uma operação autorizada para consultar a Agenda." });
+      const dateFrom = (input.dateFrom as string) ?? operationalDate();
+      const dateTo = (input.dateTo as string) ?? shiftOperationalDate(dateFrom, 30);
+      const limit = Math.min(Math.max(Number(input.limit) || 30, 1), 50);
+      const conditions = [
+        eq(agendaEventsTable.operationId, ctx.operationId),
+        eq(operationsTable.organizationId, ctx.organizationId),
+        eq(operationsTable.status, "ACTIVE"),
+        gte(agendaEventsTable.date, dateFrom),
+        lte(agendaEventsTable.date, dateTo),
+      ];
+      const orgManager = ["ADMIN", "DIR", "DIRECTOR"].includes(ctx.userRole);
+      const supervisor = ctx.userRole === "SUPERVISOR_A" || ctx.userRole === "SUPERVISOR_B";
+      if (orgManager || supervisor) {
+        conditions.push(inArray(agendaEventsTable.status, ["CONFIRMED", "COMPLETED"]));
+        conditions.push(eq(agendaEventsTable.visibility, "OPERATION"));
+        if (supervisor) {
+          const scopes = await listAreaLocalScopes(ctx.userId, ctx.organizationId);
+          const scopeConditions = scopes.map((scope) => and(
+            eq(agendaEventsTable.areaId, scope.areaId),
+            or(eq(agendaEventsTable.locationId, scope.locationId), isNull(agendaEventsTable.locationId)),
+          ));
+          conditions.push(scopeConditions.length
+            ? or(...scopeConditions)!
+            : eq(agendaEventsTable.id, "00000000-0000-0000-0000-000000000000"));
+        }
+      } else {
+        const participantRows = await db.select({ eventId: agendaEventParticipantsTable.eventId })
+          .from(agendaEventParticipantsTable)
+          .where(eq(agendaEventParticipantsTable.userId, ctx.userId));
+        const participantIds = participantRows.map((row) => row.eventId);
+        conditions.push(or(
+          and(eq(agendaEventsTable.createdBy, ctx.userId), eq(agendaEventsTable.status, "CONFIRMED")),
+          and(
+            eq(agendaEventsTable.status, "CONFIRMED"),
+            eq(agendaEventsTable.visibility, "OPERATION"),
+            participantIds.length
+              ? inArray(agendaEventsTable.id, participantIds)
+              : eq(agendaEventsTable.id, "00000000-0000-0000-0000-000000000000"),
+          ),
+        )!);
+      }
       const events = await db
-        .select()
+        .select({
+          title: agendaEventsTable.title,
+          date: agendaEventsTable.date,
+          startTime: agendaEventsTable.startTime,
+          endTime: agendaEventsTable.endTime,
+          location: agendaEventsTable.location,
+        })
         .from(agendaEventsTable)
-        .where(ctx.operationId ? eq(agendaEventsTable.operationId, ctx.operationId) : sql`true`)
-        .orderBy(agendaEventsTable.startTime)
+        .innerJoin(operationsTable, eq(agendaEventsTable.operationId, operationsTable.id))
+        .where(and(...conditions))
+        .orderBy(agendaEventsTable.date, agendaEventsTable.startTime)
         .limit(limit);
-      return JSON.stringify(events.map(e => ({
-        id: e.id,
-        title: e.title,
-        type: e.type,
-        status: e.status,
-        startTime: e.startTime,
-        endTime: e.endTime,
-        location: e.location,
-      })));
+      return JSON.stringify({ eventos: events });
     }
 
-    if (name === "consultar_escalas") {
+    if (name === "consultar_minhas_propostas_agenda") {
+      if (!ctx.organizationId || !ctx.operationId) return JSON.stringify({ error: "Selecione uma operação autorizada para consultar suas propostas na Agenda." });
+      const proposals = await db.select({
+        title: agendaEventsTable.title,
+        date: agendaEventsTable.date,
+        startTime: agendaEventsTable.startTime,
+        endTime: agendaEventsTable.endTime,
+        status: agendaEventsTable.status,
+        reason: agendaEventsTable.reason,
+        alternativeDetails: agendaEventsTable.alternativeDetails,
+      }).from(agendaEventsTable).innerJoin(operationsTable, eq(agendaEventsTable.operationId, operationsTable.id)).where(and(
+        eq(agendaEventsTable.operationId, ctx.operationId),
+        eq(operationsTable.organizationId, ctx.organizationId),
+        eq(operationsTable.status, "ACTIVE"),
+        eq(agendaEventsTable.createdBy, ctx.userId),
+        eq(agendaEventsTable.type, "MEETING"),
+        inArray(agendaEventsTable.status, ["PROPOSED", "REJECTED"]),
+      )).orderBy(agendaEventsTable.date, agendaEventsTable.startTime).limit(20);
+      return JSON.stringify({ propostas: proposals });
+    }
+
+    if (name === "consultar_livro_do_dia") {
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
-      const today = new Date().toISOString().slice(0, 10);
+      if (!ctx.operationId) return JSON.stringify({ error: "Selecione uma operação autorizada para consultar o Livro do Dia." });
+      const date = typeof input.date === "string" ? input.date : operationalDate();
+      const limit = Math.min(Math.max(Number(input.limit) || 10, 1), 20);
+      const rows = await db.select({
+        id: dailyBooksTable.id,
+        status: dailyBooksTable.status,
+        showBookId: dailyBooksTable.showBookId,
+        operationId: agendaEventsTable.operationId,
+        operationName: operationsTable.name,
+        eventTitle: agendaEventsTable.title,
+        eventDate: agendaEventsTable.date,
+        startTime: agendaEventsTable.startTime,
+        endTime: agendaEventsTable.endTime,
+        showTitle: showBooksTable.title,
+        responsibleId: showBooksTable.responsibleId,
+      }).from(dailyBooksTable)
+        .innerJoin(agendaEventsTable, eq(dailyBooksTable.agendaEventId, agendaEventsTable.id))
+        .innerJoin(operationsTable, eq(agendaEventsTable.operationId, operationsTable.id))
+        .leftJoin(showBooksTable, eq(dailyBooksTable.showBookId, showBooksTable.id))
+        .where(and(
+          eq(operationsTable.organizationId, ctx.organizationId),
+          eq(agendaEventsTable.operationId, ctx.operationId),
+          eq(agendaEventsTable.date, date),
+          ne(dailyBooksTable.status, "CANCELLED"),
+        ))
+        .orderBy(agendaEventsTable.startTime);
+      const actor = { sub: ctx.userId, role: ctx.userRole, operationIds: ctx.operationIds ?? [] };
+      const visibleRows = await Promise.all(rows.map(async (book) => ({
+        book,
+        visible: await canViewDailyBook(actor, book.operationId, book.status,
+          book.showBookId ? { id: book.showBookId, responsibleId: book.responsibleId } : null),
+      })));
+      const visibleBooks = visibleRows.filter((row) => row.visible).slice(0, limit).map((row) => row.book);
+      if (!visibleBooks.length) {
+        return JSON.stringify({ date, livros: [], message: `Não encontrei Livros do Dia visíveis para sua conta nessa operação em ${date}.` });
+      }
+
+      const livros = await Promise.all(visibleBooks.map(async (book) => {
+        const [scenes, blocks, allPositions] = await Promise.all([
+          db.select({ id: dailyBookScenesTable.id, name: dailyBookScenesTable.name, order: dailyBookScenesTable.order })
+            .from(dailyBookScenesTable)
+            .where(and(eq(dailyBookScenesTable.dailyBookId, book.id), eq(dailyBookScenesTable.isRemoved, false), isNull(dailyBookScenesTable.supersededAt)))
+            .orderBy(dailyBookScenesTable.order),
+          db.select({ id: dailyBookBlocksTable.id, sceneId: dailyBookBlocksTable.sceneId, name: dailyBookBlocksTable.name, startTime: dailyBookBlocksTable.startTime, endTime: dailyBookBlocksTable.endTime, order: dailyBookBlocksTable.order })
+            .from(dailyBookBlocksTable)
+            .where(and(eq(dailyBookBlocksTable.dailyBookId, book.id), eq(dailyBookBlocksTable.isRemoved, false), isNull(dailyBookBlocksTable.supersededAt)))
+            .orderBy(dailyBookBlocksTable.order),
+          db.select({ id: dailyBookPositionsTable.id, blockId: dailyBookPositionsTable.blockId, name: dailyBookPositionsTable.name })
+            .from(dailyBookPositionsTable)
+            .where(and(eq(dailyBookPositionsTable.dailyBookId, book.id), eq(dailyBookPositionsTable.isRemoved, false), isNull(dailyBookPositionsTable.supersededAt))),
+        ]);
+        const liveSceneIds = new Set(scenes.map((scene) => scene.id));
+        const liveBlocks = blocks.filter((block) => !block.sceneId || liveSceneIds.has(block.sceneId));
+        const liveBlockIds = new Set(liveBlocks.map((block) => block.id));
+        const positions = allPositions.filter((position) => !position.blockId || liveBlockIds.has(position.blockId));
+        const assignmentRows = positions.length ? await db.select({
+          positionId: dailyBookAssignmentsTable.positionId,
+          userName: usersTable.name,
+          status: dailyBookAssignmentsTable.status,
+        }).from(dailyBookAssignmentsTable)
+          .leftJoin(usersTable, eq(dailyBookAssignmentsTable.userId, usersTable.id))
+          .where(and(
+            eq(dailyBookAssignmentsTable.dailyBookId, book.id),
+            inArray(dailyBookAssignmentsTable.positionId, positions.map((position) => position.id)),
+            ne(dailyBookAssignmentsTable.status, "REMOVED"),
+            isNull(dailyBookAssignmentsTable.supersededAt),
+          )) : [];
+        const entries = positions.map((position) => {
+          const block = liveBlocks.find((item) => item.id === position.blockId);
+          const scene = scenes.find((item) => item.id === block?.sceneId);
+          const people = assignmentRows.filter((assignment) => assignment.positionId === position.id && assignment.userName)
+            .map((assignment) => assignment.userName!);
+          return {
+            sceneName: scene?.name ?? null,
+            blockName: block?.name ?? null,
+            startTime: block?.startTime ?? null,
+            endTime: block?.endTime ?? null,
+            positionName: position.name,
+            people,
+            open: people.length === 0,
+          };
+        });
+        return {
+          eventTitle: book.eventTitle,
+          eventDate: book.eventDate,
+          startTime: book.startTime,
+          endTime: book.endTime,
+          operationName: book.operationName,
+          showTitle: book.showTitle,
+          status: book.status,
+          scenes: scenes.map((scene) => scene.name),
+          entries,
+        };
+      }));
+      return JSON.stringify({ date, livros });
+    }
+
+    if (name === "consultar_livros_do_show") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      if (!ctx.operationId || !(ctx.operationIds ?? []).includes(ctx.operationId)) {
+        return JSON.stringify({ error: "Selecione uma operação autorizada para consultar os Livros do Show." });
+      }
+      const limit = Math.min(Math.max(Number(input.limit) || 20, 1), 20);
+      const rows = await db.select({
+        id: showBooksTable.id,
+        title: showBooksTable.title,
+        description: showBooksTable.description,
+        type: showBooksTable.type,
+        status: showBooksTable.status,
+        version: showBooksTable.version,
+        responsibleId: showBooksTable.responsibleId,
+        operationId: showBooksTable.operationId,
+        locationName: locationsTable.name,
+      }).from(showBooksTable)
+        .innerJoin(operationsTable, eq(showBooksTable.operationId, operationsTable.id))
+        .leftJoin(locationsTable, and(
+          eq(showBooksTable.locationId, locationsTable.id),
+          eq(locationsTable.organizationId, ctx.organizationId),
+        ))
+        .where(and(
+          eq(showBooksTable.operationId, ctx.operationId),
+          eq(operationsTable.organizationId, ctx.organizationId),
+          eq(operationsTable.status, "ACTIVE"),
+          ne(showBooksTable.status, "ARCHIVED"),
+        ))
+        .orderBy(asc(showBooksTable.title));
+      const actor = { sub: ctx.userId, role: ctx.userRole, operationIds: ctx.operationIds ?? [] };
+      const visibleRows = await Promise.all(rows.map(async (book) => ({
+        book,
+        visible: await canViewShowBook(actor, { id: book.id, responsibleId: book.responsibleId }, book.operationId),
+      })));
+      if (typeof input.title === "string" && input.title.trim()) {
+        const matches = visibleRows.filter(({ book, visible }) => visible
+          && normalizeAsaText(book.title) === normalizeAsaText(input.title as string));
+        if (matches.length === 0) return JSON.stringify({ message: "Não encontrei um Livro do Show com esse título visível para sua conta nessa operação." });
+        if (matches.length > 1) return JSON.stringify({ message: "Encontrei mais de um Livro do Show visível com esse título. Peça à gestão para diferenciar os títulos antes de eu consultar a estrutura." });
+        const selected = matches[0]!.book;
+        const scenes = await db.select({ id: showBookScenesTable.id, name: showBookScenesTable.name })
+          .from(showBookScenesTable)
+          .where(and(eq(showBookScenesTable.showBookId, selected.id), eq(showBookScenesTable.active, true)))
+          .orderBy(asc(showBookScenesTable.order), asc(showBookScenesTable.id));
+        const blocks = await db.select({ id: showBookBlocksTable.id, sceneId: showBookBlocksTable.sceneId, name: showBookBlocksTable.name })
+          .from(showBookBlocksTable)
+          .where(and(eq(showBookBlocksTable.showBookId, selected.id), eq(showBookBlocksTable.active, true)))
+          .orderBy(asc(showBookBlocksTable.order), asc(showBookBlocksTable.id));
+        const positions = await db.select({ blockId: showBookRolesTable.blockId, name: showBookRolesTable.name, minimumCoverage: showBookRolesTable.minimumCoverage })
+          .from(showBookRolesTable)
+          .where(and(eq(showBookRolesTable.showBookId, selected.id), eq(showBookRolesTable.active, true)))
+          .orderBy(asc(showBookRolesTable.order), asc(showBookRolesTable.id));
+        const activeBlockIds = new Set(blocks.map((block) => block.id));
+        const positionsWithoutActiveBlock = positions.filter((position) => !position.blockId || !activeBlockIds.has(position.blockId));
+        const structure = scenes.slice(0, 20).map((scene) => {
+          const sceneBlocks = blocks.filter((block) => block.sceneId === scene.id);
+          return {
+            name: scene.name,
+            totalBlocks: sceneBlocks.length,
+            omittedBlocks: Math.max(0, sceneBlocks.length - 12),
+            blocks: sceneBlocks.slice(0, 12).map((block) => {
+              const blockPositions = positions.filter((position) => position.blockId === block.id);
+              return {
+                name: block.name,
+                totalPositions: blockPositions.length,
+                omittedPositions: Math.max(0, blockPositions.length - 20),
+                positions: blockPositions.slice(0, 20).map((position) => ({
+                  name: position.name,
+                  minimumCoverage: position.minimumCoverage,
+                })),
+              };
+            }),
+          };
+        });
+        return JSON.stringify({ book: {
+          title: selected.title,
+          totalScenes: scenes.length,
+          omittedScenes: Math.max(0, scenes.length - 20),
+          scenes: structure,
+          totalUnassignedPositions: positionsWithoutActiveBlock.length,
+          omittedUnassignedPositions: Math.max(0, positionsWithoutActiveBlock.length - 20),
+          unassignedPositions: positionsWithoutActiveBlock.slice(0, 20).map((position) => ({
+            name: position.name,
+            minimumCoverage: position.minimumCoverage,
+          })),
+        } });
+      }
+      const books = visibleRows.filter((row) => row.visible).slice(0, limit).map(({ book }) => ({
+        title: book.title,
+        description: book.description?.slice(0, 240) ?? null,
+        type: book.type,
+        status: book.status,
+        version: book.version,
+        locationName: book.locationName,
+      }));
+      return JSON.stringify({
+        books,
+        message: books.length ? undefined : "Não encontrei Livros do Show visíveis para sua conta nessa operação.",
+      });
+    }
+
+    if (name === "consultar_meu_checkin") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      if (!ctx.operationId || !(ctx.operationIds ?? []).includes(ctx.operationId)) {
+        return JSON.stringify({ error: "Selecione uma operação autorizada para consultar seu check-in." });
+      }
+      const date = typeof input.date === "string" ? input.date : operationalDate();
+      const [operation] = await db.select({ id: operationsTable.id })
+        .from(operationsTable)
+        .where(and(eq(operationsTable.id, ctx.operationId), eq(operationsTable.organizationId, ctx.organizationId), eq(operationsTable.status, "ACTIVE")))
+        .limit(1);
+      if (!operation) return JSON.stringify({ error: "Operação não encontrada ou inativa." });
+
+      const [allocation] = await db.select({ operationId: scalesTable.operationId })
+        .from(scaleAllocationsTable)
+        .innerJoin(scalesTable, eq(scaleAllocationsTable.scaleId, scalesTable.id))
+        .innerJoin(agendaEventsTable, eq(scaleAllocationsTable.agendaEventId, agendaEventsTable.id))
+        .where(and(
+          eq(scaleAllocationsTable.userId, ctx.userId),
+          eq(scaleAllocationsTable.active, true),
+          eq(scalesTable.operationId, ctx.operationId),
+          inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"]),
+          eq(agendaEventsTable.operationId, ctx.operationId),
+          eq(agendaEventsTable.date, date),
+        ))
+        .limit(1);
+      if (!allocation) return JSON.stringify({ date, message: `Você não tem atividade publicada com check-in previsto em ${date}.` });
+
+      const [checkIn] = await db.select({ status: operationalCheckInsTable.status, checkedInAt: operationalCheckInsTable.checkedInAt })
+        .from(operationalCheckInsTable)
+        .where(and(
+          eq(operationalCheckInsTable.orgId, ctx.organizationId),
+          eq(operationalCheckInsTable.operationId, allocation.operationId),
+          eq(operationalCheckInsTable.userId, ctx.userId),
+          eq(operationalCheckInsTable.date, date),
+        ))
+        .limit(1);
+      return JSON.stringify({ date, status: checkIn?.status ?? "EXPECTED", checkedInAt: checkIn?.checkedInAt ?? null });
+    }
+
+    if (name === "consultar_checkins_equipe") {
+      if (!MANAGER_ROLES.includes(ctx.userRole)) return JSON.stringify({ error: "A consulta de check-ins da equipe está disponível somente para gestores." });
+      if (!ctx.organizationId || !ctx.operationId) return JSON.stringify({ error: "Selecione uma operação autorizada para consultar os check-ins." });
+      const authorized = await canManageCheckInsForOperation({
+        sub: ctx.userId,
+        role: ctx.userRole,
+        organizationId: ctx.organizationId,
+        operationIds: ctx.operationIds ?? [],
+      }, ctx.operationId);
+      if (!authorized) return JSON.stringify({ error: "Operação fora do escopo de check-ins." });
+      const date = typeof input.date === "string" ? input.date : operationalDate();
+      const expectedUsers = await db.selectDistinct({
+        userId: scaleAllocationsTable.userId,
+        userName: usersTable.name,
+        earliestStart: sql<string>`min(${agendaEventsTable.startTime})`,
+      }).from(scaleAllocationsTable)
+        .innerJoin(scalesTable, eq(scaleAllocationsTable.scaleId, scalesTable.id))
+        .innerJoin(agendaEventsTable, eq(scaleAllocationsTable.agendaEventId, agendaEventsTable.id))
+        .innerJoin(usersTable, eq(scaleAllocationsTable.userId, usersTable.id))
+        .where(and(
+          eq(agendaEventsTable.date, date),
+          eq(agendaEventsTable.operationId, ctx.operationId),
+          eq(scalesTable.operationId, ctx.operationId),
+          inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"]),
+          eq(scaleAllocationsTable.active, true),
+          sql`${scaleAllocationsTable.userId} IS NOT NULL`,
+        ))
+        .groupBy(scaleAllocationsTable.userId, usersTable.name)
+        .orderBy(asc(usersTable.name));
+      if (!expectedUsers.length) return JSON.stringify({ date, checkIns: [], message: `Ninguém está previsto para check-in em ${date}.` });
+      const records = await db.select({ userId: operationalCheckInsTable.userId, status: operationalCheckInsTable.status, checkedInAt: operationalCheckInsTable.checkedInAt })
+        .from(operationalCheckInsTable)
+        .where(and(eq(operationalCheckInsTable.orgId, ctx.organizationId), eq(operationalCheckInsTable.operationId, ctx.operationId), eq(operationalCheckInsTable.date, date)));
+      const byUser = new Map(records.map((record) => [record.userId, record]));
+      return JSON.stringify({
+        date,
+        checkIns: expectedUsers.map((person) => {
+          const record = byUser.get(person.userId!);
+          return { userName: person.userName, earliestStart: person.earliestStart, status: record?.status ?? "EXPECTED", checkedInAt: record?.checkedInAt ?? null };
+        }),
+      });
+    }
+
+    if (name === "consultar_escalas" || name === "consultar_meu_dia") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const today = operationalDate();
       const dateFrom = (input.dateFrom as string) ?? today;
-      const dateTo   = (input.dateTo   as string) ?? new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+      const dateTo   = (input.dateTo   as string) ?? shiftOperationalDate(today, 14);
       const limit    = (input.limit    as number) ?? 20;
 
       // Managers can query another user's allocations; otherwise always current user
@@ -2644,7 +1362,7 @@ export async function executeTool(
         .from(scalesTable)
         .where(and(
           ctx.operationId ? eq(scalesTable.operationId, ctx.operationId) : sql`true`,
-          inArray(scalesTable.status, ["DRAFT", "PUBLISHED", "REPUBLISHED"]),
+          inArray(scalesTable.status, isManager && name === "consultar_escalas" ? ["DRAFT", "PUBLISHED", "REPUBLISHED"] : ["PUBLISHED", "REPUBLISHED"]),
           lte(scalesTable.periodStart, dateTo),
           gte(scalesTable.periodEnd,   dateFrom),
         ))
@@ -2659,7 +1377,7 @@ export async function executeTool(
       // agenda + atividades recorrentes) e filtra para o membro e a janela pedida.
       const entries: Array<{
         id: string; escala: string; periodo: string; data: string;
-        atividade: string | null; inicio: string | null; fim: string | null;
+        atividade: string | null; inicio: string | null; fim: string | null; funcao: string | null;
         status: string; origem: string; obs: string | null;
       }> = [];
       for (const s of scales) {
@@ -2680,6 +1398,7 @@ export async function executeTool(
             atividade: (r["manualLabel"] ?? r["eventTitle"]) ?? null,
             inicio:    (r["startTime"] ?? r["eventStartTime"]) ?? null,
             fim:       (r["endTime"] ?? r["eventEndTime"]) ?? null,
+            funcao:    (r["positionName"] ?? null) as string | null,
             status:    String(r["status"]),
             origem:    r["isDailyBookParticipant"] ? "Livro do Dia"
                      : r["isAgendaParticipant"]    ? "Agenda"
@@ -2698,22 +1417,37 @@ export async function executeTool(
         return JSON.stringify({ found: false, message: `${userName} alocado(a) em nenhuma escala entre ${dateFrom} e ${dateTo}.`, entradas: [] });
       }
 
-      return JSON.stringify({ found: true, total: limited.length, entradas: limited });
+      return JSON.stringify({ found: true, total: limited.length, dateFrom, dateTo, entradas: limited });
     }
 
     if (name === "consultar_tempo_livre") {
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
       if (!ctx.operationId)   return JSON.stringify({ error: "Operação não configurada" });
-      const date = (input.date as string) ?? new Date().toISOString().slice(0, 10);
-      // Gestor: userId opcional (sem ele = todos). Membro: sempre só ele mesmo.
-      const onlyUserId = isManager ? ((input.userId as string) || null) : ctx.userId;
+      if (!(ctx.operationIds ?? []).includes(ctx.operationId)
+        && !(await hasActiveResponsibility(ctx.userId, ctx.operationId, "SCALES"))) {
+        return JSON.stringify({ error: "Operação fora do seu acesso autorizado." });
+      }
+      const date = (input.date as string) ?? operationalDate();
+      const teamRoles = ["ADMIN", "DIR", "SUPERVISOR_A", "SUPERVISOR_B"];
+      const personalQuery = input.mine === true || !teamRoles.includes(ctx.userRole);
+      if (!personalQuery && !teamRoles.includes(ctx.userRole)) return JSON.stringify({ error: "Sem permissão para consultar intervalos da equipe." });
+      const [operation] = await db.select({ id: operationsTable.id })
+        .from(operationsTable)
+        .where(and(eq(operationsTable.id, ctx.operationId), eq(operationsTable.organizationId, ctx.organizationId), eq(operationsTable.status, "ACTIVE")))
+        .limit(1);
+      if (!operation) return JSON.stringify({ error: "Operação não encontrada ou inativa." });
+      if (!personalQuery && ctx.userRole !== "ADMIN" && ctx.userRole !== "DIR"
+        && !(await hasScaleAuthority(ctx.userId, ctx.operationId, undefined, undefined, undefined, true))) {
+        return JSON.stringify({ error: "Você não tem autoridade de leitura da Escala nesta operação." });
+      }
+      const onlyUserId = personalQuery ? ctx.userId : null;
 
       const [scale] = await db
         .select({ id: scalesTable.id, operationId: scalesTable.operationId, periodStart: scalesTable.periodStart, periodEnd: scalesTable.periodEnd })
         .from(scalesTable)
         .where(and(
           eq(scalesTable.operationId, ctx.operationId),
-          inArray(scalesTable.status, ["DRAFT", "PUBLISHED", "REPUBLISHED"]),
+          inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"]),
           lte(scalesTable.periodStart, date),
           gte(scalesTable.periodEnd,   date),
         ))
@@ -2721,7 +1455,7 @@ export async function executeTool(
         .limit(1);
 
       if (!scale || !scale.operationId) {
-        return JSON.stringify({ found: false, date, message: `Nenhuma escala ativa cobre ${date}.`, membros: [] });
+        return JSON.stringify({ found: false, date, mine: personalQuery, message: `Nenhuma escala publicada cobre ${date} nessa operação.`, membros: [] });
       }
 
       const merged = await resolveScaleAllocations({
@@ -2747,7 +1481,7 @@ export async function executeTool(
       }
 
       if (byUser.size === 0) {
-        return JSON.stringify({ found: false, date, message: onlyUserId ? `Esse membro não tem blocos na escala em ${date}.` : `Ninguém está escalado em ${date}.`, membros: [] });
+        return JSON.stringify({ found: false, date, mine: personalQuery, message: onlyUserId ? `Você não tem blocos na escala publicada em ${date}.` : `Ninguém está escalado em ${date}.`, membros: [] });
       }
 
       // Folgas ACTIVE que cobrem a data → membro indisponível (não conta tempo livre)
@@ -2762,13 +1496,12 @@ export async function executeTool(
         ));
       const unavailable = new Set(folgaRows.map(f => f.userId).filter((x): x is string => !!x));
 
-      const membros: Array<{ userId: string; nome: string | null; livres: Array<{ inicio: string; fim: string }>; blocos: Array<{ inicio: string; fim: string; atividade: string | null }> }> = [];
+      const membros: Array<{ nome: string | null; livres: Array<{ inicio: string; fim: string }>; blocos: Array<{ inicio: string; fim: string; atividade: string | null }> }> = [];
       for (const [userId, info] of byUser) {
         if (unavailable.has(userId)) continue;
         const gaps = computeFreeGaps(info.blocks);
         if (gaps.length === 0) continue;
         membros.push({
-          userId,
           nome: info.name,
           livres: gaps.map(g => ({ inicio: g.start, fim: g.end })),
           blocos: info.blocks
@@ -2780,70 +1513,359 @@ export async function executeTool(
       membros.sort((a, b) => String(a.nome ?? "").localeCompare(String(b.nome ?? "")));
 
       if (membros.length === 0) {
-        return JSON.stringify({ found: false, date, criterio: "tempo livre = buracos ≥ 1h entre a primeira e a última atividade de cada pessoa", message: onlyUserId ? `Sem tempo livre relevante (≥ 1h) em ${date}.` : `Ninguém tem tempo livre relevante (≥ 1h) em ${date}.`, membros: [] });
+        return JSON.stringify({ found: false, date, mine: personalQuery, criterio: "intervalos livres de pelo menos uma hora entre atividades da escala publicada; pessoas com folga ativa são excluídas", message: onlyUserId ? `Você não tem intervalos livres de pelo menos uma hora entre atividades em ${date}.` : `Ninguém tem intervalos livres de pelo menos uma hora entre atividades em ${date}.`, membros: [] });
       }
 
-      return JSON.stringify({ found: true, date, criterio: "tempo livre = buracos ≥ 1h entre a primeira e a última atividade de cada pessoa", total: membros.length, membros });
+      return JSON.stringify({ found: true, date, mine: personalQuery, criterio: "intervalos livres de pelo menos uma hora entre atividades da escala publicada; pessoas com folga ativa são excluídas", total: membros.length, membros: membros.slice(0, 50) });
     }
 
     if (name === "consultar_responsabilidades") {
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
-      const rows = await db
-        .select()
-        .from(responsibilitiesTable)
-        .where(eq(responsibilitiesTable.orgId, ctx.organizationId))
-        .limit(20);
-      const filtered = input.unassigned
-        ? rows.filter(r => r.active)
-        : rows;
-      return JSON.stringify(filtered.map(r => ({
-        id: r.id,
-        name: r.title,
-        category: r.category,
-        status: r.active ? "ACTIVE" : "INACTIVE",
-      })));
+      if (input.mine) {
+        const now = new Date();
+        const assigned = await db
+          .select({
+            name: responsibilitiesTable.title,
+            category: responsibilitiesTable.category,
+            role: responsibilityAssignmentsTable.role,
+            startsAt: responsibilityAssignmentsTable.startsAt,
+            endsAt: responsibilityAssignmentsTable.endsAt,
+          })
+          .from(responsibilityAssignmentsTable)
+          .innerJoin(responsibilitiesTable, eq(responsibilitiesTable.id, responsibilityAssignmentsTable.responsibilityId))
+          .where(and(
+            eq(responsibilitiesTable.orgId, ctx.organizationId),
+            eq(responsibilitiesTable.active, true),
+            eq(responsibilityAssignmentsTable.memberId, ctx.userId),
+            eq(responsibilityAssignmentsTable.active, true),
+            sql`(${responsibilityAssignmentsTable.startsAt} IS NULL OR ${responsibilityAssignmentsTable.startsAt} <= ${now})`,
+            sql`(${responsibilityAssignmentsTable.endsAt} IS NULL OR ${responsibilityAssignmentsTable.endsAt} >= ${now})`,
+          ))
+          .orderBy(responsibilitiesTable.title)
+          .limit(50);
+        return JSON.stringify({ responsabilidades: assigned });
+      }
+      return JSON.stringify({ error: "A consulta individual exige escopo pessoal explícito." });
+    }
+
+    if (name === "consultar_responsabilidades_equipe") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const isDefinitionManager = ctx.userRole === "ADMIN" || ctx.userRole === "DIR";
+      const isSupervisor = ctx.userRole === "SUPERVISOR_A" || ctx.userRole === "SUPERVISOR_B";
+      if (!isDefinitionManager && !isSupervisor) {
+        return JSON.stringify({ error: "A consulta de responsabilidades da equipe está disponível somente para Administração, Direção e Supervisão dentro do próprio escopo." });
+      }
+      const now = new Date();
+      if (ctx.operationId && !(ctx.operationIds ?? []).includes(ctx.operationId)) {
+        return JSON.stringify({ error: "Selecione uma operação autorizada para consultar responsabilidades." });
+      }
+      const conditions = [
+        eq(responsibilitiesTable.orgId, ctx.organizationId),
+        eq(responsibilitiesTable.active, true),
+      ];
+      if (ctx.operationId) conditions.push(eq(responsibilitiesTable.operationId, ctx.operationId));
+      if (input.unassigned === true) {
+        const currentAssignment = db.select({ id: responsibilityAssignmentsTable.id })
+          .from(responsibilityAssignmentsTable)
+          .innerJoin(usersTable, eq(usersTable.id, responsibilityAssignmentsTable.memberId))
+          .where(and(
+            eq(responsibilityAssignmentsTable.responsibilityId, responsibilitiesTable.id),
+            eq(responsibilityAssignmentsTable.active, true),
+            eq(usersTable.organizationId, ctx.organizationId),
+            ne(usersTable.status, "INACTIVE"),
+            or(isNull(responsibilityAssignmentsTable.startsAt), lte(responsibilityAssignmentsTable.startsAt, now))!,
+            or(isNull(responsibilityAssignmentsTable.endsAt), gte(responsibilityAssignmentsTable.endsAt, now))!,
+          )).limit(1);
+        conditions.push(notExists(currentAssignment));
+      }
+      if (isSupervisor) {
+        if (!ctx.operationId) return JSON.stringify({ error: "Selecione uma operação autorizada para consultar responsabilidades." });
+        const scopes = await listAreaLocalScopes(ctx.userId, ctx.organizationId);
+        const areaIds = [...new Set(scopes.map((scope) => scope.areaId))];
+        if (!areaIds.length) return JSON.stringify({ message: "Não há responsabilidades no seu escopo de área nesta operação.", responsabilidades: [] });
+        conditions.push(inArray(responsibilitiesTable.areaId, areaIds));
+      }
+      const limit = Math.min(Math.max(Number(input.limit) || 20, 1), 50);
+      const rows = await db.select({
+        id: responsibilitiesTable.id,
+        name: responsibilitiesTable.title,
+        category: responsibilitiesTable.category,
+        areaName: areasTable.name,
+      }).from(responsibilitiesTable)
+        .leftJoin(areasTable, eq(responsibilitiesTable.areaId, areasTable.id))
+        .where(and(...conditions))
+        .orderBy(asc(responsibilitiesTable.title))
+        .limit(limit);
+      if (!rows.length) return JSON.stringify({ message: "Não encontrei responsabilidades ativas no escopo autorizado.", responsabilidades: [] });
+      const assignments = await db.select({
+        responsibilityId: responsibilityAssignmentsTable.responsibilityId,
+        name: usersTable.name,
+        role: responsibilityAssignmentsTable.role,
+      }).from(responsibilityAssignmentsTable)
+        .innerJoin(usersTable, eq(usersTable.id, responsibilityAssignmentsTable.memberId))
+        .where(and(
+          inArray(responsibilityAssignmentsTable.responsibilityId, rows.map((item) => item.id)),
+          eq(responsibilityAssignmentsTable.active, true),
+          eq(usersTable.organizationId, ctx.organizationId),
+          ne(usersTable.status, "INACTIVE"),
+          or(isNull(responsibilityAssignmentsTable.startsAt), lte(responsibilityAssignmentsTable.startsAt, now))!,
+          or(isNull(responsibilityAssignmentsTable.endsAt), gte(responsibilityAssignmentsTable.endsAt, now))!,
+        ));
+      const assignmentsByResponsibility = new Map<string, Array<{ name: string; role: string }>>();
+      for (const assignment of assignments) {
+        const current = assignmentsByResponsibility.get(assignment.responsibilityId) ?? [];
+        current.push({ name: assignment.name, role: assignment.role });
+        assignmentsByResponsibility.set(assignment.responsibilityId, current);
+      }
+      return JSON.stringify({ responsabilidades: rows.map(({ id, ...item }) => ({
+        ...item,
+        responsaveis: assignmentsByResponsibility.get(id) ?? [],
+      })) });
     }
 
     if (name === "consultar_notificacoes") {
-      const limit = (input.limit as number) ?? 10;
+      const limit = Math.min(Math.max(Number(input.limit) || 10, 1), 20);
+      const now = new Date();
+      const conditions = [
+        eq(userNotificationsTable.userId, ctx.userId),
+        or(isNull(userNotificationsTable.expiresAt), gte(userNotificationsTable.expiresAt, now))!,
+        ...(input.unreadOnly ? [isNull(userNotificationsTable.readAt)] : []),
+      ];
       const notifs = await db
-        .select()
+        .select({
+          type: userNotificationsTable.type,
+          title: userNotificationsTable.title,
+          body: userNotificationsTable.message,
+          priority: userNotificationsTable.priority,
+          readAt: userNotificationsTable.readAt,
+          createdAt: userNotificationsTable.createdAt,
+        })
         .from(userNotificationsTable)
-        .where(eq(userNotificationsTable.userId, ctx.userId))
+        .where(and(...conditions))
         .orderBy(desc(userNotificationsTable.createdAt))
         .limit(limit);
-      const filtered = input.unreadOnly ? notifs.filter(n => !n.readAt) : notifs;
-      return JSON.stringify(filtered.map(n => ({
-        id: n.id,
-        type: n.type,
-        title: n.title,
-        body: n.message,
-        readAt: n.readAt,
-        createdAt: n.createdAt,
-      })));
+      return JSON.stringify(notifs);
+    }
+
+    if (name === "consultar_mensagens") {
+      if (!ctx.organizationId) return JSON.stringify({ mensagens: [] });
+      const limit = Math.min(Math.max(Number(input.limit) || 10, 1), 20);
+      const searchTerm = typeof input.query === "string" ? input.query.trim().slice(0, 120) : "";
+      const senderName = typeof input.senderName === "string" ? input.senderName.trim().slice(0, 120) : "";
+      const escapedSearchTerm = searchTerm.replace(/[\\%_]/g, "\\$&");
+      const escapedSenderName = senderName.replace(/[\\%_]/g, "\\$&");
+      const filters = [
+        eq(messageThreadParticipantsTable.userId, ctx.userId),
+        eq(messageThreadsTable.orgId, ctx.organizationId),
+        ...(input.unreadOnly === true
+          ? [or(
+              isNull(messageThreadParticipantsTable.lastReadAt),
+              gt(messagesTable.createdAt, messageThreadParticipantsTable.lastReadAt),
+            )!]
+          : []),
+        ...(searchTerm
+          ? [or(
+              ilike(messagesTable.content, `%${escapedSearchTerm}%`),
+              ilike(messageThreadsTable.title, `%${escapedSearchTerm}%`),
+            )!]
+          : []),
+        ...(senderName ? [ilike(messagesTable.senderName, `%${escapedSenderName}%`)] : []),
+      ];
+      const mensagens = await db
+        .select({
+          threadTitle: messageThreadsTable.title,
+          senderName: messagesTable.senderName,
+          content: messagesTable.content,
+          createdAt: messagesTable.createdAt,
+        })
+        .from(messagesTable)
+        .innerJoin(messageThreadParticipantsTable, eq(messageThreadParticipantsTable.threadId, messagesTable.threadId))
+        .innerJoin(messageThreadsTable, eq(messageThreadsTable.id, messagesTable.threadId))
+        .where(and(...filters))
+        .orderBy(desc(messagesTable.createdAt))
+        .limit(limit);
+      return JSON.stringify({ mensagens, unreadOnly: input.unreadOnly === true });
+    }
+
+    if (name === "consultar_mural") {
+      if (!ctx.organizationId) return JSON.stringify({ posts: [], message: "Organização não configurada." });
+      const query = typeof input.query === "string" ? input.query.trim().slice(0, 120) : "";
+      const escapedQuery = query.replace(/[\\%_]/g, "\\$&");
+      const candidates = await db.select({
+        id: announcementsTable.id,
+        type: announcementsTable.type,
+        scope: announcementsTable.scope,
+        areaId: announcementsTable.areaId,
+        areaName: areasTable.name,
+        locationId: announcementsTable.locationId,
+        locationName: locationsTable.name,
+        title: announcementsTable.title,
+        body: announcementsTable.body,
+        authorName: usersTable.name,
+        publishedAt: announcementsTable.publishedAt,
+        requiresConfirmation: announcementsTable.requiresConfirmation,
+      }).from(announcementsTable)
+        .innerJoin(usersTable, eq(announcementsTable.authorId, usersTable.id))
+        .leftJoin(areasTable, eq(announcementsTable.areaId, areasTable.id))
+        .leftJoin(locationsTable, eq(announcementsTable.locationId, locationsTable.id))
+        .where(and(
+          eq(announcementsTable.orgId, ctx.organizationId),
+          eq(announcementsTable.active, true),
+          isNull(announcementsTable.cancelledAt),
+          ...(query ? [or(ilike(announcementsTable.title, `%${escapedQuery}%`), ilike(announcementsTable.body, `%${escapedQuery}%`))!] : []),
+        ))
+        .orderBy(desc(announcementsTable.publishedAt));
+      const actor = { userId: ctx.userId, organizationId: ctx.organizationId, role: ctx.userRole };
+      const visible = [];
+      for (const post of candidates) if (await canReadAnnouncement(actor, post)) visible.push(post);
+      const limit = Math.min(Math.max(Number(input.limit) || 10, 1), 20);
+      const limited = visible.slice(0, limit);
+      const reads = limited.length ? await db.select({ announcementId: announcementReadsTable.announcementId, confirmedAt: announcementReadsTable.confirmedAt })
+        .from(announcementReadsTable)
+        .where(and(eq(announcementReadsTable.userId, ctx.userId), inArray(announcementReadsTable.announcementId, limited.map((post) => post.id)))) : [];
+      const readById = new Map(reads.map((read) => [read.announcementId, read]));
+      return JSON.stringify({ posts: limited.map((post) => ({ ...post, confirmedAt: readById.get(post.id)?.confirmedAt ?? null })) });
+    }
+
+    if (name === "consultar_pessoas") {
+      if (!ctx.organizationId) return JSON.stringify({ pessoas: [], message: "Organização não configurada." });
+      const query = typeof input.query === "string" ? input.query.trim().slice(0, 120) : "";
+      if (!query) return JSON.stringify({ pessoas: [], message: "Diga o nome ou a área que você quer buscar." });
+      const pessoas = await listCommunicationPeople(ctx.organizationId, query, 20);
+      return JSON.stringify({ pessoas: pessoas.map(({ name, areaName }) => ({ name, areaName })) });
+    }
+
+    if (name === "consultar_locais") {
+      if (!ctx.organizationId) return JSON.stringify({ locais: [], message: "Organização não configurada." });
+      const query = typeof input.query === "string" ? input.query.trim().slice(0, 120) : undefined;
+      const locais = await listReadableLocations(ctx.organizationId, ctx.userId, ctx.userRole, query, 20);
+      if (!locais) return JSON.stringify({ locais: [], message: "A consulta de locais está disponível somente para Administração, Direção e Supervisão." });
+      return JSON.stringify({ locais: locais.map(({ name, type }) => ({ name, type })) });
+    }
+
+    if (name === "consultar_entregas") {
+      if (!ctx.organizationId) return JSON.stringify({ entregas: [], message: "Organização não configurada." });
+      const limit = Math.min(Math.max(Number(input.limit) || 10, 1), 20);
+      if (input.scope === "team") {
+        if (!["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"].includes(ctx.userRole)) {
+          return JSON.stringify({ scope: "team", entregas: [], message: "A consulta de entregas da equipe está disponível somente para Administração e Supervisão." });
+        }
+        if (!ctx.operationId || !(ctx.operationIds ?? []).includes(ctx.operationId)) {
+          return JSON.stringify({ scope: "team", entregas: [], message: "Selecione uma operação autorizada para consultar as entregas da equipe." });
+        }
+        const entregas = await db.select({
+          title: deliveriesTable.title,
+          type: deliveriesTable.type,
+          dueDate: deliveriesTable.dueDate,
+          assignedCount: sql<number>`count(distinct ${deliveryAssignmentsTable.id})::int`,
+          completedCount: sql<number>`count(distinct ${deliveryAssignmentsTable.id}) filter (where ${deliveryAssignmentsTable.status} = 'COMPLETED')::int`,
+        }).from(deliveryAssignmentsTable)
+          .innerJoin(deliveriesTable, eq(deliveryAssignmentsTable.deliveryId, deliveriesTable.id))
+          .innerJoin(operationsTable, eq(deliveriesTable.operationId, operationsTable.id))
+          .innerJoin(usersTable, eq(deliveryAssignmentsTable.userId, usersTable.id))
+          .innerJoin(userRolesTable, and(
+            eq(userRolesTable.userId, usersTable.id),
+            eq(userRolesTable.operationId, deliveriesTable.operationId),
+            eq(userRolesTable.active, true),
+          ))
+          .where(and(
+            eq(operationsTable.organizationId, ctx.organizationId),
+            eq(operationsTable.id, ctx.operationId),
+            eq(operationsTable.status, "ACTIVE"),
+            eq(usersTable.organizationId, ctx.organizationId),
+            eq(usersTable.status, "ACTIVE"),
+            eq(deliveriesTable.status, "PUBLISHED"),
+            isNotNull(deliveriesTable.publishedAt),
+            isNull(deliveriesTable.cancelledAt),
+          ))
+          .groupBy(deliveriesTable.id, deliveriesTable.title, deliveriesTable.type, deliveriesTable.dueDate)
+          .orderBy(desc(deliveriesTable.publishedAt))
+          .limit(limit);
+        return JSON.stringify({ scope: "team", entregas });
+      }
+      const entregas = await db.select({
+        title: deliveriesTable.title,
+        type: deliveriesTable.type,
+        dueDate: deliveriesTable.dueDate,
+        status: deliveryAssignmentsTable.status,
+      }).from(deliveryAssignmentsTable)
+        .innerJoin(deliveriesTable, eq(deliveryAssignmentsTable.deliveryId, deliveriesTable.id))
+        .innerJoin(operationsTable, eq(deliveriesTable.operationId, operationsTable.id))
+        .where(and(
+          eq(deliveryAssignmentsTable.userId, ctx.userId),
+          eq(operationsTable.organizationId, ctx.organizationId),
+        ))
+        .orderBy(desc(deliveriesTable.publishedAt))
+        .limit(limit);
+      return JSON.stringify({ entregas });
+    }
+
+    if (name === "consultar_relatorio_checkins") {
+      if (ctx.userRole !== "ADMIN") return JSON.stringify({ error: "O resumo agregado de check-ins está disponível somente para Administração." });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada." });
+      const period = (["today", "7d", "30d"].includes(String(input.period)) ? String(input.period) : "7d") as CheckInInsightPeriod;
+      const { startDate, endDate } = checkInPeriodDates(period);
+      const operations = await db.select({ id: operationsTable.id }).from(operationsTable).where(eq(operationsTable.organizationId, ctx.organizationId));
+      const operationIds = operations.map((operation) => operation.id);
+      const records = operationIds.length ? await db.select({ status: operationalCheckInsTable.status })
+        .from(operationalCheckInsTable)
+        .where(and(
+          eq(operationalCheckInsTable.orgId, ctx.organizationId),
+          inArray(operationalCheckInsTable.operationId, operationIds),
+          gte(operationalCheckInsTable.date, startDate),
+          lte(operationalCheckInsTable.date, endDate),
+        )) : [];
+      return JSON.stringify({ period, startDate, endDate, ...summarizeCheckIns(records) });
+    }
+
+    if (name === "consultar_relatorio_tarefas") {
+      if (ctx.userRole !== "ADMIN" && ctx.userRole !== "DIR") return JSON.stringify({ error: "O resumo agregado de tarefas está disponível somente para Administração e Direção." });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada." });
+      const period = (["today", "7d", "30d"].includes(String(input.period)) ? String(input.period) : "7d") as TaskInsightPeriod;
+      const { startDate, endDate } = taskPeriodDates(period, operationalDate());
+      const conditions = [eq(tasksTable.organizationId, ctx.organizationId), gte(tasksTable.dueDate, startDate), lte(tasksTable.dueDate, endDate)];
+      if (ctx.operationId) {
+        if (!(ctx.operationIds ?? []).includes(ctx.operationId)) return JSON.stringify({ error: "Selecione uma operação autorizada para consultar as tarefas." });
+        conditions.push(eq(tasksTable.operationId, ctx.operationId));
+      }
+      const rows = await db.select({ status: tasksTable.status, count: sql<number>`count(*)::int` })
+        .from(tasksTable)
+        .where(and(...conditions))
+        .groupBy(tasksTable.status);
+      return JSON.stringify({ period, startDate, endDate, ...summarizeTasks(rows) });
     }
 
     if (name === "consultar_avisos") {
-      const limit = (input.limit as number) ?? 5;
+      const limit = Math.min(Math.max(Number(input.limit) || 10, 1), 20);
       if (!ctx.organizationId) return JSON.stringify({ avisos: [], message: "Organização não configurada" });
+      const now = new Date();
       const notices = await db
-        .select()
+        .select({
+          title: noticesTable.title,
+          content: noticesTable.content,
+          urgency: noticesTable.urgency,
+          publishedAt: noticesTable.publishedAt,
+          expiresAt: noticesTable.expiresAt,
+          recipientStatus: noticeRecipientsTable.status,
+          viewedAt: noticeRecipientsTable.viewedAt,
+          confirmedAt: noticeRecipientsTable.confirmedAt,
+        })
         .from(noticesTable)
-        .where(ctx.operationId ? eq(noticesTable.operationId, ctx.operationId) : sql`true`)
-        .orderBy(desc(noticesTable.createdAt))
+        .innerJoin(noticeRecipientsTable, eq(noticeRecipientsTable.noticeId, noticesTable.id))
+        .innerJoin(operationsTable, eq(operationsTable.id, noticesTable.operationId))
+        .where(and(
+          eq(noticeRecipientsTable.userId, ctx.userId),
+          eq(operationsTable.organizationId, ctx.organizationId),
+          eq(noticesTable.status, "PUBLISHED"),
+          or(isNull(noticesTable.expiresAt), gte(noticesTable.expiresAt, now)),
+        ))
+        .orderBy(desc(noticesTable.publishedAt))
         .limit(limit);
-      return JSON.stringify(notices.map(n => ({
-        id: n.id,
-        title: n.title,
-        type: n.type,
-        urgency: n.urgency,
-        status: n.status,
-        createdAt: n.createdAt,
-      })));
+      return JSON.stringify({ avisos: notices });
     }
 
     if (name === "consultar_tarefas") {
-      const limit = (input.limit as number) ?? 10;
+      const limit = Math.min(Math.max(Number(input.limit) || 10, 1), 50);
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
 
       // Managers can query any user's tasks; members see only their own
@@ -2853,7 +1875,15 @@ export async function executeTool(
         eq(tasksTable.organizationId, ctx.organizationId),
         eq(tasksTable.assigneeId, targetUserId),
       ];
-      if (input.status) conditions.push(eq(tasksTable.status, input.status as any));
+      if (input.status === "PENDING") {
+        conditions.push(inArray(tasksTable.status, ["CREATED", "IN_PROGRESS", "READY_FOR_APPROVAL", "CHANGES_REQUESTED"]));
+      } else if (input.status === "ACTIONABLE") {
+        conditions.push(inArray(tasksTable.status, ["CREATED", "IN_PROGRESS", "CHANGES_REQUESTED"]));
+      } else if (input.status) {
+        conditions.push(eq(tasksTable.status, input.status as any));
+      }
+      if (typeof input.dateFrom === "string") conditions.push(gte(tasksTable.dueDate, input.dateFrom));
+      if (typeof input.dateTo === "string") conditions.push(lte(tasksTable.dueDate, input.dateTo));
 
       const tasks = await db
         .select({
@@ -2864,8 +1894,12 @@ export async function executeTool(
           priority:    tasksTable.priority,
           dueDate:     tasksTable.dueDate,
           origin:      tasksTable.origin,
+          responsibilityTitle: responsibilitiesTable.title,
+          operationName: operationsTable.name,
         })
         .from(tasksTable)
+        .leftJoin(responsibilitiesTable, eq(tasksTable.responsibilityId, responsibilitiesTable.id))
+        .innerJoin(operationsTable, eq(tasksTable.operationId, operationsTable.id))
         .where(and(...conditions))
         .orderBy(tasksTable.dueDate, desc(tasksTable.createdAt))
         .limit(limit);
@@ -2875,6 +1909,102 @@ export async function executeTool(
         return JSON.stringify({ found: false, message: isSelf ? "Você não tem tarefas atribuídas no momento." : "Este membro não tem tarefas atribuídas.", tarefas: [] });
       }
 
+      return JSON.stringify({ found: true, total: tasks.length, tarefas: tasks });
+    }
+
+    if (name === "consultar_tarefa_requisitos") {
+      const title = typeof input.title === "string" ? input.title.trim() : "";
+      if (!ctx.organizationId || !ctx.operationId || !title) return JSON.stringify({ found: false, message: "Selecione uma operação autorizada e diga o título exato da sua tarefa entre aspas." });
+      const matches = await db.select({
+        id: tasksTable.id,
+        title: tasksTable.title,
+        status: tasksTable.status,
+        requiresApproval: tasksTable.requiresApproval,
+        mandatoryChecklist: tasksTable.mandatoryChecklist,
+        mandatoryEvidences: tasksTable.mandatoryEvidences,
+      }).from(tasksTable)
+        .innerJoin(operationsTable, and(
+          eq(operationsTable.id, tasksTable.operationId),
+          eq(operationsTable.id, ctx.operationId),
+          eq(operationsTable.organizationId, ctx.organizationId),
+          eq(operationsTable.status, "ACTIVE"),
+        ))
+        .where(and(
+          eq(tasksTable.organizationId, ctx.organizationId),
+          eq(tasksTable.operationId, ctx.operationId),
+          eq(tasksTable.assigneeId, ctx.userId),
+          eq(tasksTable.title, title),
+          inArray(tasksTable.status, ["CREATED", "IN_PROGRESS", "READY_FOR_APPROVAL", "CHANGES_REQUESTED"]),
+        ))
+        .limit(2);
+      const task = matches[0];
+      if (!task) return JSON.stringify({ found: false, message: "Não encontrei uma tarefa aberta com esse título entre as suas atribuições." });
+      if (matches.length > 1) return JSON.stringify({ found: false, message: "Encontrei mais de uma tarefa aberta sua com esse título nesta operação. Inclua outro detalhe para diferenciá-las." });
+
+      const requirements = task.mandatoryEvidences ?? [];
+      const uploaded = requirements.length ? await db.select({ referenceId: taskEvidencesTable.mandatoryEvidenceRefId })
+        .from(taskEvidencesTable)
+        .where(and(
+          eq(taskEvidencesTable.taskId, task.id),
+          eq(taskEvidencesTable.isRequired, true),
+          eq(taskEvidencesTable.active, true),
+        )) : [];
+      const fulfilled = new Set(uploaded.map((item) => item.referenceId).filter((id): id is string => id !== null));
+      return JSON.stringify({
+        found: true,
+        title: task.title,
+        status: task.status,
+        requiresApproval: task.requiresApproval,
+        itensPendentes: (task.mandatoryChecklist ?? []).filter((item) => !item.completed).map((item) => item.label),
+        evidenciasPendentes: requirements.filter((item) => !fulfilled.has(item.id)).map((item) => item.description || item.type),
+      });
+    }
+
+    if (name === "consultar_tarefas_equipe") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const teamManagerRoles = ["ADMIN", "DIR", "SUPERVISOR_A", "SUPERVISOR_B"];
+      if (!teamManagerRoles.includes(ctx.userRole)) return JSON.stringify({ error: "A consulta de tarefas da equipe está disponível somente para gestores." });
+      const conditions: ReturnType<typeof eq>[] = [eq(tasksTable.organizationId, ctx.organizationId)];
+      if (ctx.operationId) conditions.push(eq(tasksTable.operationId, ctx.operationId));
+
+      if (ctx.userRole === "SUPERVISOR_A" || ctx.userRole === "SUPERVISOR_B") {
+        if (!ctx.operationId || !(ctx.operationIds ?? []).includes(ctx.operationId)) {
+          return JSON.stringify({ error: "Selecione uma operação autorizada para consultar as tarefas." });
+        }
+        const areaIds = await listTaskManagementAreaIds(ctx.userId, ctx.operationId, ctx.organizationId);
+        if (areaIds === null) return JSON.stringify({ error: "Você não tem a delegação necessária para consultar tarefas nesta operação." });
+        if (areaIds.length === 0) return JSON.stringify({ found: false, message: "Não há tarefas no seu escopo de área nesta operação.", tarefas: [] });
+        conditions.push(or(inArray(usersTable.areaId, areaIds), inArray(responsibilitiesTable.areaId, areaIds))!);
+      }
+
+      if (input.status === "PENDING") {
+        conditions.push(inArray(tasksTable.status, ["CREATED", "IN_PROGRESS", "READY_FOR_APPROVAL", "CHANGES_REQUESTED"]));
+      } else if (input.status === "ACTIONABLE") {
+        conditions.push(inArray(tasksTable.status, ["CREATED", "IN_PROGRESS", "CHANGES_REQUESTED"]));
+      } else if (input.status) {
+        conditions.push(eq(tasksTable.status, input.status as any));
+      }
+      if (typeof input.dateFrom === "string") conditions.push(gte(tasksTable.dueDate, input.dateFrom));
+      if (typeof input.dateTo === "string") conditions.push(lte(tasksTable.dueDate, input.dateTo));
+
+      const tasks = await db.select({
+        title: tasksTable.title,
+        status: tasksTable.status,
+        priority: tasksTable.priority,
+        dueDate: tasksTable.dueDate,
+        origin: tasksTable.origin,
+        responsibilityTitle: responsibilitiesTable.title,
+        operationName: operationsTable.name,
+        assigneeName: usersTable.name,
+      }).from(tasksTable)
+        .innerJoin(operationsTable, eq(tasksTable.operationId, operationsTable.id))
+        .innerJoin(usersTable, eq(tasksTable.assigneeId, usersTable.id))
+        .leftJoin(responsibilitiesTable, eq(tasksTable.responsibilityId, responsibilitiesTable.id))
+        .where(and(...conditions))
+        .orderBy(tasksTable.dueDate, desc(tasksTable.createdAt))
+        .limit(Math.min(Math.max(Number(input.limit) || 20, 1), 50));
+
+      if (!tasks.length) return JSON.stringify({ found: false, message: "Não encontrei tarefas no escopo autorizado para esse filtro.", tarefas: [] });
       return JSON.stringify({ found: true, total: tasks.length, tarefas: tasks });
     }
 
@@ -2919,7 +2049,7 @@ export async function executeTool(
       if (!isManager) return JSON.stringify({ error: "Sem permissão para criar ensaios" });
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
       if (!ctx.operationId) return JSON.stringify({ error: "Selecione uma operação antes de criar ensaios" });
-      const rawDate = (input.date as string | undefined) ?? new Date().toISOString().slice(0, 10);
+      const rawDate = (input.date as string | undefined) ?? operationalDate();
       const [event] = await db.insert(agendaEventsTable).values({
         title: input.title as string,
         type: "REHEARSAL",
@@ -2956,42 +2086,76 @@ export async function executeTool(
 
     if (name === "consultar_folgas") {
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
-      const today = new Date().toISOString().slice(0, 10);
+      const today = operationalDate();
       const dateFrom = (input.dateFrom as string) ?? today;
       const dateTo   = (input.dateTo   as string) ?? dateFrom;
-      const limit    = (input.limit    as number) ?? 20;
+      const limit    = Math.min(Math.max(Number(input.limit) || 20, 1), 50);
 
       const conditions: any[] = [
+        eq(folgasTable.userId, ctx.userId),
         eq(folgasTable.status, "ACTIVE"),
         lte(folgasTable.startDate, dateTo),
         gte(folgasTable.endDate,   dateFrom),
       ];
-      if (input.userId) conditions.push(eq(folgasTable.userId,   input.userId as string));
       if (input.type)   conditions.push(eq(folgasTable.type,     input.type   as any));
 
       const rows = await db
         .select({
-          id:        folgasTable.id,
           type:      folgasTable.type,
           startDate: folgasTable.startDate,
           endDate:   folgasTable.endDate,
           origem:    folgasTable.origem,
           notes:     folgasTable.notes,
-          userName:  usersTable.name,
-          userId:    folgasTable.userId,
         })
         .from(folgasTable)
-        .leftJoin(usersTable, eq(folgasTable.userId, usersTable.id))
-        .where(and(...conditions))
+        .innerJoin(usersTable, eq(folgasTable.userId, usersTable.id))
+        .innerJoin(operationsTable, eq(folgasTable.operationId, operationsTable.id))
+        .where(and(...conditions, eq(usersTable.organizationId, ctx.organizationId), eq(operationsTable.organizationId, ctx.organizationId)))
         .orderBy(folgasTable.startDate)
         .limit(limit);
 
       return JSON.stringify({ total: rows.length, folgas: rows });
     }
 
-    if (name === "consultar_ausencias_do_dia") {
+    if (name === "consultar_solicitacoes") {
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
-      const date = (input.date as string) ?? new Date().toISOString().slice(0, 10);
+      const rows = await db.select({
+        type: requestsTable.type,
+        status: requestsTable.status,
+        targetDates: requestsTable.targetDates,
+        operationName: operationsTable.name,
+      }).from(requestsTable)
+        .innerJoin(operationsTable, eq(requestsTable.operationId, operationsTable.id))
+        .where(and(
+          eq(requestsTable.requesterId, ctx.userId),
+          eq(operationsTable.organizationId, ctx.organizationId),
+        ))
+        .orderBy(desc(requestsTable.createdAt))
+        .limit(Math.min(Math.max(Number(input.limit) || 20, 1), 20));
+      return JSON.stringify({ solicitacoes: rows });
+    }
+
+    if (name === "consultar_ausencias_do_dia") {
+      if (!isManager) return JSON.stringify({ error: "A lista de folgas da equipe está disponível somente para gestores" });
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      if (!ctx.operationId || !(ctx.operationIds ?? []).includes(ctx.operationId)) return JSON.stringify({ error: "Selecione uma operação autorizada para consultar as folgas" });
+      const [operation] = await db.select({ id: operationsTable.id })
+        .from(operationsTable)
+        .where(and(eq(operationsTable.id, ctx.operationId), eq(operationsTable.organizationId, ctx.organizationId), eq(operationsTable.status, "ACTIVE")))
+        .limit(1);
+      if (!operation) return JSON.stringify({ error: "Operação não encontrada ou inativa." });
+      if (ctx.userRole !== "ADMIN") {
+        const [activeRole] = await db.select({ id: userRolesTable.id })
+          .from(userRolesTable)
+          .where(and(
+            eq(userRolesTable.userId, ctx.userId),
+            eq(userRolesTable.operationId, ctx.operationId),
+            eq(userRolesTable.active, true),
+          ))
+          .limit(1);
+        if (!activeRole) return JSON.stringify({ error: "Você não tem acesso ativo a esta operação." });
+      }
+      const date = (input.date as string) ?? operationalDate();
 
       const rows = await db
         .select({
@@ -3006,6 +2170,7 @@ export async function executeTool(
         .from(folgasTable)
         .leftJoin(usersTable, eq(folgasTable.userId, usersTable.id))
         .where(and(
+          eq(folgasTable.operationId, ctx.operationId),
           eq(folgasTable.status, "ACTIVE"),
           lte(folgasTable.startDate, date),
           gte(folgasTable.endDate,   date),
@@ -3045,18 +2210,96 @@ export async function executeTool(
       return JSON.stringify({ disponivel: false, message: `${userName} está de folga em ${date} (${folgas[0]!.type}: ${folgas[0]!.startDate} → ${folgas[0]!.endDate}).` });
     }
 
+    // ── consultar_minhas_leituras_pendentes_biblioteca ───────────────────────
+    if (name === "consultar_minhas_leituras_pendentes_biblioteca") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
+      const [roleRow] = await db.select({ role: userRolesTable.role })
+        .from(userRolesTable)
+        .where(and(eq(userRolesTable.userId, ctx.userId), eq(userRolesTable.active, true)))
+        .limit(1);
+      const role = (roleRow?.role as LibraryRole | undefined) ?? null;
+      const fullReader = isLibraryFullReader(role);
+      const [person] = fullReader
+        ? []
+        : await db.select({ areaId: usersTable.areaId }).from(usersTable).where(eq(usersTable.id, ctx.userId)).limit(1);
+      const areaId = person?.areaId ?? null;
+      let docs = await db.select({
+        id: libraryDocumentsTable.id,
+        title: libraryDocumentsTable.title,
+        summary: libraryDocumentsTable.summary,
+        scopeType: libraryDocumentsTable.scopeType,
+        areaId: libraryDocumentsTable.areaId,
+        locationId: libraryDocumentsTable.locationId,
+      })
+        .from(libraryDocumentsTable)
+        .where(and(
+          eq(libraryDocumentsTable.orgId, ctx.organizationId),
+          inArray(libraryDocumentsTable.status, ["PUBLISHED", "UPDATED"]),
+          eq(libraryDocumentsTable.requiresConfirmation, true),
+          isNull(libraryDocumentsTable.archivedAt),
+        ))
+        .orderBy(desc(libraryDocumentsTable.updatedAt));
+      docs = docs.filter((document) => canReadLibraryScope(document, fullReader, areaId));
+      if (!docs.length) return JSON.stringify({ docs: [] });
+
+      const confirmations = await db.select({ documentId: libraryViewsTable.documentId })
+        .from(libraryViewsTable)
+        .where(and(
+          eq(libraryViewsTable.orgId, ctx.organizationId),
+          eq(libraryViewsTable.userId, ctx.userId),
+          isNotNull(libraryViewsTable.confirmedAt),
+          inArray(libraryViewsTable.documentId, docs.map((document) => document.id)),
+        ));
+      const confirmedIds = new Set(confirmations.map((item) => item.documentId));
+      return JSON.stringify({ docs: docs.filter((document) => !confirmedIds.has(document.id)).slice(0, 10) });
+    }
+
     // ── consultar_biblioteca ──────────────────────────────────────────────────
     if (name === "consultar_biblioteca") {
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
 
       const query = (input.query as string | undefined) ?? "";
       const typeFilter = input.type as string | undefined;
+      const resultLimit = Math.min(Math.max(Number(input.limit) || 20, 1), 50);
+      const [roleRow] = await db.select({ role: userRolesTable.role })
+        .from(userRolesTable)
+        .where(and(eq(userRolesTable.userId, ctx.userId), eq(userRolesTable.active, true)))
+        .limit(1);
+      const role = (roleRow?.role as LibraryRole | undefined) ?? null;
+      const fullReader = isLibraryFullReader(role);
+      const [person] = fullReader
+        ? []
+        : await db.select({ areaId: usersTable.areaId }).from(usersTable).where(eq(usersTable.id, ctx.userId)).limit(1);
+      const areaId = person?.areaId ?? null;
+      let selectedLocation: { id: string; name: string } | null = null;
+      if (typeof input.locationName === "string" && input.locationName.trim()) {
+        const availableLocations = await listReadableLocations(ctx.organizationId, ctx.userId, ctx.userRole);
+        if (!availableLocations) {
+          return JSON.stringify({ error: "Sua conta não tem acesso autorizado a documentos vinculados a locais. Posso pesquisar os documentos gerais e da sua área." });
+        }
+        const locationMatches = availableLocations.filter((location) => normalizeAsaText(location.name) === normalizeAsaText(input.locationName as string));
+        if (locationMatches.length === 0) {
+          return JSON.stringify({ error: "Não encontrei um local com esse nome dentro do seu escopo autorizado." });
+        }
+        if (locationMatches.length > 1) {
+          return JSON.stringify({ error: "Encontrei mais de um local acessível com esse nome. Informe um nome distinto para pesquisar a Biblioteca." });
+        }
+        selectedLocation = { id: locationMatches[0]!.id, name: locationMatches[0]!.name };
+      }
 
       const conditions: ReturnType<typeof eq>[] = [
         eq(libraryDocumentsTable.orgId, ctx.organizationId),
-        eq(libraryDocumentsTable.status, "PUBLISHED"),
+        inArray(libraryDocumentsTable.status, ["PUBLISHED", "UPDATED"]),
       ];
       if (typeFilter) conditions.push(eq(libraryDocumentsTable.type, typeFilter as never));
+      if (!fullReader) {
+        conditions.push(areaId
+          ? or(
+              eq(libraryDocumentsTable.scopeType, "HOUSE"),
+              and(eq(libraryDocumentsTable.scopeType, "AREA"), eq(libraryDocumentsTable.areaId, areaId)),
+            )!
+          : eq(libraryDocumentsTable.scopeType, "HOUSE"));
+      }
 
       let docs = await db
         .select({
@@ -3065,18 +2308,41 @@ export async function executeTool(
           type:    libraryDocumentsTable.type,
           summary: libraryDocumentsTable.summary,
           body:    libraryDocumentsTable.body,
+          version: libraryDocumentsTable.version,
+          tags:    libraryDocumentsTable.tags,
+          scopeType: libraryDocumentsTable.scopeType,
+          areaId: libraryDocumentsTable.areaId,
+          locationId: libraryDocumentsTable.locationId,
+          categoryName: libraryCategoriesTable.name,
         })
         .from(libraryDocumentsTable)
-        .where(and(...conditions))
-        .limit(20);
+        .leftJoin(libraryCategoriesTable, and(
+          eq(libraryCategoriesTable.id, libraryDocumentsTable.categoryId),
+          eq(libraryCategoriesTable.orgId, ctx.organizationId),
+          eq(libraryCategoriesTable.active, true),
+        ))
+        .where(and(...conditions, isNull(libraryDocumentsTable.archivedAt)))
+        .orderBy(desc(libraryDocumentsTable.updatedAt));
+      docs = docs.filter((document) => canReadLibraryScope(document, fullReader, areaId));
+      if (selectedLocation) {
+        docs = docs.filter((document) => document.scopeType !== "LOCATION" || document.locationId === selectedLocation!.id);
+      }
 
-      // Keyword filter in JS (title + summary + body)
+      const citations = docs.length
+        ? await db.select({ documentId: libraryDocumentPageCitationsTable.documentId, version: libraryDocumentPageCitationsTable.version, pageNumber: libraryDocumentPageCitationsTable.pageNumber, excerpt: libraryDocumentPageCitationsTable.excerpt })
+            .from(libraryDocumentPageCitationsTable)
+            .where(inArray(libraryDocumentPageCitationsTable.documentId, docs.map((document) => document.id)))
+        : [];
+      const currentCitations = new Map(docs.map((doc) => [doc.id, citations.filter((citation) => citation.documentId === doc.id && citation.version === doc.version)]));
+
+      // Search can use internal content, but replies cite only manually anchored source excerpts.
       if (query.trim()) {
         const normQ = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const terms = normQ.split(/\s+/).filter(term => term.length > 2 && !["com", "das", "dos", "para", "por", "uma", "uns", "nas", "nos"].includes(term));
         docs = docs.filter(d => {
-          const haystack = [d.title, d.summary ?? "", d.body]
+          const haystack = [d.title, d.summary ?? "", d.body, d.categoryName ?? "", ...d.tags, ...(currentCitations.get(d.id) ?? []).map((citation) => citation.excerpt)]
             .join(" ").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-          return haystack.includes(normQ);
+          return terms.length > 0 ? terms.every(term => haystack.includes(term)) : haystack.includes(normQ);
         });
       }
 
@@ -3093,13 +2359,62 @@ export async function executeTool(
       return JSON.stringify({
         found: true,
         count: docs.length,
-        docs: docs.map(d => ({
+        docs: docs.slice(0, resultLimit).map(d => ({
           id: d.id,
           title: d.title,
           type: d.type,
-          summary: d.summary,
-          excerpt: d.body.length > 500 ? d.body.slice(0, 500) + "…" : d.body,
+          version: d.version,
+          categoryName: d.categoryName,
+          citation: selectAsaLibraryCitation(query, currentCitations.get(d.id) ?? []),
+          ...(selectedLocation && d.scopeType === "LOCATION" && d.locationId === selectedLocation.id ? { locationName: selectedLocation.name } : {}),
         })),
+      });
+    }
+
+    if (name === "consultar_estado_biblioteca") {
+      if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada." });
+      const activeManagerRoles = await db.select({ role: userRolesTable.role }).from(userRolesTable).where(and(
+        eq(userRolesTable.userId, ctx.userId),
+        eq(userRolesTable.active, true),
+        inArray(userRolesTable.role, ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"]),
+      ));
+      if (!activeManagerRoles.length) {
+        return JSON.stringify({ error: "O estado geral da Biblioteca está disponível somente para Administração e Supervisão." });
+      }
+      const isAdmin = activeManagerRoles.some(({ role }) => role === "ADMIN");
+      const [person] = isAdmin
+        ? []
+        : await db.select({ areaId: usersTable.areaId }).from(usersTable).where(eq(usersTable.id, ctx.userId)).limit(1);
+      if (!isAdmin && !person?.areaId) return JSON.stringify({ scope: "area", staleCount: 0, republishCount: 0, draftCount: 0, stale: [], republish: [], drafts: [] });
+      const conditions = [eq(libraryDocumentsTable.orgId, ctx.organizationId), isNull(libraryDocumentsTable.archivedAt)];
+      if (!isAdmin) conditions.push(eq(libraryDocumentsTable.scopeType, "AREA"), eq(libraryDocumentsTable.areaId, person!.areaId!));
+      const staleDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+      const limit = Math.min(Math.max(Number(input.limit) || 5, 1), 10);
+      const [staleCountRow, republishCountRow, draftCountRow, stale, republish, drafts] = await Promise.all([
+        db.select({ count: sql<number>`count(*)::int` }).from(libraryDocumentsTable)
+          .where(and(...conditions, eq(libraryDocumentsTable.status, "PUBLISHED"), lte(libraryDocumentsTable.updatedAt, staleDate))),
+        db.select({ count: sql<number>`count(*)::int` }).from(libraryDocumentsTable)
+          .where(and(...conditions, eq(libraryDocumentsTable.status, "UPDATED"))),
+        db.select({ count: sql<number>`count(*)::int` }).from(libraryDocumentsTable)
+          .where(and(...conditions, eq(libraryDocumentsTable.status, "DRAFT"))),
+        db.select({ title: libraryDocumentsTable.title, updatedAt: libraryDocumentsTable.updatedAt }).from(libraryDocumentsTable)
+          .where(and(...conditions, eq(libraryDocumentsTable.status, "PUBLISHED"), lte(libraryDocumentsTable.updatedAt, staleDate)))
+          .orderBy(libraryDocumentsTable.updatedAt).limit(limit),
+        db.select({ title: libraryDocumentsTable.title, updatedAt: libraryDocumentsTable.updatedAt }).from(libraryDocumentsTable)
+          .where(and(...conditions, eq(libraryDocumentsTable.status, "UPDATED")))
+          .orderBy(desc(libraryDocumentsTable.updatedAt)).limit(limit),
+        db.select({ title: libraryDocumentsTable.title, updatedAt: libraryDocumentsTable.updatedAt }).from(libraryDocumentsTable)
+          .where(and(...conditions, eq(libraryDocumentsTable.status, "DRAFT")))
+          .orderBy(desc(libraryDocumentsTable.createdAt)).limit(limit),
+      ]);
+      return JSON.stringify({
+        scope: isAdmin ? "organization" : "area",
+        staleCount: staleCountRow[0]?.count ?? 0,
+        republishCount: republishCountRow[0]?.count ?? 0,
+        draftCount: draftCountRow[0]?.count ?? 0,
+        stale,
+        republish,
+        drafts,
       });
     }
 
@@ -3214,7 +2529,7 @@ export async function executeTool(
         const userId = input.userId as string;
         if (!groupId || !userId) return JSON.stringify({ error: "groupId e userId são obrigatórios" });
         const group = await removeGroupMemberCore(actor, groupId, userId);
-        return JSON.stringify({ success: true, message: `Membro removido do grupo "${group.name}".` });
+        return JSON.stringify({ success: true, message: `Membro removido do grupo "${group.name}".`, undo: group.undo });
       } catch (err) {
         if (err instanceof GroupActionError) return JSON.stringify({ error: err.message });
         return JSON.stringify({ error: err instanceof Error ? err.message : "Erro ao gerenciar grupo" });
@@ -3433,14 +2748,15 @@ export async function executeTool(
 
     // ── gerar_resumo_do_dia ───────────────────────────────────────────────────
     if (name === "gerar_resumo_do_dia") {
-      const resumo = await assembleResumoDodia(ctx.userId, ctx.organizationId ?? null, ctx.operationId ?? null, ctx.userRole);
+      const teamOperationId = resolveAsaSummaryTeamOperation(ctx.userRole, ctx.operationId, ctx.operationIds);
+      const resumo = await assembleResumoDodia(ctx.userId, ctx.organizationId ?? null, ctx.userRole, teamOperationId);
       return JSON.stringify(resumo);
     }
 
     // ── consultar_aniversarios ────────────────────────────────────────────────
     if (name === "consultar_aniversarios") {
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
-      const date    = (input.date as string | undefined) ?? new Date().toISOString().slice(0, 10);
+      const date    = (input.date as string | undefined) ?? operationalDate();
       const mm      = date.slice(5, 7); const dd = date.slice(8, 10);
       const todayMD = `${dd}/${mm}`;
       const normStr = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -3687,8 +3003,8 @@ export async function executeTool(
     if (name === "consultar_tendencias") {
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
       const dias  = periodoDays(input.periodo as string | undefined);
-      const from  = new Date(Date.now() - dias * 86400000).toISOString().slice(0, 10);
-      const to    = new Date().toISOString().slice(0, 10);
+      const from  = shiftOperationalDate(operationalDate(), -dias);
+      const to    = operationalDate();
       const tipo  = (input.tipo as string | undefined) ?? "TODOS";
 
       const results: Record<string, unknown> = { periodo: { dias, de: from, ate: to } };
@@ -3747,14 +3063,14 @@ export async function executeTool(
         const actMes = await db
           .select({ mes: sql<string>`TO_CHAR(${scaleAllocationsTable.manualDate}, 'YYYY-MM')`, count: sql<number>`count(*)::int` })
           .from(scaleAllocationsTable)
-          .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
+          .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), eq(scaleAllocationsTable.active, true), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
           .groupBy(sql`TO_CHAR(${scaleAllocationsTable.manualDate}, 'YYYY-MM')`)
           .orderBy(sql`TO_CHAR(${scaleAllocationsTable.manualDate}, 'YYYY-MM')`);
 
         const actDow = await db
           .select({ dow: sql<number>`EXTRACT(DOW FROM ${scaleAllocationsTable.manualDate})::int`, count: sql<number>`count(*)::int` })
           .from(scaleAllocationsTable)
-          .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
+          .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), eq(scaleAllocationsTable.active, true), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
           .groupBy(sql`EXTRACT(DOW FROM ${scaleAllocationsTable.manualDate})`)
           .orderBy(desc(sql`count(*)`));
 
@@ -3773,8 +3089,8 @@ export async function executeTool(
     // ── consultar_padroes (Sprint 11) ──────────────────────────────────────────
     if (name === "consultar_padroes") {
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
-      const from   = (input.dateFrom as string | undefined) ?? new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
-      const to     = (input.dateTo   as string | undefined) ?? new Date().toISOString().slice(0, 10);
+      const from   = (input.dateFrom as string | undefined) ?? shiftOperationalDate(operationalDate(), -90);
+      const to     = (input.dateTo   as string | undefined) ?? operationalDate();
       const limite = (input.limite   as number | undefined) ?? 5;
 
       const [ausenciasMembro, sobrecarregados, atrasadosCronicos, trocasMembro] = await Promise.all([
@@ -3786,7 +3102,7 @@ export async function executeTool(
         // Most active members (workload)
         db.select({ userId: scaleAllocationsTable.userId, nome: usersTable.name, count: sql<number>`count(*)::int` })
           .from(scaleAllocationsTable).leftJoin(usersTable, eq(scaleAllocationsTable.userId, usersTable.id))
-          .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
+          .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), eq(scaleAllocationsTable.active, true), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
           .groupBy(scaleAllocationsTable.userId, usersTable.name).orderBy(desc(sql`count(*)`)).limit(limite),
         // Chronically delayed task assignees
         db.select({ assigneeId: tasksTable.assigneeId, nome: usersTable.name, atrasadas: sql<number>`count(*)::int` })
@@ -3837,14 +3153,14 @@ export async function executeTool(
         .limit(20);
 
       // Quick derived stats as "learned patterns"
-      const today11 = new Date().toISOString().slice(0, 10);
-      const from90  = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+      const today11 = operationalDate();
+      const from90  = shiftOperationalDate(today11, -90);
 
       const [[totalAbs], [totalTasks], [txDone], [totalAct]] = await Promise.all([
         db.select({ count: sql<number>`count(*)::int` }).from(folgasTable).where(and(ctx.operationId ? eq(folgasTable.operationId, ctx.operationId!) : sql`true`, eq(folgasTable.status, "ACTIVE"), gte(folgasTable.startDate, from90))!),
         db.select({ count: sql<number>`count(*)::int` }).from(tasksTable).where(and(eq(tasksTable.organizationId, ctx.organizationId!), sql`date(${tasksTable.createdAt}) >= ${from90}`)!),
         db.select({ count: sql<number>`count(*)::int` }).from(tasksTable).where(and(eq(tasksTable.organizationId, ctx.organizationId!), eq(tasksTable.status, "COMPLETED"), sql`date(${tasksTable.updatedAt}) >= ${from90}`)!),
-        db.select({ count: sql<number>`count(*)::int` }).from(scaleAllocationsTable).where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from90} and ${today11}`)!),
+        db.select({ count: sql<number>`count(*)::int` }).from(scaleAllocationsTable).where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), eq(scaleAllocationsTable.active, true), sql`${scaleAllocationsTable.manualDate} between ${from90} and ${today11}`)!),
       ]);
 
       const txConclusao = (totalTasks?.count ?? 0) > 0 ? Math.round(((txDone?.count ?? 0) / (totalTasks?.count ?? 1)) * 100) : 0;
@@ -3869,9 +3185,9 @@ export async function executeTool(
     if (name === "consultar_riscos_recorrentes") {
       if (!isManager) return JSON.stringify({ error: "Exclusivo para gestores" });
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
-      const from    = (input.dateFrom as string | undefined) ?? new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
-      const to      = (input.dateTo   as string | undefined) ?? new Date().toISOString().slice(0, 10);
-      const today11 = new Date().toISOString().slice(0, 10);
+      const from    = (input.dateFrom as string | undefined) ?? shiftOperationalDate(operationalDate(), -90);
+      const to      = (input.dateTo   as string | undefined) ?? operationalDate();
+      const today11 = operationalDate();
 
       const [altaAusencia, sobrecarregados, atrasadosCronicos, posicoesAbertas] = await Promise.all([
         // Members with ≥3 absences in period → HIGH risk
@@ -3884,7 +3200,7 @@ export async function executeTool(
         // Overloaded members (activity count > 2× average)
         db.select({ userId: scaleAllocationsTable.userId, nome: usersTable.name, count: sql<number>`count(*)::int` })
           .from(scaleAllocationsTable).leftJoin(usersTable, eq(scaleAllocationsTable.userId, usersTable.id))
-          .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
+          .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), eq(scaleAllocationsTable.active, true), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
           .groupBy(scaleAllocationsTable.userId, usersTable.name).orderBy(desc(sql`count(*)`)).limit(10),
         // Chronically delayed tasks (due_date passed, still open)
         db.select({ assigneeId: tasksTable.assigneeId, nome: usersTable.name, atrasadas: sql<number>`count(*)::int` })
@@ -3896,7 +3212,7 @@ export async function executeTool(
         // Open positions in active scales
         db.select({ scaleId: scaleAllocationsTable.scaleId, count: sql<number>`count(*)::int` })
           .from(scaleAllocationsTable).innerJoin(scalesTable, eq(scaleAllocationsTable.scaleId, scalesTable.id))
-          .where(and(ctx.operationId ? eq(scalesTable.operationId, ctx.operationId) : sql`true`, inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"]), eq(scaleAllocationsTable.status, "OPEN")))
+          .where(and(ctx.operationId ? eq(scalesTable.operationId, ctx.operationId) : sql`true`, inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"]), eq(scaleAllocationsTable.status, "OPEN"), eq(scaleAllocationsTable.active, true)))
           .groupBy(scaleAllocationsTable.scaleId).orderBy(desc(sql`count(*)`)).limit(5),
       ]);
 
@@ -3938,14 +3254,14 @@ export async function executeTool(
     if (name === "gerar_relatorio_asa") {
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
       const tipo     = ((input.tipo as string | undefined) ?? "SEMANAL").toUpperCase();
-      const today11  = new Date().toISOString().slice(0, 10);
+      const today11  = operationalDate();
       const diasBack = tipo === "MENSAL" ? 30 : 7;
-      const from     = (input.dateFrom as string | undefined) ?? new Date(Date.now() - diasBack * 86400000).toISOString().slice(0, 10);
+      const from     = (input.dateFrom as string | undefined) ?? shiftOperationalDate(today11, -diasBack);
       const to       = (input.dateTo   as string | undefined) ?? today11;
 
       const [[actTotal], taskStats, [absTotal], [recTotal], [openPos], topActivity, topAbs, atrasadas] = await Promise.all([
         // Activities
-        db.select({ count: sql<number>`count(*)::int` }).from(scaleAllocationsTable).where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`)),
+        db.select({ count: sql<number>`count(*)::int` }).from(scaleAllocationsTable).where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), eq(scaleAllocationsTable.active, true), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`)),
         // Tasks by status
         db.select({ status: tasksTable.status, count: sql<number>`count(*)::int` }).from(tasksTable).where(and(eq(tasksTable.organizationId, ctx.organizationId), sql`date(${tasksTable.createdAt}) between ${from} and ${to}`)).groupBy(tasksTable.status),
         // Absences
@@ -3953,9 +3269,9 @@ export async function executeTool(
         // Recognitions
         db.select({ count: sql<number>`count(*)::int` }).from(recognitionsTable).where(and(eq(recognitionsTable.organizationId, ctx.organizationId), sql`date(${recognitionsTable.createdAt}) between ${from} and ${to}`)),
         // Open positions
-        db.select({ count: sql<number>`count(*)::int` }).from(scaleAllocationsTable).innerJoin(scalesTable, eq(scaleAllocationsTable.scaleId, scalesTable.id)).where(and(ctx.operationId ? eq(scalesTable.operationId, ctx.operationId) : sql`true`, inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"]), eq(scaleAllocationsTable.status, "OPEN"))),
+        db.select({ count: sql<number>`count(*)::int` }).from(scaleAllocationsTable).innerJoin(scalesTable, eq(scaleAllocationsTable.scaleId, scalesTable.id)).where(and(ctx.operationId ? eq(scalesTable.operationId, ctx.operationId) : sql`true`, inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"]), eq(scaleAllocationsTable.status, "OPEN"), eq(scaleAllocationsTable.active, true))),
         // Top performer
-        db.select({ userId: scaleAllocationsTable.userId, nome: usersTable.name, count: sql<number>`count(*)::int` }).from(scaleAllocationsTable).leftJoin(usersTable, eq(scaleAllocationsTable.userId, usersTable.id)).where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`)).groupBy(scaleAllocationsTable.userId, usersTable.name).orderBy(desc(sql`count(*)`)).limit(3),
+        db.select({ userId: scaleAllocationsTable.userId, nome: usersTable.name, count: sql<number>`count(*)::int` }).from(scaleAllocationsTable).leftJoin(usersTable, eq(scaleAllocationsTable.userId, usersTable.id)).where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), eq(scaleAllocationsTable.active, true), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`)).groupBy(scaleAllocationsTable.userId, usersTable.name).orderBy(desc(sql`count(*)`)).limit(3),
         // Top absent
         db.select({ userId: folgasTable.userId, nome: usersTable.name, count: sql<number>`count(*)::int` }).from(folgasTable).leftJoin(usersTable, eq(folgasTable.userId, usersTable.id)).where(and(ctx.operationId ? eq(folgasTable.operationId, ctx.operationId) : sql`true`, eq(folgasTable.status, "ACTIVE"), gte(folgasTable.startDate, from), lte(folgasTable.startDate, to))).groupBy(folgasTable.userId, usersTable.name).orderBy(desc(sql`count(*)`)).limit(3),
         // Overdue tasks
@@ -3987,7 +3303,7 @@ export async function executeTool(
     }
 
     // ── Sprint 10 — Biblioteca Inteligente e Conhecimento ────────────────────
-    const BODY_LIMIT = 3000; // chars fed to Claude per document
+    const BODY_LIMIT = 3000; // limite de conteúdo documental retornado por consulta
 
     const findDoc = async (docId?: string, titulo?: string) => {
       if (!ctx.organizationId) return null;
@@ -4162,10 +3478,10 @@ export async function executeTool(
     }
 
     // ── Sprint 09 helpers ─────────────────────────────────────────────────────
-    const today09   = new Date().toISOString().slice(0, 10);
+    const today09   = operationalDate();
     const month09   = today09.slice(0, 7) + "-01";
-    const days30ago = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-    const days90ago = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+    const days30ago = shiftOperationalDate(today09, -30);
+    const days90ago = shiftOperationalDate(today09, -90);
 
     // ── consultar_estatisticas (Sprint 09) ────────────────────────────────────
     if (name === "consultar_estatisticas") {
@@ -4179,7 +3495,7 @@ export async function executeTool(
         .select({ count: sql<number>`count(*)::int` })
         .from(scaleAllocationsTable)
         .where(and(
-          inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]),
+          inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), eq(scaleAllocationsTable.active, true),
           sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`,
         ));
 
@@ -4215,7 +3531,7 @@ export async function executeTool(
         .where(and(
           ctx.operationId ? eq(scalesTable.operationId, ctx.operationId) : sql`true`,
           inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"]),
-          eq(scaleAllocationsTable.status, "OPEN"),
+          eq(scaleAllocationsTable.status, "OPEN"), eq(scaleAllocationsTable.active, true),
         ));
 
       const taskMap = Object.fromEntries(taskStats.map(t => [t.status, t.count]));
@@ -4245,7 +3561,7 @@ export async function executeTool(
       const topActivity = await db
         .select({ userId: scaleAllocationsTable.userId, count: sql<number>`count(*)::int` })
         .from(scaleAllocationsTable)
-        .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
+        .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), eq(scaleAllocationsTable.active, true), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
         .groupBy(scaleAllocationsTable.userId)
         .orderBy(desc(sql`count(*)`))
         .limit(3);
@@ -4288,8 +3604,8 @@ export async function executeTool(
       const uid   = input.userId as string | undefined;
 
       const actFilter = uid
-        ? and(eq(scaleAllocationsTable.userId, uid), inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`)
-        : and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`);
+        ? and(eq(scaleAllocationsTable.userId, uid), inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), eq(scaleAllocationsTable.active, true), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`)
+        : and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), eq(scaleAllocationsTable.active, true), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`);
       const allocByMember = await db
         .select({ userId: scaleAllocationsTable.userId, atividades: sql<number>`count(*)::int` })
         .from(scaleAllocationsTable)
@@ -4423,7 +3739,7 @@ export async function executeTool(
         .select({ userId: scaleAllocationsTable.userId, nome: usersTable.name, atividades: sql<number>`count(*)::int` })
         .from(scaleAllocationsTable)
         .leftJoin(usersTable, eq(scaleAllocationsTable.userId, usersTable.id))
-        .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
+        .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), eq(scaleAllocationsTable.active, true), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
         .groupBy(scaleAllocationsTable.userId, usersTable.name)
         .orderBy(desc(sql`count(*)`))
         .limit(limit);
@@ -4433,7 +3749,7 @@ export async function executeTool(
         .from(
           db.select({ userId: scaleAllocationsTable.userId, cnt: sql<number>`count(*)` })
             .from(scaleAllocationsTable)
-            .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
+            .where(and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), eq(scaleAllocationsTable.active, true), sql`${scaleAllocationsTable.manualDate} between ${from} and ${to}`))
             .groupBy(scaleAllocationsTable.userId)
             .as("sub"),
         );
@@ -4624,8 +3940,8 @@ export async function executeTool(
 
       // Scale allocations count per user
       const allocFilter = input.userId
-        ? and(eq(scaleAllocationsTable.userId, input.userId as string), inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]))
-        : inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]);
+        ? and(eq(scaleAllocationsTable.userId, input.userId as string), inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), eq(scaleAllocationsTable.active, true))
+        : and(inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), eq(scaleAllocationsTable.active, true));
       const allocCounts = await db
         .select({ userId: scaleAllocationsTable.userId, count: sql<number>`count(*)::int` })
         .from(scaleAllocationsTable)
@@ -4792,7 +4108,7 @@ export async function executeTool(
       const [activityCount] = await db
         .select({ count: sql<number>`count(*)::int` })
         .from(scaleAllocationsTable)
-        .where(and(eq(scaleAllocationsTable.userId, memberId), inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"])));
+        .where(and(eq(scaleAllocationsTable.userId, memberId), inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), eq(scaleAllocationsTable.active, true)));
 
       const [tasksDone] = await db
         .select({ count: sql<number>`count(*)::int` })
@@ -4816,7 +4132,7 @@ export async function executeTool(
     if (name === "consultar_riscos_operacionais") {
       if (!isManager) return JSON.stringify({ error: "Exclusivo para gestores" });
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
-      const today = new Date().toISOString().slice(0, 10);
+      const today = operationalDate();
       const date  = (input.date as string | undefined) ?? today;
       const risks: { severity: string; type: string; message: string; userId?: string; userName?: string }[] = [];
 
@@ -4856,7 +4172,7 @@ export async function executeTool(
           .where(and(
             inArray(scaleAllocationsTable.userId, folgaUserIds),
             eq(scaleAllocationsTable.manualDate, date),
-            inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]),
+            inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), eq(scaleAllocationsTable.active, true),
           ))
           .limit(20);
         for (const a of conflictAllocs) {
@@ -4873,7 +4189,7 @@ export async function executeTool(
         .where(and(
           ctx.operationId ? eq(scalesTable.operationId, ctx.operationId) : sql`true`,
           inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"]),
-          eq(scaleAllocationsTable.status, "OPEN"),
+          eq(scaleAllocationsTable.status, "OPEN"), eq(scaleAllocationsTable.active, true),
         ))
         .limit(5);
       if (openSlots.length > 0) {
@@ -4904,7 +4220,7 @@ export async function executeTool(
         .where(and(
           ctx.operationId ? eq(scalesTable.operationId, ctx.operationId) : sql`true`,
           inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED", "DRAFT"]),
-          eq(scaleAllocationsTable.status, "OPEN"),
+          eq(scaleAllocationsTable.status, "OPEN"), eq(scaleAllocationsTable.active, true),
         ))
         .orderBy(scalesTable.periodStart)
         .limit(limit);
@@ -4925,10 +4241,10 @@ export async function executeTool(
     if (name === "consultar_tarefas_criticas") {
       if (!isManager) return JSON.stringify({ error: "Exclusivo para gestores" });
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
-      const today     = new Date().toISOString().slice(0, 10);
+      const today     = operationalDate();
       const daysAhead = (input.daysAhead as number | undefined) ?? 2;
       const limit     = (input.limit    as number | undefined) ?? 15;
-      const future    = new Date(Date.now() + daysAhead * 86400000).toISOString().slice(0, 10);
+      const future    = shiftOperationalDate(today, daysAhead);
 
       const rows = await db
         .select({
@@ -4975,9 +4291,9 @@ export async function executeTool(
     if (name === "consultar_conflitos") {
       if (!isManager) return JSON.stringify({ error: "Exclusivo para gestores" });
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
-      const today    = new Date().toISOString().slice(0, 10);
+      const today    = operationalDate();
       const dateFrom = (input.dateFrom as string | undefined) ?? today;
-      const dateTo   = (input.dateTo   as string | undefined) ?? new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+      const dateTo   = (input.dateTo   as string | undefined) ?? shiftOperationalDate(today, 7);
 
       const folgas = await db
         .select({ userId: folgasTable.userId, userName: usersTable.name, startDate: folgasTable.startDate, endDate: folgasTable.endDate, type: folgasTable.type })
@@ -4999,7 +4315,7 @@ export async function executeTool(
           .from(scaleAllocationsTable)
           .where(and(
             eq(scaleAllocationsTable.userId, f.userId),
-            inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]),
+            inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), eq(scaleAllocationsTable.active, true),
             sql`${scaleAllocationsTable.manualDate} BETWEEN ${dateFrom} AND ${dateTo}`,
           ))
           .limit(5);
@@ -5053,7 +4369,7 @@ export async function executeTool(
         .from(scaleAllocationsTable)
         .where(and(
           eq(scaleAllocationsTable.manualDate, date),
-          inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]),
+          inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), eq(scaleAllocationsTable.active, true),
         ));
       const allocatedIds = new Set(allocatedThatDay.map(a => a.userId).filter(Boolean) as string[]);
 
@@ -5065,7 +4381,7 @@ export async function executeTool(
           .from(scaleAllocationsTable)
           .where(and(
             ilike(scaleAllocationsTable.manualLabel, `%${activityLabel}%`),
-            inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]),
+            inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), eq(scaleAllocationsTable.active, true),
           ))
           .limit(50);
         experienced.forEach(e => { if (e.userId) experiencedIds.add(e.userId); });
@@ -5101,9 +4417,9 @@ export async function executeTool(
     if (name === "consultar_carga_operacional") {
       if (!isManager) return JSON.stringify({ error: "Exclusivo para gestores" });
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
-      const today    = new Date().toISOString().slice(0, 10);
+      const today    = operationalDate();
       const dateFrom = (input.dateFrom as string | undefined) ?? today;
-      const dateTo   = (input.dateTo   as string | undefined) ?? new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+      const dateTo   = (input.dateTo   as string | undefined) ?? shiftOperationalDate(today, 7);
       const limit    = (input.limit    as number | undefined) ?? 20;
 
       // Count scale allocations per member in the range
@@ -5111,7 +4427,7 @@ export async function executeTool(
         .select({ userId: scaleAllocationsTable.userId, count: sql<number>`count(*)::int` })
         .from(scaleAllocationsTable)
         .where(and(
-          inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]),
+          inArray(scaleAllocationsTable.status, ["ASSIGNED", "MANUAL_OVERRIDE"]), eq(scaleAllocationsTable.active, true),
           sql`${scaleAllocationsTable.manualDate} BETWEEN ${dateFrom} AND ${dateTo}`,
         ))
         .groupBy(scaleAllocationsTable.userId)
@@ -5352,7 +4668,7 @@ export async function executeTool(
         event = candidates.find((c) => {
           const matchTitle = normalizeName(c.title).includes(normTitle) || normTitle.includes(normalizeName(c.title));
           const matchDate = dataInput
-            ? (c.startTime ? new Date(c.startTime).toISOString().slice(0, 10) === dataInput : false)
+            ? (c.startTime ? operationalDate(new Date(c.startTime)) === dataInput : false)
             : true;
           return matchTitle && matchDate;
         });
@@ -5363,7 +4679,7 @@ export async function executeTool(
       }
 
       const eventDate = dataInput
-        ?? (event.startTime ? new Date(event.startTime).toISOString().slice(0, 10) : undefined);
+        ?? (event.startTime ? operationalDate(new Date(event.startTime)) : undefined);
       if (!eventDate) {
         return JSON.stringify({ error: "Não foi possível determinar a data do evento. Informe a data (YYYY-MM-DD)." });
       }
@@ -5571,34 +4887,42 @@ export async function executeTool(
 
     // ── Atividades recorrentes ────────────────────────────────────────────────
     if (name === "consultar_atividades") {
-      if (!isManager) return JSON.stringify({ error: "Apenas gestores podem consultar atividades" });
+      if (!MANAGER_ROLES.includes(ctx.userRole)) return JSON.stringify({ error: "Apenas Administração e Supervisão podem consultar atividades" });
       if (!ctx.organizationId) return JSON.stringify({ error: "Organização não configurada" });
-
-      const opIdFilter = (input.operationId as string | undefined) ?? ctx.operationId;
-
-      // Determina operações visíveis para o gestor (ADMIN→todas da org; supervisor→só ops com papel SUPERVISOR_A/B nesta org)
-      let allowedOps: string[];
-      if (ctx.userRole === "ADMIN") {
-        const ops = await db.select({ id: operationsTable.id }).from(operationsTable)
-          .where(eq(operationsTable.organizationId, ctx.organizationId));
-        allowedOps = ops.map(o => o.id);
-      } else {
-        const roles = await db.select({ operationId: userRolesTable.operationId })
-          .from(userRolesTable)
-          .innerJoin(operationsTable, eq(operationsTable.id, userRolesTable.operationId))
-          .where(and(
-            eq(userRolesTable.userId, ctx.userId),
-            eq(userRolesTable.active, true),
-            or(eq(userRolesTable.role, "SUPERVISOR_A"), eq(userRolesTable.role, "SUPERVISOR_B")),
-            eq(operationsTable.organizationId, ctx.organizationId),
-          ));
-        allowedOps = [...new Set(roles.map(r => r.operationId).filter((x): x is string => !!x))];
+      if (!ctx.operationId || !(ctx.operationIds ?? []).includes(ctx.operationId)) {
+        return JSON.stringify({ error: "Selecione uma operação ativa autorizada para consultar as atividades." });
       }
-      if (opIdFilter) allowedOps = allowedOps.filter(o => o === opIdFilter);
-      if (allowedOps.length === 0) return JSON.stringify({ atividades: [], message: "Nenhuma operação acessível." });
+      const [operation] = await db.select({ id: operationsTable.id, name: operationsTable.name })
+        .from(operationsTable)
+        .where(and(
+          eq(operationsTable.id, ctx.operationId),
+          eq(operationsTable.organizationId, ctx.organizationId),
+          eq(operationsTable.status, "ACTIVE"),
+        ))
+        .limit(1);
+      if (!operation) return JSON.stringify({ error: "Operação não encontrada ou inativa." });
+      const [activeRole] = await db.select({ id: userRolesTable.id })
+        .from(userRolesTable)
+        .where(and(
+          eq(userRolesTable.userId, ctx.userId),
+          eq(userRolesTable.operationId, operation.id),
+          eq(userRolesTable.role, ctx.userRole as never),
+          eq(userRolesTable.active, true),
+        ))
+        .limit(1);
+      if (!activeRole) return JSON.stringify({ error: "Seu acesso de gestão a esta operação não está ativo." });
 
-      const rows = await db.select().from(recurringActivitiesTable)
-        .where(inArray(recurringActivitiesTable.operationId, allowedOps));
+      const rows = await db.select({
+        id: recurringActivitiesTable.id,
+        title: recurringActivitiesTable.title,
+        operationId: recurringActivitiesTable.operationId,
+      }).from(recurringActivitiesTable)
+        .where(and(
+          eq(recurringActivitiesTable.operationId, operation.id),
+          eq(recurringActivitiesTable.active, true),
+        ))
+        .orderBy(asc(recurringActivitiesTable.title))
+        .limit(Math.min(Math.max(Number(input.limit) || 50, 1), 100));
       if (rows.length === 0) return JSON.stringify({ atividades: [], message: "Nenhuma atividade encontrada." });
 
       const ids = rows.map(r => r.id);
@@ -5612,8 +4936,8 @@ export async function executeTool(
       const userIds = [...new Set(assignees.map(a => a.userId).filter((x): x is string => !!x))];
       const groupIds = [...new Set(assignees.map(a => a.groupId).filter((x): x is string => !!x))];
       const [users, groups] = await Promise.all([
-        userIds.length ? db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(inArray(usersTable.id, userIds)) : Promise.resolve([]),
-        groupIds.length ? db.select({ id: operationalGroupsTable.id, name: operationalGroupsTable.name }).from(operationalGroupsTable).where(inArray(operationalGroupsTable.id, groupIds)) : Promise.resolve([]),
+        userIds.length ? db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(and(inArray(usersTable.id, userIds), eq(usersTable.organizationId, ctx.organizationId))) : Promise.resolve([]),
+        groupIds.length ? db.select({ id: operationalGroupsTable.id, name: operationalGroupsTable.name }).from(operationalGroupsTable).where(and(inArray(operationalGroupsTable.id, groupIds), eq(operationalGroupsTable.organizationId, ctx.organizationId))) : Promise.resolve([]),
       ]);
       const userName = new Map(users.map(u => [u.id, u.name]));
       const groupName = new Map(groups.map(g => [g.id, g.name]));
@@ -5622,8 +4946,8 @@ export async function executeTool(
       const atividades = rows.map(a => ({
         id: a.id,
         titulo: a.title,
-        ativa: a.active,
         operationId: a.operationId,
+        operationName: operation.name,
         horarios: schedules.filter(s => s.activityId === a.id).map(s => ({
           id: s.id,
           diaSemana: s.weekday != null ? DOW[s.weekday] : null,
@@ -5844,12 +5168,133 @@ export async function executeTool(
 // Chat Endpoint (SSE Streaming)
 // ────────────────────────────────────────────────────────────────────────────
 
+router.get("/asa/context", requireAuth, async (req, res): Promise<void> => {
+  const user = req.user!;
+  const operations = user.organizationId && user.operationIds.length > 0
+    ? await db.select({ id: operationsTable.id, name: operationsTable.name })
+        .from(operationsTable)
+        .where(and(
+          eq(operationsTable.organizationId, user.organizationId),
+          eq(operationsTable.status, "ACTIVE"),
+          inArray(operationsTable.id, user.operationIds),
+        ))
+        .orderBy(operationsTable.name)
+    : [];
+  res.json({ operations });
+});
+
+router.post("/asa/conversations", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  const user = req.user!;
+  const rawTitle = (req.body ?? {}).title;
+  if (rawTitle !== undefined && typeof rawTitle !== "string") {
+    res.status(400).json({ error: "Título inválido" });
+    return;
+  }
+  const title = rawTitle?.trim();
+  const [conversation] = await db.insert(conversations).values({
+    title: title || "Conversa com a ASA",
+    userId: user.sub,
+    organizationId: user.organizationId!,
+  }).returning();
+  res.status(201).json(conversation);
+});
+
+router.get("/asa/conversations/:conversationId/messages", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  const user = req.user!;
+  const conversationId = Number(req.params["conversationId"]);
+  if (!Number.isInteger(conversationId) || conversationId <= 0) {
+    res.status(400).json({ error: "BAD_REQUEST", message: "Identificador de conversa inválido" });
+    return;
+  }
+
+  const [conversation] = await db.select({ id: conversations.id })
+    .from(conversations)
+    .where(and(eq(conversations.id, conversationId), eq(conversations.userId, user.sub), eq(conversations.organizationId, user.organizationId!)))
+    .limit(1);
+  if (!conversation) {
+    res.status(404).json({ error: "NOT_FOUND", message: "Conversa não encontrada" });
+    return;
+  }
+
+  const messages = await db.select({ id: aiMessages.id, role: aiMessages.role, content: aiMessages.content })
+    .from(aiMessages)
+    .where(eq(aiMessages.conversationId, conversationId))
+    .orderBy(desc(aiMessages.id))
+    .limit(200);
+  const orderedMessages = messages.reverse();
+  const proposalAudits = await db.select({ id: asaAuditLogTable.id, response: asaAuditLogTable.response, actionsExecuted: asaAuditLogTable.actionsExecuted })
+    .from(asaAuditLogTable)
+    .where(and(
+      eq(asaAuditLogTable.conversationId, String(conversationId)),
+      eq(asaAuditLogTable.userId, user.sub),
+      eq(asaAuditLogTable.organizationId, user.organizationId!),
+    ))
+    .orderBy(asc(asaAuditLogTable.createdAt));
+  const proposalsByResponse = new Map<string, Array<Record<string, unknown>>>();
+  for (const audit of proposalAudits) {
+    const proposal = (Array.isArray(audit.actionsExecuted) ? audit.actionsExecuted : [])
+      .find((item) => item.action === "ASA_ACTION_PROPOSAL" && ASA_PROPOSAL_ACTION_TYPES.has(String(item.actionType)));
+    if (!proposal) continue;
+    const items = proposalsByResponse.get(audit.response) ?? [];
+    items.push({
+      id: audit.id,
+      actionType: proposal.actionType,
+      title: proposal.title,
+      newTitle: proposal.newTitle,
+      previousTitle: proposal.previousTitle,
+      recipientName: proposal.recipientName,
+      recipientNames: Array.isArray(proposal.recipientNames) ? proposal.recipientNames : undefined,
+      description: typeof proposal.description === "string" ? proposal.description : undefined,
+      responsibilityTitle: typeof proposal.responsibilityTitle === "string" ? proposal.responsibilityTitle : undefined,
+      content: proposal.content,
+      previousContent: proposal.previousContent,
+      reaction: proposal.reaction,
+      previousReaction: proposal.previousReaction,
+      announcementContent: proposal.announcementContent,
+      operationName: proposal.operationName,
+      recipientCount: Array.isArray(proposal.recipientUserIds) ? proposal.recipientUserIds.length : undefined,
+      assigneeName: proposal.assigneeName,
+      previousStatus: proposal.previousStatus,
+      expectedStatus: proposal.expectedStatus,
+      previousAssigneeName: proposal.previousAssigneeName,
+      date: proposal.date,
+      startTime: proposal.startTime,
+      endTime: proposal.endTime,
+      dueDate: proposal.dueDate,
+      checklistLabels: Array.isArray(proposal.checklistLabels) ? proposal.checklistLabels : [],
+      mandatoryEvidences: Array.isArray(proposal.mandatoryEvidences) ? proposal.mandatoryEvidences : [],
+      previousChecklistLabels: Array.isArray(proposal.previousMandatoryChecklist) ? proposal.previousMandatoryChecklist.map((item: { label?: string }) => item.label ?? "") : undefined,
+      previousMandatoryEvidences: Array.isArray(proposal.previousMandatoryEvidences) ? proposal.previousMandatoryEvidences.map((item: { type?: string; description?: string }) => ({ type: item.type, description: item.description })) : undefined,
+      previousResponsibilityTitle: proposal.previousResponsibilityTitle,
+      newResponsibilityTitle: proposal.newResponsibilityTitle,
+      previousDueDate: proposal.previousDueDate,
+      previousPriority: proposal.previousPriority,
+      priority: proposal.priority,
+      previousMode: proposal.previousMode,
+      mode: proposal.mode,
+      changes: Array.isArray(proposal.changes) ? proposal.changes : [],
+      expiresAt: proposal.expiresAt,
+      state: proposal.state,
+    });
+    proposalsByResponse.set(String(proposal.previewResponse ?? audit.response), items);
+  }
+  res.json({ messages: orderedMessages.map((message) => {
+    const proposals = proposalsByResponse.get(message.content);
+    const proposal = message.role === "assistant" ? proposals?.shift() : undefined;
+    return proposal ? { ...message, proposal } : message;
+  }) });
+});
+
 router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganization, async (req, res): Promise<void> => {
   const user = req.user!;
-  const conversationId = parseInt(req.params["conversationId"] as string);
-  const { content } = req.body as { content: string };
+  const conversationId = Number(req.params["conversationId"]);
+  if (!Number.isInteger(conversationId) || conversationId <= 0) {
+    res.status(400).json({ error: "BAD_REQUEST", message: "Identificador de conversa inválido" });
+    return;
+  }
+  const { content, context } = (req.body ?? {}) as { content: string; context?: { page?: string; operationId?: string } };
 
-  if (!content?.trim()) {
+  if (typeof content !== "string" || !content.trim()) {
     res.status(400).json({ error: "Mensagem não pode estar vazia" });
     return;
   }
@@ -5857,7 +5302,7 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
   const [conv] = await db
     .select()
     .from(conversations)
-    .where(and(eq(conversations.id, conversationId), eq(conversations.userId, user.sub)));
+    .where(and(eq(conversations.id, conversationId), eq(conversations.userId, user.sub), eq(conversations.organizationId, user.organizationId!)));
 
   if (!conv) {
     res.status(404).json({ error: "Conversa não encontrada" });
@@ -5870,180 +5315,2105 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
     content,
   });
 
-  const history = await db
-    .select()
-    .from(aiMessages)
-    .where(eq(aiMessages.conversationId, conversationId))
-    .orderBy(aiMessages.createdAt)
-    .limit(50);
-
-  const [userRow] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, user.sub));
-
-  // Fetch org name + user's operation in parallel
-  const [orgRow, opRow] = await Promise.all([
-    user.organizationId
-      ? db.select({ name: organizationsTable.name })
-          .from(organizationsTable)
-          .where(eq(organizationsTable.id, user.organizationId))
-          .limit(1)
-          .then(r => r[0] ?? null)
-      : Promise.resolve(null),
-    user.organizationId
-      ? db.select({ id: operationsTable.id, name: operationsTable.name })
-          .from(operationsTable)
-          .innerJoin(userRolesTable, eq(userRolesTable.operationId, operationsTable.id))
-          .where(and(
-            eq(userRolesTable.userId, user.sub),
-            eq(userRolesTable.active, true),
-          ))
-          .limit(1)
-          .then(r => r[0] ?? null)
-      : Promise.resolve(null),
-  ]);
-
-  let operationId: string | null = opRow?.id ?? null;
-  let operationName: string | null = opRow?.name ?? null;
-
-  // Load approved memories to inject into system prompt
-  const activeMemories = user.organizationId
-    ? await db
-        .select({ key: asaMemoriesTable.key, value: asaMemoriesTable.value, type: asaMemoriesTable.type })
-        .from(asaMemoriesTable)
+  const accessibleOperations = user.organizationId && user.operationIds.length > 0
+    ? await db.select({ id: operationsTable.id, name: operationsTable.name })
+        .from(operationsTable)
         .where(and(
-          eq(asaMemoriesTable.organizationId, user.organizationId),
-          eq(asaMemoriesTable.status, "APPROVED"),
+          eq(operationsTable.organizationId, user.organizationId),
+          eq(operationsTable.status, "ACTIVE"),
+          inArray(operationsTable.id, user.operationIds),
         ))
-        .limit(40)
     : [];
-
-  const systemPrompt = buildSystemPrompt({
-    userName: userRow?.name ?? "Usuário",
-    userRole: user.role,
-    orgName: orgRow?.name ?? "Organização",
-    operationName,
-    memories: activeMemories,
-  });
-
-  const chatMessages: MessageParam[] = history.map(m => ({
-    role: m.role as "user" | "assistant",
-    content: m.content,
-  }));
 
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
 
-  let fullResponse = "";
-  const toolsUsed: string[] = [];
-  const actionsExecuted: Record<string, unknown>[] = [];
-
   try {
-    const anthropic = getAnthropicClient();
-    let continueLoop = true;
-    let currentMessages = [...chatMessages];
+    const toolsUsed: string[] = [];
+    const actionsExecuted: Record<string, unknown>[] = [];
+    const isManager = MANAGER_ROLES.includes(user.role);
+    const isAgendaManager = canManageAsaAgenda(user.role);
+    const preferenceCommand = parseAsaPreferenceCommand(content);
+    const agendaDraftNotes = parseAsaAgendaDraftNotesRequest(content);
+    const agendaDraftSchedule = parseAsaAgendaDraftScheduleRequest(content);
+    const agendaDraftRename = parseAsaAgendaDraftRenameRequest(content);
+    const agendaMeeting = parseAsaAgendaMeetingRequest(content);
+    const muralAck = parseAsaMuralAckRequest(content);
+    const muralReaction = parseAsaMuralReactionRequest(content);
+    const muralComment = parseAsaMuralCommentRequest(content);
+    const messageReply = parseAsaMessageReplyRequest(content);
+    const directMessage = parseAsaDirectMessageRequest(content);
+    const noticeDraftUpdate = parseAsaNoticeDraftUpdateRequest(content);
+    const noticeDraft = parseAsaNoticeDraftRequest(content);
+    const taskDraft = parseAsaTaskDraftRequest(content);
+    const taskDueDateUpdate = parseAsaTaskDueDateUpdate(content);
+    const taskAssigneeUpdate = parseAsaTaskAssigneeUpdate(content);
+    const taskPriorityUpdate = parseAsaTaskPriorityUpdate(content);
+    const taskDescriptionUpdate = parseAsaTaskDescriptionUpdate(content);
+    const taskTitleUpdate = parseAsaTaskTitleUpdate(content);
+    const taskRequirementsUpdate = parseAsaTaskRequirementsUpdate(content);
+    const taskResponsibilityUpdate = parseAsaTaskResponsibilityUpdate(content);
+    const taskCancellation = parseAsaTaskCancellationRequest(content);
+    const taskComment = parseAsaTaskCommentRequest(content);
+    const taskCommentsQuery = parseAsaTaskCommentsQuery(content);
+    const taskEvidenceLink = parseAsaTaskEvidenceLinkRequest(content);
+    const taskChecklistUpdate = parseAsaTaskChecklistUpdateRequest(content);
+    const taskStart = parseAsaTaskStartRequest(content);
+    const taskCompletion = parseAsaTaskCompletionRequest(content);
+    const taskSubmitForApproval = parseAsaTaskSubmitForApprovalRequest(content);
+    const unrecognizedReviewRequest = parseAsaUnrecognizedReviewRequest(content);
+    const capabilityRequest = isAsaCapabilityRequest(content);
+    const learning = parseAsaLearningRequest(content);
+    const approval = parseAsaLearningApproval(content);
+    let interpretationText = content;
+    let fullResponse = "";
+    let proposalEvent: Record<string, unknown> | null = null;
+    let proposalAuditCreated = false;
 
-    while (continueLoop) {
-      const stream = anthropic.messages.stream({
-        model: "claude-sonnet-4-6",
-        max_tokens: 8192,
-        system: systemPrompt,
-        tools: ASA_TOOLS,
-        messages: currentMessages,
-      });
-
-      let assistantContent: MessageParam["content"] = [];
-      type TextBlock = { type: "text"; text: string };
-      type ToolUseBlock = { type: "tool_use"; id: string; name: string; input: Record<string, unknown> };
-      const blocksByIndex: Record<number, TextBlock | ToolUseBlock> = {};
-      // A Anthropic envia o input das tools em FRAGMENTOS (input_json_delta) que precisam
-      // ser CONCATENADOS e só então parseados uma única vez. Parsear cada fragmento isolado
-      // falha (ex.: `{"qu`) e deixava o input vazio — causa de consultar_membros ser
-      // chamado com query "" em loop ("consulta muitas vezes e não acha").
-      const jsonBufByIndex: Record<number, string> = {};
-
-      for await (const event of stream) {
-        if (event.type === "content_block_start") {
-          if (event.content_block.type === "text") {
-            blocksByIndex[event.index] = { type: "text", text: "" };
-          } else if (event.content_block.type === "tool_use") {
-            blocksByIndex[event.index] = {
-              type: "tool_use",
-              id: event.content_block.id,
-              name: event.content_block.name,
-              input: {},
-            };
-            jsonBufByIndex[event.index] = "";
-          }
-        } else if (event.type === "content_block_delta") {
-          if (event.delta.type === "text_delta") {
-            const b = blocksByIndex[event.index];
-            if (b && b.type === "text") b.text += event.delta.text;
-            fullResponse += event.delta.text;
-            res.write(`data: ${JSON.stringify({ content: event.delta.text })}\n\n`);
-          } else if (event.delta.type === "input_json_delta") {
-            jsonBufByIndex[event.index] =
-              (jsonBufByIndex[event.index] ?? "") + (event.delta.partial_json ?? "");
-          }
-        } else if (event.type === "content_block_stop") {
-          const b = blocksByIndex[event.index];
-          if (b && b.type === "tool_use") {
-            const raw = (jsonBufByIndex[event.index] ?? "").trim();
-            try {
-              b.input = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
-            } catch {
-              b.input = {};
+    if (agendaDraftNotes.kind === "incomplete") {
+      fullResponse = 'Para alterar as observações, use: altere as observações do rascunho da reunião "título exato" para "texto". Para removê-las, use: remova as observações do rascunho da reunião "título exato".';
+    } else if (agendaDraftNotes.kind === "request") {
+      if (!isAgendaManager) {
+        fullResponse = "Alterar ou remover observações de rascunhos da Agenda está disponível apenas para gestores autorizados. Nada foi alterado.";
+      } else {
+        const operationSelection = resolveAsaOperationSelection(content, accessibleOperations, context?.operationId);
+        if (operationSelection.kind !== "selected") {
+          fullResponse = operationSelection.message;
+        } else {
+          const operation = accessibleOperations.find((item) => item.id === operationSelection.operationId);
+          const candidates = await db.select().from(agendaEventsTable).where(and(
+            eq(agendaEventsTable.operationId, operationSelection.operationId),
+            eq(agendaEventsTable.type, "MEETING"),
+            eq(agendaEventsTable.title, agendaDraftNotes.title),
+            eq(agendaEventsTable.status, "DRAFT"),
+          ));
+          if (candidates.length !== 1) {
+            fullResponse = candidates.length > 1
+              ? "Encontrei mais de um rascunho de reunião com esse título na operação. Nada foi alterado; especifique melhor o título."
+              : "Não encontrei um rascunho de reunião com esse título na operação selecionada. Reuniões propostas ou confirmadas não podem ser alteradas por este comando.";
+          } else {
+            const event = candidates[0]!;
+            const previousNotes = event.notes ?? null;
+            const requestedNotes = agendaDraftNotes.notes;
+            if ((previousNotes ?? "").trim() === (requestedNotes ?? "").trim()) {
+              fullResponse = `As observações do rascunho “${event.title}” já estão assim. Não há alteração para confirmar.`;
+            } else {
+              const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+              const action: Record<string, unknown> = {
+                action: "ASA_ACTION_PROPOSAL", actionType: "AGENDA_DRAFT_NOTES_UPDATE", state: "PENDING",
+                operationId: operationSelection.operationId, operationName: operation?.name ?? "Operação",
+                eventId: event.id, title: event.title, expectedStatus: "DRAFT", type: "MEETING",
+                previousNotes, notes: requestedNotes,
+                date: event.date, startTime: event.startTime, endTime: event.endTime, expiresAt,
+              };
+              fullResponse = `Prévia para ${requestedNotes === null ? "remover as observações" : "atualizar as observações"} do rascunho da Agenda\nOperação: ${operation?.name ?? "Operação"}\nReunião: ${event.title}\nObservações atuais: ${previousNotes || "nenhuma"}\nNovas observações: ${requestedNotes ?? "nenhuma (serão removidas)"}\n\nSomente as observações serão alteradas; a reunião continuará como rascunho.`;
+              action.previewResponse = fullResponse;
+              toolsUsed.push("asa.agenda_draft.notes.preview");
+              actionsExecuted.push(action);
+              const [audit] = await db.insert(asaAuditLogTable).values({
+                userId: user.sub, conversationId: String(conversationId), organizationId: user.organizationId!,
+                question: content, response: fullResponse, toolsUsed, actionsExecuted, confirmedByUser: false,
+              }).returning({ id: asaAuditLogTable.id });
+              if (audit) {
+                proposalAuditCreated = true;
+                proposalEvent = { id: audit.id, actionType: "AGENDA_DRAFT_NOTES_UPDATE", title: event.title,
+                  previousNotes, notes: requestedNotes, operationName: operation?.name ?? "Operação", expiresAt };
+              }
             }
           }
-        } else if (event.type === "message_stop") {
-          assistantContent = Object.keys(blocksByIndex)
-            .map(Number)
-            .sort((a, b) => a - b)
-            .map((i) => blocksByIndex[i]!);
         }
       }
-
-      const toolUseBlocks = (assistantContent as Array<TextBlock | ToolUseBlock>)
-        .filter((b): b is ToolUseBlock => b.type === "tool_use");
-
-      if (toolUseBlocks.length === 0) {
-        continueLoop = false;
+    } else if (agendaDraftSchedule.kind === "incomplete") {
+      fullResponse = 'Para mudar a data e o horário de uma reunião em rascunho, use: altere a data e o horário do rascunho da reunião "título exato" para 01/10/2026 das 14:00 às 15:00. Só eventos ainda em rascunho podem ser alterados por este comando.';
+    } else if (agendaDraftSchedule.kind === "request") {
+      if (!isAgendaManager) {
+        fullResponse = "Alterar a data e o horário de rascunhos da Agenda está disponível apenas para gestores autorizados. Nada foi alterado.";
       } else {
-        currentMessages.push({ role: "assistant", content: assistantContent });
-
-        const toolResults: MessageParam["content"] = [];
-
-        for (const toolUse of toolUseBlocks) {
-          toolsUsed.push(toolUse.name);
-          res.write(`data: ${JSON.stringify({ tool: toolUse.name })}\n\n`);
-
-          const result = await executeTool(toolUse.name, toolUse.input, {
-            userId: user.sub,
-            organizationId: user.organizationId ?? null,
-            userRole: user.role,
-            operationId,
-          });
-
-          if (toolUse.name.startsWith("criar_") || toolUse.name.startsWith("sugerir_")) {
-            actionsExecuted.push({ tool: toolUse.name, input: toolUse.input, result: JSON.parse(result) });
+        const operationSelection = resolveAsaOperationSelection(content, accessibleOperations, context?.operationId);
+        if (operationSelection.kind !== "selected") {
+          fullResponse = operationSelection.message;
+        } else {
+          const operation = accessibleOperations.find((item) => item.id === operationSelection.operationId);
+          const candidates = await db.select().from(agendaEventsTable).where(and(
+            eq(agendaEventsTable.operationId, operationSelection.operationId),
+            eq(agendaEventsTable.type, "MEETING"),
+            eq(agendaEventsTable.title, agendaDraftSchedule.title),
+            eq(agendaEventsTable.status, "DRAFT"),
+          ));
+          if (candidates.length !== 1) {
+            fullResponse = candidates.length > 1
+              ? "Encontrei mais de um rascunho de reunião com esse título na operação. Nada foi alterado; especifique melhor o título."
+              : "Não encontrei um rascunho de reunião com esse título na operação selecionada. Propostas enviadas e reuniões confirmadas não podem ser editadas por este comando.";
+          } else {
+            const event = candidates[0]!;
+            const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+            const action: Record<string, unknown> = {
+              action: "ASA_ACTION_PROPOSAL", actionType: "AGENDA_DRAFT_SCHEDULE_UPDATE", state: "PENDING",
+              operationId: operationSelection.operationId, operationName: operation?.name ?? "Operação",
+              eventId: event.id, title: event.title, expectedStatus: "DRAFT", type: "MEETING",
+              previousDate: event.date, previousStartTime: event.startTime, previousEndTime: event.endTime,
+              date: agendaDraftSchedule.date, startTime: agendaDraftSchedule.startTime, endTime: agendaDraftSchedule.endTime,
+              expiresAt,
+            };
+            fullResponse = `Prévia para alterar a data e o horário do rascunho da Agenda\nOperação: ${operation?.name ?? "Operação"}\nReunião: ${event.title}\nData: ${event.date} → ${agendaDraftSchedule.date}\nHorário: ${event.startTime ?? "não definido"}–${event.endTime ?? "não definido"} → ${agendaDraftSchedule.startTime}–${agendaDraftSchedule.endTime}\n\nO evento continuará como rascunho e não será confirmado nem publicado.`;
+            action.previewResponse = fullResponse;
+            toolsUsed.push("asa.agenda_draft.schedule.preview");
+            actionsExecuted.push(action);
+            const [audit] = await db.insert(asaAuditLogTable).values({
+              userId: user.sub, conversationId: String(conversationId), organizationId: user.organizationId!,
+              question: content, response: fullResponse, toolsUsed, actionsExecuted, confirmedByUser: false,
+            }).returning({ id: asaAuditLogTable.id });
+            if (audit) {
+              proposalAuditCreated = true;
+              proposalEvent = { id: audit.id, actionType: "AGENDA_DRAFT_SCHEDULE_UPDATE", title: event.title,
+                date: agendaDraftSchedule.date, startTime: agendaDraftSchedule.startTime, endTime: agendaDraftSchedule.endTime,
+                previousDate: event.date, previousStartTime: event.startTime, previousEndTime: event.endTime,
+                operationName: operation?.name ?? "Operação", expiresAt };
+            }
           }
-
-          if (toolUse.name === "consultar_clima") {
-            try {
-              const parsed = JSON.parse(result) as { weatherCode?: number; temp?: number };
-              res.write(`data: ${JSON.stringify({ toolResult: { name: toolUse.name, weatherCode: parsed.weatherCode, temp: parsed.temp } })}\n\n`);
-            } catch {}
-          }
-
-          toolResults.push({
-            type: "tool_result",
-            tool_use_id: toolUse.id,
-            content: result,
-          });
         }
-
-        currentMessages.push({ role: "user", content: toolResults });
+      }
+    } else if (agendaDraftRename.kind === "incomplete") {
+      fullResponse = 'Para renomear um rascunho de reunião, use: renomeie o rascunho da reunião "título atual" para "novo título". Só eventos ainda em rascunho podem ser alterados por este comando.';
+    } else if (agendaDraftRename.kind === "request") {
+      if (!isAgendaManager) {
+        fullResponse = "Renomear rascunhos da Agenda está disponível apenas para gestores autorizados. Nada foi alterado.";
+      } else {
+        const operationSelection = resolveAsaOperationSelection(content, accessibleOperations, context?.operationId);
+        if (operationSelection.kind !== "selected") {
+          fullResponse = operationSelection.message;
+        } else {
+          const operation = accessibleOperations.find((item) => item.id === operationSelection.operationId);
+          const candidates = await db.select().from(agendaEventsTable).where(and(
+            eq(agendaEventsTable.operationId, operationSelection.operationId),
+            eq(agendaEventsTable.type, "MEETING"),
+            eq(agendaEventsTable.title, agendaDraftRename.title),
+            eq(agendaEventsTable.status, "DRAFT"),
+          ));
+          if (candidates.length !== 1) {
+            fullResponse = candidates.length > 1
+              ? "Encontrei mais de um rascunho de reunião com esse título na operação. Nada foi alterado; especifique melhor o título."
+              : "Não encontrei um rascunho de reunião com esse título na operação selecionada. Propostas enviadas e reuniões confirmadas não podem ser renomeadas por este comando.";
+          } else {
+            const event = candidates[0]!;
+            const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+            const action: Record<string, unknown> = {
+              action: "ASA_ACTION_PROPOSAL", actionType: "AGENDA_DRAFT_RENAME", state: "PENDING",
+              operationId: operationSelection.operationId, operationName: operation?.name ?? "Operação",
+              eventId: event.id, title: event.title, previousTitle: event.title,
+              newTitle: agendaDraftRename.newTitle, expectedStatus: "DRAFT", type: "MEETING",
+              date: event.date, startTime: event.startTime, endTime: event.endTime, expiresAt,
+            };
+            fullResponse = `Prévia para renomear rascunho da Agenda\nOperação: ${operation?.name ?? "Operação"}\nReunião: ${event.title} → ${agendaDraftRename.newTitle}\nData e horário permanecem: ${event.date}, ${event.startTime}–${event.endTime}\n\nNada foi alterado. O evento continuará como rascunho.`;
+            action.previewResponse = fullResponse;
+            toolsUsed.push("asa.agenda_draft.rename.preview");
+            actionsExecuted.push(action);
+            const [audit] = await db.insert(asaAuditLogTable).values({
+              userId: user.sub, conversationId: String(conversationId), organizationId: user.organizationId!,
+              question: content, response: fullResponse, toolsUsed, actionsExecuted, confirmedByUser: false,
+            }).returning({ id: asaAuditLogTable.id });
+            if (audit) {
+              proposalAuditCreated = true;
+              proposalEvent = { id: audit.id, actionType: "AGENDA_DRAFT_RENAME", title: event.title,
+                previousTitle: event.title, newTitle: agendaDraftRename.newTitle, date: event.date,
+                startTime: event.startTime, endTime: event.endTime, operationName: operation?.name ?? "Operação", expiresAt };
+            }
+          }
+        }
+      }
+    } else if (preferenceCommand.kind === "incomplete") {
+      fullResponse = 'Posso ajustar suas preferências pessoais. Exemplos: “pause minhas sugestões da ASA”, “ative a saudação da manhã”, “mude a frequência da ASA para semanal” ou “altere o horário da saudação da noite para 21:30”. Vou mostrar a prévia antes de salvar.';
+    } else if (preferenceCommand.kind === "request") {
+      const [preferences] = await db.select().from(asaUserPreferencesTable)
+        .where(eq(asaUserPreferencesTable.userId, user.sub)).limit(1);
+      const preferencePatch = preferenceCommand.patch;
+      const defaults: Record<keyof AsaPreferencePatch, unknown> = {
+        mode: "BALANCED", morningGreeting: true, eveningGreeting: false, reminders: true,
+        birthdayAlerts: true, notificationsEnabled: true, goodMorningTime: "07:00", goodNightTime: "22:00",
+        messageFrequency: "DAILY", proactivityLevel: "MEDIUM",
+      };
+      const preferenceKeys = Object.keys(preferencePatch) as (keyof AsaPreferencePatch)[];
+      const previousValues = Object.fromEntries(preferenceKeys.map((key) => [key, preferences ? preferences[key] : defaults[key]]));
+      const changes = preferenceKeys.map((key) => ({
+        key, label: asaPreferenceLabel(key), before: formatAsaPreferenceValue(key, previousValues[key]),
+        after: formatAsaPreferenceValue(key, preferencePatch[key]),
+      }));
+      if (preferenceKeys.every((key) => previousValues[key] === preferencePatch[key])) {
+        fullResponse = `Essa preferência já está como você pediu: ${changes[0]!.label} · ${changes[0]!.after}. Não alterei nada.`;
+      } else {
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+        const action: Record<string, unknown> = {
+          action: "ASA_ACTION_PROPOSAL", actionType: "ASA_PREFERENCE_UPDATE", state: "PENDING",
+          title: "Preferências pessoais da ASA", preferencePatch, previousValues, changes,
+          previousMode: preferencePatch.mode ? previousValues.mode : undefined,
+          mode: preferencePatch.mode,
+          expectedUpdatedAt: preferences?.updatedAt.toISOString() ?? null, expiresAt,
+        };
+        const changeLines = changes.map((change) => `${change.label}: ${change.before} → ${change.after}`).join("\n");
+        fullResponse = `Prévia das suas preferências da ASA\n${changeLines}\n\nNada foi alterado. Confirme para salvar somente as suas preferências pessoais.`;
+        action.previewResponse = fullResponse;
+        toolsUsed.push("asa.preferences.preview");
+        actionsExecuted.push(action);
+        const [audit] = await db.insert(asaAuditLogTable).values({
+          userId: user.sub, conversationId: String(conversationId), organizationId: user.organizationId!,
+          question: content, response: fullResponse, toolsUsed, actionsExecuted, confirmedByUser: false,
+        }).returning({ id: asaAuditLogTable.id });
+        if (audit) {
+          proposalAuditCreated = true;
+          proposalEvent = { id: audit.id, actionType: "ASA_PREFERENCE_UPDATE", title: action.title,
+            previousMode: action.previousMode, mode: action.mode, changes, expiresAt };
+        }
+      }
+    } else if (capabilityRequest) {
+      toolsUsed.push("asa.capabilities.list");
+      actionsExecuted.push({ action: "ASA_CAPABILITY_HELP" });
+      fullResponse = formatAsaCapabilityReply(user.role);
+    } else if (unrecognizedReviewRequest) {
+      const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+      const auditRows = await db.select({ question: asaAuditLogTable.question, response: asaAuditLogTable.response, actionsExecuted: asaAuditLogTable.actionsExecuted })
+        .from(asaAuditLogTable)
+        .where(and(
+          eq(asaAuditLogTable.userId, user.sub),
+          eq(asaAuditLogTable.organizationId, user.organizationId!),
+          gte(asaAuditLogTable.createdAt, since),
+        ))
+        .orderBy(desc(asaAuditLogTable.createdAt))
+        .limit(1000);
+      const groups = new Map<string, { phrase: string; count: number }>();
+      for (const row of auditRows) {
+        const isUnrecognized = row.response === ASA_UNRECOGNIZED_COMMAND_REPLY
+          || (Array.isArray(row.actionsExecuted)
+            && row.actionsExecuted.some((action) => action.action === "ASA_UNRECOGNIZED_QUERY_V1"));
+        if (!isUnrecognized) continue;
+        const key = normalizeAsaText(row.question);
+        if (!key) continue;
+        const existing = groups.get(key);
+        if (existing) existing.count += 1;
+        else groups.set(key, { phrase: row.question.replace(/\s+/g, " ").trim().slice(0, 180), count: 1 });
+      }
+      const phrases = [...groups.values()].sort((a, b) => b.count - a.count || a.phrase.localeCompare(b.phrase, "pt-BR"));
+      if (phrases.length === 0) {
+        fullResponse = "Ainda não encontrei pedidos seus sem reconhecimento nos últimos 90 dias. Esta revisão é privada e só consulta suas próprias mensagens.";
+      } else {
+        const details = phrases.slice(0, 10).map((item) => `• ${item.phrase} (${item.count}x)`).join("\n");
+        fullResponse = `Encontrei ${phrases.length} frase(s) sua(s) que ainda não reconheço nos últimos 90 dias. A lista é privada e só você pode consultá-la:\n${details}${phrases.length > 10 ? `\nMostrando as 10 mais frequentes de ${phrases.length}.` : ""}`;
+      }
+    } else if (agendaMeeting.kind === "incomplete") {
+      fullResponse = "Para preparar uma reunião, informe um título entre aspas, uma data completa e o horário: agende uma reunião \"título\" em 01/10/2026 das 14:00 às 15:00. Supervisão também deve indicar área e local entre aspas quando tiver mais de um escopo.";
+    } else if (agendaMeeting.kind === "request") {
+      const operationSelection = resolveAsaOperationSelection(content, accessibleOperations, context?.operationId);
+      if (operationSelection.kind !== "selected") {
+        fullResponse = operationSelection.message;
+      } else {
+        const operation = accessibleOperations.find((item) => item.id === operationSelection.operationId);
+        const agendaOrgManager = ["ADMIN", "DIR", "DIRECTOR"].includes(user.role);
+        const agendaSupervisor = user.role === "SUPERVISOR_A" || user.role === "SUPERVISOR_B";
+        let areaId: string | null = null;
+        let locationId: string | null = null;
+        let areaLabel: string | null = null;
+        let locationLabel: string | null = null;
+        let scopeError: string | null = null;
+        if (agendaOrgManager && agendaMeeting.areaName && agendaMeeting.locationName) {
+          const areaMatches = await db.select({ id: areasTable.id, name: areasTable.name }).from(areasTable).where(and(
+            eq(areasTable.organizationId, user.organizationId!), eq(areasTable.active, true),
+          ));
+          const locationMatches = await db.select({ id: locationsTable.id, name: locationsTable.name }).from(locationsTable).where(and(
+            eq(locationsTable.organizationId, user.organizationId!), eq(locationsTable.closed, false),
+          ));
+          const foundAreas = areaMatches.filter((item) => normalizeAsaText(item.name) === normalizeAsaText(agendaMeeting.areaName!));
+          const foundLocations = locationMatches.filter((item) => normalizeAsaText(item.name) === normalizeAsaText(agendaMeeting.locationName!));
+          if (foundAreas.length !== 1 || foundLocations.length !== 1) scopeError = "Não encontrei uma área e um local ativos com esses nomes exatos nesta organização. Nada foi criado.";
+          else {
+            areaId = foundAreas[0]!.id;
+            locationId = foundLocations[0]!.id;
+            areaLabel = foundAreas[0]!.name;
+            locationLabel = foundLocations[0]!.name;
+          }
+        } else if (agendaOrgManager && (agendaMeeting.areaName || agendaMeeting.locationName)) {
+          scopeError = "Para vincular área e local, informe os dois nomes exatos entre aspas. Você também pode omitir ambos.";
+        } else if (agendaSupervisor) {
+          const membership = await db.select({ role: userRolesTable.role }).from(userRolesTable).where(and(
+            eq(userRolesTable.userId, user.sub), eq(userRolesTable.operationId, operationSelection.operationId),
+            eq(userRolesTable.active, true), or(eq(userRolesTable.role, "SUPERVISOR_A"), eq(userRolesTable.role, "SUPERVISOR_B")),
+          )).limit(1);
+          const scopes = membership.length ? await listAreaLocalScopes(user.sub, user.organizationId!) : [];
+          const scopeIds = new Set(scopes.map((scope) => scope.areaId));
+          const locationIds = new Set(scopes.map((scope) => scope.locationId));
+          const scopeRows = scopes.length ? await db.select({ areaId: areasTable.id, areaName: areasTable.name, locationId: locationsTable.id, locationName: locationsTable.name })
+            .from(areasTable).innerJoin(locationsTable, eq(locationsTable.organizationId, areasTable.organizationId))
+            .where(and(inArray(areasTable.id, [...scopeIds]), inArray(locationsTable.id, [...locationIds]))) : [];
+          const eligibleScopes = scopeRows.filter((row) => scopes.some((scope) => scope.areaId === row.areaId && scope.locationId === row.locationId));
+          const scopeResolution = resolveAsaAgendaSupervisorScope(membership.length > 0, eligibleScopes,
+            agendaMeeting.areaName, agendaMeeting.locationName);
+          if (scopeResolution.kind !== "selected") {
+            scopeError = scopeResolution.kind === "unavailable"
+              ? "Esta operação não tem uma combinação de área e local autorizada para sua Supervisão. Nada foi criado."
+              : "Para criar pela ASA, informe a área e o local exatos entre aspas, ambos dentro do seu escopo; nada foi criado.";
+          } else {
+            areaId = scopeResolution.scope.areaId;
+            locationId = scopeResolution.scope.locationId;
+            areaLabel = scopeResolution.scope.areaName;
+            locationLabel = scopeResolution.scope.locationName;
+          }
+        } else {
+          if (agendaMeeting.areaName || agendaMeeting.locationName) {
+            scopeError = "Elenco pode propor reunião somente na própria área e sem escolher um local em nome da operação. Nada foi criado.";
+          } else {
+            const [member] = await db.select({ areaId: usersTable.areaId }).from(usersTable).where(and(
+              eq(usersTable.id, user.sub), eq(usersTable.organizationId, user.organizationId!), eq(usersTable.status, "ACTIVE"),
+            )).limit(1);
+            const [area] = member?.areaId ? await db.select({ id: areasTable.id, name: areasTable.name }).from(areasTable).where(and(
+              eq(areasTable.id, member.areaId), eq(areasTable.organizationId, user.organizationId!), eq(areasTable.active, true),
+            )).limit(1) : [];
+            if (!area) scopeError = "Não encontrei sua área ativa para registrar a proposta de reunião. Nada foi criado.";
+            else { areaId = area.id; areaLabel = area.name; }
+          }
+        }
+        if (scopeError) {
+          fullResponse = scopeError;
+        } else {
+          const memberProposal = !agendaOrgManager && !agendaSupervisor;
+          const status = memberProposal ? "PROPOSED" : "DRAFT";
+          const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+          const action: Record<string, unknown> = {
+            action: "ASA_ACTION_PROPOSAL", actionType: "AGENDA_MEETING_CREATE", state: "PENDING",
+            operationId: operationSelection.operationId, operationName: operation?.name ?? "Operação",
+            title: agendaMeeting.title, date: agendaMeeting.date, startTime: agendaMeeting.startTime,
+            endTime: agendaMeeting.endTime, type: "MEETING", areaId, locationId,
+            expectedStatus: status, visibility: "OPERATION", expiresAt: expiresAt.toISOString(),
+          };
+          const statusLabel = memberProposal ? "Proposta pendente de análise da Supervisão" : "Rascunho da Agenda";
+          fullResponse = `Prévia de reunião na Agenda\nOperação: ${operation?.name ?? "Operação"}\nTítulo: ${agendaMeeting.title}\nData: ${agendaMeeting.date.split("-").reverse().join("/")}\nHorário: ${agendaMeeting.startTime} às ${agendaMeeting.endTime}\nÁrea: ${areaLabel ?? "não informada"}\nLocal: ${locationLabel ?? "não informado"}\n\nNada foi gravado. Ao confirmar, vou criar somente ${statusLabel}; a reunião não será publicada nem convocará participantes.`;
+          action.previewResponse = fullResponse;
+          toolsUsed.push("asa.agenda_meeting.preview");
+          actionsExecuted.push(action);
+          const [audit] = await db.insert(asaAuditLogTable).values({
+            userId: user.sub, conversationId: String(conversationId), organizationId: user.organizationId!,
+            question: content, response: fullResponse, toolsUsed, actionsExecuted, confirmedByUser: false,
+          }).returning({ id: asaAuditLogTable.id });
+          if (audit) {
+            proposalAuditCreated = true;
+            proposalEvent = { id: audit.id, actionType: "AGENDA_MEETING_CREATE", title: agendaMeeting.title,
+              operationName: operation?.name ?? "Operação", date: agendaMeeting.date, startTime: agendaMeeting.startTime,
+              endTime: agendaMeeting.endTime, expectedStatus: status, expiresAt: expiresAt.toISOString() };
+          }
+        }
+      }
+    } else if (muralAck.kind === "incomplete") {
+      fullResponse = "Para registrar ciente, informe o título exato entre aspas: dê ciente do aviso \"título do aviso\". Vou mostrar uma prévia antes de confirmar.";
+    } else if (muralAck.kind === "request") {
+      const candidates = await db.select({
+        id: announcementsTable.id,
+        title: announcementsTable.title,
+        body: announcementsTable.body,
+        scope: announcementsTable.scope,
+        areaId: announcementsTable.areaId,
+        locationId: announcementsTable.locationId,
+        updatedAt: announcementsTable.updatedAt,
+      }).from(announcementsTable).where(and(
+        eq(announcementsTable.orgId, user.organizationId!),
+        eq(announcementsTable.active, true),
+        isNull(announcementsTable.cancelledAt),
+        eq(announcementsTable.requiresConfirmation, true),
+      ));
+      const matching: typeof candidates = [];
+      for (const post of candidates) {
+        if (normalizeAsaText(post.title ?? "") !== normalizeAsaText(muralAck.title)) continue;
+        if (await canReadAnnouncement({ userId: user.sub, organizationId: user.organizationId!, role: user.role }, post)) matching.push(post);
+      }
+      if (matching.length !== 1) {
+        fullResponse = matching.length > 1
+          ? `Encontrei mais de um aviso acessível com o título “${muralAck.title}”. Peça à gestão para diferenciá-los; nenhum ciente foi registrado.`
+          : `Não encontrei um aviso ativo, que exija confirmação, com esse título e visível para você. Nenhum ciente foi registrado.`;
+      } else {
+        const post = matching[0]!;
+        const [existingRead] = await db.select({ confirmedAt: announcementReadsTable.confirmedAt })
+          .from(announcementReadsTable)
+          .where(and(eq(announcementReadsTable.announcementId, post.id), eq(announcementReadsTable.userId, user.sub)))
+          .limit(1);
+        if (existingRead?.confirmedAt) {
+          fullResponse = `Você já confirmou ciente do aviso “${post.title ?? muralAck.title}”. Não fiz nenhuma alteração.`;
+        } else {
+          const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+          const action: Record<string, unknown> = {
+            action: "ASA_ACTION_PROPOSAL", actionType: "MURAL_ACK", state: "PENDING",
+            announcementId: post.id, title: post.title ?? muralAck.title, expiresAt,
+            content: post.body, announcementVersion: announcementConfirmationVersion(post),
+          };
+          fullResponse = `Prévia de confirmação de ciente\nAviso: ${post.title ?? muralAck.title}\n\n${post.body}\n\nAinda não registrei seu ciente. Confirme pelo botão para registrar sua confirmação no Mural.`;
+          action.previewResponse = fullResponse;
+          toolsUsed.push("asa.mural_ack.preview");
+          actionsExecuted.push(action);
+          const [audit] = await db.insert(asaAuditLogTable).values({
+            userId: user.sub, conversationId: String(conversationId), organizationId: user.organizationId!,
+            question: content, response: fullResponse, toolsUsed, actionsExecuted, confirmedByUser: false,
+          }).returning({ id: asaAuditLogTable.id });
+          if (audit) {
+            proposalAuditCreated = true;
+            proposalEvent = { id: audit.id, actionType: "MURAL_ACK", title: post.title ?? muralAck.title, content: post.body, operationName: "Mural", expiresAt };
+          }
+        }
+      }
+    } else if (muralReaction.kind === "incomplete") {
+      fullResponse = 'Para reagir, informe o título exato entre aspas: reaja ao aviso "título do aviso". Vou mostrar a publicação e a reação de coração antes de confirmar.';
+    } else if (muralReaction.kind === "request") {
+      const candidates = await db.select().from(announcementsTable).where(and(
+        eq(announcementsTable.orgId, user.organizationId!),
+        eq(announcementsTable.active, true),
+        isNull(announcementsTable.cancelledAt),
+      ));
+      const matching = [] as typeof candidates;
+      for (const post of candidates) {
+        if (normalizeAsaText(post.title ?? "") !== normalizeAsaText(muralReaction.title)) continue;
+        if (await canReadAnnouncement({ userId: user.sub, organizationId: user.organizationId!, role: user.role }, post)) matching.push(post);
+      }
+      if (matching.length !== 1) {
+        fullResponse = matching.length > 1
+          ? `Encontrei mais de uma publicação acessível com o título “${muralReaction.title}”. Peça à gestão para diferenciá-las; nenhuma reação foi registrada.`
+          : `Não encontrei uma publicação ativa com esse título e visível para você. Nenhuma reação foi registrada.`;
+      } else {
+        const post = matching[0]!;
+        const [existingRead] = await db.select({ reaction: announcementReadsTable.reaction })
+          .from(announcementReadsTable)
+          .where(and(eq(announcementReadsTable.announcementId, post.id), eq(announcementReadsTable.userId, user.sub)))
+          .limit(1);
+        if (existingRead?.reaction === "♥") {
+          fullResponse = `Você já reagiu com coração à publicação “${post.title ?? muralReaction.title}”. Não fiz nenhuma alteração.`;
+        } else {
+          const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+          const action: Record<string, unknown> = {
+            action: "ASA_ACTION_PROPOSAL", actionType: "MURAL_REACT", state: "PENDING",
+            announcementId: post.id, title: post.title ?? muralReaction.title, content: post.body,
+            reaction: "♥", previousReaction: existingRead?.reaction ?? null,
+            announcementVersion: announcementConfirmationVersion(post), expiresAt,
+          };
+          fullResponse = `Prévia de reação no Mural\nPublicação: ${post.title ?? muralReaction.title}\nReação: ♥ (coração)${existingRead?.reaction ? ` · substitui ${existingRead.reaction}` : ""}\n\n${post.body}\n\nNada foi gravado. Confirme para reagir.`;
+          action.previewResponse = fullResponse;
+          toolsUsed.push("asa.mural_reaction.preview");
+          actionsExecuted.push(action);
+          const [audit] = await db.insert(asaAuditLogTable).values({
+            userId: user.sub, conversationId: String(conversationId), organizationId: user.organizationId!,
+            question: content, response: fullResponse, toolsUsed, actionsExecuted, confirmedByUser: false,
+          }).returning({ id: asaAuditLogTable.id });
+          if (audit) {
+            proposalAuditCreated = true;
+            proposalEvent = { id: audit.id, actionType: "MURAL_REACT", title: post.title ?? muralReaction.title,
+              content: post.body, operationName: "Mural", reaction: "♥", previousReaction: existingRead?.reaction ?? null, expiresAt };
+          }
+        }
+      }
+    } else if (taskChecklistUpdate.kind === "incomplete") {
+      fullResponse = 'Para atualizar um item, diga se ele é obrigatório ou operacional e informe os rótulos exatos: marque o item obrigatório da checklist "rótulo do item" da tarefa "título exato" como concluído; use “desmarque” e “pendente” para reabrir.';
+    } else if (taskChecklistUpdate.kind === "request") {
+      const operationSelection = resolveAsaOperationSelection(content, accessibleOperations, context?.operationId);
+      if (operationSelection.kind !== "selected") {
+        fullResponse = operationSelection.message;
+      } else {
+        const operation = accessibleOperations.find((item) => item.id === operationSelection.operationId);
+        const operationRole = await activeAsaRoleForOperation(user.sub, user.organizationId!, operationSelection.operationId);
+        const candidates = operationRole ? await db.select().from(tasksTable).where(and(
+          eq(tasksTable.organizationId, user.organizationId!),
+          eq(tasksTable.operationId, operationSelection.operationId),
+          eq(tasksTable.title, taskChecklistUpdate.title),
+        )) : [];
+        const tasks = candidates.filter((task) => task.assigneeId === user.sub
+          && !["APPROVED", "COMPLETED", "CANCELLED"].includes(task.status));
+        if (tasks.length !== 1) {
+          fullResponse = tasks.length > 1
+            ? `Encontrei mais de uma tarefa chamada “${taskChecklistUpdate.title}” atribuída a você. Especifique melhor; nenhum item foi alterado.`
+            : `Não encontrei uma tarefa aberta chamada “${taskChecklistUpdate.title}” atribuída a você nesta operação.`;
+        } else {
+          const task = tasks[0]!;
+          const checklist = taskChecklistUpdate.checklistKind === "mandatory"
+            ? task.mandatoryChecklist ?? [] : task.operationalChecklist ?? [];
+          const items = checklist.filter((item) => item.label === taskChecklistUpdate.itemLabel);
+          if (items.length !== 1) {
+            fullResponse = items.length > 1
+              ? `O item “${taskChecklistUpdate.itemLabel}” aparece mais de uma vez nessa checklist. Nada foi alterado.`
+              : `Não encontrei o item “${taskChecklistUpdate.itemLabel}” nessa checklist da tarefa “${task.title}”.`;
+          } else if (items[0]!.completed === taskChecklistUpdate.completed) {
+            fullResponse = `O item “${items[0]!.label}” da tarefa “${task.title}” já está ${taskChecklistUpdate.completed ? "concluído" : "pendente"}. Nada foi alterado.`;
+          } else {
+            const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+            const action: Record<string, unknown> = {
+              action: "ASA_ACTION_PROPOSAL", actionType: "TASK_CHECKLIST_UPDATE", state: "PENDING",
+              operationId: operationSelection.operationId, operationName: operation?.name ?? "Operação",
+              taskId: task.id, title: task.title, assigneeId: task.assigneeId,
+              checklistKind: taskChecklistUpdate.checklistKind, checklistItemId: items[0]!.id,
+              checklistItemLabel: items[0]!.label, checklistCompleted: taskChecklistUpdate.completed,
+              previousChecklistCompleted: items[0]!.completed, expectedChecklist: JSON.stringify(checklist),
+              expectedStatus: task.status, expectedUpdatedAt: task.updatedAt.toISOString(), expiresAt,
+            };
+            fullResponse = `Prévia da checklist da tarefa\nOperação: ${operation?.name ?? "Operação"}\nTarefa: ${task.title}\nChecklist: ${taskChecklistUpdate.checklistKind === "mandatory" ? "obrigatória" : "operacional"}\nItem: ${items[0]!.label}\nEstado: ${items[0]!.completed ? "concluído" : "pendente"} → ${taskChecklistUpdate.completed ? "concluído" : "pendente"}\n\nNada foi alterado. Confirme para atualizar este item.`;
+            action.previewResponse = fullResponse;
+            toolsUsed.push("asa.task_checklist.preview");
+            actionsExecuted.push(action);
+            const [audit] = await db.insert(asaAuditLogTable).values({
+              userId: user.sub, conversationId: String(conversationId), organizationId: user.organizationId!,
+              question: content, response: fullResponse, toolsUsed, actionsExecuted, confirmedByUser: false,
+            }).returning({ id: asaAuditLogTable.id });
+            if (audit) {
+              proposalAuditCreated = true;
+              proposalEvent = { id: audit.id, actionType: "TASK_CHECKLIST_UPDATE", title: task.title,
+                operationName: operation?.name ?? "Operação", checklistKind: taskChecklistUpdate.checklistKind,
+                checklistItemLabel: items[0]!.label, checklistCompleted: taskChecklistUpdate.completed,
+                previousChecklistCompleted: items[0]!.completed, expiresAt };
+            }
+          }
+        }
+      }
+    } else if (taskEvidenceLink.kind === "incomplete") {
+      fullResponse = 'Para anexar um link complementar, informe o URL, o título exato da tarefa e uma descrição: anexe o link "https://exemplo.test/arquivo.pdf" à tarefa "título exato" com a descrição "o que este link contém". O link não contará como evidência obrigatória.';
+    } else if (taskEvidenceLink.kind === "request") {
+      const operationSelection = resolveAsaOperationSelection(content, accessibleOperations, context?.operationId);
+      if (operationSelection.kind !== "selected") {
+        fullResponse = operationSelection.message;
+      } else {
+        const operation = accessibleOperations.find((item) => item.id === operationSelection.operationId);
+        const operationRole = await activeAsaRoleForOperation(user.sub, user.organizationId!, operationSelection.operationId);
+        const candidates = operationRole ? await db.select().from(tasksTable).where(and(
+          eq(tasksTable.organizationId, user.organizationId!),
+          eq(tasksTable.operationId, operationSelection.operationId),
+          eq(tasksTable.title, taskEvidenceLink.title),
+        )) : [];
+        const matches = [] as typeof candidates;
+        for (const task of candidates) {
+          const managerCanManage = TASK_MANAGER_ROLES.includes(operationRole ?? "")
+            && await canManageTasks(
+              user.sub, operationRole!, operationSelection.operationId, user.organizationId!,
+              await resolveTaskAreaId(task.responsibilityId ?? undefined, task.assigneeId, user.organizationId!),
+            );
+          const involved = task.creatorId === user.sub || task.assigneeId === user.sub;
+          if ((managerCanManage || involved) && !["APPROVED", "COMPLETED", "CANCELLED"].includes(task.status)) matches.push(task);
+        }
+        if (matches.length !== 1) {
+          fullResponse = matches.length > 1
+            ? `Encontrei mais de uma tarefa chamada “${taskEvidenceLink.title}” em que você pode anexar um link. Especifique melhor; nada foi anexado.`
+            : `Não encontrei uma tarefa aberta chamada “${taskEvidenceLink.title}” em que você possa anexar evidências. Nada foi alterado.`;
+        } else {
+          const task = matches[0]!;
+          const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+          const action: Record<string, unknown> = {
+            action: "ASA_ACTION_PROPOSAL", actionType: "TASK_EVIDENCE_LINK_ADD", state: "PENDING",
+            operationId: operationSelection.operationId, operationName: operation?.name ?? "Operação",
+            taskId: task.id, title: task.title, evidenceUrl: taskEvidenceLink.url,
+            evidenceDescription: taskEvidenceLink.description, evidenceType: "LINK",
+            expectedStatus: task.status, expectedUpdatedAt: task.updatedAt.toISOString(),
+            creatorId: task.creatorId, assigneeId: task.assigneeId, responsibilityId: task.responsibilityId,
+            expiresAt,
+          };
+          fullResponse = `Prévia de link complementar na tarefa\nOperação: ${operation?.name ?? "Operação"}\nTarefa: ${task.title}\nTipo: LINK complementar\nDescrição: ${taskEvidenceLink.description}\nURL: ${taskEvidenceLink.url}\n\nNada foi anexado. Este link não será marcado como evidência obrigatória. Confirme para anexar.`;
+          action.previewResponse = fullResponse;
+          toolsUsed.push("asa.task_evidence_link.preview");
+          actionsExecuted.push(action);
+          const [audit] = await db.insert(asaAuditLogTable).values({
+            userId: user.sub, conversationId: String(conversationId), organizationId: user.organizationId!,
+            question: content, response: fullResponse, toolsUsed, actionsExecuted, confirmedByUser: false,
+          }).returning({ id: asaAuditLogTable.id });
+          if (audit) {
+            proposalAuditCreated = true;
+            proposalEvent = { id: audit.id, actionType: "TASK_EVIDENCE_LINK_ADD", title: task.title,
+              evidenceUrl: taskEvidenceLink.url, evidenceDescription: taskEvidenceLink.description,
+              operationName: operation?.name ?? "Operação", expiresAt };
+          }
+        }
+      }
+    } else if (taskCommentsQuery.kind === "incomplete") {
+      fullResponse = 'Para consultar comentários, informe o título exato entre aspas: mostre os comentários da tarefa "título exato".';
+    } else if (taskCommentsQuery.kind === "request") {
+      const operationSelection = resolveAsaOperationSelection(content, accessibleOperations, context?.operationId);
+      if (operationSelection.kind !== "selected") {
+        fullResponse = operationSelection.message;
+      } else {
+        const operationRole = await activeAsaRoleForOperation(user.sub, user.organizationId!, operationSelection.operationId);
+        if (!operationRole) {
+          fullResponse = "Seu vínculo ativo com esta operação não está disponível. Não consultei os comentários.";
+        } else {
+          const candidates = await db.select().from(tasksTable).where(and(
+            eq(tasksTable.organizationId, user.organizationId!),
+            eq(tasksTable.operationId, operationSelection.operationId),
+            eq(tasksTable.title, taskCommentsQuery.title),
+          ));
+          const visibleTasks = [] as typeof candidates;
+          for (const task of candidates) {
+            const managerCanManage = TASK_MANAGER_ROLES.includes(operationRole ?? "")
+              && await canManageTasks(
+                user.sub, operationRole!, operationSelection.operationId, user.organizationId!,
+                await resolveTaskAreaId(task.responsibilityId ?? undefined, task.assigneeId, user.organizationId!),
+              );
+            const involved = [task.creatorId, task.assigneeId, task.approverId].includes(user.sub);
+            if (managerCanManage || involved) visibleTasks.push(task);
+          }
+          if (visibleTasks.length !== 1) {
+            fullResponse = visibleTasks.length > 1
+              ? `Encontrei mais de uma tarefa chamada “${taskCommentsQuery.title}” que você pode consultar. Especifique melhor.`
+              : "Não encontrei uma tarefa com esse título dentro do seu escopo para consultar comentários.";
+          } else {
+            const task = visibleTasks[0]!;
+            const comments = await db.select({
+              body: taskCommentsTable.body, createdAt: taskCommentsTable.createdAt, authorName: usersTable.name,
+            }).from(taskCommentsTable)
+              .innerJoin(usersTable, eq(taskCommentsTable.authorId, usersTable.id))
+              .where(eq(taskCommentsTable.taskId, task.id))
+              .orderBy(desc(taskCommentsTable.createdAt))
+              .limit(10);
+            fullResponse = formatAsaTaskCommentsReply(task.title, comments);
+            toolsUsed.push("asa.task_comments.read");
+            actionsExecuted.push({ action: "ASA_TASK_COMMENTS_READ", taskId: task.id, count: comments.length });
+          }
+        }
+      }
+    } else if (taskComment.kind === "incomplete") {
+      fullResponse = 'Para comentar uma tarefa, informe o título exato e o texto: comente na tarefa "título exato" com o texto "comentário". Vou mostrar a prévia antes de publicar.';
+    } else if (taskComment.kind === "request") {
+      const operationSelection = resolveAsaOperationSelection(content, accessibleOperations, context?.operationId);
+      if (operationSelection.kind !== "selected") {
+        fullResponse = operationSelection.message;
+      } else {
+        const operation = accessibleOperations.find((item) => item.id === operationSelection.operationId);
+        const operationRole = await activeAsaRoleForOperation(user.sub, user.organizationId!, operationSelection.operationId);
+        const candidates = operationRole ? await db.select().from(tasksTable).where(and(
+          eq(tasksTable.organizationId, user.organizationId!),
+          eq(tasksTable.operationId, operationSelection.operationId),
+          eq(tasksTable.title, taskComment.title),
+        )) : [];
+        const matches = [] as typeof candidates;
+        for (const task of candidates) {
+          const managerCanManage = TASK_MANAGER_ROLES.includes(operationRole ?? "")
+            && await canManageTasks(
+              user.sub, operationRole!, operationSelection.operationId, user.organizationId!,
+              await resolveTaskAreaId(task.responsibilityId ?? undefined, task.assigneeId, user.organizationId!),
+            );
+          const involved = [task.creatorId, task.assigneeId, task.approverId].includes(user.sub);
+          if (managerCanManage || involved) matches.push(task);
+        }
+        if (matches.length !== 1) {
+          fullResponse = matches.length > 1
+            ? `Encontrei mais de uma tarefa chamada “${taskComment.title}” em que você pode comentar. Especifique melhor; nenhum comentário foi publicado.`
+            : `Não encontrei uma tarefa chamada “${taskComment.title}” em que você tenha acesso para comentar. Nada foi alterado.`;
+        } else {
+          const task = matches[0]!;
+          const [actor] = await db.select({ name: usersTable.name }).from(usersTable)
+            .where(and(eq(usersTable.id, user.sub), eq(usersTable.organizationId, user.organizationId!))).limit(1);
+          const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+          const action: Record<string, unknown> = {
+            action: "ASA_ACTION_PROPOSAL", actionType: "TASK_COMMENT_CREATE", state: "PENDING",
+            operationId: operationSelection.operationId, operationName: operation?.name ?? "Operação",
+            taskId: task.id, title: task.title, content: taskComment.content,
+            expectedStatus: task.status, expectedUpdatedAt: task.updatedAt.toISOString(),
+            creatorId: task.creatorId, assigneeId: task.assigneeId, approverId: task.approverId,
+            responsibilityId: task.responsibilityId, expiresAt,
+          };
+          fullResponse = `Prévia de comentário na tarefa\nOperação: ${operation?.name ?? "Operação"}\nTarefa: ${task.title}\nComentário de ${actor?.name ?? "você"}:\n${taskComment.content}\n\nNada foi publicado. Confirme para registrar o comentário.`;
+          action.previewResponse = fullResponse;
+          toolsUsed.push("asa.task_comment.preview");
+          actionsExecuted.push(action);
+          const [audit] = await db.insert(asaAuditLogTable).values({
+            userId: user.sub, conversationId: String(conversationId), organizationId: user.organizationId!,
+            question: content, response: fullResponse, toolsUsed, actionsExecuted, confirmedByUser: false,
+          }).returning({ id: asaAuditLogTable.id });
+          if (audit) {
+            proposalAuditCreated = true;
+            proposalEvent = { id: audit.id, actionType: "TASK_COMMENT_CREATE", title: task.title,
+              content: taskComment.content, operationName: operation?.name ?? "Operação", expiresAt };
+          }
+        }
+      }
+    } else if (muralComment.kind === "incomplete") {
+      fullResponse = 'Para comentar, informe o título exato e o texto: comente na publicação "título" com o comentário "texto completo". Vou mostrar tudo antes de publicar.';
+    } else if (muralComment.kind === "request") {
+      const candidates = await db.select().from(announcementsTable).where(and(
+        eq(announcementsTable.orgId, user.organizationId!),
+        eq(announcementsTable.active, true),
+        isNull(announcementsTable.cancelledAt),
+      ));
+      const matching = [] as typeof candidates;
+      for (const post of candidates) {
+        if (normalizeAsaText(post.title ?? "") !== normalizeAsaText(muralComment.title)) continue;
+        if (await canReadAnnouncement({ userId: user.sub, organizationId: user.organizationId!, role: user.role }, post)) matching.push(post);
+      }
+      if (matching.length !== 1) {
+        fullResponse = matching.length > 1
+          ? `Encontrei mais de uma publicação acessível com o título “${muralComment.title}”. Peça à gestão para diferenciá-las; nenhum comentário foi publicado.`
+          : `Não encontrei uma publicação ativa com esse título e visível para você. Nenhum comentário foi publicado.`;
+      } else {
+        const post = matching[0]!;
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+        const action: Record<string, unknown> = {
+          action: "ASA_ACTION_PROPOSAL", actionType: "MURAL_COMMENT_CREATE", state: "PENDING",
+          announcementId: post.id, title: post.title ?? muralComment.title, content: muralComment.content,
+          announcementContent: post.body, announcementVersion: announcementConfirmationVersion(post), expiresAt,
+        };
+        fullResponse = `Prévia de comentário no Mural\nPublicação: ${post.title ?? muralComment.title}\nConteúdo atual:\n${post.body}\n\nComentário:\n${muralComment.content}\n\nNada foi publicado. Confirme para comentar.`;
+        action.previewResponse = fullResponse;
+        toolsUsed.push("asa.mural_comment.preview");
+        actionsExecuted.push(action);
+        const [audit] = await db.insert(asaAuditLogTable).values({
+          userId: user.sub, conversationId: String(conversationId), organizationId: user.organizationId!,
+          question: content, response: fullResponse, toolsUsed, actionsExecuted, confirmedByUser: false,
+        }).returning({ id: asaAuditLogTable.id });
+        if (audit) {
+          proposalAuditCreated = true;
+          proposalEvent = { id: audit.id, actionType: "MURAL_COMMENT_CREATE", title: post.title ?? muralComment.title,
+            content: muralComment.content, announcementContent: post.body, operationName: "Mural", expiresAt };
+        }
+      }
+    } else if (messageReply.kind === "incomplete") {
+      fullResponse = 'Para responder, escreva: responda na conversa "Título exato" com a mensagem "Texto da resposta". Vou mostrar quem receberá e só enviar após sua confirmação.';
+    } else if (messageReply.kind === "proposal") {
+      const openThreads = await db.select({ id: messageThreadsTable.id, title: messageThreadsTable.title })
+        .from(messageThreadsTable)
+        .innerJoin(messageThreadParticipantsTable, and(
+          eq(messageThreadParticipantsTable.threadId, messageThreadsTable.id),
+          eq(messageThreadParticipantsTable.userId, user.sub),
+        ))
+        .where(and(
+          eq(messageThreadsTable.orgId, user.organizationId!),
+          eq(messageThreadsTable.status, "OPEN"),
+        ))
+        .orderBy(desc(messageThreadsTable.createdAt))
+        .limit(1000);
+      const matches = openThreads.filter((thread) => normalizeAsaText(thread.title) === normalizeAsaText(messageReply.threadTitle));
+      if (matches.length !== 1) {
+        fullResponse = matches.length > 1
+          ? "Encontrei mais de uma conversa aberta com esse título. Informe um título que identifique uma única conversa; nada foi enviado."
+          : "Não encontrei uma conversa aberta com esse título entre as suas conversas. Confira o título; nada foi enviado.";
+      } else {
+        const thread = matches[0]!;
+        const participantIds = (await db.select({ userId: messageThreadParticipantsTable.userId })
+          .from(messageThreadParticipantsTable)
+          .where(eq(messageThreadParticipantsTable.threadId, thread.id))
+          .orderBy(asc(messageThreadParticipantsTable.userId)))
+          .map((participant) => participant.userId);
+        const members = participantIds.length
+          ? await db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(and(
+            inArray(usersTable.id, participantIds),
+            eq(usersTable.organizationId, user.organizationId!),
+            eq(usersTable.status, "ACTIVE"),
+          ))
+          : [];
+        const memberById = new Map(members.map((member) => [member.id, member]));
+        const participantSnapshot = participantIds.map((userId) => ({ id: userId, name: memberById.get(userId)?.name ?? "" }));
+        const recipientNames = participantSnapshot.filter((participant) => participant.id !== user.sub).map((participant) => participant.name);
+        if (!participantSnapshot.some((participant) => participant.id === user.sub)
+          || members.length !== participantIds.length || recipientNames.length === 0
+          || participantSnapshot.some((participant) => !participant.name)) {
+          fullResponse = "Essa conversa não está disponível para resposta no momento. Nenhuma mensagem foi enviada.";
+        } else {
+          const [lastMessage] = await db.select({ id: messagesTable.id }).from(messagesTable)
+            .where(eq(messagesTable.threadId, thread.id)).orderBy(desc(messagesTable.createdAt), desc(messagesTable.id)).limit(1);
+          const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+          const action: Record<string, unknown> = {
+            action: "ASA_ACTION_PROPOSAL", actionType: "MESSAGE_REPLY", state: "PENDING",
+            threadId: thread.id, title: thread.title, content: messageReply.content,
+            participants: participantSnapshot, lastMessageId: lastMessage?.id ?? null,
+            recipientNames, expiresAt,
+          };
+          fullResponse = `Prévia da resposta\nConversa: ${thread.title}\nDestinatários: ${recipientNames.join(", ")}\nMensagem:\n${messageReply.content}\n\nNada foi enviado. Confirme abaixo para adicionar exatamente esta resposta à conversa.`;
+          action.previewResponse = fullResponse;
+          toolsUsed.push("asa.message_reply.preview");
+          actionsExecuted.push(action);
+          const [audit] = await db.insert(asaAuditLogTable).values({
+            userId: user.sub, conversationId: String(conversationId), organizationId: user.organizationId!,
+            question: content, response: fullResponse, toolsUsed, actionsExecuted, confirmedByUser: false,
+          }).returning({ id: asaAuditLogTable.id });
+          if (audit) {
+            proposalAuditCreated = true;
+            proposalEvent = { id: audit.id, actionType: "MESSAGE_REPLY", title: thread.title,
+              content: messageReply.content, recipientNames, expiresAt };
+          }
+        }
+      }
+    } else if (directMessage.kind === "incomplete") {
+      fullResponse = 'Para preparar uma mensagem direta, escreva: crie uma conversa com "Nome completo" com o título "Assunto" e a mensagem "Texto exato". Vou mostrar a prévia e só enviar após sua confirmação.';
+    } else if (directMessage.kind === "proposal") {
+      const recipientRows = await db.select({ id: usersTable.id, name: usersTable.name })
+        .from(usersTable)
+        .innerJoin(userRolesTable, eq(userRolesTable.userId, usersTable.id))
+        .innerJoin(operationsTable, eq(operationsTable.id, userRolesTable.operationId))
+        .where(and(
+          eq(usersTable.organizationId, user.organizationId!),
+          eq(usersTable.status, "ACTIVE"),
+          eq(userRolesTable.active, true),
+          eq(operationsTable.status, "ACTIVE"),
+          eq(operationsTable.organizationId, user.organizationId!),
+        ));
+      const normalizedRecipient = normalizeAsaText(directMessage.recipientName);
+      const recipients = [...new Map(recipientRows
+        .filter((row) => row.id !== user.sub && normalizeAsaText(row.name ?? "") === normalizedRecipient)
+        .map((row) => [row.id, row])).values()];
+      if (recipients.length !== 1) {
+        fullResponse = recipients.length > 1
+          ? "Encontrei mais de uma pessoa com esse nome. Informe um nome que diferencie o destinatário. Nenhuma conversa foi criada."
+          : "Não encontrei uma pessoa ativa da sua organização com esse nome. Confira o nome e tente novamente. Nenhuma conversa foi criada.";
+      } else {
+        const recipient = recipients[0]!;
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+        const action: Record<string, unknown> = {
+          action: "ASA_ACTION_PROPOSAL", actionType: "MESSAGE_DIRECT_CREATE", state: "PENDING",
+          recipientUserId: recipient.id, recipientName: recipient.name,
+          title: directMessage.title, content: directMessage.content, expiresAt,
+        };
+        fullResponse = `Prévia da mensagem direta\nPara: ${recipient.name}\nAssunto: ${directMessage.title}\nMensagem:\n${directMessage.content}\n\nNada foi enviado. Confirme abaixo para criar a conversa e enviar exatamente esta mensagem.`;
+        action.previewResponse = fullResponse;
+        toolsUsed.push("asa.message_direct.preview");
+        actionsExecuted.push(action);
+        const [audit] = await db.insert(asaAuditLogTable).values({
+          userId: user.sub, conversationId: String(conversationId), organizationId: user.organizationId!,
+          question: content, response: fullResponse, toolsUsed, actionsExecuted, confirmedByUser: false,
+        }).returning({ id: asaAuditLogTable.id });
+        if (audit) {
+          proposalAuditCreated = true;
+          proposalEvent = { id: audit.id, actionType: "MESSAGE_DIRECT_CREATE", title: directMessage.title,
+            content: directMessage.content, recipientName: recipient.name, expiresAt };
+        }
+      }
+    } else if (noticeDraftUpdate.kind === "incomplete") {
+      fullResponse = "Para editar um rascunho, use: edite o rascunho de aviso \"título atual\" para \"novo título\" com o texto \"novo conteúdo\". Vou mostrar a comparação; a publicação não será feita pela ASA.";
+    } else if (noticeDraftUpdate.kind === "request") {
+      if (!isManager) {
+        fullResponse = "A edição de rascunhos de aviso está disponível para gestores autorizados. Nenhum aviso foi alterado.";
+      } else {
+        const operationSelection = resolveAsaOperationSelection(content, accessibleOperations, context?.operationId);
+        if (operationSelection.kind !== "selected") {
+          fullResponse = operationSelection.message;
+        } else {
+          const operation = accessibleOperations.find((item) => item.id === operationSelection.operationId);
+          const candidates = await db.select({
+            id: noticesTable.id, title: noticesTable.title, content: noticesTable.content,
+            status: noticesTable.status, autoGenerated: noticesTable.autoGenerated, cancelledAt: noticesTable.cancelledAt,
+          }).from(noticesTable).where(and(
+            eq(noticesTable.operationId, operationSelection.operationId),
+            eq(noticesTable.title, noticeDraftUpdate.title),
+          ));
+          const drafts = candidates.filter((notice) => notice.status === "DRAFT" && !notice.autoGenerated && !notice.cancelledAt);
+          if (drafts.length !== 1) {
+            fullResponse = drafts.length > 1
+              ? "Encontrei mais de um rascunho com esse título na operação. Nada foi alterado; informe um título que diferencie o aviso."
+              : "Não encontrei um rascunho ativo com esse título exato na operação selecionada. Avisos publicados não podem ser editados por este comando.";
+          } else {
+            const draft = drafts[0]!;
+            const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+            const action: Record<string, unknown> = {
+              action: "ASA_ACTION_PROPOSAL", actionType: "NOTICE_DRAFT_UPDATE", state: "PENDING",
+              operationId: operationSelection.operationId, operationName: operation?.name ?? "Operação",
+              noticeId: draft.id, title: noticeDraftUpdate.title, previousTitle: draft.title,
+              newTitle: noticeDraftUpdate.newTitle, previousContent: draft.content,
+              content: noticeDraftUpdate.content, expectedStatus: draft.status, expiresAt,
+            };
+            fullResponse = `Prévia da edição do rascunho de aviso\nOperação: ${operation?.name ?? "Operação"}\nTítulo: ${draft.title} → ${noticeDraftUpdate.newTitle}\n\nTexto atual:\n${draft.content}\n\nNovo texto:\n${noticeDraftUpdate.content}\n\nNada foi alterado. Ao confirmar, o aviso continuará como rascunho; não será publicado.`;
+            action.previewResponse = fullResponse;
+            toolsUsed.push("asa.notice_draft.update.preview");
+            actionsExecuted.push(action);
+            const [audit] = await db.insert(asaAuditLogTable).values({
+              userId: user.sub, conversationId: String(conversationId), organizationId: user.organizationId!,
+              question: content, response: fullResponse, toolsUsed, actionsExecuted, confirmedByUser: false,
+            }).returning({ id: asaAuditLogTable.id });
+            if (audit) {
+              proposalAuditCreated = true;
+              proposalEvent = {
+                id: audit.id, actionType: "NOTICE_DRAFT_UPDATE", title: noticeDraftUpdate.title,
+                previousTitle: draft.title, newTitle: noticeDraftUpdate.newTitle,
+                previousContent: draft.content, content: noticeDraftUpdate.content,
+                operationName: operation?.name ?? "Operação", expiresAt,
+              };
+            }
+          }
+        }
+      }
+    } else if (noticeDraft.kind === "incomplete") {
+      fullResponse = "Para preparar um rascunho, escreva: crie um rascunho de aviso: \"título\" \"texto completo\". A ASA mostrará a operação e o público antes de gravar; nada será publicado.";
+    } else if (noticeDraft.kind === "proposal") {
+      if (!isManager) {
+        fullResponse = "A criação de rascunho de aviso está disponível para gestores. Nenhum aviso foi criado.";
+      } else {
+        const operationSelection = resolveAsaOperationSelection(content, accessibleOperations, context?.operationId);
+        if (operationSelection.kind !== "selected") {
+          fullResponse = operationSelection.message;
+        } else {
+          const operation = accessibleOperations.find((item) => item.id === operationSelection.operationId);
+          const targetRoles = await db.select({ userId: userRolesTable.userId })
+            .from(userRolesTable)
+            .innerJoin(usersTable, eq(usersTable.id, userRolesTable.userId))
+            .where(and(
+              eq(userRolesTable.operationId, operationSelection.operationId),
+              eq(userRolesTable.active, true),
+              eq(usersTable.organizationId, user.organizationId!),
+              eq(usersTable.status, "ACTIVE"),
+            ));
+          const recipientUserIds = [...new Set(targetRoles.map((row) => row.userId))];
+          if (!recipientUserIds.length) {
+            fullResponse = `A operação ${operation?.name ?? "selecionada"} não tem destinatários ativos. Nenhum rascunho foi criado.`;
+          } else {
+            const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+            const action: Record<string, unknown> = {
+              action: "ASA_ACTION_PROPOSAL",
+              actionType: "NOTICE_DRAFT_CREATE",
+              state: "PENDING",
+              operationId: operationSelection.operationId,
+              operationName: operation?.name ?? "Operação",
+              title: noticeDraft.title,
+              content: noticeDraft.content,
+              urgency: "IMPORTANT",
+              type: "INFORMATIVE",
+              recipientUserIds,
+              expiresAt: expiresAt.toISOString(),
+            };
+            fullResponse = `Prévia do rascunho de aviso\nOperação: ${operation?.name ?? "Operação"}\nTítulo: ${noticeDraft.title}\nTexto: ${noticeDraft.content}\nPúblico: ${recipientUserIds.length} pessoa(s) ativa(s) da operação.\n\nAinda não foi gravado nem publicado. Confirme pelo botão para criar somente o rascunho.`;
+            action.previewResponse = fullResponse;
+            toolsUsed.push("asa.notice_draft.preview");
+            actionsExecuted.push(action);
+            const [audit] = await db.insert(asaAuditLogTable).values({
+              userId: user.sub,
+              conversationId: String(conversationId),
+              organizationId: user.organizationId!,
+              question: content,
+              response: fullResponse,
+              toolsUsed,
+              actionsExecuted,
+              confirmedByUser: false,
+            }).returning({ id: asaAuditLogTable.id });
+            if (audit) {
+              proposalAuditCreated = true;
+              proposalEvent = {
+                id: audit.id,
+                actionType: "NOTICE_DRAFT_CREATE",
+                title: noticeDraft.title,
+                content: noticeDraft.content,
+                operationName: operation?.name ?? "Operação",
+                recipientCount: recipientUserIds.length,
+                expiresAt: expiresAt.toISOString(),
+              };
+            }
+          }
+        }
+      }
+    } else if (taskDraft.kind === "incomplete") {
+      fullResponse = "Para preparar uma tarefa, use: crie uma tarefa \"título\" para \"nome completo\" até DD/MM/AAAA prioridade alta. A prioridade é opcional. Se precisar, acrescente: com descrição \"detalhes\", vinculada à responsabilidade \"título exato\", checklist obrigatória \"item 1; item 2\" e evidências obrigatórias \"FOTO: imagem final; PDF: relatório\". A responsabilidade precisa estar ativa na operação selecionada. A ASA mostra a prévia antes de gravar.";
+    } else if (taskDraft.kind === "proposal") {
+      if (!TASK_MANAGER_ROLES.includes(user.role)) {
+        fullResponse = "A criação de tarefas pela ASA está disponível para gestores autorizados. Nenhuma tarefa foi criada.";
+      } else {
+        const operationSelection = resolveAsaOperationSelection(content, accessibleOperations, context?.operationId);
+        if (operationSelection.kind !== "selected") {
+          fullResponse = operationSelection.message;
+        } else {
+          const operation = accessibleOperations.find((item) => item.id === operationSelection.operationId);
+          const candidates = await db.selectDistinct({ id: usersTable.id, name: usersTable.name })
+            .from(userRolesTable)
+            .innerJoin(usersTable, eq(usersTable.id, userRolesTable.userId))
+            .where(and(
+              eq(userRolesTable.operationId, operationSelection.operationId),
+              eq(userRolesTable.active, true),
+              eq(usersTable.organizationId, user.organizationId!),
+              ne(usersTable.status, "INACTIVE"),
+            ));
+          const matches = candidates.filter((candidate) => normalizeAsaText(candidate.name) === normalizeAsaText(taskDraft.assigneeName));
+          if (matches.length !== 1) {
+            fullResponse = matches.length > 1
+              ? `Encontrei mais de uma pessoa chamada ${taskDraft.assigneeName} nessa operação. Nenhuma tarefa foi criada; informe o nome completo ou escolha outra operação.`
+              : `Não encontrei ${taskDraft.assigneeName} como pessoa ativa da operação ${operation?.name ?? "selecionada"}. Nenhuma tarefa foi criada.`;
+          } else {
+            const assignee = matches[0]!;
+            const responsibilityCandidates = taskDraft.responsibilityTitle ? await db.select({
+              id: responsibilitiesTable.id, title: responsibilitiesTable.title,
+              areaId: responsibilitiesTable.areaId, operationId: responsibilitiesTable.operationId,
+            }).from(responsibilitiesTable).where(and(
+              eq(responsibilitiesTable.orgId, user.organizationId!),
+              eq(responsibilitiesTable.active, true),
+              or(eq(responsibilitiesTable.operationId, operationSelection.operationId), isNull(responsibilitiesTable.operationId)),
+            )) : [];
+            const exactResponsibilities = responsibilityCandidates.filter((item) =>
+              normalizeAsaText(item.title) === normalizeAsaText(taskDraft.responsibilityTitle ?? ""));
+            const operationResponsibilities = exactResponsibilities.filter((item) => item.operationId === operationSelection.operationId);
+            const eligibleResponsibilities = operationResponsibilities.length ? operationResponsibilities
+              : exactResponsibilities.filter((item) => item.operationId === null);
+            const linkedResponsibility = taskDraft.responsibilityTitle
+              ? eligibleResponsibilities.length === 1 ? eligibleResponsibilities[0] : null
+              : null;
+            if (taskDraft.responsibilityTitle && !linkedResponsibility) {
+              fullResponse = eligibleResponsibilities.length > 1
+                ? `Encontrei mais de uma responsabilidade ativa chamada “${taskDraft.responsibilityTitle}” na operação. Nada foi criado; use um título que identifique uma única responsabilidade.`
+                : `Não encontrei uma responsabilidade ativa chamada “${taskDraft.responsibilityTitle}” na operação ${operation?.name ?? "selecionada"}. Nada foi criado.`;
+            }
+            const areaId = await resolveTaskAreaId(linkedResponsibility?.id, assignee.id, user.organizationId!);
+            const allowed = await canManageTasks(user.sub, user.role, operationSelection.operationId, user.organizationId!, areaId);
+            if (!fullResponse && !allowed) {
+              fullResponse = "Esta tarefa está fora da sua área de gestão. Nenhuma tarefa foi criada.";
+            } else if (!fullResponse) {
+              const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+              const priorityLabel = { LOW: "baixa", MEDIUM: "média", HIGH: "alta", CRITICAL: "crítica" }[taskDraft.priority];
+              const action: Record<string, unknown> = {
+                action: "ASA_ACTION_PROPOSAL",
+                actionType: "TASK_CREATE",
+                state: "PENDING",
+                operationId: operationSelection.operationId,
+                operationName: operation?.name ?? "Operação",
+                title: taskDraft.title,
+                description: taskDraft.description ?? null,
+                responsibilityId: linkedResponsibility?.id ?? null,
+                responsibilityTitle: linkedResponsibility?.title ?? null,
+                responsibilityAreaId: linkedResponsibility?.areaId ?? null,
+                responsibilityOperationId: linkedResponsibility?.operationId ?? null,
+                assigneeId: assignee.id,
+                assigneeName: assignee.name,
+                dueDate: taskDraft.dueDate,
+                priority: taskDraft.priority,
+                checklistLabels: taskDraft.checklistLabels,
+                mandatoryEvidences: taskDraft.mandatoryEvidences,
+                expiresAt: expiresAt.toISOString(),
+              };
+              const checklistPreview = taskDraft.checklistLabels.length
+                ? `\nChecklist obrigatória:\n${taskDraft.checklistLabels.map((label) => `• ${label}`).join("\n")}`
+                : "";
+              const evidencePreview = taskDraft.mandatoryEvidences.length
+                ? `\nEvidências obrigatórias:\n${taskDraft.mandatoryEvidences.map((item) => `• ${item.type}: ${item.description}`).join("\n")}`
+                : "";
+              const descriptionPreview = taskDraft.description ? `\nDescrição: ${taskDraft.description}` : "";
+              const responsibilityPreview = linkedResponsibility ? `\nResponsabilidade: ${linkedResponsibility.title}` : "";
+              fullResponse = `Prévia da tarefa\nOperação: ${operation?.name ?? "Operação"}\nTítulo: ${taskDraft.title}\nResponsável: ${assignee.name}${responsibilityPreview}\nPrazo: ${taskDraft.dueDate.split("-").reverse().join("/")}\nPrioridade: ${priorityLabel}${descriptionPreview}${checklistPreview}${evidencePreview}\n\nNada foi gravado. Confirme pelo botão para criar a tarefa; a conclusão seguirá o fluxo de aprovação.`;
+              action.previewResponse = fullResponse;
+              toolsUsed.push("asa.task.preview");
+              actionsExecuted.push(action);
+              const [audit] = await db.insert(asaAuditLogTable).values({
+                userId: user.sub,
+                conversationId: String(conversationId),
+                organizationId: user.organizationId!,
+                question: content,
+                response: fullResponse,
+                toolsUsed,
+                actionsExecuted,
+                confirmedByUser: false,
+              }).returning({ id: asaAuditLogTable.id });
+              if (audit) {
+                proposalAuditCreated = true;
+                proposalEvent = {
+                  id: audit.id,
+                  actionType: "TASK_CREATE",
+                  title: taskDraft.title,
+                  description: taskDraft.description,
+                  responsibilityTitle: linkedResponsibility?.title,
+                  operationName: operation?.name ?? "Operação",
+                  assigneeName: assignee.name,
+                  dueDate: taskDraft.dueDate,
+                  priority: taskDraft.priority,
+                  checklistLabels: taskDraft.checklistLabels,
+                  mandatoryEvidences: taskDraft.mandatoryEvidences,
+                  expiresAt: expiresAt.toISOString(),
+                };
+              }
+            }
+          }
+        }
+      }
+    } else if (taskDueDateUpdate.kind === "incomplete") {
+      fullResponse = "Para alterar o prazo, informe o título exato da tarefa entre aspas e a nova data: altere o prazo da tarefa \"título exato\" para DD/MM/AAAA. Vou mostrar uma prévia antes de gravar.";
+    } else if (taskDueDateUpdate.kind === "request") {
+      if (!TASK_MANAGER_ROLES.includes(user.role)) {
+        fullResponse = "A alteração de prazo pela ASA está disponível para gestores autorizados. Nenhuma tarefa foi alterada.";
+      } else {
+        const operationSelection = resolveAsaOperationSelection(content, accessibleOperations, context?.operationId);
+        if (operationSelection.kind !== "selected") {
+          fullResponse = operationSelection.message;
+        } else {
+          const operation = accessibleOperations.find((item) => item.id === operationSelection.operationId);
+          const taskCandidates = await db.select({
+            id: tasksTable.id,
+            title: tasksTable.title,
+            dueDate: tasksTable.dueDate,
+            status: tasksTable.status,
+            assigneeId: tasksTable.assigneeId,
+            responsibilityId: tasksTable.responsibilityId,
+          }).from(tasksTable).where(and(
+            eq(tasksTable.organizationId, user.organizationId!),
+            eq(tasksTable.operationId, operationSelection.operationId),
+            inArray(tasksTable.status, ["CREATED", "IN_PROGRESS", "READY_FOR_APPROVAL", "CHANGES_REQUESTED"]),
+          ));
+          const matches = taskCandidates.filter((task) => normalizeAsaText(task.title) === normalizeAsaText(taskDueDateUpdate.title));
+          if (matches.length !== 1) {
+            fullResponse = matches.length > 1
+              ? `Encontrei mais de uma tarefa chamada “${taskDueDateUpdate.title}” nessa operação. Inclua outro detalhe para diferenciá-las; nada foi alterado.`
+              : `Não encontrei uma tarefa aberta chamada “${taskDueDateUpdate.title}” nessa operação. Nada foi alterado.`;
+          } else {
+            const task = matches[0]!;
+            const areaId = await resolveTaskAreaId(task.responsibilityId ?? undefined, task.assigneeId, user.organizationId!);
+            if (!(await canManageTasks(user.sub, user.role, operationSelection.operationId, user.organizationId!, areaId))) {
+              fullResponse = "Esta tarefa está fora da sua área de gestão. Nenhuma alteração foi feita.";
+            } else if (task.dueDate === taskDueDateUpdate.dueDate) {
+              fullResponse = `O prazo da tarefa “${task.title}” já é ${task.dueDate.split("-").reverse().join("/")}. Nenhuma alteração foi feita.`;
+            } else {
+              const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+              const action: Record<string, unknown> = {
+                action: "ASA_ACTION_PROPOSAL", actionType: "TASK_UPDATE_DUE_DATE", state: "PENDING",
+                operationId: operationSelection.operationId, operationName: operation?.name ?? "Operação",
+                taskId: task.id, title: task.title, expectedDueDate: task.dueDate,
+                previousDueDate: task.dueDate, dueDate: taskDueDateUpdate.dueDate,
+                assigneeId: task.assigneeId, responsibilityId: task.responsibilityId, expectedStatus: task.status,
+                expiresAt: expiresAt.toISOString(),
+              };
+              fullResponse = `Prévia de alteração do prazo\nOperação: ${operation?.name ?? "Operação"}\nTarefa: ${task.title}\nPrazo atual: ${task.dueDate.split("-").reverse().join("/")}\nNovo prazo: ${taskDueDateUpdate.dueDate.split("-").reverse().join("/")}\n\nNada foi alterado. Confirme pelo botão para atualizar somente o prazo.`;
+              action.previewResponse = fullResponse;
+              toolsUsed.push("asa.task_due_date.preview");
+              actionsExecuted.push(action);
+              const [audit] = await db.insert(asaAuditLogTable).values({
+                userId: user.sub, conversationId: String(conversationId), organizationId: user.organizationId!,
+                question: content, response: fullResponse, toolsUsed, actionsExecuted, confirmedByUser: false,
+              }).returning({ id: asaAuditLogTable.id });
+              if (audit) {
+                proposalAuditCreated = true;
+                proposalEvent = {
+                  id: audit.id, actionType: "TASK_UPDATE_DUE_DATE", title: task.title,
+                  operationName: operation?.name ?? "Operação", previousDueDate: task.dueDate,
+                  dueDate: taskDueDateUpdate.dueDate, expiresAt: expiresAt.toISOString(),
+                };
+              }
+            }
+          }
+        }
+      }
+    } else if (taskAssigneeUpdate.kind === "incomplete") {
+      fullResponse = "Para trocar o responsável, informe o título exato da tarefa e o nome completo da pessoa, ambos entre aspas: altere o responsável da tarefa \"título exato\" para \"nome completo\". Vou mostrar uma prévia antes de gravar.";
+    } else if (taskAssigneeUpdate.kind === "request") {
+      if (!TASK_MANAGER_ROLES.includes(user.role)) {
+        fullResponse = "A alteração de responsável pela ASA está disponível para gestores autorizados. Nenhuma tarefa foi alterada.";
+      } else {
+        const operationSelection = resolveAsaOperationSelection(content, accessibleOperations, context?.operationId);
+        if (operationSelection.kind !== "selected") {
+          fullResponse = operationSelection.message;
+        } else {
+          const operation = accessibleOperations.find((item) => item.id === operationSelection.operationId);
+          const candidates = await db.select({
+            id: tasksTable.id, title: tasksTable.title, status: tasksTable.status,
+            assigneeId: tasksTable.assigneeId, responsibilityId: tasksTable.responsibilityId,
+            dueDate: tasksTable.dueDate,
+          }).from(tasksTable).where(and(
+            eq(tasksTable.organizationId, user.organizationId!),
+            eq(tasksTable.operationId, operationSelection.operationId),
+            inArray(tasksTable.status, ["CREATED", "IN_PROGRESS", "READY_FOR_APPROVAL", "CHANGES_REQUESTED"]),
+          ));
+          const matchingTasks = candidates.filter((task) => normalizeAsaText(task.title) === normalizeAsaText(taskAssigneeUpdate.title));
+          if (matchingTasks.length !== 1) {
+            fullResponse = matchingTasks.length > 1
+              ? `Encontrei mais de uma tarefa chamada “${taskAssigneeUpdate.title}” nessa operação. Inclua outro detalhe para diferenciá-las; nada foi alterado.`
+              : `Não encontrei uma tarefa aberta chamada “${taskAssigneeUpdate.title}” nessa operação. Nada foi alterado.`;
+          } else {
+            const task = matchingTasks[0]!;
+            const activeMembers = await db.selectDistinct({ id: usersTable.id, name: usersTable.name, areaId: usersTable.areaId })
+              .from(userRolesTable)
+              .innerJoin(usersTable, eq(usersTable.id, userRolesTable.userId))
+              .where(and(
+                eq(userRolesTable.operationId, operationSelection.operationId),
+                eq(userRolesTable.active, true),
+                eq(usersTable.organizationId, user.organizationId!),
+                eq(usersTable.status, "ACTIVE"),
+              ));
+            const assigneeMatches = activeMembers.filter((person) => normalizeAsaText(person.name) === normalizeAsaText(taskAssigneeUpdate.assigneeName));
+            if (assigneeMatches.length !== 1) {
+              fullResponse = assigneeMatches.length > 1
+                ? `Encontrei mais de uma pessoa chamada ${taskAssigneeUpdate.assigneeName} nessa operação. Nenhuma tarefa foi alterada; informe outro detalhe para diferenciá-las.`
+                : `Não encontrei ${taskAssigneeUpdate.assigneeName} como pessoa ativa da operação ${operation?.name ?? "selecionada"}. Nenhuma tarefa foi alterada.`;
+            } else {
+              const assignee = assigneeMatches[0]!;
+              const taskAreaId = await resolveTaskAreaId(task.responsibilityId ?? undefined, task.assigneeId, user.organizationId!);
+              const targetAreaId = await resolveTaskAreaId(task.responsibilityId ?? undefined, assignee.id, user.organizationId!);
+              const taskAllowed = await canManageTasks(user.sub, user.role, operationSelection.operationId, user.organizationId!, taskAreaId);
+              const targetAllowed = await canManageTasks(user.sub, user.role, operationSelection.operationId, user.organizationId!, targetAreaId);
+              if (!taskAllowed || !targetAllowed) {
+                fullResponse = "Esta tarefa ou a pessoa escolhida está fora da sua área de gestão. Nenhuma alteração foi feita.";
+              } else if (task.assigneeId === assignee.id) {
+                fullResponse = `${assignee.name} já é responsável pela tarefa “${task.title}”. Nenhuma alteração foi feita.`;
+              } else {
+                const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+                const action: Record<string, unknown> = {
+                  action: "ASA_ACTION_PROPOSAL", actionType: "TASK_UPDATE_ASSIGNEE", state: "PENDING",
+                  operationId: operationSelection.operationId, operationName: operation?.name ?? "Operação",
+                  taskId: task.id, title: task.title, expectedAssigneeId: task.assigneeId,
+                  previousAssigneeName: activeMembers.find((person) => person.id === task.assigneeId)?.name ?? "Responsável atual",
+                  assigneeId: assignee.id, assigneeName: assignee.name, responsibilityId: task.responsibilityId,
+                  dueDate: task.dueDate, expectedStatus: task.status, expiresAt: expiresAt.toISOString(),
+                };
+                fullResponse = `Prévia de alteração do responsável\nOperação: ${operation?.name ?? "Operação"}\nTarefa: ${task.title}\nResponsável atual: ${String(action.previousAssigneeName)}\nNovo responsável: ${assignee.name}\n\nNada foi alterado. Confirme pelo botão para atualizar somente o responsável.`;
+                action.previewResponse = fullResponse;
+                toolsUsed.push("asa.task_assignee.preview");
+                actionsExecuted.push(action);
+                const [audit] = await db.insert(asaAuditLogTable).values({
+                  userId: user.sub, conversationId: String(conversationId), organizationId: user.organizationId!,
+                  question: content, response: fullResponse, toolsUsed, actionsExecuted, confirmedByUser: false,
+                }).returning({ id: asaAuditLogTable.id });
+                if (audit) {
+                  proposalAuditCreated = true;
+                  proposalEvent = {
+                    id: audit.id, actionType: "TASK_UPDATE_ASSIGNEE", title: task.title,
+                    operationName: operation?.name ?? "Operação", previousAssigneeName: action.previousAssigneeName,
+                    assigneeName: assignee.name, expiresAt: expiresAt.toISOString(),
+                  };
+                }
+              }
+            }
+          }
+        }
+      }
+    } else if (taskPriorityUpdate.kind === "incomplete") {
+      fullResponse = "Para alterar a prioridade, informe o título exato da tarefa entre aspas e escolha baixa, média, alta ou crítica: altere a prioridade da tarefa \"título exato\" para alta. Vou mostrar uma prévia antes de gravar.";
+    } else if (taskPriorityUpdate.kind === "request") {
+      if (!TASK_MANAGER_ROLES.includes(user.role)) {
+        fullResponse = "A alteração de prioridade pela ASA está disponível para gestores autorizados. Nenhuma tarefa foi alterada.";
+      } else {
+        const operationSelection = resolveAsaOperationSelection(content, accessibleOperations, context?.operationId);
+        if (operationSelection.kind !== "selected") {
+          fullResponse = operationSelection.message;
+        } else {
+          const operation = accessibleOperations.find((item) => item.id === operationSelection.operationId);
+          const candidates = await db.select({
+            id: tasksTable.id, title: tasksTable.title, priority: tasksTable.priority, status: tasksTable.status,
+            assigneeId: tasksTable.assigneeId, responsibilityId: tasksTable.responsibilityId, dueDate: tasksTable.dueDate,
+          }).from(tasksTable).where(and(
+            eq(tasksTable.organizationId, user.organizationId!),
+            eq(tasksTable.operationId, operationSelection.operationId),
+            inArray(tasksTable.status, ["CREATED", "IN_PROGRESS", "READY_FOR_APPROVAL", "CHANGES_REQUESTED"]),
+          ));
+          const matches = candidates.filter((task) => normalizeAsaText(task.title) === normalizeAsaText(taskPriorityUpdate.title));
+          if (matches.length !== 1) {
+            fullResponse = matches.length > 1
+              ? `Encontrei mais de uma tarefa chamada “${taskPriorityUpdate.title}” nessa operação. Inclua outro detalhe para diferenciá-las; nada foi alterado.`
+              : `Não encontrei uma tarefa aberta chamada “${taskPriorityUpdate.title}” nessa operação. Nada foi alterado.`;
+          } else {
+            const task = matches[0]!;
+            const areaId = await resolveTaskAreaId(task.responsibilityId ?? undefined, task.assigneeId, user.organizationId!);
+            if (!(await canManageTasks(user.sub, user.role, operationSelection.operationId, user.organizationId!, areaId))) {
+              fullResponse = "Esta tarefa está fora da sua área de gestão. Nenhuma alteração foi feita.";
+            } else if (task.priority === taskPriorityUpdate.priority) {
+              fullResponse = `A tarefa “${task.title}” já tem prioridade ${({ LOW: "baixa", MEDIUM: "média", HIGH: "alta", CRITICAL: "crítica" } as const)[task.priority]}. Nenhuma alteração foi feita.`;
+            } else {
+              const priorityLabel = { LOW: "baixa", MEDIUM: "média", HIGH: "alta", CRITICAL: "crítica" } as const;
+              const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+              const action: Record<string, unknown> = {
+                action: "ASA_ACTION_PROPOSAL", actionType: "TASK_UPDATE_PRIORITY", state: "PENDING",
+                operationId: operationSelection.operationId, operationName: operation?.name ?? "Operação",
+                taskId: task.id, title: task.title, expectedPriority: task.priority,
+                previousPriority: task.priority, priority: taskPriorityUpdate.priority,
+                assigneeId: task.assigneeId, responsibilityId: task.responsibilityId,
+                dueDate: task.dueDate, expectedStatus: task.status, expiresAt: expiresAt.toISOString(),
+              };
+              fullResponse = `Prévia de alteração da prioridade\nOperação: ${operation?.name ?? "Operação"}\nTarefa: ${task.title}\nPrioridade atual: ${priorityLabel[task.priority]}\nNova prioridade: ${priorityLabel[taskPriorityUpdate.priority]}\n\nNada foi alterado. Confirme pelo botão para atualizar somente a prioridade.`;
+              action.previewResponse = fullResponse;
+              toolsUsed.push("asa.task_priority.preview");
+              actionsExecuted.push(action);
+              const [audit] = await db.insert(asaAuditLogTable).values({
+                userId: user.sub, conversationId: String(conversationId), organizationId: user.organizationId!,
+                question: content, response: fullResponse, toolsUsed, actionsExecuted, confirmedByUser: false,
+              }).returning({ id: asaAuditLogTable.id });
+              if (audit) {
+                proposalAuditCreated = true;
+                proposalEvent = {
+                  id: audit.id, actionType: "TASK_UPDATE_PRIORITY", title: task.title,
+                  operationName: operation?.name ?? "Operação", previousPriority: task.priority,
+                  priority: taskPriorityUpdate.priority, expiresAt: expiresAt.toISOString(),
+                };
+              }
+            }
+          }
+        }
+      }
+    } else if (taskCancellation.kind === "incomplete") {
+      fullResponse = 'Para cancelar uma tarefa, informe o título exato e o motivo: cancele a tarefa "título exato" motivo "motivo da decisão". A ASA mostrará uma prévia; a tarefa só muda após confirmação.';
+    } else if (taskCancellation.kind === "request") {
+      if (!TASK_MANAGER_ROLES.includes(user.role)) {
+        fullResponse = "Cancelar tarefas está disponível apenas para gestores autorizados. Nenhuma alteração foi feita.";
+      } else {
+        const operationSelection = resolveAsaOperationSelection(content, accessibleOperations, context?.operationId);
+        if (operationSelection.kind !== "selected") {
+          fullResponse = operationSelection.message;
+        } else {
+          const operation = accessibleOperations.find((item) => item.id === operationSelection.operationId);
+          const candidates = await db.select().from(tasksTable).where(and(
+            eq(tasksTable.organizationId, user.organizationId!),
+            eq(tasksTable.operationId, operationSelection.operationId),
+            inArray(tasksTable.status, ["CREATED", "IN_PROGRESS", "READY_FOR_APPROVAL", "CHANGES_REQUESTED"]),
+          ));
+          const titleMatches = candidates.filter((task) => normalizeAsaText(task.title) === normalizeAsaText(taskCancellation.title));
+          const matches = [];
+          for (const task of titleMatches) {
+            const areaId = await resolveTaskAreaId(task.responsibilityId ?? undefined, task.assigneeId, user.organizationId!);
+            if (await canManageTasks(user.sub, user.role, operationSelection.operationId, user.organizationId!, areaId)) matches.push(task);
+          }
+          if (matches.length !== 1) {
+            fullResponse = matches.length > 1
+              ? `Encontrei mais de uma tarefa chamada “${taskCancellation.title}” no seu escopo nessa operação. Inclua outro detalhe; nada foi cancelado.`
+              : `Não encontrei uma tarefa aberta chamada “${taskCancellation.title}” dentro do seu escopo. Nada foi alterado.`;
+          } else {
+            const task = matches[0]!;
+            const [assignee] = await db.select({ name: usersTable.name }).from(usersTable)
+              .where(and(eq(usersTable.id, task.assigneeId), eq(usersTable.organizationId, user.organizationId!))).limit(1);
+            const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+            const action: Record<string, unknown> = {
+              action: "ASA_ACTION_PROPOSAL", actionType: "TASK_CANCEL", state: "PENDING",
+              operationId: operationSelection.operationId, operationName: operation?.name ?? "Operação",
+              taskId: task.id, title: task.title, reason: taskCancellation.reason,
+              expectedStatus: task.status, previousStatus: task.status, expectedUpdatedAt: task.updatedAt.toISOString(),
+              assigneeId: task.assigneeId, responsibilityId: task.responsibilityId,
+              dueDate: task.dueDate, priority: task.priority, description: task.description,
+              requiresApproval: task.requiresApproval, expiresAt: expiresAt.toISOString(),
+            };
+            fullResponse = `Prévia para cancelar tarefa\nOperação: ${operation?.name ?? "Operação"}\nTarefa: ${task.title}\nResponsável: ${assignee?.name ?? "Responsável"}\nEstado atual: ${task.status}\nMotivo: ${taskCancellation.reason}\n\nNada foi alterado. Confirme pelo botão para cancelar a tarefa.`;
+            action.previewResponse = fullResponse;
+            toolsUsed.push("asa.task_cancel.preview");
+            actionsExecuted.push(action);
+            const [audit] = await db.insert(asaAuditLogTable).values({
+              userId: user.sub, conversationId: String(conversationId), organizationId: user.organizationId!,
+              question: content, response: fullResponse, toolsUsed, actionsExecuted, confirmedByUser: false,
+            }).returning({ id: asaAuditLogTable.id });
+            if (audit) {
+              proposalAuditCreated = true;
+              proposalEvent = {
+                id: audit.id, actionType: "TASK_CANCEL", title: task.title,
+                operationName: operation?.name ?? "Operação", assigneeName: assignee?.name ?? "Responsável",
+                previousStatus: task.status, reason: taskCancellation.reason, expiresAt: expiresAt.toISOString(),
+              };
+            }
+          }
+        }
+      }
+    } else if (taskStart.kind === "incomplete") {
+      fullResponse = "Para iniciar uma tarefa, informe o título exato entre aspas: inicie a tarefa \"título exato\". Vou mostrar o estado e pedir confirmação antes de iniciar.";
+    } else if (taskStart.kind === "request") {
+      const operationSelection = resolveAsaOperationSelection(content, accessibleOperations, context?.operationId);
+      if (operationSelection.kind !== "selected") {
+        fullResponse = operationSelection.message;
+      } else {
+        const operation = accessibleOperations.find((item) => item.id === operationSelection.operationId);
+        const candidates = await db.select({
+          id: tasksTable.id, title: tasksTable.title, description: tasksTable.description, status: tasksTable.status,
+          assigneeId: tasksTable.assigneeId, responsibilityId: tasksTable.responsibilityId,
+          dueDate: tasksTable.dueDate, priority: tasksTable.priority,
+        }).from(tasksTable).where(and(
+          eq(tasksTable.organizationId, user.organizationId!),
+          eq(tasksTable.operationId, operationSelection.operationId),
+          inArray(tasksTable.status, ["CREATED", "CHANGES_REQUESTED"]),
+        ));
+        const titleMatches = candidates.filter((task) => normalizeAsaText(task.title) === normalizeAsaText(taskStart.title));
+        const matches: typeof candidates = [];
+        for (const task of titleMatches) {
+          if (task.assigneeId === user.sub) {
+            matches.push(task);
+            continue;
+          }
+          if (!TASK_MANAGER_ROLES.includes(user.role)) continue;
+          const areaId = await resolveTaskAreaId(task.responsibilityId ?? undefined, task.assigneeId, user.organizationId!);
+          if (await canManageTasks(user.sub, user.role, operationSelection.operationId, user.organizationId!, areaId)) matches.push(task);
+        }
+        if (matches.length !== 1) {
+          fullResponse = matches.length > 1
+            ? `Encontrei mais de uma tarefa chamada “${taskStart.title}” nessa operação. Inclua outro detalhe; nada foi iniciado.`
+            : `Não encontrei uma tarefa pronta para iniciar chamada “${taskStart.title}” dentro do seu escopo. Nada foi alterado.`;
+        } else {
+          const task = matches[0]!;
+          const [assignee] = await db.select({ name: usersTable.name }).from(usersTable)
+            .where(and(eq(usersTable.id, task.assigneeId), eq(usersTable.organizationId, user.organizationId!))).limit(1);
+          const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+          const action: Record<string, unknown> = {
+            action: "ASA_ACTION_PROPOSAL", actionType: "TASK_START", state: "PENDING",
+            operationId: operationSelection.operationId, operationName: operation?.name ?? "Operação",
+            taskId: task.id, title: task.title, previousStatus: task.status,
+            assigneeId: task.assigneeId, assigneeName: assignee?.name ?? "Responsável",
+            responsibilityId: task.responsibilityId, dueDate: task.dueDate,
+            priority: task.priority, description: task.description, expectedStatus: task.status,
+            expiresAt: expiresAt.toISOString(),
+          };
+          fullResponse = `Prévia para iniciar tarefa\nOperação: ${operation?.name ?? "Operação"}\nTarefa: ${task.title}\nResponsável: ${assignee?.name ?? "Responsável"}\nEstado atual: ${task.status === "CREATED" ? "Pendente" : "Ajustes solicitados"}\nNovo estado: Em andamento\n\nNada foi alterado. Confirme pelo botão para iniciar a tarefa.`;
+          action.previewResponse = fullResponse;
+          toolsUsed.push("asa.task_start.preview");
+          actionsExecuted.push(action);
+          const [audit] = await db.insert(asaAuditLogTable).values({
+            userId: user.sub, conversationId: String(conversationId), organizationId: user.organizationId!,
+            question: content, response: fullResponse, toolsUsed, actionsExecuted, confirmedByUser: false,
+          }).returning({ id: asaAuditLogTable.id });
+          if (audit) {
+            proposalAuditCreated = true;
+            proposalEvent = {
+              id: audit.id, actionType: "TASK_START", title: task.title,
+              operationName: operation?.name ?? "Operação", assigneeName: assignee?.name ?? "Responsável",
+              previousStatus: task.status, expiresAt: expiresAt.toISOString(),
+            };
+          }
+        }
+      }
+    } else if (taskCompletion.kind === "incomplete") {
+      fullResponse = "Para concluir uma tarefa, informe o título exato entre aspas: conclua a tarefa \"título exato\". Só posso propor a conclusão depois de conferir checklist e evidências obrigatórias.";
+    } else if (taskCompletion.kind === "request") {
+      const operationSelection = resolveAsaOperationSelection(content, accessibleOperations, context?.operationId);
+      if (operationSelection.kind !== "selected") {
+        fullResponse = operationSelection.message;
+      } else {
+        const operation = accessibleOperations.find((item) => item.id === operationSelection.operationId);
+        const candidates = await db.select().from(tasksTable).where(and(
+          eq(tasksTable.organizationId, user.organizationId!),
+          eq(tasksTable.operationId, operationSelection.operationId),
+          eq(tasksTable.status, "IN_PROGRESS"),
+        ));
+        const matches = candidates.filter((task) => task.assigneeId === user.sub
+          && normalizeAsaText(task.title) === normalizeAsaText(taskCompletion.title));
+        if (matches.length !== 1) {
+          fullResponse = matches.length > 1
+            ? `Encontrei mais de uma tarefa sua chamada “${taskCompletion.title}” nessa operação. Inclua outro detalhe; nada foi concluído.`
+            : `Não encontrei uma tarefa sua em andamento chamada “${taskCompletion.title}” nessa operação. Nada foi alterado.`;
+        } else {
+          const task = matches[0]!;
+          if (task.requiresApproval) {
+            fullResponse = `A tarefa “${task.title}” exige aprovação. Use o pedido “envie a tarefa \"${task.title}\" para aprovação”; não posso concluí-la diretamente.`;
+          } else {
+            const checklist = task.mandatoryChecklist ?? [];
+            const requiredEvidence = task.mandatoryEvidences ?? [];
+            const uploaded = requiredEvidence.length
+              ? await db.select({ refId: taskEvidencesTable.mandatoryEvidenceRefId })
+                .from(taskEvidencesTable)
+                .where(and(
+                  eq(taskEvidencesTable.taskId, task.id),
+                  eq(taskEvidencesTable.isRequired, true),
+                  eq(taskEvidencesTable.active, true),
+                ))
+              : [];
+            const requiredIds = new Set(requiredEvidence.map((item) => item.id));
+            const uploadedIds = uploaded.map((item) => item.refId)
+              .filter((id): id is string => id !== null && requiredIds.has(id))
+              .sort();
+            const uploadedSet = new Set(uploadedIds);
+            const missingChecklist = checklist.filter((item) => !item.completed);
+            const missingEvidence = requiredEvidence.filter((item) => !uploadedSet.has(item.id));
+            if (missingChecklist.length || missingEvidence.length) {
+              const missing = [
+                ...missingChecklist.map((item) => `Checklist: ${item.label}`),
+                ...missingEvidence.map((item) => `Evidência: ${item.description}`),
+              ];
+              fullResponse = `Ainda não posso concluir “${task.title}”. Falta concluir:\n${missing.map((item) => `• ${item}`).join("\n")}\n\nNada foi alterado.`;
+            } else {
+              const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+              const action: Record<string, unknown> = {
+                action: "ASA_ACTION_PROPOSAL", actionType: "TASK_COMPLETE", state: "PENDING",
+                operationId: operationSelection.operationId, operationName: operation?.name ?? "Operação",
+                taskId: task.id, title: task.title, assigneeId: task.assigneeId,
+                responsibilityId: task.responsibilityId, dueDate: task.dueDate, priority: task.priority,
+                description: task.description, expectedStatus: task.status, expectedRequiresApproval: false,
+                expectedMandatoryChecklist: checklist.map((item) => ({ id: item.id, completed: item.completed })),
+                expectedMandatoryEvidenceIds: requiredEvidence.map((item) => item.id).sort(),
+                fulfilledEvidenceIds: uploadedIds, expiresAt: expiresAt.toISOString(),
+              };
+              fullResponse = `Prévia para concluir tarefa\nOperação: ${operation?.name ?? "Operação"}\nTarefa: ${task.title}\nResponsável: você\nChecklist obrigatório: ${checklist.length}/${checklist.length} concluído\nEvidências obrigatórias: ${requiredEvidence.length}/${requiredEvidence.length} anexada(s)\nNovo estado: Concluída\n\nNada foi alterado. Confirme pelo botão para concluir esta tarefa.`;
+              action.previewResponse = fullResponse;
+              toolsUsed.push("asa.task_complete.preview");
+              actionsExecuted.push(action);
+              const [audit] = await db.insert(asaAuditLogTable).values({
+                userId: user.sub, conversationId: String(conversationId), organizationId: user.organizationId!,
+                question: content, response: fullResponse, toolsUsed, actionsExecuted, confirmedByUser: false,
+              }).returning({ id: asaAuditLogTable.id });
+              if (audit) {
+                proposalAuditCreated = true;
+                proposalEvent = {
+                  id: audit.id, actionType: "TASK_COMPLETE", title: task.title,
+                  operationName: operation?.name ?? "Operação", expiresAt: expiresAt.toISOString(),
+                };
+              }
+            }
+          }
+        }
+      }
+    } else if (taskSubmitForApproval.kind === "incomplete") {
+      fullResponse = "Para enviar uma tarefa para aprovação, informe o título exato entre aspas: envie a tarefa \"título exato\" para aprovação. Só posso propor o envio depois de conferir os itens obrigatórios.";
+    } else if (taskSubmitForApproval.kind === "request") {
+      const operationSelection = resolveAsaOperationSelection(content, accessibleOperations, context?.operationId);
+      if (operationSelection.kind !== "selected") {
+        fullResponse = operationSelection.message;
+      } else {
+        const operation = accessibleOperations.find((item) => item.id === operationSelection.operationId);
+        const candidates = await db.select({
+          id: tasksTable.id, title: tasksTable.title, status: tasksTable.status,
+          assigneeId: tasksTable.assigneeId, requiresApproval: tasksTable.requiresApproval,
+          mandatoryChecklist: tasksTable.mandatoryChecklist, mandatoryEvidences: tasksTable.mandatoryEvidences,
+        }).from(tasksTable).where(and(
+          eq(tasksTable.organizationId, user.organizationId!),
+          eq(tasksTable.operationId, operationSelection.operationId),
+          eq(tasksTable.status, "IN_PROGRESS"),
+        ));
+        const titleMatches = candidates.filter((task) => normalizeAsaText(task.title) === normalizeAsaText(taskSubmitForApproval.title));
+        const matches = titleMatches.filter((task) => task.assigneeId === user.sub);
+        if (matches.length !== 1) {
+          fullResponse = matches.length > 1
+            ? `Encontrei mais de uma tarefa sua chamada “${taskSubmitForApproval.title}” nessa operação. Inclua outro detalhe; nada foi enviado.`
+            : `Não encontrei uma tarefa sua em andamento chamada “${taskSubmitForApproval.title}” nessa operação. Nada foi alterado.`;
+        } else {
+          const task = matches[0]!;
+          const checklist = task.mandatoryChecklist ?? [];
+          const requiredEvidence = task.mandatoryEvidences ?? [];
+          if (!task.requiresApproval) {
+            fullResponse = `A tarefa “${task.title}” não exige aprovação. A ASA não vai concluí-la com um pedido de envio para aprovação; use o fluxo oficial de conclusão.`;
+          } else {
+            const uploaded = requiredEvidence.length
+              ? await db.select({ refId: taskEvidencesTable.mandatoryEvidenceRefId })
+                .from(taskEvidencesTable)
+                .where(and(
+                  eq(taskEvidencesTable.taskId, task.id),
+                  eq(taskEvidencesTable.isRequired, true),
+                  eq(taskEvidencesTable.active, true),
+                ))
+              : [];
+            const requiredIds = new Set(requiredEvidence.map((item) => item.id));
+            const uploadedIds = uploaded.map((item) => item.refId)
+              .filter((id): id is string => id !== null && requiredIds.has(id))
+              .sort();
+            const uploadedSet = new Set(uploadedIds);
+            const missingChecklist = checklist.filter((item) => !item.completed);
+            const missingEvidence = requiredEvidence.filter((item) => !uploadedSet.has(item.id));
+            if (missingChecklist.length || missingEvidence.length) {
+              const missing = [
+                ...missingChecklist.map((item) => `Checklist: ${item.label}`),
+                ...missingEvidence.map((item) => `Evidência: ${item.description}`),
+              ];
+              fullResponse = `Ainda não posso enviar “${task.title}” para aprovação. Falta concluir:\n${missing.map((item) => `• ${item}`).join("\n")}\n\nNada foi alterado.`;
+            } else {
+              const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+              const action: Record<string, unknown> = {
+                action: "ASA_ACTION_PROPOSAL", actionType: "TASK_READY_FOR_APPROVAL", state: "PENDING",
+                operationId: operationSelection.operationId, operationName: operation?.name ?? "Operação",
+                taskId: task.id, title: task.title, assigneeId: task.assigneeId,
+                expectedStatus: task.status, expectedRequiresApproval: true,
+                expectedMandatoryChecklist: checklist.map((item) => ({ id: item.id, completed: item.completed })),
+                expectedMandatoryEvidenceIds: requiredEvidence.map((item) => item.id).sort(),
+                fulfilledEvidenceIds: uploadedIds, expiresAt: expiresAt.toISOString(),
+              };
+              fullResponse = `Prévia para enviar tarefa à aprovação\nOperação: ${operation?.name ?? "Operação"}\nTarefa: ${task.title}\nResponsável: você\nChecklist obrigatório: ${checklist.length}/${checklist.length} concluído\nEvidências obrigatórias: ${requiredEvidence.length}/${requiredEvidence.length} anexada(s)\nNovo estado: Aguardando aprovação\n\nNada foi alterado. Confirme pelo botão para enviar esta tarefa ao aprovador designado.`;
+              action.previewResponse = fullResponse;
+              toolsUsed.push("asa.task_ready_for_approval.preview");
+              actionsExecuted.push(action);
+              const [audit] = await db.insert(asaAuditLogTable).values({
+                userId: user.sub, conversationId: String(conversationId), organizationId: user.organizationId!,
+                question: content, response: fullResponse, toolsUsed, actionsExecuted, confirmedByUser: false,
+              }).returning({ id: asaAuditLogTable.id });
+              if (audit) {
+                proposalAuditCreated = true;
+                proposalEvent = {
+                  id: audit.id, actionType: "TASK_READY_FOR_APPROVAL", title: task.title,
+                  operationName: operation?.name ?? "Operação", expiresAt: expiresAt.toISOString(),
+                };
+              }
+            }
+          }
+        }
+      }
+    } else if (taskResponsibilityUpdate.kind === "incomplete") {
+      fullResponse = "Para mudar o vínculo, informe o título exato da tarefa e da responsabilidade: altere a responsabilidade da tarefa \"tarefa\" para \"responsabilidade\". Use \"nenhuma\" para remover o vínculo. Só posso fazer isso antes do início e sem evidências anexadas.";
+    } else if (taskResponsibilityUpdate.kind === "request") {
+      if (!TASK_MANAGER_ROLES.includes(user.role)) {
+        fullResponse = "A alteração de responsabilidade pela ASA está disponível para gestores autorizados. Nenhuma tarefa foi alterada.";
+      } else {
+        const operationSelection = resolveAsaOperationSelection(content, accessibleOperations, context?.operationId);
+        if (operationSelection.kind !== "selected") {
+          fullResponse = operationSelection.message;
+        } else {
+          const operation = accessibleOperations.find((item) => item.id === operationSelection.operationId);
+          const candidates = await db.select({
+            id: tasksTable.id, title: tasksTable.title, status: tasksTable.status, assigneeId: tasksTable.assigneeId,
+            responsibilityId: tasksTable.responsibilityId, updatedAt: tasksTable.updatedAt,
+          }).from(tasksTable).where(and(
+            eq(tasksTable.organizationId, user.organizationId!),
+            eq(tasksTable.operationId, operationSelection.operationId),
+            inArray(tasksTable.status, ["CREATED", "IN_PROGRESS", "READY_FOR_APPROVAL", "CHANGES_REQUESTED"]),
+          ));
+          const matches = candidates.filter((task) => normalizeAsaText(task.title) === normalizeAsaText(taskResponsibilityUpdate.title));
+          if (matches.length !== 1) {
+            fullResponse = matches.length > 1
+              ? `Encontrei mais de uma tarefa chamada “${taskResponsibilityUpdate.title}” nessa operação. Inclua outro detalhe; nada foi alterado.`
+              : `Não encontrei uma tarefa aberta chamada “${taskResponsibilityUpdate.title}” nessa operação. Nada foi alterado.`;
+          } else {
+            const task = matches[0]!;
+            const oldAreaId = await resolveTaskAreaId(task.responsibilityId ?? undefined, task.assigneeId, user.organizationId!);
+            if (!(await canManageTasks(user.sub, user.role, operationSelection.operationId, user.organizationId!, oldAreaId))) {
+              fullResponse = "Esta tarefa está fora da sua área de gestão. Nenhuma alteração foi feita.";
+            } else if (task.status !== "CREATED") {
+              fullResponse = `A tarefa “${task.title}” já foi iniciada. Só posso mudar a responsabilidade antes do início.`;
+            } else {
+              const evidence = await db.select({ id: taskEvidencesTable.id }).from(taskEvidencesTable)
+                .where(eq(taskEvidencesTable.taskId, task.id)).limit(1);
+              if (evidence.length) {
+                fullResponse = `A tarefa “${task.title}” já tem evidência anexada. Não alterei seu vínculo.`;
+              } else {
+                const responsibilities = await db.select({
+                  id: responsibilitiesTable.id, title: responsibilitiesTable.title,
+                  areaId: responsibilitiesTable.areaId, operationId: responsibilitiesTable.operationId,
+                  updatedAt: responsibilitiesTable.updatedAt,
+                }).from(responsibilitiesTable).where(and(
+                  eq(responsibilitiesTable.orgId, user.organizationId!), eq(responsibilitiesTable.active, true),
+                  or(eq(responsibilitiesTable.operationId, operationSelection.operationId), isNull(responsibilitiesTable.operationId)),
+                ));
+                const targetMatches = taskResponsibilityUpdate.responsibilityTitle === null ? []
+                  : responsibilities.filter((item) => normalizeAsaText(item.title) === normalizeAsaText(taskResponsibilityUpdate.responsibilityTitle!));
+                const operationTargets = targetMatches.filter((item) => item.operationId === operationSelection.operationId);
+                const eligibleTargets = operationTargets.length ? operationTargets : targetMatches.filter((item) => item.operationId === null);
+                const target = eligibleTargets.length === 1 ? eligibleTargets[0] : undefined;
+                if (taskResponsibilityUpdate.responsibilityTitle !== null && !target) {
+                  fullResponse = eligibleTargets.length
+                    ? `Encontrei mais de uma responsabilidade chamada “${taskResponsibilityUpdate.responsibilityTitle}”. Especifique melhor; nada foi alterado.`
+                    : `Não encontrei a responsabilidade ativa “${taskResponsibilityUpdate.responsibilityTitle}” nessa operação. Nada foi alterado.`;
+                } else if ((target?.id ?? null) === (task.responsibilityId ?? null)) {
+                  fullResponse = `A tarefa “${task.title}” já está vinculada a essa responsabilidade. Nada foi alterado.`;
+                } else {
+                  const newAreaId = target?.areaId ?? await resolveTaskAreaId(undefined, task.assigneeId, user.organizationId!);
+                  const targetAreaValid = !target?.areaId || (await db.select({ id: areasTable.id }).from(areasTable).where(and(
+                    eq(areasTable.id, target.areaId), eq(areasTable.organizationId, user.organizationId!), eq(areasTable.active, true),
+                  )).limit(1)).length === 1;
+                  if (!targetAreaValid) {
+                    fullResponse = "A área dessa responsabilidade não está ativa nesta organização. Nenhuma alteração foi feita.";
+                  } else if (!(await canManageTasks(user.sub, user.role, operationSelection.operationId, user.organizationId!, newAreaId))) {
+                    fullResponse = "A responsabilidade de destino está fora da sua área de gestão. Nenhuma alteração foi feita.";
+                  } else {
+                    const oldResponsibility = responsibilities.find((item) => item.id === task.responsibilityId);
+                    if (task.responsibilityId && !oldResponsibility) {
+                      fullResponse = "A responsabilidade atual não está mais ativa. Nenhuma alteração foi feita.";
+                    } else {
+                      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+                      const action: Record<string, unknown> = {
+                        action: "ASA_ACTION_PROPOSAL", actionType: "TASK_UPDATE_RESPONSIBILITY", state: "PENDING",
+                        operationId: operationSelection.operationId, operationName: operation?.name ?? "Operação",
+                        taskId: task.id, title: task.title, assigneeId: task.assigneeId,
+                        expectedUpdatedAt: task.updatedAt.toISOString(), expectedStatus: task.status,
+                        previousResponsibilityId: task.responsibilityId ?? null,
+                        previousResponsibilityTitle: oldResponsibility?.title ?? null,
+                        previousResponsibilityUpdatedAt: oldResponsibility?.updatedAt.toISOString() ?? null,
+                        newResponsibilityId: target?.id ?? null, newResponsibilityTitle: target?.title ?? null,
+                        newResponsibilityUpdatedAt: target?.updatedAt.toISOString() ?? null,
+                        expiresAt: expiresAt.toISOString(),
+                      };
+                      fullResponse = `Prévia de alteração da responsabilidade\nOperação: ${operation?.name ?? "Operação"}\nTarefa: ${task.title}\nVínculo atual: ${oldResponsibility?.title ?? "nenhuma"}\nNovo vínculo: ${target?.title ?? "nenhuma"}\n\nNada foi alterado. Confirme pelo botão para atualizar esta tarefa.`;
+                      action.previewResponse = fullResponse;
+                      toolsUsed.push("asa.task_responsibility.preview");
+                      actionsExecuted.push(action);
+                      const [audit] = await db.insert(asaAuditLogTable).values({
+                        userId: user.sub, conversationId: String(conversationId), organizationId: user.organizationId!,
+                        question: content, response: fullResponse, toolsUsed, actionsExecuted, confirmedByUser: false,
+                      }).returning({ id: asaAuditLogTable.id });
+                      if (audit) {
+                        proposalAuditCreated = true;
+                        proposalEvent = { id: audit.id, actionType: "TASK_UPDATE_RESPONSIBILITY", title: task.title,
+                          operationName: operation?.name ?? "Operação", previousResponsibilityTitle: oldResponsibility?.title ?? null,
+                          newResponsibilityTitle: target?.title ?? null, expiresAt: expiresAt.toISOString() };
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    } else if (taskTitleUpdate.kind === "incomplete") {
+      fullResponse = "Para renomear uma tarefa, informe o título exato atual e o novo título entre aspas: altere o título da tarefa \"título atual\" para \"novo título\". Vou mostrar uma prévia antes de gravar.";
+    } else if (taskTitleUpdate.kind === "request") {
+      if (!TASK_MANAGER_ROLES.includes(user.role)) {
+        fullResponse = "A alteração de título pela ASA está disponível para gestores autorizados. Nenhuma tarefa foi alterada.";
+      } else {
+        const operationSelection = resolveAsaOperationSelection(content, accessibleOperations, context?.operationId);
+        if (operationSelection.kind !== "selected") {
+          fullResponse = operationSelection.message;
+        } else {
+          const operation = accessibleOperations.find((item) => item.id === operationSelection.operationId);
+          const candidates = await db.select({
+            id: tasksTable.id, title: tasksTable.title, description: tasksTable.description, status: tasksTable.status,
+            assigneeId: tasksTable.assigneeId, responsibilityId: tasksTable.responsibilityId,
+            dueDate: tasksTable.dueDate, priority: tasksTable.priority,
+          }).from(tasksTable).where(and(
+            eq(tasksTable.organizationId, user.organizationId!),
+            eq(tasksTable.operationId, operationSelection.operationId),
+            inArray(tasksTable.status, ["CREATED", "IN_PROGRESS", "READY_FOR_APPROVAL", "CHANGES_REQUESTED"]),
+          ));
+          const matches = candidates.filter((task) => normalizeAsaText(task.title) === normalizeAsaText(taskTitleUpdate.title));
+          if (matches.length !== 1) {
+            fullResponse = matches.length > 1
+              ? `Encontrei mais de uma tarefa chamada “${taskTitleUpdate.title}” nessa operação. Inclua outro detalhe para diferenciá-las; nada foi alterado.`
+              : `Não encontrei uma tarefa aberta chamada “${taskTitleUpdate.title}” nessa operação. Nada foi alterado.`;
+          } else {
+            const task = matches[0]!;
+            const areaId = await resolveTaskAreaId(task.responsibilityId ?? undefined, task.assigneeId, user.organizationId!);
+            if (!(await canManageTasks(user.sub, user.role, operationSelection.operationId, user.organizationId!, areaId))) {
+              fullResponse = "Esta tarefa está fora da sua área de gestão. Nenhuma alteração foi feita.";
+            } else if (normalizeAsaText(task.title) === normalizeAsaText(taskTitleUpdate.newTitle)) {
+              fullResponse = `A tarefa “${task.title}” já tem esse título. Nenhuma alteração foi feita.`;
+            } else if (candidates.some((candidate) => candidate.id !== task.id
+              && normalizeAsaText(candidate.title) === normalizeAsaText(taskTitleUpdate.newTitle))) {
+              fullResponse = `Já existe uma tarefa aberta chamada “${taskTitleUpdate.newTitle}” nessa operação. Escolha outro título; nada foi alterado.`;
+            } else {
+              const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+              const action: Record<string, unknown> = {
+                action: "ASA_ACTION_PROPOSAL", actionType: "TASK_UPDATE_TITLE", state: "PENDING",
+                operationId: operationSelection.operationId, operationName: operation?.name ?? "Operação",
+                taskId: task.id, title: task.title, expectedDescription: task.description,
+                previousTitle: task.title, newTitle: taskTitleUpdate.newTitle,
+                assigneeId: task.assigneeId, responsibilityId: task.responsibilityId,
+                dueDate: task.dueDate, priority: task.priority, expectedStatus: task.status,
+                expiresAt: expiresAt.toISOString(),
+              };
+              fullResponse = `Prévia de alteração do título\nOperação: ${operation?.name ?? "Operação"}\nTítulo atual: ${task.title}\nNovo título: ${taskTitleUpdate.newTitle}\n\nNada foi alterado. Confirme pelo botão para renomear somente esta tarefa.`;
+              action.previewResponse = fullResponse;
+              toolsUsed.push("asa.task_title.preview");
+              actionsExecuted.push(action);
+              const [audit] = await db.insert(asaAuditLogTable).values({
+                userId: user.sub, conversationId: String(conversationId), organizationId: user.organizationId!,
+                question: content, response: fullResponse, toolsUsed, actionsExecuted, confirmedByUser: false,
+              }).returning({ id: asaAuditLogTable.id });
+              if (audit) {
+                proposalAuditCreated = true;
+                proposalEvent = {
+                  id: audit.id, actionType: "TASK_UPDATE_TITLE", title: task.title,
+                  operationName: operation?.name ?? "Operação", previousTitle: task.title,
+                  newTitle: taskTitleUpdate.newTitle, expiresAt: expiresAt.toISOString(),
+                };
+              }
+            }
+          }
+        }
+      }
+    } else if (taskRequirementsUpdate.kind === "incomplete") {
+      fullResponse = "Para alterar os requisitos, informe o título exato e os dois campos: atualize os requisitos da tarefa \"título\" para checklist obrigatória \"item 1; item 2\" e evidências obrigatórias \"PDF: descrição; FOTO: descrição\". Use \"nenhuma\" para limpar uma lista. A tarefa precisa ainda não ter sido iniciada.";
+    } else if (taskRequirementsUpdate.kind === "request") {
+      if (!TASK_MANAGER_ROLES.includes(user.role)) {
+        fullResponse = "A alteração de checklist e evidências obrigatórias está disponível para gestores autorizados. Nenhuma tarefa foi alterada.";
+      } else {
+        const operationSelection = resolveAsaOperationSelection(content, accessibleOperations, context?.operationId);
+        if (operationSelection.kind !== "selected") {
+          fullResponse = operationSelection.message;
+        } else {
+          const operation = accessibleOperations.find((item) => item.id === operationSelection.operationId);
+          const candidates = await db.select({
+            id: tasksTable.id, title: tasksTable.title, status: tasksTable.status,
+            assigneeId: tasksTable.assigneeId, responsibilityId: tasksTable.responsibilityId,
+            mandatoryChecklist: tasksTable.mandatoryChecklist, mandatoryEvidences: tasksTable.mandatoryEvidences,
+          }).from(tasksTable).where(and(
+            eq(tasksTable.organizationId, user.organizationId!),
+            eq(tasksTable.operationId, operationSelection.operationId),
+            inArray(tasksTable.status, ["CREATED", "IN_PROGRESS", "READY_FOR_APPROVAL", "CHANGES_REQUESTED"]),
+          ));
+          const matches = candidates.filter((task) => normalizeAsaText(task.title) === normalizeAsaText(taskRequirementsUpdate.title));
+          if (matches.length !== 1) {
+            fullResponse = matches.length > 1
+              ? `Encontrei mais de uma tarefa chamada “${taskRequirementsUpdate.title}” nessa operação. Inclua outro detalhe; nada foi alterado.`
+              : `Não encontrei uma tarefa aberta chamada “${taskRequirementsUpdate.title}” nessa operação. Nada foi alterado.`;
+          } else {
+            const task = matches[0]!;
+            const areaId = await resolveTaskAreaId(task.responsibilityId ?? undefined, task.assigneeId, user.organizationId!);
+            if (!(await canManageTasks(user.sub, user.role, operationSelection.operationId, user.organizationId!, areaId))) {
+              fullResponse = "Esta tarefa está fora da sua área de gestão. Nenhuma alteração foi feita.";
+            } else if (task.status !== "CREATED") {
+              fullResponse = `A tarefa “${task.title}” já foi iniciada. Checklist e evidências obrigatórias só podem ser alteradas antes do início.`;
+            } else {
+              const attached = await db.select({ id: taskEvidencesTable.id }).from(taskEvidencesTable)
+                .where(eq(taskEvidencesTable.taskId, task.id)).limit(1);
+              if (attached.length) {
+                fullResponse = `A tarefa “${task.title}” já tem evidência anexada. Para preservar as referências existentes, não alterei seus requisitos.`;
+              } else {
+                const previousChecklist = task.mandatoryChecklist ?? [];
+                const previousEvidence = task.mandatoryEvidences ?? [];
+                const sameChecklist = previousChecklist.length === taskRequirementsUpdate.checklistLabels.length
+                  && previousChecklist.every((item, index) => normalizeAsaText(item.label) === normalizeAsaText(taskRequirementsUpdate.checklistLabels[index] ?? ""));
+                const sameEvidence = previousEvidence.length === taskRequirementsUpdate.mandatoryEvidences.length
+                  && previousEvidence.every((item, index) => item.type === taskRequirementsUpdate.mandatoryEvidences[index]?.type
+                    && normalizeAsaText(item.description) === normalizeAsaText(taskRequirementsUpdate.mandatoryEvidences[index]?.description ?? ""));
+                if (sameChecklist && sameEvidence) {
+                  fullResponse = `Os requisitos da tarefa “${task.title}” já correspondem ao que você informou. Nada foi alterado.`;
+                } else {
+                  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+                  const checklistText = (labels: string[]) => labels.length ? labels.join("; ") : "nenhuma";
+                  const evidenceText = (items: Array<{ type: string; description: string }>) => items.length
+                    ? items.map((item) => `${item.type}: ${item.description}`).join("; ") : "nenhuma";
+                  const action: Record<string, unknown> = {
+                    action: "ASA_ACTION_PROPOSAL", actionType: "TASK_UPDATE_REQUIREMENTS", state: "PENDING",
+                    operationId: operationSelection.operationId, operationName: operation?.name ?? "Operação",
+                    taskId: task.id, title: task.title, assigneeId: task.assigneeId,
+                    responsibilityId: task.responsibilityId, expectedStatus: task.status,
+                    previousMandatoryChecklist: previousChecklist, previousMandatoryEvidences: previousEvidence,
+                    checklistLabels: taskRequirementsUpdate.checklistLabels,
+                    mandatoryEvidences: taskRequirementsUpdate.mandatoryEvidences,
+                    expiresAt: expiresAt.toISOString(),
+                  };
+                  fullResponse = `Prévia de alteração dos requisitos\nOperação: ${operation?.name ?? "Operação"}\nTarefa: ${task.title}\nChecklist atual: ${checklistText(previousChecklist.map((item) => item.label))}\nNova checklist: ${checklistText(taskRequirementsUpdate.checklistLabels)}\nEvidências atuais: ${evidenceText(previousEvidence)}\nNovas evidências: ${evidenceText(taskRequirementsUpdate.mandatoryEvidences)}\n\nNada foi alterado. Confirme pelo botão para atualizar os requisitos enquanto a tarefa ainda não foi iniciada.`;
+                  action.previewResponse = fullResponse;
+                  toolsUsed.push("asa.task_requirements.preview");
+                  actionsExecuted.push(action);
+                  const [audit] = await db.insert(asaAuditLogTable).values({
+                    userId: user.sub, conversationId: String(conversationId), organizationId: user.organizationId!,
+                    question: content, response: fullResponse, toolsUsed, actionsExecuted, confirmedByUser: false,
+                  }).returning({ id: asaAuditLogTable.id });
+                  if (audit) {
+                    proposalAuditCreated = true;
+                    proposalEvent = {
+                      id: audit.id, actionType: "TASK_UPDATE_REQUIREMENTS", title: task.title,
+                      operationName: operation?.name ?? "Operação", checklistLabels: taskRequirementsUpdate.checklistLabels,
+                      mandatoryEvidences: taskRequirementsUpdate.mandatoryEvidences,
+                      previousMandatoryChecklist: previousChecklist, previousMandatoryEvidences: previousEvidence,
+                      expiresAt: expiresAt.toISOString(),
+                    };
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    } else if (taskDescriptionUpdate.kind === "incomplete") {
+      fullResponse = "Para alterar a descrição, informe o título exato e a nova descrição entre aspas: altere a descrição da tarefa \"título exato\" para \"nova descrição\". Vou mostrar uma prévia antes de gravar.";
+    } else if (taskDescriptionUpdate.kind === "request") {
+      if (!TASK_MANAGER_ROLES.includes(user.role)) {
+        fullResponse = "A alteração de descrição pela ASA está disponível para gestores autorizados. Nenhuma tarefa foi alterada.";
+      } else {
+        const operationSelection = resolveAsaOperationSelection(content, accessibleOperations, context?.operationId);
+        if (operationSelection.kind !== "selected") {
+          fullResponse = operationSelection.message;
+        } else {
+          const operation = accessibleOperations.find((item) => item.id === operationSelection.operationId);
+          const candidates = await db.select({
+            id: tasksTable.id, title: tasksTable.title, description: tasksTable.description, status: tasksTable.status,
+            assigneeId: tasksTable.assigneeId, responsibilityId: tasksTable.responsibilityId,
+            dueDate: tasksTable.dueDate, priority: tasksTable.priority,
+          }).from(tasksTable).where(and(
+            eq(tasksTable.organizationId, user.organizationId!),
+            eq(tasksTable.operationId, operationSelection.operationId),
+            inArray(tasksTable.status, ["CREATED", "IN_PROGRESS", "READY_FOR_APPROVAL", "CHANGES_REQUESTED"]),
+          ));
+          const matches = candidates.filter((task) => normalizeAsaText(task.title) === normalizeAsaText(taskDescriptionUpdate.title));
+          if (matches.length !== 1) {
+            fullResponse = matches.length > 1
+              ? `Encontrei mais de uma tarefa chamada “${taskDescriptionUpdate.title}” nessa operação. Inclua outro detalhe para diferenciá-las; nada foi alterado.`
+              : `Não encontrei uma tarefa aberta chamada “${taskDescriptionUpdate.title}” nessa operação. Nada foi alterado.`;
+          } else {
+            const task = matches[0]!;
+            const areaId = await resolveTaskAreaId(task.responsibilityId ?? undefined, task.assigneeId, user.organizationId!);
+            if (!(await canManageTasks(user.sub, user.role, operationSelection.operationId, user.organizationId!, areaId))) {
+              fullResponse = "Esta tarefa está fora da sua área de gestão. Nenhuma alteração foi feita.";
+            } else if (task.description === taskDescriptionUpdate.description) {
+              fullResponse = `A descrição da tarefa “${task.title}” já está igual. Nenhuma alteração foi feita.`;
+            } else {
+              const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+              const action: Record<string, unknown> = {
+                action: "ASA_ACTION_PROPOSAL", actionType: "TASK_UPDATE_DESCRIPTION", state: "PENDING",
+                operationId: operationSelection.operationId, operationName: operation?.name ?? "Operação",
+                taskId: task.id, title: task.title, expectedDescription: task.description,
+                previousDescription: task.description, description: taskDescriptionUpdate.description,
+                assigneeId: task.assigneeId, responsibilityId: task.responsibilityId,
+                dueDate: task.dueDate, priority: task.priority, expectedStatus: task.status,
+                expiresAt: expiresAt.toISOString(),
+              };
+              fullResponse = `Prévia de alteração da descrição\nOperação: ${operation?.name ?? "Operação"}\nTarefa: ${task.title}\nDescrição atual: ${task.description || "sem descrição"}\nNova descrição: ${taskDescriptionUpdate.description}\n\nNada foi alterado. Confirme pelo botão para atualizar somente a descrição.`;
+              action.previewResponse = fullResponse;
+              toolsUsed.push("asa.task_description.preview");
+              actionsExecuted.push(action);
+              const [audit] = await db.insert(asaAuditLogTable).values({
+                userId: user.sub, conversationId: String(conversationId), organizationId: user.organizationId!,
+                question: content, response: fullResponse, toolsUsed, actionsExecuted, confirmedByUser: false,
+              }).returning({ id: asaAuditLogTable.id });
+              if (audit) {
+                proposalAuditCreated = true;
+                proposalEvent = {
+                  id: audit.id, actionType: "TASK_UPDATE_DESCRIPTION", title: task.title,
+                  operationName: operation?.name ?? "Operação", previousDescription: task.description,
+                  description: taskDescriptionUpdate.description, expiresAt: expiresAt.toISOString(),
+                };
+              }
+            }
+          }
+        }
+      }
+    } else if (learning.kind === "incomplete") {
+      fullResponse = "Para propor um atalho, escreva: ensine que \"frase curta\" significa \"consulta que já funciona\". Nada será ativado sem sua aprovação explícita.";
+    } else if (learning.kind === "proposal") {
+      const targetResolution = resolveAsaCommand(learning.target, operationalDate(), isManager);
+      if (targetResolution.kind !== "command") {
+        fullResponse = "Só posso aprender atalhos para consultas que já funcionam. Diga uma consulta suportada como destino; nenhuma regra foi salva.";
+      } else {
+        const key = `ASA_COMMAND_ALIAS:${learning.phrase}`;
+        const [existing] = await db.select({ id: asaMemoriesTable.id, status: asaMemoriesTable.status, value: asaMemoriesTable.value })
+          .from(asaMemoriesTable)
+          .where(and(
+            eq(asaMemoriesTable.organizationId, user.organizationId!),
+            eq(asaMemoriesTable.createdBy, user.sub),
+            eq(asaMemoriesTable.type, "PERSONAL"),
+            eq(asaMemoriesTable.scope, user.sub),
+            eq(asaMemoriesTable.key, key),
+          ))
+          .limit(1);
+        if (existing && existing.value === learning.target.trim() && existing.status === "APPROVED") {
+          fullResponse = `O atalho “${learning.phrase}” já está aprovado para consultar “${existing.value}”. Nenhuma alteração foi feita.`;
+        } else if (existing && existing.value === learning.target.trim() && existing.status === "PENDING") {
+          fullResponse = `A proposta para “${learning.phrase}” já está aguardando aprovação. Nenhuma alteração foi feita.`;
+        } else {
+          let proposalSaved = true;
+          if (existing) {
+            const updated = await db.update(asaMemoriesTable).set({
+              value: learning.target.trim(), status: "PENDING", approvedBy: null, approvedAt: null, updatedAt: new Date(),
+            }).where(and(
+              eq(asaMemoriesTable.id, existing.id),
+              eq(asaMemoriesTable.createdBy, user.sub),
+              eq(asaMemoriesTable.organizationId, user.organizationId!),
+              eq(asaMemoriesTable.status, existing.status),
+              eq(asaMemoriesTable.value, existing.value),
+            )).returning({ id: asaMemoriesTable.id });
+            proposalSaved = updated.length === 1;
+          } else {
+            await db.insert(asaMemoriesTable).values({
+              type: "PERSONAL",
+              key,
+              value: learning.target.trim(),
+              scope: user.sub,
+              organizationId: user.organizationId!,
+              createdBy: user.sub,
+              status: "PENDING",
+            });
+          }
+          if (proposalSaved) {
+            toolsUsed.push("asa_alias.propose");
+            actionsExecuted.push({ action: existing ? "ASA_COMMAND_ALIAS_UPDATED" : "ASA_COMMAND_ALIAS_PROPOSED", phrase: learning.phrase });
+            fullResponse = `${existing ? "Proposta atualizada" : "Proposta de atalho pessoal"}: “${learning.phrase}” consultará “${learning.target.trim()}”. Está inativa até aprovação. Para aprovar exatamente esta regra, envie: aprovo o atalho “${learning.phrase}”.`;
+          } else {
+            fullResponse = "Esse atalho mudou durante o pedido. Não substituí a versão atual; confira seus aprendizados e tente novamente.";
+          }
+        }
+      }
+    } else if (approval.kind === "incomplete") {
+      fullResponse = "Para aprovar, indique exatamente o atalho entre aspas: aprovo o atalho \"frase curta\". Não aprovei nenhuma regra.";
+    } else if (approval.kind === "approval") {
+      const key = `ASA_COMMAND_ALIAS:${approval.phrase}`;
+      const [pending] = await db.select({ id: asaMemoriesTable.id, value: asaMemoriesTable.value })
+        .from(asaMemoriesTable)
+        .where(and(
+          eq(asaMemoriesTable.organizationId, user.organizationId!),
+          eq(asaMemoriesTable.createdBy, user.sub),
+          eq(asaMemoriesTable.type, "PERSONAL"),
+          eq(asaMemoriesTable.scope, user.sub),
+          eq(asaMemoriesTable.key, key),
+          eq(asaMemoriesTable.status, "PENDING"),
+        ))
+        .limit(1);
+      if (!pending) {
+        fullResponse = `Não encontrei uma proposta pendente sua para o atalho “${approval.phrase}”. Nenhuma regra foi ativada.`;
+      } else {
+        const [approved] = await db.update(asaMemoriesTable).set({
+          status: "APPROVED",
+          approvedBy: user.sub,
+          approvedAt: new Date(),
+          updatedAt: new Date(),
+        }).where(and(
+          eq(asaMemoriesTable.id, pending.id),
+          eq(asaMemoriesTable.organizationId, user.organizationId!),
+          eq(asaMemoriesTable.createdBy, user.sub),
+          eq(asaMemoriesTable.scope, user.sub),
+          eq(asaMemoriesTable.type, "PERSONAL"),
+          eq(asaMemoriesTable.key, key),
+          eq(asaMemoriesTable.status, "PENDING"),
+          eq(asaMemoriesTable.value, pending.value),
+        )).returning({ id: asaMemoriesTable.id });
+        if (!approved) {
+          fullResponse = "A proposta mudou antes da confirmação. Ela continua inativa; confira a lista de aprendizados e tente novamente.";
+        } else {
+          toolsUsed.push("asa_alias.approve");
+          actionsExecuted.push({ action: "ASA_COMMAND_ALIAS_APPROVED", memoryId: approved.id, phrase: approval.phrase, confirmedByUser: true });
+          fullResponse = `Atalho “${approval.phrase}” aprovado. Quando você escrever essa frase, vou consultar “${pending.value}”.`;
+        }
       }
     }
+
+    if (!fullResponse) {
+      const aliases = await db.select({ key: asaMemoriesTable.key, value: asaMemoriesTable.value })
+        .from(asaMemoriesTable)
+        .where(and(
+          eq(asaMemoriesTable.organizationId, user.organizationId!),
+          eq(asaMemoriesTable.createdBy, user.sub),
+          eq(asaMemoriesTable.type, "PERSONAL"),
+          eq(asaMemoriesTable.scope, user.sub),
+          eq(asaMemoriesTable.status, "APPROVED"),
+        ));
+      let resolution = resolveAsaCommand(content, operationalDate(), isManager, context?.page, user.role);
+      if (resolution.kind === "unsupported") {
+        const normalizedContent = normalizeAsaText(content);
+        const alias = aliases.find((memory) => memory.key.startsWith("ASA_COMMAND_ALIAS:")
+          && memory.key.slice("ASA_COMMAND_ALIAS:".length) === normalizedContent);
+        if (alias) {
+          interpretationText = alias.value;
+          resolution = resolveAsaCommand(interpretationText, operationalDate(), isManager, context?.page, user.role);
+        }
+      }
+      if (isAsaUnrecognizedCommandResolution(resolution)) {
+        actionsExecuted.push({ action: "ASA_UNRECOGNIZED_QUERY_V1" });
+      }
+      fullResponse = resolution.kind === "command" ? "" : resolution.message;
+
+    if (resolution.kind === "command") {
+      const { command } = resolution;
+      let operationId: string | null = null;
+      const supervisorTaskQuery = command.tool === "consultar_tarefas_equipe" && (user.role === "SUPERVISOR_A" || user.role === "SUPERVISOR_B");
+      const supervisorResponsibilitiesQuery = command.tool === "consultar_responsabilidades_equipe" && (user.role === "SUPERVISOR_A" || user.role === "SUPERVISOR_B");
+      if (command.tool === "consultar_agenda" || command.tool === "consultar_livro_do_dia" || command.tool === "consultar_livros_do_show" || command.tool === "consultar_escalas" || command.tool === "consultar_meu_dia" || command.tool === "consultar_meu_checkin" || command.tool === "consultar_checkins_equipe" || command.tool === "consultar_ausencias_do_dia" || command.tool === "consultar_tempo_livre" || command.tool === "consultar_atividades" || command.tool === "consultar_tarefa_requisitos" || supervisorTaskQuery || supervisorResponsibilitiesQuery || (command.tool === "consultar_entregas" && command.input.scope === "team")) {
+        let selection = resolveAsaOperationSelection(interpretationText, accessibleOperations, context?.operationId);
+        const delegatedResponsibility = command.tool === "consultar_checkins_equipe" ? "CHECK_INS"
+          : command.tool === "consultar_tempo_livre" ? "SCALES" : null;
+        if (selection.kind !== "selected" && delegatedResponsibility
+          && context?.operationId && user.organizationId
+          && (user.role === "SUPERVISOR_A" || user.role === "SUPERVISOR_B")
+          && await hasActiveResponsibility(user.sub, context.operationId, delegatedResponsibility)) {
+          const [delegatedOperation] = await db.select({ id: operationsTable.id })
+            .from(operationsTable)
+            .where(and(
+              eq(operationsTable.id, context.operationId),
+              eq(operationsTable.organizationId, user.organizationId),
+              eq(operationsTable.status, "ACTIVE"),
+            ))
+            .limit(1);
+          if (delegatedOperation) selection = { kind: "selected", operationId: delegatedOperation.id };
+        }
+        if (selection.kind !== "selected") {
+          fullResponse = selection.message;
+        } else {
+          operationId = selection.operationId;
+        }
+      } else if ((command.tool === "consultar_tarefas_equipe" || command.tool === "consultar_relatorio_tarefas") && context?.operationId) {
+        const selection = resolveAsaOperationSelection(interpretationText, accessibleOperations, context.operationId);
+        if (selection.kind !== "selected") fullResponse = selection.message;
+        else operationId = selection.operationId;
+      } else if (command.tool === "consultar_responsabilidades_equipe"
+        && (context?.operationId || /\boperacao\b/.test(normalizeAsaText(interpretationText)))) {
+        const selection = resolveAsaOperationSelection(interpretationText, accessibleOperations, context?.operationId);
+        if (selection.kind !== "selected") fullResponse = selection.message;
+        else operationId = selection.operationId;
+      }
+
+      if (!fullResponse) {
+        toolsUsed.push(command.tool);
+        res.write(`data: ${JSON.stringify({ tool: command.tool })}\n\n`);
+        const commandInput = command.tool === "consultar_folgas"
+          ? { ...command.input, userId: user.sub }
+          : command.input;
+        const result = await executeTool(command.tool, commandInput, {
+          userId: user.sub,
+          organizationId: user.organizationId ?? null,
+          userRole: user.role,
+          operationId,
+          operationIds: user.operationIds,
+        });
+        if (command.tool === "consultar_biblioteca") {
+          const libraryResult = JSON.parse(result) as { found?: boolean };
+          if (libraryResult.found === false) {
+            const gap = createAsaLibraryGapAction(
+              String(command.input.query ?? ""),
+              typeof command.input.locationName === "string" ? command.input.locationName : undefined,
+            );
+            if (gap) actionsExecuted.push(gap);
+          }
+        }
+        const reversible = JSON.parse(result) as { undo?: { id: string; expiresAt: string; windowSeconds: number } } | null;
+        if (reversible?.undo) res.write(`data: ${JSON.stringify({ undo: reversible.undo })}\n\n`);
+        fullResponse = formatAsaCommandReply(command.tool, result);
+      }
+    }
+    }
+
+    if (proposalEvent) res.write(`data: ${JSON.stringify({ proposal: proposalEvent })}\n\n`);
+    res.write(`data: ${JSON.stringify({ content: fullResponse })}\n\n`);
 
     await db.insert(aiMessages).values({
       conversationId,
@@ -6055,24 +7425,1731 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
       .set({ updatedAt: new Date() })
       .where(eq(conversations.id, conversationId));
 
-    await db.insert(asaAuditLogTable).values({
-      userId: user.sub,
-      conversationId: String(conversationId),
-      organizationId: user.organizationId ?? undefined,
-      question: content,
-      response: fullResponse,
-      toolsUsed,
-      actionsExecuted,
-      confirmedByUser: actionsExecuted.length > 0,
-    });
+    if (!proposalAuditCreated) {
+      await db.insert(asaAuditLogTable).values({
+        userId: user.sub,
+        conversationId: String(conversationId),
+        organizationId: user.organizationId ?? undefined,
+        question: content,
+        response: fullResponse,
+        toolsUsed,
+        actionsExecuted,
+        confirmedByUser: actionsExecuted.some((action) => action.confirmedByUser === true),
+      });
+    }
 
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
   } catch (err) {
-    const errMsg = String(err);
-    res.write(`data: ${JSON.stringify({ error: errMsg })}\n\n`);
+    res.write(`data: ${JSON.stringify({ error: "Não consegui concluir essa consulta agora. Tente novamente." })}\n\n`);
     res.end();
   }
+});
+
+router.post("/asa/actions/:proposalId/confirm", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  const user = req.user!;
+  const proposalId = String(req.params.proposalId);
+  if (!/^[0-9a-f-]{36}$/i.test(proposalId)) { res.status(400).json({ error: "Proposta inválida" }); return; }
+  try {
+    const result = await db.transaction(async (tx) => {
+      const [audit] = await tx.select().from(asaAuditLogTable).where(and(
+        eq(asaAuditLogTable.id, proposalId),
+        eq(asaAuditLogTable.userId, user.sub),
+        eq(asaAuditLogTable.organizationId, user.organizationId!),
+      )).for("update").limit(1);
+      if (!audit) return { status: "not_found" as const };
+      const actions = Array.isArray(audit.actionsExecuted) ? audit.actionsExecuted : [];
+      const proposal = actions.find((item) => item.action === "ASA_ACTION_PROPOSAL" && ASA_PROPOSAL_ACTION_TYPES.has(String(item.actionType)));
+      if (!proposal || audit.confirmedByUser || proposal.state !== "PENDING") return { status: "not_pending" as const };
+      if (isAsaProposalExpired(proposal.expiresAt)) {
+        const updatedActions = actions.map((item) => item === proposal ? { ...item, state: "EXPIRED" } : item);
+        await tx.update(asaAuditLogTable).set({
+          actionsExecuted: updatedActions,
+          response: "A proposta expirou sem alterações.",
+        }).where(eq(asaAuditLogTable.id, audit.id));
+        return { status: "expired" as const };
+      }
+
+      if (proposal.actionType === "ASA_PREFERENCE_UPDATE") {
+        const fallbackPatch = proposal.mode === "SILENT" || proposal.mode === "BALANCED" || proposal.mode === "PROACTIVE"
+          ? { mode: proposal.mode }
+          : undefined;
+        const parsedPatch = parseAsaPreferencePatch(proposal.preferencePatch ?? fallbackPatch);
+        const expectedUpdatedAt = proposal.expectedUpdatedAt;
+        const patch = parsedPatch.ok ? parsedPatch.value : {};
+        const keys = Object.keys(patch) as (keyof AsaPreferencePatch)[];
+        const rawPreviousValues = proposal.previousValues && typeof proposal.previousValues === "object"
+          ? proposal.previousValues as Record<string, unknown>
+          : proposal.previousMode ? { mode: proposal.previousMode } : {};
+        if (!parsedPatch.ok || keys.length !== 1 || (expectedUpdatedAt !== null && typeof expectedUpdatedAt !== "string")
+          || keys.some((key) => !Object.prototype.hasOwnProperty.call(rawPreviousValues, key))) {
+          return { status: "not_pending" as const };
+        }
+        let [preferences] = await tx.select().from(asaUserPreferencesTable)
+          .where(eq(asaUserPreferencesTable.userId, user.sub)).for("update").limit(1);
+        if (!preferences && expectedUpdatedAt === null) {
+          await tx.insert(asaUserPreferencesTable).values({ userId: user.sub }).onConflictDoNothing();
+          [preferences] = await tx.select().from(asaUserPreferencesTable)
+            .where(eq(asaUserPreferencesTable.userId, user.sub)).for("update").limit(1);
+        }
+        const stale = !preferences
+          || (expectedUpdatedAt !== null && preferences.updatedAt.toISOString() !== expectedUpdatedAt)
+          || keys.some((key) => preferences?.[key] !== rawPreviousValues[key]);
+        if (stale) {
+          await tx.update(asaAuditLogTable).set({
+            actionsExecuted: actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item),
+            response: "Suas preferências mudaram desde a prévia. Nada foi alterado; prepare uma nova prévia.",
+          }).where(eq(asaAuditLogTable.id, audit.id));
+          return { status: "stale" as const };
+        }
+        await tx.update(asaUserPreferencesTable).set({ ...patch, updatedAt: new Date() })
+          .where(eq(asaUserPreferencesTable.userId, user.sub));
+        const summary = keys.map((key) => `${asaPreferenceLabel(key)}: ${formatAsaPreferenceValue(key, patch[key])}`).join("; ");
+        await tx.update(asaAuditLogTable).set({
+          actionsExecuted: actions.map((item) => item === proposal
+            ? { ...item, state: "CONFIRMED", confirmedAt: new Date().toISOString() } : item),
+          response: `Preferências pessoais atualizadas. ${summary}.`,
+          confirmedByUser: true,
+        }).where(eq(asaAuditLogTable.id, audit.id));
+        return { status: "asa_preferences_updated" as const, summary };
+      }
+
+      if (proposal.actionType === "MESSAGE_REPLY") {
+        const stale = async (response: string) => {
+          const updatedActions = actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item);
+          await tx.update(asaAuditLogTable).set({ actionsExecuted: updatedActions, response }).where(eq(asaAuditLogTable.id, audit.id));
+          return { status: "stale" as const };
+        };
+        const threadId = typeof proposal.threadId === "string" ? proposal.threadId : "";
+        const expectedTitle = typeof proposal.title === "string" ? proposal.title : "";
+        const content = typeof proposal.content === "string" ? proposal.content.trim() : "";
+        const expectedLastMessageId = typeof proposal.lastMessageId === "string" || proposal.lastMessageId === null
+          ? proposal.lastMessageId as string | null
+          : undefined;
+        const rawParticipants = Array.isArray(proposal.participants) ? proposal.participants : [];
+        const expectedParticipants = rawParticipants.filter((participant): participant is { id: string; name: string } =>
+          Boolean(participant) && typeof participant.id === "string" && typeof participant.name === "string");
+        const participantIds = expectedParticipants.map((participant) => participant.id).sort();
+        if (!threadId || !expectedTitle || expectedTitle.length > 160 || !content || content.length > 2000
+          || expectedLastMessageId === undefined || expectedParticipants.length !== rawParticipants.length
+          || !participantIds.includes(user.sub) || new Set(participantIds).size !== participantIds.length) {
+          return stale("A prévia da resposta ficou inválida. Nada foi enviado; prepare outra.");
+        }
+
+        const [thread] = await tx.select({ id: messageThreadsTable.id, title: messageThreadsTable.title })
+          .from(messageThreadsTable).where(and(
+            eq(messageThreadsTable.id, threadId),
+            eq(messageThreadsTable.orgId, user.organizationId!),
+            eq(messageThreadsTable.status, "OPEN"),
+          )).for("update").limit(1);
+        if (!thread || thread.title !== expectedTitle) {
+          return stale("A conversa foi fechada ou alterada desde a prévia. Nada foi enviado; prepare outra.");
+        }
+
+        const currentParticipants = await tx.select({ userId: messageThreadParticipantsTable.userId })
+          .from(messageThreadParticipantsTable)
+          .where(eq(messageThreadParticipantsTable.threadId, thread.id))
+          .orderBy(asc(messageThreadParticipantsTable.userId))
+          .for("share");
+        const currentParticipantIds = currentParticipants.map((participant) => participant.userId).sort();
+        if (JSON.stringify(currentParticipantIds) !== JSON.stringify(participantIds)) {
+          return stale("Os participantes da conversa mudaram desde a prévia. Nada foi enviado; prepare outra.");
+        }
+
+        const currentMembers = await tx.select({ id: usersTable.id, name: usersTable.name })
+          .from(usersTable).where(and(
+            inArray(usersTable.id, participantIds),
+            eq(usersTable.organizationId, user.organizationId!),
+            eq(usersTable.status, "ACTIVE"),
+          )).for("share");
+        const currentMemberById = new Map(currentMembers.map((member) => [member.id, member]));
+        if (currentMembers.length !== expectedParticipants.length
+          || expectedParticipants.some((participant) => currentMemberById.get(participant.id)?.name !== participant.name)) {
+          return stale("Uma pessoa da conversa não está mais ativa ou teve o nome alterado. Nada foi enviado; prepare outra.");
+        }
+
+        const [lastMessage] = await tx.select({ id: messagesTable.id }).from(messagesTable)
+          .where(eq(messagesTable.threadId, thread.id))
+          .orderBy(desc(messagesTable.createdAt), desc(messagesTable.id))
+          .limit(1);
+        if ((lastMessage?.id ?? null) !== expectedLastMessageId) {
+          return stale("A conversa recebeu uma nova mensagem desde a prévia. Revise o contexto antes de responder novamente.");
+        }
+
+        const sender = currentMemberById.get(user.sub)!;
+        const recipients = expectedParticipants.filter((participant) => participant.id !== user.sub);
+        const [message] = await tx.insert(messagesTable).values({
+          threadId: thread.id, senderId: user.sub, senderName: sender.name ?? null, content,
+        }).returning();
+        if (!message) throw new Error("Não foi possível enviar a resposta");
+        await tx.update(messageThreadParticipantsTable).set({ lastReadAt: new Date() }).where(and(
+          eq(messageThreadParticipantsTable.threadId, thread.id), eq(messageThreadParticipantsTable.userId, user.sub),
+        ));
+        await writeHistoryEvent({
+          category: "MESSAGE", action: "message_sent", title: "Resposta enviada", narrative: content.slice(0, 120),
+          entityType: "message", entityId: message.id, actorId: user.sub, actorName: sender.name,
+          orgId: user.organizationId!, afterState: message,
+          metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id },
+        }, tx as any);
+        const completedAt = new Date().toISOString();
+        const updatedActions = actions.map((item) => item === proposal
+          ? { ...item, state: "CONFIRMED", confirmedAt: completedAt, resultId: message.id }
+          : item);
+        await tx.update(asaAuditLogTable).set({
+          actionsExecuted: updatedActions,
+          response: `Resposta enviada na conversa ${thread.title}.`,
+          confirmedByUser: true,
+        }).where(eq(asaAuditLogTable.id, audit.id));
+        return {
+          status: "message_direct_replied" as const, threadId: thread.id, messageId: message.id,
+          title: thread.title, content, recipientUserIds: recipients.map((participant) => participant.id),
+          recipientNames: recipients.map((participant) => participant.name), senderName: sender.name ?? "Alguém",
+        };
+      }
+
+      if (proposal.actionType === "MESSAGE_DIRECT_CREATE") {
+        const recipientUserId = typeof proposal.recipientUserId === "string" ? proposal.recipientUserId : "";
+        const expectedRecipientName = typeof proposal.recipientName === "string" ? proposal.recipientName : "";
+        const title = typeof proposal.title === "string" ? proposal.title.trim() : "";
+        const content = typeof proposal.content === "string" ? proposal.content.trim() : "";
+        if (!recipientUserId || recipientUserId === user.sub || !expectedRecipientName
+          || !title || title.length > 160 || !content || content.length > 2000) return { status: "stale" as const };
+
+        const [sender] = await tx.select({ id: usersTable.id, name: usersTable.name })
+          .from(usersTable).where(and(
+            eq(usersTable.id, user.sub), eq(usersTable.organizationId, user.organizationId!), eq(usersTable.status, "ACTIVE"),
+          )).for("share").limit(1);
+        const [recipient] = await tx.select({ id: usersTable.id, name: usersTable.name })
+          .from(usersTable).where(and(
+            eq(usersTable.id, recipientUserId), eq(usersTable.organizationId, user.organizationId!), eq(usersTable.status, "ACTIVE"),
+          )).for("share").limit(1);
+        if (!sender || !recipient || normalizeAsaText(recipient.name ?? "") !== normalizeAsaText(expectedRecipientName)) {
+          const updatedActions = actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item);
+          await tx.update(asaAuditLogTable).set({
+            actionsExecuted: updatedActions,
+            response: "O destinatário não está mais disponível com os mesmos dados. Nenhuma mensagem foi enviada; prepare uma nova prévia.",
+          }).where(eq(asaAuditLogTable.id, audit.id));
+          return { status: "stale" as const };
+        }
+
+        const activeRoles = await tx.select({ userId: userRolesTable.userId })
+          .from(userRolesTable)
+          .innerJoin(operationsTable, eq(userRolesTable.operationId, operationsTable.id))
+          .where(and(
+            inArray(userRolesTable.userId, [user.sub, recipientUserId]),
+            eq(userRolesTable.active, true), eq(operationsTable.status, "ACTIVE"),
+            eq(operationsTable.organizationId, user.organizationId!),
+          )).for("share", { of: userRolesTable });
+        const activeRoleUserIds = new Set(activeRoles.map((row) => row.userId));
+        if (!activeRoleUserIds.has(user.sub) || !activeRoleUserIds.has(recipientUserId)) return { status: "stale" as const };
+
+        const [thread] = await tx.insert(messageThreadsTable).values({
+          orgId: user.organizationId!, title, contextType: "DIRECT", createdBy: user.sub, status: "OPEN",
+        }).returning();
+        if (!thread) throw new Error("Não foi possível criar a conversa");
+        await tx.insert(messageThreadParticipantsTable).values([
+          { threadId: thread.id, userId: user.sub, role: "INITIATOR" },
+          { threadId: thread.id, userId: recipientUserId, role: "PARTICIPANT" },
+        ]);
+        const [message] = await tx.insert(messagesTable).values({
+          threadId: thread.id, senderId: user.sub, senderName: sender.name ?? null, content,
+        }).returning();
+        if (!message) throw new Error("Não foi possível enviar a mensagem");
+        await tx.update(messageThreadParticipantsTable).set({ lastReadAt: new Date() }).where(and(
+          eq(messageThreadParticipantsTable.threadId, thread.id), eq(messageThreadParticipantsTable.userId, user.sub),
+        ));
+        await writeHistoryEvent({
+          category: "MESSAGE", action: "thread_created", title: `Conversa criada: ${thread.title}`,
+          narrative: `${sender.name ?? user.sub} iniciou uma conversa.`, entityType: "message_thread", entityId: thread.id,
+          actorId: user.sub, actorName: sender.name, orgId: user.organizationId!,
+          afterState: { status: thread.status, participantIds: [recipientUserId] },
+          metadata: { contextType: "DIRECT", participantCount: 1, source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id },
+        }, tx as any);
+        await writeHistoryEvent({
+          category: "MESSAGE", action: "message_sent", title: "Mensagem enviada", narrative: content.slice(0, 120),
+          entityType: "message", entityId: message.id, actorId: user.sub, actorName: sender.name,
+          orgId: user.organizationId!, afterState: message,
+          metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id },
+        }, tx as any);
+        const completedAt = new Date().toISOString();
+        const updatedActions = actions.map((item) => item === proposal
+          ? { ...item, state: "CONFIRMED", confirmedAt: completedAt, resultId: thread.id, messageId: message.id }
+          : item);
+        await tx.update(asaAuditLogTable).set({
+          actionsExecuted: updatedActions,
+          response: `Mensagem enviada para ${recipient.name}. Conversa: ${thread.title}.`,
+          confirmedByUser: true,
+        }).where(eq(asaAuditLogTable.id, audit.id));
+        return { status: "message_direct_created" as const, threadId: thread.id, messageId: message.id, title, content, recipientName: recipient.name ?? expectedRecipientName, senderName: sender.name ?? "Alguém", recipientUserId };
+      }
+
+      if (proposal.actionType === "MURAL_COMMENT_CREATE") {
+        const announcementId = typeof proposal.announcementId === "string" ? proposal.announcementId : "";
+        const commentBody = typeof proposal.content === "string" ? proposal.content.trim() : "";
+        if (!announcementId || !commentBody || commentBody.length > 2000
+          || typeof proposal.announcementVersion !== "string" || !/^[a-f0-9]{64}$/.test(proposal.announcementVersion)) {
+          return { status: "stale" as const };
+        }
+        const [post] = await tx.select().from(announcementsTable).where(and(
+          eq(announcementsTable.id, announcementId), eq(announcementsTable.orgId, user.organizationId!),
+          eq(announcementsTable.active, true), isNull(announcementsTable.cancelledAt),
+        )).for("update").limit(1);
+        if (!post || !(await canReadAnnouncement(
+          { userId: user.sub, organizationId: user.organizationId!, role: user.role }, post, tx,
+        )) || announcementConfirmationVersion(post) !== proposal.announcementVersion) return { status: "stale" as const };
+        const [comment] = await tx.insert(announcementCommentsTable).values({
+          announcementId: post.id, authorId: user.sub, body: commentBody,
+        }).returning();
+        if (!comment) throw new Error("Não foi possível publicar o comentário");
+        await writeHistoryEvent({
+          category: "NOTICE", action: "mural.comment_created", title: "Comentário no Mural",
+          narrative: commentBody.slice(0, 120), entityType: "announcement_comment", entityId: comment.id,
+          actorId: user.sub, orgId: user.organizationId!, afterState: comment,
+          metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id },
+        }, tx as any);
+        const completedAt = new Date().toISOString();
+        const updatedActions = actions.map((item) => item === proposal
+          ? { ...item, state: "CONFIRMED", confirmedAt: completedAt, resultId: comment.id }
+          : item);
+        await tx.update(asaAuditLogTable).set({
+          actionsExecuted: updatedActions,
+          response: `Comentário publicado em “${post.title ?? "Publicação do Mural"}”.`,
+          confirmedByUser: true,
+        }).where(eq(asaAuditLogTable.id, audit.id));
+        return { status: "mural_comment_created" as const, title: post.title ?? "Publicação", content: commentBody };
+      }
+
+      if (proposal.actionType === "MURAL_REACT") {
+        const announcementId = typeof proposal.announcementId === "string" ? proposal.announcementId : "";
+        const reaction = proposal.reaction === "♥" ? "♥" : "";
+        const previousReaction = typeof proposal.previousReaction === "string" ? proposal.previousReaction : null;
+        if (!announcementId || !reaction || typeof proposal.announcementVersion !== "string"
+          || !/^[a-f0-9]{64}$/.test(proposal.announcementVersion)) return { status: "stale" as const };
+        const [post] = await tx.select().from(announcementsTable).where(and(
+          eq(announcementsTable.id, announcementId),
+          eq(announcementsTable.orgId, user.organizationId!),
+          eq(announcementsTable.active, true),
+          isNull(announcementsTable.cancelledAt),
+        )).for("update").limit(1);
+        if (!post || !(await canReadAnnouncement(
+          { userId: user.sub, organizationId: user.organizationId!, role: user.role }, post, tx,
+        )) || announcementConfirmationVersion(post) !== proposal.announcementVersion) return { status: "stale" as const };
+        const [existingRead] = await tx.select({ reaction: announcementReadsTable.reaction })
+          .from(announcementReadsTable)
+          .where(and(eq(announcementReadsTable.announcementId, post.id), eq(announcementReadsTable.userId, user.sub)))
+          .for("update").limit(1);
+        if ((existingRead?.reaction ?? null) !== previousReaction) return { status: "stale" as const };
+        const now = new Date();
+        const [read] = await tx.insert(announcementReadsTable).values({
+          announcementId: post.id, userId: user.sub, readAt: now, reaction, reactedAt: now,
+        }).onConflictDoUpdate({
+          target: [announcementReadsTable.announcementId, announcementReadsTable.userId],
+          set: { readAt: now, reaction, reactedAt: now },
+        }).returning();
+        if (!read) throw new Error("Não foi possível reagir à publicação");
+        await writeHistoryEvent({
+          category: "NOTICE", action: "mural.reacted", title: "Reação no Mural",
+          narrative: `${reaction} · ${post.title ?? post.body.slice(0, 120)}`,
+          entityType: "announcement", entityId: post.id, actorId: user.sub,
+          orgId: user.organizationId!, afterState: read,
+          metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id },
+        }, tx as any);
+        const completedAt = new Date().toISOString();
+        const updatedActions = actions.map((item) => item === proposal
+          ? { ...item, state: "CONFIRMED", confirmedAt: completedAt }
+          : item);
+        await tx.update(asaAuditLogTable).set({
+          actionsExecuted: updatedActions,
+          response: `Reação de coração registrada na publicação “${post.title ?? "Mural"}”.`,
+          confirmedByUser: true,
+        }).where(eq(asaAuditLogTable.id, audit.id));
+        return { status: "mural_reacted" as const, title: post.title ?? "Publicação" };
+      }
+
+      if (proposal.actionType === "MURAL_ACK") {
+        if (typeof proposal.announcementVersion !== "string" || !/^[a-f0-9]{64}$/.test(proposal.announcementVersion)) return { status: "stale" as const };
+        const confirmation = await confirmAnnouncementRead(
+          { userId: user.sub, organizationId: user.organizationId!, role: user.role },
+          String(proposal.announcementId ?? ""),
+          tx,
+          proposal.announcementVersion,
+        );
+        if (confirmation.status !== "confirmed") return { status: "stale" as const };
+        await writeHistoryEvent({
+          category: "NOTICE",
+          action: "mural.acknowledged",
+          title: "Ciente registrado",
+          narrative: confirmation.post.title ?? confirmation.post.body.slice(0, 120),
+          entityType: "announcement",
+          entityId: confirmation.post.id,
+          actorId: user.sub,
+          orgId: user.organizationId!,
+          afterState: confirmation.read,
+          metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id },
+        }, tx as any);
+        const completedAt = new Date().toISOString();
+        const updatedActions = actions.map((item) => item === proposal
+          ? { ...item, state: "CONFIRMED", confirmedAt: completedAt }
+          : item);
+        await tx.update(asaAuditLogTable).set({
+          actionsExecuted: updatedActions,
+          response: `Ciente registrado para o aviso “${confirmation.post.title ?? "Aviso"}”.`,
+          confirmedByUser: true,
+        }).where(eq(asaAuditLogTable.id, audit.id));
+        return { status: "mural_acknowledged" as const, title: confirmation.post.title ?? "Aviso" };
+      }
+
+      const isTaskAssigneeProposal = proposal.actionType === "TASK_START" || proposal.actionType === "TASK_READY_FOR_APPROVAL" || proposal.actionType === "TASK_COMPLETE";
+      const isTaskCommentProposal = proposal.actionType === "TASK_COMMENT_CREATE";
+      const isTaskEvidenceLinkProposal = proposal.actionType === "TASK_EVIDENCE_LINK_ADD";
+      const isTaskChecklistProposal = proposal.actionType === "TASK_CHECKLIST_UPDATE";
+      const isAgendaEventProposal = proposal.actionType === "AGENDA_MEETING_CREATE";
+      const isAgendaDraftRenameProposal = proposal.actionType === "AGENDA_DRAFT_RENAME";
+      const isAgendaDraftScheduleProposal = proposal.actionType === "AGENDA_DRAFT_SCHEDULE_UPDATE";
+      const isAgendaDraftNotesProposal = proposal.actionType === "AGENDA_DRAFT_NOTES_UPDATE";
+      const isAgendaDraftUpdateProposal = isAgendaDraftRenameProposal || isAgendaDraftScheduleProposal || isAgendaDraftNotesProposal;
+      if (!TASK_MANAGER_ROLES.includes(user.role) && !isTaskAssigneeProposal && !isTaskCommentProposal && !isTaskEvidenceLinkProposal && !isTaskChecklistProposal && !isAgendaEventProposal && !isAgendaDraftUpdateProposal) return { status: "forbidden" as const };
+
+      const operationId = String(proposal.operationId ?? "");
+      // Lock memberships only; upgrading locks on joined operations can deadlock other proposals.
+      const currentRoleRows = await tx.select({ role: userRolesTable.role, operationId: userRolesTable.operationId })
+        .from(userRolesTable)
+        .innerJoin(operationsTable, eq(userRolesTable.operationId, operationsTable.id))
+        .where(and(
+          eq(userRolesTable.userId, user.sub),
+          eq(userRolesTable.active, true),
+          eq(operationsTable.organizationId, user.organizationId!),
+        ))
+        .for("share", { of: userRolesTable });
+      const currentRole = resolvePrimaryRole(currentRoleRows);
+      if (!currentRole || (!TASK_MANAGER_ROLES.includes(currentRole) && !isTaskAssigneeProposal && !isTaskCommentProposal && !isTaskEvidenceLinkProposal && !isTaskChecklistProposal && !isAgendaEventProposal && !isAgendaDraftUpdateProposal)
+        || !currentRoleRows.some((row) => row.operationId === operationId)) return { status: "forbidden" as const };
+      if ((proposal.actionType === "NOTICE_DRAFT_CREATE" || proposal.actionType === "NOTICE_DRAFT_UPDATE")
+        && !MANAGER_ROLES.includes(currentRole)) return { status: "forbidden" as const };
+      if (isAgendaDraftUpdateProposal && !canManageAsaAgenda(currentRole)) return { status: "forbidden" as const };
+      const [operation] = await tx.select({ id: operationsTable.id, name: operationsTable.name })
+        .from(operationsTable)
+        .where(and(
+          eq(operationsTable.id, operationId),
+          eq(operationsTable.organizationId, user.organizationId!),
+          eq(operationsTable.status, "ACTIVE"),
+        ))
+        .for("update")
+        .limit(1);
+      if (!operation) return { status: "stale" as const };
+      if (proposal.actionType === "NOTICE_DRAFT_CREATE" || proposal.actionType === "NOTICE_DRAFT_UPDATE") {
+        const operationRole = resolvePrimaryRole(currentRoleRows.filter((row) => row.operationId === operationId));
+        if (!operationRole || !MANAGER_ROLES.includes(operationRole)) return { status: "forbidden" as const };
+      }
+
+      if (proposal.actionType === "TASK_CHECKLIST_UPDATE") {
+        const stale = async () => {
+          await tx.update(asaAuditLogTable).set({
+            actionsExecuted: actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item),
+            response: "A tarefa ou checklist mudou desde a prévia. Nada foi alterado; prepare uma nova prévia.",
+          }).where(eq(asaAuditLogTable.id, audit.id));
+          return { status: "stale" as const };
+        };
+        const taskId = typeof proposal.taskId === "string" ? proposal.taskId : "";
+        const itemId = typeof proposal.checklistItemId === "string" ? proposal.checklistItemId : "";
+        const itemLabel = typeof proposal.checklistItemLabel === "string" ? proposal.checklistItemLabel : "";
+        const expectedUpdatedAt = typeof proposal.expectedUpdatedAt === "string" ? proposal.expectedUpdatedAt : "";
+        const checklistKind = proposal.checklistKind === "mandatory" || proposal.checklistKind === "operational" ? proposal.checklistKind : null;
+        const completed = typeof proposal.checklistCompleted === "boolean" ? proposal.checklistCompleted : null;
+        let expectedChecklist: Array<{ id: string; label: string; completed: boolean }> | null = null;
+        try {
+          const parsed = JSON.parse(String(proposal.expectedChecklist ?? ""));
+          if (Array.isArray(parsed) && parsed.every((item) => item && typeof item.id === "string"
+            && typeof item.label === "string" && typeof item.completed === "boolean")) expectedChecklist = parsed;
+        } catch { expectedChecklist = null; }
+        if (!taskId || !itemId || !itemLabel || !expectedUpdatedAt || !checklistKind || completed === null
+          || !expectedChecklist || operation.name !== proposal.operationName) return stale();
+        const [task] = await tx.select().from(tasksTable).where(and(
+          eq(tasksTable.id, taskId), eq(tasksTable.organizationId, user.organizationId!), eq(tasksTable.operationId, operationId),
+        )).for("update").limit(1);
+        const currentChecklist = task
+          ? checklistKind === "mandatory" ? task.mandatoryChecklist ?? [] : task.operationalChecklist ?? []
+          : [];
+        const checklistSnapshotMatches = currentChecklist.length === expectedChecklist?.length
+          && currentChecklist.every((item, index) => item.id === expectedChecklist![index]!.id
+            && item.label === expectedChecklist![index]!.label && item.completed === expectedChecklist![index]!.completed);
+        if (!task || task.title !== proposal.title || task.assigneeId !== user.sub || task.assigneeId !== proposal.assigneeId
+          || ["APPROVED", "COMPLETED", "CANCELLED"].includes(task.status) || task.status !== proposal.expectedStatus
+          || task.updatedAt.toISOString() !== expectedUpdatedAt || !checklistSnapshotMatches) return stale();
+        const matches = currentChecklist.filter((item) => item.id === itemId && item.label === itemLabel);
+        if (matches.length !== 1 || matches[0]!.completed !== proposal.previousChecklistCompleted || matches[0]!.completed === completed) return stale();
+        const updatedChecklist = currentChecklist.map((item) => item.id === itemId ? { ...item, completed } : item);
+        const [updated] = await tx.update(tasksTable).set({
+          ...(checklistKind === "mandatory" ? { mandatoryChecklist: updatedChecklist } : { operationalChecklist: updatedChecklist }),
+          updatedAt: new Date(),
+        }).where(eq(tasksTable.id, task.id)).returning();
+        if (!updated) throw new Error("Não foi possível atualizar o item da checklist");
+        const [actor] = await tx.select({ fullName: usersTable.fullName }).from(usersTable)
+          .where(eq(usersTable.id, user.sub)).for("share").limit(1);
+        await writeHistoryEvent({
+          category: "TASK", action: "task.checklist_item_updated", title: `Checklist atualizada: ${task.title}`,
+          narrative: `${actor?.fullName ?? "A pessoa responsável"} marcou “${itemLabel}” como ${completed ? "concluído" : "pendente"} na tarefa “${task.title}”.`,
+          entityType: "task", entityId: task.id, actorId: user.sub, actorType: "HUMAN",
+          operationId, orgId: user.organizationId!, beforeState: task, afterState: updated,
+          metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id, checklistKind, checklistItemId: itemId, checklistItemLabel: itemLabel },
+        }, tx as any);
+        const confirmedAt = new Date().toISOString();
+        await tx.update(asaAuditLogTable).set({
+          actionsExecuted: actions.map((item) => item === proposal
+            ? { ...item, state: "CONFIRMED", confirmedAt, resultId: task.id }
+            : item),
+          response: `Item “${itemLabel}” da tarefa “${task.title}” marcado como ${completed ? "concluído" : "pendente"}.`,
+          confirmedByUser: true,
+        }).where(eq(asaAuditLogTable.id, audit.id));
+        return { status: "task_checklist_updated" as const, taskId: task.id, title: task.title, itemLabel, completed };
+      }
+
+      if (proposal.actionType === "TASK_EVIDENCE_LINK_ADD") {
+        const stale = async () => {
+          await tx.update(asaAuditLogTable).set({
+            actionsExecuted: actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item),
+            response: "A tarefa mudou ou foi encerrada desde a prévia. Nada foi anexado; prepare uma nova prévia.",
+          }).where(eq(asaAuditLogTable.id, audit.id));
+          return { status: "stale" as const };
+        };
+        const taskId = typeof proposal.taskId === "string" ? proposal.taskId : "";
+        const url = typeof proposal.evidenceUrl === "string" ? proposal.evidenceUrl : "";
+        const description = typeof proposal.evidenceDescription === "string" ? proposal.evidenceDescription.trim() : "";
+        const expectedUpdatedAt = typeof proposal.expectedUpdatedAt === "string" ? proposal.expectedUpdatedAt : "";
+        let parsedUrl: URL | null = null;
+        try { parsedUrl = new URL(url); } catch { parsedUrl = null; }
+        if (!taskId || !parsedUrl || (parsedUrl.protocol !== "https:" && parsedUrl.protocol !== "http:")
+          || !parsedUrl.hostname || parsedUrl.username || parsedUrl.password || !description || description.length > 240
+          || proposal.evidenceType !== "LINK" || !expectedUpdatedAt || operation.name !== proposal.operationName) return stale();
+        const [task] = await tx.select().from(tasksTable).where(and(
+          eq(tasksTable.id, taskId), eq(tasksTable.organizationId, user.organizationId!), eq(tasksTable.operationId, operationId),
+        )).for("update").limit(1);
+        if (!task || task.title !== proposal.title || task.status !== proposal.expectedStatus
+          || ["APPROVED", "COMPLETED", "CANCELLED"].includes(task.status)
+          || task.updatedAt.toISOString() !== expectedUpdatedAt || task.creatorId !== proposal.creatorId
+          || task.assigneeId !== proposal.assigneeId || task.responsibilityId !== (proposal.responsibilityId ?? null)) return stale();
+        const operationRole = resolvePrimaryRole(currentRoleRows.filter((row) => row.operationId === operationId));
+        const areaId = await resolveTaskAreaId(task.responsibilityId ?? undefined, task.assigneeId, user.organizationId!, tx);
+        const managerCanManage = TASK_MANAGER_ROLES.includes(operationRole ?? "")
+          && await canManageTasks(user.sub, operationRole!, operationId, user.organizationId!, areaId, tx);
+        const involved = task.creatorId === user.sub || task.assigneeId === user.sub;
+        if (!managerCanManage && !involved) return { status: "forbidden" as const };
+        const [evidence] = await tx.insert(taskEvidencesTable).values({
+          taskId: task.id, uploaderId: user.sub, type: "LINK", url: parsedUrl.toString(),
+          description, isRequired: false, mandatoryEvidenceRefId: null,
+        }).returning();
+        if (!evidence) throw new Error("Não foi possível anexar o link");
+        const [actor] = await tx.select({ fullName: usersTable.fullName }).from(usersTable)
+          .where(eq(usersTable.id, user.sub)).for("share").limit(1);
+        await writeHistoryEvent({
+          category: "TASK", action: "task.evidence_added", title: `Link complementar anexado: ${task.title}`,
+          narrative: `${actor?.fullName ?? "Uma pessoa envolvida"} adicionou um link complementar à tarefa “${task.title}”.`,
+          entityType: "task", entityId: task.id, actorId: user.sub, actorType: "HUMAN",
+          operationId, orgId: user.organizationId!, afterState: evidence,
+          metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id, evidenceId: evidence.id, isRequired: false },
+        }, tx as any);
+        const confirmedAt = new Date().toISOString();
+        await tx.update(asaAuditLogTable).set({
+          actionsExecuted: actions.map((item) => item === proposal
+            ? { ...item, state: "CONFIRMED", confirmedAt, resultId: evidence.id }
+            : item),
+          response: `Link complementar anexado à tarefa “${task.title}”. Não conta como evidência obrigatória.`,
+          confirmedByUser: true,
+        }).where(eq(asaAuditLogTable.id, audit.id));
+        return { status: "task_evidence_link_added" as const, taskId: task.id, title: task.title };
+      }
+
+      if (proposal.actionType === "TASK_COMMENT_CREATE") {
+        const stale = async () => {
+          await tx.update(asaAuditLogTable).set({
+            actionsExecuted: actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item),
+            response: "A tarefa mudou desde a prévia. Nada foi publicado; prepare um comentário novo.",
+          }).where(eq(asaAuditLogTable.id, audit.id));
+          return { status: "stale" as const };
+        };
+        const taskId = typeof proposal.taskId === "string" ? proposal.taskId : "";
+        const content = typeof proposal.content === "string" ? proposal.content.trim() : "";
+        const expectedUpdatedAt = typeof proposal.expectedUpdatedAt === "string" ? proposal.expectedUpdatedAt : "";
+        if (!taskId || !content || content.length > 2000 || !expectedUpdatedAt || operation.name !== proposal.operationName) return stale();
+        const [task] = await tx.select().from(tasksTable).where(and(
+          eq(tasksTable.id, taskId),
+          eq(tasksTable.organizationId, user.organizationId!),
+          eq(tasksTable.operationId, operationId),
+        )).for("update").limit(1);
+        if (!task || task.title !== proposal.title || task.status !== proposal.expectedStatus
+          || task.updatedAt.toISOString() !== expectedUpdatedAt || task.creatorId !== proposal.creatorId
+          || task.assigneeId !== proposal.assigneeId || task.approverId !== (proposal.approverId ?? null)
+          || task.responsibilityId !== (proposal.responsibilityId ?? null)) return stale();
+        const areaId = await resolveTaskAreaId(task.responsibilityId ?? undefined, task.assigneeId, user.organizationId!, tx);
+        const operationRole = resolvePrimaryRole(currentRoleRows.filter((row) => row.operationId === operationId));
+        const managerCanManage = TASK_MANAGER_ROLES.includes(operationRole ?? "")
+          && await canManageTasks(user.sub, operationRole!, operationId, user.organizationId!, areaId, tx);
+        const involved = [task.creatorId, task.assigneeId, task.approverId].includes(user.sub);
+        if (!managerCanManage && !involved) return { status: "forbidden" as const };
+        const [actor] = await tx.select({ fullName: usersTable.fullName }).from(usersTable)
+          .where(eq(usersTable.id, user.sub)).for("share").limit(1);
+        const [comment] = await tx.insert(taskCommentsTable).values({
+          taskId: task.id, authorId: user.sub, body: content,
+        }).returning();
+        if (!comment) throw new Error("Não foi possível registrar o comentário");
+        await writeHistoryEvent({
+          category: "TASK", action: "task.comment_added", title: `Comentário em: ${task.title}`,
+          narrative: `${actor?.fullName ?? "Uma pessoa envolvida"} comentou na tarefa “${task.title}”.`,
+          entityType: "task", entityId: task.id, actorId: user.sub, actorType: "HUMAN",
+          operationId, orgId: user.organizationId!, afterState: comment,
+          metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id, commentId: comment.id },
+        }, tx as any);
+        const confirmedAt = new Date().toISOString();
+        await tx.update(asaAuditLogTable).set({
+          actionsExecuted: actions.map((item) => item === proposal
+            ? { ...item, state: "CONFIRMED", confirmedAt, resultId: comment.id }
+            : item),
+          response: `Comentário registrado na tarefa “${task.title}”.`,
+          confirmedByUser: true,
+        }).where(eq(asaAuditLogTable.id, audit.id));
+        return { status: "task_comment_created" as const, taskId: task.id, title: task.title };
+      }
+
+      if (proposal.actionType === "TASK_CANCEL") {
+        const stale = async () => {
+          await tx.update(asaAuditLogTable).set({
+            actionsExecuted: actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item),
+            response: "A tarefa mudou ou deixou de estar aberta desde a prévia. Nada foi cancelado; prepare uma nova prévia.",
+          }).where(eq(asaAuditLogTable.id, audit.id));
+          return { status: "stale" as const };
+        };
+        const taskId = typeof proposal.taskId === "string" ? proposal.taskId : "";
+        const reason = typeof proposal.reason === "string" ? proposal.reason.trim() : "";
+        const expectedUpdatedAt = typeof proposal.expectedUpdatedAt === "string" ? proposal.expectedUpdatedAt : "";
+        if (!taskId || !reason || reason.length > 500 || !expectedUpdatedAt || operation.name !== proposal.operationName) return stale();
+        const [task] = await tx.select().from(tasksTable).where(and(
+          eq(tasksTable.id, taskId),
+          eq(tasksTable.organizationId, user.organizationId!),
+          eq(tasksTable.operationId, operationId),
+        )).for("update").limit(1);
+        if (!task || task.title !== proposal.title || task.status !== proposal.expectedStatus
+          || task.status !== proposal.previousStatus || task.updatedAt.toISOString() !== expectedUpdatedAt
+          || task.assigneeId !== proposal.assigneeId || task.responsibilityId !== (proposal.responsibilityId ?? null)
+          || task.dueDate !== (proposal.dueDate ?? null) || task.priority !== proposal.priority
+          || task.description !== (proposal.description ?? null) || task.requiresApproval !== proposal.requiresApproval
+          || !["CREATED", "IN_PROGRESS", "READY_FOR_APPROVAL", "CHANGES_REQUESTED"].includes(task.status)) return stale();
+        const areaId = await resolveTaskAreaId(task.responsibilityId ?? undefined, task.assigneeId, user.organizationId!, tx);
+        if (!TASK_MANAGER_ROLES.includes(currentRole)
+          || !(await canManageTasks(user.sub, currentRole, operationId, user.organizationId!, areaId, tx))) return { status: "forbidden" as const };
+        const [actor] = await tx.select({ fullName: usersTable.fullName }).from(usersTable)
+          .where(eq(usersTable.id, user.sub)).for("share").limit(1);
+        const cancelledAt = new Date();
+        const [updated] = await tx.update(tasksTable).set({
+          status: "CANCELLED", cancelledAt, cancelledById: user.sub, updatedAt: cancelledAt,
+        }).where(eq(tasksTable.id, task.id)).returning();
+        if (!updated) throw new Error("Não foi possível cancelar a tarefa");
+        await writeHistoryEvent({
+          category: "TASK", action: "task.cancelled", title: `Tarefa cancelada: ${task.title}`,
+          narrative: `${actor?.fullName ?? "Uma pessoa gestora"} cancelou a tarefa “${task.title}”. Motivo: ${reason}`,
+          entityType: "task", entityId: task.id, actorId: user.sub, actorType: "HUMAN",
+          operationId, orgId: user.organizationId!, beforeState: task, afterState: updated,
+          metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id, reason },
+        }, tx as any);
+        const confirmedAt = new Date().toISOString();
+        await tx.update(asaAuditLogTable).set({
+          actionsExecuted: actions.map((item) => item === proposal
+            ? { ...item, state: "CONFIRMED", confirmedAt, resultId: task.id }
+            : item),
+          response: `Tarefa “${task.title}” cancelada. Motivo: ${reason}`,
+          confirmedByUser: true,
+        }).where(eq(asaAuditLogTable.id, audit.id));
+        return { status: "task_cancelled" as const, taskId: task.id, title: task.title };
+      }
+
+      if (proposal.actionType === "NOTICE_DRAFT_UPDATE") {
+        const noticeId = typeof proposal.noticeId === "string" ? proposal.noticeId : "";
+        const [notice] = await tx.select().from(noticesTable).where(and(
+          eq(noticesTable.id, noticeId),
+          eq(noticesTable.operationId, operationId),
+        )).for("update").limit(1);
+        const stale = async () => {
+          await tx.update(asaAuditLogTable).set({
+            actionsExecuted: actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item),
+            response: "O rascunho mudou ou deixou de estar disponível desde a prévia. Nada foi alterado; prepare uma nova prévia.",
+          }).where(eq(asaAuditLogTable.id, audit.id));
+          return { status: "stale" as const };
+        };
+        if (!notice || operation.name !== proposal.operationName || notice.status !== "DRAFT"
+          || notice.autoGenerated || notice.cancelledAt
+          || notice.title !== proposal.previousTitle || notice.title !== proposal.title
+          || notice.content !== proposal.previousContent || proposal.expectedStatus !== "DRAFT") return stale();
+        const newTitle = typeof proposal.newTitle === "string" ? proposal.newTitle.trim() : "";
+        const newContent = typeof proposal.content === "string" ? proposal.content.trim() : "";
+        if (!newTitle || newTitle.length > 120 || !newContent || newContent.length > 2000) return stale();
+        const [updated] = await tx.update(noticesTable).set({ title: newTitle, content: newContent })
+          .where(eq(noticesTable.id, notice.id)).returning();
+        if (!updated) throw new Error("Não foi possível atualizar o rascunho");
+        await writeHistoryEvent({
+          category: "NOTICE", action: "updated", title: `Rascunho atualizado: ${newTitle}`,
+          narrative: `Rascunho de aviso “${notice.title ?? "sem título"}” atualizado; continua não publicado.`,
+          entityType: "notice", entityId: notice.id, actorId: user.sub, actorType: "HUMAN",
+          operationId, orgId: user.organizationId!, beforeState: notice, afterState: updated,
+          metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id },
+        }, tx as any);
+        const confirmedAt = new Date().toISOString();
+        await tx.update(asaAuditLogTable).set({
+          actionsExecuted: actions.map((item) => item === proposal
+            ? { ...item, state: "CONFIRMED", confirmedAt, resultId: notice.id } : item),
+          response: `Rascunho de aviso atualizado: ${newTitle}. Ele continua não publicado.`,
+          confirmedByUser: true,
+        }).where(eq(asaAuditLogTable.id, audit.id));
+        return { status: "notice_draft_updated" as const, noticeId: notice.id, title: newTitle };
+      }
+
+      if (isAgendaDraftUpdateProposal) {
+        const operationRole = resolvePrimaryRole(currentRoleRows.filter((row) => row.operationId === operationId));
+        if (!operationRole || !canManageAsaAgenda(operationRole)) return { status: "forbidden" as const };
+        const eventId = String(proposal.eventId ?? "");
+        const [event] = await tx.select().from(agendaEventsTable).where(and(
+          eq(agendaEventsTable.id, eventId),
+          eq(agendaEventsTable.operationId, operationId),
+        )).for("update").limit(1);
+        const newTitle = typeof proposal.newTitle === "string" ? proposal.newTitle.trim() : "";
+        const stale = async () => {
+          await tx.update(asaAuditLogTable).set({
+            actionsExecuted: actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item),
+            response: "O rascunho da reunião mudou ou deixou de estar disponível desde a prévia. Nada foi alterado; prepare uma nova prévia.",
+          }).where(eq(asaAuditLogTable.id, audit.id));
+          return { status: "stale" as const };
+        };
+        const isStale = !event || operation.name !== proposal.operationName || event.type !== "MEETING" || event.status !== "DRAFT"
+          || event.title !== proposal.title || proposal.expectedStatus !== "DRAFT"
+          || (isAgendaDraftRenameProposal && (event.title !== proposal.previousTitle
+            || event.date !== proposal.date || event.startTime !== proposal.startTime || event.endTime !== proposal.endTime
+            || !newTitle || newTitle.length > 160 || normalizeAsaText(newTitle) === normalizeAsaText(event.title)))
+          || (isAgendaDraftScheduleProposal && (event.date !== proposal.previousDate
+            || event.startTime !== proposal.previousStartTime || event.endTime !== proposal.previousEndTime
+            || typeof proposal.date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(proposal.date)
+            || typeof proposal.startTime !== "string" || !/^([01]\d|2[0-3]):[0-5]\d$/.test(proposal.startTime)
+            || typeof proposal.endTime !== "string" || !/^([01]\d|2[0-3]):[0-5]\d$/.test(proposal.endTime)
+            || proposal.startTime >= proposal.endTime))
+          || (isAgendaDraftNotesProposal && (event.notes !== proposal.previousNotes
+            || (proposal.notes !== null && (typeof proposal.notes !== "string" || !proposal.notes.trim() || proposal.notes.length > 2000))));
+        if (isStale) return stale();
+        const updates = isAgendaDraftRenameProposal
+          ? { title: newTitle, updatedAt: new Date() }
+          : isAgendaDraftScheduleProposal
+            ? { date: String(proposal.date), startTime: String(proposal.startTime), endTime: String(proposal.endTime), updatedAt: new Date() }
+            : { notes: proposal.notes === null ? null : String(proposal.notes).trim(), updatedAt: new Date() };
+        const [updated] = await tx.update(agendaEventsTable).set(updates)
+          .where(and(eq(agendaEventsTable.id, event.id), eq(agendaEventsTable.status, "DRAFT"))).returning();
+        if (!updated) return stale();
+        await writeHistoryEvent({
+          category: "AGENDA", action: "updated", title: isAgendaDraftRenameProposal ? "Rascunho de reunião renomeado" : isAgendaDraftScheduleProposal ? "Data e horário do rascunho de reunião alterados" : "Observações do rascunho de reunião atualizadas",
+          narrative: isAgendaDraftRenameProposal
+            ? `Rascunho de reunião renomeado de “${event.title}” para “${updated.title}”; continua não confirmado.`
+            : isAgendaDraftScheduleProposal
+              ? `Data e horário do rascunho “${event.title}” alterados; continua não confirmado.`
+              : updated.notes
+                ? `Observações do rascunho “${event.title}” atualizadas; continua não confirmado.`
+                : `Observações do rascunho “${event.title}” removidas; continua não confirmado.`,
+          entityType: "agenda_event", entityId: event.id, actorId: user.sub, actorType: "HUMAN",
+          operationId, orgId: user.organizationId!, beforeState: event, afterState: updated,
+          metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id },
+        }, tx as any);
+        const confirmedAt = new Date().toISOString();
+        await tx.update(asaAuditLogTable).set({
+          actionsExecuted: actions.map((item) => item === proposal
+            ? { ...item, state: "CONFIRMED", confirmedAt, resultId: event.id } : item),
+          response: isAgendaDraftRenameProposal
+            ? `Rascunho de reunião renomeado para “${updated.title}”; continua não confirmado.`
+            : isAgendaDraftScheduleProposal
+              ? `Data e horário do rascunho “${updated.title}” atualizados; continua não confirmado.`
+              : updated.notes
+                ? `Observações do rascunho “${updated.title}” atualizadas; continua não confirmado.`
+                : `Observações do rascunho “${updated.title}” removidas; continua não confirmado.`,
+          confirmedByUser: true,
+        }).where(eq(asaAuditLogTable.id, audit.id));
+        if (isAgendaDraftRenameProposal) return { status: "agenda_draft_renamed" as const, eventId: event.id, title: updated.title };
+        if (isAgendaDraftScheduleProposal) return { status: "agenda_draft_schedule_updated" as const, eventId: event.id, title: updated.title, date: updated.date, startTime: updated.startTime, endTime: updated.endTime };
+        return { status: "agenda_draft_notes_updated" as const, eventId: event.id, title: updated.title, notes: updated.notes ?? null };
+      }
+
+      if (isAgendaEventProposal) {
+        const title = String(proposal.title ?? "").trim();
+        const date = String(proposal.date ?? "");
+        const startTime = String(proposal.startTime ?? "");
+        const endTime = String(proposal.endTime ?? "");
+        const areaId = typeof proposal.areaId === "string" ? proposal.areaId : null;
+        const locationId = typeof proposal.locationId === "string" ? proposal.locationId : null;
+        const orgManager = ["ADMIN", "DIR", "DIRECTOR"].includes(currentRole);
+        const supervisor = currentRole === "SUPERVISOR_A" || currentRole === "SUPERVISOR_B";
+        const expectedStatus = supervisor || orgManager ? "DRAFT" : "PROPOSED";
+        if (operation.name !== proposal.operationName || !title || title.length > 160
+          || !/^\d{4}-\d{2}-\d{2}$/.test(date)
+          || !/^([01]\d|2[0-3]):[0-5]\d$/.test(startTime) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(endTime)
+          || startTime >= endTime || proposal.type !== "MEETING" || proposal.expectedStatus !== expectedStatus
+          || (!areaId && !orgManager) || (supervisor && !locationId)) return { status: "stale" as const };
+        if (areaId) {
+          const [area] = await tx.select({ id: areasTable.id }).from(areasTable).where(and(
+            eq(areasTable.id, areaId), eq(areasTable.organizationId, user.organizationId!), eq(areasTable.active, true),
+          )).for("share").limit(1);
+          if (!area) return { status: "stale" as const };
+        }
+        if (locationId) {
+          const [location] = await tx.select({ id: locationsTable.id }).from(locationsTable).where(and(
+            eq(locationsTable.id, locationId), eq(locationsTable.organizationId, user.organizationId!), eq(locationsTable.closed, false),
+          )).for("share").limit(1);
+          if (!location) return { status: "stale" as const };
+        }
+        if (supervisor) {
+          const scopes = await listAreaLocalScopes(user.sub, user.organizationId!, tx);
+          if (!scopes.some((scope) => scope.areaId === areaId && scope.locationId === locationId)
+            || !currentRoleRows.some((row) => row.operationId === operationId && ["SUPERVISOR_A", "SUPERVISOR_B"].includes(row.role))) {
+            return { status: "forbidden" as const };
+          }
+        } else if (!orgManager) {
+          const [member] = await tx.select({ areaId: usersTable.areaId }).from(usersTable).where(and(
+            eq(usersTable.id, user.sub), eq(usersTable.organizationId, user.organizationId!), eq(usersTable.status, "ACTIVE"),
+          )).for("share").limit(1);
+          if (!member?.areaId || member.areaId !== areaId || locationId !== null || currentRole === "ADMIN" || currentRole === "DIR") {
+            return { status: "forbidden" as const };
+          }
+        }
+        const [created] = await tx.insert(agendaEventsTable).values({
+          operationId, type: "MEETING", title, date, startTime, endTime,
+          areaId, locationId, status: expectedStatus, visibility: "OPERATION", createdBy: user.sub,
+        }).returning();
+        if (!created) throw new Error("Não foi possível criar a reunião na Agenda");
+        if (expectedStatus === "PROPOSED") {
+          await tx.insert(agendaEventParticipantsTable).values({ eventId: created.id, userId: user.sub, response: "PENDING" });
+        }
+        await writeHistoryEvent({
+          category: "AGENDA", action: "created", title: "Reunião criada pela ASA",
+          narrative: `Reunião ${created.title} criada para ${created.date}.`, entityType: "agenda_event", entityId: created.id,
+          actorId: user.sub, operationId, orgId: user.organizationId!, beforeState: null, afterState: created,
+          metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id },
+        }, tx as any);
+        const confirmedAt = new Date().toISOString();
+        await tx.update(asaAuditLogTable).set({
+          actionsExecuted: actions.map((item) => item === proposal
+            ? { ...item, state: "CONFIRMED", confirmedAt, resultId: created.id }
+            : item),
+          response: expectedStatus === "PROPOSED"
+            ? `Proposta de reunião “${created.title}” enviada para análise da Supervisão.`
+            : `Rascunho da reunião “${created.title}” criado na Agenda.`,
+          confirmedByUser: true,
+        }).where(eq(asaAuditLogTable.id, audit.id));
+        return { status: "agenda_meeting_created" as const, eventId: created.id, operationId, title: created.title,
+          date: created.date, startTime: created.startTime, endTime: created.endTime,
+          proposed: expectedStatus === "PROPOSED", areaId };
+      }
+
+      if (proposal.actionType === "TASK_START") {
+        if (operation.name !== proposal.operationName) return { status: "stale" as const };
+        const taskId = String(proposal.taskId ?? "");
+        const [task] = await tx.select().from(tasksTable).where(and(
+          eq(tasksTable.id, taskId),
+          eq(tasksTable.organizationId, user.organizationId!),
+          eq(tasksTable.operationId, operationId),
+        )).for("update").limit(1);
+        if (!task || task.title !== proposal.title || task.status !== proposal.expectedStatus
+          || task.status !== proposal.previousStatus || task.assigneeId !== proposal.assigneeId
+          || task.responsibilityId !== (proposal.responsibilityId ?? null)
+          || task.dueDate !== (proposal.dueDate ?? null) || task.priority !== proposal.priority
+          || task.description !== (proposal.description ?? null)
+          || !["CREATED", "CHANGES_REQUESTED"].includes(task.status)) {
+          await tx.update(asaAuditLogTable).set({
+            actionsExecuted: actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item),
+            response: "A tarefa mudou desde a prévia. Nada foi iniciado; prepare uma nova prévia.",
+          }).where(eq(asaAuditLogTable.id, audit.id));
+          return { status: "stale" as const };
+        }
+        const areaId = await resolveTaskAreaId(task.responsibilityId ?? undefined, task.assigneeId, user.organizationId!, tx);
+        const assignedToRequester = task.assigneeId === user.sub;
+        const canManage = TASK_MANAGER_ROLES.includes(currentRole)
+          && await canManageTasks(user.sub, currentRole, operationId, user.organizationId!, areaId, tx);
+        if (!assignedToRequester && !canManage) return { status: "forbidden" as const };
+        const [actor] = await tx.select({ fullName: usersTable.fullName }).from(usersTable)
+          .where(eq(usersTable.id, user.sub)).for("share").limit(1);
+        const [updated] = await tx.update(tasksTable).set({ status: "IN_PROGRESS", updatedAt: new Date() })
+          .where(eq(tasksTable.id, task.id)).returning();
+        if (!updated) throw new Error("Não foi possível iniciar a tarefa");
+        await writeHistoryEvent({
+          category: "TASK", action: "task.started", title: `Tarefa iniciada: ${task.title}`,
+          narrative: `${actor?.fullName ?? "A pessoa responsável"} iniciou a execução da tarefa “${task.title}”.`,
+          entityType: "task", entityId: task.id, actorId: user.sub, actorType: "HUMAN",
+          operationId, orgId: user.organizationId!, beforeState: task, afterState: updated,
+          metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id },
+        }, tx as any);
+        const confirmedAt = new Date().toISOString();
+        await tx.update(asaAuditLogTable).set({
+          actionsExecuted: actions.map((item) => item === proposal
+            ? { ...item, state: "CONFIRMED", confirmedAt, resultId: task.id }
+            : item),
+          response: `Tarefa “${task.title}” iniciada.`,
+          confirmedByUser: true,
+        }).where(eq(asaAuditLogTable.id, audit.id));
+        return { status: "task_started" as const, taskId: task.id, title: task.title };
+      }
+
+      if (proposal.actionType === "TASK_READY_FOR_APPROVAL") {
+        const taskId = String(proposal.taskId ?? "");
+        const [task] = await tx.select().from(tasksTable).where(and(
+          eq(tasksTable.id, taskId),
+          eq(tasksTable.organizationId, user.organizationId!),
+          eq(tasksTable.operationId, operationId),
+        )).for("update").limit(1);
+        if (!task || operation.name !== proposal.operationName || task.title !== proposal.title
+          || task.assigneeId !== user.sub || task.status !== "IN_PROGRESS"
+          || task.status !== proposal.expectedStatus || task.requiresApproval !== proposal.expectedRequiresApproval
+          || !task.requiresApproval) {
+          await tx.update(asaAuditLogTable).set({
+            actionsExecuted: actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item),
+            response: "A tarefa mudou desde a prévia ou não exige aprovação. Nada foi enviado; prepare uma nova prévia.",
+          }).where(eq(asaAuditLogTable.id, audit.id));
+          return { status: "stale" as const };
+        }
+
+        const checklist = task.mandatoryChecklist ?? [];
+        const checklistSnapshot = checklist.map((item) => ({ id: item.id, completed: item.completed }))
+          .sort((a, b) => a.id.localeCompare(b.id));
+        const expectedChecklist = Array.isArray(proposal.expectedMandatoryChecklist)
+          ? proposal.expectedMandatoryChecklist
+            .map((item) => ({ id: String(item.id), completed: item.completed === true }))
+            .sort((a, b) => a.id.localeCompare(b.id))
+          : null;
+        const requiredEvidence = task.mandatoryEvidences ?? [];
+        const evidenceIds = requiredEvidence.map((item) => item.id).sort();
+        const expectedEvidenceIds = Array.isArray(proposal.expectedMandatoryEvidenceIds)
+          ? [...proposal.expectedMandatoryEvidenceIds].map(String).sort()
+          : null;
+        const uploaded = requiredEvidence.length
+          ? await tx.select({ refId: taskEvidencesTable.mandatoryEvidenceRefId })
+            .from(taskEvidencesTable)
+            .where(and(
+              eq(taskEvidencesTable.taskId, task.id),
+              eq(taskEvidencesTable.isRequired, true),
+              eq(taskEvidencesTable.active, true),
+            ))
+            .for("share")
+          : [];
+        const requiredIdSet = new Set(evidenceIds);
+        const fulfilledIds = uploaded.map((item) => item.refId)
+          .filter((id): id is string => id !== null && requiredIdSet.has(id))
+          .sort();
+        const expectedFulfilledIds = Array.isArray(proposal.fulfilledEvidenceIds)
+          ? [...proposal.fulfilledEvidenceIds].map(String).sort()
+          : null;
+        const requirementsUnchanged = expectedChecklist !== null
+          && JSON.stringify(checklistSnapshot) === JSON.stringify(expectedChecklist)
+          && expectedEvidenceIds !== null
+          && JSON.stringify(evidenceIds) === JSON.stringify(expectedEvidenceIds)
+          && expectedFulfilledIds !== null
+          && JSON.stringify(fulfilledIds) === JSON.stringify(expectedFulfilledIds);
+        const missingChecklist = checklist.filter((item) => !item.completed);
+        const fulfilledSet = new Set(fulfilledIds);
+        const missingEvidence = requiredEvidence.filter((item) => !fulfilledSet.has(item.id));
+        if (!requirementsUnchanged || missingChecklist.length || missingEvidence.length) {
+          await tx.update(asaAuditLogTable).set({
+            actionsExecuted: actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item),
+            response: "Checklist ou evidências mudaram ou estão incompletos. Nada foi enviado; conclua os itens pendentes e prepare uma nova prévia.",
+          }).where(eq(asaAuditLogTable.id, audit.id));
+          return { status: "stale" as const };
+        }
+
+        const [actor] = await tx.select({ fullName: usersTable.fullName }).from(usersTable)
+          .where(eq(usersTable.id, user.sub)).for("share").limit(1);
+        const [updated] = await tx.update(tasksTable).set({ status: "READY_FOR_APPROVAL", updatedAt: new Date() })
+          .where(eq(tasksTable.id, task.id)).returning();
+        if (!updated) throw new Error("Não foi possível enviar a tarefa para aprovação");
+        await writeHistoryEvent({
+          category: "TASK", action: "task.ready_for_approval", title: `Tarefa pronta para aprovação: ${task.title}`,
+          narrative: `${actor?.fullName ?? "A pessoa responsável"} enviou a tarefa “${task.title}” para aprovação.`,
+          entityType: "task", entityId: task.id, actorId: user.sub, actorType: "HUMAN",
+          operationId, orgId: user.organizationId!, beforeState: task, afterState: updated,
+          metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id },
+        }, tx as any);
+        const confirmedAt = new Date().toISOString();
+        await tx.update(asaAuditLogTable).set({
+          actionsExecuted: actions.map((item) => item === proposal
+            ? { ...item, state: "CONFIRMED", confirmedAt, resultId: task.id }
+            : item),
+          response: `Tarefa “${task.title}” enviada para aprovação.`,
+          confirmedByUser: true,
+        }).where(eq(asaAuditLogTable.id, audit.id));
+        return { status: "task_ready_for_approval" as const, taskId: task.id, title: task.title };
+      }
+
+      if (proposal.actionType === "TASK_COMPLETE") {
+        const taskId = String(proposal.taskId ?? "");
+        const [task] = await tx.select().from(tasksTable).where(and(
+          eq(tasksTable.id, taskId),
+          eq(tasksTable.organizationId, user.organizationId!),
+          eq(tasksTable.operationId, operationId),
+        )).for("update").limit(1);
+        if (!task || operation.name !== proposal.operationName || task.title !== proposal.title
+          || task.assigneeId !== user.sub || task.status !== "IN_PROGRESS"
+          || task.status !== proposal.expectedStatus || task.requiresApproval !== false
+          || task.responsibilityId !== (proposal.responsibilityId ?? null)
+          || task.dueDate !== (proposal.dueDate ?? null) || task.priority !== proposal.priority
+          || task.description !== (proposal.description ?? null)) {
+          await tx.update(asaAuditLogTable).set({
+            actionsExecuted: actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item),
+            response: "A tarefa mudou desde a prévia ou exige aprovação. Nada foi concluído; prepare uma nova prévia.",
+          }).where(eq(asaAuditLogTable.id, audit.id));
+          return { status: "stale" as const };
+        }
+        const checklist = task.mandatoryChecklist ?? [];
+        const checklistSnapshot = checklist.map((item) => ({ id: item.id, completed: item.completed }))
+          .sort((a, b) => a.id.localeCompare(b.id));
+        const expectedChecklist = Array.isArray(proposal.expectedMandatoryChecklist)
+          ? proposal.expectedMandatoryChecklist
+            .map((item) => ({ id: String(item.id), completed: item.completed === true }))
+            .sort((a, b) => a.id.localeCompare(b.id))
+          : null;
+        const requiredEvidence = task.mandatoryEvidences ?? [];
+        const evidenceIds = requiredEvidence.map((item) => item.id).sort();
+        const expectedEvidenceIds = Array.isArray(proposal.expectedMandatoryEvidenceIds)
+          ? [...proposal.expectedMandatoryEvidenceIds].map(String).sort()
+          : null;
+        const uploaded = requiredEvidence.length
+          ? await tx.select({ refId: taskEvidencesTable.mandatoryEvidenceRefId })
+            .from(taskEvidencesTable)
+            .where(and(
+              eq(taskEvidencesTable.taskId, task.id),
+              eq(taskEvidencesTable.isRequired, true),
+              eq(taskEvidencesTable.active, true),
+            ))
+            .for("share")
+          : [];
+        const requiredIdSet = new Set(evidenceIds);
+        const fulfilledIds = uploaded.map((item) => item.refId)
+          .filter((id): id is string => id !== null && requiredIdSet.has(id))
+          .sort();
+        const expectedFulfilledIds = Array.isArray(proposal.fulfilledEvidenceIds)
+          ? [...proposal.fulfilledEvidenceIds].map(String).sort()
+          : null;
+        const missingChecklist = checklist.some((item) => !item.completed);
+        const fulfilledSet = new Set(fulfilledIds);
+        const missingEvidence = requiredEvidence.some((item) => !fulfilledSet.has(item.id));
+        const requirementsUnchanged = expectedChecklist !== null
+          && JSON.stringify(checklistSnapshot) === JSON.stringify(expectedChecklist)
+          && expectedEvidenceIds !== null
+          && JSON.stringify(evidenceIds) === JSON.stringify(expectedEvidenceIds)
+          && expectedFulfilledIds !== null
+          && JSON.stringify(fulfilledIds) === JSON.stringify(expectedFulfilledIds);
+        if (!requirementsUnchanged || missingChecklist || missingEvidence) {
+          await tx.update(asaAuditLogTable).set({
+            actionsExecuted: actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item),
+            response: "Checklist ou evidências mudaram ou estão incompletos. Nada foi concluído; atualize os itens e prepare uma nova prévia.",
+          }).where(eq(asaAuditLogTable.id, audit.id));
+          return { status: "stale" as const };
+        }
+        const [actor] = await tx.select({ fullName: usersTable.fullName }).from(usersTable)
+          .where(eq(usersTable.id, user.sub)).for("share").limit(1);
+        const [updated] = await tx.update(tasksTable).set({
+          status: "COMPLETED", completedAt: new Date(), updatedAt: new Date(),
+        }).where(eq(tasksTable.id, task.id)).returning();
+        if (!updated) throw new Error("Não foi possível concluir a tarefa");
+        await writeHistoryEvent({
+          category: "TASK", action: "task.completed", title: `Tarefa concluída: ${task.title}`,
+          narrative: `${actor?.fullName ?? "A pessoa responsável"} concluiu a tarefa “${task.title}”.`,
+          entityType: "task", entityId: task.id, actorId: user.sub, actorType: "HUMAN",
+          operationId, orgId: user.organizationId!, beforeState: task, afterState: updated,
+          metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id },
+        }, tx as any);
+        const confirmedAt = new Date().toISOString();
+        await tx.update(asaAuditLogTable).set({
+          actionsExecuted: actions.map((item) => item === proposal
+            ? { ...item, state: "CONFIRMED", confirmedAt, resultId: task.id }
+            : item),
+          response: `Tarefa “${task.title}” concluída.`,
+          confirmedByUser: true,
+        }).where(eq(asaAuditLogTable.id, audit.id));
+        return { status: "task_completed" as const, taskId: task.id, title: task.title };
+      }
+
+      if (proposal.actionType === "TASK_CREATE") {
+        if (operation.name !== proposal.operationName) return { status: "stale" as const };
+        const title = String(proposal.title ?? "").trim();
+        const assigneeId = String(proposal.assigneeId ?? "");
+        const dueDate = String(proposal.dueDate ?? "");
+        const priority = String(proposal.priority ?? "MEDIUM");
+        const description = proposal.description === undefined || proposal.description === null
+          ? null : typeof proposal.description === "string" ? proposal.description.trim() : "invalid";
+        const rawChecklist = proposal.checklistLabels;
+        const checklistLabels = rawChecklist === undefined ? []
+          : Array.isArray(rawChecklist) ? rawChecklist.map((item) => typeof item === "string" ? item.trim() : "") : null;
+        const rawMandatoryEvidences = proposal.mandatoryEvidences;
+        const mandatoryEvidences = rawMandatoryEvidences === undefined ? []
+          : Array.isArray(rawMandatoryEvidences) ? rawMandatoryEvidences.map((item) => ({
+            type: typeof item?.type === "string" ? item.type : "",
+            description: typeof item?.description === "string" ? item.description.trim() : "",
+          })) : null;
+        if (!title || title.length > 160 || !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)
+          || !["LOW", "MEDIUM", "HIGH", "CRITICAL"].includes(priority)
+          || description === "invalid" || description === "" || (description !== null && description.length > 2000)
+          || checklistLabels === null || checklistLabels.length > 12
+          || checklistLabels.some((label) => !label || label.length > 160)
+          || new Set(checklistLabels.map(normalizeAsaText)).size !== checklistLabels.length
+          || mandatoryEvidences === null || mandatoryEvidences.length > 12
+          || mandatoryEvidences.some((item) => !(ASA_TASK_EVIDENCE_TYPES as readonly string[]).includes(item.type)
+            || !item.description || item.description.length > 180)
+          || new Set(mandatoryEvidences.map((item) => `${item.type}:${normalizeAsaText(item.description)}`)).size !== mandatoryEvidences.length) return { status: "stale" as const };
+        const [assignee] = await tx.select({ id: usersTable.id, name: usersTable.name })
+          .from(usersTable)
+          .innerJoin(userRolesTable, and(eq(userRolesTable.userId, usersTable.id), eq(userRolesTable.operationId, operationId), eq(userRolesTable.active, true)))
+          .where(and(eq(usersTable.id, assigneeId), eq(usersTable.organizationId, user.organizationId!), ne(usersTable.status, "INACTIVE")))
+          .for("share")
+          .limit(1);
+        if (!assignee || assignee.name !== proposal.assigneeName) return { status: "stale" as const };
+        const responsibilityId = proposal.responsibilityId === null || proposal.responsibilityId === undefined
+          ? null : String(proposal.responsibilityId);
+        let linkedResponsibility: typeof responsibilitiesTable.$inferSelect | null = null;
+        if (responsibilityId) {
+          const [responsibility] = await tx.select().from(responsibilitiesTable).where(and(
+            eq(responsibilitiesTable.id, responsibilityId),
+            eq(responsibilitiesTable.orgId, user.organizationId!),
+            eq(responsibilitiesTable.active, true),
+            or(eq(responsibilitiesTable.operationId, operationId), isNull(responsibilitiesTable.operationId)),
+          )).for("update").limit(1);
+          if (!responsibility || responsibility.title !== proposal.responsibilityTitle
+            || responsibility.operationId !== (proposal.responsibilityOperationId ?? null)
+            || responsibility.areaId !== (proposal.responsibilityAreaId ?? null)) return { status: "stale" as const };
+          linkedResponsibility = responsibility;
+        } else if (proposal.responsibilityTitle !== null && proposal.responsibilityTitle !== undefined) {
+          return { status: "stale" as const };
+        }
+        const areaId = await resolveTaskAreaId(linkedResponsibility?.id, assignee.id, user.organizationId!, tx);
+        if (!(await canManageTasks(user.sub, currentRole, operationId, user.organizationId!, areaId, tx))) return { status: "forbidden" as const };
+        const [task] = await tx.insert(tasksTable).values({
+          organizationId: user.organizationId!,
+          operationId,
+          responsibilityId: linkedResponsibility?.id ?? null,
+          title,
+          description,
+          creatorId: user.sub,
+          assigneeId: assignee.id,
+          requiresApproval: true,
+          priority: priority as "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
+          status: "CREATED",
+          dueDate,
+          mandatoryChecklist: checklistLabels.map((label) => ({ id: randomUUID(), label, completed: false })),
+          mandatoryEvidences: mandatoryEvidences.map((item) => ({ id: randomUUID(), type: item.type, description: item.description })),
+          origin: "ASA",
+        }).returning();
+        if (!task) throw new Error("Não foi possível criar a tarefa");
+        await writeHistoryEvent({
+          category: "TASK",
+          action: "task.created",
+          title: `Tarefa criada: ${task.title}`,
+          narrative: `${assignee.name} recebeu a tarefa "${task.title}" com prioridade ${priority} e prazo ${dueDate}${linkedResponsibility ? ` vinculada à responsabilidade “${linkedResponsibility.title}”` : ""}${task.description ? ` e descrição: ${task.description}` : ""}${checklistLabels.length ? ` e ${checklistLabels.length} item(ns) obrigatório(s) na checklist` : ""}${mandatoryEvidences.length ? ` e ${mandatoryEvidences.length} evidência(s) obrigatória(s)` : ""}.`,
+          entityType: "task",
+          entityId: task.id,
+          actorId: user.sub,
+          actorType: "HUMAN",
+          operationId,
+          orgId: user.organizationId!,
+          beforeState: null,
+          afterState: task,
+          metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id },
+        }, tx as any);
+        const completedAt = new Date().toISOString();
+        const updatedActions = actions.map((item) => item === proposal
+          ? { ...item, state: "CONFIRMED", confirmedAt: completedAt, resultId: task.id }
+          : item);
+        await tx.update(asaAuditLogTable).set({
+          actionsExecuted: updatedActions,
+          response: `Tarefa criada: ${task.title}. A conclusão deverá passar por aprovação.`,
+          confirmedByUser: true,
+        }).where(eq(asaAuditLogTable.id, audit.id));
+        return { status: "task_created" as const, taskId: task.id, title: task.title };
+      }
+
+      if (proposal.actionType === "TASK_UPDATE_DUE_DATE") {
+        if (operation.name !== proposal.operationName) return { status: "stale" as const };
+        const taskId = String(proposal.taskId ?? "");
+        const [task] = await tx.select().from(tasksTable).where(and(
+          eq(tasksTable.id, taskId),
+          eq(tasksTable.organizationId, user.organizationId!),
+          eq(tasksTable.operationId, operationId),
+        )).for("update").limit(1);
+        if (!task || task.title !== proposal.title || task.dueDate !== proposal.expectedDueDate
+          || task.assigneeId !== proposal.assigneeId || task.responsibilityId !== (proposal.responsibilityId ?? null)
+          || task.status !== proposal.expectedStatus
+          || ["APPROVED", "COMPLETED", "CANCELLED", "EXPIRED"].includes(task.status)) {
+          const updatedActions = actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item);
+          await tx.update(asaAuditLogTable).set({
+            actionsExecuted: updatedActions,
+            response: "A tarefa mudou ou foi encerrada desde a prévia. Nenhuma alteração foi feita; prepare uma nova prévia.",
+          }).where(eq(asaAuditLogTable.id, audit.id));
+          return { status: "stale" as const };
+        }
+        const dueDate = String(proposal.dueDate ?? "");
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) return { status: "stale" as const };
+        const areaId = await resolveTaskAreaId(task.responsibilityId ?? undefined, task.assigneeId, user.organizationId!, tx);
+        if (!(await canManageTasks(user.sub, currentRole, operationId, user.organizationId!, areaId, tx))) return { status: "forbidden" as const };
+        const [updated] = await tx.update(tasksTable).set({ dueDate, updatedAt: new Date() })
+          .where(eq(tasksTable.id, task.id)).returning();
+        if (!updated) throw new Error("Não foi possível atualizar o prazo da tarefa");
+        await writeHistoryEvent({
+          category: "TASK", action: "task.updated", title: `Prazo atualizado: ${task.title}`,
+          narrative: `Prazo da tarefa “${task.title}” alterado de ${task.dueDate} para ${updated.dueDate}.`,
+          entityType: "task", entityId: task.id, actorId: user.sub, actorType: "HUMAN",
+          operationId, orgId: user.organizationId!, beforeState: task, afterState: updated,
+          metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id },
+        }, tx as any);
+        const confirmedAt = new Date().toISOString();
+        await tx.update(asaAuditLogTable).set({
+          actionsExecuted: actions.map((item) => item === proposal ? { ...item, state: "CONFIRMED", confirmedAt, resultId: task.id } : item),
+          response: `Prazo da tarefa “${task.title}” atualizado para ${updated.dueDate}.`,
+          confirmedByUser: true,
+        }).where(eq(asaAuditLogTable.id, audit.id));
+        return { status: "task_due_date_updated" as const, taskId: task.id, title: task.title, dueDate: updated.dueDate };
+      }
+
+      if (proposal.actionType === "TASK_UPDATE_ASSIGNEE") {
+        if (operation.name !== proposal.operationName) return { status: "stale" as const };
+        const taskId = String(proposal.taskId ?? "");
+        const [task] = await tx.select().from(tasksTable).where(and(
+          eq(tasksTable.id, taskId),
+          eq(tasksTable.organizationId, user.organizationId!),
+          eq(tasksTable.operationId, operationId),
+        )).for("update").limit(1);
+        if (!task || task.title !== proposal.title || task.assigneeId !== proposal.expectedAssigneeId
+          || task.responsibilityId !== (proposal.responsibilityId ?? null)
+          || task.dueDate !== proposal.dueDate || task.status !== proposal.expectedStatus
+          || !["CREATED", "IN_PROGRESS", "READY_FOR_APPROVAL", "CHANGES_REQUESTED"].includes(task.status)) {
+          const updatedActions = actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item);
+          await tx.update(asaAuditLogTable).set({
+            actionsExecuted: updatedActions,
+            response: "A tarefa mudou ou foi encerrada desde a prévia. Nenhuma alteração foi feita; prepare uma nova prévia.",
+          }).where(eq(asaAuditLogTable.id, audit.id));
+          return { status: "stale" as const };
+        }
+        const [assignee] = await tx.select({ id: usersTable.id, name: usersTable.name })
+          .from(usersTable)
+          .innerJoin(userRolesTable, and(
+            eq(userRolesTable.userId, usersTable.id),
+            eq(userRolesTable.operationId, operationId),
+            eq(userRolesTable.active, true),
+          ))
+          .where(and(
+            eq(usersTable.id, String(proposal.assigneeId ?? "")),
+            eq(usersTable.organizationId, user.organizationId!),
+            eq(usersTable.status, "ACTIVE"),
+            eq(usersTable.name, String(proposal.assigneeName ?? "")),
+          )).for("share").limit(1);
+        if (!assignee) {
+          await tx.update(asaAuditLogTable).set({
+            actionsExecuted: actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item),
+            response: "A pessoa escolhida deixou de ter vínculo ativo na operação desde a prévia. Nenhuma alteração foi feita; prepare uma nova prévia.",
+          }).where(eq(asaAuditLogTable.id, audit.id));
+          return { status: "stale" as const };
+        }
+        const currentAreaId = await resolveTaskAreaId(task.responsibilityId ?? undefined, task.assigneeId, user.organizationId!, tx);
+        const targetAreaId = await resolveTaskAreaId(task.responsibilityId ?? undefined, assignee.id, user.organizationId!, tx);
+        if (!(await canManageTasks(user.sub, currentRole, operationId, user.organizationId!, currentAreaId, tx))
+          || !(await canManageTasks(user.sub, currentRole, operationId, user.organizationId!, targetAreaId, tx))) return { status: "forbidden" as const };
+        const [updated] = await tx.update(tasksTable).set({ assigneeId: assignee.id, updatedAt: new Date() })
+          .where(eq(tasksTable.id, task.id)).returning();
+        if (!updated) throw new Error("Não foi possível atualizar o responsável da tarefa");
+        await writeHistoryEvent({
+          category: "TASK", action: "task.updated", title: `Responsável atualizado: ${task.title}`,
+          narrative: `Responsável da tarefa “${task.title}” alterado de ${String(proposal.previousAssigneeName ?? "Responsável atual")} para ${assignee.name}.`,
+          entityType: "task", entityId: task.id, actorId: user.sub, actorType: "HUMAN",
+          operationId, orgId: user.organizationId!, beforeState: task, afterState: updated,
+          metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id },
+        }, tx as any);
+        const confirmedAt = new Date().toISOString();
+        await tx.update(asaAuditLogTable).set({
+          actionsExecuted: actions.map((item) => item === proposal ? { ...item, state: "CONFIRMED", confirmedAt, resultId: task.id } : item),
+          response: `Responsável da tarefa “${task.title}” atualizado para ${assignee.name}.`,
+          confirmedByUser: true,
+        }).where(eq(asaAuditLogTable.id, audit.id));
+        return { status: "task_assignee_updated" as const, taskId: task.id, title: task.title, assigneeName: assignee.name };
+      }
+
+      if (proposal.actionType === "TASK_UPDATE_PRIORITY") {
+        if (operation.name !== proposal.operationName) return { status: "stale" as const };
+        const taskId = String(proposal.taskId ?? "");
+        const [task] = await tx.select().from(tasksTable).where(and(
+          eq(tasksTable.id, taskId),
+          eq(tasksTable.organizationId, user.organizationId!),
+          eq(tasksTable.operationId, operationId),
+        )).for("update").limit(1);
+        if (!task || task.title !== proposal.title || task.priority !== proposal.expectedPriority
+          || task.assigneeId !== proposal.assigneeId || task.responsibilityId !== (proposal.responsibilityId ?? null)
+          || task.dueDate !== proposal.dueDate || task.status !== proposal.expectedStatus
+          || !["CREATED", "IN_PROGRESS", "READY_FOR_APPROVAL", "CHANGES_REQUESTED"].includes(task.status)) {
+          const updatedActions = actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item);
+          await tx.update(asaAuditLogTable).set({
+            actionsExecuted: updatedActions,
+            response: "A tarefa mudou ou foi encerrada desde a prévia. Nenhuma alteração foi feita; prepare uma nova prévia.",
+          }).where(eq(asaAuditLogTable.id, audit.id));
+          return { status: "stale" as const };
+        }
+        const priority = String(proposal.priority ?? "");
+        if (!["LOW", "MEDIUM", "HIGH", "CRITICAL"].includes(priority)) return { status: "stale" as const };
+        const areaId = await resolveTaskAreaId(task.responsibilityId ?? undefined, task.assigneeId, user.organizationId!, tx);
+        if (!(await canManageTasks(user.sub, currentRole, operationId, user.organizationId!, areaId, tx))) return { status: "forbidden" as const };
+        const [updated] = await tx.update(tasksTable).set({ priority: priority as typeof task.priority, updatedAt: new Date() })
+          .where(eq(tasksTable.id, task.id)).returning();
+        if (!updated) throw new Error("Não foi possível atualizar a prioridade da tarefa");
+        const priorityLabels = { LOW: "baixa", MEDIUM: "média", HIGH: "alta", CRITICAL: "crítica" } as const;
+        await writeHistoryEvent({
+          category: "TASK", action: "task.updated", title: `Prioridade atualizada: ${task.title}`,
+          narrative: `Prioridade da tarefa “${task.title}” alterada de ${priorityLabels[task.priority]} para ${priorityLabels[updated.priority]}.`,
+          entityType: "task", entityId: task.id, actorId: user.sub, actorType: "HUMAN",
+          operationId, orgId: user.organizationId!, beforeState: task, afterState: updated,
+          metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id },
+        }, tx as any);
+        const confirmedAt = new Date().toISOString();
+        await tx.update(asaAuditLogTable).set({
+          actionsExecuted: actions.map((item) => item === proposal ? { ...item, state: "CONFIRMED", confirmedAt, resultId: task.id } : item),
+          response: `Prioridade da tarefa “${task.title}” atualizada para ${priorityLabels[updated.priority]}.`,
+          confirmedByUser: true,
+        }).where(eq(asaAuditLogTable.id, audit.id));
+        return { status: "task_priority_updated" as const, taskId: task.id, title: task.title, priority: updated.priority };
+      }
+
+      if (proposal.actionType === "TASK_UPDATE_RESPONSIBILITY") {
+        if (operation.name !== proposal.operationName) return { status: "stale" as const };
+        const taskId = String(proposal.taskId ?? "");
+        const [task] = await tx.select().from(tasksTable).where(and(
+          eq(tasksTable.id, taskId), eq(tasksTable.organizationId, user.organizationId!), eq(tasksTable.operationId, operationId),
+        )).for("update").limit(1);
+        if (!task || task.title !== proposal.title || task.assigneeId !== proposal.assigneeId
+          || task.status !== "CREATED" || task.status !== proposal.expectedStatus
+          || task.responsibilityId !== (proposal.previousResponsibilityId ?? null)
+          || task.updatedAt.toISOString() !== proposal.expectedUpdatedAt) {
+          const updatedActions = actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item);
+          await tx.update(asaAuditLogTable).set({ actionsExecuted: updatedActions,
+            response: "A tarefa mudou ou foi iniciada desde a prévia. Nada foi alterado; prepare uma nova prévia." })
+            .where(eq(asaAuditLogTable.id, audit.id));
+          return { status: "stale" as const };
+        }
+        const evidence = await tx.select({ id: taskEvidencesTable.id }).from(taskEvidencesTable)
+          .where(eq(taskEvidencesTable.taskId, task.id)).limit(1);
+        if (evidence.length) {
+          const updatedActions = actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item);
+          await tx.update(asaAuditLogTable).set({ actionsExecuted: updatedActions,
+            response: "Uma evidência foi anexada desde a prévia. Nada foi alterado; prepare uma nova prévia." })
+            .where(eq(asaAuditLogTable.id, audit.id));
+          return { status: "stale" as const };
+        }
+        const responsibilityIds = [...new Set([proposal.previousResponsibilityId, proposal.newResponsibilityId]
+          .filter((id): id is string => typeof id === "string"))].sort();
+        const lockedResponsibilities = responsibilityIds.length ? await tx.select({
+          id: responsibilitiesTable.id, title: responsibilitiesTable.title, areaId: responsibilitiesTable.areaId,
+          operationId: responsibilitiesTable.operationId, updatedAt: responsibilitiesTable.updatedAt, active: responsibilitiesTable.active,
+        }).from(responsibilitiesTable).where(and(
+          inArray(responsibilitiesTable.id, responsibilityIds), eq(responsibilitiesTable.orgId, user.organizationId!),
+        )).orderBy(responsibilitiesTable.id).for("update") : [];
+        const previousId = typeof proposal.previousResponsibilityId === "string" ? proposal.previousResponsibilityId : null;
+        const newId = typeof proposal.newResponsibilityId === "string" ? proposal.newResponsibilityId : null;
+        const previous = previousId ? lockedResponsibilities.find((item) => item.id === previousId) ?? null : null;
+        const target = newId ? lockedResponsibilities.find((item) => item.id === newId) ?? null : null;
+        const validResponsibility = (item: typeof lockedResponsibilities[number] | null, title: unknown, updatedAt: unknown) =>
+          item !== null && item.active && (item.operationId === null || item.operationId === operationId)
+          && item.title === title && item.updatedAt.toISOString() === updatedAt;
+        if ((previousId && !validResponsibility(previous, proposal.previousResponsibilityTitle, proposal.previousResponsibilityUpdatedAt))
+          || (newId && !validResponsibility(target, proposal.newResponsibilityTitle, proposal.newResponsibilityUpdatedAt))
+          || (!previousId && proposal.previousResponsibilityTitle !== null)
+          || (!newId && proposal.newResponsibilityTitle !== null)) {
+          const updatedActions = actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item);
+          await tx.update(asaAuditLogTable).set({ actionsExecuted: updatedActions,
+            response: "Uma responsabilidade foi alterada ou deixou de estar ativa desde a prévia. Nada foi feito; prepare uma nova prévia." })
+            .where(eq(asaAuditLogTable.id, audit.id));
+          return { status: "stale" as const };
+        }
+        const responsibilityAreaIds = [...new Set([previous?.areaId, target?.areaId]
+          .filter((id): id is string => typeof id === "string"))].sort();
+        const activeAreas = responsibilityAreaIds.length ? await tx.select({ id: areasTable.id })
+          .from(areasTable).where(and(
+            inArray(areasTable.id, responsibilityAreaIds), eq(areasTable.organizationId, user.organizationId!), eq(areasTable.active, true),
+          )).orderBy(areasTable.id).for("update") : [];
+        if (activeAreas.length !== responsibilityAreaIds.length) {
+          const updatedActions = actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item);
+          await tx.update(asaAuditLogTable).set({ actionsExecuted: updatedActions,
+            response: "A área de uma responsabilidade deixou de estar ativa nesta organização. Nada foi feito; prepare uma nova prévia." })
+            .where(eq(asaAuditLogTable.id, audit.id));
+          return { status: "stale" as const };
+        }
+        const oldAreaId = await resolveTaskAreaId(previousId ?? undefined, task.assigneeId, user.organizationId!, tx);
+        const newAreaId = target?.areaId ?? await resolveTaskAreaId(undefined, task.assigneeId, user.organizationId!, tx);
+        if (!(await canManageTasks(user.sub, currentRole, operationId, user.organizationId!, oldAreaId, tx))
+          || !(await canManageTasks(user.sub, currentRole, operationId, user.organizationId!, newAreaId, tx))) return { status: "forbidden" as const };
+        const [updated] = await tx.update(tasksTable).set({ responsibilityId: newId, updatedAt: new Date() })
+          .where(eq(tasksTable.id, task.id)).returning();
+        if (!updated) throw new Error("Não foi possível atualizar a responsabilidade da tarefa");
+        await writeHistoryEvent({
+          category: "TASK", action: "task.updated", title: `Responsabilidade atualizada: ${task.title}`,
+          narrative: `Responsabilidade da tarefa “${task.title}” alterada de “${previous?.title ?? "nenhuma"}” para “${target?.title ?? "nenhuma"}”.`,
+          entityType: "task", entityId: task.id, actorId: user.sub, actorType: "HUMAN",
+          operationId, orgId: user.organizationId!, beforeState: task, afterState: updated,
+          metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id },
+        }, tx as any);
+        const confirmedAt = new Date().toISOString();
+        await tx.update(asaAuditLogTable).set({
+          actionsExecuted: actions.map((item) => item === proposal ? { ...item, state: "CONFIRMED", confirmedAt, resultId: task.id } : item),
+          response: `Responsabilidade da tarefa “${task.title}” atualizada.`, confirmedByUser: true,
+        }).where(eq(asaAuditLogTable.id, audit.id));
+        return { status: "task_responsibility_updated" as const, taskId: task.id, title: task.title };
+      }
+
+      if (proposal.actionType === "TASK_UPDATE_REQUIREMENTS") {
+        if (operation.name !== proposal.operationName) return { status: "stale" as const };
+        const taskId = String(proposal.taskId ?? "");
+        const [task] = await tx.select().from(tasksTable).where(and(
+          eq(tasksTable.id, taskId),
+          eq(tasksTable.organizationId, user.organizationId!),
+          eq(tasksTable.operationId, operationId),
+        )).for("update").limit(1);
+        if (!task || task.title !== proposal.title || task.assigneeId !== proposal.assigneeId
+          || task.responsibilityId !== (proposal.responsibilityId ?? null) || task.status !== "CREATED"
+          || JSON.stringify(task.mandatoryChecklist ?? []) !== JSON.stringify(proposal.previousMandatoryChecklist)
+          || JSON.stringify(task.mandatoryEvidences ?? []) !== JSON.stringify(proposal.previousMandatoryEvidences)) {
+          const updatedActions = actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item);
+          await tx.update(asaAuditLogTable).set({
+            actionsExecuted: updatedActions,
+            response: "A tarefa ou seus requisitos mudaram desde a prévia. Nada foi alterado; prepare uma nova prévia.",
+          }).where(eq(asaAuditLogTable.id, audit.id));
+          return { status: "stale" as const };
+        }
+        const areaId = await resolveTaskAreaId(task.responsibilityId ?? undefined, task.assigneeId, user.organizationId!, tx);
+        if (!(await canManageTasks(user.sub, currentRole, operationId, user.organizationId!, areaId, tx))) return { status: "forbidden" as const };
+        const attached = await tx.select({ id: taskEvidencesTable.id }).from(taskEvidencesTable)
+          .where(eq(taskEvidencesTable.taskId, task.id)).limit(1);
+        if (attached.length) {
+          const updatedActions = actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item);
+          await tx.update(asaAuditLogTable).set({
+            actionsExecuted: updatedActions,
+            response: "Uma evidência foi anexada desde a prévia. Nada foi alterado; requisitos com evidências vinculadas não podem ser substituídos.",
+          }).where(eq(asaAuditLogTable.id, audit.id));
+          return { status: "stale" as const };
+        }
+        const rawChecklist = proposal.checklistLabels;
+        const rawEvidences = proposal.mandatoryEvidences;
+        if (!Array.isArray(rawChecklist) || rawChecklist.length > 12
+          || rawChecklist.some((label) => typeof label !== "string" || !label.trim() || label.trim().length > 160)
+          || new Set(rawChecklist.map((label) => normalizeAsaText(String(label)))).size !== rawChecklist.length
+          || !Array.isArray(rawEvidences) || rawEvidences.length > 12
+          || rawEvidences.some((item) => !item || !(ASA_TASK_EVIDENCE_TYPES as readonly string[]).includes(String(item.type))
+            || typeof item.description !== "string" || !item.description.trim() || item.description.trim().length > 180)
+          || new Set(rawEvidences.map((item) => `${item.type}:${normalizeAsaText(item.description)}`)).size !== rawEvidences.length) {
+          return { status: "stale" as const };
+        }
+        const oldChecklist = task.mandatoryChecklist ?? [];
+        const oldEvidences = task.mandatoryEvidences ?? [];
+        const checklistByLabel = new Map(oldChecklist.map((item) => [normalizeAsaText(item.label), item]));
+        const evidenceByKey = new Map(oldEvidences.map((item) => [`${item.type}:${normalizeAsaText(item.description)}`, item]));
+        const mandatoryChecklist = rawChecklist.map((value) => {
+          const label = String(value).trim();
+          const existing = checklistByLabel.get(normalizeAsaText(label));
+          return existing ? { ...existing, label } : { id: randomUUID(), label, completed: false };
+        });
+        const mandatoryEvidences = rawEvidences.map((item) => {
+          const type = String(item.type);
+          const description = String(item.description).trim();
+          const existing = evidenceByKey.get(`${type}:${normalizeAsaText(description)}`);
+          return { id: existing?.id ?? randomUUID(), type, description };
+        });
+        const [updated] = await tx.update(tasksTable).set({ mandatoryChecklist, mandatoryEvidences, updatedAt: new Date() })
+          .where(eq(tasksTable.id, task.id)).returning();
+        if (!updated) throw new Error("Não foi possível atualizar os requisitos da tarefa");
+        await writeHistoryEvent({
+          category: "TASK", action: "task.updated", title: `Requisitos atualizados: ${task.title}`,
+          narrative: `Checklist e evidências obrigatórias da tarefa “${task.title}” foram atualizadas.`,
+          entityType: "task", entityId: task.id, actorId: user.sub, actorType: "HUMAN",
+          operationId, orgId: user.organizationId!, beforeState: task, afterState: updated,
+          metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id },
+        }, tx as any);
+        const confirmedAt = new Date().toISOString();
+        await tx.update(asaAuditLogTable).set({
+          actionsExecuted: actions.map((item) => item === proposal ? { ...item, state: "CONFIRMED", confirmedAt, resultId: task.id } : item),
+          response: `Requisitos da tarefa “${task.title}” atualizados.`, confirmedByUser: true,
+        }).where(eq(asaAuditLogTable.id, audit.id));
+        return { status: "task_requirements_updated" as const, taskId: task.id, title: task.title };
+      }
+
+      if (proposal.actionType === "TASK_UPDATE_TITLE") {
+        if (operation.name !== proposal.operationName) return { status: "stale" as const };
+        const taskId = String(proposal.taskId ?? "");
+        const [task] = await tx.select().from(tasksTable).where(and(
+          eq(tasksTable.id, taskId),
+          eq(tasksTable.organizationId, user.organizationId!),
+          eq(tasksTable.operationId, operationId),
+        )).for("update").limit(1);
+        if (!task || task.title !== proposal.previousTitle || task.title !== proposal.title
+          || task.description !== (proposal.expectedDescription ?? null)
+          || task.priority !== proposal.priority || task.assigneeId !== proposal.assigneeId
+          || task.responsibilityId !== (proposal.responsibilityId ?? null) || task.dueDate !== proposal.dueDate
+          || task.status !== proposal.expectedStatus
+          || !["CREATED", "IN_PROGRESS", "READY_FOR_APPROVAL", "CHANGES_REQUESTED"].includes(task.status)) {
+          const updatedActions = actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item);
+          await tx.update(asaAuditLogTable).set({
+            actionsExecuted: updatedActions,
+            response: "A tarefa mudou ou foi encerrada desde a prévia. Nenhuma alteração foi feita; prepare uma nova prévia.",
+          }).where(eq(asaAuditLogTable.id, audit.id));
+          return { status: "stale" as const };
+        }
+        const newTitle = String(proposal.newTitle ?? "").trim();
+        if (!newTitle || newTitle.length > 160 || normalizeAsaText(newTitle) === normalizeAsaText(task.title)) return { status: "stale" as const };
+        const openTasks = await tx.select({ id: tasksTable.id, title: tasksTable.title }).from(tasksTable).where(and(
+          eq(tasksTable.organizationId, user.organizationId!),
+          eq(tasksTable.operationId, operationId),
+          inArray(tasksTable.status, ["CREATED", "IN_PROGRESS", "READY_FOR_APPROVAL", "CHANGES_REQUESTED"]),
+        ));
+        if (openTasks.some((candidate) => candidate.id !== task.id && normalizeAsaText(candidate.title) === normalizeAsaText(newTitle))) {
+          const updatedActions = actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item);
+          await tx.update(asaAuditLogTable).set({
+            actionsExecuted: updatedActions,
+            response: "Já existe uma tarefa aberta com esse título. Nenhuma alteração foi feita; prepare uma nova proposta.",
+          }).where(eq(asaAuditLogTable.id, audit.id));
+          return { status: "stale" as const };
+        }
+        const areaId = await resolveTaskAreaId(task.responsibilityId ?? undefined, task.assigneeId, user.organizationId!, tx);
+        if (!(await canManageTasks(user.sub, currentRole, operationId, user.organizationId!, areaId, tx))) return { status: "forbidden" as const };
+        const [updated] = await tx.update(tasksTable).set({ title: newTitle, updatedAt: new Date() })
+          .where(eq(tasksTable.id, task.id)).returning();
+        if (!updated) throw new Error("Não foi possível atualizar o título da tarefa");
+        await writeHistoryEvent({
+          category: "TASK", action: "task.updated", title: `Título atualizado: ${task.title}`,
+          narrative: `Título da tarefa alterado de “${task.title}” para “${updated.title}”.`,
+          entityType: "task", entityId: task.id, actorId: user.sub, actorType: "HUMAN",
+          operationId, orgId: user.organizationId!, beforeState: task, afterState: updated,
+          metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id },
+        }, tx as any);
+        const confirmedAt = new Date().toISOString();
+        await tx.update(asaAuditLogTable).set({
+          actionsExecuted: actions.map((item) => item === proposal ? { ...item, state: "CONFIRMED", confirmedAt, resultId: task.id } : item),
+          response: `Título da tarefa atualizado para “${updated.title}”.`, confirmedByUser: true,
+        }).where(eq(asaAuditLogTable.id, audit.id));
+        return { status: "task_title_updated" as const, taskId: task.id, title: updated.title };
+      }
+
+      if (proposal.actionType === "TASK_UPDATE_DESCRIPTION") {
+        if (operation.name !== proposal.operationName) return { status: "stale" as const };
+        const taskId = String(proposal.taskId ?? "");
+        const [task] = await tx.select().from(tasksTable).where(and(
+          eq(tasksTable.id, taskId),
+          eq(tasksTable.organizationId, user.organizationId!),
+          eq(tasksTable.operationId, operationId),
+        )).for("update").limit(1);
+        if (!task || task.title !== proposal.title || task.description !== (proposal.expectedDescription ?? null)
+          || task.priority !== proposal.priority || task.assigneeId !== proposal.assigneeId
+          || task.responsibilityId !== (proposal.responsibilityId ?? null) || task.dueDate !== proposal.dueDate
+          || task.status !== proposal.expectedStatus
+          || !["CREATED", "IN_PROGRESS", "READY_FOR_APPROVAL", "CHANGES_REQUESTED"].includes(task.status)) {
+          const updatedActions = actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item);
+          await tx.update(asaAuditLogTable).set({
+            actionsExecuted: updatedActions,
+            response: "A tarefa mudou ou foi encerrada desde a prévia. Nenhuma alteração foi feita; prepare uma nova prévia.",
+          }).where(eq(asaAuditLogTable.id, audit.id));
+          return { status: "stale" as const };
+        }
+        const description = String(proposal.description ?? "").trim();
+        if (!description || description.length > 2000) return { status: "stale" as const };
+        const areaId = await resolveTaskAreaId(task.responsibilityId ?? undefined, task.assigneeId, user.organizationId!, tx);
+        if (!(await canManageTasks(user.sub, currentRole, operationId, user.organizationId!, areaId, tx))) return { status: "forbidden" as const };
+        const [updated] = await tx.update(tasksTable).set({ description, updatedAt: new Date() })
+          .where(eq(tasksTable.id, task.id)).returning();
+        if (!updated) throw new Error("Não foi possível atualizar a descrição da tarefa");
+        await writeHistoryEvent({
+          category: "TASK", action: "task.updated", title: `Descrição atualizada: ${task.title}`,
+          narrative: `Descrição da tarefa “${task.title}” atualizada.`,
+          entityType: "task", entityId: task.id, actorId: user.sub, actorType: "HUMAN",
+          operationId, orgId: user.organizationId!, beforeState: task, afterState: updated,
+          metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id },
+        }, tx as any);
+        const confirmedAt = new Date().toISOString();
+        await tx.update(asaAuditLogTable).set({
+          actionsExecuted: actions.map((item) => item === proposal ? { ...item, state: "CONFIRMED", confirmedAt, resultId: task.id } : item),
+          response: `Descrição da tarefa “${task.title}” atualizada.`, confirmedByUser: true,
+        }).where(eq(asaAuditLogTable.id, audit.id));
+        return { status: "task_description_updated" as const, taskId: task.id, title: task.title };
+      }
+
+      const currentRecipients = await tx.select({ userId: userRolesTable.userId })
+        .from(userRolesTable)
+        .innerJoin(usersTable, eq(usersTable.id, userRolesTable.userId))
+        .where(and(
+          eq(userRolesTable.operationId, operationId),
+          eq(userRolesTable.active, true),
+          eq(usersTable.organizationId, user.organizationId!),
+          eq(usersTable.status, "ACTIVE"),
+        )).for("share");
+      const recipientIds = [...new Set(currentRecipients.map((row) => row.userId))].sort();
+      const previewRecipientIds = Array.isArray(proposal.recipientUserIds)
+        ? (proposal.recipientUserIds as unknown[]).filter((id): id is string => typeof id === "string").sort()
+        : [];
+      if (operation.name !== proposal.operationName || JSON.stringify(recipientIds) !== JSON.stringify(previewRecipientIds)) {
+        const updatedActions = actions.map((item) => item === proposal ? { ...item, state: "STALE" } : item);
+        await tx.update(asaAuditLogTable).set({
+          actionsExecuted: updatedActions,
+          response: "A operação ou seu público mudou desde a prévia. Nenhum aviso foi criado; prepare uma nova prévia.",
+        }).where(eq(asaAuditLogTable.id, audit.id));
+        return { status: "stale" as const };
+      }
+
+      const [notice] = await tx.insert(noticesTable).values({
+        authorId: user.sub,
+        operationId,
+        title: String(proposal.title),
+        content: String(proposal.content),
+        urgency: "IMPORTANT",
+        type: "INFORMATIVE",
+        status: "DRAFT",
+        requiresConfirmation: false,
+      }).returning();
+      if (!notice) throw new Error("Não foi possível criar o rascunho");
+      await tx.insert(noticeRecipientsTable).values(recipientIds.map((userId) => ({
+        noticeId: notice.id, userId, groupId: null, status: "PENDING" as const,
+      })));
+      await writeHistoryEvent({
+        category: "NOTICE",
+        action: "created",
+        title: "Aviso criado",
+        narrative: `Rascunho de aviso criado: ${notice.title ?? "sem título"}.`,
+        entityType: "notice",
+        entityId: notice.id,
+        actorId: user.sub,
+        actorType: "HUMAN",
+        operationId,
+        orgId: user.organizationId!,
+        beforeState: null,
+        afterState: notice,
+        metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id },
+      }, tx as any);
+
+      const completedAt = new Date().toISOString();
+      const updatedActions = actions.map((item) => item === proposal
+        ? { ...item, state: "CONFIRMED", confirmedAt: completedAt, resultId: notice.id }
+        : item);
+      await tx.update(asaAuditLogTable).set({
+        actionsExecuted: updatedActions,
+        response: `Rascunho de aviso criado: ${notice.title}. Ele não foi publicado.`,
+        confirmedByUser: true,
+      }).where(eq(asaAuditLogTable.id, audit.id));
+      return { status: "created" as const, noticeId: notice.id, title: notice.title };
+    });
+
+    if (result.status === "not_found") { res.status(404).json({ error: "Proposta não encontrada" }); return; }
+    if (result.status === "forbidden") { res.status(403).json({ error: "Operação ou ação fora do seu escopo" }); return; }
+    if (result.status === "not_pending") { res.status(409).json({ error: "Esta proposta não está mais pendente" }); return; }
+    if (result.status === "expired") { res.status(410).json({ error: "A prévia expirou. Nenhuma alteração foi aplicada." }); return; }
+    if (result.status === "stale") { res.status(409).json({ error: "Os dados, a operação ou as permissões mudaram. Prepare uma nova prévia." }); return; }
+    if (result.status === "asa_preferences_updated") {
+      res.json({ success: true, message: `Preferências atualizadas: ${result.summary}.` });
+      return;
+    }
+    if (result.status === "notice_draft_updated") {
+      res.json({ success: true, noticeId: result.noticeId, message: `Rascunho de aviso “${result.title}” atualizado. Continua não publicado.` });
+      return;
+    }
+    if (result.status === "agenda_draft_renamed") {
+      eventBus.emit("agenda.event.changed", { eventId: result.eventId, changedFields: ["title"] });
+      res.json({ success: true, eventId: result.eventId, message: `Rascunho de reunião renomeado para “${result.title}”. Continua não confirmado.` });
+      return;
+    }
+    if (result.status === "agenda_draft_schedule_updated") {
+      eventBus.emit("agenda.event.changed", { eventId: result.eventId, changedFields: ["date", "startTime", "endTime"] });
+      res.json({ success: true, eventId: result.eventId, message: `Data e horário do rascunho “${result.title}” atualizados para ${result.date}, ${result.startTime}–${result.endTime}. Continua não confirmado.` });
+      return;
+    }
+    if (result.status === "agenda_draft_notes_updated") {
+      eventBus.emit("agenda.event.changed", { eventId: result.eventId, changedFields: ["notes"] });
+      res.json({ success: true, eventId: result.eventId, message: `Observações do rascunho “${result.title}” ${result.notes === null ? "removidas" : "atualizadas"}. Continua não confirmado.` });
+      return;
+    }
+    if (result.status === "agenda_meeting_created") {
+      eventBus.emit("agenda.event.created", { eventId: result.eventId, operationId: result.operationId, type: "MEETING", date: result.date });
+      if (result.proposed && result.areaId) {
+        const supervisors = await db.select({ id: areaLocalSupervisorsTable.supervisorId })
+          .from(areaLocalSupervisorsTable).innerJoin(areasTable, eq(areaLocalSupervisorsTable.areaId, areasTable.id))
+          .where(and(eq(areaLocalSupervisorsTable.areaId, result.areaId), eq(areaLocalSupervisorsTable.active, true), eq(areasTable.organizationId, user.organizationId!)));
+        const supervisorIds = [...new Set(supervisors.map((row) => row.id).filter((id) => id !== user.sub))];
+        void notifyMany(supervisorIds, {
+          type: "agenda.meeting.proposed", title: `Nova proposta de reunião: ${result.title}`,
+          message: `Uma pessoa do elenco propôs ${result.date} das ${result.startTime} às ${result.endTime}. Revise a proposta na Agenda.`,
+          priority: "NORMAL", category: "approval", entityType: "agenda_event", entityId: result.eventId, actionUrl: "/agenda",
+        }).catch(() => undefined);
+        res.json({ success: true, eventId: result.eventId, message: `Proposta de reunião “${result.title}” enviada para análise da Supervisão.` });
+      } else {
+        res.json({ success: true, eventId: result.eventId, message: `Rascunho da reunião “${result.title}” criado na Agenda; ainda não foi publicado.` });
+      }
+      return;
+    }
+    if (result.status === "message_direct_created") {
+      void notifyMany([result.recipientUserId], {
+        type: "message.new", title: "Nova mensagem",
+        message: `${result.senderName}: ${result.content.slice(0, 80)}${result.content.length > 80 ? "…" : ""}`,
+        priority: "NORMAL", category: "message", entityType: "thread", entityId: result.threadId,
+        actionUrl: "/(tabs)/mensagens",
+      }).catch(() => undefined);
+      res.json({ success: true, threadId: result.threadId, messageId: result.messageId, message: `Mensagem enviada para ${result.recipientName}.` });
+      return;
+    }
+    if (result.status === "message_direct_replied") {
+      void notifyMany(result.recipientUserIds, {
+        type: "message.new", title: "Nova mensagem",
+        message: `${result.senderName}: ${result.content.slice(0, 80)}${result.content.length > 80 ? "…" : ""}`,
+        priority: "NORMAL", category: "message", entityType: "thread", entityId: result.threadId,
+        actionUrl: "/(tabs)/mensagens",
+      }).catch(() => undefined);
+      res.json({ success: true, threadId: result.threadId, messageId: result.messageId, message: `Resposta enviada na conversa “${result.title}”.` });
+      return;
+    }
+    if (result.status === "mural_acknowledged") { res.json({ success: true, message: `Ciente registrado para “${result.title}”.` }); return; }
+    if (result.status === "mural_reacted") { res.json({ success: true, message: `Reação de coração registrada em “${result.title}”.` }); return; }
+    if (result.status === "mural_comment_created") { res.json({ success: true, message: `Comentário publicado em “${result.title}”.` }); return; }
+    if (result.status === "task_created") { res.json({ success: true, taskId: result.taskId, message: `Tarefa “${result.title}” criada. A conclusão deverá passar por aprovação.` }); return; }
+    if (result.status === "task_comment_created") { res.json({ success: true, taskId: result.taskId, message: `Comentário registrado na tarefa “${result.title}”.` }); return; }
+    if (result.status === "task_evidence_link_added") { res.json({ success: true, taskId: result.taskId, message: `Link complementar anexado à tarefa “${result.title}”. Não conta como evidência obrigatória.` }); return; }
+    if (result.status === "task_checklist_updated") { res.json({ success: true, taskId: result.taskId, message: `Item “${result.itemLabel}” da tarefa “${result.title}” marcado como ${result.completed ? "concluído" : "pendente"}.` }); return; }
+    if (result.status === "task_cancelled") { res.json({ success: true, taskId: result.taskId, message: `Tarefa “${result.title}” cancelada.` }); return; }
+    if (result.status === "task_started") { res.json({ success: true, taskId: result.taskId, message: `Tarefa “${result.title}” iniciada.` }); return; }
+    if (result.status === "task_ready_for_approval") { res.json({ success: true, taskId: result.taskId, message: `Tarefa “${result.title}” enviada para aprovação.` }); return; }
+    if (result.status === "task_completed") { res.json({ success: true, taskId: result.taskId, message: `Tarefa “${result.title}” concluída.` }); return; }
+    if (result.status === "task_due_date_updated") { res.json({ success: true, taskId: result.taskId, message: `Prazo da tarefa “${result.title}” atualizado para ${result.dueDate}.` }); return; }
+    if (result.status === "task_assignee_updated") { res.json({ success: true, taskId: result.taskId, message: `Responsável da tarefa “${result.title}” atualizado para ${result.assigneeName}.` }); return; }
+    if (result.status === "task_priority_updated") { res.json({ success: true, taskId: result.taskId, message: `Prioridade da tarefa “${result.title}” atualizada para ${result.priority}.` }); return; }
+    if (result.status === "task_description_updated") { res.json({ success: true, taskId: result.taskId, message: `Descrição da tarefa “${result.title}” atualizada.` }); return; }
+    if (result.status === "task_title_updated") { res.json({ success: true, taskId: result.taskId, message: `Título da tarefa atualizado para “${result.title}”.` }); return; }
+    if (result.status === "task_requirements_updated") { res.json({ success: true, taskId: result.taskId, message: `Checklist e evidências obrigatórias da tarefa “${result.title}” atualizadas.` }); return; }
+    if (result.status === "task_responsibility_updated") { res.json({ success: true, taskId: result.taskId, message: `Responsabilidade da tarefa “${result.title}” atualizada.` }); return; }
+    res.json({ success: true, noticeId: result.noticeId, message: `Rascunho “${result.title ?? "Aviso"}” criado sem publicação.` });
+  } catch {
+    res.status(500).json({ error: "Não consegui confirmar a proposta. Nenhuma alteração foi concluída." });
+  }
+});
+
+router.post("/asa/actions/:proposalId/cancel", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  const user = req.user!;
+  const proposalId = String(req.params.proposalId);
+  if (!/^[0-9a-f-]{36}$/i.test(proposalId)) { res.status(400).json({ error: "Proposta inválida" }); return; }
+  const result = await db.transaction(async (tx) => {
+    const [audit] = await tx.select().from(asaAuditLogTable).where(and(
+      eq(asaAuditLogTable.id, proposalId),
+      eq(asaAuditLogTable.userId, user.sub),
+      eq(asaAuditLogTable.organizationId, user.organizationId!),
+    )).for("update").limit(1);
+    if (!audit) return "not_found" as const;
+    const actions = Array.isArray(audit.actionsExecuted) ? audit.actionsExecuted : [];
+      const proposal = actions.find((item) => item.action === "ASA_ACTION_PROPOSAL" && ASA_PROPOSAL_ACTION_TYPES.has(String(item.actionType)));
+    if (!proposal || audit.confirmedByUser || proposal.state !== "PENDING") return "not_pending" as const;
+    if ((proposal.actionType === "NOTICE_DRAFT_CREATE" || proposal.actionType === "NOTICE_DRAFT_UPDATE")
+      && !MANAGER_ROLES.includes(user.role)) return "forbidden" as const;
+    if (proposal.actionType !== "ASA_PREFERENCE_UPDATE" && proposal.actionType !== "MURAL_ACK" && proposal.actionType !== "MURAL_REACT" && proposal.actionType !== "MURAL_COMMENT_CREATE" && proposal.actionType !== "TASK_COMMENT_CREATE" && proposal.actionType !== "TASK_EVIDENCE_LINK_ADD" && proposal.actionType !== "TASK_CHECKLIST_UPDATE" && proposal.actionType !== "MESSAGE_DIRECT_CREATE" && proposal.actionType !== "MESSAGE_REPLY" && proposal.actionType !== "TASK_START"
+      && proposal.actionType !== "TASK_READY_FOR_APPROVAL" && proposal.actionType !== "TASK_COMPLETE" && proposal.actionType !== "AGENDA_MEETING_CREATE" && proposal.actionType !== "AGENDA_DRAFT_RENAME" && proposal.actionType !== "AGENDA_DRAFT_SCHEDULE_UPDATE" && proposal.actionType !== "AGENDA_DRAFT_NOTES_UPDATE" && !TASK_MANAGER_ROLES.includes(user.role)) return "forbidden" as const;
+    const updatedActions = actions.map((item) => item === proposal ? { ...item, state: "CANCELLED", cancelledAt: new Date().toISOString() } : item);
+    await tx.update(asaAuditLogTable).set({
+      actionsExecuted: updatedActions,
+      response: "Proposta cancelada pela pessoa. Nenhuma alteração foi feita.",
+    }).where(eq(asaAuditLogTable.id, audit.id));
+    return "cancelled" as const;
+  });
+  if (result === "not_found") { res.status(404).json({ error: "Proposta não encontrada" }); return; }
+  if (result === "forbidden") { res.status(403).json({ error: "Apenas gestores podem cancelar esta proposta" }); return; }
+  if (result === "not_pending") { res.status(409).json({ error: "Esta proposta não está mais pendente" }); return; }
+  res.json({ success: true, message: "Proposta cancelada. Nenhuma alteração foi feita." });
 });
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -6092,7 +9169,7 @@ router.get("/asa/memories", requireAuth, requireOrganization, async (req, res): 
   const filtered = rows.filter(r => {
     if (type && r.type !== type) return false;
     if (status && r.status !== status) return false;
-    return true;
+    return canReadAsaMemory(user.sub, user.role, r);
   });
 
   res.json(filtered);
@@ -6100,22 +9177,46 @@ router.get("/asa/memories", requireAuth, requireOrganization, async (req, res): 
 
 router.post("/asa/memories", requireAuth, requireOrganization, async (req, res): Promise<void> => {
   const user = req.user!;
-  const { type, key, value, scope } = req.body as {
+  const { type, key, value } = req.body as {
     type: "PERSONAL" | "OPERATIONAL" | "OFFICIAL";
     key: string;
     value: string;
-    scope?: string;
   };
 
-  const [mem] = await db.insert(asaMemoriesTable).values({
-    type,
-    key,
-    value,
-    scope: scope ?? user.sub,
-    organizationId: user.organizationId!,
-    createdBy: user.sub,
-    status: "PENDING",
-  }).returning();
+  if (!["PERSONAL", "OPERATIONAL", "OFFICIAL"].includes(type)
+    || typeof key !== "string" || !key.trim() || key.trim().length > 120
+    || typeof value !== "string" || !value.trim() || value.trim().length > 2000) {
+    res.status(400).json({ error: "Tipo, chave ou conteúdo inválido" });
+    return;
+  }
+  if (type !== "PERSONAL" && !MANAGER_ROLES.includes(user.role)) {
+    res.status(403).json({ error: "Somente gestores podem propor memórias compartilhadas" });
+    return;
+  }
+
+  const mem = await db.transaction(async (tx) => {
+    const [created] = await tx.insert(asaMemoriesTable).values({
+      type,
+      key: key.trim(),
+      value: value.trim(),
+      scope: type === "PERSONAL" ? user.sub : user.organizationId!,
+      organizationId: user.organizationId!,
+      createdBy: user.sub,
+      status: "PENDING",
+    }).returning();
+    if (!created) throw new Error("Não foi possível criar a memória da ASA");
+
+    await tx.insert(asaAuditLogTable).values({
+      userId: user.sub,
+      organizationId: user.organizationId!,
+      question: "Proposta de memória da ASA",
+      response: "Memória criada como pendente de aprovação.",
+      toolsUsed: ["asa.memory.propose"],
+      actionsExecuted: [{ action: "ASA_MEMORY_PROPOSED", memoryId: created.id, type }],
+      confirmedByUser: false,
+    });
+    return created;
+  });
 
   res.status(201).json(mem);
 });
@@ -6123,54 +9224,149 @@ router.post("/asa/memories", requireAuth, requireOrganization, async (req, res):
 router.patch("/asa/memories/:id", requireAuth, requireOrganization, async (req, res): Promise<void> => {
   const user = req.user!;
   const id = req.params["id"] as string;
-  const { status, value } = req.body as { status?: "APPROVED" | "REJECTED"; value?: string };
+  const { status, value } = req.body as { status?: "APPROVED" | "REJECTED" | "DISABLED"; value?: string };
 
-  if (status && !MANAGER_ROLES.includes(user.role)) {
-    res.status(403).json({ error: "Apenas gestores podem aprovar ou rejeitar memórias" });
+  if (status !== undefined && !["APPROVED", "REJECTED", "DISABLED"].includes(status)) {
+    res.status(400).json({ error: "Status inválido" });
+    return;
+  }
+  if ((value === undefined && status === undefined) || (value !== undefined && status !== undefined)) {
+    res.status(400).json({ error: "Edite o conteúdo e confirme a aprovação em pedidos separados." });
     return;
   }
 
-  const updates: Record<string, unknown> = { updatedAt: new Date() };
-  if (status) {
-    updates.status = status;
-    updates.approvedBy = user.sub;
-    updates.approvedAt = new Date();
+  if (value !== undefined && (typeof value !== "string" || !value.trim() || value.trim().length > 2000)) {
+    res.status(400).json({ error: "Conteúdo inválido" });
+    return;
   }
-  if (value) updates.value = value;
 
-  const [updated] = await db
-    .update(asaMemoriesTable)
-    .set(updates as any)
-    .where(eq(asaMemoriesTable.id, id))
-    .returning();
+  const result = await db.transaction(async (tx) => {
+    const [memory] = await tx.select().from(asaMemoriesTable).where(and(
+      eq(asaMemoriesTable.id, id),
+      eq(asaMemoriesTable.organizationId, user.organizationId!),
+    )).for("update").limit(1);
+    if (!memory) return { kind: "missing" as const };
+    if (!canEditAsaMemory(user.sub, user.role, memory)
+      || (status && !canApproveAsaMemory(user.sub, user.role, memory))) {
+      return { kind: "forbidden" as const };
+    }
 
-  if (!updated) {
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (status) {
+      updates.status = status;
+      updates.approvedBy = status === "APPROVED" ? user.sub : null;
+      updates.approvedAt = status === "APPROVED" ? new Date() : null;
+    }
+    if (value !== undefined) {
+      updates.value = value.trim();
+      if (!status) {
+        updates.status = "PENDING";
+        updates.approvedBy = null;
+        updates.approvedAt = null;
+      }
+    }
+
+    const [updated] = await tx.update(asaMemoriesTable)
+      .set(updates as any)
+      .where(and(eq(asaMemoriesTable.id, id), eq(asaMemoriesTable.organizationId, user.organizationId!)))
+      .returning();
+    if (!updated) return { kind: "missing" as const };
+
+    await tx.insert(asaAuditLogTable).values({
+      userId: user.sub,
+      organizationId: user.organizationId!,
+      question: status === "APPROVED" ? "Aprovação explícita de memória da ASA" : status === "REJECTED" ? "Rejeição de memória da ASA" : status === "DISABLED" ? "Desativação de memória da ASA" : "Edição de memória da ASA",
+      response: status === "APPROVED" ? "Memória aprovada." : status === "REJECTED" ? "Memória rejeitada." : status === "DISABLED" ? "Memória desativada." : "Conteúdo atualizado e aprovação anterior removida.",
+      toolsUsed: ["asa.memory.update"],
+      actionsExecuted: [{ action: status === "APPROVED" ? "ASA_MEMORY_APPROVED" : status === "REJECTED" ? "ASA_MEMORY_REJECTED" : status === "DISABLED" ? "ASA_MEMORY_DISABLED" : "ASA_MEMORY_EDITED", memoryId: updated.id, type: updated.type }],
+      confirmedByUser: status === "APPROVED" || status === "DISABLED",
+    });
+    return { kind: "updated" as const, memory: updated };
+  });
+
+  if (result.kind === "missing") {
     res.status(404).json({ error: "Memória não encontrada" });
     return;
   }
-
-  res.json(updated);
+  if (result.kind === "forbidden") {
+    res.status(403).json({ error: "Sem permissão para alterar esta memória" });
+    return;
+  }
+  res.json(result.memory);
 });
 
 router.delete("/asa/memories/:id", requireAuth, requireOrganization, async (req, res): Promise<void> => {
   const user = req.user!;
   const id = req.params["id"] as string;
 
-  if (!MANAGER_ROLES.includes(user.role)) {
-    const [mem] = await db.select().from(asaMemoriesTable).where(eq(asaMemoriesTable.id, id));
-    if (!mem || mem.createdBy !== user.sub) {
-      res.status(403).json({ error: "Sem permissão" });
-      return;
-    }
-  }
+  const result = await db.transaction(async (tx) => {
+    const [mem] = await tx.select().from(asaMemoriesTable).where(and(
+      eq(asaMemoriesTable.id, id),
+      eq(asaMemoriesTable.organizationId, user.organizationId!),
+    )).for("update").limit(1);
+    if (!mem) return "missing" as const;
+    if (!canDeleteAsaMemory(user.sub, user.role, mem)) return "forbidden" as const;
 
-  await db.delete(asaMemoriesTable).where(eq(asaMemoriesTable.id, id));
+    await tx.delete(asaMemoriesTable).where(and(
+      eq(asaMemoriesTable.id, id),
+      eq(asaMemoriesTable.organizationId, user.organizationId!),
+    ));
+    await tx.insert(asaAuditLogTable).values({
+      userId: user.sub,
+      organizationId: user.organizationId!,
+      question: "Remoção de memória da ASA",
+      response: "Memória removida.",
+      toolsUsed: ["asa.memory.delete"],
+      actionsExecuted: [{ action: "ASA_MEMORY_DELETED", memoryId: mem.id, type: mem.type }],
+      confirmedByUser: false,
+    });
+    return "deleted" as const;
+  });
+  if (result === "missing") {
+    res.status(404).json({ error: "Memória não encontrada" });
+    return;
+  }
+  if (result === "forbidden") {
+    res.status(403).json({ error: "Sem permissão" });
+    return;
+  }
   res.status(204).send();
 });
 
 // ────────────────────────────────────────────────────────────────────────────
 // Preferences
 // ────────────────────────────────────────────────────────────────────────────
+
+router.get("/asa/proactive-suggestions", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  const user = req.user!;
+  const [preferences] = await db.select({ mode: asaUserPreferencesTable.mode })
+    .from(asaUserPreferencesTable)
+    .where(eq(asaUserPreferencesTable.userId, user.sub))
+    .limit(1);
+  if (preferences?.mode !== "PROACTIVE") {
+    res.json({ overdueCount: 0, dueTodayCount: 0, dueSoonCount: 0 });
+    return;
+  }
+
+  const today = operationalDate();
+  const dueSoonThrough = shiftOperationalDate(today, 3);
+  const [summary] = await db.select({
+    overdueCount: sql<number>`count(*) filter (where ${tasksTable.dueDate} < ${today})::int`,
+    dueTodayCount: sql<number>`count(*) filter (where ${tasksTable.dueDate} = ${today})::int`,
+    dueSoonCount: sql<number>`count(*) filter (where ${tasksTable.dueDate} > ${today} and ${tasksTable.dueDate} <= ${dueSoonThrough})::int`,
+  }).from(tasksTable).where(and(
+    eq(tasksTable.organizationId, user.organizationId!),
+    eq(tasksTable.assigneeId, user.sub),
+    inArray(tasksTable.status, ["CREATED", "IN_PROGRESS", "CHANGES_REQUESTED"]),
+    lte(tasksTable.dueDate, dueSoonThrough),
+  ));
+
+  res.json({
+    overdueCount: Number(summary?.overdueCount ?? 0),
+    dueTodayCount: Number(summary?.dueTodayCount ?? 0),
+    dueSoonCount: Number(summary?.dueSoonCount ?? 0),
+  });
+});
 
 router.get("/asa/preferences", requireAuth, async (req, res): Promise<void> => {
   const user = req.user!;
@@ -6192,18 +9388,12 @@ router.get("/asa/preferences", requireAuth, async (req, res): Promise<void> => {
 
 router.patch("/asa/preferences", requireAuth, async (req, res): Promise<void> => {
   const user = req.user!;
-  const updates = req.body as {
-    mode?: "SILENT" | "BALANCED" | "PROACTIVE";
-    morningGreeting?: boolean;
-    eveningGreeting?: boolean;
-    reminders?: boolean;
-    birthdayAlerts?: boolean;
-    notificationsEnabled?: boolean;
-    goodMorningTime?: string;
-    goodNightTime?: string;
-    messageFrequency?: "DAILY" | "WEEKLY" | "REALTIME";
-    proactivityLevel?: "LOW" | "MEDIUM" | "HIGH";
-  };
+  const parsed = parseAsaPreferencePatch(req.body);
+  if (parsed.ok === false) {
+    res.status(400).json({ error: parsed.error });
+    return;
+  }
+  const updates = parsed.value;
 
   const [existing] = await db
     .select()
@@ -6353,16 +9543,7 @@ router.get("/asa/mural", requireAuth, requireOrganization, async (req, res): Pro
 
 router.get("/asa/resumo-do-dia", requireAuth, requireOrganization, async (req, res): Promise<void> => {
   const user = req.user!;
-  let operationId: string | null = null;
-  if (user.organizationId) {
-    const [op] = await db
-      .select({ id: operationsTable.id })
-      .from(operationsTable)
-      .where(eq(operationsTable.organizationId, user.organizationId!))
-      .limit(1);
-    operationId = op?.id ?? null;
-  }
-  const resumo = await assembleResumoDodia(user.sub, user.organizationId ?? null, operationId, user.role);
+  const resumo = await assembleResumoDodia(user.sub, user.organizationId ?? null, user.role);
   res.json(resumo);
 });
 
@@ -6462,6 +9643,21 @@ router.get("/asa/audit", requireAuth, requireOrganization, async (req, res): Pro
     .limit(limit);
 
   res.json(rows);
+});
+
+router.get("/asa/library-gaps", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  const user = req.user!;
+  if (user.role !== "ADMIN") {
+    res.status(403).json({ error: "Apenas Administração pode consultar temas sem documento correspondente." });
+    return;
+  }
+  const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  const rows = await db.select({ actionsExecuted: asaAuditLogTable.actionsExecuted, createdAt: asaAuditLogTable.createdAt })
+    .from(asaAuditLogTable)
+    .where(and(eq(asaAuditLogTable.organizationId, user.organizationId!), gte(asaAuditLogTable.createdAt, since)))
+    .orderBy(desc(asaAuditLogTable.createdAt))
+    .limit(5000);
+  res.json({ signals: aggregateAsaLibraryGaps(rows, 50), windowDays: 90 });
 });
 
 export default router;

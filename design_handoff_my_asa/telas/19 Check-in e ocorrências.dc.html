@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  aside a { text-decoration: none; }
+  body { margin: 0; background: #f4f2fa; font-family: Manrope, system-ui, sans-serif; color: #1b1630; }
+  a { color: #6C2BF2; text-decoration: none; }
+  a:hover { color: #4a17b8; text-decoration: underline; }
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 3px solid #6C2BF2; outline-offset: 2px; border-radius: 8px; }
+</style>
+</helmet>
+
+<div style="max-width:1400px;margin:0 auto;padding:44px 28px 88px;display:flex;flex-direction:column;gap:40px">
+
+  <header style="display:flex;flex-direction:column;gap:22px">
+    <div style="display:flex;align-items:flex-start;gap:18px">
+      <img src="assets/asa-wing.png" alt="My ASA" style="width:52px;height:52px;object-fit:contain;flex:none;margin-top:4px" />
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#6b6482">19 · o dia em execução</div>
+        <h1 style="font-family:Outfit,sans-serif;font-size:38px;line-height:1.05;font-weight:700;margin:0;letter-spacing:-0.02em">Check-in do turno</h1>
+        <p style="margin:0;max-width:66ch;font-size:15px;line-height:1.55;color:#5b5473;text-wrap:pretty">Uma pergunta, um toque, uma vez por turno: você está no local e pronta para o que foi escalado? Do outro lado, quem gerencia bate o olho e sabe se falta alguém antes da atividade começar. Nada de presença por cena — isso o Livro do Dia já resolve.</p>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:13px 16px;background:#fff;border:1px solid #e6e1f2;border-radius:16px">
+      <span style="font-size:13px;font-weight:600;color:#5b5473;margin-right:4px">Ver como</span>
+      <sc-for list="{{ profileTabs }}" as="tab" hint-placeholder-count="4">
+        <button type="button" onClick="{{ tab.onClick }}" style="{{ tab.style }}">
+          <span style="width:8px;height:8px;border-radius:50%;background:{{ tab.dot }};display:inline-block"></span>
+          <span>{{ tab.name }}</span>
+        </button>
+      </sc-for>
+      <span style="flex:1"></span>
+      <span style="font-size:13px;color:#6b6482">{{ profileHint }}</span>
+    </div>
+  </header>
+
+  <div style="display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start">
+
+    <div style="flex:none;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Web · 1920 × 1080</span>
+        <span style="font-size:11.5px;color:#6b6482">exibido a 70% — proporção real de tela</span>
+      </div>
+      <div style="width:1344px;height:756px;border:1px solid #ddd6ee;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="width:1920px;height:1080px;transform:scale(0.7);transform-origin:top left;display:flex">
+
+          <aside style="width:236px;flex:none;background:linear-gradient(180deg,#1c1440 0%,#241a52 100%);display:flex;flex-direction:column;color:#fff">
+            <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 12px">
+              <img src="assets/asa-wing.png" alt="" style="width:26px;height:26px;object-fit:contain" />
+              <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">My ASA</span>
+            </div>
+            <div style="padding:0 12px 10px">
+              <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border-radius:10px;padding:8px 10px;font-size:11.5px;color:#b9b0da">
+                <span style="width:11px;height:11px;border:1.5px solid #b9b0da;border-radius:50%"></span>
+                <a href="27%20Assistente%20ASA.dc.html" style="color:inherit;text-decoration:none">Buscar ou perguntar à ASA</a>
+              </div>
+            </div>
+            <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:12px;padding:2px 10px 10px">
+              <sc-for list="{{ shellNav }}" as="g" hint-placeholder-count="4">
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#7d72a8;padding:0 8px 4px">{{ g.title }}</div>
+                  <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+                    <a href="{{ it.href }}" style="{{ it.style }}">{{ it.label }}</a>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+            <div style="border-top:1px solid rgba(255,255,255,.1);padding:12px;display:flex;align-items:center;gap:10px">
+              <span style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+              <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                <span style="font-size:12.5px;font-weight:600">{{ personName }}</span>
+                <span style="{{ personChipStyle }}">{{ profileName }}</span>
+              </div>
+            </div>
+          </aside>
+
+          <div style="flex:1;display:flex;flex-direction:column;background:#faf9fe;min-width:0">
+            <header style="display:flex;align-items:center;gap:12px;padding:13px 20px;border-bottom:1px solid #ebe6f6;background:#fff">
+              <div style="display:flex;flex-direction:column;gap:1px">
+                <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">{{ screenTitle }}</span>
+                <span style="font-size:11.5px;color:#6b6482">quarta, 26 de agosto · 07:42</span>
+              </div>
+              <span style="flex:1"></span>
+              <span style="{{ readonlyChipStyle }}">{{ readonlyChip }}</span>
+              <div style="display:flex;align-items:center;gap:8px;border:1px solid #e6e1f2;border-radius:999px;padding:6px 12px;font-size:12.5px;font-weight:600;color:#3d3559">
+                <span style="width:8px;height:8px;border-radius:50%;background:#0E8F86"></span>
+                <span>{{ operationLabel }}</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:7px;background:linear-gradient(135deg,#6C2BF2,#2E3BD6);color:#fff;border-radius:999px;padding:5px 13px 5px 5px;font-size:12.5px;font-weight:600">
+                <img src="assets/asa/oi.png" alt="ASA" style="width:26px;height:26px;object-fit:contain" />
+                <span>ASA</span>
+              </div>
+            </header>
+
+            <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;padding:18px 20px;display:flex;flex-direction:column;gap:14px">
+
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                <sc-for list="{{ turnoTabs }}" as="t" hint-placeholder-count="2">
+                  <button type="button" onClick="{{ t.onClick }}" style="{{ t.style }}">
+                    <span style="display:flex;flex-direction:column;gap:2px;align-items:flex-start">
+                      <span style="font-family:Outfit,sans-serif;font-size:14px;font-weight:600">{{ t.name }}</span>
+                      <span style="font-size:11px;opacity:.75">{{ t.range }}</span>
+                    </span>
+                    <span style="{{ t.badgeStyle }}">{{ t.badge }}</span>
+                  </button>
+                </sc-for>
+                <span style="flex:1"></span>
+                <span style="font-size:11.5px;color:#6b6482;max-width:34ch;line-height:1.4;text-wrap:pretty">{{ turnoHint }}</span>
+              </div>
+
+              <sc-if value="{{ isMember }}" hint-placeholder-val="{{ true }}">
+                <div style="flex:1;min-height:0;display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:stretch;min-width:0">
+
+                  <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+                    <div style="{{ askCardStyle }}">
+                      <div style="display:flex;align-items:center;gap:16px">
+                        <img src="assets/asa/bom-dia.png" alt="" style="{{ mascotW.bomdia }}" />
+                        <img src="assets/asa/tarefa-concluida.png" alt="" style="{{ mascotW.concluida }}" />
+                        <img src="assets/asa/aviso-importante.png" alt="" style="{{ mascotW.aviso }}" />
+                        <img src="assets/asa/consultando.png" alt="" style="{{ mascotW.consultando }}" />
+                        <div style="display:flex;flex-direction:column;gap:5px;min-width:0">
+                          <span style="font-family:Outfit,sans-serif;font-size:22px;font-weight:600;letter-spacing:-0.01em">{{ askTitle }}</span>
+                          <span style="font-size:13.5px;line-height:1.5;color:#d6cff5;text-wrap:pretty">{{ askSub }}</span>
+                        </div>
+                      </div>
+                      <div style="{{ askActionsStyle }}">
+                        <sc-for list="{{ askOptions }}" as="o" hint-placeholder-count="3">
+                          <button type="button" onClick="{{ o.onClick }}" style="{{ o.style }}">
+                            <span style="font-size:13.5px;font-weight:700">{{ o.label }}</span>
+                            <span style="font-size:11px;font-weight:500;opacity:.7">{{ o.hint }}</span>
+                          </button>
+                        </sc-for>
+                      </div>
+                      <div style="{{ askFollowStyle }}">
+                        <div style="display:flex;flex-direction:column;gap:8px">
+                          <span style="display:flex;align-items:center;gap:8px;font-size:12px;color:#cfc6ee">
+                            <span>{{ motivoLabel }}</span>
+                            <span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:rgba(255,255,255,.16);padding:3px 7px;border-radius:5px">obrigatório</span>
+                          </span>
+                          <div style="display:flex;gap:8px;flex-wrap:wrap">
+                            <sc-for list="{{ motivoChips }}" as="c" hint-placeholder-count="4">
+                              <button type="button" onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.label }}</button>
+                            </sc-for>
+                          </div>
+                        </div>
+                        <div style="{{ etaRowStyle }}">
+                          <span style="font-size:12px;color:#cfc6ee">Consegue prever o horário de chegada? (opcional)</span>
+                          <div style="display:flex;gap:8px;flex-wrap:wrap">
+                            <sc-for list="{{ etaChipsList }}" as="c" hint-placeholder-count="4">
+                              <button type="button" onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.label }}</button>
+                            </sc-for>
+                          </div>
+                        </div>
+                        <textarea onInput="{{ onMotivoText }}" rows="2" placeholder="{{ detailPlaceholder }}" style="width:100%;box-sizing:border-box;resize:none;font-family:Manrope,sans-serif;font-size:12.5px;line-height:1.45;color:#fff;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.28);border-radius:12px;padding:10px 12px"></textarea>
+                        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                          <button type="button" onClick="{{ onSend }}" style="{{ sendStyle }}">{{ sendLabel }}</button>
+                          <span style="font-size:11px;color:#a99fd0;line-height:1.4;max-width:44ch">{{ sendNote }}</span>
+                        </div>
+                      </div>
+                      <div style="{{ askDoneStyle }}">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#b9f0e6">registrado</span>
+                        <span style="font-size:14px;font-weight:600;color:#fff">{{ askDoneText }}</span>
+                        <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap">
+                          <button type="button" onClick="{{ onArrive }}" style="{{ arriveStyle }}">Cheguei</button>
+                          <button type="button" onClick="{{ onUndo }}" style="background:rgba(255,255,255,.14);border:none;color:#e4dffa;font-family:Manrope,sans-serif;font-size:12px;font-weight:600;padding:7px 13px;border-radius:999px;cursor:pointer">Corrigir resposta</button>
+                          <span style="{{ arriveNoteStyle }}">{{ arriveNote }}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+                      <div style="display:flex;align-items:center;gap:10px">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">O que o check-in cobre neste turno</span>
+                        <span style="flex:1"></span>
+                        <span style="font-size:11.5px;font-weight:600;color:#6C2BF2">ver minha escala</span>
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:2px">
+                        <sc-for list="{{ myItems }}" as="t" hint-placeholder-count="4">
+                          <div style="{{ t.rowStyle }}">
+                            <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#6b6482;width:46px;flex:none">{{ t.time }}</span>
+                            <span style="{{ t.dotStyle }}"></span>
+                            <span style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:1px">
+                              <span style="font-size:13.5px;font-weight:600;line-height:1.25;overflow-wrap:anywhere">{{ t.title }}</span>
+                              <span style="font-size:12px;color:#6b6482;line-height:1.3;overflow-wrap:anywhere">{{ t.sub }}</span>
+                            </span>
+                            <span style="{{ t.tagStyle }}">{{ t.tag }}</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                      <span style="font-size:11px;color:#6b6482;line-height:1.4;text-wrap:pretty">Uma resposta vale para o turno inteiro. O turno da noite pergunta de novo, porque entre eles você vai para casa.</span>
+                    </div>
+                    <div style="flex:1;min-height:0;background:#fff;border:1px solid #e6e1f2;border-radius:16px;display:flex;flex-direction:column;overflow:hidden">
+                      <div style="display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid #f0ecf8">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Seus últimos check-ins</span>
+                        <span style="flex:1"></span>
+                        <span style="font-size:11.5px;color:#6b6482">setembro · o mês corrente</span>
+                      </div>
+                      <div style="flex:1;min-height:0;overflow-y:auto;scrollbar-width:none;display:flex;flex-direction:column">
+                        <sc-for list="{{ historico }}" as="h" hint-placeholder-count="7">
+                          <div style="{{ h.rowStyle }}">
+                            <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#6b6482;width:58px;flex:none">{{ h.dia }}</span>
+                            <span style="{{ h.dotStyle }}"></span>
+                            <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px">
+                              <span style="font-size:13px;font-weight:600;line-height:1.25;overflow-wrap:anywhere">{{ h.titulo }}</span>
+                              <span style="font-size:11.5px;color:#6b6482;line-height:1.3;overflow-wrap:anywhere">{{ h.detalhe }}</span>
+                            </span>
+                            <span style="{{ h.tagStyle }}">{{ h.tag }}</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                      <span style="font-size:11px;color:#6b6482;line-height:1.45;padding:11px 18px;border-top:1px solid #f5f2fa;text-wrap:pretty">Este histórico é seu. A supervisão vê o do grupo; a Direção vê só o número da casa.</span>
+                    </div>
+
+                  </div>
+
+                  <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+                    <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Sua pontualidade · 30 dias</span>
+                      <div style="display:flex;align-items:baseline;gap:8px">
+                        <span style="font-family:Outfit,sans-serif;font-size:34px;font-weight:700;letter-spacing:-0.02em">{{ mine.rate }}</span>
+                        <span style="font-size:12.5px;color:#6b6482">dos turnos com check-in em dia</span>
+                      </div>
+                      <div style="display:flex;gap:8px">
+                        <sc-for list="{{ mine.stats }}" as="s" hint-placeholder-count="3">
+                          <div style="flex:1;background:#faf9fe;border:1px solid #f0ecf8;border-radius:11px;padding:9px 10px;display:flex;flex-direction:column;gap:2px">
+                            <span style="{{ s.numStyle }}">{{ s.num }}</span>
+                            <span style="font-size:10.5px;color:#6b6482;line-height:1.3">{{ s.label }}</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                      <span style="font-size:11px;color:#6b6482;line-height:1.4;text-wrap:pretty">Você vê o seu. A comparação com o resto do grupo fica com a supervisão.</span>
+                    </div>
+
+                    <div style="background:linear-gradient(135deg,#efe9fe,#e6ecfc);border:1px solid #ddd3fa;border-radius:16px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start">
+                      <img src="assets/asa/olhos-de-estrela.png" alt="" style="width:44px;height:44px;object-fit:contain;flex:none" />
+                      <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#6C2BF2">ASA sugere</span>
+                        <span style="font-size:12.5px;line-height:1.45;color:#3d3559;text-wrap:pretty">{{ asaTip }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ isManager }}" hint-placeholder-val="{{ false }}">
+                <div style="flex:1;min-height:0;display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:stretch;min-width:0">
+
+                  <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+                    <div style="display:flex;gap:10px;flex-wrap:wrap">
+                      <sc-for list="{{ counters }}" as="c" hint-placeholder-count="4">
+                        <div style="{{ c.boxStyle }}">
+                          <span style="{{ c.numStyle }}">{{ c.num }}</span>
+                          <span style="font-size:11.5px;font-weight:600;color:#3d3559;line-height:1.25">{{ c.label }}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+
+                    <div style="flex:1;min-height:0;background:#fff;border:1px solid #e6e1f2;border-radius:16px;display:flex;flex-direction:column;overflow:hidden">
+                      <div style="display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid #f0ecf8">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">{{ listTitle }}</span>
+                        <span style="flex:1"></span>
+                        <span style="font-size:11.5px;color:#6b6482">{{ listHint }}</span>
+                      </div>
+                      <sc-for list="{{ people }}" as="p" hint-placeholder-count="8">
+                        <div style="{{ p.rowStyle }}">
+                          <span style="{{ p.avatarStyle }}">{{ p.initials }}</span>
+                          <div style="display:flex;flex-direction:column;gap:2px;min-width:0;width:190px;flex:none">
+                            <span style="font-size:13.5px;font-weight:600">{{ p.name }}</span>
+                            <span style="font-size:11.5px;color:#6b6482">{{ p.role }}</span>
+                          </div>
+                          <span style="{{ p.stateStyle }}">{{ p.state }}</span>
+                          <span style="font-size:12px;color:#6b6482;min-width:0">{{ p.detail }}</span>
+                          <span style="flex:1"></span>
+                          <button type="button" onClick="{{ p.onAction }}" style="{{ p.actionStyle }}">{{ p.action }}</button>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+
+                  <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+                    <div style="{{ alertCardStyle }}">
+                      <div style="display:flex;align-items:center;gap:9px">
+                        <img src="assets/asa/aviso-importante.png" alt="" style="width:34px;height:34px;object-fit:contain" />
+                        <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">{{ alertTitle }}</span>
+                      </div>
+                      <span style="font-size:12.5px;line-height:1.5;color:#3d3559;text-wrap:pretty">{{ alertText }}</span>
+                      <div style="display:flex;flex-direction:column;gap:6px">
+                        <sc-for list="{{ alertRecipients }}" as="r" hint-placeholder-count="2">
+                          <div style="display:flex;align-items:center;gap:8px;font-size:11.5px;color:#5b5473">
+                            <span style="width:6px;height:6px;border-radius:50%;background:#C2600F;flex:none"></span>
+                            <span>{{ r }}</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                      <button type="button" onClick="{{ onAlert }}" style="{{ alertBtnStyle }}">{{ alertBtn }}</button>
+                    </div>
+
+                    <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">{{ teamPanelTitle }}</span>
+                      <div style="display:flex;align-items:baseline;gap:8px">
+                        <span style="font-family:Outfit,sans-serif;font-size:34px;font-weight:700;letter-spacing:-0.02em">{{ team.rate }}</span>
+                        <span style="font-size:12.5px;color:#6b6482">{{ team.rateLabel }}</span>
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:7px">
+                        <sc-for list="{{ team.rows }}" as="r" hint-placeholder-count="3">
+                          <div style="display:flex;align-items:center;gap:9px">
+                            <span style="{{ r.numStyle }}">{{ r.num }}</span>
+                            <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                              <span style="font-size:12.5px;font-weight:600">{{ r.title }}</span>
+                              <span style="font-size:11px;color:#6b6482">{{ r.sub }}</span>
+                            </div>
+                          </div>
+                        </sc-for>
+                      </div>
+                      <span style="font-size:11px;color:#6b6482;line-height:1.4;text-wrap:pretty">Atraso e falta contam separado — somar os dois esconde qual dos dois problemas você tem.</span>
+                    </div>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:0 0 390px;min-width:390px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Mobile · onde o check-in realmente acontece</div>
+        <button type="button" onClick="{{ onToggleSinal }}" style="{{ toggleSinalStyle }}">{{ toggleSinalLabel }}</button>
+      </div>
+      <div style="width:390px;height:844px;border-radius:38px;border:1px solid #ddd6ee;background:#fff;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="background:linear-gradient(135deg,#1c1440,#2b1f63);color:#fff;padding:14px 16px 16px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <img src="assets/asa-wing.png" alt="" style="width:20px;height:20px;object-fit:contain" />
+            <div style="display:flex;flex-direction:column;gap:1px">
+              <span style="font-size:13px;font-weight:600;font-family:Outfit,sans-serif">{{ screenTitle }}</span>
+              <span style="font-size:11px;color:#b9b0da">{{ operationLabel }} · {{ turnoName }}</span>
+            </div>
+            <span style="flex:1"></span>
+            <span style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9)"></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <img src="assets/asa/bom-dia.png" alt="" style="{{ mascotM.bomdia }}" />
+            <img src="assets/asa/tarefa-concluida.png" alt="" style="{{ mascotM.concluida }}" />
+            <img src="assets/asa/aviso-importante.png" alt="" style="{{ mascotM.aviso }}" />
+            <img src="assets/asa/consultando.png" alt="" style="{{ mascotM.consultando }}" />
+            <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+              <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">{{ mobileTitle }}</span>
+              <span style="font-size:11px;line-height:1.4;color:#cfc6ee">{{ mobileSub }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="flex:1;min-height:0;padding:12px;background:#faf9fe;display:flex;flex-direction:column;gap:10px;overflow-y:auto;overflow-x:hidden;scrollbar-width:none">
+
+          <sc-if value="{{ isMember }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="{{ semSinalStyle }}">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#8F5409">sem sinal</span>
+              <span style="font-size:13.5px;font-weight:700;line-height:1.35;color:#1b1630">O check-in não sai daqui sem internet.</span>
+              <span style="font-size:12px;line-height:1.5;color:#4a4460">O app não guarda para enviar depois — se ficasse na fila, a supervisão veria você como quem não respondeu.</span>
+              <span style="font-size:12.5px;font-weight:700;line-height:1.45;color:#1b1630">Avise {{ supervisorNome }} agora, por fora do app.</span>
+              <a href="{{ supervisorTel }}" style="display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:999px;background:#1c1440;color:#fff;font-family:Manrope,sans-serif;font-size:13px;font-weight:700;text-decoration:none">Ligar para {{ supervisorNome }}</a>
+              <span style="font-size:11.5px;line-height:1.45;color:#6b6482">Quando o sinal voltar, esta tela volta sozinha e o check-in continua aberto.</span>
+            </div>
+
+              <div style="{{ mobileAskStyle }}">
+                <sc-for list="{{ askOptions }}" as="o" hint-placeholder-count="3">
+                  <button type="button" onClick="{{ o.onClick }}" style="{{ o.mobileStyle }}">
+                    <span style="font-size:13px;font-weight:700">{{ o.label }}</span>
+                    <span style="font-size:11.5px;font-weight:500;opacity:.7">{{ o.hint }}</span>
+                  </button>
+                </sc-for>
+              </div>
+
+              <div style="{{ mobileFollowStyle }}">
+                <span style="display:flex;align-items:center;gap:6px;font-size:11px;color:#6b6482">
+                  <span>{{ motivoLabel }}</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:#f0eef5;color:#6b6482;padding:2px 5px;border-radius:4px">obrigatório</span>
+                </span>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  <sc-for list="{{ motivoChips }}" as="c" hint-placeholder-count="4">
+                    <button type="button" onClick="{{ c.onClick }}" style="{{ c.mobileStyle }}">{{ c.label }}</button>
+                  </sc-for>
+                </div>
+                <div style="{{ etaRowMobileStyle }}">
+                  <span style="font-size:11px;color:#6b6482">Previsão de chegada (opcional)</span>
+                  <div style="display:flex;gap:6px;flex-wrap:wrap">
+                    <sc-for list="{{ etaChipsList }}" as="c" hint-placeholder-count="4">
+                      <button type="button" onClick="{{ c.onClick }}" style="{{ c.mobileStyle }}">{{ c.label }}</button>
+                    </sc-for>
+                  </div>
+                </div>
+                <textarea onInput="{{ onMotivoText }}" rows="3" placeholder="{{ detailPlaceholder }}" style="width:100%;box-sizing:border-box;resize:none;font-family:Manrope,sans-serif;font-size:12.5px;line-height:1.5;color:#1b1630;background:#faf9fe;border:1px solid #e6e1f2;border-radius:11px;padding:9px 10px"></textarea>
+                <button type="button" onClick="{{ onSend }}" style="{{ sendMobileStyle }}">{{ sendLabel }}</button>
+              </div>
+
+              <div style="{{ mobileDoneStyle }}">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#0E8F86">registrado</span>
+                <span style="font-size:13.5px;font-weight:600;line-height:1.4;color:#1b1630">{{ askDoneText }}</span>
+                <button type="button" onClick="{{ onArrive }}" style="{{ arriveMobileStyle }}">Cheguei</button>
+              </div>
+
+              <div style="background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Neste turno</span>
+                <sc-for list="{{ myItems }}" as="t" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:9px">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6b6482;width:38px;flex:none">{{ t.time }}</span>
+                    <span style="{{ t.dotStyle }}"></span>
+                    <span style="font-size:12px;font-weight:600;min-width:0">{{ t.title }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isManager }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;gap:6px">
+                <sc-for list="{{ counters }}" as="c" hint-placeholder-count="4">
+                  <div style="{{ c.mobileBoxStyle }}">
+                    <span style="{{ c.mobileNumStyle }}">{{ c.num }}</span>
+                    <span style="font-size:11px;font-weight:600;color:#6b6482;line-height:1.2;text-align:center">{{ c.short }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:9px">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Quem falta responder</span>
+                <sc-for list="{{ pendingPeople }}" as="p" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <span style="{{ p.avatarStyle }}">{{ p.initials }}</span>
+                    <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                      <span style="font-size:12px;font-weight:600">{{ p.name }}</span>
+                      <span style="font-size:11.5px;color:#6b6482">{{ p.detail }}</span>
+                    </div>
+                    <span style="flex:1"></span>
+                    <span style="{{ p.stateStyle }}">{{ p.state }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="background:#fdeee4;border:1px solid #f6d9c2;border-radius:14px;padding:11px 12px;display:flex;flex-direction:column;gap:6px">
+                <span style="font-size:11.5px;font-weight:700;color:#C2600F">{{ alertTitle }}</span>
+                <span style="font-size:11px;line-height:1.4;color:#5b5473;text-wrap:pretty">{{ alertText }}</span>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid #ebe6f6;background:#fff;padding:8px 4px 12px">
+          <sc-for list="{{ mobileTabs }}" as="t" hint-placeholder-count="5">
+            <div style="{{ t.style }}">
+              <span style="width:17px;height:17px;border-radius:6px;border:1.5px solid currentColor;opacity:.75"></span>
+              <span style="font-size:11px;font-weight:600;text-align:center">{{ t.label }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+      <h2 style="font-family:Outfit,sans-serif;font-size:22px;font-weight:600;margin:0;letter-spacing:-0.01em">Quando alguém avisa que não vai</h2>
+      <span style="font-size:13.5px;color:#6b6482">o check-in registra, a escala resolve — e as duas pessoas certas recebem</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px">
+      <sc-for list="{{ flow }}" as="f" hint-placeholder-count="4">
+        <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:9px">
+          <div style="display:flex;align-items:center;gap:9px">
+            <span style="{{ f.numStyle }}">{{ f.num }}</span>
+            <span style="font-family:Outfit,sans-serif;font-size:15.5px;font-weight:600">{{ f.title }}</span>
+          </div>
+          <span style="font-size:13px;line-height:1.5;color:#5b5473;text-wrap:pretty">{{ f.text }}</span>
+          <span style="{{ f.tagStyle }}">{{ f.tag }}</span>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#1c1440,#2b1f63);color:#fff;border-radius:16px;padding:16px 20px">
+      <img src="assets/asa/estudando.png" alt="" style="width:52px;height:52px;object-fit:contain;flex:none" />
+      <span style="font-size:13.5px;line-height:1.5;color:#e4dffa;text-wrap:pretty">A pessoa avisa em um lugar só, às 6h da manhã, do celular. O sistema é que sabe para onde levar: gestor da área e responsável da atividade recebem juntos, e a substituição acontece na Escala, com a cascata para as cenas do Livro do Dia. O check-in nunca tenta resolver a escala por conta própria.</span>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+      <h2 style="font-family:Outfit,sans-serif;font-size:22px;font-weight:600;margin:0;letter-spacing:-0.01em">Regras que sustentam a tela</h2>
+      <span style="font-size:13.5px;color:#6b6482">decisões desta rodada, escritas para não serem reabertas depois</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px">
+    <button type="button" onClick="{{ toggleNotas }}" style="{{ notasBtnStyle }}">
+      <span style="width:20px;height:20px;border-radius:50%;background:#f1eafe;color:#6C2BF2;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none">i</span>
+      <span>{{ notasLabel }}</span>
+    </button>
+    <sc-if value="{{ verNotas }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:12px">
+      <sc-for list="{{ rules }}" as="r" hint-placeholder-count="6">
+          <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:15px 17px;display:flex;flex-direction:column;gap:7px">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6C2BF2">{{ r.kicker }}</span>
+            <span style="font-family:Outfit,sans-serif;font-size:15.5px;font-weight:600;line-height:1.25">{{ r.title }}</span>
+            <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">{{ r.text }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1400},&quot;perfilInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ADM&quot;,&quot;DIR&quot;,&quot;SUP&quot;,&quot;MEM&quot;],&quot;default&quot;:&quot;MEM&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Tela&quot;},&quot;turnoUnico&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Operação&quot;}}">
+const A = n => "assets/asa-" + n + ".png";
+
+const PROFILES = [
+  { key: "ADM", name: "Administração", dot: "#6C2BF2", hint: "vê os três locais — só age onde falta gente", person: "Carolina", op: "Toda a ASA" },
+  { key: "DIR", name: "Direção", dot: "#2E63D6", hint: "pontualidade como sinal, sem botão de ação", person: "Cris Garcia", op: "Visão organizacional" },
+  { key: "SUP", name: "Supervisão", dot: "#0E8F86", hint: "a equipe do turno dela, antes da atividade", person: "Deborah", op: "Área Patinadores" },
+  { key: "MEM", name: "Elenco", dot: "#C2508F", hint: "uma pergunta, um toque, uma vez por turno", person: "Julia", op: "Patinadores · grupo B" }
+];
+
+const NAV = [
+  { title: "Porta de entrada", items: [["17", "Início / Meu Dia", ["ADM","DIR","SUP","MEM"], "Meu Dia"]] },
+  { title: "O dia", items: [
+    ["20", "Agenda", ["ADM","DIR","SUP","MEM"], "Minha agenda"],
+    ["15", "Escalas", ["ADM","DIR","SUP","MEM"], "Minha escala"],
+    ["13", "Shows", ["ADM","DIR","SUP","MEM"], "Shows"],
+    ["14", "Livro do Dia", ["ADM","DIR","SUP","MEM"], "Meus shows"],
+    ["19", "Check-in", ["ADM","DIR","SUP","MEM"], "Check-in"],
+    ["10", "Responsabilidades e tarefas", ["ADM","DIR","SUP","MEM"], "Minhas tarefas"],
+    ["18", "Folgas", ["ADM","DIR","SUP","MEM"], "Minhas folgas"]
+  ] },
+  { title: "Gestão", items: [
+    ["16", "Painel", ["ADM","DIR","SUP"], null],
+    ["06", "Locais", ["ADM","DIR","SUP"], null],
+    ["07", "Pessoas", ["ADM","DIR","SUP"], null],
+    ["08", "Áreas", ["ADM","DIR","SUP","MEM"], "Meu grupo"],
+    ["25", "Reconhecimentos", ["ADM","DIR","SUP"], null]
+  ] },
+  { title: "Comunicação", items: [
+    ["22", "Avisos e Mural", ["ADM","DIR","SUP","MEM"], "Mural"],
+    ["23", "Mensagens", ["ADM","DIR","SUP","MEM"], "Conversas"],
+    ["24", "Biblioteca", ["ADM","DIR","SUP","MEM"], "Biblioteca"]
+  ] }
+];
+
+const NAV_HREF = {
+  "06": "06%20Locais.dc.html",
+  "07": "07%20Pessoas.dc.html",
+  "08": "08%20%C3%81reas.dc.html",
+  "10": "10%20Responsabilidades%20e%20Tarefas.dc.html",
+  "13": "13%20Shows.dc.html",
+  "14": "14%20Livro%20do%20Dia.dc.html",
+  "15": "15%20Escalas.dc.html",
+  "16": "16%20Painel%20e%20indicadores.dc.html",
+  "17": "17%20Meu%20Dia.dc.html",
+  "18": "18%20Folgas.dc.html",
+  "19": "19%20Check-in%20e%20ocorr%C3%AAncias.dc.html",
+  "20": "20%20Agenda.dc.html",
+  "22": "22%20Avisos%20e%20Mural.dc.html",
+  "23": "23%20Mensagens.dc.html",
+  "24": "24%20Biblioteca.dc.html",
+  "25": "25%20Reconhecimentos.dc.html",
+  "27": "27%20Assistente%20ASA.dc.html",
+  "28": "28%20Perfil%20e%20configura%C3%A7%C3%B5es.dc.html"
+};
+
+const HIST = [
+  { dia: "11 set", t: "ok", titulo: "Turno da manhã", detalhe: "respondeu 07:38 · primeira atividade 08:00", tag: "no prazo" },
+  { dia: "10 set", t: "ok", titulo: "Turno da manhã", detalhe: "respondeu 07:22 · primeira atividade 08:00", tag: "no prazo" },
+  { dia: "09 set", t: "atraso", titulo: "Atraso avisado", detalhe: "ônibus quebrou na estrada · chegou 08:23, previu 08:20", tag: "avisado" },
+  { dia: "08 set", t: "folga", titulo: "Folga da turma", detalhe: "sem check-in — turma B", tag: "folga" },
+  { dia: "07 set", t: "ok", titulo: "Turno da manhã e da noite", detalhe: "duas respostas · feriado, casa cheia", tag: "no prazo" },
+  { dia: "06 set", t: "ok", titulo: "Turno da manhã", detalhe: "respondeu 07:41", tag: "no prazo" },
+  { dia: "05 set", t: "falta", titulo: "Falta sem aviso", detalhe: "registrada por Deborah · atestado entregue no dia seguinte", tag: "justificada" },
+  { dia: "04 set", t: "ok", titulo: "Turno da manhã", detalhe: "respondeu 07:19", tag: "no prazo" },
+  { dia: "03 set", t: "folga", titulo: "Folga da turma", detalhe: "sem check-in — turma B", tag: "folga" },
+  { dia: "02 set", t: "ok", titulo: "Turno da manhã", detalhe: "respondeu 07:30", tag: "no prazo" }
+];
+
+const MOBILE = {
+  ADM: ["Meu Dia", "Painel", "Escalas", "Pessoas", "Mais"],
+  DIR: ["Meu Dia", "Painel", "Agenda", "Avisos", "Mais"],
+  SUP: ["Meu Dia", "Escalas", "Grupos", "Avisos", "Mais"],
+  MEM: ["Meu Dia", "Escala", "Mural", "Mensagens", "Mais"]
+};
+
+const TONES = {
+  ok:   { bg: "#e3f4f1", fg: "#0E8F86" },
+  warn: { bg: "#fdeee4", fg: "#C2600F" },
+  bad:  { bg: "#fbe7e7", fg: "#B4302F" },
+  mute: { bg: "#f0eef5", fg: "#6b6482" },
+  mine: { bg: "#fbeaf3", fg: "#C2508F" }
+};
+
+const TURNOS = [
+  { key: "manha", name: "Manhã", range: "07:30 – 13:00", open: true },
+  { key: "noite", name: "Noite", range: "18:00 – 23:30", open: false }
+];
+
+const MY_ITEMS = {
+  manha: [
+    { time: "08:00", title: "Passagem do show", sub: "Snowland · posição 4", tag: "primeira", tone: "mine" },
+    { time: "09:00", title: "Show Patinação", sub: "elenco · cena 2 e 5", tag: "", tone: "mine" },
+    { time: "12:00", title: "Almoço", sub: "grupo inteiro", tag: "", tone: "mute" }
+  ],
+  noite: [
+    { time: "19:00", title: "Show Patinação", sub: "Snowland · posição 4", tag: "primeira", tone: "mine" },
+    { time: "21:30", title: "Desmontagem", sub: "apoio de palco", tag: "", tone: "mute" }
+  ]
+};
+
+const PEOPLE = {
+  manha: [
+    { name: "Arthur", role: "Patinadores · posição 2", st: "pronto", detail: "check-in às 06:58" },
+    { name: "Julia", role: "Patinadores · posição 4", st: "pronto", detail: "check-in às 07:42" },
+    { name: "Sofia", role: "Patinadores · posição 7", st: "pronto", detail: "check-in às 07:31" },
+    { name: "Maico", role: "Produção · som", st: "pronto", detail: "check-in às 07:20" },
+    { name: "Amanda", role: "Patinadores · posição 9", st: "pronto", detail: "marcado por você às 07:05" },
+    { name: "Lucas", role: "Produção · luz", st: "atraso", detail: "07:10 · transporte · chega 08:20" },
+    { name: "Gabriel", role: "Apoio de palco", st: "sem", detail: "atividade dele começa em 18 min" },
+    { name: "Carol", role: "Patinadores · posição 5", st: "falta", detail: "enfermidade · avisou 07:40" }
+  ],
+  noite: [
+    { name: "Arthur", role: "Patinadores · posição 2", st: "janela", detail: "check-in abre às 17:00" },
+    { name: "Julia", role: "Patinadores · posição 4", st: "janela", detail: "check-in abre às 17:00" },
+    { name: "Lucas", role: "Produção · luz", st: "janela", detail: "check-in abre às 17:00" },
+    { name: "Dani", role: "Patinadores · posição 5", st: "janela", detail: "cobrindo a Carol" }
+  ]
+};
+
+const ST = {
+  pronto: { label: "pronto", tone: "ok" },
+  atraso: { label: "vai atrasar", tone: "warn" },
+  chegou: { label: "chegou", tone: "ok" },
+  semche: { label: "atraso sem chegada", tone: "warn" },
+  falta:  { label: "não vai", tone: "bad" },
+  sem:    { label: "sem check-in", tone: "mute" },
+  janela: { label: "janela fechada", tone: "mute" }
+};
+
+const TEAM = {
+  SUP: {
+    title: "Área Patinadores · 30 dias",
+    rate: "94%",
+    rateLabel: "dos turnos com check-in feito no prazo",
+    rows: [
+      { num: "11", title: "Atrasos avisados", sub: "7 por transporte · 3 saúde · 1 outro", tone: "warn" },
+      { num: "2", title: "Pessoas com 3+ atrasos", sub: "Lucas (4) e Gabriel (3)", tone: "warn" },
+      { num: "2", title: "Atrasos sem chegada confirmada", sub: "avisaram e ninguém fechou o registro", tone: "warn" },
+      { num: "3", title: "Faltas por impossibilidade", sub: "todas cobertas na escala", tone: "bad" },
+      { num: "6", title: "Turnos sem resposta", sub: "concentrados em duas pessoas", tone: "mute" }
+    ]
+  },
+  ADM: {
+    title: "Três locais · 30 dias",
+    rate: "91%",
+    rateLabel: "média de check-in da organização",
+    rows: [
+      { num: "97%", title: "Snowland", sub: "melhor índice · 2 turnos por dia", tone: "ok" },
+      { num: "88%", title: "Acquamotion", sub: "turno da manhã é o gargalo", tone: "warn" },
+      { num: "89%", title: "Hotelaria", sub: "muitos turnos noturnos", tone: "warn" },
+      { num: "5", title: "Pessoas reincidentes", sub: "3+ atrasos em 30 dias", tone: "warn" }
+    ]
+  },
+  DIR: {
+    title: "Arts and Sports Academy · 30 dias",
+    rate: "91%",
+    rateLabel: "média de check-in — estável há três meses",
+    rows: [
+      { num: "↑", title: "Snowland melhorou 6 pts", sub: "desde a mudança de janela", tone: "ok" },
+      { num: "88%", title: "Acquamotion abaixo da média", sub: "terceiro mês seguido", tone: "warn" },
+      { num: "3", title: "Faltas por impossibilidade", sub: "nenhum show ficou descoberto", tone: "ok" },
+      { num: "5", title: "Pessoas reincidentes", sub: "acompanhamento da supervisão", tone: "mute" }
+    ]
+  }
+};
+
+const FLOW = [
+  { num: "1", title: "A pessoa responde", text: "No check-in do turno ela escolhe “não vou conseguir ir”. Motivo é obrigatório aqui — é a única coisa que diferencia um imprevisto de uma recorrência.", tag: "check-in", tone: "mine" },
+  { num: "2", title: "Duas pessoas recebem", text: "O gestor da área precisa saber, e o responsável da atividade também. O aviso chega para os dois ao mesmo tempo, não em cascata.", tag: "notificação", tone: "warn" },
+  { num: "3", title: "A escala resolve", text: "O aviso vira pendência de substituição na Escala do dia. É lá que existe quem está disponível e a cascata para as cenas.", tag: "escala · 15", tone: "ok" },
+  { num: "4", title: "O histórico separa", text: "Falta por impossibilidade não entra na conta de atraso. Na ficha da pessoa são dois números diferentes, e continuam diferentes.", tag: "pessoas · 07", tone: "mute" }
+];
+
+const RULES = [
+  { kicker: "janela", title: "Por turno, não por dia", text: "Quem trabalha manhã e noite vai para casa no meio — uma resposta às 6h não diz nada sobre as 19h. O padrão é por turno; se o hotel opera em turno único, a operação ajusta e ninguém precisa saber disso." },
+  { kicker: "janela", title: "Abre duas horas antes da primeira atividade", text: "Antes disso o botão não existe, para ninguém fazer check-in de casa na noite anterior. Depois do início da atividade ele continua aberto, mas o registro já sai marcado como atrasado." },
+  { kicker: "atraso", title: "Quem avisou atraso confirma a chegada", text: "O aviso não fecha o ciclo — a pessoa toca em “cheguei” e a hora real entra no registro, ao lado do que ela havia previsto. A supervisão pode confirmar por ela. Sem confirmação até o fim do turno, o registro encerra como “atraso sem chegada confirmada”: nem cumprido, nem falta." },
+  { kicker: "motivo", title: "Motivo é obrigatório no atraso e na falta", text: "Sem motivo o histórico não serve para nada: trânsito de um dia e recorrência de três semanas ficam com a mesma cara. A classificação é exigida, o texto livre é opcional — e o horário previsto do atraso continua opcional, porque nem sempre a pessoa sabe." },
+  { kicker: "por procuração", title: "O gestor pode marcar por alguém", text: "A pessoa chegou e não usou o app: a supervisão marca. O registro guarda quem marcou e aparece assim na lista — “marcado por você às 07:05” — porque a diferença importa no histórico." },
+  { kicker: "silêncio", title: "Não responder é uma resposta", text: "“Sem check-in” é o estado que a supervisão mais precisa ver de manhã, e ele aparece sozinho, sem ninguém apertar nada. Nada de campo vazio disfarçado de tudo certo." },
+  { kicker: "escopo", title: "Check-in não é presença por cena", text: "Aqui a pergunta é só se a pessoa está no local e pronta. Quem fez qual cena, em que posição, é o Livro do Dia — e ele não vira lista de chamada." }
+];
+
+class Component extends DCLogic {
+  state = { semSinal: false, profile: null, turno: "manha", answer: null, eta: null, motivo: null, motivoTexto: "", sent: false, arrived: false, motivoTexto: "", sent: false, arrived: false, alertDone: false, marked: {} };
+
+  renderVals() {
+    const active = this.state.profile || this.props.perfilInicial || "MEM";
+    const semSinal = !!this.state.semSinal;
+    const supervisorNome = "Deborah";
+    const meta = PROFILES.find(p => p.key === active) || PROFILES[3];
+    const isMember = active === "MEM";
+    const isDir = active === "DIR";
+    const turnoKey = this.state.turno;
+    const turno = TURNOS.find(t => t.key === turnoKey) || TURNOS[0];
+    const ans = this.state.answer;
+
+    const profileTabs = PROFILES.map(p => ({
+      name: p.name,
+      dot: p.dot,
+      onClick: () => this.setState({ profile: p.key, answer: null, eta: null, motivo: null, motivoTexto: "", sent: false, arrived: false, alertDone: false, marked: {} }),
+      style: [
+        "display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;cursor:pointer;",
+        "font-family:Manrope,sans-serif;font-size:13px;font-weight:600;",
+        p.key === active
+          ? "border:1px solid " + p.dot + ";background:" + p.dot + "12;color:" + p.dot + ";box-shadow:0 0 0 3px " + p.dot + "1a"
+          : "border:1px solid #e6e1f2;background:#fff;color:#6b6482"
+      ].join("")
+    }));
+
+    const shellNav = NAV.map(g => ({
+      title: g.title,
+      items: g.items.filter(it => it[2].indexOf(active) >= 0).map(it => ({
+        href: NAV_HREF[it[0]],
+        label: (isMember && it[3]) ? it[3] : it[1],
+        style: [
+          "display:flex;align-items:center;gap:8px;padding:6.5px 9px;border-radius:8px;font-size:12px;",
+          it[0] === "19" ? "background:rgba(255,255,255,.14);color:#fff;font-weight:600;" : "color:#c3bbdf;font-weight:500;"
+        ].join("")
+      }))
+    })).filter(g => g.items.length > 0);
+
+    const mobileTabs = MOBILE[active].map((label, i) => ({
+      label: label,
+      style: "display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 2px;" + (i === 0 ? "color:" + meta.dot + ";" : "color:#6b6482;")
+    }));
+
+    const unico = !!this.props.turnoUnico;
+    const turnoList = unico ? [{ key: "manha", name: "Dia inteiro", range: "07:30 – 23:30", open: true }] : TURNOS;
+    const turnoTabs = turnoList.map(t => {
+      const on = t.key === turnoKey;
+      const badge = t.open ? "aberto" : "abre 17:00";
+      const T = t.open ? TONES.ok : TONES.mute;
+      return {
+        name: t.name,
+        range: t.range,
+        badge: badge,
+        onClick: () => this.setState({ turno: t.key, answer: null, eta: null, motivo: null, motivoTexto: "", sent: false, arrived: false }),
+        style: [
+          "display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:14px;cursor:pointer;text-align:left;",
+          "font-family:Manrope,sans-serif;color:#1b1630;",
+          on ? "border:1px solid " + meta.dot + ";background:#fff;box-shadow:0 0 0 3px " + meta.dot + "1a;"
+             : "border:1px solid #e6e1f2;background:#fff;opacity:.62;"
+        ].join(""),
+        badgeStyle: "font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:4px 8px;border-radius:6px;background:" + T.bg + ";color:" + T.fg + ";"
+      };
+    });
+
+    const myItems = (MY_ITEMS[turnoKey] || []).map(t => {
+      const T = TONES[t.tone];
+      return {
+        time: t.time,
+        title: t.title,
+        sub: t.sub,
+        tag: t.tag,
+        rowStyle: "display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px;border-radius:10px;" + (t.tone === "mine" ? "background:#fdf4f9;" : ""),
+        dotStyle: "width:8px;height:8px;border-radius:50%;flex:none;background:" + T.fg + ";" + (t.tone === "mute" ? "opacity:.5;" : ""),
+        tagStyle: t.tag
+          ? "flex:none;font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:" + T.bg + ";color:" + T.fg + ";"
+          : "display:none;"
+      };
+    });
+
+    const closed = !turno.open;
+    const optDefs = [
+      { key: "pronto", label: "Estou pronto", hint: "no local, pronto para começar", bg: "#fff", fg: "#1b1630" },
+      { key: "atraso", label: "Vou atrasar", hint: "informe o horário se souber", bg: "rgba(255,255,255,.16)", fg: "#fff" },
+      { key: "falta", label: "Não vou conseguir ir", hint: "vai para a supervisão e a escala", bg: "transparent", fg: "#e4dffa" }
+    ];
+    const askOptions = optDefs.map(o => ({
+      label: o.label,
+      hint: o.hint,
+      onClick: () => this.setState({ answer: o.key, eta: null, motivo: null, motivoTexto: "", sent: false, arrived: false }),
+      style: [
+        "min-width:0;display:flex;flex-direction:column;gap:3px;align-items:flex-start;text-align:left;cursor:pointer;",
+        "font-family:Manrope,sans-serif;border-radius:14px;padding:12px 15px;overflow-wrap:anywhere;",
+        o.key === "falta" ? "border:1px solid rgba(255,255,255,.32);" : "border:none;",
+        "background:" + o.bg + ";color:" + o.fg + ";"
+      ].join(""),
+      mobileStyle: [
+        "width:100%;display:flex;flex-direction:column;gap:2px;align-items:flex-start;text-align:left;cursor:pointer;",
+        "font-family:Manrope,sans-serif;border-radius:13px;padding:12px 14px;min-height:52px;justify-content:center;",
+        o.key === "pronto" ? "border:none;background:linear-gradient(135deg,#6C2BF2,#2E3BD6);color:#fff;"
+          : o.key === "atraso" ? "border:1px solid #e6e1f2;background:#fff;color:#1b1630;"
+          : "border:1px solid #f0dcdc;background:#fff;color:#B4302F;"
+      ].join("")
+    }));
+
+    const ETA = ["08:10", "08:20", "08:45", "não sei ainda"];
+    const MOTIVOS = {
+      atraso: ["Transporte", "Saúde", "Imprevisto pessoal", "Outro"],
+      falta: ["Enfermidade", "Problema pessoal", "Transporte", "Outro"]
+    };
+    const chipStyle = (on) => "cursor:pointer;font-family:Manrope,sans-serif;font-size:12px;font-weight:600;padding:8px 13px;border-radius:999px;" + (on ? "border:1px solid #fff;background:#fff;color:#2b1f63;" : "border:1px solid rgba(255,255,255,.3);background:transparent;color:#e4dffa;");
+    const chipMobileStyle = (on) => "cursor:pointer;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:600;padding:9px 12px;border-radius:999px;min-height:36px;" + (on ? "border:1px solid " + meta.dot + ";background:" + meta.dot + "14;color:" + meta.dot + ";" : "border:1px solid #e6e1f2;background:#fff;color:#6b6482;");
+
+    const picked = this.state.motivo;
+    const motivoChips = (MOTIVOS[ans] || []).map(l => ({
+      label: l,
+      onClick: () => this.setState({ motivo: l }),
+      style: chipStyle(picked === l),
+      mobileStyle: chipMobileStyle(picked === l)
+    }));
+    const etaChipsList = ETA.map(l => ({
+      label: l,
+      onClick: () => this.setState({ eta: l }),
+      style: chipStyle(this.state.eta === l),
+      mobileStyle: chipMobileStyle(this.state.eta === l)
+    }));
+
+    const sent = this.state.sent;
+    const txt = (this.state.motivoTexto || "").trim();
+    const eta = this.state.eta;
+    const confirmed = !!ans && (ans === "pronto" || sent);
+    const etaTxt = (eta && eta !== "não sei ainda") ? eta : null;
+    const doneText = ans === "pronto"
+      ? "Check-in feito às 07:42 — turno da manhã. Bom show!"
+      : ans === "atraso"
+        ? (this.state.arrived
+            ? "Chegada confirmada às 08:23" + (etaTxt ? " — você havia previsto " + etaTxt : "") + ". Registro do turno fechado."
+            : "Atraso avisado às 07:42 · " + picked + (etaTxt ? " · previsão de chegada " + etaTxt : " · sem horário previsto") + (txt ? " — “" + txt + "”" : "") + ". A supervisão já sabe.")
+        : "Impossibilidade registrada às 07:42 · " + picked + (txt ? " — “" + txt + "”" : "") + ". Deborah e o responsável do show foram avisados; a substituição corre na Escala.";
+
+    const askMascotKey = closed ? "consultando" : isMember
+      ? (confirmed ? ((ans === "pronto" || (ans === "atraso" && this.state.arrived)) ? "concluida" : "aviso") : "bomdia")
+      : "aviso";
+
+    const gestorTitles = {
+      SUP: { title: "Check-in · Área Patinadores", ask: "" },
+      ADM: { title: "Check-in · três locais", ask: "" },
+      DIR: { title: "Check-in · leitura", ask: "" }
+    };
+
+    const rawPeople = PEOPLE[turnoKey] || [];
+    const people = rawPeople.map((p, i) => {
+      const mk = this.state.marked[p.name];
+      const st = mk ? (p.st === "atraso" ? "chegou" : "pronto") : p.st;
+      const S = ST[st];
+      const T = TONES[S.tone];
+      const detail = mk
+        ? (p.st === "atraso" ? "chegou 08:23 · previsto 08:20" : "marcado por você às 07:42")
+        : p.detail;
+      const canMark = !isDir && st === "sem";
+      const canArrive = !isDir && st === "atraso";
+      const canSub = !isDir && st === "falta";
+      return {
+        name: p.name,
+        role: p.role,
+        initials: (function(){ var q = p.name.trim().split(/\s+/); return (q[0][0] + (q[1] ? q[1][0] : "")).toUpperCase(); })(),
+        state: S.label,
+        detail: detail,
+        rowStyle: "display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid #f5f2fa;" + (st === "falta" ? "background:#fdf6f6;" : st === "sem" ? "background:#fbfaff;" : ""),
+        avatarStyle: "flex:none;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;background:" + T.bg + ";color:" + T.fg + ";",
+        stateStyle: "font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 9px;border-radius:6px;width:104px;text-align:center;flex:none;background:" + T.bg + ";color:" + T.fg + ";",
+        action: canMark ? "marcar pronto" : canArrive ? "marcar chegada" : canSub ? "abrir substituição" : "",
+        onAction: (canMark || canArrive) ? () => this.setState({ marked: Object.assign({}, this.state.marked, { [p.name]: true }) }) : () => {},
+        actionStyle: (canMark || canArrive || canSub)
+          ? "cursor:pointer;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;padding:7px 12px;border-radius:999px;flex:none;" + (canSub ? "border:none;background:#B4302F;color:#fff;" : "border:1px solid #d8d0ea;background:#fff;color:#3d3559;")
+          : "display:none;"
+      };
+    });
+
+    const counts = { pronto: 0, chegou: 0, atraso: 0, falta: 0, sem: 0, janela: 0 };
+    rawPeople.forEach(p => {
+      const mk = this.state.marked[p.name];
+      counts[mk ? (p.st === "atraso" ? "chegou" : "pronto") : p.st]++;
+    });
+    const base = 8;
+    const basePronto = turnoKey === "manha" ? 8 : 0;
+    const totalTurno = rawPeople.length + base;
+    const prontos = counts.pronto + counts.chegou + basePronto;
+
+    const counterDefs = [
+      { num: String(prontos) + "/" + String(totalTurno), label: "prontos no local", short: "prontos", tone: "ok" },
+      { num: String(counts.atraso), label: "vão atrasar", short: "atraso", tone: "warn" },
+      { num: String(counts.falta), label: "não vêm", short: "não vêm", tone: "bad" },
+      { num: String(counts.sem + counts.janela + (base - basePronto)), label: closed ? "aguardando janela" : "sem responder", short: closed ? "janela" : "sem resp.", tone: "mute" }
+    ];
+    const counters = counterDefs.map(c => {
+      const T = TONES[c.tone];
+      return {
+        num: c.num,
+        label: c.label,
+        short: c.short,
+        boxStyle: "flex:1 1 150px;min-width:132px;display:flex;align-items:center;gap:11px;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:12px 14px;",
+        numStyle: "flex:none;min-width:44px;height:38px;padding:0 8px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-family:Outfit,sans-serif;font-size:18px;font-weight:700;background:" + T.bg + ";color:" + T.fg + ";",
+        mobileBoxStyle: "flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:#fff;border:1px solid #e6e1f2;border-radius:12px;padding:8px 4px;",
+        mobileNumStyle: "font-family:Outfit,sans-serif;font-size:15px;font-weight:700;color:" + T.fg + ";"
+      };
+    });
+
+    const pendingPeople = people.filter(p => p.state === "sem check-in" || p.state === "vai atrasar" || p.state === "não vai" || p.state === "janela fechada").slice(0, 4);
+
+    const faltas = rawPeople.filter(p => p.st === "falta");
+    const hasFalta = faltas.length > 0;
+    const semResp = counts.sem;
+
+    const alertTitle = hasFalta ? "Carol não vem hoje" : semResp > 0 ? String(semResp) + " sem responder" : "Turno sem pendência";
+    const alertText = hasFalta
+      ? "Enfermidade, avisada às 07:40 pelo check-in. Ela está no elenco das 9h, posição 5 — a posição fica descoberta até alguém assumir."
+      : semResp > 0
+        ? "A atividade começa em minutos e essas pessoas não responderam. Você pode marcar por elas se já chegaram."
+        : "Todo mundo do turno respondeu. A ASA avisa se alguém mudar de estado.";
+    const alertRecipients = hasFalta
+      ? ["Você recebeu como gestora da área Patinadores", "Deborah recebeu como responsável do show das 9h"]
+      : ["A ASA cobra automaticamente 30 min antes"];
+
+    return {
+      verNotas: !!this.state.__notas,
+      toggleNotas: () => this.setState(s => ({ __notas: !s.__notas })),
+      notasBtnStyle: "display:flex;align-items:center;gap:9px;padding:8px 14px;border-radius:999px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-family:Manrope,sans-serif;font-size:13.5px;font-weight:600;cursor:pointer;align-self:flex-start",
+      notasLabel: this.state.__notas ? "ocultar notas de desenho" : "notas de desenho",
+
+      profileTabs: profileTabs,
+      profileHint: meta.hint,
+      profileName: meta.name,
+      personName: meta.person,
+      operationLabel: meta.op,
+      personChipStyle: "font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:" + meta.dot + ";background:" + meta.dot + "26;padding:2px 7px;border-radius:999px;width:fit-content",
+      readonlyChip: isDir ? "somente leitura" : "",
+      readonlyChipStyle: isDir
+        ? "font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#2E63D6;background:#e9effc;padding:5px 10px;border-radius:999px;"
+        : "display:none;",
+      shellNav: shellNav,
+      mobileTabs: mobileTabs,
+      screenTitle: isMember ? "Check-in" : (gestorTitles[active] || gestorTitles.SUP).title,
+      isMember: isMember,
+      isManager: !isMember,
+      turnoTabs: turnoTabs,
+      turnoName: turno.name,
+      turnoHint: unico
+        ? "Operação em turno único: uma única resposta cobre o dia inteiro."
+        : isMember
+          ? "A janela abre duas horas antes da sua primeira atividade do turno."
+          : "Cada turno tem sua própria chamada — a resposta da manhã não vale para a noite.",
+
+      mascotW: ["bomdia","concluida","aviso","consultando"].reduce((o,k) => {
+        o[k] = k === askMascotKey ? "width:82px;height:82px;object-fit:contain;flex:none" : "display:none";
+        return o;
+      }, {}),
+      mascotM: ["bomdia","concluida","aviso","consultando"].reduce((o,k) => {
+        o[k] = k === askMascotKey ? "width:52px;height:52px;object-fit:contain;flex:none" : "display:none";
+        return o;
+      }, {}),
+      askCardStyle: "display:flex;flex-direction:column;gap:14px;background:linear-gradient(120deg,#1c1440,#3a2278);border-radius:18px;padding:18px 20px;color:#fff;",
+      askTitle: closed
+        ? "O check-in da noite abre às 17:00"
+        : confirmed ? "Tudo registrado, Julia." : "Você já está no local, Julia?",
+      askSub: closed
+        ? "Sua primeira atividade da noite é às 19:00. Duas horas antes a pergunta aparece aqui — e no seu Meu Dia."
+        : confirmed ? doneText : "Sua primeira atividade do turno é às 08:00, a passagem do show. Uma resposta vale para o turno inteiro.",
+      askOptions: askOptions,
+      askActionsStyle: (closed || confirmed) ? "display:none;" : "display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;",
+      askFollowStyle: (!closed && ans && ans !== "pronto" && !confirmed) ? "display:flex;flex-direction:column;gap:9px;" : "display:none;",
+      onMotivoText: (e) => { this.state.motivoTexto = e.target.value; },
+      motivoLabel: ans === "atraso" ? "O que aconteceu?" : "Por que não vai conseguir ir?",
+      motivoChips: motivoChips,
+      etaChipsList: etaChipsList,
+      etaRowStyle: ans === "atraso" ? "display:flex;flex-direction:column;gap:8px;" : "display:none;",
+      etaRowMobileStyle: ans === "atraso" ? "display:flex;flex-direction:column;gap:6px;" : "display:none;",
+      detailPlaceholder: ans === "atraso"
+        ? "Quer detalhar? (opcional) — ex.: ônibus quebrou na estrada, já estou em outro"
+        : "Quer detalhar? (opcional) — ex.: virose desde a madrugada, já procurei atendimento",
+      sendLabel: picked ? "Enviar aviso" : "Escolha um motivo",
+      sendNote: ans === "atraso"
+        ? "O motivo entra no seu histórico junto do atraso — é ele que diferencia trânsito de recorrência."
+        : "Motivo e texto vão juntos para a supervisão e para o responsável do show, e ficam no registro do dia.",
+      onSend: () => { if (this.state.motivo) this.setState({ sent: true }); },
+      sendStyle: "border:none;font-family:Manrope,sans-serif;font-size:13px;font-weight:700;padding:10px 18px;border-radius:999px;" + (picked ? "cursor:pointer;background:#fff;color:#2b1f63;" : "cursor:not-allowed;background:rgba(255,255,255,.14);color:#a99fd0;"),
+      sendMobileStyle: "border:none;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;padding:12px 14px;border-radius:999px;min-height:44px;" + (picked ? "cursor:pointer;background:#1c1440;color:#fff;" : "cursor:not-allowed;background:#f0eef5;color:#6b6482;"),
+      askDoneStyle: (!closed && confirmed) ? "display:flex;flex-direction:column;gap:3px;background:rgba(255,255,255,.1);border-radius:14px;padding:13px 15px;" : "display:none;",
+      askDoneText: doneText,
+      onArrive: () => this.setState({ arrived: true }),
+      arriveStyle: (ans === "atraso" && !this.state.arrived)
+        ? "border:none;cursor:pointer;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;padding:9px 18px;border-radius:999px;background:#fff;color:#2b1f63;"
+        : "display:none;",
+      arriveMobileStyle: (ans === "atraso" && !this.state.arrived)
+        ? "border:none;cursor:pointer;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;padding:11px 16px;border-radius:999px;background:#0E8F86;color:#fff;min-height:44px;margin-top:4px;"
+        : "display:none;",
+      arriveNote: "Só isso fecha o registro — sem confirmação, o turno encerra como atraso sem chegada.",
+      arriveNoteStyle: (ans === "atraso" && !this.state.arrived)
+        ? "font-size:11px;color:#a99fd0;line-height:1.4;max-width:34ch;"
+        : "display:none;",
+      onUndo: () => this.setState({ answer: null, eta: null, motivo: null, motivoTexto: "", sent: false, arrived: false }),
+      mobileTitle: isMember
+        ? (closed ? "Turno da noite" : confirmed ? "Check-in feito" : "Você está no local?")
+        : (hasFalta ? "1 ausência no turno" : "Turno da manhã"),
+      mobileSub: isMember
+        ? (closed ? "abre às 17:00 · primeira atividade 19:00" : confirmed ? "07:42 · turno da manhã" : "passagem do show às 08:00")
+        : (prontos + " de " + totalTurno + " prontos · " + semResp + " sem responder"),
+      semSinalStyle: (semSinal && isMember && !closed && !confirmed)
+        ? "display:flex;flex-direction:column;gap:7px;background:#fdf3e4;border:1px solid #f0dcb8;border-radius:14px;padding:13px 14px;"
+        : "display:none;",
+      supervisorNome: supervisorNome,
+      supervisorTel: "tel:+5554999000000",
+      onToggleSinal: () => this.setState(s => ({ semSinal: !s.semSinal })),
+      toggleSinalLabel: semSinal ? "Simulando sem sinal" : "Simular sem sinal",
+      toggleSinalStyle: "cursor:pointer;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;padding:7px 13px;border-radius:999px;min-height:32px;" +
+        (semSinal ? "border:1px solid #C97A17;background:#fdf3e4;color:#8F5409;" : "border:1px solid #e6e1f2;background:#fff;color:#6b6482;"),
+      mobileAskStyle: (closed || confirmed || semSinal) ? "display:none;" : "display:flex;flex-direction:column;gap:8px;",
+      mobileFollowStyle: (!closed && !semSinal && ans && ans !== "pronto" && !picked) ? "display:flex;flex-direction:column;gap:7px;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:11px 12px;" : "display:none;",
+      mobileDoneStyle: (!closed && confirmed) ? "display:flex;flex-direction:column;gap:3px;background:#e3f4f1;border:1px solid #c6e8e2;border-radius:14px;padding:12px;" : "display:none;",
+      historico: HIST.map((h, i) => {
+        const T = h.t === "ok" ? { fg: "#0A6F68", bg: "#e3f4f1" }
+          : h.t === "atraso" ? { fg: "#8F5409", bg: "#fdf3e4" }
+          : h.t === "falta" ? { fg: "#C2334D", bg: "#fdeef1" }
+          : { fg: "#6b6482", bg: "#f2f0f7" };
+        return {
+          dia: h.dia, titulo: h.titulo, detalhe: h.detalhe, tag: h.tag,
+          rowStyle: "display:flex;align-items:center;gap:11px;flex-wrap:wrap;padding:10px 18px;" + (i ? "border-top:1px solid #f5f2fa;" : ""),
+          dotStyle: "width:8px;height:8px;border-radius:50%;flex:none;background:" + T.fg + ";",
+          tagStyle: "flex:none;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:" + T.bg + ";color:" + T.fg + ";"
+        };
+      }),
+      myItems: myItems,
+      mine: {
+        rate: "96%",
+        stats: [
+          { num: "1", label: "atraso avisado", tone: "warn" },
+          { num: "0", label: "faltas", tone: "ok" },
+          { num: "1", label: "turno sem resposta", tone: "mute" }
+        ].map(s => ({
+          num: s.num,
+          label: s.label,
+          numStyle: "font-family:Outfit,sans-serif;font-size:19px;font-weight:700;color:" + TONES[s.tone].fg + ";"
+        }))
+      },
+      asaTip: closed
+        ? "Seu turno da noite tem show às 19:00 e você entrou às 07:30 hoje. Quer que eu te lembre do check-in às 17:00?"
+        : "Nas últimas quatro semanas seu único atraso foi num turno de noite depois de manhã cheia. Quer que eu te avise mais cedo nesses dias?",
+
+      counters: counters,
+      people: people,
+      pendingPeople: pendingPeople,
+      listTitle: turnoKey === "manha" ? "Turno da manhã · Snowland · 16 pessoas" : "Turno da noite · Snowland · 12 pessoas",
+      listHint: isDir ? "leitura — a supervisão é quem age" : "toque no nome para ver a escala da pessoa",
+      alertCardStyle: "display:flex;flex-direction:column;gap:10px;background:" + (hasFalta ? "#fdeee4" : "#fff") + ";border:1px solid " + (hasFalta ? "#f6d9c2" : "#e6e1f2") + ";border-radius:16px;padding:14px 16px;",
+      alertTitle: alertTitle,
+      alertText: alertText,
+      alertRecipients: alertRecipients,
+      alertBtn: this.state.alertDone ? "Aberto na Escala" : "Resolver na Escala",
+      onAlert: () => this.setState({ alertDone: !this.state.alertDone }),
+      alertBtnStyle: (hasFalta && !isDir)
+        ? "cursor:pointer;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;padding:10px 14px;border-radius:999px;border:none;" + (this.state.alertDone ? "background:#f0eef5;color:#6b6482;" : "background:#1c1440;color:#fff;")
+        : "display:none;",
+      teamPanelTitle: (TEAM[active] || TEAM.SUP).title,
+      team: {
+        rate: (TEAM[active] || TEAM.SUP).rate,
+        rateLabel: (TEAM[active] || TEAM.SUP).rateLabel,
+        rows: (TEAM[active] || TEAM.SUP).rows.map(r => ({
+          num: r.num,
+          title: r.title,
+          sub: r.sub,
+          numStyle: "flex:none;min-width:34px;height:28px;padding:0 7px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;background:" + TONES[r.tone].bg + ";color:" + TONES[r.tone].fg + ";"
+        }))
+      },
+
+      flow: FLOW.map(f => ({
+        num: f.num,
+        title: f.title,
+        text: f.text,
+        tag: f.tag,
+        numStyle: "flex:none;width:26px;height:26px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;background:" + TONES[f.tone].bg + ";color:" + TONES[f.tone].fg + ";",
+        tagStyle: "align-self:flex-start;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:4px 9px;border-radius:6px;background:" + TONES[f.tone].bg + ";color:" + TONES[f.tone].fg + ";"
+      })),
+      rules: RULES
+    };
+  }
+}
+</script>
+</body>
+</html>

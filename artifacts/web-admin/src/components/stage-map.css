@@ -1,0 +1,34 @@
+/* Mapa de palco único (13 Shows e 14 Livro do Dia), mesma regra nas duas telas:
+   - a altura nunca passa da área visível abaixo do cabeçalho do shell (--asa-chrome-h, medido
+     pelo ShellFoundation), então o mapa cabe na tela sem rolar;
+   - a largura sai da proporção do palco (--stage-ratio = `ratio` do mapa-palco.js, largura/altura,
+     aplicado inline) e vai no máximo a 760px — ou à coluna, se ela for mais estreita.
+   `.stage-map-column` usa a mesma medida: é a coluna que encolhe até a largura do mapa. */
+.stage-map,.stage-map-column{--stage-map-w:min(760px,calc((100dvh - var(--asa-chrome-h,0px)) * var(--stage-ratio,1)))}
+.stage-map-column{flex:none;width:min(100%,var(--stage-map-w));min-width:0}
+.stage-map{position:relative;isolation:isolate;box-sizing:border-box;flex:none;width:min(100%,var(--stage-map-w));margin-inline:auto;border:1px solid #e6e1f2;border-radius:16px;background:#faf9fe;overflow:hidden}
+/* Piso quadriculado de 13 Shows.dc.html; o polígono é o contorno, como na ficha oficial. */
+.stage-map-floor{position:absolute;inset:0;z-index:0;background-color:#fff;background-image:linear-gradient(#f4f2fa 1px,transparent 1px),linear-gradient(90deg,#f4f2fa 1px,transparent 1px);background-size:40px 40px}
+.stage-map-outline{position:absolute;inset:0;z-index:0;width:100%;height:100%;pointer-events:none}
+.stage-map-outline polygon{fill:none;stroke:#c9bff0;stroke-width:1.5;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.stage-map-opening{position:absolute;z-index:1;width:34px;height:5px;transform:translate(-50%,-50%);border-radius:999px;background:#efe9fb}
+.stage-map-opening.vertical{width:5px;height:34px}
+/* Miniatura (biblioteca de formações): mesma geometria, sem a medida do mapa principal. */
+.stage-map.stage-map-thumb{width:100%;border-radius:10px}
+.stage-map-thumb .stage-map-floor{background-size:16px 16px}
+.stage-map-thumb .stage-map-opening{width:14px;height:3px}
+.stage-map-thumb .stage-map-opening.vertical{width:3px;height:14px}
+
+/* No Livro do Dia, o cartão abaixo do palco já relaciona slot e pessoa.
+   Em 375px, deixar todos os nomes externos transforma as bordas da pista em
+   uma pilha ilegível. A sigla completa fica dentro do ponto e o nome retorna
+   no cartão, preservando a leitura sem criar ambiguidade entre BL/BR. */
+@media (max-width:720px){
+  .daily-stage-marker{width:20px!important;height:20px!important}
+  .daily-stage-marker.is-character{width:22px!important;height:22px!important}
+  .daily-stage-marker-label{font-size:7px!important;letter-spacing:-.45px}
+  .daily-stage-marker.is-character .daily-stage-marker-label{font-size:8px!important}
+  .daily-stage-marker-person{display:none}
+  .daily-stage-zone.edge-left{transform:translate(0,-50%)!important}
+  .daily-stage-zone.edge-right{transform:translate(-100%,-50%)!important}
+}

@@ -10,10 +10,14 @@ import {
 } from "@/components/ui/toast"
 
 function AsaToastIcon({ variant }: { variant?: ToastProps["variant"] }) {
-  const pose = variant === "destructive" ? "aviso_importante" : "feliz";
+  const pose = variant === "destructive" ? "duvida" : "tarefa-concluida";
+  const imagePath = `/asa/${pose}`;
   return (
     <img
-      src={`/asa-poses/${pose}.png`}
+      src={`${imagePath}.webp`}
+      onError={(event) => {
+        if (event.currentTarget.src.endsWith(".webp")) event.currentTarget.src = `${imagePath}.png`;
+      }}
       alt=""
       className="w-10 h-10 flex-shrink-0 object-contain"
       draggable={false}

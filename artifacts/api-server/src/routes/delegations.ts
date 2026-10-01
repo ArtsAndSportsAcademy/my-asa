@@ -8,6 +8,7 @@ import { requestLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { sendNotification } from "../services/notificationService.js";
+import { operationalDate } from "../lib/operational-date.js";
 
 const router: IRouter = Router();
 const SUPERVISOR_ROLES = ["SUPERVISOR_A", "SUPERVISOR_B"];
@@ -36,7 +37,7 @@ const RESPONSIBILITY_LABELS: Record<DelegatedResponsibility, string> = {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function toDateStr(d: Date | null): string | null {
-  return d ? d.toISOString().slice(0, 10) : null;
+  return d ? operationalDate(d) : null;
 }
 
 function fromDateStr(s: string): Date {
@@ -284,34 +285,45 @@ router.post("/delegations", requireAuth, requireOrganization, async (req, res): 
         return;
       }
     }
-    const [delegation] = await db
-      .insert(delegationsTable)
-      .values({
-        delegatorId: user.sub,
-        delegateeId: delegateId,
-        operationId,
-        showBookId,
-        validFrom: fromDateStr(startDate),
-        validUntil: endDate ? fromDateStr(endDate) : null,
-        reason: reason ?? null,
-        responsibilities: validResponsibilities,
-      })
-      .returning();
-
     const responsibilityLabels = validResponsibilities
       .map((r) => RESPONSIBILITY_LABELS[r])
       .join(", ");
-
-    writeHistoryEvent({
-      category: "DELEGATION",
-      action: "delegation.created",
-      title: "Delegação criada",
-      narrative: `Supervisor delegou responsabilidades: ${responsibilityLabels}.`,
-      entityType: "delegation",
-      entityId: delegation!.id,
-      actorId: user.sub,
-      actorType: "HUMAN",
-    }).catch(() => {});
+    const delegation = await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(delegationsTable)
+        .values({
+          delegatorId: user.sub,
+          delegateeId: delegateId,
+          operationId,
+          showBookId,
+          validFrom: fromDateStr(startDate),
+          validUntil: endDate ? fromDateStr(endDate) : null,
+          reason: reason ?? null,
+          responsibilities: validResponsibilities,
+        })
+        .returning();
+      await writeHistoryEvent({
+        category: "DELEGATION",
+        action: "delegation.created",
+        title: "Delegação criada",
+        narrative: `Supervisor delegou responsabilidades: ${responsibilityLabels}.`,
+        entityType: "delegation",
+        entityId: created!.id,
+        actorId: user.sub,
+        actorType: "HUMAN",
+        operationId,
+        orgId: user.organizationId,
+        afterState: {
+          delegateId,
+          showBookId,
+          startDate,
+          endDate: endDate ?? null,
+          responsibilities: validResponsibilities,
+        },
+        metadata: { reason: reason ?? null },
+      }, tx as any);
+      return created!;
+    });
 
     // T007 — aviso automático ao Capitão delegado
     (async () => {
@@ -425,22 +437,28 @@ router.patch("/delegations/:id/cancel", requireAuth, requireOrganization, async 
       return;
     }
 
-    const [updated] = await db
-      .update(delegationsTable)
-      .set({ revokedAt: now })
-      .where(eq(delegationsTable.id, id))
-      .returning();
-
-    writeHistoryEvent({
-      category: "DELEGATION",
-      action: "delegation.cancelled",
-      title: "Delegação cancelada",
-      narrative: `Delegação de responsabilidades cancelada.`,
-      entityType: "delegation",
-      entityId: id,
-      actorId: user.sub,
-      actorType: "HUMAN",
-    }).catch(() => {});
+    const updated = await db.transaction(async (tx) => {
+      const [persisted] = await tx
+        .update(delegationsTable)
+        .set({ revokedAt: now })
+        .where(eq(delegationsTable.id, id))
+        .returning();
+      await writeHistoryEvent({
+        category: "DELEGATION",
+        action: "delegation.cancelled",
+        title: "Delegação cancelada",
+        narrative: "Delegação de responsabilidades cancelada.",
+        entityType: "delegation",
+        entityId: id,
+        actorId: user.sub,
+        actorType: "HUMAN",
+        operationId: existing.operationId,
+        orgId: user.organizationId,
+        beforeState: { revokedAt: existing.revokedAt },
+        afterState: { revokedAt: persisted!.revokedAt },
+      }, tx as any);
+      return persisted!;
+    });
 
     // Notify delegatee about revocation (fire-and-forget)
     sendNotification({

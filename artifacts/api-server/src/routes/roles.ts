@@ -5,6 +5,8 @@ import { usersTable, userRolesTable, operationsTable, operationalGroupsTable } f
 import { requireAuth, requireOrganization, requireRole } from "../middlewares/auth.js";
 import { recordAudit } from "../lib/audit.service.js";
 import { requestLogger } from "../lib/logger.js";
+import { requireReason } from "../lib/reason.js";
+import { writeHistoryEvent } from "../lib/history-helper.js";
 
 const router: IRouter = Router();
 
@@ -40,17 +42,25 @@ router.get("/users/:id/roles", requireAuth, requireOrganization, async (req, res
 router.post("/users/:id/roles", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
   const log = requestLogger("teams", req.requestId, req.correlationId);
   const id = req.params.id as string;
-  const { operationId, groupId, role } = req.body;
-  const VALID_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B", "MEMBER", "TRAINER"] as const;
+  const { operationId, groupId, role, reason } = req.body as {
+    operationId?: string;
+    groupId?: string;
+    role?: string;
+    reason?: string;
+  };
+  const VALID_ROLES = ["ADMIN", "DIR", "SUPERVISOR_A", "SUPERVISOR_B", "MEMBER", "TRAINER"] as const;
 
   if (!operationId || !role) {
     res.status(400).json({ error: "BAD_REQUEST", message: "operationId e role são obrigatórios" });
     return;
   }
-  if (!VALID_ROLES.includes(role)) {
+  if (!role || !VALID_ROLES.includes(role as (typeof VALID_ROLES)[number])) {
     res.status(400).json({ error: "BAD_REQUEST", message: `role deve ser: ${VALID_ROLES.join(", ")}` });
     return;
   }
+  const roleValue = role as (typeof VALID_ROLES)[number];
+  const roleReason = requireReason(res, reason, "trocar perfil de acesso");
+  if (!roleReason) return;
 
   try {
     const [targetUser, operation] = await Promise.all([
@@ -85,7 +95,7 @@ router.post("/users/:id/roles", requireAuth, requireOrganization, requireRole("A
       where: and(
         eq(userRolesTable.userId, id),
         eq(userRolesTable.operationId, operationId),
-        groupId ? eq(userRolesTable.groupId, groupId) : eq(userRolesTable.role, role),
+        groupId ? eq(userRolesTable.groupId, groupId) : eq(userRolesTable.role, roleValue),
         eq(userRolesTable.active, true),
       ),
     });
@@ -94,22 +104,19 @@ router.post("/users/:id/roles", requireAuth, requireOrganization, requireRole("A
       return;
     }
 
-    const [newRole] = await db
-      .insert(userRolesTable)
-      .values({
-        userId: id,
-        operationId,
-        groupId: groupId ?? null,
-        role: role as "ADMIN" | "SUPERVISOR_A" | "SUPERVISOR_B" | "MEMBER" | "TRAINER",
-        active: true,
-      })
-      .returning();
-
-    await recordAudit({
-      actorId: req.user!.sub,
-      action: "ROLE_ASSIGNED",
-      targetResource: `user:${id}:role:${newRole!.id}`,
-      metadata: { role, operationId, groupId },
+    const [newRole] = await db.transaction(async (tx) => {
+      const [created] = await tx.insert(userRolesTable).values({
+        userId: id, operationId, groupId: groupId ?? null, role: roleValue, active: true,
+      }).returning();
+      if (!created) throw new Error("Não foi possível atribuir o perfil");
+      await writeHistoryEvent({
+        category: "OPERATIONAL_CHANGE", action: "role.assigned", title: "Perfil de acesso atribuído",
+        narrative: `Perfil ${role} atribuído à pessoa. Motivo: ${roleReason}`,
+        entityType: "user_role", entityId: created.id, actorId: req.user!.sub,
+        orgId: req.user!.organizationId, operationId, beforeState: null, afterState: created,
+        metadata: { reason: roleReason, calculatedReflection: `Perfil ${role} atribuído à pessoa.` },
+      }, tx as any);
+      return [created] as const;
     });
 
     log.info({ userId: id, role }, "Role assigned");
@@ -124,6 +131,7 @@ router.delete("/users/:id/roles/:roleId", requireAuth, requireOrganization, requ
   const log = requestLogger("teams", req.requestId, req.correlationId);
   const id = req.params.id as string;
   const roleId = req.params.roleId as string;
+  const reason = req.body?.reason as string | undefined;
 
   try {
     const roleRecord = await db.query.userRolesTable.findFirst({
@@ -137,6 +145,9 @@ router.delete("/users/:id/roles/:roleId", requireAuth, requireOrganization, requ
       res.status(404).json({ error: "NOT_FOUND", message: "Papel não encontrado" });
       return;
     }
+
+    const roleReason = requireReason(res, reason, "trocar perfil de acesso");
+    if (!roleReason) return;
 
     if (roleRecord.role === "ADMIN") {
       const orgUsers = await db.query.usersTable.findMany({
@@ -161,16 +172,20 @@ router.delete("/users/:id/roles/:roleId", requireAuth, requireOrganization, requ
       }
     }
 
-    await db
-      .update(userRolesTable)
-      .set({ active: false })
-      .where(eq(userRolesTable.id, roleId));
-
-    await recordAudit({
-      actorId: req.user!.sub,
-      action: "ROLE_REMOVED",
-      targetResource: `user:${id}:role:${roleId}`,
-      metadata: { role: roleRecord.role },
+    await db.transaction(async (tx) => {
+      const [updated] = await tx.update(userRolesTable)
+        .set({ active: false })
+        .where(and(eq(userRolesTable.id, roleId), eq(userRolesTable.active, true)))
+        .returning();
+      if (!updated) throw new Error("Papel já foi removido");
+      await writeHistoryEvent({
+        category: "OPERATIONAL_CHANGE", action: "role.removed", title: "Perfil de acesso removido",
+        narrative: `Perfil ${roleRecord.role} removido da pessoa. Motivo: ${roleReason}`,
+        entityType: "user_role", entityId: roleId, actorId: req.user!.sub,
+        orgId: req.user!.organizationId, operationId: roleRecord.operationId,
+        beforeState: roleRecord, afterState: updated,
+        metadata: { reason: roleReason, calculatedReflection: `Perfil ${roleRecord.role} removido da pessoa.` },
+      }, tx as any);
     });
 
     log.info({ userId: id, roleId }, "Role removed");

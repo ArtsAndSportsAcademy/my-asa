@@ -1,5 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
 @import "tailwindcss";
+/* D5: as telas antigas (admin/supervisor/membro e o layout antigo) não abrem mais no app; o Tailwind não gera estilo para elas. */
+@source not "./pages/admin";
+@source not "./pages/supervisor";
+@source not "./pages/membro";
+@source not "./components/admin-layout.tsx";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
 
@@ -246,3 +251,20 @@
     background-clip: text;
   }
 }
+/* One clean dressing-room sheet; no navigation, dialogs, reasons or occurrences. */
+.print-day th, .print-day td { text-align: left; border-bottom: 1px solid #bbb; padding: 5px 7px; }
+@media print {
+  @page { size: A4 portrait; margin: 10mm; }
+  .print-controls, [role="dialog"], [data-radix-popper-content-wrapper] { display: none !important; }
+  .print-day { padding: 0; max-width: none; width: 100%; color: #000; background: #fff; }
+  .print-columns { gap: 6mm; align-items: start; }
+  .print-day table { font-size: 9pt; }
+  .print-day td, .print-day th { padding: 2px 4px; line-height: 1.15; }
+  .print-day tr { break-inside: avoid; }
+  .print-day h1 { font-size: 17pt; line-height: 1.2; }
+  .print-day > p { font-size: 9pt; margin: 3mm 0; }
+}
+
+/* Folha do camarim: aviso de rascunho visível no papel. */
+.print-warning { border: 2px solid #000; padding: 4px 8px; font-weight: 700; margin: 6px 0; }
+.print-day .print-button { border: 1px solid #333; border-radius: 8px; padding: 6px 12px; min-height: 44px; }

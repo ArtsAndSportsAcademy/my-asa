@@ -4,7 +4,7 @@ import { z } from "zod/v4";
 import { usersTable } from "./identity.js";
 import { agendaEventsTable } from "./agenda.js";
 import { scalesTable } from "./scale.js";
-import { showBooksTable } from "./showbook.js";
+import { showBooksTable, showBookKeyframesTable } from "./showbook.js";
 
 export const dailyBookStatusEnum = pgEnum("daily_book_status", [
   "DRAFT", "PUBLISHED", "REPUBLISHED", "EXECUTED", "CANCELLED",
@@ -42,7 +42,12 @@ export const dailyBookScenesTable = pgTable("daily_book_scenes", {
   name: text("name").notNull(),
   order: integer("order").notNull(),
   sourceSceneId: uuid("source_scene_id"),
+  // O Livro do Dia sempre nasce do quadro inicial da Cena. A FK é estável,
+  // diferente de apontar para o índice mutável de um array JSON.
+  sourceKeyframeId: uuid("source_keyframe_id").references(() => showBookKeyframesTable.id),
   isRemoved: boolean("is_removed").notNull().default(false),
+  // Preenchido quando uma regeneração substitui a linha. Linha substituída não volta.
+  supersededAt: timestamp("superseded_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -57,6 +62,7 @@ export const dailyBookBlocksTable = pgTable("daily_book_blocks", {
   endTime: text("end_time"),
   sourceBlockId: uuid("source_block_id"),
   isRemoved: boolean("is_removed").notNull().default(false),
+  supersededAt: timestamp("superseded_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -69,6 +75,7 @@ export const dailyBookPositionsTable = pgTable("daily_book_positions", {
   minimumCoverage: integer("minimum_coverage").notNull().default(1),
   sourceRoleId: uuid("source_role_id"),
   isRemoved: boolean("is_removed").notNull().default(false),
+  supersededAt: timestamp("superseded_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -77,8 +84,10 @@ export const dailyBookAssignmentsTable = pgTable("daily_book_assignments", {
   id: uuid("id").primaryKey().defaultRandom(),
   dailyBookId: uuid("daily_book_id").notNull().references(() => dailyBooksTable.id, { onDelete: "cascade" }),
   positionId: uuid("position_id").notNull().references(() => dailyBookPositionsTable.id, { onDelete: "cascade" }),
+  sceneId: uuid("scene_id"),
   userId: uuid("user_id").references(() => usersTable.id),
   status: dailyBookAssignmentStatusEnum("status").notNull().default("OPEN"),
+  supersededAt: timestamp("superseded_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

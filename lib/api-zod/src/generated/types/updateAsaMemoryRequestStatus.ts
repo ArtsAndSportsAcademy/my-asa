@@ -12,4 +12,5 @@ export type UpdateAsaMemoryRequestStatus = typeof UpdateAsaMemoryRequestStatus[k
 export const UpdateAsaMemoryRequestStatus = {
   APPROVED: 'APPROVED',
   REJECTED: 'REJECTED',
+  DISABLED: 'DISABLED',
 } as const;

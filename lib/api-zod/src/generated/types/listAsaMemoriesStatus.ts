@@ -13,4 +13,5 @@ export const ListAsaMemoriesStatus = {
   PENDING: 'PENDING',
   APPROVED: 'APPROVED',
   REJECTED: 'REJECTED',
+  DISABLED: 'DISABLED',
 } as const;

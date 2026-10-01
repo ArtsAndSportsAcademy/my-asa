@@ -13,7 +13,7 @@ import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { notifyMany } from "../services/notificationService.js";
 
-type RoleValue = "MEMBER" | "SUPERVISOR_A" | "SUPERVISOR_B" | "ADMIN";
+type RoleValue = "MEMBER" | "SUPERVISOR_A" | "SUPERVISOR_B" | "ADMIN" | "DIRECTOR" | "DIR";
 
 const router: IRouter = Router();
 
@@ -24,6 +24,8 @@ const ALLOWED_TARGETS: Record<RoleValue, RoleValue[]> = {
   SUPERVISOR_A: ["MEMBER", "SUPERVISOR_A", "SUPERVISOR_B", "ADMIN"],
   SUPERVISOR_B: ["MEMBER", "SUPERVISOR_A", "SUPERVISOR_B", "ADMIN"],
   ADMIN:        ["MEMBER", "SUPERVISOR_A", "SUPERVISOR_B", "ADMIN"],
+  DIRECTOR:     ["MEMBER", "SUPERVISOR_A", "SUPERVISOR_B", "ADMIN", "DIRECTOR", "DIR"],
+  DIR:          ["MEMBER", "SUPERVISOR_A", "SUPERVISOR_B", "ADMIN", "DIRECTOR", "DIR"],
 };
 
 async function getUserRole(userId: string): Promise<RoleValue | null> {
@@ -66,9 +68,8 @@ router.get(
       const senderRole = await getUserRole(userId);
       if (!senderRole) { res.status(403).json({ error: "Papel não encontrado" }); return; }
 
-      const allowed = ALLOWED_TARGETS[senderRole];
-      if (!allowed || allowed.length === 0) { res.json({ recipients: [] }); return; }
-
+      // Conversa direta é uma exceção consciente à hierarquia operacional:
+      // qualquer pessoa pode falar com qualquer colega da mesma organização.
       const members = await db
         .select({
           id: usersTable.id,
@@ -81,7 +82,7 @@ router.get(
         .where(
           and(
             eq(userRolesTable.active, true),
-            inArray(userRolesTable.role, allowed as readonly RoleValue[]),
+            eq(usersTable.organizationId, req.user!.organizationId),
           )
         );
 
@@ -133,71 +134,48 @@ router.post(
       const senderRole = await getUserRole(userId);
       if (!senderRole) { res.status(403).json({ error: "Papel não encontrado" }); return; }
 
-      let allowed = [...ALLOWED_TARGETS[senderRole]];
-      if (senderRole === "MEMBER") {
-        const isCapitao = await hasOperationalMessagesDelegation(userId);
-        if (isCapitao) allowed = ["MEMBER", "SUPERVISOR_A", "SUPERVISOR_B", "ADMIN"];
-      }
-
-      const targetRoles = await db
-        .select({ userId: userRolesTable.userId, role: userRolesTable.role })
-        .from(userRolesTable)
-        .where(
-          and(
-            inArray(userRolesTable.userId, participantIds),
-            eq(userRolesTable.active, true),
-          )
-        );
-
-      const targetRoleMap = new Map<string, string>();
-      for (const t of targetRoles) targetRoleMap.set(t.userId, t.role);
-
-      for (const pid of participantIds) {
-        const role = targetRoleMap.get(pid) as RoleValue | undefined;
-        if (!role || !allowed.includes(role)) {
-          res.status(403).json({ error: `Não é permitido enviar mensagem para o usuário ${pid}` });
-          return;
-        }
-      }
-
-      const [thread] = await db
-        .insert(messageThreadsTable)
-        .values({
-          orgId,
-          title: title.trim(),
-          contextType: contextType ?? "DIRECT",
-          contextId,
-          contextTitle,
-          createdBy: userId,
-          status: "OPEN",
-        })
-        .returning();
-
-      const allParticipants: Array<{
-        threadId: string;
-        userId: string;
-        role: "INITIATOR" | "PARTICIPANT";
-      }> = [
-        { threadId: thread.id, userId, role: "INITIATOR" },
-        ...participantIds.map((pid) => ({ threadId: thread.id, userId: pid, role: "PARTICIPANT" as const })),
-      ];
-      await db.insert(messageThreadParticipantsTable).values(allParticipants);
+      const targets = await db.select({ id: usersTable.id }).from(usersTable).where(and(inArray(usersTable.id, participantIds), eq(usersTable.organizationId, orgId), eq(usersTable.status, "ACTIVE")));
+      if (new Set(targets.map((target) => target.id)).size !== new Set(participantIds).size) { res.status(403).json({ error: "Destinatário fora da organização ou inativo" }); return; }
 
       const senderRow = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, userId));
       const senderName = senderRow[0]?.name;
-
-      writeHistoryEvent({
-        category: "MESSAGE",
-        action: "thread_created",
-        title: `Conversa criada: ${thread.title}`,
-        narrative: `${senderName ?? userId} iniciou uma conversa${contextTitle ? ` sobre "${contextTitle}"` : ""}.`,
-        entityType: "message_thread",
-        entityId: thread.id,
-        actorId: userId,
-        actorName: senderName,
-        orgId,
-        metadata: { contextType: thread.contextType, participantCount: participantIds.length },
-      }).catch(() => {});
+      const thread = await db.transaction(async (tx) => {
+        const [created] = await tx
+          .insert(messageThreadsTable)
+          .values({
+            orgId,
+            title: title.trim(),
+            contextType: contextType ?? "DIRECT",
+            contextId,
+            contextTitle,
+            createdBy: userId,
+            status: "OPEN",
+          })
+          .returning();
+        const allParticipants: Array<{
+          threadId: string;
+          userId: string;
+          role: "INITIATOR" | "PARTICIPANT";
+        }> = [
+          { threadId: created!.id, userId, role: "INITIATOR" },
+          ...participantIds.map((pid) => ({ threadId: created!.id, userId: pid, role: "PARTICIPANT" as const })),
+        ];
+        await tx.insert(messageThreadParticipantsTable).values(allParticipants);
+        await writeHistoryEvent({
+          category: "MESSAGE",
+          action: "thread_created",
+          title: `Conversa criada: ${created!.title}`,
+          narrative: `${senderName ?? userId} iniciou uma conversa${contextTitle ? ` sobre "${contextTitle}"` : ""}.`,
+          entityType: "message_thread",
+          entityId: created!.id,
+          actorId: userId,
+          actorName: senderName,
+          orgId,
+          afterState: { status: created!.status, participantIds },
+          metadata: { contextType: created!.contextType, participantCount: participantIds.length },
+        }, tx as any);
+        return created!;
+      });
 
       res.status(201).json({ thread });
     } catch {
@@ -400,26 +378,28 @@ router.post(
 
       if (!participation) { res.status(403).json({ error: "Sem acesso a esta conversa" }); return; }
 
-      const [thread] = await db
-        .select({ status: messageThreadsTable.status })
-        .from(messageThreadsTable)
-        .where(eq(messageThreadsTable.id, threadId));
-
-      if (!thread) { res.status(404).json({ error: "Conversa não encontrada" }); return; }
-      if (thread.status === "CLOSED") { res.status(400).json({ error: "Esta conversa está encerrada" }); return; }
-
       const senderRow = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, userId));
       const senderName = senderRow[0]?.name;
 
-      const [message] = await db
-        .insert(messagesTable)
-        .values({
+      const result = await db.transaction(async (tx) => {
+        const [thread] = await tx.select({ status: messageThreadsTable.status })
+          .from(messageThreadsTable).where(eq(messageThreadsTable.id, threadId)).for("update");
+        if (!thread) return { status: "not_found" as const };
+        if (thread.status === "CLOSED") return { status: "closed" as const };
+        const [created] = await tx.insert(messagesTable).values({
           threadId,
           senderId: userId,
           senderName: senderName ?? null,
           content: content.trim(),
         })
         .returning();
+        await writeHistoryEvent({ category: "MESSAGE", action: "message_sent", title: "Mensagem enviada", narrative: content.trim().slice(0, 120), entityType: "message", entityId: created!.id, actorId: userId, actorName: senderName, orgId: req.user!.organizationId, afterState: created }, tx as any);
+        return { status: "created" as const, message: created! };
+      });
+
+      if (result.status === "not_found") { res.status(404).json({ error: "Conversa não encontrada" }); return; }
+      if (result.status === "closed") { res.status(400).json({ error: "Esta conversa está encerrada" }); return; }
+      const message = result.message;
 
       await db
         .update(messageThreadParticipantsTable)
@@ -516,26 +496,29 @@ router.patch(
       if (!thread) { res.status(404).json({ error: "Conversa não encontrada" }); return; }
       if (thread.status === "CLOSED") { res.status(400).json({ error: "Conversa já encerrada" }); return; }
 
-      const [updated] = await db
-        .update(messageThreadsTable)
-        .set({ status: "CLOSED", closedAt: new Date() })
-        .where(eq(messageThreadsTable.id, threadId))
-        .returning();
-
       const senderRow = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, userId));
       const senderName = senderRow[0]?.name;
-
-      writeHistoryEvent({
-        category: "MESSAGE",
-        action: "thread_closed",
-        title: `Conversa encerrada: ${thread.title}`,
-        narrative: `${senderName ?? userId} encerrou a conversa.`,
-        entityType: "message_thread",
-        entityId: threadId,
-        actorId: userId,
-        actorName: senderName,
-        orgId: thread.orgId ?? undefined,
-      }).catch(() => {});
+      const updated = await db.transaction(async (tx) => {
+        const [persisted] = await tx
+          .update(messageThreadsTable)
+          .set({ status: "CLOSED", closedAt: new Date() })
+          .where(eq(messageThreadsTable.id, threadId))
+          .returning();
+        await writeHistoryEvent({
+          category: "MESSAGE",
+          action: "thread_closed",
+          title: `Conversa encerrada: ${thread.title}`,
+          narrative: `${senderName ?? userId} encerrou a conversa.`,
+          entityType: "message_thread",
+          entityId: threadId,
+          actorId: userId,
+          actorName: senderName,
+          orgId: thread.orgId ?? undefined,
+          beforeState: { status: thread.status },
+          afterState: { status: persisted!.status },
+        }, tx as any);
+        return persisted!;
+      });
 
       res.json({ thread: updated });
     } catch {

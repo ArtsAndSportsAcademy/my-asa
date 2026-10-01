@@ -17,6 +17,31 @@ const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 
 let _baseUrl: string | null = null;
 let _authTokenGetter: AuthTokenGetter | null = null;
+export type ActionUndo = { id: string; expiresAt: string; windowSeconds: number };
+let _undoHandler: ((undo: ActionUndo) => void) | null = null;
+export function setActionUndoHandler(handler: ((undo: ActionUndo) => void) | null) { _undoHandler = handler; }
+/** Shared by HTTP responses and the ASA event stream. A UI failure must not masquerade as a failed save. */
+export function announceActionUndo(undo: ActionUndo) {
+  if (!undo?.id || !undo.expiresAt) return;
+  try { _undoHandler?.(undo); } catch (error) { console.error("Não foi possível mostrar Desfazer", error); }
+}
+/**
+ * D6: avisa o app quando a rede cai (fetch lança TypeError) e quando volta (qualquer resposta).
+ * `startedAt` é quando o pedido começou: quem ouve deve dar razão ao pedido mais recente, porque um
+ * pedido antigo pode terminar depois de um novo.
+ */
+let _networkHandler: ((online: boolean, startedAt: number) => void) | null = null;
+export function setNetworkStatusHandler(handler: ((online: boolean, startedAt: number) => void) | null) { _networkHandler = handler; }
+let _reasonHandler: ((action: string) => Promise<string | null>) | null = null;
+export function setSensitiveActionHandler(handler: ((action: string) => Promise<string | null>) | null) { _reasonHandler = handler; }
+function sensitiveAction(url: string, method: string, body: Record<string, unknown>) {
+  const path = new URL(url, "https://myasa.invalid").pathname;
+  if (method === "POST" && /^\/api\/notices\/[^/]+\/cancel$/.test(path)) return "Cancelar aviso publicado";
+  if ((method === "DELETE" && /^\/api\/users\/[^/]+$/.test(path)) || (method === "PATCH" && /^\/api\/users\/[^/]+(?:\/status)?$/.test(path) && (body.status === "INACTIVE" || ["LEFT", "ARCHIVED"].includes(String(body.personStatus))))) return "Desligar pessoa";
+  if ((method === "POST" && /^\/api\/users\/[^/]+\/roles$/.test(path)) || (method === "DELETE" && /^\/api\/users\/[^/]+\/roles\/[^/]+$/.test(path))) return "Trocar perfil de acesso";
+  if (method === "PATCH" && /^\/api\/locations\/[^/]+$/.test(path) && body.closed === false) return "Reabrir local";
+  return null;
+}
 
 /**
  * Set a base URL that is prepended to every relative request URL
@@ -371,6 +396,15 @@ export async function customFetch<T = unknown>(
   const { responseType = "auto", headers: headersInit, ...init } = options;
 
   const method = resolveMethod(input, init.method);
+  if (_reasonHandler) {
+    const body = typeof init.body === "string" && looksLikeJson(init.body) ? JSON.parse(init.body) as Record<string, unknown> : {};
+    const action = sensitiveAction(resolveUrl(input), method, body);
+    if (action && !String(body.reason ?? "").trim()) {
+      const reason = await _reasonHandler(action);
+      if (!reason?.trim()) throw new DOMException("Ação cancelada", "AbortError");
+      init.body = JSON.stringify({ ...body, reason: reason.trim() });
+    }
+  }
 
   if (init.body != null && (method === "GET" || method === "HEAD")) {
     throw new TypeError(`customFetch: ${method} requests cannot have a body.`);
@@ -402,7 +436,15 @@ export async function customFetch<T = unknown>(
   const requestInfo = { method, url: resolveUrl(input) };
   const tokenAttached = headers.has("authorization");
 
-  let response = await fetch(input, { ...init, method, headers });
+  let response: Response;
+  const startedAt = Date.now();
+  try {
+    response = await fetch(input, { ...init, method, headers });
+    _networkHandler?.(true, startedAt);
+  } catch (error) {
+    if (error instanceof TypeError) _networkHandler?.(false, startedAt);
+    throw error;
+  }
 
   // Transparently refresh an expired access token and retry once.
   if (
@@ -423,5 +465,11 @@ export async function customFetch<T = unknown>(
     throw new ApiError(response, errorData, requestInfo);
   }
 
-  return (await parseSuccessBody(response, responseType, requestInfo)) as T;
+  const result = await parseSuccessBody(response, responseType, requestInfo);
+  if (_undoHandler) {
+    const header = response.headers.get("X-MyASA-Undo");
+    const undo = header ? JSON.parse(header) : (result as { undo?: ActionUndo } | null)?.undo;
+    if (undo?.id && undo?.expiresAt) announceActionUndo(undo);
+  }
+  return result as T;
 }

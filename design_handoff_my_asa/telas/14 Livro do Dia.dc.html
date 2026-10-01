@@ -1,0 +1,1529 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<script src="./mapa-palco.js"></script>
+<style>
+  aside a { text-decoration: none; }
+  body { margin: 0; background: #f4f2fa; font-family: Manrope, system-ui, sans-serif; color: #1b1630; }
+  a { color: #6C2BF2; text-decoration: none; }
+  a:hover { color: #4a17b8; text-decoration: underline; }
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 3px solid #6C2BF2; outline-offset: 2px; border-radius: 8px; }
+</style>
+</helmet>
+
+<div style="max-width:1720px;margin:0 auto;padding:44px 28px 88px;display:flex;flex-direction:column;gap:32px">
+
+  <header style="display:flex;flex-direction:column;gap:22px">
+    <div style="display:flex;align-items:flex-start;gap:18px">
+      <img src="assets/asa-wing.png" alt="My ASA" style="width:52px;height:52px;object-fit:contain;flex:none;margin-top:4px" />
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#6b6482">14 · o dia</div>
+        <h1 style="font-family:Outfit,sans-serif;font-size:38px;line-height:1.05;font-weight:700;margin:0;letter-spacing:-0.02em">Livro do Dia</h1>
+        <p style="margin:0;max-width:84ch;font-size:15px;line-height:1.55;color:#5b5473;text-wrap:pretty">O Livro do Show é o <strong>padrão</strong>; o Livro do Dia é o que acontece <strong>numa data</strong>. Ele nasce do padrão — cenas, blocos, posições — mais data e local, já com o elenco resolvido pelo rodízio e sem quem está de folga. <strong>Ajustar o dia não mexe no padrão</strong>: tirar uma cena, trocar quem faz, remover o que não vai rolar vale só para hoje, e dá para restaurar. Publicado, o livro chega <strong>só a quem foi convocado</strong>. Executado, o dia fecha e não se edita mais — e show que não aconteceu só a <strong>Administração</strong> marca como não ocorrido, com o motivo.</p>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:13px 16px;background:#fff;border:1px solid #e6e1f2;border-radius:16px">
+      <span style="font-size:13px;font-weight:600;color:#5b5473;margin-right:4px">Ver como</span>
+      <sc-for list="{{ profileTabs }}" as="tab" hint-placeholder-count="4">
+        <button type="button" onClick="{{ tab.onClick }}" style="{{ tab.style }}">
+          <span style="width:8px;height:8px;border-radius:50%;background:{{ tab.dot }};display:inline-block"></span>
+          <span>{{ tab.name }}</span>
+        </button>
+      </sc-for>
+      <span style="flex:1"></span>
+      <span style="font-size:13px;color:#6b6482">{{ profileHint }}</span>
+    </div>
+  </header>
+
+  <div style="display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start">
+
+    <div style="flex:1 1 1240px;min-width:1120px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Web</div>
+      <div style="border:1px solid #ddd6ee;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="display:flex;height:960px">
+
+          <aside style="width:222px;flex:none;background:linear-gradient(180deg,#1c1440 0%,#241a52 100%);display:flex;flex-direction:column;color:#fff">
+            <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 12px">
+              <img src="assets/asa-wing.png" alt="" style="width:26px;height:26px;object-fit:contain" />
+              <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">My ASA</span>
+            </div>
+            <div style="padding:0 12px 10px">
+              <a href="27%20Assistente%20ASA.dc.html" style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border-radius:10px;padding:8px 10px;font-size:11.5px;color:#b9b0da;text-decoration:none;cursor:pointer">
+                <span style="width:11px;height:11px;border:1.5px solid #b9b0da;border-radius:50%"></span>
+                <span>Buscar ou perguntar à ASA</span>
+              </a>
+            </div>
+            <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:12px;padding:2px 10px 10px">
+              <sc-for list="{{ shellNav }}" as="g" hint-placeholder-count="4">
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#7d72a8;padding:0 8px 4px">{{ g.title }}</div>
+                  <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+                    <a href="{{ it.href }}" style="{{ it.style }}">{{ it.label }}</a>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+            <div style="border-top:1px solid rgba(255,255,255,.1);padding:12px;display:flex;align-items:center;gap:10px">
+              <span style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+              <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                <span style="font-size:12.5px;font-weight:600">{{ personName }}</span>
+                <span style="{{ personChipStyle }}">{{ profileName }}</span>
+              </div>
+            </div>
+          </aside>
+
+          <div style="position:relative;flex:1;display:flex;flex-direction:column;background:#faf9fe;min-width:0">
+
+            <header style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid #ebe6f6;background:#fff">
+              <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">{{ pageTitle }}</span>
+              <span style="flex:1"></span>
+              <span style="font-size:12.5px;color:#6b6482">{{ scopeLabel }}</span>
+              <span style="{{ escalaStyle }}">{{ escalaLabel }}</span>
+            </header>
+
+            <div style="display:flex;align-items:center;padding:0 20px;border-bottom:1px solid #ebe6f6;background:#fff">
+              <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+                <button type="button" onClick="{{ t.onClick }}" style="{{ t.style }}">
+                  <span>{{ t.label }}</span>
+                  <span style="{{ t.badgeStyle }}">{{ t.badge }}</span>
+                </button>
+              </sc-for>
+            </div>
+
+            <sc-if value="{{ isHoje }}" hint-placeholder-val="{{ true }}">
+              <div style="flex:1;min-height:0;overflow:auto;padding:16px 20px 24px;display:flex;flex-direction:column;gap:14px">
+
+                <div style="flex:none;display:flex;flex-direction:column;gap:8px">
+                  <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+                    <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">{{ dia.title }}</span>
+                    <span style="font-size:12px;color:#6b6482">{{ dia.sub }}</span>
+                  </div>
+                  <div style="display:flex;gap:9px;flex-wrap:wrap">
+                    <sc-for list="{{ dia.shows }}" as="s" hint-placeholder-count="3">
+                      <button type="button" onClick="{{ s.onClick }}" style="{{ s.style }}">
+                        <div style="display:flex;align-items:center;gap:9px">
+                          <span style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:{{ s.hourTone }}">{{ s.hour }}</span>
+                          <span style="{{ s.estadoStyle }}">{{ s.estado }}</span>
+                        </div>
+                        <span style="font-size:13px;font-weight:700;text-align:left">{{ s.show }}</span>
+                        <span style="font-size:11.5px;color:#6b6482;text-align:left">{{ s.sub }}</span>
+                      </button>
+                    </sc-for>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:4px;padding:12px 14px;border:1px dashed #d8cff0;border-radius:13px;background:#fbfaff;margin-top:2px">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Isto e a Escala são a mesma escalação</span>
+                    <span style="font-size:12.5px;line-height:1.55;color:#5b5473;max-width:98ch;text-wrap:pretty">{{ dia.rel }}</span>
+                  </div>
+                </div>
+
+                <div style="flex:none;border:1px solid #e6e1f2;border-radius:16px;background:#fff;overflow:hidden">
+                  <div style="display:flex;align-items:flex-start;gap:14px;padding:15px 18px;flex-wrap:wrap">
+                    <div style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:320px">
+                      <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+                        <span style="font-family:Outfit,sans-serif;font-size:20px;font-weight:600">{{ book.show }}</span>
+                        <span style="{{ book.estadoStyle }}">{{ book.estadoLabel }}</span>
+                      </div>
+                      <span style="font-size:13px;color:#5b5473">{{ book.when }}</span>
+                      <span style="font-size:11.5px;color:#6b6482;font-family:'JetBrains Mono',monospace">{{ book.origem }}</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:7px;align-items:flex-end">
+                      <div style="display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end">
+                        <button type="button" onClick="{{ book.onPublicar }}" style="{{ book.publicarStyle }}">{{ book.publicarLabel }}</button>
+                        <button type="button" onClick="{{ book.onExec }}" style="{{ book.execStyle }}">{{ book.execLabel }}</button>
+                      </div>
+                      <span style="font-size:11.5px;color:#6b6482;max-width:44ch;text-align:right;line-height:1.45">{{ book.actionHint }}</span>
+                    </div>
+                  </div>
+                  <div style="display:flex;flex-wrap:wrap;gap:0;border-top:1px solid #f0ecf9">
+                    <sc-for list="{{ book.stats }}" as="s" hint-placeholder-count="4">
+                      <div style="{{ s.style }}">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:19px;font-weight:700;color:{{ s.tone }}">{{ s.n }}</span>
+                        <span style="font-size:11px;font-weight:600;color:#5b5473">{{ s.label }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div style="{{ book.lockStyle }}">{{ book.lockText }}</div>
+                </div>
+
+                <div style="flex:none;border:1px solid #e6e1f2;border-radius:16px;background:#fff;overflow:hidden">
+                  <div style="padding:14px 18px;border-bottom:1px solid #f0ecf9;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                    <span style="{{ tipoStyle }}">{{ tipoLabel }}</span>
+                    <span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:220px">
+                      <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">{{ tipoTitle }}</span>
+                      <span style="font-size:11.5px;color:#6b6482;line-height:1.45;text-wrap:pretty">{{ tipoBody }}</span>
+                    </span>
+                  </div>
+
+                  <div style="padding:14px 18px;display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start">
+                    <div style="flex:1 1 300px;min-width:260px;display:flex;flex-direction:column;gap:9px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">sessões de hoje</span>
+                      <sc-for list="{{ sessoes }}" as="s">
+                        <div style="{{ s.wrapStyle }}">
+                          <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#1b1630;flex:none">{{ s.faixa }}</span>
+                          <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                            <span style="font-size:13px;font-weight:600;line-height:1.25">{{ s.nome }}</span>
+                            <sc-if value="{{ s.aviso }}" hint-collapse="true">
+                              <span style="font-size:11.5px;color:#8f5409;line-height:1.4;text-wrap:pretty">{{ s.aviso }}</span>
+                            </sc-if>
+                          </span>
+                          <sc-if value="{{ s.chamada }}" hint-collapse="true">
+                            <span style="flex:none;font-size:11px;color:#6b6482;font-family:'JetBrains Mono',monospace">chamada {{ s.chamada }}</span>
+                          </sc-if>
+                        </div>
+                      </sc-for>
+                      <span style="font-size:11px;line-height:1.5;color:#6b6482;text-wrap:pretty">Uma formação para o dia inteiro. Se alguém falta só numa sessão, o aviso aparece nela e você ajusta à mão.</span>
+                    </div>
+
+                    <div style="flex:1 1 360px;min-width:300px;display:flex;flex-direction:column;gap:9px">
+                      <div style="display:flex;align-items:baseline;gap:9px;flex-wrap:wrap">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482;flex:1">quem faz cada personagem hoje</span>
+                        <span style="font-size:11.5px;color:#6b6482">{{ persCount }}</span>
+                      </div>
+                      <sc-for list="{{ persHoje }}" as="p">
+                        <div style="{{ p.wrapStyle }}">
+                          <span style="{{ p.dotStyle }}"></span>
+                          <span style="flex:1 1 120px;min-width:100px;font-size:13.5px;font-weight:700;line-height:1.25">{{ p.personagem }}</span>
+                          <span style="flex:1 1 130px;min-width:110px;display:flex;flex-direction:column;gap:2px">
+                            <span style="font-size:13px;font-weight:600;line-height:1.25">{{ p.quem }}</span>
+                            <span style="font-size:11px;color:#6b6482;line-height:1.35;text-wrap:pretty">{{ p.porque }}</span>
+                          </span>
+                          <sc-if value="{{ p.tag }}" hint-collapse="true">
+                            <span style="{{ p.tagStyle }}">{{ p.tag }}</span>
+                          </sc-if>
+                        </div>
+                      </sc-for>
+                      <sc-if value="{{ temPers }}" hint-collapse="true">
+                        <span style="font-size:11px;line-height:1.5;color:#6b6482;text-wrap:pretty">Resolvido uma vez por dia — a mesma pessoa cobre todas as sessões e todos os shows de hoje que usam este personagem.</span>
+                      </sc-if>
+                    </div>
+                  </div>
+                </div>
+
+                <sc-if value="{{ soPersonagens }}" hint-collapse="true">
+                  <div style="flex:none;border:1px dashed #d8cff0;border-radius:16px;background:#fbfaff;padding:15px 18px;display:flex;flex-direction:column;gap:5px">
+                    <span style="font-size:13.5px;font-weight:700">Este show é só de personagens — o livro do dia é esta lista</span>
+                    <span style="font-size:12.5px;line-height:1.55;color:#5b5473;max-width:92ch;text-wrap:pretty">Sem cena, sem mapa de palco e sem biblioteca de formações. O que existe é quem faz cada personagem hoje e o horário de chamada, quando houver. O botão de confirmar fecha o dia direto.</span>
+                  </div>
+                </sc-if>
+
+                <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">
+
+                  <sc-if value="{{ temCenas }}" hint-collapse="true">
+                  <div style="flex:0 0 268px;display:flex;flex-direction:column;gap:8px;min-width:240px">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Cenas de hoje</span>
+                    <sc-for list="{{ cenas }}" as="c" hint-placeholder-count="6">
+                      <button type="button" onClick="{{ c.onClick }}" style="{{ c.style }}">
+                        <div style="display:flex;align-items:baseline;gap:8px">
+                          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6b6482">{{ c.num }}</span>
+                          <span style="font-size:13.5px;font-weight:700;flex:1;text-align:left">{{ c.name }}</span>
+                          <span style="{{ c.tagStyle }}">{{ c.tag }}</span>
+                        </div>
+                        <span style="font-size:11px;color:#6b6482;text-align:left">{{ c.sub }}</span>
+                      </button>
+                    </sc-for>
+                    <span style="font-size:11px;line-height:1.5;color:#6b6482;padding:2px 2px 0">{{ cenasFoot }}</span>
+                  </div>
+                  </sc-if>
+
+                  <sc-if value="{{ temCenas }}" hint-collapse="true">
+                  <div style="flex:1;min-width:520px;display:flex;flex-direction:column;gap:12px">
+
+                    <div style="border:1px solid #e6e1f2;border-radius:16px;background:#fff;padding:16px 18px;display:flex;flex-direction:column;gap:14px">
+                      <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
+                        <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:260px">
+                          <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">{{ cena.name }}</span>
+                          <span style="font-size:12px;color:#6b6482">{{ cena.meta }}</span>
+                        </div>
+                        <button type="button" onClick="{{ cena.onRemoveCena }}" style="{{ cena.removeCenaStyle }}">{{ cena.removeCenaLabel }}</button>
+                      </div>
+
+                      <div style="{{ cena.removedBannerStyle }}">
+                        <span style="font-size:12.5px;font-weight:700;color:#8a2f2f">{{ cena.removedTitle }}</span>
+                        <span style="font-size:12px;line-height:1.5;color:#7a4f4f">{{ cena.removedWhy }}</span>
+                      </div>
+
+                      <sc-for list="{{ cena.groups }}" as="g" hint-placeholder-count="3">
+                        <div style="display:flex;flex-direction:column;gap:7px">
+                          <div style="display:flex;align-items:center;gap:8px">
+                            <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">{{ g.title }}</span>
+                            <span style="flex:1;height:1px;background:#f0ecf9"></span>
+                          </div>
+                          <div style="display:flex;flex-wrap:wrap;gap:8px">
+                            <sc-for list="{{ g.slots }}" as="s" hint-placeholder-count="6">
+                              <div style="{{ s.style }}">
+                                <span style="{{ s.labelStyle }}">{{ s.label }}</span>
+                                <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                                  <span style="{{ s.nameStyle }}">{{ s.who }}</span>
+                                  <span style="{{ s.noteStyle }}">{{ s.note }}</span>
+                                </div>
+                                <button type="button" onClick="{{ s.onToggle }}" title="{{ s.btnTitle }}" style="{{ s.btnStyle }}">{{ s.btnLabel }}</button>
+                              </div>
+                            </sc-for>
+                          </div>
+                        </div>
+                      </sc-for>
+
+                      <div style="display:flex;flex-direction:column;gap:9px;padding:13px 14px;border-radius:13px;border:1px dashed #ddd0fa;background:#fbf9ff">
+                        <div style="display:flex;align-items:baseline;gap:9px;flex-wrap:wrap">
+                          <span style="font-family:Outfit,sans-serif;font-size:14px;font-weight:600">{{ cena.formTitle }}</span>
+                          <span style="font-size:11.5px;color:#6b6482">{{ cena.formHint }}</span>
+                        </div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap">
+                          <sc-for list="{{ cena.forms }}" as="f" hint-placeholder-count="2">
+                            <button type="button" onClick="{{ f.onClick }}" style="{{ f.style }}">
+                              <span style="{{ f.nameStyle }}">{{ f.name }}</span>
+                              <span style="{{ f.tagStyle }}">{{ f.tag }}</span>
+                              <span style="{{ f.sugStyle }}">{{ f.sugerida }}</span>
+                            </button>
+                          </sc-for>
+                        </div>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">{{ cena.mapsTitle }}</span>
+                        <div style="display:flex;gap:7px;flex-wrap:wrap">
+                          <sc-for list="{{ cena.maps }}" as="m" hint-placeholder-count="3">
+                            <button type="button" onClick="{{ m.onClick }}" style="{{ m.style }}">
+                              <span style="{{ m.markStyle }}">{{ m.mark }}</span>
+                              <span>{{ m.label }}</span>
+                            </button>
+                          </sc-for>
+                        </div>
+                        <span style="font-size:11.5px;line-height:1.5;color:#5b5473">{{ cena.mapsFoot }}</span>
+                        <sc-for list="{{ cena.mapViews }}" as="v" hint-placeholder-count="1">
+                          <div style="display:flex;flex-direction:column;gap:5px">
+                            <div style="display:flex;align-items:baseline;gap:8px">
+                              <span style="font-size:12px;font-weight:700;color:#3c3559">{{ v.title }}</span>
+                              <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#6b6482">{{ v.count }}</span>
+                            </div>
+                            <div style="{{ v.stageStyle }}">
+                              <div style="{{ v.floorStyle }}"></div>
+                              <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none">
+                                <polygon points="{{ v.stagePoints }}" fill="none" stroke="#c9bff0" stroke-width="1.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polygon>
+                              </svg>
+                              <sc-for list="{{ v.openings }}" as="o" hint-placeholder-count="4">
+                                <span style="{{ o.style }}"></span>
+                              </sc-for>
+                              <sc-for list="{{ v.zones }}" as="z" hint-placeholder-count="5">
+                                <span style="{{ z.style }}">{{ z.label }}</span>
+                              </sc-for>
+                              <sc-for list="{{ v.markers }}" as="m" hint-placeholder-count="12">
+                                <span style="{{ m.style }}">
+                                  <span style="{{ m.labelStyle }}">{{ m.label }}</span>
+                                  <span style="{{ m.nameStyle }}">{{ m.person }}</span>
+                                </span>
+                              </sc-for>
+                            </div>
+                          </div>
+                        </sc-for>
+                        <span style="{{ cena.mapsEmptyStyle }}">{{ cena.mapsEmpty }}</span>
+                        <button type="button" onClick="{{ cena.onSaveForm }}" style="{{ cena.saveFormStyle }}">Guardar esta formação no padrão</button>
+                        <span style="{{ cena.savedNoteStyle }}">{{ cena.savedNote }}</span>
+                      </div>
+
+                      <span style="font-size:11px;line-height:1.5;color:#6b6482;border-top:1px solid #f0ecf9;padding-top:11px">{{ cena.foot }}</span>
+                    </div>
+
+                    <div style="{{ removedPanel.style }}">
+                      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                        <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">Removido hoje</span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#8a6413;background:#fdf1dc;padding:2px 7px;border-radius:999px">{{ removedPanel.count }}</span>
+                        <span style="flex:1"></span>
+                        <span style="font-size:11.5px;color:#6b6482">{{ removedPanel.hint }}</span>
+                      </div>
+                      <sc-for list="{{ removedPanel.list }}" as="r" hint-placeholder-count="2">
+                        <div style="display:flex;align-items:center;gap:12px;padding:9px 11px;border:1px solid #f0e4d4;border-radius:11px;background:#fffdf9">
+                          <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0">
+                            <span style="font-size:12.5px;font-weight:700">{{ r.what }}</span>
+                            <span style="font-size:11.5px;color:#6b6482">{{ r.why }}</span>
+                          </div>
+                          <button type="button" onClick="{{ r.onRestore }}" style="{{ r.restoreStyle }}">restaurar</button>
+                        </div>
+                      </sc-for>
+                      <span style="font-size:11.5px;line-height:1.5;color:#6b6482">Nada disso alterou o Livro do Show. O padrão continua com a cena e a posição no lugar.</span>
+                    </div>
+
+                  </div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isDiff }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1;min-height:0;overflow:auto;padding:16px 20px 24px;display:flex;flex-direction:column;gap:13px">
+                <div style="display:flex;flex-direction:column;gap:4px">
+                  <span style="font-family:Outfit,sans-serif;font-size:18px;font-weight:600">O que hoje tem de diferente do padrão</span>
+                  <span style="font-size:12.5px;line-height:1.5;color:#5b5473;max-width:96ch;text-wrap:pretty">Cada linha é uma decisão tomada para esta data. À esquerda o que o Livro do Show manda; à direita o que vai acontecer. Nenhuma delas volta para o padrão.</span>
+                </div>
+                <div style="flex:none;border:1px solid #e6e1f2;border-radius:14px;background:#fff;overflow:hidden">
+                  <div style="display:flex;padding:9px 14px;background:#fcfbfe;border-bottom:1px solid #ebe6f6">
+                    <span style="flex:0 0 118px;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:#6b6482">Onde</span>
+                    <span style="flex:1;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:#6b6482">No padrão</span>
+                    <span style="flex:1;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:#6b6482">Hoje</span>
+                    <span style="flex:0 0 190px;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:#6b6482">Por quê</span>
+                  </div>
+                  <sc-for list="{{ diffs }}" as="d" hint-placeholder-count="5">
+                    <div style="display:flex;align-items:flex-start;gap:0;padding:12px 14px;border-bottom:1px solid #f4f1fb">
+                      <span style="flex:0 0 118px;font-size:11.5px;font-weight:700;color:#5b5473;padding-right:10px">{{ d.where }}</span>
+                      <span style="flex:1;font-size:12.5px;color:#6b6482;padding-right:12px;text-decoration:line-through">{{ d.antes }}</span>
+                      <span style="flex:1;font-size:12.5px;font-weight:600;padding-right:12px">{{ d.agora }}</span>
+                      <span style="flex:0 0 190px;font-size:11.5px;line-height:1.45;color:#5b5473">{{ d.why }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;padding:13px 15px;border:1px dashed #d8cff0;border-radius:14px;background:#fbfaff">
+                  <span style="font-size:12.5px;line-height:1.55;color:#5b5473;max-width:92ch;text-wrap:pretty"><strong>Quando uma diferença deixa de ser do dia.</strong> Se a mesma troca aparece três, quatro datas seguidas, ela não é ajuste — é o padrão que mudou. Aí alguém edita o Livro do Show em <strong>13 Shows</strong>, e os dias seguintes já nascem certos. A ASA avisa quando enxerga esse padrão.</span>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isForma }}" hint-collapse="true">
+              <div style="flex:1;min-height:0;overflow:auto;padding:16px 20px 24px;display:flex;flex-direction:column;gap:13px">
+                <div style="display:flex;flex-direction:column;gap:4px">
+                  <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">Biblioteca de formações</span>
+                  <span style="font-size:12.5px;line-height:1.55;color:#5b5473;max-width:98ch;text-wrap:pretty">Mora aqui, junto do dia, porque é aqui que você consulta enquanto resolve. A formação cheia vem do Livro do Show; as reduzidas nascem por repetição — quando uma quantidade se repete, o app reusa a que já existe, e quando é nova ela passa a existir depois que você resolve.</span>
+                </div>
+
+                <div style="border:1px solid #e6e1f2;border-radius:16px;background:#fff;overflow:hidden">
+                  <div style="padding:13px 16px;border-bottom:1px solid #f0ecf9;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482;flex:none">show → cena → quantidade</span>
+                    <span style="flex:1"></span>
+                    <span style="display:flex;align-items:center;min-height:40px;padding:0 13px;border:1.5px solid #ddd6ee;border-radius:11px;font-size:13px;color:#6b6482;flex:1 1 200px;max-width:300px">Buscar cena ou formação</span>
+                  </div>
+
+                  <div style="display:flex;flex-wrap:wrap">
+                    <div style="flex:0 1 250px;min-width:220px;border-right:1px solid #f0ecf9;padding:12px;display:flex;flex-direction:column;gap:5px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482;padding:0 6px 4px">show</span>
+                      <sc-for list="{{ bibShows }}" as="b">
+                        <button type="button" onClick="{{ b.onClick }}" style="{{ b.style }}">
+                          <span style="flex:1;min-width:0;font-size:13px;font-weight:600">{{ b.label }}</span>
+                          <span style="flex:none;font-size:11px;color:#6b6482">{{ b.count }}</span>
+                        </button>
+                      </sc-for>
+                    </div>
+
+                    <div style="flex:0 1 230px;min-width:200px;border-right:1px solid #f0ecf9;padding:12px;display:flex;flex-direction:column;gap:5px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482;padding:0 6px 4px">cena</span>
+                      <sc-for list="{{ bibCenas }}" as="b">
+                        <button type="button" onClick="{{ b.onClick }}" style="{{ b.style }}">
+                          <span style="flex:1;min-width:0;font-size:13px;font-weight:600">{{ b.label }}</span>
+                          <span style="flex:none;font-size:11px;color:#6b6482">{{ b.count }}</span>
+                        </button>
+                      </sc-for>
+                    </div>
+
+                    <div style="flex:1 1 420px;min-width:360px;padding:14px 16px;background:#faf9fe;display:flex;flex-direction:column;gap:11px">
+                      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482;flex:1">{{ bibTitle }}</span>
+                        <span style="font-size:11.5px;color:#6b6482">da cheia para a menor</span>
+                      </div>
+                      <sc-for list="{{ bibFormacoes }}" as="f">
+                        <div style="background:#fff;border:1px solid #e9e4f5;border-radius:14px;padding:13px 15px;display:flex;flex-direction:column;gap:10px">
+                          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                            <span style="{{ f.qtdStyle }}">{{ f.qtd }}</span>
+                            <span style="flex:1 1 170px;min-width:140px;display:flex;flex-direction:column;gap:2px">
+                              <span style="font-size:14px;font-weight:700;line-height:1.25">{{ f.nome }}</span>
+                              <span style="font-size:11.5px;color:#6b6482;line-height:1.4">{{ f.uso }}</span>
+                            </span>
+                            <sc-if value="{{ f.conflito }}" hint-collapse="true">
+                              <span style="{{ f.conflitoStyle }}">{{ f.conflito }}</span>
+                            </sc-if>
+                          </div>
+                          <div style="display:flex;flex-wrap:wrap;gap:6px">
+                            <sc-for list="{{ f.mapa }}" as="m">
+                              <span style="{{ m.style }}">{{ m.label }}</span>
+                            </sc-for>
+                          </div>
+                        </div>
+                      </sc-for>
+                      <div style="background:#fff;border:1px dashed #ddd6ee;border-radius:13px;padding:13px 15px;display:flex;flex-direction:column;gap:5px">
+                        <span style="font-size:13px;font-weight:700">Duas formações para a mesma quantidade</span>
+                        <span style="font-size:12px;line-height:1.5;color:#5b5473;text-wrap:pretty">O app não escolhe: mostra as duas com o mapa e quantas vezes cada uma foi usada, e você decide. Em Molduras existem duas de 4 — foi a sua regra.</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isLista }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1;min-height:0;overflow:auto;padding:16px 20px 24px;display:flex;flex-direction:column;gap:13px">
+                <div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap">
+                  <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:300px">
+                    <span style="font-family:Outfit,sans-serif;font-size:18px;font-weight:600">{{ lista.title }}</span>
+                    <span style="font-size:12.5px;line-height:1.5;color:#5b5473;max-width:96ch;text-wrap:pretty">{{ lista.about }}</span>
+                  </div>
+                  <div style="display:flex;gap:6px;flex-wrap:wrap">
+                    <sc-for list="{{ lista.filters }}" as="f" hint-placeholder-count="4">
+                      <button type="button" onClick="{{ f.onClick }}" style="{{ f.style }}">{{ f.label }}</button>
+                    </sc-for>
+                  </div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <sc-for list="{{ lista.rows }}" as="r" hint-placeholder-count="5">
+                    <button type="button" onClick="{{ r.onClick }}" style="{{ r.style }}">
+                      <div style="display:flex;flex-direction:column;gap:2px;flex:0 0 92px;text-align:left">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#6C2BF2">{{ r.date }}</span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6b6482">{{ r.hour }}</span>
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:0;text-align:left">
+                        <span style="font-size:14px;font-weight:700">{{ r.show }}</span>
+                        <span style="font-size:12px;color:#5b5473">{{ r.sub }}</span>
+                      </div>
+                      <span style="{{ r.meStyle }}">{{ r.meLabel }}</span>
+                      <span style="{{ r.estadoStyle }}">{{ r.estado }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+                <span style="font-size:11.5px;line-height:1.5;color:#6b6482;max-width:100ch">{{ lista.foot }}</span>
+              </div>
+            </sc-if>
+
+            <div style="{{ ruleStyle }}">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Regra</span>
+              <span style="font-size:12px;line-height:1.5;color:#5b5473">{{ ruleText }}</span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:0 0 390px;min-width:390px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Mobile · o livro no bolso, a dois minutos da entrada</div>
+      <div style="width:390px;border:1px solid #ddd6ee;border-radius:38px;overflow:hidden;background:#1c1440;padding:9px;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="position:relative;background:#faf9fe;border-radius:30px;overflow:hidden;display:flex;flex-direction:column;height:826px">
+
+          <sc-if value="{{ moreOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:0;right:0;top:0;bottom:0;z-index:9;background:rgba(28,20,64,.42);display:flex;align-items:flex-end">
+              <div style="width:100%;max-height:88%;overflow-y:auto;background:#faf9fe;border-radius:22px 22px 30px 30px;padding:14px 14px 18px;display:flex;flex-direction:column;gap:12px">
+                <div style="display:flex;align-items:flex-start;gap:10px">
+                  <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0">
+                    <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">{{ moreTitle }}</span>
+                    <span style="font-size:11px;color:#6b6482">{{ moreSub }}</span>
+                  </div>
+                  <button type="button" onClick="{{ onCloseMore }}" style="width:28px;height:28px;flex:none;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:14px;cursor:pointer">×</button>
+                </div>
+                <a href="{{ moreAsa }}" style="display:flex;align-items:center;gap:11px;padding:12px;border-radius:14px;background:#f4edfe;border:1px solid #ddcbfa;text-decoration:none">
+                  <img src="assets/asa/oi.png" alt="ASA" style="width:36px;height:36px;object-fit:contain;flex:none" />
+                  <span style="display:flex;flex-direction:column;gap:1px;min-width:0;flex:1">
+                    <span style="font-size:13px;font-weight:700;color:#5B23C9">Perguntar à ASA</span>
+                    <span style="font-size:11px;color:#5f4b8a">"a cena 5 mudou?" — ela responde com a fonte</span>
+                  </span>
+                </a>
+                <sc-for list="{{ moreGroups }}" as="g" hint-placeholder-count="4">
+                  <div style="display:flex;flex-direction:column;gap:6px">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482;padding:0 2px">{{ g.title }}</span>
+                    <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+                      <a href="{{ it.href }}" style="{{ it.style }}">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6b6482;flex:none;min-width:17px">{{ it.num }}</span>
+                        <span style="font-size:13px;font-weight:600;flex:1;min-width:0">{{ it.label }}</span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6b6482;flex:none">›</span>
+                      </a>
+                    </sc-for>
+                  </div>
+                </sc-for>
+                <a href="{{ morePerfil }}" style="display:flex;align-items:center;gap:10px;padding:12px;border-radius:14px;background:#fff;border:1px solid #eee9f6;text-decoration:none;color:#1b1630">
+                  <span style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+                  <span style="font-size:13px;font-weight:600;flex:1">Perfil e configurações</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6b6482">›</span>
+                </a>
+              </div>
+            </div>
+          </sc-if>
+
+          <div style="position:absolute;left:0;right:0;bottom:0;z-index:5;display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid #ebe6f6;background:#fff;padding:9px 4px 12px">
+            <sc-for list="{{ mobileTabs }}" as="t" hint-placeholder-count="5">
+              <a href="{{ t.href }}" onClick="{{ t.onClick }}" style="{{ t.style }}">
+                <span style="display:block;width:19px;height:19px;border-radius:6px;border:1.7px solid currentColor;opacity:.75"></span>
+                <span style="font-size:9.5px;font-weight:600;text-align:center">{{ t.label }}</span>
+              </a>
+            </sc-for>
+          </div>
+
+          <div style="padding:13px 14px 11px;background:#fff;border-bottom:1px solid #ebe6f6;display:flex;align-items:center;gap:10px">
+            <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0">
+              <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">{{ mob.title }}</span>
+              <span style="font-size:11.5px;color:#6b6482;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ mob.sub }}</span>
+            </div>
+            <span style="{{ mob.estadoStyle }}">{{ mob.estado }}</span>
+          </div>
+
+          <div style="flex:1;overflow:auto;padding:12px 14px 76px;display:flex;flex-direction:column;gap:11px">
+
+            <sc-if value="{{ mob.hasAlerta }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:10px;padding:11px 12px;background:#fff8f1;border:1px solid #f2d7bb;border-radius:14px">
+                <img src="assets/asa/aviso-importante.png" alt="" style="width:32px;height:32px;object-fit:contain;flex:none" />
+                <span style="font-size:12px;line-height:1.45;color:#7d4a10;text-wrap:pretty;flex:1">{{ mob.alerta }}</span>
+              </div>
+            </sc-if>
+
+            <div style="display:flex;flex-direction:column;gap:7px;padding:13px 14px;background:linear-gradient(135deg,#1c1440,#2b1f63);border-radius:16px;color:#fff">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#b9b0da">{{ mob.heroLabel }}</span>
+              <span style="font-family:Outfit,sans-serif;font-size:19px;font-weight:700;line-height:1.2">{{ mob.heroTitle }}</span>
+              <span style="font-size:12px;line-height:1.45;color:#d8d1f0">{{ mob.heroSub }}</span>
+              <div style="display:flex;gap:7px;flex-wrap:wrap;padding-top:4px">
+                <sc-for list="{{ mob.heroChips }}" as="c" hint-placeholder-count="3">
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;padding:5px 9px;border-radius:8px;background:rgba(255,255,255,.14);color:#fff">{{ c }}</span>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:9px">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">{{ mob.cenasLabel }}</span>
+              <span style="flex:1;height:1px;background:#ebe6f6"></span>
+              <span style="font-size:10.5px;color:#6b6482">{{ mob.cenasCount }}</span>
+            </div>
+
+            <sc-for list="{{ mob.cenas }}" as="c" hint-placeholder-count="5">
+              <div style="{{ c.style }}">
+                <div style="display:flex;align-items:center;gap:9px">
+                  <span style="{{ c.numStyle }}">{{ c.num }}</span>
+                  <div style="display:flex;flex-direction:column;gap:1px;flex:1;min-width:0">
+                    <span style="font-size:13.5px;font-weight:700;line-height:1.25">{{ c.name }}</span>
+                    <span style="font-size:11px;color:#6b6482">{{ c.meta }}</span>
+                  </div>
+                  <span style="{{ c.tagStyle }}">{{ c.tag }}</span>
+                </div>
+                <sc-if value="{{ c.mine }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:flex;flex-direction:column;gap:5px;padding:9px 10px;background:#faf9fe;border:1px solid #f0ecf8;border-radius:11px">
+                    <span style="font-size:11.5px;font-weight:700;color:#3d3559">{{ c.minhaPos }}</span>
+                    <span style="font-size:11px;line-height:1.4;color:#6b6482;text-wrap:pretty">{{ c.vizinhos }}</span>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ c.hasDiff }}" hint-placeholder-val="{{ false }}">
+                  <span style="font-size:11px;line-height:1.4;color:#B4560B;text-wrap:pretty">{{ c.diff }}</span>
+                </sc-if>
+              </div>
+            </sc-for>
+
+            <span style="font-size:11px;line-height:1.5;color:#6b6482;text-wrap:pretty">{{ mob.foot }}</span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1720},&quot;perfilInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ADM&quot;,&quot;DIR&quot;,&quot;SUP&quot;,&quot;MEM&quot;],&quot;default&quot;:&quot;ADM&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Demonstração&quot;},&quot;estadoInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;rasc&quot;,&quot;pub&quot;,&quot;exec&quot;,&quot;canc&quot;],&quot;default&quot;:&quot;rasc&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Demonstração&quot;},&quot;escalaPublicada&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Demonstração&quot;},&quot;mostrarRemovidos&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Demonstração&quot;}}">
+const PROFILES = [
+  { key: "ADM", name: "Administração", person: "Barbara Sorroche", dot: "#6C2BF2", scope: "Todos os locais", hint: "Gera, edita, publica, executa e cancela em qualquer local." },
+  { key: "DIR", name: "Direção", person: "Cris Garcia", dot: "#2E63D6", scope: "Todos os locais", hint: "Leitura: o que está publicado hoje e o estado de cada livro." },
+  { key: "SUP", name: "Supervisão", person: "Deborah", dot: "#0E8F86", scope: "Snowland · Patinadores", hint: "Ajusta o dia dos shows sob sua responsabilidade e publica." },
+  { key: "MEM", name: "Elenco", person: "Julia", dot: "#C2508F", scope: "Meus shows", hint: "Só os livros em que foi convocada, com o próprio nome destacado." }
+];
+
+const NAV = [
+  { title: "Porta de entrada", items: [
+    ["17", "Início / Meu Dia", ["ADM","DIR","SUP","MEM"], "Meu Dia"]
+  ] },
+  { title: "O dia", items: [
+    ["20", "Agenda", ["ADM","DIR","SUP","MEM"], "Minha agenda"],
+    ["15", "Escalas", ["ADM","DIR","SUP","MEM"], "Minha escala"],
+    ["13", "Shows", ["ADM","DIR","SUP","MEM"], "Shows"],
+    ["14", "Livro do Dia", ["ADM","DIR","SUP","MEM"], "Meus shows"],
+    ["19", "Check-in e ocorrências", ["ADM","DIR","SUP","MEM"], "Check-in"],
+    ["10", "Responsabilidades e tarefas", ["ADM","DIR","SUP","MEM"], "Minhas tarefas"],
+    ["18", "Folgas", ["ADM","DIR","SUP","MEM"], "Minhas folgas"]
+  ] },
+  { title: "Gestão", items: [
+    ["16", "Painel", ["ADM","DIR","SUP"], null],
+    ["06", "Locais", ["ADM","DIR","SUP"], null],
+    ["07", "Pessoas", ["ADM","DIR","SUP"], null],
+    ["08", "Áreas", ["ADM","DIR","SUP","MEM"], "Meu grupo"],
+    ["25", "Reconhecimentos", ["ADM","DIR","SUP"], null]
+  ] },
+  { title: "Comunicação", items: [
+    ["22", "Avisos e Mural", ["ADM","DIR","SUP","MEM"], "Mural"],
+    ["23", "Mensagens", ["ADM","DIR","SUP","MEM"], "Conversas"],
+    ["24", "Biblioteca", ["ADM","DIR","SUP","MEM"], "Biblioteca"]
+  ] }
+];
+
+const NAV_HREF = {
+  "10": "10%20Responsabilidades%20e%20Tarefas.dc.html",
+  "13": "13%20Shows.dc.html",
+  "14": "14%20Livro%20do%20Dia.dc.html",
+  "15": "15%20Escalas.dc.html",
+  "16": "16%20Painel%20e%20indicadores.dc.html",
+  "17": "17%20Meu%20Dia.dc.html",
+  "18": "18%20Folgas.dc.html",
+  "19": "19%20Check-in%20e%20ocorr%C3%AAncias.dc.html",
+  "20": "20%20Agenda.dc.html",
+  "22": "22%20Avisos%20e%20Mural.dc.html",
+  "23": "23%20Mensagens.dc.html",
+  "24": "24%20Biblioteca.dc.html", "25": "25%20Reconhecimentos.dc.html",
+  "27": "27%20Assistente%20ASA.dc.html",
+  "28": "28%20Perfil%20e%20configura%C3%A7%C3%B5es.dc.html",
+  "06": "06%20Locais.dc.html",
+  "07": "07%20Pessoas.dc.html",
+  "08": "08%20%C3%81reas.dc.html"
+};
+
+const ME_MEM = "Julia";
+
+const EST = {
+  rasc: { label: "rascunho", tone: "#B06E00" },
+  pub:  { label: "publicado", tone: "#0E8F86" },
+  exec: { label: "executado", tone: "#6C2BF2" },
+  canc: { label: "não ocorreu", tone: "#a12c2c" }
+};
+
+// slot: [rótulo, quem, entrou-no-lugar-de, papel]
+const S = (lb, who, subDe, papel) => ({ lb: lb, who: who, sub: subDe || null, papel: papel || null });
+
+// Formação = variante nomeada de uma cena. Os quadros são os mesmos tipos do Livro do Show
+// (inicial, splice, locacao, saida): o desenho vem de mapa-palco.js, não daqui.
+const FORMACOES = {
+  abertura: [
+    { id: "a6", name: "Abertura completa", n: 6, frames: [["Posi\u00e7\u00e3o inicial", "inicial"], ["Splice", "splice"], ["Sa\u00edda", "saida"]] },
+    { id: "a4", name: "Abertura reduzida", n: 4, frames: [["Posi\u00e7\u00e3o inicial", "inicial"], ["Sa\u00edda", "saida"]] }
+  ],
+  molduras: [
+    { id: "m6", name: "Molduras completa", n: 6, frames: [["Posi\u00e7\u00e3o inicial", "inicial"], ["Splice", "splice"], ["Sa\u00edda \u2014 leva moldura", "saida"]] },
+    { id: "m4", name: "Molduras reduzida", n: 4, frames: [["Posi\u00e7\u00e3o inicial", "inicial"], ["Sa\u00edda \u2014 leva moldura", "saida"]] }
+  ],
+  finale: [
+    { id: "f8", name: "Finale completo", n: 8, frames: [["Posi\u00e7\u00e3o inicial", "inicial"], ["Trick section", "locacao"]] },
+    { id: "f5", name: "Finale enxuto", n: 5, frames: [["Posi\u00e7\u00e3o inicial", "inicial"]] }
+  ]
+};
+const FORM_FALLBACK = [{ id: "pad", name: "Forma\u00e7\u00e3o do padr\u00e3o", n: 0, frames: [["Posi\u00e7\u00e3o inicial", "inicial"]] }];
+
+const CENAS_PAT = [
+  { id: "abertura", name: "Abertura", min: "4 min",
+    bl: [S("1", "Julia"), S("2", "Dani"), S("3", "Amanda")],
+    br: [S("4", "Carol"), S("5", "Izabel"), S("6", "Diogo")],
+    chars: [] },
+  { id: "vilarejo", name: "Vilarejo", min: "6 min",
+    bl: [S("1", "Julia"), S("2", "Amanda"), S("3", "Arthur", "Jefferson"), S("&", "Diogo")],
+    br: [S("4", "Dani"), S("5", "Carol"), S("6", "Izabel")],
+    chars: [S("A", "Carol", null, "Astrid"), S("M", "Diogo", null, "Mercador")] },
+  { id: "astrid", name: "Vilarejo Astrid", min: "6 min",
+    bl: [S("1", "Carol", null, "Astrid"), S("2", "Julia"), S("3", "Amanda")],
+    br: [S("4", "Dani"), S("5", "Izabel"), S("6", "Diogo")],
+    chars: [] },
+  { id: "molduras", name: "Molduras", min: "5 min",
+    bl: [S("1", "Amanda"), S("2", "Julia"), S("3", "Diogo")],
+    br: [S("4", "Izabel", "Dani"), S("5", "Carol"), S("6", "Arthur")],
+    chars: [] },
+  { id: "imaginar", name: "Imaginar", min: "5 min",
+    bl: [S("1", "Julia"), S("2", "Carol")],
+    br: [S("3", "Amanda"), S("4", "Izabel"), S("5", "Diogo")],
+    chars: [] },
+  { id: "duo", name: "Duo Central", min: "3 min",
+    bl: [S("1", "Carol", null, "Astrid")],
+    br: [S("2", "Diogo", null, "Mercador")],
+    chars: [] },
+  { id: "passarela", name: "Passarela", min: "6 min",
+    bl: [S("1", "Julia"), S("2", "Amanda"), S("3", "Dani")],
+    br: [S("4", "Carol"), S("5", "Izabel"), S("6", "Arthur"), S("&", "Diogo")],
+    chars: [] },
+  { id: "finale", name: "Finale", min: "7 min",
+    bl: [S("1", "Julia"), S("2", "Dani"), S("3", "Amanda"), S("4", "Carol"), S("5", "Izabel")],
+    br: [S("6", "Diogo"), S("7", "Arthur"), S("8", "Sofia"), S("9", null), S("&", "Amanda")],
+    chars: [] }
+];
+
+const CENAS_AQ = [
+  { id: "entrada", name: "Entrada da água", min: "5 min",
+    bl: [S("1", "Amanda"), S("2", "Sofia")],
+    br: [S("3", "Izabel"), S("4", "Arthur")],
+    chars: [] },
+  { id: "bolhas", name: "Bolhas", min: "6 min",
+    bl: [S("1", "Sofia"), S("2", "Amanda"), S("3", "Arthur", "Jefferson")],
+    br: [S("4", "Izabel"), S("5", "Diogo")],
+    chars: [] },
+  { id: "duoaq", name: "Duo Aquático", min: "4 min",
+    bl: [S("1", "Amanda", null, "Nereida")],
+    br: [S("2", "Diogo", null, "Tritão")],
+    chars: [] },
+  { id: "finalaq", name: "Final Aquático", min: "6 min",
+    bl: [S("1", "Amanda"), S("2", "Sofia"), S("3", "Izabel")],
+    br: [S("4", "Arthur"), S("5", "Diogo"), S("&", "Sofia")],
+    chars: [] }
+];
+
+const CENAS_BY = {
+  "Patinação — Inverno 2026": CENAS_PAT,
+  "Aquático — Verão 2026": CENAS_AQ,
+  "Yeti e Nanook": []
+};
+
+// show só-personagens não tem cena: stub para o cálculo não estourar (o template esconde)
+const CENAS_STUB = [{ id: "__nenhuma", name: "—", min: "", bl: [], br: [], chars: [] }];
+
+// Biblioteca de formações: show → cena → quantidade. Nasce da formação cheia do
+// Livro do Show e cresce por repetição — cada combinação nova de quantidade fica salva.
+const BIBLIO = {
+  "Patinação — Inverno 2026": {
+    "Abertura": [
+      { qtd: 6, nome: "Abertura cheia", uso: "padrão do show · herdada do Livro do Show", padrao: true, mapa: ["1", "2", "3", "4", "5", "6"] },
+      { qtd: 5, nome: "Abertura 5 — sem a ponta direita", uso: "usada 7 vezes · última em 09/09", mapa: ["1", "2", "3", "4", "5"] },
+      { qtd: 4, nome: "Abertura 4 — dois pares", uso: "usada 3 vezes · última em 28/08", mapa: ["1", "2", "3", "4"] }
+    ],
+    "Vilarejo": [
+      { qtd: 9, nome: "Vilarejo cheio", uso: "padrão do show", padrao: true, mapa: ["1", "2", "3", "&", "4", "5", "6", "A", "M"] },
+      { qtd: 7, nome: "Vilarejo 7 — sem o coro do fundo", uso: "usada 11 vezes · última em 10/09", mapa: ["1", "2", "3", "4", "5", "A", "M"] },
+      { qtd: 6, nome: "Vilarejo 6 — mercador entra no coro", uso: "usada 4 vezes · última em 02/09", mapa: ["1", "2", "3", "4", "A", "M"] }
+    ],
+    "Molduras": [
+      { qtd: 6, nome: "Molduras cheia", uso: "padrão do show", padrao: true, mapa: ["1", "2", "3", "4", "5", "6"] },
+      { qtd: 4, nome: "Molduras 4 — miolo aberto", uso: "usada 12 vezes · última em 10/09", mapa: ["1", "2", "3", "4"] },
+      { qtd: 4, nome: "Molduras 4 — duas duplas", uso: "usada 3 vezes · última em 14/08", mapa: ["1", "2", "3", "4"] },
+      { qtd: 3, nome: "Molduras 3 — triângulo", uso: "usada 1 vez · única, em 05/08", mapa: ["1", "2", "3"] }
+    ],
+    "Imaginar": [
+      { qtd: 5, nome: "Imaginar cheia", uso: "padrão do show", padrao: true, mapa: ["1", "2", "3", "4", "5"] },
+      { qtd: 3, nome: "Imaginar 3 — diagonal curta", uso: "usada 6 vezes · última em 06/09", mapa: ["1", "2", "3"] }
+    ],
+    "Finale": [
+      { qtd: 8, nome: "Finale completo", uso: "padrão do show", padrao: true, mapa: ["1", "2", "3", "4", "5", "6", "7", "8"] },
+      { qtd: 5, nome: "Finale enxuto", uso: "usada 9 vezes · última em 09/09", mapa: ["1", "2", "3", "4", "5"] }
+    ]
+  },
+  "Aquático — Verão 2026": {
+    "Entrada da água": [
+      { qtd: 4, nome: "Entrada cheia", uso: "padrão do show", padrao: true, mapa: ["1", "2", "3", "4"] },
+      { qtd: 2, nome: "Entrada duo", uso: "usada 15 vezes · última em 10/09", mapa: ["1", "2"] }
+    ],
+    "Portagens": [
+      { qtd: 6, nome: "Portagens cheia", uso: "padrão do show", padrao: true, mapa: ["1", "2", "3", "4", "5", "6"] },
+      { qtd: 4, nome: "Portagens 4 — sem os apoios", uso: "usada 8 vezes · última em 07/09", mapa: ["1", "2", "3", "4"] },
+      { qtd: 3, nome: "Portagens trio", uso: "usada 5 vezes · última em 31/08", mapa: ["1", "2", "3"] }
+    ]
+  }
+};
+
+const SHOW_META = {
+  "Patinação — Inverno 2026": { v: "v5", elenco: "elenco de Bailarinos e Patinação" },
+  "Aquático — Verão 2026": { v: "v2", elenco: "elenco de Nado Artístico" },
+  "Yeti e Nanook": { v: "v3", elenco: "personagens de Snowland" }
+};
+
+const LIVROS = [
+  { id: 1, date: "1 set", hour: "09:00", show: "Patinação — Inverno 2026", local: "Snowland · Palco A", estado: "exec", me: true },
+  { id: 2, date: "1 set", hour: "16:00", show: "Patinação — Inverno 2026", local: "Snowland · Palco A", estado: "rasc", me: true },
+  { id: 3, date: "2 set", hour: "09:00", show: "Patinação — Inverno 2026", local: "Snowland · Palco A", estado: "pub", me: true },
+  { id: 4, date: "2 set", hour: "15:00", show: "Aquático — Verão 2026", local: "Acquamotion · Palco Aquático", estado: "pub", me: false },
+  { id: 5, date: "3 set", hour: "09:00", show: "Patinação — Inverno 2026", local: "Snowland · Palco A", estado: "rasc", me: true },
+  { id: 6, date: "31 ago", hour: "16:00", show: "Aquático — Verão 2026", local: "Acquamotion · Palco Aquático", estado: "canc", me: false },
+  { id: 7, date: "1 set", hour: "19:00", show: "Aquático — Verão 2026", local: "Acquamotion · Palco Aquático", estado: "rasc", me: false },
+  { id: 8, date: "1 set", hour: "10:00", show: "Yeti e Nanook", local: "Snowland · Portão azul", estado: "pub", me: true }
+];
+
+const HOJE = "1 set";
+
+const SUB_WHY = {
+  "vilarejo:3": "Ocorrência aberta: Lucas saiu no meio da manhã.",
+  "molduras:4": "Isadora de folga — o rodízio puxou a substituta.",
+  "bolhas:3": "Ocorrência aberta: Lucas saiu no meio da manhã."
+};
+
+// Chave do removido é por livro: o dia de um show não mexe no dia do outro.
+// Finale · 9 fica vaga de propósito: posição em aberto não é remoção.
+const REMOV0 = { "2|c:imaginar": "Falha no gelo do setor 3 — a cena usa a diagonal inteira." };
+
+// Onda 2: tipo por show — "form" (só formação), "mix" (formação + personagens), "pers" (só personagens)
+const SHOW_TIPO = {
+  "Patinação — Inverno 2026": "mix",
+  "Aquático — Verão 2026": "form",
+  "Yeti e Nanook": "pers"
+};
+
+// sessões por show: [faixa, nome, aviso, chamada opcional] — a faixa começa na hora do livro
+const SHOW_SESSOES = {
+  "Patinação — Inverno 2026": h => [[h + " — " + plus(h, 50), "sessão única", null, minus(h, 40)]],
+  "Aquático — Verão 2026": h => [[h + " — " + plus(h, 20), "sessão única", null, null]],
+  "Yeti e Nanook": () => [
+    ["10:00 — 11:00", "primeira sessão", null, "09:20"],
+    ["16:00 — 17:00", "segunda sessão", "Simon entra em fisioterapia às 15:00 — confira quem cobre esta sessão.", "15:20"]
+  ]
+};
+
+// personagens por show: [personagem, quem, por que, etiqueta]
+const SHOW_PERS_DIA = {
+  "Patinação — Inverno 2026": [
+    ["Astrid", "Julia", "titular", null],
+    ["Guardião", "Diogo", "rodízio · fez 6×, o menor da fila", null],
+    ["Chocolato", "Simon", "titular", null],
+    ["Igno", "Izabel", "rodízio · fez 4×, o menor da fila", "entrou hoje"],
+    ["Rainha", "Carol", "titular", null]
+  ],
+  "Aquático — Verão 2026": [],
+  "Yeti e Nanook": [
+    ["Yeti", "Junior", "rodízio · fez 11×, o menor da fila", null],
+    ["Nanook", "Kauã", "rodízio · fez 6×, o menor da fila", null],
+    ["Astrid", "Julia", "titular · a mesma do show de Patinação de hoje", "nos 2 shows"]
+  ]
+};
+
+function hm(h) { const p = h.split(":"); return Number(p[0]) * 60 + Number(p[1]); }
+function fmt(m) { const x = ((m % 1440) + 1440) % 1440; return String(Math.floor(x / 60)).padStart(2, "0") + ":" + String(x % 60).padStart(2, "0"); }
+function plus(h, n) { return fmt(hm(h) + n); }
+function minus(h, n) { return fmt(hm(h) - n); }
+
+class Component extends DCLogic {
+  state = {
+    profile: "ADM", tab: "hoje", cena: "molduras", book: 2,
+    estado: "rasc", removed: Object.assign({}, REMOV0),
+    filtro: "todos"
+  };
+
+  componentDidMount() {
+    const p = this.props.perfilInicial;
+    const e = this.props.estadoInicial;
+    const next = {};
+    if (p && p !== this.state.profile) next.profile = p;
+    if (e && e !== this.state.estado) next.estado = e;
+    if (Object.keys(next).length) this.setState(next);
+  }
+
+  editable(active) {
+    const st = this.state;
+    if (active === "DIR" || active === "MEM") return false;
+    return st.estado === "rasc" || st.estado === "pub";
+  }
+
+  isOut(key) { return Object.prototype.hasOwnProperty.call(this.state.removed, key); }
+
+  toggle(key, why) {
+    this.setState(s => {
+      const r = Object.assign({}, s.removed);
+      if (Object.prototype.hasOwnProperty.call(r, key)) delete r[key];
+      else r[key] = why;
+      return { removed: r };
+    });
+  }
+
+  // Elenco de um livro: as cenas do show dele, menos o que saiu naquele dia.
+  convOf(l) {
+    if (SHOW_TIPO[l.show] === "pers") return (SHOW_PERS_DIA[l.show] || []).length;
+    const cen = CENAS_BY[l.show] || CENAS_PAT;
+    const who = {};
+    cen.forEach(c => {
+      if (this.isOut(String(l.id) + "|c:" + c.id)) return;
+      this.liveSlots(l.id, c).forEach(s => { if (s.who) who[s.who] = true; });
+    });
+    return Object.keys(who).length;
+  }
+  liveSlots(bid, c) {
+    const all = c.bl.concat(c.br, c.chars);
+    return all.filter(s => !this.isOut(String(bid) + "|s:" + c.id + ":" + s.lb));
+  }
+
+  renderVals() {
+    const st = this.state;
+    const active = st.profile;
+    const meta = PROFILES.find(p => p.key === active) || PROFILES[0];
+    const me = meta.person;
+    const isMem = active === "MEM";
+    const isDir = active === "DIR";
+    const canEdit = this.editable(active);
+    const showRem = this.props.mostrarRemovidos !== false;
+
+    // É a escala que convoca. Antes dela publicada, o livro não tem para quem ir.
+    const escalaPub = this.props.escalaPublicada !== false;
+
+    const btn = (on, dot) => "display:flex;align-items:center;gap:7px;padding:7px 13px;border-radius:999px;border:1px solid " + (on ? dot : "#e2ddf0") + ";background:" + (on ? dot + "14" : "#fff") + ";color:" + (on ? dot : "#5b5473") + ";font-family:Manrope,sans-serif;font-size:12.5px;font-weight:" + (on ? 700 : 500) + ";cursor:pointer";
+
+    const profileTabs = PROFILES.map(p => ({
+      name: p.name, dot: p.dot,
+      onClick: () => this.setState({ profile: p.key, tab: "hoje", cena: "molduras", book: 2 }),
+      style: btn(p.key === active, p.dot)
+    }));
+
+    const shellNav = NAV.map(g => ({
+      title: g.title,
+      items: g.items.filter(it => it[2].indexOf(active) >= 0).map(it => ({
+        href: NAV_HREF[it[0]],
+        label: (isMem && it[3] ? it[3] : it[1]),
+        style: "font-size:12px;padding:6px 9px;border-radius:9px;color:" + (it[0] === "14" ? "#fff" : "#c8c0e4") + ";background:" + (it[0] === "14" ? "rgba(255,255,255,.13)" : "transparent") + ";font-weight:" + (it[0] === "14" ? 700 : 500)
+      }))
+    }));
+
+    /* estado efetivo: Elenco só existe diante de livro publicado */
+    /* Os shows de hoje. O Elenco só vê publicado e só onde foi convocado;
+       Supervisão, só o local dela. O livro aberto é sempre um da faixa. */
+    const rawEst = l => (l.id === st.book ? st.estado : l.estado);
+    // Para o Elenco o livro do dia já chega publicado — isso é do perfil, não da seleção.
+    // Sem escala publicada nenhum livro do dia pode estar publicado: a escala é que convoca.
+    const estOf = l => {
+      if (!escalaPub && l.date === HOJE) return "rasc";
+      return isMem ? (l.estado === "rasc" ? "pub" : l.estado) : rawEst(l);
+    };
+    const plural = (n, um, muitos) => String(n) + " " + (n === 1 ? um : muitos);
+    const hojeLivros = LIVROS.filter(l => {
+      if (l.date !== HOJE) return false;
+      if (isMem) return l.me && (estOf(l) === "pub" || estOf(l) === "exec");
+      if (active === "SUP") return l.local.indexOf("Snowland") === 0;
+      return true;
+    });
+    const sel = hojeLivros.find(l => l.id === st.book) || hojeLivros[0] || LIVROS[1];
+    const CENraw = CENAS_BY[sel.show] || CENAS_PAT;
+    const CEN = CENraw.length ? CENraw : CENAS_STUB;
+    const soPers = SHOW_TIPO[sel.show] === "pers";
+    const SMETA = SHOW_META[sel.show] || SHOW_META["Patinação — Inverno 2026"];
+    const K = k => String(sel.id) + "|" + k;
+    const myRem = Object.keys(this.state.removed).filter(k => k.indexOf(String(sel.id) + "|") === 0);
+    const estado = estOf(sel);
+    const est = EST[estado];
+
+    const tabDefs = isMem
+      ? [["hoje", "Meus shows de hoje"], ["lista", "Meus shows"]]
+      : [["hoje", "Os shows de hoje"], ["diff", "Diferenças do padrão"], ["forma", "Formações"], ["lista", "Livros"]];
+    /* ---------- contagens do livro ---------- */
+    const cenasVivas = CEN.filter(c => !this.isOut(K("c:" + c.id)));
+    let convocados = {}, subs = 0, vagas = 0;
+    cenasVivas.forEach(c => {
+      this.liveSlots(sel.id, c).forEach(s => {
+        if (!s.who) { vagas++; return; }
+        convocados[s.who] = true;
+        if (s.sub) subs++;
+      });
+    });
+    const nConv = Object.keys(convocados).length;
+    const nRem = myRem.length;
+
+    const statCell = (last) => "flex:1;min-width:120px;display:flex;flex-direction:column;gap:2px;padding:12px 16px;border-right:" + (last ? "none" : "1px solid #f0ecf9");
+    const persLista = SHOW_PERS_DIA[sel.show] || [];
+    const persTit = persLista.filter(p => p[2].indexOf("titular") === 0).length;
+    const persRod = persLista.filter(p => p[2].indexOf("rodízio") === 0).length;
+    const persVazio = persLista.filter(p => !p[1]).length;
+
+    const stats = soPers
+      ? [
+          { n: String(persLista.length), label: persLista.length === 1 ? "personagem hoje" : "personagens hoje", tone: "#6C2BF2", style: statCell(false) },
+          { n: String(persTit), label: persTit === 1 ? "pelo titular" : "pelos titulares", tone: "#1b1630", style: statCell(false) },
+          { n: String(persRod), label: persRod === 1 ? "entrou por rodízio" : "entraram por rodízio", tone: persRod ? "#0E8F86" : "#6b6482", style: statCell(false) },
+          { n: String(persVazio), label: persVazio === 1 ? "sem ninguém definido" : "sem ninguém definido", tone: persVazio ? "#B06E00" : "#6b6482", style: statCell(true) }
+        ]
+      : [
+          { n: String(nConv), label: nConv === 1 ? "convocado hoje" : "convocados hoje", tone: "#6C2BF2", style: statCell(false) },
+          { n: String(cenasVivas.length) + "/" + String(CEN.length), label: "cenas em pé", tone: "#1b1630", style: statCell(false) },
+          { n: String(subs), label: subs === 1 ? "entrou no lugar de alguém" : "entraram no lugar de alguém", tone: subs ? "#0E8F86" : "#6b6482", style: statCell(false) },
+          { n: String(vagas), label: vagas === 1 ? "posição em aberto" : "posições em aberto", tone: vagas ? "#B06E00" : "#6b6482", style: statCell(false) },
+          { n: String(nRem), label: nRem === 1 ? "removido, reversível" : "removidos, reversíveis", tone: nRem ? "#a12c2c" : "#6b6482", style: statCell(true) }
+        ];
+
+    const locked = estado === "exec" || estado === "canc";
+    const primary = "height:34px;padding:0 15px;border-radius:11px;border:none;background:#6C2BF2;color:#fff;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap";
+    const ghost = "height:34px;padding:0 14px;border-radius:11px;border:1px solid #ddd6ee;background:#fff;color:#5b5473;font-size:12.5px;font-weight:600;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap";
+
+    const cenaAberta = CEN.some(x => x.id === st.cena) ? st.cena : CEN[0].id;
+
+    const diaShows = hojeLivros.map(l => {
+      const e = EST[estOf(l)];
+      const on = l.id === sel.id;
+      return {
+        hour: l.hour, hourTone: on ? "#6C2BF2" : "#1b1630",
+        show: l.show, sub: l.local + " · " + plural(this.convOf(l), "convocado", "convocados"),
+        estado: e.label,
+        estadoStyle: "font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:" + e.tone + ";background:" + e.tone + "1f;padding:2px 7px;border-radius:999px",
+        onClick: () => this.setState({ book: l.id, estado: l.estado }),
+        style: "display:flex;flex-direction:column;gap:4px;padding:11px 14px;min-width:246px;border-radius:13px;border:1px solid " + (on ? "#6C2BF2" : "#e6e1f2") + ";background:" + (on ? "#f6f1ff" : "#fff") + ";cursor:pointer;font-family:Manrope,sans-serif"
+      };
+    });
+    /* ---------- Onda 2: tipo de show, sessões, personagens do dia ---------- */
+    const tipo = SHOW_TIPO[sel.show] || "mix";
+
+    const TIPO_META = {
+      form: ["só formação", "#0E8F86", "Cenas com mapa de posições, sem personagem nomeado.",
+        "Patinação livre e flashmob são assim: o elenco entra por posição."],
+      mix: ["formação + personagens", "#6C2BF2", "Cenas com mapa, e dentro delas os personagens do show.",
+        "É o caso do Musical: a cena tem posições e alguns lugares são de personagem."],
+      pers: ["só personagens", "#C97A17", "Sem cena e sem mapa — o livro é a lista de quem faz cada personagem.",
+        "Yeti, Nanook, Antonella e Cuca são assim."]
+    };
+    const tm = TIPO_META[tipo];
+
+    const fn = SHOW_SESSOES[sel.show];
+    const sessRaw = fn ? fn(sel.hour) : [[sel.hour + " — " + plus(sel.hour, 50), "sessão única", null, null]];
+
+    const sessoes = sessRaw.map(s => ({
+      faixa: s[0],
+      nome: s[1],
+      aviso: s[2],
+      chamada: s[3],
+      wrapStyle: "display:flex;align-items:center;gap:12px;border-radius:12px;padding:11px 13px;min-height:44px;box-sizing:border-box;" +
+        (s[2] ? "background:#fff8f1;border:1px solid #f3ddc4;" : "background:#faf9fe;border:1px solid #e9e4f5;")
+    }));
+
+    const persHoje = (SHOW_PERS_DIA[sel.show] || []).map(p => ({
+      personagem: p[0],
+      quem: p[1],
+      porque: p[2],
+      tag: p[3],
+      dotStyle: "width:9px;height:9px;border-radius:50%;flex:none;background:" +
+        (p[2].indexOf("rodízio") >= 0 ? "#C97A17" : "#6C2BF2"),
+      tagStyle: "flex:none;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:4px 8px;border-radius:6px;white-space:nowrap;background:#f3ecfe;color:#5B23C9",
+      wrapStyle: "display:flex;align-items:center;gap:11px;flex-wrap:wrap;background:#fff;border:1px solid #e9e4f5;border-radius:12px;padding:11px 13px;min-height:44px;box-sizing:border-box"
+    }));
+
+    const dia = {
+      title: isMem ? "Terça, 1 de setembro" : "Terça, 1 de setembro — shows da casa",
+      sub: isMem
+        ? (hojeLivros.length === 1 ? "1 show em que você entra hoje" : String(hojeLivros.length) + " shows em que você entra hoje")
+        : (hojeLivros.length === 1 ? "1 show na agenda de hoje" : String(hojeLivros.length) + " shows na agenda de hoje, cada um com o seu livro")
+          + (active === "SUP" ? " · só Snowland, o seu escopo" : ""),
+      rel: isMem
+        ? "Sua escala diz que você trabalha, em que horário e onde. O livro diz o que você faz dentro do show: em que cena entra e em que posição. É a mesma convocação, vista de dois jeitos — não são duas listas para conferir."
+        : "Quem entra em cada show foi resolvido uma vez: rodízio do Livro do Show, menos quem está de folga. A Escala mostra isso por pessoa e hora; o livro mostra o mesmo por cena e posição. Tirar alguém aqui derruba o bloco dele na escala, e trocar na escala troca a posição aqui. Show que ainda não está na agenda não se cria nesta tela — marca-se em Agenda, e o livro nasce junto. E a ordem importa: o livro só publica depois da escala do dia publicada, porque é a escala que convoca — se a escala for republicada com outro elenco, o livro pede republicação também.",
+      shows: diaShows,
+      emptyStyle: diaShows.length ? "display:none" : "padding:13px 15px;border:1px dashed #d8cff0;border-radius:13px;background:#fdfcff;font-size:12.5px;line-height:1.5;color:#5b5473;max-width:96ch",
+      empty: isMem
+        ? "A escala de hoje ainda não foi publicada — nada foi convocado, então não há livro seu para abrir."
+        : "Nenhum show da casa hoje no seu escopo."
+    };
+
+    const book = {
+      show: sel.show,
+      when: "terça, 1 de setembro · " + sel.hour + " · " + sel.local + " · " + SMETA.elenco,
+      origem: "nasce do Livro do Show " + SMETA.v + " · evento de agenda A-41" + String(sel.id) + ", criado pelo sistema",
+      estadoLabel: est.label,
+      estadoStyle: "font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:" + est.tone + ";background:" + est.tone + "1f;padding:3px 9px;border-radius:999px",
+      stats: stats,
+      publicarLabel: estado === "pub" ? "Republicar com o ajuste" : "Publicar o dia",
+      publicarStyle: (isMem || isDir || locked || (estado === "pub" && !Object.keys(st.removed || {}).length && !st.formTouched))
+        ? "display:none"
+        : escalaPub ? primary : "height:34px;padding:0 15px;border-radius:11px;border:1px solid #e2ddf0;background:#f3f1f9;color:#6b6482;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:not-allowed;white-space:nowrap",
+      onPublicar: () => { if (escalaPub) this.setState({ estado: "pub" }); },
+      execLabel: estado === "pub" ? "Marcar como executado" : estado === "rasc" ? "Marcar que não ocorreu" : "Reabrir como rascunho",
+      execStyle: (isMem || isDir || (estado !== "pub" && active !== "ADM")) ? "display:none" : ghost,
+      onExec: () => this.setState({ estado: estado === "pub" ? "exec" : (estado === "rasc" && active === "ADM") ? "canc" : active === "ADM" ? "rasc" : estado }),
+      actionHint: !escalaPub && !isMem && !isDir
+        ? "A escala de 1 de setembro ainda está em rascunho. Publicar a escala é o que convoca as pessoas — antes disso o livro não tem para quem ir."
+        : isMem
+        ? "Você vê este livro porque foi convocada. Seu nome está destacado nas cenas."
+        : isDir
+          ? "Direção lê. Ajustar e publicar é de quem opera o show."
+          : locked
+            ? active === "ADM"
+              ? "Dia fechado. Para corrigir algo, reabra como rascunho — fica registrado."
+              : "Dia fechado. Reabrir é da Administração — peça a ela e fica registrado quem reabriu."
+            : estado === "pub"
+              ? "Já está com o elenco. Toda mudança depois disso republica e avisa quem foi convocado."
+              : active === "ADM"
+                ? "Publicar entrega o dia a quem foi convocado — e só a eles. Show que não aconteceu: marque que não ocorreu, com o motivo."
+                : "Publicar entrega o dia a quem foi convocado — e só a eles. Show que não aconteceu só a Administração marca.",
+      lockStyle: locked
+        ? "padding:10px 16px;border-top:1px solid #f0ecf9;background:#f7f5fd;font-size:12px;color:#5b5473;line-height:1.5"
+        : "display:none",
+      lockText: estado === "exec"
+        ? "Executado: o dia aconteceu assim. Cena, posição e substituição ficam como registro — nada mais se edita."
+        : "Não ocorreu: o show não aconteceu. Quem marcou foi a Administração, com o motivo — fica no histórico e a agenda foi liberada."
+    };
+
+    /* ---------- rail de cenas ---------- */
+    const cenas = CEN.map((c, i) => {
+      const out = this.isOut(K("c:" + c.id));
+      const on = c.id === cenaAberta;
+      const live = this.liveSlots(sel.id, c);
+      const mineHere = live.some(s => s.who === me);
+      const nSub = live.filter(s => s.sub).length;
+      const nVago = live.filter(s => !s.who).length;
+      return {
+        num: String(i + 1).padStart(2, "0"),
+        name: c.name,
+        sub: out ? "fora do dia" : plural(live.length, "posição", "posições") + " · " + c.min + (isMem && mineHere ? " · você entra" : ""),
+        tag: out ? "removida" : nVago ? plural(nVago, "vaga", "vagas") : nSub ? String(nSub) + " subst." : "",
+        tagStyle: out
+          ? "font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#a12c2c"
+          : nVago
+            ? "font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#B06E00"
+            : nSub ? "font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#0E8F86" : "display:none",
+        onClick: () => this.setState({ cena: c.id }),
+        style: "display:flex;flex-direction:column;gap:3px;padding:10px 12px;border-radius:12px;border:1px solid " + (on ? "#6C2BF2" : "#e6e1f2") + ";background:" + (on ? "#f6f1ff" : out ? "#fbfafd" : "#fff") + ";cursor:pointer;font-family:Manrope,sans-serif;opacity:" + (out ? ".62" : "1")
+      };
+    });
+
+    const cenasFoot = isMem
+      ? "As cenas em que você entra vêm marcadas. O resto está aqui para você entender o show inteiro."
+      : "Remover uma cena leva os blocos e as posições dela junto — e volta inteira se você restaurar.";
+
+    /* ---------- cena aberta ---------- */
+    const c = CEN.find(x => x.id === cenaAberta) || CEN[0];
+    const cOut = this.isOut(K("c:" + c.id));
+    const slotBox = (s) => {
+      const out = this.isOut(K("s:" + c.id + ":" + s.lb));
+      const mine = isMem && s.who === me;
+      const vago = !s.who;
+      const tone = out ? "#a12c2c" : mine ? "#C2508F" : vago ? "#B06E00" : s.sub ? "#0E8F86" : "#6C2BF2";
+      return {
+        label: s.lb,
+        labelStyle: "font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;color:" + tone + ";background:" + tone + "18;min-width:24px;text-align:center;padding:3px 5px;border-radius:7px;flex:none",
+        who: s.who || "sem titular",
+        nameStyle: "font-size:12.5px;font-weight:" + (mine ? 700 : 600) + ";color:" + (vago ? "#B06E00" : mine ? "#C2508F" : "#1b1630") + ";white-space:nowrap;overflow:hidden;text-overflow:ellipsis" + (out ? ";text-decoration:line-through" : ""),
+        note: out ? "fora do dia" : s.sub ? "no lugar de " + s.sub : s.papel ? s.papel : mine ? "você" : "",
+        noteStyle: (out || s.sub || s.papel || mine)
+          ? "font-size:10.5px;color:" + (out ? "#a12c2c" : s.sub ? "#0E8F86" : mine ? "#C2508F" : "#6b6482")
+          : "display:none",
+        btnLabel: out ? "↺" : "×",
+        btnTitle: out ? "restaurar esta posição no dia" : "tirar esta posição do dia",
+        onToggle: () => this.toggle(K("s:" + c.id + ":" + s.lb), "Tirada no ajuste do dia."),
+        btnStyle: canEdit
+          ? "border:none;background:transparent;color:#6b6482;font-size:14px;line-height:1;cursor:pointer;padding:2px 4px;flex:none"
+          : "display:none",
+        style: "display:flex;align-items:center;gap:9px;padding:8px 10px;border:1px solid " + (out ? "#f0dede" : mine ? "#f2d9e6" : "#e6e1f2") + ";border-radius:11px;background:" + (out ? "#fdf8f8" : mine ? "#fdf6fa" : "#fff") + ";min-width:172px;max-width:214px"
+      };
+    };
+    const groups = [];
+    if (c.bl.length) groups.push({ title: "Bloco esquerdo", slots: c.bl.map(slotBox) });
+    if (c.br.length) groups.push({ title: "Bloco direito", slots: c.br.map(slotBox) });
+    if (c.chars.length) groups.push({ title: "Papéis nomeados", slots: c.chars.map(slotBox) });
+
+    const formList = FORMACOES[c.id] || FORM_FALLBACK;
+    const vivos = c.bl.concat(c.br, c.chars).filter(s => !this.isOut(K("s:" + c.id + ":" + s.lb))).length;
+    const formSel = (st.form || {})[c.id] || (formList.reduce((best, f) => (Math.abs(f.n - vivos) < Math.abs(best.n - vivos) ? f : best), formList[0])).id;
+    const formCur = formList.find(f => f.id === formSel) || formList[0];
+    const mapNames = f => (f && f.frames ? f.frames : [["Posi\u00e7\u00e3o inicial", "inicial"]]).map(fr => fr[0]);
+    const curMaps = mapNames(formCur);
+    const mapsOn = (st.mapsOn || {})[c.id] || curMaps.slice(0, 1);
+
+    const cena = {
+      name: c.name,
+      meta: c.min + " · " + String(c.bl.length + c.br.length + c.chars.length) + " posições no padrão · posição inicial vinda do quadro-chave do Livro do Show",
+      groups: groups,
+      onRemoveCena: () => this.toggle(K("c:" + c.id), "Removida no ajuste do dia."),
+      removeCenaLabel: cOut ? "Restaurar cena no dia" : "Tirar cena do dia",
+      removeCenaStyle: canEdit
+        ? "height:32px;padding:0 13px;border-radius:10px;border:1px solid " + (cOut ? "#cbe6e2" : "#f0dede") + ";background:#fff;color:" + (cOut ? "#0E8F86" : "#a12c2c") + ";font-size:12px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap"
+        : "display:none",
+      removedBannerStyle: cOut
+        ? "display:flex;flex-direction:column;gap:3px;padding:11px 13px;border:1px solid #f0dede;border-radius:12px;background:#fdf7f7"
+        : "display:none",
+      formTitle: "Formações desta cena",
+      removedTitle: "Esta cena nao vai rolar hoje".replace("nao","n\u00e3o"),
+      stagePoints: window.ASA_MAPA.STAGES.L.points,
+      mapViews: mapsOn.map(m => {
+        const fr = (formCur.frames || []).find(x => x[0] === m) || [m, "inicial"];
+        const stage = window.ASA_MAPA.STAGES.L;
+        const alive = s => !this.isOut(K("s:" + c.id + ":" + s.lb));
+        const bl = c.bl.filter(alive), br = c.br.filter(alive), chars = c.chars.filter(alive);
+        const pseudo = { bl: bl, br: br, chars: chars.map(s => [s.lb]) };
+        const marks = window.ASA_MAPA.buildMarkers(pseudo, fr[1], stage);
+        const pick = { BL: bl, BR: br, PER: chars };
+        const seen = { BL: 0, BR: 0, PER: 0 };
+        const markers = marks.map(mk => {
+          const s = pick[mk.side][seen[mk.side]++];
+          const isChar = mk.side === "PER";
+          const size = isChar ? 28 : 24;
+          const person = s ? (s.who || "") : "";
+          const trocada = !!(s && s.sub);
+          const bg = isChar ? "#C2508F" : (person ? "#6C2BF2" : "#fff");
+          const fg = isChar ? "#fff" : (person ? "#fff" : "#B06E00");
+          return {
+            label: s ? String(s.lb) : mk.label,
+            person: person ? person.split(" ")[0] : "vago",
+            style: "position:absolute;left:" + mk.x + "%;top:" + mk.y + "%;transform:translate(-50%,-50%);width:" + size + "px;height:" + size + "px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:Manrope,sans-serif;background:" + bg + ";" +
+              (trocada ? "border:2.5px solid #F2C230;box-shadow:0 0 0 4px #F2C23029;z-index:3;" : (person ? "border:1.5px solid rgba(255,255,255,.7);box-shadow:0 3px 8px -2px rgba(40,20,90,.4);" : "border:1.5px dashed #f0d8b0;")),
+            labelStyle: "font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:" + fg + ";",
+            nameStyle: "position:absolute;top:100%;margin-top:3px;font-size:9px;font-weight:700;white-space:nowrap;color:" + (trocada ? "#B4560B" : "#5b5473") + ";"
+          };
+        });
+        const fora = (c.bl.length + c.br.length + c.chars.length) - markers.length;
+        return {
+          title: m,
+          count: markers.length + " em cena" + (fora ? " \u00b7 " + fora + " fora hoje" : ""),
+          stageStyle: "position:relative;width:100%;max-width:760px;aspect-ratio:1/1;border:1px solid #e6e1f2;border-radius:16px;background:#faf9fe;overflow:hidden",
+          stagePoints: stage.points,
+          floorStyle: "position:absolute;inset:0;background:#fff;clip-path:" + stage.clip,
+          openings: stage.openings.map(o => ({
+            style: "position:absolute;left:" + o[0] + "%;top:" + o[1] + "%;transform:translate(-50%,-50%);border-radius:999px;background:#efe9fb;" +
+              (o[2] === "h" ? "width:34px;height:5px;" : "width:5px;height:34px;")
+          })),
+          zones: stage.zones.map(z => ({
+            label: z[0],
+            style: "position:absolute;left:" + z[1] + "%;top:" + z[2] + "%;transform:translate(-50%,-50%);font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.14em;color:#c4bcd8;white-space:nowrap;pointer-events:none"
+          })),
+          markers: markers
+        };
+      }),
+      mapsEmpty: mapsOn.length ? "" : "Escolha ao menos um mapa acima para ele subir junto com o livro.",
+      mapsEmptyStyle: mapsOn.length ? "display:none" : "font-size:11.5px;color:#B06E00;padding:10px 12px;border-radius:11px;background:#fdf7e8;border:1px solid #f0d9a8",
+      formHint: vivos + (vivos === 1 ? " pessoa hoje" : " pessoas hoje") + " · a ASA sugere a que serve",
+      forms: formList.map(f => ({
+        name: f.name,
+        tag: f.n ? f.n + " pessoas" : "do padrão",
+        sugerida: f.id === formCur.id && f.n === vivos ? "serve para hoje" : "",
+        onClick: canEdit ? (() => this.setState({ form: Object.assign({}, st.form, { [c.id]: f.id }), mapsOn: Object.assign({}, st.mapsOn, { [c.id]: mapNames(f).slice(0, 1) }), formTouched: true })) : undefined,
+        style: "display:flex;flex-direction:column;gap:2px;align-items:flex-start;padding:9px 12px;border-radius:11px;text-align:left;font-family:Manrope,sans-serif;cursor:" + (canEdit ? "pointer" : "default") + ";border:1px solid " + (f.id === formCur.id ? "#6C2BF2" : "#e6e1f2") + ";background:" + (f.id === formCur.id ? "#f6f1ff" : "#fff"),
+        nameStyle: "font-size:12.5px;font-weight:700;color:" + (f.id === formCur.id ? "#5B23C9" : "#1b1630"),
+        tagStyle: "font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#6b6482",
+        sugStyle: "font-size:10px;font-weight:700;color:#0E8F86"
+      })),
+      mapsTitle: "Mapas que sobem no livro de hoje",
+      maps: curMaps.map(m => {
+        const on = mapsOn.indexOf(m) >= 0;
+        return {
+          label: m,
+          onClick: canEdit ? (() => {
+            const cur = mapsOn.slice();
+            const i = cur.indexOf(m);
+            if (i >= 0) cur.splice(i, 1); else cur.push(m);
+            this.setState({ mapsOn: Object.assign({}, st.mapsOn, { [c.id]: cur }), formTouched: true });
+          }) : undefined,
+          style: "display:flex;align-items:center;gap:7px;height:30px;padding:0 12px;border-radius:999px;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;cursor:" + (canEdit ? "pointer" : "default") + ";border:1px solid " + (on ? "#0E8F86" : "#e6e1f2") + ";background:" + (on ? "#e6f5f3" : "#fff") + ";color:" + (on ? "#0E7F76" : "#6b6482"),
+          markStyle: "width:13px;height:13px;border-radius:4px;flex:none;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;background:" + (on ? "#0E8F86" : "#d8d2e8"),
+          mark: on ? "✓" : ""
+        };
+      }),
+      mapsFoot: mapsOn.length ? mapsOn.length + (mapsOn.length === 1 ? " mapa vai junto" : " mapas vão junto") + " para quem foi convocado." : "Nenhum mapa selecionado — o livro sobe só com a lista de posições.",
+      saveFormStyle: (canEdit && st.formTouched) ? "height:30px;padding:0 13px;border-radius:9px;border:1px dashed #ddd0fa;background:#fbf9ff;color:#5B23C9;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;cursor:pointer;align-self:flex-start" : "display:none",
+      onSaveForm: () => this.setState({ formSaved: true, formTouched: false }),
+      savedNote: st.formSaved ? "Guardada no padrão — os próximos dias já nascem com ela." : "",
+      savedNoteStyle: st.formSaved ? "font-size:11px;font-weight:700;color:#0E7F76" : "display:none",
+      removedWhy: (st.removed[K("c:" + c.id)] || "") + " O padrão segue intacto: amanhã ela nasce de novo.",
+      foot: "O rótulo da posição é a identidade; quem faz é camada. Trocar a pessoa não redesenha o mapa — e o mapa visual do palco ainda vive no papel do Livro do Show: o dado já guarda x, y e cor de cada posição, a tela vem depois."
+    };
+
+    const remList = myRem.map(k => {
+      const parts = k.slice(k.indexOf("|") + 1).split(":");
+      let what;
+      if (parts[0] === "c") {
+        const cc = CEN.find(x => x.id === parts[1]);
+        what = "Cena " + (cc ? cc.name : parts[1]) + " — e as posições dela";
+      } else {
+        const cc = CEN.find(x => x.id === parts[1]);
+        what = "Posição " + parts[2] + " · cena " + (cc ? cc.name : parts[1]);
+      }
+      return { what: what, why: st.removed[k], onRestore: () => this.toggle(k, ""), restoreStyle: canEdit ? "height:29px;padding:0 12px;border-radius:9px;border:1px solid #ddd6ee;background:#fff;color:#6C2BF2;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;flex:none" : "display:none" };
+    });
+    const removedPanel = {
+      style: (showRem && remList.length && !isMem)
+        ? "border:1px solid #f0e4d4;border-radius:16px;background:#fffdf9;padding:15px 17px;display:flex;flex-direction:column;gap:9px"
+        : "display:none",
+      count: String(remList.length),
+      hint: locked ? "dia fechado — só registro" : "soft-delete: sai do dia, não do padrão",
+      list: remList
+    };
+
+    /* ---------- biblioteca de formações: show → cena → quantidade ---------- */
+    const bibShowKeys = Object.keys(BIBLIO);
+    const bShow = BIBLIO[st.bibShow] ? st.bibShow : bibShowKeys[0];
+    const bCenasObj = BIBLIO[bShow];
+    const bCenaKeys = Object.keys(bCenasObj);
+    const bCena = bCenasObj[st.bibCena] ? st.bibCena : bCenaKeys[0];
+    const bList = bCenasObj[bCena];
+
+    const bibNavStyle = on => "display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:0 12px;border-radius:11px;cursor:pointer;font-family:Manrope,sans-serif;border:none;text-align:left;" +
+      (on ? "background:#f3ecfe;color:#5B23C9;" : "background:#fff;color:#2b2440;");
+
+    const bibShows = bibShowKeys.map(k => ({
+      label: k,
+      count: String(Object.keys(BIBLIO[k]).length) + " cenas",
+      onClick: () => this.setState({ bibShow: k, bibCena: Object.keys(BIBLIO[k])[0] }),
+      style: bibNavStyle(k === bShow)
+    }));
+
+    const bibCenas = bCenaKeys.map(k => ({
+      label: k,
+      count: String(bCenasObj[k].length),
+      onClick: () => this.setState({ bibCena: k }),
+      style: bibNavStyle(k === bCena)
+    }));
+
+    const qtdCount = {};
+    bList.forEach(f => { qtdCount[f.qtd] = (qtdCount[f.qtd] || 0) + 1; });
+
+    const bibFormacoes = bList.map(f => ({
+      qtd: String(f.qtd),
+      nome: f.nome,
+      uso: f.uso,
+      conflito: qtdCount[f.qtd] > 1 ? "duas para " + f.qtd : null,
+      qtdStyle: "flex:none;width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:Outfit,sans-serif;font-size:17px;font-weight:700;" +
+        (f.padrao ? "background:#e3f4f1;color:#0a6f68;" : "background:#f3ecfe;color:#5B23C9;"),
+      conflitoStyle: "flex:none;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 9px;border-radius:6px;background:#fdf3e4;color:#8f5409",
+      mapa: f.mapa.map(m => ({
+        label: m,
+        style: "min-width:28px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;padding:6px 8px;border-radius:8px;" +
+          (/^\d+$/.test(m) ? "background:#f4f2fa;color:#6b6482;" : "background:#f3ecfe;color:#5B23C9;")
+      }))
+    }));
+
+    /* ---------- diferenças do padrão: mesma fonte das estatísticas ---------- */
+    const nameOf = id => { const cc = CEN.find(x => x.id === id); return cc ? cc.name : id; };
+    const diffs = [];
+    myRem.forEach(k => {
+      const parts = k.slice(k.indexOf("|") + 1).split(":");
+      const cc = CEN.find(x => x.id === parts[1]);
+      if (parts[0] === "c") {
+        diffs.push({
+          where: "Cena " + nameOf(parts[1]),
+          antes: cc ? plural(cc.bl.length + cc.br.length + cc.chars.length, "posição", "posições") + ", " + cc.min + " de show" : "no padrão",
+          agora: "fora do dia", why: st.removed[k]
+        });
+      } else {
+        const all = cc ? cc.bl.concat(cc.br, cc.chars) : [];
+        const s0 = all.find(x => x.lb === parts[2]);
+        diffs.push({
+          where: nameOf(parts[1]) + " · " + parts[2],
+          antes: (s0 && s0.who) ? s0.who : "posição do rodízio",
+          agora: "fora do dia", why: st.removed[k]
+        });
+      }
+    });
+    cenasVivas.forEach(c0 => {
+      this.liveSlots(sel.id, c0).forEach(s0 => {
+        if (s0.sub) diffs.push({ where: c0.name + " · " + s0.lb, antes: s0.sub, agora: s0.who, why: SUB_WHY[c0.id + ":" + s0.lb] || "Titular indisponível — o rodízio puxou o substituto." });
+        else if (!s0.who) diffs.push({ where: c0.name + " · " + s0.lb, antes: "posição do rodízio", agora: "em aberto", why: "Sem substituto disponível. O dia vai sem." });
+      });
+    });
+    const padMin = CEN.reduce((a, c0) => a + parseInt(c0.min, 10), 0);
+    const liveMin = cenasVivas.reduce((a, c0) => a + (parseInt(c0.min, 10) || 0), 0);
+    if (!soPers && liveMin !== padMin) diffs.push({
+      where: "Duração", antes: String(padMin) + " min", agora: String(liveMin) + " min",
+      why: "Consequência das cenas fora do dia, não uma decisão à parte."
+    });
+
+    const tabs = tabDefs.map(t => ({
+      label: t[1],
+      badge: t[0] === "diff" ? String(diffs.length) : "",
+      badgeStyle: t[0] === "diff"
+        ? "font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:999px;background:#fdf1dc;color:#8a6413"
+        : "display:none",
+      onClick: () => this.setState({ tab: t[0] }),
+      style: "display:flex;align-items:center;gap:7px;border:none;background:transparent;font-family:Manrope,sans-serif;font-size:13px;font-weight:" + (st.tab === t[0] ? 700 : 500) + ";color:" + (st.tab === t[0] ? "#6C2BF2" : "#6b6482") + ";padding:11px 4px;margin-right:14px;cursor:pointer;border-bottom:2px solid " + (st.tab === t[0] ? "#6C2BF2" : "transparent")
+    }));
+
+    /* ---------- lista ---------- */
+    const filtros = [["todos", "Todos"], ["rasc", "Rascunho"], ["pub", "Publicado"], ["exec", "Executado"], ["canc", "Não ocorreu"]];
+    const base = isMem ? LIVROS.filter(l => l.me && (estOf(l) === "pub" || estOf(l) === "exec")) : LIVROS;
+    const rows = base.filter(l => st.filtro === "todos" || estOf(l) === st.filtro).map(l => {
+      const e = EST[estOf(l)];
+      return {
+        date: l.date, hour: l.hour, show: l.show,
+        sub: l.local + " · " + plural(this.convOf(l), "convocado", "convocados"),
+        meLabel: l.me ? "você entra" : "",
+        meStyle: l.me ? "font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#C2508F;background:#C2508F1c;padding:3px 8px;border-radius:999px;flex:none" : "display:none",
+        estado: e.label,
+        estadoStyle: "font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:" + e.tone + ";background:" + e.tone + "1f;padding:3px 9px;border-radius:999px;flex:none;min-width:78px;text-align:center",
+        onClick: () => this.setState({ tab: "hoje", book: l.id, estado: l.estado }),
+        style: "display:flex;align-items:center;gap:14px;padding:13px 15px;border:1px solid #e6e1f2;border-radius:13px;background:#fff;cursor:pointer;font-family:Manrope,sans-serif;text-align:left"
+      };
+    });
+    const lista = {
+      title: isMem ? "Meus shows" : "Livros do dia",
+      about: isMem
+        ? "Só os dias em que você foi convocada. Show da casa em que você não entra não aparece aqui — nem publicado."
+        : "Cada linha é uma data de um show. O estado diz o que se pode fazer: rascunho se ajusta, publicado se republica, executado e não ocorreu só se leem — e quem marca que não ocorreu é a Administração.",
+      filters: filtros.map(f => ({
+        label: f[1],
+        onClick: () => this.setState({ filtro: f[0] }),
+        style: "padding:6px 12px;border-radius:999px;border:1px solid " + (st.filtro === f[0] ? "#6C2BF2" : "#e2ddf0") + ";background:" + (st.filtro === f[0] ? "#f3ecff" : "#fff") + ";color:" + (st.filtro === f[0] ? "#6C2BF2" : "#5b5473") + ";font-family:Manrope,sans-serif;font-size:12px;font-weight:" + (st.filtro === f[0] ? 700 : 500) + ";cursor:pointer"
+      })),
+      rows: rows,
+      foot: isMem
+        ? "Abrir um dia mostra as cenas com seu nome destacado. Você não edita nada aqui — se algo estiver errado, é ocorrência ou recado para quem coordena."
+        : "Clicar num livro abre o dia dele no estado em que está."
+    };
+
+    const ruleText = isMem
+      ? "Publicado chega só a quem foi convocado. Ser do mesmo local não basta: se você não entra no show, o livro dele não é seu para ver."
+      : isDir
+        ? "Direção lê qualquer livro de qualquer local, com o estado de cada um — e não edita nenhum. Quem ajusta é quem responde pelo show."
+        : active === "SUP"
+          ? "Você ajusta os livros dos shows sob sua responsabilidade — vindo de 10 Responsabilidades, não de um campo escondido no cadastro do show."
+          : "Administração faz tudo em qualquer local, inclusive reabrir dia fechado. Tudo o que remove fica recuperável e registrado em auditoria.";
+
+    /* ---------- mobile: o livro no bolso ---------- */
+    const mobCenas = CEN.map((c, i) => {
+      const out = this.isOut(K("c:" + c.id));
+      const live = this.liveSlots(sel.id, c);
+      const mineSlot = live.find(s => s.who === me);
+      const nSub = live.filter(s => s.sub).length;
+      const nVago = live.filter(s => !s.who).length;
+      const vizinhos = live.filter(s => s.who && s.who !== me).slice(0, 3).map(s => s.who);
+      return {
+        num: String(i + 1).padStart(2, "0"),
+        numStyle: "font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;flex:none;width:26px;height:26px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:"
+          + (out ? "#a12c2c" : mineSlot ? "#fff" : "#6b6482") + ";background:" + (out ? "#fdeaea" : mineSlot ? "#C2508F" : "#f2eff9"),
+        name: c.name,
+        meta: out ? "fora do dia" : plural(live.length, "posição", "posições") + " · " + c.min,
+        tag: out ? "removida" : nVago ? plural(nVago, "vaga", "vagas") : nSub ? String(nSub) + " subst." : "",
+        tagStyle: out
+          ? "flex:none;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#a12c2c"
+          : nVago
+            ? "flex:none;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#B06E00"
+            : nSub ? "flex:none;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#0E8F86" : "display:none",
+        mine: isMem && !out && !!mineSlot,
+        minhaPos: mineSlot ? "Você: posição " + mineSlot.lb + (mineSlot.papel ? " · " + mineSlot.papel : "") + (mineSlot.sub ? " · no lugar de " + mineSlot.sub : "") : "",
+        vizinhos: vizinhos.length ? "Ao seu lado: " + vizinhos.join(", ") : "Cena sua, sozinha em palco.",
+        hasDiff: !out && nSub > 0,
+        diff: nSub ? plural(nSub, "substituição", "substituições") + " em relação ao Livro do Show — confira antes de entrar." : "",
+        style: "display:flex;flex-direction:column;gap:8px;padding:11px 12px;border-radius:14px;border:1px solid " + (out ? "#f2e2e2" : "#e6e1f2") + ";background:#fff;opacity:" + (out ? ".62" : "1")
+      };
+    });
+    const mobMinha = mobCenas.find(c => c.mine);
+    const mobMinhas = mobCenas.filter(c => c.mine).length;
+    const mob = {
+      title: isMem ? "Meu show de hoje" : sel.show.split(" — ")[0],
+      sub: sel.hour + " · " + sel.local,
+      estado: est.label,
+      estadoStyle: "flex:none;font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:" + est.tone + ";background:" + est.tone + "1f;padding:3px 8px;border-radius:999px",
+      hasAlerta: estado === "canc" || estado === "rasc",
+      alerta: estado === "canc"
+        ? "Este show não ocorreu. A Administração marcou o motivo — não vá para a entrada."
+        : "Ainda em rascunho: o elenco não foi avisado. Só depois de publicado este dia vale.",
+      heroLabel: isMem ? "Sua entrada" : "Chamada",
+      heroTitle: isMem
+        ? (mobMinha ? "Cena " + mobMinha.num + " · " + mobMinha.name : "Você não entra em cena hoje")
+        : sel.hour + " no palco",
+      heroSub: isMem
+        ? (mobMinhas ? "Você entra em " + plural(mobMinhas, "cena", "cenas") + " hoje. Chegue com 20 minutos." : "Este livro está aqui porque você foi convocada para o dia, não para uma cena.")
+        : plural(this.convOf(sel), "convocado", "convocados") + " · " + SMETA.elenco,
+      heroChips: [sel.hour, est.label, isMem ? plural(mobMinhas, "cena sua", "cenas suas") : plural(CEN.length, "cena", "cenas")],
+      cenasLabel: "Cenas do dia",
+      cenasCount: plural(CEN.length, "cena", "cenas"),
+      cenas: mobCenas,
+      foot: isMem
+        ? "No celular você lê e faz check-in. Trocar posição, remover cena e publicar é do web — de quem coordena."
+        : "No celular a ASA acompanha e cobra. Ajustar o livro e publicar continua no web."
+    };
+
+    return {
+      bibShows: bibShows,
+      bibCenas: bibCenas,
+      bibFormacoes: bibFormacoes,
+      bibTitle: bCena + " · " + bList.length + (bList.length === 1 ? " formação" : " formações"),
+      tipoLabel: tm[0],
+      tipoStyle: "flex:none;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:6px 11px;border-radius:999px;white-space:nowrap;background:" + tm[1] + "1a;color:" + tm[1],
+      tipoTitle: tm[2],
+      tipoBody: tm[3],
+      sessoes: sessoes,
+      persHoje: persHoje,
+      persCount: persHoje.length ? persHoje.length + (persHoje.length === 1 ? " personagem" : " personagens") : "este show não usa personagens",
+      soPersonagens: tipo === "pers" ? true : null,
+      temCenas: tipo === "pers" ? null : true,
+      temPers: persHoje.length ? true : null,
+
+      profileTabs: profileTabs, profileHint: meta.hint, profileName: meta.name, personName: me,
+      mob: mob,
+      shellNav: shellNav, tabs: tabs, scopeLabel: meta.scope,
+      personChipStyle: "font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:" + meta.dot + ";background:" + meta.dot + "26;padding:2px 7px;border-radius:999px;width:fit-content",
+      pageTitle: isMem ? "Meus shows" : "Livro do Dia",
+      isHoje: st.tab === "hoje", isDiff: st.tab === "diff", isLista: st.tab === "lista", isForma: st.tab === "forma",
+      escalaLabel: isMem ? "a mesma escalação está na sua escala" : "a mesma escalação está na Escala do dia",
+      escalaStyle: "font-size:11.5px;color:#6b6482;background:transparent;border:none;font-family:Manrope,sans-serif;padding:0;cursor:default;white-space:nowrap",
+      dia: dia, book: book, cenas: cenas, cenasFoot: cenasFoot, cena: cena, removedPanel: removedPanel,
+      diffs: diffs, lista: lista,
+      ruleText: ruleText,
+      ruleStyle: "display:flex;align-items:flex-start;gap:11px;padding:12px 20px;border-top:1px solid #ebe6f6;background:#fff;flex:none"
+    };
+  }
+}
+
+</script>
+</body>
+</html>

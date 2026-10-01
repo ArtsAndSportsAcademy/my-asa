@@ -218,6 +218,12 @@ export type EventPayloadMap = {
     version: number;
     executedBy: string;
   };
+  "daily-book.reopened": {
+    dailyBookId: string;
+    version: number;
+    reopenedBy: string;
+    previousStatus: string;
+  };
   "dailybook.generated": {
     dailyBookId: string;
     eventId: string;

@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  aside a { text-decoration: none; }
+  body { margin: 0; background: #f4f2fa; font-family: Manrope, system-ui, sans-serif; color: #1b1630; }
+  a { color: #6C2BF2; text-decoration: none; }
+  a:hover { color: #4a17b8; text-decoration: underline; }
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 3px solid #6C2BF2; outline-offset: 2px; border-radius: 8px; }
+</style>
+</helmet>
+
+<div style="max-width:1400px;margin:0 auto;padding:44px 28px 88px;display:flex;flex-direction:column;gap:40px">
+
+  <header style="display:flex;flex-direction:column;gap:22px">
+    <div style="display:flex;align-items:flex-start;gap:18px">
+      <img src="assets/asa-bomdia.png" alt="My ASA" style="width:52px;height:52px;object-fit:contain;flex:none;margin-top:4px" />
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#6b6482">25 · gestão · ferramenta de quem lidera</div>
+        <h1 style="font-family:Outfit,sans-serif;font-size:38px;line-height:1.05;font-weight:700;margin:0;letter-spacing:-0.02em">Reconhecimentos</h1>
+        <p style="margin:0;max-width:66ch;font-size:15px;line-height:1.55;color:#5b5473;text-wrap:pretty">Reconhecer se faz no Mural (22), como todo mundo, e o registro fica no perfil (28). Esta tela é o painel de quem lidera: histórico completo, quem vem sendo reconhecido e por quem, e o dado que ninguém enxerga sozinho — quem trabalha há meses e nunca ouviu nada. Sem placar, sem cota, sem "reconhecido do mês".</p>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:13px 16px;background:#fff;border:1px solid #e6e1f2;border-radius:16px">
+      <span style="font-size:13px;font-weight:600;color:#5b5473;margin-right:4px">Ver como</span>
+      <sc-for list="{{ profileTabs }}" as="tab" hint-placeholder-count="4">
+        <button type="button" onClick="{{ tab.onClick }}" style="{{ tab.style }}">
+          <span style="width:8px;height:8px;border-radius:50%;background:{{ tab.dot }};display:inline-block"></span>
+          <span>{{ tab.name }}</span>
+        </button>
+      </sc-for>
+      <span style="flex:1"></span>
+      <span style="font-size:13px;color:#6b6482">{{ profileHint }}</span>
+    </div>
+  </header>
+
+  <div style="display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start">
+
+    <div style="flex:1 1 900px;min-width:0;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Web · 1920 × 1080</span>
+        <span style="font-size:11.5px;color:#6b6482">exibido a 70% — proporção real de tela</span>
+      </div>
+      <div style="width:1344px;height:756px;border:1px solid #ddd6ee;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="width:1920px;height:1080px;transform:scale(0.7);transform-origin:top left;display:flex">
+
+          <aside style="width:236px;flex:none;background:linear-gradient(180deg,#1c1440 0%,#241a52 100%);display:flex;flex-direction:column;color:#fff">
+            <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 12px">
+              <img src="assets/asa-wing.png" alt="" style="width:26px;height:26px;object-fit:contain" />
+              <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">My ASA</span>
+            </div>
+            <div style="padding:0 12px 10px">
+              <a href="27%20Assistente%20ASA.dc.html" style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border-radius:10px;padding:8px 10px;font-size:11.5px;color:#b9b0da;cursor:pointer">
+                <span style="width:11px;height:11px;border:1.5px solid #b9b0da;border-radius:50%"></span>
+                <span>Buscar ou perguntar à ASA</span>
+              </a>
+            </div>
+            <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:12px;padding:2px 10px 10px">
+              <sc-for list="{{ shellNav }}" as="g" hint-placeholder-count="4">
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#7d72a8;padding:0 8px 4px">{{ g.title }}</div>
+                  <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+                    <a href="{{ it.href }}" style="{{ it.style }}">{{ it.label }}</a>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+            <a href="28%20Perfil%20e%20configura%C3%A7%C3%B5es.dc.html" style="border-top:1px solid rgba(255,255,255,.1);padding:12px;display:flex;align-items:center;gap:10px;color:inherit">
+              <span style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+              <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                <span style="font-size:12.5px;font-weight:600">{{ personName }}</span>
+                <span style="{{ personChipStyle }}">{{ profileName }}</span>
+              </div>
+            </a>
+          </aside>
+
+          <div style="flex:1;display:flex;flex-direction:column;background:#faf9fe;min-width:0">
+            <header style="display:flex;align-items:center;gap:12px;padding:13px 20px;border-bottom:1px solid #ebe6f6;background:#fff">
+              <div style="display:flex;flex-direction:column;gap:1px">
+                <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">{{ pageTitle }}</span>
+                <span style="font-size:11.5px;color:#6b6482">{{ scopeLine }}</span>
+              </div>
+              <span style="flex:1"></span>
+              <span style="{{ readonlyChipStyle }}">somente leitura</span>
+              <a href="22%20Avisos%20e%20Mural.dc.html" style="{{ primaryStyle }}">{{ primaryLabel }}</a>
+            </header>
+
+            <div style="flex:1;min-height:0;display:flex;min-width:0">
+
+              <div style="flex:1;min-width:0;overflow-y:auto;padding:18px 20px 26px;display:flex;flex-direction:column;gap:13px">
+
+                <div style="background:#f4edfe;border:1px solid #ddcbfa;border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                  <div style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:2px">
+                    <span style="font-size:13px;font-weight:700;color:#1b1630">Reconhecer é no Mural</span>
+                    <span style="font-size:12px;line-height:1.45;color:#5f4b8a;text-wrap:pretty">Quem escreve, escreve em 22 — junto do resto da vida da casa, como qualquer pessoa. Aqui é onde se lê o que já foi escrito.</span>
+                  </div>
+                  <a href="22%20Avisos%20e%20Mural.dc.html" style="flex:none;font-size:12.5px;font-weight:700;color:#fff;background:linear-gradient(135deg,#6C2BF2,#2E3BD6);border-radius:999px;padding:9px 16px">Abrir o Mural</a>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <sc-for list="{{ filters }}" as="f" hint-placeholder-count="3">
+                    <button type="button" onClick="{{ f.onClick }}" style="{{ f.style }}">{{ f.label }}</button>
+                  </sc-for>
+                  <span style="flex:1"></span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#6b6482">{{ feedCount }}</span>
+                </div>
+
+                <sc-for list="{{ feed }}" as="r" hint-placeholder-count="4">
+                  <div style="{{ r.cardStyle }}">
+                    <div style="display:flex;align-items:flex-start;gap:12px">
+                      <span style="{{ r.avatarStyle }}">{{ r.initials }}</span>
+                      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+                        <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+                          <span style="font-size:14px;font-weight:700">{{ r.to }}</span>
+                          <span style="font-size:12.5px;color:#6b6482">{{ r.byLine }}</span>
+                          <span style="{{ r.kindStyle }}">{{ r.kind }}</span>
+                          <span style="{{ r.reachStyle }}">{{ r.reach }}</span>
+                          <span style="flex:1"></span>
+                          <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#6b6482">{{ r.when }}</span>
+                        </div>
+                        <span style="font-size:13px;line-height:1.55;color:#3d3559;text-wrap:pretty">{{ r.text }}</span>
+                        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-top:3px">
+                          <span style="{{ r.mineStyle }}">{{ r.mineLabel }}</span>
+                          <span style="font-size:11.5px;color:#6b6482">{{ r.trace }}</span>
+                          <span style="flex:1"></span>
+                          <span style="{{ r.actionStyle }}">{{ r.action }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </sc-for>
+
+                <span style="{{ emptyStyle }}">{{ emptyLine }}</span>
+              </div>
+
+              <div style="width:400px;flex:none;border-left:1px solid #ebe6f6;background:#fff;overflow-y:auto;padding:16px 18px 24px;display:flex;flex-direction:column;gap:13px">
+
+                <div style="background:#f4edfe;border:1px solid #ddcbfa;border-radius:16px;padding:14px 15px;display:flex;flex-direction:column;gap:11px">
+                  <div style="display:flex;align-items:center;gap:11px">
+                    <img src="assets/asa-ideia.png" alt="ASA" style="width:40px;height:40px;object-fit:contain;flex:none" />
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                      <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">{{ asaTitle }}</span>
+                      <span style="font-size:11.5px;color:#5f4b8a;text-wrap:pretty">{{ asaSub }}</span>
+                    </div>
+                  </div>
+                  <sc-for list="{{ asaRows }}" as="a" hint-placeholder-count="3">
+                    <div style="background:#fff;border:1px solid #ddcbfa;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:10px">
+                      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                        <span style="font-size:12.5px;font-weight:700">{{ a.name }}</span>
+                        <span style="font-size:11px;color:#6b6482;text-wrap:pretty">{{ a.why }}</span>
+                      </div>
+                      <span style="{{ a.ctaStyle }}">{{ a.cta }}</span>
+                    </div>
+                  </sc-for>
+                  <span style="font-size:11px;line-height:1.45;color:#5f4b8a;text-wrap:pretty">{{ asaFoot }}</span>
+                </div>
+
+                <div style="background:#faf9fe;border:1px solid #e6e1f2;border-radius:16px;padding:14px 15px;display:flex;flex-direction:column;gap:10px">
+                  <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">{{ statsTitle }}</span>
+                  <div style="display:flex;gap:9px;flex-wrap:wrap">
+                    <sc-for list="{{ stats }}" as="s" hint-placeholder-count="3">
+                      <div style="flex:1 1 96px;min-width:92px;background:#fff;border:1px solid #e6e1f2;border-radius:12px;padding:10px 11px;display:flex;flex-direction:column;gap:2px">
+                        <span style="font-family:Outfit,sans-serif;font-size:21px;font-weight:700;line-height:1;letter-spacing:-0.01em">{{ s.n }}</span>
+                        <span style="font-size:11px;color:#6b6482;line-height:1.3;text-wrap:pretty">{{ s.label }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <span style="font-size:11.5px;line-height:1.45;color:#6b6482;text-wrap:pretty">{{ statsNote }}</span>
+                </div>
+
+                <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:14px 15px;display:flex;flex-direction:column;gap:9px">
+                  <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+                    <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600;flex:1">Os motivos</span>
+                    <span style="{{ kindsAdminStyle }}">editar motivos</span>
+                  </div>
+                  <sc-for list="{{ kindList }}" as="k" hint-placeholder-count="4">
+                    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid #f5f2fa">
+                      <span style="{{ k.tagStyle }}">{{ k.label }}</span>
+                      <span style="font-size:11.5px;line-height:1.4;color:#6b6482;flex:1;min-width:0;text-wrap:pretty">{{ k.desc }}</span>
+                    </div>
+                  </sc-for>
+                  <span style="font-size:11px;line-height:1.45;color:#6b6482;text-wrap:pretty">Lista curta e fechada, definida pela Administração. Sem motivo genérico do tipo "excelência": motivo vago produz reconhecimento vago.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:0 0 390px;min-width:390px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Mobile · {{ mobileHint }}</div>
+      <div style="width:390px;height:844px;border-radius:38px;border:1px solid #ddd6ee;background:#fff;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="background:linear-gradient(135deg,#1c1440,#2b1f63);color:#fff;padding:16px 18px 18px;display:flex;align-items:center;gap:10px">
+          <img src="assets/asa-wing.png" alt="" style="width:24px;height:24px;object-fit:contain;flex:none" />
+          <div style="display:flex;flex-direction:column;gap:1px;min-width:0;flex:1">
+            <span style="font-size:16px;font-weight:600;font-family:Outfit,sans-serif">{{ pageTitle }}</span>
+            <span style="font-size:11.5px;color:#c4bce0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ mobileScope }}</span>
+          </div>
+          <span style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+        </div>
+
+        <div style="flex:1;padding:14px;background:#faf9fe;display:flex;flex-direction:column;gap:10px;overflow:hidden;position:relative">
+
+          <div style="background:#f4edfe;border:1px solid #ddcbfa;border-radius:16px;padding:13px;display:flex;flex-direction:column;gap:6px">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#5f4b8a">{{ mobileNudge.tag }}</span>
+            <span style="font-size:12.5px;line-height:1.5;color:#1b1630;text-wrap:pretty">{{ mobileNudge.text }}</span>
+          </div>
+
+          <sc-for list="{{ mobileFeed }}" as="r" hint-placeholder-count="3">
+            <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:13px;display:flex;gap:11px">
+              <span style="{{ r.avatarStyle }}">{{ r.initials }}</span>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                <div style="display:flex;align-items:baseline;gap:7px;flex-wrap:wrap">
+                  <span style="font-size:13px;font-weight:700">{{ r.to }}</span>
+                  <span style="{{ r.kindStyle }}">{{ r.kind }}</span>
+                </div>
+                <span style="font-size:12px;line-height:1.5;color:#3d3559;text-wrap:pretty">{{ r.short }}</span>
+                <span style="font-size:10.5px;color:#6b6482">{{ r.byLine }} · {{ r.when }}</span>
+              </div>
+            </div>
+          </sc-for>
+
+          <a href="22%20Avisos%20e%20Mural.dc.html" style="position:absolute;right:14px;bottom:14px;display:flex;align-items:center;gap:9px;background:linear-gradient(135deg,#6C2BF2,#2E3BD6);color:#fff;border-radius:999px;padding:12px 18px;box-shadow:0 12px 24px -12px rgba(76,30,180,.9)">
+            <span style="font-size:13px;font-weight:700">Reconhecer no Mural</span>
+          </a>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid #ebe6f6;background:#fff;padding:10px 4px 16px">
+          <sc-for list="{{ mobileTabs }}" as="t" hint-placeholder-count="5">
+            <div style="{{ t.style }}">
+              <span style="display:block;width:20px;height:20px;border-radius:7px;border:1.75px solid currentColor;opacity:.75"></span>
+              <span style="font-size:10px;font-weight:600;text-align:center">{{ t.label }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">O que esta tela decide</span>
+    <div style="display:flex;flex-wrap:wrap;gap:12px">
+    <button type="button" onClick="{{ toggleNotas }}" style="{{ notasBtnStyle }}">
+      <span style="width:20px;height:20px;border-radius:50%;background:#f1eafe;color:#6C2BF2;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none">i</span>
+      <span>{{ notasLabel }}</span>
+    </button>
+    <sc-if value="{{ verNotas }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:12px">
+      <sc-for list="{{ decisions }}" as="d" hint-placeholder-count="5">
+          <div style="flex:1 1 300px;min-width:260px;display:flex;gap:11px;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:13px 15px">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6C2BF2;flex:none;padding-top:2px">{{ d.n }}</span>
+            <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+              <span style="font-size:13px;font-weight:700;line-height:1.3">{{ d.title }}</span>
+              <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">{{ d.body }}</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+    </div>
+  </div>
+
+  <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6b6482">{{ footerStamp }}</span>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1400},&quot;perfilInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ADM&quot;,&quot;DIR&quot;,&quot;SUP&quot;],&quot;default&quot;:&quot;SUP&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Perfil&quot;}}">
+const PROFILES = [
+  { key: "ADM", name: "Administração", person: "Barbara Sorroche", dot: "#6C2BF2", hint: "reconhece qualquer pessoa e define os motivos" },
+  { key: "DIR", name: "Direção", person: "Cris Garcia", dot: "#2E63D6", hint: "reconhece e lê o histórico — quem vem sendo reconhecido, por quem" },
+  { key: "SUP", name: "Supervisão", person: "Deborah", dot: "#0E8F86", hint: "reconhece qualquer pessoa da casa; o painel abre na área dela" }
+];
+
+const NAV = [
+  { title: "Porta de entrada", items: [["17", "Início / Meu Dia", ["ADM","DIR","SUP","MEM"], "Meu Dia"]] },
+  { title: "O dia", items: [
+    ["20", "Agenda", ["ADM","DIR","SUP","MEM"], "Minha agenda"],
+    ["15", "Escalas", ["ADM","DIR","SUP","MEM"], "Minha escala"],
+    ["13", "Shows", ["ADM","DIR","SUP","MEM"], "Shows"],
+    ["14", "Livro do Dia", ["ADM","DIR","SUP","MEM"], "Meus shows"],
+    ["19", "Check-in e ocorrências", ["ADM","DIR","SUP","MEM"], "Check-in"],
+    ["10", "Responsabilidades e tarefas", ["ADM","DIR","SUP","MEM"], "Minhas tarefas"],
+    ["18", "Folgas", ["ADM","DIR","SUP","MEM"], "Minhas folgas"]
+  ] },
+  { title: "Gestão", items: [
+    ["16", "Painel", ["ADM","DIR","SUP"], null],
+    ["06", "Locais", ["ADM","DIR","SUP"], null],
+    ["07", "Pessoas", ["ADM","DIR","SUP"], null],
+    ["08", "Áreas", ["ADM","DIR","SUP","MEM"], "Meu grupo"],
+    ["25", "Reconhecimentos", ["ADM","DIR","SUP"], null]
+  ] },
+  { title: "Comunicação", items: [
+    ["22", "Avisos e Mural", ["ADM","DIR","SUP","MEM"], "Mural"],
+    ["23", "Mensagens", ["ADM","DIR","SUP","MEM"], "Conversas"],
+    ["24", "Biblioteca", ["ADM","DIR","SUP","MEM"], "Biblioteca"]
+  ] }
+];
+
+const HREF = {
+  "06": "06%20Locais.dc.html", "07": "07%20Pessoas.dc.html", "08": "08%20%C3%81reas.dc.html",
+  "10": "10%20Responsabilidades%20e%20Tarefas.dc.html", "13": "13%20Shows.dc.html",
+  "14": "14%20Livro%20do%20Dia.dc.html", "15": "15%20Escalas.dc.html",
+  "16": "16%20Painel%20e%20indicadores.dc.html", "17": "17%20Meu%20Dia.dc.html",
+  "18": "18%20Folgas.dc.html", "19": "19%20Check-in%20e%20ocorr%C3%AAncias.dc.html",
+  "20": "20%20Agenda.dc.html", "22": "22%20Avisos%20e%20Mural.dc.html",
+  "23": "23%20Mensagens.dc.html", "24": "24%20Biblioteca.dc.html", "25": "25%20Reconhecimentos.dc.html"
+};
+
+const MOBILE = {
+  ADM: ["Meu Dia", "Painel", "Escalas", "Mural", "Mais"],
+  DIR: ["Meu Dia", "Painel", "Agenda", "Mural", "Mais"],
+  SUP: ["Meu Dia", "Escalas", "Equipe", "Mural", "Mais"],
+  MEM: ["Meu Dia", "Escala", "Mural", "Conversas", "Mais"]
+};
+
+const KINDS = {
+  cobriu:  { label: "cobriu alguém", fg: "#0E8F86", bg: "#e3f4f1", desc: "Entrou na posição de quem faltou, em cima da hora, e o show saiu inteiro." },
+  ensinou: { label: "ensinou", fg: "#5B23C9", bg: "#efe8fd", desc: "Passou marcação, corrigiu com cuidado, treinou quem chegou agora." },
+  segurou: { label: "segurou a barra", fg: "#B4560B", bg: "#fdeee4", desc: "Dia ruim, imprevisto grande, e a pessoa manteve o time de pé." },
+  cuidou:  { label: "cuidou da casa", fg: "#2E63D6", bg: "#e9effc", desc: "Cuidou de equipamento, figurino, camarim ou do público sem ninguém pedir." }
+};
+
+const AREAS = { "Julia": "Patinadores · grupo B", "Carol": "Patinadores · grupo B", "Diogo": "Patinadores", "Lucas": "Produção", "Izabel": "Patinadores · grupo A", "Maico": "Produção" };
+
+const FEED = [
+  { id: 1, to: "Carol", by: "Deborah", byRole: "Supervisão · Patinadores", kind: "cobriu", reach: "publico", when: "hoje, 11:20", area: "Patinadores · grupo B",
+    text: "Entrou na posição 7 da cena 5 com 20 minutos de aviso, na sexta, porque a Sofia passou mal. Nunca tinha feito aquela entrada por trás do praticável e fez sem tirar o olho da marcação." },
+  { id: 2, to: "Julia", by: "Deborah", byRole: "Supervisão · Patinadores", kind: "ensinou", reach: "publico", when: "ontem", area: "Patinadores · grupo B",
+    text: "Ficou 40 minutos depois do ensaio passando a cena 3 para as duas meninas que entraram este mês. Ninguém pediu e ninguém marcou como tarefa." },
+  { id: 3, to: "Lucas", by: "Barbara Sorroche", byRole: "Administração", kind: "cuidou", reach: "publico", when: "3 de setembro", area: "Produção",
+    text: "Achou a falha no cabo do praticável na conferência da tarde e trocou antes da casa abrir. O público nunca soube que existia um problema — que é exatamente o ponto." },
+  { id: 4, to: "Diogo", by: "Cris Garcia", byRole: "Direção", kind: "segurou", reach: "privado", when: "1 de setembro", area: "Patinadores",
+    text: "Duas semanas com a equipe desfalcada e ele segurou a rotina de gelo sem transformar isso em crise para o resto da casa." },
+  { id: 5, to: "Izabel", by: "Deborah", byRole: "Supervisão · Patinadores", kind: "ensinou", reach: "publico", when: "28 de agosto", area: "Patinadores · grupo A",
+    text: "Montou o resumo em vídeo das mudanças da cena 5 para quem estava de folga. Virou o material que a ASA responde hoje na Biblioteca." }
+];
+
+const ASA_ROWS = {
+  gestao: [
+    { name: "Maico", why: "Produção · nunca foi reconhecido — 11 meses de casa, 3 shows por semana" },
+    { name: "Amanda", why: "Patinadores · último reconhecimento há 7 meses, cobriu 4 vezes desde então" },
+    { name: "Grupo C", why: "nenhum reconhecimento em 90 dias, enquanto o grupo B teve 6" }
+  ]
+};
+
+const DECISIONS = [
+  { n: "01", title: "Consulta, não composição", body: "Escrever reconhecimento é no Mural (22), onde todo mundo escreve. Esta tela é o outro lado: histórico consolidado e o silêncio por área — instrumento de quem lidera, não mais um feed para a casa acompanhar." },
+  { n: "02", title: "Motivo fechado e fato obrigatório", body: "Quatro motivos, definidos pela Administração, mais a descrição do que aconteceu. \"Parabéns pelo empenho\" não passa: a ASA avisa que falta o fato, porque reconhecimento sem fato não convence nem quem recebe." },
+  { n: "03", title: "Quem recebe decide a exposição", body: "O autor marca público ou reservado; quem recebe tira do Mural depois — pelo Mural mesmo, não por aqui — sem apagar o registro no perfil. Reconhecimento público é bonito para muita gente e constrangedor para outra tanta." },
+  { n: "04", title: "Qualquer um reconhece qualquer um", body: "Não há hierarquia para elogiar: quem viu o gesto escreve, seja da sua área ou não — bailarino reconhece produção, produção reconhece patinação. O que muda por perfil é só o alcance do painel: Supervisão abre na área dela, Administração e Direção na casa inteira." },
+  { n: "05", title: "A ASA aponta o silêncio, não escreve o elogio", body: "Ela mostra quem nunca foi reconhecido e quais grupos estão em silêncio há meses — o dado que ninguém percebe sozinho. Clicar leva ao Mural com a pessoa já escolhida; o texto é sempre de quem viu." },
+  { n: "06", title: "Fora do menu do elenco", body: "Reconhecimentos sai da Comunicação e passa para Gestão: só Administração, Direção e Supervisão veem o item. Para o elenco, reconhecimento não é uma seção do app — é uma coisa que aparece no Mural e fica no perfil dele." }
+];
+
+class Component extends DCLogic {
+  state = { profile: null, filter: "todos" };
+
+  renderVals() {
+    const active = this.state.profile || this.props.perfilInicial || "SUP";
+    const meta = PROFILES.find(p => p.key === active) || PROFILES[0];
+    const dot = meta.dot;
+    const isAdm = active === "ADM", isDir = active === "DIR", isSup = active === "SUP";
+    const canEdit = isAdm || isDir || isSup;
+
+    const profileTabs = PROFILES.map(p => ({
+      name: p.name, dot: p.dot,
+      onClick: () => this.setState({ profile: p.key, filter: "todos" }),
+      style: "display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-family:Manrope,sans-serif;font-size:13px;font-weight:600;padding:8px 14px;border-radius:999px;"
+        + (p.key === active ? "border:1px solid " + p.dot + ";background:" + p.dot + "14;color:" + p.dot + ";"
+                            : "border:1px solid #e6e1f2;background:#fff;color:#5b5473;")
+    }));
+
+    const shellNav = NAV.map(g => ({
+      title: g.title,
+      items: g.items.filter(it => it[2].indexOf(active) >= 0).map(it => ({
+        href: HREF[it[0]],
+        label: it[1],
+        style: "font-size:12px;font-weight:" + (it[0] === "25" ? "700" : "500") + ";padding:6px 9px;border-radius:8px;"
+          + (it[0] === "25" ? "background:rgba(255,255,255,.14);color:#fff;" : "color:#c3bbe0;")
+      }))
+    })).filter(g => g.items.length);
+
+    const visible = FEED.filter(r => isSup ? r.area.indexOf("Patinadores") === 0 : true);
+
+    const filterDefs = [["todos", isSup ? "Da minha área" : "Toda a casa"], ["mes", "Este mês"], ["silencio", "Sem reconhecimento há 90 dias"]];
+
+    const feedList = visible.filter(r => {
+      if (this.state.filter === "mes") return r.when.indexOf("agosto") < 0;
+      if (this.state.filter === "silencio") return false;
+      return true;
+    });
+
+    const initials = n => n.split(" ").map(x => x[0]).join("").slice(0, 2);
+    const avatar = (name, small) => "flex:none;width:" + (small ? "34px" : "40px") + ";height:" + (small ? "34px" : "40px")
+      + ";border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:"
+      + (small ? "11px" : "12.5px") + ";font-weight:700;color:#fff;background:linear-gradient(135deg,#8b5cf6,#3b45d9);";
+
+    const kindTag = k => "flex:none;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:5px;color:"
+      + KINDS[k].fg + ";background:" + KINDS[k].bg + ";";
+
+    const feed = feedList.map(r => {
+      return {
+        to: r.to,
+        byLine: "por " + r.by + " · " + r.byRole,
+        kind: KINDS[r.kind].label,
+        kindStyle: kindTag(r.kind),
+        reach: r.reach === "publico" ? "no Mural" : "reservado",
+        reachStyle: "flex:none;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:5px;"
+          + (r.reach === "publico" ? "color:#6b6482;background:#f0eef5;" : "color:#B4302F;background:#fdeaea;"),
+        when: r.when,
+        text: r.text,
+        initials: initials(r.to),
+        avatarStyle: avatar(r.to, false),
+        trace: r.area,
+        mineLabel: "",
+        mineStyle: "display:none;",
+        action: isAdm ? "abrir no perfil · remover" : isDir ? "abrir no perfil" : "abrir no perfil",
+        actionStyle: "flex:none;font-size:11.5px;font-weight:700;color:#6C2BF2;cursor:pointer;",
+        cardStyle: "background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:14px 16px;"
+      };
+    });
+
+    const asaRows = ASA_ROWS.gestao.map(r => ({
+      name: r.name, why: r.why,
+      cta: "escrever no Mural",
+      ctaStyle: "flex:none;font-size:11.5px;font-weight:700;color:#6C2BF2;cursor:pointer;"
+    }));
+
+    return {
+      verNotas: !!this.state.__notas,
+      toggleNotas: () => this.setState(s => ({ __notas: !s.__notas })),
+      notasBtnStyle: "display:flex;align-items:center;gap:9px;padding:8px 14px;border-radius:999px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;align-self:flex-start",
+      notasLabel: this.state.__notas ? "ocultar notas de desenho" : "notas de desenho",
+
+      profileTabs: profileTabs,
+      profileHint: meta.hint,
+      profileName: meta.name,
+      personName: meta.person,
+      personChipStyle: "font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:" + dot + ";padding:2px 7px;border-radius:999px;width:fit-content",
+      shellNav: shellNav,
+      pageTitle: "Reconhecimentos",
+      scopeLine: isSup ? "painel na área Patinadores · você reconhece qualquer pessoa da casa"
+        : isDir ? "toda a casa · histórico completo e reconhecimento direto"
+        : "toda a casa · você define os motivos",
+      readonlyChipStyle: "display:none",
+      primaryLabel: "Reconhecer no Mural",
+      primaryStyle: "cursor:pointer;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;border-radius:999px;padding:9px 16px;flex:none;color:#fff;background:linear-gradient(135deg,#6C2BF2,#2E3BD6);border:none;",
+
+      filters: filterDefs.map(f => ({
+        label: f[1],
+        onClick: () => this.setState({ filter: f[0] }),
+        style: "cursor:pointer;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;border-radius:999px;padding:6px 12px;"
+          + (this.state.filter === f[0] ? "border:1px solid " + dot + ";background:" + dot + "14;color:" + dot + ";"
+                                        : "border:1px solid #e6e1f2;background:#fff;color:#6b6482;")
+      })),
+      feedCount: feed.length + (feed.length === 1 ? " reconhecimento" : " reconhecimentos"),
+      feed: feed,
+      emptyLine: feed.length ? "" : "Ninguém aqui — e é isso que o filtro mostra: quem passou 90 dias sem uma palavra aparece no painel da ASA, à direita, não nesta lista.",
+      emptyStyle: feed.length ? "display:none;" : "font-size:13px;line-height:1.55;color:#6b6482;background:#fff;border:1px dashed #ddd6ee;border-radius:16px;padding:18px;text-wrap:pretty;",
+
+      asaTitle: "O silêncio que ninguém vê",
+      asaSub: "quem trabalha e nunca foi reconhecido",
+      asaRows: asaRows,
+      asaFoot: "A ASA aponta o dado; o texto é sempre seu. Ela não gera elogio — reconhecimento escrito por máquina não vale nada para quem recebe.",
+
+      statsTitle: isSup ? "Sua área, 90 dias" : "A casa, 90 dias",
+      stats: [{ n: isSup ? "9" : "23", label: "reconhecimentos" }, { n: isSup ? "6" : "14", label: "pessoas diferentes" }, { n: isSup ? "5" : "19", label: "nunca reconhecidas" }],
+      statsNote: "O número que importa é o último: gente que trabalha há meses e nunca ouviu nada. Não há meta, não há cota — há o dado na sua frente.",
+
+      kindsAdminStyle: isAdm ? "font-size:11.5px;font-weight:700;color:#6C2BF2;cursor:pointer;" : "display:none;",
+      kindList: Object.keys(KINDS).map(k => ({
+        label: KINDS[k].label,
+        desc: KINDS[k].desc,
+        tagStyle: kindTag(k)
+      })),
+
+      mobileHint: "o silêncio no bolso de quem lidera",
+      mobileScope: isSup ? "área Patinadores · 9 em 90 dias" : "toda a casa · 23 em 90 dias",
+      mobileNudge: true
+        ? { tag: "A ASA aponta · hoje", text: "Maico, Produção, 11 meses de casa e nenhum reconhecimento. Não é da sua área e isso não importa: se você viu algo dele esta semana, escreva no Mural." }
+        : { tag: "Leitura · 90 dias", text: "19 pessoas da casa seguem sem nenhum reconhecimento. O histórico completo abre no desktop, com exportação." },
+      mobileFeed: feed.slice(0, 3).map(r => ({
+        to: r.to, kind: r.kind, kindStyle: r.kindStyle, byLine: r.byLine.replace("por ", ""), when: r.when,
+        initials: r.initials, avatarStyle: avatar(r.to, true),
+        short: r.text.length > 110 ? r.text.slice(0, 108) + "…" : r.text
+      })),
+      mobileTabs: MOBILE[active].map((label, i) => ({
+        label: label,
+        style: "display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 2px;" + (i === 4 ? "color:" + dot + ";" : "color:#6b6482;")
+      })),
+
+      decisions: DECISIONS,
+      footerStamp: "25 Reconhecimentos · " + meta.name + " · painel de leitura · escreve-se no Mural (22), mora no perfil (28)"
+    };
+  }
+}
+</script>
+</body>
+</html>

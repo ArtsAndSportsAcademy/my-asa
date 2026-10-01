@@ -31,7 +31,7 @@ app.use(
     },
   }),
 );
-app.use(cors());
+app.use(cors({ exposedHeaders: ["X-MyASA-Undo"] }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

@@ -1,9 +1,11 @@
-import { pgTable, text, uuid, timestamp, pgEnum, date, time, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, pgEnum, date, time, unique, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { operationsTable, operationalGroupsTable } from "./organization.js";
 import { showBooksTable } from "./showbook.js";
 import { usersTable } from "./identity.js";
+import { areasTable } from "./areas.js";
+import { locationsTable } from "./locations.js";
 
 export const agendaEventTypeEnum = pgEnum("agenda_event_type", [
   "SHOW", "REHEARSAL", "MEETING", "OPERATIONAL_BLOCK", "COLLECTIVE_VACATION",
@@ -11,7 +13,11 @@ export const agendaEventTypeEnum = pgEnum("agenda_event_type", [
 ]);
 
 export const agendaEventStatusEnum = pgEnum("agenda_event_status", [
-  "DRAFT", "CONFIRMED", "SUSPENDED", "CANCELLED", "COMPLETED",
+  "DRAFT", "PROPOSED", "CONFIRMED", "REJECTED", "SUSPENDED", "CANCELLED", "COMPLETED",
+]);
+
+export const agendaParticipantResponseEnum = pgEnum("agenda_participant_response", [
+  "PENDING", "ACCEPTED", "DECLINED", "CALLED",
 ]);
 
 export const agendaVisibilityEnum = pgEnum("agenda_visibility", [
@@ -23,6 +29,8 @@ export const agendaEventsTable = pgTable("agenda_events", {
   operationId: uuid("operation_id").notNull().references(() => operationsTable.id),
   showBookId: uuid("show_book_id").references(() => showBooksTable.id),
   groupId: uuid("group_id").references(() => operationalGroupsTable.id),
+  areaId: uuid("area_id").references(() => areasTable.id),
+  locationId: uuid("location_id").references(() => locationsTable.id),
   type: agendaEventTypeEnum("type").notNull(),
   title: text("title").notNull(),
   date: date("date", { mode: "string" }).notNull(),
@@ -34,6 +42,10 @@ export const agendaEventsTable = pgTable("agenda_events", {
   status: agendaEventStatusEnum("status").notNull().default("DRAFT"),
   visibility: agendaVisibilityEnum("visibility").notNull().default("OPERATION"),
   reason: text("reason"),
+  alternativeDetails: text("alternative_details"),
+  alternativeDate: date("alternative_date", { mode: "string" }),
+  alternativeStartTime: time("alternative_start_time"),
+  alternativeEndTime: time("alternative_end_time"),
   createdBy: uuid("created_by").notNull().references(() => usersTable.id),
   confirmedBy: uuid("confirmed_by").references(() => usersTable.id),
   confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
@@ -58,9 +70,13 @@ export const agendaEventParticipantsTable = pgTable("agenda_event_participants",
   id: uuid("id").primaryKey().defaultRandom(),
   eventId: uuid("event_id").notNull().references(() => agendaEventsTable.id, { onDelete: "cascade" }),
   userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  response: agendaParticipantResponseEnum("response").notNull().default("PENDING"),
+  respondedAt: timestamp("responded_at", { withTimezone: true }),
+  responseNote: text("response_note"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   uniqEventUser: unique("agenda_event_participants_event_user_unique").on(t.eventId, t.userId),
+  eventResponseIdx: index("agenda_event_participants_event_response_idx").on(t.eventId, t.response),
 }));
 
 export type AgendaEventParticipant = typeof agendaEventParticipantsTable.$inferSelect;

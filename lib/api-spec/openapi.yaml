@@ -32,8 +32,6 @@ tags:
     description: "Meu Dia — superficie principal do membro"
   - name: tasks
     description: "Tarefas Operacionais — S-18"
-  - name: anthropic
-    description: Anthropic AI chat operations
   - name: asa
     description: "ASA — Assistente Inteligente do MyASA"
   - name: folgas
@@ -4737,122 +4735,6 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
-  /anthropic/conversations:
-    get:
-      operationId: listAnthropicConversations
-      tags: [anthropic]
-      summary: List all conversations
-      responses:
-        "200":
-          description: List of conversations
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/AnthropicConversation"
-    post:
-      operationId: createAnthropicConversation
-      tags: [anthropic]
-      summary: Create a new conversation
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AnthropicConversationInput"
-      responses:
-        "201":
-          description: Created conversation
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AnthropicConversation"
-  /anthropic/conversations/{id}:
-    get:
-      operationId: getAnthropicConversation
-      tags: [anthropic]
-      summary: Get conversation with messages
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Conversation with messages
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AnthropicConversationWithMessages"
-        "404":
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AnthropicError"
-    delete:
-      operationId: deleteAnthropicConversation
-      tags: [anthropic]
-      summary: Delete a conversation
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "204":
-          description: Deleted
-        "404":
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AnthropicError"
-  /anthropic/conversations/{id}/messages:
-    get:
-      operationId: listAnthropicMessages
-      tags: [anthropic]
-      summary: List messages in a conversation
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: List of messages
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/AnthropicMessage"
-    post:
-      operationId: sendAnthropicMessage
-      tags: [anthropic]
-      summary: Send a message and receive an AI response (SSE stream)
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AnthropicMessageInput"
-      responses:
-        "200":
-          description: SSE stream of assistant response chunks
-          content:
-            text/event-stream: {}
-
   /asa/memories:
     get:
       operationId: listAsaMemories
@@ -4868,7 +4750,7 @@ paths:
           in: query
           schema:
             type: string
-            enum: [PENDING, APPROVED, REJECTED]
+            enum: [PENDING, APPROVED, REJECTED, DISABLED]
       responses:
         "200":
           description: List of memories
@@ -4899,7 +4781,7 @@ paths:
     patch:
       operationId: updateAsaMemory
       tags: [asa]
-      summary: Approve or reject a memory
+      summary: Edit, approve, reject or disable a memory
       parameters:
         - name: id
           in: path
@@ -5398,9 +5280,13 @@ components:
           type: string
         name:
           type: string
-        preferredName:
+          description: "Nome de exibição. Mantido por compatibilidade com consumidores legados."
+        displayName:
           type: string
-          nullable: true
+          description: "Nome que aparece no app."
+        fullName:
+          type: string
+          description: "Nome formal; disponível somente na ficha e no cadastro autorizados."
         email:
           type: string
           nullable: true
@@ -5470,7 +5356,7 @@ components:
           type: string
         updatedAt:
           type: string
-      required: [id, name, status, personStatus, organizationId]
+      required: [id, name, displayName, status, personStatus, organizationId]
 
     UserRole:
       type: object
@@ -5760,11 +5646,9 @@ components:
     UserCreate:
       type: object
       properties:
-        name:
+        fullName:
           type: string
-        preferredName:
-          type: string
-          nullable: true
+          description: "Nome formal cadastrado pela Administração."
         email:
           type: string
           format: email
@@ -5802,7 +5686,7 @@ components:
         adminNotes:
           type: string
           nullable: true
-      required: [name]
+      required: [fullName]
 
     ChangePasswordBody:
       type: object
@@ -5817,11 +5701,12 @@ components:
     UserUpdate:
       type: object
       properties:
-        name:
+        fullName:
           type: string
-        preferredName:
+          description: "Nome formal; somente Administração."
+        displayName:
           type: string
-          nullable: true
+          description: "Nome que aparece no app; somente a própria pessoa pode alterar."
         email:
           type: string
           format: email
@@ -9056,82 +8941,6 @@ components:
         mandatoryEvidenceRefId:
           type: string
 
-    AnthropicConversation:
-      type: object
-      required: [id, title, createdAt]
-      properties:
-        id:
-          type: integer
-        title:
-          type: string
-        userId:
-          type: string
-        organizationId:
-          type: string
-          nullable: true
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-    AnthropicMessage:
-      type: object
-      required: [id, conversationId, role, content, createdAt]
-      properties:
-        id:
-          type: integer
-        conversationId:
-          type: integer
-        role:
-          type: string
-        content:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-    AnthropicConversationInput:
-      type: object
-      required: [title]
-      properties:
-        title:
-          type: string
-    AnthropicMessageInput:
-      type: object
-      required: [content]
-      properties:
-        content:
-          type: string
-    AnthropicConversationWithMessages:
-      type: object
-      required: [id, title, createdAt, messages]
-      properties:
-        id:
-          type: integer
-        title:
-          type: string
-        userId:
-          type: string
-        organizationId:
-          type: string
-          nullable: true
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-        messages:
-          type: array
-          items:
-            $ref: "#/components/schemas/AnthropicMessage"
-    AnthropicError:
-      type: object
-      required: [error]
-      properties:
-        error:
-          type: string
-
     AsaMemory:
       type: object
       required: [id, type, key, value, scope, createdBy, status, createdAt]
@@ -9161,7 +8970,7 @@ components:
           nullable: true
         status:
           type: string
-          enum: [PENDING, APPROVED, REJECTED]
+          enum: [PENDING, APPROVED, REJECTED, DISABLED]
         createdAt:
           type: string
           format: date-time
@@ -9182,10 +8991,11 @@ components:
           type: string
     UpdateAsaMemoryRequest:
       type: object
+      description: Send exactly one of value or status. Editing content returns the memory to PENDING and clears its approval; approval requires a separate request.
       properties:
         status:
           type: string
-          enum: [APPROVED, REJECTED]
+          enum: [APPROVED, REJECTED, DISABLED]
         value:
           type: string
     AsaPreferences:

@@ -4,6 +4,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { domainLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
 import { sendNotification } from "./notificationService.js";
+import { operationalDate } from "../lib/operational-date.js";
 
 const log = domainLogger(LOG_DOMAIN.TASKS);
 
@@ -11,7 +12,7 @@ const log = domainLogger(LOG_DOMAIN.TASKS);
 const OPEN_TASK_STATUSES = ["CREATED", "IN_PROGRESS", "CHANGES_REQUESTED"] as const;
 
 function dateOnly(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  return operationalDate(d);
 }
 
 // ─── Task deadline reminders (basic path: "vence amanhã") ─────────────────────

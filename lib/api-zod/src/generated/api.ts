@@ -29,8 +29,9 @@ export const LoginResponse = zod.object({
   "refreshToken": zod.string(),
   "user": zod.object({
   "id": zod.string(),
-  "name": zod.string(),
-  "preferredName": zod.string().nullish(),
+  "name": zod.string().describe('Nome de exibição. Mantido por compatibilidade com consumidores legados.'),
+  "displayName": zod.string().describe('Nome que aparece no app.'),
+  "fullName": zod.string().optional().describe('Nome formal; disponível somente na ficha e no cadastro autorizados.'),
   "email": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "username": zod.string().nullish(),
@@ -94,8 +95,9 @@ export const LogoutBody = zod.object({
 export const GetMeResponse = zod.object({
   "user": zod.object({
   "id": zod.string(),
-  "name": zod.string(),
-  "preferredName": zod.string().nullish(),
+  "name": zod.string().describe('Nome de exibição. Mantido por compatibilidade com consumidores legados.'),
+  "displayName": zod.string().describe('Nome que aparece no app.'),
+  "fullName": zod.string().optional().describe('Nome formal; disponível somente na ficha e no cadastro autorizados.'),
   "email": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "username": zod.string().nullish(),
@@ -688,8 +690,9 @@ export const RemoveGroupSupervisorResponse = zod.object({
 export const GetUserContextResponse = zod.object({
   "user": zod.object({
   "id": zod.string(),
-  "name": zod.string(),
-  "preferredName": zod.string().nullish(),
+  "name": zod.string().describe('Nome de exibição. Mantido por compatibilidade com consumidores legados.'),
+  "displayName": zod.string().describe('Nome que aparece no app.'),
+  "fullName": zod.string().optional().describe('Nome formal; disponível somente na ficha e no cadastro autorizados.'),
   "email": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "username": zod.string().nullish(),
@@ -787,8 +790,9 @@ export const GetUserContextResponse = zod.object({
 export const ListUsersResponse = zod.object({
   "users": zod.array(zod.object({
   "id": zod.string(),
-  "name": zod.string(),
-  "preferredName": zod.string().nullish(),
+  "name": zod.string().describe('Nome de exibição. Mantido por compatibilidade com consumidores legados.'),
+  "displayName": zod.string().describe('Nome que aparece no app.'),
+  "fullName": zod.string().optional().describe('Nome formal; disponível somente na ficha e no cadastro autorizados.'),
   "email": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "username": zod.string().nullish(),
@@ -825,8 +829,7 @@ export const createUserBodyPasswordMin = 6;
 
 
 export const CreateUserBody = zod.object({
-  "name": zod.string(),
-  "preferredName": zod.string().nullish(),
+  "fullName": zod.string().describe('Nome formal cadastrado pela Administração.'),
   "email": zod.string().email().nullish(),
   "phone": zod.string().nullish(),
   "password": zod.string().min(createUserBodyPasswordMin).nullish(),
@@ -868,8 +871,9 @@ export const GetUserParams = zod.object({
 export const GetUserResponse = zod.object({
   "user": zod.object({
   "id": zod.string(),
-  "name": zod.string(),
-  "preferredName": zod.string().nullish(),
+  "name": zod.string().describe('Nome de exibição. Mantido por compatibilidade com consumidores legados.'),
+  "displayName": zod.string().describe('Nome que aparece no app.'),
+  "fullName": zod.string().optional().describe('Nome formal; disponível somente na ficha e no cadastro autorizados.'),
   "email": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "username": zod.string().nullish(),
@@ -906,8 +910,8 @@ export const UpdateUserParams = zod.object({
 })
 
 export const UpdateUserBody = zod.object({
-  "name": zod.string().optional(),
-  "preferredName": zod.string().nullish(),
+  "fullName": zod.string().optional().describe('Nome formal; somente Administração.'),
+  "displayName": zod.string().optional().describe('Nome que aparece no app; somente a própria pessoa pode alterar.'),
   "email": zod.string().email().optional(),
   "phone": zod.string().nullish(),
   "photoUrl": zod.string().nullish(),
@@ -929,8 +933,9 @@ export const UpdateUserBody = zod.object({
 export const UpdateUserResponse = zod.object({
   "user": zod.object({
   "id": zod.string(),
-  "name": zod.string(),
-  "preferredName": zod.string().nullish(),
+  "name": zod.string().describe('Nome de exibição. Mantido por compatibilidade com consumidores legados.'),
+  "displayName": zod.string().describe('Nome que aparece no app.'),
+  "fullName": zod.string().optional().describe('Nome formal; disponível somente na ficha e no cadastro autorizados.'),
   "email": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "username": zod.string().nullish(),
@@ -973,8 +978,9 @@ export const UpdateUserStatusBody = zod.object({
 export const UpdateUserStatusResponse = zod.object({
   "user": zod.object({
   "id": zod.string(),
-  "name": zod.string(),
-  "preferredName": zod.string().nullish(),
+  "name": zod.string().describe('Nome de exibição. Mantido por compatibilidade com consumidores legados.'),
+  "displayName": zod.string().describe('Nome que aparece no app.'),
+  "fullName": zod.string().optional().describe('Nome formal; disponível somente na ficha e no cadastro autorizados.'),
   "email": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "username": zod.string().nullish(),
@@ -5052,94 +5058,11 @@ export const AddTaskCommentBody = zod.object({
 
 
 /**
- * @summary List all conversations
- */
-export const ListAnthropicConversationsResponseItem = zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "userId": zod.string().optional(),
-  "organizationId": zod.string().nullish(),
-  "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date().optional()
-})
-export const ListAnthropicConversationsResponse = zod.array(ListAnthropicConversationsResponseItem)
-
-
-/**
- * @summary Create a new conversation
- */
-export const CreateAnthropicConversationBody = zod.object({
-  "title": zod.string()
-})
-
-
-/**
- * @summary Get conversation with messages
- */
-export const GetAnthropicConversationParams = zod.object({
-  "id": zod.coerce.number()
-})
-
-export const GetAnthropicConversationResponse = zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "userId": zod.string().optional(),
-  "organizationId": zod.string().nullish(),
-  "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date().optional(),
-  "messages": zod.array(zod.object({
-  "id": zod.number(),
-  "conversationId": zod.number(),
-  "role": zod.string(),
-  "content": zod.string(),
-  "createdAt": zod.coerce.date()
-}))
-})
-
-
-/**
- * @summary Delete a conversation
- */
-export const DeleteAnthropicConversationParams = zod.object({
-  "id": zod.coerce.number()
-})
-
-
-/**
- * @summary List messages in a conversation
- */
-export const ListAnthropicMessagesParams = zod.object({
-  "id": zod.coerce.number()
-})
-
-export const ListAnthropicMessagesResponseItem = zod.object({
-  "id": zod.number(),
-  "conversationId": zod.number(),
-  "role": zod.string(),
-  "content": zod.string(),
-  "createdAt": zod.coerce.date()
-})
-export const ListAnthropicMessagesResponse = zod.array(ListAnthropicMessagesResponseItem)
-
-
-/**
- * @summary Send a message and receive an AI response (SSE stream)
- */
-export const SendAnthropicMessageParams = zod.object({
-  "id": zod.coerce.number()
-})
-
-export const SendAnthropicMessageBody = zod.object({
-  "content": zod.string()
-})
-
-
-/**
  * @summary List ASA memories
  */
 export const ListAsaMemoriesQueryParams = zod.object({
   "type": zod.enum(['PERSONAL', 'OPERATIONAL', 'OFFICIAL']).optional(),
-  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED']).optional()
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'DISABLED']).optional()
 })
 
 export const ListAsaMemoriesResponseItem = zod.object({
@@ -5152,7 +5075,7 @@ export const ListAsaMemoriesResponseItem = zod.object({
   "createdBy": zod.string(),
   "approvedBy": zod.string().nullish(),
   "approvedAt": zod.coerce.date().nullish(),
-  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED']),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'DISABLED']),
   "createdAt": zod.coerce.date()
 })
 export const ListAsaMemoriesResponse = zod.array(ListAsaMemoriesResponseItem)
@@ -5178,7 +5101,7 @@ export const UpdateAsaMemoryParams = zod.object({
 })
 
 export const UpdateAsaMemoryBody = zod.object({
-  "status": zod.enum(['APPROVED', 'REJECTED']).optional(),
+  "status": zod.enum(['APPROVED', 'REJECTED', 'DISABLED']).optional(),
   "value": zod.string().optional()
 })
 
@@ -5192,7 +5115,7 @@ export const UpdateAsaMemoryResponse = zod.object({
   "createdBy": zod.string(),
   "approvedBy": zod.string().nullish(),
   "approvedAt": zod.coerce.date().nullish(),
-  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED']),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'DISABLED']),
   "createdAt": zod.coerce.date()
 })
 

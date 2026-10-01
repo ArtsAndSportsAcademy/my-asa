@@ -4,8 +4,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Send, Sparkles, Bot, User2, Loader2, Plus, RefreshCw } from "lucide-react";
+import { Send, Bot, User2, Loader2, Plus, RefreshCw, Check, X, Brain, Pencil, Trash2, Power, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { announceActionUndo, customFetch } from "@workspace/api-client-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -15,6 +16,35 @@ interface Message {
   content: string;
   tools?: string[];
   streaming?: boolean;
+  proposal?: AsaProposal;
+}
+
+interface AsaProposal {
+  id: string;
+  actionType: string;
+  title: string;
+  content?: string;
+  operationName: string;
+  recipientCount?: number;
+  assigneeName?: string;
+  dueDate?: string;
+  previousDueDate?: string;
+  priority?: string;
+  expiresAt: string;
+  state: string;
+}
+
+interface AsaMemory {
+  id: string;
+  type: string;
+  key: string;
+  value: string;
+  status: "PENDING" | "APPROVED" | "REJECTED" | "DISABLED";
+  createdAt: string;
+}
+
+function taskPriorityLabel(priority?: string) {
+  return ({ LOW: "baixa", MEDIUM: "média", HIGH: "alta", CRITICAL: "crítica" } as Record<string, string>)[priority ?? "MEDIUM"] ?? "média";
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -29,6 +59,8 @@ function getApiBase(): string {
 
 const TOOL_LABELS: Record<string, string> = {
   consultar_agenda:            "📅 Consultando agenda",
+  consultar_meu_checkin:       "✅ Consultando seu check-in",
+  consultar_checkins_equipe:   "✅ Consultando check-ins da equipe",
   consultar_escalas:           "📋 Consultando escalas",
   consultar_responsabilidades: "👥 Consultando responsabilidades",
   consultar_notificacoes:      "🔔 Consultando notificações",
@@ -84,8 +116,9 @@ const TOOL_LABELS: Record<string, string> = {
 
 // ─── Message bubble ────────────────────────────────────────────────────────────
 
-function MessageBubble({ msg }: { msg: Message }) {
+function MessageBubble({ msg, busy, onResolve }: { msg: Message; busy: boolean; onResolve: (proposal: AsaProposal, action: "confirm" | "cancel") => void }) {
   const isUser = msg.role === "user";
+  const contentParts = (msg.content || "").split(/(\/admin\/search\?document=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/gi);
   return (
     <div className={cn("flex gap-3 max-w-3xl", isUser ? "ml-auto flex-row-reverse" : "")}>
       <div className={cn(
@@ -109,12 +142,35 @@ function MessageBubble({ msg }: { msg: Message }) {
             ))}
           </div>
         )}
-        {msg.content || (msg.streaming ? (
+        {msg.content ? contentParts.map((part, index) => {
+          const documentId = part.match(/^\/admin\/search\?document=([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i)?.[1];
+          return documentId
+            ? <a key={`${documentId}-${index}`} href={`/biblioteca?document=${documentId}`} className="mt-1 inline-flex items-center gap-1.5 text-primary underline underline-offset-2"><BookOpen className="h-3.5 w-3.5" />Abrir documento</a>
+            : <span key={index}>{part}</span>;
+        }) : msg.streaming ? (
           <span className="flex items-center gap-2 text-muted-foreground">
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
             Pensando...
           </span>
-        ) : "")}
+        ) : ""}
+        {msg.proposal && (
+          <div className="mt-3 grid gap-2 rounded-md border border-border bg-background p-3">
+            <strong className="text-xs">{msg.proposal.actionType === "MURAL_ACK" ? "Confirmação do Mural" : msg.proposal.actionType === "TASK_CREATE" ? `Tarefa · ${msg.proposal.operationName}` : msg.proposal.actionType === "TASK_UPDATE_DUE_DATE" ? `Alterar prazo · ${msg.proposal.operationName}` : `Rascunho · ${msg.proposal.operationName}`}</strong>
+            <span className="text-xs text-muted-foreground">{msg.proposal.actionType === "MURAL_ACK"
+              ? `Aviso: ${msg.proposal.title}`
+              : msg.proposal.actionType === "TASK_CREATE"
+              ? `${msg.proposal.title} · ${msg.proposal.assigneeName} · prazo ${msg.proposal.dueDate ? new Date(`${msg.proposal.dueDate}T12:00:00`).toLocaleDateString("pt-BR") : "não informado"} · prioridade ${taskPriorityLabel(msg.proposal.priority)}`
+              : msg.proposal.actionType === "TASK_UPDATE_DUE_DATE"
+              ? `${msg.proposal.title} · ${msg.proposal.previousDueDate ? new Date(`${msg.proposal.previousDueDate}T12:00:00`).toLocaleDateString("pt-BR") : "prazo atual indisponível"} → ${msg.proposal.dueDate ? new Date(`${msg.proposal.dueDate}T12:00:00`).toLocaleDateString("pt-BR") : "novo prazo indisponível"}`
+              : `${msg.proposal.title} · ${msg.proposal.recipientCount ?? 0} destinatário(s)`}</span>
+            {msg.proposal.state === "PENDING" && Date.parse(msg.proposal.expiresAt) > Date.now() ? (
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" disabled={busy} onClick={() => onResolve(msg.proposal!, "confirm")}><Check className="mr-1 h-4 w-4" />{msg.proposal.actionType === "MURAL_ACK" ? "Registrar ciente" : msg.proposal.actionType === "TASK_CREATE" ? "Criar tarefa" : msg.proposal.actionType === "TASK_UPDATE_DUE_DATE" ? "Atualizar prazo" : "Criar rascunho"}</Button>
+                <Button size="sm" variant="outline" disabled={busy} onClick={() => onResolve(msg.proposal!, "cancel")}><X className="mr-1 h-4 w-4" />Cancelar</Button>
+              </div>
+            ) : <span className="text-xs text-muted-foreground">{msg.proposal.state === "PENDING" ? "Prévia expirada" : msg.proposal.state === "CONFIRMED" ? msg.proposal.actionType === "MURAL_ACK" ? "Ciente registrado" : msg.proposal.actionType === "TASK_CREATE" ? "Tarefa criada; aprovação após a conclusão" : msg.proposal.actionType === "TASK_UPDATE_DUE_DATE" ? "Prazo atualizado" : "Rascunho criado, não publicado" : msg.proposal.state === "CANCELLED" ? "Proposta cancelada" : "Proposta não está mais disponível"}</span>}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -123,19 +179,19 @@ function MessageBubble({ msg }: { msg: Message }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const SUGGESTIONS_MANAGER = [
-  "Bom dia! Qual é o panorama de hoje?",
   "Quem está de folga hoje?",
-  "Quais são os riscos operacionais do dia?",
-  "Tem alguma responsabilidade sem responsável?",
-  "Quais avisos foram publicados recentemente?",
-  "Gerar relatório da semana.",
+  "Quais são minhas responsabilidades?",
+  "Quais são minhas mensagens não lidas?",
+  "Meus avisos",
+  "Buscar na biblioteca regras de segurança",
 ];
 
 const SUGGESTIONS_MEMBER = [
   "Qual é minha escala essa semana?",
-  "Quais são meus avisos ativos?",
-  "Quem faz aniversário essa semana?",
+  "Meus avisos",
   "Quais tarefas tenho pendentes?",
+  "Quais são minhas mensagens não lidas?",
+  "Quais são minhas folgas?",
 ];
 
 export default function AsaPage() {
@@ -145,9 +201,18 @@ export default function AsaPage() {
   );
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(() => new URLSearchParams(window.location.search).get("question") ?? "");
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [proposalBusyId, setProposalBusyId] = useState<string | null>(null);
+  const [view, setView] = useState<"conversation" | "memories">("conversation");
+  const [memories, setMemories] = useState<AsaMemory[]>([]);
+  const [memoriesLoading, setMemoriesLoading] = useState(false);
+  const [memoryRefresh, setMemoryRefresh] = useState(0);
+  const [memoryError, setMemoryError] = useState<string | null>(null);
+  const [editingMemoryId, setEditingMemoryId] = useState<string | null>(null);
+  const [memoryDraft, setMemoryDraft] = useState("");
+  const [savingMemory, setSavingMemory] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -159,9 +224,21 @@ export default function AsaPage() {
     createConversation();
   }, []);
 
+  useEffect(() => {
+    if (view !== "memories") return;
+    let active = true;
+    setMemoriesLoading(true);
+    setMemoryError(null);
+    customFetch<AsaMemory[]>("/api/asa/memories?type=PERSONAL")
+      .then((data) => { if (active) setMemories(Array.isArray(data) ? data : []); })
+      .catch(() => { if (active) setMemoryError("Não foi possível carregar seus atalhos."); })
+      .finally(() => { if (active) setMemoriesLoading(false); });
+    return () => { active = false; };
+  }, [view, memoryRefresh]);
+
   async function createConversation() {
     try {
-      const res = await fetch(`${getApiBase()}/api/anthropic/conversations`, {
+      const res = await fetch(`${getApiBase()}/api/asa/conversations`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${getToken()}`,
@@ -229,7 +306,11 @@ export default function AsaPage() {
           try {
             const json = JSON.parse(line.slice(6));
 
-            if (json.content) {
+            if (json.undo) {
+              announceActionUndo(json.undo);
+            } else if (json.proposal) {
+              setMessages(prev => prev.map(m => m.id === assistantMsg.id ? { ...m, proposal: json.proposal } : m));
+            } else if (json.content) {
               setMessages(prev => prev.map(m =>
                 m.id === assistantMsg.id
                   ? { ...m, content: m.content + json.content, streaming: true }
@@ -264,6 +345,77 @@ export default function AsaPage() {
     }
   }
 
+  async function resolveProposal(proposal: AsaProposal, action: "confirm" | "cancel") {
+    if (proposalBusyId) return;
+    setProposalBusyId(proposal.id);
+    setError(null);
+    try {
+      const response = await fetch(`${getApiBase()}/api/asa/actions/${proposal.id}/${action}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      const result = await response.json() as { message?: string; error?: string };
+      if (!response.ok) throw new Error(result.error ?? "Não consegui atualizar a proposta.");
+      setMessages(current => current.map(message => message.proposal?.id === proposal.id
+        ? { ...message, proposal: { ...message.proposal, state: action === "confirm" ? "CONFIRMED" : "CANCELLED" }, content: `${message.content}\n\n${result.message ?? "Concluído."}` }
+        : message));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não consegui atualizar a proposta.");
+    } finally {
+      setProposalBusyId(null);
+    }
+  }
+
+  async function saveMemory(memory: AsaMemory) {
+    if (!memoryDraft.trim() || savingMemory) return;
+    setSavingMemory(true);
+    setMemoryError(null);
+    try {
+      const updated = await customFetch<AsaMemory>(`/api/asa/memories/${memory.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ value: memoryDraft.trim() }),
+      });
+      setMemories((current) => current.map((item) => item.id === updated.id ? updated : item));
+      setEditingMemoryId(null);
+      setMemoryDraft("");
+    } catch {
+      setMemoryError("Não consegui salvar a edição. Tente novamente.");
+    } finally {
+      setSavingMemory(false);
+    }
+  }
+
+  async function removeMemory(memory: AsaMemory) {
+    const phrase = memory.key.startsWith("ASA_COMMAND_ALIAS:") ? memory.key.slice("ASA_COMMAND_ALIAS:".length) : memory.key;
+    if (!window.confirm(`Remover o aprendizado “${phrase}”? A ASA deixará de usá-lo.`)) return;
+    setMemoryError(null);
+    try {
+      await customFetch(`/api/asa/memories/${memory.id}`, { method: "DELETE" });
+      setMemories((current) => current.filter((item) => item.id !== memory.id));
+    } catch {
+      setMemoryError("Não consegui remover esse atalho. Tente novamente.");
+    }
+  }
+
+  async function toggleMemory(memory: AsaMemory) {
+    const enabling = memory.status === "DISABLED";
+    const isAlias = memory.key.startsWith("ASA_COMMAND_ALIAS:");
+    const phrase = isAlias ? memory.key.slice("ASA_COMMAND_ALIAS:".length) : memory.key;
+    if (!window.confirm(enabling
+      ? `Reativar “${phrase}”? A ASA voltará a ${isAlias ? "reconhecer esta frase" : "usar este aprendizado"}.`
+      : `Desativar “${phrase}”? O aprendizado continuará salvo, mas a ASA deixará de ${isAlias ? "reconhecer esta frase" : "usá-lo"}.`)) return;
+    setMemoryError(null);
+    try {
+      const updated = await customFetch<AsaMemory>(`/api/asa/memories/${memory.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: enabling ? "APPROVED" : "DISABLED" }),
+      });
+      setMemories((current) => current.map((item) => item.id === updated.id ? updated : item));
+    } catch {
+      setMemoryError("Não consegui alterar o estado desse atalho. Tente novamente.");
+    }
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -272,26 +424,24 @@ export default function AsaPage() {
   }
 
   return (
-    <AdminLayout title="ASA" subtitle="Assistente inteligente operacional da ASA">
+    <AdminLayout title="ASA" subtitle="Assistente operacional">
       <div className="flex flex-col h-[calc(100dvh-14rem)] min-h-0 max-w-3xl mx-auto">
 
         {/* ── Header Card ── */}
         <div className="flex items-center justify-between mb-4 p-4 rounded-xl bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/10">
           <div className="flex items-center gap-3">
-            <img src="/asinha.svg" alt="ASA" className="w-10 h-12 shrink-0" />
+            <img src="/asa-wing.png" alt="Asa My ASA" className="w-10 h-12 shrink-0 object-contain" />
             <div>
               <p className="font-serif font-bold text-base">ASA</p>
               <p className="text-xs text-muted-foreground">Assistente Operacional • sempre disponível</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {conversationId && (
-              <Badge variant="outline" className="text-xs text-muted-foreground">
-                <Sparkles className="w-3 h-3 mr-1" />
-                claude-sonnet
-              </Badge>
-            )}
-            <Button
+              <Button variant={view === "memories" ? "secondary" : "outline"} size="sm" onClick={() => setView(view === "memories" ? "conversation" : "memories")}>
+              <Brain className="h-4 w-4" />{view === "memories" ? "Conversa" : "Meus aprendizados"}
+            </Button>
+            {conversationId && <Badge variant="outline" className="text-xs text-muted-foreground">Sem modelo externo</Badge>}
+            {view === "conversation" && <Button
               variant="outline"
               size="sm"
               onClick={createConversation}
@@ -300,10 +450,54 @@ export default function AsaPage() {
             >
               <Plus className="w-3.5 h-3.5 mr-1" />
               Nova conversa
-            </Button>
+            </Button>}
           </div>
         </div>
 
+        {view === "memories" ? (
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-3 px-1 pb-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div>
+                <h2 className="text-base font-semibold">Meus aprendizados pessoais</h2>
+                <p className="text-sm text-muted-foreground">Só você pode ver e alterar estes aprendizados.</p>
+              </div>
+              <Button variant="outline" size="icon" aria-label="Atualizar aprendizados" title="Atualizar" onClick={() => setMemoryRefresh((value) => value + 1)}>
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </div>
+            {memoryError && <p role="alert" className="text-sm text-destructive">{memoryError}</p>}
+            {memoriesLoading ? <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin" /></div>
+              : memories.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">Você ainda não ensinou aprendizados pessoais à ASA.</p>
+              : memories.map((memory) => {
+                const phrase = memory.key.startsWith("ASA_COMMAND_ALIAS:") ? memory.key.slice("ASA_COMMAND_ALIAS:".length) : memory.key;
+                const status = memory.status === "APPROVED" ? "Ativo" : memory.status === "PENDING" ? "Aguardando aprovação" : memory.status === "DISABLED" ? "Desativado" : "Rejeitado";
+                const editing = editingMemoryId === memory.id;
+                return <article key={memory.id} className="border-b py-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-medium break-words">{phrase}</h3>
+                        <Badge variant={memory.status === "APPROVED" ? "secondary" : "outline"}>{status}</Badge>
+                      </div>
+                      {editing ? <div className="mt-3 space-y-2">
+                        <Textarea value={memoryDraft} onChange={(event) => setMemoryDraft(event.target.value)} maxLength={2000} rows={3} aria-label="Conteúdo do aprendizado" />
+                        <p className="text-xs text-muted-foreground">Salvar envia a edição para nova aprovação antes de a ASA voltar a usá-la.</p>
+                        <div className="flex gap-2">
+                          <Button size="sm" disabled={!memoryDraft.trim() || savingMemory} onClick={() => void saveMemory(memory)}><Check className="h-4 w-4" />Salvar</Button>
+                          <Button size="sm" variant="outline" disabled={savingMemory} onClick={() => { setEditingMemoryId(null); setMemoryDraft(""); }}><X className="h-4 w-4" />Cancelar</Button>
+                        </div>
+                      </div> : <p className="mt-1 whitespace-pre-wrap break-words text-sm text-muted-foreground">{memory.value}</p>}
+                    </div>
+                    {!editing && <div className="flex shrink-0 gap-1">
+                      <Button variant="ghost" size="icon" title="Editar aprendizado" aria-label="Editar aprendizado" onClick={() => { setEditingMemoryId(memory.id); setMemoryDraft(memory.value); }}><Pencil className="h-4 w-4" /></Button>
+                      {(memory.status === "APPROVED" || memory.status === "DISABLED") && <Button variant="ghost" size="icon" title={memory.status === "APPROVED" ? "Desativar aprendizado" : "Reativar aprendizado"} aria-label={memory.status === "APPROVED" ? "Desativar aprendizado" : "Reativar aprendizado"} onClick={() => void toggleMemory(memory)}><Power className={cn("h-4 w-4", memory.status === "APPROVED" ? "text-muted-foreground" : "text-primary")} /></Button>}
+                      <Button variant="ghost" size="icon" title="Remover aprendizado" aria-label="Remover aprendizado" onClick={() => void removeMemory(memory)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                    </div>}
+                  </div>
+                </article>;
+              })}
+          </div>
+        ) : <>
         {/* ── Messages ── */}
         <div className="flex-1 overflow-y-auto space-y-4 pb-4 px-1">
           {messages.length === 0 && !error && (
@@ -315,7 +509,7 @@ export default function AsaPage() {
                 <p className="font-medium text-muted-foreground">Olá! Sou a ASA.</p>
                 <p className="text-sm text-muted-foreground/70 mt-1">
                   Posso consultar agenda, escalas, responsabilidades,<br />
-                  avisos, tarefas e muito mais.
+                  avisos, tarefas e mensagens não lidas.
                 </p>
               </div>
               <div className="flex flex-wrap justify-center gap-2 mt-2">
@@ -342,7 +536,7 @@ export default function AsaPage() {
             </div>
           )}
 
-          {messages.map((msg) => <MessageBubble key={msg.id} msg={msg} />)}
+          {messages.map((msg) => <MessageBubble key={msg.id} msg={msg} busy={proposalBusyId === msg.proposal?.id} onResolve={(proposal, action) => void resolveProposal(proposal, action)} />)}
           <div ref={bottomRef} />
         </div>
 
@@ -376,6 +570,7 @@ export default function AsaPage() {
             A ASA pode cometer erros. Sempre revise ações importantes antes de confirmar.
           </p>
         </div>
+        </>}
       </div>
     </AdminLayout>
   );

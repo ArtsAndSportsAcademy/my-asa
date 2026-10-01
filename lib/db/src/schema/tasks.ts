@@ -12,6 +12,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./identity.js";
 import { operationsTable, organizationsTable } from "./organization.js";
+import { responsibilitiesTable } from "./responsibilities.js";
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
@@ -34,6 +35,8 @@ export const taskStatusEnum = pgEnum("task_status", [
 ]);
 
 export const taskOriginEnum = pgEnum("task_origin", [
+  "PERSON",
+  "ASA",
   "MANUAL",
   "REQUEST",
   "LIBRARY",
@@ -60,6 +63,7 @@ export const tasksTable = pgTable("tasks", {
   operationId: uuid("operation_id")
     .notNull()
     .references(() => operationsTable.id),
+  responsibilityId: uuid("responsibility_id").references(() => responsibilitiesTable.id),
   title: text("title").notNull(),
   description: text("description"),
   creatorId: uuid("creator_id")
@@ -134,6 +138,7 @@ export const taskEvidencesTable = pgTable("task_evidences", {
    * mandatory evidence requirement id from tasks.mandatoryEvidences.
    */
   mandatoryEvidenceRefId: text("mandatory_evidence_ref_id"),
+  active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

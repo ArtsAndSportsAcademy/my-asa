@@ -1,9 +1,10 @@
 import { Router, type IRouter } from "express";
-import { eq, and, gte, lte, desc, isNotNull, inArray, or, isNull } from "drizzle-orm";
+import { eq, and, gte, lte, desc, isNotNull, inArray, or, isNull, ne } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   scalesTable,
   scaleAllocationsTable,
+  allocationCandidatesTable,
   allocationExceptionsTable,
   agendaEventsTable,
   showBooksTable,
@@ -14,6 +15,9 @@ import {
   responsibilityAssignmentsTable,
   operationsTable,
   userRolesTable,
+  areasTable,
+  locationsTable,
+  webPushSubscriptionsTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
@@ -21,25 +25,27 @@ import { eventBus } from "../lib/event-bus.js";
 import { runCoverageEngine, persistEngineResult } from "../services/coverage-engine.js";
 import { resolveScaleAllocations, resolveUserRecurringAllocations } from "../services/scale-merge.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
-import { hasActiveResponsibility } from "../lib/delegation-check.js";
 import { notifyMany } from "../services/notificationService.js";
 import { getActiveOperationInOrganization } from "../services/operation-lifecycle.js";
+import { operationalDate, shiftOperationalDate } from "../lib/operational-date.js";
+import {
+  detectAndPersistScheduleConflicts,
+  type PublicScheduleConflict,
+} from "../services/schedule-conflicts.js";
+import {
+  readBaseSnapshot,
+  requireExpectedVersion,
+  respondWithVersionConflict,
+  VersionConflictError,
+  VersionedResourceNotFoundError,
+  type VersionedSnapshot,
+} from "../lib/versioning.js";
+import { enqueueNotification, databaseNow } from "../services/undo.js";
+import { hasScaleAuthority } from "../services/scale-access.js";
 
 const router: IRouter = Router();
 // ADMIN tem autoridade global; supervisores são validados por Operação abaixo.
 const MANAGER_ROLES = ["ADMIN"];
-
-async function hasScaleAuthority(userId: string, operationId: string): Promise<boolean> {
-  const supervisor = await db.query.userRolesTable.findFirst({
-    where: and(
-      eq(userRolesTable.userId, userId),
-      eq(userRolesTable.operationId, operationId),
-      eq(userRolesTable.active, true),
-      or(eq(userRolesTable.role, "SUPERVISOR_A"), eq(userRolesTable.role, "SUPERVISOR_B")),
-    ),
-  });
-  return !!supervisor || hasActiveResponsibility(userId, operationId, "SCALES");
-}
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
@@ -64,8 +70,8 @@ async function getScaleOrFail(id: string, organizationId: string, res: any) {
 
 async function buildScaleSummary(scale: typeof scalesTable.$inferSelect) {
   const [totalAllocations, exceptions] = await Promise.all([
-    db.select().from(scaleAllocationsTable).where(eq(scaleAllocationsTable.scaleId, scale.id)),
-    db.select().from(allocationExceptionsTable).where(eq(allocationExceptionsTable.scaleId, scale.id)),
+    db.select().from(scaleAllocationsTable).where(and(eq(scaleAllocationsTable.scaleId, scale.id), eq(scaleAllocationsTable.active, true))),
+    db.select().from(allocationExceptionsTable).where(and(eq(allocationExceptionsTable.scaleId, scale.id), eq(allocationExceptionsTable.active, true))),
   ]);
 
   return {
@@ -78,6 +84,100 @@ async function buildScaleSummary(scale: typeof scalesTable.$inferSelect) {
   };
 }
 
+async function buildScaleVersionSnapshot(scaleId: string, dbLike: typeof db = db): Promise<VersionedSnapshot> {
+  const [scale] = await dbLike.select().from(scalesTable).where(eq(scalesTable.id, scaleId)).limit(1);
+  const allocations = await dbLike.select().from(scaleAllocationsTable).where(eq(scaleAllocationsTable.scaleId, scaleId));
+  const exceptions = await dbLike.select().from(allocationExceptionsTable).where(eq(allocationExceptionsTable.scaleId, scaleId));
+  return { scale: scale ?? null, allocations, exceptions };
+}
+
+async function mutateScale<T>(
+  scaleId: string,
+  expectedVersion: number,
+  mutate: (tx: typeof db, claimedScale: typeof scalesTable.$inferSelect) => Promise<T>,
+  afterMutate?: (
+    tx: typeof db,
+    claimedScale: typeof scalesTable.$inferSelect,
+    result: T,
+  ) => Promise<void>,
+): Promise<T> {
+  return db.transaction(async (tx) => {
+    const [claimedScale] = await tx
+      .update(scalesTable)
+      .set({ version: expectedVersion + 1, updatedAt: new Date() })
+      .where(and(eq(scalesTable.id, scaleId), eq(scalesTable.version, expectedVersion)))
+      .returning();
+    if (!claimedScale) throw new VersionConflictError("Escala");
+    const typedTx = tx as unknown as typeof db;
+    const wasPublished = ["PUBLISHED", "REPUBLISHED"].includes(claimedScale.status);
+    const previousEntries = wasPublished ? await tx.select().from(scaleAllocationsTable).where(eq(scaleAllocationsTable.scaleId, scaleId)).orderBy(scaleAllocationsTable.id) : [];
+    const result = await mutate(typedTx, claimedScale);
+    if (afterMutate) await afterMutate(typedTx, claimedScale, result);
+    if (wasPublished) {
+      const [current] = await tx.select().from(scalesTable).where(eq(scalesTable.id, scaleId));
+      const entries = await tx.select().from(scaleAllocationsTable).where(eq(scaleAllocationsTable.scaleId, scaleId)).orderBy(scaleAllocationsTable.id);
+      if (current && ["PUBLISHED", "REPUBLISHED"].includes(current.status) && JSON.stringify(entries) !== JSON.stringify(previousEntries)) {
+        const recipients = [...new Set([...previousEntries, ...entries].filter(row => row.active && row.userId).map(row => row.userId!))];
+        if (recipients.length) {
+          const subscriptions = await tx.select({ userId: webPushSubscriptionsTable.userId }).from(webPushSubscriptionsTable).where(and(inArray(webPushSubscriptionsTable.userId, recipients), eq(webPushSubscriptionsTable.active, true)));
+          const now = await databaseNow(tx);
+          for (const userId of new Set(subscriptions.map(row => row.userId))) await enqueueNotification(tx, { userId, type: "scale.changed", title: "Escala mudou", message: "Sua escala foi alterada. Consulte o My ASA.", category: "schedule", entityType: "scale", entityId: scaleId, actionUrl: "/membro/escala", webOnly: true }, now, { deduplicationKey: `scale-change:${scaleId}:${current.version}:${userId}` });
+        }
+      }
+    }
+    return result;
+  });
+}
+
+async function respondScaleVersionConflict(req: any, res: any, scaleId: string, expectedVersion: number): Promise<void> {
+  const [currentScale] = await db.select().from(scalesTable).where(eq(scalesTable.id, scaleId)).limit(1);
+  if (!currentScale) {
+    res.status(404).json({ error: "Escala não encontrada" });
+    return;
+  }
+  respondWithVersionConflict(
+    res,
+    "Escala",
+    expectedVersion,
+    currentScale.version,
+    await buildScaleVersionSnapshot(scaleId),
+    readBaseSnapshot(req),
+  );
+}
+
+async function respondScaleMutationError(err: unknown, req: any, res: any, scaleId: string, expectedVersion: number): Promise<boolean> {
+  if (err instanceof VersionConflictError) {
+    await respondScaleVersionConflict(req, res, scaleId, expectedVersion);
+    return true;
+  }
+  if (err instanceof VersionedResourceNotFoundError) {
+    res.status(404).json({ error: err.message });
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Alertas não podem desfazer uma gravação da Escala. Falhas no detector também
+ * ficam isoladas do caminho de salvamento: a Escala continua salva e pode ser
+ * consultada novamente pela rota de conflitos.
+ */
+async function detectScaleConflicts(
+  entries: Array<{ userId: string | null; date: string | null }>,
+): Promise<PublicScheduleConflict[]> {
+  const conflicts = new Map<string, PublicScheduleConflict>();
+  for (const entry of entries) {
+    if (!entry.userId || !entry.date) continue;
+    try {
+      const detected = await detectAndPersistScheduleConflicts(entry.userId, entry.date);
+      for (const conflict of detected) conflicts.set(conflict.id, conflict);
+    } catch (error) {
+      requestLogger("scale", "conflict-detector", "conflict-detector").warn({ err: error }, "detector de conflito indisponível após gravação");
+    }
+  }
+  return [...conflicts.values()];
+}
+
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 // GET /api/scales — list scales
@@ -87,7 +187,7 @@ router.get("/scales", requireAuth, requireOrganization, async (req, res) => {
   const user = req.user!;
 
   try {
-    if (!["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"].includes(user.role)) {
+    if (!["ADMIN", "DIR", "SUPERVISOR_A", "SUPERVISOR_B"].includes(user.role)) {
       res.status(403).json({ error: "Forbidden", message: "Acesso restrito à gestão de Escalas" });
       return;
     }
@@ -98,12 +198,12 @@ router.get("/scales", requireAuth, requireOrganization, async (req, res) => {
         eq(operationsTable.status, "ACTIVE"),
       ),
     });
-    const allowedOperationIds = user.role === "ADMIN"
+    const allowedOperationIds = ["ADMIN", "DIR"].includes(user.role)
       ? organizationOperations.map((operation) => operation.id)
       : (await Promise.all(
           organizationOperations.map(async (operation) => ({
             id: operation.id,
-            allowed: await hasScaleAuthority(user.sub, operation.id),
+            allowed: await hasScaleAuthority(user.sub, operation.id, undefined, undefined, undefined, true),
           })),
         )).filter((operation) => operation.allowed).map((operation) => operation.id);
 
@@ -120,6 +220,7 @@ router.get("/scales", requireAuth, requireOrganization, async (req, res) => {
     if (operationId) conditions.push(eq(scalesTable.operationId, operationId));
     if (groupId) conditions.push(eq(scalesTable.groupId, groupId));
     if (status) conditions.push(eq(scalesTable.status, status as any));
+    else conditions.push(ne(scalesTable.status, "ARCHIVED"));
     if (from) conditions.push(gte(scalesTable.periodStart, from));
     if (to) conditions.push(lte(scalesTable.periodEnd, to));
 
@@ -129,7 +230,11 @@ router.get("/scales", requireAuth, requireOrganization, async (req, res) => {
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(scalesTable.createdAt));
 
-    const summaries = await Promise.all(scales.map(buildScaleSummary));
+    const visibleScales = [];
+    for (const scale of scales) {
+      if (["ADMIN", "DIR"].includes(user.role) || await hasScaleAuthority(user.sub, scale.operationId, scale.groupId, scale.areaId, scale.locationId)) visibleScales.push(scale);
+    }
+    const summaries = await Promise.all(visibleScales.map(buildScaleSummary));
     res.json({ scales: summaries });
   } catch (err) {
     log.error({ err }, "erro ao listar escalas");
@@ -144,7 +249,7 @@ router.post("/scales/generate", requireAuth, requireOrganization, async (req, re
   const log = requestLogger("scale", req.requestId, req.correlationId);
   const user = req.user!;
   const userId = user.sub;
-  const { agendaEventId, showBookId, operationId, groupId, title, periodStart: bodyPeriodStart, periodEnd: bodyPeriodEnd } = req.body;
+  const { agendaEventId, showBookId, operationId, groupId, areaId, locationId, title, periodStart: bodyPeriodStart, periodEnd: bodyPeriodEnd } = req.body;
 
   if (!operationId) {
     res.status(400).json({ error: "operationId é obrigatório" });
@@ -154,9 +259,13 @@ router.post("/scales/generate", requireAuth, requireOrganization, async (req, re
     res.status(400).json({ error: "Informe um evento da agenda OU um período (periodStart + periodEnd)" });
     return;
   }
+  if ((areaId && !locationId) || (!areaId && locationId)) {
+    res.status(400).json({ error: "areaId e locationId devem ser informados juntos" });
+    return;
+  }
 
   if (!MANAGER_ROLES.includes(user.role)) {
-    if (!(await hasScaleAuthority(userId, operationId))) {
+    if (!(await hasScaleAuthority(userId, operationId, groupId, areaId, locationId))) {
       res.status(403).json({ error: "Forbidden", message: "Apenas supervisores ou delegados com responsabilidade de Escalas podem gerar escalas" });
       return;
     }
@@ -171,6 +280,14 @@ router.post("/scales/generate", requireAuth, requireOrganization, async (req, re
         message: "A operação não existe, está em configuração ou foi arquivada.",
       });
       return;
+    }
+
+    if (areaId && locationId) {
+      const [[area], [location]] = await Promise.all([
+        db.select({ id: areasTable.id }).from(areasTable).where(and(eq(areasTable.id, areaId), eq(areasTable.organizationId, user.organizationId), eq(areasTable.active, true))).limit(1),
+        db.select({ id: locationsTable.id }).from(locationsTable).where(and(eq(locationsTable.id, locationId), eq(locationsTable.organizationId, user.organizationId), eq(locationsTable.closed, false))).limit(1),
+      ]);
+      if (!area || !location) { res.status(403).json({ error: "Área ou local fora do escopo ativo" }); return; }
     }
 
     let periodStart: string = bodyPeriodStart ?? "";
@@ -219,47 +336,35 @@ router.post("/scales/generate", requireAuth, requireOrganization, async (req, re
       autoTitle = `Escala Operacional ${periodStart}${periodEnd !== periodStart ? ` a ${periodEnd}` : ""}`;
     }
 
-    // Criar escala (agendaEventId e showBookId são nullable)
-    const [scale] = await db
-      .insert(scalesTable)
-      .values({
-        operationId,
-        groupId: groupId ?? null,
-        agendaEventId: agendaEventId ?? null,
-        showBookId: showBookId ?? null,
-        title: autoTitle,
-        periodStart,
-        periodEnd,
-        status: "DRAFT",
-        generatedAt: new Date(),
-        generatedBy: userId,
-        createdBy: userId,
-      })
-      .returning();
+    const { scale, engineResult } = await db.transaction(async (tx) => {
+      // Criar escala (agendaEventId e showBookId são nullable)
+      const [createdScale] = await tx.insert(scalesTable).values({
+        operationId, groupId: groupId ?? null, areaId: areaId ?? null, locationId: locationId ?? null, agendaEventId: agendaEventId ?? null,
+        showBookId: showBookId ?? null, title: autoTitle, periodStart, periodEnd,
+        status: "DRAFT", generatedAt: new Date(), generatedBy: userId, createdBy: userId,
+      }).returning();
+      if (!createdScale) throw new Error("Falha ao criar escala");
 
-    if (!scale) {
-      res.status(500).json({ error: "Falha ao criar escala" });
-      return;
-    }
-
-    // Motor de cobertura: apenas quando há show book E evento (escalas de show/casting)
-    let engineResult = {
-      totalPositions: 0,
-      assignedPositions: 0,
-      openPositions: 0,
-      conflictPositions: 0,
-    };
-
-    if (showBookId && agendaEventId) {
-      const fullResult = await runCoverageEngine(agendaEventId, showBookId, operationId, groupId);
-      await persistEngineResult(scale.id, agendaEventId, fullResult);
-      engineResult = {
-        totalPositions: fullResult.totalPositions,
-        assignedPositions: fullResult.assignedPositions,
-        openPositions: fullResult.openPositions,
-        conflictPositions: fullResult.conflictPositions,
-      };
-    }
+      let result = { totalPositions: 0, assignedPositions: 0, openPositions: 0, conflictPositions: 0 };
+      if (showBookId && agendaEventId) {
+        const fullResult = await runCoverageEngine(agendaEventId, showBookId, operationId, groupId);
+        await persistEngineResult(createdScale.id, agendaEventId, fullResult, tx as any);
+        result = {
+          totalPositions: fullResult.totalPositions,
+          assignedPositions: fullResult.assignedPositions,
+          openPositions: fullResult.openPositions,
+          conflictPositions: fullResult.conflictPositions,
+        };
+      }
+      await writeHistoryEvent({
+        category: "SCALE", action: "generated", title: "Escala gerada",
+        narrative: `A Escala ${createdScale.title} foi gerada.`, entityType: "scale", entityId: createdScale.id,
+        actorId: userId, actorType: "HUMAN", operationId, orgId: req.user!.organizationId,
+        beforeState: null, afterState: { scale: createdScale, engine: result },
+        metadata: { reason: req.body?.reason ?? null },
+      }, tx as any);
+      return { scale: createdScale, engineResult: result };
+    });
 
     eventBus.emit("scale.generated", {
       scaleId: scale.id,
@@ -315,7 +420,7 @@ router.get("/scales/my-allocations", requireAuth, requireOrganization, async (re
         .leftJoin(agendaEventsTable, eq(scaleAllocationsTable.agendaEventId, agendaEventsTable.id))
         .leftJoin(scalesTable, eq(scaleAllocationsTable.scaleId, scalesTable.id))
         .leftJoin(operationsTable, eq(scalesTable.operationId, operationsTable.id))
-        .where(eq(scaleAllocationsTable.userId, userId)),
+        .where(and(eq(scaleAllocationsTable.userId, userId), eq(scaleAllocationsTable.active, true))),
       db
         .select({ operationId: userRolesTable.operationId })
         .from(userRolesTable)
@@ -343,13 +448,9 @@ router.get("/scales/my-allocations", requireAuth, requireOrganization, async (re
     }));
 
     // Atividades recorrentes: janela de 7 dias atrás até 90 dias à frente.
-    const now = new Date();
-    const periodStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .slice(0, 10);
-    const periodEnd = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .slice(0, 10);
+    const operationalToday = operationalDate();
+    const periodStart = shiftOperationalDate(operationalToday, -7);
+    const periodEnd = shiftOperationalDate(operationalToday, 90);
     const operationIds = [...new Set(userOps.map((r) => r.operationId).filter((id): id is string => !!id))];
 
     const recurringRows = await resolveUserRecurringAllocations(
@@ -439,15 +540,18 @@ router.get("/scales/:id", requireAuth, requireOrganization, async (req, res) => 
         .from(scaleAllocationsTable)
         .leftJoin(showBookRolesTable, eq(scaleAllocationsTable.positionId, showBookRolesTable.id))
         .leftJoin(usersTable, eq(scaleAllocationsTable.userId, usersTable.id))
-        .where(eq(scaleAllocationsTable.scaleId, id)),
+        .where(and(eq(scaleAllocationsTable.scaleId, id), eq(scaleAllocationsTable.active, true))),
       db
         .select()
         .from(allocationExceptionsTable)
-        .where(eq(allocationExceptionsTable.scaleId, id))
+        .where(and(eq(allocationExceptionsTable.scaleId, id), eq(allocationExceptionsTable.active, true)))
         .orderBy(allocationExceptionsTable.createdAt),
     ]);
 
-    res.json({ scale: { ...scale, allocations, exceptions } });
+    res.json({
+      scale: { ...scale, allocations, exceptions },
+      currentSnapshot: await buildScaleVersionSnapshot(id),
+    });
   } catch (err) {
     log.error({ err }, "erro ao buscar escala");
     res.status(500).json({ error: "Erro interno" });
@@ -460,13 +564,14 @@ router.post("/scales/:id/regenerate", requireAuth, requireOrganization, async (r
   const id = req.params["id"] as string;
   const user = req.user!;
   const userId = user.sub;
+  let expectedVersion: number | null = null;
 
   try {
     const scale = await getScaleOrFail(id, req.user!.organizationId, res);
     if (!scale) return;
 
     if (!MANAGER_ROLES.includes(user.role)) {
-      if (!(await hasScaleAuthority(userId, scale.operationId))) {
+      if (!(await hasScaleAuthority(userId, scale.operationId, scale.groupId, scale.areaId, scale.locationId))) {
         res.status(403).json({ error: "Forbidden", message: "Apenas supervisores ou delegados com responsabilidade de Escalas podem regenerar escalas" });
         return;
       }
@@ -476,21 +581,9 @@ router.post("/scales/:id/regenerate", requireAuth, requireOrganization, async (r
       res.status(409).json({ error: "Apenas escalas em Rascunho podem ser regeradas" });
       return;
     }
-
-    // Auto-gerar é um auxílio OPCIONAL sobre um fluxo majoritariamente manual:
-    // só remove alocações geradas pelo motor (agendaEventId != null), preservando
-    // as entradas manuais (manualDate/manualLabel, agendaEventId == null).
-    await db
-      .delete(scaleAllocationsTable)
-      .where(
-        and(
-          eq(scaleAllocationsTable.scaleId, id),
-          isNotNull(scaleAllocationsTable.agendaEventId)
-        )
-      );
-    await db
-      .delete(allocationExceptionsTable)
-      .where(eq(allocationExceptionsTable.scaleId, id));
+    expectedVersion = requireExpectedVersion(req, res, "a Escala");
+    if (expectedVersion === null) return;
+    const beforeSnapshot = await buildScaleVersionSnapshot(id);
 
     // Determinar pares (evento, show book) a processar:
     // - escala de show: o próprio agendaEventId/showBookId da escala
@@ -530,6 +623,7 @@ router.post("/scales/:id/regenerate", requireAuth, requireOrganization, async (r
       conflictPositions: 0,
     };
 
+    const engineResults: { target: { agendaEventId: string; showBookId: string }; result: Awaited<ReturnType<typeof runCoverageEngine>> }[] = [];
     for (const t of targets) {
       const fullResult = await runCoverageEngine(
         t.agendaEventId,
@@ -537,22 +631,57 @@ router.post("/scales/:id/regenerate", requireAuth, requireOrganization, async (r
         scale.operationId,
         scale.groupId ?? undefined
       );
-      await persistEngineResult(id, t.agendaEventId, fullResult);
+      engineResults.push({ target: t, result: fullResult });
       engineResult.totalPositions += fullResult.totalPositions;
       engineResult.assignedPositions += fullResult.assignedPositions;
       engineResult.openPositions += fullResult.openPositions;
       engineResult.conflictPositions += fullResult.conflictPositions;
     }
 
-    // Update generatedAt
-    await db
-      .update(scalesTable)
-      .set({ generatedAt: new Date(), generatedBy: userId, updatedAt: new Date() })
-      .where(eq(scalesTable.id, id));
+    // Replacing generated children and advancing the parent version happen in
+    // one transaction. Other editors cannot observe the intermediate state.
+    const updatedScale = await db.transaction(async (tx) => {
+      const [claimedScale] = await tx
+        .update(scalesTable)
+        .set({ version: expectedVersion! + 1, updatedAt: new Date() })
+        .where(and(eq(scalesTable.id, id), eq(scalesTable.version, expectedVersion!)))
+        .returning();
+      if (!claimedScale) throw new VersionConflictError("Escala");
+
+      // Nada é apagado: a geração anterior fica desativada, preservada no histórico
+      // (mesmo padrão de "entrada manual arquivada" já usado nesta rota).
+      await tx.update(scaleAllocationsTable).set({ active: false, updatedAt: new Date() }).where(
+        and(eq(scaleAllocationsTable.scaleId, id), isNotNull(scaleAllocationsTable.agendaEventId), eq(scaleAllocationsTable.active, true)),
+      );
+      await tx.update(allocationExceptionsTable).set({ active: false, updatedAt: new Date() }).where(and(eq(allocationExceptionsTable.scaleId, id), eq(allocationExceptionsTable.active, true)));
+      for (const item of engineResults) {
+        await persistEngineResult(id, item.target.agendaEventId, item.result, tx as unknown as typeof db);
+      }
+      const [updated] = await tx
+        .update(scalesTable)
+        .set({ generatedAt: new Date(), generatedBy: userId })
+        .where(eq(scalesTable.id, id))
+        .returning();
+      await writeHistoryEvent({
+        category: "SCALE",
+        action: "regenerated",
+        title: "Escala regenerada",
+        narrative: "A Escala foi regenerada.",
+        entityType: "scale",
+        entityId: id,
+        actorId: userId,
+        actorType: "HUMAN",
+        operationId: scale.operationId,
+        orgId: req.user!.organizationId,
+        beforeState: beforeSnapshot,
+        afterState: await buildScaleVersionSnapshot(id, tx as any),
+      }, tx as any);
+      return updated!;
+    });
 
     eventBus.emit("scale.regenerated", { scaleId: id, operationId: scale.operationId });
 
-    const summary = await buildScaleSummary(scale);
+    const summary = await buildScaleSummary(updatedScale);
     res.json({
       scale: summary,
       engine: {
@@ -563,6 +692,7 @@ router.post("/scales/:id/regenerate", requireAuth, requireOrganization, async (r
       },
     });
   } catch (err) {
+    if (expectedVersion !== null && await respondScaleMutationError(err, req, res, id, expectedVersion)) return;
     log.error({ err }, "erro ao regenerar escala");
     res.status(500).json({ error: "Erro ao regenerar escala" });
   }
@@ -574,17 +704,21 @@ router.patch("/scales/:id", requireAuth, requireOrganization, async (req, res) =
   const id = req.params["id"] as string;
   const user = req.user!;
   const { title, publishDeadline } = req.body as { title?: string; publishDeadline?: string | null };
+  let expectedVersion: number | null = null;
 
   try {
     const scale = await getScaleOrFail(id, req.user!.organizationId, res);
     if (!scale) return;
 
     if (!MANAGER_ROLES.includes(user.role)) {
-      if (!(await hasScaleAuthority(user.sub, scale.operationId))) {
+      if (!(await hasScaleAuthority(user.sub, scale.operationId, scale.groupId, scale.areaId, scale.locationId))) {
         res.status(403).json({ error: "Forbidden", message: "Apenas supervisores ou delegados com responsabilidade de Escalas" });
         return;
       }
     }
+    expectedVersion = requireExpectedVersion(req, res, "a Escala");
+    if (expectedVersion === null) return;
+    const beforeSnapshot = await buildScaleVersionSnapshot(id);
 
     const patch: Partial<typeof scalesTable.$inferInsert> = { updatedAt: new Date() };
     if (title !== undefined) patch.title = title ?? scale.title;
@@ -592,15 +726,27 @@ router.patch("/scales/:id", requireAuth, requireOrganization, async (req, res) =
       patch.publishDeadline = publishDeadline ? new Date(publishDeadline) : null;
     }
 
-    const [updated] = await db
-      .update(scalesTable)
-      .set(patch)
-      .where(eq(scalesTable.id, id))
-      .returning();
+    const updated = await mutateScale(id, expectedVersion, async (tx) => {
+      const [next] = await tx
+        .update(scalesTable)
+        .set(patch)
+        .where(eq(scalesTable.id, id))
+        .returning();
+      return next!;
+    }, async (tx, _claimedScale, next) => {
+      await writeHistoryEvent({
+        category: "SCALE", action: "updated", title: "Escala alterada",
+        narrative: "Metadados da Escala alterados.", entityType: "scale", entityId: id,
+        actorId: user.sub, actorType: "HUMAN", operationId: scale.operationId,
+        orgId: req.user!.organizationId, beforeState: beforeSnapshot,
+        afterState: { scale: next, snapshot: await buildScaleVersionSnapshot(id, tx) },
+      }, tx as any);
+    });
 
     eventBus.emit("scale.updated", { scaleId: id });
     res.json({ scale: updated });
   } catch (err) {
+    if (expectedVersion !== null && await respondScaleMutationError(err, req, res, id, expectedVersion)) return;
     log.error({ err }, "erro ao atualizar escala");
     res.status(500).json({ error: "Erro interno" });
   }
@@ -612,13 +758,14 @@ router.post("/scales/:id/publish", requireAuth, requireOrganization, async (req,
   const id = req.params["id"] as string;
   const user = req.user!;
   const userId = user.sub;
+  let expectedVersion: number | null = null;
 
   try {
     const scale = await getScaleOrFail(id, req.user!.organizationId, res);
     if (!scale) return;
 
     if (!MANAGER_ROLES.includes(user.role)) {
-      if (!(await hasScaleAuthority(userId, scale.operationId))) {
+      if (!(await hasScaleAuthority(userId, scale.operationId, scale.groupId, scale.areaId, scale.locationId))) {
         res.status(403).json({ error: "Forbidden", message: "Apenas supervisores ou delegados com responsabilidade de Escalas" });
         return;
       }
@@ -628,26 +775,34 @@ router.post("/scales/:id/publish", requireAuth, requireOrganization, async (req,
       res.status(409).json({ error: "Apenas escalas em Rascunho podem ser publicadas" });
       return;
     }
+    expectedVersion = requireExpectedVersion(req, res, "a Escala");
+    if (expectedVersion === null) return;
+    const beforeSnapshot = await buildScaleVersionSnapshot(id);
 
-    const [updated] = await db
-      .update(scalesTable)
-      .set({ status: "PUBLISHED", publishedAt: new Date(), publishedBy: userId, updatedAt: new Date() })
-      .where(eq(scalesTable.id, id))
-      .returning();
+    const updated = await mutateScale(id, expectedVersion, async (tx) => {
+      const [next] = await tx
+        .update(scalesTable)
+        .set({ status: "PUBLISHED", publishedAt: new Date(), publishedBy: userId })
+        .where(eq(scalesTable.id, id))
+        .returning();
+      return next!;
+    }, async (tx, _claimedScale, next) => {
+      await writeHistoryEvent({
+        category: "SCALE", action: "published",
+        title: "Escala publicada",
+        narrative: "Escala publicada e disponível para os membros.",
+        entityType: "scale", entityId: id,
+        actorId: userId, actorType: "HUMAN", operationId: scale.operationId,
+        orgId: req.user!.organizationId, beforeState: beforeSnapshot,
+        afterState: { scale: next, snapshot: await buildScaleVersionSnapshot(id, tx) },
+      }, tx as any);
+    });
 
     eventBus.emit("scale.published", { scaleId: id, operationId: scale.operationId });
-    writeHistoryEvent({
-      category: "SCALE", action: "published",
-      title: "Escala publicada",
-      narrative: "Escala publicada e disponível para os membros.",
-      entityType: "scale", entityId: id,
-      actorId: userId, actorType: "HUMAN",
-      operationId: scale.operationId,
-    }).catch(() => {});
     // notify allocated members
     db.select({ userId: scaleAllocationsTable.userId })
       .from(scaleAllocationsTable)
-      .where(and(eq(scaleAllocationsTable.scaleId, id), eq(scaleAllocationsTable.status, "ASSIGNED")))
+      .where(and(eq(scaleAllocationsTable.scaleId, id), eq(scaleAllocationsTable.status, "ASSIGNED"), eq(scaleAllocationsTable.active, true)))
       .then((rows) => {
         const userIds = [...new Set(rows.map((r) => r.userId).filter(Boolean))] as string[];
         notifyMany(userIds, {
@@ -664,6 +819,7 @@ router.post("/scales/:id/publish", requireAuth, requireOrganization, async (req,
       .catch(() => {});
     res.json({ scale: updated });
   } catch (err) {
+    if (expectedVersion !== null && await respondScaleMutationError(err, req, res, id, expectedVersion)) return;
     log.error({ err }, "erro ao publicar escala");
     res.status(500).json({ error: "Erro interno" });
   }
@@ -675,13 +831,14 @@ router.post("/scales/:id/republish", requireAuth, requireOrganization, async (re
   const id = req.params["id"] as string;
   const user = req.user!;
   const userId = user.sub;
+  let expectedVersion: number | null = null;
 
   try {
     const scale = await getScaleOrFail(id, req.user!.organizationId, res);
     if (!scale) return;
 
     if (!MANAGER_ROLES.includes(user.role)) {
-      if (!(await hasScaleAuthority(userId, scale.operationId))) {
+      if (!(await hasScaleAuthority(userId, scale.operationId, scale.groupId, scale.areaId, scale.locationId))) {
         res.status(403).json({ error: "Forbidden", message: "Apenas supervisores ou delegados com responsabilidade de Escalas" });
         return;
       }
@@ -691,26 +848,34 @@ router.post("/scales/:id/republish", requireAuth, requireOrganization, async (re
       res.status(409).json({ error: "Apenas escalas publicadas podem ser republicadas" });
       return;
     }
+    expectedVersion = requireExpectedVersion(req, res, "a Escala");
+    if (expectedVersion === null) return;
+    const beforeSnapshot = await buildScaleVersionSnapshot(id);
 
-    const [updated] = await db
-      .update(scalesTable)
-      .set({ status: "REPUBLISHED", republishedAt: new Date(), republishedBy: userId, updatedAt: new Date() })
-      .where(eq(scalesTable.id, id))
-      .returning();
+    const updated = await mutateScale(id, expectedVersion, async (tx) => {
+      const [next] = await tx
+        .update(scalesTable)
+        .set({ status: "REPUBLISHED", republishedAt: new Date(), republishedBy: userId })
+        .where(eq(scalesTable.id, id))
+        .returning();
+      return next!;
+    }, async (tx, _claimedScale, next) => {
+      await writeHistoryEvent({
+        category: "SCALE", action: "republished",
+        title: "Escala republicada",
+        narrative: "Escala republicada com alterações.",
+        entityType: "scale", entityId: id,
+        actorId: userId, actorType: "HUMAN", operationId: scale.operationId,
+        orgId: req.user!.organizationId, beforeState: beforeSnapshot,
+        afterState: { scale: next, snapshot: await buildScaleVersionSnapshot(id, tx) },
+      }, tx as any);
+    });
 
     eventBus.emit("scale.republished", { scaleId: id, operationId: scale.operationId });
-    writeHistoryEvent({
-      category: "SCALE", action: "republished",
-      title: "Escala republicada",
-      narrative: "Escala republicada com alterações.",
-      entityType: "scale", entityId: id,
-      actorId: userId, actorType: "HUMAN",
-      operationId: scale.operationId,
-    }).catch(() => {});
     // notify allocated members of change
     db.select({ userId: scaleAllocationsTable.userId })
       .from(scaleAllocationsTable)
-      .where(and(eq(scaleAllocationsTable.scaleId, id), eq(scaleAllocationsTable.status, "ASSIGNED")))
+      .where(and(eq(scaleAllocationsTable.scaleId, id), eq(scaleAllocationsTable.status, "ASSIGNED"), eq(scaleAllocationsTable.active, true)))
       .then((rows) => {
         const userIds = [...new Set(rows.map((r) => r.userId).filter(Boolean))] as string[];
         notifyMany(userIds, {
@@ -727,6 +892,7 @@ router.post("/scales/:id/republish", requireAuth, requireOrganization, async (re
       .catch(() => {});
     res.json({ scale: updated });
   } catch (err) {
+    if (expectedVersion !== null && await respondScaleMutationError(err, req, res, id, expectedVersion)) return;
     log.error({ err }, "erro ao republicar escala");
     res.status(500).json({ error: "Erro interno" });
   }
@@ -737,19 +903,35 @@ router.post("/scales/:id/archive", requireAuth, requireOrganization, async (req,
   const log = requestLogger("scale", req.requestId, req.correlationId);
   const id = req.params["id"] as string;
   const userId = req.user!.sub;
+  let expectedVersion: number | null = null;
 
   try {
     const scale = await getScaleOrFail(id, req.user!.organizationId, res);
     if (!scale) return;
+    expectedVersion = requireExpectedVersion(req, res, "a Escala");
+    if (expectedVersion === null) return;
+    const beforeSnapshot = await buildScaleVersionSnapshot(id);
 
-    const [updated] = await db
-      .update(scalesTable)
-      .set({ status: "ARCHIVED", archivedAt: new Date(), archivedBy: userId, updatedAt: new Date() })
-      .where(eq(scalesTable.id, id))
-      .returning();
+    const updated = await mutateScale(id, expectedVersion, async (tx) => {
+      const [next] = await tx
+        .update(scalesTable)
+        .set({ status: "ARCHIVED", archivedAt: new Date(), archivedBy: userId })
+        .where(eq(scalesTable.id, id))
+        .returning();
+      return next!;
+    }, async (tx, _claimedScale, next) => {
+      await writeHistoryEvent({
+        category: "SCALE", action: "archived", title: "Escala arquivada",
+        narrative: "Escala arquivada.", entityType: "scale", entityId: id,
+        actorId: userId, actorType: "HUMAN", operationId: scale.operationId,
+        orgId: req.user!.organizationId, beforeState: beforeSnapshot,
+        afterState: { scale: next, snapshot: await buildScaleVersionSnapshot(id, tx) },
+      }, tx as any);
+    });
 
     res.json({ scale: updated });
   } catch (err) {
+    if (expectedVersion !== null && await respondScaleMutationError(err, req, res, id, expectedVersion)) return;
     log.error({ err }, "erro ao arquivar escala");
     res.status(500).json({ error: "Erro interno" });
   }
@@ -778,6 +960,7 @@ router.post("/scales/:id/entries", requireAuth, requireOrganization, async (req,
   const id = req.params["id"] as string;
   const user = req.user!;
   const userId = user.sub;
+  let expectedVersion: number | null = null;
   const { memberId, date, label, startTime, endTime, notes } = req.body;
 
   if (!memberId || !date || !label) {
@@ -795,34 +978,54 @@ router.post("/scales/:id/entries", requireAuth, requireOrganization, async (req,
     }
 
     if (!MANAGER_ROLES.includes(user.role)) {
-      if (!(await hasScaleAuthority(userId, scale.operationId))) {
+      if (!(await hasScaleAuthority(userId, scale.operationId, scale.groupId, scale.areaId, scale.locationId))) {
         res.status(403).json({ error: "Forbidden" });
         return;
       }
     }
+    expectedVersion = requireExpectedVersion(req, res, "a Escala");
+    if (expectedVersion === null) return;
+    const beforeSnapshot = await buildScaleVersionSnapshot(id);
 
-    const [entry] = await db
-      .insert(scaleAllocationsTable)
-      .values({
-        scaleId: id,
-        agendaEventId: null,
-        userId: memberId,
-        status: "MANUAL_OVERRIDE",
-        manualDate: date,
-        manualLabel: label,
-        startTime: startTime ?? null,
-        endTime: endTime ?? null,
-        notes: notes ?? null,
-        overriddenBy: userId,
-        overrideReason: "Entrada manual",
-      })
-      .returning();
+    const entry = await mutateScale(id, expectedVersion, async (tx) => {
+      const [nextEntry] = await tx
+        .insert(scaleAllocationsTable)
+        .values({
+          scaleId: id,
+          agendaEventId: null,
+          userId: memberId,
+          status: "MANUAL_OVERRIDE",
+          manualDate: date,
+          manualLabel: label,
+          startTime: startTime ?? null,
+          endTime: endTime ?? null,
+          notes: notes ?? null,
+          overriddenBy: userId,
+          overrideReason: "Entrada manual",
+        })
+        .returning();
+      return nextEntry!;
+    }, async (tx, _claimedScale, nextEntry) => {
+      await writeHistoryEvent({
+        category: "SCALE", action: "manual_entry_added",
+        title: "Entrada manual adicionada à Escala",
+        narrative: "Entrada manual adicionada à Escala.",
+        entityType: "scale", entityId: id,
+        actorId: userId, actorType: "HUMAN", operationId: scale.operationId,
+        orgId: req.user!.organizationId, beforeState: beforeSnapshot,
+        afterState: { entry: nextEntry, snapshot: await buildScaleVersionSnapshot(id, tx) },
+      }, tx as any);
+    });
 
-    // Update scale totals
-    await db.update(scalesTable).set({ updatedAt: new Date() }).where(eq(scalesTable.id, id));
-
-    res.status(201).json({ entry });
+    const conflicts = await detectScaleConflicts([{ userId: memberId, date }]);
+    res.status(201).json({
+      entry,
+      version: expectedVersion + 1,
+      conflicts,
+      alerts: conflicts.filter((conflict) => conflict.state === "aberto"),
+    });
   } catch (err) {
+    if (expectedVersion !== null && await respondScaleMutationError(err, req, res, id, expectedVersion)) return;
     log.error({ err }, "erro ao criar entrada manual");
     res.status(500).json({ error: "Erro ao criar entrada" });
   }
@@ -835,6 +1038,7 @@ router.delete("/scales/:id/entries/:entryId", requireAuth, requireOrganization, 
   const entryId = req.params["entryId"] as string;
   const user = req.user!;
   const userId = user.sub;
+  let expectedVersion: number | null = null;
 
   try {
     const scale = await getScaleOrFail(id, req.user!.organizationId, res);
@@ -846,18 +1050,40 @@ router.delete("/scales/:id/entries/:entryId", requireAuth, requireOrganization, 
     }
 
     if (!MANAGER_ROLES.includes(user.role)) {
-      if (!(await hasScaleAuthority(userId, scale.operationId))) {
+      if (!(await hasScaleAuthority(userId, scale.operationId, scale.groupId, scale.areaId, scale.locationId))) {
         res.status(403).json({ error: "Forbidden" });
         return;
       }
     }
+    expectedVersion = requireExpectedVersion(req, res, "a Escala");
+    if (expectedVersion === null) return;
+    const beforeSnapshot = await buildScaleVersionSnapshot(id);
 
-    await db
-      .delete(scaleAllocationsTable)
-      .where(and(eq(scaleAllocationsTable.id, entryId), eq(scaleAllocationsTable.scaleId, id)));
+    await mutateScale(id, expectedVersion, async (tx) => {
+      await tx
+        .update(scaleAllocationsTable)
+        .set({ active: false, updatedAt: new Date() })
+        .where(and(eq(scaleAllocationsTable.id, entryId), eq(scaleAllocationsTable.scaleId, id), eq(scaleAllocationsTable.active, true)));
+      const afterSnapshot = await buildScaleVersionSnapshot(id, tx as any);
+      await writeHistoryEvent({
+        category: "SCALE",
+        action: "entry_archived",
+        title: "Entrada manual arquivada na Escala",
+        narrative: "Entrada manual arquivada sem apagar a Escala ou seu histórico.",
+        entityType: "scale_allocation",
+        entityId: entryId,
+        actorId: userId,
+        actorType: "HUMAN",
+        operationId: scale.operationId,
+        beforeState: beforeSnapshot,
+        afterState: afterSnapshot,
+      }, tx as any);
+      return true;
+    });
 
-    res.json({ ok: true });
+    res.json({ ok: true, version: expectedVersion + 1 });
   } catch (err) {
+    if (expectedVersion !== null && await respondScaleMutationError(err, req, res, id, expectedVersion)) return;
     log.error({ err }, "erro ao remover entrada");
     res.status(500).json({ error: "Erro ao remover entrada" });
   }
@@ -869,6 +1095,7 @@ router.patch("/scales/:id/allocations/:allocationId", requireAuth, requireOrgani
   const id = req.params["id"] as string; const allocationId = req.params["allocationId"] as string;
   const userId = req.user!.sub;
   const { userId: newUserId, reason, notes } = req.body;
+  let expectedVersion: number | null = null;
 
   if (!newUserId || !reason) {
     res.status(400).json({ error: "userId e reason são obrigatórios para override" });
@@ -878,39 +1105,44 @@ router.patch("/scales/:id/allocations/:allocationId", requireAuth, requireOrgani
   try {
     const scale = await getScaleOrFail(id, req.user!.organizationId, res);
     if (!scale) return;
+    if (req.user!.role !== "ADMIN" && !(await hasScaleAuthority(userId, scale.operationId, scale.groupId, scale.areaId, scale.locationId))) {
+      res.status(403).json({ error: "Forbidden" }); return;
+    }
     if (scale.status === "ARCHIVED") {
       res.status(409).json({ error: "Escala arquivada não pode ser modificada" });
       return;
     }
+    expectedVersion = requireExpectedVersion(req, res, "a Escala");
+    if (expectedVersion === null) return;
+    const beforeSnapshot = await buildScaleVersionSnapshot(id);
 
-    const [updated] = await db
-      .update(scaleAllocationsTable)
-      .set({
-        userId: newUserId,
-        status: "MANUAL_OVERRIDE",
-        overriddenBy: userId,
-        overrideReason: reason,
-        notes: notes ?? null,
-        updatedAt: new Date(),
-      })
-      .where(and(eq(scaleAllocationsTable.id, allocationId), eq(scaleAllocationsTable.scaleId, id)))
-      .returning();
+    const updated = await mutateScale(id, expectedVersion, async (tx) => {
+      const [next] = await tx
+        .update(scaleAllocationsTable)
+        .set({
+          userId: newUserId,
+          status: "MANUAL_OVERRIDE",
+          overriddenBy: userId,
+          overrideReason: reason,
+          notes: notes ?? null,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(scaleAllocationsTable.id, allocationId), eq(scaleAllocationsTable.scaleId, id)))
+        .returning();
+      if (!next) throw new VersionedResourceNotFoundError("Alocação");
 
-    if (!updated) {
-      res.status(404).json({ error: "Alocação não encontrada" });
-      return;
-    }
-
-    // Register supervisor override exception
-    await db.insert(allocationExceptionsTable).values({
-      scaleId: id,
-      agendaEventId: updated.agendaEventId,
-      positionId: updated.positionId ?? null,
-      type: "SUPERVISOR_OVERRIDE",
-      reason: `Override manual pelo supervisor: ${reason}`,
-      impact: "Alocação substituída manualmente",
-      candidatesAnalyzed: [],
+      await tx.insert(allocationExceptionsTable).values({
+        scaleId: id,
+        agendaEventId: next.agendaEventId,
+        positionId: next.positionId ?? null,
+        type: "SUPERVISOR_OVERRIDE",
+        reason: `Override manual pelo supervisor: ${reason}`,
+        impact: "Alocação substituída manualmente",
+        candidatesAnalyzed: [],
+      });
+      return next;
     });
+    const afterSnapshot = await buildScaleVersionSnapshot(id);
 
     // Re-fetch with joins to return userName + positionName
     const [enriched] = await db
@@ -934,8 +1166,22 @@ router.patch("/scales/:id/allocations/:allocationId", requireAuth, requireOrgani
       .where(eq(scaleAllocationsTable.id, allocationId));
 
     eventBus.emit("scale.allocation.overridden", { scaleId: id, allocationId, overriddenBy: userId });
-    res.json({ allocation: enriched ?? updated });
+    await writeHistoryEvent({
+      category: "SCALE",
+      action: "allocation_overridden",
+      title: "Alocação substituída manualmente",
+      narrative: "Uma alocação da Escala foi substituída manualmente.",
+      entityType: "scale",
+      entityId: id,
+      actorId: userId,
+      actorType: "HUMAN",
+      operationId: scale.operationId,
+      beforeState: beforeSnapshot,
+      afterState: afterSnapshot,
+    });
+    res.json({ allocation: enriched ?? updated, version: expectedVersion + 1 });
   } catch (err) {
+    if (expectedVersion !== null && await respondScaleMutationError(err, req, res, id, expectedVersion)) return;
     log.error({ err }, "erro ao fazer override de alocação");
     res.status(500).json({ error: "Erro interno" });
   }
@@ -967,7 +1213,7 @@ router.get("/scales/:id/exceptions", requireAuth, requireOrganization, async (re
       })
       .from(allocationExceptionsTable)
       .leftJoin(showBookRolesTable, eq(allocationExceptionsTable.positionId, showBookRolesTable.id))
-      .where(eq(allocationExceptionsTable.scaleId, id))
+      .where(and(eq(allocationExceptionsTable.scaleId, id), eq(allocationExceptionsTable.active, true)))
       .orderBy(allocationExceptionsTable.createdAt);
 
     res.json({ exceptions });
@@ -986,29 +1232,46 @@ router.patch(
     const log = requestLogger("scale", req.requestId, req.correlationId);
     const id = req.params["id"] as string; const exceptionId = req.params["exceptionId"] as string;
     const userId = req.user!.sub;
+    let expectedVersion: number | null = null;
 
     try {
       const scale = await getScaleOrFail(id, req.user!.organizationId, res);
       if (!scale) return;
-
-      const [updated] = await db
-        .update(allocationExceptionsTable)
-        .set({ resolvedBy: userId, resolvedAt: new Date(), updatedAt: new Date() })
-        .where(
-          and(
-            eq(allocationExceptionsTable.id, exceptionId),
-            eq(allocationExceptionsTable.scaleId, id)
-          )
-        )
-        .returning();
-
-      if (!updated) {
-        res.status(404).json({ error: "Exceção não encontrada" });
-        return;
+      if (req.user!.role !== "ADMIN" && !(await hasScaleAuthority(userId, scale.operationId, scale.groupId, scale.areaId, scale.locationId))) {
+        res.status(403).json({ error: "Forbidden" }); return;
       }
+      expectedVersion = requireExpectedVersion(req, res, "a Escala");
+      if (expectedVersion === null) return;
+      const beforeSnapshot = await buildScaleVersionSnapshot(id);
 
-      res.json({ exception: updated });
+      const updated = await mutateScale(id, expectedVersion, async (tx) => {
+        const [next] = await tx
+          .update(allocationExceptionsTable)
+          .set({ resolvedBy: userId, resolvedAt: new Date(), updatedAt: new Date() })
+          .where(
+            and(
+              eq(allocationExceptionsTable.id, exceptionId),
+              eq(allocationExceptionsTable.scaleId, id)
+            )
+          )
+          .returning();
+        if (!next) throw new VersionedResourceNotFoundError("Exceção");
+        return next;
+      }, async (tx, _claimedScale, next) => {
+        await writeHistoryEvent({
+          category: "SCALE", action: "exception_resolved",
+          title: "Exceção da Escala resolvida",
+          narrative: "Exceção da Escala marcada como resolvida.",
+          entityType: "scale", entityId: id, actorId: userId,
+          actorType: "HUMAN", operationId: scale.operationId,
+          orgId: req.user!.organizationId, beforeState: beforeSnapshot,
+          afterState: { exception: next, snapshot: await buildScaleVersionSnapshot(id, tx) },
+        }, tx as any);
+      });
+
+      res.json({ exception: updated, version: expectedVersion + 1 });
     } catch (err) {
+      if (expectedVersion !== null && await respondScaleMutationError(err, req, res, id, expectedVersion)) return;
       log.error({ err }, "erro ao resolver exceção");
       res.status(500).json({ error: "Erro interno" });
     }
@@ -1021,13 +1284,14 @@ router.delete("/scales/:id", requireAuth, requireOrganization, async (req, res) 
   const id = req.params["id"] as string;
   const user = req.user!;
   const userId = user.sub;
+  let expectedVersion: number | null = null;
 
   try {
     const scale = await getScaleOrFail(id, req.user!.organizationId, res);
     if (!scale) return;
 
     if (!MANAGER_ROLES.includes(user.role)) {
-      if (!(await hasScaleAuthority(userId, scale.operationId))) {
+      if (!(await hasScaleAuthority(userId, scale.operationId, scale.groupId, scale.areaId, scale.locationId))) {
         res.status(403).json({ error: "Forbidden" });
         return;
       }
@@ -1037,15 +1301,37 @@ router.delete("/scales/:id", requireAuth, requireOrganization, async (req, res) 
       res.status(409).json({ error: "Apenas escalas em Rascunho podem ser apagadas" });
       return;
     }
+    expectedVersion = requireExpectedVersion(req, res, "a Escala");
+    if (expectedVersion === null) return;
 
-    // Cascade deletes allocations/candidates/exceptions via FK onDelete: cascade
-    await db.delete(allocationExceptionsTable).where(eq(allocationExceptionsTable.scaleId, id));
-    await db.delete(scaleAllocationsTable).where(eq(scaleAllocationsTable.scaleId, id));
-    await db.delete(scalesTable).where(eq(scalesTable.id, id));
+    const beforeSnapshot = await buildScaleVersionSnapshot(id);
 
-    eventBus.emit("scale.deleted", { scaleId: id, operationId: scale.operationId });
+    // Nada é apagado: alocações, candidatos e exceções ficam desativados e preservados.
+    await db.transaction(async (tx) => {
+      await tx.update(allocationExceptionsTable).set({ active: false, updatedAt: new Date() })
+        .where(and(eq(allocationExceptionsTable.scaleId, id), eq(allocationExceptionsTable.active, true)));
+      await tx.update(scaleAllocationsTable).set({ active: false, updatedAt: new Date() })
+        .where(and(eq(scaleAllocationsTable.scaleId, id), eq(scaleAllocationsTable.active, true)));
+      await tx.update(allocationCandidatesTable).set({ active: false })
+        .where(and(eq(allocationCandidatesTable.scaleId, id), eq(allocationCandidatesTable.active, true)));
+      const archived = await tx.update(scalesTable)
+        .set({ status: "ARCHIVED", archivedAt: new Date(), archivedBy: userId, version: expectedVersion! + 1, updatedAt: new Date() })
+        .where(and(eq(scalesTable.id, id), eq(scalesTable.version, expectedVersion!)))
+        .returning({ id: scalesTable.id });
+      if (archived.length === 0) throw new VersionConflictError("Escala");
+      await writeHistoryEvent({
+        category: "SCALE", action: "archived", title: "Escala arquivada",
+        narrative: "Escala arquivada sem apagar entradas ou histórico.", entityType: "scale", entityId: id,
+        actorId: userId, actorType: "HUMAN", operationId: scale.operationId, orgId: req.user!.organizationId,
+        beforeState: beforeSnapshot, afterState: { scale: { ...scale, status: "ARCHIVED", version: expectedVersion! + 1 }, allocations: [], exceptions: [] },
+        metadata: { reason: req.body?.reason ?? null },
+      }, tx as any);
+    });
+
+    eventBus.emit("scale.archived", { scaleId: id });
     res.json({ ok: true });
   } catch (err) {
+    if (expectedVersion !== null && await respondScaleMutationError(err, req, res, id, expectedVersion)) return;
     log.error({ err }, "erro ao apagar escala");
     res.status(500).json({ error: "Erro ao apagar escala" });
   }
@@ -1057,13 +1343,14 @@ router.post("/scales/:id/duplicate-previous", requireAuth, requireOrganization, 
   const id = req.params["id"] as string;
   const user = req.user!;
   const userId = user.sub;
+  let expectedVersion: number | null = null;
 
   try {
     const scale = await getScaleOrFail(id, req.user!.organizationId, res);
     if (!scale) return;
 
     if (!MANAGER_ROLES.includes(user.role)) {
-      if (!(await hasScaleAuthority(userId, scale.operationId))) {
+      if (!(await hasScaleAuthority(userId, scale.operationId, scale.groupId, scale.areaId, scale.locationId))) {
         res.status(403).json({ error: "Forbidden" });
         return;
       }
@@ -1073,15 +1360,13 @@ router.post("/scales/:id/duplicate-previous", requireAuth, requireOrganization, 
       res.status(409).json({ error: "Escala arquivada não pode ser modificada" });
       return;
     }
+    expectedVersion = requireExpectedVersion(req, res, "a Escala");
+    if (expectedVersion === null) return;
+    const beforeSnapshot = await buildScaleVersionSnapshot(id);
 
     // Compute previous week's period (shift -7 days)
-    const shiftDays = (d: string, days: number): string => {
-      const dt = new Date(d + "T00:00:00Z");
-      dt.setUTCDate(dt.getUTCDate() + days);
-      return dt.toISOString().slice(0, 10);
-    };
-    const prevStart = shiftDays(scale.periodStart, -7);
-    const prevEnd = shiftDays(scale.periodEnd, -7);
+    const prevStart = shiftOperationalDate(scale.periodStart, -7);
+    const prevEnd = shiftOperationalDate(scale.periodEnd, -7);
 
     // Find previous-week scale for same operation
     const [prevScale] = await db
@@ -1110,43 +1395,45 @@ router.post("/scales/:id/duplicate-previous", requireAuth, requireOrganization, 
         and(
           eq(scaleAllocationsTable.scaleId, prevScale.id),
           eq(scaleAllocationsTable.status, "MANUAL_OVERRIDE"),
+          eq(scaleAllocationsTable.active, true),
         )
       );
 
     const toCopy = prevEntries.filter((e) => e.manualDate);
-    let copied = 0;
-    if (toCopy.length > 0) {
-      await db.insert(scaleAllocationsTable).values(
-        toCopy.map((e) => ({
-          scaleId: id,
-          agendaEventId: null,
-          userId: e.userId,
-          status: "MANUAL_OVERRIDE" as const,
-          manualDate: shiftDays(e.manualDate!, 7),
-          manualLabel: e.manualLabel,
-          startTime: e.startTime,
-          endTime: e.endTime,
-          notes: e.notes,
-          overriddenBy: userId,
-          overrideReason: "Duplicada da semana anterior",
-        }))
-      );
-      copied = toCopy.length;
-    }
+    const copied = await mutateScale(id, expectedVersion, async (tx) => {
+      if (toCopy.length > 0) {
+        await tx.insert(scaleAllocationsTable).values(
+          toCopy.map((e) => ({
+            scaleId: id,
+            agendaEventId: null,
+            userId: e.userId,
+            status: "MANUAL_OVERRIDE" as const,
+            manualDate: shiftOperationalDate(e.manualDate!, 7),
+            manualLabel: e.manualLabel,
+            startTime: e.startTime,
+            endTime: e.endTime,
+            notes: e.notes,
+            overriddenBy: userId,
+            overrideReason: "Duplicada da semana anterior",
+          }))
+        );
+      }
+      return toCopy.length;
+    }, async (tx, _claimedScale, copiedCount) => {
+      await writeHistoryEvent({
+        category: "SCALE", action: "duplicated",
+        title: "Escala duplicada da semana anterior",
+        narrative: `${copiedCount} entrada(s) copiada(s) da semana anterior.`,
+        entityType: "scale", entityId: id, actorId: userId,
+        actorType: "HUMAN", operationId: scale.operationId,
+        orgId: req.user!.organizationId, beforeState: beforeSnapshot,
+        afterState: { copied: copiedCount, snapshot: await buildScaleVersionSnapshot(id, tx) },
+      }, tx as any);
+    });
 
-    await db.update(scalesTable).set({ updatedAt: new Date() }).where(eq(scalesTable.id, id));
-
-    writeHistoryEvent({
-      category: "SCALE", action: "duplicated",
-      title: "Escala duplicada da semana anterior",
-      narrative: `${copied} entrada(s) copiada(s) da semana anterior.`,
-      entityType: "scale", entityId: id,
-      actorId: userId, actorType: "HUMAN",
-      operationId: scale.operationId,
-    }).catch(() => {});
-
-    res.json({ ok: true, copied });
+    res.json({ ok: true, copied, version: expectedVersion + 1 });
   } catch (err) {
+    if (expectedVersion !== null && await respondScaleMutationError(err, req, res, id, expectedVersion)) return;
     log.error({ err }, "erro ao duplicar semana anterior");
     res.status(500).json({ error: "Erro ao duplicar semana anterior" });
   }

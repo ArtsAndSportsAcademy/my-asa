@@ -10,10 +10,16 @@ import {
   operationsTable,
   operationalGroupsTable,
   showBookRolesTable,
+  operationalCheckInsTable,
+  occurrencesTable,
+  usersTable,
+  userRolesTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
+import { operationalDate, shiftOperationalDate } from "../lib/operational-date.js";
+import { canSupervisorAccessPerson } from "../services/area-local-scope.js";
 
 const router: IRouter = Router();
 
@@ -95,21 +101,42 @@ router.get(
       groupId: grpIdParam,
     } = req.query as Record<string, string | undefined>;
 
-    const today = new Date().toISOString().split("T")[0];
-    const twoWeeks = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0];
+    const today = operationalDate();
+    const twoWeeks = shiftOperationalDate(today, 14);
 
     const from = fromParam ?? today;
     const to = toParam ?? twoWeeks;
 
     try {
+      const actor = req.user!;
+      const canReadPanel = actor.role === "ADMIN" || actor.role === "DIR" || actor.role === "SUPERVISOR_A" || actor.role === "SUPERVISOR_B";
+      if (!canReadPanel) { res.status(403).json({ error: "Forbidden" }); return; }
+
+      const organizationOperations = await db.select({ id: operationsTable.id }).from(operationsTable)
+        .where(eq(operationsTable.organizationId, actor.organizationId));
+      const organizationOperationIds = organizationOperations.map((operation) => operation.id);
+      let allowedOperationIds = organizationOperationIds;
+      if (actor.role === "SUPERVISOR_A" || actor.role === "SUPERVISOR_B") {
+        const supervisorRoles = await db.select({ operationId: userRolesTable.operationId })
+          .from(userRolesTable)
+          .where(and(
+            eq(userRolesTable.userId, actor.sub),
+            eq(userRolesTable.active, true),
+            inArray(userRolesTable.role, ["SUPERVISOR_A", "SUPERVISOR_B"] as any),
+          ));
+        allowedOperationIds = [...new Set(supervisorRoles.map((role) => role.operationId))]
+          .filter((id) => organizationOperationIds.includes(id));
+      }
+      if (opIdParam && !organizationOperationIds.includes(opIdParam)) { res.status(404).json({ error: "Operação não encontrada" }); return; }
+      if (opIdParam && !allowedOperationIds.includes(opIdParam)) { res.status(403).json({ error: "Forbidden" }); return; }
+
       // ── 1. Upcoming agenda events ──────────────────────────────────────────
-      const eventConditions: ReturnType<typeof eq>[] = [
+      const eventConditions: any[] = [
         gte(agendaEventsTable.date, from),
         lte(agendaEventsTable.date, to),
       ];
       if (opIdParam) eventConditions.push(eq(agendaEventsTable.operationId, opIdParam));
+      else eventConditions.push(inArray(agendaEventsTable.operationId, allowedOperationIds));
       if (grpIdParam) eventConditions.push(eq(agendaEventsTable.groupId, grpIdParam));
 
       const events = await db
@@ -122,7 +149,7 @@ router.get(
       // ── 2. Active scales (PUBLISHED or REPUBLISHED) for those events ───────
       let scales: (typeof scalesTable.$inferSelect)[] = [];
       if (eventIds.length > 0) {
-        const scaleConditions: ReturnType<typeof eq>[] = [
+        const scaleConditions: any[] = [
           inArray(scalesTable.agendaEventId, eventIds),
           inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"] as any[]),
         ];
@@ -143,7 +170,7 @@ router.get(
         allocations = await db
           .select()
           .from(scaleAllocationsTable)
-          .where(inArray(scaleAllocationsTable.scaleId, scaleIds));
+          .where(and(inArray(scaleAllocationsTable.scaleId, scaleIds), eq(scaleAllocationsTable.active, true)));
       }
 
       // ── 4. Exceptions (unresolved) for those scales ────────────────────────
@@ -155,7 +182,8 @@ router.get(
           .where(
             and(
               inArray(allocationExceptionsTable.scaleId, scaleIds),
-              isNull(allocationExceptionsTable.resolvedAt)
+              isNull(allocationExceptionsTable.resolvedAt),
+              eq(allocationExceptionsTable.active, true)
             )
           );
       }
@@ -184,11 +212,8 @@ router.get(
               .where(inArray(operationalGroupsTable.id, groupIds))
           : Promise.resolve([] as (typeof operationalGroupsTable.$inferSelect)[]),
         opIdParam
-          ? db
-              .select()
-              .from(operationsTable)
-              .where(eq(operationsTable.id, opIdParam))
-          : db.select().from(operationsTable),
+          ? db.select().from(operationsTable).where(and(eq(operationsTable.id, opIdParam), eq(operationsTable.organizationId, actor.organizationId)))
+          : db.select().from(operationsTable).where(inArray(operationsTable.id, allowedOperationIds)),
       ]);
 
       // ── 7. Position names for exceptions ──────────────────────────────────
@@ -291,8 +316,8 @@ router.get(
         exceptions.push({
           id: ex.id,
           type: "ALLOCATION_EXCEPTION",
-          reason: ex.reason,
-          impact: ex.impact ?? null,
+          reason: "Exceção de alocação pendente de análise",
+          impact: null,
           date: ev?.date ?? scale?.periodStart ?? "—",
           origin: scale?.title ?? "—",
           scaleTitle: scale?.title ?? null,
@@ -315,7 +340,7 @@ router.get(
         const reasonMap: Record<string, string> = {
           OPEN: "Posição sem candidato alocado",
           CONFLICT: "Conflito de alocação detectado",
-          MANUAL_OVERRIDE: `Substituição manual aplicada: ${alloc.overrideReason ?? "sem motivo"}`,
+          MANUAL_OVERRIDE: "Substituição manual aplicada",
         };
         exceptions.push({
           id: alloc.id,
@@ -349,8 +374,7 @@ router.get(
         });
 
       // ── 12. Upcoming events enriched ──────────────────────────────────────
-      const now = new Date();
-      const h48 = new Date(now.getTime() + 48 * 60 * 60 * 1000).toISOString().split("T")[0];
+      const h48 = shiftOperationalDate(today, 2);
 
       const upcomingEvents = events
         .filter((e) => e.status !== "CANCELLED" && e.status !== "COMPLETED")
@@ -392,7 +416,54 @@ router.get(
         criticalEventsCount,
       });
 
-      // ── 14. Response ───────────────────────────────────────────────────────
+      // ── 14. Check-ins e ocorrências: agregados, sem nomes ou motivos ───────
+      const checkInRows = allowedOperationIds.length === 0 ? [] : await db
+        .select({ status: operationalCheckInsTable.status, personId: operationalCheckInsTable.userId })
+        .from(operationalCheckInsTable)
+        .where(and(
+          eq(operationalCheckInsTable.orgId, actor.organizationId),
+          inArray(operationalCheckInsTable.operationId, opIdParam ? [opIdParam] : allowedOperationIds),
+          gte(operationalCheckInsTable.date, from),
+          lte(operationalCheckInsTable.date, to),
+        ));
+      const checkIns = [] as typeof checkInRows;
+      for (const row of checkInRows) {
+        if (actor.role === "ADMIN" || actor.role === "DIR" || await canSupervisorAccessPerson({
+          supervisorId: actor.sub, organizationId: actor.organizationId, personId: row.personId,
+        })) checkIns.push(row);
+      }
+      const checkInSummary = {
+        total: checkIns.length,
+        expected: checkIns.filter((entry) => entry.status === "EXPECTED").length,
+        checkedIn: checkIns.filter((entry) => entry.status === "CHECKED_IN").length,
+        late: checkIns.filter((entry) => entry.status === "LATE").length,
+        absent: checkIns.filter((entry) => entry.status === "ABSENT").length,
+        excused: checkIns.filter((entry) => entry.status === "EXCUSED").length,
+      };
+      const occurrenceRows = await db
+        .select({ occurrence: { personId: occurrencesTable.personId, state: occurrencesTable.state } })
+        .from(occurrencesTable)
+        .innerJoin(usersTable, eq(occurrencesTable.personId, usersTable.id))
+        .where(and(
+          eq(usersTable.organizationId, actor.organizationId),
+          eq(occurrencesTable.active, true),
+          gte(occurrencesTable.date, from),
+          lte(occurrencesTable.date, to),
+        ));
+      const visibleOccurrences = [] as typeof occurrenceRows;
+      for (const row of occurrenceRows) {
+        if (actor.role === "ADMIN" || actor.role === "DIR" || await canSupervisorAccessPerson({
+          supervisorId: actor.sub, organizationId: actor.organizationId, personId: row.occurrence.personId,
+        })) visibleOccurrences.push(row);
+      }
+      const occurrenceSummary = {
+        total: visibleOccurrences.length,
+        aberta: visibleOccurrences.filter((row) => row.occurrence.state === "aberta").length,
+        emAnalise: visibleOccurrences.filter((row) => row.occurrence.state === "em_analise").length,
+        resolvida: visibleOccurrences.filter((row) => row.occurrence.state === "resolvida").length,
+      };
+
+      // ── 15. Response ───────────────────────────────────────────────────────
       res.json({
         generatedAt: new Date().toISOString(),
         health,
@@ -400,6 +471,8 @@ router.get(
         exceptions,
         pendingBooks,
         upcomingEvents,
+        checkIns: checkInSummary,
+        occurrences: occurrenceSummary,
       });
     } catch (err) {
       log.error({ err }, "erro ao montar painel operacional");

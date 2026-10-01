@@ -10,8 +10,10 @@ import type { UserUpdatePersonStatus } from './userUpdatePersonStatus';
 import type { UserUpdateSpecialization } from './userUpdateSpecialization';
 
 export interface UserUpdate {
-  name?: string;
-  preferredName?: string | null;
+  /** Nome formal; somente Administração. */
+  fullName?: string;
+  /** Nome que aparece no app; somente a própria pessoa pode alterar. */
+  displayName?: string;
   email?: string;
   phone?: string | null;
   photoUrl?: string | null;

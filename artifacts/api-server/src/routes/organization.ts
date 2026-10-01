@@ -27,7 +27,7 @@ router.get("/organizations/current", requireAuth, requireOrganization, async (re
 
     const role = req.user!.role;
     let operations;
-    if (role === "ADMIN") {
+    if (role === "ADMIN" || role === "DIR" || role === "DIRECTOR") {
       operations = await db.query.operationsTable.findMany({
         where: eq(operationsTable.organizationId, req.user!.organizationId),
       });
@@ -58,7 +58,7 @@ router.get("/operations", requireAuth, requireOrganization, async (req, res) => 
   try {
     const role = req.user!.role;
     let operations;
-    if (role === "ADMIN") {
+    if (role === "ADMIN" || role === "DIR" || role === "DIRECTOR") {
       operations = await db.query.operationsTable.findMany({
         where: eq(operationsTable.organizationId, req.user!.organizationId),
       });

@@ -1,6 +1,20 @@
-import { pgTable, text, uuid, timestamp, pgEnum, date, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, pgEnum, date, boolean, jsonb, integer, customType } from "drizzle-orm/pg-core";
+
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
+
+/** Quem vê: só a gestão, o próprio grupo (área) ou a ASA inteira. */
+export type NivelVisibilidade = "gestao" | "grupo" | "asa";
+/** Aniversário: não aparece, só na lista da semana, ou sobe para o alto do mural no dia. Nunca o ano. */
+export type NivelAniversario = "off" | "lista" | "mural";
+export type Privacidade = { tel: NivelVisibilidade; mail: NivelVisibilidade; bday: NivelAniversario };
+/** Janela de silêncio noturno em horário de São Paulo ("22:00" a "06:00"); on=false desliga. */
+export type JanelaSilencio = { on: boolean; de: string; ate: string };
+/** Regras da casa, definidas pela Administração no Perfil. */
+export type RegrasCasa = { silencio: JanelaSilencio; lembreteCheckinMin: number };
+export const REGRAS_PADRAO: RegrasCasa = { silencio: { on: true, de: "22:00", ate: "06:00" }, lembreteCheckinMin: 30 };
 
 export const userStatusEnum = pgEnum("user_status", ["ACTIVE", "INACTIVE"]);
 export const personStatusEnum = pgEnum("person_status", ["ACTIVE", "ON_LEAVE", "LEFT", "ARCHIVED"]);
@@ -74,7 +88,13 @@ export function isSchedulableMember(args: {
 export const usersTable = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   organizationId: uuid("organization_id").notNull(),
-  name: text("name").notNull(),
+  /** Nome formal: cadastro, ficha administrativa e Registro. */
+  fullName: text("nome_completo").notNull().default(""),
+  /**
+   * Adaptação de compatibilidade para a base existente. Todo uso de `name`
+   * na interface e nas rotas representa o nome de exibição, nunca o formal.
+   */
+  name: text("nome_de_exibicao").notNull(),
   preferredName: text("preferred_name"),
   email: text("email").unique(),
   phone: text("phone"),
@@ -86,6 +106,14 @@ export const usersTable = pgTable("users", {
   status: userStatusEnum("status").notNull().default("ACTIVE"),
   professionalProfile: text("professional_profile"),
   primaryFunction: text("primary_function"),
+  // As FKs são aplicadas pela migração do Bloco 6. Mantemos estas colunas
+  // desacopladas aqui para não criar um ciclo de módulos entre identidade e área.
+  areaId: uuid("area_id"),
+  // Legado de migração: a aplicação não lê nem escreve este campo. Pessoa
+  // pertence à ASA; o local é definido pela Programação/Escala de cada dia.
+  // Mantido fisicamente por ora para não apagar histórico sem uma auditoria de
+  // dados e uma migração reversível própria.
+  defaultLocationId: uuid("default_location_id"),
   specialization: text("specialization").$type<UserSpecialization | null>(),
   birthDate: date("birth_date", { mode: "string" }),
   entryDate: date("entry_date", { mode: "string" }),
@@ -93,10 +121,26 @@ export const usersTable = pgTable("users", {
   visitUntil: date("visit_until", { mode: "string" }),
   adminNotes: text("admin_notes"),
   contactVisibility: jsonb("contact_visibility").$type<{ email: boolean; phone: boolean }>().notNull().default({ email: true, phone: true }),
+  /** 28 Perfil: quem vê telefone/e-mail (gestao | grupo | asa) e se o aniversário aparece (off | lista | mural). Escolha da própria pessoa. */
+  privacidade: jsonb("privacidade").$type<Privacidade>().notNull().default({ tel: "grupo", mail: "gestao", bday: "mural" }),
+  /** Silêncio noturno da pessoa; null = segue o silêncio da casa (organizations.regras.silencio). */
+  silencio: jsonb("silencio").$type<JanelaSilencio | null>(),
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   archivedBy: uuid("archived_by"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Foto de perfil no Postgres, servida só pela API autenticada. Trocar desativa a anterior; nada é apagado. */
+export const userPhotosTable = pgTable("user_photos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => usersTable.id),
+  orgId: uuid("org_id").notNull(),
+  contentType: text("content_type").notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  content: bytea("content").notNull(),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const insertUserSchema = createInsertSchema(usersTable).omit({

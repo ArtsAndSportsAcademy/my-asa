@@ -15,6 +15,8 @@ import {
   usersTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
+import { operationalDate } from "../lib/operational-date.js";
+import { checkInPeriodDates, summarizeCheckIns } from "../services/checkin-insights.js";
 
 const router: IRouter = Router();
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
@@ -22,13 +24,7 @@ const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
 // ─── Period helpers ───────────────────────────────────────────────────────────
 
 function periodDateStrings(period: string): { startDate: string; endDate: string } {
-  const now = new Date();
-  const todayStr = now.toISOString().split("T")[0];
-  if (period === "today") return { startDate: todayStr, endDate: todayStr };
-  const days = period === "7d" ? 7 : 30;
-  const d = new Date(now);
-  d.setDate(d.getDate() - days);
-  return { startDate: d.toISOString().split("T")[0], endDate: todayStr };
+  return checkInPeriodDates(period);
 }
 
 function periodTimestamps(period: string): { startTs: Date; endTs: Date } {
@@ -94,32 +90,22 @@ router.get("/insights/check-ins", requireAuth, requireOrganization, async (req, 
         lte(operationalCheckInsTable.date, endDate),
       ));
 
-    const counts = { CHECKED_IN: 0, LATE: 0, ABSENT: 0, EXCUSED: 0, EXPECTED: 0 };
-    const byOp = new Map<string, typeof counts>();
-    opIdList.forEach(id => byOp.set(id, { CHECKED_IN: 0, LATE: 0, ABSENT: 0, EXCUSED: 0, EXPECTED: 0 }));
+    const byOp = new Map<string, Array<{ status: string }>>();
+    opIdList.forEach(id => byOp.set(id, []));
 
     for (const r of records) {
-      const s = r.status as keyof typeof counts;
-      if (s in counts) {
-        counts[s]++;
-        const opC = byOp.get(r.operationId!);
-        if (opC) opC[s]++;
-      }
+      const opRecords = byOp.get(r.operationId!);
+      if (opRecords) opRecords.push(r);
     }
 
-    const total = Object.values(counts).reduce((a, b) => a + b, 0);
-    const resolved = total - counts.EXPECTED;
+    const summary = summarizeCheckIns(records);
     const byOperation = opIds.map(op => {
-      const c = byOp.get(op.id) ?? { CHECKED_IN: 0, LATE: 0, ABSENT: 0, EXCUSED: 0, EXPECTED: 0 };
-      const t = Object.values(c).reduce((a, b) => a + b, 0);
-      const r = t - c.EXPECTED;
-      return { operationId: op.id, operationName: op.name, total: t, checkedIn: c.CHECKED_IN, late: c.LATE, absent: c.ABSENT, excused: c.EXCUSED, presenceRate: pct(c.CHECKED_IN, r) };
+      const c = summarizeCheckIns(byOp.get(op.id) ?? []);
+      return { operationId: op.id, operationName: op.name, total: c.total, checkedIn: c.checkedIn, late: c.late, absent: c.absent, excused: c.excused, presenceRate: c.rates.presence };
     });
 
     res.json({
-      period, total, checkedIn: counts.CHECKED_IN, late: counts.LATE,
-      absent: counts.ABSENT, excused: counts.EXCUSED, expected: counts.EXPECTED,
-      rates: { presence: pct(counts.CHECKED_IN, resolved), late: pct(counts.LATE, resolved), absence: pct(counts.ABSENT, resolved), excused: pct(counts.EXCUSED, resolved) },
+      period, ...summary,
       byOperation,
     });
   } catch (err) {
@@ -206,7 +192,7 @@ router.get("/insights/tasks", requireAuth, requireOrganization, async (req, res)
 
   const { period = "30d", operationId } = req.query as Record<string, string>;
   const { startTs } = periodTimestamps(period);
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = operationalDate();
 
   try {
     const conditions = [gte(tasksTable.createdAt, startTs)];
@@ -265,7 +251,7 @@ router.get("/insights/workload", requireAuth, requireOrganization, async (req, r
   }
 
   const { operationId } = req.query as Record<string, string>;
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = operationalDate();
   const ACTIVE_STATUSES = ["CREATED", "IN_PROGRESS", "READY_FOR_APPROVAL", "CHANGES_REQUESTED"] as const;
 
   try {
@@ -473,7 +459,7 @@ router.get("/insights/trends", requireAuth, requireOrganization, async (req, res
     const trendStart = new Date(now);
     trendStart.setDate(trendStart.getDate() - 56);
     trendStart.setHours(0, 0, 0, 0);
-    const trendStartDate = trendStart.toISOString().split("T")[0];
+    const trendStartDate = operationalDate(trendStart);
 
     const [checkIns, tasks, requests] = await Promise.all([
       opIds.length > 0

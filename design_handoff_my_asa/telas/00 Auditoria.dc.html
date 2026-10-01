@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #f4f2fa; font-family: Manrope, system-ui, sans-serif; color: #1b1630; }
+  a { color: #6C2BF2; text-decoration: none; }
+  a:hover { color: #4a17b8; text-decoration: underline; }
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 3px solid #6C2BF2; outline-offset: 2px; border-radius: 8px; }
+</style>
+</helmet>
+
+<div style="max-width:1180px;margin:0 auto;padding:44px 28px 110px;display:flex;flex-direction:column;gap:52px">
+
+  <header style="display:flex;flex-direction:column;gap:26px">
+    <div style="display:flex;align-items:flex-start;gap:18px">
+      <img src="assets/asa/duvida.png" alt="" style="width:60px;height:60px;object-fit:contain;flex:none;margin-top:2px" />
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:#6b6482">Auditoria completa · 23 arquivos lidos · setembro 2026</div>
+        <h1 style="font-family:Outfit,sans-serif;font-size:40px;line-height:1.05;font-weight:700;margin:0;letter-spacing:-0.02em">Dá para colocar o My ASA no ar amanhã?</h1>
+      </div>
+    </div>
+
+    <div style="background:#2a0f1c;border-radius:20px;padding:26px 28px;display:flex;flex-wrap:wrap;gap:26px;align-items:center">
+      <div style="flex:0 0 auto;display:flex;flex-direction:column;gap:2px">
+        <span style="font-family:Outfit,sans-serif;font-size:56px;font-weight:700;color:#fff;line-height:1">Não.</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#e8879f">resposta direta</span>
+      </div>
+      <p style="flex:1 1 420px;min-width:320px;margin:0;font-size:15.5px;line-height:1.6;color:#f6dde4;text-wrap:pretty">O que existe hoje é um <strong style="color:#fff">desenho muito completo de um aplicativo</strong> — 23 telas, quatro perfis, regras escritas. O que <em>não</em> existe é o aplicativo: não há banco de dados, não há login, nada que você digita fica salvo, ninguém recebe notificação, e as regras de quem pode o quê são desenho na tela, não trava de verdade. Entregar isso para o elenco amanhã seria entregar uma maquete linda que esquece tudo ao recarregar a página.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:12px">
+      <sc-for list="{{ stats }}" as="s" hint-placeholder-count="5">
+        <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:4px">
+          <span style="{{ s.numStyle }}">{{ s.num }}</span>
+          <span style="font-size:12.5px;line-height:1.4;color:#6b6482;text-wrap:pretty">{{ s.label }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </header>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#C2334D">01</span>
+      <h2 style="font-family:Outfit,sans-serif;font-size:26px;font-weight:600;margin:0;letter-spacing:-0.01em">{{ blockersTitle }}</h2>
+      <span style="font-size:14px;color:#6b6482">seis são coisas que ainda não existem; o sétimo é a única fonte duplicada do desenho</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px">
+      <sc-for list="{{ blockers }}" as="b" hint-placeholder-count="6">
+        <div style="background:#fff;border:1px solid #f0d3da;border-top:3px solid #C2334D;border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:baseline;gap:10px">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#C2334D">{{ b.n }}</span>
+            <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600;line-height:1.25">{{ b.title }}</span>
+          </div>
+          <span style="font-size:13.5px;line-height:1.55;color:#5b5473;text-wrap:pretty">{{ b.body }}</span>
+          <span style="font-size:12px;line-height:1.5;color:#6b6482;font-family:'JetBrains Mono',monospace;background:#faf7fb;border-radius:8px;padding:8px 10px;text-wrap:pretty">{{ b.evidence }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#9A5B0E">02</span>
+      <h2 style="font-family:Outfit,sans-serif;font-size:26px;font-weight:600;margin:0;letter-spacing:-0.01em">O que ainda falta desenhar</h2>
+      <span style="font-size:14px;color:#6b6482">peças que faltam dentro de telas que já existem — a entrada inteira saiu daqui na Onda 1</span>
+    </div>
+    <div style="background:#fff;border:1px solid #e6e1f2;border-radius:18px;overflow:hidden">
+      <sc-for list="{{ missing }}" as="m" hint-placeholder-count="9">
+        <div style="display:flex;gap:16px;padding:15px 20px;border-bottom:1px solid #f4f1fa;align-items:flex-start">
+          <span style="{{ m.pillStyle }}">{{ m.tag }}</span>
+          <div style="flex:1 1 260px;min-width:200px;display:flex;flex-direction:column;gap:3px">
+            <span style="font-family:Outfit,sans-serif;font-size:15.5px;font-weight:600">{{ m.title }}</span>
+            <span style="font-size:13px;line-height:1.5;color:#6b6482;text-wrap:pretty">{{ m.body }}</span>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#6C2BF2">03</span>
+      <h2 style="font-family:Outfit,sans-serif;font-size:26px;font-weight:600;margin:0;letter-spacing:-0.01em">Auditoria tela a tela</h2>
+      <span style="font-size:14px;color:#6b6482">o que você apontou, o que eu encontrei lendo o código, e o que eu recomendo</span>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:12px 14px;position:sticky;top:0;z-index:5">
+      <span style="font-size:12.5px;font-weight:600;color:#5b5473">Filtrar</span>
+      <sc-for list="{{ sevTabs }}" as="t" hint-placeholder-count="4">
+        <button type="button" onClick="{{ t.onClick }}" style="{{ t.style }}">{{ t.label }}</button>
+      </sc-for>
+      <span style="flex:1"></span>
+      <span style="font-size:12px;color:#6b6482">{{ filterNote }}</span>
+    </div>
+
+    <sc-for list="{{ screens }}" as="s" hint-placeholder-count="10">
+      <div style="background:#fff;border:1px solid #e6e1f2;border-radius:18px;overflow:hidden">
+        <button type="button" onClick="{{ s.onToggle }}" style="width:100%;display:flex;align-items:center;gap:14px;padding:15px 20px;background:#fbfaff;border:none;border-bottom:1px solid #f0ecf8;cursor:pointer;text-align:left;font-family:Manrope,sans-serif">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#6b6482;flex:none;min-width:34px">{{ s.num }}</span>
+          <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600;flex:1 1 180px;min-width:0">{{ s.name }}</span>
+          <span style="display:flex;align-items:center;gap:8px;flex:none">
+            <span style="width:88px;height:6px;border-radius:99px;background:#eee9f7;overflow:hidden;display:block">
+              <span style="{{ s.barStyle }}"></span>
+            </span>
+            <span style="{{ s.pctStyle }}">{{ s.pct }}</span>
+          </span>
+          <span style="{{ s.countStyle }}">{{ s.countLabel }}</span>
+          <span style="font-size:14px;color:#6b6482;flex:none;width:16px;text-align:center">{{ s.caret }}</span>
+        </button>
+        <sc-if value="{{ s.open }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-direction:column">
+            <sc-for list="{{ s.items }}" as="it" hint-placeholder-count="4">
+              <div style="display:flex;gap:14px;padding:14px 20px;border-bottom:1px solid #f6f4fc;align-items:flex-start">
+                <span style="{{ it.dotStyle }}"></span>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+                  <span style="font-size:13.5px;line-height:1.55;color:#2b2440;text-wrap:pretty">{{ it.text }}</span>
+                  <sc-if value="{{ it.rec }}" hint-placeholder-val="{{ true }}">
+                    <span style="font-size:13px;line-height:1.55;color:#5B23C9;background:#f6f1fe;border-radius:9px;padding:9px 12px;text-wrap:pretty"><strong style="font-weight:700">Recomendo:</strong> {{ it.rec }}</span>
+                  </sc-if>
+                </div>
+                <span style="{{ it.srcStyle }}">{{ it.srcLabel }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+    </sc-for>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#6C2BF2">04</span>
+      <h2 style="font-family:Outfit,sans-serif;font-size:26px;font-weight:600;margin:0;letter-spacing:-0.01em">A ASA está pronta? Não — ela é um cartaz</h2>
+    </div>
+    <div style="background:linear-gradient(135deg,#1c1440,#2b1f63);border-radius:20px;padding:24px 26px;display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start">
+      <img src="assets/asa/consultando.png" alt="" style="width:72px;height:72px;object-fit:contain;flex:none" />
+      <p style="flex:1 1 420px;min-width:300px;margin:0;font-size:14.5px;line-height:1.6;color:#dcd5f6;text-wrap:pretty">Hoje a ASA aparece em 17 telas como cartão bonito com <strong style="color:#fff">texto fixo escrito à mão no código</strong>. Ela não lê nada, não lembra de nada, não faz nada. Em nenhuma tela existe um botão que aceite a sugestão dela. Para ela virar a secretária que você quer, faltam cinco coisas — e todas dependem do aplicativo existir de verdade primeiro.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px">
+      <sc-for list="{{ asaNeeds }}" as="a" hint-placeholder-count="5">
+        <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:8px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#6C2BF2">{{ a.n }}</span>
+          <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600;line-height:1.25">{{ a.title }}</span>
+          <span style="font-size:13px;line-height:1.55;color:#6b6482;text-wrap:pretty">{{ a.body }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#6C2BF2">05</span>
+      <h2 style="font-family:Outfit,sans-serif;font-size:26px;font-weight:600;margin:0;letter-spacing:-0.01em">Mobile — o ponto mais frágil de todos</h2>
+      <span style="font-size:14px;color:#6b6482">e é onde quase todo o elenco vai viver</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
+      <sc-for list="{{ mobileItems }}" as="m" hint-placeholder-count="8">
+        <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:7px">
+          <div style="display:flex;align-items:center;gap:9px">
+            <span style="{{ m.dotStyle }}"></span>
+            <span style="font-family:Outfit,sans-serif;font-size:15.5px;font-weight:600;line-height:1.25">{{ m.title }}</span>
+          </div>
+          <span style="font-size:13px;line-height:1.55;color:#6b6482;text-wrap:pretty">{{ m.body }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#6C2BF2">06</span>
+      <h2 style="font-family:Outfit,sans-serif;font-size:26px;font-weight:600;margin:0;letter-spacing:-0.01em">Qualidade técnica, acessibilidade e dados</h2>
+      <span style="font-size:14px;color:#6b6482">medido no código, não no olho</span>
+    </div>
+    <div style="background:#fff;border:1px solid #e6e1f2;border-radius:18px;overflow:hidden">
+      <sc-for list="{{ tech }}" as="t" hint-placeholder-count="9">
+        <div style="display:flex;flex-wrap:wrap;gap:14px;padding:15px 20px;border-bottom:1px solid #f4f1fa;align-items:flex-start">
+          <span style="{{ t.pillStyle }}">{{ t.tag }}</span>
+          <div style="flex:1 1 300px;min-width:240px;display:flex;flex-direction:column;gap:3px">
+            <span style="font-size:14px;font-weight:600;line-height:1.3">{{ t.title }}</span>
+            <span style="font-size:13px;line-height:1.5;color:#6b6482;text-wrap:pretty">{{ t.body }}</span>
+          </div>
+          <span style="flex:0 1 240px;min-width:200px;font-size:12.5px;line-height:1.5;color:#5B23C9;text-wrap:pretty">{{ t.fix }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#0A6F68">07</span>
+      <h2 style="font-family:Outfit,sans-serif;font-size:26px;font-weight:600;margin:0;letter-spacing:-0.01em">O caminho até o ar</h2>
+      <span style="font-size:14px;color:#6b6482">cinco ondas, nesta ordem — pular uma custa retrabalho</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <sc-for list="{{ waves }}" as="w" hint-placeholder-count="4">
+        <div style="background:#fff;border:1px solid #e6e1f2;border-left:4px solid #0E8F86;border-radius:16px;padding:18px 20px;display:flex;flex-wrap:wrap;gap:18px">
+          <div style="flex:0 0 190px;display:flex;flex-direction:column;gap:4px">
+            <span style="display:flex;align-items:center;gap:7px">
+              <span style="{{ w.dotStyle }}"></span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#0A6F68">{{ w.n }}</span>
+            </span>
+            <span style="font-family:Outfit,sans-serif;font-size:18px;font-weight:600;line-height:1.2">{{ w.title }}</span>
+            <span style="font-size:12px;color:#6b6482">{{ w.size }}</span>
+            <span style="{{ w.badgeStyle }}">{{ w.badge }}</span>
+          </div>
+          <div style="flex:1 1 380px;min-width:300px;display:flex;flex-direction:column;gap:7px">
+            <sc-for list="{{ w.items }}" as="i" hint-placeholder-count="4">
+              <span style="font-size:13.5px;line-height:1.5;color:#4b4465;text-wrap:pretty">— {{ i }}</span>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section style="background:#fff;border:1px solid #e6e1f2;border-radius:20px;padding:26px 28px;display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
+    <img src="assets/asa/olhos-de-estrela.png" alt="" style="width:64px;height:64px;object-fit:contain;flex:none" />
+    <div style="flex:1 1 460px;min-width:320px;display:flex;flex-direction:column;gap:12px">
+      <span style="font-family:Outfit,sans-serif;font-size:22px;font-weight:600;letter-spacing:-0.01em">O que eu diria se fosse a desenvolvedora do projeto</span>
+      <p style="margin:0;font-size:14.5px;line-height:1.65;color:#4b4465;text-wrap:pretty">O desenho está muito acima da média — as regras de escala, folga, livro do dia e responsabilidade estão pensadas com um cuidado que a maioria dos produtos não tem. O risco não é o desenho: é achar que ele já é o produto. Você tem 23 documentos visuais excelentes e zero linhas de aplicativo real.</p>
+      <p style="margin:0;font-size:14.5px;line-height:1.65;color:#4b4465;text-wrap:pretty">Meu conselho inicial era lançar três telas só. Você decidiu levar o app inteiro para o piloto, e o argumento é bom: se o Mural não existir, os avisos continuam no WhatsApp e o app passa a somar trabalho em vez de substituir. Numa casa deste tamanho, um app parcial pode ser pior que app nenhum. O preço é piloto mais tarde — então <strong>Snowland, um mês, elenco de verdade no celular todos os dias</strong> continua sendo a parte que não se negocia. É o único jeito de descobrir se a escala funciona antes de a operação inteira depender dela.</p>
+    </div>
+  </section>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1240},&quot;filtroInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;todos&quot;,&quot;bloq&quot;,&quot;grave&quot;,&quot;ajuste&quot;],&quot;default&quot;:&quot;todos&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Auditoria&quot;},&quot;abrirTudo&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Auditoria&quot;}}">
+
+const SEV = {
+  bloq: { label: "Bloqueador", color: "#C2334D", ink: "#C2334D", bg: "#fdeef1" },
+  grave: { label: "Grave", color: "#B36A0C", ink: "#8F5409", bg: "#fdf3e4" },
+  ajuste: { label: "Ajuste", color: "#2E63D6", ink: "#2E63D6", bg: "#eaf0fd" }
+};
+
+const STATS = [
+  ["23", "telas desenhadas, todas abrem sem erro de código", "#0E8F86"],
+  ["0", "delas salva qualquer coisa que você digitar — falta o servidor", "#C2334D"],
+  ["__MISSING__", "peças que ainda faltam desenhar — a entrada inteira saiu na Onda 1", "#C97A17"],
+  ["__BLOCKERS__", "bloqueadores para o ar — seis de construção, um de desenho", "#C2334D"],
+  ["__TOTAL__", "pontos de ajuste catalogados abaixo", "#6C2BF2"]
+];
+
+const BLOCKERS = [
+  { n: "B1", title: "Não existe aplicativo — existem telas",
+    body: "Cada módulo é um arquivo com os dados escritos à mão dentro do próprio código. Nenhum campo grava, nenhuma escala persiste, recarregar a página desfaz tudo. Não há banco de dados, nem servidor, nem endereço na internet.",
+    evidence: "verificado: 23 arquivos, todos com listas fixas no código; zero chamadas de rede" },
+  { n: "B2", title: "A porta de entrada é desenho, não autenticação",
+    body: "As quatro telas existem desenhadas na Onda 1 — entrar, primeiro acesso, esqueci a senha e a redefinição pela Administração. O que não existe é o que fica atrás delas: servidor que valida usuário e senha, sessão que expira, e a saída do seletor 'Ver como', que é ferramenta de revisão e não pode ir para o produto — ninguém escolhe o próprio perfil.",
+    evidence: "o seletor de perfil está em 22 de 23 telas e não deve existir na versão final" },
+  { n: "B3", title: "A notificação não sai do desenho",
+    body: "A central e as preferências por tipo já foram desenhadas na Onda 1. O que não existe é o que faz a notificação chegar: o push no celular e o servidor que dispara — item da Onda 3. Enquanto isso, o sino do cabeçalho mostra um número fixo e não abre nada.",
+    evidence: "o contador do sino é texto fixo em todas as telas; nenhuma chamada de rede" },
+  { n: "B4", title: "O mobile é maquete, não app",
+    body: "São molduras de 390×844 desenhadas dentro da página do computador. Não rolam de verdade, não têm gesto, não funcionam sem internet, não instalam na tela inicial. E o parque tem sinal ruim justo onde o elenco precisa fazer check-in.",
+    evidence: "todas as telas mobile são um retângulo fixo dentro da página web" },
+  { n: "B5", title: "Permissão é desenho, não trava",
+    body: "Cada tela decide o que mostrar comparando o perfil na hora de desenhar. Isso esconde botões, mas não protege dado nenhum: num app real, quem souber o endereço vê tudo. A regra tem que morar no servidor.",
+    evidence: "confirmado: o perfil é uma variável da tela, sem nenhuma validação externa" },
+  { n: "B6", title: "Dado sensível sem cuidado nenhum",
+    body: "O app guarda telefone, data de nascimento, e — em Check-in e ocorrências — doença e acidente. Isso é dado de saúde. Falta consentimento, prazo de guarda, registro de quem consultou o quê, e um jeito da pessoa pedir os dados dela ou o apagamento.",
+    evidence: "nenhuma tela menciona LGPD, consentimento ou retenção" },
+  { n: "B7", title: "Um mesmo Livro do Dia, gravado em dois lugares",
+    body: "Verificado de novo: as duas telas não são cópias — a Escala abre UM livro para resolver (estrutura, palco, alterações, histórico) e o módulo 14 mostra O DIA inteiro (shows de hoje, diferenças do padrão, formações). São vistas complementares, e a ligação entre elas já existe nas duas direções. O que falta não é desenho: é o servidor garantir que as duas gravam no mesmo registro, com a última alteração vencendo e ficando no histórico.",
+    evidence: "resolvido no desenho — o que resta é a escrita única no servidor" }
+];
+
+const MISSING = [
+  ["Estados", "Sem sinal no check-in", "O estado genérico de sem conexão existe e mostra a escala salva. Falta a instrução do check-in: você decidiu que o app não guarda para depois — ele precisa dizer para avisar a supervisão."],
+  ["Estados", "Carregando e lista vazia", "Erro e sem conexão já foram desenhados na Onda 1. Falta o esqueleto de carregamento e o estado de lista vazia — é o que decide se o app parece confiável ou quebrado num dia de internet ruim."],
+  ["Busca", "Busca global de verdade", "A caixa 'Buscar ou perguntar à ASA' existe em todas as telas e só leva para o chat. Buscar pessoa, show, documento ou data ainda não existe."]
+];
+
+// Pontos entregues nas Ondas 1 e 2 — reconhecidos por trecho do texto, para não
+// reescrever 96 strings à mão. O documento passa a marcá-los como feitos.
+const RESOLVIDOS = [
+  ["Falta a aba Personagens", 2, "13"],
+  ["os mapas de formação junto da cena", 2, "14"],
+  ["Motivo obrigatório em tudo", 2, "06"],
+  ["Turmas fixas A, B, C", 2, "18"],
+  ["As categorias são fechadas", 2, "20"],
+  ["Marcar horário está confuso", 1, "20"],
+  ["não têm destino nenhum", 1, "17"],
+  ["não têm ação", 1, "15"],
+  ["com cursor de clique", 1, null]
+];
+const ondaDe = (txt, num) => {
+  const h = RESOLVIDOS.filter(r => txt.indexOf(r[0]) >= 0 && (!r[2] || r[2] === num))[0];
+  return h ? h[1] : 0;
+};
+
+const S = (num, name, pct, items) => ({ num, name, pct, items });
+const I = (sev, src, text, rec) => ({ sev, src, text, rec });
+
+const SCREENS = [
+  S("17", "Início / Meu Dia", 62, [
+    I("grave", "v", "'Abrir as decisões' e 'Abrir' parecem link e não têm destino nenhum. Botão que não faz nada ensina a pessoa a não clicar em nada.", "Todo elemento com cara de botão precisa levar a algum lugar ou sair da tela. Se o destino ainda não existe, mostre desabilitado com o motivo."),
+    I("grave", "v", "A Direção está em somente leitura, mas você quer que ela aja daqui. O cartão de decisão dela hoje não tem ação."),
+    I("grave", "v", "O cartão 'ASA sugere' não tem botão — a sugestão morre na tela.", "Todo cartão da ASA precisa de três ações fixas: aceitar, adiar, dispensar. Sem isso ela nunca vira secretária."),
+    I("grave", "a", "O padrão de rodapé foi desenhado na Onda 1 — versão, ajuda, privacidade e contato — mas não foi aplicado às telas: 15 dos 18 módulos continuam terminando no ar.", "Levar o rodapé do módulo 01 para todas as telas. É uma faixa só, repetida."),
+    I("ajuste", "v", "Palavras se sobrepõem em largura pequena — colunas fixas sem permissão de encolher."),
+    I("ajuste", "v", "As figurinhas da ASA são da leva antiga.", "A pasta já tem 30 remakes com prefixo 'novo-' que nenhuma tela usa. Você aprova a leva nova e eu troco em todas as telas de uma vez."),
+    I("ajuste", "v", "No celular o Meu Dia é resumo demais.", "O Meu Dia mobile deveria ser: próximo bloco com contagem regressiva, check-in num toque, o que mudou desde ontem, e três linhas do mural. Nada mais.")
+  ]),
+  S("20", "Agenda", 45, [
+    I("bloq", "v", "Marcar horário está confuso e é a ação mais usada da tela.", "Trocar o formulário por um calendário de verdade: escolhe as pessoas primeiro, o app pinta as faixas livres na semana, você arrasta o bloco. Duração livre — 30 min, 1h, 3h — não uma lista fechada."),
+    I("bloq", "v", "Aprovar e negar propostas está confuso.", "Tirar da Agenda. Propostas viram uma aba dentro de Escalas chamada 'Pedidos', porque é lá que quem coordena já está trabalhando quando decide. Na Agenda fica só o aviso de que existem pedidos."),
+    I("grave", "v", "As categorias são fechadas (ensaio, reunião, manutenção). Você quer criar as suas.", "Categoria vira cadastro: nome, cor, se convoca ou convida, e quem pode usar. Fica em Locais ou numa aba de configuração da Agenda."),
+    I("grave", "v", "'Essencial' e 'pode faltar' não se entendem na tela.", "Trocar a palavra pelo efeito: 'sem esta pessoa não acontece' / 'acontece mesmo sem ela'. A regra é boa, o rótulo é que é técnico demais."),
+    I("grave", "v", "As folgas mostradas não vêm do módulo Folgas — são dados soltos escritos na tela.", "Uma folga só existe em um lugar. Se ela muda em Folgas, a Agenda tem que mudar junto, ou você terá dois calendários discordando."),
+    I("grave", "v", "Não existe onde reservar espaço, mesmo com a decisão de que espaço se reserva."),
+    I("grave", "v", "Os blocos (jornada, show, ensaio) não abrem nada e não há filtro."),
+    I("ajuste", "v", "Quem define a janela disponível não está dito na tela.", "É a jornada da escala que define. Escreva isso em uma linha visível: 'sua janela vem da escala do dia — falar com sua supervisão para mudar'."),
+    I("ajuste", "v", "'Manutenção' aparece sem explicação de que é.")
+  ]),
+  S("15", "Escalas", 55, [
+    I("bloq", "v", "Não dá para editar de verdade: adicionar atividade num bloco, criar horário parecido, mexer na programação — os botões não completam a ação.", "É a tela mais importante do app. Ela precisa de um editor real antes de qualquer outra coisa ser construída."),
+    I("bloq", "v", "'Marcar pronto por local' não fecha, porque supervisão é por pessoa, não por local.", "Tire o 'pronto por local'. A escala publica sozinha quando: toda necessidade tem gente, todo pedido foi respondido e não há conflito. Quem trava aparece nominalmente na lista de pendências. Publicação automática num horário que o admin define, e botão de publicar agora."),
+    I("grave", "v", "'Decide: supervisão Acquamotion' aparece para todos os gestores.", "A decisão é de quem supervisiona a pessoa, não o local. Mostre o nome da supervisora responsável naquela linha, e deixe o botão ativo só para ela e para a Administração."),
+    I("grave", "v", "Supervisor vê tudo sem poder separar o que é dele.", "Dois filtros fixos no topo: 'Minha área' (padrão) e 'Toda a ASA' (leitura). Sem isso ela se perde no primeiro dia."),
+    I("grave", "v", "Para o elenco a tela abre em amanhã, mas rascunho não aparece — então ele vê vazio.", "Elenco abre sempre em hoje."),
+    I("grave", "v", "A Direção está em leitura e mesmo assim recebe o cartão da ASA pedindo para tirar gente de um show."),
+    I("grave", "v", "Livros do dia de vários locais ao mesmo tempo não têm organização definida.", "Agrupar por local, com o local como cabeçalho fixo. Um livro por linha, estado colorido."),
+    I("ajuste", "a", "Cinco elementos com cursor de clique não têm ação — o maior número entre todas as telas."),
+    I("ajuste", "v", "No celular a grade de escala não cabe.", "No celular, escala não é grade: é lista do dia, bloco por bloco, com hora grande à esquerda. A grade fica só no computador.")
+  ]),
+  S("13", "Shows", 50, [
+    I("bloq", "v", "Falta a aba Personagens — a que você mais quer.", "Personagem é cadastro próprio: nome, titular, substitutos e regra de rodízio (entra quem fez menos). O show passa a apontar para o personagem, não para a pessoa. Assim você define uma vez e vale em todos os shows."),
+    I("grave", "v", "Adicionar cena não funciona; adicionar pessoa não mostra o resultado."),
+    I("grave", "v", "Não dá para ver a versão publicada."),
+    I("grave", "v", "Elenco não consegue ver os links do Drive e o rótulo 'sem acesso' não explica nada.", "Ou o link abre, ou some. 'Sem acesso' sem dizer a quem pedir é pior que nada."),
+    I("grave", "v", "Abas de estado (publicado) aparecem para elenco e admin sem necessidade."),
+    I("grave", "v", "Quando a ASA avisa que algo mudou, não leva ao que mudou.", "Todo aviso de mudança precisa abrir exatamente na linha alterada, com o antes e o depois lado a lado."),
+    I("ajuste", "v", "'Esta cena pode crescer' não se entende.", "Se for a informação de que a cena aceita mais gente, escreva: 'cabem mais 2 pessoas'. Se não for isso, corte."),
+    I("ajuste", "v", "A chamada '60 min antes' não se explica e aparece para o elenco.", "É o horário de apresentação antes do show. Deveria aparecer na escala do elenco como bloco de verdade, não como número solto no livro."),
+    I("ajuste", "v", "A lista de links é rígida.", "Links viram blocos com categoria criada por você (música, figurino, vídeo), mostrados em cartões com ícone — não em lista corrida.")
+  ]),
+  S("14", "Livro do Dia", 48, [
+    I("bloq", "v", "O módulo e a aba dentro da Escala mostram coisas diferentes — são dois produtos para a mesma informação.", "Um só. A aba na Escala passa a mostrar exatamente o módulo, embutido. Você edita num lugar e vale nos dois."),
+    I("bloq", "v", "Falta o que mais importa: os mapas de formação junto da cena, escolhendo quais sobem.", "Cada cena guarda formações nomeadas por número de gente — 'Molduras 6', 'Molduras 4'. Ao montar o dia, o app sugere a formação pelo número de pessoas presentes e você confirma. As formações ficam salvas sozinhas, sem republicar nada."),
+    I("grave", "v", "Não está claro se o botão 'publicar o dia' deveria existir.", "Não deveria. O livro do dia nasce quando a escala é gerada. O que existe é 'ajustar' e 'marcar como executado'."),
+    I("grave", "a", "Não há como comparar o livro de hoje com o padrão do show — o que foi tirado, o que foi trocado."),
+    I("ajuste", "v", "A ASA não mora aqui.", "É onde ela é mais útil: 'faltam 4 hoje — quer que eu troque para a formação de 4?', 'a Sofia entrou no lugar da Amanda, ajusto as posições?', 'salvar esta formação como padrão?'."),
+    I("ajuste", "v", "No celular falta o essencial: minha cena, minha posição, meu horário.")
+  ]),
+  S("19", "Check-in e ocorrências", 52, [
+    I("bloq", "v", "Não existe onde configurar o check-in: horários, janela de tolerância, quando a ASA lembra.", "Uma aba de configuração, só do admin: janela de abertura (ex. 60 min antes do primeiro bloco), tolerância, lembrete automático 15 min antes de fechar, e o que acontece se ninguém marcar."),
+    I("grave", "v", "Vários cartões, links e botões não funcionam."),
+    I("grave", "v", "Palavras cortadas dentro dos cartões."),
+    I("grave", "v", "A média de reincidência fala de 'pessoas reincidentes' sem dizer quem são.", "Mostre os nomes. Número sem nome não vira conversa."),
+    I("grave", "v", "A Direção vê mais do que precisa.", "Para a Direção: quem não vem hoje, o motivo, e o impacto no show. Nada de histórico individual."),
+    I("ajuste", "a", "Ocorrência de doença e acidente é dado de saúde e está exposta sem nenhuma restrição extra.", "Só a supervisão direta e a Administração deveriam ver o motivo. Para os demais: 'ausência justificada'.")
+  ]),
+  S("10", "Responsabilidades e Tarefas", 44, [
+    I("bloq", "v", "Os formulários estão confusos — e é o que você mais usa.", "Responsabilidade = nome, descrição, área, quem responde, quem participa, checklist opcional, com que frequência gera tarefa. Sete campos, uma coluna, nada mais. Tarefa avulsa = o quê, quem, quando, pronto. Quatro campos."),
+    I("bloq", "v", "Tarefa avulsa não abre formulário nenhum."),
+    I("grave", "v", "Para o elenco o módulo se chama 'Tarefas' e abre em tarefas.", "Renomear para 'Responsabilidades' em todos os perfis e abrir sempre na aba Responsabilidades, com Tarefas em segundo."),
+    I("grave", "v", "'Confirmar lote' não diz o que está confirmando.", "Mostrar a lista antes: 'confirmar 8 tarefas de 5 pessoas — ver quais'."),
+    I("grave", "v", "Muitos botões e links sem função."),
+    I("ajuste", "v", "No celular a tela está praticamente vazia.", "No celular: só as minhas tarefas de hoje, em lista, marcando com um toque. Responsabilidade vira consulta."),
+    I("ajuste", "v", "A ASA não tem papel aqui.", "Ela deveria montar a responsabilidade a partir de uma frase sua, sugerir substituto quando o titular está de folga, e cobrar o que está atrasado.")
+  ]),
+  S("18", "Folgas", 58, [
+    I("bloq", "v", "Turmas fixas A, B, C e regime engessado.", "Turma vira cadastro livre: nome que você quiser, quantas quiser, válidas por mês. Meses podem reaproveitar a configuração do mês anterior com um botão 'repetir de agosto'."),
+    I("grave", "v", "Não há data de publicação nem fluxo de aprovação.", "Admin monta e envia como rascunho para as supervisões; cada uma dá o ok; quando todas derem, publica automaticamente na data marcada. Quem não respondeu aparece nominalmente."),
+    I("grave", "v", "Para o elenco aparece muita coisa que é de quem monta folga."),
+    I("grave", "v", "No menu lateral a Biblioteca aparece em destaque indevido."),
+    I("ajuste", "v", "O contador semanal deveria vir fechado.", "Fechado por padrão, com um botão para abrir. Bom pedido — vale para outros contadores do app."),
+    I("ajuste", "v", "Mobile confuso e pesado.", "No celular: 'minhas próximas folgas' em lista, botão de pedir troca, e status do pedido. Só isso.")
+  ]),
+  S("16", "Painel", 60, [
+    I("grave", "v", "Você relatou que não abriu, com aviso vermelho.", "Reabri agora e a tela carrega sem erro. Provavelmente foi uma falha momentânea ao carregar as imagens. Se acontecer de novo, me avise no mesmo minuto que eu capturo o erro."),
+    I("grave", "a", "Os números não levam a lugar nenhum, embora o texto da própria tela prometa que 'todo número leva para a tela onde se resolve'."),
+    I("ajuste", "a", "Não existe recorte por período no histórico — nem escolher o mês.")
+  ]),
+  S("06", "Locais", 56, [
+    I("bloq", "v", "Motivo obrigatório em tudo.", "Motivo só onde alguém vai precisar prestar contas depois: encerrar local, negar pedido, remover pessoa da escala. Criar, editar e reabrir não precisam. Vale para o app inteiro — este é um padrão errado repetido em cinco telas."),
+    I("grave", "v", "Evento não aceita datas de meses à frente."),
+    I("grave", "v", "'Disputado' e 'uso livre' não se entendem.", "Trocar por: 'só um compromisso por vez' e 'vários ao mesmo tempo'."),
+    I("grave", "v", "O cartão 'onde esses nomes aparecem' não comunica nada.", "Cortar. É explicação de regra interna, não informação de tela."),
+    I("grave", "v", "Programação mostra horário em dia que o local não abre — e não está dito se isso gera escala.", "Regra explícita: dia fechado não gera escala. Se abrir por exceção, você marca aquele dia como aberto e o app pergunta se gera escala só naquele dia, mantendo a regra normal para os demais."),
+    I("ajuste", "v", "A ASA não participa.", "Ela deveria avisar antes: 'segunda 15 o Snowland está fechado e há 3 ensaios marcados'.")
+  ]),
+  S("07", "Pessoas", 54, [
+    I("grave", "v", "Situações demais: convite, bloqueada e outras.", "Só duas: ativa e desativada. Simplificação boa e fácil."),
+    I("grave", "v", "E-mail obrigatório sem necessidade.", "Login por nome de usuário; admin define a senha e a pessoa troca no primeiro acesso, como você quer. E-mail vira campo opcional."),
+    I("grave", "v", "A aba Acessos duplica o que já está na ficha.", "Cortar a aba. A matriz de perfis vira um ícone de informação dentro da ficha."),
+    I("grave", "v", "'Minha ficha' aparece para o elenco.", "Fora do módulo — a ficha dele mora em Perfil. Aqui, no máximo, um diretório com nome, foto, área e forma de contato, sem situação nem dado administrativo."),
+    I("ajuste", "a", "Não há histórico de mudanças da pessoa (mudou de área, de grupo, de perfil, quando e por quem).")
+  ]),
+  S("08", "Áreas", 50, [
+    I("grave", "v", "Não existe como adicionar nem editar área."),
+    I("grave", "v", "Grupos são exigidos em todos os locais, mas Patinadores só existe em Snowland."),
+    I("grave", "v", "Motivo obrigatório em toda mudança."),
+    I("ajuste", "v", "'Grupo' soa técnico.", "Concordo: 'equipe' é melhor e é a palavra que vocês já usam."),
+    I("ajuste", "v", "A ASA não participa.", "Ela poderia avisar sobre desequilíbrio: 'a equipe de Bailarinos em Acquamotion está com 9 pessoas para 12 blocos'.")
+  ]),
+  S("25", "Reconhecimentos", 40, [
+    I("grave", "v", "A tela é visivelmente diferente das outras.", "Confirmado no código: é a única sem o menu lateral navegável — todos os itens do menu são texto morto aqui. Também é a mais curta, com menos da metade do conteúdo das vizinhas."),
+    I("grave", "v", "'Abrir no perfil' não leva a lugar nenhum. O Perfil existe (tela 28), só não está ligado."),
+    I("grave", "a", "Não há como registrar reconhecimento a partir daqui e nem link claro para o Mural, onde se escreve.")
+  ]),
+  S("22", "Avisos e Mural", 58, [
+    I("grave", "v", "Você relatou que não abriu, com aviso vermelho.", "Reabri e carrega sem erro. Mesmo caso do Painel — se repetir, me avise na hora."),
+    I("grave", "a", "Não há como ver quem já deu ciente num aviso — que é a razão de o aviso existir."),
+    I("ajuste", "a", "Aviso agendado e aviso cancelado estão nas regras escritas mas não aparecem na tela.")
+  ]),
+  S("23", "Mensagens", 64, [
+    I("ajuste", "v", "Contador de letras desnecessário.", "Tirar. Ninguém conta letras em conversa."),
+    I("ajuste", "v", "A página parece diferente das outras.", "Ela está mais estreita que as vizinhas. Alinho a largura no mesmo padrão."),
+    I("ajuste", "v", "Botões e links sem função — três controles com cursor de clique e nenhuma ação."),
+    I("ajuste", "v", "Como melhorar.", "Três coisas mudam muito: responder mencionando o bloco da escala ('sobre o ensaio das 8h40'), transformar mensagem em tarefa com um toque, e a ASA sugerir a resposta quando alguém pergunta algo que já está na escala.")
+  ]),
+  S("24", "Biblioteca", 66, [
+    I("ajuste", "a", "Quatro controles com cursor de clique não têm ação — inclusive na área de enviar arquivo."),
+    I("ajuste", "v", "Como melhorar.", "Documento ligado ao show e à responsabilidade que o usa, para aparecer no contexto certo; e a ASA respondendo com a resposta e o trecho do documento, não só o link."),
+    I("ajuste", "a", "Falta o mais básico de um acervo: ver dentro do arquivo sem baixar.")
+  ]),
+  S("27", "Assistente ASA", 35, [
+    I("bloq", "a", "É uma conversa de mentira: as perguntas e as respostas estão escritas no código. Não há campo funcional, não há memória, não há ação."),
+    I("grave", "a", "Quatro elementos com cursor de clique sem ação, incluindo a própria caixa de busca."),
+    I("grave", "a", "Nenhuma resposta mostra de onde tirou a informação.", "Toda resposta precisa citar a fonte com link: 'segundo a escala de hoje, publicada às 18h por Deborah'.")
+  ]),
+  S("28", "Perfil e configurações", 55, [
+    I("grave", "a", "Existe e está ligado ao menu, mas nenhuma outra tela leva até ele a partir do nome da pessoa."),
+    I("grave", "a", "Sem trocar senha, sem sair da conta, sem preferências de notificação — os três itens que todo mundo procura aqui.")
+  ])
+];
+
+const ASA_NEEDS = [
+  { n: "01", title: "Poder agir, não só falar", body: "Cada sugestão precisa de aceitar, adiar e dispensar. Aceitar tem que executar de verdade — trocar a pessoa, salvar a formação, mandar o lembrete." },
+  { n: "02", title: "Dizer de onde tirou", body: "Toda afirmação com a fonte junto e um link. Sem isso ninguém confia nela na primeira vez que ela errar — e ela vai errar." },
+  { n: "03", title: "Memória por pessoa e por área", body: "Lembrar que você prefere fechar a escala às 18h, que a Deborah nunca escala a Izabel em dia de fisio, que molduras com 4 é a formação de contingência." },
+  { n: "04", title: "Um lugar só onde ela mora", body: "Hoje ela aparece em 17 telas em formatos diferentes. Um padrão único: cartão dentro da tela para o que é daquela tela, chat para o resto." },
+  { n: "05", title: "Nunca ver o que o perfil não vê", body: "A regra existe escrita. Precisa virar trava no servidor, senão a ASA vira o buraco por onde o elenco descobre o salário de todo mundo." }
+];
+
+const MOBILE = [
+  ["#C2334D", "Não é aplicativo", "São desenhos de celular dentro da página do computador. Falta ser um app que instala, abre rápido e lembra de você."],
+  ["#C2334D", "Não funciona sem internet", "A escala do dia e o livro do dia precisam abrir offline. É dentro do parque que a pessoa consulta, e é lá que o sinal cai."],
+  ["#C2334D", "Sem push", "Escala publicada, folga aprovada, aviso com ciente e mensagem precisam chegar no celular. Hoje só existem dentro da tela."],
+  ["#C97A17", "Todas as telas mostram informação de gestão", "O elenco no celular quer quatro coisas: onde eu estou agora, o que vem depois, marcar presença, pedir folga. O resto atrapalha."],
+  ["#C97A17", "Alvos de toque pequenos demais", "Vários botões estão abaixo dos 44 px mínimos — no celular, com a mão suada saindo do gelo, ninguém acerta."],
+  ["#C97A17", "Sem gesto nenhum", "Puxar para atualizar, deslizar para marcar feito, voltar deslizando. É o que faz um app parecer app."],
+  ["#2E63D6", "Sem modo escuro", "Bastidor é escuro e o app é branco puro. Cega quem olha o celular entre uma cena e outra."],
+  ["#2E63D6", "Sem atalho na tela inicial", "O ideal é a pessoa abrir 'Minha escala' direto do ícone, sem passar pelo Meu Dia."]
+];
+
+const TECH = [
+  ["Acessibilidade", "Texto cinza abaixo do contraste mínimo — resolvido", "O cinza antigo (#8B84A3) sobre branco dava 3,5:1, abaixo do mínimo de 4,5:1, e era usado em legenda, hora e nota auxiliar em quase todas as telas.", "Trocado por #6b6482 (5,6:1) em todas as telas. Feito na Onda 1."],
+  ["Acessibilidade", "Foco de teclado — resolvido", "Quem navega por teclado não enxergava onde estava: nenhuma tela definia isso.", "Anel de foco roxo padrão em todas as telas. Feito na Onda 1."],
+  ["Acessibilidade", "Descrição de imagem repetida", "Dezenas de figurinhas com a mesma descrição 'ASA'. Um leitor de tela repete 'ASA' trinta vezes numa tela só.", "Figurinha decorativa fica sem descrição."],
+  ["Robustez", "Botões decorativos — resolvido", "Havia 19 elementos com cursor de clique e nenhuma ação, além de textos com cara de link.", "Regra aplicada: ou faz, ou some, ou aparece desabilitado com o porquê. Feito na Onda 1."],
+  ["Robustez", "Fontes vindas da internet", "Sem conexão, o app troca a tipografia e a tela toda desalinha.", "Empacotar as fontes junto do app."],
+  ["Robustez", "Sem tratamento de virada do dia", "O app inteiro gira em torno de 'hoje' e nenhuma tela trata o que acontece à meia-noite nem o fuso.", "Definir a virada operacional (ex.: 4h) junto com a operação."],
+  ["Dados", "Vocabulário 'membro' — resolvido", "A palavra aparecia 42 vezes, inclusive no menu, e ninguém na casa fala assim.", "Trocada por 'elenco' em todas as telas. Feito na Onda 1."],
+  ["Dados", "Mesma informação em telas diferentes", "As folgas mostradas na Agenda não vêm de Folgas; a escala do Livro do Dia não vem de Escalas.", "Definir a fonte única de cada informação antes de construir."],
+  ["Dados", "Nomes e vocabulário reais", "Elenco, supervisões e blocos de escala já estão corretos nas telas — Deborah, Victor, Stephani, Rodrigo, e os blocos das escalas reais.", "Único ponto aberto: confirmar a área de Esther, Cláudio S. e Fatturi."]
+];
+
+const WAVES = [
+  { n: "Onda 1", title: "Fechar o desenho", size: "concluída", done: true, items: [
+    "Vocabulário: 'membro' virou 'elenco' em todas as telas, e as regras escritas ficaram atrás do ícone de informação.",
+    "Todo botão decorativo morreu: ou faz, ou some, ou fica desabilitado explicando.",
+    "As 9 telas que faltavam foram desenhadas: entrar, primeiro acesso, esqueci a senha, notificações, preferências por tipo, boas-vindas, estados de erro, sem conexão e rodapé.",
+    "Mobile do elenco refeito nos 4 perfis, com abas e botão de voltar.",
+    "Formulários de Responsabilidades e Agenda simplificados."
+  ]},
+  { n: "Onda 2", title: "Decidir o que estava aberto", size: "concluída", done: true, items: [
+    "Personagens por local, com titular e substitutos ou rodízio por quem menos fez — contador por dia.",
+    "Livro do Show virou o ideal intocado, com interruptor de personagens e três tipos de show.",
+    "Livro do Dia nasce 80% resolvido, com biblioteca de formações por quantidade e um botão só para confirmar.",
+    "Sessões com começo e fim, chamada opcional, e uma formação para o dia inteiro.",
+    "Motivo obrigatório só em 4 casos: negar folga ou troca, registrar ausência, cancelar aviso publicado, reabrir local encerrado.",
+    "Turmas de folga livres, com 'repetir a configuração do mês anterior'."
+  ]},
+  { n: "Onda 3", title: "Construir o app do piloto", size: "aqui estamos", now: true, items: [
+    "Banco de dados, login por usuário e senha, e permissão validada no servidor — não só no app.",
+    "A Administração cria a conta e a pessoa entra: sem convite, sem aprovação, sem autocadastro.",
+    "Push funcionando, porque aviso que não chega não substitui o WhatsApp.",
+    "Sem fila offline: sem sinal, o app diz para avisar a supervisão — não guarda check-in para depois.",
+    "O app inteiro, não quatro telas — se o Mural não existir, os avisos ficam no WhatsApp e o app só soma trabalho.",
+    "Piloto em Snowland: um mês, elenco usando no celular todos os dias."
+  ]},
+  { n: "Onda 4", title: "Corrigir o que o piloto ensinar", size: "reserva deliberada", items: [
+    "Um mês de uso real sempre produz lista de correções — este é o lugar dela.",
+    "O que ninguém consegue prever agora: onde as pessoas travam, o que elas ignoram, o que elas pedem no segundo dia.",
+    "Só depois disso o desenho de Snowland pode ser chamado de estável."
+  ]},
+  { n: "Onda 5", title: "Expansão", size: "depois do piloto estável", items: [
+    "Acquamotion entra com o elenco de Bailarinos já escalado lá.",
+    "Hotelaria entra por último: são shows específicos, não operação de dia inteiro.",
+    "A ASA com memória, fonte citada e ações executáveis."
+  ]}
+];
+
+class Component extends DCLogic {
+  state = { sev: null, open: {} };
+
+  renderVals() {
+    const sev = this.state.sev || this.props.filtroInicial || "todos";
+    const openAll = this.props.abrirTudo ?? false;
+
+    const totalPontos = SCREENS.reduce((n, sc) => n + sc.items.filter(i => !ondaDe(i.text, sc.num)).length, 0);
+    const stats = STATS.map(s => ({
+      num: s[0] === "__TOTAL__" ? String(totalPontos) : s[0] === "__BLOCKERS__" ? String(BLOCKERS.length) : s[0] === "__MISSING__" ? String(MISSING.length) : s[0],
+      label: s[1],
+      numStyle: "font-family:Outfit,sans-serif;font-size:34px;font-weight:700;line-height:1;letter-spacing:-0.02em;color:" + s[2]
+    }));
+
+    const tabDefs = [["todos", "Tudo"], ["bloq", "Bloqueadores"], ["grave", "Graves"], ["ajuste", "Ajustes"]];
+    const sevTabs = tabDefs.map(t => {
+      const on = t[0] === sev;
+      const c = t[0] === "todos" ? "#6C2BF2" : SEV[t[0]].color;
+      const ci = t[0] === "todos" ? "#6C2BF2" : SEV[t[0]].ink;
+      return {
+        label: t[1],
+        onClick: () => this.setState({ sev: t[0] }),
+        style: "padding:7px 14px;border-radius:999px;cursor:pointer;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:600;" +
+          (on ? "border:1px solid " + c + ";background:" + c + "14;color:" + ci + ";" : "border:1px solid #e6e1f2;background:#fff;color:#6b6482;")
+      };
+    });
+
+    let shown = 0;
+    const screens = SCREENS.map(s => {
+      const items = s.items.filter(i => sev === "todos" || i.sev === sev);
+      shown += items.filter(i => !ondaDe(i.text, s.num)).length;
+      const isOpen = openAll || (this.state.open[s.num] ?? (sev !== "todos"));
+      const bloq = s.items.filter(i => i.sev === "bloq" && !ondaDe(i.text, s.num)).length;
+      const feitos = s.items.filter(i => ondaDe(i.text, s.num)).length;
+      const barColor = s.pct >= 60 ? "#0E8F86" : s.pct >= 48 ? "#C97A17" : "#C2334D";
+      const barInk = s.pct >= 60 ? "#0A6F68" : s.pct >= 48 ? "#9A5B0E" : "#C2334D";
+      return {
+        num: s.num,
+        name: s.name,
+        pct: s.pct + "%",
+        open: isOpen && items.length > 0,
+        caret: isOpen ? "\u2013" : "+",
+        onToggle: () => this.setState(st => ({ open: Object.assign({}, st.open, { [s.num]: !(st.open[s.num] ?? (sev !== "todos")) }) })),
+        barStyle: "display:block;height:100%;width:" + s.pct + "%;background:" + barColor,
+        pctStyle: "font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:" + barInk + ";min-width:34px",
+        countLabel: (items.length - items.filter(i => ondaDe(i.text, s.num)).length) + (bloq ? " · " + bloq + " bloq." : "") + (feitos ? " · " + feitos + " feito" + (feitos > 1 ? "s" : "") : ""),
+        countStyle: "font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 9px;border-radius:999px;flex:none;white-space:nowrap;" +
+          (bloq ? "background:#fdeef1;color:#C2334D;" : "background:#f2f0f8;color:#6b6482;"),
+        items: items.map(i => ({
+          text: i.text,
+          rec: ondaDe(i.text, s.num) ? "Resolvido na Onda " + ondaDe(i.text, s.num) + "." : (i.rec || null),
+          dotStyle: "width:9px;height:9px;border-radius:50%;flex:none;margin-top:6px;background:" + (ondaDe(i.text, s.num) ? "#0A6F68" : SEV[i.sev].color),
+          srcLabel: ondaDe(i.text, s.num) ? "feito · onda " + ondaDe(i.text, s.num) : i.src === "v" ? "você apontou" : "auditoria",
+          srcStyle: "font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;flex:none;padding-top:4px;color:" +
+            (ondaDe(i.text, s.num) ? "#0A6F68" : i.src === "v" ? "#6b6482" : "#6C2BF2")
+        }))
+      };
+    }).filter(s => s.items.length > 0);
+
+    const missing = MISSING.map(m => ({
+      tag: m[0],
+      title: m[1],
+      body: m[2],
+      pillStyle: "font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 10px;border-radius:7px;background:#fdf3e4;color:#8F5409C;flex:none;min-width:74px;text-align:center"
+    }));
+
+    const tech = TECH.map(t => ({
+      tag: t[0],
+      title: t[1],
+      body: t[2],
+      fix: t[3],
+      pillStyle: "font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 10px;border-radius:7px;flex:none;min-width:98px;text-align:center;" +
+        (t[0] === "Acessibilidade" ? "background:#eaf0fd;color:#2E63D6;" : t[0] === "Robustez" ? "background:#fdf3e4;color:#8F5409;" : "background:#e3f4f1;color:#0A6F68;")
+    }));
+
+    const mobileItems = MOBILE.map(m => ({
+      title: m[1],
+      body: m[2],
+      dotStyle: "width:9px;height:9px;border-radius:50%;flex:none;background:" + m[0]
+    }));
+
+    return {
+      stats, sevTabs, screens, missing, tech, mobileItems,
+      blockers: BLOCKERS,
+      blockersTitle: "Os " + (BLOCKERS.length === 7 ? "sete" : String(BLOCKERS.length)) + " bloqueadores",
+      asaNeeds: ASA_NEEDS,
+      waves: WAVES.map(w => ({
+        n: w.n, title: w.title, size: w.size, items: w.items,
+        badge: w.done ? "feito" : w.now ? "aqui" : "",
+        badgeStyle: (w.done || w.now)
+          ? "font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:4px 8px;border-radius:6px;width:fit-content;" +
+            (w.done ? "background:#e2f4f2;color:#0A6F68;" : "background:#f3ecfe;color:#5B23C9;")
+          : "display:none",
+        dotStyle: "width:9px;height:9px;border-radius:50%;flex:none;background:" + (w.done ? "#0E8F86" : w.now ? "#6C2BF2" : "#ddd6ee")
+      })),
+      filterNote: shown + " pontos em " + screens.length + " módulos de app"
+    };
+  }
+}
+
+</script>
+</body>
+</html>

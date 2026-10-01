@@ -13,4 +13,5 @@ export const AsaMemoryStatus = {
   PENDING: 'PENDING',
   APPROVED: 'APPROVED',
   REJECTED: 'REJECTED',
+  DISABLED: 'DISABLED',
 } as const;

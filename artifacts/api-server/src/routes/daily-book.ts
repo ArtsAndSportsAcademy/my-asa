@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, ne, isNull, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   dailyBooksTable,
@@ -13,17 +13,28 @@ import {
   showBookScenesTable,
   showBookBlocksTable,
   showBookRolesTable,
+  showBookKeyframesTable,
   agendaEventsTable,
   operationsTable,
   operationalChangesTable,
   historyEventsTable,
   usersTable,
+  formationsTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization, requireRole } from "../middlewares/auth.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
+import { operationalDate } from "../lib/operational-date.js";
 import { canOperateDailyBook, canViewDailyBook, isOperationManager, type ShowResponsibilityRef } from "../lib/show-responsibility.js";
 import { eventBus } from "../lib/event-bus.js";
 import { notifyMany } from "../services/notificationService.js";
+import {
+  readBaseSnapshot,
+  requireExpectedVersion,
+  respondWithVersionConflict,
+  VersionConflictError,
+  VersionedResourceNotFoundError,
+  type VersionedSnapshot,
+} from "../lib/versioning.js";
 import {
   resolveAssignmentsByRole,
   advanceRotationCounts,
@@ -32,8 +43,20 @@ import {
   type RoleResolution,
   type RotationWinners,
 } from "../services/line-resolver.js";
+import { detectDailyBookConflicts } from "../services/schedule-conflicts.js";
+import { escalaDoDiaDoLivro, escalaPublicada, marcarEscalaAlteradaPeloLivro } from "../services/escala-dia.js";
+import { isNotSessionBlock, listSessionBlocks, syncSessionBlocks } from "../services/session-blocks.js";
 
 const router: IRouter = Router();
+async function detectGeneratedDailyBookConflicts(dailyBookId: string, date: string) {
+  try {
+    return { conflicts: await detectDailyBookConflicts(dailyBookId, date), conflictDetection: { status: "complete" as const } };
+  } catch (error) {
+    // Conflito é alerta, não pode desfazer uma geração já persistida.
+    console.warn("detector de conflitos indisponível após gerar Livro do Dia", error);
+    return { conflicts: [], conflictDetection: { status: "unavailable" as const, message: "Livro salvo. A verificação de horários está indisponível; consulte os conflitos novamente." } };
+  }
+}
 async function loadShowRef(
   showBookId: string,
 ): Promise<{ ref: ShowResponsibilityRef; operationId: string } | null> {
@@ -158,34 +181,39 @@ async function requireDailyBookOperate(
   return true;
 }
 
+/** Linha da geração atual, sem o marcador interno: o snapshot mantém o mesmo formato de antes. */
+const liveRow = <T extends { supersededAt: Date | null }>({ supersededAt: _superseded, ...row }: T) => row;
+
 async function buildDailyBookTree(dailyBookId: string, dbLike: typeof db = db) {
-  const scenes = await dbLike
+  // Linhas substituídas por uma regeneração ficam no banco, mas não fazem parte do Livro.
+  const scenes = (await dbLike
     .select()
     .from(dailyBookScenesTable)
-    .where(eq(dailyBookScenesTable.dailyBookId, dailyBookId))
-    .orderBy(dailyBookScenesTable.order);
+    .where(and(eq(dailyBookScenesTable.dailyBookId, dailyBookId), isNull(dailyBookScenesTable.supersededAt)))
+    .orderBy(dailyBookScenesTable.order)).map(liveRow);
 
-  const blocks = await dbLike
+  const blocks = (await dbLike
     .select()
     .from(dailyBookBlocksTable)
-    .where(eq(dailyBookBlocksTable.dailyBookId, dailyBookId))
-    .orderBy(dailyBookBlocksTable.order);
+    .where(and(eq(dailyBookBlocksTable.dailyBookId, dailyBookId), isNull(dailyBookBlocksTable.supersededAt)))
+    .orderBy(dailyBookBlocksTable.order)).map(liveRow);
 
-  const positions = await dbLike
+  const positions = (await dbLike
     .select()
     .from(dailyBookPositionsTable)
-    .where(eq(dailyBookPositionsTable.dailyBookId, dailyBookId));
+    .where(and(eq(dailyBookPositionsTable.dailyBookId, dailyBookId), isNull(dailyBookPositionsTable.supersededAt)))).map(liveRow);
 
   const assignments = positions.length > 0
-    ? await dbLike
+    ? (await dbLike
         .select()
         .from(dailyBookAssignmentsTable)
         .where(
           and(
             eq(dailyBookAssignmentsTable.dailyBookId, dailyBookId),
-            inArray(dailyBookAssignmentsTable.positionId, positions.map((p) => p.id))
+            inArray(dailyBookAssignmentsTable.positionId, positions.map((p) => p.id)),
+            isNull(dailyBookAssignmentsTable.supersededAt),
           )
-        )
+        )).map(liveRow)
     : [];
 
   const assignedUserIds = [
@@ -238,6 +266,74 @@ async function buildDailyBookTree(dailyBookId: string, dbLike: typeof db = db) {
   });
 
   return scenes.map((s) => ({ ...s, blocks: blocksByScene[s.id] ?? [] }));
+}
+
+async function mutateDailyBook<T>(
+  dailyBookId: string,
+  expectedVersion: number,
+  mutate: (tx: typeof db, claimedBook: typeof dailyBooksTable.$inferSelect) => Promise<T>,
+  afterMutate?: (
+    tx: typeof db,
+    claimedBook: typeof dailyBooksTable.$inferSelect,
+    result: T,
+  ) => Promise<void>,
+): Promise<T> {
+  return db.transaction(async (tx) => {
+    const [claimedBook] = await tx
+      .update(dailyBooksTable)
+      .set({ version: expectedVersion + 1, updatedAt: new Date() })
+      .where(and(eq(dailyBooksTable.id, dailyBookId), eq(dailyBooksTable.version, expectedVersion)))
+      .returning();
+    if (!claimedBook) throw new VersionConflictError("Livro do Dia");
+    const typedTx = tx as unknown as typeof db;
+    const result = await mutate(typedTx, claimedBook);
+    if (afterMutate) await afterMutate(typedTx, claimedBook, result);
+    return result;
+  });
+}
+
+async function respondDailyBookVersionConflict(
+  req: any,
+  res: any,
+  dailyBookId: string,
+  expectedVersion: number,
+): Promise<void> {
+  const [currentBook] = await db
+    .select()
+    .from(dailyBooksTable)
+    .where(eq(dailyBooksTable.id, dailyBookId))
+    .limit(1);
+  if (!currentBook) {
+    res.status(404).json({ error: "Livro do Dia não encontrado" });
+    return;
+  }
+  const currentSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(dailyBookId) };
+  respondWithVersionConflict(
+    res,
+    "Livro do Dia",
+    expectedVersion,
+    currentBook.version,
+    currentSnapshot,
+    readBaseSnapshot(req),
+  );
+}
+
+async function respondDailyBookMutationError(
+  err: unknown,
+  req: any,
+  res: any,
+  dailyBookId: string,
+  expectedVersion: number,
+): Promise<boolean> {
+  if (err instanceof VersionConflictError) {
+    await respondDailyBookVersionConflict(req, res, dailyBookId, expectedVersion);
+    return true;
+  }
+  if (err instanceof VersionedResourceNotFoundError) {
+    res.status(404).json({ error: err.message });
+    return true;
+  }
+  return false;
 }
 
 function computeDelta(
@@ -341,10 +437,11 @@ async function writeDailyBookAudit(
   actorId: string,
   action: string,
   beforeState: Record<string, unknown> | null,
-  afterState: Record<string, unknown> | null
+  afterState: Record<string, unknown> | null,
+  executor: any = db,
 ) {
-  try {
-    const [mo] = await db
+  const write = async () => {
+    const [mo] = await executor
       .insert(operationalChangesTable)
       .values({
         type: "MO_AJUSTE_ESCALA",
@@ -357,7 +454,7 @@ async function writeDailyBookAudit(
       .returning();
 
     if (mo) {
-      await db.insert(historyEventsTable).values({
+      await executor.insert(historyEventsTable).values({
         moId: mo.id,
         entityType: "daily_book",
         entityId: dailyBookId,
@@ -368,8 +465,8 @@ async function writeDailyBookAudit(
         afterState: afterState as any,
       });
     }
-  } catch {
-  }
+  };
+  await write();
 }
 
 export interface PlannedAssignment {
@@ -474,6 +571,7 @@ async function createAssignmentsForRole(
   sceneKey: string | null,
   assignedByScene: Map<string, Set<string>>,
   minimumCoverage: number = 1,
+  dailySceneId: string | null = sceneKey,
   dbLike: typeof db = db
 ) {
   const rr = byRole.get(roleId);
@@ -486,8 +584,137 @@ async function createAssignmentsForRole(
     finalPlanned = dedupAssignmentsForScene(planned, set);
   }
   for (const a of finalPlanned) {
-    await dbLike.insert(dailyBookAssignmentsTable).values({ dailyBookId, positionId, userId: a.userId, status: a.status });
+    await dbLike.insert(dailyBookAssignmentsTable).values({
+      dailyBookId,
+      positionId,
+      sceneId: dailySceneId,
+      userId: a.userId,
+      status: a.status,
+    });
   }
+}
+
+/**
+ * Cria o rascunho de um Livro do Dia a partir de um Show já programado.
+ *
+ * A Escala é quem inicia o dia operacional: esta função não publica nem
+ * notifica ninguém. Ela só materializa a cópia editável do Livro do Show e a
+ * vincula à Escala que está sendo preparada. É idempotente para show+data:
+ * repetir a geração não apaga ajustes já feitos pela Supervisão.
+ */
+export async function generateDailyBookDraftForScale(input: {
+  showBookId: string;
+  date: string;
+  scaleId: string;
+  actorId: string;
+  organizationId: string;
+  reason?: string | null;
+}) {
+  const { showBookId, date, scaleId, actorId, organizationId, reason = null } = input;
+  const [showBook] = await db.select().from(showBooksTable).where(eq(showBooksTable.id, showBookId)).limit(1);
+  if (!showBook) throw new Error("Show Book não encontrado");
+
+  let [event] = await db.select().from(agendaEventsTable).where(and(
+    eq(agendaEventsTable.showBookId, showBookId),
+    eq(agendaEventsTable.date, date),
+    eq(agendaEventsTable.operationId, showBook.operationId),
+  )).limit(1);
+  if (!event) {
+    [event] = await db.insert(agendaEventsTable).values({
+      operationId: showBook.operationId,
+      showBookId,
+      type: "SHOW",
+      title: showBook.title,
+      date,
+      status: "CONFIRMED",
+      visibility: "MANAGEMENT",
+      createdBy: actorId,
+    }).returning();
+  }
+  if (!event) throw new Error("Não foi possível preparar o evento interno do Livro do Dia");
+
+  const [existing] = await db.select().from(dailyBooksTable).where(and(
+    eq(dailyBooksTable.agendaEventId, event.id),
+    eq(dailyBooksTable.showBookId, showBookId),
+  )).limit(1);
+  if (existing) {
+    if (existing.scaleId && existing.scaleId !== scaleId) {
+      throw new Error("Este Livro do Dia já pertence a outra Escala");
+    }
+    const dailyBook = existing.scaleId
+      ? existing
+      : (await db.update(dailyBooksTable).set({ scaleId, updatedAt: new Date() }).where(eq(dailyBooksTable.id, existing.id)).returning())[0]!;
+    return { dailyBook, generated: false, conflicts: await detectGeneratedDailyBookConflicts(dailyBook.id, date) };
+  }
+
+  const [scenes, blocks, roles, initialKeyframes] = await Promise.all([
+    db.select().from(showBookScenesTable).where(eq(showBookScenesTable.showBookId, showBookId)).orderBy(showBookScenesTable.order),
+    db.select().from(showBookBlocksTable).where(eq(showBookBlocksTable.showBookId, showBookId)).orderBy(showBookBlocksTable.order),
+    db.select().from(showBookRolesTable).where(eq(showBookRolesTable.showBookId, showBookId)).orderBy(showBookRolesTable.order, showBookRolesTable.id),
+    db.select({ id: showBookKeyframesTable.id, sceneId: showBookKeyframesTable.sceneId, markerPositions: showBookKeyframesTable.markerPositions })
+      .from(showBookKeyframesTable).where(and(eq(showBookKeyframesTable.type, "inicial"), eq(showBookKeyframesTable.active, true))),
+  ]);
+  const initialKeyframeByScene = new Map(initialKeyframes.map((frame) => [frame.sceneId, frame]));
+  const allocations = await db.select({ positionId: scaleAllocationsTable.positionId, userId: scaleAllocationsTable.userId })
+    .from(scaleAllocationsTable).where(and(eq(scaleAllocationsTable.scaleId, scaleId), eq(scaleAllocationsTable.agendaEventId, event.id), eq(scaleAllocationsTable.active, true)));
+  const allocationMap: Record<string, string | null> = {};
+  allocations.forEach((allocation) => { if (allocation.positionId) allocationMap[allocation.positionId] = allocation.userId ?? null; });
+  const { byRole, result } = await resolveAssignmentsByRole(showBookId, event.operationId, date, { dedupPerScene: true });
+  const rotationWinners = collectRotationWinners(result);
+
+  let positionsCount = 0;
+  const dailyBook = await db.transaction(async (tx) => {
+    const [created] = await tx.insert(dailyBooksTable).values({
+      agendaEventId: event!.id,
+      scaleId,
+      showBookId,
+      status: "DRAFT",
+      version: 1,
+      snapshotJson: {} as any,
+      generatedAt: new Date(),
+      generatedBy: actorId,
+    }).returning();
+    if (!created) throw new Error("Não foi possível criar o Livro do Dia");
+    const sceneIdMap: Record<string, string> = {};
+    for (const scene of scenes) {
+      const [copy] = await tx.insert(dailyBookScenesTable).values({ dailyBookId: created.id, name: scene.name, order: scene.order, sourceSceneId: scene.id, sourceKeyframeId: initialKeyframeByScene.get(scene.id)?.id ?? null }).returning();
+      sceneIdMap[scene.id] = copy!.id;
+    }
+    const blockIdMap: Record<string, string> = {};
+    for (const block of blocks) {
+      const [copy] = await tx.insert(dailyBookBlocksTable).values({
+        dailyBookId: created.id, name: block.name, order: block.order, startTime: block.startTime, endTime: block.endTime,
+        sourceBlockId: block.id, sceneId: block.sceneId ? sceneIdMap[block.sceneId] ?? null : null,
+      }).returning();
+      blockIdMap[block.id] = copy!.id;
+    }
+    const sessionSync = await syncSessionBlocks(created.id, showBookId, date, tx as unknown as typeof db);
+    const sceneByBlock: Record<string, string | null> = {};
+    blocks.forEach((block) => { sceneByBlock[block.id] = block.sceneId ?? null; });
+    const assignedByScene = buildSceneOccupancyFromResolver(roles, sceneByBlock, byRole);
+    for (const role of roles) {
+      const [position] = await tx.insert(dailyBookPositionsTable).values({
+        dailyBookId: created.id, name: role.name, minimumCoverage: role.minimumCoverage,
+        sourceRoleId: role.id, blockId: role.blockId ? blockIdMap[role.blockId] ?? null : null,
+      }).returning();
+      positionsCount++;
+      const sourceSceneId = role.blockId ? sceneByBlock[role.blockId] ?? null : null;
+      await createAssignmentsForRole(created.id, position!.id, role.id, byRole, allocationMap, sourceSceneId, assignedByScene, role.minimumCoverage, sourceSceneId ? sceneIdMap[sourceSceneId] ?? null : null, tx as unknown as typeof db);
+    }
+    const fullTree = await buildDailyBookTree(created.id, tx as unknown as typeof db);
+    const [updated] = await tx.update(dailyBooksTable).set({ snapshotJson: { scenes: fullTree, rotationWinners } as any }).where(eq(dailyBooksTable.id, created.id)).returning();
+    await writeHistoryEvent({
+      category: "DAILY_BOOK", action: "generated", title: "Livro do Dia gerado",
+      narrative: `O Livro do Dia foi gerado para ${date} a partir da Escala em rascunho.`,
+      entityType: "daily_book", entityId: created.id, actorId, actorType: "HUMAN", operationId: event!.operationId, orgId: organizationId,
+      beforeState: null, afterState: updated,
+      metadata: { agendaEventId: event!.id, showBookId, scaleId, reason, sessionIds: sessionSync.sessionIds, sessionBlockIds: sessionSync.createdBlockIds },
+    }, tx as any);
+    return updated!;
+  });
+  eventBus.emit("daily-book.created", { dailyBookId: dailyBook.id, agendaEventId: event.id, scaleId, version: 1 });
+  eventBus.emit("daily-book.generated", { dailyBookId: dailyBook.id, agendaEventId: event.id, version: 1, scenesCount: scenes.length, positionsCount });
+  return { dailyBook, generated: true, conflicts: await detectGeneratedDailyBookConflicts(dailyBook.id, date) };
 }
 
 router.post("/daily-book/generate", requireAuth, requireOrganization, async (req, res) => {
@@ -605,6 +832,12 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
       .where(eq(showBookBlocksTable.showBookId, showBookId))
       .orderBy(showBookBlocksTable.order);
 
+    const initialKeyframes = await db
+      .select({ id: showBookKeyframesTable.id, sceneId: showBookKeyframesTable.sceneId, markerPositions: showBookKeyframesTable.markerPositions })
+      .from(showBookKeyframesTable)
+      .where(and(eq(showBookKeyframesTable.type, "inicial"), eq(showBookKeyframesTable.active, true)));
+    const initialKeyframeByScene = new Map(initialKeyframes.map((frame) => [frame.sceneId, frame]));
+
     const roles = await db
       .select()
       .from(showBookRolesTable)
@@ -616,7 +849,7 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
       allocations = await db
         .select({ positionId: scaleAllocationsTable.positionId, userId: scaleAllocationsTable.userId })
         .from(scaleAllocationsTable)
-        .where(and(eq(scaleAllocationsTable.scaleId, scaleId), eq(scaleAllocationsTable.agendaEventId, agendaEventId)));
+        .where(and(eq(scaleAllocationsTable.scaleId, scaleId), eq(scaleAllocationsTable.agendaEventId, agendaEventId), eq(scaleAllocationsTable.active, true)));
     }
 
     const allocationMap: Record<string, string | null> = {};
@@ -654,7 +887,7 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
       for (const scene of scenes) {
         const [dbScene] = await tx
           .insert(dailyBookScenesTable)
-          .values({ dailyBookId, name: scene.name, order: scene.order, sourceSceneId: scene.id })
+          .values({ dailyBookId, name: scene.name, order: scene.order, sourceSceneId: scene.id, sourceKeyframeId: initialKeyframeByScene.get(scene.id)?.id ?? null })
           .returning();
         sceneIdMap[scene.id] = dbScene!.id;
       }
@@ -676,6 +909,10 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
         blockIdMap[block.id] = dbBlock!.id;
       }
 
+      // Um bloco por sessão elegível na data, só marcando o horário (sem posições próprias).
+      // Sem sessão elegível nada é criado e a geração segue normalmente.
+      const sessionSync = await syncSessionBlocks(dailyBookId, showBookId, event.date, tx as unknown as typeof db);
+
       // Mapa bloco→cena (origem) para aplicar a regra de não-duplicar pessoa na mesma cena.
       const sceneByBlock: Record<string, string | null> = {};
       blocks.forEach((b) => { sceneByBlock[b.id] = b.sceneId ?? null; });
@@ -694,7 +931,19 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
           .returning();
         positionsCount++;
         const sceneKey = role.blockId ? sceneByBlock[role.blockId] ?? null : null;
-        await createAssignmentsForRole(dailyBookId, dbPos!.id, role.id, byRole, allocationMap, sceneKey, assignedByScene, role.minimumCoverage, tx as unknown as typeof db);
+        const dailySceneId = sceneKey ? sceneIdMap[sceneKey] ?? null : null;
+        await createAssignmentsForRole(
+          dailyBookId,
+          dbPos!.id,
+          role.id,
+          byRole,
+          allocationMap,
+          sceneKey,
+          assignedByScene,
+          role.minimumCoverage,
+          dailySceneId,
+          tx as unknown as typeof db,
+        );
       }
 
       const fullTree = await buildDailyBookTree(dailyBookId, tx as unknown as typeof db);
@@ -705,13 +954,22 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
         .where(eq(dailyBooksTable.id, dailyBookId))
         .returning();
 
+      await writeHistoryEvent({
+        category: "DAILY_BOOK", action: "generated", title: "Livro do Dia gerado",
+        narrative: `O Livro do Dia foi gerado para ${event.date}.`, entityType: "daily_book", entityId: dailyBookId,
+        actorId: userId, operationId: event.operationId, orgId: user.organizationId,
+        beforeState: null, afterState: updatedBook,
+        metadata: { agendaEventId, showBookId, scaleId, reason: req.body?.reason ?? null, sessionIds: sessionSync.sessionIds, sessionBlockIds: sessionSync.createdBlockIds },
+      }, tx as any);
+
       return { updatedBook: updatedBook!, dailyBookId };
     });
 
     eventBus.emit("daily-book.created", { dailyBookId, agendaEventId, scaleId: scaleId ?? null, version: 1 });
     eventBus.emit("daily-book.generated", { dailyBookId, agendaEventId, version: 1, scenesCount: scenes.length, positionsCount });
 
-    res.status(201).json({ dailyBook: updatedBook });
+    const conflictResult = await detectGeneratedDailyBookConflicts(dailyBookId, event.date);
+    res.status(201).json({ dailyBook: updatedBook, sessionBlocks: await listSessionBlocks(dailyBookId, showBookId, event.date), ...conflictResult });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Erro ao gerar Livro do Dia" });
@@ -722,6 +980,7 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
   const id = req.params.id as string;
   const user = req.user!;
   const userId = user.sub;
+  let expectedVersion: number | null = null;
   try {
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
@@ -737,10 +996,21 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
       }
     }
 
-    if (book.status === "PUBLISHED" || book.status === "REPUBLISHED") {
-      res.status(409).json({ error: "Livro publicado não pode ser regenerado. Use republish." });
+    // Regenerar recria a árvore do Livro; só o rascunho pode passar. Qualquer outro estado
+    // (inclusive um futuro) é recusado: publicado/executado/cancelado é registro, não rascunho.
+    if (book.status !== "DRAFT") {
+      const blocked: Record<string, string> = {
+        PUBLISHED: "Livro publicado não pode ser regenerado. Use republish.",
+        REPUBLISHED: "Livro republicado não pode ser regenerado. Use republish.",
+        EXECUTED: "Livro já executado é histórico e não pode ser regenerado.",
+        CANCELLED: "Livro cancelado não pode ser regenerado.",
+      };
+      res.status(409).json({ error: blocked[book.status] ?? "Só um Livro em rascunho pode ser regenerado." });
       return;
     }
+    expectedVersion = requireExpectedVersion(req, res, "o Livro do Dia");
+    if (expectedVersion === null) return;
+    const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id) };
 
     const [event] = await db.select().from(agendaEventsTable).where(eq(agendaEventsTable.id, book.agendaEventId)).limit(1);
     if (!event || !event.showBookId) { res.status(400).json({ error: "Evento ou Show Book não encontrado" }); return; }
@@ -748,6 +1018,11 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
     const showBookId = event.showBookId;
     const scenes = await db.select().from(showBookScenesTable).where(eq(showBookScenesTable.showBookId, showBookId)).orderBy(showBookScenesTable.order);
     const blocks = await db.select().from(showBookBlocksTable).where(eq(showBookBlocksTable.showBookId, showBookId)).orderBy(showBookBlocksTable.order);
+    const initialKeyframes = await db
+      .select({ id: showBookKeyframesTable.id, sceneId: showBookKeyframesTable.sceneId, markerPositions: showBookKeyframesTable.markerPositions })
+      .from(showBookKeyframesTable)
+      .where(and(eq(showBookKeyframesTable.type, "inicial"), eq(showBookKeyframesTable.active, true)));
+    const initialKeyframeByScene = new Map(initialKeyframes.map((frame) => [frame.sceneId, frame]));
     const roles = await db.select().from(showBookRolesTable).where(eq(showBookRolesTable.showBookId, showBookId)).orderBy(showBookRolesTable.order, showBookRolesTable.id);
 
     let allocations: { positionId: string | null; userId: string | null }[] = [];
@@ -755,7 +1030,7 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
       allocations = await db
         .select({ positionId: scaleAllocationsTable.positionId, userId: scaleAllocationsTable.userId })
         .from(scaleAllocationsTable)
-        .where(and(eq(scaleAllocationsTable.scaleId, book.scaleId), eq(scaleAllocationsTable.agendaEventId, book.agendaEventId)));
+        .where(and(eq(scaleAllocationsTable.scaleId, book.scaleId), eq(scaleAllocationsTable.agendaEventId, book.agendaEventId), eq(scaleAllocationsTable.active, true)));
     }
     const allocationMap: Record<string, string | null> = {};
     allocations.forEach((a) => { if (a.positionId) allocationMap[a.positionId] = a.userId ?? null; });
@@ -765,19 +1040,29 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
     const { byRole, result } = await resolveAssignmentsByRole(showBookId, event.operationId, event.date, { dedupPerScene: true });
     const rotationWinners = collectRotationWinners(result);
 
-    const newVersion = book.version + 1;
+    // Blocos de sessão nunca são apagados aqui: os das sessões ainda elegíveis são
+    // atualizados/criados e os que ficaram órfãos permanecem, só sinalizados (a Supervisão decide).
+    const beforeSessionBlocks = await listSessionBlocks(id, showBookId, event.date);
+    const sessionOutcome = { createdBlockIds: [] as string[], updatedBlockIds: [] as string[], staleBlockIds: [] as string[] };
 
-    // Wrap delete+insert+update in a transaction so the book is never left in a
-    // partial state (cleared but not yet rebuilt, or rebuilt with snapshotJson={}).
-    const updated = await db.transaction(async (tx) => {
-      await tx.delete(dailyBookAssignmentsTable).where(eq(dailyBookAssignmentsTable.dailyBookId, id));
-      await tx.delete(dailyBookPositionsTable).where(eq(dailyBookPositionsTable.dailyBookId, id));
-      await tx.delete(dailyBookBlocksTable).where(eq(dailyBookBlocksTable.dailyBookId, id));
-      await tx.delete(dailyBookScenesTable).where(eq(dailyBookScenesTable.dailyBookId, id));
+    // Claim the parent version before replacing children. If another editor
+    // changed the book after it was loaded, the whole transaction rolls back.
+    const updated = await mutateDailyBook(id, expectedVersion, async (tx, claimedBook) => {
+      // Nada é apagado: a geração anterior fica preservada como removida e substituída.
+      // `supersededAt` impede que as rotas de restaurar tragam de volta uma linha antiga.
+      const supersededAt = sql`now()`;
+      await tx.update(dailyBookAssignmentsTable).set({ status: "REMOVED", supersededAt, updatedAt: new Date() })
+        .where(and(eq(dailyBookAssignmentsTable.dailyBookId, id), isNull(dailyBookAssignmentsTable.supersededAt)));
+      await tx.update(dailyBookPositionsTable).set({ isRemoved: true, supersededAt, updatedAt: new Date() })
+        .where(and(eq(dailyBookPositionsTable.dailyBookId, id), isNull(dailyBookPositionsTable.supersededAt)));
+      await tx.update(dailyBookBlocksTable).set({ isRemoved: true, supersededAt, updatedAt: new Date() })
+        .where(and(eq(dailyBookBlocksTable.dailyBookId, id), isNull(dailyBookBlocksTable.supersededAt), isNotSessionBlock));
+      await tx.update(dailyBookScenesTable).set({ isRemoved: true, supersededAt, updatedAt: new Date() })
+        .where(and(eq(dailyBookScenesTable.dailyBookId, id), isNull(dailyBookScenesTable.supersededAt)));
 
       const sceneIdMap: Record<string, string> = {};
       for (const scene of scenes) {
-        const [dbScene] = await tx.insert(dailyBookScenesTable).values({ dailyBookId: id, name: scene.name, order: scene.order, sourceSceneId: scene.id }).returning();
+        const [dbScene] = await tx.insert(dailyBookScenesTable).values({ dailyBookId: id, name: scene.name, order: scene.order, sourceSceneId: scene.id, sourceKeyframeId: initialKeyframeByScene.get(scene.id)?.id ?? null }).returning();
         sceneIdMap[scene.id] = dbScene!.id;
       }
       const blockIdMap: Record<string, string> = {};
@@ -785,13 +1070,29 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
         const [dbBlock] = await tx.insert(dailyBookBlocksTable).values({ dailyBookId: id, name: block.name, order: block.order, startTime: block.startTime, endTime: block.endTime, sourceBlockId: block.id, sceneId: block.sceneId ? sceneIdMap[block.sceneId] ?? null : null }).returning();
         blockIdMap[block.id] = dbBlock!.id;
       }
+      const sessionSync = await syncSessionBlocks(id, showBookId, event.date, tx);
+      sessionOutcome.createdBlockIds = sessionSync.createdBlockIds;
+      sessionOutcome.updatedBlockIds = sessionSync.updatedBlockIds;
+      sessionOutcome.staleBlockIds = sessionSync.staleBlockIds;
       const sceneByBlock: Record<string, string | null> = {};
       blocks.forEach((b) => { sceneByBlock[b.id] = b.sceneId ?? null; });
       const assignedByScene = buildSceneOccupancyFromResolver(roles, sceneByBlock, byRole);
       for (const role of roles) {
         const [dbPos] = await tx.insert(dailyBookPositionsTable).values({ dailyBookId: id, name: role.name, minimumCoverage: role.minimumCoverage, sourceRoleId: role.id, blockId: role.blockId ? blockIdMap[role.blockId] ?? null : null }).returning();
         const sceneKey = role.blockId ? sceneByBlock[role.blockId] ?? null : null;
-        await createAssignmentsForRole(id, dbPos!.id, role.id, byRole, allocationMap, sceneKey, assignedByScene, role.minimumCoverage, tx as unknown as typeof db);
+        const dailySceneId = sceneKey ? sceneIdMap[sceneKey] ?? null : null;
+        await createAssignmentsForRole(
+          id,
+          dbPos!.id,
+          role.id,
+          byRole,
+          allocationMap,
+          sceneKey,
+          assignedByScene,
+          role.minimumCoverage,
+          dailySceneId,
+          tx as unknown as typeof db,
+        );
       }
 
       const fullTree = await buildDailyBookTree(id, tx as unknown as typeof db);
@@ -799,17 +1100,27 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
 
       const [updated] = await tx
         .update(dailyBooksTable)
-        .set({ version: newVersion, generatedAt: new Date(), generatedBy: userId, snapshotJson: snapshotJson as any, updatedAt: new Date() })
+        .set({ version: claimedBook.version, generatedAt: new Date(), generatedBy: userId, snapshotJson: snapshotJson as any, updatedAt: new Date() })
         .where(eq(dailyBooksTable.id, id))
         .returning();
 
       return updated!;
+    }, async (tx, _claimedBook, next) => {
+      const afterSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id, tx) };
+      await writeDailyBookAudit(id, userId, "regenerate",
+        { version: book.version, snapshot: beforeSnapshot, sessionBlocks: beforeSessionBlocks },
+        { version: next.version, snapshot: afterSnapshot, sessionBlocks: await listSessionBlocks(id, showBookId, event.date, tx), sessionSync: sessionOutcome }, tx);
     });
 
-    eventBus.emit("daily-book.generated", { dailyBookId: id, agendaEventId: book.agendaEventId, version: newVersion, scenesCount: scenes.length, positionsCount: roles.length });
+    eventBus.emit("daily-book.generated", { dailyBookId: id, agendaEventId: book.agendaEventId, version: updated.version, scenesCount: scenes.length, positionsCount: roles.length });
 
-    res.json({ dailyBook: updated });
+    const conflictResult = await detectGeneratedDailyBookConflicts(id, event.date);
+    const sessionBlocks = await listSessionBlocks(id, showBookId, event.date);
+    // Órfão só avisa: nada é removido; a Supervisão decide o que fazer com o bloco.
+    const warnings = sessionBlocks.filter((block) => block.stale).map((block) => ({ code: "session_block_stale" as const, blockId: block.id, message: `${block.name}: ${block.staleReason}` }));
+    res.json({ dailyBook: updated, sessionBlocks, warnings, ...conflictResult });
   } catch (err) {
+    if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
     console.error(err);
     res.status(500).json({ error: "Erro ao regenerar Livro do Dia" });
   }
@@ -821,6 +1132,7 @@ router.post("/daily-book/:id/publish", requireAuth, requireOrganization, async (
   const publishComment = typeof comment === "string" && comment.trim() ? comment.trim() : null;
   const userId = req.user!.sub;
   const user = req.user!;
+  let expectedVersion: number | null = null;
   try {
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
@@ -842,12 +1154,41 @@ router.post("/daily-book/:id/publish", requireAuth, requireOrganization, async (
     if (!["DRAFT"].includes(book.status)) {
       res.status(409).json({ error: `Livro em status ${book.status} não pode ser publicado diretamente` });
       return;
+    }    // O Livro só publica depois da Escala do dia publicada: é a Escala que convoca (tela 15).
+    const { scale: escalaDoDia } = await escalaDoDiaDoLivro(id);
+    if (!escalaPublicada(escalaDoDia?.status)) {
+      res.status(409).json({ error: "ESCALA_NAO_PUBLICADA", message: "A Escala do dia ainda não foi publicada. Publicar a escala é o que convoca as pessoas — antes disso o livro não tem para quem ir." });
+      return;
     }
-    const [updated] = await db
-      .update(dailyBooksTable)
-      .set({ status: "PUBLISHED", publishComment, publishedAt: new Date(), publishedBy: userId, updatedAt: new Date() })
-      .where(eq(dailyBooksTable.id, id))
-      .returning();
+    expectedVersion = requireExpectedVersion(req, res, "o Livro do Dia");
+    if (expectedVersion === null) return;
+    const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id) };
+    const updated = await mutateDailyBook(id, expectedVersion, async (tx) => {
+      const [next] = await tx
+        .update(dailyBooksTable)
+        .set({ status: "PUBLISHED", publishComment, publishedAt: new Date(), publishedBy: userId })
+        .where(eq(dailyBooksTable.id, id))
+        .returning();
+      return next!;
+    }, async (tx, _claimedBook, next) => {
+      const afterSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id, tx) };
+      const [event] = await tx.select({ operationId: agendaEventsTable.operationId })
+        .from(agendaEventsTable).where(eq(agendaEventsTable.id, next.agendaEventId)).limit(1);
+      await writeHistoryEvent({
+        category: "DAILY_BOOK", action: "published",
+        title: `Livro do Dia publicado (v${next.version})`,
+        narrative: "Livro do Dia publicado e disponível para a equipe.",
+        entityType: "daily_book", entityId: id,
+        actorId: userId, actorType: "HUMAN", operationId: event?.operationId,
+        orgId: user.organizationId, beforeState: beforeSnapshot,
+        afterState: { book: next, snapshot: afterSnapshot },
+        metadata: { reason: reason?.trim() || DEFAULT_DAY_REASON },
+      }, tx as any);
+      await writeDailyBookAudit(id, userId, "publish",
+        { version: book.version, snapshot: beforeSnapshot, status: book.status },
+        { version: next.version, snapshot: afterSnapshot, status: "PUBLISHED", reason: reason?.trim() || DEFAULT_DAY_REASON },
+        tx);
+    });
 
     // Efetivação da escala do dia: avança os contadores de rodízio uma única vez (DRAFT→PUBLISHED).
     // Usamos os vencedores persistidos na geração para garantir que o contador avance para quem
@@ -858,9 +1199,18 @@ router.post("/daily-book/:id/publish", requireAuth, requireOrganization, async (
         ? (snapshot.rotationWinners as RotationWinners)
         : null;
     if (storedWinners) {
-      advanceRotationCountsFromWinners(storedWinners).catch((e) =>
-        console.error("rotation advance failed", e)
-      );
+      db
+        .select({ date: agendaEventsTable.date })
+        .from(agendaEventsTable)
+        .where(eq(agendaEventsTable.id, book.agendaEventId))
+        .limit(1)
+        .then(([event]) =>
+          advanceRotationCountsFromWinners(
+            storedWinners,
+            event?.date ?? operationalDate(),
+          ),
+        )
+        .catch((e) => console.error("rotation advance failed", e));
     } else if (book.showBookId && book.agendaEventId) {
       // Compat: Livros gerados antes de persistirmos os vencedores re-resolvem a data.
       const [ev] = await db
@@ -876,18 +1226,10 @@ router.post("/daily-book/:id/publish", requireAuth, requireOrganization, async (
     }
 
     eventBus.emit("daily-book.published", { dailyBookId: id, version: updated!.version, publishedBy: userId });
-    writeHistoryEvent({
-      category: "DAILY_BOOK", action: "published",
-      title: `Livro do Dia publicado (v${updated!.version})`,
-      narrative: `Livro do Dia publicado e disponível para a equipe.`,
-      entityType: "daily_book", entityId: id,
-      actorId: userId, actorType: "HUMAN",
-    }).catch(() => {});
-    await writeDailyBookAudit(id, userId, "publish", { status: book.status }, { status: "PUBLISHED", reason: reason?.trim() || DEFAULT_DAY_REASON });
     // notify assigned users
     db.select({ userId: dailyBookAssignmentsTable.userId })
       .from(dailyBookAssignmentsTable)
-      .where(eq(dailyBookAssignmentsTable.dailyBookId, id))
+      .where(and(eq(dailyBookAssignmentsTable.dailyBookId, id), isNull(dailyBookAssignmentsTable.supersededAt)))
       .then((rows) => {
         const userIds = [...new Set(rows.map((r) => r.userId).filter(Boolean))] as string[];
         notifyMany(userIds, {
@@ -904,6 +1246,7 @@ router.post("/daily-book/:id/publish", requireAuth, requireOrganization, async (
       .catch(() => {});
     res.json({ dailyBook: updated });
   } catch (err) {
+    if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
     res.status(500).json({ error: "Erro ao publicar Livro do Dia" });
   }
 });
@@ -914,6 +1257,7 @@ router.post("/daily-book/:id/republish", requireAuth, requireOrganization, async
   const publishComment = typeof comment === "string" && comment.trim() ? comment.trim() : null;
   const userId = req.user!.sub;
   const user = req.user!;
+  let expectedVersion: number | null = null;
   try {
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
@@ -947,37 +1291,51 @@ router.post("/daily-book/:id/republish", requireAuth, requireOrganization, async
       return;
     }
 
-    const previousVersion = book.version;
-    const newVersion = previousVersion + 1;
+    expectedVersion = requireExpectedVersion(req, res, "o Livro do Dia");
+    if (expectedVersion === null) return;
+    const previousVersion = expectedVersion;
+    const newVersion = expectedVersion + 1;
 
-    const [updated] = await db
-      .update(dailyBooksTable)
-      .set({
-        status: "REPUBLISHED",
-        version: newVersion,
-        publishComment,
-        publishedAt: new Date(),
-        publishedBy: userId,
-        republishDeltaJson: delta as any,
-        snapshotJson: currentSnapshot as any,
-        updatedAt: new Date(),
-      })
-      .where(eq(dailyBooksTable.id, id))
-      .returning();
+    const updated = await mutateDailyBook(id, expectedVersion, async (tx) => {
+      const [next] = await tx
+        .update(dailyBooksTable)
+        .set({
+          status: "REPUBLISHED",
+          version: newVersion,
+          publishComment,
+          publishedAt: new Date(),
+          publishedBy: userId,
+          republishDeltaJson: delta as any,
+          snapshotJson: currentSnapshot as any,
+        })
+        .where(eq(dailyBooksTable.id, id))
+        .returning();
+      return next!;
+    }, async (tx, _claimedBook, next) => {
+      const afterSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id, tx) };
+      const [event] = await tx.select({ operationId: agendaEventsTable.operationId })
+        .from(agendaEventsTable).where(eq(agendaEventsTable.id, next.agendaEventId)).limit(1);
+      await writeHistoryEvent({
+        category: "DAILY_BOOK", action: "republished",
+        title: `Livro do Dia republicado (v${previousVersion} → v${newVersion})`,
+        narrative: `Livro do Dia republicado com alterações. Versão ${previousVersion} → ${newVersion}.`,
+        entityType: "daily_book", entityId: id,
+        actorId: userId, actorType: "HUMAN", operationId: event?.operationId,
+        orgId: user.organizationId, beforeState: prevSnapshot,
+        afterState: { book: next, snapshot: afterSnapshot, delta },
+        metadata: { reason: reason?.trim() || DEFAULT_DAY_REASON },
+      }, tx as any);
+      await writeDailyBookAudit(id, userId, "republish",
+        { version: previousVersion, snapshot: prevSnapshot },
+        { version: newVersion, snapshot: afterSnapshot, delta, reason: reason?.trim() || DEFAULT_DAY_REASON },
+        tx);
+    });
 
     eventBus.emit("daily-book.republished", { dailyBookId: id, previousVersion, newVersion, delta, republishedBy: userId });
-    writeHistoryEvent({
-      category: "DAILY_BOOK", action: "republished",
-      title: `Livro do Dia republicado (v${previousVersion} → v${newVersion})`,
-      narrative: `Livro do Dia republicado com alterações. Versão ${previousVersion} → ${newVersion}.`,
-      entityType: "daily_book", entityId: id,
-      actorId: userId, actorType: "HUMAN",
-    }).catch(() => {});
-    await writeDailyBookAudit(id, userId, "republish", { version: previousVersion, snapshot: prevSnapshot }, { version: newVersion, delta, reason: reason?.trim() || DEFAULT_DAY_REASON });
     // notify assigned users of changes
     db.select({ userId: dailyBookAssignmentsTable.userId })
       .from(dailyBookAssignmentsTable)
-      .where(eq(dailyBookAssignmentsTable.dailyBookId, id))
+      .where(and(eq(dailyBookAssignmentsTable.dailyBookId, id), isNull(dailyBookAssignmentsTable.supersededAt)))
       .then((rows) => {
         const userIds = [...new Set(rows.map((r) => r.userId).filter(Boolean))] as string[];
         notifyMany(userIds, {
@@ -994,6 +1352,7 @@ router.post("/daily-book/:id/republish", requireAuth, requireOrganization, async
       .catch(() => {});
     res.json({ dailyBook: updated, delta });
   } catch (err) {
+    if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
     console.error(err);
     res.status(500).json({ error: "Erro ao republicar Livro do Dia" });
   }
@@ -1002,6 +1361,7 @@ router.post("/daily-book/:id/republish", requireAuth, requireOrganization, async
 router.post("/daily-book/:id/execute", requireAuth, requireOrganization, requireRole("ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"), async (req, res) => {
   const id = req.params.id as string;
   const userId = req.user!.sub;
+  let expectedVersion: number | null = null;
   try {
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
@@ -1010,15 +1370,26 @@ router.post("/daily-book/:id/execute", requireAuth, requireOrganization, require
       res.status(409).json({ error: "Somente livros publicados podem ser executados" });
       return;
     }
-    const [updated] = await db
-      .update(dailyBooksTable)
-      .set({ status: "EXECUTED", executedAt: new Date(), executedBy: userId, updatedAt: new Date() })
-      .where(eq(dailyBooksTable.id, id))
-      .returning();
+    expectedVersion = requireExpectedVersion(req, res, "o Livro do Dia");
+    if (expectedVersion === null) return;
+    const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id) };
+    const updated = await mutateDailyBook(id, expectedVersion, async (tx) => {
+      const [next] = await tx
+        .update(dailyBooksTable)
+        .set({ status: "EXECUTED", executedAt: new Date(), executedBy: userId })
+        .where(eq(dailyBooksTable.id, id))
+        .returning();
+      return next!;
+    }, async (tx, _claimedBook, next) => {
+      const afterSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id, tx) };
+      await writeDailyBookAudit(id, userId, "execute",
+        { version: book.version, snapshot: beforeSnapshot, status: book.status },
+        { version: next.version, snapshot: afterSnapshot, status: "EXECUTED" }, tx);
+    });
     eventBus.emit("daily-book.executed", { dailyBookId: id, version: updated!.version, executedBy: userId });
-    await writeDailyBookAudit(id, userId, "execute", { status: book.status }, { status: "EXECUTED" });
     res.json({ dailyBook: updated });
   } catch (err) {
+    if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
     res.status(500).json({ error: "Erro ao executar Livro do Dia" });
   }
 });
@@ -1027,6 +1398,7 @@ router.post("/daily-book/:id/cancel", requireAuth, requireOrganization, requireR
   const id = req.params.id as string;
   const { reason } = req.body;
   const userId = req.user!.sub;
+  let expectedVersion: number | null = null;
   try {
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
@@ -1035,16 +1407,75 @@ router.post("/daily-book/:id/cancel", requireAuth, requireOrganization, requireR
       res.status(409).json({ error: "Livro já está cancelado" });
       return;
     }
+    expectedVersion = requireExpectedVersion(req, res, "o Livro do Dia");
+    if (expectedVersion === null) return;
     const cancelReason = reason?.trim() || DEFAULT_DAY_REASON;
-    const [updated] = await db
-      .update(dailyBooksTable)
-      .set({ status: "CANCELLED", cancelledAt: new Date(), cancelledBy: userId, updatedAt: new Date() })
-      .where(eq(dailyBooksTable.id, id))
-      .returning();
-    await writeDailyBookAudit(id, userId, "cancel", { status: book.status }, { status: "CANCELLED", reason: cancelReason });
+    const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id) };
+    const updated = await mutateDailyBook(id, expectedVersion, async (tx) => {
+      const [next] = await tx
+        .update(dailyBooksTable)
+        .set({ status: "CANCELLED", cancelledAt: new Date(), cancelledBy: userId })
+        .where(eq(dailyBooksTable.id, id))
+        .returning();
+      return next!;
+    }, async (tx, _claimedBook, next) => {
+      const afterSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id, tx) };
+      await writeDailyBookAudit(id, userId, "cancel",
+        { version: book.version, snapshot: beforeSnapshot, status: book.status },
+        { version: next.version, snapshot: afterSnapshot, status: "CANCELLED", reason: cancelReason }, tx);
+    });
     res.json({ dailyBook: updated });
   } catch (err) {
+    if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
     res.status(500).json({ error: "Erro ao cancelar Livro do Dia" });
+  }
+});
+
+// Reabrir um dia fechado (EXECUTED/CANCELLED → DRAFT) é exclusivo da Administração — mesmo
+// supervisor responsável pelo show não pode (20-livro-oficial-interacoes.md / 14 Livro do Dia.dc.html:
+// "Reabrir é da Administração — peça a ela e fica registrado quem reabriu"). Motivo obrigatório.
+router.post("/daily-book/:id/reopen", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
+  const id = req.params.id as string;
+  const { reason } = req.body;
+  const userId = req.user!.sub;
+  let expectedVersion: number | null = null;
+  try {
+    const book = await getDailyBookOrFail(id, res);
+    if (!book) return;
+    if (!["EXECUTED", "CANCELLED"].includes(book.status)) {
+      res.status(409).json({ error: `Livro em status ${book.status} não precisa ser reaberto — só EXECUTED ou CANCELLED voltam a rascunho.` });
+      return;
+    }
+    const reopenReason = typeof reason === "string" ? reason.trim() : "";
+    if (!reopenReason) {
+      res.status(400).json({ error: "Motivo obrigatório para reabrir um dia fechado." });
+      return;
+    }
+    expectedVersion = requireExpectedVersion(req, res, "o Livro do Dia");
+    if (expectedVersion === null) return;
+    const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id) };
+    const updated = await mutateDailyBook(id, expectedVersion, async (tx) => {
+      const [next] = await tx
+        .update(dailyBooksTable)
+        .set({
+          status: "DRAFT",
+          executedAt: null, executedBy: null,
+          cancelledAt: null, cancelledBy: null,
+        })
+        .where(eq(dailyBooksTable.id, id))
+        .returning();
+      return next!;
+    }, async (tx, _claimedBook, next) => {
+      const afterSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id, tx) };
+      await writeDailyBookAudit(id, userId, "reopen",
+        { version: book.version, snapshot: beforeSnapshot, status: book.status },
+        { version: next.version, snapshot: afterSnapshot, status: "DRAFT", reason: reopenReason }, tx);
+    });
+    eventBus.emit("daily-book.reopened", { dailyBookId: id, version: updated.version, reopenedBy: userId, previousStatus: book.status });
+    res.json({ dailyBook: updated });
+  } catch (err) {
+    if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
+    res.status(500).json({ error: "Erro ao reabrir Livro do Dia" });
   }
 });
 
@@ -1052,6 +1483,7 @@ router.delete("/daily-book/:id", requireAuth, requireOrganization, requireRole("
   const id = req.params.id as string;
   const userId = req.user!.sub;
   const user = req.user!;
+  let expectedVersion: number | null = null;
   try {
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
@@ -1078,26 +1510,36 @@ router.delete("/daily-book/:id", requireAuth, requireOrganization, requireRole("
       res.status(403).json({ error: "Sem permissão para apagar este Livro do Dia" });
       return;
     }
+    expectedVersion = requireExpectedVersion(req, res, "o Livro do Dia");
+    if (expectedVersion === null) return;
+    const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id) };
 
-    // Apaga em ordem dentro de uma transação (robusto mesmo que o banco não
-    // tenha as FKs com ON DELETE CASCADE).
+    // Encerramento lógico: a árvore e o Registro permanecem recuperáveis.
     await db.transaction(async (tx) => {
-      await tx.delete(dailyBookAssignmentsTable).where(eq(dailyBookAssignmentsTable.dailyBookId, id));
-      await tx.delete(dailyBookPositionsTable).where(eq(dailyBookPositionsTable.dailyBookId, id));
-      await tx.delete(dailyBookBlocksTable).where(eq(dailyBookBlocksTable.dailyBookId, id));
-      await tx.delete(dailyBookScenesTable).where(eq(dailyBookScenesTable.dailyBookId, id));
-      await tx.delete(dailyBooksTable).where(eq(dailyBooksTable.id, id));
+      const [cancelled] = await tx.update(dailyBooksTable)
+        .set({ status: "CANCELLED", cancelledAt: new Date(), cancelledBy: userId, version: expectedVersion! + 1, updatedAt: new Date() })
+        .where(and(eq(dailyBooksTable.id, id), eq(dailyBooksTable.version, expectedVersion!)))
+        .returning();
+      if (!cancelled) throw new VersionConflictError("Livro do Dia");
+      await tx.update(dailyBookAssignmentsTable).set({ status: "REMOVED", updatedAt: new Date() })
+        .where(and(eq(dailyBookAssignmentsTable.dailyBookId, id), isNull(dailyBookAssignmentsTable.supersededAt)));
+      await tx.update(dailyBookPositionsTable).set({ isRemoved: true, updatedAt: new Date() })
+        .where(and(eq(dailyBookPositionsTable.dailyBookId, id), isNull(dailyBookPositionsTable.supersededAt)));
+      await tx.update(dailyBookBlocksTable).set({ isRemoved: true, updatedAt: new Date() })
+        .where(and(eq(dailyBookBlocksTable.dailyBookId, id), isNull(dailyBookBlocksTable.supersededAt)));
+      await tx.update(dailyBookScenesTable).set({ isRemoved: true, updatedAt: new Date() })
+        .where(and(eq(dailyBookScenesTable.dailyBookId, id), isNull(dailyBookScenesTable.supersededAt)));
+      await writeDailyBookAudit(id, userId, "archive", { status: book.status, version: book.version, snapshot: beforeSnapshot }, { status: "CANCELLED", version: cancelled.version, snapshot: beforeSnapshot }, tx);
     });
-
-    await writeDailyBookAudit(id, userId, "delete", { status: book.status, version: book.version }, null);
     res.json({ success: true });
   } catch (err) {
+    if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
     res.status(500).json({ error: "Erro ao apagar Livro do Dia" });
   }
 });
 
 router.get("/daily-book", requireAuth, requireOrganization, async (req, res) => {
-  const { agendaEventId, status, groupId } = req.query as Record<string, string | undefined>;
+  const { agendaEventId, status, groupId, date } = req.query as Record<string, string | undefined>;
   const actor = req.user!;
   try {
     // Escopo de organização: só livros cujo evento pertence a uma operação da org.
@@ -1106,6 +1548,9 @@ router.get("/daily-book", requireAuth, requireOrganization, async (req, res) => 
     ];
     if (agendaEventId) conditions.push(eq(dailyBooksTable.agendaEventId, agendaEventId));
     if (status) conditions.push(eq(dailyBooksTable.status, status as any));
+    else conditions.push(ne(dailyBooksTable.status, "CANCELLED"));
+    // "Os shows de hoje": filtra pela data do evento de agenda que originou o Livro.
+    if (date) conditions.push(eq(agendaEventsTable.date, date));
     if (groupId) {
       const scaleRows = await db
         .select({ id: scalesTable.id })
@@ -1182,6 +1627,7 @@ router.get("/daily-book/:id", requireAuth, requireOrganization, async (req, res)
     }
 
     const tree = await buildDailyBookTree(id);
+    const currentSnapshot: VersionedSnapshot = { scenes: tree };
     res.json({
       dailyBook: {
         ...book,
@@ -1191,6 +1637,8 @@ router.get("/daily-book/:id", requireAuth, requireOrganization, async (req, res)
         eventDate: ctx.eventDate,
         showTitle: ctx.showTitle,
         scenes: tree,
+        sessionBlocks: await listSessionBlocks(id, book.showBookId, ctx.eventDate),
+        currentSnapshot,
       },
     });
   } catch (err) {
@@ -1246,11 +1694,86 @@ router.get("/daily-book/:id/delta", requireAuth, requireOrganization, async (req
   }
 });
 
+/**
+ * Diferenças de hoje contra o PADRÃO (o Livro do Show na data do evento) — não contra o
+ * snapshot anterior do próprio Livro do Dia (isso é o `/delta`). Re-resolve o elenco ao vivo
+ * com a mesma lógica de generate/regenerate, sem persistir nada, e compara contra a árvore
+ * viva: cena/bloco/posição removidos hoje, e substituições/vagas por papel.
+ */
+async function buildPatternDiffRows(dailyBookId: string, showBookId: string, operationId: string, dateISO: string) {
+  const [currentTree, resolved] = await Promise.all([
+    buildDailyBookTree(dailyBookId),
+    resolveAssignmentsByRole(showBookId, operationId, dateISO, { dedupPerScene: true }),
+  ]);
+  const { byRole, result } = resolved;
+  const noteByRole = new Map<string, string>();
+  for (const scene of result.scenes) {
+    for (const block of scene.blocks) {
+      for (const pos of block.positions) {
+        const note = pos.lines.find((l) => l.note)?.note;
+        if (note) noteByRole.set(pos.positionId, note);
+      }
+    }
+  }
+  const rows: { where: string; padrao: string; hoje: string; why: string }[] = [];
+  for (const scene of currentTree) {
+    for (const block of scene.blocks) {
+      for (const position of block.positions) {
+        const roleId = position.sourceRoleId;
+        const rr = roleId ? byRole.get(roleId) : undefined;
+        const patternNames = rr ? rr.people.map((p) => p.name) : [];
+        const patternLabel = patternNames.length ? patternNames.join(", ") : "posição do padrão";
+        const where = `${scene.name} · ${position.name}`;
+        if (scene.isRemoved || block.isRemoved || position.isRemoved) {
+          rows.push({
+            where, padrao: patternLabel, hoje: "fora do dia",
+            why: scene.isRemoved ? "Cena removida no ajuste do dia." : block.isRemoved ? "Bloco removido no ajuste do dia." : "Posição removida no ajuste do dia.",
+          });
+          continue;
+        }
+        const liveAssignments = (position.assignments ?? []).filter((a) => a.status !== "REMOVED");
+        const liveNames = liveAssignments.map((a) => a.userName).filter((n): n is string => Boolean(n));
+        const patternSet = new Set(patternNames);
+        const liveSet = new Set(liveNames);
+        const sameSet = patternSet.size === liveSet.size && [...patternSet].every((n) => liveSet.has(n));
+        if (sameSet) continue;
+        if (!patternNames.length && !liveNames.length) continue;
+        const isOpenToday = liveAssignments.length > 0 && liveAssignments.every((a) => a.status === "OPEN");
+        rows.push({
+          where, padrao: patternLabel,
+          hoje: isOpenToday ? "em aberto" : liveNames.length ? liveNames.join(", ") : "em aberto",
+          why: noteByRole.get(roleId ?? "") ?? (isOpenToday ? "Sem substituto disponível." : "Substituição no ajuste do dia."),
+        });
+      }
+    }
+  }
+  return rows;
+}
+
+router.get("/daily-book/:id/pattern-diff", requireAuth, requireOrganization, async (req, res) => {
+  const id = req.params.id as string;
+  const actor = req.user!;
+  try {
+    const book = await getDailyBookOrFail(id, res);
+    if (!book) return;
+    const ctx = await resolveDailyBookReadContext(actor, book);
+    if (!ctx) { res.status(404).json({ error: "Evento do Livro do Dia não encontrado" }); return; }
+    if (!ctx.ok) { res.status(403).json({ error: "FORBIDDEN", message: "Livro do Dia fora do seu escopo" }); return; }
+    if (!book.showBookId) { res.json({ diffs: [] }); return; }
+    const diffs = await buildPatternDiffRows(id, book.showBookId, ctx.operationId, ctx.eventDate);
+    res.json({ diffs, version: book.version, status: book.status });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro ao calcular diferenças do padrão" });
+  }
+});
+
 router.patch("/daily-book/:id/assignments/:assignmentId", requireAuth, requireOrganization, requireRole("ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"), async (req, res) => {
   const id = req.params.id as string;
   const assignmentId = req.params.assignmentId as string;
   const { userId } = req.body;
   const actorId = req.user!.sub;
+  let expectedVersion: number | null = null;
   try {
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
@@ -1259,19 +1782,34 @@ router.patch("/daily-book/:id/assignments/:assignmentId", requireAuth, requireOr
       return;
     }
     if (!(await requireDailyBookOperate(book, req.user!, res))) return;
-    const [before] = await db.select().from(dailyBookAssignmentsTable).where(eq(dailyBookAssignmentsTable.id, assignmentId)).limit(1);
-    const [updated] = await db
-      .update(dailyBookAssignmentsTable)
-      .set({ userId: userId ?? null, status: userId ? "ASSIGNED" : "OPEN", updatedAt: new Date() })
-      .where(and(eq(dailyBookAssignmentsTable.id, assignmentId), eq(dailyBookAssignmentsTable.dailyBookId, id)))
-      .returning();
-    if (!updated) { res.status(404).json({ error: "Alocação não encontrada" }); return; }
+    const [before] = await db
+      .select()
+      .from(dailyBookAssignmentsTable)
+      .where(and(eq(dailyBookAssignmentsTable.id, assignmentId), eq(dailyBookAssignmentsTable.dailyBookId, id), isNull(dailyBookAssignmentsTable.supersededAt)))
+      .limit(1);
+    if (!before) { res.status(404).json({ error: "Alocação não encontrada" }); return; }
+    expectedVersion = requireExpectedVersion(req, res, "o Livro do Dia");
+    if (expectedVersion === null) return;
+    const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id) };
+    const updated = await mutateDailyBook(id, expectedVersion, async (tx) => {
+      const [next] = await tx
+        .update(dailyBookAssignmentsTable)
+        .set({ userId: userId ?? null, status: userId ? "ASSIGNED" : "OPEN", updatedAt: new Date() })
+        .where(and(eq(dailyBookAssignmentsTable.id, assignmentId), eq(dailyBookAssignmentsTable.dailyBookId, id), isNull(dailyBookAssignmentsTable.supersededAt)))
+        .returning();
+      if (!next) throw new VersionedResourceNotFoundError("Alocação");
+      return next;
+    }, async (tx, _claimedBook, next) => {
+      const afterSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id, tx) };
+      await marcarEscalaAlteradaPeloLivro(tx as unknown as typeof db, id, actorId, "troca de pessoa");
+      await writeDailyBookAudit(id, actorId, "assignment_swap",
+        { version: book.version, snapshot: beforeSnapshot, assignmentId, userId: before?.userId ?? null, status: before?.status ?? null },
+        { version: book.version + 1, snapshot: afterSnapshot, assignmentId, userId: userId ?? null, status: next.status }, tx);
+    });
     eventBus.emit("daily-book.updated", { dailyBookId: id, changeType: "assignment_swap", changedBy: actorId });
-    await writeDailyBookAudit(id, actorId, "assignment_swap",
-      { assignmentId, userId: before?.userId ?? null, status: before?.status ?? null },
-      { assignmentId, userId: userId ?? null, status: updated.status });
-    res.json({ assignment: updated });
+    res.json({ assignment: updated, version: book.version + 1 });
   } catch (err) {
+    if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
     res.status(500).json({ error: "Erro ao atualizar alocação" });
   }
 });
@@ -1280,6 +1818,7 @@ router.delete("/daily-book/:id/positions/:positionId", requireAuth, requireOrgan
   const id = req.params.id as string;
   const positionId = req.params.positionId as string;
   const actorId = req.user!.sub;
+  let expectedVersion: number | null = null;
   try {
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
@@ -1288,23 +1827,33 @@ router.delete("/daily-book/:id/positions/:positionId", requireAuth, requireOrgan
       return;
     }
     if (!(await requireDailyBookOperate(book, req.user!, res))) return;
+    expectedVersion = requireExpectedVersion(req, res, "o Livro do Dia");
+    if (expectedVersion === null) return;
+    const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id) };
     const [before] = await db.select().from(dailyBookPositionsTable).where(eq(dailyBookPositionsTable.id, positionId)).limit(1);
-    const [updated] = await db
-      .update(dailyBookPositionsTable)
-      .set({ isRemoved: true, updatedAt: new Date() })
-      .where(and(eq(dailyBookPositionsTable.id, positionId), eq(dailyBookPositionsTable.dailyBookId, id)))
-      .returning();
-    if (!updated) { res.status(404).json({ error: "Posição não encontrada" }); return; }
-    await db
-      .update(dailyBookAssignmentsTable)
-      .set({ status: "REMOVED", updatedAt: new Date() })
-      .where(and(eq(dailyBookAssignmentsTable.positionId, positionId), eq(dailyBookAssignmentsTable.dailyBookId, id)));
+    const updated = await mutateDailyBook(id, expectedVersion, async (tx) => {
+      const [next] = await tx
+        .update(dailyBookPositionsTable)
+        .set({ isRemoved: true, updatedAt: new Date() })
+        .where(and(eq(dailyBookPositionsTable.id, positionId), eq(dailyBookPositionsTable.dailyBookId, id), isNull(dailyBookPositionsTable.supersededAt)))
+        .returning();
+      if (!next) throw new VersionedResourceNotFoundError("Posição");
+      await tx
+        .update(dailyBookAssignmentsTable)
+        .set({ status: "REMOVED", updatedAt: new Date() })
+        .where(and(eq(dailyBookAssignmentsTable.positionId, positionId), eq(dailyBookAssignmentsTable.dailyBookId, id), isNull(dailyBookAssignmentsTable.supersededAt)));
+      return next;
+    }, async (tx, _claimedBook, next) => {
+      const afterSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id, tx) };
+      await marcarEscalaAlteradaPeloLivro(tx as unknown as typeof db, id, actorId, "posição tirada do dia");
+      await writeDailyBookAudit(id, actorId, "position_removed",
+        { version: book.version, snapshot: beforeSnapshot, positionId, name: before?.name ?? null },
+        { version: book.version + 1, snapshot: afterSnapshot, positionId, isRemoved: true }, tx);
+    });
     eventBus.emit("daily-book.updated", { dailyBookId: id, changeType: "position_removed", changedBy: actorId });
-    await writeDailyBookAudit(id, actorId, "position_removed",
-      { positionId, name: before?.name ?? null },
-      { positionId, isRemoved: true });
-    res.json({ position: updated });
+    res.json({ position: updated, version: book.version + 1 });
   } catch (err) {
+    if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
     res.status(500).json({ error: "Erro ao remover posição" });
   }
 });
@@ -1313,6 +1862,7 @@ router.delete("/daily-book/:id/scenes/:sceneId", requireAuth, requireOrganizatio
   const id = req.params.id as string;
   const sceneId = req.params.sceneId as string;
   const actorId = req.user!.sub;
+  let expectedVersion: number | null = null;
   try {
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
@@ -1321,35 +1871,42 @@ router.delete("/daily-book/:id/scenes/:sceneId", requireAuth, requireOrganizatio
       return;
     }
     if (!(await requireDailyBookOperate(book, req.user!, res))) return;
+    expectedVersion = requireExpectedVersion(req, res, "o Livro do Dia");
+    if (expectedVersion === null) return;
+    const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id) };
     const [before] = await db.select().from(dailyBookScenesTable).where(eq(dailyBookScenesTable.id, sceneId)).limit(1);
-    const [updatedScene] = await db
-      .update(dailyBookScenesTable)
-      .set({ isRemoved: true, updatedAt: new Date() })
-      .where(and(eq(dailyBookScenesTable.id, sceneId), eq(dailyBookScenesTable.dailyBookId, id)))
-      .returning();
-    if (!updatedScene) { res.status(404).json({ error: "Cena não encontrada" }); return; }
+    const { updatedScene, affectedBlocks } = await mutateDailyBook(id, expectedVersion, async (tx) => {
+      const [nextScene] = await tx
+        .update(dailyBookScenesTable)
+        .set({ isRemoved: true, updatedAt: new Date() })
+        .where(and(eq(dailyBookScenesTable.id, sceneId), eq(dailyBookScenesTable.dailyBookId, id), isNull(dailyBookScenesTable.supersededAt)))
+        .returning();
+      if (!nextScene) throw new VersionedResourceNotFoundError("Cena");
 
-    const affectedBlocks = await db
-      .update(dailyBookBlocksTable)
-      .set({ isRemoved: true, updatedAt: new Date() })
-      .where(and(eq(dailyBookBlocksTable.sceneId, sceneId), eq(dailyBookBlocksTable.dailyBookId, id)))
-      .returning();
-
-    if (affectedBlocks.length > 0) {
-      for (const block of affectedBlocks) {
-        await db
+      const nextBlocks = await tx
+        .update(dailyBookBlocksTable)
+        .set({ isRemoved: true, updatedAt: new Date() })
+        .where(and(eq(dailyBookBlocksTable.sceneId, sceneId), eq(dailyBookBlocksTable.dailyBookId, id), isNull(dailyBookBlocksTable.supersededAt)))
+        .returning();
+      for (const block of nextBlocks) {
+        await tx
           .update(dailyBookPositionsTable)
           .set({ isRemoved: true, updatedAt: new Date() })
-          .where(and(eq(dailyBookPositionsTable.blockId, block.id), eq(dailyBookPositionsTable.dailyBookId, id)));
+          .where(and(eq(dailyBookPositionsTable.blockId, block.id), eq(dailyBookPositionsTable.dailyBookId, id), isNull(dailyBookPositionsTable.supersededAt)));
       }
-    }
+      return { updatedScene: nextScene, affectedBlocks: nextBlocks };
+    }, async (tx, _claimedBook, result) => {
+      const afterSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id, tx) };
+      await marcarEscalaAlteradaPeloLivro(tx as unknown as typeof db, id, actorId, "cena tirada do dia");
+      await writeDailyBookAudit(id, actorId, "scene_removed",
+        { version: book.version, snapshot: beforeSnapshot, sceneId, name: before?.name ?? null },
+        { version: book.version + 1, snapshot: afterSnapshot, sceneId, isRemoved: true, cascadedBlocks: result.affectedBlocks.length }, tx);
+    });
 
     eventBus.emit("daily-book.updated", { dailyBookId: id, changeType: "scene_removed", changedBy: actorId });
-    await writeDailyBookAudit(id, actorId, "scene_removed",
-      { sceneId, name: before?.name ?? null },
-      { sceneId, isRemoved: true, cascadedBlocks: affectedBlocks.length });
-    res.json({ scene: updatedScene });
+    res.json({ scene: updatedScene, version: book.version + 1 });
   } catch (err) {
+    if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
     res.status(500).json({ error: "Erro ao remover cena" });
   }
 });
@@ -1358,6 +1915,7 @@ router.delete("/daily-book/:id/blocks/:blockId", requireAuth, requireOrganizatio
   const id = req.params.id as string;
   const blockId = req.params.blockId as string;
   const actorId = req.user!.sub;
+  let expectedVersion: number | null = null;
   try {
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
@@ -1366,26 +1924,35 @@ router.delete("/daily-book/:id/blocks/:blockId", requireAuth, requireOrganizatio
       return;
     }
     if (!(await requireDailyBookOperate(book, req.user!, res))) return;
+    expectedVersion = requireExpectedVersion(req, res, "o Livro do Dia");
+    if (expectedVersion === null) return;
+    const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id) };
     const [before] = await db.select().from(dailyBookBlocksTable).where(eq(dailyBookBlocksTable.id, blockId)).limit(1);
-    const [updatedBlock] = await db
-      .update(dailyBookBlocksTable)
-      .set({ isRemoved: true, updatedAt: new Date() })
-      .where(and(eq(dailyBookBlocksTable.id, blockId), eq(dailyBookBlocksTable.dailyBookId, id)))
-      .returning();
-    if (!updatedBlock) { res.status(404).json({ error: "Bloco não encontrado" }); return; }
-
-    const affectedPositions = await db
-      .update(dailyBookPositionsTable)
-      .set({ isRemoved: true, updatedAt: new Date() })
-      .where(and(eq(dailyBookPositionsTable.blockId, blockId), eq(dailyBookPositionsTable.dailyBookId, id)))
-      .returning();
+    const { updatedBlock, affectedPositions } = await mutateDailyBook(id, expectedVersion, async (tx) => {
+      const [nextBlock] = await tx
+        .update(dailyBookBlocksTable)
+        .set({ isRemoved: true, updatedAt: new Date() })
+        .where(and(eq(dailyBookBlocksTable.id, blockId), eq(dailyBookBlocksTable.dailyBookId, id), isNull(dailyBookBlocksTable.supersededAt)))
+        .returning();
+      if (!nextBlock) throw new VersionedResourceNotFoundError("Bloco");
+      const nextPositions = await tx
+        .update(dailyBookPositionsTable)
+        .set({ isRemoved: true, updatedAt: new Date() })
+        .where(and(eq(dailyBookPositionsTable.blockId, blockId), eq(dailyBookPositionsTable.dailyBookId, id), isNull(dailyBookPositionsTable.supersededAt)))
+        .returning();
+      return { updatedBlock: nextBlock, affectedPositions: nextPositions };
+    }, async (tx, _claimedBook, result) => {
+      const afterSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id, tx) };
+      await marcarEscalaAlteradaPeloLivro(tx as unknown as typeof db, id, actorId, "bloco tirado do dia");
+      await writeDailyBookAudit(id, actorId, "block_removed",
+        { version: book.version, snapshot: beforeSnapshot, blockId, name: before?.name ?? null },
+        { version: book.version + 1, snapshot: afterSnapshot, blockId, isRemoved: true, cascadedPositions: result.affectedPositions.length }, tx);
+    });
 
     eventBus.emit("daily-book.updated", { dailyBookId: id, changeType: "block_removed", changedBy: actorId });
-    await writeDailyBookAudit(id, actorId, "block_removed",
-      { blockId, name: before?.name ?? null },
-      { blockId, isRemoved: true, cascadedPositions: affectedPositions.length });
-    res.json({ block: updatedBlock });
+    res.json({ block: updatedBlock, version: book.version + 1 });
   } catch (err) {
+    if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
     res.status(500).json({ error: "Erro ao remover bloco" });
   }
 });
@@ -1396,6 +1963,7 @@ router.patch("/daily-book/:id/scenes/:sceneId/restore", requireAuth, requireOrga
   const id = req.params.id as string;
   const sceneId = req.params.sceneId as string;
   const actorId = req.user!.sub;
+  let expectedVersion: number | null = null;
   try {
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
@@ -1404,35 +1972,46 @@ router.patch("/daily-book/:id/scenes/:sceneId/restore", requireAuth, requireOrga
       return;
     }
     if (!(await requireDailyBookOperate(book, req.user!, res))) return;
-    const [updatedScene] = await db
-      .update(dailyBookScenesTable)
-      .set({ isRemoved: false, updatedAt: new Date() })
-      .where(and(eq(dailyBookScenesTable.id, sceneId), eq(dailyBookScenesTable.dailyBookId, id)))
-      .returning();
-    if (!updatedScene) { res.status(404).json({ error: "Cena não encontrada" }); return; }
-    // Restaurar cascata: blocos e posições da cena
-    const restoredBlocks = await db
-      .update(dailyBookBlocksTable)
-      .set({ isRemoved: false, updatedAt: new Date() })
-      .where(and(eq(dailyBookBlocksTable.sceneId, sceneId), eq(dailyBookBlocksTable.dailyBookId, id), eq(dailyBookBlocksTable.isRemoved, true)))
-      .returning();
-    for (const block of restoredBlocks) {
-      const restoredPositions = await db
-        .update(dailyBookPositionsTable)
+    expectedVersion = requireExpectedVersion(req, res, "o Livro do Dia");
+    if (expectedVersion === null) return;
+    const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id) };
+    const { updatedScene, restoredBlocks } = await mutateDailyBook(id, expectedVersion, async (tx) => {
+      const [nextScene] = await tx
+        .update(dailyBookScenesTable)
         .set({ isRemoved: false, updatedAt: new Date() })
-        .where(and(eq(dailyBookPositionsTable.blockId, block.id), eq(dailyBookPositionsTable.dailyBookId, id), eq(dailyBookPositionsTable.isRemoved, true)))
+        .where(and(eq(dailyBookScenesTable.id, sceneId), eq(dailyBookScenesTable.dailyBookId, id), isNull(dailyBookScenesTable.supersededAt)))
         .returning();
-      for (const pos of restoredPositions) {
-        await db
-          .update(dailyBookAssignmentsTable)
-          .set({ status: "OPEN", updatedAt: new Date() })
-          .where(and(eq(dailyBookAssignmentsTable.positionId, pos.id), eq(dailyBookAssignmentsTable.dailyBookId, id), eq(dailyBookAssignmentsTable.status, "REMOVED")));
+      if (!nextScene) throw new VersionedResourceNotFoundError("Cena");
+      const nextBlocks = await tx
+        .update(dailyBookBlocksTable)
+        .set({ isRemoved: false, updatedAt: new Date() })
+        .where(and(eq(dailyBookBlocksTable.sceneId, sceneId), eq(dailyBookBlocksTable.dailyBookId, id), isNull(dailyBookBlocksTable.supersededAt), eq(dailyBookBlocksTable.isRemoved, true)))
+        .returning();
+      for (const block of nextBlocks) {
+        const positions = await tx
+          .update(dailyBookPositionsTable)
+          .set({ isRemoved: false, updatedAt: new Date() })
+          .where(and(eq(dailyBookPositionsTable.blockId, block.id), eq(dailyBookPositionsTable.dailyBookId, id), isNull(dailyBookPositionsTable.supersededAt), eq(dailyBookPositionsTable.isRemoved, true)))
+          .returning();
+        for (const pos of positions) {
+          await tx
+            .update(dailyBookAssignmentsTable)
+            .set({ status: "OPEN", updatedAt: new Date() })
+            .where(and(eq(dailyBookAssignmentsTable.positionId, pos.id), eq(dailyBookAssignmentsTable.dailyBookId, id), isNull(dailyBookAssignmentsTable.supersededAt), eq(dailyBookAssignmentsTable.status, "REMOVED")));
+        }
       }
-    }
+      return { updatedScene: nextScene, restoredBlocks: nextBlocks };
+    }, async (tx, _claimedBook, result) => {
+      const afterSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id, tx) };
+      await marcarEscalaAlteradaPeloLivro(tx as unknown as typeof db, id, actorId, "cena restaurada");
+      await writeDailyBookAudit(id, actorId, "scene_restored",
+        { version: book.version, snapshot: beforeSnapshot, sceneId, isRemoved: true },
+        { version: book.version + 1, snapshot: afterSnapshot, sceneId, isRemoved: false, restoredBlocks: result.restoredBlocks.length }, tx);
+    });
     eventBus.emit("daily-book.updated", { dailyBookId: id, changeType: "scene_restored", changedBy: actorId });
-    await writeDailyBookAudit(id, actorId, "scene_restored", { sceneId, isRemoved: true }, { sceneId, isRemoved: false });
-    res.json({ scene: updatedScene });
+    res.json({ scene: updatedScene, version: book.version + 1 });
   } catch (err) {
+    if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
     res.status(500).json({ error: "Erro ao restaurar cena" });
   }
 });
@@ -1441,6 +2020,7 @@ router.patch("/daily-book/:id/blocks/:blockId/restore", requireAuth, requireOrga
   const id = req.params.id as string;
   const blockId = req.params.blockId as string;
   const actorId = req.user!.sub;
+  let expectedVersion: number | null = null;
   try {
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
@@ -1449,27 +2029,39 @@ router.patch("/daily-book/:id/blocks/:blockId/restore", requireAuth, requireOrga
       return;
     }
     if (!(await requireDailyBookOperate(book, req.user!, res))) return;
-    const [updatedBlock] = await db
-      .update(dailyBookBlocksTable)
-      .set({ isRemoved: false, updatedAt: new Date() })
-      .where(and(eq(dailyBookBlocksTable.id, blockId), eq(dailyBookBlocksTable.dailyBookId, id)))
-      .returning();
-    if (!updatedBlock) { res.status(404).json({ error: "Bloco não encontrado" }); return; }
-    const restoredPositions = await db
-      .update(dailyBookPositionsTable)
-      .set({ isRemoved: false, updatedAt: new Date() })
-      .where(and(eq(dailyBookPositionsTable.blockId, blockId), eq(dailyBookPositionsTable.dailyBookId, id), eq(dailyBookPositionsTable.isRemoved, true)))
-      .returning();
-    for (const pos of restoredPositions) {
-      await db
-        .update(dailyBookAssignmentsTable)
-        .set({ status: "OPEN", updatedAt: new Date() })
-        .where(and(eq(dailyBookAssignmentsTable.positionId, pos.id), eq(dailyBookAssignmentsTable.dailyBookId, id), eq(dailyBookAssignmentsTable.status, "REMOVED")));
-    }
+    expectedVersion = requireExpectedVersion(req, res, "o Livro do Dia");
+    if (expectedVersion === null) return;
+    const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id) };
+    const { updatedBlock, restoredPositions } = await mutateDailyBook(id, expectedVersion, async (tx) => {
+      const [nextBlock] = await tx
+        .update(dailyBookBlocksTable)
+        .set({ isRemoved: false, updatedAt: new Date() })
+        .where(and(eq(dailyBookBlocksTable.id, blockId), eq(dailyBookBlocksTable.dailyBookId, id), isNull(dailyBookBlocksTable.supersededAt)))
+        .returning();
+      if (!nextBlock) throw new VersionedResourceNotFoundError("Bloco");
+      const nextPositions = await tx
+        .update(dailyBookPositionsTable)
+        .set({ isRemoved: false, updatedAt: new Date() })
+        .where(and(eq(dailyBookPositionsTable.blockId, blockId), eq(dailyBookPositionsTable.dailyBookId, id), isNull(dailyBookPositionsTable.supersededAt), eq(dailyBookPositionsTable.isRemoved, true)))
+        .returning();
+      for (const pos of nextPositions) {
+        await tx
+          .update(dailyBookAssignmentsTable)
+          .set({ status: "OPEN", updatedAt: new Date() })
+          .where(and(eq(dailyBookAssignmentsTable.positionId, pos.id), eq(dailyBookAssignmentsTable.dailyBookId, id), isNull(dailyBookAssignmentsTable.supersededAt), eq(dailyBookAssignmentsTable.status, "REMOVED")));
+      }
+      return { updatedBlock: nextBlock, restoredPositions: nextPositions };
+    }, async (tx, _claimedBook, result) => {
+      const afterSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id, tx) };
+      await marcarEscalaAlteradaPeloLivro(tx as unknown as typeof db, id, actorId, "bloco restaurado");
+      await writeDailyBookAudit(id, actorId, "block_restored",
+        { version: book.version, snapshot: beforeSnapshot, blockId, isRemoved: true },
+        { version: book.version + 1, snapshot: afterSnapshot, blockId, isRemoved: false, restoredPositions: result.restoredPositions.length }, tx);
+    });
     eventBus.emit("daily-book.updated", { dailyBookId: id, changeType: "block_restored", changedBy: actorId });
-    await writeDailyBookAudit(id, actorId, "block_restored", { blockId, isRemoved: true }, { blockId, isRemoved: false });
-    res.json({ block: updatedBlock });
+    res.json({ block: updatedBlock, version: book.version + 1 });
   } catch (err) {
+    if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
     res.status(500).json({ error: "Erro ao restaurar bloco" });
   }
 });
@@ -1478,6 +2070,7 @@ router.patch("/daily-book/:id/positions/:positionId/restore", requireAuth, requi
   const id = req.params.id as string;
   const positionId = req.params.positionId as string;
   const actorId = req.user!.sub;
+  let expectedVersion: number | null = null;
   try {
     const book = await getDailyBookOrFail(id, res);
     if (!book) return;
@@ -1486,20 +2079,32 @@ router.patch("/daily-book/:id/positions/:positionId/restore", requireAuth, requi
       return;
     }
     if (!(await requireDailyBookOperate(book, req.user!, res))) return;
-    const [updatedPosition] = await db
-      .update(dailyBookPositionsTable)
-      .set({ isRemoved: false, updatedAt: new Date() })
-      .where(and(eq(dailyBookPositionsTable.id, positionId), eq(dailyBookPositionsTable.dailyBookId, id)))
-      .returning();
-    if (!updatedPosition) { res.status(404).json({ error: "Posição não encontrada" }); return; }
-    await db
-      .update(dailyBookAssignmentsTable)
-      .set({ status: "OPEN", updatedAt: new Date() })
-      .where(and(eq(dailyBookAssignmentsTable.positionId, positionId), eq(dailyBookAssignmentsTable.dailyBookId, id), eq(dailyBookAssignmentsTable.status, "REMOVED")));
+    expectedVersion = requireExpectedVersion(req, res, "o Livro do Dia");
+    if (expectedVersion === null) return;
+    const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id) };
+    const updatedPosition = await mutateDailyBook(id, expectedVersion, async (tx) => {
+      const [nextPosition] = await tx
+        .update(dailyBookPositionsTable)
+        .set({ isRemoved: false, updatedAt: new Date() })
+        .where(and(eq(dailyBookPositionsTable.id, positionId), eq(dailyBookPositionsTable.dailyBookId, id), isNull(dailyBookPositionsTable.supersededAt)))
+        .returning();
+      if (!nextPosition) throw new VersionedResourceNotFoundError("Posição");
+      await tx
+        .update(dailyBookAssignmentsTable)
+        .set({ status: "OPEN", updatedAt: new Date() })
+        .where(and(eq(dailyBookAssignmentsTable.positionId, positionId), eq(dailyBookAssignmentsTable.dailyBookId, id), isNull(dailyBookAssignmentsTable.supersededAt), eq(dailyBookAssignmentsTable.status, "REMOVED")));
+      return nextPosition;
+    }, async (tx, _claimedBook, _nextPosition) => {
+      const afterSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id, tx) };
+      await marcarEscalaAlteradaPeloLivro(tx as unknown as typeof db, id, actorId, "posição restaurada");
+      await writeDailyBookAudit(id, actorId, "position_restored",
+        { version: book.version, snapshot: beforeSnapshot, positionId, isRemoved: true },
+        { version: book.version + 1, snapshot: afterSnapshot, positionId, isRemoved: false }, tx);
+    });
     eventBus.emit("daily-book.updated", { dailyBookId: id, changeType: "position_restored", changedBy: actorId });
-    await writeDailyBookAudit(id, actorId, "position_restored", { positionId, isRemoved: true }, { positionId, isRemoved: false });
-    res.json({ position: updatedPosition });
+    res.json({ position: updatedPosition, version: book.version + 1 });
   } catch (err) {
+    if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
     res.status(500).json({ error: "Erro ao restaurar posição" });
   }
 });
@@ -1508,6 +2113,7 @@ router.patch("/daily-book/:id/scenes/reorder", requireAuth, requireOrganization,
   const id = req.params.id as string;
   const { scenes } = req.body as { scenes: { id: string; order: number }[] };
   const actorId = req.user!.sub;
+  let expectedVersion: number | null = null;
   if (!Array.isArray(scenes)) {
     res.status(400).json({ error: "scenes deve ser um array de {id, order}" });
     return;
@@ -1520,17 +2126,223 @@ router.patch("/daily-book/:id/scenes/reorder", requireAuth, requireOrganization,
       return;
     }
     if (!(await requireDailyBookOperate(book, req.user!, res))) return;
-    for (const s of scenes) {
-      await db
-        .update(dailyBookScenesTable)
-        .set({ order: s.order, updatedAt: new Date() })
-        .where(and(eq(dailyBookScenesTable.id, s.id), eq(dailyBookScenesTable.dailyBookId, id)));
-    }
+    expectedVersion = requireExpectedVersion(req, res, "o Livro do Dia");
+    if (expectedVersion === null) return;
+    const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id) };
+    await mutateDailyBook(id, expectedVersion, async (tx) => {
+      for (const s of scenes) {
+        await tx
+          .update(dailyBookScenesTable)
+          .set({ order: s.order, updatedAt: new Date() })
+          .where(and(eq(dailyBookScenesTable.id, s.id), eq(dailyBookScenesTable.dailyBookId, id), isNull(dailyBookScenesTable.supersededAt)));
+      }
+      return true;
+    }, async (tx, _claimedBook, _result) => {
+      const afterSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id, tx) };
+      await writeDailyBookAudit(id, actorId, "scenes_reordered",
+        { version: book.version, snapshot: beforeSnapshot },
+        { version: book.version + 1, snapshot: afterSnapshot, scenes }, tx);
+    });
     eventBus.emit("daily-book.updated", { dailyBookId: id, changeType: "scenes_reordered", changedBy: actorId });
-    await writeDailyBookAudit(id, actorId, "scenes_reordered", null, { scenes });
-    res.json({ success: true });
+    res.json({ success: true, version: book.version + 1 });
   } catch (err) {
+    if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
     res.status(500).json({ error: "Erro ao reordenar cenas" });
+  }
+});
+
+/**
+ * Aplica uma Formação da biblioteca a uma cena, só para hoje (nunca no Livro do Show), com
+ * Registro. Leva as pessoas junto: posição viva cujo código de slot (nome) existe na formação
+ * continua como está, com quem já estava nela. Só nasce vaga (OPEN) o slot da formação sem
+ * correspondência, e sai do dia (soft-remove) a posição viva que a formação não tem. Ninguém é
+ * escalado por esta ação — só permanece quem já estava escalado na cena hoje.
+ */
+router.post("/daily-book/:id/scenes/:sceneId/apply-formation", requireAuth, requireOrganization, requireRole("ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"), async (req, res) => {
+  const id = req.params.id as string;
+  const sceneId = req.params.sceneId as string;
+  const { formationId } = req.body ?? {};
+  const actorId = req.user!.sub;
+  let expectedVersion: number | null = null;
+  try {
+    const book = await getDailyBookOrFail(id, res);
+    if (!book) return;
+    if (book.status === "EXECUTED" || book.status === "CANCELLED") {
+      res.status(409).json({ error: "Livro em estado terminal não pode ser alterado" });
+      return;
+    }
+    if (!(await requireDailyBookOperate(book, req.user!, res))) return;
+    if (typeof formationId !== "string" || !formationId) {
+      res.status(400).json({ error: "formationId é obrigatório" });
+      return;
+    }
+    const [scene] = await db.select().from(dailyBookScenesTable)
+      .where(and(eq(dailyBookScenesTable.id, sceneId), eq(dailyBookScenesTable.dailyBookId, id), isNull(dailyBookScenesTable.supersededAt)))
+      .limit(1);
+    if (!scene) { res.status(404).json({ error: "Cena não encontrada" }); return; }
+    const [formation] = await db.select().from(formationsTable)
+      .where(and(eq(formationsTable.id, formationId), eq(formationsTable.active, true)))
+      .limit(1);
+    if (!formation) { res.status(404).json({ error: "Formação não encontrada" }); return; }
+    const formationPositions = Array.isArray(formation.positions)
+      ? (formation.positions as { role?: string; function?: string; roleId?: unknown }[])
+      : [];
+    const slotOf = (position: { role?: string; function?: string }, index: number) => position.role || position.function || `Posição ${index + 1}`;
+    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    expectedVersion = requireExpectedVersion(req, res, "o Livro do Dia");
+    if (expectedVersion === null) return;
+    const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id) };
+    const result = await mutateDailyBook(id, expectedVersion, async (tx) => {
+      const liveBlocks = await tx.select().from(dailyBookBlocksTable).where(and(
+        eq(dailyBookBlocksTable.dailyBookId, id),
+        eq(dailyBookBlocksTable.sceneId, sceneId),
+        isNull(dailyBookBlocksTable.supersededAt),
+        isNotSessionBlock,
+      ));
+      let targetBlockId: string;
+      let livePositions: (typeof dailyBookPositionsTable.$inferSelect)[] = [];
+      if (liveBlocks.length > 0) {
+        targetBlockId = liveBlocks.slice().sort((a, b) => a.order - b.order)[0]!.id;
+        livePositions = await tx.select().from(dailyBookPositionsTable).where(and(
+          inArray(dailyBookPositionsTable.blockId, liveBlocks.map((block) => block.id)),
+          eq(dailyBookPositionsTable.isRemoved, false),
+          isNull(dailyBookPositionsTable.supersededAt),
+        ));
+      } else {
+        const [newBlock] = await tx.insert(dailyBookBlocksTable).values({
+          dailyBookId: id, sceneId, name: formation.name, order: 0,
+        }).returning();
+        targetBlockId = newBlock!.id;
+      }
+      // Casa slot a slot pelo código (nome da posição). Cada posição viva casa uma vez só.
+      const unmatched = [...livePositions];
+      const kept: string[] = [];
+      const toCreate: { name: string; sourceRoleId: string | null }[] = [];
+      formationPositions.forEach((position, index) => {
+        const slot = slotOf(position, index);
+        const at = unmatched.findIndex((live) => live.name === slot);
+        if (at >= 0) { kept.push(unmatched[at]!.id); unmatched.splice(at, 1); return; }
+        const roleId = typeof position.roleId === "string" && UUID.test(position.roleId) ? position.roleId : null;
+        toCreate.push({ name: slot, sourceRoleId: roleId });
+      });
+      if (unmatched.length > 0) {
+        const removedIds = unmatched.map((p) => p.id);
+        await tx.update(dailyBookPositionsTable).set({ isRemoved: true, updatedAt: new Date() }).where(inArray(dailyBookPositionsTable.id, removedIds));
+        await tx.update(dailyBookAssignmentsTable)
+          .set({ status: "REMOVED", updatedAt: new Date() })
+          .where(and(inArray(dailyBookAssignmentsTable.positionId, removedIds), isNull(dailyBookAssignmentsTable.supersededAt)));
+      }
+      for (const position of toCreate) {
+        const [dbPosition] = await tx.insert(dailyBookPositionsTable).values({
+          dailyBookId: id, blockId: targetBlockId, name: position.name, minimumCoverage: 1, sourceRoleId: position.sourceRoleId,
+        }).returning();
+        await tx.insert(dailyBookAssignmentsTable).values({
+          dailyBookId: id, positionId: dbPosition!.id, sceneId, userId: null, status: "OPEN",
+        });
+      }
+      await tx.update(formationsTable).set({
+        timesUsed: sql`${formationsTable.timesUsed} + 1`, lastUsedAt: new Date(), updatedAt: new Date(),
+      }).where(eq(formationsTable.id, formation.id));
+      return { positionsCreated: toCreate.length, positionsKept: kept.length, positionsRemoved: unmatched.length };
+    }, async (tx, _claimedBook, next) => {
+      const afterSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id, tx) };
+      await marcarEscalaAlteradaPeloLivro(tx as unknown as typeof db, id, actorId, "formação aplicada só hoje");
+      await writeDailyBookAudit(id, actorId, "formation_applied_today",
+        { version: book.version, snapshot: beforeSnapshot, sceneId },
+        { version: book.version + 1, snapshot: afterSnapshot, sceneId, formationId: formation.id, formationName: formation.name, ...next }, tx);
+    });
+    eventBus.emit("daily-book.updated", { dailyBookId: id, changeType: "formation_applied_today", changedBy: actorId });
+    res.json({ scenes: await buildDailyBookTree(id), version: book.version + 1, ...result });
+  } catch (err) {
+    if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
+    console.error(err);
+    res.status(500).json({ error: "Erro ao aplicar formação para hoje" });
+  }
+});
+
+/**
+ * "Guardar no padrão": guarda a formação de HOJE — as posições vivas da cena no Livro do Dia,
+ * já ajustadas — como nova variante na biblioteca daquela cena do Livro do Show. É para isso
+ * que a biblioteca existe: reaproveitar um desfalque que se repete. Não muda o Livro do Dia nem
+ * o Livro do Show; grava a Formação e o Registro na mesma transação.
+ */
+router.post("/daily-book/:id/scenes/:sceneId/save-formation", requireAuth, requireOrganization, requireRole("ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"), async (req, res) => {
+  const id = req.params.id as string;
+  const sceneId = req.params.sceneId as string;
+  const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+  const actorId = req.user!.sub;
+  try {
+    const book = await getDailyBookOrFail(id, res);
+    if (!book) return;
+    if (!(await requireDailyBookOperate(book, req.user!, res))) return;
+    if (!name) { res.status(400).json({ error: "NAME_REQUIRED", message: "Nome obrigatório para salvar a Formação." }); return; }
+    const [scene] = await db.select().from(dailyBookScenesTable)
+      .where(and(eq(dailyBookScenesTable.id, sceneId), eq(dailyBookScenesTable.dailyBookId, id), isNull(dailyBookScenesTable.supersededAt)))
+      .limit(1);
+    if (!scene) { res.status(404).json({ error: "Cena não encontrada" }); return; }
+    if (!scene.sourceSceneId || !book.showBookId) { res.status(409).json({ error: "SCENE_WITHOUT_PATTERN", message: "Esta cena não veio de um Livro do Show — não há biblioteca para guardar a formação." }); return; }
+    if (scene.isRemoved) { res.status(409).json({ error: "SCENE_REMOVED", message: "A cena está fora do dia — restaure antes de guardar a formação." }); return; }
+
+    const blocks = await db.select().from(dailyBookBlocksTable).where(and(
+      eq(dailyBookBlocksTable.dailyBookId, id), eq(dailyBookBlocksTable.sceneId, sceneId),
+      isNull(dailyBookBlocksTable.supersededAt), eq(dailyBookBlocksTable.isRemoved, false), isNotSessionBlock,
+    ));
+    const blockOrder = new Map(blocks.map((block) => [block.id, block.order]));
+    const livePositions = blocks.length > 0
+      ? (await db.select().from(dailyBookPositionsTable).where(and(
+          inArray(dailyBookPositionsTable.blockId, blocks.map((block) => block.id)),
+          eq(dailyBookPositionsTable.isRemoved, false), isNull(dailyBookPositionsTable.supersededAt),
+        ))).sort((a, b) => (blockOrder.get(a.blockId ?? "") ?? 0) - (blockOrder.get(b.blockId ?? "") ?? 0) || a.createdAt.getTime() - b.createdAt.getTime())
+      : [];
+    if (livePositions.length === 0) { res.status(409).json({ error: "EMPTY_FORMATION", message: "A cena não tem posição viva hoje." }); return; }
+
+    // Coordenada, cor e lado vêm do papel de origem no Livro do Show; o código do slot é o de hoje.
+    const roleIds = livePositions.map((p) => p.sourceRoleId).filter((roleId): roleId is string => Boolean(roleId));
+    const roles = roleIds.length > 0
+      ? await db.select({ role: showBookRolesTable, zone: showBookBlocksTable.zone }).from(showBookRolesTable)
+          .leftJoin(showBookBlocksTable, eq(showBookRolesTable.blockId, showBookBlocksTable.id))
+          .where(inArray(showBookRolesTable.id, roleIds))
+      : [];
+    const roleById = new Map(roles.map((row) => [row.role.id, row]));
+    const sideOf = (zone: string | null | undefined) => {
+      const normalized = (zone ?? "").toLocaleUpperCase("pt-BR");
+      return normalized === "BACKSTAGE LEFT" ? "BL" : normalized === "BACKSTAGE RIGHT" ? "BR" : "PER";
+    };
+    const positions = livePositions.map((position) => {
+      const origin = position.sourceRoleId ? roleById.get(position.sourceRoleId) : undefined;
+      const base = origin?.role.positionJson && Object.keys(origin.role.positionJson).length > 0 ? origin.role.positionJson as Record<string, unknown> : {};
+      return {
+        ...base,
+        role: position.name,
+        function: origin?.role.tagsJson?.[0] ?? position.name,
+        coordinate: base.coordinate ?? null,
+        roleId: position.sourceRoleId ?? null,
+        ...(origin ? { side: sideOf(origin.zone) } : {}),
+      };
+    });
+
+    const [showRow] = await db.select({ operationId: showBooksTable.operationId }).from(showBooksTable).where(eq(showBooksTable.id, book.showBookId)).limit(1);
+    const created = await db.transaction(async (tx) => {
+      const [formation] = await tx.insert(formationsTable).values({
+        name, peopleCount: positions.length, positions, showId: book.showBookId, sceneId: scene.sourceSceneId,
+        organizationId: req.user!.organizationId, active: true,
+      }).returning();
+      if (!formation) throw new Error("Não foi possível salvar a Formação.");
+      await tx.insert(historyEventsTable).values({
+        orgId: req.user!.organizationId, category: "OPERATIONAL_CHANGE", title: "Formação salva do dia",
+        narrative: `A Formação ${name} foi salva a partir da cena ${scene.name}, como estava no Livro do Dia.`,
+        entityType: "formation", entityId: formation.id, actorId, actorType: "HUMAN", operationId: showRow?.operationId ?? null,
+        action: "formation.created", beforeState: null,
+        afterState: { id: formation.id, name, peopleCount: formation.peopleCount, positions, showId: formation.showId, sceneId: formation.sceneId, dailyBookId: id, dailyBookSceneId: sceneId },
+      });
+      await writeDailyBookAudit(id, actorId, "formation_saved_from_day", null,
+        { sceneId, formationId: formation.id, formationName: name, peopleCount: formation.peopleCount }, tx as unknown as typeof db);
+      return formation;
+    });
+    res.status(201).json({ formation: created });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro ao guardar a formação do dia" });
   }
 });
 

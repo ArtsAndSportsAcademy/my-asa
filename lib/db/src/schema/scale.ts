@@ -22,12 +22,16 @@ export const scalesTable = pgTable("scales", {
   id: uuid("id").primaryKey().defaultRandom(),
   operationId: uuid("operation_id").notNull().references(() => operationsTable.id),
   groupId: uuid("group_id").references(() => operationalGroupsTable.id),
+  areaId: uuid("area_id"),
+  locationId: uuid("location_id"),
   agendaEventId: uuid("agenda_event_id").references(() => agendaEventsTable.id),
   showBookId: uuid("show_book_id").references(() => showBooksTable.id),
   title: text("title").notNull(),
   periodStart: date("period_start", { mode: "string" }).notNull(),
   periodEnd: date("period_end", { mode: "string" }).notNull(),
   status: scaleStatusEnum("status").notNull().default("DRAFT"),
+  // Revisão otimista para impedir sobrescrita silenciosa por outra pessoa.
+  version: integer("version").notNull().default(1),
   publishDeadline: timestamp("publish_deadline", { withTimezone: true }),
   generatedAt: timestamp("generated_at", { withTimezone: true }),
   generatedBy: uuid("generated_by").references(() => usersTable.id),
@@ -35,6 +39,9 @@ export const scalesTable = pgTable("scales", {
   publishedBy: uuid("published_by").references(() => usersTable.id),
   republishedAt: timestamp("republished_at", { withTimezone: true }),
   republishedBy: uuid("republished_by").references(() => usersTable.id),
+  // Escala do dia já publicada que mudou por fora (ex.: alguém saiu do Livro do Dia): pede
+  // republicação. Limpo ao republicar.
+  alteradaDesde: timestamp("alterada_desde", { withTimezone: true }),
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   archivedBy: uuid("archived_by").references(() => usersTable.id),
   createdBy: uuid("created_by").notNull().references(() => usersTable.id),
@@ -57,6 +64,7 @@ export const scaleAllocationsTable = pgTable("scale_allocations", {
   manualLabel: text("manual_label"),
   startTime: text("start_time"),
   endTime: text("end_time"),
+  active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -72,6 +80,7 @@ export const allocationCandidatesTable = pgTable("allocation_candidates", {
   priorityScore: integer("priority_score").notNull().default(0),
   rejectionReason: text("rejection_reason"),
   candidateData: jsonb("candidate_data").$type<Record<string, unknown>>().default({}),
+  active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -88,6 +97,7 @@ export const allocationExceptionsTable = pgTable("allocation_exceptions", {
   resolvedAt: timestamp("resolved_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  active: boolean("active").notNull().default(true),
 });
 
 export const insertScaleSchema = createInsertSchema(scalesTable).omit({

@@ -1,52 +1,64 @@
-import { eq, and, inArray, lte, gte } from "drizzle-orm";
+import { eq, and, inArray, lte, gte, count, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   showBookScenesTable,
   showBookBlocksTable,
   showBookRolesTable,
   showBookLinesTable,
+  showBookKeyframesTable,
   usersTable,
   userRolesTable,
   restrictionsTable,
   folgasTable,
+  rotationDailyAdvancesTable,
+  characterCastTable,
+  charactersTable,
   isSchedulableMember,
 } from "@workspace/db";
+import { operationalDate } from "../lib/operational-date.js";
 
 // ─── Tree building (shared with show-book route) ──────────────────────────────
 
-async function fetchAllLines(positionIds: string[]) {
+type TreeExecutor = Pick<typeof db, "select">;
+
+async function fetchAllLines(positionIds: string[], executor: TreeExecutor = db) {
   if (positionIds.length === 0) return {} as Record<string, (typeof showBookLinesTable.$inferSelect)[]>;
-  const allLines = await Promise.all(
-    positionIds.map((pid) =>
-      db
-        .select()
-        .from(showBookLinesTable)
-        .where(eq(showBookLinesTable.positionId, pid))
-        .orderBy(showBookLinesTable.order, showBookLinesTable.id)
-    )
-  );
+  // Uma única leitura evita abrir uma conexão por posição. Além de reduzir a
+  // carga no pool do Supabase, mantém a árvore consistente na mesma consulta.
+  const allLines = await executor
+    .select()
+    .from(showBookLinesTable)
+    .where(and(inArray(showBookLinesTable.positionId, positionIds), eq(showBookLinesTable.active, true)))
+    .orderBy(showBookLinesTable.positionId, showBookLinesTable.order, showBookLinesTable.id);
   const map: Record<string, (typeof showBookLinesTable.$inferSelect)[]> = {};
-  positionIds.forEach((pid, idx) => { map[pid] = allLines[idx] ?? []; });
+  positionIds.forEach((pid) => { map[pid] = []; });
+  allLines.forEach((line) => { map[line.positionId]?.push(line); });
   return map;
 }
 
-export async function buildShowBookTree(showBookId: string) {
-  const scenes = await db
+export async function buildShowBookTree(showBookId: string, executor: TreeExecutor = db) {
+  const scenes = await executor
     .select().from(showBookScenesTable)
-    .where(eq(showBookScenesTable.showBookId, showBookId))
+    .where(and(eq(showBookScenesTable.showBookId, showBookId), eq(showBookScenesTable.active, true)))
     .orderBy(showBookScenesTable.order, showBookScenesTable.id);
 
-  const blocks = await db
+  const blocks = await executor
     .select().from(showBookBlocksTable)
-    .where(eq(showBookBlocksTable.showBookId, showBookId))
+    .where(and(eq(showBookBlocksTable.showBookId, showBookId), eq(showBookBlocksTable.active, true)))
     .orderBy(showBookBlocksTable.order, showBookBlocksTable.id);
 
-  const positions = await db
+  const positions = await executor
     .select().from(showBookRolesTable)
-    .where(eq(showBookRolesTable.showBookId, showBookId))
+    .where(and(eq(showBookRolesTable.showBookId, showBookId), eq(showBookRolesTable.active, true)))
     .orderBy(showBookRolesTable.order, showBookRolesTable.id);
 
-  const linesMap = await fetchAllLines(positions.map((p) => p.id));
+  const keyframes = await executor
+    .select()
+    .from(showBookKeyframesTable)
+    .where(and(inArray(showBookKeyframesTable.sceneId, scenes.map((scene) => scene.id)), eq(showBookKeyframesTable.active, true)))
+    .orderBy(showBookKeyframesTable.sceneId, showBookKeyframesTable.order, showBookKeyframesTable.id);
+
+  const linesMap = await fetchAllLines(positions.map((p) => p.id), executor);
 
   const posWithLines = positions.map((p) => ({ ...p, lines: linesMap[p.id] ?? [] }));
 
@@ -66,7 +78,10 @@ export async function buildShowBookTree(showBookId: string) {
     blocksByScene[key]!.push(b);
   });
 
-  return scenes.map((s) => ({ ...s, blocks: blocksByScene[s.id] ?? [] }));
+  const keyframesByScene: Record<string, typeof keyframes> = {};
+  keyframes.forEach((frame) => { (keyframesByScene[frame.sceneId] ??= []).push(frame); });
+
+  return scenes.map((s) => ({ ...s, blocks: blocksByScene[s.id] ?? [], keyframes: keyframesByScene[s.id] ?? [] }));
 }
 
 // Coleta todos os userIds referenciados nas configs das linhas.
@@ -178,12 +193,40 @@ function asNum(v: unknown): number {
   return typeof v === "number" && Number.isFinite(v) ? v : 0;
 }
 
+/**
+ * Identifica o personagem ao qual uma linha de rodízio pertence.
+ *
+ * O modelo legado ainda guarda a configuração dentro da linha. Quando a linha
+ * já possui characterId, ele é a chave compartilhada pelos shows. Linhas sem
+ * essa informação permanecem isoladas por lineId até a migração do Bloco 2;
+ * isso evita misturar personagens que o piloto não identificou.
+ */
+export function rotationCharacterKey(line: { id: string; config: unknown; characterId?: string | null }): string {
+  if (typeof line.characterId === "string" && line.characterId.trim()) {
+    return line.characterId.trim();
+  }
+  const cfg = (line.config && typeof line.config === "object" ? line.config : {}) as Record<string, unknown>;
+  if (typeof cfg.characterId === "string" && cfg.characterId.trim()) {
+    return `character:${cfg.characterId.trim()}`;
+  }
+  if (typeof cfg.characterName === "string" && cfg.characterName.trim()) {
+    return `character-name:${cfg.characterName.trim().toLocaleLowerCase("pt-BR")}`;
+  }
+  return `legacy-line:${line.id}`;
+}
+
+function rotationCountKey(characterId: string, userId: string): string {
+  return `${characterId}::${userId}`;
+}
+
 function resolveLine(
-  line: { id: string; type: string; config: unknown },
+  line: { id: string; type: string; config: unknown; characterId?: string | null },
   weekday: number,
   unavailable: Set<string>,
   nameOf: (id: string) => string,
-  excluded: Set<string> = new Set()
+  excluded: Set<string> = new Set(),
+  rotationCounts: ReadonlyMap<string, number> = new Map(),
+  memberIdsOverride?: readonly string[],
 ): ResolvedLine {
   const cfg = (line.config && typeof line.config === "object" ? line.config : {}) as Record<string, unknown>;
   const person = (id: string): ResolvedPerson => ({ userId: id, name: nameOf(id) });
@@ -221,17 +264,26 @@ function resolveLine(
     }
 
     case "ROTATION": {
-      const memberIds = Array.isArray(cfg.memberIds)
+      const configMemberIds = Array.isArray(cfg.memberIds)
         ? cfg.memberIds.filter((x): x is string => typeof x === "string")
         : [];
-      const counts = (cfg.executionCounts && typeof cfg.executionCounts === "object"
+      const memberIds = memberIdsOverride ?? configMemberIds;
+      const legacyCounts = (cfg.executionCounts && typeof cfg.executionCounts === "object"
         ? cfg.executionCounts
         : {}) as Record<string, unknown>;
       if (memberIds.length === 0) {
         return { lineId: line.id, type: line.type, status: "UNCOVERED", people: [], note: "Sem pessoas no rodízio" };
       }
+      const characterKey = rotationCharacterKey(line);
       const available = memberIds
-        .map((id, idx) => ({ id, idx, count: asNum(counts[id]) }))
+        .map((id, idx) => ({
+          id,
+          idx,
+          count: Math.max(
+            asNum(legacyCounts[id]),
+            rotationCounts.get(rotationCountKey(characterKey, id)) ?? 0,
+          ),
+        }))
         .filter((m) => !blocked(m.id))
         .sort((a, b) => (a.count - b.count) || (a.idx - b.idx));
       if (available.length === 0) {
@@ -295,13 +347,42 @@ export async function resolveShowBookCast(
 
   // Nomes de todos os usuários referenciados
   const userIds = new Set<string>();
+  const characterIds = new Set<string>();
   for (const scene of tree) {
     for (const block of scene.blocks) {
       for (const pos of block.positions) {
         for (const line of pos.lines) {
           collectUserIdsFromConfig(line.config).forEach((id) => userIds.add(id));
+          if (typeof line.characterId === "string" && line.characterId.trim()) {
+            characterIds.add(line.characterId);
+          }
         }
       }
+    }
+  }
+  const castMembers = new Map<string, string[]>();
+  const castCounts = new Map<string, number>();
+  if (characterIds.size > 0) {
+    const castRows = await db
+      .select({
+        characterId: characterCastTable.characterId,
+        personId: characterCastTable.personId,
+        timesDone: characterCastTable.timesDone,
+      })
+      .from(characterCastTable)
+      .innerJoin(charactersTable, eq(characterCastTable.characterId, charactersTable.id))
+      .where(and(
+        inArray(characterCastTable.characterId, Array.from(characterIds)),
+        eq(characterCastTable.active, true),
+        eq(charactersTable.active, true),
+      ))
+      .orderBy(characterCastTable.characterId, characterCastTable.order, characterCastTable.id);
+    for (const row of castRows) {
+      const members = castMembers.get(row.characterId) ?? [];
+      members.push(row.personId);
+      castMembers.set(row.characterId, members);
+      castCounts.set(rotationCountKey(row.characterId, row.personId), row.timesDone);
+      userIds.add(row.personId);
     }
   }
   const nameMap = new Map<string, string>();
@@ -338,6 +419,34 @@ export async function resolveShowBookCast(
   const unavailable = await getUnavailableUserIds(operationId, dateISO);
   for (const id of nonSchedulable) unavailable.add(id);
 
+  const rotationKeys = new Set<string>();
+  for (const scene of tree) {
+    for (const block of scene.blocks) {
+      for (const pos of block.positions) {
+        for (const line of pos.lines) {
+          if (line.type === "ROTATION") rotationKeys.add(rotationCharacterKey(line));
+        }
+      }
+    }
+  }
+  const rotationCounts = new Map<string, number>();
+  for (const [key, value] of castCounts) rotationCounts.set(key, value);
+  if (rotationKeys.size > 0) {
+    const rows = await db
+      .select({
+        characterId: rotationDailyAdvancesTable.characterId,
+        userId: rotationDailyAdvancesTable.userId,
+        total: count(),
+      })
+      .from(rotationDailyAdvancesTable)
+      .where(inArray(rotationDailyAdvancesTable.characterId, Array.from(rotationKeys)))
+      .groupBy(rotationDailyAdvancesTable.characterId, rotationDailyAdvancesTable.userId);
+    for (const row of rows) {
+      const key = rotationCountKey(row.characterId, row.userId);
+      rotationCounts.set(key, Math.max(rotationCounts.get(key) ?? 0, Number(row.total)));
+    }
+  }
+
   let uncoveredCount = 0;
   const scenes: ResolvedScene[] = tree.map((scene) => {
     // Quando dedupPerScene está ligado, uma pessoa escolhida numa posição passa a
@@ -355,7 +464,10 @@ export async function resolveShowBookCast(
           name: pos.name,
           minimumCoverage: pos.minimumCoverage ?? 1,
           lines: pos.lines.map((line) => {
-            const resolved = resolveLine(line, weekday, unavailable, nameOf, excluded);
+            const memberIdsOverride = line.characterId
+              ? castMembers.get(line.characterId) ?? []
+              : undefined;
+            const resolved = resolveLine(line, weekday, unavailable, nameOf, excluded, rotationCounts, memberIdsOverride);
             if (resolved.status === "UNCOVERED") uncoveredCount += 1;
             if (excluded) {
               for (const p of resolved.people) excluded.add(p.userId);
@@ -455,14 +567,17 @@ export function collectRotationWinners(result: ResolveResult): RotationWinners {
  * chamado UMA vez quando a escala do dia é efetivada (publicação do Livro do Dia).
  * Best-effort.
  */
-export async function advanceRotationCountsFromWinners(winners: RotationWinners): Promise<number> {
+export async function advanceRotationCountsFromWinners(
+  winners: RotationWinners,
+  dateISO: string = operationalDate(),
+): Promise<number> {
   const lineIds = Object.keys(winners);
   if (lineIds.length === 0) return 0;
 
   const lines = await db
     .select()
     .from(showBookLinesTable)
-    .where(inArray(showBookLinesTable.id, lineIds));
+    .where(and(inArray(showBookLinesTable.id, lineIds), eq(showBookLinesTable.active, true)));
   const byId = new Map(lines.map((l) => [l.id, l]));
 
   let updated = 0;
@@ -473,12 +588,44 @@ export async function advanceRotationCountsFromWinners(winners: RotationWinners)
     const cfg = (line.config && typeof line.config === "object"
       ? { ...(line.config as Record<string, unknown>) }
       : {}) as Record<string, unknown>;
+    const characterId = rotationCharacterKey(line);
+    const [inserted] = await db
+      .insert(rotationDailyAdvancesTable)
+      .values({
+        characterId,
+        userId,
+        date: dateISO,
+        sourceLineId: line.id,
+      })
+      .onConflictDoNothing({
+        target: [
+          rotationDailyAdvancesTable.characterId,
+          rotationDailyAdvancesTable.userId,
+          rotationDailyAdvancesTable.date,
+        ],
+      })
+      .returning({ id: rotationDailyAdvancesTable.id });
+    if (!inserted) continue;
+
     const counts = { ...((cfg.executionCounts && typeof cfg.executionCounts === "object"
       ? cfg.executionCounts
       : {}) as Record<string, number>) };
     counts[userId] = asNum(counts[userId]) + 1;
     cfg.executionCounts = counts;
     await db.update(showBookLinesTable).set({ config: cfg as any }).where(eq(showBookLinesTable.id, lineId));
+    if (line.characterId) {
+      await db
+        .update(characterCastTable)
+        .set({
+          timesDone: sql`${characterCastTable.timesDone} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(characterCastTable.characterId, line.characterId),
+          eq(characterCastTable.personId, userId),
+          eq(characterCastTable.active, true),
+        ));
+    }
     updated += 1;
   }
   return updated;
@@ -495,5 +642,5 @@ export async function advanceRotationCounts(
   dateISO: string
 ): Promise<number> {
   const result = await resolveShowBookCast(showBookId, operationId, dateISO);
-  return advanceRotationCountsFromWinners(collectRotationWinners(result));
+  return advanceRotationCountsFromWinners(collectRotationWinners(result), dateISO);
 }

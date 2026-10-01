@@ -14,6 +14,9 @@ import { requestLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { hasActiveResponsibility } from "../lib/delegation-check.js";
+import { normalizeReason, requireReason } from "../lib/reason.js";
+import { operationalDate } from "../lib/operational-date.js";
+import { canManageCheckInsForOperation } from "../services/checkin-access.js";
 
 const router: IRouter = Router();
 
@@ -54,11 +57,13 @@ async function getExpectedUsers(operationId: string, date: string) {
     .innerJoin(scalesTable, eq(scaleAllocationsTable.scaleId, scalesTable.id))
     .innerJoin(agendaEventsTable, eq(scaleAllocationsTable.agendaEventId, agendaEventsTable.id))
     .innerJoin(usersTable, eq(scaleAllocationsTable.userId, usersTable.id))
+    .innerJoin(operationsTable, eq(scalesTable.operationId, operationsTable.id))
     .where(
       and(
         eq(agendaEventsTable.date, date),
         eq(scalesTable.operationId, operationId),
         inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"]),
+        eq(scaleAllocationsTable.active, true),
         sql`${scaleAllocationsTable.userId} IS NOT NULL`,
       )
     )
@@ -68,6 +73,11 @@ async function getExpectedUsers(operationId: string, date: string) {
   return rows;
 }
 
+/**
+ * Check-ins são dados operacionais: perfil por si só não concede acesso a uma
+ * operação arbitrária. A confirmação de organização vem antes do escopo da
+ * supervisão/delegação para não revelar nem permitir escrita cross-org.
+ */
 // ─── GET /check-ins — lista do dia (supervisor) ───────────────────────────────
 
 router.get("/check-ins", requireAuth, requireOrganization, async (req, res) => {
@@ -82,6 +92,11 @@ router.get("/check-ins", requireAuth, requireOrganization, async (req, res) => {
   const { date, operationId } = req.query as Record<string, string>;
   if (!date || !operationId) {
     res.status(400).json({ error: "Bad Request", message: "date e operationId são obrigatórios" });
+    return;
+  }
+
+  if (!(await canManageCheckInsForOperation(user, operationId))) {
+    res.status(403).json({ error: "Forbidden", message: "Operação fora do escopo de check-ins" });
     return;
   }
 
@@ -141,6 +156,11 @@ router.get("/check-ins/summary", requireAuth, requireOrganization, async (req, r
     return;
   }
 
+  if (!(await canManageCheckInsForOperation(user, operationId))) {
+    res.status(403).json({ error: "Forbidden", message: "Operação fora do escopo de check-ins" });
+    return;
+  }
+
   try {
     const [expectedUsers, checkInRecords] = await Promise.all([
       getExpectedUsers(operationId, date),
@@ -183,7 +203,7 @@ router.get("/check-ins/my-status", requireAuth, requireOrganization, async (req,
   const userId = req.user!.sub;
   const orgId = req.user!.organizationId;
 
-  const date = (req.query["date"] as string) || new Date().toISOString().slice(0, 10);
+  const date = (req.query["date"] as string) || operationalDate();
 
   try {
     // Find which operation this user has allocations in today
@@ -192,11 +212,14 @@ router.get("/check-ins/my-status", requireAuth, requireOrganization, async (req,
       .from(scaleAllocationsTable)
       .innerJoin(scalesTable, eq(scaleAllocationsTable.scaleId, scalesTable.id))
       .innerJoin(agendaEventsTable, eq(scaleAllocationsTable.agendaEventId, agendaEventsTable.id))
+      .innerJoin(operationsTable, eq(scalesTable.operationId, operationsTable.id))
       .where(
         and(
           eq(scaleAllocationsTable.userId, userId),
           eq(agendaEventsTable.date, date),
+          eq(operationsTable.organizationId, orgId),
           inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"]),
+          eq(scaleAllocationsTable.active, true),
         )
       )
       .limit(1);
@@ -251,7 +274,7 @@ router.post("/check-ins/my", requireAuth, requireOrganization, async (req, res) 
   const userId = req.user!.sub;
   const orgId = req.user!.organizationId;
 
-  const date = new Date().toISOString().slice(0, 10);
+  const date = operationalDate();
   const nowUTC = new Date();
 
   try {
@@ -264,11 +287,14 @@ router.post("/check-ins/my", requireAuth, requireOrganization, async (req, res) 
       .from(scaleAllocationsTable)
       .innerJoin(scalesTable, eq(scaleAllocationsTable.scaleId, scalesTable.id))
       .innerJoin(agendaEventsTable, eq(scaleAllocationsTable.agendaEventId, agendaEventsTable.id))
+      .innerJoin(operationsTable, eq(scalesTable.operationId, operationsTable.id))
       .where(
         and(
           eq(scaleAllocationsTable.userId, userId),
           eq(agendaEventsTable.date, date),
+          eq(operationsTable.organizationId, orgId),
           inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"]),
+          eq(scaleAllocationsTable.active, true),
         )
       )
       .orderBy(asc(agendaEventsTable.startTime))
@@ -308,42 +334,45 @@ router.post("/check-ins/my", requireAuth, requireOrganization, async (req, res) 
     }
 
     // Upsert check-in
-    const [record] = await db
-      .insert(operationalCheckInsTable)
-      .values({
-        orgId: resolvedOrgId,
-        operationId,
-        userId,
-        date,
-        status,
-        checkedInAt: nowUTC,
-        registeredBy: userId,
-      })
-      .onConflictDoUpdate({
-        target: [
-          operationalCheckInsTable.userId,
-          operationalCheckInsTable.operationId,
-          operationalCheckInsTable.date,
-        ],
-        set: {
+    const record = await db.transaction(async (tx) => {
+      const [persisted] = await tx
+        .insert(operationalCheckInsTable)
+        .values({
+          orgId: resolvedOrgId,
+          operationId,
+          userId,
+          date,
           status,
           checkedInAt: nowUTC,
           registeredBy: userId,
-          updatedAt: nowUTC,
-        },
-      })
-      .returning();
-
-    void writeHistoryEvent({
-      category: "CHECK_IN",
-      action: status === "LATE" ? "checkin.late" : "checkin.created",
-      title: status === "LATE" ? "Check-in registrado com atraso" : "Check-in realizado",
-      narrative: `Membro registrou presença${status === "LATE" ? " com atraso" : ""} em ${date}`,
-      entityType: "check_in",
-      entityId: record!.id,
-      actorId: userId,
-      operationId,
-      orgId: resolvedOrgId,
+        })
+        .onConflictDoUpdate({
+          target: [
+            operationalCheckInsTable.userId,
+            operationalCheckInsTable.operationId,
+            operationalCheckInsTable.date,
+          ],
+          set: {
+            status,
+            checkedInAt: nowUTC,
+            registeredBy: userId,
+            updatedAt: nowUTC,
+          },
+        })
+        .returning();
+      await writeHistoryEvent({
+        category: "CHECK_IN",
+        action: status === "LATE" ? "checkin.late" : "checkin.created",
+        title: status === "LATE" ? "Check-in registrado com atraso" : "Check-in realizado",
+        narrative: `Membro registrou presença${status === "LATE" ? " com atraso" : ""} em ${date}`,
+        entityType: "check_in",
+        entityId: persisted!.id,
+        actorId: userId,
+        operationId,
+        orgId: resolvedOrgId,
+        afterState: { status, date },
+      }, tx as any);
+      return persisted!;
     });
 
     log.info({ userId, operationId, status, date }, "member checked in");
@@ -369,9 +398,10 @@ router.patch("/check-ins/:id", requireAuth, requireOrganization, async (req, res
   const user = req.user!;
 
   const checkInId = req.params["id"] as string;
-  const { status, excuseReason, userId, operationId, date } = req.body as {
+  const { status, excuseReason, reason, userId, operationId, date } = req.body as {
     status?: string;
     excuseReason?: string;
+    reason?: string;
     userId?: string;
     operationId?: string;
     date?: string;
@@ -400,11 +430,18 @@ router.patch("/check-ins/:id", requireAuth, requireOrganization, async (req, res
         res.status(400).json({ error: "Bad Request", message: "Status inválido" });
         return;
       }
+      const absenceReason = ["ABSENT", "EXCUSED"].includes(status)
+        ? requireReason(res, excuseReason ?? reason, "registrar ausência ou ocorrência")
+        : normalizeReason(excuseReason ?? reason);
+      if (["ABSENT", "EXCUSED"].includes(status) && !absenceReason) return;
 
       const [opRow] = await db
         .select({ organizationId: operationsTable.organizationId })
         .from(operationsTable)
-        .where(eq(operationsTable.id, operationId))
+        .where(and(
+          eq(operationsTable.id, operationId),
+          eq(operationsTable.organizationId, user.organizationId),
+        ))
         .limit(1);
 
       if (!opRow) {
@@ -412,44 +449,56 @@ router.patch("/check-ins/:id", requireAuth, requireOrganization, async (req, res
         return;
       }
 
-      const [record] = await db
-        .insert(operationalCheckInsTable)
-        .values({
-          orgId: opRow.organizationId,
-          operationId,
-          userId,
-          date,
-          status: status as any,
-          checkedInAt: ["CHECKED_IN", "LATE"].includes(status) ? nowUTC : null,
-          registeredBy: user.sub,
-          excuseReason: excuseReason ?? null,
-        })
-        .onConflictDoUpdate({
-          target: [
-            operationalCheckInsTable.userId,
-            operationalCheckInsTable.operationId,
-            operationalCheckInsTable.date,
-          ],
-          set: {
+      if (!(await canManageCheckInsForOperation(user, operationId))) {
+        res.status(403).json({ error: "Forbidden", message: "Operação fora do escopo de check-ins" });
+        return;
+      }
+
+      const record = await db.transaction(async (tx) => {
+        const [persisted] = await tx
+          .insert(operationalCheckInsTable)
+          .values({
+            orgId: opRow.organizationId,
+            operationId,
+            userId,
+            date,
             status: status as any,
             checkedInAt: ["CHECKED_IN", "LATE"].includes(status) ? nowUTC : null,
             registeredBy: user.sub,
-            excuseReason: excuseReason ?? null,
-            updatedAt: nowUTC,
+            excuseReason: absenceReason,
+          })
+          .onConflictDoUpdate({
+            target: [
+              operationalCheckInsTable.userId,
+              operationalCheckInsTable.operationId,
+              operationalCheckInsTable.date,
+            ],
+            set: {
+              status: status as any,
+              checkedInAt: ["CHECKED_IN", "LATE"].includes(status) ? nowUTC : null,
+              registeredBy: user.sub,
+              excuseReason: absenceReason,
+              updatedAt: nowUTC,
+            },
+          })
+          .returning();
+        await writeHistoryEvent({
+          category: "CHECK_IN",
+          action: getHistoryAction(status),
+          title: getHistoryTitle(status),
+          narrative: `Supervisor registrou status "${status}" para o membro em ${date}`,
+          entityType: "check_in",
+          entityId: persisted!.id,
+          actorId: user.sub,
+          operationId,
+          orgId: opRow.organizationId,
+          metadata: {
+            reason: absenceReason,
+            calculatedReflection: `Status do check-in alterado para ${status}.`,
           },
-        })
-        .returning();
-
-      void writeHistoryEvent({
-        category: "CHECK_IN",
-        action: getHistoryAction(status),
-        title: getHistoryTitle(status),
-        narrative: `Supervisor registrou status "${status}" para o membro em ${date}`,
-        entityType: "check_in",
-        entityId: record!.id,
-        actorId: user.sub,
-        operationId,
-        orgId: opRow.organizationId,
+          afterState: { status, date, excuseReason: absenceReason },
+        }, tx as any);
+        return persisted!;
       });
 
       log.info({ checkInId: record!.id, status, registeredBy: user.sub }, "check-in created by supervisor");
@@ -470,6 +519,15 @@ router.patch("/check-ins/:id", requireAuth, requireOrganization, async (req, res
     }
 
     const current = existing[0]!;
+    if (!(await canManageCheckInsForOperation(user, current.operationId))) {
+      res.status(403).json({ error: "Forbidden", message: "Operação fora do escopo de check-ins" });
+      return;
+    }
+    const effectiveStatus = status ?? current.status;
+    const absenceReason = ["ABSENT", "EXCUSED"].includes(effectiveStatus)
+      ? requireReason(res, excuseReason ?? reason ?? current.excuseReason, "registrar ausência ou ocorrência")
+      : normalizeReason(excuseReason ?? reason ?? current.excuseReason);
+    if (["ABSENT", "EXCUSED"].includes(effectiveStatus) && !absenceReason) return;
 
     const updates: Record<string, unknown> = { updatedAt: nowUTC, registeredBy: user.sub };
     if (status) {
@@ -482,24 +540,34 @@ router.patch("/check-ins/:id", requireAuth, requireOrganization, async (req, res
         updates["checkedInAt"] = nowUTC;
       }
     }
-    if (excuseReason !== undefined) updates["excuseReason"] = excuseReason;
+    if (excuseReason !== undefined || reason !== undefined || ["ABSENT", "EXCUSED"].includes(effectiveStatus)) {
+      updates["excuseReason"] = absenceReason;
+    }
 
-    const [updated] = await db
-      .update(operationalCheckInsTable)
-      .set(updates as any)
-      .where(eq(operationalCheckInsTable.id, checkInId))
-      .returning();
-
-    void writeHistoryEvent({
-      category: "CHECK_IN",
-      action: status ? getHistoryAction(status) : "checkin.corrected",
-      title: status ? getHistoryTitle(status) : "Check-in corrigido",
-      narrative: `Supervisor atualizou check-in para "${status ?? "correção"}" em ${current.date}`,
-      entityType: "check_in",
-      entityId: checkInId,
-      actorId: user.sub,
-      operationId: current.operationId,
-      orgId: current.orgId,
+    const updated = await db.transaction(async (tx) => {
+      const [persisted] = await tx
+        .update(operationalCheckInsTable)
+        .set(updates as any)
+        .where(eq(operationalCheckInsTable.id, checkInId))
+        .returning();
+      await writeHistoryEvent({
+        category: "CHECK_IN",
+        action: status ? getHistoryAction(status) : "checkin.corrected",
+        title: status ? getHistoryTitle(status) : "Check-in corrigido",
+        narrative: `Supervisor atualizou check-in para "${status ?? "correção"}" em ${current.date}`,
+        entityType: "check_in",
+        entityId: checkInId,
+        actorId: user.sub,
+        operationId: current.operationId,
+        orgId: current.orgId,
+        metadata: {
+          reason: absenceReason,
+          calculatedReflection: `Status do check-in alterado de ${current.status} para ${effectiveStatus}.`,
+        },
+        beforeState: { status: current.status, excuseReason: current.excuseReason },
+        afterState: { status: persisted!.status, excuseReason: persisted!.excuseReason },
+      }, tx as any);
+      return persisted!;
     });
 
     log.info({ checkInId, status, registeredBy: user.sub }, "check-in updated by supervisor");

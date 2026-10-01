@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #f4f2fa; font-family: Manrope, system-ui, sans-serif; color: #1b1630; }
+  a { color: #6C2BF2; text-decoration: none; }
+  a:hover { color: #4a17b8; text-decoration: underline; }
+  button:focus-visible, a:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3px solid #6C2BF2; outline-offset: 2px; border-radius: 8px; }
+  [style*="scrollbar-width:none"]::-webkit-scrollbar { display: none; }
+</style>
+</helmet>
+
+<div style="max-width:1440px;margin:0 auto;padding:44px 28px 110px;display:flex;flex-direction:column;gap:54px">
+
+  <header style="display:flex;align-items:flex-start;gap:18px">
+    <img src="assets/asa/estudando.png" alt="ASA" style="width:60px;height:60px;object-fit:contain;flex:none;margin-top:2px" />
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:#6b6482">Onda 2 · a cadeia</div>
+      <h1 style="font-family:Outfit,sans-serif;font-size:38px;line-height:1.06;font-weight:700;margin:0;letter-spacing:-0.02em">Personagens, formações e o livro do dia</h1>
+      <p style="margin:0;max-width:76ch;font-size:15px;line-height:1.6;color:#5b5473;text-wrap:pretty">O modelo que fechamos, funcionando de ponta a ponta: a lista de personagens por local, o livro do show como ideal intocado, e o livro do dia nascendo <strong>80% resolvido</strong> — com aviso onde precisa de você e um botão só para confirmar.</p>
+    </div>
+  </header>
+
+  <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:stretch">
+    <sc-for list="{{ chain }}" as="c">
+      <div style="{{ c.style }}">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6C2BF2">{{ c.step }}</span>
+        <span style="font-family:Outfit,sans-serif;font-size:15.5px;font-weight:600;line-height:1.25">{{ c.title }}</span>
+        <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">{{ c.body }}</span>
+      </div>
+    </sc-for>
+  </div>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#6C2BF2">1</span>
+      <h2 style="font-family:Outfit,sans-serif;font-size:25px;font-weight:600;margin:0;letter-spacing:-0.01em">Personagens, por local</h2>
+      <span style="font-size:14px;color:#6b6482">cada um com o seu modo · define uma vez, vale em todos os shows</span>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start">
+      <div style="flex:1 1 620px;min-width:520px;background:#fff;border:1px solid #ddd6ee;border-radius:20px;overflow:hidden;box-shadow:0 16px 36px -30px rgba(40,20,90,.45)">
+        <div style="padding:18px 22px;border-bottom:1px solid #f0ecf8;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <span style="font-family:Outfit,sans-serif;font-size:19px;font-weight:600;letter-spacing:-0.01em;flex:1;min-width:160px">Personagens</span>
+          <div style="display:flex;gap:7px">
+            <sc-for list="{{ localTabs }}" as="l">
+              <button type="button" onClick="{{ l.onClick }}" style="{{ l.style }}">{{ l.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:10px;padding:11px 22px;background:#faf9fe;border-bottom:1px solid #f0ecf8;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">
+          <span style="flex:1;min-width:0">personagem</span>
+          <span style="width:190px;flex:none">modo</span>
+          <span style="width:210px;flex:none">quem faz</span>
+        </div>
+
+        <sc-for list="{{ personagens }}" as="p">
+          <div style="display:flex;align-items:center;gap:10px;padding:13px 22px;border-bottom:1px solid #f6f4fc">
+            <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+              <span style="font-size:15px;font-weight:700;line-height:1.25">{{ p.nome }}</span>
+              <span style="font-size:12px;color:#6b6482;line-height:1.4;text-wrap:pretty">{{ p.shows }}</span>
+            </span>
+            <span style="width:190px;flex:none;display:flex;gap:6px">
+              <sc-for list="{{ p.modos }}" as="m">
+                <button type="button" onClick="{{ m.onClick }}" style="{{ m.style }}">{{ m.label }}</button>
+              </sc-for>
+            </span>
+            <span style="width:210px;flex:none;display:flex;flex-direction:column;gap:4px">
+              <span style="font-size:13.5px;font-weight:600;line-height:1.3">{{ p.quem }}</span>
+              <span style="font-size:11.5px;color:#6b6482;line-height:1.4;text-wrap:pretty">{{ p.detalhe }}</span>
+            </span>
+          </div>
+        </sc-for>
+
+        <div style="padding:16px 22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <button type="button" onClick="{{ onNovoPersonagem }}" style="min-height:44px;padding:0 18px;border:1.5px solid #6C2BF2;border-radius:12px;background:#fff;color:#5B23C9;font-family:Manrope,sans-serif;font-size:14px;font-weight:700;cursor:pointer">Novo personagem</button>
+          <span style="font-size:12.5px;color:#6b6482;line-height:1.45;flex:1;min-width:220px;text-wrap:pretty">Clique em <strong>Titular</strong> ou <strong>Rodízio</strong> para ver como cada modo resolve.</span>
+        </div>
+      </div>
+
+      <div style="flex:1 1 300px;min-width:280px;display:flex;flex-direction:column;gap:14px">
+        <div style="{{ modoCardStyle }}">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6C2BF2">{{ modoKicker }}</span>
+          <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600;line-height:1.25">{{ modoTitle }}</span>
+          <span style="font-size:13px;line-height:1.55;color:#5b5473;text-wrap:pretty">{{ modoBody }}</span>
+          <sc-for list="{{ modoFila }}" as="f">
+            <div style="display:flex;align-items:center;gap:11px;background:#fff;border:1px solid #e9e4f5;border-radius:12px;padding:10px 13px;min-height:44px;box-sizing:border-box">
+              <span style="{{ f.posStyle }}">{{ f.pos }}</span>
+              <span style="flex:1;min-width:0;font-size:13.5px;font-weight:600">{{ f.nome }}</span>
+              <span style="{{ f.tagStyle }}">{{ f.tag }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="background:#f6f4fc;border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:8px">
+          <span style="font-size:14.5px;font-weight:700">O contador soma por dia</span>
+          <span style="font-size:13px;line-height:1.55;color:#5b5473;text-wrap:pretty">Se Astrid aparece no Musical e na Patinação no mesmo dia, conta <strong>1</strong> — não 2. É a mesma pessoa cobrindo os dois.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#6C2BF2">2</span>
+      <h2 style="font-family:Outfit,sans-serif;font-size:25px;font-weight:600;margin:0;letter-spacing:-0.01em">Livro do Show — o ideal, intocado</h2>
+      <span style="font-size:14px;color:#6b6482">cenas com formação cheia · e o interruptor de personagens</span>
+    </div>
+
+    <div style="background:#fff;border:1px solid #ddd6ee;border-radius:20px;overflow:hidden;box-shadow:0 16px 36px -30px rgba(40,20,90,.45)">
+      <div style="padding:18px 22px;border-bottom:1px solid #f0ecf8;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:200px">
+          <span style="font-family:Outfit,sans-serif;font-size:19px;font-weight:600;letter-spacing:-0.01em">Musical do Natal</span>
+          <span style="font-size:12.5px;color:#6b6482">Snowland · 12:30 · 5 cenas · o show como ele deveria ser</span>
+        </span>
+        <button type="button" onClick="{{ onTogglePers }}" style="{{ persSwitchStyle }}">
+          <span style="{{ persKnobStyle }}"></span>
+          <span style="font-size:13px;font-weight:700">{{ persSwitchLabel }}</span>
+        </button>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap">
+        <div style="flex:1 1 440px;min-width:400px;padding:20px 22px;border-right:1px solid #f0ecf8;display:flex;flex-direction:column;gap:11px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">as cenas e a formação cheia</span>
+          <sc-for list="{{ cenas }}" as="c">
+            <button type="button" onClick="{{ c.onClick }}" style="{{ c.rowStyle }}">
+              <span style="{{ c.numStyle }}">{{ c.num }}</span>
+              <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+                <span style="font-size:14.5px;font-weight:700;line-height:1.25">{{ c.nome }}</span>
+                <span style="font-size:12px;color:#6b6482;line-height:1.4;text-wrap:pretty">{{ c.meta }}</span>
+              </span>
+              <span style="{{ c.tagStyle }}">{{ c.tag }}</span>
+            </button>
+          </sc-for>
+        </div>
+
+        <div style="flex:1 1 420px;min-width:380px;padding:20px 22px;background:#faf9fe;display:flex;flex-direction:column;gap:14px">
+          <sc-if value="{{ persOn }}" hint-collapse="true">
+            <div style="display:flex;flex-direction:column;gap:11px">
+              <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482;flex:1">personagens deste show</span>
+                <span style="font-size:12px;color:#6b6482">{{ showPersCount }}</span>
+              </div>
+              <sc-for list="{{ showPers }}" as="p">
+                <div style="display:flex;align-items:center;gap:11px;background:#fff;border:1px solid #e9e4f5;border-radius:13px;padding:12px 14px;min-height:44px;box-sizing:border-box">
+                  <span style="{{ p.dotStyle }}"></span>
+                  <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                    <span style="font-size:14px;font-weight:700">{{ p.nome }}</span>
+                    <span style="font-size:11.5px;color:#6b6482">{{ p.modo }}</span>
+                  </span>
+                  <button type="button" onClick="{{ p.onRemove }}" style="width:44px;height:44px;flex:none;border:1px solid #e6e1f2;border-radius:11px;background:#fff;color:#6b6482;font-size:15px;cursor:pointer">×</button>
+                </div>
+              </sc-for>
+              <button type="button" onClick="{{ onAddPers }}" style="min-height:44px;padding:0 16px;border:1.5px dashed #c9bff0;border-radius:12px;background:#fff;color:#5B23C9;font-family:Manrope,sans-serif;font-size:13.5px;font-weight:700;cursor:pointer;align-self:flex-start">+ Agregar personagem</button>
+
+              <sc-if value="{{ addOpen }}" hint-collapse="true">
+                <div style="background:#fff;border:1.5px solid #6C2BF2;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:13px">
+                  <span style="font-size:14px;font-weight:700">Agregar personagem</span>
+                  <div style="display:flex;flex-direction:column;gap:8px">
+                    <span style="font-size:12.5px;font-weight:700;color:#4b4465">De qual local</span>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                      <sc-for list="{{ addLocais }}" as="l">
+                        <button type="button" onClick="{{ l.onClick }}" style="{{ l.style }}">{{ l.label }}</button>
+                      </sc-for>
+                    </div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:8px">
+                    <span style="font-size:12.5px;font-weight:700;color:#4b4465">Personagem</span>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                      <sc-for list="{{ addOpcoes }}" as="o">
+                        <button type="button" onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button>
+                      </sc-for>
+                    </div>
+                  </div>
+                  <span style="font-size:12px;color:#6b6482;line-height:1.45;text-wrap:pretty">{{ addHint }}</span>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ persOff }}" hint-collapse="true">
+            <div style="display:flex;flex-direction:column;gap:10px;align-items:flex-start">
+              <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">Este show não usa personagens</span>
+              <span style="font-size:13px;line-height:1.55;color:#5b5473;max-width:44ch;text-wrap:pretty">O elenco entra por posição na formação, sem personagem nomeado. Shows de patinação livre e flashmob costumam ser assim.</span>
+            </div>
+          </sc-if>
+
+          <div style="border-top:1px solid #ebe6f6;padding-top:14px;display:flex;flex-direction:column;gap:7px">
+            <span style="font-size:13.5px;font-weight:700">{{ cenaSelName }}</span>
+            <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">{{ cenaSelBody }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#6C2BF2">3</span>
+      <h2 style="font-family:Outfit,sans-serif;font-size:25px;font-weight:600;margin:0;letter-spacing:-0.01em">Livro do Dia — nasce 80% resolvido</h2>
+      <span style="font-size:14px;color:#6b6482">cópia editável do show · o show fica intocado</span>
+    </div>
+
+    <div style="background:#fff;border:1px solid #ddd6ee;border-radius:20px;overflow:hidden;box-shadow:0 16px 36px -30px rgba(40,20,90,.45)">
+      <div style="padding:18px 22px;border-bottom:1px solid #f0ecf8;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:220px">
+          <span style="font-family:Outfit,sans-serif;font-size:19px;font-weight:600;letter-spacing:-0.01em">Musical do Natal · quinta, 10/09</span>
+          <span style="font-size:12.5px;color:#6b6482">{{ diaSub }}</span>
+        </span>
+        <span style="{{ diaBadgeStyle }}">{{ diaBadge }}</span>
+      </div>
+
+      <div style="padding:16px 22px;background:#faf9fe;border-bottom:1px solid #f0ecf8;display:flex;flex-wrap:wrap;gap:12px">
+        <sc-for list="{{ ausentes }}" as="a">
+          <div style="{{ a.style }}">
+            <span style="font-size:13.5px;font-weight:700">{{ a.nome }}</span>
+            <span style="font-size:11.5px;color:#6b6482">{{ a.motivo }}</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <sc-for list="{{ diaCenas }}" as="c">
+        <div style="{{ c.wrapStyle }}">
+          <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap">
+            <span style="{{ c.numStyle }}">{{ c.num }}</span>
+            <span style="flex:1 1 240px;min-width:200px;display:flex;flex-direction:column;gap:4px">
+              <span style="font-size:15.5px;font-weight:700;line-height:1.25">{{ c.nome }}</span>
+              <span style="font-size:12.5px;color:#5b5473;line-height:1.45;text-wrap:pretty">{{ c.meta }}</span>
+            </span>
+            <span style="{{ c.tagStyle }}">{{ c.tag }}</span>
+          </div>
+
+          <sc-if value="{{ c.mapa }}" hint-collapse="true">
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <sc-for list="{{ c.mapa }}" as="m">
+                <span style="{{ m.style }}">{{ m.label }}</span>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ c.alerta }}" hint-collapse="true">
+            <div style="background:#fff8f1;border:1px solid #f3ddc4;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:11px">
+              <div style="display:flex;gap:11px;align-items:flex-start">
+                <img src="assets/asa/atencao.png" alt="" style="width:30px;height:30px;object-fit:contain;flex:none" />
+                <span style="flex:1;min-width:0;font-size:13px;line-height:1.5;color:#7d4a10;text-wrap:pretty">{{ c.alerta }}</span>
+              </div>
+              <sc-if value="{{ c.sugestoes }}" hint-collapse="true">
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#8f5409">formações passadas parecidas</span>
+                  <sc-for list="{{ c.sugestoes }}" as="s">
+                    <button type="button" onClick="{{ s.onClick }}" style="{{ s.style }}">
+                      <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;text-align:left">
+                        <span style="font-size:13.5px;font-weight:700">{{ s.nome }}</span>
+                        <span style="font-size:11.5px;color:#6b6482">{{ s.meta }}</span>
+                      </span>
+                      <span style="flex:none;font-size:12.5px;font-weight:700;color:#5B23C9">usar</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+
+      <div style="padding:20px 22px;border-top:1px solid #f0ecf8;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <button type="button" onClick="{{ onConfirmar }}" style="{{ confirmStyle }}">{{ confirmLabel }}</button>
+        <span style="font-size:13px;color:#5b5473;line-height:1.5;flex:1;min-width:240px;text-wrap:pretty">{{ confirmHint }}</span>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#6C2BF2">4</span>
+      <h2 style="font-family:Outfit,sans-serif;font-size:25px;font-weight:600;margin:0;letter-spacing:-0.01em">A biblioteca de formações</h2>
+      <span style="font-size:14px;color:#6b6482">dentro do Livro do Dia · show → cena → quantidade</span>
+    </div>
+
+    <div style="background:#fff;border:1px solid #ddd6ee;border-radius:20px;overflow:hidden;box-shadow:0 16px 36px -30px rgba(40,20,90,.45)">
+      <div style="padding:16px 22px;border-bottom:1px solid #f0ecf8;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span style="font-family:Outfit,sans-serif;font-size:18px;font-weight:600;letter-spacing:-0.01em;flex:1;min-width:180px">Formações salvas</span>
+        <span style="display:flex;align-items:center;min-height:44px;padding:0 14px;border:1.5px solid #ddd6ee;border-radius:12px;font-size:14px;color:#6b6482;flex:1 1 220px;max-width:320px">Buscar cena ou formação</span>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap">
+        <div style="flex:0 1 240px;min-width:220px;border-right:1px solid #f0ecf8;padding:14px;display:flex;flex-direction:column;gap:6px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482;padding:0 6px 4px">show</span>
+          <sc-for list="{{ bibShows }}" as="s">
+            <button type="button" onClick="{{ s.onClick }}" style="{{ s.style }}">
+              <span style="flex:1;min-width:0;text-align:left;font-size:13.5px;font-weight:600">{{ s.label }}</span>
+              <span style="font-size:11.5px;color:#6b6482;flex:none">{{ s.count }}</span>
+            </button>
+          </sc-for>
+        </div>
+
+        <div style="flex:0 1 260px;min-width:230px;border-right:1px solid #f0ecf8;padding:14px;display:flex;flex-direction:column;gap:6px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482;padding:0 6px 4px">cena</span>
+          <sc-for list="{{ bibCenas }}" as="c">
+            <button type="button" onClick="{{ c.onClick }}" style="{{ c.style }}">
+              <span style="flex:1;min-width:0;text-align:left;font-size:13.5px;font-weight:600">{{ c.label }}</span>
+              <span style="font-size:11.5px;color:#6b6482;flex:none">{{ c.count }}</span>
+            </button>
+          </sc-for>
+        </div>
+
+        <div style="flex:1 1 440px;min-width:380px;padding:16px 18px;background:#faf9fe;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482;flex:1">{{ bibTitle }}</span>
+            <span style="font-size:12px;color:#6b6482">ordenadas pela quantidade</span>
+          </div>
+          <sc-for list="{{ bibFormacoes }}" as="f">
+            <div style="{{ f.wrapStyle }}">
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                <span style="{{ f.qtdStyle }}">{{ f.qtd }}</span>
+                <span style="flex:1 1 180px;min-width:150px;display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:14.5px;font-weight:700;line-height:1.25">{{ f.nome }}</span>
+                  <span style="font-size:11.5px;color:#6b6482">{{ f.uso }}</span>
+                </span>
+                <sc-if value="{{ f.conflito }}" hint-collapse="true">
+                  <span style="flex:none;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 9px;border-radius:6px;background:#fdf3e4;color:#8f5409">duas para 4</span>
+                </sc-if>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:7px">
+                <sc-for list="{{ f.mapa }}" as="m">
+                  <span style="{{ m.style }}">{{ m.label }}</span>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+          <div style="background:#fff;border:1px dashed #ddd6ee;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:6px">
+            <span style="font-size:13.5px;font-weight:700">Quando existem duas para a mesma quantidade</span>
+            <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">O app não escolhe: mostra as duas com o mapa e quantas vezes cada uma foi usada, e você decide. Foi a sua regra.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="background:#1c1440;border-radius:20px;padding:26px 28px;display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
+    <img src="assets/asa/lembrete.png" alt="" style="width:62px;height:62px;object-fit:contain;flex:none" />
+    <div style="flex:1 1 460px;min-width:320px;display:flex;flex-direction:column;gap:11px">
+      <span style="font-family:Outfit,sans-serif;font-size:21px;font-weight:700;color:#fff;letter-spacing:-0.01em">O que eu faço depois que você aprovar isto</span>
+      <sc-for list="{{ proximos }}" as="p">
+        <span style="font-size:14px;line-height:1.55;color:#dcd5f6;text-wrap:pretty">— {{ p }}</span>
+      </sc-for>
+    </div>
+  </section>
+
+  <sc-if value="{{ toastMsg }}" hint-collapse="true">
+    <div style="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:12px;background:#1c1440;color:#fff;border-radius:14px;padding:13px 18px;box-shadow:0 18px 40px -20px rgba(20,8,60,.7);max-width:600px">
+      <span style="font-size:13.5px;line-height:1.45;flex:1;text-wrap:pretty">{{ toastMsg }}</span>
+      <button type="button" onClick="{{ onFecharToast }}" style="border:none;background:rgba(255,255,255,.16);color:#fff;border-radius:9px;width:28px;height:28px;font-size:13px;cursor:pointer;flex:none">✕</button>
+    </div>
+  </sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440},&quot;localInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Snowland&quot;,&quot;Acquamotion&quot;,&quot;Hotelaria&quot;],&quot;default&quot;:&quot;Snowland&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Contexto&quot;}}">
+const LOCAIS = ["Snowland", "Acquamotion", "Hotelaria"];
+
+const PERS = {
+  Snowland: [
+    { nome: "Astrid", shows: "Musical do Natal · Show de patinação", modo: "titular", fila: ["Julia", "Carol", "Amanda"], hist: [] },
+    { nome: "Guardião", shows: "Musical do Natal · Passeio dos Guardiões", modo: "rodizio", fila: ["Arthur", "Diogo", "Jefferson"], hist: [["Arthur", 8], ["Diogo", 6], ["Jefferson", 5]] },
+    { nome: "Chocolato", shows: "Musical do Natal", modo: "titular", fila: ["Simon", "Kauã"], hist: [] },
+    { nome: "Igno", shows: "Musical do Natal", modo: "rodizio", fila: ["Dani", "Daiane", "Izabel", "Sofia"], hist: [["Dani", 7], ["Daiane", 7], ["Izabel", 4], ["Sofia", 9]] },
+    { nome: "Mensageira", shows: "Musical do Natal", modo: "titular", fila: ["Sofia", "Julia"], hist: [] },
+    { nome: "Mensageiro", shows: "Musical do Natal", modo: "titular", fila: ["Caleb", "Junior"], hist: [] },
+    { nome: "Rainha", shows: "Musical do Natal", modo: "titular", fila: ["Carol", "Dani"], hist: [] },
+    { nome: "Yeti", shows: "Yeti 10:00 · Yeti 16:00", modo: "rodizio", fila: ["Junior", "Simon", "Caleb"], hist: [["Junior", 11], ["Simon", 9], ["Caleb", 12]] },
+    { nome: "Nanook", shows: "Nanook 11:00", modo: "rodizio", fila: ["Kauã", "Diogo"], hist: [["Kauã", 6], ["Diogo", 9]] }
+  ],
+  Acquamotion: [
+    { nome: "Guardião do Tempo", shows: "Os Guardiões e o Globo do Tempo", modo: "titular", fila: ["Victor M.", "Miguel"], hist: [] },
+    { nome: "Sereia", shows: "Acquashow duo · Acquashow trio", modo: "rodizio", fila: ["Sthefany", "Mariela", "Luize", "Sarah"], hist: [["Sthefany", 9], ["Mariela", 6], ["Luize", 8], ["Sarah", 6]] },
+    { nome: "Tritão", shows: "Acquashow trio", modo: "titular", fila: ["Daniel", "Matheus"], hist: [] }
+  ],
+  Hotelaria: [
+    { nome: "Antonella", shows: "Antonella", modo: "titular", fila: ["Isadora", "Cássia"], hist: [] },
+    { nome: "Nonna", shows: "Nonna e Frida", modo: "titular", fila: ["Cássia", "Isadora"], hist: [] },
+    { nome: "Frida", shows: "Nonna e Frida", modo: "titular", fila: ["Louis", "Vinicius"], hist: [] },
+    { nome: "Cuca", shows: "Cuca", modo: "rodizio", fila: ["Antônio", "Louis"], hist: [["Antônio", 4], ["Louis", 5]] }
+  ]
+};
+
+const CENAS = [
+  { num: "1", nome: "Abertura", cheia: 14, pos: "14 posições · todo o elenco", tag: "cheia" },
+  { num: "2", nome: "Molduras", cheia: 6, pos: "6 posições · duas fileiras de 3", tag: "cheia" },
+  { num: "3", nome: "Duelo do Igno", cheia: 4, pos: "4 posições · Igno + 3 de apoio", tag: "personagem" },
+  { num: "4", nome: "Valsa da Rainha", cheia: 8, pos: "8 posições · pares", tag: "personagem" },
+  { num: "5", nome: "Final", cheia: 14, pos: "14 posições · todo o elenco", tag: "cheia" }
+];
+
+const DIA_CENAS = [
+  { num: "1", nome: "Abertura", presentes: 11, cheia: 14, estado: "ok",
+    meta: "Formação de 11 aplicada — salva em 28/08, usada 4 vezes.",
+    mapa: ["Carol", "Dani", "Amanda", "Daiane", "Sofia", "Julia", "Diogo", "Arthur", "Jefferson", "Junior", "Simon"] },
+  { num: "2", nome: "Molduras", presentes: 4, cheia: 6, estado: "ok",
+    meta: "Formação de 4 aplicada — as duas pontas saem, o miolo abre.",
+    mapa: ["Carol", "Dani", "Amanda", "Sofia"] },
+  { num: "3", nome: "Duelo do Igno", presentes: 4, cheia: 4, estado: "pers",
+    meta: "Igno é rodízio: Izabel entrou (4 vezes, o menor histórico). Titular do dia anterior era Sofia.",
+    mapa: ["Izabel · Igno", "Diogo", "Arthur", "Junior"] },
+  { num: "4", nome: "Valsa da Rainha", presentes: 5, cheia: 8, estado: "alerta",
+    meta: "Nunca houve Valsa com 5 pessoas. Ela é em pares — 5 não fecha.",
+    alerta: "Esta cena precisa de você: a Valsa é em pares e hoje há 5 pessoas. Nunca foi feita com 5.",
+    sugestoes: [
+      { nome: "Valsa 6 — trio de pares", meta: "usada 9 vezes · última em 02/09" },
+      { nome: "Valsa 4 — dois pares, centro vazio", meta: "usada 3 vezes · última em 19/08" }
+    ],
+    mapa: null },
+  { num: "5", nome: "Final", presentes: 11, cheia: 14, estado: "ok",
+    meta: "Mesma formação de 11 da Abertura.",
+    mapa: ["Carol", "Dani", "Amanda", "Daiane", "Sofia", "Julia", "Diogo", "Arthur", "Jefferson", "Junior", "Simon"] }
+];
+
+const AUSENTES = [
+  { nome: "Izabel", motivo: "fisioterapia 15:00", tone: "#6C2BF2" },
+  { nome: "Kauã", motivo: "folga · turma B", tone: "#6b6482" },
+  { nome: "Caleb", motivo: "ausência justificada", tone: "#C97A17" }
+];
+
+const BIB = {
+  "Musical do Natal": {
+    "Abertura": [
+      { qtd: 14, nome: "Abertura cheia", uso: "padrão do show · herdada do Livro do Show", mapa: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14"] },
+      { qtd: 11, nome: "Abertura 11", uso: "usada 4 vezes · última em 09/09", mapa: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"] },
+      { qtd: 9, nome: "Abertura 9 — sem as laterais", uso: "usada 2 vezes · última em 21/08", mapa: ["1", "2", "3", "4", "5", "6", "7", "8", "9"] }
+    ],
+    "Molduras": [
+      { qtd: 6, nome: "Molduras cheia", uso: "padrão do show", mapa: ["1", "2", "3", "4", "5", "6"] },
+      { qtd: 4, nome: "Molduras 4 — miolo aberto", uso: "usada 12 vezes · última em 10/09", mapa: ["1", "2", "3", "4"] },
+      { qtd: 4, nome: "Molduras 4 — duas duplas", uso: "usada 3 vezes · última em 14/08", conflito: true, mapa: ["1", "2", "3", "4"] },
+      { qtd: 3, nome: "Molduras 3 — triângulo", uso: "usada 1 vez · única, em 05/08", mapa: ["1", "2", "3"] }
+    ],
+    "Duelo do Igno": [
+      { qtd: 4, nome: "Duelo cheio", uso: "padrão do show", mapa: ["Igno", "2", "3", "4"] },
+      { qtd: 3, nome: "Duelo 3 — sem apoio direito", uso: "usada 5 vezes · última em 06/09", mapa: ["Igno", "2", "3"] }
+    ],
+    "Valsa da Rainha": [
+      { qtd: 8, nome: "Valsa cheia", uso: "padrão do show", mapa: ["1", "2", "3", "4", "5", "6", "7", "8"] },
+      { qtd: 6, nome: "Valsa 6 — trio de pares", uso: "usada 9 vezes · última em 02/09", mapa: ["1", "2", "3", "4", "5", "6"] },
+      { qtd: 4, nome: "Valsa 4 — centro vazio", uso: "usada 3 vezes · última em 19/08", mapa: ["1", "2", "3", "4"] }
+    ],
+    "Final": [
+      { qtd: 14, nome: "Final cheio", uso: "padrão do show", mapa: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14"] },
+      { qtd: 11, nome: "Final 11", uso: "usada 4 vezes · última em 09/09", mapa: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"] }
+    ]
+  },
+  "Show de patinação": {
+    "Entrada em linha": [
+      { qtd: 12, nome: "Linha cheia", uso: "padrão do show", mapa: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"] },
+      { qtd: 10, nome: "Linha 10", uso: "usada 7 vezes · última em 08/09", mapa: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"] }
+    ],
+    "Solo da Astrid": [
+      { qtd: 5, nome: "Solo cheio", uso: "padrão do show", mapa: ["Astrid", "2", "3", "4", "5"] },
+      { qtd: 3, nome: "Solo 3", uso: "usada 4 vezes · última em 31/08", mapa: ["Astrid", "2", "3"] }
+    ]
+  },
+  "Acquashow duo": {
+    "Portagens": [
+      { qtd: 4, nome: "Portagens cheia", uso: "padrão do show", mapa: ["1", "2", "3", "4"] },
+      { qtd: 2, nome: "Portagens duo", uso: "usada 15 vezes · última em 10/09", mapa: ["Sereia", "2"] }
+    ]
+  }
+};
+
+class Component extends DCLogic {
+  state = {
+    local: "Snowland",
+    modos: {},
+    modoSel: "Astrid",
+    persOn: true,
+    showPers: ["Astrid", "Guardião", "Chocolato", "Igno", "Mensageira", "Mensageiro", "Rainha"],
+    addOpen: false,
+    addLocal: "Snowland",
+    cenaSel: "2",
+    valsa: null,
+    confirmado: false,
+    bibShow: "Musical do Natal",
+    bibCena: "Molduras",
+    toast: null
+  };
+
+  renderVals() {
+    const s = this.state;
+    const toast = m => () => this.setState({ toast: m });
+    const local = s.local;
+    const lista = PERS[local];
+
+    const chip = (on, opts) => {
+      const o = opts || {};
+      return "min-height:" + (o.sm ? "40px" : "44px") + ";padding:0 " + (o.sm ? "13px" : "16px") + ";border-radius:" + (o.sm ? "11px" : "12px") + ";cursor:pointer;font-family:Manrope,sans-serif;font-size:" + (o.sm ? "13px" : "14px") + ";font-weight:600;white-space:nowrap;" +
+        (on ? "border:1.5px solid #6C2BF2;background:#f3ecfe;color:#5B23C9;" : "border:1.5px solid #e6e1f2;background:#fff;color:#2b2440;");
+    };
+
+    const modoDe = p => s.modos[local + ":" + p.nome] || p.modo;
+
+    const personagens = lista.map(p => {
+      const modo = modoDe(p);
+      const rod = modo === "rodizio";
+      const menor = rod && p.hist.length
+        ? p.hist.slice().sort((a, b) => a[1] - b[1])[0]
+        : null;
+      return {
+        nome: p.nome,
+        shows: p.shows,
+        modos: [["titular", "Titular"], ["rodizio", "Rodízio"]].map(m => ({
+          label: m[1],
+          onClick: () => this.setState(st => ({
+            modos: Object.assign({}, st.modos, { [local + ":" + p.nome]: m[0] }),
+            modoSel: p.nome
+          })),
+          style: chip(modo === m[0], { sm: true })
+        })),
+        quem: rod ? (menor ? menor[0] : p.fila[0]) : p.fila[0],
+        detalhe: rod
+          ? (menor ? "fez " + menor[1] + "× · o menor da fila" : "primeira volta pela ordem")
+          : "titular · " + (p.fila.length - 1) + (p.fila.length === 2 ? " substituto" : " substitutos")
+      };
+    });
+
+    const sel = lista.filter(p => p.nome === s.modoSel)[0] || lista[0];
+    const selModo = modoDe(sel);
+    const selRod = selModo === "rodizio";
+    const ordenada = selRod && sel.hist.length
+      ? sel.hist.slice().sort((a, b) => a[1] - b[1])
+      : sel.fila.map((n, i) => [n, i]);
+
+    const modoFila = ordenada.map((e, i) => ({
+      pos: selRod ? String(e[1]) + "×" : (i === 0 ? "1º" : String(i + 1) + "º"),
+      nome: e[0],
+      posStyle: "flex:none;min-width:36px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;padding:5px 7px;border-radius:8px;" +
+        (i === 0 ? "background:#f3ecfe;color:#5B23C9;" : "background:#f4f2fa;color:#6b6482;"),
+      tag: i === 0 ? (selRod ? "entra hoje" : "titular") : (selRod ? "na fila" : "substituto"),
+      tagStyle: "flex:none;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:4px 8px;border-radius:6px;" +
+        (i === 0 ? "background:#e3f4f1;color:#0a6f68;" : "background:#f4f2fa;color:#6b6482;")
+    }));
+
+    const showPersList = s.showPers.map(nome => {
+      const p = PERS.Snowland.filter(x => x.nome === nome)[0] ||
+        PERS.Acquamotion.filter(x => x.nome === nome)[0] ||
+        PERS.Hotelaria.filter(x => x.nome === nome)[0];
+      const modo = p ? modoDe(p) : "titular";
+      return {
+        nome: nome,
+        modo: modo === "rodizio" ? "rodízio · entra quem menos fez" : "titular com substitutos",
+        dotStyle: "width:10px;height:10px;border-radius:50%;flex:none;background:" + (modo === "rodizio" ? "#C97A17" : "#6C2BF2"),
+        onRemove: () => this.setState(st => ({ showPers: st.showPers.filter(x => x !== nome) }))
+      };
+    });
+
+    const addDisponiveis = PERS[s.addLocal].filter(p => s.showPers.indexOf(p.nome) < 0);
+
+    const cenaSelObj = CENAS.filter(c => c.num === s.cenaSel)[0] || CENAS[0];
+
+    const valsaEscolha = s.valsa;
+    const diaCenas = DIA_CENAS.map(c => {
+      let estado = c.estado;
+      let meta = c.meta;
+      let mapa = c.mapa;
+      let alerta = c.alerta || null;
+      let sugestoes = null;
+
+      if (c.num === "4") {
+        if (valsaEscolha) {
+          estado = "ok";
+          meta = valsaEscolha === 0
+            ? "Valsa 6 aplicada com 5 presentes — uma posição fica vazia, você marcou como aceitável."
+            : "Valsa 4 aplicada — Sofia sai da cena e entra no Final.";
+          mapa = valsaEscolha === 0
+            ? ["Carol", "Dani", "Amanda", "Sofia", "Julia", "— vazia"]
+            : ["Carol", "Dani", "Amanda", "Julia"];
+          alerta = null;
+        } else {
+          sugestoes = c.sugestoes.map((sg, i) => ({
+            nome: sg.nome,
+            meta: sg.meta,
+            onClick: () => this.setState({ valsa: i, confirmado: false }),
+            style: "display:flex;align-items:center;gap:12px;width:100%;background:#fff;border:1px solid #f0d9a8;border-radius:12px;padding:12px 14px;min-height:44px;box-sizing:border-box;cursor:pointer;font-family:Manrope,sans-serif;color:inherit"
+          }));
+        }
+      }
+
+      const TONE = { ok: ["#0a6f68", "herdada"], pers: ["#6C2BF2", "personagem"], alerta: ["#C2334D", "resolver"] };
+      const t = TONE[estado];
+
+      return {
+        num: c.num,
+        nome: c.nome,
+        meta: meta,
+        alerta: alerta,
+        sugestoes: sugestoes,
+        mapa: mapa ? mapa.map(m => ({
+          label: m,
+          style: "font-size:12.5px;font-weight:600;padding:7px 11px;border-radius:9px;white-space:nowrap;" +
+            (m.indexOf("·") > 0
+              ? "background:#f3ecfe;color:#5B23C9;border:1px solid #ddcbfa;"
+              : m.indexOf("vazia") >= 0
+                ? "background:#fff;color:#6b6482;border:1px dashed #ddd6ee;"
+                : "background:#fff;color:#2b2440;border:1px solid #e9e4f5;")
+        })) : null,
+        numStyle: "flex:none;width:34px;height:34px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;background:" +
+          t[0] + "1a;color:" + t[0],
+        tag: c.presentes + " de " + c.cheia,
+        tagStyle: "flex:none;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:6px 10px;border-radius:8px;white-space:nowrap;background:" +
+          t[0] + "1a;color:" + t[0],
+        wrapStyle: "padding:18px 22px;border-bottom:1px solid #f6f4fc;display:flex;flex-direction:column;gap:13px;" +
+          (estado === "alerta" ? "background:#fffdfa;" : "")
+      };
+    });
+
+    const pendente = !valsaEscolha && valsaEscolha !== 0;
+
+    const bibShows = Object.keys(BIB).map(k => ({
+      label: k,
+      count: String(Object.keys(BIB[k]).length),
+      onClick: () => this.setState({ bibShow: k, bibCena: Object.keys(BIB[k])[0] }),
+      style: "display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;border-radius:11px;cursor:pointer;font-family:Manrope,sans-serif;border:none;" +
+        (k === s.bibShow ? "background:#f3ecfe;color:#5B23C9;" : "background:#fff;color:#2b2440;")
+    }));
+
+    const cenasDoShow = BIB[s.bibShow] || {};
+    const bibCenas = Object.keys(cenasDoShow).map(k => ({
+      label: k,
+      count: String(cenasDoShow[k].length),
+      onClick: () => this.setState({ bibCena: k }),
+      style: "display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;border-radius:11px;cursor:pointer;font-family:Manrope,sans-serif;border:none;" +
+        (k === s.bibCena ? "background:#f3ecfe;color:#5B23C9;" : "background:#fff;color:#2b2440;")
+    }));
+
+    const fList = cenasDoShow[s.bibCena] || [];
+    const bibFormacoes = fList.map(f => ({
+      qtd: String(f.qtd),
+      nome: f.nome,
+      uso: f.uso,
+      conflito: f.conflito || null,
+      qtdStyle: "flex:none;width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:Outfit,sans-serif;font-size:17px;font-weight:700;" +
+        (f.uso.indexOf("padrão") >= 0 ? "background:#e3f4f1;color:#0a6f68;" : "background:#f3ecfe;color:#5B23C9;"),
+      wrapStyle: "background:#fff;border:1px solid #e9e4f5;border-radius:15px;padding:14px 16px;display:flex;flex-direction:column;gap:11px",
+      mapa: f.mapa.map(m => ({
+        label: m,
+        style: "min-width:28px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;padding:6px 8px;border-radius:8px;" +
+          (/^\d+$/.test(m) ? "background:#f4f2fa;color:#6b6482;" : "background:#f3ecfe;color:#5B23C9;")
+      }))
+    }));
+
+    return {
+      chain: [
+        { step: "1", title: "Personagens", body: "Lista por local. Cada um é titular com substitutos, ou rodízio por quem menos fez." },
+        { step: "2", title: "Livro do Show", body: "O show ideal, intocado. Cenas com formação cheia e os personagens que ele usa." },
+        { step: "3", title: "Livro do Dia", body: "Cópia editável: confere presença, puxa substituto, preenche a formação." },
+        { step: "4", title: "Biblioteca", body: "As formações que já existiram, por quantidade, prontas para reusar." }
+      ].map((c, i) => ({
+        step: c.step, title: c.title, body: c.body,
+        style: "flex:1 1 250px;min-width:230px;background:#fff;border:1px solid #e6e1f2;border-left:3px solid " +
+          ["#6C2BF2", "#0E8F86", "#C97A17", "#2E63D6"][i] + ";border-radius:14px;padding:15px 17px;display:flex;flex-direction:column;gap:5px"
+      })),
+
+      localTabs: LOCAIS.map(l => ({
+        label: l,
+        onClick: () => this.setState({ local: l, modoSel: PERS[l][0].nome }),
+        style: chip(l === local, { sm: true })
+      })),
+      personagens: personagens,
+      onNovoPersonagem: toast("Novo personagem: nome, local, modo (titular ou rodízio) e a fila de quem pode fazer. Quatro campos."),
+
+      modoKicker: selRod ? "rodízio" : "titular com substitutos",
+      modoTitle: sel.nome + " — " + (selRod ? "entra quem menos fez" : "cai para o próximo da fila"),
+      modoBody: selRod
+        ? "Na primeira volta segue a ordem da lista. Depois o app passa a puxar pelo menor histórico. O contador soma por dia."
+        : "O primeiro é o titular. Se ele falta, entra o segundo; se o segundo falta, o terceiro. A ordem é a fila.",
+      modoFila: modoFila,
+      modoCardStyle: "background:#faf9fe;border:1px solid #e6e1f2;border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:11px",
+
+      persOn: s.persOn ? true : null,
+      persOff: s.persOn ? null : true,
+      onTogglePers: () => this.setState({ persOn: !s.persOn }),
+      persSwitchLabel: s.persOn ? "usa personagens" : "não usa personagens",
+      persSwitchStyle: "display:flex;align-items:center;gap:11px;min-height:44px;padding:0 15px;border-radius:999px;cursor:pointer;font-family:Manrope,sans-serif;flex:none;" +
+        (s.persOn ? "border:1.5px solid #6C2BF2;background:#f3ecfe;color:#5B23C9;" : "border:1.5px solid #e6e1f2;background:#fff;color:#6b6482;"),
+      persKnobStyle: "width:34px;height:20px;border-radius:99px;flex:none;display:block;background-color:" +
+        (s.persOn ? "#6C2BF2" : "#ddd6ee") +
+        ";background-image:radial-gradient(circle 8px at " + (s.persOn ? "24px" : "10px") + " 50%, #fff 98%, transparent 100%);",
+
+      showPers: showPersList,
+      showPersCount: s.showPers.length + " no show",
+      onAddPers: () => this.setState({ addOpen: !s.addOpen }),
+      addOpen: s.addOpen ? true : null,
+      addLocais: LOCAIS.map(l => ({
+        label: l,
+        onClick: () => this.setState({ addLocal: l }),
+        style: chip(l === s.addLocal, { sm: true })
+      })),
+      addOpcoes: addDisponiveis.length
+        ? addDisponiveis.map(p => ({
+            label: p.nome,
+            onClick: () => this.setState(st => ({ showPers: st.showPers.concat([p.nome]), addOpen: false })),
+            style: chip(false, { sm: true })
+          }))
+        : [{ label: "todos já estão no show", onClick: () => {}, style: "min-height:40px;padding:0 13px;border-radius:11px;border:1px dashed #ddd6ee;background:#fff;color:#6b6482;font-family:Manrope,sans-serif;font-size:13px;font-weight:600;cursor:default" }],
+      addHint: "A lista é a do local escolhido. Um personagem de Snowland pode entrar num show de Snowland — e é o mesmo Astrid em todos eles.",
+
+      cenas: CENAS.map(c => ({
+        num: c.num,
+        nome: c.nome,
+        meta: c.pos,
+        onClick: () => this.setState({ cenaSel: c.num }),
+        rowStyle: "display:flex;align-items:center;gap:13px;width:100%;text-align:left;border-radius:14px;padding:13px 15px;min-height:44px;box-sizing:border-box;cursor:pointer;font-family:Manrope,sans-serif;color:inherit;" +
+          (c.num === s.cenaSel ? "background:#f3ecfe;border:1.5px solid #6C2BF2;" : "background:#fff;border:1px solid #e9e4f5;"),
+        numStyle: "flex:none;width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:700;background:#f4f2fa;color:#6b6482",
+        tag: String(c.cheia),
+        tagStyle: "flex:none;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#6b6482"
+      })),
+      cenaSelName: cenaSelObj.nome + " — formação cheia de " + cenaSelObj.cheia,
+      cenaSelBody: "Esta é a formação ideal da cena: " + cenaSelObj.pos + ". É ela que o Livro do Dia herda, e é dela que saem as formações reduzidas quando falta gente.",
+
+      diaSub: "gerado do Livro do Show às 07:12 · 11 de 14 presentes · o show fica intocado",
+      diaBadge: pendente ? "1 cena a resolver" : s.confirmado ? "dia confirmado" : "pronto para confirmar",
+      diaBadgeStyle: "flex:none;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:7px 12px;border-radius:999px;white-space:nowrap;" +
+        (pendente ? "background:#fdeef1;color:#C2334D;" : s.confirmado ? "background:#e3f4f1;color:#0a6f68;" : "background:#f3ecfe;color:#5B23C9;"),
+
+      ausentes: AUSENTES.map(a => ({
+        nome: a.nome,
+        motivo: a.motivo,
+        style: "display:flex;flex-direction:column;gap:2px;background:#fff;border:1px solid #e9e4f5;border-left:3px solid " + a.tone + ";border-radius:12px;padding:10px 14px"
+      })),
+
+      diaCenas: diaCenas,
+
+      onConfirmar: pendente ? toast("Resolva a Valsa da Rainha primeiro — é a única cena esperando por você.") : () => this.setState({ confirmado: !s.confirmado }),
+      confirmLabel: s.confirmado ? "Dia confirmado às 07:34" : "Confirmar o dia",
+      confirmStyle: "min-height:52px;padding:0 28px;border:none;border-radius:14px;font-family:Manrope,sans-serif;font-size:15.5px;font-weight:700;flex:none;" +
+        (pendente ? "background:#eee9f7;color:#6b6482;cursor:pointer;" : s.confirmado ? "background:#0a6f68;color:#fff;cursor:pointer;" : "background:#6C2BF2;color:#fff;cursor:pointer;"),
+      confirmHint: pendente
+        ? "Um botão só para o livro inteiro — mas ele só fecha quando nenhuma cena está esperando decisão."
+        : s.confirmado
+          ? "Formações novas entraram na biblioteca. O Livro do Show continua intocado."
+          : "Um botão só, como você pediu. As formações que você escolheu hoje entram na biblioteca para a próxima vez que a quantidade repetir.",
+
+      bibShows: bibShows,
+      bibCenas: bibCenas,
+      bibTitle: s.bibCena + " · " + fList.length + (fList.length === 1 ? " formação" : " formações"),
+      bibFormacoes: bibFormacoes,
+
+      proximos: [
+        "13 Shows ganha o interruptor de personagens, o formulário que agrega por local, e a formação cheia de cada cena.",
+        "14 Livro do Dia passa a nascer do show, com a resolução automática, os avisos e o botão único.",
+        "A biblioteca de formações entra dentro do Livro do Dia, com a navegação show → cena → quantidade.",
+        "A aba Livro do Dia dentro de Escalas passa a embutir o módulo — uma fonte só, dois lugares."
+      ],
+
+      toastMsg: s.toast,
+      onFecharToast: () => this.setState({ toast: null })
+    };
+  }
+}
+
+</script>
+</body>
+</html>

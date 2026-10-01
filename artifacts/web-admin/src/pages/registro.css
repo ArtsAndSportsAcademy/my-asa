@@ -1,0 +1,26 @@
+/* Registro — visual inline em registro.tsx; aqui foco, estados, tabela antes/depois e refluxo. */
+.rg-root{background:#faf9fe;padding:18px 20px 28px;display:flex;justify-content:center}
+.rg-col{width:100%;max-width:960px;display:flex;flex-direction:column;gap:12px}
+.rg-root button:focus-visible,.rg-root input:focus-visible,.rg-root select:focus-visible{outline:3px solid #6C2BF2;outline-offset:2px}
+.rg-pill{cursor:pointer;font:700 12px Manrope,sans-serif;border-radius:999px;padding:8px 14px;min-height:40px;background:#fff;color:#5b5473;border:1px solid #e6e1f2}
+.rg-pill.on{background:#6C2BF2;color:#fff;border-color:#6C2BF2}
+.rg-item + .rg-item{border-top:1px solid #f0ecf8}
+.rg-linha{all:unset;box-sizing:border-box;width:100%;display:flex;gap:12px;align-items:flex-start;padding:12px 14px;cursor:pointer;min-height:44px}
+.rg-linha:hover{background:#faf8fe}
+.rg-chip{font-size:11px;font-weight:700;color:#5b5473;background:#f4f1fa;padding:2px 8px;border-radius:6px}
+.rg-chip-tipo{color:#3a2278;background:#efe9fd}
+.rg-chip-motivo{color:#8a4b00;background:#fdf3e4}
+.rg-detalhe{padding:4px 14px 14px 70px;font-size:12.5px;color:#5b5473}
+.rg-detalhe table{width:100%;border-collapse:collapse;background:#faf9fe;border:1px solid #f0ecf8;border-radius:10px;overflow:hidden}
+.rg-detalhe th,.rg-detalhe td{padding:7px 10px;text-align:left;vertical-align:top;border-bottom:1px solid #f0ecf8;word-break:break-word}
+.rg-detalhe thead th{font:700 10px 'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#6b6482}
+.rg-detalhe tbody th{font-weight:700;color:#1c1440;width:28%}
+.rg-detalhe td:last-child{color:#1c1440;font-weight:600}
+.rg-tecnico{margin:8px 0 0;font:11px 'JetBrains Mono',monospace;color:#9a93ad;word-break:break-all}
+.rg-erro{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fdeef1;border-left:3px solid #B4302F;color:#8a2323;font-size:13px;border-radius:8px}
+.rg-erro button{margin-left:auto;min-height:40px;border:0;background:transparent;color:inherit;font-weight:700;cursor:pointer}
+.rg-mais{cursor:pointer;font:700 12.5px Manrope,sans-serif;border-radius:999px;padding:10px 18px;min-height:44px;background:#fff;color:#6C2BF2;border:1px solid #d9ccfb}
+.rg-skel{height:72px;border-radius:14px;margin-bottom:10px;background:linear-gradient(90deg,#f1edf9,#faf8fe,#f1edf9);background-size:200% 100%;animation:rg-pulse 1.4s linear infinite}
+@keyframes rg-pulse{from{background-position:200% 0}to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.rg-skel{animation:none}}
+@media(max-width:720px){.rg-root{padding:14px 16px 96px}.rg-detalhe{padding:4px 14px 14px}.rg-detalhe tbody th{width:34%}}

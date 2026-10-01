@@ -7,6 +7,8 @@ import {
 } from "@workspace/api-client-react";
 import type { LibraryDocumentItem, LibraryDocumentDetail, LibraryCategory } from "@workspace/api-client-react";
 import React, { useState } from "react";
+import { useLocalSearchParams } from "expo-router";
+import { useEffect } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -65,6 +67,7 @@ const TYPE_FILTERS = [
 // ─── Componente Principal ──────────────────────────────────────────────────────
 
 export default function BibliotecaTab() {
+  const { document } = useLocalSearchParams<{ document?: string }>();
   const insets = useSafeAreaInsets();
   const colors = useColors();
 
@@ -85,6 +88,10 @@ export default function BibliotecaTab() {
 
   const documents = (docsData?.documents ?? []) as LibraryDocumentItem[];
   const detail = detailData?.document as LibraryDocumentDetail | undefined;
+
+  useEffect(() => {
+    if (typeof document === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(document)) setSelectedId(document);
+  }, [document]);
 
   async function handleRefresh() {
     setRefreshing(true);

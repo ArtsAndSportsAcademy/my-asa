@@ -1,0 +1,4 @@
+-- Os valores de enum são adicionados em 0031. PostgreSQL só permite usá-los
+-- depois do commit que encerra a migração; o serviço já informa o tipo ao criar
+-- shows novos. A atualização de dados/default fica para uma migração posterior
+-- quando 0031 já estiver confirmada no banco.

@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  aside a { text-decoration: none; }
+  body { margin: 0; background: #f4f2fa; font-family: Manrope, system-ui, sans-serif; color: #1b1630; }
+  a { color: #6C2BF2; text-decoration: none; }
+  a:hover { color: #4a17b8; text-decoration: underline; }
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 3px solid #6C2BF2; outline-offset: 2px; border-radius: 8px; }
+</style>
+</helmet>
+
+<div style="max-width:1720px;margin:0 auto;padding:44px 28px 88px;display:flex;flex-direction:column;gap:36px">
+
+  <header style="display:flex;flex-direction:column;gap:22px">
+    <div style="display:flex;align-items:flex-start;gap:18px">
+      <img src="assets/asa-wing.png" alt="My ASA" style="width:52px;height:52px;object-fit:contain;flex:none;margin-top:4px" />
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#6b6482">17 · porta de entrada</div>
+        <h1 style="font-family:Outfit,sans-serif;font-size:38px;line-height:1.05;font-weight:700;margin:0;letter-spacing:-0.02em">Início / Meu Dia</h1>
+        <p style="margin:0;max-width:64ch;font-size:15px;line-height:1.55;color:#5b5473;text-wrap:pretty">Destino padrão depois do login, nos quatro perfis, dentro do shell aprovado. Mesma estrutura sempre: quem fala com você, o que vem agora, o que depende de você, e três linhas do Mural.</p>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:13px 16px;background:#fff;border:1px solid #e6e1f2;border-radius:16px">
+      <span style="font-size:13px;font-weight:600;color:#5b5473;margin-right:4px">Ver como</span>
+      <sc-for list="{{ profileTabs }}" as="tab" hint-placeholder-count="4">
+        <button type="button" onClick="{{ tab.onClick }}" style="{{ tab.style }}">
+          <span style="width:8px;height:8px;border-radius:50%;background:{{ tab.dot }};display:inline-block"></span>
+          <span>{{ tab.name }}</span>
+        </button>
+      </sc-for>
+      <span style="flex:1"></span>
+      <span style="font-size:13px;color:#6b6482">{{ profileHint }}</span>
+    </div>
+  </header>
+
+  <div style="display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start">
+
+    <div style="flex:0 0 1344px;min-width:0;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Web · 1920 × 1080</span>
+        <span style="font-size:11.5px;color:#6b6482">exibido a 70% — proporção real de tela</span>
+      </div>
+      <div style="width:1344px;height:756px;border:1px solid #ddd6ee;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="width:1920px;height:1080px;transform:scale(0.7);transform-origin:top left;display:flex">
+
+          <aside style="width:236px;flex:none;background:linear-gradient(180deg,#1c1440 0%,#241a52 100%);display:flex;flex-direction:column;color:#fff">
+            <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 12px">
+              <img src="assets/asa-wing.png" alt="" style="width:26px;height:26px;object-fit:contain" />
+              <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">My ASA</span>
+            </div>
+            <div style="padding:0 12px 10px">
+              <a href="27%20Assistente%20ASA.dc.html" style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border-radius:10px;padding:8px 10px;font-size:11.5px;color:#b9b0da;text-decoration:none;cursor:pointer">
+                <span style="width:11px;height:11px;border:1.5px solid #b9b0da;border-radius:50%"></span>
+                <span>Buscar ou perguntar à ASA</span>
+              </a>
+            </div>
+            <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:12px;padding:2px 10px 10px">
+              <sc-for list="{{ shellNav }}" as="g" hint-placeholder-count="4">
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#7d72a8;padding:0 8px 4px">{{ g.title }}</div>
+                  <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+                    <a href="{{ it.href }}" style="{{ it.style }}">{{ it.label }}</a>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+            <div style="border-top:1px solid rgba(255,255,255,.1);padding:12px;display:flex;align-items:center;gap:10px">
+              <span style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+              <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                <span style="font-size:12.5px;font-weight:600">{{ personName }}</span>
+                <span style="{{ personChipStyle }}">{{ profileName }}</span>
+              </div>
+            </div>
+          </aside>
+
+          <div style="flex:1;display:flex;flex-direction:column;background:#faf9fe;min-width:0">
+            <header style="display:flex;align-items:center;gap:12px;padding:13px 20px;border-bottom:1px solid #ebe6f6;background:#fff">
+              <div style="display:flex;flex-direction:column;gap:1px">
+                <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">Meu Dia</span>
+                <span style="font-size:11.5px;color:#6b6482">quarta, 26 de agosto · 07:42</span>
+              </div>
+              <span style="flex:1"></span>
+              <span style="{{ readonlyChipStyle }}">{{ readonlyChip }}</span>
+              <div style="display:flex;align-items:center;gap:8px;border:1px solid #e6e1f2;border-radius:999px;padding:6px 12px;font-size:12.5px;font-weight:600;color:#3d3559">
+                <span style="width:8px;height:8px;border-radius:50%;background:#0E8F86"></span>
+                <span>{{ operationLabel }}</span>
+              </div>
+              <span style="width:34px;height:34px;border-radius:12px;border:1px solid #e6e1f2;display:flex;align-items:center;justify-content:center;font-size:12px;color:#6b6482">3</span>
+              <div style="display:flex;align-items:center;gap:7px;background:linear-gradient(135deg,#6C2BF2,#2E3BD6);color:#fff;border-radius:999px;padding:5px 13px 5px 5px;font-size:12.5px;font-weight:600">
+                <img src="assets/asa/oi.png" alt="ASA" style="width:26px;height:26px;object-fit:contain" />
+                <span>ASA</span>
+              </div>
+            </header>
+
+            <div style="flex:1;overflow:hidden;padding:18px 20px;display:grid;grid-template-columns:1fr 296px;gap:16px;align-content:start">
+
+              <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+
+                <div style="display:flex;align-items:center;gap:16px;background:linear-gradient(120deg,#1c1440,#3a2278);border-radius:18px;padding:16px 20px;color:#fff">
+                  <div role="img" aria-label="ASA" style="{{ greetMascotStyle82 }}"></div>
+                  <div style="display:flex;flex-direction:column;gap:5px;min-width:0">
+                    <span style="font-family:Outfit,sans-serif;font-size:22px;font-weight:600;letter-spacing:-0.01em">{{ greetTitle }}</span>
+                    <span style="font-size:13.5px;line-height:1.5;color:#d6cff5;text-wrap:pretty">{{ greetSub }}</span>
+                  </div>
+                  <span style="flex:1"></span>
+                  <button type="button" onClick="{{ onPrimary }}" style="{{ primaryStyle }}">{{ primaryLabel }}</button>
+                </div>
+
+                <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">{{ nextLabel }}</span>
+                    <span style="flex:1"></span>
+                    <a href="{{ nextHref }}" style="font-size:11.5px;font-weight:600;color:#6C2BF2">{{ nextLink }}</a>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:16px">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:none;width:74px">
+                      <span style="font-family:Outfit,sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.02em">{{ next.time }}</span>
+                      <span style="font-size:11px;color:#6b6482">{{ next.rel }}</span>
+                    </div>
+                    <span style="width:3px;align-self:stretch;border-radius:3px;background:linear-gradient(#6C2BF2,#2E3BD6)"></span>
+                    <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+                      <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">{{ next.title }}</span>
+                      <span style="font-size:13px;color:#6b6482">{{ next.sub }}</span>
+                    </div>
+                    <span style="flex:1"></span>
+                    <sc-for list="{{ next.chips }}" as="c" hint-placeholder-count="2">
+                      <span style="font-size:11.5px;font-weight:600;color:#3d3559;background:#f3f0fb;border-radius:999px;padding:5px 11px">{{ c }}</span>
+                    </sc-for>
+                  </div>
+                </div>
+
+                <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:12px;min-height:0">
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">{{ timelineLabel }}</span>
+                    <span style="flex:1"></span>
+                    <span style="font-size:11.5px;color:#6b6482">{{ timelineHint }}</span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:2px">
+                    <sc-for list="{{ timeline }}" as="t" hint-placeholder-count="6">
+                      <div style="{{ t.rowStyle }}">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#6b6482;width:46px;flex:none">{{ t.time }}</span>
+                        <span style="{{ t.dotStyle }}"></span>
+                        <span style="font-size:13.5px;font-weight:600;min-width:0">{{ t.title }}</span>
+                        <span style="font-size:12px;color:#6b6482">{{ t.sub }}</span>
+                        <span style="flex:1"></span>
+                        <span style="{{ t.tagStyle }}">{{ t.tag }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+
+                <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:12px">
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <div role="img" aria-label="ASA" style="{{ pendMascotStyle }}"></div>
+                    <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">{{ pendTitle }}</span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:8px">
+                    <sc-for list="{{ pendencias }}" as="p" hint-placeholder-count="4">
+                      <div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:11px;background:#faf9fe;border:1px solid #f0ecf8">
+                        <span style="{{ p.countStyle }}">{{ p.count }}</span>
+                        <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                          <span style="font-size:13px;font-weight:600">{{ p.title }}</span>
+                          <span style="font-size:11.5px;color:#6b6482">{{ p.sub }}</span>
+                        </div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+
+                <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">Mural</span>
+                    <span style="flex:1"></span>
+                    <a href="22%20Avisos%20e%20Mural.dc.html" style="font-size:11.5px;font-weight:600;color:#6C2BF2">abrir o Mural</a>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:8px">
+                    <sc-for list="{{ mural }}" as="m" hint-placeholder-count="3">
+                      <div style="display:flex;align-items:center;gap:9px">
+                        <div role="img" aria-label="" style="{{ m.iconStyle26 }}"></div>
+                        <span style="font-size:12.5px;line-height:1.4;color:#3d3559;text-wrap:pretty">{{ m.text }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <span style="font-size:11px;color:#6b6482;line-height:1.4">Três linhas, sempre. A lista inteira mora no Mural — aqui ela não pode crescer.</span>
+                </div>
+
+                <div style="background:linear-gradient(135deg,#efe9fe,#e6ecfc);border:1px solid #ddd3fa;border-radius:16px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start">
+                  <img src="assets/asa/olhos-de-estrela.png" alt="" style="width:44px;height:44px;object-fit:contain;flex:none" />
+                  <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#6C2BF2">ASA sugere</span>
+                    <span style="font-size:12.5px;line-height:1.45;color:#3d3559;text-wrap:pretty">{{ asaTip }}</span>
+                    <a href="27%20Assistente%20ASA.dc.html" style="font-size:11.5px;font-weight:700;color:#6C2BF2;width:fit-content">perguntar à ASA</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <footer style="display:flex;align-items:center;gap:8px;padding:8px 20px;border-top:1px solid #ebe6f6;background:#fff;flex:none;min-height:40px;box-sizing:border-box">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#6b6482">My ASA</span>
+          <span style="flex:1"></span>
+          <span style="font-size:11px;color:#6b6482">atualizado agora</span>
+        </footer>
+      </div>
+    </div>
+
+    <div style="flex:0 0 390px;min-width:390px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Mobile</div>
+      <div style="width:390px;height:844px;border-radius:38px;border:1px solid #ddd6ee;background:#fff;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="background:linear-gradient(150deg,#1c1440,#2f2170);color:#fff;padding:16px 18px 20px;display:flex;flex-direction:column;gap:16px">
+          <div style="display:flex;align-items:center;gap:11px">
+            <span style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+            <span style="flex:1;display:flex;flex-direction:column;gap:1px;min-width:0">
+              <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">{{ greetTitle }}</span>
+              <span style="font-size:11.5px;color:#c8bff0">{{ mobileSub }}</span>
+            </span>
+            <button type="button" onClick="{{ onBell }}" style="width:44px;height:44px;border-radius:13px;background:rgba(255,255,255,.12);border:none;color:#fff;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;flex:none;cursor:pointer">{{ bellCount }}</button>
+          </div>
+
+          <div style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);border-radius:18px;padding:16px 17px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:baseline;gap:10px">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#bfb4e8;white-space:nowrap;flex:none">{{ heroKicker }}</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#7bdcc9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">{{ next.rel }}</span>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:14px">
+              <span style="font-family:Outfit,sans-serif;font-size:34px;font-weight:700;line-height:1;letter-spacing:-0.02em;flex:none">{{ next.time }}</span>
+              <span style="flex:1;display:flex;flex-direction:column;gap:3px;min-width:0">
+                <span style="font-family:Outfit,sans-serif;font-size:18px;font-weight:600;line-height:1.2;text-wrap:pretty">{{ next.title }}</span>
+                <span style="font-size:12.5px;color:#c8bff0;line-height:1.4;text-wrap:pretty">{{ next.sub }}</span>
+              </span>
+            </div>
+            <button type="button" onClick="{{ onPrimary }}" style="{{ primaryMobileStyle }}">{{ primaryLabel }}</button>
+          </div>
+        </div>
+
+        <div style="flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;-ms-overflow-style:none;background:#faf9fe;padding:16px;display:flex;flex-direction:column;gap:16px">
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">{{ pendTitle }}</span>
+            <sc-for list="{{ pendencias }}" as="p">
+              <button type="button" onClick="{{ p.onClick }}" style="display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:#fff;border:1px solid #e9e4f5;border-radius:14px;padding:13px 15px;min-height:48px;box-sizing:border-box;cursor:pointer;font-family:Manrope,sans-serif;color:inherit">
+                <span style="{{ p.countStyle }}">{{ p.count }}</span>
+                <span style="flex:1;min-width:0;font-size:14px;font-weight:600;line-height:1.3;text-wrap:pretty">{{ p.title }}</span>
+                <span style="flex:none;font-size:17px;color:#6b6482">›</span>
+              </button>
+            </sc-for>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Mural</span>
+            <sc-for list="{{ mural }}" as="m">
+              <a href="22%20Avisos%20e%20Mural.dc.html" style="display:flex;align-items:center;gap:11px;background:#fff;border:1px solid #e9e4f5;border-radius:14px;padding:13px 15px;min-height:48px;box-sizing:border-box;text-decoration:none;color:inherit">
+                <div role="img" aria-label="" style="{{ m.iconStyle26 }}"></div>
+                <span style="flex:1;min-width:0;font-size:13.5px;line-height:1.45;color:#2b2440;text-wrap:pretty">{{ m.text }}</span>
+                <span style="flex:none;font-size:17px;color:#6b6482">›</span>
+              </a>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display:flex;border-top:1px solid #e9e4f5;background:#fff;padding:8px 6px 12px">
+          <sc-for list="{{ mobileTabs }}" as="t">
+            <button type="button" onClick="{{ t.onClick }}" style="{{ t.style }}">
+              <span style="{{ t.iconStyle }}"></span>
+              <span style="font-size:10.5px;font-weight:600">{{ t.label }}</span>
+            </button>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <sc-if value="{{ toastMsg }}" hint-collapse="true">
+    <div style="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:12px;background:#1c1440;color:#fff;border-radius:14px;padding:13px 18px;box-shadow:0 18px 40px -20px rgba(20,8,60,.7);max-width:560px">
+      <span style="font-size:13.5px;line-height:1.45;flex:1;text-wrap:pretty">{{ toastMsg }}</span>
+      <button type="button" onClick="{{ onFecharToast }}" style="border:none;background:rgba(255,255,255,.16);color:#fff;border-radius:9px;width:28px;height:28px;font-size:13px;cursor:pointer;flex:none">✕</button>
+    </div>
+  </sc-if>
+
+  <section style="display:flex;flex-direction:column;gap:14px">
+    <button type="button" onClick="{{ toggleNotas }}" style="{{ notasBtnStyle }}">
+      <span style="width:20px;height:20px;border-radius:50%;background:#f1eafe;color:#6C2BF2;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none">i</span>
+      <span>{{ notasLabel }}</span>
+    </button>
+    <sc-if value="{{ verNotas }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <span style="font-size:13.5px;color:#6b6482">cada estado tem um gatilho — a mascote reage ao dia, não decora a tela</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px">
+        <sc-for list="{{ emotions }}" as="e">
+          <div style="background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center">
+            <div role="img" aria-label="{{ e.name }}" style="{{ e.imgStyle }}"></div>
+            <span style="font-family:Outfit,sans-serif;font-size:13.5px;font-weight:600">{{ e.name }}</span>
+            <span style="font-size:11.5px;line-height:1.4;color:#6b6482;text-wrap:pretty">{{ e.when }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#1c1440,#2b1f63);color:#fff;border-radius:16px;padding:16px 20px">
+        <img src="assets/asa/estudando.png" alt="" style="width:52px;height:52px;object-fit:contain;flex:none" />
+        <span style="font-size:13.5px;line-height:1.5;color:#e4dffa;text-wrap:pretty">Regra da mascote: uma ASA por tela, no bloco que fala com a pessoa. Nas listas ela só aparece como ícone pequeno (Mural, sugestão) — nunca duas expressões grandes competindo pela mesma atenção.</span>
+      </div>
+      </div>
+    </sc-if>
+  </section>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1400},&quot;perfilInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ADM&quot;,&quot;DIR&quot;,&quot;SUP&quot;,&quot;MEM&quot;],&quot;default&quot;:&quot;MEM&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Tela&quot;}}">
+const A = n => "assets/asa-" + n + ".png";
+
+const PROFILES = [
+  { key: "ADM", name: "Administração", dot: "#6C2BF2", hint: "governa tudo — o dia dela é o dia da organização", person: "Barbara Sorroche", op: "Toda a ASA" },
+  { key: "DIR", name: "Direção", dot: "#2E63D6", hint: "panorama da empresa, com acesso ao Painel", person: "Cris Garcia", op: "Visão organizacional" },
+  { key: "SUP", name: "Supervisão", dot: "#0E8F86", hint: "as decisões do dia, só da área dela", person: "Deborah", op: "Área Patinadores" },
+  { key: "MEM", name: "Elenco", dot: "#C2508F", hint: "o próprio dia, em três toques", person: "Julia", op: "Patinadores" }
+];
+
+const NAV = [
+  { title: "Porta de entrada", items: [
+    ["17", "Início / Meu Dia", ["ADM","DIR","SUP","MEM"], "Meu Dia"]
+  ] },
+  { title: "O dia", items: [
+    ["20", "Agenda", ["ADM","DIR","SUP","MEM"], "Minha agenda"],
+    ["15", "Escalas", ["ADM","DIR","SUP","MEM"], "Minha escala"],
+    ["13", "Shows", ["ADM","DIR","SUP","MEM"], "Shows"],
+    ["14", "Livro do Dia", ["ADM","DIR","SUP","MEM"], "Meus shows"],
+    ["19", "Check-in e ocorrências", ["ADM","DIR","SUP","MEM"], "Check-in"],
+    ["10", "Responsabilidades e tarefas", ["ADM","DIR","SUP","MEM"], "Minhas tarefas"],
+    ["18", "Folgas", ["ADM","DIR","SUP","MEM"], "Minhas folgas"]
+  ] },
+  { title: "Gestão", items: [
+    ["16", "Painel", ["ADM","DIR","SUP"], null],
+    ["06", "Locais", ["ADM","DIR","SUP"], null],
+    ["07", "Pessoas", ["ADM","DIR","SUP"], null],
+    ["08", "Áreas", ["ADM","DIR","SUP","MEM"], "Meu grupo"],
+    ["25", "Reconhecimentos", ["ADM","DIR","SUP"], null]
+  ] },
+  { title: "Comunicação", items: [
+    ["22", "Avisos e Mural", ["ADM","DIR","SUP","MEM"], "Mural"],
+    ["23", "Mensagens", ["ADM","DIR","SUP","MEM"], "Conversas"],
+    ["24", "Biblioteca", ["ADM","DIR","SUP","MEM"], "Biblioteca"]
+  ] }
+];
+
+const NAV_HREF = {
+  "10": "10%20Responsabilidades%20e%20Tarefas.dc.html",
+  "13": "13%20Shows.dc.html",
+  "14": "14%20Livro%20do%20Dia.dc.html",
+  "15": "15%20Escalas.dc.html",
+  "16": "16%20Painel%20e%20indicadores.dc.html",
+  "17": "17%20Meu%20Dia.dc.html",
+  "18": "18%20Folgas.dc.html",
+  "19": "19%20Check-in%20e%20ocorr%C3%AAncias.dc.html",
+  "20": "20%20Agenda.dc.html",
+  "22": "22%20Avisos%20e%20Mural.dc.html",
+  "23": "23%20Mensagens.dc.html",
+  "24": "24%20Biblioteca.dc.html", "25": "25%20Reconhecimentos.dc.html",
+  "27": "27%20Assistente%20ASA.dc.html",
+  "28": "28%20Perfil%20e%20configura%C3%A7%C3%B5es.dc.html",
+  "06": "06%20Locais.dc.html",
+  "07": "07%20Pessoas.dc.html",
+  "08": "08%20%C3%81reas.dc.html"
+};
+
+const MOBILE = {
+  ADM: ["Meu Dia", "Painel", "Escalas", "Mural", "Mais"],
+  DIR: ["Meu Dia", "Painel", "Agenda", "Mural", "Mais"],
+  SUP: ["Meu Dia", "Escalas", "Equipe", "Mural", "Mais"],
+  MEM: ["Meu Dia", "Escala", "Mural", "Conversas", "Mais"]
+};
+
+const DATA = {
+  ADM: {
+    mascot: "planejando",
+    greetTitle: "Bom dia, Barbara!",
+    greetSub: "Três locais abertos hoje. Duas coisas só você resolve: uma escala sem publicar e uma responsabilidade sem dono.",
+    greetShort: "3 locais abertos · 2 pendências suas",
+    primary: "Revisar prontidão do dia",
+    done: "Prontidão revisada — ASA avisa se algo mudar",
+    nextLabel: "Primeiro compromisso da organização",
+    nextLink: "ver agenda completa",
+    nextHref: "20",
+    next: { time: "09:00", rel: "em 1h18", title: "Show Patinação — Snowland", sub: "Livro do Dia publicado · elenco resolvido · 18 pessoas", chips: ["Snowland", "publicado"] },
+    timelineLabel: "Hoje, nos três locais",
+    timelineHint: "só o que precisa de atenção da administração",
+    timeline: [
+      { time: "09:00", title: "Show Patinação", sub: "Snowland", tag: "publicado", tone: "ok" },
+      { time: "11:30", title: "Aula Camp", sub: "Acquamotion", tag: "sem responsável", tone: "warn" },
+      { time: "14:00", title: "Noite temática", sub: "Hotelaria", tag: "escala em rascunho", tone: "warn" },
+      { time: "16:00", title: "Show Patinação", sub: "Snowland", tag: "publicado", tone: "ok" },
+      { time: "19:00", title: "Passagem do show", sub: "Snowland · gerado pela Programação", tag: "automático", tone: "mute" }
+    ],
+    pendTitle: "Depende da administração",
+    pendMascot: "aviso",
+    pend: [
+      { count: "1", title: "Responsabilidade sem dono", sub: "Perucas — desde ontem", tone: "warn" },
+      { count: "1", title: "Escala não publicada", sub: "Hotelaria · amanhã", tone: "warn" },
+      { count: "4", title: "Pessoas sem acesso criado", sub: "cadastradas esta semana", tone: "mute" },
+      { count: "2", title: "Avisos escalados sem resposta", sub: "mais de 24h", tone: "warn" }
+    ],
+    mural: [
+      { icon: "bomdia", text: "Aniversário da Deborah em 2 dias — 4 anos de casa." },
+      { icon: "anuncio", text: "2 avisos novos publicados hoje, um em Hotelaria." },
+      { icon: "concluida", text: "Último reconhecimento: Julia, pela cobertura de sábado." }
+    ],
+    tip: "A escala de Hotelaria de amanhã ainda está em rascunho e o show é às 20h. Quer que eu avise a supervisora responsável?"
+  },
+  DIR: {
+    mascot: "consultando",
+    greetTitle: "Bom dia, Cris!",
+    greetSub: "Arts and Sports Academy hoje: 3 locais abertos, 42 das 58 pessoas escaladas, 4 shows, 1 ocorrência aberta — e nada esperando decisão sua.",
+    greetShort: "Arts and Sports Academy · 3 locais hoje",
+    primary: "Ver pendências da empresa",
+    primaryHref: "16",
+    done: "",
+    nextLabel: "Acontecendo na Arts and Sports Academy",
+    nextLink: "abrir Painel",
+    nextHref: "16",
+    next: { time: "09:00", rel: "em 1h18", title: "Show Patinação — Snowland", sub: "cobertura 100% · 18 escalados · sem exceções", chips: ["3 locais"] },
+    timelineLabel: "A empresa hoje, local por local",
+    timelineHint: "panorama da empresa — abra o Painel para o detalhe",
+    timeline: [
+      { time: "100%", title: "Snowland", sub: "18 escalados · 2 shows hoje", tag: "saudável", tone: "ok" },
+      { time: "92%", title: "Acquamotion", sub: "12 escalados · 1 aula sem responsável", tag: "atenção", tone: "warn" },
+      { time: "100%", title: "Hotelaria", sub: "12 escalados · escala de amanhã em rascunho", tag: "amanhã", tone: "mute" },
+      { time: "1", title: "Ocorrência aberta", sub: "Acquamotion · em análise pela supervisão", tag: "acompanhando", tone: "warn" }
+    ],
+    pendTitle: "Sinais da empresa",
+    pendMascot: "duvida",
+    pend: [
+      { count: "1", title: "Ocorrência aberta", sub: "em análise há 40 min", tone: "warn" },
+      { count: "3", title: "Folgas decididas hoje", sub: "todas dentro do prazo", tone: "ok" },
+      { count: "6", title: "Tarefas atrasadas", sub: "concentradas em Produção", tone: "warn" },
+      { count: "58", title: "Pessoas na academia", sub: "42 escaladas hoje · 3 áreas", tone: "mute" }
+    ],
+    mural: [
+      { icon: "bomdia", text: "Aniversário da Deborah em 2 dias — 4 anos de casa." },
+      { icon: "anuncio", text: "2 avisos novos publicados hoje." },
+      { icon: "concluida", text: "Último reconhecimento: Julia, pela cobertura de sábado." }
+    ],
+    tip: "Produção acumula 6 tarefas atrasadas há três semanas seguidas. Quer o histórico dessa área no Painel?"
+  },
+  SUP: {
+    mascot: "aviso",
+    greetTitle: "Bom dia, Deborah!",
+    greetSub: "Duas decisões esperam por você antes do show das 9h — uma folga e uma ocorrência que chegou às 6h40.",
+    greetShort: "2 decisões antes das 9h",
+    primary: "Abrir as decisões",
+    primaryHref: "19",
+    done: "Decisões abertas — 2 aguardando resposta",
+    nextLabel: "Próximo na sua área",
+    nextLink: "abrir Livro do Dia",
+    nextHref: "14",
+    next: { time: "08:00", rel: "em 18 min", title: "Passagem do show", sub: "Snowland · 16 de 18 confirmaram presença", chips: ["Snowland", "2 faltam check-in"] },
+    timelineLabel: "Grade de hoje — Snowland",
+    timelineHint: "gerada pela Programação, ajustada por você",
+    timeline: [
+      { time: "07:30", title: "Aquecimento", sub: "elenco do show", tag: "em curso", tone: "ok" },
+      { time: "08:00", title: "Passagem do show", sub: "show −60min", tag: "2 sem check-in", tone: "warn" },
+      { time: "09:00", title: "Show Patinação", sub: "Livro do Dia publicado", tag: "publicado", tone: "ok" },
+      { time: "10:15", title: "Montagem", sub: "show +75min", tag: "automático", tone: "mute" },
+      { time: "12:00", title: "Almoço", sub: "grupo inteiro", tag: "automático", tone: "mute" },
+      { time: "16:00", title: "Show Patinação", sub: "elenco a confirmar — Izabel de folga", tag: "ajustar", tone: "warn" }
+    ],
+    pendTitle: "Decisões suas",
+    pendMascot: "aviso",
+    pend: [
+      { count: "1", title: "Ocorrência aberta", sub: "Izabel — impossibilidade, 06:40", tone: "warn" },
+      { count: "1", title: "Folga a decidir", sub: "Sofia · 12 a 14 de setembro", tone: "warn" },
+      { count: "2", title: "Check-ins em falta", sub: "passagem começa em 18 min", tone: "warn" },
+      { count: "1", title: "Escala de amanhã", sub: "rascunho pronto para publicar", tone: "mute" }
+    ],
+    mural: [
+      { icon: "bomdia", text: "Seu aniversário é em 2 dias — 4 anos de ASA." },
+      { icon: "anuncio", text: "1 aviso novo para Snowland." },
+      { icon: "concluida", text: "Você reconheceu a Julia ontem." }
+    ],
+    tip: "A Izabel abriu ocorrência para hoje e ela está no elenco das 9h. Quer ver quem pode cobrir a posição dela?"
+  },
+  MEM: {
+    mascot: "bomdia",
+    greetTitle: "Bom dia, Julia!",
+    greetSub: "Você entra às 8h na passagem do show. Faz o check-in por aqui mesmo — leva um toque.",
+    greetShort: "Passagem às 8h · check-in pendente",
+    primary: "Fazer check-in",
+    primaryHref: null,
+    done: "Check-in feito às 07:42 — bom show!",
+    nextLabel: "Sua próxima atividade",
+    nextLink: "ver minha escala",
+    nextHref: "15",
+    next: { time: "08:00", rel: "em 18 min", title: "Passagem do show", sub: "Snowland · pista principal · com a Deborah", chips: ["Elenco", "posição 4"] },
+    timelineLabel: "Seu dia",
+    timelineHint: "só os seus itens — a grade completa fica na escala",
+    timeline: [
+      { time: "07:30", title: "Aquecimento", sub: "pista principal", tag: "agora", tone: "ok" },
+      { time: "08:00", title: "Passagem do show", sub: "você é a posição 4", tag: "seu", tone: "mine" },
+      { time: "09:00", title: "Show Patinação", sub: "Livro do Dia · seu nome destacado", tag: "seu", tone: "mine" },
+      { time: "12:00", title: "Almoço", sub: "grupo inteiro", tag: "", tone: "mute" },
+      { time: "16:00", title: "Show Patinação", sub: "você está escalada", tag: "seu", tone: "mine" }
+    ],
+    pendTitle: "Do seu lado",
+    pendMascot: "lembrete",
+    pend: [
+      { count: "2", title: "Tarefas para hoje", sub: "uma pede foto como evidência", tone: "warn" },
+      { count: "1", title: "Solicitação em análise", sub: "folga de 12 a 14 de setembro", tone: "mute" },
+      { count: "1", title: "Documento novo", sub: "Procedimento de figurino", tone: "mute" }
+    ],
+    mural: [
+      { icon: "bomdia", text: "Aniversário da Deborah em 2 dias." },
+      { icon: "anuncio", text: "1 aviso novo para Snowland." },
+      { icon: "concluida", text: "Você recebeu um reconhecimento da Deborah." }
+    ],
+    tip: "Sua tarefa de figurino pede uma foto e vence hoje às 18h. Quer que eu te lembre depois do show das 16h?"
+  }
+};
+
+const TONES = {
+  ok:   { bg: "#e3f4f1", fg: "#0E8F86" },
+  warn: { bg: "#fdeee4", fg: "#C2600F" },
+  mute: { bg: "#f0eef5", fg: "#6b6482" },
+  mine: { bg: "#fbeaf3", fg: "#C2508F" }
+};
+
+const EMOTIONS = [
+  { key: "bomdia", name: "Bom dia!", when: "Saudação do Elenco na primeira abertura do dia." },
+  { key: "aviso", name: "Aviso importante", when: "Há decisão vencendo ou ocorrência aberta — bloco de pendências da Supervisão." },
+  { key: "planejando", name: "Planejando", when: "Administração: o dia tem itens de governança em aberto." },
+  { key: "consultando", name: "Consultando", when: "Direção: panorama da empresa — a ASA está lendo dados e aponta para o Painel." },
+  { key: "concluida", name: "Tarefa concluída", when: "Check-in feito, decisão resolvida, dia sem pendência." },
+  { key: "lembrete", name: "Lembrete", when: "Itens pessoais com prazo: tarefas, documento novo." },
+  { key: "ideia", name: "Ideia!", when: "Sugestão proativa da ASA no rodapé da coluna direita." },
+  { key: "duvida", name: "Dúvida", when: "Dado incompleto ou métrica sem explicação — convida a perguntar." },
+  { key: "triste", name: "Triste", when: "Estado vazio de verdade: nada escalado, nada publicado." },
+  { key: "oi", name: "Oi!", when: "Avatar do botão da ASA no cabeçalho e no FAB." }
+];
+
+class Component extends DCLogic {
+  state = { profile: null, done: false };
+
+  renderVals() {
+    const active = this.state.profile || this.props.perfilInicial || "MEM";
+    const meta = PROFILES.find(p => p.key === active) || PROFILES[3];
+    const d = DATA[active];
+    const done = this.state.done;
+
+    const profileTabs = PROFILES.map(p => ({
+      name: p.name,
+      dot: p.dot,
+      onClick: () => this.setState({ profile: p.key, done: false }),
+      style: [
+        "display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;cursor:pointer;",
+        "font-family:Manrope,sans-serif;font-size:13px;font-weight:600;",
+        p.key === active
+          ? "border:1px solid " + p.dot + ";background:" + p.dot + "12;color:" + p.dot + ";box-shadow:0 0 0 3px " + p.dot + "1a"
+          : "border:1px solid #e6e1f2;background:#fff;color:#6b6482"
+      ].join("")
+    }));
+
+    const shellNav = NAV.map(g => ({
+      title: g.title,
+      items: g.items.filter(it => it[2].indexOf(active) >= 0).map(it => ({
+        href: NAV_HREF[it[0]],
+        label: (active === "MEM" && it[3]) ? it[3] : it[1],
+        style: [
+          "display:flex;align-items:center;gap:8px;padding:6.5px 9px;border-radius:8px;font-size:12px;",
+          it[0] === "17" ? "background:rgba(255,255,255,.14);color:#fff;font-weight:600;" : "color:#c3bbdf;font-weight:500;"
+        ].join("")
+      }))
+    })).filter(g => g.items.length > 0);
+
+    const mobileTabs = MOBILE[active].map((label, i) => ({
+      label: label,
+      onClick: () => this.setState({ __toast: i === 0
+        ? "Você já está em Hoje — é a tela que abre depois do login."
+        : "Aba " + label + ". A casca completa dos quatro perfis está em 02 Mobile do elenco." }),
+      iconStyle: "width:22px;height:22px;border-radius:8px;display:block;background:" + (i === 0 ? meta.dot : "#d8d2e8"),
+      style: "flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 2px;min-height:48px;box-sizing:border-box;border:none;background:none;cursor:pointer;font-family:Manrope,sans-serif;" + (i === 0 ? "color:" + meta.dot + ";" : "color:#6b6482;")
+    }));
+
+    const timeline = d.timeline.map(t => {
+      const T = TONES[t.tone];
+      return {
+        time: t.time,
+        title: t.title,
+        sub: t.sub,
+        tag: t.tag,
+        rowStyle: "display:flex;align-items:center;gap:10px;padding:8px 8px;border-radius:10px;" + (t.tone === "mine" ? "background:#fdf4f9;" : ""),
+        dotStyle: "width:8px;height:8px;border-radius:50%;flex:none;background:" + T.fg + ";" + (t.tone === "mute" ? "opacity:.5;" : ""),
+        tagStyle: t.tag
+          ? "font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:" + T.bg + ";color:" + T.fg + ";font-family:'JetBrains Mono',monospace;"
+          : "display:none;"
+      };
+    });
+
+    const pendencias = d.pend.map(p => {
+      const T = TONES[p.tone];
+      return {
+        count: p.count,
+        title: p.title,
+        sub: p.sub,
+        onClick: () => this.setState({ __toast: p.title + (p.sub ? " — " + p.sub : "") }),
+        countStyle: "flex:none;width:26px;height:26px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;background:" + T.bg + ";color:" + T.fg + ";"
+      };
+    });
+
+    const hasPrimary = d.primary !== "";
+    const primaryBase = "border:none;cursor:pointer;font-family:Manrope,sans-serif;font-weight:700;border-radius:999px;";
+
+    return {
+      verNotas: !!this.state.__notas,
+      toggleNotas: () => this.setState(s => ({ __notas: !s.__notas })),
+      notasBtnStyle: "display:flex;align-items:center;gap:9px;padding:8px 14px;border-radius:999px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;align-self:flex-start",
+      notasLabel: this.state.__notas ? "ocultar notas de desenho" : "notas de desenho",
+
+      profileTabs: profileTabs,
+      profileHint: meta.hint,
+      profileName: meta.name,
+      personName: meta.person,
+      operationLabel: meta.op,
+      personChipStyle: "font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:" + meta.dot + ";background:" + meta.dot + "26;padding:2px 7px;border-radius:999px;width:fit-content",
+      readonlyChip: active === "DIR" ? "visão da empresa" : "",
+      readonlyChipStyle: active === "DIR"
+        ? "font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#2E63D6;background:#e9effc;padding:5px 10px;border-radius:999px;"
+        : "display:none;",
+      shellNav: shellNav,
+      mobileTabs: mobileTabs,
+      greetMascotStyle82: "width:82px;height:82px;flex:none;background-repeat:no-repeat;background-position:center;background-size:contain;background-image:url(" + A(done ? "concluida" : d.mascot) + ")",
+      greetMascotStyle52: "width:52px;height:52px;flex:none;background-repeat:no-repeat;background-position:center;background-size:contain;background-image:url(" + A(done ? "concluida" : d.mascot) + ")",
+      greetTitle: done ? "Tudo certo por aqui!" : d.greetTitle,
+      greetSub: done ? d.done : d.greetSub,
+      greetShort: done ? d.done : d.greetShort,
+      primaryLabel: done ? "Feito" : d.primary,
+      onPrimary: d.primaryHref
+        ? () => { window.location.href = NAV_HREF[d.primaryHref]; }
+        : () => this.setState({ done: !this.state.done }),
+      nextHref: NAV_HREF[d.nextHref] || "#",
+      primaryStyle: hasPrimary
+        ? primaryBase + "padding:11px 20px;font-size:13.5px;" + (done ? "background:rgba(255,255,255,.16);color:#d6cff5;" : "background:#fff;color:#2b1f63;")
+        : "display:none;",
+      primaryMobileStyle: hasPrimary
+        ? primaryBase + "min-height:52px;padding:0 18px;font-size:15.5px;width:100%;border-radius:14px;" + (done ? "background:rgba(255,255,255,.16);color:#d6cff5;" : "background:#fff;color:#2b1f63;")
+        : "display:none;",
+      mobileSub: meta.op + " · " + meta.name,
+      bellCount: active === "ADM" ? "11" : active === "SUP" ? "6" : active === "DIR" ? "2" : "3",
+      onBell: () => this.setState({ __toast: "Central de notificações: o que exige ação sua fica no topo, com o botão junto. Desenhada em 01 Entrada, notificações e estados." }),
+      heroKicker: active === "MEM" ? "agora" : "primeiro",
+      toastMsg: this.state.__toast || null,
+      onFecharToast: () => this.setState({ __toast: null }),
+      nextLabel: d.nextLabel,
+      nextLink: d.nextLink,
+      next: d.next,
+      timelineLabel: d.timelineLabel,
+      timelineHint: d.timelineHint,
+      timeline: timeline,
+      pendTitle: d.pendTitle,
+      pendMascotStyle: "width:34px;height:34px;flex:none;background-repeat:no-repeat;background-position:center;background-size:contain;background-image:url(" + A(done && active === "MEM" ? "concluida" : d.pendMascot) + ")",
+      pendencias: pendencias,
+      mural: d.mural.map(m => {
+        const bg = (n) => "width:" + n + "px;height:" + n + "px;flex:none;background-repeat:no-repeat;background-position:center;background-size:contain;background-image:url(" + A(m.icon) + ")";
+        return { iconStyle26: bg(26), iconStyle22: bg(22), text: m.text };
+      }),
+      asaTip: d.tip,
+      emotions: EMOTIONS.map(e => ({ imgStyle: "width:74px;height:74px;flex:none;background-repeat:no-repeat;background-position:center;background-size:contain;background-image:url(" + A(e.key) + ")", name: e.name, when: e.when }))
+    };
+  }
+}
+
+</script>
+</body>
+</html>

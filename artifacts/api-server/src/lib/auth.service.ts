@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { eq, and, isNull, gt } from "drizzle-orm";
+import { eq, and, isNull, gt, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   usersTable,
@@ -18,6 +18,7 @@ import { recordAudit } from "./audit.service.js";
 import { requestLogger } from "./logger.js";
 import { loadAuthorizationContext } from "./authorization.service.js";
 import { selfProfile } from "./person-projection.js";
+import { operationalDate } from "./operational-date.js";
 
 export interface AuthContext {
   requestId: string;
@@ -27,7 +28,7 @@ export interface AuthContext {
 }
 
 function isGuestExpired(user: typeof usersTable.$inferSelect): boolean {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = operationalDate();
   return user.specialization === "CONVIDADO" && !!user.visitUntil && user.visitUntil < today;
 }
 
@@ -131,6 +132,9 @@ export async function loginUser(
   return { user: selfProfile(user), accessToken, refreshToken, roles, capabilities };
 }
 
+/** Quanto tempo um token recém-trocado ainda renova (app fechado no meio da renovação). */
+export const TOLERANCIA_RENOVACAO_MS = 30_000;
+
 export async function refreshSession(
   rawRefreshToken: string,
   ctx: AuthContext,
@@ -145,15 +149,51 @@ export async function refreshSession(
   }
 
   const tokenHash = hashToken(rawRefreshToken);
-  const storedToken = await db.query.refreshTokensTable.findFirst({
-    where: and(
-      eq(refreshTokensTable.tokenHash, tokenHash),
-      isNull(refreshTokensTable.revokedAt),
-      gt(refreshTokensTable.expiresAt, new Date()),
-    ),
+  const agora = new Date();
+  // Troca do token numa transação com a linha travada: duas renovações simultâneas com o mesmo
+  // token não brigam, e a segunda cai na tolerância em vez de derrubar a sessão.
+  const troca = await db.transaction(async (tx) => {
+    const [stored] = await tx.select().from(refreshTokensTable)
+      .where(and(eq(refreshTokensTable.tokenHash, tokenHash), gt(refreshTokensTable.expiresAt, agora)))
+      .for("update").limit(1);
+    if (!stored || stored.userId !== payload.sub) return null;
+    let tolerancia = false;
+    if (stored.revokedAt) {
+      // Só token trocado por renovação há no máximo 30 s tem tolerância. Sair, encerrar sessões,
+      // senha redefinida e desligamento revogam sem rotated_at: esses nunca voltam.
+      const janela = stored.rotatedAt ? agora.getTime() - stored.rotatedAt.getTime() : Infinity;
+      if (janela > TOLERANCIA_RENOVACAO_MS) return null;
+      // Segue as trocas até o token mais novo da sessão: se ele foi revogado sem troca (Sair,
+      // encerrar sessões, senha, desligamento), a sessão acabou e a tolerância não a ressuscita.
+      let seguinte = stored.replacedBy;
+      for (let passo = 0; seguinte && passo < 50; passo++) {
+        const [elo] = await tx.select({ revokedAt: refreshTokensTable.revokedAt, rotatedAt: refreshTokensTable.rotatedAt, replacedBy: refreshTokensTable.replacedBy })
+          .from(refreshTokensTable).where(eq(refreshTokensTable.id, seguinte)).limit(1);
+        if (!elo || !elo.revokedAt) break;
+        if (!elo.rotatedAt) return null;
+        seguinte = elo.replacedBy;
+      }
+      tolerancia = true;
+      // O substituto provavelmente se perdeu com o app fechado: em vez de derrubá-lo (outra aba pode
+      // tê-lo), ele passa a valer só mais 30 min — não fica sessão órfã contada por 30 dias.
+      if (stored.replacedBy) {
+        await tx.update(refreshTokensTable)
+          .set({ expiresAt: new Date(agora.getTime() + 30 * 60_000) })
+          .where(and(eq(refreshTokensTable.id, stored.replacedBy), isNull(refreshTokensTable.revokedAt), gt(refreshTokensTable.expiresAt, new Date(agora.getTime() + 30 * 60_000))));
+      }
+    }
+    const { token, expiresAt } = signRefreshToken(payload.sub);
+    const [novo] = await tx.insert(refreshTokensTable).values({ userId: payload.sub, tokenHash: hashToken(token), expiresAt }).returning({ id: refreshTokensTable.id });
+    await tx.update(refreshTokensTable).set({
+      revokedAt: stored.revokedAt ?? agora,
+      // A janela conta da primeira troca: usar a tolerância não a estende.
+      rotatedAt: stored.rotatedAt ?? agora,
+      replacedBy: novo!.id,
+    }).where(eq(refreshTokensTable.id, stored.id));
+    return { token, tolerancia };
   });
 
-  if (!storedToken || storedToken.userId !== payload.sub) {
+  if (!troca) {
     await recordAudit({
       actorId: payload.sub,
       action: "INVALID_ACCESS_ATTEMPT",
@@ -163,11 +203,6 @@ export async function refreshSession(
     });
     throw new AuthError("INVALID_TOKEN", "Refresh token inválido ou expirado");
   }
-
-  await db
-    .update(refreshTokensTable)
-    .set({ revokedAt: new Date() })
-    .where(eq(refreshTokensTable.id, storedToken.id));
 
   const user = await assertUserCanAuthenticate(payload.sub);
 
@@ -185,14 +220,9 @@ export async function refreshSession(
     operationIds,
   });
 
-  const { token: newRefreshToken, expiresAt } = signRefreshToken(user.id);
-  await db.insert(refreshTokensTable).values({
-    userId: user.id,
-    tokenHash: hashToken(newRefreshToken),
-    expiresAt,
-  });
+  const newRefreshToken = troca.token;
 
-  await recordAudit({ actorId: user.id, action: "TOKEN_REFRESHED" });
+  await recordAudit({ actorId: user.id, action: "TOKEN_REFRESHED", metadata: troca.tolerancia ? { tolerancia: true } : undefined });
   log.info({ userId: user.id }, "Token refreshed");
 
   return { accessToken, refreshToken: newRefreshToken };
@@ -201,15 +231,26 @@ export async function refreshSession(
 export async function logoutUser(userId: string, tokenHash: string, ctx: AuthContext) {
   const log = requestLogger("identity", ctx.requestId, ctx.correlationId);
 
-  await db
+  // Sair com um token já trocado (o app ainda não tinha guardado o novo) encerra a sessão inteira:
+  // tira a tolerância dele e revoga os que vieram depois.
+  const [saiu] = await db
     .update(refreshTokensTable)
-    .set({ revokedAt: new Date() })
+    .set({ revokedAt: new Date(), rotatedAt: null })
     .where(
       and(
         eq(refreshTokensTable.userId, userId),
         eq(refreshTokensTable.tokenHash, tokenHash),
       ),
-    );
+    )
+    .returning({ replacedBy: refreshTokensTable.replacedBy });
+  let seguinte = saiu?.replacedBy ?? null;
+  for (let passo = 0; seguinte && passo < 50; passo++) {
+    const [elo] = await db.update(refreshTokensTable)
+      .set({ revokedAt: sql`coalesce(${refreshTokensTable.revokedAt}, now())`, rotatedAt: null })
+      .where(and(eq(refreshTokensTable.id, seguinte), eq(refreshTokensTable.userId, userId)))
+      .returning({ replacedBy: refreshTokensTable.replacedBy });
+    seguinte = elo?.replacedBy ?? null;
+  }
 
   await recordAudit({ actorId: userId, action: "LOGOUT" });
   log.info({ userId }, "Logout successful");

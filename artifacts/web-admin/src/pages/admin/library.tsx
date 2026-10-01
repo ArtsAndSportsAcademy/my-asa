@@ -14,7 +14,7 @@ import {
   getListLibraryCategoriesQueryKey,
   customFetch,
 } from "@workspace/api-client-react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import type {
   LibraryDocumentItem,
@@ -98,6 +98,7 @@ function fmtDate(d: string | null | undefined) {
 export default function AdminLibraryPage() {
   const qc = useQueryClient();
   const auth = useAuth();
+  const isAdmin = auth.roles.some((r) => r.role === "ADMIN");
   const isManager = auth.roles.some((r) => ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"].includes(r.role));
 
   // ── Filtros ──
@@ -113,12 +114,14 @@ export default function AdminLibraryPage() {
   const [showEdit, setShowEdit] = useState(false);
   const [showVersion, setShowVersion] = useState(false);
   const [showManageCat, setShowManageCat] = useState(false);
+  const [showCitations, setShowCitations] = useState(false);
 
   // ── Formulários ──
   const [form, setForm] = useState({ title: "", type: "", summary: "", body: "", categoryId: "", responsibleId: "" });
   const [editForm, setEditForm] = useState({ title: "", summary: "", body: "", categoryId: "", responsibleId: "" });
   const [versionForm, setVersionForm] = useState({ title: "", body: "", summary: "" });
   const [catForm, setCatForm] = useState({ name: "", description: "" });
+  const [citationForm, setCitationForm] = useState<Array<{ pageNumber: string; excerpt: string }>>([]);
 
   // ── Queries ──
   const { data: docsData, isLoading, refetch } = useListLibraryDocuments({
@@ -129,11 +132,18 @@ export default function AdminLibraryPage() {
   const { data: catsData } = useListLibraryCategories();
   const detailQueryKey = getGetLibraryDocumentQueryKey(selectedId ?? "");
   const { data: detailData } = useGetLibraryDocument(selectedId ?? "", { query: { queryKey: detailQueryKey, enabled: !!selectedId } });
+  const libraryGapsQuery = useQuery({
+    queryKey: ["asa-library-gaps"],
+    queryFn: () => customFetch<{ signals: Array<{ topic: string; count: number; lastSeen: string }>; windowDays: number }>("/api/asa/library-gaps"),
+    enabled: isAdmin,
+  });
 
   const documents = (docsData?.documents ?? []) as LibraryDocumentItem[];
   const categories = (catsData?.categories ?? []) as LibraryCategory[];
   const detail = detailData?.document as LibraryDocumentDetail | undefined;
   const versions = (detailData?.versions ?? []) as LibraryDocumentVersion[];
+  const citations = (detailData as (typeof detailData & { citations?: Array<{ pageNumber: number; excerpt: string }>; canManageCitations?: boolean }) | undefined)?.citations ?? [];
+  const canManageCitations = Boolean((detailData as (typeof detailData & { canManageCitations?: boolean }) | undefined)?.canManageCitations);
 
   // ── Mutations ──
   const createDoc    = useCreateLibraryDocument();
@@ -145,6 +155,16 @@ export default function AdminLibraryPage() {
   const deleteCat    = useMutation({
     mutationFn: (id: string) => customFetch<void>(`/api/library/categories/${id}`, { method: "DELETE" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: getListLibraryCategoriesQueryKey() }),
+  });
+  const saveCitations = useMutation({
+    mutationFn: () => customFetch<{ citations: Array<{ pageNumber: number; excerpt: string }> }>(`/api/library/documents/${selectedId}/citations`, {
+      method: "PUT",
+      body: JSON.stringify({ version: detail?.version, citations: citationForm.map((item) => ({ pageNumber: Number(item.pageNumber), excerpt: item.excerpt })) }),
+    }),
+    onSuccess: () => {
+      setShowCitations(false);
+      if (selectedId) qc.invalidateQueries({ queryKey: getGetLibraryDocumentQueryKey(selectedId) });
+    },
   });
 
   function invalidate() {
@@ -192,7 +212,7 @@ export default function AdminLibraryPage() {
   }
 
   function handleArchive() {
-    if (!selectedId || !confirm("Arquivar este documento? Arquivado ≠ excluído — o documento pode ser consultado no histórico.")) return;
+    if (!selectedId) return;
     archiveDoc.mutate(
       { documentId: selectedId },
       { onSuccess: () => invalidate() }
@@ -223,6 +243,35 @@ export default function AdminLibraryPage() {
 
         {/* ── Coluna Esquerda — Lista ── */}
         <div className="w-96 shrink-0 flex flex-col gap-3">
+          {isAdmin && (
+            <section className="border-l-2 border-primary pl-3 py-1 space-y-2" aria-labelledby="library-gap-title">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <h2 id="library-gap-title" className="text-sm font-semibold">Temas sem documento</h2>
+                  <p className="text-xs text-muted-foreground">Buscas sem resultado · últimos 90 dias</p>
+                </div>
+                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" title="Atualizar temas" onClick={() => void libraryGapsQuery.refetch()}>
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
+              {libraryGapsQuery.isLoading ? (
+                <p className="text-xs text-muted-foreground">Carregando…</p>
+              ) : libraryGapsQuery.isError ? (
+                <p className="text-xs text-destructive">Não foi possível carregar os temas.</p>
+              ) : libraryGapsQuery.data?.signals.length ? (
+                <div className="max-h-36 overflow-y-auto space-y-1">
+                  {libraryGapsQuery.data.signals.map((signal) => (
+                    <button key={signal.topic} type="button" onClick={() => setSearch(signal.topic)} title={`Buscar “${signal.topic}” na Biblioteca`} className="w-full flex items-start justify-between gap-2 text-left text-xs rounded px-2 py-1.5 hover:bg-muted">
+                      <span className="min-w-0 break-words">{signal.topic}</span>
+                      <Badge variant="secondary" className="shrink-0">{signal.count}</Badge>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">Nenhuma busca sem resultado neste período.</p>
+              )}
+            </section>
+          )}
           {/* Filtros */}
           <div className="flex gap-2">
             <div className="relative flex-1">
@@ -388,6 +437,22 @@ export default function AdminLibraryPage() {
                 </Card>
               )}
 
+              <section className="border-y py-3 flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">Citações por página · v{detail.version}</p>
+                  <p className="text-xs text-muted-foreground">{citations.length ? `${citations.length} trecho(s) cadastrado(s)` : "Nenhum trecho paginado cadastrado"}</p>
+                </div>
+                {canManageCitations && <Button size="sm" variant="outline" onClick={() => {
+                  setCitationForm(citations.length ? citations.map((item) => ({ pageNumber: String(item.pageNumber), excerpt: item.excerpt })) : [{ pageNumber: "", excerpt: "" }]);
+                  setShowCitations(true);
+                }}>Editar citações</Button>}
+              </section>
+              {citations.length > 0 && <ul className="space-y-2 text-sm">
+                {citations.map((item, index) => <li key={`${item.pageNumber}-${index}`} className="border-l-2 pl-3">
+                  <span className="text-xs font-medium text-muted-foreground">Página {item.pageNumber}</span><p>{item.excerpt}</p>
+                </li>)}
+              </ul>}
+
               {/* Corpo */}
               <Card className="flex-1">
                 <CardHeader className="pb-2 pt-4 px-4">
@@ -515,6 +580,28 @@ export default function AdminLibraryPage() {
             <Button variant="outline" onClick={() => setShowEdit(false)}>Cancelar</Button>
             <Button onClick={handleEdit} disabled={updateDoc.isPending}>
               {updateDoc.isPending ? "Salvando..." : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showCitations} onOpenChange={setShowCitations}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Citações da versão v{detail?.version}</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">Informe a página do PDF atual e copie o trecho exatamente como aparece nele. Alterar o PDF ou o conteúdo invalida estas citações.</p>
+          {saveCitations.isError && <p role="alert" className="text-sm text-destructive">Não foi possível salvar. Atualize o documento e confira se a versão ainda é a mesma.</p>}
+          <div className="space-y-4 py-2">
+            {citationForm.map((item, index) => <div key={index} className="grid grid-cols-[6rem_1fr_auto] gap-3 items-start">
+              <div className="space-y-1.5"><Label htmlFor={`citation-page-${index}`}>Página</Label><Input id={`citation-page-${index}`} type="number" min="1" value={item.pageNumber} onChange={(event) => setCitationForm((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, pageNumber: event.target.value } : row))} /></div>
+              <div className="space-y-1.5"><Label htmlFor={`citation-excerpt-${index}`}>Trecho exato</Label><Textarea id={`citation-excerpt-${index}`} rows={3} maxLength={1000} value={item.excerpt} onChange={(event) => setCitationForm((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, excerpt: event.target.value } : row))} /></div>
+              <Button type="button" size="icon" variant="ghost" title="Remover citação" aria-label="Remover citação" onClick={() => setCitationForm((rows) => rows.filter((_, rowIndex) => rowIndex !== index))}><Trash2 className="h-4 w-4" /></Button>
+            </div>)}
+            <Button type="button" size="sm" variant="outline" onClick={() => setCitationForm((rows) => [...rows, { pageNumber: "", excerpt: "" }])}><Plus className="h-4 w-4 mr-1" />Adicionar trecho</Button>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCitations(false)}>Cancelar</Button>
+            <Button onClick={() => saveCitations.mutate()} disabled={saveCitations.isPending || citationForm.some((item) => !item.pageNumber || !item.excerpt.trim())}>
+              {saveCitations.isPending ? "Salvando..." : "Salvar citações"}
             </Button>
           </DialogFooter>
         </DialogContent>

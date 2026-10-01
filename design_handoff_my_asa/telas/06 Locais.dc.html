@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  aside a { text-decoration: none; }
+  body { margin: 0; background: #f4f2fa; font-family: Manrope, system-ui, sans-serif; color: #1b1630; }
+  a { color: #6C2BF2; text-decoration: none; }
+  a:hover { color: #4a17b8; text-decoration: underline; }
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 3px solid #6C2BF2; outline-offset: 2px; border-radius: 8px; }
+</style>
+</helmet>
+
+<div style="max-width:1720px;margin:0 auto;padding:44px 28px 88px;display:flex;flex-direction:column;gap:32px">
+
+  <header style="display:flex;flex-direction:column;gap:22px">
+    <div style="display:flex;align-items:flex-start;gap:18px">
+      <img src="assets/asa-wing.png" alt="My ASA" style="width:52px;height:52px;object-fit:contain;flex:none;margin-top:4px" />
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#6b6482">06 · fundação</div>
+        <h1 style="font-family:Outfit,sans-serif;font-size:38px;line-height:1.05;font-weight:700;margin:0;letter-spacing:-0.02em">Locais</h1>
+        <p style="margin:0;max-width:78ch;font-size:15px;line-height:1.55;color:#5b5473;text-wrap:pretty">Local é onde a operação acontece. Snowland, Acquamotion, um hotel ou um evento de três dias são todos locais — a diferença é só a duração. Cada local diz <strong>em que dias opera</strong> e <strong>em que período do ano</strong>; é isso que a Escala usa para saber quando precisa de gente e a Programação para saber quando precisa de horários. Dentro do local ficam os <strong>espaços</strong> — Palco A, sala de ensaio, sala de reunião: é o espaço que se reserva, não o local. Dois compromissos podem acontecer no mesmo local; nunca no mesmo espaço e no mesmo horário. Local não tem pessoas próprias e não define folga: quem responde por quem é Grupos, e folga se organiza em Folgas.</p>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:13px 16px;background:#fff;border:1px solid #e6e1f2;border-radius:16px">
+      <span style="font-size:13px;font-weight:600;color:#5b5473;margin-right:4px">Ver como</span>
+      <sc-for list="{{ profileTabs }}" as="tab" hint-placeholder-count="4">
+        <button type="button" onClick="{{ tab.onClick }}" style="{{ tab.style }}">
+          <span style="width:8px;height:8px;border-radius:50%;background:{{ tab.dot }};display:inline-block"></span>
+          <span>{{ tab.name }}</span>
+        </button>
+      </sc-for>
+      <span style="flex:1"></span>
+      <span style="font-size:13px;color:#6b6482">{{ profileHint }}</span>
+    </div>
+  </header>
+
+  <div style="display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start">
+
+    <div style="flex:none;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Web · 1920 × 1080</span>
+        <span style="font-size:11.5px;color:#6b6482">exibido a 70% — proporção real de tela</span>
+      </div>
+      <div style="width:1344px;height:756px;border:1px solid #ddd6ee;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="width:1920px;height:1080px;transform:scale(0.7);transform-origin:top left;display:flex">
+
+          <aside style="width:222px;flex:none;background:linear-gradient(180deg,#1c1440 0%,#241a52 100%);display:flex;flex-direction:column;color:#fff">
+            <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 12px">
+              <img src="assets/asa-wing.png" alt="" style="width:26px;height:26px;object-fit:contain" />
+              <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">My ASA</span>
+            </div>
+            <div style="padding:0 12px 10px">
+              <a href="27%20Assistente%20ASA.dc.html" style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border-radius:10px;padding:8px 10px;font-size:11.5px;color:#b9b0da;text-decoration:none;cursor:pointer">
+                <span style="width:11px;height:11px;border:1.5px solid #b9b0da;border-radius:50%"></span>
+                <span>Buscar ou perguntar à ASA</span>
+              </a>
+            </div>
+            <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:12px;padding:2px 10px 10px">
+              <sc-for list="{{ shellNav }}" as="g" hint-placeholder-count="4">
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#7d72a8;padding:0 8px 4px">{{ g.title }}</div>
+                  <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+                    <a href="{{ it.href }}" style="{{ it.style }}">{{ it.label }}</a>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+            <div style="border-top:1px solid rgba(255,255,255,.1);padding:12px;display:flex;align-items:center;gap:10px">
+              <span style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+              <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                <span style="font-size:12.5px;font-weight:600">{{ personName }}</span>
+                <span style="{{ personChipStyle }}">{{ profileName }}</span>
+              </div>
+            </div>
+          </aside>
+
+          <div style="position:relative;flex:1;display:flex;flex-direction:column;background:#faf9fe;min-width:0">
+
+            <header style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid #ebe6f6;background:#fff">
+              <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">Locais</span>
+              <span style="flex:1"></span>
+              <span style="{{ readonlyChipStyle }}">somente leitura</span>
+              <span style="font-size:12.5px;color:#6b6482">{{ todayLabel }}</span>
+              <button type="button" onClick="{{ toggleAsa }}" style="{{ asaBtnStyle }}">
+                <img src="assets/asa/oi.png" alt="ASA" style="width:26px;height:26px;object-fit:contain" />
+                <span>ASA</span>
+              </button>
+            </header>
+
+            <div style="display:flex;align-items:center;gap:6px;padding:0 20px;background:#fff;border-bottom:1px solid #ebe6f6">
+              <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+                <button type="button" onClick="{{ t.onClick }}" style="{{ t.style }}">{{ t.label }}</button>
+              </sc-for>
+            </div>
+
+            <sc-if value="{{ asaBar }}" hint-placeholder-val="{{ false }}">
+              <div style="{{ asaBar.style }}">
+                <img src="assets/asa/oi.png" alt="" style="width:22px;height:22px;object-fit:contain;flex:none" />
+                <span style="{{ asaBar.chip }}">ASA</span>
+                <span style="{{ asaBar.textStyle }}">{{ asaBar.text }}</span>
+                <span style="flex:1"></span>
+                <button type="button" onClick="{{ asaBar.onOpen }}" style="{{ asaBar.ctaStyle }}">{{ asaBar.cta }}</button>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isLocais }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-direction:column;min-height:0;flex:1">
+                <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 20px;background:#fff;border-bottom:1px solid #ebe6f6">
+                  <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">{{ boardTitle }}</span>
+                  <span style="font-size:12.5px;color:#6b6482">{{ boardNote }}</span>
+                  <span style="flex:1;min-width:20px"></span>
+                  <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ false }}">
+                    <button type="button" onClick="{{ onNewPlace }}" style="height:32px;padding:0 14px;border-radius:11px;border:none;background:#6C2BF2;color:#fff;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap">Novo local</button>
+                  </sc-if>
+                </div>
+
+                <div style="flex:1;min-height:0;overflow:auto;padding:16px 20px 24px">
+                  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:13px;align-items:start">
+                    <sc-for list="{{ places }}" as="p" hint-placeholder-count="4">
+                      <div style="{{ p.style }}">
+                        <div style="display:flex;align-items:center;gap:9px">
+                          <span style="width:10px;height:10px;border-radius:50%;flex:none;background:{{ p.dot }}"></span>
+                          <div style="display:flex;flex-direction:column;gap:1px;flex:1;min-width:0">
+                            <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.name }}</span>
+                            <span style="font-size:10.5px;color:#6b6482;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.sub }}</span>
+                          </div>
+                          <span style="{{ p.stateChip }}">{{ p.stateLabel }}</span>
+                        </div>
+
+                        <div style="display:flex;gap:4px">
+                          <sc-for list="{{ p.week }}" as="d" hint-placeholder-count="7">
+                            <div style="{{ d.style }}">{{ d.label }}</div>
+                          </sc-for>
+                        </div>
+
+                        <div style="display:flex;flex-direction:column;gap:5px">
+                          <sc-for list="{{ p.rows }}" as="r" hint-placeholder-count="3">
+                            <div style="display:flex;align-items:baseline;gap:8px;padding:7px 10px;border-radius:11px;background:#faf9fe;border:1px solid #eee9f8">
+                              <span style="font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:#6b6482;flex:none">{{ r.k }}</span>
+                              <span style="font-size:11.5px;font-weight:600;color:#3c3559;flex:1;min-width:0;text-align:right">{{ r.v }}</span>
+                            </div>
+                          </sc-for>
+                        </div>
+
+                        <sc-if value="{{ p.spaces }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex;flex-wrap:wrap;gap:5px">
+                            <sc-for list="{{ p.spaces }}" as="e" hint-placeholder-count="3">
+                              <span style="{{ e.style }}">{{ e.label }}</span>
+                            </sc-for>
+                          </div>
+                        </sc-if>
+
+                        <sc-if value="{{ p.warn }}" hint-placeholder-val="{{ false }}">
+                          <span style="{{ p.warnStyle }}">{{ p.warn }}</span>
+                        </sc-if>
+
+                        <div style="display:flex;align-items:center;gap:9px;padding-top:2px">
+                          <span style="font-size:11px;color:#6b6482">{{ p.foot }}</span>
+                          <span style="flex:1"></span>
+                          <button type="button" onClick="{{ p.onOpen }}" style="{{ p.openStyle }}">{{ p.openLabel }}</button>
+                        </div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isSemana }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1;min-height:0;overflow:auto;padding:18px 20px 24px;display:flex;flex-direction:column;gap:16px">
+                <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+                  <span style="font-family:Outfit,sans-serif;font-size:19px;font-weight:600">Semana de funcionamento</span>
+                  <span style="font-size:12.5px;color:#6b6482">quais locais abrem em cada dia — quem trabalha neles é a Escala</span>
+                </div>
+
+                <div style="border:1px solid #e6e1f2;border-radius:14px;background:#fff;overflow:hidden">
+                  <div style="display:flex;gap:6px;padding:9px 14px;background:#f7f5fd;border-bottom:1px solid #e6e1f2">
+                    <span style="width:176px;flex:none;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:#6b6482">Local</span>
+                    <sc-for list="{{ dayHeads }}" as="d" hint-placeholder-count="7">
+                      <span style="{{ d.style }}">{{ d.label }}</span>
+                    </sc-for>
+                    <span style="width:84px;flex:none;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:#6b6482;text-align:right">Dias</span>
+                  </div>
+                  <sc-for list="{{ grid }}" as="g" hint-placeholder-count="5">
+                    <div style="display:flex;gap:6px;padding:9px 14px;border-bottom:1px solid #f2eefa;align-items:center">
+                      <div style="width:176px;flex:none;display:flex;flex-direction:column;gap:1px;min-width:0">
+                        <span style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ g.name }}</span>
+                        <span style="font-size:10px;color:#6b6482">{{ g.period }}</span>
+                      </div>
+                      <sc-for list="{{ g.cells }}" as="c" hint-placeholder-count="7">
+                        <span style="{{ c.style }}">{{ c.label }}</span>
+                      </sc-for>
+                      <span style="width:84px;flex:none;text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#5b5473">{{ g.count }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:8px;padding:14px 15px;background:#fff;border:1px solid #e6e1f2;border-radius:14px">
+                  <span style="font-size:13px;font-weight:700">Onde esses dias aparecem</span>
+                  <sc-for list="{{ whereUsed }}" as="w" hint-placeholder-count="3">
+                    <div style="display:flex;gap:9px;align-items:baseline">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#6C2BF2;flex:none;width:104px">{{ w.mod }}</span>
+                      <span style="font-size:12px;line-height:1.5;color:#5b5473;flex:1">{{ w.what }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isRegistros }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1;min-height:0;overflow:auto;padding:18px 20px 24px;display:flex;flex-direction:column;gap:14px">
+                <div style="display:flex;align-items:baseline;gap:12px">
+                  <span style="font-family:Outfit,sans-serif;font-size:19px;font-weight:600">Registros</span>
+                  <span style="font-size:12.5px;color:#6b6482">o que mudou no funcionamento e o que aquilo mexeu</span>
+                </div>
+                <div style="border:1px solid #e6e1f2;border-radius:14px;background:#fff;overflow:hidden">
+                  <div style="display:flex;gap:10px;padding:9px 14px;background:#f7f5fd;border-bottom:1px solid #e6e1f2;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:#6b6482">
+                    <span style="width:96px;flex:none">Quando</span>
+                    <span style="width:132px;flex:none">Local</span>
+                    <span style="width:106px;flex:none">O que mudou</span>
+                    <span style="flex:1">De → para</span>
+                    <span style="width:168px;flex:none">Reflexo</span>
+                    <span style="width:96px;flex:none">Quem</span>
+                  </div>
+                  <sc-for list="{{ logs }}" as="l" hint-placeholder-count="6">
+                    <div style="display:flex;gap:10px;padding:10px 14px;border-bottom:1px solid #f2eefa;font-size:12.5px;align-items:flex-start">
+                      <span style="width:96px;flex:none;color:#6b6482;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.4">{{ l.when }}</span>
+                      <span style="width:132px;flex:none;font-weight:600;line-height:1.4">{{ l.place }}</span>
+                      <span style="width:106px;flex:none;color:#5b5473;line-height:1.4">{{ l.what }}</span>
+                      <span style="flex:1;color:#3c3559;line-height:1.4">{{ l.diff }}</span>
+                      <span style="width:168px;flex:none;color:#6b6482;font-size:11.5px;line-height:1.4">{{ l.effect }}</span>
+                      <span style="width:96px;flex:none;color:#5b5473;font-size:11.5px">{{ l.by }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ det }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;inset:0;background:rgba(28,20,64,.32);display:flex;justify-content:flex-end;z-index:7">
+                <div style="width:512px;max-width:92%;background:#fff;display:flex;flex-direction:column;box-shadow:-24px 0 54px -30px rgba(40,20,90,.5)">
+                  <div style="display:flex;align-items:center;gap:11px;padding:14px 17px;border-bottom:1px solid #f0ecf9">
+                    <span style="width:10px;height:10px;border-radius:50%;flex:none;background:{{ det.dot }}"></span>
+                    <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0">
+                      <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">{{ det.title }}</span>
+                      <span style="font-size:11.5px;color:#6b6482">{{ det.sub }}</span>
+                    </div>
+                    <button type="button" onClick="{{ det.onClose }}" style="width:28px;height:28px;flex:none;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:14px;cursor:pointer">×</button>
+                  </div>
+
+                  <div style="flex:1;overflow:auto;padding:16px 17px 20px;display:flex;flex-direction:column;gap:17px">
+
+                    <div style="display:flex;gap:11px">
+                      <div style="display:flex;flex-direction:column;gap:7px;flex:1">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Nome do local</span>
+                        <input value="{{ det.nameValue }}" onChange="{{ det.onName }}" readOnly="{{ det.readOnly }}" placeholder="Snowland, Vila Germânica…" style="height:36px;padding:0 11px;border:1px solid #e6e1f2;border-radius:11px;background:#faf9fe;font-family:Manrope,sans-serif;font-size:13px;color:#3c3559;outline:none" />
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:7px;width:150px;flex:none">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Cidade</span>
+                        <input value="{{ det.cityValue }}" onChange="{{ det.onCity }}" readOnly="{{ det.readOnly }}" placeholder="Gramado" style="height:36px;padding:0 11px;border:1px solid #e6e1f2;border-radius:11px;background:#faf9fe;font-family:Manrope,sans-serif;font-size:13px;color:#3c3559;outline:none" />
+                      </div>
+                    </div>
+
+                    <div style="display:flex;flex-direction:column;gap:9px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Tipo</span>
+                      <div style="display:flex;gap:6px;flex-wrap:wrap">
+                        <sc-for list="{{ det.kinds }}" as="k" hint-placeholder-count="2">
+                          <button type="button" onClick="{{ k.onClick }}" style="{{ k.style }}">{{ k.label }}</button>
+                        </sc-for>
+                      </div>
+                      <span style="font-size:11.5px;line-height:1.45;color:#5b5473">{{ det.kindNote }}</span>
+                    </div>
+
+                    <div style="display:flex;flex-direction:column;gap:9px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">{{ det.periodTitle }}</span>
+                      <sc-if value="{{ det.cal }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex;flex-direction:column;gap:10px;padding:13px;border:1px solid #e6e1f2;border-radius:13px;background:#faf9fe">
+                          <div style="display:flex;align-items:center;gap:9px">
+                            <button type="button" onClick="{{ det.cal.onPrev }}" style="{{ det.cal.navStyle }}">‹</button>
+                            <span style="flex:1;text-align:center;font-family:Outfit,sans-serif;font-size:14px;font-weight:600;text-transform:capitalize">{{ det.cal.month }}</span>
+                            <button type="button" onClick="{{ det.cal.onNext }}" style="{{ det.cal.navStyle }}">›</button>
+                          </div>
+                          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">
+                            <sc-for list="{{ det.cal.heads }}" as="h" hint-placeholder-count="7">
+                              <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#6b6482;padding-bottom:2px">{{ h }}</div>
+                            </sc-for>
+                            <sc-for list="{{ det.cal.cells }}" as="c" hint-placeholder-count="35">
+                              <div onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.label }}</div>
+                            </sc-for>
+                          </div>
+                          <span style="font-size:11px;line-height:1.45;color:#6b6482">{{ det.cal.hint }}</span>
+                          <div style="display:flex;flex-wrap:wrap;gap:6px">
+                            <sc-for list="{{ det.cal.chips }}" as="c" hint-placeholder-count="2">
+                              <div style="{{ c.style }}">
+                                <span>{{ c.label }}</span>
+                                <button type="button" onClick="{{ c.onDrop }}" style="{{ c.dropStyle }}">×</button>
+                              </div>
+                            </sc-for>
+                          </div>
+                          <span style="font-size:11.5px;font-weight:600;color:#5b5473">{{ det.cal.total }}</span>
+                        </div>
+                      </sc-if>
+                      <sc-if value="{{ det.isPerm }}" hint-placeholder-val="{{ true }}">
+                        <div style="display:flex;align-items:center;gap:8px">
+                          <input value="{{ det.fromValue }}" onChange="{{ det.onFrom }}" readOnly="{{ det.readOnly }}" placeholder="1 mar" style="box-sizing:border-box;height:34px;flex:1;min-width:0;padding:0 11px;border:1px solid #e6e1f2;border-radius:11px;background:#faf9fe;font-family:Manrope,sans-serif;font-size:12.5px;color:#3c3559;outline:none" />
+                          <span style="font-size:12px;color:#6b6482;flex:none">até</span>
+                          <input value="{{ det.toValue }}" onChange="{{ det.onTo }}" readOnly="{{ det.readOnly }}" placeholder="30 nov" style="box-sizing:border-box;height:34px;flex:1;min-width:0;padding:0 11px;border:1px solid #e6e1f2;border-radius:11px;background:#faf9fe;font-family:Manrope,sans-serif;font-size:12.5px;color:#3c3559;outline:none" />
+                          <button type="button" onClick="{{ det.onAllYear }}" style="{{ det.allYearStyle }}">{{ det.allYearLabel }}</button>
+                        </div>
+                      </sc-if>
+                    </div>
+
+                    <div style="{{ det.daysBoxStyle }}">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Dias em que opera</span>
+                      <div style="display:flex;gap:5px">
+                        <sc-for list="{{ det.days }}" as="d" hint-placeholder-count="7">
+                          <button type="button" onClick="{{ d.onClick }}" style="{{ d.style }}">{{ d.label }}</button>
+                        </sc-for>
+                      </div>
+                      <span style="font-size:11.5px;line-height:1.45;color:#5b5473">{{ det.daysNote }}</span>
+                    </div>
+
+                    <sc-if value="{{ det.reflex }}" hint-placeholder-val="{{ false }}">
+                      <div style="{{ det.reflex.style }}">
+                        <span style="font-size:12.5px;font-weight:700">{{ det.reflex.title }}</span>
+                        <div style="display:flex;flex-direction:column;gap:4px">
+                          <sc-for list="{{ det.reflex.lines }}" as="ln" hint-placeholder-count="3">
+                            <div style="display:flex;gap:8px;font-size:12px;line-height:1.45">
+                              <span style="opacity:.5">·</span>
+                              <span>{{ ln }}</span>
+                            </div>
+                          </sc-for>
+                        </div>
+                      </div>
+                    </sc-if>
+
+                    <div style="display:flex;flex-direction:column;gap:10px">
+                      <div style="display:flex;align-items:baseline;gap:9px">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Espaços dentro do local</span>
+                        <span style="flex:1"></span>
+                        <span style="font-size:11px;color:#6b6482">{{ det.spacesHint }}</span>
+                      </div>
+
+                      <sc-for list="{{ det.spaces }}" as="e" hint-placeholder-count="3">
+                        <div style="display:flex;flex-direction:column;gap:8px;padding:10px 11px;border-radius:12px;border:1px solid #e6e1f2;background:#fff">
+                          <div style="display:flex;align-items:center;gap:8px">
+                            <input value="{{ e.nameValue }}" onChange="{{ e.onName }}" readOnly="{{ det.readOnly }}" placeholder="Palco A, sala de ensaio 2…" style="flex:1;min-width:0;height:34px;padding:0 11px;border:1px solid #e6e1f2;border-radius:10px;background:#faf9fe;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:600;color:#3c3559;outline:none" />
+                            <input value="{{ e.capValue }}" onChange="{{ e.onCap }}" readOnly="{{ det.readOnly }}" placeholder="cap." style="box-sizing:border-box;width:66px;flex:none;height:34px;padding:0 10px;border:1px solid #e6e1f2;border-radius:10px;background:#faf9fe;font-family:'JetBrains Mono',monospace;font-size:12px;color:#3c3559;outline:none;text-align:center" />
+                            <button type="button" onClick="{{ e.onRemove }}" style="{{ e.removeStyle }}">remover</button>
+                          </div>
+                          <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+                            <sc-for list="{{ e.kinds }}" as="k" hint-placeholder-count="3">
+                              <button type="button" onClick="{{ k.onClick }}" style="{{ k.style }}">{{ k.label }}</button>
+                            </sc-for>
+                            <span style="flex:1;min-width:8px"></span>
+                            <button type="button" onClick="{{ e.onBook }}" style="{{ e.bookStyle }}">{{ e.bookLabel }}</button>
+                          </div>
+                          <span style="font-size:10.5px;line-height:1.45;color:#6b6482">{{ e.note }}</span>
+                        </div>
+                      </sc-for>
+
+                      <sc-if value="{{ det.onAddSpace }}" hint-placeholder-val="{{ false }}">
+                        <button type="button" onClick="{{ det.onAddSpace }}" style="height:36px;border-radius:11px;border:1px dashed #ddd0fb;background:#faf9fe;color:#6C2BF2;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer">Adicionar espaço</button>
+                      </sc-if>
+                      <sc-if value="{{ det.noSpaces }}" hint-placeholder-val="{{ false }}">
+                        <span style="font-size:11.5px;line-height:1.45;padding:9px 10px;border-radius:11px;border:1px solid #f0d9a8;background:#fdf7e8;color:#5c4310">{{ det.noSpaces }}</span>
+                      </sc-if>
+                      <span style="font-size:11.5px;line-height:1.45;color:#5b5473">{{ det.spacesNote }}</span>
+                    </div>
+
+                    <sc-if value="{{ det.showEnded }}" hint-collapse="true">
+                      <div style="display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:12px;border:1px solid {{ det.endedBorder }};background:{{ det.endedBg }}">
+                        <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                          <span style="font-size:12.5px;font-weight:700">{{ det.endedTitle }}</span>
+                          <span style="font-size:11.5px;line-height:1.45;color:#5b5473;text-wrap:pretty">{{ det.endedBody }}</span>
+                        </span>
+                        <button type="button" onClick="{{ det.onToggleEnded }}" style="{{ det.endedBtnStyle }}">{{ det.endedBtn }}</button>
+                      </div>
+                    </sc-if>
+
+                    <div style="display:flex;flex-direction:column;gap:6px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">{{ det.whyLabel }}</span>
+                      <textarea value="{{ det.why }}" onChange="{{ det.onWhy }}" readOnly="{{ det.readOnly }}" placeholder="{{ det.whyPlaceholder }}" style="min-height:54px;resize:vertical;padding:9px 11px;border:1px solid #e6e1f2;border-radius:11px;background:#faf9fe;font-size:12.5px;line-height:1.45;color:#3c3559;font-family:Manrope,sans-serif"></textarea>
+                    </div>
+                  </div>
+
+                  <div style="display:flex;align-items:center;gap:9px;padding:13px 17px;border-top:1px solid #f0ecf9;background:#fff">
+                    <span style="font-size:11.5px;color:#6b6482;flex:1;line-height:1.4">{{ det.footNote }}</span>
+                    <button type="button" onClick="{{ det.onClose }}" style="{{ det.cancelStyle }}">Cancelar</button>
+                    <button type="button" onClick="{{ det.onSave }}" style="{{ det.saveStyle }}">{{ det.saveLabel }}</button>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ asaOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;right:0;top:0;bottom:0;width:352px;background:#fff;border-left:1px solid #e6e1f2;box-shadow:-24px 0 48px -34px rgba(40,20,90,.4);display:flex;flex-direction:column;z-index:8">
+                <div style="display:flex;align-items:center;gap:10px;padding:13px 15px;border-bottom:1px solid #f0ecf9">
+                  <img src="assets/asa/estudando.png" alt="" style="width:30px;height:30px;object-fit:contain" />
+                  <div style="display:flex;flex-direction:column;gap:1px;flex:1">
+                    <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">ASA · locais</span>
+                    <span style="font-size:11px;color:#6b6482">{{ asaHint }}</span>
+                  </div>
+                  <button type="button" onClick="{{ toggleAsa }}" style="width:26px;height:26px;border-radius:8px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:13px;cursor:pointer">×</button>
+                </div>
+                <div style="flex:1;overflow:auto;padding:14px 15px;display:flex;flex-direction:column;gap:12px">
+                  <div style="padding:12px 13px;background:#f7f3ff;border:1px solid #e5d8fb;border-radius:13px">
+                    <span style="font-size:12.5px;line-height:1.5;color:#3c3559">{{ asaIntro }}</span>
+                  </div>
+                  <sc-for list="{{ asaCards }}" as="c" hint-placeholder-count="3">
+                    <div style="{{ c.style }}">
+                      <div style="display:flex;align-items:center;gap:8px">
+                        <span style="{{ c.tagStyle }}">{{ c.tag }}</span>
+                        <span style="flex:1"></span>
+                        <span style="font-size:10.5px;color:#6b6482;font-family:'JetBrains Mono',monospace">{{ c.conf }}</span>
+                      </div>
+                      <span style="font-size:13px;font-weight:600;line-height:1.4">{{ c.title }}</span>
+                      <span style="font-size:12px;line-height:1.5;color:#5b5473">{{ c.why }}</span>
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;line-height:1.5;color:#6C2BF2">{{ c.nums }}</span>
+                      <sc-if value="{{ c.open }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex;flex-direction:column;gap:4px;padding:9px 10px;background:#faf9fe;border:1px solid #eee9f8;border-radius:10px">
+                          <sc-for list="{{ c.lines }}" as="ln" hint-placeholder-count="3">
+                            <div style="display:flex;gap:7px;font-size:11.5px;line-height:1.45;color:#3c3559">
+                              <span style="color:#6b6482">·</span>
+                              <span>{{ ln }}</span>
+                            </div>
+                          </sc-for>
+                        </div>
+                      </sc-if>
+                      <div style="display:flex;gap:7px;padding-top:2px">
+                        <button type="button" onClick="{{ c.onReflex }}" style="height:29px;padding:0 11px;border-radius:9px;border:1px solid #ddd0fb;background:#fff;color:#6C2BF2;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap">{{ c.reflexLabel }}</button>
+                        <button type="button" onClick="{{ c.onApply }}" style="{{ c.ctaStyle }}">{{ c.cta }}</button>
+                        <span style="flex:1"></span>
+                        <button type="button" onClick="{{ c.onDismiss }}" style="height:29px;padding:0 11px;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:11.5px;font-weight:600;font-family:Manrope,sans-serif;cursor:pointer">Depois</button>
+                      </div>
+                    </div>
+                  </sc-for>
+                  <sc-if value="{{ asaEmpty }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:30px 14px;background:#faf9fe;border:1px dashed #ddd6ee;border-radius:13px">
+                      <img src="assets/asa-wing.png" alt="" style="width:38px;height:38px;object-fit:contain" />
+                      <span style="font-size:12.5px;font-weight:600">Nada pendente aqui</span>
+                      <span style="font-size:11.5px;color:#6b6482;text-align:center;line-height:1.5">{{ asaEmpty }}</span>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-if>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:0 0 390px;min-width:390px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Mobile · segue o Ver como</div>
+      <div style="width:390px;border:1px solid #ddd6ee;border-radius:38px;overflow:hidden;background:#1c1440;padding:9px;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="position:relative;background:#faf9fe;border-radius:30px;overflow:hidden;display:flex;flex-direction:column;height:826px">
+          <sc-if value="{{ moreOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:0;right:0;top:0;bottom:0;z-index:9;background:rgba(28,20,64,.42);display:flex;align-items:flex-end">
+              <div style="width:100%;max-height:88%;overflow-y:auto;background:#faf9fe;border-radius:22px 22px 30px 30px;padding:14px 14px 18px;display:flex;flex-direction:column;gap:12px">
+                <div style="display:flex;align-items:flex-start;gap:10px">
+                  <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0">
+                    <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">{{ moreTitle }}</span>
+                    <span style="font-size:11px;color:#6b6482">{{ moreSub }}</span>
+                  </div>
+                  <button type="button" onClick="{{ onCloseMore }}" style="width:28px;height:28px;flex:none;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:14px;cursor:pointer">×</button>
+                </div>
+                <a href="{{ moreAsa }}" style="display:flex;align-items:center;gap:11px;padding:12px;border-radius:14px;background:#f4edfe;border:1px solid #ddcbfa;text-decoration:none">
+                  <img src="assets/asa/oi.png" alt="" style="width:36px;height:36px;object-fit:contain;flex:none" />
+                  <span style="display:flex;flex-direction:column;gap:1px;min-width:0;flex:1">
+                    <span style="font-size:13px;font-weight:700;color:#5B23C9">Perguntar à ASA</span>
+                    <span style="font-size:11px;color:#5f4b8a">ela resolve sem você procurar a tela</span>
+                  </span>
+                </a>
+                <sc-for list="{{ moreGroups }}" as="g" hint-placeholder-count="4">
+                  <div style="display:flex;flex-direction:column;gap:6px">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482;padding:0 2px">{{ g.title }}</span>
+                    <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+                      <a href="{{ it.href }}" style="{{ it.style }}">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6b6482;flex:none;min-width:17px">{{ it.num }}</span>
+                        <span style="font-size:13px;font-weight:600;flex:1;min-width:0">{{ it.label }}</span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6b6482;flex:none">›</span>
+                      </a>
+                    </sc-for>
+                  </div>
+                </sc-for>
+                <a href="{{ morePerfil }}" style="display:flex;align-items:center;gap:10px;padding:12px;border-radius:14px;background:#fff;border:1px solid #eee9f6;text-decoration:none;color:#1b1630">
+                  <span style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+                  <span style="font-size:13px;font-weight:600;flex:1">Perfil e configurações</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6b6482">›</span>
+                </a>
+              </div>
+            </div>
+          </sc-if>
+          <div style="position:absolute;left:0;right:0;bottom:0;z-index:5;display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid #ebe6f6;background:#fff;padding:9px 4px 12px">
+            <sc-for list="{{ mobileTabs }}" as="t" hint-placeholder-count="5">
+              <a href="{{ t.href }}" onClick="{{ t.onClick }}" style="{{ t.style }}">
+                <span style="display:block;width:19px;height:19px;border-radius:6px;border:1.7px solid currentColor;opacity:.75"></span>
+                <span style="font-size:9.5px;font-weight:600;text-align:center">{{ t.label }}</span>
+              </a>
+            </sc-for>
+          </div>
+          
+          <div style="padding:12px 14px 10px;background:#fff;border-bottom:1px solid #ebe6f6;display:flex;flex-direction:column;gap:2px">
+            <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">Locais</span>
+            <span style="font-size:11.5px;color:#6b6482">{{ mob.sub }}</span>
+          </div>
+          <div style="flex:1;overflow:auto;padding:12px 14px 76px;display:flex;flex-direction:column;gap:11px">
+            <div style="{{ mob.noteStyle }}">{{ mob.note }}</div>
+            <sc-for list="{{ mob.cards }}" as="c" hint-placeholder-count="4">
+              <div style="{{ c.style }}">
+                <div style="display:flex;align-items:center;gap:9px">
+                  <span style="width:9px;height:9px;border-radius:50%;flex:none;background:{{ c.dot }}"></span>
+                  <span style="font-size:13.5px;font-weight:700;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</span>
+                  <span style="{{ c.chip }}">{{ c.state }}</span>
+                </div>
+                <span style="font-size:11px;color:#6b6482;line-height:1.45">{{ c.meta }}</span>
+                <div style="display:flex;gap:4px">
+                  <sc-for list="{{ c.week }}" as="d" hint-placeholder-count="7">
+                    <div style="{{ d.style }}">{{ d.label }}</div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1720},&quot;perfilInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ADM&quot;,&quot;DIR&quot;,&quot;SUP&quot;,&quot;MEM&quot;],&quot;default&quot;:&quot;ADM&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Demonstração&quot;}}">
+const PROFILES = [
+  { key: "ADM", name: "Administração", person: "Barbara Sorroche", dot: "#6C2BF2", hint: "Cria local, define período, dias e os espaços de dentro dele." },
+  { key: "DIR", name: "Direção", person: "Cris Garcia", dot: "#2E63D6", hint: "Lê o funcionamento de todos os locais." },
+  { key: "SUP", name: "Supervisão", person: "Deborah", dot: "#0E8F86", hint: "Consulta os dias para pedir gente na Escala." },
+  { key: "MEM", name: "Elenco", person: "Julia", dot: "#C2508F", hint: "Vê onde a empresa opera e em que dias." }
+];
+
+const NAV = [
+  { title: "Porta de entrada", items: [
+    ["17", "Início / Meu Dia", ["ADM","DIR","SUP","MEM"], "Meu Dia"]
+  ] },
+  { title: "O dia", items: [
+    ["20", "Agenda", ["ADM","DIR","SUP","MEM"], "Minha agenda"],
+    ["15", "Escalas", ["ADM","DIR","SUP","MEM"], "Minha escala"],
+    ["13", "Shows", ["ADM","DIR","SUP","MEM"], "Shows"],
+    ["14", "Livro do Dia", ["ADM","DIR","SUP","MEM"], "Meus shows"],
+    ["19", "Check-in e ocorrências", ["ADM","DIR","SUP","MEM"], "Check-in"],
+    ["10", "Responsabilidades e tarefas", ["ADM","DIR","SUP","MEM"], "Minhas tarefas"],
+    ["18", "Folgas", ["ADM","DIR","SUP","MEM"], "Minhas folgas"]
+  ] },
+  { title: "Gestão", items: [
+    ["16", "Painel", ["ADM","DIR","SUP"], null],
+    ["06", "Locais", ["ADM","DIR","SUP"], null],
+    ["07", "Pessoas", ["ADM","DIR","SUP"], null],
+    ["08", "Áreas", ["ADM","DIR","SUP","MEM"], "Meu grupo"],
+    ["25", "Reconhecimentos", ["ADM","DIR","SUP"], null]
+  ] },
+  { title: "Comunicação", items: [
+    ["22", "Avisos e Mural", ["ADM","DIR","SUP","MEM"], "Mural"],
+    ["23", "Mensagens", ["ADM","DIR","SUP","MEM"], "Conversas"],
+    ["24", "Biblioteca", ["ADM","DIR","SUP","MEM"], "Biblioteca"]
+  ] }
+];
+
+
+const MOBILE_TABS = {
+  ADM: [["17","Meu Dia"],["16","Painel"],["15","Escalas"],["22","Mural"],["mais","Mais"]],
+  DIR: [["17","Meu Dia"],["16","Painel"],["20","Agenda"],["22","Mural"],["mais","Mais"]],
+  SUP: [["17","Meu Dia"],["15","Escalas"],["07","Equipe"],["22","Mural"],["mais","Mais"]],
+  MEM: [["17","Meu Dia"],["15","Escala"],["22","Mural"],["23","Conversas"],["mais","Mais"]]
+};
+
+const NAV_HREF = {
+  "10": "10%20Responsabilidades%20e%20Tarefas.dc.html",
+  "13": "13%20Shows.dc.html",
+  "14": "14%20Livro%20do%20Dia.dc.html",
+  "15": "15%20Escalas.dc.html",
+  "16": "16%20Painel%20e%20indicadores.dc.html",
+  "17": "17%20Meu%20Dia.dc.html",
+  "18": "18%20Folgas.dc.html",
+  "19": "19%20Check-in%20e%20ocorr%C3%AAncias.dc.html",
+  "20": "20%20Agenda.dc.html",
+  "22": "22%20Avisos%20e%20Mural.dc.html",
+  "23": "23%20Mensagens.dc.html",
+  "24": "24%20Biblioteca.dc.html", "25": "25%20Reconhecimentos.dc.html",
+  "27": "27%20Assistente%20ASA.dc.html",
+  "28": "28%20Perfil%20e%20configura%C3%A7%C3%B5es.dc.html",
+  "06": "06%20Locais.dc.html",
+  "07": "07%20Pessoas.dc.html",
+  "08": "08%20%C3%81reas.dc.html"
+};
+
+const DAYS = ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"];
+const DAYNAME = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"];
+const TODAY = 0;
+
+// Espaço: o que de fato se reserva dentro do local. book = disputado (só um compromisso por horário).
+const SKINDS = ["Palco", "Sala", "Área"];
+const PLACES0 = [
+  { id: 1, name: "Snowland", city: "Gramado", kind: "Permanente", from: "1 mar", to: "30 nov", days: [true, true, false, true, true, true, true], prog: [true, true, false, true, true, true, true], shows: 3,
+    espacos: [
+      { id: 101, name: "Palco A", kind: "Palco", cap: 40, book: true },
+      { id: 102, name: "Palco B", kind: "Palco", cap: 30, book: true },
+      { id: 103, name: "Sala de figurino", kind: "Sala", cap: 12, book: true },
+      { id: 104, name: "Sala de reunião", kind: "Sala", cap: 8, book: true },
+      { id: 105, name: "Camarim", kind: "Área", cap: 20, book: false }
+    ] },
+  { id: 2, name: "Acquamotion", city: "Gramado", kind: "Permanente", from: "1 abr", to: "31 out", days: [false, true, true, true, true, true, true], prog: [true, true, true, true, true, true, true], shows: 2,
+    espacos: [
+      { id: 201, name: "Palco Aquático", kind: "Palco", cap: 35, book: true },
+      { id: 202, name: "Sala de ensaio", kind: "Sala", cap: 16, book: true },
+      { id: 203, name: "Camarim", kind: "Área", cap: 18, book: false }
+    ] },
+  { id: 3, name: "Hotelaria", city: "Gramado", kind: "Permanente", from: "", to: "", days: [true, true, true, true, true, true, true], prog: [true, true, true, true, true, true, true], shows: 0,
+    espacos: [
+      { id: 301, name: "Sala de reunião", kind: "Sala", cap: 10, book: true },
+      { id: 302, name: "Sala multiuso", kind: "Sala", cap: 24, book: true }
+    ] },
+  { id: 4, name: "Vila Germânica", city: "Blumenau", kind: "Evento", periods: [{ m: 9, d1: 1, d2: 20 }], from: "1 out", to: "20 out", days: [false, false, false, true, true, true, true], prog: [false, false, false, false, false, false, false], shows: 1,
+    espacos: [
+      { id: 401, name: "Palco Externo", kind: "Palco", cap: 60, book: false },
+      { id: 402, name: "Tenda de apoio", kind: "Área", cap: 15, book: false }
+    ] },
+  { id: 5, name: "Festival de Inverno", city: "Canela", kind: "Evento", periods: [{ m: 6, d1: 10, d2: 13 }, { m: 6, d1: 20, d2: 25 }], from: "10 jul", to: "25 jul", days: [false, false, false, true, true, true, true], prog: [false, false, false, true, true, true, true], shows: 0, ended: true,
+    espacos: [{ id: 501, name: "Palco do Festival", kind: "Palco", cap: 50, book: true }] },
+  { id: 6, name: "Teatro Novo", city: "Gramado", kind: "Permanente", from: "", to: "", days: [false, false, false, false, false, false, false], prog: [false, false, false, false, false, false, false], shows: 0, espacos: [] }
+];
+
+const DOT = ["#0E8F86", "#2E63D6", "#C2508F", "#7E4BD8", "#B08415", "#6C2BF2"];
+const btn = (on, dot) => "display:flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:11px;white-space:nowrap;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;border:1px solid " + (on ? dot : "#e6e1f2") + ";background:" + (on ? dot + "14" : "#fff") + ";color:" + (on ? dot : "#5b5473");
+const plural = (n, s, p) => n + " " + (n === 1 ? s : p);
+const MONTHS = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+const MONTHFULL = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+const DIM = [31,28,31,30,31,30,31,31,30,31,30,31];
+// 1 jan de 2026 cai numa quinta → índice 3 na semana que começa na segunda.
+const firstDow = m => { let d = 3; for (let i = 0; i < m; i++) d = (d + DIM[i]) % 7; return d; };
+const rangeText = r => r.d1 === r.d2 ? (r.d1 + " " + MONTHS[r.m]) : (r.d1 + " a " + r.d2 + " " + MONTHS[r.m]);
+const periodsText = ps => (ps && ps.length) ? ps.map(rangeText).join(" · ") : "sem datas";
+const periodOf = p => p.kind === "Evento"
+  ? periodsText(p.periods)
+  : ((p.from && p.to) ? (p.from + " – " + p.to) : "todo o ano");
+const daysInPeriods = ps => (ps || []).reduce((a, r) => a + (r.d2 - r.d1 + 1), 0);
+const TODAY_M = 8, TODAY_D = 2;
+const isEvent = p => p.kind === "Evento";
+const spacesOf = p => p.espacos || [];
+const bookables = p => spacesOf(p).filter(e => e.book);
+const eventNow = p => (p.periods || []).some(r => r.m === TODAY_M && TODAY_D >= r.d1 && TODAY_D <= r.d2);
+const eventPast = p => (p.periods || []).length > 0 && (p.periods || []).every(r => r.m < TODAY_M || (r.m === TODAY_M && r.d2 < TODAY_D));
+
+class Component extends DCLogic {
+  state = {
+    profile: "ADM", tab: "locais", open: null, draft: null, why: "", calM: 9, pick: null, nextSpaceId: 900,
+    asa: false, asaCard: null, dismissed: {},
+    places: JSON.parse(JSON.stringify(PLACES0)),
+    logs: [
+      { when: "hoje 07:40", place: "Vila Germânica", what: "Criação", diff: "evento criado · 1 out a 20 out · qui a dom", effect: "a Programação ainda não tem horários para ele", by: "Barbara Sorroche" },
+      { when: "26 ago 15:10", place: "Acquamotion", what: "Dias", diff: "segunda passou a não operar", effect: "2 horários na segunda ficaram órfãos na Programação", by: "Barbara Sorroche" },
+      { when: "20 ago 09:25", place: "Snowland", what: "Período", diff: "fim: 15 nov → 30 nov", effect: "duas semanas a mais pedindo gente na Escala", by: "Barbara Sorroche" },
+      { when: "12 ago 11:00", place: "Teatro Novo", what: "Criação", diff: "local criado sem dias de funcionamento", effect: "não entra na Escala enquanto não tiver dias", by: "Barbara Sorroche" },
+      { when: "1 ago 08:15", place: "Festival de Inverno", what: "Período", diff: "10 jul – 25 jul", effect: "evento encerrado, ainda não arquivado", by: "Barbara Sorroche" },
+      { when: "18 jul 17:30", place: "Hotelaria", what: "Dias", diff: "passou a operar sete dias", effect: "a Escala pede gente todos os dias", by: "Barbara Sorroche" }
+    ]
+  };
+
+  componentDidMount() {
+    const p = this.props.perfilInicial;
+    if (p && p !== this.state.profile) this.setState({ profile: p });
+  }
+
+  placeOf(id) { return this.state.places.find(p => p.id === id); }
+  daysCount(p) { return isEvent(p) ? daysInPeriods(p.periods) : p.days.filter(Boolean).length; }
+  openToday(p) { return !p.ended && (isEvent(p) ? eventNow(p) : p.days[TODAY]); }
+  conflicts(p) { return p.prog.map((v, i) => (v && !p.days[i]) ? i : -1).filter(i => i >= 0); }
+
+  renderVals() {
+    const self0 = this;
+    const selfIdConst = "06";
+    const st = this.state;
+    const active = st.profile;
+    const meta = PROFILES.find(p => p.key === active) || PROFILES[0];
+    const canEdit = active === "ADM";
+    const isMem = active === "MEM";
+
+    const profileTabs = PROFILES.map(p => ({
+      name: p.name, dot: p.dot,
+      onClick: () => this.setState({ profile: p.key, tab: "locais", open: null, draft: null, why: "", asa: false, asaCard: null }),
+      style: btn(p.key === active, p.dot)
+    }));
+
+    const shellNav = NAV.map(g => ({
+      title: g.title,
+      items: g.items.filter(it => it[2].indexOf(active) >= 0).map(it => {
+        const on = it[0] === "06";
+        return {
+          href: NAV_HREF[it[0]],
+          label: (isMem && it[3] ? it[3] : it[1]),
+          style: "font-size:12px;padding:6px 9px;border-radius:9px;color:" + (on ? "#fff" : "#c8c0e4") + ";background:" + (on ? "rgba(255,255,255,.13)" : "transparent") + ";font-weight:" + (on ? 700 : 500)
+        };
+      })
+    }));
+
+    const tabDefs = [["locais", "Locais"], ["semana", "Semana"], ["registros", "Registros"]];
+    const tabs = tabDefs.filter(t => !(isMem && t[0] === "registros")).map(t => ({
+      label: t[1],
+      onClick: () => this.setState({ tab: t[0], open: null }),
+      style: "border:none;background:transparent;font-family:Manrope,sans-serif;font-size:13px;font-weight:" + (st.tab === t[0] ? 700 : 500) + ";color:" + (st.tab === t[0] ? "#6C2BF2" : "#6b6482") + ";padding:11px 4px;margin-right:12px;cursor:pointer;border-bottom:2px solid " + (st.tab === t[0] ? "#6C2BF2" : "transparent")
+    }));
+
+    const dayPill = (on, today) => "width:30px;height:24px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;text-transform:uppercase;background:" + (on ? "#e2f4f2" : "#f4f2fa") + ";color:" + (on ? "#0b6b64" : "#6b6482") + ";border:1px solid " + (today ? "#6C2BF2" : "transparent");
+
+    const places = st.places.map((p, i) => {
+      const nd = this.daysCount(p);
+      const conf = this.conflicts(p);
+      const noProg = p.prog.every(v => !v) && nd > 0;
+      const bad = nd === 0 || p.ended || conf.length > 0 || noProg;
+      return {
+        name: p.name, dot: DOT[i % DOT.length],
+        sub: p.city + " · " + (p.kind === "Evento" ? "evento" : "permanente"),
+        stateLabel: isEvent(p)
+          ? (p.ended || eventPast(p) ? "encerrado" : nd === 0 ? "sem datas" : eventNow(p) ? "em cartaz" : "aguardando a data")
+          : (p.ended ? "encerrado" : nd === 0 ? "sem dias" : this.openToday(p) ? "abre hoje" : "fecha hoje"),
+        stateChip: "font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;padding:3px 8px;border-radius:999px;background:" + (p.ended || nd === 0 ? "#fdf5f5" : this.openToday(p) ? "#e2f4f2" : "#f4f2fa") + ";color:" + (p.ended || nd === 0 ? "#a12c2c" : this.openToday(p) ? "#0b6b64" : "#6b6482"),
+        week: isEvent(p) ? [] : DAYS.map((d, k) => ({ label: d, style: dayPill(p.days[k], k === TODAY) })),
+        rows: [
+          { k: isEvent(p) ? "Datas" : "Período", v: periodOf(p) },
+          { k: isEvent(p) ? "Duração" : "Opera", v: nd === 0
+            ? (isEvent(p) ? "nenhuma data" : "nenhum dia")
+            : (isEvent(p) ? plural(nd, "dia de evento", "dias de evento") : plural(nd, "dia por semana", "dias por semana")) },
+          { k: "Shows programados", v: p.shows ? plural(p.shows, "show", "shows") : "nenhum ainda" },
+          { k: "Espaços", v: spacesOf(p).length
+            ? spacesOf(p).length + " · " + (bookables(p).length ? plural(bookables(p).length, "reservável", "reserváveis") : "nenhum reservável")
+            : "nenhum cadastrado" }
+        ],
+        spaces: spacesOf(p).length ? spacesOf(p).map(e => ({
+          label: e.name + (e.cap ? " · " + e.cap : ""),
+          style: "font-size:10.5px;font-weight:700;white-space:nowrap;padding:4px 9px;border-radius:999px;border:1px solid " + (e.book ? "#ddd0fb" : "#eee9f8") + ";background:" + (e.book ? "#f7f3ff" : "#faf9fe") + ";color:" + (e.book ? "#5a25c9" : "#6b6482")
+        })) : false,
+        warn: nd === 0
+          ? (isEvent(p)
+            ? "Sem data marcada o evento não existe para a Escala: ninguém pode ser escalado nele."
+            : "Sem dia de funcionamento este local não existe para a Escala: ninguém pode ser escalado nele.")
+          : p.ended
+            ? "O evento terminou em " + periodOf(p) + " e continua aberto. Enquanto estiver, aparece nos filtros e na Programação."
+            : conf.length
+              ? "A Programação tem horário " + (conf.length === 1 ? "na " + DAYNAME[conf[0]] : "em " + conf.length + " dias") + ", que o local não opera. Esses horários não geram escala."
+              : noProg
+                ? "Nenhum horário na Programação: a Escala não tem o que montar para este local."
+                : false,
+        warnStyle: "font-size:11.5px;line-height:1.45;border-radius:10px;padding:8px 10px;color:" + (nd === 0 || p.ended ? "#a12c2c" : "#8a6413") + ";background:" + (nd === 0 || p.ended ? "#fdf5f5" : "#fdf7e8") + ";border:1px solid " + (nd === 0 || p.ended ? "#f0bcbc" : "#f0d9a8"),
+        foot: isEvent(p) ? "evento · fora das datas não entra na Escala" : "permanente",
+        openLabel: canEdit ? "editar local" : "ver detalhes",
+        openStyle: "height:26px;padding:0 10px;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6C2BF2;font-size:11px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap",
+        onOpen: () => this.setState({ open: p.id, draft: JSON.parse(JSON.stringify(p)), why: "" }),
+        style: "display:flex;flex-direction:column;gap:10px;padding:14px 15px;background:#fff;border:1px solid " + (bad ? (nd === 0 || p.ended ? "#f0bcbc" : "#f0d9a8") : "#e6e1f2") + ";border-radius:14px"
+      };
+    });
+
+    const dayHeads = DAYS.map((d, k) => ({
+      label: d,
+      style: "flex:1;min-width:0;text-align:center;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:" + (k === TODAY ? "#6C2BF2" : "#6b6482")
+    }));
+
+    const grid = st.places.filter(p => !isEvent(p)).map(p => ({
+      name: p.name,
+      period: periodOf(p) + (p.ended ? " · encerrado" : ""),
+      count: this.daysCount(p) + "/7",
+      cells: p.days.map((on, k) => {
+        const conf = on === false && p.prog[k];
+        return {
+          label: p.ended ? "—" : on ? "abre" : conf ? "!" : "fecha",
+          style: "flex:1;min-width:0;text-align:center;padding:5px 0;border-radius:8px;font-size:10.5px;font-weight:700;background:" + (p.ended ? "#f4f2fa" : on ? "#e2f4f2" : conf ? "#fdf1dc" : "#f7f5fd") + ";color:" + (p.ended ? "#6b6482" : on ? "#0b6b64" : conf ? "#8a6413" : "#6b6482")
+        };
+      })
+    }));
+
+    const whereUsed = [
+      { mod: "15 Escalas", what: "só pede gente nos dias em que o local abre, dentro do período dele." },
+      { mod: "12 Programação", what: "só aceita horário em dia que o local opera — horário em dia fechado fica marcado." },
+      { mod: "13 Shows", what: "um show só pode ser programado em local que abre naquele dia." },
+      { mod: "18 Folgas", what: "não olha para cá: folga é regra da empresa, não do local." }
+    ];
+
+    let det = null;
+    if (st.open) {
+      const saved = this.placeOf(st.open);
+      const d = st.draft && st.draft.name !== undefined ? st.draft : (saved ? JSON.parse(JSON.stringify(saved)) : null);
+      if (d) {
+        const isNew = !saved;
+        const setD = patch => this.setState({ draft: Object.assign({}, d, patch) });
+        const changed = !saved || d.name !== saved.name || d.city !== saved.city || d.kind !== saved.kind || d.from !== saved.from || d.to !== saved.to || d.days.some((v, i) => v !== saved.days[i]) || JSON.stringify(d.periods || []) !== JSON.stringify(saved ? (saved.periods || []) : []) || JSON.stringify(d.espacos || []) !== JSON.stringify(saved ? (saved.espacos || []) : []) || !!d.ended !== !!(saved && saved.ended);
+        const nd = d.days.filter(Boolean).length;
+        const reabrindo = !!(saved && saved.ended && !d.ended);
+        const encerrando = !!(saved && !saved.ended && d.ended);
+        const podeSalvar = changed && (!reabrindo || st.why.trim());
+
+        const lines = [];
+        if (saved) {
+          const opened = d.days.map((v, i) => (v && !saved.days[i]) ? i : -1).filter(i => i >= 0);
+          const closed = d.days.map((v, i) => (!v && saved.days[i]) ? i : -1).filter(i => i >= 0);
+          if (opened.length) lines.push(opened.map(i => DAYNAME[i]).join(" e ") + (opened.length === 1 ? " passa" : " passam") + " a operar: a Escala vai pedir gente nesse dia e a Programação precisa de horários para ele.");
+          if (closed.length) lines.push(closed.map(i => DAYNAME[i]).join(" e ") + (closed.length === 1 ? " deixa" : " deixam") + " de operar: os horários e shows já marcados nesse dia ficam sem local até serem remarcados.");
+          if (d.from !== saved.from || d.to !== saved.to) lines.push("O período passa a ser " + periodOf(d) + ". Fora dele o local não aparece na Escala nem na Agenda.");
+          if (d.kind !== saved.kind) lines.push(d.kind === "Evento"
+            ? "Vira evento: passa a ter datas marcadas no calendário, e fora delas some sozinho da Escala e da Programação."
+            : "Vira permanente: deixa de ter data de fim e passa a ser cobrado todo ano dentro do período.");
+          if (d.name !== saved.name) lines.push("O nome muda na Escala, na Agenda e nos registros já publicados.");
+          if (nd === 0) lines.push("Sem nenhum dia de operação o local deixa de existir para a Escala — melhor encerrá-lo do que deixá-lo vazio.");
+          const so = saved.espacos || [], sn = d.espacos || [];
+          const addedS = sn.filter(e => !so.some(x => x.id === e.id));
+          const goneS = so.filter(e => !sn.some(x => x.id === e.id));
+          const bookS = sn.filter(e => { const o = so.find(x => x.id === e.id); return o && o.book !== e.book; });
+          if (addedS.length) lines.push(addedS.map(e => e.name || "espaço sem nome").join(", ") + (addedS.length === 1 ? " passa" : " passam") + " a poder ser escolhido na Agenda: reunião e ensaio podem marcar ali.");
+          if (goneS.length) lines.push(goneS.map(e => e.name).join(", ") + (goneS.length === 1 ? " sai" : " saem") + ": o que já está marcado ali fica sem espaço até ser remarcado.");
+          if (bookS.length) lines.push(bookS.map(e => e.name + (e.book ? " passa a ser disputado" : " deixa de ser disputado")).join(" · ") + ". Espaço disputado aceita um compromisso por horário; os outros a ASA avisa e recusa.");
+        } else {
+          lines.push("O local nasce " + (nd ? "operando " + plural(nd, "dia por semana", "dias por semana") : "sem dia de operação, e não entra na Escala assim") + ".");
+          lines.push("A Programação precisa dos horários dele para a Escala poder montar o dia.");
+          lines.push("Local não tem pessoas próprias: quem trabalha nele vem da Escala, de qualquer grupo.");
+          lines.push("Cadastre os espaços dele: é o espaço (palco, sala) que a Agenda reserva, não o local.");
+        }
+
+        const spaces = d.espacos || [];
+        const setSpace = (eid, patch) => setD({ espacos: spaces.map(x => x.id === eid ? Object.assign({}, x, patch) : x) });
+        const sChip = on => "height:26px;padding:0 10px;border-radius:9px;white-space:nowrap;font-family:Manrope,sans-serif;font-size:10.5px;font-weight:700;cursor:" + (canEdit ? "pointer" : "default") + ";border:1px solid " + (on ? "#6C2BF2" : "#e6e1f2") + ";background:" + (on ? "#f2ecfe" : "#fff") + ";color:" + (on ? "#6C2BF2" : canEdit ? "#6b6482" : "#c8c0e4");
+
+        det = {
+          title: d.name || "Novo local", dot: DOT[(st.places.findIndex(x => x.id === d.id) + 6) % DOT.length],
+          sub: isNew ? "local novo — nada gravado ainda" : d.city + " · " + periodOf(saved) + " · " + this.daysCount(saved) + "/7 dias",
+          nameValue: d.name, cityValue: d.city,
+          onName: e => setD({ name: e.target.value }),
+          onCity: e => setD({ city: e.target.value }),
+          readOnly: !canEdit,
+          onClose: () => this.setState({ open: null, draft: null, why: "" }),
+          kinds: ["Permanente", "Evento"].map(k => ({
+            label: k,
+            onClick: () => { if (canEdit) setD({ kind: k }); },
+            style: "height:30px;padding:0 14px;border-radius:10px;white-space:nowrap;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;cursor:" + (canEdit ? "pointer" : "default") + ";border:1px solid " + (d.kind === k ? "#6C2BF2" : "#e6e1f2") + ";background:" + (d.kind === k ? "#f2ecfe" : "#fff") + ";color:" + (d.kind === k ? "#6C2BF2" : canEdit ? "#6b6482" : "#c8c0e4")
+          })),
+          kindNote: d.kind === "Evento"
+            ? "Evento tem data de fim: quando ela passa, o local sai da Escala sozinho e a ASA avisa para arquivar."
+            : "Permanente pode ter uma janela do ano em que opera — fora dela, ninguém é escalado nele.",
+          periodTitle: d.kind === "Evento" ? "Datas do evento" : "Período de operação no ano",
+          isEvent: d.kind === "Evento", isPerm: d.kind !== "Evento",
+          daysBoxStyle: d.kind === "Evento" ? "display:none" : "display:flex;flex-direction:column;gap:9px",
+          cal: d.kind === "Evento" ? (function () {
+            const ps = d.periods || [];
+            const m = st.calM;
+            const inAny = day => ps.some(r => r.m === m && day >= r.d1 && day <= r.d2);
+            const edge = day => ps.some(r => r.m === m && (r.d1 === day || r.d2 === day));
+            const picking = st.pick && st.pick.m === m ? st.pick.d : null;
+            const cells = [];
+            for (let i = 0; i < firstDow(m); i++) cells.push({ label: "", style: "height:30px", onClick: null });
+            for (let day = 1; day <= DIM[m]; day++) {
+              const on = inAny(day);
+              const isPick = picking === day;
+              const inHover = picking && day > picking;
+              cells.push({
+                label: String(day),
+                onClick: !canEdit ? null : (() => {
+                  if (st.pick && st.pick.m === m) {
+                    const a = Math.min(st.pick.d, day), b = Math.max(st.pick.d, day);
+                    const kept = ps.filter(r => !(r.m === m && r.d1 <= b && r.d2 >= a));
+                    setD({ periods: kept.concat([{ m: m, d1: a, d2: b }]).sort((x, y) => x.m - y.m || x.d1 - y.d1) });
+                    this.setState({ pick: null });
+                  } else if (on) {
+                    setD({ periods: ps.filter(r => !(r.m === m && day >= r.d1 && day <= r.d2)) });
+                  } else {
+                    this.setState({ pick: { m: m, d: day } });
+                  }
+                }),
+                style: "height:30px;display:flex;align-items:center;justify-content:center;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:" + (on || isPick ? 700 : 500) + ";cursor:" + (canEdit ? "pointer" : "default") + ";border:1px solid " + (isPick ? "#6C2BF2" : edge(day) ? "#a884f0" : "transparent") + ";background:" + (isPick ? "#6C2BF2" : on ? "#ece4fd" : inHover ? "#faf7ff" : "transparent") + ";color:" + (isPick ? "#fff" : on ? "#5a25c9" : "#6b6482")
+              });
+            }
+            return {
+              month: MONTHFULL[m] + " de 2026",
+              heads: ["seg","ter","qua","qui","sex","sáb","dom"],
+              cells: cells,
+              onPrev: () => this.setState({ calM: (m + 11) % 12, pick: null }),
+              onNext: () => this.setState({ calM: (m + 1) % 12, pick: null }),
+              navStyle: "flex:none;width:28px;height:28px;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#5b5473;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center",
+              hint: st.pick
+                ? "Clique no dia final — ou no mesmo dia, para um período de um dia só."
+                : canEdit ? "Clique num dia para começar um período. Clique num dia já marcado para removê-lo." : "Leitura.",
+              chips: ps.map((r, i) => ({
+                label: rangeText(r),
+                onDrop: () => { if (canEdit) setD({ periods: ps.filter((x, k) => k !== i) }); },
+                dropStyle: canEdit ? "border:none;background:transparent;color:#6b6482;font-size:13px;cursor:pointer;line-height:1;padding:0" : "display:none",
+                style: "display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:#f3ebff;border:1px solid #e0d0fb;color:#5a25c9;font-size:11.5px;font-weight:700;white-space:nowrap"
+              })),
+              total: ps.length ? daysInPeriods(ps) + (daysInPeriods(ps) === 1 ? " dia no total" : " dias no total") + " · " + ps.length + (ps.length === 1 ? " período" : " períodos") : "nenhum período marcado — o evento não entra na Escala assim"
+            };
+          })() : false,
+          fromValue: d.from, toValue: d.to,
+          onFrom: e => setD({ from: e.target.value }),
+          onTo: e => setD({ to: e.target.value }),
+          onAllYear: () => { if (canEdit) setD({ from: "", to: "" }); },
+          allYearLabel: (d.from || d.to) ? "Todo o ano" : "Todo o ano ✓",
+          allYearStyle: "height:34px;flex:none;padding:0 12px;border-radius:11px;white-space:nowrap;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;cursor:" + (canEdit ? "pointer" : "default") + ";border:1px solid " + ((!d.from && !d.to) ? "#6C2BF2" : "#e6e1f2") + ";background:" + ((!d.from && !d.to) ? "#f2ecfe" : "#fff") + ";color:" + ((!d.from && !d.to) ? "#6C2BF2" : "#6b6482"),
+          days: DAYS.map((lb, k) => ({
+            label: lb,
+            onClick: () => { if (canEdit) { const nx = d.days.slice(); nx[k] = !nx[k]; setD({ days: nx }); } },
+            style: "width:44px;height:34px;flex:none;border-radius:10px;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;text-transform:uppercase;cursor:" + (canEdit ? "pointer" : "default") + ";border:1px solid " + (d.days[k] ? "#0E8F86" : "#e6e1f2") + ";background:" + (d.days[k] ? "#e2f4f2" : "#fff") + ";color:" + (d.days[k] ? "#0b6b64" : "#6b6482")
+          })),
+          daysNote: nd === 0
+            ? "Nenhum dia marcado: a Escala não vai pedir gente para este local."
+            : "Opera " + plural(nd, "dia por semana", "dias por semana") + ". Dia desmarcado não é folga de ninguém — é só ausência de trabalho aqui.",
+          spacesHint: canEdit ? "o que se reserva é o espaço, não o local" : "leitura",
+          spaces: spaces.map(e => ({
+            nameValue: e.name,
+            onName: ev => setSpace(e.id, { name: ev.target.value }),
+            capValue: e.cap ? String(e.cap) : "",
+            onCap: ev => setSpace(e.id, { cap: parseInt(ev.target.value.replace(/[^0-9]/g, ""), 10) || 0 }),
+            kinds: SKINDS.map(k => ({ label: k, onClick: () => { if (canEdit) setSpace(e.id, { kind: k }); }, style: sChip(e.kind === k) })),
+            onBook: () => { if (canEdit) setSpace(e.id, { book: !e.book }); },
+            bookLabel: e.book ? "disputado ✓" : "uso livre",
+            bookStyle: "height:26px;padding:0 11px;flex:none;border-radius:9px;white-space:nowrap;font-family:Manrope,sans-serif;font-size:10.5px;font-weight:700;cursor:" + (canEdit ? "pointer" : "default") + ";border:1px solid " + (e.book ? "#a884f0" : "#e6e1f2") + ";background:" + (e.book ? "#f3ebff" : "#fff") + ";color:" + (e.book ? "#5a25c9" : "#6b6482"),
+            onRemove: () => { if (canEdit) setD({ espacos: spaces.filter(x => x.id !== e.id) }); },
+            removeStyle: canEdit ? "height:30px;padding:0 11px;flex:none;border-radius:9px;border:1px solid #f0bcbc;background:#fff;color:#a12c2c;font-size:11px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer" : "display:none",
+            note: !e.name.trim() ? "Sem nome ele não aparece como opção em lugar nenhum."
+              : e.book
+                ? (e.cap ? "Um compromisso por horário. Cabem " + e.cap + " pessoas — a ASA avisa quando o grupo não cabe." : "Um compromisso por horário. Sem capacidade, a ASA não sabe avisar quando o grupo não cabe.")
+                : "Uso livre: vários ao mesmo tempo, ninguém reserva. Bom para camarim e área de apoio."
+          })),
+          onAddSpace: canEdit ? () => {
+            const id = st.nextSpaceId;
+            this.setState({ nextSpaceId: id + 1, draft: Object.assign({}, d, { espacos: spaces.concat([{ id: id, name: "", kind: "Sala", cap: 0, book: true }]) }) });
+          } : false,
+          noSpaces: spaces.length ? false : "Nenhum espaço: dá para escalar gente para este local, mas ninguém consegue marcar reunião nem ensaio aqui — não há o que reservar.",
+          spacesNote: "Dois compromissos podem acontecer no mesmo local, nunca no mesmo espaço disputado e no mesmo horário. Reunião online não ocupa espaço — só a jornada de quem participa.",
+          showEnded: (canEdit && !isNew) ? true : null,
+          endedTitle: encerrando ? "Encerramento pendente" : reabrindo ? "Reabertura pendente" : d.ended ? "Local encerrado" : "Local em operação",
+          endedBody: encerrando
+            ? "Vai sair da Escala e da Agenda quando você salvar. Até então continua operando."
+            : reabrindo
+              ? "Vai voltar para a Escala e a Agenda quando você salvar — e reabrir exige motivo."
+              : d.ended
+                ? "Não aparece na Escala nem na Agenda. O histórico fica guardado."
+                : "Aparece normalmente na Escala e na Agenda.",
+          endedBorder: (reabrindo || encerrando) ? "#f0d9a8" : "#e6e1f2",
+          endedBg: (reabrindo || encerrando) ? "#fdf7e8" : "#faf9fe",
+          endedBtn: (reabrindo || encerrando) ? "Desfazer" : d.ended ? "Reabrir" : "Encerrar",
+          endedBtnStyle: "flex:none;min-height:34px;padding:0 13px;border-radius:11px;border:1px solid " + (d.ended ? "#6C2BF2" : "#e6e1f2") + ";background:#fff;color:" + (d.ended ? "#5B23C9" : "#5b5473") + ";font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap",
+          onToggleEnded: () => setD({ ended: !d.ended }),
+          reabrindo: reabrindo,
+          reflex: changed && lines.length ? {
+            title: isNew ? "O que este local passa a valer" : "O que muda quando você salvar",
+            lines: lines,
+            style: "display:flex;flex-direction:column;gap:8px;padding:12px 13px;border-radius:12px;border:1px solid #f0d9a8;background:#fdf7e8;color:#5c4310"
+          } : false,
+          why: st.why,
+          onWhy: e => this.setState({ why: e.target.value }),
+          whyLabel: reabrindo ? "Por que está reabrindo" : "Motivo da mudança (opcional)",
+          whyPlaceholder: reabrindo
+            ? "Este local estava encerrado. Diga por que está voltando a operar — isto é obrigatório."
+            : "Se quiser deixar registrado o porquê, escreva aqui. Não é obrigatório.",
+          footNote: !canEdit ? "Mudar funcionamento de local é da administração." : !changed ? "Nada mudou ainda." : reabrindo ? (st.why.trim() ? "O motivo da reabertura vai para os Registros." : "Reabrir local encerrado exige motivo.") : (st.why.trim() ? "O motivo vai para os Registros junto com o reflexo." : "A mudança e o reflexo vão para os Registros de qualquer forma."),
+          cancelStyle: canEdit ? "height:34px;padding:0 13px;border-radius:11px;border:1px solid #e6e1f2;background:#fff;color:#5b5473;font-size:12.5px;font-weight:600;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap" : "display:none",
+          saveLabel: !canEdit ? "Fechar" : !changed ? "Sem mudanças" : (reabrindo && !st.why.trim()) ? "Escreva o motivo" : (isNew ? "Criar local" : "Salvar local"),
+          saveStyle: "height:34px;padding:0 14px;border-radius:11px;border:none;color:#fff;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;white-space:nowrap;background:" + (podeSalvar ? "#6C2BF2" : "#cec5e6") + ";cursor:" + (podeSalvar ? "pointer" : "not-allowed"),
+          onSave: () => {
+            if (!canEdit) { this.setState({ open: null, draft: null }); return; }
+            if (!changed || (reabrindo && !st.why.trim())) return;
+            const next = saved ? st.places.map(p => p.id === d.id ? JSON.parse(JSON.stringify(d)) : p) : st.places.concat([JSON.parse(JSON.stringify(d))]);
+            const diffs = [];
+            if (isNew) diffs.push("local criado · " + d.kind.toLowerCase() + " · " + periodOf(d) + " · " + nd + "/7 dias · " + plural((d.espacos || []).length, "espaço", "espaços"));
+            else {
+              if (d.name !== saved.name) diffs.push("nome: " + saved.name + " → " + d.name);
+              if (d.city !== saved.city) diffs.push("cidade: " + saved.city + " → " + d.city);
+              if (d.kind !== saved.kind) diffs.push("tipo: " + saved.kind + " → " + d.kind);
+              if (d.from !== saved.from || d.to !== saved.to) diffs.push("período: " + periodOf(saved) + " → " + periodOf(d));
+              if (d.days.some((v, i) => v !== saved.days[i])) diffs.push("dias: " + this.daysCount(saved) + "/7 → " + nd + "/7");
+              if (JSON.stringify(saved.espacos || []) !== JSON.stringify(d.espacos || [])) diffs.push("espaços: " + (saved.espacos || []).length + " → " + (d.espacos || []).length);
+              if (reabrindo) diffs.unshift("local reaberto · volta para a Escala e a Agenda");
+              else if (encerrando) diffs.unshift("local encerrado · sai da Escala e da Agenda");
+            }
+            const entry = {
+              when: "agora", place: d.name,
+              what: isNew ? "Criação" : reabrindo ? "Reabertura" : encerrando ? "Encerramento" : (d.days.some((v, i) => v !== saved.days[i]) ? "Dias" : (d.from !== saved.from || d.to !== saved.to) ? "Período" : d.kind !== saved.kind ? "Tipo" : "Nome"),
+              diff: diffs.join(" · "), effect: st.why.trim() || (reabrindo ? "volta a pedir gente na Escala e a aceitar horários na Agenda" : encerrando ? "deixa de pedir gente na Escala e sai dos filtros da Agenda" : (lines[0] || "sem reflexo na Escala")), by: meta.person
+            };
+            this.setState({ places: next, logs: [entry].concat(st.logs), open: null, draft: null, why: "" });
+          }
+        };
+      }
+    }
+
+    const ended = st.places.filter(p => p.ended);
+    const noDays = st.places.filter(p => this.daysCount(p) === 0);
+    const confl = st.places.filter(p => this.conflicts(p).length > 0);
+    const noProg = st.places.filter(p => this.daysCount(p) > 0 && p.prog.every(v => !v));
+
+    const noSpace = st.places.filter(p => !p.ended && this.daysCount(p) > 0 && !bookables(p).length);
+
+    const asaRaw = [];
+    if (noSpace.length) asaRaw.push({
+      key: "l5", tag: "Local sem espaço", conf: "dado",
+      title: noSpace.length === 1 ? noSpace[0].name + " abre sem nenhum espaço reservável" : noSpace.length + " locais abrem sem espaço reservável",
+      why: "Escalar gente para o local funciona, mas marcar reunião ou ensaio não: a Agenda reserva espaço, e aqui não existe nenhum para escolher.",
+      nums: noSpace.map(p => p.name + " · " + this.daysCount(p) + "/7 dias · " + plural(spacesOf(p).length, "espaço", "espaços")).join(" · "),
+      lines: ["Um palco e uma sala já bastam para começar.", "Camarim e área de apoio podem ficar como uso livre — não disputam horário.", "Eu não invento espaço: quem conhece o lugar é você."],
+      cta: "Abrir o local"
+    });
+    if (confl.length) asaRaw.push({
+      key: "l1", tag: "Horário em dia fechado", conf: "cruzamento",
+      title: confl.length === 1
+        ? confl[0].name + " tem horário na " + DAYNAME[this.conflicts(confl[0])[0]] + " e não opera nesse dia"
+        : confl.length + " locais têm horário em dia que não operam",
+      why: "Horário em dia fechado não gera escala: a Programação promete um show que o local não pode receber.",
+      nums: confl.map(p => p.name + " · " + this.conflicts(p).map(i => DAYNAME[i]).join(", ")).join(" · "),
+      lines: [
+        "Ou o local volta a operar nesse dia, ou o horário sai da Programação.",
+        "Eu mostro quantos shows dependem desse horário antes de você decidir.",
+        "Eu não apago horário — isso é na Programação."
+      ],
+      cta: "Abrir o local"
+    });
+    if (ended.length) asaRaw.push({
+      key: "l2", tag: "Evento encerrado", conf: "data",
+      title: ended.length === 1 ? ended[0].name + " terminou em " + ended[0].to + " e continua aberto" : ended.length + " eventos encerrados continuam abertos",
+      why: "Evento encerrado que fica aberto polui os filtros da Escala e da Agenda, e alguém acaba escalando gente para ele.",
+      nums: ended.map(p => p.name + " · fim " + p.to).join(" · "),
+      lines: ["Arquivar guarda o histórico: o que já aconteceu nele continua nos registros.", "Se o evento vai repetir, dá para duplicá-lo com datas novas.", "Eu não arquivo nada por conta própria."],
+      cta: "Abrir o local"
+    });
+    if (noDays.length) asaRaw.push({
+      key: "l3", tag: "Local sem dias", conf: "dado",
+      title: noDays.length === 1 ? noDays[0].name + " não opera em nenhum dia" : noDays.length + " locais sem dia de funcionamento",
+      why: "Sem dia de operação o local não existe para a Escala: ninguém pode ser escalado nele e a Programação não aceita horário.",
+      nums: noDays.map(p => p.name + " · criado sem dias").join(" · "),
+      lines: ["Marque os dias em que ele abre, mesmo que seja só um.", "Se ele ainda não vai abrir, deixe encerrado em vez de vazio.", "Eu não marco dia nenhum por você."],
+      cta: "Definir os dias"
+    });
+    if (noProg.length) asaRaw.push({
+      key: "l4", tag: "Sem horários", conf: "cruzamento",
+      title: noProg.length === 1 ? noProg[0].name + " abre mas não tem horário na Programação" : noProg.length + " locais abrem sem horário programado",
+      why: "O local abre e a Escala não tem o que montar: o dia fica em branco mesmo com gente disponível.",
+      nums: noProg.map(p => p.name + " · " + this.daysCount(p) + "/7 dias · 0 horários").join(" · "),
+      lines: ["Os horários são cadastrados na Programação, por local e por dia.", "Se for evento curto, dá para copiar os horários de um local parecido.", "Eu não crio horário — só aponto o vazio."],
+      cta: "Ver na Programação"
+    });
+
+    const asaCards = asaRaw.filter(c => !st.dismissed[c.key]).map(c => ({
+      tag: c.tag, conf: c.conf, title: c.title, why: c.why, nums: c.nums, lines: c.lines,
+      open: st.asaCard === c.key,
+      style: "border:1px solid #e6e1f2;border-radius:13px;padding:12px 13px;display:flex;flex-direction:column;gap:8px;background:#fff",
+      tagStyle: "font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:3px 8px;border-radius:999px;background:#f2ecfe;color:#6C2BF2",
+      reflexLabel: st.asaCard === c.key ? "Esconder reflexo" : "Ver reflexo",
+      onReflex: () => this.setState({ asaCard: st.asaCard === c.key ? null : c.key }),
+      cta: canEdit ? c.cta : "Sugerir à administração",
+      ctaStyle: "height:29px;padding:0 12px;border-radius:9px;border:none;background:#1b1630;color:#fff;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap",
+      onApply: () => {
+        if (!canEdit) { this.setState({ dismissed: Object.assign({}, st.dismissed, { [c.key]: true }), asaCard: null }); return; }
+        const target = c.key === "l1" ? confl[0] : c.key === "l2" ? ended[0] : c.key === "l3" ? noDays[0] : c.key === "l5" ? noSpace[0] : null;
+        if (target) {
+          this.setState({ open: target.id, draft: JSON.parse(JSON.stringify(target)), why: "Apontado pela ASA", asa: false, asaCard: null, tab: "locais" });
+          return;
+        }
+        this.setState({ dismissed: Object.assign({}, st.dismissed, { [c.key]: true }), asaCard: null });
+      },
+      onDismiss: () => this.setState({ dismissed: Object.assign({}, st.dismissed, { [c.key]: true }), asaCard: null })
+    }));
+
+    const openNow = st.places.filter(p => this.openToday(p));
+    const mob = {
+      sub: openNow.length + " de " + st.places.length + " abrem hoje · " + DAYNAME[TODAY],
+      note: "No celular os locais são leitura. Mudar dias e período só no computador, para você ver o reflexo antes.",
+      noteStyle: "padding:10px 12px;border-radius:12px;font-size:11.5px;line-height:1.45;background:#f7f3ff;border:1px solid #e5d8fb;color:#4a2a9c",
+      cards: st.places.map((p, i) => ({
+        name: p.name, dot: DOT[i % DOT.length],
+        state: isEvent(p)
+          ? (p.ended || eventPast(p) ? "encerrado" : this.daysCount(p) === 0 ? "sem datas" : eventNow(p) ? "em cartaz" : "aguardando")
+          : (p.ended ? "encerrado" : this.daysCount(p) === 0 ? "sem dias" : this.openToday(p) ? "abre hoje" : "fecha hoje"),
+        chip: "font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;padding:3px 8px;border-radius:999px;background:" + (p.ended || this.daysCount(p) === 0 ? "#fdf5f5" : this.openToday(p) ? "#e2f4f2" : "#f4f2fa") + ";color:" + (p.ended || this.daysCount(p) === 0 ? "#a12c2c" : this.openToday(p) ? "#0b6b64" : "#6b6482"),
+        meta: p.city + " · " + periodOf(p) + " · " + (isEvent(p) ? "evento" : "permanente"),
+        week: isEvent(p) ? [] : DAYS.map((d, k) => ({ label: d, style: dayPill(p.days[k], k === TODAY) })),
+        style: "display:flex;flex-direction:column;gap:8px;padding:12px 13px;background:#fff;border:1px solid " + (p.ended || this.daysCount(p) === 0 ? "#f0bcbc" : "#e6e1f2") + ";border-radius:13px"
+      }))
+    };
+
+    return {
+      profileTabs: profileTabs, profileHint: meta.hint, profileName: meta.name, personName: meta.person,
+      mobileTabs: (function (selfId) {
+        const set = MOBILE_TABS[active];
+        const inBar = set.some(t => t[0] === selfId);
+        return set.map(t => {
+          const on = inBar ? t[0] === selfId : t[0] === "mais";
+          return {
+            href: t[0] === "mais" ? "#mais" : NAV_HREF[t[0]],
+            label: t[1],
+            onClick: t[0] === "mais"
+              ? ((e) => { if (e && e.preventDefault) e.preventDefault(); self0.setState({ more: true }); })
+              : (() => {}),
+            style: "display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 2px;text-decoration:none;"
+              + (on ? "color:" + meta.dot + ";font-weight:700;" : "color:#6b6482;")
+          };
+        });
+      })("06"),
+      moreOpen: !!st.more,
+      onCloseMore: () => this.setState({ more: false }),
+      moreTitle: "Tudo no My ASA",
+      moreSub: meta.name + " · " + (isMem ? "o que é seu" : "o que você acessa"),
+      moreGroups: NAV.map(g => ({
+        title: g.title,
+        items: g.items.filter(it => it[2].indexOf(active) >= 0).map(it => ({
+          href: NAV_HREF[it[0]],
+          num: it[0],
+          label: (isMem && it[3]) ? it[3] : it[1],
+          style: "display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:12px;text-decoration:none;color:#1b1630;"
+            + (it[0] === selfIdConst ? "background:" + meta.dot + "14;border:1px solid " + meta.dot + "40;" : "background:#fff;border:1px solid #eee9f6;")
+        }))
+      })).filter(g => g.items.length),
+      morePerfil: NAV_HREF["28"],
+      moreAsa: NAV_HREF["27"],
+      shellNav: shellNav, tabs: tabs,
+      todayLabel: "hoje é " + DAYNAME[TODAY] + " · " + openNow.length + " de " + st.places.length + " abrem",
+      canEdit: canEdit,
+      readonlyChipStyle: canEdit ? "display:none" : "font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;color:#8a6413;background:#fdf1dc;padding:4px 9px;border-radius:999px",
+      personChipStyle: "font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:" + meta.dot + ";background:" + meta.dot + "26;padding:2px 7px;border-radius:999px;width:fit-content",
+      asaBtnStyle: "display:flex;align-items:center;gap:8px;height:34px;padding:0 12px 0 8px;border-radius:12px;border:1px solid " + (st.asa ? "#6C2BF2" : "#e6e1f2") + ";background:" + (st.asa ? "#f7f3ff" : "#fff") + ";color:#3c3559;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;cursor:pointer",
+      toggleAsa: () => this.setState({ asa: !st.asa }),
+      asaOpen: st.asa,
+      asaHint: "dias, período, espaços, horários que não fecham",
+      asaIntro: canEdit
+        ? "Eu cruzo os dias de cada local com a Programação e com a data de hoje. Aponto onde o funcionamento promete algo que não existe — mudar dia é você."
+        : "Leitura: onde o funcionamento do local não fecha com o que está programado.",
+      asaCards: asaCards,
+      asaEmpty: asaCards.length ? false : "Todo local tem dias definidos, espaço para reservar, horários na Programação e nenhuma data vencida.",
+      asaBar: asaCards.length ? {
+        text: asaCards.length + (asaCards.length === 1 ? " ponto de atenção nos locais" : " pontos de atenção nos locais") + " · " + asaCards.map(c => c.tag.toLowerCase()).join(", "),
+        style: "display:flex;align-items:center;gap:11px;padding:9px 20px;background:#fdf7e8;border-bottom:1px solid #f0d9a8",
+        chip: "font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:3px 8px;border-radius:999px;background:#fff;color:#8a6413",
+        textStyle: "font-size:12px;font-weight:600;color:#8a6413",
+        cta: "Abrir a ASA",
+        ctaStyle: "height:28px;padding:0 12px;border-radius:9px;border:none;background:#1b1630;color:#fff;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap",
+        onOpen: () => this.setState({ asa: true })
+      } : false,
+      isLocais: st.tab === "locais", isSemana: st.tab === "semana", isRegistros: st.tab === "registros",
+      boardTitle: plural(st.places.length, "local", "locais"),
+      boardNote: canEdit ? "dias e período definem quando a Escala pede gente" : "leitura do funcionamento",
+      places: places, dayHeads: dayHeads, grid: grid, whereUsed: whereUsed,
+      onNewPlace: () => this.newPlace(),
+      logs: st.logs, det: det, mob: mob
+    };
+  }
+
+  newPlace() {
+    const st = this.state;
+    const id = Math.max.apply(null, st.places.map(p => p.id)) + 1;
+    this.setState({ open: id, why: "", draft: { id: id, name: "", city: "", kind: "Permanente", from: "", to: "", periods: [], days: [false, false, false, false, false, false, false], prog: [false, false, false, false, false, false, false], shows: 0 } });
+  }
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  aside a { text-decoration: none; }
+  body { margin: 0; background: #f4f2fa; font-family: Manrope, system-ui, sans-serif; color: #1b1630; }
+  a { color: #6C2BF2; text-decoration: none; }
+  a:hover { color: #4a17b8; text-decoration: underline; }
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 3px solid #6C2BF2; outline-offset: 2px; border-radius: 8px; }
+</style>
+</helmet>
+
+<div style="max-width:1400px;margin:0 auto;padding:44px 28px 88px;display:flex;flex-direction:column;gap:40px">
+
+  <header style="display:flex;flex-direction:column;gap:22px">
+    <div style="display:flex;align-items:flex-start;gap:18px">
+      <img src="assets/asa/oi.png" alt="ASA" style="width:52px;height:52px;object-fit:contain;flex:none;margin-top:4px" />
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#6b6482">27 · sempre por perto · o botão de todas as telas</div>
+        <h1 style="font-family:Outfit,sans-serif;font-size:38px;line-height:1.05;font-weight:700;margin:0;letter-spacing:-0.02em">Assistente ASA</h1>
+        <p style="margin:0;max-width:66ch;font-size:15px;line-height:1.55;color:#5b5473;text-wrap:pretty">A melhor secretária da casa: responde, resolve, redige, lembra e acompanha — e não só conversa. Ela responde pela Biblioteca e pelo que já está no sistema, sempre citando de onde tirou, e vê exatamente o que você vê. O que a torna secretária de verdade é a memória: ela aprende como cada pessoa trabalha, e o que aprendeu fica visível para você corrigir ou apagar. O que ela ainda não sabe fazer está declarado, não escondido.</p>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:13px 16px;background:#fff;border:1px solid #e6e1f2;border-radius:16px">
+      <span style="font-size:13px;font-weight:600;color:#5b5473;margin-right:4px">Ver como</span>
+      <sc-for list="{{ profileTabs }}" as="tab" hint-placeholder-count="4">
+        <button type="button" onClick="{{ tab.onClick }}" style="{{ tab.style }}">
+          <span style="width:8px;height:8px;border-radius:50%;background:{{ tab.dot }};display:inline-block"></span>
+          <span>{{ tab.name }}</span>
+        </button>
+      </sc-for>
+      <span style="flex:1"></span>
+      <span style="font-size:13px;color:#6b6482">{{ profileHint }}</span>
+    </div>
+  </header>
+
+  <div style="display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start">
+
+    <div style="flex:1 1 900px;min-width:0;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Web · 1920 × 1080</span>
+        <span style="font-size:11.5px;color:#6b6482">exibido a 70% — proporção real de tela</span>
+      </div>
+      <div style="width:1344px;height:756px;border:1px solid #ddd6ee;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="width:1920px;height:1080px;transform:scale(0.7);transform-origin:top left;display:flex">
+
+          <aside style="width:236px;flex:none;background:linear-gradient(180deg,#1c1440 0%,#241a52 100%);display:flex;flex-direction:column;color:#fff">
+            <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 12px">
+              <img src="assets/asa-wing.png" alt="" style="width:26px;height:26px;object-fit:contain" />
+              <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">My ASA</span>
+            </div>
+            <div style="padding:0 12px 10px">
+              <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:8px 10px;font-size:11.5px;color:#fff">
+                <span style="width:11px;height:11px;border:1.5px solid #fff;border-radius:50%"></span>
+                <span>Buscar ou perguntar à ASA</span>
+              </div>
+            </div>
+            <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:12px;padding:2px 10px 10px">
+              <sc-for list="{{ shellNav }}" as="g" hint-placeholder-count="4">
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#7d72a8;padding:0 8px 4px">{{ g.title }}</div>
+                  <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+                    <a href="{{ it.href }}" style="{{ it.style }}">{{ it.label }}</a>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+            <a href="28%20Perfil%20e%20configura%C3%A7%C3%B5es.dc.html" style="border-top:1px solid rgba(255,255,255,.1);padding:12px;display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit">
+              <span style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+              <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                <span style="font-size:12.5px;font-weight:600">{{ personName }}</span>
+                <span style="{{ personChipStyle }}">{{ profileName }}</span>
+              </div>
+            </a>
+          </aside>
+
+          <div style="flex:1;display:flex;flex-direction:column;background:#faf9fe;min-width:0">
+            <header style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid #ebe6f6;background:#fff">
+              <img src="assets/asa/oi.png" alt="" style="width:38px;height:38px;object-fit:contain;flex:none" />
+              <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">ASA</span>
+                <span style="font-size:11.5px;color:#6b6482">{{ scopeLine }}</span>
+              </div>
+              <span style="flex:1"></span>
+              <span style="{{ scopeChipStyle }}">{{ scopeChip }}</span>
+              <span onClick="{{ a1 }}" style="font-size:12px;font-weight:700;color:#6C2BF2;cursor:pointer">apagar esta conversa</span>
+            </header>
+
+            <div style="flex:1;min-height:0;display:flex;min-width:0">
+
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+                <div style="flex:1;min-height:0;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px;align-items:center">
+                  <div style="width:100%;max-width:700px;display:flex;flex-direction:column;gap:14px">
+
+                    <div style="display:flex;align-items:center;gap:13px;background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:14px 16px">
+                      <img src="assets/asa/bom-dia.png" alt="" style="width:46px;height:46px;object-fit:contain;flex:none" />
+                      <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                        <span style="font-size:14px;font-weight:700;line-height:1.3">{{ greeting }}</span>
+                        <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">{{ greetingSub }}</span>
+                      </div>
+                    </div>
+
+                    <div style="display:flex;flex-direction:column;gap:8px">
+                      <div style="display:flex;align-items:center;gap:9px">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Ela não só responde</span>
+                        <span style="flex:1;height:1px;background:#ebe6f6"></span>
+                      </div>
+                      <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        <sc-for list="{{ skills }}" as="s" hint-placeholder-count="6">
+                          <div style="{{ s.style }}">
+                            <span style="font-size:12px;font-weight:700">{{ s.verb }}</span>
+                            <span style="{{ s.exStyle }}">{{ s.example }}</span>
+                            <span style="{{ s.tagStyle }}">{{ s.tag }}</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </div>
+
+                    <div style="display:flex;justify-content:flex-end">
+                      <div style="max-width:540px;background:#efe8fd;border:1px solid #ddcbfa;border-radius:14px;padding:11px 14px">
+                        <span style="font-size:13px;line-height:1.5;color:#1b1630">{{ question }}</span>
+                      </div>
+                    </div>
+
+                    <div style="display:flex;gap:11px;align-items:flex-start">
+                      <img src="assets/asa/consultando.png" alt="" style="width:34px;height:34px;object-fit:contain;flex:none" />
+                      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:9px">
+                        <div style="background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:13px 15px;display:flex;flex-direction:column;gap:9px">
+                          <span style="font-size:13px;line-height:1.6;color:#1b1630;text-wrap:pretty">{{ answer }}</span>
+                          <sc-if value="{{ hasList }}" hint-placeholder-val="{{ false }}">
+                            <div style="display:flex;flex-direction:column;gap:7px">
+                              <sc-for list="{{ answerList }}" as="l" hint-placeholder-count="2">
+                                <div style="display:flex;align-items:center;gap:10px;padding:9px 11px;background:#faf9fe;border:1px solid #f0ecf8;border-radius:11px">
+                                  <span style="{{ l.tagStyle }}">{{ l.tag }}</span>
+                                  <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                                    <span style="font-size:12.5px;font-weight:600">{{ l.what }}</span>
+                                    <span style="font-size:11px;color:#6b6482">{{ l.note }}</span>
+                                  </div>
+                                </div>
+                              </sc-for>
+                            </div>
+                          </sc-if>
+                          <sc-if value="{{ hasMemory }}" hint-placeholder-val="{{ false }}">
+                            <div style="display:flex;align-items:center;gap:9px;padding:9px 11px;background:#fbeaf3;border:1px solid #f4d3e5;border-radius:11px">
+                              <span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#B03C7D;flex:none">Lembrei</span>
+                              <span style="font-size:11.5px;line-height:1.45;color:#7d2c5c;text-wrap:pretty">{{ memoryUsed }}</span>
+                            </div>
+                          </sc-if>
+                        </div>
+
+                        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 12px;background:#f4edfe;border:1px solid #ddcbfa;border-radius:12px">
+                          <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5B23C9;background:#efe8fd;padding:4px 9px;border-radius:6px;flex:none">{{ sourceTag }}</span>
+                          <span style="font-size:12px;font-weight:600;color:#4a4363;min-width:0;text-wrap:pretty;flex:1">{{ sourceText }}</span>
+                          <span onClick="{{ a2 }}" style="font-size:11.5px;font-weight:700;color:#6C2BF2;cursor:pointer;flex:none">{{ sourceAction }}</span>
+                        </div>
+
+                        <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+                          <sc-for list="{{ actions }}" as="a" hint-placeholder-count="2">
+                            <button type="button" onClick="{{ a.onClick }}" style="{{ a.style }}">{{ a.label }}</button>
+                          </sc-for>
+                        </div>
+
+                        <span style="{{ doneStyle }}">{{ doneLine }}</span>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+
+                <div style="border-top:1px solid #ebe6f6;background:#fff;padding:13px 20px 15px;display:flex;flex-direction:column;gap:10px;align-items:center">
+                  <div style="width:100%;max-width:700px;display:flex;flex-direction:column;gap:10px">
+                    <div style="display:flex;gap:7px;flex-wrap:wrap">
+                      <sc-for list="{{ suggestions }}" as="s" hint-placeholder-count="3">
+                        <button type="button" onClick="{{ s.onClick }}" style="{{ s.style }}">{{ s.label }}</button>
+                      </sc-for>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:9px">
+                      <input type="text" value="{{ draft }}" onChange="{{ onDraft }}" placeholder="{{ placeholder }}" style="flex:1;min-width:0;border:1px solid #e6e1f2;border-radius:999px;padding:12px 17px;font-family:Manrope,sans-serif;font-size:13px;color:#1b1630;background:#faf9fe;outline:none" />
+                      <span onClick="{{ a3 }}" style="flex:none;width:38px;height:38px;border-radius:50%;border:1px solid #e6e1f2;background:#fff;color:#6b6482;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;cursor:pointer">♪</span>
+                      <button type="button" onClick="{{ a3 }}" style="{{ sendStyle }}">Perguntar</button>
+                    </div>
+                    <span style="font-size:11px;color:#6b6482;text-wrap:pretty">{{ composerNote }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style="width:356px;flex:none;border-left:1px solid #ebe6f6;background:#fff;padding:16px;display:flex;flex-direction:column;gap:14px;overflow-y:auto">
+
+                <div style="display:flex;flex-direction:column;gap:9px">
+                  <div style="display:flex;align-items:center;gap:9px">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">O que ela aprendeu com você</span>
+                    <span style="flex:1"></span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#6b6482">{{ learnedCount }}</span>
+                  </div>
+                  <span style="font-size:11.5px;line-height:1.45;color:#6b6482;text-wrap:pretty">Fica tudo à vista, e é seu: corrija ou apague qualquer linha. Ela nunca compartilha isto com a gestão.</span>
+                  <sc-for list="{{ learned }}" as="l" hint-placeholder-count="4">
+                    <div style="{{ l.rowStyle }}">
+                      <span style="{{ l.iconStyle }}">{{ l.icon }}</span>
+                      <div style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1">
+                        <span style="font-size:12.5px;font-weight:600;line-height:1.35;text-wrap:pretty">{{ l.fact }}</span>
+                        <span style="font-size:10.5px;color:#6b6482">{{ l.how }}</span>
+                      </div>
+                      <button type="button" onClick="{{ l.onForget }}" style="{{ l.forgetStyle }}">{{ l.forgetLabel }}</button>
+                    </div>
+                  </sc-for>
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:9px">
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Aprendendo agora</span>
+                  <sc-for list="{{ growing }}" as="g" hint-placeholder-count="3">
+                    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f4edfe;border:1px dashed #ddcbfa;border-radius:12px">
+                      <span style="flex:none;width:26px;height:26px;border-radius:50%;background:#efe8fd;color:#5B23C9;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700">{{ g.pct }}</span>
+                      <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                        <span style="font-size:12px;font-weight:700;color:#5f4b8a">{{ g.what }}</span>
+                        <span style="font-size:10.5px;line-height:1.4;color:#6b6482;text-wrap:pretty">{{ g.note }}</span>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:9px">
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">De onde ela responde</span>
+                  <sc-for list="{{ sources }}" as="s" hint-placeholder-count="4">
+                    <div style="display:flex;align-items:center;gap:10px;padding:9px 11px;background:#faf9fe;border:1px solid #f0ecf8;border-radius:11px">
+                      <span style="{{ s.numStyle }}">{{ s.num }}</span>
+                      <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                        <span style="font-size:12px;font-weight:700">{{ s.name }}</span>
+                        <span style="font-size:10.5px;line-height:1.4;color:#6b6482;text-wrap:pretty">{{ s.scope }}</span>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:9px">
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">O que ela nunca faz</span>
+                  <sc-for list="{{ nevers }}" as="n" hint-placeholder-count="3">
+                    <div style="display:flex;gap:9px;padding:9px 11px;background:#fff;border:1px solid #f0d3d3;border-radius:11px">
+                      <span style="flex:none;width:4px;border-radius:3px;background:#B4302F;align-self:stretch"></span>
+                      <span style="font-size:11.5px;line-height:1.45;color:#5b5473;text-wrap:pretty">{{ n }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:0 0 390px;min-width:390px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Mobile · no palco se fala, não se digita</div>
+      <div style="width:390px;height:844px;border-radius:38px;border:1px solid #ddd6ee;background:#fff;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="background:linear-gradient(135deg,#1c1440,#2b1f63);color:#fff;padding:16px 18px 18px;display:flex;align-items:center;gap:11px">
+          <img src="assets/asa/oi.png" alt="" style="width:34px;height:34px;object-fit:contain;flex:none" />
+          <div style="display:flex;flex-direction:column;gap:1px;min-width:0;flex:1">
+            <span style="font-size:16px;font-weight:600;font-family:Outfit,sans-serif">ASA</span>
+            <span style="font-size:11.5px;color:#c4bce0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ mobileScope }}</span>
+          </div>
+        </div>
+
+        <div style="flex:1;padding:14px;background:#faf9fe;display:flex;flex-direction:column;gap:11px;overflow:hidden">
+          <div style="display:flex;justify-content:flex-end">
+            <div style="max-width:88%;background:#efe8fd;border:1px solid #ddcbfa;border-radius:14px;padding:10px 12px">
+              <span style="font-size:12.5px;line-height:1.45;color:#1b1630">{{ question }}</span>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:9px;align-items:flex-start">
+            <img src="assets/asa/consultando.png" alt="" style="width:28px;height:28px;object-fit:contain;flex:none" />
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
+              <div style="background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:11px 13px">
+                <span style="font-size:12.5px;line-height:1.5;color:#1b1630;text-wrap:pretty">{{ answerShort }}</span>
+              </div>
+              <span style="font-size:10.5px;line-height:1.4;color:#6b6482;text-wrap:pretty">{{ sourceText }}</span>
+              <button type="button" onClick="{{ firstActionClick }}" style="{{ mobileActionStyle }}">{{ firstActionLabel }}</button>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:9px;padding:10px 12px;background:#fbeaf3;border:1px solid #f4d3e5;border-radius:13px">
+            <img src="assets/asa/lembrete.png" alt="" style="width:28px;height:28px;object-fit:contain;flex:none" />
+            <span style="font-size:11.5px;line-height:1.45;color:#7d2c5c;text-wrap:pretty;flex:1">{{ mobileMemory }}</span>
+          </div>
+
+          <span style="flex:1"></span>
+
+          <div style="display:flex;flex-direction:column;gap:9px;align-items:center;padding-bottom:2px">
+            <span style="font-size:11.5px;color:#6b6482;text-align:center;text-wrap:pretty">Segure para falar — ela entende português falado no meio do barulho</span>
+            <button type="button" onClick="{{ a4 }}" style="cursor:pointer;width:74px;height:74px;border-radius:50%;border:none;background:linear-gradient(135deg,#6C2BF2,#2E3BD6);color:#fff;font-family:'JetBrains Mono',monospace;font-size:21px;font-weight:700;box-shadow:0 10px 26px -12px rgba(76,20,200,.7)">♪</button>
+          </div>
+
+          <div style="display:flex;gap:7px;flex-wrap:wrap;justify-content:center">
+            <sc-for list="{{ mobileChips }}" as="c" hint-placeholder-count="2">
+              <span style="font-family:Manrope,sans-serif;font-size:11.5px;font-weight:600;color:#5f4b8a;background:#fff;border:1px solid #ddcbfa;border-radius:999px;padding:7px 12px">{{ c }}</span>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid #ebe6f6;background:#fff;padding:10px 4px 16px">
+          <sc-for list="{{ mobileTabs }}" as="t" hint-placeholder-count="5">
+            <div style="{{ t.style }}">
+              <span style="display:block;width:20px;height:20px;border-radius:7px;border:1.75px solid currentColor;opacity:.75"></span>
+              <span style="font-size:10px;font-weight:600;text-align:center">{{ t.label }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">O que esta tela decide</span>
+    <div style="display:flex;flex-wrap:wrap;gap:12px">
+      <div style="flex:1 1 300px;min-width:260px;display:flex;gap:11px;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:13px 15px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6C2BF2;flex:none;padding-top:2px">01</span>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+          <span style="font-size:13px;font-weight:700;line-height:1.3">Secretária, não caixa de perguntas</span>
+          <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Ela pede a folga, dá o ciente, cria a tarefa, redige o aviso, resume o mês e cobra quem não respondeu. Responder é o mínimo — o trabalho é sair da conversa com a coisa feita.</span>
+        </div>
+      </div>
+      <div style="flex:1 1 300px;min-width:260px;display:flex;gap:11px;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:13px 15px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6C2BF2;flex:none;padding-top:2px">02</span>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+          <span style="font-size:13px;font-weight:700;line-height:1.3">Ela aprende com cada pessoa, à vista</span>
+          <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Como você fala, o que costuma pedir, o que nunca pode: tudo isso fica numa lista que você lê, corrige e apaga. Memória escondida é vigilância; memória visível é secretária.</span>
+        </div>
+      </div>
+      <div style="flex:1 1 300px;min-width:260px;display:flex;gap:11px;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:13px 15px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6C2BF2;flex:none;padding-top:2px">03</span>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+          <span style="font-size:13px;font-weight:700;line-height:1.3">O que ela aprendeu com você é só seu</span>
+          <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">A memória de uma pessoa nunca vira relatório para a gestão. A supervisora não descobre pela ASA que você anda cansada — se isso vale ser dito, quem diz é você.</span>
+        </div>
+      </div>
+      <div style="flex:1 1 300px;min-width:260px;display:flex;gap:11px;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:13px 15px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6C2BF2;flex:none;padding-top:2px">04</span>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+          <span style="font-size:13px;font-weight:700;line-height:1.3">Ela vê o que você vê, nada além</span>
+          <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">A ASA herda as permissões de quem pergunta. Se a resposta exigir dado que a pessoa não pode ver, ela diz que não pode — a mesma regra das telas, sem exceção para quem pergunta bonito.</span>
+        </div>
+      </div>
+      <div style="flex:1 1 300px;min-width:260px;display:flex;gap:11px;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:13px 15px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6C2BF2;flex:none;padding-top:2px">05</span>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+          <span style="font-size:13px;font-weight:700;line-height:1.3">Age na hora, nunca em silêncio</span>
+          <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Toda ação aparece feita, com hora e link para desfazer. E toda resposta mostra a origem: documento com versão e página, ou registro com data. Sem fonte visível, a resposta não sai.</span>
+        </div>
+      </div>
+      <div style="flex:1 1 300px;min-width:260px;display:flex;gap:11px;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:13px 15px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6C2BF2;flex:none;padding-top:2px">06</span>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+          <span style="font-size:13px;font-weight:700;line-height:1.3">O que ela não sabe é declarado</span>
+          <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Há espaço para crescer e ele está na tela: o que está aprendendo, e o que ainda não faz. Sem documento nem registro, ela diz "não sei" e abre conversa com quem sabe — e pergunta repetida sem resposta vira sinal no painel: documento faltando.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6b6482">{{ footerStamp }}</span>
+</div>
+
+  <sc-if value="{{ toastMsg }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:12px;background:#1c1440;color:#fff;border-radius:14px;padding:13px 18px;box-shadow:0 18px 40px -20px rgba(20,8,60,.7);max-width:560px">
+      <span style="font-size:13.5px;line-height:1.45;flex:1;text-wrap:pretty">{{ toastMsg }}</span>
+      <button type="button" onClick="{{ onFecharToast }}" style="border:none;background:rgba(255,255,255,.16);color:#fff;border-radius:9px;width:28px;height:28px;font-size:13px;cursor:pointer;flex:none">✕</button>
+    </div>
+  </sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1400},&quot;perfilInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ADM&quot;,&quot;DIR&quot;,&quot;SUP&quot;,&quot;MEM&quot;],&quot;default&quot;:&quot;MEM&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Perfil&quot;}}">
+const PROFILES = [
+  { key: "ADM", name: "Administração", dot: "#6C2BF2", hint: "delega para a ASA o que é repetitivo", person: "Barbara Sorroche",
+    scope: "alcance total · 3 locais · 58 pessoas", chip: "vê tudo que a casa registra" },
+  { key: "DIR", name: "Direção", dot: "#2E63D6", hint: "pergunta em números, não em nomes", person: "Cris Garcia",
+    scope: "visão organizacional", chip: "agregado, sem descer à pessoa" },
+  { key: "SUP", name: "Supervisão", dot: "#0E8F86", hint: "resolve escala e cobrança conversando", person: "Deborah",
+    scope: "Área Elenco · 22 pessoas · Snowland", chip: "só a própria área" },
+  { key: "MEM", name: "Elenco", dot: "#C2508F", hint: "pergunta pelo próprio dia, de voz", person: "Julia",
+    scope: "Elenco · posição 4 · grupo B", chip: "o que é seu" }
+];
+
+const NAV = [
+  { title: "Porta de entrada", items: [
+    ["17", "Início / Meu Dia", ["ADM","DIR","SUP","MEM"], "Meu Dia"]
+  ] },
+  { title: "O dia", items: [
+    ["20", "Agenda", ["ADM","DIR","SUP","MEM"], "Minha agenda"],
+    ["15", "Escalas", ["ADM","DIR","SUP","MEM"], "Minha escala"],
+    ["13", "Shows", ["ADM","DIR","SUP","MEM"], "Shows"],
+    ["14", "Livro do Dia", ["ADM","DIR","SUP","MEM"], "Meus shows"],
+    ["19", "Check-in e ocorrências", ["ADM","DIR","SUP","MEM"], "Check-in"],
+    ["10", "Responsabilidades e tarefas", ["ADM","DIR","SUP","MEM"], "Minhas tarefas"],
+    ["18", "Folgas", ["ADM","DIR","SUP","MEM"], "Minhas folgas"]
+  ] },
+  { title: "Gestão", items: [
+    ["16", "Painel", ["ADM","DIR","SUP"], null],
+    ["06", "Locais", ["ADM","DIR","SUP"], null],
+    ["07", "Pessoas", ["ADM","DIR","SUP"], null],
+    ["08", "Áreas", ["ADM","DIR","SUP","MEM"], "Meu grupo"],
+    ["25", "Reconhecimentos", ["ADM","DIR","SUP"], null]
+  ] },
+  { title: "Comunicação", items: [
+    ["22", "Avisos e Mural", ["ADM","DIR","SUP","MEM"], "Mural"],
+    ["23", "Mensagens", ["ADM","DIR","SUP","MEM"], "Conversas"],
+    ["24", "Biblioteca", ["ADM","DIR","SUP","MEM"], "Biblioteca"]
+  ] }
+];
+
+const NAV_HREF = {
+  "10": "10%20Responsabilidades%20e%20Tarefas.dc.html",
+  "13": "13%20Shows.dc.html",
+  "14": "14%20Livro%20do%20Dia.dc.html",
+  "15": "15%20Escalas.dc.html",
+  "16": "16%20Painel%20e%20indicadores.dc.html",
+  "17": "17%20Meu%20Dia.dc.html",
+  "18": "18%20Folgas.dc.html",
+  "19": "19%20Check-in%20e%20ocorr%C3%AAncias.dc.html",
+  "20": "20%20Agenda.dc.html",
+  "22": "22%20Avisos%20e%20Mural.dc.html",
+  "23": "23%20Mensagens.dc.html",
+  "24": "24%20Biblioteca.dc.html", "25": "25%20Reconhecimentos.dc.html",
+  "27": "27%20Assistente%20ASA.dc.html",
+  "28": "28%20Perfil%20e%20configura%C3%A7%C3%B5es.dc.html",
+  "06": "06%20Locais.dc.html",
+  "07": "07%20Pessoas.dc.html",
+  "08": "08%20%C3%81reas.dc.html"
+};
+
+const MOBILE = {
+  ADM: ["Meu Dia", "Painel", "Escalas", "Mural", "Mais"],
+  DIR: ["Meu Dia", "Painel", "Agenda", "Mural", "Mais"],
+  SUP: ["Meu Dia", "Escalas", "Equipe", "Mural", "Mais"],
+  MEM: ["Meu Dia", "Escala", "Mural", "Conversas", "Mais"]
+};
+
+const SKILLS = {
+  MEM: [
+    { verb: "Responde", ex: "regra, escala, folga", state: "on" },
+    { verb: "Resolve", ex: "pede folga, dá ciente", state: "on" },
+    { verb: "Lembra", ex: "no horário que você pediu", state: "on" },
+    { verb: "Redige", ex: "escreve seu pedido melhor", state: "on" },
+    { verb: "Traduz", ex: "figurino em espanhol", state: "soon" },
+    { verb: "Ensaia", ex: "áudio da cena por partes", state: "soon" }
+  ],
+  SUP: [
+    { verb: "Responde", ex: "quem cobre a posição 4", state: "on" },
+    { verb: "Resolve", ex: "monta escala e troca", state: "on" },
+    { verb: "Cobra", ex: "quem não deu ciente", state: "on" },
+    { verb: "Redige", ex: "aviso para a sua área", state: "on" },
+    { verb: "Resume", ex: "sua semana em 5 linhas", state: "on" },
+    { verb: "Prevê", ex: "buraco de escala em 7 dias", state: "soon" }
+  ],
+  ADM: [
+    { verb: "Responde", ex: "qualquer dado da casa", state: "on" },
+    { verb: "Resolve", ex: "cadastra, publica, arquiva", state: "on" },
+    { verb: "Redige", ex: "aviso, contrato, relatório", state: "on" },
+    { verb: "Cobra", ex: "os 17 sem ciente, um a um", state: "on" },
+    { verb: "Audita", ex: "quem mudou o quê e quando", state: "on" },
+    { verb: "Integra", ex: "puxa dado do sistema do parque", state: "soon" }
+  ],
+  DIR: [
+    { verb: "Responde", ex: "em número, com a série", state: "on" },
+    { verb: "Resume", ex: "a temporada em uma página", state: "on" },
+    { verb: "Compara", ex: "os três locais, mês a mês", state: "on" },
+    { verb: "Alerta", ex: "quando algo sai da média", state: "on" },
+    { verb: "Redige", ex: "relatório para o conselho", state: "on" },
+    { verb: "Projeta", ex: "custo da próxima temporada", state: "soon" }
+  ]
+};
+
+const LEARNED = {
+  MEM: [
+    { icon: "◉", fact: "Você vem de Gramado nas quartas e sextas, de carona com a Letícia", how: "você contou em 12/08 · usado 6 vezes" },
+    { icon: "♪", fact: "Prefere falar a digitar: ela responde curto e por voz quando você está no parque", how: "aprendido do seu uso" },
+    { icon: "✕", fact: "Não pode na semana da formatura da sua irmã, 22 a 26 de setembro", how: "você disse à Deborah em 09/09" },
+    { icon: "◷", fact: "Gosta de lembrete na noite anterior, 20:00 — não na manhã do dia", how: "você corrigiu duas vezes" }
+  ],
+  SUP: [
+    { icon: "◉", fact: "Você monta a escala na segunda de manhã, antes das 09:00", how: "aprendido do seu uso · 11 semanas" },
+    { icon: "◷", fact: "Quer o buraco de cobertura avisado com 48h, não com 24", how: "você pediu em 03/08" },
+    { icon: "✎", fact: "Seus avisos são curtos e diretos; ela redige nesse tom, sem \"prezados\"", how: "aprendido dos seus 40 avisos" },
+    { icon: "✕", fact: "Não cobrar ciente da Marina por push antes das 10:00 — ela trabalha de noite", how: "você pediu em 21/08" }
+  ],
+  ADM: [
+    { icon: "✎", fact: "Você revisa todo texto que ela redige antes de publicar — ela sempre entrega em rascunho", how: "aprendido do seu uso" },
+    { icon: "◷", fact: "Prefere cobrar quem falta ciente no fim do dia, de uma vez, não a cada hora", how: "você corrigiu em 15/08" },
+    { icon: "◉", fact: "Contrato novo sempre passa pela Direção antes de virar modelo", how: "regra que você ensinou" },
+    { icon: "☰", fact: "Você pede relatório de leitura por local, nunca por pessoa, quando é para reunião", how: "aprendido de 9 pedidos" }
+  ],
+  DIR: [
+    { icon: "☰", fact: "Você quer o número sempre com a série dos últimos 6 meses, nunca o dado solto", how: "você pediu em 04/07" },
+    { icon: "✕", fact: "Não quer nome de pessoa em resposta agregada — só se você pedir explicitamente", how: "regra que você ensinou" },
+    { icon: "◷", fact: "Lê o resumo na segunda às 07:00, do celular, no café", how: "aprendido do seu uso" }
+  ]
+};
+
+const GROWING = {
+  MEM: [
+    { pct: "80%", what: "Entender seu jeito de falar no barulho", note: "acerta 8 de 10 no palco; ainda erra nome de cena" },
+    { pct: "40%", what: "Sugerir troca antes de você pedir", note: "quando ela vê que você tem dois shows seguidos" },
+    { pct: "—", what: "Ler o figurino em espanhol", note: "esperando o material traduzido na Biblioteca" }
+  ],
+  SUP: [
+    { pct: "70%", what: "Prever buraco de escala com 7 dias", note: "aprendendo com o histórico de folgas e faltas" },
+    { pct: "50%", what: "Sugerir quem trocar, não só quem falta", note: "considera posição, cansaço e transporte" },
+    { pct: "—", what: "Montar a escala inteira sozinha", note: "você revisa antes; ela não publica nada por conta" }
+  ],
+  ADM: [
+    { pct: "60%", what: "Descobrir documento faltando na Biblioteca", note: "pela pergunta que ela não conseguiu responder" },
+    { pct: "35%", what: "Detectar pessoa em risco de sair", note: "só sinal agregado; nunca acusa ninguém" },
+    { pct: "—", what: "Puxar dado do sistema do parque", note: "esperando a integração" }
+  ],
+  DIR: [
+    { pct: "55%", what: "Explicar por que o número mudou", note: "hoje mostra a série; aprendendo a apontar a causa" },
+    { pct: "—", what: "Projetar custo da próxima temporada", note: "precisa de duas temporadas fechadas" }
+  ]
+};
+
+const Q = {
+  MEM: [
+    { q: "Que horas eu entro na sexta?",
+      a: "Sexta você entra 07:00, não 08:00 — a passagem foi antecipada porque o parque abre mais cedo para um grupo de escola. Você está na cena 5, posição 4, e o show é o das 20h. Tem um aviso da Deborah sobre isso esperando o seu ciente desde ontem.",
+      list: [
+        { tag: "07:00", what: "Passagem antecipada", note: "era 08:00 até anteontem" },
+        { tag: "20:00", what: "Show · cena 5, posição 4", note: "sem mudança" }
+      ],
+      mem: "Sexta é dia de carona com a Letícia, que sai 06:15 de Gramado — com a passagem às 07:00 ainda dá, mas fica apertado. Quer que eu avise ela?",
+      srcTag: "Registro", src: "Sua escala de 12/09, publicada em 10/09 · aviso \"Sexta o parque abre uma hora mais cedo\"", srcAction: "abrir minha escala",
+      actions: [["Dar ciente no aviso", "warn"], ["Avisar a Letícia", "ok"], ["Me lembra quinta, 20:00", "ghost"]],
+      done: "Ciente registrado às 09:47, mensagem enviada à Letícia e lembrete criado para quinta às 20:00 — o horário que você prefere." },
+    { q: "O palco está escorregando, posso parar a cena?",
+      a: "Pode, e você não precisa de autorização. Quem está em cena interrompe e avisa o apoio de palco; retomar é decisão do supervisor de plantão, depois de secar e testar o piso. Isso não gera ocorrência contra você — gera ocorrência do piso, que é outra coisa.",
+      srcTag: "Documento", src: "Segurança de palco e evacuação · v4 · página 4, item 3.2 — vigente desde 12/08", srcAction: "ver no documento",
+      actions: [["Abrir ocorrência do piso", "warn"], ["Chamar o apoio de palco", "ok"]],
+      done: "Ocorrência aberta no Livro do Dia com hora e local, e o apoio de palco chamado pelo rádio. A supervisão de plantão já viu." },
+    { q: "Preciso da semana da formatura da minha irmã livre",
+      a: "Já sei quais dias: 22 a 26 de setembro. Você tem 4 folgas no saldo, e nesses cinco dias você está escalada em três. Consegui cobertura para 22 e 23 com a Marina e a Letícia; 25 é o show grande e não tem ninguém da posição 4 livre — esse eu não consigo resolver sozinha.",
+      list: [
+        { tag: "22 e 23", what: "Cobertura encontrada", note: "Marina e Letícia aceitam trocar" },
+        { tag: "25", what: "Sem cobertura", note: "show grande · precisa da Deborah" }
+      ],
+      mem: "Você me contou da formatura em 09/09 e eu guardei — não precisou repetir a data.",
+      srcTag: "Registro", src: "Seu saldo em Folgas · escala de setembro · disponibilidade da posição 4 hoje 09:50", srcAction: "abrir Folgas",
+      actions: [["Pedir os três dias", "ok"], ["Falar com a Deborah sobre o 25", "ghost"]],
+      done: "Pedido enviado com os três dias e a cobertura já anexada — a Deborah só precisa aprovar 22 e 23 e decidir o 25. Isso poupa duas conversas." },
+    { q: "Quanto a Marina ganha?",
+      a: "Isso eu não posso te dizer. Remuneração fica no cadastro em Pessoas e só a Administração e a Direção veem — inclusive a sua, que ninguém do elenco consegue ver. Não é segredo meu: é a mesma regra da tela, e eu não tenho porta dos fundos.",
+      srcTag: "Permissão", src: "Seu perfil é Elenco · remuneração é campo restrito a ADM e DIR em 07 Pessoas", srcAction: "ver o que eu posso ver",
+      actions: [["Falar com a Carolina", "ghost"]],
+      done: "Conversa aberta com a Carolina, sem o conteúdo desta pergunta — o que você escreve para mim não vira mensagem sem você mandar." }
+  ],
+  SUP: [
+    { q: "Quem posso escalar sexta na posição 4?",
+      a: "Três pessoas cobrem a posição 4 e estão livres sexta: Letícia, Marina e Helena — a Helena entra segunda e ainda está em acompanhamento, então eu não contaria com ela para o show grande. A Julia pediu essa semana de folga por causa da formatura da irmã, e o pedido está esperando você.",
+      list: [
+        { tag: "Letícia", what: "Livre e treinada na cena 5", note: "vem de Gramado, sai 06:15" },
+        { tag: "Marina", what: "Livre, mas fez 6 dias seguidos", note: "eu não escalaria sem perguntar" }
+      ],
+      mem: "Você prefere saber do buraco com 48h de antecedência — por isso trouxe isso hoje, e não na quinta.",
+      srcTag: "Registro", src: "Escala de setembro · saldo de folgas · histórico de dias seguidos, hoje 09:50", srcAction: "abrir Escalas",
+      actions: [["Escalar a Letícia", "ok"], ["Perguntar à Marina primeiro", "ghost"], ["Responder a folga da Julia", "warn"]],
+      done: "Letícia escalada em rascunho — não publiquei, você revisa. Mensagem enviada à Marina perguntando se ela quer o dia, e o pedido da Julia está aberto na sua tela." },
+    { q: "Escreve um aviso sobre a passagem antecipada",
+      a: "Escrevi no seu tom — curto, direto, sem \"prezados\". Alcance: os três grupos da sua área, 22 pessoas. Marquei para cobrar ciente porque envolve horário de transporte: quem não ler não aparece às 07:00.",
+      list: [
+        { tag: "Título", what: "Sexta a passagem é 07:00", note: "não 08:00 — o parque abre mais cedo" },
+        { tag: "Corpo", what: "Quem depende de transporte resolve hoje, não na quinta à noite", note: "63 caracteres · seu tamanho médio" }
+      ],
+      mem: "Aprendi seu jeito de escrever com os seus 40 avisos anteriores — nunca começa com saudação.",
+      srcTag: "Rascunho", src: "Gerado agora · fonte: escala de 12/09 e aviso da Administração de ontem", srcAction: "editar antes de publicar",
+      actions: [["Publicar para a minha área", "ok"], ["Editar o texto", "ghost"]],
+      done: "Publicado às 09:52 para 22 pessoas, com ciente. Eu cobro quem não confirmar em 24h e te aviso quem falta." },
+    { q: "Como está a minha semana?",
+      a: "Cinco linhas: 14 shows, nenhum cancelado. Dois check-ins em falta, os dois da mesma pessoa — o Marcos, terça e quinta, sem aviso de atraso. Uma ocorrência de piso molhado aberta hoje pela Julia. Três folgas pedidas, duas você respondeu. E a Marina está no sexto dia seguido, o que já apareceu duas vezes este mês.",
+      mem: "Você lê isso na segunda de manhã, antes das 09:00 — foi o horário que eu aprendi.",
+      srcTag: "Registro", src: "Painel da sua área · check-ins, ocorrências e folgas de 31/08 a 06/09", srcAction: "abrir o painel",
+      actions: [["Falar com o Marcos", "ghost"], ["Dar folga à Marina", "ok"]],
+      done: "Conversa aberta com o Marcos e folga da Marina lançada em rascunho para amanhã — você confirma." }
+  ],
+  ADM: [
+    { q: "Quem ainda não deu ciente no aviso de sexta?",
+      a: "17 das 58 pessoas. Quatro nem abriram o app hoje: Rafa, Tiago, Paula e Helena — a Helena tem acesso criado hoje, então ela é caso à parte. Os outros 13 abriram e não confirmaram, o que é diferente: viram e deixaram passar.",
+      list: [
+        { tag: "4", what: "Não abriram o app", note: "Rafa, Tiago, Paula, Helena" },
+        { tag: "13", what: "Abriram e não confirmaram", note: "cobrança por push resolve na maioria" }
+      ],
+      mem: "Você prefere cobrar de uma vez no fim do dia, não a cada hora — deixei preparado para as 18:00.",
+      srcTag: "Registro", src: "Aviso \"Sexta o parque abre uma hora mais cedo\" · publicado ontem 07:20 · leitura às 09:50", srcAction: "abrir o aviso",
+      actions: [["Cobrar os 17 às 18:00", "warn"], ["Cobrar os 4 agora", "ok"]],
+      done: "Cobrança dos 4 enviada agora por push, e a dos 13 agendada para 18:00. Se alguém confirmar antes, sai da lista sozinho." },
+    { q: "Redige o aviso do fim de semana cheio",
+      a: "Rascunho pronto, alcance os três locais. Não marquei ciente obrigatório: não muda horário de ninguém, é só folga de segurança para o corredor lotado — cobrar confirmação por isso gasta a atenção que você vai precisar na próxima vez que for sério.",
+      mem: "Você sempre revisa antes de publicar, então eu nunca publico direto — entrego em rascunho.",
+      srcTag: "Rascunho", src: "Gerado agora · fonte: ocupação do hotel de 12 e 13/09 informada pela Direção", srcAction: "editar o texto",
+      actions: [["Publicar sem ciente", "ok"], ["Marcar ciente para a casa", "ghost"]],
+      done: "Publicado às 09:55 para os três locais, sem cobrança de ciente. Fica no mural e desce pelo tempo, como todo recado." },
+    { q: "Que documento está faltando na Biblioteca?",
+      a: "Um, com clareza: 23 pessoas perguntaram nos últimos 30 dias como funciona reembolso de transporte, e eu não tenho documento que responda — respondi \"não sei\" 23 vezes e ofereci conversa com você. É a pergunta sem resposta mais repetida da casa.",
+      list: [
+        { tag: "23", what: "Reembolso de transporte", note: "sem documento · 30 dias" },
+        { tag: "6", what: "Uniforme de inverno", note: "sem documento · 30 dias" }
+      ],
+      srcTag: "Registro", src: "Minhas respostas \"não encontrei\" agrupadas por assunto · 07/08 a 06/09", srcAction: "ver as perguntas",
+      actions: [["Criar pedido de documento", "ok"], ["Responder as 23 pessoas", "ghost"]],
+      done: "Pedido criado na sua lista e as 23 pessoas avisadas de que o documento está sendo escrito. Quando você publicar, eu respondo todas de novo, com a fonte." }
+  ],
+  DIR: [
+    { q: "Como está a temporada até aqui?",
+      a: "300 shows, nenhum cancelado por falta de gente — três anos atrás era um cancelado a cada duas semanas. Check-in em falta caiu de 8% para 3,4% desde que a escala passou a sair com 48h. O ponto que eu olharia: Acquamotion está 11 pontos abaixo dos outros dois locais em confirmação de leitura, e isso já dura três semanas.",
+      list: [
+        { tag: "300", what: "Shows na temporada", note: "0 cancelados por falta de gente" },
+        { tag: "3,4%", what: "Check-in em falta", note: "era 8% em março · série de 6 meses" }
+      ],
+      mem: "Você quer o número sempre com a série dos últimos 6 meses, nunca o dado solto — vem assim por padrão.",
+      srcTag: "Registro", src: "Painel organizacional · fechamento de 06/09 · série de março a setembro", srcAction: "abrir o painel",
+      actions: [["Resumo em uma página", "ok"], ["Comparar os três locais", "ghost"]],
+      done: "Resumo de uma página gerado com a série dos 6 meses e a ressalva do Acquamotion no topo. Sem nome de pessoa, como você pediu." },
+    { q: "Quem são as pessoas com mais falta?",
+      a: "Não vou descer a nome aqui — foi você que me pediu isso, e eu mantenho: em resposta agregada eu não nomeio ninguém. Posso dizer que a falta se concentra em duas pessoas de um mesmo grupo do Acquamotion e que a supervisora já abriu conversa com as duas. Se você quiser os nomes, pede explicitamente e eu mostro.",
+      mem: "Regra que você me ensinou: nome de pessoa só quando você pede com todas as letras.",
+      srcTag: "Permissão", src: "Sua própria regra, registrada em 04/07 · dado disponível, exibição contida", srcAction: "ver a regra",
+      actions: [["Quero os nomes", "warn"], ["Falar com a supervisora", "ghost"]],
+      done: "Nomes exibidos e registrado que você pediu — fica no histórico, para ninguém achar depois que a informação vazou sozinha." }
+  ]
+};
+
+const SOURCES = {
+  MEM: [
+    { name: "Biblioteca", scope: "regras e procedimentos, sempre a versão vigente" },
+    { name: "Sua escala e suas folgas", scope: "só as suas · o que você já vê nas telas" },
+    { name: "Avisos endereçados a você", scope: "inclusive o que espera ciente" },
+    { name: "O que ela aprendeu com você", scope: "a lista ao lado, que é sua e privada" }
+  ],
+  SUP: [
+    { name: "Biblioteca", scope: "regras e procedimentos, versão vigente" },
+    { name: "Escalas e folgas da sua área", scope: "22 pessoas · três grupos" },
+    { name: "Check-in e ocorrências", scope: "só dos seus grupos" },
+    { name: "O que ela aprendeu com você", scope: "seu jeito de escrever e de trabalhar" }
+  ],
+  ADM: [
+    { name: "Biblioteca", scope: "tudo, incluindo modelos internos" },
+    { name: "Cadastro e registros da casa", scope: "58 pessoas · 3 locais · com histórico" },
+    { name: "Suas próprias perguntas sem resposta", scope: "viram diagnóstico de documento faltando" },
+    { name: "O que ela aprendeu com você", scope: "seus padrões de revisão e cobrança" }
+  ],
+  DIR: [
+    { name: "Painel organizacional", scope: "agregado, com série histórica" },
+    { name: "Biblioteca", scope: "regras e contratos da casa" },
+    { name: "Suas regras de exibição", scope: "o que você ensinou sobre como responder" }
+  ]
+};
+
+const NEVERS = {
+  MEM: [
+    "Contar à gestão o que você perguntou ou o que ela aprendeu de você",
+    "Mostrar dado de colega que você não pode ver nas telas",
+    "Agir sem você ver: nada é enviado, pedido ou confirmado sem seu toque"
+  ],
+  SUP: [
+    "Publicar escala ou aviso sem você revisar o rascunho",
+    "Mostrar dado de grupo que não é seu, nem com pergunta indireta",
+    "Contar a você o que uma pessoa da sua equipe perguntou em particular"
+  ],
+  ADM: [
+    "Publicar texto direto: ela entrega rascunho porque você revisa",
+    "Abrir conversa privada de ninguém, nem em denúncia — só a mensagem denunciada",
+    "Entregar memória pessoal de alguém, mesmo com alcance total"
+  ],
+  DIR: [
+    "Nomear pessoa em resposta agregada sem você pedir explicitamente",
+    "Dar número sem a série que mostra se aquilo é novo ou de sempre",
+    "Ler conversa de ninguém para montar um indicador"
+  ]
+};
+
+const GREET = {
+  MEM: ["Bom dia, Julia. Sexta mudou de horário.", "Você tem um aviso esperando ciente e a passagem antecipada em 48h — resolvo os dois aqui se você quiser."],
+  SUP: ["Bom dia, Deborah. Segunda de escala.", "Trouxe o buraco da posição 4 antes da quinta, como você prefere, e a folga da Julia esperando resposta."],
+  ADM: ["Bom dia, Carolina. 17 pessoas sem ciente.", "Preparei a cobrança para as 18:00, do jeito que você gosta — de uma vez, não a cada hora."],
+  DIR: ["Bom dia, Beatriz. Temporada em 300 shows.", "Nenhum cancelado por falta de gente. O ponto de atenção é o Acquamotion, três semanas abaixo."]
+};
+
+class Component extends DCLogic {
+  state = { profile: null, qi: 0, acted: {}, forgotten: {} };
+
+  renderVals() {
+    const active = this.state.profile || this.props.perfilInicial || "MEM";
+    const meta = PROFILES.find(p => p.key === active) || PROFILES[0];
+    const dot = meta.dot;
+    const set = Q[active];
+    const idx = Math.min(this.state.qi, set.length - 1);
+    const item = set[idx];
+    const actedKey = active + ":" + idx;
+    const done = !!this.state.acted[actedKey];
+
+    const profileTabs = PROFILES.map(p => ({
+      name: p.name, dot: p.dot,
+      onClick: () => this.setState({ profile: p.key, qi: 0 }),
+      style: "display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-family:Manrope,sans-serif;font-size:13px;font-weight:600;padding:8px 14px;border-radius:999px;"
+        + (p.key === active
+          ? "border:1px solid " + p.dot + ";background:" + p.dot + "14;color:" + p.dot + ";"
+          : "border:1px solid #e6e1f2;background:#fff;color:#5b5473;")
+    }));
+
+    const shellNav = NAV.map(g => ({
+      title: g.title,
+      items: g.items.filter(it => it[2].indexOf(active) >= 0).map(it => ({
+        href: NAV_HREF[it[0]],
+        label: it[1],
+        style: "font-size:12px;font-weight:500;padding:6px 9px;border-radius:8px;color:#c3bbe0;"
+      }))
+    })).filter(g => g.items.length);
+
+    const toneBtn = (kind) => kind === "ok"
+      ? "cursor:pointer;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;color:#fff;background:linear-gradient(135deg,#6C2BF2,#2E3BD6);border:none;border-radius:999px;padding:10px 18px;flex:none;"
+      : kind === "warn"
+        ? "cursor:pointer;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;color:#fff;background:#C2600F;border:none;border-radius:999px;padding:10px 18px;flex:none;"
+        : "cursor:pointer;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;color:#5b5473;background:#fff;border:1px solid #e6e1f2;border-radius:999px;padding:10px 18px;flex:none;";
+
+    const learned = (LEARNED[active] || []).map((l, i) => {
+      const key = active + ":" + i;
+      const gone = !!this.state.forgotten[key];
+      return {
+        fact: l.fact,
+        how: gone ? "apagado por você agora · ela não usa mais" : l.how,
+        icon: l.icon,
+        iconStyle: "flex:none;width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;"
+          + (gone ? "background:#f0eef5;color:#6b6482;" : "background:" + dot + "1a;color:" + dot + ";"),
+        rowStyle: "display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;"
+          + (gone ? "background:#faf9fe;border:1px dashed #e6e1f2;opacity:.6;" : "background:#fff;border:1px solid #e6e1f2;"),
+        onForget: () => this.setState(s => ({ forgotten: Object.assign({}, s.forgotten, { [key]: !s.forgotten[key] }) })),
+        forgetLabel: gone ? "voltar" : "apagar",
+        forgetStyle: "flex:none;cursor:pointer;font-family:Manrope,sans-serif;font-size:11px;font-weight:700;background:none;border:none;padding:0;color:"
+          + (gone ? "#6C2BF2" : "#6b6482") + ";"
+      };
+    });
+
+    return {
+      a1: () => this.setState({ __toast: "Apagar esta conversa? A ASA esquece o que foi dito aqui, mas o que ela já executou continua registrado nos módulos." }),
+      a2: () => this.setState({ __toast: "Abre a tela de origem exatamente na linha citada." }),
+      a3: () => this.setState({ __toast: "Segure para falar. A ASA entende português falado no meio do barulho." }),
+      a4: () => this.setState({ __toast: "Gravando… solte para enviar." }),
+      toastMsg: this.state.__toast || null,
+      onFecharToast: () => this.setState({ __toast: null }),
+      profileTabs: profileTabs,
+      profileHint: meta.hint,
+      profileName: meta.name,
+      personName: meta.person,
+      personChipStyle: "font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:" + dot + ";padding:2px 7px;border-radius:999px;width:fit-content",
+      shellNav: shellNav,
+      scopeLine: meta.scope,
+      mobileScope: meta.scope,
+      scopeChip: meta.chip,
+      scopeChipStyle: "font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 10px;border-radius:999px;color:" + dot + ";background:" + dot + "14;",
+
+      greeting: GREET[active][0],
+      greetingSub: GREET[active][1],
+
+      skills: (SKILLS[active] || []).map(s => ({
+        verb: s.verb,
+        example: s.ex,
+        style: "display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-radius:12px;min-width:150px;flex:1 1 150px;"
+          + (s.state === "on" ? "background:#fff;border:1px solid #e6e1f2;" : "background:#faf9fe;border:1px dashed #ddcbfa;"),
+        exStyle: "font-size:11px;line-height:1.35;color:#6b6482;text-wrap:pretty;",
+        tag: s.state === "on" ? "" : "aprendendo",
+        tagStyle: s.state === "on"
+          ? "display:none;"
+          : "font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5B23C9;width:fit-content;padding-top:2px;"
+      })),
+
+      question: item.q,
+      answer: item.a,
+      answerShort: item.a.length > 190 ? item.a.slice(0, 188) + "…" : item.a,
+      hasList: !!item.list,
+      answerList: (item.list || []).map(l => ({
+        tag: l.tag,
+        what: l.what,
+        note: l.note,
+        tagStyle: "flex:none;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;padding:5px 9px;border-radius:7px;background:" + dot + "1a;color:" + dot + ";"
+      })),
+      hasMemory: !!item.mem,
+      memoryUsed: item.mem,
+      mobileMemory: item.mem || (LEARNED[active] || [])[0].fact,
+
+      sourceTag: item.srcTag,
+      sourceText: item.src,
+      sourceAction: item.srcAction,
+
+      actions: item.actions.map(a => ({
+        label: a[0],
+        onClick: () => this.setState(s => ({ acted: Object.assign({}, s.acted, { [actedKey]: true }) })),
+        style: toneBtn(a[1])
+      })),
+      firstActionLabel: item.actions[0][0],
+      firstActionClick: () => this.setState(s => ({ acted: Object.assign({}, s.acted, { [actedKey]: true }) })),
+      mobileActionStyle: toneBtn(item.actions[0][1]).replace("padding:10px 18px", "padding:11px 16px"),
+      doneLine: done ? "✓ " + item.done + " · desfazer" : "",
+      doneStyle: done
+        ? "font-size:12px;line-height:1.5;color:#0b6f68;background:#e3f4f1;border:1px solid #cbe9e4;border-radius:12px;padding:10px 13px;text-wrap:pretty;"
+        : "display:none;",
+
+      suggestions: set.map((s, i) => ({
+        label: s.q,
+        onClick: () => this.setState({ qi: i }),
+        style: "cursor:pointer;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:600;border-radius:999px;padding:7px 13px;text-align:left;"
+          + (i === idx
+            ? "border:1px solid " + dot + ";background:" + dot + "14;color:" + dot + ";"
+            : "border:1px solid #e6e1f2;background:#fff;color:#5b5473;")
+      })),
+      draft: "",
+      onDraft: () => {},
+      placeholder: active === "MEM"
+        ? "Pergunte ou peça — \"me consegue folga dia 22\", \"que horas eu entro\""
+        : active === "SUP"
+          ? "Peça — \"escreve o aviso da passagem\", \"quem cobre a posição 4\""
+          : active === "ADM"
+            ? "Peça — \"cobra quem não deu ciente\", \"redige o aviso do fim de semana\""
+            : "Pergunte — \"como está a temporada\", \"compara os três locais\"",
+      sendStyle: "cursor:pointer;font-family:Manrope,sans-serif;font-size:13px;font-weight:700;color:#fff;background:linear-gradient(135deg,#6C2BF2,#2E3BD6);border:none;border-radius:999px;padding:12px 22px;flex:none;",
+      composerNote: "Ela vê o que você vê e responde com a fonte. O que você escreve aqui não vira mensagem para ninguém sem você mandar.",
+
+      learned: learned,
+      learnedCount: learned.length + " lembranças",
+      growing: GROWING[active] || [],
+      sources: (SOURCES[active] || []).map((s, i) => ({
+        name: s.name,
+        scope: s.scope,
+        num: String(i + 1),
+        numStyle: "flex:none;width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;background:" + dot + "1a;color:" + dot + ";"
+      })),
+      nevers: NEVERS[active] || [],
+
+      mobileChips: active === "MEM"
+        ? ["que horas eu entro", "preciso de folga"]
+        : active === "SUP"
+          ? ["quem cobre sexta", "escreve o aviso"]
+          : active === "ADM"
+            ? ["quem falta ciente", "redige o aviso"]
+            : ["como está a temporada", "compara os locais"],
+      mobileTabs: MOBILE[active].map((label, i) => ({
+        label: label,
+        style: "display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 2px;" + (i === 4 ? "color:" + dot + ";" : "color:#6b6482;")
+      })),
+      footerStamp: "27 Assistente ASA · " + meta.name + " · faz, não só responde · aprende com você, à vista · vê o que você vê"
+    };
+  }
+}
+</script>
+</body>
+</html>

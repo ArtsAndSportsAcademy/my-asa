@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  aside a { text-decoration: none; }
+  body { margin: 0; background: #f4f2fa; font-family: Manrope, system-ui, sans-serif; color: #1b1630; }
+  a { color: #6C2BF2; text-decoration: none; }
+  a:hover { color: #4a17b8; text-decoration: underline; }
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 3px solid #6C2BF2; outline-offset: 2px; border-radius: 8px; }
+</style>
+</helmet>
+
+<div style="max-width:1400px;margin:0 auto;padding:44px 28px 88px;display:flex;flex-direction:column;gap:40px">
+
+  <header style="display:flex;flex-direction:column;gap:22px">
+    <div style="display:flex;align-items:flex-start;gap:18px">
+      <img src="assets/asa-wing.png" alt="My ASA" style="width:52px;height:52px;object-fit:contain;flex:none;margin-top:4px" />
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#6b6482">23 · comunicação · conversa dirigida</div>
+        <h1 style="font-family:Outfit,sans-serif;font-size:38px;line-height:1.05;font-weight:700;margin:0;letter-spacing:-0.02em">Mensagens</h1>
+        <p style="margin:0;max-width:66ch;font-size:15px;line-height:1.55;color:#5b5473;text-wrap:pretty">Conversa de verdade, com grupos, áudio, foto e resposta — mas com uma diferença que o grupo comum não tem: os grupos de trabalho já vêm prontos do cadastro, ninguém monta nem esquece de adicionar. Para carona, festa e projeto, qualquer pessoa cria o seu. E quando um recado precisa virar trabalho, ele sai daqui e entra em Responsabilidades.</p>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:13px 16px;background:#fff;border:1px solid #e6e1f2;border-radius:16px">
+      <span style="font-size:13px;font-weight:600;color:#5b5473;margin-right:4px">Ver como</span>
+      <sc-for list="{{ profileTabs }}" as="tab" hint-placeholder-count="4">
+        <button type="button" onClick="{{ tab.onClick }}" style="{{ tab.style }}">
+          <span style="width:8px;height:8px;border-radius:50%;background:{{ tab.dot }};display:inline-block"></span>
+          <span>{{ tab.name }}</span>
+        </button>
+      </sc-for>
+      <span style="flex:1"></span>
+      <span style="font-size:13px;color:#6b6482">{{ profileHint }}</span>
+    </div>
+  </header>
+
+  <div style="display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start">
+
+    <div style="flex:1 1 900px;min-width:0;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Web · 1920 × 1080</span>
+        <span style="font-size:11.5px;color:#6b6482">exibido a 70% — proporção real de tela</span>
+      </div>
+      <div style="width:1344px;height:756px;border:1px solid #ddd6ee;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="width:1920px;height:1080px;transform:scale(0.7);transform-origin:top left;display:flex">
+
+          <aside style="width:236px;flex:none;background:linear-gradient(180deg,#1c1440 0%,#241a52 100%);display:flex;flex-direction:column;color:#fff">
+            <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 12px">
+              <img src="assets/asa-wing.png" alt="" style="width:26px;height:26px;object-fit:contain" />
+              <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">My ASA</span>
+            </div>
+            <div style="padding:0 12px 10px">
+              <a href="27%20Assistente%20ASA.dc.html" style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border-radius:10px;padding:8px 10px;font-size:11.5px;color:#b9b0da;text-decoration:none;cursor:pointer">
+                <span style="width:11px;height:11px;border:1.5px solid #b9b0da;border-radius:50%"></span>
+                <span>Buscar ou perguntar à ASA</span>
+              </a>
+            </div>
+            <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:12px;padding:2px 10px 10px">
+              <sc-for list="{{ shellNav }}" as="g" hint-placeholder-count="4">
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#7d72a8;padding:0 8px 4px">{{ g.title }}</div>
+                  <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+                    <a href="{{ it.href }}" style="{{ it.style }}">{{ it.label }}</a>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+            <a href="28%20Perfil%20e%20configura%C3%A7%C3%B5es.dc.html" style="border-top:1px solid rgba(255,255,255,.1);padding:12px;display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit">
+              <span style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+              <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                <span style="font-size:12.5px;font-weight:600">{{ personName }}</span>
+                <span style="{{ personChipStyle }}">{{ profileName }}</span>
+              </div>
+            </a>
+          </aside>
+
+          <div style="width:372px;flex:none;border-right:1px solid #ebe6f6;background:#fff;display:flex;flex-direction:column;min-width:0">
+            <div style="padding:14px 16px 12px;display:flex;flex-direction:column;gap:11px;border-bottom:1px solid #f5f2fa">
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">Mensagens</span>
+                <span style="{{ unreadTotalStyle }}">{{ unreadTotal }}</span>
+                <span style="flex:1"></span>
+                <button type="button" onClick="{{ a1 }}" style="cursor:pointer;font-family:Manrope,sans-serif;font-size:12px;font-weight:700;color:#fff;background:linear-gradient(135deg,#6C2BF2,#2E3BD6);border:none;border-radius:999px;padding:8px 14px">Nova conversa</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;background:#faf9fe;border:1px solid #ebe6f6;border-radius:10px;padding:9px 11px">
+                <span style="width:12px;height:12px;border:1.5px solid #6b6482;border-radius:50%;flex:none"></span>
+                <span style="font-size:12px;color:#6b6482">Buscar pessoa, grupo ou palavra</span>
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <sc-for list="{{ filters }}" as="f" hint-placeholder-count="4">
+                  <button type="button" onClick="{{ f.onClick }}" style="{{ f.style }}">{{ f.label }}</button>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column">
+              <sc-for list="{{ listGroups }}" as="sec" hint-placeholder-count="3">
+                <div style="display:flex;flex-direction:column">
+                  <div style="display:flex;align-items:center;gap:9px;padding:12px 16px 7px">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">{{ sec.title }}</span>
+                    <span style="{{ sec.chipStyle }}">{{ sec.chip }}</span>
+                    <span style="flex:1"></span>
+                    <span style="{{ sec.actionStyle }}">{{ sec.action }}</span>
+                  </div>
+                  <sc-for list="{{ sec.items }}" as="c" hint-placeholder-count="4">
+                    <button type="button" onClick="{{ c.onClick }}" style="{{ c.rowStyle }}">
+                      <span style="{{ c.avatarStyle }}">{{ c.initials }}</span>
+                      <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;text-align:left">
+                        <span style="display:flex;align-items:baseline;gap:7px">
+                          <span style="font-size:13px;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.name }}</span>
+                          <span style="flex:1"></span>
+                          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6b6482;flex:none">{{ c.when }}</span>
+                        </span>
+                        <span style="display:flex;align-items:center;gap:6px">
+                          <span style="font-size:11.5px;color:#6b6482;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.preview }}</span>
+                          <span style="flex:1"></span>
+                          <span style="{{ c.badgeStyle }}">{{ c.badge }}</span>
+                        </span>
+                      </span>
+                    </button>
+                  </sc-for>
+                </div>
+              </sc-for>
+
+              <div style="{{ admNoteStyle }}">
+                <img src="assets/asa/aviso-importante.png" alt="ASA" style="width:30px;height:30px;object-fit:contain;flex:none" />
+                <span style="font-size:11.5px;line-height:1.45;color:#7d4a10;text-wrap:pretty">{{ admNote }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="flex:1;display:flex;flex-direction:column;background:#faf9fe;min-width:0">
+            <header style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid #ebe6f6;background:#fff">
+              <span style="{{ threadAvatarStyle }}">{{ threadInitials }}</span>
+              <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">{{ threadName }}</span>
+                  <span style="{{ threadOriginStyle }}">{{ threadOrigin }}</span>
+                </div>
+                <span style="font-size:11.5px;color:#6b6482">{{ threadMembers }}</span>
+              </div>
+              <span style="flex:1"></span>
+              <span onClick="{{ a2 }}" style="font-size:12px;font-weight:700;color:#6C2BF2;cursor:pointer">ver integrantes</span>
+              <span onClick="{{ a3 }}" style="font-size:12px;font-weight:700;color:#6C2BF2;cursor:pointer">silenciar</span>
+            </header>
+
+            <sc-if value="{{ hasPin }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;align-items:center;gap:11px;padding:11px 20px;background:#fff8f1;border-bottom:1px solid #f2d7bb">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#B4560B;flex:none">Fixada</span>
+                <span style="font-size:12.5px;line-height:1.4;color:#4a4363;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">{{ pinText }}</span>
+                <span style="font-size:11.5px;color:#8a6c4d;flex:none">{{ pinAuthor }}</span>
+                <button type="button" onClick="{{ onUnpin }}" style="cursor:pointer;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;color:#8a5514;background:none;border:none;padding:0;flex:none">soltar</button>
+              </div>
+            </sc-if>
+
+            <div style="flex:1;min-height:0;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:13px">
+              <sc-for list="{{ messages }}" as="m" hint-placeholder-count="6">
+                <div style="{{ m.wrapStyle }}">
+                  <span style="{{ m.avatarStyle }}">{{ m.initials }}</span>
+                  <div style="{{ m.colStyle }}">
+                    <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+                      <span style="font-size:12.5px;font-weight:700">{{ m.author }}</span>
+                      <span style="font-size:11px;color:#6b6482">{{ m.role }} · {{ m.when }}</span>
+                    </div>
+                    <div style="{{ m.bubbleStyle }}">
+                      <sc-if value="{{ m.hasQuote }}" hint-placeholder-val="{{ false }}">
+                        <div style="{{ m.quoteStyle }}">
+                          <span style="font-size:11px;font-weight:700;color:#5B23C9">{{ m.quoteAuthor }}</span>
+                          <span style="font-size:11.5px;line-height:1.4;color:#5b5473">{{ m.quoteText }}</span>
+                        </div>
+                      </sc-if>
+
+                      <sc-if value="{{ m.hasText }}" hint-placeholder-val="{{ true }}">
+                        <span style="{{ m.textStyle }}">{{ m.text }}</span>
+                      </sc-if>
+
+                      <sc-if value="{{ m.isAudio }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex;align-items:center;gap:11px;min-width:260px">
+                          <span style="width:32px;height:32px;border-radius:50%;background:#5B23C9;flex:none;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700">▶</span>
+                          <span style="display:flex;align-items:flex-end;gap:2px;height:22px;flex:1">
+                            <sc-for list="{{ m.wave }}" as="w" hint-placeholder-count="20">
+                              <span style="{{ w }}"></span>
+                            </sc-for>
+                          </span>
+                          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6b6482;flex:none">{{ m.audioLen }}</span>
+                        </div>
+                      </sc-if>
+
+                      <sc-if value="{{ m.isSticker }}" hint-placeholder-val="{{ false }}">
+                        <span role="img" aria-label="{{ m.stickerLabel }}" style="{{ m.stickerStyle }}"></span>
+                      </sc-if>
+
+                      <sc-if value="{{ m.isFile }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex;align-items:center;gap:11px;min-width:240px">
+                          <span style="width:34px;height:40px;border-radius:6px;background:#efe8fd;border:1px solid #ddcbfa;flex:none;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:#5B23C9">{{ m.fileKind }}</span>
+                          <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                            <span style="font-size:12.5px;font-weight:600">{{ m.fileName }}</span>
+                            <span style="font-size:11px;color:#6b6482">{{ m.fileSize }}</span>
+                          </div>
+                        </div>
+                      </sc-if>
+
+                      <sc-if value="{{ m.isTask }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex;align-items:center;gap:9px;padding:9px 11px;background:#e3f4f1;border:1px solid #cbe9e4;border-radius:11px;margin-top:3px">
+                          <span style="width:16px;height:16px;border-radius:4px;border:1.75px solid #0E8F86;flex:none"></span>
+                          <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                            <span style="font-size:12px;font-weight:700;color:#0b6f68">{{ m.taskTitle }}</span>
+                            <span style="font-size:11px;color:#4c7a76">{{ m.taskNote }}</span>
+                          </div>
+                        </div>
+                      </sc-if>
+                    </div>
+
+                    <div style="{{ m.footStyle }}">
+                      <sc-for list="{{ m.reactions }}" as="r" hint-placeholder-count="2">
+                        <button type="button" onClick="{{ r.onClick }}" style="{{ r.style }}">{{ r.label }}</button>
+                      </sc-for>
+                      <button type="button" onClick="{{ m.onReply }}" style="{{ m.replyStyle }}">responder</button>
+                      <button type="button" onClick="{{ m.onPin }}" style="{{ m.pinStyle }}">fixar</button>
+                      <span style="{{ m.readStyle }}">{{ m.readLabel }}</span>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="border-top:1px solid #ebe6f6;background:#fff;padding:12px 20px 14px;display:flex;flex-direction:column;gap:10px">
+              <sc-if value="{{ hasReply }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;align-items:center;gap:11px;padding:9px 12px;background:#f4edfe;border:1px solid #ddcbfa;border-radius:11px">
+                  <span style="width:3px;align-self:stretch;background:#5B23C9;border-radius:2px;flex:none"></span>
+                  <div style="display:flex;flex-direction:column;gap:1px;min-width:0;flex:1">
+                    <span style="font-size:11px;font-weight:700;color:#5B23C9">respondendo {{ replyAuthor }}</span>
+                    <span style="font-size:11.5px;color:#5b5473;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ replyText }}</span>
+                  </div>
+                  <button type="button" onClick="{{ onCancelReply }}" style="cursor:pointer;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;color:#6b6482;background:none;border:none;padding:0;flex:none">cancelar</button>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ trayOpen }}" hint-placeholder-val="{{ false }}">
+                <div style="background:#faf9fe;border:1px solid #e6e1f2;border-radius:14px;padding:12px 13px;display:flex;flex-direction:column;gap:9px">
+                  <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+                    <span style="font-size:12.5px;font-weight:700">{{ trayTitle }}</span>
+                    <span style="flex:1"></span>
+                    <span style="font-size:11px;color:#6b6482;text-wrap:pretty">{{ trayNote }}</span>
+                  </div>
+                  <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:7px">
+                    <sc-for list="{{ stickers }}" as="s" hint-placeholder-count="16">
+                      <button type="button" onClick="{{ s.onClick }}" style="{{ s.style }}">
+                        <span role="img" aria-label="{{ s.label }}" style="{{ s.artStyle }}"></span>
+                        <span style="font-size:9.5px;font-weight:600;color:#6b6482;text-align:center">{{ s.label }}</span>
+                      </button>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ hasSent }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:#f4edfe;border:1px solid #ddcbfa;border-radius:12px">
+                  <span role="img" aria-label="figurinha escolhida" style="{{ sentBgStyle }}"></span>
+                  <span style="font-size:12px;font-weight:600;color:#5f4b8a;flex:1">Figurinha escolhida — vai junto com a mensagem.</span>
+                  <button type="button" onClick="{{ onUnsend }}" style="cursor:pointer;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;color:#6b6482;background:none;border:none;padding:0;flex:none">tirar</button>
+                </div>
+              </sc-if>
+
+              <div style="display:flex;align-items:center;gap:9px">
+                <span style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+                <button type="button" onClick="{{ onTray }}" style="{{ trayBtnStyle }}">
+                  <img src="assets/asa/travessa.png" alt="figurinhas" style="width:100%;height:100%;object-fit:contain" />
+                </button>
+                <input type="text" value="{{ draft }}" onChange="{{ onDraft }}" placeholder="{{ draftPlaceholder }}" style="flex:1;min-width:0;border:1px solid #e6e1f2;border-radius:999px;padding:11px 16px;font-family:Manrope,sans-serif;font-size:13px;color:#1b1630;background:#faf9fe;outline:none" />
+                <sc-for list="{{ composerTools }}" as="t" hint-placeholder-count="4">
+                  <span style="{{ t.style }}">{{ t.label }}</span>
+                </sc-for>
+                <button type="button" onClick="{{ onSend }}" style="{{ sendStyle }}">Enviar</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                <span style="font-size:11.5px;color:#6b6482">{{ composerHint }}</span>
+                <span style="flex:1"></span>
+                <button type="button" onClick="{{ onTaskFromDraft }}" style="{{ taskBtnStyle }}">{{ taskBtnLabel }}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:0 0 390px;min-width:390px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Mobile · onde a conversa realmente acontece</div>
+      <div style="width:390px;height:844px;border-radius:38px;border:1px solid #ddd6ee;background:#fff;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="background:linear-gradient(135deg,#1c1440,#2b1f63);color:#fff;padding:16px 18px 16px;display:flex;align-items:center;gap:11px">
+          <span style="{{ threadAvatarStyle }}">{{ threadInitials }}</span>
+          <div style="display:flex;flex-direction:column;gap:1px;min-width:0;flex:1">
+            <span style="font-size:15px;font-weight:600;font-family:Outfit,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ threadName }}</span>
+            <span style="font-size:11px;color:#c4bce0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ threadMembers }}</span>
+          </div>
+        </div>
+
+        <sc-if value="{{ hasPin }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;align-items:center;gap:9px;padding:10px 14px;background:#fff8f1;border-bottom:1px solid #f2d7bb">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#B4560B;flex:none">Fixada</span>
+            <span style="font-size:11.5px;color:#4a4363;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">{{ pinText }}</span>
+          </div>
+        </sc-if>
+
+        <div style="flex:1;padding:14px;background:#faf9fe;display:flex;flex-direction:column;gap:12px;overflow:hidden">
+          <sc-for list="{{ mobileMessages }}" as="m" hint-placeholder-count="4">
+            <div style="{{ m.wrapStyle }}">
+              <div style="{{ m.colStyle }}">
+                <span style="{{ m.metaStyle }}">{{ m.author }} · {{ m.when }}</span>
+                <div style="{{ m.bubbleStyle }}">
+                  <sc-if value="{{ m.hasQuote }}" hint-placeholder-val="{{ false }}">
+                    <div style="{{ m.quoteStyle }}">
+                      <span style="font-size:10.5px;font-weight:700;color:#5B23C9">{{ m.quoteAuthor }}</span>
+                      <span style="font-size:11px;line-height:1.35;color:#5b5473">{{ m.quoteText }}</span>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ m.hasText }}" hint-placeholder-val="{{ true }}">
+                    <span style="{{ m.textStyle }}">{{ m.text }}</span>
+                  </sc-if>
+                  <sc-if value="{{ m.isAudio }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;align-items:center;gap:9px">
+                      <span style="width:28px;height:28px;border-radius:50%;background:#5B23C9;flex:none;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700">▶</span>
+                      <span style="display:flex;align-items:flex-end;gap:2px;height:18px;flex:1">
+                        <sc-for list="{{ m.wave }}" as="w" hint-placeholder-count="14">
+                          <span style="{{ w }}"></span>
+                        </sc-for>
+                      </span>
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#6b6482;flex:none">{{ m.audioLen }}</span>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ m.isTask }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#e3f4f1;border:1px solid #cbe9e4;border-radius:10px;margin-top:3px">
+                      <span style="width:14px;height:14px;border-radius:4px;border:1.75px solid #0E8F86;flex:none"></span>
+                      <span style="font-size:11px;font-weight:700;color:#0b6f68">{{ m.taskTitle }}</span>
+                    </div>
+                  </sc-if>
+                </div>
+                <span style="{{ m.readStyle }}">{{ m.readLabel }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="border-top:1px solid #ebe6f6;background:#fff;padding:11px 14px 16px;display:flex;align-items:center;gap:9px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:15px;color:#6C2BF2;flex:none">＋</span>
+          <span style="flex:1;min-width:0;background:#faf9fe;border:1px solid #e6e1f2;border-radius:999px;padding:11px 14px;font-size:12.5px;color:#6b6482;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Mensagem para {{ threadShort }}</span>
+          <span style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#6C2BF2,#2E3BD6);flex:none;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700">♪</span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid #ebe6f6;background:#fff;padding:10px 4px 16px">
+          <sc-for list="{{ mobileTabs }}" as="t" hint-placeholder-count="5">
+            <div style="{{ t.style }}">
+              <span style="position:relative;display:flex;align-items:center;justify-content:center">
+                <span style="display:block;width:20px;height:20px;border-radius:7px;border:1.75px solid currentColor;opacity:.75"></span>
+                <span style="{{ t.badgeStyle }}">{{ t.badge }}</span>
+              </span>
+              <span style="font-size:10px;font-weight:600;text-align:center">{{ t.label }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">O que esta tela decide</span>
+    <div style="display:flex;flex-wrap:wrap;gap:12px">
+      <div style="flex:1 1 300px;min-width:260px;display:flex;gap:11px;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:13px 15px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6C2BF2;flex:none;padding-top:2px">01</span>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+          <span style="font-size:13px;font-weight:700;line-height:1.3">Grupo de trabalho não se monta à mão</span>
+          <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Área, grupo de escala e show já vêm prontos do cadastro. Quem entra na casa entra no grupo no mesmo dia; quem sai, sai. É o fim do "esqueceram de me adicionar" — que é como a informação se perde hoje.</span>
+        </div>
+      </div>
+      <div style="flex:1 1 300px;min-width:260px;display:flex;gap:11px;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:13px 15px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6C2BF2;flex:none;padding-top:2px">02</span>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+          <span style="font-size:13px;font-weight:700;line-height:1.3">Grupo solto é da pessoa que criou</span>
+          <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Carona, festa, projeto: qualquer pessoa cria, convida e apaga o que é seu. Esses não seguem o cadastro e não morrem quando a escala muda — a casa não manda neles.</span>
+        </div>
+      </div>
+      <div style="flex:1 1 300px;min-width:260px;display:flex;gap:11px;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:13px 15px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6C2BF2;flex:none;padding-top:2px">03</span>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+          <span style="font-size:13px;font-weight:700;line-height:1.3">Qualquer pessoa fala com qualquer pessoa</span>
+          <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Sem pedir passagem pela gestão, nos três locais. O bailarino de Snowland fala direto com a recepção do hotel — porque na prática ele já fala, só que num lugar onde nada fica registrado.</span>
+        </div>
+      </div>
+      <div style="flex:1 1 300px;min-width:260px;display:flex;gap:11px;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:13px 15px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6C2BF2;flex:none;padding-top:2px">04</span>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+          <span style="font-size:13px;font-weight:700;line-height:1.3">A Administração não lê conversa</span>
+          <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Vê que o grupo existe, quem está nele e quando teve movimento — nunca o conteúdo. Só entra quando alguém denuncia, e aí lê apenas a mensagem denunciada. Ferramenta de trabalho não precisa ser escuta.</span>
+        </div>
+      </div>
+      <div style="flex:1 1 300px;min-width:260px;display:flex;gap:11px;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:13px 15px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6C2BF2;flex:none;padding-top:2px">05</span>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+          <span style="font-size:13px;font-weight:700;line-height:1.3">Recado que é trabalho sai da conversa</span>
+          <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">"Leva a manga extra" vira tarefa em Responsabilidades com um toque, com responsável e prazo. É o que o grupo de mensagem nunca fez: o pedido para de depender de alguém rolar a conversa para lembrar.</span>
+        </div>
+      </div>
+      <div style="flex:1 1 300px;min-width:260px;display:flex;gap:11px;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:13px 15px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6C2BF2;flex:none;padding-top:2px">06</span>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+          <span style="font-size:13px;font-weight:700;line-height:1.3">Isto não é o Mural, e não substitui aviso</span>
+          <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Conversa é para combinar; aviso é para a casa saber e confirmar. Dúvida sobre um aviso abre conversa com quem publicou, levando o aviso citado — mas responder na conversa nunca conta como ciente.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6b6482">{{ footerStamp }}</span>
+</div>
+
+  <sc-if value="{{ toastMsg }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:12px;background:#1c1440;color:#fff;border-radius:14px;padding:13px 18px;box-shadow:0 18px 40px -20px rgba(20,8,60,.7);max-width:560px">
+      <span style="font-size:13.5px;line-height:1.45;flex:1;text-wrap:pretty">{{ toastMsg }}</span>
+      <button type="button" onClick="{{ onFecharToast }}" style="border:none;background:rgba(255,255,255,.16);color:#fff;border-radius:9px;width:28px;height:28px;font-size:13px;cursor:pointer;flex:none">✕</button>
+    </div>
+  </sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1400},&quot;perfilInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ADM&quot;,&quot;DIR&quot;,&quot;SUP&quot;,&quot;MEM&quot;],&quot;default&quot;:&quot;MEM&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Perfil&quot;},&quot;conversaAberta&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;gb&quot;,&quot;carona&quot;,&quot;debora&quot;,&quot;festa&quot;,&quot;show&quot;],&quot;default&quot;:&quot;gb&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Conversa&quot;}}">const PROFILES = [
+  { key: "ADM", name: "Administração", dot: "#6C2BF2", hint: "vê que os grupos existem, não o que dizem", person: "Barbara Sorroche", initials: "BS" },
+  { key: "DIR", name: "Direção", dot: "#2E63D6", hint: "conversa como qualquer um, alcance total", person: "Cris Garcia", initials: "CG" },
+  { key: "SUP", name: "Supervisão", dot: "#0E8F86", hint: "os grupos da área dela vêm prontos", person: "Deborah", initials: "De" },
+  { key: "MEM", name: "Elenco", dot: "#C2508F", hint: "fala com qualquer pessoa da ASA, direto", person: "Julia", initials: "Ju" }
+];
+
+const NAV = [
+  { title: "Porta de entrada", items: [
+    ["17", "Início / Meu Dia", ["ADM","DIR","SUP","MEM"], "Meu Dia"]
+  ] },
+  { title: "O dia", items: [
+    ["20", "Agenda", ["ADM","DIR","SUP","MEM"], "Minha agenda"],
+    ["15", "Escalas", ["ADM","DIR","SUP","MEM"], "Minha escala"],
+    ["13", "Shows", ["ADM","DIR","SUP","MEM"], "Shows"],
+    ["14", "Livro do Dia", ["ADM","DIR","SUP","MEM"], "Meus shows"],
+    ["19", "Check-in e ocorrências", ["ADM","DIR","SUP","MEM"], "Check-in"],
+    ["10", "Responsabilidades e tarefas", ["ADM","DIR","SUP","MEM"], "Minhas tarefas"],
+    ["18", "Folgas", ["ADM","DIR","SUP","MEM"], "Minhas folgas"]
+  ] },
+  { title: "Gestão", items: [
+    ["16", "Painel", ["ADM","DIR","SUP"], null],
+    ["06", "Locais", ["ADM","DIR","SUP"], null],
+    ["07", "Pessoas", ["ADM","DIR","SUP"], null],
+    ["08", "Áreas", ["ADM","DIR","SUP","MEM"], "Meu grupo"],
+    ["25", "Reconhecimentos", ["ADM","DIR","SUP"], null]
+  ] },
+  { title: "Comunicação", items: [
+    ["22", "Avisos e Mural", ["ADM","DIR","SUP","MEM"], "Mural"],
+    ["23", "Mensagens", ["ADM","DIR","SUP","MEM"], "Conversas"],
+    ["24", "Biblioteca", ["ADM","DIR","SUP","MEM"], "Biblioteca"]
+  ] }
+];
+
+const NAV_HREF = {
+  "10": "10%20Responsabilidades%20e%20Tarefas.dc.html",
+  "13": "13%20Shows.dc.html",
+  "14": "14%20Livro%20do%20Dia.dc.html",
+  "15": "15%20Escalas.dc.html",
+  "16": "16%20Painel%20e%20indicadores.dc.html",
+  "17": "17%20Meu%20Dia.dc.html",
+  "18": "18%20Folgas.dc.html",
+  "19": "19%20Check-in%20e%20ocorr%C3%AAncias.dc.html",
+  "20": "20%20Agenda.dc.html",
+  "22": "22%20Avisos%20e%20Mural.dc.html",
+  "23": "23%20Mensagens.dc.html",
+  "24": "24%20Biblioteca.dc.html", "25": "25%20Reconhecimentos.dc.html",
+  "27": "27%20Assistente%20ASA.dc.html",
+  "28": "28%20Perfil%20e%20configura%C3%A7%C3%B5es.dc.html",
+  "06": "06%20Locais.dc.html",
+  "07": "07%20Pessoas.dc.html",
+  "08": "08%20%C3%81reas.dc.html"
+};
+
+const MOBILE = {
+  ADM: ["Meu Dia", "Painel", "Escalas", "Mural", "Mais"],
+  DIR: ["Meu Dia", "Painel", "Agenda", "Mural", "Mais"],
+  SUP: ["Meu Dia", "Escalas", "Equipe", "Mural", "Mais"],
+  MEM: ["Meu Dia", "Escala", "Mural", "Conversas", "Mais"]
+};
+
+const CONVS = [
+  { id: "gb", kind: "auto", name: "Bailarinos · grupo B", origin: "de Escalas", members: "14 integrantes · Bailarinos · Snowland",
+    when: "09:41", preview: "Deborah: passagem de sexta às 07:00", unread: 3, initials: "gB" },
+  { id: "elenco", kind: "auto", name: "Patinadores · Snowland", origin: "de Áreas", members: "14 integrantes",
+    when: "08:12", preview: "Deborah: treino de gelo às 09:40", unread: 0, initials: "El" },
+  { id: "show", kind: "auto", name: "Show das 20h · hoje", origin: "de Shows · morre amanhã", members: "9 integrantes · só hoje",
+    when: "07:55", preview: "Lucas: palco liberado", unread: 1, initials: "20" },
+  { id: "tec", kind: "auto", name: "Produção · Snowland", origin: "de Áreas", members: "4 integrantes",
+    when: "ontem", preview: "Maico: refletor 4 trocado", unread: 0, initials: "Té" },
+  { id: "carona", kind: "solto", name: "Carona Gramado ↔ Snowland", origin: "criado por Mariela", members: "5 integrantes",
+    when: "09:20", preview: "Julia: topo quarta, que horas?", unread: 0, initials: "Ca" },
+  { id: "festa", kind: "solto", name: "Festa de fim de temporada", origin: "criado por Maico", members: "31 integrantes",
+    when: "ontem", preview: "Isadora: alguém tem caixa de som?", unread: 7, initials: "Fe" },
+  { id: "debora", kind: "direta", name: "Deborah", origin: "Supervisão · Patinadores", members: "conversa direta",
+    when: "09:38", preview: "consegue trocar sexta com a Dani?", unread: 1, initials: "De" },
+  { id: "carolina", kind: "direta", name: "Barbara Sorroche", origin: "Administração", members: "conversa direta",
+    when: "07:30", preview: "seu contrato foi assinado, tudo certo", unread: 0, initials: "BS" },
+  { id: "marina", kind: "direta", name: "Carol", origin: "Patinadores", members: "conversa direta",
+    when: "ontem", preview: "obrigada pela manga!", unread: 0, initials: "Ca" }
+];
+
+const MSGS = {
+  gb: [
+    { id: "m1", author: "Deborah", role: "Supervisão", when: "07:12", initials: "De",
+      text: "Bom dia. A passagem de sexta é 07:00, não 08:00 — o parque abre mais cedo por causa do grupo de escola. Quem depende de transporte resolve hoje, não na quinta à noite.", pinned: true, reacts: 6 },
+    { id: "m2", author: "Carol", role: "Patinadores", when: "07:31", initials: "Ca",
+      quoteAuthor: "Deborah", quoteText: "A passagem de sexta é 07:00, não 08:00…",
+      text: "Já provei o figurino novo da cena 5, tá certo. Sexta eu venho com a Isadora de carro.", reacts: 2 },
+    { id: "m3", author: "Maico", role: "Produção", when: "08:04", initials: "Ma",
+      audio: "0:34", reacts: 3 },
+    { id: "m4", author: "Isadora", role: "Bailarinos", when: "08:26", initials: "Is",
+      text: "Marcação nova da cena 5, com as entradas por trás:", file: "cena5-marcacao.pdf", fileKind: "PDF", fileSize: "2,4 MB · 3 páginas" },
+    { id: "m5", author: "Deborah", role: "Supervisão", when: "09:41", initials: "De",
+      text: "@Julia leva a manga extra na sexta, por favor — a da Dani rasgou no show de ontem.",
+      task: "Levar manga extra do figurino", taskNote: "Julia · sexta antes da passagem · virou tarefa em Responsabilidades", reacts: 1 },
+    { id: "m6", author: "Julia", role: "Patinadores", when: "09:44", initials: "Ju",
+      text: "Combinado, levo na mochila.", read: "12 de 14 leram" },
+    { id: "m7", author: "Carol", role: "Patinadores", when: "09:45", initials: "Ca",
+      sticker: "abraco-fofo", stickerLabel: "abraço", reacts: 5 }
+  ],
+  carona: [
+    { id: "c1", author: "Isadora", role: "Bailarinos", when: "ontem 21:30", initials: "Is",
+      text: "Vou de carro de Gramado nas quartas e sextas, saio 06:15 da praça. Cabem mais dois.", pinned: true, reacts: 4 },
+    { id: "c2", author: "Julia", role: "Patinadores", when: "09:20", initials: "Ju",
+      text: "Topo quarta. Que horas exatamente você passa na rodoviária?", read: "3 de 5 leram" }
+  ],
+  debora: [
+    { id: "d1", author: "Deborah", role: "Supervisão", when: "09:38", initials: "De",
+      text: "Consegue trocar sexta com a Dani? Ela pediu folga e você é a única da posição 4 disponível. Se não puder, sem problema — eu resolvo por aqui." },
+    { id: "d2", author: "Julia", role: "Patinadores", when: "09:39", initials: "Ju",
+      text: "Consigo sim. Só não posso na semana que vem, que é a formatura da minha irmã.", read: "lida 09:40" }
+  ]
+};
+
+const GENERIC = [
+  { id: "g1", author: "Gabriel", role: "Produção · luz", when: "08:12", initials: "Ga",
+    text: "Luz da cena 5 ajustada, o refletor 4 estava fora de foco desde terça." },
+  { id: "g2", author: "Maico", role: "Produção", when: "08:20", initials: "Ma",
+    text: "Vi daqui, ficou bem melhor. Palco liberado para a passagem.", read: "todos leram" }
+];
+
+const WAVE = [5,9,14,18,12,7,16,20,11,6,13,17,9,5,12,19,15,8,6,10];
+
+const STICKERS = [
+  ["abraco-fofo", "abraço"], ["vencemos", "vencemos"], ["tarefa-concluida", "feito"],
+  ["olhos-de-estrela", "que orgulho"], ["gargalhada", "risada"], ["beijinho", "beijinho"],
+  ["preocupada", "e agora?"], ["sonolenta", "que sono"], ["travessa", "travessa"],
+  ["bom-dia", "bom dia"], ["boa-noite", "boa noite"], ["muito-apaixonada", "amei"],
+  ["brava", "brava"], ["chocada", "chocada"], ["piscadinha", "combinado"], ["bem-vindo", "bem-vinda"]
+];
+
+class Component extends DCLogic {
+  state = { profile: null, conv: null, filter: "todas", reacted: {}, reply: null, pinOff: {}, draft: "", tray: false, sent: null };
+
+  renderVals() {
+    const active = this.state.profile || this.props.perfilInicial || "MEM";
+    const meta = PROFILES.find(p => p.key === active) || PROFILES[0];
+    const dot = meta.dot;
+    const convId = this.state.conv || this.props.conversaAberta || "gb";
+    const conv = CONVS.find(c => c.id === convId) || CONVS[0];
+    const isAdm = active === "ADM";
+
+    const profileTabs = PROFILES.map(p => ({
+      name: p.name, dot: p.dot,
+      onClick: () => this.setState({ profile: p.key }),
+      style: "display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-family:Manrope,sans-serif;font-size:13px;font-weight:600;padding:8px 14px;border-radius:999px;"
+        + (p.key === active
+          ? "border:1px solid " + p.dot + ";background:" + p.dot + "14;color:" + p.dot + ";"
+          : "border:1px solid #e6e1f2;background:#fff;color:#5b5473;")
+    }));
+
+    const shellNav = NAV.map(g => ({
+      title: g.title,
+      items: g.items.filter(it => it[2].indexOf(active) >= 0).map(it => ({
+        href: NAV_HREF[it[0]],
+        label: it[1],
+        style: "font-size:12px;font-weight:" + (it[0] === "23" ? "700" : "500") + ";padding:6px 9px;border-radius:8px;"
+          + (it[0] === "23" ? "background:rgba(255,255,255,.14);color:#fff;" : "color:#c3bbe0;")
+      }))
+    })).filter(g => g.items.length);
+
+    const filters = [
+      ["todas", "Todas"],
+      ["auto", "Grupos da casa"],
+      ["solto", "Meus grupos"],
+      ["nao", "Não lidas"]
+    ].map(f => ({
+      label: f[1],
+      onClick: () => this.setState({ filter: f[0] }),
+      style: "cursor:pointer;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;border-radius:999px;padding:6px 12px;"
+        + (this.state.filter === f[0]
+          ? "border:1px solid " + dot + ";background:" + dot + "14;color:" + dot + ";"
+          : "border:1px solid #e6e1f2;background:#fff;color:#6b6482;")
+    }));
+
+    const pass = (c) => {
+      if (this.state.filter === "nao") return c.unread > 0;
+      if (this.state.filter === "auto") return c.kind === "auto";
+      if (this.state.filter === "solto") return c.kind === "solto";
+      return true;
+    };
+
+    const row = (c) => ({
+      name: c.name,
+      when: c.when,
+      preview: isAdm && c.kind === "direta" ? "conteúdo não visível para a Administração" : c.preview,
+      initials: c.initials,
+      onClick: () => this.setState({ conv: c.id, reply: null }),
+      rowStyle: "cursor:pointer;display:flex;align-items:center;gap:11px;padding:10px 16px;border:none;border-left:3px solid "
+        + (c.id === convId ? dot : "transparent") + ";background:" + (c.id === convId ? dot + "0d" : "#fff") + ";font-family:Manrope,sans-serif;text-align:left;",
+      avatarStyle: "flex:none;width:38px;height:38px;border-radius:"
+        + (c.kind === "direta" ? "50%" : "12px")
+        + ";display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;"
+        + (c.kind === "auto" ? "background:#efe8fd;color:#5B23C9;" : c.kind === "solto" ? "background:#e3f4f1;color:#0A6F68;" : "background:#fbeaf3;color:#B03C7D;"),
+      badge: c.unread ? String(c.unread) : "",
+      badgeStyle: c.unread
+        ? "flex:none;min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:999px;background:" + dot + ";color:#fff;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;"
+        : "display:none;"
+    });
+
+    const sec = (title, chip, kind, action) => {
+      const items = CONVS.filter(c => c.kind === kind && pass(c));
+      return {
+        title: title,
+        chip: chip,
+        chipStyle: chip
+          ? "font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6b6482;background:#f0eef5;padding:3px 7px;border-radius:5px;flex:none;"
+          : "display:none;",
+        action: action,
+        actionStyle: action ? "font-size:11px;font-weight:700;color:" + dot + ";cursor:pointer;flex:none;" : "display:none;",
+        items: items.map(row),
+        count: items.length
+      };
+    };
+
+    const listGroups = [
+      sec("Grupos da casa", "prontos do cadastro", "auto", ""),
+      sec("Meus grupos", "", "solto", "criar grupo"),
+      sec("Conversas", "", "direta", "")
+    ].filter(s => s.count > 0);
+
+    const unread = CONVS.reduce((a, c) => a + c.unread, 0);
+
+    const raw = MSGS[convId] || GENERIC;
+    const pinnedMsg = raw.filter(m => m.pinned && !this.state.pinOff[m.id])[0];
+
+    const build = (m, mobile) => {
+      const mine = m.author === meta.person;
+      const on = !!this.state.reacted[m.id];
+      const count = (m.reacts || 0) + (on ? 1 : 0);
+      return {
+        author: m.author,
+        role: m.role,
+        when: m.when,
+        initials: m.initials,
+        wrapStyle: "display:flex;gap:10px;align-items:flex-start;" + (mine ? "flex-direction:row-reverse;" : ""),
+        avatarStyle: "flex:none;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;"
+          + (mine ? "background:" + dot + "26;color:" + dot + ";" : "background:#f0eef5;color:#6b6482;"),
+        colStyle: "display:flex;flex-direction:column;gap:4px;max-width:" + (mobile ? "84%" : "560px") + ";min-width:0;" + (mine ? "align-items:flex-end;" : ""),
+        metaStyle: "font-size:10.5px;color:#6b6482;" + (mine ? "text-align:right;" : ""),
+        hasQuote: !!m.quoteAuthor,
+        quoteAuthor: m.quoteAuthor,
+        quoteText: m.quoteText,
+        quoteStyle: "display:flex;flex-direction:column;gap:2px;padding:7px 10px;border-left:3px solid #5B23C9;background:#f4edfe;border-radius:8px;",
+        hasText: !!m.text,
+        text: m.text,
+        textStyle: "font-size:" + (mobile ? "12.5px" : "13px") + ";line-height:1.5;color:#1b1630;text-wrap:pretty;",
+        isAudio: !!m.audio,
+        audioLen: m.audio,
+        wave: WAVE.slice(0, mobile ? 14 : 20).map(v => "display:block;width:" + (mobile ? "3px" : "4px") + ";border-radius:2px;background:" + dot + "80;height:" + Math.round(v * (mobile ? 0.9 : 1.1)) + "px;"),
+        isSticker: !!m.sticker,
+        stickerLabel: m.stickerLabel || "",
+        stickerStyle: m.sticker
+          ? "display:block;width:" + (mobile ? "96px" : "124px") + ";height:" + (mobile ? "96px" : "124px")
+            + ";background-repeat:no-repeat;background-position:center;background-size:contain;background-image:url('assets/asa/" + m.sticker + ".png');"
+          : "display:none;",
+        bubbleStyle: m.sticker
+          ? "display:flex;flex-direction:column;gap:4px;padding:0;background:none;border:none;min-width:0;" + (mine ? "align-items:flex-end;" : "")
+          : "display:flex;flex-direction:column;gap:6px;padding:" + (mobile ? "10px 12px" : "11px 14px")
+            + ";border-radius:14px;background:" + (mine ? "#efe8fd" : "#fff") + ";border:1px solid " + (mine ? "#ddcbfa" : "#e6e1f2") + ";min-width:0;",
+        isFile: !!m.file,
+        fileName: m.file,
+        fileKind: m.fileKind,
+        fileSize: m.fileSize,
+        isTask: !!m.task,
+        taskTitle: m.task,
+        taskNote: m.taskNote,
+        footStyle: "display:flex;align-items:center;gap:7px;flex-wrap:wrap;" + (mine ? "justify-content:flex-end;" : ""),
+        reactions: [{
+          label: on ? "curti · " + count : (count ? "curtir · " + count : "curtir"),
+          onClick: () => this.setState(s => ({ reacted: Object.assign({}, s.reacted, { [m.id]: !s.reacted[m.id] }) })),
+          style: "cursor:pointer;font-family:Manrope,sans-serif;font-size:11px;font-weight:700;border-radius:999px;padding:5px 11px;flex:none;"
+            + (on ? "border:1px solid " + dot + ";background:" + dot + "14;color:" + dot + ";" : "border:1px solid #e6e1f2;background:#fff;color:#6b6482;")
+        }],
+        onReply: () => this.setState({ reply: m.id }),
+        replyStyle: "cursor:pointer;font-family:Manrope,sans-serif;font-size:11px;font-weight:600;color:#6C2BF2;background:none;border:none;padding:0;flex:none;",
+        onPin: () => this.setState(s => ({ pinOff: Object.assign({}, s.pinOff, { [m.id]: false }) })),
+        pinStyle: "cursor:pointer;font-family:Manrope,sans-serif;font-size:11px;font-weight:600;color:#6b6482;background:none;border:none;padding:0;flex:none;",
+        readLabel: m.read || "",
+        readStyle: m.read
+          ? "font-family:'JetBrains Mono',monospace;font-size:10px;color:#0A6F68;flex:none;" + (mine ? "text-align:right;" : "")
+          : "display:none;"
+      };
+    };
+
+    const replyMsg = raw.find(m => m.id === this.state.reply);
+    const draft = this.state.draft;
+
+    return {
+      a1: () => this.setState({ __toast: "Escolha a pessoa ou o grupo para começar. Você só enxerga quem o seu perfil alcança." }),
+      a2: () => this.setState({ __toast: "Quem está nesta conversa, de qual área, e quem já leu." }),
+      a3: () => this.setState({ __toast: "Conversa silenciada. Menção direta ao seu nome continua chegando." }),
+      toastMsg: this.state.__toast || null,
+      onFecharToast: () => this.setState({ __toast: null }),
+      profileTabs: profileTabs,
+      profileHint: meta.hint,
+      profileName: meta.name,
+      personName: meta.person,
+      personChipStyle: "font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:" + dot + ";padding:2px 7px;border-radius:999px;width:fit-content",
+      shellNav: shellNav,
+      filters: filters,
+      listGroups: listGroups,
+      unreadTotal: unread ? unread + " não lidas" : "tudo lido",
+      unreadTotalStyle: "font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:4px 8px;border-radius:999px;"
+        + (unread ? "color:" + dot + ";background:" + dot + "14;" : "color:#6b6482;background:#f0eef5;"),
+      admNote: "Você vê que os grupos existem, quem está neles e quando tiveram movimento — nunca o que foi dito. Conversa entre duas pessoas nem aparece com prévia. Você só lê uma mensagem se alguém denunciar, e apenas ela.",
+      admNoteStyle: isAdm
+        ? "display:flex;align-items:center;gap:10px;margin:12px 14px 16px;padding:11px 13px;background:#fff8f1;border:1px solid #f2d7bb;border-radius:13px;"
+        : "display:none;",
+
+      threadName: conv.name,
+      threadShort: conv.kind === "direta" ? conv.name.split(" ")[0] : conv.name,
+      threadInitials: conv.initials,
+      threadAvatarStyle: "flex:none;width:38px;height:38px;border-radius:" + (conv.kind === "direta" ? "50%" : "12px")
+        + ";display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;"
+        + (conv.kind === "auto" ? "background:#efe8fd;color:#5B23C9;" : conv.kind === "solto" ? "background:#e3f4f1;color:#0A6F68;" : "background:#fbeaf3;color:#B03C7D;"),
+      threadMembers: conv.members,
+      threadOrigin: conv.origin,
+      threadOriginStyle: "font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 7px;border-radius:5px;flex:none;"
+        + (conv.kind === "auto" ? "color:#5B23C9;background:#efe8fd;" : conv.kind === "solto" ? "color:#0A6F68;background:#e3f4f1;" : "color:#6b6482;background:#f0eef5;"),
+
+      hasPin: !!pinnedMsg,
+      pinText: pinnedMsg ? pinnedMsg.text : "",
+      pinAuthor: pinnedMsg ? pinnedMsg.author : "",
+      onUnpin: () => { if (pinnedMsg) this.setState(s => ({ pinOff: Object.assign({}, s.pinOff, { [pinnedMsg.id]: true }) })); },
+
+      messages: raw.map(m => build(m, false)),
+      mobileMessages: raw.slice(-4).map(m => build(m, true)),
+
+      hasReply: !!replyMsg,
+      replyAuthor: replyMsg ? replyMsg.author : "",
+      replyText: replyMsg ? (replyMsg.text || (replyMsg.audio ? "áudio de " + replyMsg.audio : replyMsg.file)) : "",
+      onCancelReply: () => this.setState({ reply: null }),
+
+      draft: draft,
+      onDraft: (e) => { const v = e.target.value; this.setState({ draft: v }); },
+      draftPlaceholder: conv.kind === "direta" ? "Mensagem para " + conv.name : "Mensagem para " + conv.name + " · @ marca alguém",
+      onSend: () => this.setState({ draft: "", reply: null }),
+      sendStyle: draft.trim()
+        ? "cursor:pointer;font-family:Manrope,sans-serif;font-size:13px;font-weight:700;color:#fff;background:linear-gradient(135deg,#6C2BF2,#2E3BD6);border:none;border-radius:999px;padding:11px 22px;flex:none;"
+        : "cursor:not-allowed;font-family:Manrope,sans-serif;font-size:13px;font-weight:700;color:#6b6482;background:#f0eef5;border:none;border-radius:999px;padding:11px 22px;flex:none;",
+      composerTools: [["＋", false], ["◉", false], ["@", false], ["♪", false]].map(t => ({
+        label: t[0],
+        onClick: () => {},
+        style: "flex:none;width:34px;height:34px;border-radius:50%;border:1px solid #e6e1f2;background:#fff;color:#6b6482;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;"
+      })),
+      onTray: () => this.setState(s => ({ tray: !s.tray })),
+      trayBtnStyle: "flex:none;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:3px;cursor:pointer;"
+        + (this.state.tray ? "border:1px solid " + dot + ";background:" + dot + "14;" : "border:1px solid #e6e1f2;background:#fff;"),
+      trayOpen: this.state.tray,
+      trayTitle: "Figurinhas da ASA",
+      trayNote: "Ela empresta a cara dela para o que a gente não escreve. Mesmo pacote no aviso e no mural.",
+      stickers: STICKERS.map(s => ({
+        artStyle: "display:block;width:100%;aspect-ratio:1;background-repeat:no-repeat;background-position:center;background-size:contain;background-image:url('assets/asa/" + s[0] + ".png');",
+        label: s[1],
+        onClick: () => this.setState({ tray: false, sent: s[0] }),
+        style: "cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 5px;border-radius:12px;border:1px solid "
+          + (this.state.sent === s[0] ? dot : "#f0ecf8") + ";background:" + (this.state.sent === s[0] ? dot + "0d" : "#faf9fe") + ";"
+      })),
+      hasSent: !!this.state.sent,
+      sentBgStyle: "flex:none;width:54px;height:54px;background-repeat:no-repeat;background-position:center;background-size:contain;background-image:url('assets/asa/"
+        + (this.state.sent || "oi") + ".png');",
+      onUnsend: () => this.setState({ sent: null }),
+      composerHint: conv.kind === "auto"
+        ? "Grupo do cadastro: quem entra na " + (conv.id === "elenco" || conv.id === "tec" ? "área" : "escala") + " entra aqui sozinho, e sai quando sair."
+        : conv.kind === "solto"
+          ? "Grupo seu: você convida e apaga. A casa não mexe."
+          : "Conversa direta. Nem a Administração vê o que está escrito aqui.",
+      taskBtnLabel: draft.trim() ? "virar tarefa em Responsabilidades" : "escreva algo para virar tarefa",
+      taskBtnStyle: draft.trim()
+        ? "cursor:pointer;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;color:#0b6f68;background:#e3f4f1;border:1px solid #cbe9e4;border-radius:999px;padding:8px 14px;flex:none;"
+        : "cursor:not-allowed;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;color:#6b6482;background:#f7f5fb;border:1px solid #ebe6f6;border-radius:999px;padding:8px 14px;flex:none;",
+      onTaskFromDraft: () => this.setState({ draft: "" }),
+
+      mobileTabs: MOBILE[active].map((label, i) => {
+        const isConv = active === "MEM" ? i === 3 : i === 4;
+        return {
+          label: label,
+          style: "display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 2px;" + (isConv ? "color:" + dot + ";" : "color:#6b6482;"),
+          badge: isConv && unread ? String(unread) : "",
+          badgeStyle: isConv && unread
+            ? "position:absolute;top:-6px;right:-9px;min-width:16px;height:16px;padding:0 4px;box-sizing:border-box;border-radius:999px;background:" + dot + ";color:#fff;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;"
+            : "display:none;"
+        };
+      }),
+      footerStamp: "23 Mensagens · " + meta.name + " · grupos do cadastro vêm prontos · grupo solto é de quem criou · a Administração não lê conversa"
+    };
+  }
+}</script>
+</body>
+</html>

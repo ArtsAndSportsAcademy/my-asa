@@ -40,7 +40,7 @@ export default function Login() {
       {
         onSuccess: (result) => {
           authenticate(result.accessToken, result.refreshToken, result.user, result.roles, (result as any).capabilities ?? []);
-          setLocation("/admin/home");
+          setLocation("/meu-dia");
         },
         onError: () => {
           setError("Nome de usuário ou senha inválidos");
@@ -56,7 +56,7 @@ export default function Login() {
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507676184212-d0330a151522?auto=format&fit=crop&q=80')] mix-blend-overlay opacity-10 bg-cover bg-center" />
         <div className="relative z-10 text-primary-foreground max-w-sm flex flex-col items-center text-center">
           <img
-            src="/asinha.svg"
+            src="/asa-wing.png"
             alt="Asinha MyASA"
             className="w-36 h-40 mb-8"
             style={{ filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.4))" }}
@@ -73,7 +73,7 @@ export default function Login() {
         <div className="w-full max-w-md space-y-8">
           <div className="lg:hidden flex flex-col items-center gap-3 mb-8">
             <img
-              src="/asinha.svg"
+              src="/asa-wing.png"
               alt="Asinha MyASA"
               className="w-16 h-18"
             />

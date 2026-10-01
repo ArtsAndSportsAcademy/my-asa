@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 export type AsaPose =
   | "idle"
@@ -22,14 +22,14 @@ export type AsaPose =
   | "planejando"
   | "feliz";
 
-const REACTION_POSES: AsaPose[] = [
-  "feliz", "comemoracao", "duvida", "bomdia", "recomendacao", "lembrete",
-];
-
-function randomReactionPose(current: AsaPose): AsaPose {
-  const options = REACTION_POSES.filter((p) => p !== current);
-  return options[Math.floor(Math.random() * options.length)];
-}
+const OFFICIAL_POSE_FILE: Record<AsaPose, string> = {
+  idle: "oi", bomdia: "bom-dia", boanoite: "sonolenta", duvida: "duvida",
+  aviso_importante: "aviso-importante", arquivo: "estudando", lembrete: "lembrete",
+  tarefa_concluida: "tarefa-concluida", biblioteca: "estudando", analisando: "consultando",
+  carregando: "pensativa", enviando: "travessa", chuva: "sonolenta", frio: "sonolenta",
+  recomendacao: "pensativa", comemoracao: "vencemos", vazio: "oi", focado: "estudando",
+  planejando: "pensativa", feliz: "olhos-de-estrela",
+};
 
 type AsaSize = "small" | "medium" | "large";
 
@@ -71,7 +71,6 @@ export function AsaAvatar({
 }: AsaAvatarProps) {
   const dim = SIZE_MAP[size];
   const [activePose, setActivePose] = useState<AsaPose>(pose);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     injectFloatStyle();
@@ -81,22 +80,7 @@ export function AsaAvatar({
     setActivePose(pose);
   }, [pose]);
 
-  const handleClick = useCallback(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    const reaction = randomReactionPose(pose);
-    setActivePose(reaction);
-    timerRef.current = setTimeout(() => {
-      setActivePose(pose);
-      timerRef.current = null;
-    }, 1500);
-    onClick?.();
-  }, [pose, onClick]);
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
+  const handleClick = useCallback(() => onClick?.(), [onClick]);
 
   return (
     <div
@@ -110,7 +94,12 @@ export function AsaAvatar({
       title="ASA — assistente inteligente do MyASA"
     >
       <img
-        src={`/asa-poses/${activePose}.png`}
+        src={`/asa/${OFFICIAL_POSE_FILE[activePose]}.webp`}
+        onError={(event) => {
+          if (event.currentTarget.src.endsWith(".webp")) {
+            event.currentTarget.src = `/asa/${OFFICIAL_POSE_FILE[activePose]}.png`;
+          }
+        }}
         alt={`ASA — ${activePose}`}
         style={{ width: dim, height: dim, objectFit: "contain" }}
         draggable={false}

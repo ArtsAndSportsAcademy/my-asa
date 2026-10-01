@@ -101,6 +101,7 @@ export async function canManageShowBook(
   show: ShowResponsibilityRef,
   showOperationId: string,
 ): Promise<boolean> {
+  if (actor.role === "DIR") return false;
   if (actor.role === "ADMIN") return true;
   if (show.responsibleId) return show.responsibleId === actor.sub;
   // Legado (sem responsável): qualquer gestor DA OPERAÇÃO, validado por papel
@@ -120,6 +121,7 @@ export async function canOperateDailyBook(
   operationId: string,
   show: ShowResponsibilityRef | null,
 ): Promise<boolean> {
+  if (actor.role === "DIR") return false;
   if (actor.role === "ADMIN") return true;
   if (show?.responsibleId) {
     if (show.responsibleId === actor.sub) return true;
@@ -148,7 +150,7 @@ export async function canViewShowBook(
   show: ShowResponsibilityRef,
   showOperationId: string,
 ): Promise<boolean> {
-  if (actor.role === "ADMIN") return true;
+  if (actor.role === "ADMIN" || actor.role === "DIR") return true;
   if (!MANAGER_ROLES.has(actor.role)) {
     return actor.operationIds.includes(showOperationId);
   }
@@ -171,7 +173,7 @@ export async function canViewDailyBook(
   status: string,
   show: ShowResponsibilityRef | null,
 ): Promise<boolean> {
-  if (actor.role === "ADMIN") return true;
+  if (actor.role === "ADMIN" || actor.role === "DIR") return true;
   const inScope = actor.operationIds.includes(operationId);
   const published = status === "PUBLISHED" || status === "REPUBLISHED";
   // Membro (não-gestor): livros publicados da sua operação.

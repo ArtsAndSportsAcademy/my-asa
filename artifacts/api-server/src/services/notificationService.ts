@@ -1,6 +1,8 @@
 import { db } from "@workspace/db";
 import {
   userNotificationsTable,
+  notificationOutboxTable,
+  webPushSubscriptionsTable,
   type InsertUserNotification,
   type UserNotification,
 } from "@workspace/db";
@@ -8,6 +10,8 @@ import { eq, and, isNull, or, gt, desc, count } from "drizzle-orm";
 import { domainLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
 import { sendPushToUser, type PushDeliveryResult } from "./pushService.js";
+import { WEB_PUSH_TYPES } from "./web-push.js";
+import { normalizeActionUrl } from "../lib/app-routes.js";
 
 const log = domainLogger(LOG_DOMAIN.NOTIFICATIONS);
 
@@ -26,6 +30,9 @@ export type NotificationCategory =
   | "system";
 
 export interface CreateNotificationInput {
+  /** Internal outbox delivery flag; never supplied by a public notification route. */
+  webOnly?: boolean;
+  webPushType?: "notice.requires_ack";
   userId: string;
   type: string;
   title: string;
@@ -51,7 +58,8 @@ export interface GetNotificationsOptions {
 export async function createNotification(
   input: CreateNotificationInput,
 ): Promise<UserNotification> {
-  const [notification] = await db
+  const notification = await db.transaction(async tx => {
+  const [created] = await tx
     .insert(userNotificationsTable)
     .values({
       userId: input.userId,
@@ -62,11 +70,17 @@ export async function createNotification(
       category: input.category,
       entityType: input.entityType ?? null,
       entityId: input.entityId ?? null,
-      actionUrl: input.actionUrl ?? null,
+      actionUrl: normalizeActionUrl(input.actionUrl, input.type),
       expiresAt: input.expiresAt ?? null,
     })
     .returning();
-
+  const webType = input.webPushType ?? input.type;
+  if (WEB_PUSH_TYPES.has(webType)) {
+    const [subscription] = await tx.select({ id: webPushSubscriptionsTable.id }).from(webPushSubscriptionsTable).where(and(eq(webPushSubscriptionsTable.userId, input.userId), eq(webPushSubscriptionsTable.active, true))).limit(1);
+    if (subscription) await tx.insert(notificationOutboxTable).values({ userId: input.userId, payload: { ...input, type: webType, webOnly: true }, dueAt: new Date(), notificationId: created!.id });
+  }
+  return created!;
+  });
   log.debug({ notificationId: notification!.id, userId: input.userId, type: input.type }, "notification created");
   return notification!;
 }
@@ -184,7 +198,7 @@ export async function sendNotification(
         notificationId: notification.id,
         ...(input.entityType ? { entityType: input.entityType } : {}),
         ...(input.entityId ? { entityId: input.entityId } : {}),
-        ...(input.actionUrl ? { actionUrl: input.actionUrl } : {}),
+        actionUrl: normalizeActionUrl(input.actionUrl, input.type),
       },
     });
   } catch (err) {

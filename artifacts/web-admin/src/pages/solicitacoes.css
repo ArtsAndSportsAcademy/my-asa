@@ -1,0 +1,54 @@
+/* Solicitações — reaproveita cycle-* (Folgas, Check-in) e acrescenta só a lista de pedidos. */
+.sol-abas{display:flex;gap:6px;flex-wrap:wrap}
+.cycle-page .cycle-toolbar .sol-abas button{width:auto;min-height:44px;border:1px solid #e6e1f2;background:#fff;color:#3d3559;border-radius:999px;padding:8px 14px;font:700 12px Manrope,sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.cycle-page .cycle-toolbar .sol-abas button.active{background:#1c1440;border-color:#1c1440;color:#fff}
+.sol-abas b{min-width:20px;height:20px;border-radius:999px;display:inline-grid;place-items:center;padding:0 6px;background:#f3ecfe;color:#5b23c9;font:700 11px 'JetBrains Mono',monospace}
+.sol-abas button.active b{background:#fff;color:#1c1440}
+.sol-aviso{border:1px solid #cbb8f7;background:#faf8ff;color:#3d3559;border-radius:12px;padding:10px 14px;font-size:13px}
+.sol-layout{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(260px,.7fr);gap:16px;align-items:start}
+.sol-lista{padding:4px 18px}
+.sol-linha{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:12px;padding:14px 0;border-bottom:1px solid #f0ecf8;align-items:start}
+.sol-linha:last-child{border-bottom:0}
+.sol-icone{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:#f3ecfe;color:#5b23c9}
+.sol-corpo{min-width:0;display:grid;gap:3px}
+.sol-titulo{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.sol-titulo strong{font:600 15px Manrope,sans-serif;color:#1b1630}
+.sol-titulo small{font-size:12px;color:#6b6482}
+.sol-meta{font-size:12px;color:#6b6482}
+.sol-estado{border-radius:6px;padding:3px 7px;font:700 10px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.04em;background:#f0ecf8;color:#6b6482}
+.sol-estado.warn{background:#fdf3e4;color:#8f5409}
+.sol-estado.ok{background:#e3f4f1;color:#0a6f68}
+.sol-estado.bad{background:#fff0f2;color:#b42340}
+.sol-texto{margin:4px 0 0;font-size:13px;line-height:1.5;color:#3d3559;overflow-wrap:anywhere}
+.sol-texto.mute{color:#6b6482;font-style:italic}
+.sol-decisao{margin:4px 0 0;font-size:12px;line-height:1.5;border-left:3px solid #cbb8f7;padding:2px 0 2px 9px;color:#3d3559}
+.sol-decisao.bad{border-color:#f3c2cb}
+.sol-decisao.ok{border-color:#a4ded8;color:#0a6f68}
+.sol-acoes{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+.sol-acoes button{min-height:40px;border-radius:999px;padding:6px 14px;font:700 12px Manrope,sans-serif;cursor:pointer;white-space:nowrap}
+.sol-sim{border:0;background:#1c1440;color:#fff}
+.sol-nao{border:1px solid #e6e1f2;background:#fff;color:#3d3559}
+.sol-vazio{min-height:220px;display:grid;place-items:center;align-content:center;gap:10px;text-align:center;color:#6b6482;font-size:13px}
+.sol-vazio img{width:76px;height:76px;object-fit:contain}
+.sol-tipos{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sol-tipos button{min-height:96px;border:1px solid #e6e1f2;background:#fff;border-radius:14px;padding:12px;display:grid;justify-items:start;align-content:start;gap:5px;text-align:left;cursor:pointer;color:#5b23c9}
+.sol-tipos button:hover,.sol-tipos button:focus-visible{border-color:#cbb8f7;background:#faf8ff}
+.sol-tipos b{font:700 14px Manrope,sans-serif;color:#1b1630}
+.sol-tipos small{font-size:12px;line-height:1.4;color:#6b6482}
+.sol-duas{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sol-horario{border:1px solid #e6e1f2;border-radius:12px;padding:10px 12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0}
+.sol-horario legend{font-size:12px;font-weight:700;padding:0 4px;color:#3d3559}
+.sol-resumo{margin:0;font-size:13px;line-height:1.5;color:#3d3559}
+.sol-nota{margin:0;font-size:12px;line-height:1.5;color:#6b6482}
+.cycle-modal footer{gap:8px}
+@media(max-width:900px){.sol-layout{grid-template-columns:1fr}}
+@media(max-width:720px){
+  .sol-linha{grid-template-columns:32px minmax(0,1fr)}
+  .sol-icone{width:32px;height:32px}
+  .sol-acoes{grid-column:1/-1;flex-direction:row;flex-wrap:wrap}
+  .sol-acoes button{flex:1}
+  .sol-tipos{grid-template-columns:1fr}
+  .sol-tipos button{min-height:72px}
+  .sol-lista{padding:2px 14px}
+}
+.sol-erro{margin:0;border-radius:10px;background:#fff0f2;color:#b42340;padding:9px 12px;font-size:13px;line-height:1.4}

@@ -66,34 +66,40 @@ router.post(
         return;
       }
 
-      const [delivery] = await db
-        .insert(deliveriesTable)
-        .values({
-          creatorId: userId,
-          operationId,
-          title,
-          description: description ?? null,
-          type,
-          content: content ?? {},
-          contentRef: contentRef ?? null,
-          checklistItems: checklistItems ?? null,
-          dueDate,
-          maxDueDate,
-          status: "DRAFT",
-        })
-        .returning();
+      const delivery = await db.transaction(async (tx) => {
+        const [created] = await tx
+          .insert(deliveriesTable)
+          .values({
+            creatorId: userId,
+            operationId,
+            title,
+            description: description ?? null,
+            type,
+            content: content ?? {},
+            contentRef: contentRef ?? null,
+            checklistItems: checklistItems ?? null,
+            dueDate,
+            maxDueDate,
+            status: "DRAFT",
+          })
+          .returning();
+        if (!created) throw new Error("Não foi possível criar a entrega");
 
-      writeHistoryEvent({
-        category: "DELIVERY",
-        action: "delivery.created",
-        title: `Entrega criada: ${delivery.title}`,
-        narrative: `Entrega do tipo ${delivery.type} criada por ${userId}.`,
-        entityType: "delivery",
-        entityId: delivery.id,
-        actorId: userId,
-        orgId,
-        operationId,
-      }).catch(() => {});
+        await writeHistoryEvent({
+          category: "DELIVERY",
+          action: "delivery.created",
+          title: `Entrega criada: ${created.title}`,
+          narrative: `Entrega do tipo ${created.type} criada por ${userId}.`,
+          entityType: "delivery",
+          entityId: created.id,
+          actorId: userId,
+          orgId,
+          operationId,
+          beforeState: null,
+          afterState: created,
+        }, tx as any);
+        return created;
+      });
 
       res.status(201).json({ delivery });
     } catch (err) {
@@ -285,34 +291,38 @@ router.post(
 
       const now = new Date();
 
-      // Update delivery status
-      const [updated] = await db
-        .update(deliveriesTable)
-        .set({ status: "PUBLISHED", publishedAt: now, updatedAt: now })
-        .where(eq(deliveriesTable.id, deliveryId))
-        .returning();
+      const updated = await db.transaction(async (tx) => {
+        const [published] = await tx
+          .update(deliveriesTable)
+          .set({ status: "PUBLISHED", publishedAt: now, updatedAt: now })
+          .where(eq(deliveriesTable.id, deliveryId))
+          .returning();
+        if (!published) throw new Error("Não foi possível publicar a entrega");
 
-      // Create assignments for each target user
-      await db.insert(deliveryAssignmentsTable).values(
-        targetUserIds.map((uid) => ({
-          deliveryId,
-          userId: uid,
-          status: "PUBLISHED" as const,
-        }))
-      ).onConflictDoNothing();
+        await tx.insert(deliveryAssignmentsTable).values(
+          targetUserIds.map((uid) => ({
+            deliveryId,
+            userId: uid,
+            status: "PUBLISHED" as const,
+          }))
+        ).onConflictDoNothing();
 
-      writeHistoryEvent({
-        category: "DELIVERY",
-        action: "delivery.published",
-        title: `Entrega publicada: ${delivery.title}`,
-        narrative: `Entrega publicada para ${targetUserIds.length} destinatário(s).`,
-        entityType: "delivery",
-        entityId: deliveryId,
-        actorId: userId,
-        orgId,
-        operationId: delivery.operationId,
-        metadata: { recipientCount: targetUserIds.length },
-      }).catch(() => {});
+        await writeHistoryEvent({
+          category: "DELIVERY",
+          action: "delivery.published",
+          title: `Entrega publicada: ${delivery.title}`,
+          narrative: `Entrega publicada para ${targetUserIds.length} destinatário(s).`,
+          entityType: "delivery",
+          entityId: deliveryId,
+          actorId: userId,
+          orgId,
+          operationId: delivery.operationId,
+          metadata: { recipientCount: targetUserIds.length },
+          beforeState: delivery,
+          afterState: published,
+        }, tx as any);
+        return published;
+      });
 
       res.json({ delivery: updated });
     } catch (err) {
@@ -353,23 +363,29 @@ router.patch(
       }
 
       const now = new Date();
-      const [updated] = await db
-        .update(deliveriesTable)
-        .set({ status: "CANCELLED", cancelledAt: now, updatedAt: now })
-        .where(eq(deliveriesTable.id, deliveryId))
-        .returning();
+      const updated = await db.transaction(async (tx) => {
+        const [cancelled] = await tx
+          .update(deliveriesTable)
+          .set({ status: "CANCELLED", cancelledAt: now, updatedAt: now })
+          .where(eq(deliveriesTable.id, deliveryId))
+          .returning();
+        if (!cancelled) throw new Error("Não foi possível cancelar a entrega");
 
-      writeHistoryEvent({
-        category: "DELIVERY",
-        action: "delivery.cancelled",
-        title: `Entrega cancelada: ${delivery.title}`,
-        narrative: `Entrega cancelada por ${userId}.`,
-        entityType: "delivery",
-        entityId: deliveryId,
-        actorId: userId,
-        orgId,
-        operationId: delivery.operationId,
-      }).catch(() => {});
+        await writeHistoryEvent({
+          category: "DELIVERY",
+          action: "delivery.cancelled",
+          title: `Entrega cancelada: ${delivery.title}`,
+          narrative: `Entrega cancelada por ${userId}.`,
+          entityType: "delivery",
+          entityId: deliveryId,
+          actorId: userId,
+          orgId,
+          operationId: delivery.operationId,
+          beforeState: delivery,
+          afterState: cancelled,
+        }, tx as any);
+        return cancelled;
+      });
 
       res.json({ delivery: updated });
     } catch (err) {
@@ -408,22 +424,28 @@ router.post(
       }
 
       const now = new Date();
-      const [updated] = await db
-        .update(deliveryAssignmentsTable)
-        .set({ status: "RECEIVED", receivedAt: now, updatedAt: now })
-        .where(eq(deliveryAssignmentsTable.id, assignment.id))
-        .returning();
+      const updated = await db.transaction(async (tx) => {
+        const [received] = await tx
+          .update(deliveryAssignmentsTable)
+          .set({ status: "RECEIVED", receivedAt: now, updatedAt: now })
+          .where(eq(deliveryAssignmentsTable.id, assignment.id))
+          .returning();
+        if (!received) throw new Error("Não foi possível registrar o recebimento");
 
-      writeHistoryEvent({
-        category: "DELIVERY",
-        action: "delivery.received",
-        title: `Entrega recebida`,
-        narrative: `Usuário ${userId} recebeu a entrega ${deliveryId}.`,
-        entityType: "delivery_assignment",
-        entityId: assignment.id,
-        actorId: userId,
-        orgId,
-      }).catch(() => {});
+        await writeHistoryEvent({
+          category: "DELIVERY",
+          action: "delivery.received",
+          title: "Entrega recebida",
+          narrative: `Usuário ${userId} recebeu a entrega ${deliveryId}.`,
+          entityType: "delivery_assignment",
+          entityId: assignment.id,
+          actorId: userId,
+          orgId,
+          beforeState: assignment,
+          afterState: received,
+        }, tx as any);
+        return received;
+      });
 
       res.json({ assignment: updated });
     } catch (err) {
@@ -462,22 +484,28 @@ router.post(
       }
 
       const now = new Date();
-      const [updated] = await db
-        .update(deliveryAssignmentsTable)
-        .set({ status: "VIEWED", viewedAt: now, updatedAt: now })
-        .where(eq(deliveryAssignmentsTable.id, assignment.id))
-        .returning();
+      const updated = await db.transaction(async (tx) => {
+        const [viewed] = await tx
+          .update(deliveryAssignmentsTable)
+          .set({ status: "VIEWED", viewedAt: now, updatedAt: now })
+          .where(eq(deliveryAssignmentsTable.id, assignment.id))
+          .returning();
+        if (!viewed) throw new Error("Não foi possível registrar a visualização");
 
-      writeHistoryEvent({
-        category: "DELIVERY",
-        action: "delivery.viewed",
-        title: `Entrega visualizada`,
-        narrative: `Usuário ${userId} visualizou a entrega ${deliveryId}.`,
-        entityType: "delivery_assignment",
-        entityId: assignment.id,
-        actorId: userId,
-        orgId,
-      }).catch(() => {});
+        await writeHistoryEvent({
+          category: "DELIVERY",
+          action: "delivery.viewed",
+          title: "Entrega visualizada",
+          narrative: `Usuário ${userId} visualizou a entrega ${deliveryId}.`,
+          entityType: "delivery_assignment",
+          entityId: assignment.id,
+          actorId: userId,
+          orgId,
+          beforeState: assignment,
+          afterState: viewed,
+        }, tx as any);
+        return viewed;
+      });
 
       res.json({ assignment: updated });
     } catch (err) {
@@ -516,23 +544,29 @@ router.post(
       }
 
       const now = new Date();
-      const [updated] = await db
-        .update(deliveryAssignmentsTable)
-        .set({ status: "COMPLETED", completedAt: now, updatedAt: now })
-        .where(eq(deliveryAssignmentsTable.id, assignment.id))
-        .returning();
+      const updated = await db.transaction(async (tx) => {
+        const [completed] = await tx
+          .update(deliveryAssignmentsTable)
+          .set({ status: "COMPLETED", completedAt: now, updatedAt: now })
+          .where(eq(deliveryAssignmentsTable.id, assignment.id))
+          .returning();
+        if (!completed) throw new Error("Não foi possível concluir a entrega");
 
-      writeHistoryEvent({
-        category: "DELIVERY",
-        action: "delivery.completed",
-        title: `Entrega concluída`,
-        narrative: `Usuário ${userId} concluiu a entrega ${deliveryId}.`,
-        entityType: "delivery_assignment",
-        entityId: assignment.id,
-        actorId: userId,
-        orgId,
-        metadata: { completedAt: now.toISOString() },
-      }).catch(() => {});
+        await writeHistoryEvent({
+          category: "DELIVERY",
+          action: "delivery.completed",
+          title: "Entrega concluída",
+          narrative: `Usuário ${userId} concluiu a entrega ${deliveryId}.`,
+          entityType: "delivery_assignment",
+          entityId: assignment.id,
+          actorId: userId,
+          orgId,
+          metadata: { completedAt: now.toISOString() },
+          beforeState: assignment,
+          afterState: completed,
+        }, tx as any);
+        return completed;
+      });
 
       res.json({ assignment: updated });
     } catch (err) {
@@ -551,6 +585,7 @@ router.patch(
   async (req, res): Promise<void> => {
     try {
       const userId = req.user!.sub;
+      const orgId = req.user!.organizationId;
       const deliveryId = String(req.params.id);
       const { progress } = req.body as { progress: Record<string, boolean> };
 
@@ -575,11 +610,28 @@ router.patch(
       const merged = { ...(assignment.checklistProgress ?? {}), ...progress };
 
       const now = new Date();
-      const [updated] = await db
-        .update(deliveryAssignmentsTable)
-        .set({ checklistProgress: merged, updatedAt: now })
-        .where(eq(deliveryAssignmentsTable.id, assignment.id))
-        .returning();
+      const updated = await db.transaction(async (tx) => {
+        const [changed] = await tx
+          .update(deliveryAssignmentsTable)
+          .set({ checklistProgress: merged, updatedAt: now })
+          .where(eq(deliveryAssignmentsTable.id, assignment.id))
+          .returning();
+        if (!changed) throw new Error("Não foi possível atualizar o checklist");
+
+        await writeHistoryEvent({
+          category: "DELIVERY",
+          action: "delivery.checklist_updated",
+          title: "Checklist de entrega atualizado",
+          narrative: `Usuário ${userId} atualizou o checklist da entrega ${deliveryId}.`,
+          entityType: "delivery_assignment",
+          entityId: assignment.id,
+          actorId: userId,
+          orgId,
+          beforeState: assignment,
+          afterState: changed,
+        }, tx as any);
+        return changed;
+      });
 
       res.json({ assignment: updated });
     } catch (err) {

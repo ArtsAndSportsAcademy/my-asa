@@ -34,23 +34,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading: true,
   });
 
-  useEffect(() => {
-    setAuthTokenGetter(() => localStorage.getItem("myasa_access_token"));
-    setAuthRefreshHandler(async () => {
-      const storedRefresh = localStorage.getItem("myasa_refresh_token");
-      if (!storedRefresh) return null;
-      try {
-        const tokens = await refreshTokenRequest({ refreshToken: storedRefresh });
-        localStorage.setItem("myasa_access_token", tokens.accessToken);
-        localStorage.setItem("myasa_refresh_token", tokens.refreshToken);
-        return tokens.accessToken;
-      } catch {
-        clearStorage();
-        setState({ user: null, roles: [], capabilities: [], isAuthenticated: false, isLoading: false });
-        return null;
-      }
-    });
+  // Registrado em cada render (síncrono, no corpo do componente), não dentro de um
+  // useEffect: React roda effects de baixo para cima na montagem inicial, então um
+  // efeito de uma tela filha (ex.: a primeira busca do Livro do Dia) pode disparar
+  // antes do useEffect deste provedor — customFetch encontra o getter ainda nulo e
+  // manda a chamada sem Authorization, um 401 intermitente só no primeiro carregamento.
+  setAuthTokenGetter(() => localStorage.getItem("myasa_access_token"));
+  setAuthRefreshHandler(async () => {
+    const storedRefresh = localStorage.getItem("myasa_refresh_token");
+    if (!storedRefresh) return null;
+    try {
+      const tokens = await refreshTokenRequest({ refreshToken: storedRefresh });
+      localStorage.setItem("myasa_access_token", tokens.accessToken);
+      localStorage.setItem("myasa_refresh_token", tokens.refreshToken);
+      return tokens.accessToken;
+    } catch {
+      clearStorage();
+      setState({ user: null, roles: [], capabilities: [], isAuthenticated: false, isLoading: false });
+      return null;
+    }
+  });
 
+  useEffect(() => {
     const token = localStorage.getItem("myasa_access_token");
     const userStr = localStorage.getItem("myasa_user");
     const rolesStr = localStorage.getItem("myasa_roles");
@@ -119,8 +124,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const updateCurrentUser = (user: User) => {
+    localStorage.setItem("myasa_user", JSON.stringify(user));
+    setState((current) => ({ ...current, user }));
+  };
+
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, markPasswordChanged }}>
+    <AuthContext.Provider value={{ ...state, login, logout, markPasswordChanged, updateCurrentUser }}>
       {children}
     </AuthContext.Provider>
   );

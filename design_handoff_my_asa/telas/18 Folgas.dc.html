@@ -1,0 +1,2261 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  aside a { text-decoration: none; }
+  body { margin: 0; background: #f4f2fa; font-family: Manrope, system-ui, sans-serif; color: #1b1630; }
+  a { color: #6C2BF2; text-decoration: none; }
+  a:hover { color: #4a17b8; text-decoration: underline; }
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 3px solid #6C2BF2; outline-offset: 2px; border-radius: 8px; }
+</style>
+</helmet>
+
+<div style="max-width:1720px;margin:0 auto;padding:44px 28px 88px;display:flex;flex-direction:column;gap:32px">
+
+  <header style="display:flex;flex-direction:column;gap:22px">
+    <div style="display:flex;align-items:flex-start;gap:18px">
+      <img src="assets/asa/estudando.png" alt="My ASA" style="width:52px;height:52px;object-fit:contain;flex:none;margin-top:4px" />
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#6b6482">18 · gestão de pessoas</div>
+        <h1 style="font-family:Outfit,sans-serif;font-size:38px;line-height:1.05;font-weight:700;margin:0;letter-spacing:-0.02em">Folgas</h1>
+        <p style="margin:0;max-width:72ch;font-size:15px;line-height:1.55;color:#5b5473;text-wrap:pretty">Folga é regra da ASA, não saldo. A tela é uma planilha mês × pessoas: clique para editar, arraste para pintar. Um regime só, para toda a ASA: todas as folgas são iguais, e o que varia por pessoa é ter uma ou duas na semana, contada de quinta a quarta. As turmas de folga você cria com os nomes que quiser, e existem só neste módulo para girar a cobertura dos shows — não são os grupos de 08, e trocar de turma não muda o grupo da pessoa. Cada mês pode repetir a configuração do anterior. Filtre por grupo ou por turma, desligue o contador semanal e leia o total do mês na última coluna.</p>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:13px 16px;background:#fff;border:1px solid #e6e1f2;border-radius:16px">
+      <span style="font-size:13px;font-weight:600;color:#5b5473;margin-right:4px">Ver como</span>
+      <sc-for list="{{ profileTabs }}" as="tab" hint-placeholder-count="4">
+        <button type="button" onClick="{{ tab.onClick }}" style="{{ tab.style }}">
+          <span style="width:8px;height:8px;border-radius:50%;background:{{ tab.dot }};display:inline-block"></span>
+          <span>{{ tab.name }}</span>
+        </button>
+      </sc-for>
+      <span style="flex:1"></span>
+      <span style="font-size:13px;color:#6b6482">{{ profileHint }}</span>
+    </div>
+  </header>
+
+  <div style="display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start">
+
+    <div style="flex:1 1 1320px;min-width:1240px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Web</div>
+      <div style="border:1px solid #ddd6ee;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="display:flex;height:920px">
+
+          <aside style="width:222px;flex:none;background:linear-gradient(180deg,#1c1440 0%,#241a52 100%);display:flex;flex-direction:column;color:#fff">
+            <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 12px">
+              <img src="assets/asa-wing.png" alt="" style="width:26px;height:26px;object-fit:contain" />
+              <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">My ASA</span>
+            </div>
+            <div style="padding:0 12px 10px">
+              <a href="27%20Assistente%20ASA.dc.html" style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border-radius:10px;padding:8px 10px;font-size:11.5px;color:#b9b0da;text-decoration:none;cursor:pointer">
+                <span style="width:11px;height:11px;border:1.5px solid #b9b0da;border-radius:50%"></span>
+                <span>Buscar ou perguntar à ASA</span>
+              </a>
+            </div>
+            <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:12px;padding:2px 10px 10px">
+              <sc-for list="{{ shellNav }}" as="g" hint-placeholder-count="4">
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#7d72a8;padding:0 8px 4px">{{ g.title }}</div>
+                  <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+                    <a href="{{ it.href }}" style="{{ it.style }}">{{ it.label }}</a>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+            <div style="border-top:1px solid rgba(255,255,255,.1);padding:12px;display:flex;align-items:center;gap:10px">
+              <span style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+              <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                <span style="font-size:12.5px;font-weight:600">{{ personName }}</span>
+                <span style="{{ personChipStyle }}">{{ profileName }}</span>
+              </div>
+            </div>
+          </aside>
+
+          <div style="position:relative;flex:1;display:flex;flex-direction:column;background:#faf9fe;min-width:0">
+
+            <header style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid #ebe6f6;background:#fff">
+              <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">{{ pageTitle }}</span>
+              <span style="flex:1"></span>
+              <span style="{{ readonlyChipStyle }}">somente leitura</span>
+              <span style="display:flex;align-items:center;gap:7px;height:32px;padding:0 11px;border-radius:11px;border:1px solid #e6e1f2;font-size:12.5px;font-weight:600;color:#3c3559">
+                <span style="width:8px;height:8px;border-radius:50%;background:#0E8F86"></span>
+                <span>{{ operationLabel }}</span>
+                <span style="color:#6b6482;font-weight:500">▾</span>
+              </span>
+              <button type="button" onClick="{{ toggleAsa }}" style="{{ asaBtnStyle }}">
+                <img src="assets/asa/oi.png" alt="ASA" style="width:26px;height:26px;object-fit:contain" />
+                <span>ASA</span>
+              </button>
+            </header>
+
+            <div style="display:flex;align-items:center;gap:6px;padding:0 20px;background:#fff;border-bottom:1px solid #ebe6f6">
+              <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+                <button type="button" onClick="{{ t.onClick }}" style="{{ t.style }}">{{ t.label }}</button>
+              </sc-for>
+            </div>
+
+            <sc-if value="{{ isMapa }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-direction:column;min-height:0;flex:1">
+
+                <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:13px 20px;background:#fff;border-bottom:1px solid #ebe6f6">
+                  <div style="display:flex;align-items:center;gap:4px">
+                    <button type="button" onClick="{{ onPrev }}" style="width:30px;height:30px;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:13px;cursor:pointer">‹</button>
+                    <button type="button" onClick="{{ onNext }}" style="width:30px;height:30px;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:13px;cursor:pointer">›</button>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:3px">
+                    <div style="display:flex;align-items:baseline;gap:9px">
+                      <span style="font-family:Outfit,sans-serif;font-size:21px;font-weight:700;letter-spacing:-0.02em">{{ monthLabel }}</span>
+                      <span style="{{ statusChipStyle }}">{{ statusLabel }}</span>
+                    </div>
+                    <div style="font-size:12px;color:#6b6482">{{ regimeSummary }}</div>
+                  </div>
+                  <span style="flex:1;min-width:20px"></span>
+                  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                    <sc-for list="{{ opTabs }}" as="o" hint-placeholder-count="3">
+                      <button type="button" onClick="{{ o.onClick }}" style="{{ o.style }}">
+                        <span style="width:7px;height:7px;border-radius:50%;background:{{ o.dot }};flex:none"></span>
+                        <span>{{ o.name }}</span>
+                      </button>
+                    </sc-for>
+                    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px">
+                      <sc-for list="{{ filterSets }}" as="fs" hint-placeholder-count="2">
+                        <div style="display:flex;align-items:center;gap:6px">
+                          <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">{{ fs.label }}</span>
+                          <div style="display:flex;align-items:center;gap:3px;padding:3px;background:#f4f2fa;border:1px solid #e6e1f2;border-radius:11px">
+                            <sc-for list="{{ fs.opts }}" as="o" hint-placeholder-count="3">
+                              <button type="button" onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button>
+                            </sc-for>
+                          </div>
+                        </div>
+                      </sc-for>
+                      <button type="button" onClick="{{ countToggle.onClick }}" style="{{ countToggle.style }}">{{ countToggle.label }}</button>
+                      <span style="font-size:11px;color:#6b6482">{{ filterNote }}</span>
+                    </div>
+                  </div>
+                  <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <span style="font-size:11.5px;font-weight:600;color:#6b6482">Pintar</span>
+                      <div style="display:flex;align-items:center;gap:4px;padding:3px;background:#f4f2fa;border:1px solid #e6e1f2;border-radius:11px">
+                        <sc-for list="{{ brushes }}" as="b" hint-placeholder-count="6">
+                          <button type="button" onClick="{{ b.onClick }}" style="{{ b.style }}">{{ b.label }}</button>
+                        </sc-for>
+                      </div>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+                    <button type="button" onClick="{{ onPublish }}" style="height:32px;padding:0 14px;border-radius:11px;border:none;background:#6C2BF2;color:#fff;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap">{{ publishLabel }}</button>
+                  </sc-if>
+                  <sc-if value="{{ isMem }}" hint-placeholder-val="{{ true }}">
+                    <button type="button" onClick="{{ onAskOff }}" style="height:32px;padding:0 14px;border-radius:11px;border:none;background:#6C2BF2;color:#fff;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap">Pedir folga</button>
+                  </sc-if>
+                </div>
+
+                <sc-if value="{{ asaBar }}" hint-placeholder-val="{{ false }}">
+                  <div style="{{ asaBar.style }}">
+                    <img src="assets/asa/oi.png" alt="" style="width:22px;height:22px;object-fit:contain;flex:none" />
+                    <span style="{{ asaBar.chip }}">ASA</span>
+                    <span style="{{ asaBar.textStyle }}">{{ asaBar.text }}</span>
+                    <span style="flex:1"></span>
+                    <button type="button" onClick="{{ asaBar.onOpen }}" style="{{ asaBar.ctaStyle }}">{{ asaBar.cta }}</button>
+                  </div>
+                </sc-if>
+                <div style="flex:1;min-height:0;overflow:auto;padding:16px 20px 20px">
+                  <div style="display:inline-flex;flex-direction:column;background:#fff;border:1px solid #e6e1f2;border-radius:14px;overflow:hidden;min-width:100%">
+
+                    <div style="display:flex;background:#f7f5fd;border-bottom:1px solid #e6e1f2">
+                      <div style="position:sticky;left:0;z-index:3;box-sizing:border-box;background:#f7f5fd;width:190px;flex:none;padding:6px 10px;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482;border-right:1px solid #e6e1f2">Semanas</div>
+                      <sc-for list="{{ weekBands }}" as="w" hint-placeholder-count="5">
+                        <div style="{{ w.style }}">
+                          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#3c3559">{{ w.name }}</span>
+                          <span style="font-size:10.5px;color:#6b6482;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ w.note }}</span>
+                        </div>
+                      </sc-for>
+                      <div style="{{ totalBandStyle }}">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#3c3559">Total</span>
+                        <span style="font-size:10.5px;color:#6b6482;white-space:nowrap">no mês</span>
+                      </div>
+                    </div>
+
+                    <div style="display:flex;border-bottom:1px solid #e6e1f2">
+                      <div style="position:sticky;left:0;z-index:3;box-sizing:border-box;background:#fff;width:190px;flex:none;padding:5px 10px;display:flex;align-items:center;font-size:11px;font-weight:600;color:#5b5473;border-right:1px solid #e6e1f2">Pessoa · regime</div>
+                      <sc-for list="{{ headCells }}" as="h" hint-placeholder-count="35">
+                        <div style="{{ h.style }}">
+                          <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700">{{ h.num }}</span>
+                          <span style="font-size:8.5px;letter-spacing:.04em;opacity:.7">{{ h.wd }}</span>
+                        </div>
+                      </sc-for>
+                      <sc-for list="{{ totalHead }}" as="t" hint-placeholder-count="5">
+                        <div style="{{ t.style }}" title="{{ t.sub }}">{{ t.label }}</div>
+                      </sc-for>
+                    </div>
+
+                    <sc-for list="{{ rows }}" as="r" hint-placeholder-count="9">
+                      <div style="{{ r.style }}">
+                        <div style="{{ r.nameStyle }}">
+                          <span style="width:24px;height:24px;flex:none;border-radius:8px;background:#f0ecfb;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:#6C2BF2">{{ r.initials }}</span>
+                          <div style="display:flex;flex-direction:column;gap:1px;min-width:0;flex:1">
+                            <span style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</span>
+                            <span style="font-size:10px;color:#6b6482;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.meta }}</span>
+                          </div>
+                          <span style="{{ r.groupStyle }}">{{ r.group }}</span>
+                        </div>
+                        <sc-for list="{{ r.cells }}" as="c" hint-placeholder-count="35">
+                          <div onMouseDown="{{ c.onDown }}" onMouseEnter="{{ c.onEnter }}" style="{{ c.style }}" title="{{ c.title }}">
+                            <span>{{ c.label }}</span>
+                            <sc-if value="{{ c.sub }}" hint-placeholder-val="{{ false }}">
+                              <span style="font-size:8px;font-weight:700;color:#C2508F;line-height:1">{{ c.sub }}</span>
+                            </sc-if>
+                          </div>
+                        </sc-for>
+                        <sc-for list="{{ r.totals }}" as="t" hint-placeholder-count="5">
+                          <div style="{{ t.style }}" title="{{ t.title }}">{{ t.label }}</div>
+                        </sc-for>
+                      </div>
+                    </sc-for>
+
+                    <div style="display:flex;background:#f7f5fd;border-top:1px solid #e6e1f2">
+                      <div style="position:sticky;left:0;z-index:3;box-sizing:border-box;background:#f7f5fd;width:190px;flex:none;padding:6px 10px;display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:#5b5473;border-right:1px solid #e6e1f2">
+                        <span>Fora no dia</span>
+                        <span style="font-size:10px;color:#6b6482">limite {{ dayLimit }}</span>
+                      </div>
+                      <sc-for list="{{ footCells }}" as="f" hint-placeholder-count="35">
+                        <div style="{{ f.style }}">{{ f.label }}</div>
+                      </sc-for>
+                      <sc-for list="{{ totalFoot }}" as="t" hint-placeholder-count="5">
+                        <div style="{{ t.style }}">{{ t.label }}</div>
+                      </sc-for>
+                    </div>
+                  </div>
+
+                  <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding-top:14px">
+                    <span style="font-size:11.5px;font-weight:700;color:#3c3559">Legenda</span>
+                    <sc-for list="{{ legend }}" as="l" hint-placeholder-count="6">
+                      <span style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:#5b5473">
+                        <span style="{{ l.swatch }}">{{ l.key }}</span>
+                        <span>{{ l.text }}</span>
+                      </span>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isRegistros }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1;min-height:0;overflow:auto;padding:18px 20px 24px;display:flex;flex-direction:column;gap:14px">
+                <div style="display:flex;align-items:baseline;gap:12px">
+                  <span style="font-family:Outfit,sans-serif;font-size:19px;font-weight:600">Registros</span>
+                  <span style="font-size:12.5px;color:#6b6482">quem marcou, quando e por quê · o mapa nunca perde a história</span>
+                </div>
+                <div style="border:1px solid #e6e1f2;border-radius:14px;background:#fff;overflow:hidden">
+                  <div style="display:flex;gap:10px;padding:9px 14px;background:#f7f5fd;border-bottom:1px solid #e6e1f2;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:#6b6482">
+                    <span style="width:96px;flex:none">Quando</span>
+                    <span style="width:126px;flex:none">Pessoa</span>
+                    <span style="width:78px;flex:none">Data</span>
+                    <span style="width:74px;flex:none">Tipo</span>
+                    <span style="flex:1">Motivo</span>
+                    <span style="width:126px;flex:none">Quem marcou</span>
+                    <span style="width:112px;flex:none">Status</span>
+                  </div>
+                  <sc-for list="{{ logs }}" as="l" hint-placeholder-count="7">
+                    <div style="display:flex;gap:10px;padding:10px 14px;border-bottom:1px solid #f2eefa;font-size:12.5px;align-items:center">
+                      <span style="width:96px;flex:none;color:#6b6482;font-family:'JetBrains Mono',monospace;font-size:11px">{{ l.when }}</span>
+                      <span style="width:126px;flex:none;font-weight:600">{{ l.who }}</span>
+                      <span style="width:78px;flex:none;color:#5b5473">{{ l.date }}</span>
+                      <span style="width:74px;flex:none"><span style="{{ l.typeStyle }}">{{ l.type }}</span></span>
+                      <span style="flex:1;color:#5b5473;line-height:1.4">{{ l.why }}</span>
+                      <span style="width:126px;flex:none;color:#5b5473">{{ l.by }}</span>
+                      <span style="width:112px;flex:none"><span style="{{ l.statusStyle }}">{{ l.status }}</span></span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isRegras }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1;min-height:0;overflow:auto;padding:18px 20px 24px;display:flex;flex-direction:column;gap:18px">
+                <div style="display:flex;align-items:baseline;gap:12px">
+                  <span style="font-family:Outfit,sans-serif;font-size:19px;font-weight:600">Regras e grupos</span>
+                  <span style="font-size:12.5px;color:#6b6482">o regime é um só, da ASA inteira — o mapa só obedece</span>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">
+                  <sc-for list="{{ regimes }}" as="rg" hint-placeholder-count="3">
+                    <div style="{{ rg.style }}">
+                      <div style="display:flex;align-items:center;gap:9px">
+                        <span style="width:9px;height:9px;border-radius:50%;background:{{ rg.dot }}"></span>
+                        <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">{{ rg.op }}</span>
+                        <span style="flex:1"></span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6C2BF2">{{ rg.rate }}</span>
+                      </div>
+                      <div style="font-size:12.5px;line-height:1.5;color:#5b5473">{{ rg.desc }}</div>
+                      <div style="display:flex;flex-direction:column;gap:5px">
+                        <sc-for list="{{ rg.lines }}" as="ln" hint-placeholder-count="4">
+                          <div style="display:flex;gap:8px;font-size:12px;color:#3c3559">
+                            <span style="color:#6b6482">·</span>
+                            <span style="line-height:1.4">{{ ln }}</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:8px;padding-top:8px;border-top:1px solid #f2eefa;margin-top:2px">
+                        <span style="font-size:11px;color:#6b6482">somente leitura aqui</span>
+                        <span style="flex:1"></span>
+                        <a href="#" style="font-size:11.5px;font-weight:700">{{ rg.editLabel }}</a>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:12px;padding:16px;background:#fff;border:1px solid #e6e1f2;border-radius:14px">
+                  <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+                    <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">{{ groupsTitle }}</span>
+                    <span style="font-size:12px;color:#6b6482">{{ groupsNote }}</span>
+                    <span style="flex:1"></span>
+                    <button type="button" onClick="{{ onRepetirMes }}" style="{{ repetirMesStyle }}">↺ Repetir de agosto</button>
+                    <button type="button" onClick="{{ onNewTurma }}" style="{{ newTurmaStyle }}">+ Nova turma</button>
+                  </div>
+
+                  <sc-for list="{{ groupReqs }}" as="rq" hint-placeholder-count="1">
+                    <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 13px;border:1px solid #f0d9a8;background:#fdf7e8;border-radius:13px">
+                      <span style="font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#8a6413;background:#fbecd0;padding:4px 9px;border-radius:999px;flex:none">pedido</span>
+                      <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:0">
+                        <span style="font-size:12.5px;font-weight:600;color:#5c4310;line-height:1.4">{{ rq.title }}</span>
+                        <span style="font-size:11.5px;color:#6b5a2c;line-height:1.45">{{ rq.why }}</span>
+                        <span style="font-size:11px;color:#9b8348">{{ rq.meta }}</span>
+                      </div>
+                      <div style="display:flex;gap:7px;flex:none">
+                        <button type="button" onClick="{{ rq.onOk }}" style="height:30px;padding:0 12px;border-radius:10px;border:none;background:#1b1630;color:#fff;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer">Ver reflexo</button>
+                        <button type="button" onClick="{{ rq.onNo }}" style="height:30px;padding:0 11px;border-radius:10px;border:1px solid #e6d3ab;background:#fff;color:#8a6413;font-size:11.5px;font-weight:600;font-family:Manrope,sans-serif;cursor:pointer">Recusar</button>
+                      </div>
+                    </div>
+                  </sc-for>
+
+                  <sc-if value="{{ confirm }}" hint-placeholder-val="{{ false }}">
+                    <div style="{{ confirm.style }}">
+                      <span style="font-size:13px;font-weight:700">{{ confirm.title }}</span>
+                      <div style="display:flex;flex-direction:column;gap:4px">
+                        <sc-for list="{{ confirm.lines }}" as="ln" hint-placeholder-count="3">
+                          <div style="display:flex;gap:8px;font-size:12px;line-height:1.45">
+                            <span style="opacity:.5">·</span>
+                            <span>{{ ln }}</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                      <div style="display:flex;gap:8px;padding-top:2px">
+                        <button type="button" onClick="{{ confirm.onOk }}" style="height:31px;padding:0 13px;border-radius:10px;border:none;background:#6C2BF2;color:#fff;font-size:12px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer">{{ confirm.okLabel }}</button>
+                        <button type="button" onClick="{{ confirm.onNo }}" style="height:31px;padding:0 12px;border-radius:10px;border:1px solid #e6e1f2;background:#fff;color:#5b5473;font-size:12px;font-weight:600;font-family:Manrope,sans-serif;cursor:pointer">Cancelar</button>
+                      </div>
+                    </div>
+                  </sc-if>
+
+                  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px">
+                    <sc-for list="{{ groups }}" as="gr" hint-placeholder-count="3">
+                      <div style="{{ gr.style }}">
+                        <div style="display:flex;align-items:center;gap:8px">
+                          <span style="{{ gr.badge }}">{{ gr.key }}</span>
+                          <span style="flex:1;min-width:0"></span>
+                          <span style="flex:none;white-space:nowrap;font-size:11.5px;color:#6b6482">{{ gr.count }}</span>
+                          <button type="button" onClick="{{ gr.onEdit }}" style="{{ gr.editStyle }}">editar</button>
+                        </div>
+                        <span style="font-size:13px;font-weight:600;line-height:1.35;text-wrap:pretty">{{ gr.day }}</span>
+                        <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+                          <span style="flex:none;white-space:nowrap;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em;color:#6C2BF2">{{ gr.range }}</span>
+                          <span style="flex:none;white-space:nowrap;font-size:11px;color:#6b6482">{{ gr.daysCount }}</span>
+                        </div>
+                        <div style="display:flex;flex-wrap:wrap;gap:6px">
+                          <sc-for list="{{ gr.members }}" as="m" hint-placeholder-count="5">
+                            <span style="{{ m.style }}">
+                              <span>{{ m.name }}</span>
+                              <sc-if value="{{ m.pending }}" hint-placeholder-val="{{ false }}">
+                                <span style="font-size:9.5px;font-weight:700;color:#8a6413">{{ m.pending }}</span>
+                              </sc-if>
+                              <button type="button" onClick="{{ m.onMove }}" style="{{ m.moveStyle }}">{{ m.move }}</button>
+                            </span>
+                          </sc-for>
+                        </div>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <span style="font-size:11.5px;line-height:1.45;color:#6b6482">A turma é padrão e vale até nova troca. Para uma semana diferente sem sair da turma, pinte a exceção no mapa — o dia pintado vence a turma. O grupo da pessoa em 08 nunca muda por aqui.</span>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ tSheet }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;inset:0;background:rgba(24,14,48,.34);display:flex;align-items:center;justify-content:center;z-index:9">
+                <div style="width:392px;background:#fff;border-radius:18px;box-shadow:0 30px 70px -30px rgba(40,20,90,.5);padding:20px;display:flex;flex-direction:column;gap:14px">
+                  <div style="display:flex;align-items:baseline;gap:10px">
+                    <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">{{ tSheet.title }}</span>
+                    <span style="flex:1"></span>
+                    <button type="button" onClick="{{ tSheet.onClose }}" style="border:none;background:transparent;color:#6b6482;font-size:18px;cursor:pointer;line-height:1">×</button>
+                  </div>
+                  <p style="margin:0;font-size:12.5px;line-height:1.5;color:#6b6482">{{ tSheet.hint }}</p>
+                  <label style="display:flex;flex-direction:column;gap:6px">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">{{ tSheet.nameLabel }}</span>
+                    <input value="{{ tSheet.nameValue }}" onChange="{{ tSheet.onName }}" placeholder="A, B, C ou 1, 2, 3" style="height:38px;padding:0 12px;border:1px solid #e6e1f2;border-radius:11px;font-family:Manrope,sans-serif;font-size:13px;color:#3c3559;outline:none" />
+                  </label>
+                  <div style="display:flex;flex-direction:column;gap:7px">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">{{ tSheet.dowLabel }}</span>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px">
+                      <sc-for list="{{ tSheet.dowOpts }}" as="d" hint-placeholder-count="7">
+                        <button type="button" onClick="{{ d.onClick }}" style="{{ d.style }}">{{ d.label }}</button>
+                      </sc-for>
+                    </div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:7px">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">{{ tSheet.rangeLabel }}</span>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                      <span style="flex:none;font-size:12px;color:#6b6482">de</span>
+                      <input type="number" value="{{ tSheet.fromValue }}" onChange="{{ tSheet.onFrom }}" style="box-sizing:border-box;flex:none;width:62px;height:34px;padding:0 8px;border:1px solid #e6e1f2;border-radius:10px;font-family:'JetBrains Mono',monospace;font-size:12.5px;color:#3c3559;outline:none" />
+                      <span style="flex:none;font-size:12px;color:#6b6482">até</span>
+                      <input type="number" value="{{ tSheet.toValue }}" onChange="{{ tSheet.onTo }}" style="box-sizing:border-box;flex:none;width:62px;height:34px;padding:0 8px;border:1px solid #e6e1f2;border-radius:10px;font-family:'JetBrains Mono',monospace;font-size:12.5px;color:#3c3559;outline:none" />
+                      <span style="flex:none;font-size:12px;color:#6b6482">de setembro</span>
+                      <span style="flex:1;min-width:0"></span>
+                      <button type="button" onClick="{{ tSheet.onAllMonth }}" style="{{ tSheet.allMonthStyle }}">todo o mês</button>
+                    </div>
+                  </div>
+                  <div style="padding:10px 12px;border-radius:11px;background:#f6f3fe;border:1px solid #e6ddfb;font-size:12px;line-height:1.5;color:#4b3f76">{{ tSheet.preview }}</div>
+                  <sc-if value="{{ tSheet.conflict }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding:10px 12px;border-radius:11px;background:#fdf4e3;border:1px solid #f0dcb0;font-size:12px;line-height:1.45;color:#8a6413">{{ tSheet.conflict }}</div>
+                  </sc-if>
+                  <sc-if value="{{ tSheet.blockedNote }}" hint-placeholder-val="{{ false }}">
+                    <span style="font-size:11.5px;color:#6b6482">{{ tSheet.blockedNote }}</span>
+                  </sc-if>
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <sc-if value="{{ tSheet.removable }}" hint-placeholder-val="{{ false }}">
+                      <button type="button" onClick="{{ tSheet.onRemove }}" style="height:40px;padding:0 14px;border-radius:12px;border:1px solid #f0cfcf;background:#fff;color:#B03A3A;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;cursor:pointer">{{ tSheet.removeLabel }}</button>
+                    </sc-if>
+                    <span style="flex:1"></span>
+                    <button type="button" onClick="{{ tSheet.onSave }}" style="{{ tSheet.saveStyle }}">{{ tSheet.saveLabel }}</button>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ sel }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;right:14px;top:112px;width:326px;background:#fff;border:1px solid #ddd6ee;border-radius:16px;box-shadow:0 26px 54px -26px rgba(40,20,90,.45);display:flex;flex-direction:column;overflow:hidden;z-index:6">
+                <div style="display:flex;align-items:center;gap:10px;padding:13px 15px;border-bottom:1px solid #f0ecf9">
+                  <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:0">
+                    <div style="display:flex;align-items:center;gap:7px">
+                      <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">{{ sel.person }}</span>
+                      <span style="{{ sel.modeStyle }}">{{ sel.modeLabel }}</span>
+                    </div>
+                    <span style="font-size:11.5px;color:#6b6482">{{ sel.dateLabel }}</span>
+                  </div>
+                  <button type="button" onClick="{{ closeSel }}" style="width:26px;height:26px;border-radius:8px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:13px;cursor:pointer">×</button>
+                </div>
+                <div style="padding:13px 15px;display:flex;flex-direction:column;gap:13px">
+                  <sc-if value="{{ sel.showTypes }}" hint-placeholder-val="{{ true }}">
+                    <div style="display:flex;flex-direction:column;gap:7px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Tipo</span>
+                      <div style="display:flex;gap:6px">
+                        <sc-for list="{{ sel.types }}" as="t" hint-placeholder-count="4">
+                          <button type="button" onClick="{{ t.onClick }}" style="{{ t.style }}">{{ t.label }}</button>
+                        </sc-for>
+                      </div>
+                    </div>
+                  </sc-if>
+                  <div style="display:flex;flex-direction:column;gap:6px">
+                    <div style="display:flex;align-items:baseline;gap:8px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Motivo</span>
+                      <span style="flex:1"></span>
+                      <span style="font-size:10px;color:#6b6482">{{ sel.motiveHint }}</span>
+                    </div>
+                    <textarea value="{{ sel.motiveValue }}" onChange="{{ sel.onMotive }}" readOnly="{{ sel.readOnly }}" placeholder="{{ sel.motivePlaceholder }}" style="min-height:58px;resize:vertical;padding:9px 11px;border:1px solid #e6e1f2;border-radius:10px;font-size:12.5px;color:#3c3559;line-height:1.45;background:#faf9fe;font-family:Manrope,sans-serif"></textarea>
+                  </div>
+                  <div style="{{ sel.prazoStyle }}">
+                    <span style="font-size:11.5px;font-weight:700">{{ sel.prazoTitle }}</span>
+                    <span style="font-size:11.5px;line-height:1.45">{{ sel.prazoText }}</span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:7px">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Aprovação</span>
+                    <sc-for list="{{ sel.approvals }}" as="ap" hint-placeholder-count="2">
+                      <div style="display:flex;align-items:flex-start;gap:9px;font-size:12.5px">
+                        <span style="{{ ap.dot }}"></span>
+                        <span style="font-weight:600;flex:none;line-height:1.3">{{ ap.role }}</span>
+                        <span style="flex:1;min-width:8px"></span>
+                        <span style="color:#6b6482;font-size:11.5px;text-align:right;line-height:1.3">{{ ap.state }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <sc-if value="{{ sel.showButtons }}" hint-placeholder-val="{{ true }}">
+                    <div style="display:flex;flex-direction:column;gap:7px;padding-top:2px">
+                      <div style="display:flex;gap:8px">
+                        <button type="button" onClick="{{ sel.onSave }}" style="flex:1;height:34px;border-radius:11px;border:none;background:#6C2BF2;color:#fff;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer">{{ sel.saveLabel }}</button>
+                        <sc-if value="{{ sel.showClear }}" hint-placeholder-val="{{ true }}">
+                          <button type="button" onClick="{{ sel.onClear }}" style="height:34px;padding:0 13px;border-radius:11px;border:1px solid #e6e1f2;background:#fff;color:#5b5473;font-size:12.5px;font-weight:600;font-family:Manrope,sans-serif;cursor:pointer">Limpar</button>
+                        </sc-if>
+                      </div>
+                      <sc-if value="{{ sel.note }}" hint-placeholder-val="{{ false }}">
+                        <span style="font-size:11px;line-height:1.45;color:#8a6413;background:#fdf7e8;border:1px solid #f0d9a8;border-radius:10px;padding:8px 10px">{{ sel.note }}</span>
+                      </sc-if>
+                    </div>
+                  </sc-if>
+                  <div style="display:flex;flex-direction:column;gap:5px;padding-top:4px;border-top:1px solid #f0ecf9">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482;padding-top:8px">Histórico da célula</span>
+                    <sc-for list="{{ sel.history }}" as="h" hint-placeholder-count="2">
+                      <div style="display:flex;gap:8px;font-size:11.5px;color:#5b5473;align-items:flex-start">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#6b6482;flex:none;white-space:nowrap;line-height:1.4">{{ h.when }}</span>
+                        <span style="line-height:1.4">{{ h.what }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ asaOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;right:0;top:0;bottom:0;width:352px;background:#fff;border-left:1px solid #e6e1f2;box-shadow:-24px 0 48px -34px rgba(40,20,90,.4);display:flex;flex-direction:column;z-index:8">
+                <div style="display:flex;align-items:center;gap:10px;padding:13px 15px;border-bottom:1px solid #f0ecf9">
+                  <img src="assets/asa/estudando.png" alt="" style="width:30px;height:30px;object-fit:contain" />
+                  <div style="display:flex;flex-direction:column;gap:1px;flex:1">
+                    <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">ASA · folgas</span>
+                    <span style="font-size:11px;color:#6b6482">regra, histórico e compensação devida</span>
+                  </div>
+                  <button type="button" onClick="{{ toggleAsa }}" style="width:26px;height:26px;border-radius:8px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:13px;cursor:pointer">×</button>
+                </div>
+                <div style="flex:1;overflow:auto;padding:14px 15px;display:flex;flex-direction:column;gap:12px">
+                  <div style="padding:12px 13px;background:#f7f3ff;border:1px solid #e5d8fb;border-radius:13px">
+                    <span style="font-size:12.5px;line-height:1.5;color:#3c3559">{{ asaIntro }}</span>
+                  </div>
+
+                  <sc-if value="{{ asaHasQueue }}" hint-placeholder-val="{{ true }}">
+                    <div style="display:flex;flex-direction:column;gap:9px">
+                      <div style="display:flex;align-items:center;gap:9px">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Esperando decisão</span>
+                        <span style="flex:1;height:1px;background:#eee9f8"></span>
+                        <span style="font-size:11px;color:#6b6482">{{ asaQueueLabel }}</span>
+                      </div>
+                      <sc-for list="{{ asaQueue }}" as="q" hint-placeholder-count="3">
+                        <div style="{{ q.style }}">
+                          <div style="display:flex;align-items:center;gap:8px">
+                            <span style="{{ q.tagStyle }}">{{ q.tag }}</span>
+                            <span style="flex:1"></span>
+                            <span style="{{ q.metaStyle }}">{{ q.meta }}</span>
+                          </div>
+                          <span style="font-size:13px;font-weight:600;line-height:1.4">{{ q.title }}</span>
+                          <span style="font-size:12px;line-height:1.5;color:#5b5473">{{ q.why }}</span>
+                          <div style="display:flex;flex-direction:column;gap:4px;padding:9px 10px;background:#faf9fe;border:1px solid #eee9f8;border-radius:10px">
+                            <sc-for list="{{ q.lines }}" as="ln" hint-placeholder-count="2">
+                              <div style="display:flex;gap:7px;font-size:11.5px;line-height:1.45;color:#3c3559">
+                                <span style="color:#6b6482">·</span>
+                                <span>{{ ln }}</span>
+                              </div>
+                            </sc-for>
+                          </div>
+                          <div style="display:flex;gap:7px;padding-top:2px">
+                            <button type="button" onClick="{{ q.onOk }}" style="{{ q.okStyle }}">{{ q.okLabel }}</button>
+                            <button type="button" onClick="{{ q.onNo }}" style="{{ q.noStyle }}">{{ q.noLabel }}</button>
+                          </div>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+
+                  <div style="display:flex;flex-direction:column;gap:9px">
+                    <div style="display:flex;align-items:center;gap:9px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Sugestões</span>
+                      <span style="flex:1;height:1px;background:#eee9f8"></span>
+                      <span style="font-size:11px;color:#6b6482">nada é aplicado sem o seu ok</span>
+                    </div>
+                    <sc-for list="{{ asaCards }}" as="c" hint-placeholder-count="4">
+                      <div style="border:1px solid #e6e1f2;border-radius:13px;padding:12px 13px;display:flex;flex-direction:column;gap:8px;background:#fff">
+                        <div style="display:flex;align-items:center;gap:8px">
+                          <span style="{{ c.tagStyle }}">{{ c.tag }}</span>
+                          <span style="flex:1"></span>
+                          <span style="font-size:10.5px;color:#6b6482;font-family:'JetBrains Mono',monospace">{{ c.conf }}</span>
+                        </div>
+                        <span style="font-size:13px;font-weight:600;line-height:1.4">{{ c.title }}</span>
+                        <span style="font-size:12px;line-height:1.5;color:#5b5473">{{ c.why }}</span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;line-height:1.5;color:#6C2BF2">{{ c.nums }}</span>
+                        <sc-if value="{{ c.open }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex;flex-direction:column;gap:4px;padding:9px 10px;background:#faf9fe;border:1px solid #eee9f8;border-radius:10px">
+                            <sc-for list="{{ c.lines }}" as="ln" hint-placeholder-count="3">
+                              <div style="display:flex;gap:7px;font-size:11.5px;line-height:1.45;color:#3c3559">
+                                <span style="color:#6b6482">·</span>
+                                <span>{{ ln }}</span>
+                              </div>
+                            </sc-for>
+                          </div>
+                        </sc-if>
+                        <div style="display:flex;gap:7px;padding-top:2px">
+                          <button type="button" onClick="{{ c.onReflex }}" style="height:29px;padding:0 11px;border-radius:9px;border:1px solid #ddd0fb;background:#fff;color:#6C2BF2;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer">{{ c.reflexLabel }}</button>
+                          <button type="button" onClick="{{ c.onApply }}" style="{{ c.ctaStyle }}">{{ c.cta }}</button>
+                          <span style="flex:1"></span>
+                          <button type="button" onClick="{{ c.onDismiss }}" style="height:29px;padding:0 11px;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:11.5px;font-weight:600;font-family:Manrope,sans-serif;cursor:pointer">Depois</button>
+                        </div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:0 0 390px;min-width:390px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Mobile · segue o Ver como</div>
+      <div style="width:390px;border:1px solid #ddd6ee;border-radius:38px;overflow:hidden;background:#1c1440;padding:9px;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="position:relative;background:#faf9fe;border-radius:30px;overflow:hidden;display:flex;flex-direction:column;height:826px">
+          <sc-if value="{{ moreOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:0;right:0;top:0;bottom:0;z-index:9;background:rgba(28,20,64,.42);display:flex;align-items:flex-end">
+              <div style="width:100%;max-height:88%;overflow-y:auto;background:#faf9fe;border-radius:22px 22px 30px 30px;padding:14px 14px 18px;display:flex;flex-direction:column;gap:12px">
+                <div style="display:flex;align-items:flex-start;gap:10px">
+                  <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0">
+                    <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">{{ moreTitle }}</span>
+                    <span style="font-size:11px;color:#6b6482">{{ moreSub }}</span>
+                  </div>
+                  <button type="button" onClick="{{ onCloseMore }}" style="width:28px;height:28px;flex:none;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:14px;cursor:pointer">×</button>
+                </div>
+                <a href="{{ moreAsa }}" style="display:flex;align-items:center;gap:11px;padding:12px;border-radius:14px;background:#f4edfe;border:1px solid #ddcbfa;text-decoration:none">
+                  <img src="assets/asa/oi.png" alt="" style="width:36px;height:36px;object-fit:contain;flex:none" />
+                  <span style="display:flex;flex-direction:column;gap:1px;min-width:0;flex:1">
+                    <span style="font-size:13px;font-weight:700;color:#5B23C9">Perguntar à ASA</span>
+                    <span style="font-size:11px;color:#5f4b8a">ela resolve sem você procurar a tela</span>
+                  </span>
+                </a>
+                <sc-for list="{{ moreGroups }}" as="g" hint-placeholder-count="4">
+                  <div style="display:flex;flex-direction:column;gap:6px">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482;padding:0 2px">{{ g.title }}</span>
+                    <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+                      <a href="{{ it.href }}" style="{{ it.style }}">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#6b6482;flex:none;min-width:17px">{{ it.num }}</span>
+                        <span style="font-size:13px;font-weight:600;flex:1;min-width:0">{{ it.label }}</span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6b6482;flex:none">›</span>
+                      </a>
+                    </sc-for>
+                  </div>
+                </sc-for>
+                <a href="{{ morePerfil }}" style="display:flex;align-items:center;gap:10px;padding:12px;border-radius:14px;background:#fff;border:1px solid #eee9f6;text-decoration:none;color:#1b1630">
+                  <span style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+                  <span style="font-size:13px;font-weight:600;flex:1">Perfil e configurações</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6b6482">›</span>
+                </a>
+              </div>
+            </div>
+          </sc-if>
+          <div style="position:absolute;left:0;right:0;bottom:0;z-index:5;display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid #ebe6f6;background:#fff;padding:8px 6px 12px">
+            <sc-for list="{{ mobileTabs }}" as="t" hint-placeholder-count="5">
+              <a href="{{ t.href }}" onClick="{{ t.onClick }}" style="{{ t.style }}">
+                <span style="display:block;width:22px;height:22px;border-radius:8px;border:1.7px solid currentColor;opacity:.8"></span>
+                <span style="font-size:11.5px;font-weight:600;text-align:center">{{ t.label }}</span>
+              </a>
+            </sc-for>
+          </div>
+          
+
+          <div style="padding:12px 14px 10px;background:#fff;border-bottom:1px solid #ebe6f6;display:flex;flex-direction:column;gap:2px">
+            <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">{{ mob.title }}</span>
+            <span style="font-size:11.5px;color:#6b6482">{{ mob.sub }}</span>
+          </div>
+
+          <div style="flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;-ms-overflow-style:none;padding:12px 14px 88px;display:flex;flex-direction:column;gap:11px">
+
+            <div style="display:flex;gap:6px;background:#f2eefa;border:1px solid #e6e1f2;border-radius:13px;padding:4px;position:sticky;top:0;z-index:2">
+              <sc-for list="{{ mob.tabs }}" as="t">
+                <button type="button" onClick="{{ t.onClick }}" style="{{ t.style }}">{{ t.label }}</button>
+              </sc-for>
+            </div>
+
+            <sc-if value="{{ mob.isHome }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-direction:column;gap:11px">
+                <div style="padding:12px 13px;border-radius:13px;background:#0E8F86;color:#fff;display:flex;flex-direction:column;gap:3px">
+                  <span style="font-size:11.5px;font-family:'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;opacity:.8">Próxima folga</span>
+                  <span style="font-family:Outfit,sans-serif;font-size:19px;font-weight:700">{{ mob.nextOff }}</span>
+                  <span style="font-size:11.5px;opacity:.85">{{ mob.nextNote }}</span>
+                </div>
+
+                <sc-if value="{{ mob.comp }}" hint-placeholder-val="{{ false }}">
+                  <div style="padding:11px 13px;border:1px solid #f0d9a8;background:#fdf7e8;border-radius:13px;display:flex;flex-direction:column;gap:7px">
+                    <span style="font-size:12.5px;line-height:1.5;color:#6b5a2c">{{ mob.comp.text }}</span>
+                    <button type="button" onClick="{{ mob.comp.onUse }}" style="{{ mob.comp.ctaStyle }}">{{ mob.comp.cta }}</button>
+                  </div>
+                </sc-if>
+
+                <div style="display:flex;flex-direction:column;gap:7px">
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Setembro · seus dias</span>
+                  <div style="display:flex;align-items:center;gap:8px;padding:0 9px">
+                    <span style="width:15px;flex:none"></span>
+                    <div style="flex:1;min-width:0;display:grid;grid-template-columns:repeat(7,1fr);gap:3px">
+                      <sc-for list="{{ mob.stripeHead }}" as="h" hint-placeholder-count="7">
+                        <span style="{{ h.style }}">{{ h.label }}</span>
+                      </sc-for>
+                    </div>
+                    <span style="width:30px;flex:none"></span>
+                  </div>
+                  <sc-for list="{{ mob.stripe }}" as="w" hint-placeholder-count="5">
+                    <div style="display:flex;align-items:center;gap:8px;padding:7px 9px;background:#fff;border:1px solid #e6e1f2;border-radius:12px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6b6482;width:15px;flex:none">{{ w.name }}</span>
+                      <div style="flex:1;min-width:0;display:grid;grid-template-columns:repeat(7,1fr);gap:3px">
+                        <sc-for list="{{ w.cells }}" as="c" hint-placeholder-count="7">
+                          <span style="{{ c.style }}">{{ c.label }}</span>
+                        </sc-for>
+                      </div>
+                      <span style="{{ w.badge }}">{{ w.count }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:7px">
+                  <sc-for list="{{ mob.actions }}" as="a" hint-placeholder-count="3">
+                    <button type="button" onClick="{{ a.onClick }}" style="{{ a.style }}">{{ a.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ mob.isPed }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:9px">
+                <sc-if value="{{ mob.swapReq }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;flex-direction:column;gap:5px;padding:11px 12px;border-radius:12px;background:#fff;border:1px dashed #E0A32B">
+                    <span style="font-size:13.5px;font-weight:600">{{ mob.swapReq.title }}</span>
+                    <span style="font-size:11px;color:#8a6413;line-height:1.4">{{ mob.swapReq.meta }}</span>
+                    <button type="button" onClick="{{ mob.swapReq.onCancel }}" style="align-self:flex-start;min-height:44px;padding:0 14px;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:11px;font-weight:600;font-family:Manrope,sans-serif;cursor:pointer">Cancelar</button>
+                  </div>
+                </sc-if>
+                <sc-for list="{{ mob.reqs }}" as="r" hint-placeholder-count="2">
+                  <div style="{{ r.style }}">
+                    <span style="{{ r.chip }}">{{ r.chipLabel }}</span>
+                    <span style="font-size:13.5px;font-weight:600">{{ r.title }}</span>
+                    <span style="font-size:11px;color:#5b5473;line-height:1.4">{{ r.why }}</span>
+                    <span style="font-size:11px;color:#6b6482">{{ r.meta }}</span>
+                    <span style="font-size:11px;color:#6b6482">{{ r.deadline }}</span>
+                    <button type="button" onClick="{{ r.onCancel }}" style="{{ r.cancelStyle }}">{{ r.cancel }}</button>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ mob.isHist }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:9px">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Meses anteriores</span>
+                <sc-for list="{{ mob.hist }}" as="h" hint-placeholder-count="3">
+                  <div style="{{ h.style }}">
+                    <span style="font-size:13.5px;font-weight:600">{{ h.m }}</span>
+                    <span style="font-size:11px;color:#5b5473">{{ h.a }}</span>
+                    <span style="font-size:11px;color:#6b6482">{{ h.b }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ mob.isFila }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:9px">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Esperando você</span>
+                <sc-for list="{{ mob.queue }}" as="q" hint-placeholder-count="2">
+                  <div style="{{ q.style }}">
+                    <div style="display:flex;align-items:center;gap:7px">
+                      <span style="{{ q.tagStyle }}">{{ q.tag }}</span>
+                    </div>
+                    <span style="font-size:13.5px;font-weight:600;line-height:1.35">{{ q.title }}</span>
+                    <span style="font-size:11px;line-height:1.45;color:#5b5473">{{ q.why }}</span>
+                    <span style="{{ q.metaStyle }}">{{ q.meta }}</span>
+                    <div style="display:flex;flex-direction:column;gap:3px;padding:8px 9px;background:#faf9fe;border:1px solid #eee9f8;border-radius:10px">
+                      <sc-for list="{{ q.lines }}" as="ln" hint-placeholder-count="2">
+                        <span style="font-size:11px;line-height:1.4;color:#3c3559">{{ ln }}</span>
+                      </sc-for>
+                    </div>
+                    <div style="display:flex;gap:7px">
+                      <button type="button" onClick="{{ q.onOk }}" style="{{ q.okStyle }}">{{ q.okLabel }}</button>
+                      <button type="button" onClick="{{ q.onNo }}" style="{{ q.noStyle }}">{{ q.noLabel }}</button>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ mob.isDia }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:9px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-size:13.5px;font-weight:600">{{ mob.dayLabel }}</span>
+                  <span style="flex:1"></span>
+                  <span style="{{ mob.dayStyle }}">{{ mob.dayCount }}</span>
+                </div>
+                <sc-for list="{{ mob.dayList }}" as="o" hint-placeholder-count="3">
+                  <div style="{{ o.style }}">
+                    <span style="{{ o.dot }}"></span>
+                    <span style="font-size:13.5px;font-weight:600;flex:1">{{ o.name }}</span>
+                    <span style="font-size:11px;color:#6b6482">{{ o.type }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ mob.isRes }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:11px">
+                <sc-for list="{{ mob.dirNums }}" as="n" hint-placeholder-count="3">
+                  <div style="{{ n.style }}">
+                    <span style="{{ n.numStyle }}">{{ n.n }}</span>
+                    <span style="font-size:11.5px;line-height:1.4;color:#5b5473">{{ n.label }}</span>
+                  </div>
+                </sc-for>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Como funciona</span>
+                <sc-for list="{{ mob.dirOps }}" as="o" hint-placeholder-count="3">
+                  <div style="{{ o.style }}">
+                    <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0">
+                      <span style="font-size:13.5px;font-weight:600">{{ o.op }}</span>
+                      <span style="font-size:11px;color:#6b6482">{{ o.note }}</span>
+                    </div>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;color:#6C2BF2;flex:none">{{ o.rate }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+
+          </div>
+
+          <sc-if value="{{ mob.asaBtn }}" hint-placeholder-val="{{ true }}">
+            <button type="button" onClick="{{ mob.onAsa }}" style="{{ mob.asaBtnStyle }}">
+              <img src="assets/asa/oi.png" alt="" style="width:24px;height:24px;object-fit:contain;flex:none" />
+              <span style="{{ mob.asaBtnLabelStyle }}">{{ mob.asaBtnLabel }}</span>
+            </button>
+          </sc-if>
+
+          <sc-if value="{{ mob.asaSheet }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:0;right:0;top:0;bottom:0;background:rgba(28,20,64,.4);display:flex;align-items:flex-end">
+              <div style="width:100%;height:82%;background:#fff;border-radius:20px;display:flex;flex-direction:column;overflow:hidden">
+                <div style="display:flex;align-items:center;gap:9px;padding:12px 14px;border-bottom:1px solid #f0ecf9">
+                  <img src="assets/asa/estudando.png" alt="" style="width:26px;height:26px;object-fit:contain" />
+                  <div style="display:flex;flex-direction:column;gap:1px;flex:1;min-width:0">
+                    <span style="font-family:Outfit,sans-serif;font-size:14.5px;font-weight:600">ASA</span>
+                    <span style="font-size:11.5px;color:#6b6482">{{ mob.asaHint }}</span>
+                  </div>
+                  <button type="button" onClick="{{ mob.asaSheet.onClose }}" style="width:26px;height:26px;flex:none;border-radius:8px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:13px;cursor:pointer">×</button>
+                </div>
+                <div style="flex:1;overflow:auto;padding:12px 13px;display:flex;flex-direction:column;gap:8px">
+                  <sc-for list="{{ mob.asaSheet.thread }}" as="t" hint-placeholder-count="2">
+                    <div style="display:flex;flex-direction:column;gap:6px">
+                      <div style="{{ t.meStyle }}">{{ t.me }}</div>
+                      <div style="{{ t.asaStyle }}">{{ t.asa }}</div>
+                    </div>
+                  </sc-for>
+                  <sc-if value="{{ mob.asaSheet.plan }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;flex-direction:column;gap:7px;padding:11px 12px;border-radius:13px;background:#f7f3ff;border:1px solid #e5d8fb">
+                      <span style="font-size:12px;font-weight:700;color:#4a2a9c">{{ mob.asaSheet.plan.title }}</span>
+                      <div style="display:flex;flex-direction:column;gap:3px">
+                        <sc-for list="{{ mob.asaSheet.plan.lines }}" as="ln" hint-placeholder-count="3">
+                          <span style="font-size:11px;line-height:1.45;color:#3c3559">· {{ ln }}</span>
+                        </sc-for>
+                      </div>
+                      <div style="display:flex;gap:7px">
+                        <button type="button" onClick="{{ mob.asaSheet.plan.onOk }}" style="height:32px;padding:0 13px;border-radius:10px;border:none;background:#6C2BF2;color:#fff;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer">{{ mob.asaSheet.plan.okLabel }}</button>
+                        <button type="button" onClick="{{ mob.asaSheet.plan.onNo }}" style="min-height:44px;padding:0 14px;border-radius:10px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:11.5px;font-weight:600;font-family:Manrope,sans-serif;cursor:pointer">Não</button>
+                      </div>
+                    </div>
+                  </sc-if>
+                </div>
+                <div style="display:flex;align-items:flex-end;gap:8px;padding:11px 13px;border-top:1px solid #f0ecf9">
+                  <textarea value="{{ mob.asaSheet.msg }}" onChange="{{ mob.asaSheet.onMsg }}" placeholder="ex.: preciso folgar dia 23" style="flex:1;min-height:36px;max-height:70px;resize:none;padding:9px 11px;border:1px solid #e6e1f2;border-radius:12px;background:#faf9fe;font-size:11.5px;line-height:1.4;color:#3c3559;font-family:Manrope,sans-serif"></textarea>
+                  <button type="button" onClick="{{ mob.asaSheet.onSend }}" style="{{ mob.asaSheet.sendStyle }}">↑</button>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ mob.swapSheet }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:0;right:0;top:0;bottom:0;background:rgba(28,20,64,.38);display:flex;align-items:flex-end">
+              <div style="width:100%;background:#fff;border-radius:20px;padding:14px 15px 16px;display:flex;flex-direction:column;gap:10px;max-height:88%;overflow:auto">
+                <div style="display:flex;align-items:flex-start;gap:10px">
+                  <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0">
+                    <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">Trocar folga com colega</span>
+                    <span style="font-size:11px;color:#6b6482;line-height:1.4">{{ mob.swapSheet.summary }}</span>
+                  </div>
+                  <button type="button" onClick="{{ mob.swapSheet.onClose }}" style="width:26px;height:26px;flex:none;border-radius:8px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:13px;cursor:pointer">×</button>
+                </div>
+                <sc-for list="{{ mob.swapSheet.list }}" as="c" hint-placeholder-count="4">
+                  <div onClick="{{ c.onClick }}" style="{{ c.style }}">
+                    <span style="{{ c.dot }}"></span>
+                    <span style="font-size:13.5px;font-weight:600;flex:1">{{ c.name }}</span>
+                    <span style="font-size:11px;color:#6b6482">{{ c.day }}</span>
+                  </div>
+                </sc-for>
+                <button type="button" onClick="{{ mob.swapSheet.onSend }}" style="{{ mob.swapSheet.sendStyle }}">{{ mob.swapSheet.sendLabel }}</button>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ fSheet }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:0;right:0;top:0;bottom:0;background:rgba(28,20,64,.38);display:flex;align-items:flex-end">
+              <div style="width:100%;background:#fff;border-radius:20px;padding:14px 15px 16px;display:flex;flex-direction:column;gap:10px;max-height:92%;overflow:auto">
+                <div style="display:flex;align-items:flex-start;gap:10px">
+                  <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0">
+                    <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">Pedir folga</span>
+                    <span style="font-size:11px;color:#6b6482;line-height:1.4">{{ fSheet.pickLabel }}</span>
+                  </div>
+                  <button type="button" onClick="{{ fSheet.onClose }}" style="width:26px;height:26px;flex:none;border-radius:8px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:13px;cursor:pointer">×</button>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:5px">
+                  <sc-for list="{{ fSheet.days }}" as="d" hint-placeholder-count="30">
+                    <button type="button" onClick="{{ d.onClick }}" style="{{ d.style }}">{{ d.label }}</button>
+                  </sc-for>
+                </div>
+                <div style="{{ fSheet.outStyle }}">
+                  <span style="font-weight:700">{{ fSheet.outLabel }}</span>
+                  <span>{{ fSheet.outNames }}</span>
+                </div>
+                <div style="display:flex;gap:8px">
+                  <sc-for list="{{ fSheet.types }}" as="t" hint-placeholder-count="2">
+                    <button type="button" onClick="{{ t.onClick }}" style="{{ t.style }}">{{ t.label }}</button>
+                  </sc-for>
+                </div>
+                <textarea value="{{ fSheet.why }}" onChange="{{ fSheet.onWhy }}" placeholder="Motivo (obrigatório fora do prazo)" style="min-height:50px;resize:vertical;padding:9px 11px;border:1px solid #e6e1f2;border-radius:11px;background:#faf9fe;font-size:12.5px;line-height:1.5;color:#3c3559;font-family:Manrope,sans-serif"></textarea>
+                <div style="{{ fSheet.prazoStyle }}">{{ fSheet.prazo }}</div>
+                <button type="button" onClick="{{ fSheet.onSend }}" style="{{ fSheet.sendStyle }}">{{ fSheet.sendLabel }}</button>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ gSheet }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:0;right:0;top:0;bottom:0;background:rgba(28,20,64,.38);display:flex;align-items:flex-end">
+              <div style="width:100%;background:#fff;border-radius:20px;padding:14px 15px 16px;display:flex;flex-direction:column;gap:12px">
+                <div style="display:flex;align-items:flex-start;gap:10px">
+                  <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0">
+                    <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">Trocar meu grupo</span>
+                    <span style="font-size:11px;color:#6b6482;line-height:1.4">{{ gSheet.current }}</span>
+                  </div>
+                  <button type="button" onClick="{{ gSheet.onClose }}" style="width:26px;height:26px;flex:none;border-radius:8px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:13px;cursor:pointer">×</button>
+                </div>
+                <div style="display:flex;gap:8px">
+                  <sc-for list="{{ gSheet.options }}" as="o" hint-placeholder-count="2">
+                    <button type="button" onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button>
+                  </sc-for>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:5px">
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Motivo</span>
+                  <textarea value="{{ gSheet.why }}" onChange="{{ gSheet.onWhy }}" placeholder="Por que você quer trocar de grupo?" style="min-height:54px;resize:vertical;padding:9px 11px;border:1px solid #e6e1f2;border-radius:11px;background:#faf9fe;font-size:12.5px;line-height:1.5;color:#3c3559;font-family:Manrope,sans-serif"></textarea>
+                </div>
+                <div style="padding:9px 11px;border:1px solid #c2e7e3;background:#f2faf8;border-radius:11px;font-size:11px;line-height:1.45;color:#0b6b64">{{ gSheet.prazo }}</div>
+                <button type="button" onClick="{{ gSheet.onSend }}" style="{{ gSheet.sendStyle }}">{{ gSheet.sendLabel }}</button>
+              </div>
+            </div>
+          </sc-if>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<sc-if value="{{ denySheet }}" hint-collapse="true">
+  <div style="position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;background:rgba(20,8,60,.38);padding:20px">
+    <div style="background:#fff;border-radius:18px;padding:20px 22px;width:100%;max-width:420px;display:flex;flex-direction:column;gap:13px;box-shadow:0 30px 60px -28px rgba(20,8,60,.6)">
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <span style="font-family:Outfit,sans-serif;font-size:18px;font-weight:600;letter-spacing:-0.01em">Recusar o pedido de {{ denySheet.kind }}</span>
+        <span style="font-size:12.5px;line-height:1.55;color:#5b5473;text-wrap:pretty">{{ denySheet.who }} pediu e vai receber a resposta. Recusa exige motivo — sem ele a pessoa fica sem saber o que fazer com o pedido.</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Por que está recusando</span>
+        <textarea value="{{ denySheet.why }}" onChange="{{ denySheet.onWhy }}" placeholder="Ex.: o dia já tem duas ausências e o show precisa de seis em cena." style="min-height:70px;resize:vertical;padding:10px 12px;border:1px solid #e6e1f2;border-radius:12px;background:#faf9fe;font-size:13px;line-height:1.45;color:#3c3559;font-family:Manrope,sans-serif"></textarea>
+      </div>
+      <div style="display:flex;gap:9px">
+        <button type="button" onClick="{{ denySheet.onNo }}" style="flex:none;min-height:44px;padding:0 16px;border-radius:12px;border:1px solid #e6e1f2;background:#fff;color:#5b5473;font-size:13px;font-weight:600;font-family:Manrope,sans-serif;cursor:pointer">Voltar</button>
+        <button type="button" onClick="{{ denySheet.onOk }}" style="{{ denySheet.okStyle }}">{{ denySheet.okLabel }}</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ toastMsg }}" hint-collapse="true">
+  <div style="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:12px;background:#1c1440;color:#fff;border-radius:14px;padding:13px 18px;box-shadow:0 18px 40px -20px rgba(20,8,60,.7);max-width:600px">
+    <span style="font-size:13.5px;line-height:1.45;flex:1;text-wrap:pretty">{{ toastMsg }}</span>
+    <button type="button" onClick="{{ onFecharToast }}" style="border:none;background:rgba(255,255,255,.16);color:#fff;border-radius:9px;width:28px;height:28px;font-size:13px;cursor:pointer;flex:none">✕</button>
+  </div>
+</sc-if>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;perfilInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ADM&quot;,&quot;DIR&quot;,&quot;SUP&quot;,&quot;MEM&quot;],&quot;default&quot;:&quot;SUP&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;mostrarContadores&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;corTipoFolga&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#0E8F86&quot;,&quot;options&quot;:[&quot;#0E8F86&quot;,&quot;#2E63D6&quot;,&quot;#6C2BF2&quot;],&quot;tsType&quot;:&quot;string&quot;}}">
+const PROFILES = [
+  { key: "ADM", name: "Administração", person: "Barbara Sorroche", dot: "#6C2BF2", op: "Toda a ASA", hint: "Define o regime único e aprova em qualquer grupo." },
+  { key: "DIR", name: "Direção", person: "Cris Garcia", dot: "#2E63D6", op: "Visão organizacional", hint: "Lê o mapa e os registros, não pinta." },
+  { key: "SUP", name: "Supervisão", person: "Deborah", dot: "#0E8F86", op: "Área Bailarinos", hint: "Pinta o mês, aprova e publica nos grupos da sua área." },
+  { key: "MEM", name: "Elenco", person: "Julia", dot: "#C2508F", op: "Bailarinos · grupo B", hint: "Vê a própria linha e pede folga." }
+];
+
+const NAV = [
+  { title: "Porta de entrada", items: [
+    ["17", "Início / Meu Dia", ["ADM","DIR","SUP","MEM"], "Meu Dia"]
+  ] },
+  { title: "O dia", items: [
+    ["20", "Agenda", ["ADM","DIR","SUP","MEM"], "Minha agenda"],
+    ["15", "Escalas", ["ADM","DIR","SUP","MEM"], "Minha escala"],
+    ["13", "Shows", ["ADM","DIR","SUP","MEM"], "Shows"],
+    ["14", "Livro do Dia", ["ADM","DIR","SUP","MEM"], "Meus shows"],
+    ["19", "Check-in e ocorrências", ["ADM","DIR","SUP","MEM"], "Check-in"],
+    ["10", "Responsabilidades e tarefas", ["ADM","DIR","SUP","MEM"], "Minhas tarefas"],
+    ["18", "Folgas", ["ADM","DIR","SUP","MEM"], "Minhas folgas"]
+  ] },
+  { title: "Gestão", items: [
+    ["16", "Painel", ["ADM","DIR","SUP"], null],
+    ["06", "Locais", ["ADM","DIR","SUP"], null],
+    ["07", "Pessoas", ["ADM","DIR","SUP"], null],
+    ["08", "Áreas", ["ADM","DIR","SUP","MEM"], "Meu grupo"],
+    ["25", "Reconhecimentos", ["ADM","DIR","SUP"], null]
+  ] },
+  { title: "Comunicação", items: [
+    ["22", "Avisos e Mural", ["ADM","DIR","SUP","MEM"], "Mural"],
+    ["23", "Mensagens", ["ADM","DIR","SUP","MEM"], "Conversas"],
+    ["24", "Biblioteca", ["ADM","DIR","SUP","MEM"], "Biblioteca"]
+  ] }
+];
+
+
+const MOBILE_TABS = {
+  ADM: [["17","Meu Dia"],["16","Painel"],["15","Escalas"],["22","Mural"],["mais","Mais"]],
+  DIR: [["17","Meu Dia"],["16","Painel"],["20","Agenda"],["22","Mural"],["mais","Mais"]],
+  SUP: [["17","Meu Dia"],["15","Escalas"],["07","Equipe"],["22","Mural"],["mais","Mais"]],
+  MEM: [["17","Meu Dia"],["15","Escala"],["22","Mural"],["23","Conversas"],["mais","Mais"]]
+};
+
+const NAV_HREF = {
+  "10": "10%20Responsabilidades%20e%20Tarefas.dc.html",
+  "13": "13%20Shows.dc.html",
+  "14": "14%20Livro%20do%20Dia.dc.html",
+  "15": "15%20Escalas.dc.html",
+  "16": "16%20Painel%20e%20indicadores.dc.html",
+  "17": "17%20Meu%20Dia.dc.html",
+  "18": "18%20Folgas.dc.html",
+  "19": "19%20Check-in%20e%20ocorr%C3%AAncias.dc.html",
+  "20": "20%20Agenda.dc.html",
+  "22": "22%20Avisos%20e%20Mural.dc.html",
+  "23": "23%20Mensagens.dc.html",
+  "24": "24%20Biblioteca.dc.html", "25": "25%20Reconhecimentos.dc.html",
+  "27": "27%20Assistente%20ASA.dc.html",
+  "28": "28%20Perfil%20e%20configura%C3%A7%C3%B5es.dc.html",
+  "06": "06%20Locais.dc.html",
+  "07": "07%20Pessoas.dc.html",
+  "08": "08%20%C3%81reas.dc.html"
+};
+
+// unit = grupo da unidade organizacional, vem de 08 Grupos — Folgas só lê.
+// turma = turma de folga (criada livremente pelo admin), existe SÓ aqui, para girar a cobertura dos shows.
+// local = onde a pessoa costuma ser convocada. Filtro de leitura: local nenhum define folga.
+const PEOPLE = [
+  { name: "Carol", initials: "CA", unit: "Patinadores", regime: 2, turma: "A", local: "Snowland" },
+  { name: "Dani", initials: "DA", unit: "Patinadores", regime: 2, turma: "B", local: "Snowland" },
+  { name: "Mariela", initials: "MA", unit: "Bailarinos", regime: 2, turma: "C", local: "Acquamotion" },
+  { name: "Julia", initials: "JU", unit: "Patinadores", regime: 2, turma: "B", local: "Snowland" },
+  { name: "Luize", initials: "LU", unit: "Bailarinos", regime: 2, turma: "A", local: "Acquamotion" },
+  { name: "Louis", initials: "LO", unit: "Bailarinos", regime: 2, turma: "C", local: "Snowland" },
+  { name: "Diogo", initials: "DI", unit: "Patinadores", regime: 2, turma: "A", local: "Snowland" },
+  { name: "Maico", initials: "MC", unit: "Produção", regime: 1, turma: "B", local: "Snowland" },
+  { name: "Sthefany", initials: "ST", unit: "Bailarinos", regime: 1, turma: "C", local: "Acquamotion" }
+];
+const UNITS = ["Patinadores", "Bailarinos", "Produção"];
+const TURMAS = ["A", "B", "C"];
+const LOCAIS = ["Snowland", "Acquamotion", "Hotelaria"];
+
+const TYPES = {
+  F: { label: "F", name: "Folga", fg: "#0E8F86", bg: "#e2f4f2", bd: "#c2e7e3" },
+  R: { label: "R", name: "Recesso", fg: "#2E63D6", bg: "#e9eefc", bd: "#d4defa" },
+  A: { label: "A", name: "Afastamento", fg: "#C2508F", bg: "#fbe9f2", bd: "#f4d3e5" },
+  O: { label: "O", name: "Outro", fg: "#6b6482", bg: "#f0eef6", bd: "#e2ddee" }
+};
+
+const DAYS = 30;
+const WDL = ["D","S","T","Q","Q","S","S"];
+const dow = d => (d + 1) % 7;
+// Regime único da ASA. As abas do topo são ÁREAS — trocam quem você vê, nunca a regra.
+const REGIME = { regime: 2, span: "quinta → quarta", limite: 3, prazo: 5 };
+const AREA_BASE = { close: null, closeName: "não fecha", span: REGIME.span, regime: REGIME.regime };
+// Áreas canônicas, iguais a 08.
+const OPS = {
+  "Bailarinos": Object.assign({ dot: "#0E8F86" }, AREA_BASE),
+  "Patinadores": Object.assign({ dot: "#7E4BD8" }, AREA_BASE),
+  "Produção":   Object.assign({ dot: "#2E63D6" }, AREA_BASE),
+  "Gestão":     Object.assign({ dot: "#B06E00" }, AREA_BASE)
+};
+const OPLIST = ["Bailarinos", "Patinadores", "Produção", "Gestão"];
+const TODAY = 29;
+const daysUntil = d => d + 2;
+
+const CELL = 22, CNT = 32, NAMEW = 190, TOT = 27;
+const MINCOVER = 3;
+const GROUPDOW = { A: 4, B: 5, C: 6 };
+const SELF = { ADM: -1, DIR: -1, SUP: 8, MEM: 3 };
+const TABS = {
+  MEM: [["home", "Folgas"], ["ped", "Pedidos"], ["hist", "Histórico"]],
+  SUP: [["fila", "Fila"], ["home", "Minhas"], ["dia", "Hoje"]],
+  ADM: [["fila", "Fila"], ["dia", "Hoje"]],
+  DIR: [["res", "Resumo"], ["dia", "Hoje"]]
+};
+const FULLWD = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+const wdArt = i => (i === 0 || i === 6) ? "no " : "na ";
+const emDia = d => wdArt(dow(d)) + FULLWD[dow(d)] + " " + d;
+const ageOf = w => { if (!w) return 0; if (w.indexOf("hoje") === 0) return 0; const n = parseInt(w, 10); return isNaN(n) ? 0 : Math.max(0, 29 - n); };
+
+const baseMarks = () => {
+  const m = {};
+  m["3:2"] = { t: "F", st: "exc", why: "Casamento da irmã — pedido com 4 dias, fora do prazo", by: "Julia", when: "28 ago 21:32" };
+  m["8:11"] = { t: "F", st: "adm", why: "Folga da própria supervisão — precisa da administração", by: "Deborah", when: "27 ago 08:02" };
+  m["1:24"] = { t: "R", st: "ok", why: "Recesso definido pela administração", by: "Barbara Sorroche", when: "19 ago 09:04" };
+  m["7:9"] = { t: "A", st: "ok", why: "Atestado — 3 dias", by: "Deborah", when: "26 ago 08:15" };
+  m["7:10"] = { t: "A", st: "ok", why: "Atestado — 3 dias", by: "Deborah", when: "26 ago 08:15" };
+  m["4:20"] = { t: "O", st: "ok", why: "Treinamento externo em SP", by: "Deborah", when: "24 ago 16:40" };
+  m["6:6"] = { t: "F", st: "ok", why: "Folga da semana", by: "Deborah", when: "20 ago 11:22" };
+  return m;
+};
+
+const COMP = { "3:3": 1, "5:3": 1 };
+
+const btn = (on, dot) => "display:flex;align-items:center;gap:7px;min-height:44px;padding:0 14px;border-radius:11px;font-family:Manrope,sans-serif;font-size:13.5px;font-weight:600;cursor:pointer;border:1px solid " + (on ? dot : "#e6e1f2") + ";background:" + (on ? dot + "14" : "#fff") + ";color:" + (on ? dot : "#5b5473");
+
+class Component extends DCLogic {
+  state = { profile: "SUP", op: "Bailarinos", season: "baixa", tab: "mapa", brush: "sel", marks: baseMarks(), sel: null, asa: false, painting: false, published: false, dismissed: {},
+    grp: {}, confirm: null, gSheet: false, gPick: "A", gWhy: "",
+    denyId: null, denyWhy: "", denyWho: "", denyLogs: [],
+    fUnit: "todos", fTurma: "todos",
+    turmas: [
+      { key: "A", dows: [4], from: 1, to: 30 },
+      { key: "B", dows: [3, 5], from: 1, to: 30 },
+      { key: "C", dows: [6], from: 8, to: 21 }
+    ],
+    tSheet: false, tKey: "", tDows: [], tFrom: 1, tTo: 30, tEdit: null,
+    selWhy: null, fSheet: false, fPick: 0, fType: "F", fWhy: "", asaCard: null,
+    showCount: true,
+    mobTab: "home", swap: null, swapReq: null, asaSheet: false, asaMsg: "", asaPlan: null,
+    asaThread: [{ me: "posso folgar dia 17?", asa: "Dia 17 já é sua folga do grupo B nessa semana. Quer trocar por outro dia?" }],
+    gReq: [{ pi: 3, to: "A", why: "", when: "27 ago 19:40", st: "pend" }] };
+
+  closedOn(d) {
+    const o = OPS[this.state.op] || OPS[OPLIST[0]];
+    return this.state.season === "baixa" && o.close !== null && dow(d) === o.close;
+  }
+
+  componentDidMount() {
+    this._up = () => { if (this.state.painting) this.setState({ painting: false }); };
+    window.addEventListener("mouseup", this._up);
+  }
+  componentWillUnmount() { window.removeEventListener("mouseup", this._up); }
+
+  paint(pi, d) {
+    if (this.closedOn(d)) return;
+    const marks = Object.assign({}, this.state.marks);
+    const k = pi + ":" + d;
+    if (this.state.brush === "del") delete marks[k];
+    else {
+      const own = pi === SELF[this.state.profile];
+      marks[k] = {
+        t: this.state.brush,
+        st: own ? "adm" : (daysUntil(d) < 5 ? "exc" : "ok"),
+        why: own ? "Folga da própria supervisão — precisa da administração" : "Pintado no mapa",
+        by: "Deborah", when: "hoje 10:0" + ((d % 6) + 1)
+      };
+    }
+    this.setState({ marks: marks });
+  }
+
+  weeks(startDow) {
+    const out = [];
+    let cur = null;
+    for (let d = 1; d <= DAYS; d++) {
+      if (!cur || dow(d) === startDow) { cur = { days: [], name: "S" + (out.length + 1) }; out.push(cur); }
+      cur.days.push(d);
+    }
+    return out;
+  }
+
+  renderVals() {
+    const self0 = this;
+    const st = this.state;
+    const active = st.profile;
+    const OP = OPS[st.op] || OPS[OPLIST[0]];
+    const lowS = false;
+    const closeDow = OP.close;
+    const startDow = closeDow === null ? 1 : (closeDow + 1) % 7;
+    const isClosed = d => lowS && closeDow !== null && dow(d) === closeDow;
+    const TL = st.turmas;
+    const TKEYS = TL.map(t => t.key);
+    const tOf = k => TL.filter(x => x.key === k)[0] || null;
+    const TDAYS = {};
+    const SPLIT_DAYS = [];
+    TL.forEach(t => {
+      const list = [];
+      for (let d = Math.max(1, t.from); d <= Math.min(DAYS, t.to); d++) {
+        if (t.dows.indexOf(dow(d)) >= 0 && !isClosed(d)) { list.push(d); if (SPLIT_DAYS.indexOf(d) < 0) SPLIT_DAYS.push(d); }
+      }
+      TDAYS[t.key] = list;
+    });
+    const tDays = k => TDAYS[k] || [];
+    const SPLIT = {};
+    TKEYS.forEach(k => { SPLIT[k] = tDays(k)[0] || 0; });
+    const dowsLabel = k => {
+      const t = tOf(k);
+      if (!t || !t.dows.length) return "sem dia definido";
+      const ns = t.dows.slice().sort((a, b) => a - b).map(i => FULLWD[i]);
+      return ns.length === 1 ? ns[0] : ns.slice(0, -1).join(", ") + " e " + ns[ns.length - 1];
+    };
+    const rangeLabel = k => {
+      const t = tOf(k);
+      if (!t) return "";
+      return (t.from <= 1 && t.to >= DAYS) ? "todo o mês" : t.from + " a " + t.to + " de set";
+    };
+    const turmaLabel = k => dowsLabel(k) + " · " + rangeLabel(k);
+    const meta = PROFILES.find(p => p.key === active) || PROFILES[2];
+    const isMem = active === "MEM";
+    const canEdit = active === "SUP" || active === "ADM";
+    const weeks = this.weeks(startDow);
+    const marks = st.marks;
+    const groupOf = pi => st.grp[pi] || PEOPLE[pi].turma;
+    const nextTurma = g => TKEYS.length < 2 ? g : TKEYS[(TKEYS.indexOf(g) + 1) % TKEYS.length];
+    const reqOf = pi => st.gReq.filter(r => r.pi === pi && r.st === "pend")[0];
+    const reqWhy = r => r.why || ("Meu curso passou para " + dowsLabel(groupOf(r.pi)) + " à noite — preciso da folga " + dowsLabel(r.to));
+    const unitOf = pi => PEOPLE[pi].unit;
+    const countGroup = g => PEOPLE.filter((p, i) => groupOf(i) === g).length;
+    const selfIdx = SELF[active];
+    const effMark = (pi, d) => {
+      const pp = PEOPLE[pi];
+      const m0 = marks[pi + ":" + d];
+      if (m0) return m0;
+      if (SPLIT_DAYS.indexOf(d) >= 0) {
+        const g0 = groupOf(pi), rq0 = reqOf(pi);
+        if (tDays(g0).indexOf(d) >= 0) return { t: "F", st: "ok", why: "Folga da turma " + g0 + " · " + dowsLabel(g0) + " · vigência " + rangeLabel(g0), by: "ASA sugeriu · aprovado por Deborah", when: "22 ago 14:10", grp: g0 };
+        if (rq0 && tDays(rq0.to).indexOf(d) >= 0) return { t: "F", st: "pend", why: "Troca para a turma " + rq0.to + " pedida por " + pp.name.split(" ")[0] + " — aguardando", by: pp.name, when: rq0.when, grp: rq0.to };
+      }
+      return null;
+    };
+    const targetOf = (pi, w) => {
+      const p0 = PEOPLE[pi];
+      if (!p0 || OP.regime === 0) return 0;
+      const reg = Math.min(p0.regime, OP.regime);
+      return w.days.length >= 5 ? reg : Math.min(reg, 1);
+    };
+    const weekCount = (pi, w) => {
+      let ok = 0, pend = 0;
+      if (!PEOPLE[pi]) return { ok: 0, pend: 0 };
+      w.days.forEach(d => {
+        if (isClosed(d)) { ok++; return; }
+        const mk = effMark(pi, d);
+        if (!mk || mk.t !== "F") return;
+        if (mk.st === "ok") ok++; else pend++;
+      });
+      return { ok: ok, pend: pend };
+    };
+
+    const profileTabs = PROFILES.map(p => ({
+      name: p.name, dot: p.dot,
+      onClick: () => this.setState({
+        profile: p.key, tab: "mapa", sel: null, selWhy: null, asa: false, asaCard: null,
+        mobTab: (TABS[p.key] || [["home"]])[0][0],
+        swap: null, swapReq: null, gSheet: false, gWhy: "",
+        fSheet: false, fPick: 0, fWhy: "",
+        asaSheet: false, asaMsg: "", asaPlan: null, asaThread: [],
+        painting: false, confirm: null
+      }),
+      style: btn(p.key === active, p.dot)
+    }));
+
+    const shellNav = NAV.map(g => ({
+      title: g.title,
+      items: g.items.filter(it => it[2].indexOf(active) >= 0).map(it => {
+        const on = it[0] === "24";
+        return {
+          href: NAV_HREF[it[0]],
+          label: (isMem && it[3] ? it[3] : it[1]),
+          style: "font-size:12px;padding:6px 9px;border-radius:9px;color:" + (on ? "#fff" : "#c8c0e4") + ";background:" + (on ? "rgba(255,255,255,.13)" : "transparent") + ";font-weight:" + (on ? 700 : 500)
+        };
+      })
+    }));
+
+    const tabDefs = [["mapa", "Mapa do mês"], ["registros", "Registros"], ["regras", "Regras e grupos"]];
+    const tabs = tabDefs.filter(t => !(isMem && t[0] === "regras")).map(t => ({
+      label: t[1],
+      onClick: () => this.setState({ tab: t[0], sel: null }),
+      style: "border:none;background:transparent;font-family:Manrope,sans-serif;font-size:13px;font-weight:" + (st.tab === t[0] ? 700 : 500) + ";color:" + (st.tab === t[0] ? "#6C2BF2" : "#6b6482") + ";padding:11px 4px;margin-right:12px;cursor:pointer;border-bottom:2px solid " + (st.tab === t[0] ? "#6C2BF2" : "transparent")
+    }));
+
+    const idxOf = p => PEOPLE.indexOf(p);
+    const showCount = st.showCount !== false;
+    const people = isMem
+      ? PEOPLE.filter(p => p.name === "Julia")
+      : PEOPLE.filter(p => (st.fUnit === "todos" || p.unit === st.fUnit)
+                        && (st.fTurma === "todos" || groupOf(idxOf(p)) === st.fTurma));
+
+    const chip = on => "height:26px;padding:0 10px;border-radius:9px;border:none;white-space:nowrap;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;cursor:pointer;background:" + (on ? "#1b1630" : "transparent") + ";color:" + (on ? "#fff" : "#6b6482");
+    const filterSets = [
+      { label: "Grupo (08)", opts: ["todos"].concat(UNITS.filter(u => PEOPLE.some(p => p.unit === u))).map(u => ({
+          label: u,
+          onClick: () => this.setState({ fUnit: u, sel: null }),
+          style: chip(st.fUnit === u) })) },
+      { label: "Turma de folga", opts: ["todos"].concat(TKEYS).map(g => ({
+          label: g === "todos" ? "todas" : "turma " + g,
+          onClick: () => this.setState({ fTurma: g, sel: null }),
+          style: chip(st.fTurma === g) })) },
+    ];
+    const countToggle = {
+      label: showCount ? "Contador semanal: ligado" : "Contador semanal: desligado",
+      onClick: () => this.setState({ showCount: !showCount }),
+      style: "height:26px;padding:0 11px;border-radius:9px;border:1px solid " + (showCount ? "#cdbdf8" : "#e6e1f2") + ";white-space:nowrap;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;cursor:pointer;background:" + (showCount ? "#f2ecfe" : "#fff") + ";color:" + (showCount ? "#6C2BF2" : "#6b6482")
+    };
+    const filterNote = people.length === PEOPLE.length
+      ? PEOPLE.length + " pessoas"
+      : people.length + " de " + PEOPLE.length + " pessoas";
+
+    const headCells = [];
+    weeks.forEach(w => {
+      w.days.forEach(d => {
+        const closed = isClosed(d);
+        const wk = dow(d) === 0 || dow(d) === 6;
+        headCells.push({
+          num: String(d), wd: WDL[dow(d)],
+          style: "box-sizing:border-box;width:" + CELL + "px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px 0;gap:1px;border-right:1px solid #f0ecf9;background:" + (closed ? "#eceaf5" : wk ? "#fbfaff" : "#fff") + ";color:" + (closed ? "#6b6482" : "#3c3559")
+        });
+      });
+      if (showCount) headCells.push({ num: "", wd: "meta", style: "box-sizing:border-box;width:" + CNT + "px;flex:none;display:flex;align-items:center;justify-content:center;font-size:11px;color:#6b6482;background:#f7f5fd;border-right:1px solid #e6e1f2" });
+    });
+
+    const weekBands = weeks.map((w, i) => {
+      const closedCount = w.days.filter(isClosed).length;
+      const split = w.days.some(d => SPLIT_DAYS.indexOf(d) >= 0);
+      return {
+        name: w.name,
+        note: w.days[0] + "–" + w.days[w.days.length - 1] + (closedCount ? " · fecha " + wdArt(closeDow) + OP.closeName : " · sem fechamento"),
+        style: "box-sizing:border-box;width:" + (w.days.length * CELL + (showCount ? CNT : 0)) + "px;flex:none;display:flex;flex-direction:column;gap:1px;padding:6px 8px;border-right:1px solid #e6e1f2;overflow:hidden;background:" + (split ? "#f7f3ff" : "transparent")
+      };
+    });
+
+    const rows = people.map(p => {
+      const pi = idxOf(p);
+      const cells = [];
+      weeks.forEach((w, wi) => {
+        const wc = weekCount(pi, w);
+        const count = wc.ok, pendc = wc.pend;
+        w.days.forEach(d => {
+          const closed = isClosed(d);
+          const m = effMark(pi, d);
+          const T = m ? TYPES[m.t] : null;
+          const isSel = st.sel && st.sel.pi === pi && st.sel.d === d;
+          let bg = "#fff", fg = "#c8c0e4", bd = "#f0ecf9", label = "";
+          if (closed) { bg = "#eceaf5"; label = ""; }
+          else if (T) { bg = T.bg; fg = T.fg; bd = T.bd; label = T.label; }
+          else if (dow(d) === 0 || dow(d) === 6) bg = "#fdfcff";
+          cells.push({
+            label: label,
+            sub: m && m.grp ? m.grp : false,
+            title: closed ? "Parque fechado · folga coletiva" : (m ? TYPES[m.t].name + (m.st === "pend" ? " · aguardando aprovação" : m.st === "adm" ? " · aguardando a administração" : m.st === "exc" ? " · exceção de prazo" : "") + " — " + m.why : p.name + " · dia " + d),
+            onDown: () => {
+              if (!canEdit) return;
+              if (st.brush === "sel") this.setState({ sel: { pi: pi, d: d }, selWhy: null });
+              else { this.setState({ painting: true }); this.paint(pi, d); }
+            },
+            onEnter: () => { if (canEdit && st.painting && st.brush !== "sel") this.paint(pi, d); },
+            style: "box-sizing:border-box;width:" + CELL + "px;height:30px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;border-right:1px solid " + bd + ";border-bottom:1px solid #f4f1fb;color:" + fg + ";background:" + bg + ";cursor:" + (canEdit && !closed ? "pointer" : "default") + ";user-select:none;" + (m && (m.st === "pend" || m.st === "adm") ? "outline:1.5px dashed " + TYPES[m.t].fg + ";outline-offset:-2px;" : "") + (m && m.st === "exc" ? "box-shadow:inset 0 0 0 1.5px #E0A32B;" : "") + (isSel ? "box-shadow:inset 0 0 0 2px #6C2BF2;" : "")
+          });
+        });
+        const comp = COMP[pi + ":" + wi] || 0;
+        const target = targetOf(pi, w);
+        const ok = count >= target;
+        if (showCount) cells.push({
+          label: target === 0 ? "—" : count + "/" + target,
+          sub: comp ? "+" + comp : (pendc ? pendc + "•" : false),
+          title: (ok ? "Meta da semana cumprida" : "Falta " + (target - count) + " folga nesta semana") + (pendc ? " · " + pendc + " aguardando aprovação (não conta ainda)" : "") + (comp ? " · " + comp + " a compensar" : ""),
+          onDown: null, onEnter: null,
+          style: "box-sizing:border-box;width:" + CNT + "px;height:30px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;border-right:1px solid #e6e1f2;border-bottom:1px solid #f4f1fb;background:" + (target === 0 ? "#f7f5fd" : ok ? "#f2faf8" : "#fdf7e8") + ";color:" + (target === 0 ? "#b6afc9" : ok ? "#0E8F86" : "#8a6413")
+        });
+      });
+      const tally = { F: 0, R: 0, A: 0, O: 0 };
+      for (let d = 1; d <= DAYS; d++) { const mk = effMark(pi, d); if (mk && tally[mk.t] !== undefined) tally[mk.t]++; }
+      const totalDays = tally.F + tally.R + tally.A + tally.O;
+      const totals = ["F", "R", "A", "O"].map(t => ({
+        label: tally[t] ? String(tally[t]) : "·",
+        title: tally[t] + " × " + TYPES[t].name + " em setembro · " + p.name,
+        style: "box-sizing:border-box;width:" + TOT + "px;height:30px;flex:none;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;border-right:1px solid #f0ecf9;border-bottom:1px solid #f4f1fb;background:" + (tally[t] ? TYPES[t].bg : "#fbfaff") + ";color:" + (tally[t] ? TYPES[t].fg : "#c8c0e4")
+      }));
+      totals.push({
+        label: String(totalDays),
+        title: totalDays + " dias fora no mês · " + tally.F + "F " + tally.R + "R " + tally.A + "A " + tally.O + "O",
+        style: "box-sizing:border-box;width:" + (TOT + 6) + "px;height:30px;flex:none;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;border-bottom:1px solid #f4f1fb;background:#f4f1fb;color:#3c3559"
+      });
+      return {
+        totals: totals,
+        name: p.name, initials: p.initials, group: groupOf(pi),
+        meta: p.unit + " · " + p.regime + (p.regime === 1 ? " folga/semana" : " folgas/semana"),
+        cells: cells,
+        style: "display:flex;align-items:stretch",
+        nameStyle: "position:sticky;left:0;z-index:3;box-sizing:border-box;width:" + NAMEW + "px;flex:none;display:flex;align-items:center;gap:8px;padding:4px 10px;border-right:1px solid #e6e1f2;border-bottom:1px solid #f4f1fb;background:#fff",
+        groupStyle: "flex:none;width:18px;height:18px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:" + (p.regime === 2 ? "#6C2BF2" : "#C8C0E4") + ";background:" + (p.regime === 2 ? "#f2ecfe" : "#f7f5fd")
+      };
+    });
+
+    const dayLimit = 3;
+    const footCells = [];
+    weeks.forEach(w => {
+      w.days.forEach(d => {
+        const closed = isClosed(d);
+        let n = 0;
+        people.forEach(p => { if (effMark(idxOf(p), d)) n++; });
+        const over = !closed && n > dayLimit;
+        footCells.push({
+          label: closed ? "·" : n ? String(n) : "",
+          style: "box-sizing:border-box;width:" + CELL + "px;height:26px;flex:none;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;border-right:1px solid #f0ecf9;background:" + (over ? "#fdf1dc" : closed ? "#eceaf5" : "transparent") + ";color:" + (over ? "#8a6413" : closed ? "#6b6482" : "#5b5473")
+        });
+      });
+      if (showCount) footCells.push({ label: "", style: "box-sizing:border-box;width:" + CNT + "px;flex:none;border-right:1px solid #e6e1f2;background:#f2eefa" });
+    });
+
+    const gTally = { F: 0, R: 0, A: 0, O: 0 };
+    people.forEach(p => { const pi = idxOf(p); for (let d = 1; d <= DAYS; d++) { const mk = effMark(pi, d); if (mk && gTally[mk.t] !== undefined) gTally[mk.t]++; } });
+    const gTotal = gTally.F + gTally.R + gTally.A + gTally.O;
+    const totalHead = ["F", "R", "A", "O"].map(t => ({
+      label: t, sub: TYPES[t].name,
+      style: "box-sizing:border-box;width:" + TOT + "px;flex:none;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;border-right:1px solid #f0ecf9;color:" + TYPES[t].fg + ";background:" + TYPES[t].bg
+    }));
+    totalHead.push({ label: "Σ", sub: "total", style: "box-sizing:border-box;width:" + (TOT + 6) + "px;flex:none;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;color:#3c3559;background:#eae5f8" });
+    const totalFoot = ["F", "R", "A", "O"].map(t => ({
+      label: gTally[t] ? String(gTally[t]) : "·",
+      style: "box-sizing:border-box;width:" + TOT + "px;height:26px;flex:none;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;border-right:1px solid #f0ecf9;color:" + (gTally[t] ? TYPES[t].fg : "#6b6482") + ";background:#f7f5fd"
+    }));
+    totalFoot.push({ label: String(gTotal), style: "box-sizing:border-box;width:" + (TOT + 6) + "px;height:26px;flex:none;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;color:#3c3559;background:#eae5f8" });
+    const totalBandStyle = "box-sizing:border-box;width:" + (TOT * 4 + TOT + 6) + "px;flex:none;display:flex;flex-direction:column;gap:1px;padding:6px 8px;overflow:hidden;background:#f2eefa";
+
+    const sw = (bg, bd, fg) => "width:19px;height:19px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;background:" + bg + ";border:1px solid " + bd + ";color:" + fg;
+    const legend = [
+      { key: "F", text: "Folga", swatch: sw(TYPES.F.bg, TYPES.F.bd, TYPES.F.fg) },
+      { key: "R", text: "Recesso", swatch: sw(TYPES.R.bg, TYPES.R.bd, TYPES.R.fg) },
+      { key: "A", text: "Afastamento", swatch: sw(TYPES.A.bg, TYPES.A.bd, TYPES.A.fg) },
+      { key: "O", text: "Outro", swatch: sw(TYPES.O.bg, TYPES.O.bd, TYPES.O.fg) },
+      { key: "", text: "Cinza: dia em que a turma inteira folga", swatch: sw("#eceaf5", "#e0dcec", "#6b6482") },
+      { key: "", text: "Tracejado: aguardando aprovação", swatch: "width:19px;height:19px;border-radius:6px;border:1.5px dashed #0E8F86;background:#e2f4f2" },
+      { key: "", text: "Contorno âmbar: exceção de prazo", swatch: "width:19px;height:19px;border-radius:6px;border:1.5px solid #E0A32B;background:#fdf7e8" },
+      { key: "A", text: "Letra pequena: turma de folga da pessoa", swatch: sw("#fff", "#e6e1f2", "#C2508F") },
+      { key: "Σ", text: "Coluna final: total do mês por tipo e somado", swatch: sw("#eae5f8", "#dcd4f0", "#3c3559") }
+    ];
+
+    const brushDefs = [["sel", "Selecionar", "#6C2BF2"], ["F", "F", TYPES.F.fg], ["R", "R", TYPES.R.fg], ["A", "A", TYPES.A.fg], ["O", "O", TYPES.O.fg], ["del", "Apagar", "#6b6482"]];
+    const brushes = brushDefs.map(b => ({
+      label: b[1],
+      onClick: () => this.setState({ brush: b[0], sel: b[0] === "sel" ? st.sel : null }),
+      style: "border:none;border-radius:9px;padding:" + (b[0] === "sel" || b[0] === "del" ? "0 11px" : "0 10px") + ";height:26px;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;cursor:pointer;background:" + (st.brush === b[0] ? b[2] : "transparent") + ";color:" + (st.brush === b[0] ? "#fff" : "#6b6482")
+    }));
+
+    let sel = null;
+    if (st.sel) {
+      const p = PEOPLE[st.sel.pi], d = st.sel.d, k = st.sel.pi + ":" + d;
+      const m = marks[k];
+      const days = daysUntil(d);
+      const late = days < 5;
+      const own = st.sel.pi === selfIdx;
+      const mode = isMem ? "request" : (canEdit ? (own ? "self" : "edit") : "read");
+      const why = st.selWhy === null ? (m ? m.why : "") : st.selWhy;
+      const needsWhy = late || mode === "request" || mode === "self";
+      const setMark = extra => {
+        const nm = Object.assign({}, this.state.marks);
+        nm[k] = Object.assign({ t: "F", by: meta.person, when: "hoje 10:22", why: why }, nm[k] || {}, extra);
+        this.setState({ marks: nm });
+      };
+      const typeList = mode === "request" ? [["F", "Folga"], ["O", "Outro"]] : [["F", "Folga"], ["R", "Recesso"], ["A", "Afast."], ["O", "Outro"]];
+      const newSt = mode === "request" ? "pend" : mode === "self" ? "adm" : late ? "exc" : "ok";
+
+      const appr = [];
+      if (mode === "self") {
+        appr.push({ role: "Supervisão", state: "não aprova a si mesmo", dot: "#DAD4EA" });
+        appr.push({ role: "Administração", state: m && m.st === "ok" ? "aprovado · Carolina" : "aguardando", dot: m && m.st === "ok" ? "#0E8F86" : "#E0A32B" });
+      } else {
+        appr.push({ role: "Supervisão", state: m && (m.st === "ok") ? "aprovado · Deborah" : "aguardando", dot: m && m.st === "ok" ? "#0E8F86" : "#E0A32B" });
+        appr.push({ role: "Administração", state: late ? (m && m.st === "ok" ? "aprovado · Carolina" : "exigido pela exceção") : "não exigido", dot: late ? (m && m.st === "ok" ? "#0E8F86" : "#E0A32B") : "#DAD4EA" });
+      }
+
+      const pend = m && (m.st === "pend" || m.st === "adm" || m.st === "exc");
+      let saveLabel = "Salvar marcação", note = false;
+      if (mode === "request") saveLabel = m && m.st === "pend" ? "Cancelar pedido" : "Enviar pedido";
+      else if (mode === "self") { saveLabel = "Enviar para a administração"; note = "Você não aprova a própria folga — quem decide é a administração."; }
+      else if (mode === "edit" && pend) saveLabel = "Aprovar " + TYPES[m.t].name.toLowerCase();
+      if (mode === "edit" && m && m.st === "adm") { saveLabel = "Precisa da administração"; note = "Esta é a linha de quem está marcando. Só o admin aprova."; }
+
+      sel = {
+        person: p.name,
+        dateLabel: "dia " + d + " de setembro · " + FULLWD[dow(d)],
+        modeLabel: mode === "request" ? "seu pedido" : mode === "self" ? "sua linha" : mode === "read" ? "leitura" : "marcação",
+        modeStyle: "font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;border-radius:999px;width:fit-content;background:" + (mode === "edit" ? "#f2ecfe" : "#fdf1dc") + ";color:" + (mode === "edit" ? "#6C2BF2" : "#8a6413"),
+        motiveValue: why,
+        motiveHint: needsWhy ? "Obrigatório — vai para os Registros como você escrever" : "Opcional",
+        motivePlaceholder: mode === "request" ? "Por que você precisa deste dia?" : "Por que esta marcação existe?",
+        readOnly: mode === "read",
+        onMotive: e => this.setState({ selWhy: e.target.value }),
+        showTypes: mode !== "read",
+        types: typeList.map(t => ({
+          label: t[1],
+          onClick: () => setMark({ t: t[0], st: newSt }),
+          style: "flex:1;height:30px;border-radius:9px;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;cursor:pointer;border:1px solid " + (m && m.t === t[0] ? TYPES[t[0]].fg : "#e6e1f2") + ";background:" + (m && m.t === t[0] ? TYPES[t[0]].bg : "#fff") + ";color:" + (m && m.t === t[0] ? TYPES[t[0]].fg : "#6b6482")
+        })),
+        prazoTitle: late ? "Fora do prazo · exceção" : "Dentro do prazo",
+        prazoText: late ? "Faltam " + days + " dias para o dia " + d + ". O mínimo é 5, então entra como exceção com justificativa e vai para a administração." : "Faltam " + days + " dias. Prazo mínimo de 5 dias cumprido.",
+        prazoStyle: "display:flex;flex-direction:column;gap:3px;padding:10px 11px;border-radius:11px;border:1px solid " + (late ? "#f0d9a8" : "#c2e7e3") + ";background:" + (late ? "#fdf7e8" : "#f2faf8") + ";color:" + (late ? "#8a6413" : "#0b6b64"),
+        approvals: appr.map(a => ({ role: a.role, state: a.state, dot: "width:9px;height:9px;flex:none;margin-top:4px;border-radius:50%;background:" + a.dot })),
+        showButtons: mode !== "read",
+        showClear: mode === "edit" || mode === "self",
+        note: note,
+        saveLabel: saveLabel,
+        onSave: () => {
+          const nm = Object.assign({}, this.state.marks);
+          if (mode === "request") {
+            if (m && m.st === "pend") delete nm[k];
+            else nm[k] = Object.assign({ t: "F" }, nm[k] || {}, { st: "pend", why: why || "Sem motivo escrito", by: p.name + " (app)", when: "hoje 10:40" });
+          } else if (mode === "self") {
+            nm[k] = Object.assign({ t: "F" }, nm[k] || {}, { st: "adm", why: why || "Folga da própria supervisão", by: meta.person, when: "hoje 10:40" });
+          } else if (m && m.st === "adm") {
+            this.setState({ sel: null, selWhy: null });
+            return;
+          } else if (nm[k]) {
+            nm[k] = Object.assign({}, nm[k], { st: "ok", why: why || nm[k].why });
+          }
+          this.setState({ marks: nm, sel: null, selWhy: null });
+        },
+        onClear: () => { const nm = Object.assign({}, this.state.marks); delete nm[k]; this.setState({ marks: nm, sel: null, selWhy: null }); },
+        history: m ? [
+          { when: m.when, what: (m.by || "—") + " marcou " + TYPES[m.t].name.toLowerCase() },
+          { when: "hoje", what: m.st === "pend" ? "aguardando aprovação da supervisão" : m.st === "adm" ? "aguardando a administração" : m.st === "exc" ? "exceção de prazo — aguardando" : "vigente no mapa publicado" }
+        ] : [{ when: "—", what: "Célula vazia. A primeira marcação abre o registro." }]
+      };
+    }
+
+    const logs = (st.denyLogs || []).concat([
+      { when: "27 ago 19:40", who: "Julia", date: "grupo", type: "O", why: "Pede troca do grupo B para o A — curso passou para quinta à noite", by: "Julia (app)", status: "Exceção · aguardando", mem: true },
+      { when: "14 ago 09:20", who: "Diogo", date: "grupo", type: "O", why: "Trocado do grupo B para o A, em par com Carol", by: "Deborah", status: "Aprovado" },
+      { when: "13 ago 17:05", who: "Dani ↔ Sofia", date: "troca", type: "F", why: "Troca de folga entre colegas — espelhada na escala do dia", by: "os dois confirmaram · Deborah aprovou", status: "Aprovado" },
+      { when: "28 ago 21:32", who: "Julia", date: "2 set", type: "F", why: "Casamento da irmã — pedido com 4 dias, fora do prazo de 5", by: "Julia (app)", status: "Exceção · aguardando", mem: true },
+      { when: "27 ago 08:02", who: "Deborah", date: "11 set", type: "F", why: "Folga da própria supervisão — enviada para a administração", by: "Deborah", status: "Admin · aguardando" },
+      { when: "26 ago 08:15", who: "Izabel", date: "9–10 set", type: "A", why: "Atestado médico entregue na supervisão", by: "Deborah", status: "Aprovado" },
+      { when: "24 ago 16:40", who: "Mariela", date: "20 set", type: "O", why: "Treinamento externo em São Paulo", by: "Stephani", status: "Aprovado" },
+      { when: "22 ago 14:10", who: "Grupo A (4 pessoas)", date: "sexta", type: "F", why: "2ª folga da semana definida para o grupo A", by: "ASA sugeriu · aprovado por Deborah", status: "Aprovado" },
+      { when: "22 ago 14:10", who: "Sua folga · grupo B", date: "sábado", type: "F", why: "2ª folga da semana definida para o grupo B", by: "ASA sugeriu · aprovado por Deborah", status: "Aprovado", mem: true },
+      { when: "19 ago 09:04", who: "Louis", date: "24 set", type: "R", why: "Recesso definido pela administração", by: "Barbara Sorroche", status: "Aprovado" },
+      { when: "12 ago 10:00", who: "ASA · setembro", date: "mês", type: "O", why: "Regime aplicado: 2 folgas/semana, semana quinta→quarta, 2ª folga por grupo", by: "Barbara Sorroche", status: "Regra vigente", mem: true }
+    ]).map(l => ({
+      when: l.when, who: l.who, date: l.date, why: l.why, by: l.by, status: l.status, type: l.type,
+      typeStyle: "font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;padding:2px 7px;border-radius:6px;background:" + TYPES[l.type].bg + ";color:" + TYPES[l.type].fg,
+      mem: l.mem === true,
+      statusStyle: "font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap;background:" + (l.status.indexOf("Aprovado") === 0 ? "#e2f4f2" : l.status.indexOf("Recusado") === 0 ? "#fdeef1" : l.status.indexOf("Exce") === 0 ? "#fdf1dc" : "#f0eef6") + ";color:" + (l.status.indexOf("Aprovado") === 0 ? "#0b6b64" : l.status.indexOf("Recusado") === 0 ? "#a12c2c" : l.status.indexOf("Exce") === 0 ? "#8a6413" : "#6b6482")
+    })).filter(l => !isMem || l.mem);
+
+    const regimes = [
+      { op: "Regime da ASA", rate: "1 ou 2 / semana", dot: "#6C2BF2", desc: "Uma regra só, para toda a ASA. Todas as folgas são iguais — não existe folga individual nem folga coletiva. O que varia por pessoa é quantas ela tem na semana: uma ou duas.", lines: ["Semana contada de quinta a quarta", "Cada pessoa tem 1 ou 2 folgas por semana", "Limite de " + REGIME.limite + " ausências por dia na mesma função", "Prazo de " + REGIME.prazo + " dias · aprovação da supervisão da área"] },
+      { op: "Turmas de folga", rate: TKEYS.join(" · "), dot: "#0E8F86", desc: "Você cria as turmas que quiser, com os nomes que quiser, e cada uma tem o seu dia de folga e a sua vigência no mês. Existem só aqui, para girar a cobertura dos shows. Não têm relação com os grupos de 08 — trocar de turma não muda o grupo nem o supervisor da pessoa.", lines: ["Turma A folga na quinta · B na sexta · C no sábado", "Uma pessoa pode pedir troca de turma, com motivo", "A troca respeita a cobertura mínima de " + MINCOVER + " por dia", "Quem aprova é o supervisor da área"] }
+    ].map(r => Object.assign({}, r, {
+      style: "display:flex;flex-direction:column;gap:9px;padding:15px 16px;background:#fff;border:1px solid #e6e1f2;border-radius:14px",
+      editLabel: "editar o regime →"
+    }));
+
+    const openConfirm = (pi, to) => this.setState({ confirm: { pi: pi, to: to, from: groupOf(pi) } });
+    const applyMove = (pi, to, partner) => {
+      const g2 = Object.assign({}, this.state.grp);
+      const from = this.state.grp[pi] || PEOPLE[pi].group;
+      g2[pi] = to;
+      if (partner !== null && partner !== undefined) g2[partner] = from;
+      this.setState({
+        grp: g2, confirm: null,
+        gReq: this.state.gReq.map(r => r.pi === pi && r.st === "pend" ? Object.assign({}, r, { st: "ok" }) : r)
+      });
+    };
+
+    const groups = TL.map(t => ({
+      key: t.key,
+      day: dowsLabel(t.key),
+      range: rangeLabel(t.key),
+      daysCount: tDays(t.key).length + (tDays(t.key).length === 1 ? " folga no mês" : " folgas no mês"),
+      other: nextTurma(t.key),
+      empty: !PEOPLE.some((p, i) => groupOf(i) === t.key),
+      onEdit: () => { if (canEdit) this.setState({ tSheet: true, tEdit: t.key, tKey: t.key, tDows: t.dows.slice(), tFrom: t.from, tTo: t.to }); }
+    })).map(gr => ({
+      key: gr.key, day: gr.day, range: gr.range, daysCount: gr.daysCount, empty: gr.empty, onEdit: gr.onEdit,
+      editStyle: canEdit ? "border:none;background:transparent;color:#6b6482;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;padding:2px 6px" : "display:none",
+      count: PEOPLE.filter((p, i) => groupOf(i) === gr.key).length + " de " + PEOPLE.length,
+      style: "display:flex;flex-direction:column;gap:9px;padding:13px 14px;border:1px solid #e6e1f2;border-radius:13px;background:#faf9fe",
+      badge: "flex:none;box-sizing:border-box;width:22px;height:22px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;background:#f2ecfe;color:#6C2BF2",
+      members: PEOPLE.map((p, i) => ({ p: p, i: i })).filter(x => groupOf(x.i) === gr.key).map(x => ({
+        name: x.p.name.split(" ")[0],
+        move: "→ " + gr.other,
+        pending: reqOf(x.i) ? "pedido" : false,
+        onMove: () => { if (canEdit) openConfirm(x.i, gr.other); },
+        style: "display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:#3c3559;background:#fff;border:1px solid " + (reqOf(x.i) ? "#E0A32B" : "#e6e1f2") + ";padding:3px 4px 3px 10px;border-radius:999px",
+        moveStyle: canEdit ? "border:none;background:#f2ecfe;color:#6C2BF2;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:3px 7px;border-radius:999px;cursor:pointer" : "display:none"
+      }))
+    }));
+
+    const groupReqs = st.gReq.filter(r => r.st === "pend").map(r => ({
+      title: PEOPLE[r.pi].name + " pede para sair da turma " + groupOf(r.pi) + " e ir para a " + r.to,
+      why: reqWhy(r),
+      meta: r.when + " · pedido pelo app · vale até nova troca",
+      onOk: () => openConfirm(r.pi, r.to),
+      onNo: () => this.setState({ gReq: st.gReq.map(x => x.pi === r.pi ? Object.assign({}, x, { st: "neg" }) : x) })
+    }));
+
+    const moveReflex = (pi, to) => {
+      const cp = PEOPLE[pi], cfrom = groupOf(pi);
+      const afterFrom = countGroup(cfrom) - 1, afterTo = countGroup(to) + 1;
+      const cands = PEOPLE.map((p, i) => ({ p: p, i: i })).filter(x => groupOf(x.i) === to && x.i !== pi);
+      const partner = afterFrom < MINCOVER && cands.length ? cands[0] : null;
+      return {
+        from: cfrom, to: to, partner: partner,
+        title: cp.name.split(" ")[0] + " passa da turma " + cfrom + " para a " + to,
+        lines: [
+          "A folga de " + cp.name.split(" ")[0] + " muda de " + turmaLabel(cfrom) + " para " + turmaLabel(to) + ".",
+          "O grupo em 08 não muda: " + cp.unit + " continua igual. Turma de folga é só cobertura.",
+          "Turma " + cfrom + " fica com " + afterFrom + " pessoas · turma " + to + " com " + afterTo + ".",
+          partner ? "Cobertura mínima é " + MINCOVER + " por dia. Só dá para trocar em par: " + partner.p.name.split(" ")[0] + " vai para a turma " + cfrom + " na vaga." : "Cobertura mantida nos dois dias."
+        ],
+        okLabel: partner ? "Trocar em par com " + partner.p.name.split(" ")[0] : "Confirmar troca",
+        blocked: !!partner,
+        apply: () => applyMove(pi, to, partner ? partner.i : null)
+      };
+    };
+
+    let confirm = null;
+    if (st.confirm) {
+      const mr = moveReflex(st.confirm.pi, st.confirm.to);
+      confirm = {
+        title: mr.title, lines: mr.lines, okLabel: mr.okLabel,
+        style: "display:flex;flex-direction:column;gap:9px;padding:13px 14px;border-radius:13px;border:1px solid " + (mr.blocked ? "#f0d9a8" : "#c2e7e3") + ";background:" + (mr.blocked ? "#fdf7e8" : "#f2faf8"),
+        onOk: mr.apply,
+        onNo: () => this.setState({ confirm: null })
+      };
+    }
+
+    const dayOut = d => PEOPLE.filter((p, i) => !!effMark(i, d)).length;
+    const weekOf = d => { let f = weeks[0]; weeks.forEach(w => { if (w.days.indexOf(d) >= 0) f = w; }); return f; };
+
+    const queue = [];
+    const readOnly = active === "DIR";
+    {
+      Object.keys(marks).forEach(k => {
+        const pi = parseInt(k.split(":")[0], 10), d = parseInt(k.split(":")[1], 10), m = marks[k];
+        if (m.st === "ok") return;
+        if (isMem && pi !== 3) return;
+        if (active === "ADM" && !(m.st === "exc" || m.st === "adm")) return;
+        const p = PEOPLE[pi];
+        const age = ageOf(m.when), close = daysUntil(d);
+        const needAdmin = m.st === "exc" || m.st === "adm" || daysUntil(d) < 5;
+        const wc = weekCount(pi, weekOf(d));
+        const w = weekOf(d);
+        const canDecide = (isMem || readOnly) ? false : (needAdmin ? active === "ADM" : true);
+        queue.push({
+          key: k, urgent: close <= 2, warn: age >= 3,
+          tag: m.st === "adm" ? "própria linha · admin" : m.st === "exc" ? "exceção de prazo" : "pedido de folga",
+          title: (isMem ? "Seu pedido de " : pi === selfIdx ? "Sua " : p.name.split(" ")[0] + " · ") + TYPES[m.t].name.toLowerCase() + " no dia " + d,
+          why: m.why,
+          meta: (age ? "parado há " + age + (age > 1 ? " dias" : " dia") : "chegou hoje") + " · o dia chega em " + close + " dias",
+          lines: isMem ? [
+            m.st === "exc" ? "Fora do prazo de 5 dias: quem decide é a administração." : "Aguardando a supervisão responder.",
+            "O dia chega em " + close + " dias.",
+            "Sua semana " + w.name + " (" + w.days[0] + "–" + w.days[w.days.length - 1] + "): " + wc.ok + "/" + targetOf(pi, w) + " aprovadas, " + wc.pend + " aguardando."
+          ] : [
+            "Fora no dia " + d + ": " + dayOut(d) + " de " + dayLimit + " permitidos.",
+            "Semana " + w.name + " (" + w.days[0] + "–" + w.days[w.days.length - 1] + ") de " + p.name.split(" ")[0] + ": " + wc.ok + "/" + targetOf(pi, w) + " aprovadas, " + wc.pend + " aguardando."
+          ],
+          hideBtns: readOnly,
+          okLabel: isMem ? "Cancelar pedido" : canDecide ? "Aprovar" : "Precisa da administração",
+          okOn: isMem || canDecide,
+          onOk: () => {
+            const nm = Object.assign({}, this.state.marks);
+            if (isMem) delete nm[k];
+            else if (canDecide) nm[k] = Object.assign({}, nm[k], { st: "ok", by: nm[k].by + " · aprovado por " + meta.person });
+            else { this.setState({ sel: { pi: pi, d: d }, selWhy: null, asa: false }); return; }
+            this.setState({ marks: nm });
+          },
+          noLabel: (isMem || readOnly) ? "" : canDecide ? "Recusar" : "Abrir a célula",
+          onNo: () => {
+            if (isMem) return;
+            if (canDecide) this.setState({ denyId: "f:" + k, denyWhy: "", denyWho: (PEOPLE[pi] && PEOPLE[pi].name) || "a pessoa" });
+            else this.setState({ sel: { pi: pi, d: d }, selWhy: null, asa: false });
+          }
+        });
+      });
+      st.gReq.filter(r => r.st === "pend").forEach(r => {
+        if (isMem && r.pi !== 3) return;
+        if (active === "ADM") return;
+        const mr = moveReflex(r.pi, r.to);
+        const age = ageOf(r.when);
+        queue.push({
+          key: "g" + r.pi, urgent: false, warn: age >= 3,
+          tag: "troca de grupo",
+          title: isMem ? "Sua troca para o grupo " + r.to : mr.title,
+          why: reqWhy(r),
+          meta: (age ? "parado há " + age + (age > 1 ? " dias" : " dia") : "chegou hoje") + " · vale até nova troca",
+          lines: isMem ? [
+            "Se a supervisão aprovar, sua folga passa para " + turmaLabel(r.to) + ".",
+            "Ela confere a cobertura do dia antes de aprovar.",
+            "A troca vale até você pedir outra."
+          ] : mr.lines,
+          hideBtns: readOnly,
+          okLabel: isMem ? "Cancelar pedido" : mr.okLabel,
+          okOn: !readOnly,
+          onOk: () => { if (isMem) this.setState({ gReq: st.gReq.filter(x => x.pi !== r.pi) }); else mr.apply(); },
+          noLabel: (isMem || readOnly) ? "" : "Recusar",
+          onNo: () => { if (!isMem) this.setState({ denyId: "g:" + r.pi, denyWhy: "", denyWho: (PEOPLE[r.pi] && PEOPLE[r.pi].name) || "a pessoa" }); }
+        });
+      });
+    }
+
+    const asaQueue = queue.map(q => ({
+      tag: q.tag, title: q.title, why: q.why, meta: q.meta, lines: q.lines,
+      tagStyle: "font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:3px 8px;border-radius:999px;background:" + (q.urgent ? "#fbdcdc" : q.warn ? "#fdf1dc" : "#f2ecfe") + ";color:" + (q.urgent ? "#a12c2c" : q.warn ? "#8a6413" : "#6C2BF2"),
+      style: "border:1px solid " + (q.urgent ? "#f0bcbc" : q.warn ? "#f0d9a8" : "#e6e1f2") + ";border-radius:13px;padding:12px 13px;display:flex;flex-direction:column;gap:8px;background:" + (q.urgent ? "#fdf5f5" : "#fff"),
+      metaStyle: "font-size:11.5px;color:" + (q.urgent ? "#a12c2c" : "#6b6482"),
+      okLabel: q.okLabel,
+      okStyle: q.hideBtns ? "display:none" : "height:29px;padding:0 12px;border-radius:9px;border:none;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;color:#fff;background:" + (q.okOn ? "#1b1630" : "#cec5e6") + ";cursor:" + (q.okOn ? "pointer" : "not-allowed"),
+      onOk: q.onOk,
+      noLabel: q.noLabel,
+      noStyle: (q.noLabel && !q.hideBtns) ? "height:29px;padding:0 11px;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:11.5px;font-weight:600;font-family:Manrope,sans-serif;cursor:pointer" : "display:none",
+      onNo: q.onNo
+    }));
+
+    const asaRaw = [
+      { key: "c1", tag: "Compensação devida", conf: "regra", title: "Julia e Rafael têm 1 folga a compensar da semana passada",
+        why: "A 2ª folga deles caiu num dia de casa cheia e os dois trabalharam.",
+        nums: "Semana S3 dos dois: 1/2 aprovadas · dias 23 e 25 estão com 1 e 0 de 3 permitidos",
+        lines: ["Marca folga da Julia em 23 e do Rafael em 25.", "Fora no dia 23 passa a 2 de 3 · dia 25 passa a 1 de 3.", "Semana S4 dos dois fecha em 2/2."],
+        cta: "Aplicar nos dois" },
+      { key: "c2", tag: "Fora do prazo", conf: "prazo", title: "Julia pediu 2 de setembro com 4 dias de antecedência",
+        why: "Abaixo do mínimo de 5 dias, então quem decide é a administração.",
+        nums: "Parado há 1 dia · o dia chega em 4 dias · semana S1 dela: 1/2",
+        lines: ["Aprovar como exceção grava a justificativa que ela escreveu.", "Fora no dia 2 passa a 2 de 3.", "Recusar devolve o pedido com o motivo da recusa."],
+        cta: "Abrir a célula" },
+      { key: "c3", tag: "Limite do dia", conf: "histórico", title: "Sexta 18 concentra ausências num dia de casa cheia",
+        why: "Nas últimas quatro sextas os locais passaram de 90% de ocupação.",
+        nums: "Fora no dia 18: 2 de 3 · quinta 17 tem 1 de 3",
+        lines: ["Sugere mover uma ausência da sexta 18 para a quinta 17.", "Nenhuma meta semanal muda — é o mesmo dia útil dentro da semana S3."],
+        cta: "Ver a sugestão no mapa" },
+      { key: "c4", tag: "Semana vazia", conf: "regra", title: "Sthefany não tem folga marcada na semana 21–27",
+        why: "Regime de 1 folga por semana e o histórico dela prefere terça.",
+        nums: "Semana S4 da Sthefany: 0/1 · terça 22 tem 0 de 3",
+        lines: ["Marca folga da Sthefany na terça 22.", "Semana S4 dela fecha em 1/1.", "Fora no dia 22 passa a 1 de 3."],
+        cta: "Marcar terça 22" }
+    ];
+
+    const asaCards = asaRaw.filter(c => !st.dismissed[c.key]).map(c => ({
+      tag: c.tag, conf: c.conf, title: c.title, why: c.why, nums: c.nums, lines: c.lines,
+      open: st.asaCard === c.key,
+      tagStyle: "font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:3px 8px;border-radius:999px;background:#f2ecfe;color:#6C2BF2",
+      reflexLabel: st.asaCard === c.key ? "Esconder reflexo" : "Ver reflexo",
+      onReflex: () => this.setState({ asaCard: st.asaCard === c.key ? null : c.key }),
+      cta: canEdit ? c.cta : "Sugerir à supervisão",
+      ctaStyle: "height:29px;padding:0 12px;border-radius:9px;border:none;background:#1b1630;color:#fff;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer",
+      onApply: () => {
+        const nm = Object.assign({}, this.state.marks);
+        const stamp = { st: "ok", by: "ASA sugeriu · aprovado por " + meta.person, when: "hoje 10:31" };
+        if (c.key === "c1") {
+          nm["3:23"] = Object.assign({ t: "F", why: "Compensação da semana 14–20 sugerida pela ASA" }, stamp);
+          nm["5:25"] = Object.assign({ t: "F", why: "Compensação da semana 14–20 sugerida pela ASA" }, stamp);
+        }
+        if (c.key === "c4") nm["7:22"] = Object.assign({ t: "F", why: "Folga da semana sugerida pela ASA" }, stamp);
+        if (c.key === "c2") { this.setState({ sel: { pi: 3, d: 2 }, selWhy: null, asa: false, asaCard: null }); return; }
+        if (c.key === "c3") { this.setState({ sel: { pi: 4, d: 18 }, selWhy: null, asa: false, asaCard: null }); return; }
+        this.setState({ marks: nm, asaCard: null, dismissed: Object.assign({}, this.state.dismissed, { [c.key]: true }) });
+      },
+      onDismiss: () => this.setState({ dismissed: Object.assign({}, this.state.dismissed, { [c.key]: true }), asaCard: null })
+    }));
+
+    const mobWeeks = weeks.map(w => {
+      const wc = weekCount(3, w);
+      const n = wc.ok;
+      const target = targetOf(3, w);
+      return {
+        name: w.name, days: w.days[0] + "–" + w.days[w.days.length - 1] + " set" + (wc.pend ? " · " + wc.pend + " aguardando" : ""), count: target === 0 ? "—" : n + "/" + target,
+        badge: "font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:999px;background:" + (target === 0 ? "#f4f2fa" : n >= target ? "#e2f4f2" : "#fdf7e8") + ";color:" + (target === 0 ? "#b6afc9" : n >= target ? "#0b6b64" : "#8a6413")
+      };
+    });
+
+    /* ---------------- MOBILE ---------------- */
+    const mePi = isMem ? 3 : selfIdx;
+    const tabsFor = TABS[active];
+    const mobTab = tabsFor.some(t => t[0] === st.mobTab) ? st.mobTab : tabsFor[0][0];
+    const REFDAY = 2;
+
+    const hasLine = mePi >= 0 && !!PEOPLE[mePi];
+    const outOn = d => PEOPLE.map((p, i) => ({ p: p, i: i })).filter(x => !!effMark(x.i, d)).map(x => {
+      const mk = effMark(x.i, d);
+      return { name: x.p.name.split(" ")[0], type: TYPES[mk.t].name, st: mk.st, t: mk.t };
+    });
+
+    const dayFits = d => !isClosed(d) && daysUntil(d) >= 5 && outOn(d).length < dayLimit;
+    const nextFit = from => { for (let d = Math.max(1, from); d <= DAYS; d++) if (dayFits(d)) return d; return 0; };
+
+    let nextOff = 0;
+    for (let d = 1; d <= DAYS && !nextOff; d++) {
+      if (isClosed(d)) nextOff = d;
+      else { const mk = mePi >= 0 ? effMark(mePi, d) : null; if (mk && mk.t === "F" && mk.st === "ok") nextOff = d; }
+    }
+
+    const stripe = mePi < 0 ? [] : weeks.map(w => {
+      const wc = weekCount(mePi, w), tg = targetOf(mePi, w);
+      const cells = [];
+      const pad = dow(w.days[0]);
+      for (let i = 0; i < pad; i++) cells.push({ label: "", style: "height:24px" });
+      w.days.forEach(d => {
+        const closed = isClosed(d);
+        const mk = effMark(mePi, d);
+        const T = mk ? TYPES[mk.t] : null;
+        cells.push({
+          label: String(d),
+          style: "height:24px;display:flex;align-items:center;justify-content:center;border-radius:7px;font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;" +
+            (closed ? "background:#eceaf5;color:#6b6482;" : T ? "background:" + T.bg + ";color:" + T.fg + ";" : "background:#fff;border:1px solid #eee9f8;color:#b6afc9;") +
+            (mk && mk.st !== "ok" ? "outline:1.5px dashed " + T.fg + ";outline-offset:-2px;" : "")
+        });
+      });
+      return {
+        name: w.name, cells: cells, count: tg === 0 ? "—" : wc.ok + "/" + tg,
+        badge: "font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:3px 7px;border-radius:999px;flex:none;white-space:nowrap;background:" + (tg === 0 ? "#f4f2fa" : wc.ok >= tg ? "#e2f4f2" : "#fdf7e8") + ";color:" + (tg === 0 ? "#b6afc9" : wc.ok >= tg ? "#0b6b64" : "#8a6413")
+      };
+    });
+    const stripeHead = WDL.map((x, i) => ({ label: x, style: "text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#b6afc9;letter-spacing:.04em" }));
+
+    const myComp = mePi >= 0 ? Object.keys(COMP).filter(k => k.indexOf(mePi + ":") === 0).length : 0;
+
+    const myReqs = mePi < 0 ? [] : Object.keys(marks).filter(k => k.indexOf(mePi + ":") === 0).map(k => {
+      const d = parseInt(k.split(":")[1], 10), m = marks[k];
+      const late = daysUntil(d) < 5;
+      return {
+        title: TYPES[m.t].name + " · dia " + d + " de setembro",
+        meta: m.st === "ok" ? "aprovado · " + (m.by || "") : m.st === "exc" ? "exceção de prazo · com a administração" : m.st === "adm" ? "com a administração" : "com a supervisão",
+        deadline: m.st === "ok" ? "vigente no mapa" : "resposta até dia " + Math.max(1, d - 2) + " de setembro",
+        style: "display:flex;flex-direction:column;gap:3px;padding:11px 12px;border-radius:12px;background:#fff;border:1px solid " + (m.st === "ok" ? "#c2e7e3" : "#f0d9a8"),
+        chip: "font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:999px;width:fit-content;background:" + (m.st === "ok" ? "#e2f4f2" : "#fdf7e8") + ";color:" + (m.st === "ok" ? "#0b6b64" : "#8a6413"),
+        chipLabel: m.st === "ok" ? "aprovado" : "aguardando",
+        why: m.why,
+        cancel: m.st === "ok" ? "" : "Cancelar",
+        cancelStyle: m.st === "ok" ? "display:none" : "align-self:flex-start;min-height:44px;padding:0 14px;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:11px;font-weight:600;font-family:Manrope,sans-serif;cursor:pointer",
+        onCancel: () => { const nm = Object.assign({}, this.state.marks); delete nm[k]; this.setState({ marks: nm }); }
+      };
+    });
+
+    const swapReq = st.swapReq ? {
+      title: "Troca com " + PEOPLE[st.swapReq.pi].name.split(" ")[0] + " · dias " + st.swapReq.mine + " ↔ " + st.swapReq.theirs,
+      meta: "esperando " + PEOPLE[st.swapReq.pi].name.split(" ")[0] + " confirmar, depois a supervisão · a escala do dia reflete a troca",
+      onCancel: () => this.setState({ swapReq: null })
+    } : false;
+
+    const swapSheet = st.swap === null || st.swap === undefined ? false : (function (self) {
+      const mine = SPLIT[groupOf(3)];
+      const list = OP.regime < 2 ? [] : PEOPLE.map((p, i) => ({ p: p, i: i })).filter(x => x.i !== 3 && x.p.regime === 2 && SPLIT[groupOf(x.i)] !== mine).map(x => {
+        const theirs = SPLIT[groupOf(x.i)];
+        const on = st.swap === x.i;
+        return {
+          name: x.p.name, day: "folga " + emDia(theirs),
+          onClick: () => self.setState({ swap: x.i }),
+          style: "display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:11px;cursor:pointer;border:1px solid " + (on ? "#6C2BF2" : "#e6e1f2") + ";background:" + (on ? "#f7f3ff" : "#fff"),
+          dot: "width:8px;height:8px;border-radius:50%;flex:none;background:" + (on ? "#6C2BF2" : "#DAD4EA")
+        };
+      });
+      const chosen = st.swap >= 0 ? PEOPLE[st.swap] : null;
+      return {
+        list: list,
+        summary: chosen ? "Você folga dia " + mine + ", " + chosen.name.split(" ")[0] + " folga dia " + SPLIT[groupOf(st.swap)] + ". A troca vale só nesta semana — nenhum de vocês sai do grupo. A escala dos dois dias é atualizada junto." : (list.length ? "Escolha com quem trocar. Só aparece quem folga em dia diferente do seu." : "Nesta semana ninguém folga em dia diferente do seu — não há troca possível."),
+        sendLabel: chosen ? "Pedir troca com " + chosen.name.split(" ")[0] : "Escolha uma pessoa",
+        sendStyle: "height:40px;border-radius:12px;border:none;color:#fff;font-size:13px;font-weight:700;font-family:Manrope,sans-serif;background:" + (chosen ? "#6C2BF2" : "#cec5e6") + ";cursor:" + (chosen ? "pointer" : "not-allowed"),
+        onSend: () => { if (!chosen) return; self.setState({ swapReq: { pi: st.swap, mine: mine, theirs: SPLIT[groupOf(st.swap)] }, swap: null, mobTab: "ped" }); },
+        onClose: () => self.setState({ swap: null })
+      };
+    })(this);
+
+    const thread = (st.asaThread || []).map(t => ({
+      me: t.me, asa: t.asa,
+      meStyle: "align-self:flex-end;width:fit-content;max-width:80%;padding:8px 11px;border-radius:13px 13px 4px 13px;background:#6C2BF2;color:#fff;font-size:12.5px;line-height:1.5",
+      asaStyle: "align-self:flex-start;width:fit-content;max-width:86%;padding:8px 11px;border-radius:13px 13px 13px 4px;background:#f4f2fa;color:#3c3559;font-size:12.5px;line-height:1.5"
+    }));
+
+    const asaSheet = st.asaSheet ? (function (self) {
+      const plan = st.asaPlan;
+      return {
+        thread: thread,
+        msg: st.asaMsg,
+        onMsg: e => self.setState({ asaMsg: e.target.value }),
+        sendStyle: "width:36px;height:36px;flex:none;border-radius:11px;border:none;color:#fff;font-size:13px;background:" + (st.asaMsg.trim() ? "#6C2BF2" : "#cec5e6") + ";cursor:" + (st.asaMsg.trim() ? "pointer" : "not-allowed"),
+        onSend: () => {
+          const txt = st.asaMsg.trim();
+          if (!txt) return;
+          if (!hasLine) {
+            self.setState({
+              asaMsg: "",
+              asaThread: (st.asaThread || []).concat([{ me: txt, asa: "Você não tem linha no mapa desta área, então não monto pedido de folga por aqui. Posso responder sobre a regra, o que está parado e os números do mês — ou abrir a fila para você decidir." }]),
+              asaPlan: null
+            });
+            return;
+          }
+          const nums = txt.match(/\d+/);
+          let d = nums ? parseInt(nums[0], 10) : 12;
+          if (d < 1 || d > DAYS) d = 12;
+          let head, alt = 0;
+          if (isClosed(d)) { alt = nextFit(d + 1); head = "Dia " + d + " já é folga coletiva — " + st.op + " fecha " + wdArt(OP.close === null ? 1 : OP.close) + OP.closeName + ". Se você quer um dia a mais, o primeiro que cabe é " + alt + "."; }
+          else if (daysUntil(d) < 5) { alt = nextFit(d + 1); head = "Dia " + d + " está a " + daysUntil(d) + " dias e o mínimo é 5. Cabe no dia " + alt + " sem virar exceção."; }
+          else if (outOn(d).length >= dayLimit) { alt = nextFit(d + 1); head = "Dia " + d + " já tem " + dayLimit + " pessoas fora, o limite. O mais próximo com vaga é " + alt + "."; }
+          else head = "Dia " + d + " cabe: " + outOn(d).length + " de " + dayLimit + " fora e " + daysUntil(d) + " dias de antecedência.";
+          const target = alt || d;
+          const w = weekOf(target), wc = weekCount(mePi, w);
+          self.setState({
+            asaMsg: "",
+            asaThread: (st.asaThread || []).concat([{ me: txt, asa: head }]),
+            asaPlan: {
+              day: target,
+              lines: [
+                "Marca " + (isMem ? "seu" : "o") + " pedido de folga no dia " + target + " de setembro.",
+                "Fora no dia: passa a " + (outOn(target).length + 1) + " de " + dayLimit + ".",
+                wc.ok >= targetOf(mePi, w)
+                  ? "Sua semana " + w.name + " já está em " + wc.ok + "/" + targetOf(mePi, w) + " — esta seria uma folga a mais, além da meta."
+                  : "Sua semana " + w.name + " fecha em " + (wc.ok + 1) + "/" + targetOf(mePi, w) + "."
+              ],
+              motive: txt
+            }
+          });
+        },
+        plan: plan ? {
+          title: "Confirma que eu marco?",
+          lines: plan.lines,
+          okLabel: "Confirmar num toque",
+          onOk: () => {
+            const nm = Object.assign({}, self.state.marks);
+            const own = mePi === selfIdx && !isMem;
+            nm[mePi + ":" + plan.day] = { t: "F", st: own ? "adm" : "pend", why: plan.motive, by: meta.person + " · via ASA", when: "hoje 10:52" };
+            self.setState({
+              marks: nm, asaPlan: null,
+              asaThread: (self.state.asaThread || []).concat([{ me: "confirmo", asa: "Feito. Registrei como \"ASA sugeriu · confirmado por " + meta.person + "\" e o pedido está com " + (own ? "a administração" : "a supervisão") + "." }])
+            });
+          },
+          onNo: () => self.setState({ asaPlan: null })
+        } : false,
+        onClose: () => self.setState({ asaSheet: false })
+      };
+    })(this) : false;
+
+    const dirNums = [
+      { n: String(PEOPLE.filter((p, i) => weeks.some(w => w.days.length >= 5 && weekCount(i, w).ok < targetOf(i, w))).length), label: "abaixo da meta em alguma semana", tone: "#8a6413" },
+      { n: String(Object.keys(COMP).length), label: "folgas a compensar acumuladas", tone: "#6C2BF2" },
+      { n: String(Object.keys(marks).filter(k => marks[k].st === "exc").length), label: "exceções de prazo no mês", tone: "#a12c2c" }
+    ].map(x => ({ n: x.n, label: x.label, style: "display:flex;flex-direction:column;gap:2px;padding:11px 12px;border-radius:12px;background:#fff;border:1px solid #e6e1f2", numStyle: "font-family:Outfit,sans-serif;font-size:24px;font-weight:700;line-height:1;color:" + x.tone }));
+
+    const dirOps = [
+      { op: "Bailarinos", rate: "3 grupos", note: "1 exceção de prazo · 2 a compensar" },
+      { op: "Patinadores", rate: "1 grupo", note: "em dia · nenhuma exceção" },
+      { op: "Produção", rate: "5 grupos", note: "3 recessos definidos pelo admin" },
+      { op: "Gestão", rate: "1 grupo", note: "em dia" }
+    ].map(o => Object.assign({}, o, { style: "display:flex;align-items:center;gap:9px;padding:10px 12px;border-radius:12px;background:#fff;border:1px solid #e6e1f2" }));
+
+    const mob = {
+      title: isMem ? "Minhas folgas" : active === "SUP" ? "Folgas · " + st.op : active === "ADM" ? "Folgas · toda a ASA" : "Folgas · leitura",
+      sub: active === "DIR" ? "4 áreas · setembro" : "Área " + st.op + " · 1 ou 2 folgas por semana",
+      tabs: tabsFor.map(t => ({
+        label: t[1],
+        onClick: () => this.setState({ mobTab: t[0] }),
+        style: "flex:1;min-height:44px;border:none;border-radius:10px;font-family:Manrope,sans-serif;font-size:13px;font-weight:" + (mobTab === t[0] ? 700 : 600) + ";cursor:pointer;" + (mobTab === t[0] ? "background:#fff;color:#6C2BF2;box-shadow:0 1px 3px rgba(40,20,90,.12);" : "background:transparent;color:#6b6482;")
+      })),
+      isHome: mobTab === "home", isPed: mobTab === "ped", isHist: mobTab === "hist",
+      isFila: mobTab === "fila", isDia: mobTab === "dia", isRes: mobTab === "res",
+      hasLine: hasLine,
+      nextOff: nextOff ? ((isClosed(nextOff) && isClosed(nextOff + 1))
+        ? FULLWD[dow(nextOff)] + " " + nextOff + " e " + FULLWD[dow(nextOff + 1)] + " " + (nextOff + 1)
+        : FULLWD[dow(nextOff)] + " " + nextOff + " de setembro") : "sem folga marcada",
+      nextNote: !nextOff ? "Nada aprovado neste mês" : isClosed(nextOff) ? st.op + " fecha " + wdArt(OP.close === null ? 1 : OP.close) + OP.closeName + " · folga coletiva" : "Folga individual aprovada",
+      comp: myComp ? {
+        text: myComp + (myComp > 1 ? " folgas" : " folga") + " a compensar até 30 de setembro — " + st.op + " abriu " + wdArt(OP.close === null ? 1 : OP.close) + OP.closeName + " e você trabalhou.",
+        cta: "Usar agora",
+        ctaStyle: "align-self:flex-start;height:30px;padding:0 13px;border-radius:10px;border:none;background:#8a6413;color:#fff;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap",
+        onUse: () => this.setState({ fSheet: true, fPick: nextFit(1), fWhy: "Compensação da semana de 14–20" })
+      } : false,
+      stripe: stripe, stripeHead: stripeHead,
+      actions: [
+        { label: "Pedir folga", primary: true, onClick: () => this.setState({ fSheet: true, fPick: 0, fWhy: "" }) },
+        { label: "Trocar com colega", primary: false, onClick: () => this.setState({ swap: -1 }) },
+        { label: "Trocar minha turma", primary: false, onClick: () => this.setState({ gSheet: true, gPick: nextTurma(groupOf(3)) }) }
+      ].filter(a => isMem || a.label === "Pedir folga").map(a => ({
+        label: a.label, onClick: a.onClick,
+        style: "height:38px;border-radius:12px;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;border:" + (a.primary ? "none" : "1px solid #ddd0fb") + ";background:" + (a.primary ? "#6C2BF2" : "#fff") + ";color:" + (a.primary ? "#fff" : "#6C2BF2")
+      })),
+      reqs: myReqs, hasReqs: myReqs.length > 0, swapReq: swapReq,
+      hist: [
+        { m: "Agosto", a: "8 folgas · 1 compensada", b: "em dia" },
+        { m: "Julho", a: "9 folgas · 0 exceções", b: "em dia" },
+        { m: "Junho", a: "7 folgas · 1 exceção de prazo", b: "1 a compensar" }
+      ].map(h => Object.assign({}, h, { style: "display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:12px;background:#fff;border:1px solid #e6e1f2" })),
+      queue: asaQueue, hasQueue: asaQueue.length > 0,
+      dayLabel: "Fora no dia " + REFDAY + " de setembro",
+      dayCount: outOn(REFDAY).length + " de " + dayLimit + " permitidos",
+      dayStyle: "font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:" + (outOn(REFDAY).length >= dayLimit ? "#fdf1dc" : "#e2f4f2") + ";color:" + (outOn(REFDAY).length >= dayLimit ? "#8a6413" : "#0b6b64"),
+      dayList: outOn(REFDAY).map(o => ({
+        name: o.name, type: o.type + (o.st === "ok" ? "" : " · aguardando"),
+        style: "display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:11px;background:#fff;border:1px solid #e6e1f2",
+        dot: "width:8px;height:8px;border-radius:50%;flex:none;background:" + TYPES[o.t].fg
+      })),
+      dirNums: dirNums, dirOps: dirOps,
+      asaBtn: !st.fSheet && !st.gSheet && st.swap === null && !st.asaSheet,
+      asaHint: hasLine ? "você escreve, eu monto e você confirma" : "sem linha no mapa: eu explico a regra e abro a fila",
+      asaBtnLabel: mobTab === "home" ? "Pedir à ASA" : "ASA",
+      asaBtnLabelStyle: mobTab === "home" ? "white-space:nowrap" : "display:none",
+      asaBtnStyle: "position:absolute;right:13px;bottom:50px;height:44px;" +
+        (mobTab === "home" ? "padding:0 15px 0 11px;border-radius:22px;" : "width:44px;justify-content:center;padding:0;border-radius:22px;") +
+        "border:none;background:#1b1630;color:#fff;display:flex;align-items:center;gap:8px;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;cursor:pointer;box-shadow:0 12px 26px -12px rgba(28,20,64,.7)",
+      onAsa: () => this.setState({ asaSheet: true }),
+      asaSheet: asaSheet, swapSheet: swapSheet
+    };
+
+    return {
+      profileTabs: profileTabs, profileHint: meta.hint, profileName: meta.name, personName: meta.person,
+      mobileTabs: (function () {
+        const set = MOBILE_TABS[active];
+        const inBar = set.some(t => t[0] === "18");
+        return set.map(t => {
+          const on = inBar ? t[0] === "18" : t[0] === "mais";
+          return {
+            href: t[0] === "mais" ? "#mais" : NAV_HREF[t[0]],
+            label: t[1],
+            onClick: t[0] === "mais"
+              ? ((e) => { if (e && e.preventDefault) e.preventDefault(); self0.setState({ more: true }); })
+              : (() => {}),
+            style: "display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 2px;text-decoration:none;"
+              + (on ? "color:" + meta.dot + ";font-weight:700;" : "color:#6b6482;")
+          };
+        });
+      })(),
+      moreOpen: !!st.more,
+      onCloseMore: () => this.setState({ more: false }),
+      moreTitle: "Tudo no My ASA",
+      moreSub: meta.name + " · " + (isMem ? "o que é seu" : "o que você acessa"),
+      moreGroups: NAV.map(g => ({
+        title: g.title,
+        items: g.items.filter(it => it[2].indexOf(active) >= 0).map(it => ({
+          href: NAV_HREF[it[0]],
+          num: it[0],
+          label: (isMem && it[3]) ? it[3] : it[1],
+          style: "display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:12px;text-decoration:none;color:#1b1630;"
+            + (it[0] === "18" ? "background:" + meta.dot + "14;border:1px solid " + meta.dot + "40;" : "background:#fff;border:1px solid #eee9f6;")
+        }))
+      })).filter(g => g.items.length),
+      morePerfil: NAV_HREF["28"],
+      moreAsa: NAV_HREF["27"],
+      shellNav: shellNav, tabs: tabs,
+      pageTitle: isMem ? "Minhas folgas" : "Folgas",
+      operationLabel: active === "ADM" || active === "DIR" ? meta.op : st.op,
+      readonlyChipStyle: canEdit ? "display:none" : "font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;color:#8a6413;background:#fdf1dc;padding:4px 9px;border-radius:999px",
+      personChipStyle: "font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:" + meta.dot + ";background:" + meta.dot + "26;padding:2px 7px;border-radius:999px;width:fit-content",
+      asaBtnStyle: "display:flex;align-items:center;gap:8px;height:34px;padding:0 12px 0 8px;border-radius:12px;border:1px solid " + (st.asa ? "#6C2BF2" : "#e6e1f2") + ";background:" + (st.asa ? "#f7f3ff" : "#fff") + ";color:#3c3559;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;cursor:pointer",
+      toggleAsa: () => this.setState({ asa: !st.asa }),
+      asaOpen: st.asa,
+      asaIntro: isMem ? "Eu acompanho seus pedidos e aviso quando a supervisão responder. Nada aqui é decidido por mim."
+        : active === "DIR" ? "Leitura do mês: eu listo o que está parado esperando decisão de outra pessoa — sem botões, você não decide aqui."
+        : active === "ADM" ? "Só chega aqui o que depende de você: exceções de prazo e a folga de quem não pode aprovar a si mesmo."
+        : "Eu não gravo nada sozinha. Sugiro com o número que gerou a sugestão, mostro o reflexo e você dá o ok.",
+      asaCards: asaCards,
+      asaQueue: asaQueue,
+      asaHasQueue: asaQueue.length > 0,
+      asaQueueLabel: asaQueue.length + (asaQueue.length === 1 ? " item parado" : " itens parados") + (isMem ? " na supervisão" : active === "DIR" ? " esperando outra pessoa" : " esperando você"),
+      asaBar: asaQueue.length > 0 ? {
+        text: asaQueue.length + (asaQueue.length === 1 ? " item parado" : " itens parados") + (isMem ? " na supervisão" : active === "DIR" ? " esperando decisão de outra pessoa" : " esperando você") + " · a ASA já preparou o reflexo de cada um",
+        style: "display:flex;align-items:center;gap:11px;padding:9px 20px;background:" + (isMem || active === "DIR" ? "#f7f3ff" : "#fdf7e8") + ";border-bottom:1px solid " + (isMem || active === "DIR" ? "#e5d8fb" : "#f0d9a8"),
+        chip: "font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:3px 8px;border-radius:999px;background:#fff;color:" + (isMem || active === "DIR" ? "#6C2BF2" : "#8a6413"),
+        textStyle: "font-size:12px;font-weight:600;color:" + (isMem || active === "DIR" ? "#4a2a9c" : "#8a6413"),
+        cta: isMem ? "Ver meus pedidos" : active === "DIR" ? "Ver o que está parado" : "Abrir a fila",
+        ctaStyle: "height:28px;padding:0 12px;border-radius:9px;border:none;background:#1b1630;color:#fff;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer",
+        onOpen: () => this.setState({ asa: true })
+      } : false,
+      isMapa: st.tab === "mapa", isRegistros: st.tab === "registros", isRegras: st.tab === "regras",
+      isMem: isMem, canEdit: canEdit,
+      monthLabel: "Setembro 2026",
+      statusLabel: st.published ? "publicado" : "rascunho",
+      statusChipStyle: "font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 9px;border-radius:999px;background:" + (st.published ? "#e2f4f2" : "#f0eef6") + ";color:" + (st.published ? "#0b6b64" : "#6b6482"),
+      regimeSummary: "Regime único da ASA · 1 ou 2 folgas/semana, todas iguais · semana " + REGIME.span + " · " + TKEYS.length + " turmas giram a cobertura · limite " + REGIME.limite + " por dia · prazo " + REGIME.prazo + " dias",
+      opTabs: OPLIST.map(o => ({
+        name: o,
+        onClick: () => this.setState({ op: o, sel: null, selWhy: null, confirm: null }),
+        style: "display:flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:9px;white-space:nowrap;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:600;cursor:pointer;border:1px solid " + (st.op === o ? OPS[o].dot : "#e6e1f2") + ";background:" + (st.op === o ? OPS[o].dot + "14" : "#fff") + ";color:" + (st.op === o ? OPS[o].dot : "#5b5473"),
+        dot: OPS[o].dot
+      })),
+
+      onPrev: () => {}, onNext: () => {},
+      onPublish: () => this.setState({ published: !st.published }),
+      publishLabel: st.published ? "Republicar" : "Publicar mês",
+      onAskOff: () => this.setState({ sel: { pi: 3, d: 2 }, selWhy: null }),
+      onAskOffMob: () => this.setState({ fSheet: true, fPick: 0, fWhy: "" }),
+      myOffPending: (function () {
+        const ds = Object.keys(marks).filter(x => x.indexOf("3:") === 0 && marks[x].st === "pend")
+          .map(x => parseInt(x.split(":")[1], 10)).sort((a, b) => a - b);
+        if (!ds.length) return false;
+        const list = ds.map(d => "dia " + d).join(", ");
+        return (ds.length === 1 ? "Pedido de folga no " + list : ds.length + " pedidos de folga (" + list + ")") + " aguardando a supervisão";
+      })(),
+      fSheet: st.fSheet ? (function (self) {
+        const pick = st.fPick;
+        const days = daysUntil(pick);
+        const late = pick > 0 && days < 5;
+        const ready = pick > 0 && (!late || st.fWhy.trim());
+        const list = [];
+        for (let d = 1; d <= DAYS; d++) {
+          const closed = isClosed(d);
+          list.push({
+            label: String(d),
+            onClick: () => { if (!closed) self.setState({ fPick: d }); },
+            style: "width:30px;height:30px;flex:none;border-radius:9px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;cursor:" + (closed ? "default" : "pointer") + ";border:1px solid " + (pick === d ? "#6C2BF2" : closed ? "#e6e1f2" : "#e6e1f2") + ";background:" + (pick === d ? "#6C2BF2" : closed ? "#eceaf5" : "#fff") + ";color:" + (pick === d ? "#fff" : closed ? "#b6afc9" : "#3c3559")
+          });
+        }
+        return {
+          days: list,
+          pickLabel: pick ? "Dia " + pick + " · " + FULLWD[dow(pick)] : "Escolha um dia — os sombreados já são folga coletiva",
+          types: [["F", "Folga"], ["O", "Outro"]].map(t => ({
+            label: t[1],
+            onClick: () => self.setState({ fType: t[0] }),
+            style: "flex:1;height:34px;border-radius:11px;font-family:Manrope,sans-serif;font-size:12px;font-weight:700;cursor:pointer;border:1px solid " + (st.fType === t[0] ? "#6C2BF2" : "#e6e1f2") + ";background:" + (st.fType === t[0] ? "#f7f3ff" : "#fff") + ";color:" + (st.fType === t[0] ? "#6C2BF2" : "#6b6482")
+          })),
+          why: st.fWhy,
+          onWhy: e => self.setState({ fWhy: e.target.value }),
+          prazo: pick === 0 ? "O prazo aparece quando você escolher o dia." : late ? "Faltam " + days + " dias. O mínimo é 5, então isto vira exceção e o motivo é obrigatório." : "Faltam " + days + " dias. A supervisão responde até dia " + Math.max(1, pick - 2) + " de setembro.",
+          outLabel: pick === 0 ? "" : "Já fora no dia " + pick + ": " + PEOPLE.filter((p, i) => !!effMark(i, pick)).length + " de " + dayLimit,
+          outNames: pick === 0 ? "" : (PEOPLE.map((p, i) => ({ p: p, i: i })).filter(x => !!effMark(x.i, pick)).map(x => x.p.name.split(" ")[0]).join(", ") || "ninguém — o dia está livre"),
+          outStyle: "display:flex;flex-direction:column;gap:2px;padding:8px 11px;border-radius:11px;background:#faf9fe;border:1px solid #eee9f8;font-size:11px;line-height:1.4;color:#5b5473",
+          prazoStyle: "padding:9px 11px;border-radius:11px;font-size:11px;line-height:1.45;border:1px solid " + (late ? "#f0d9a8" : "#c2e7e3") + ";background:" + (late ? "#fdf7e8" : "#f2faf8") + ";color:" + (late ? "#8a6413" : "#0b6b64"),
+          sendLabel: pick === 0 ? "Escolha um dia" : ready ? "Enviar pedido" : "Escreva o motivo",
+          sendStyle: "height:40px;border-radius:12px;border:none;color:#fff;font-size:13px;font-weight:700;font-family:Manrope,sans-serif;background:" + (ready ? "#6C2BF2" : "#cec5e6") + ";cursor:" + (ready ? "pointer" : "not-allowed"),
+          onSend: () => {
+            if (!ready) return;
+            const nm = Object.assign({}, self.state.marks);
+            nm["3:" + pick] = { t: st.fType, st: "pend", why: st.fWhy.trim() || "Pedido pelo app", by: "Julia (app)", when: "hoje 10:40" };
+            self.setState({ marks: nm, fSheet: false });
+          },
+          onClose: () => self.setState({ fSheet: false })
+        };
+      })(this) : false,
+      brushes: brushes,
+      weekBands: weekBands, headCells: headCells, rows: rows, footCells: footCells,
+      filterSets: filterSets, countToggle: countToggle, filterNote: filterNote,
+      totalHead: totalHead, totalFoot: totalFoot, totalBandStyle: totalBandStyle,
+      dayLimit: dayLimit, legend: legend,
+      sel: sel, closeSel: () => this.setState({ sel: null, selWhy: null }),
+      logs: logs, regimes: regimes, groups: groups, groupReqs: groupReqs, confirm: confirm,
+      onRepetirMes: canEdit ? (() => this.setState({
+        turmas: [
+          { key: "A", dows: [4], from: 1, to: 30 },
+          { key: "B", dows: [3, 5], from: 1, to: 30 },
+          { key: "C", dows: [2], from: 1, to: 30 }
+        ],
+        grp: {},
+        __toast: "Configuração de agosto aplicada em setembro — mesmas turmas, mesmos dias, mesma vigência. Ajuste o que mudou e publique."
+      })) : null,
+      toastMsg: st.__toast || null,
+      onFecharToast: () => this.setState({ __toast: null }),
+      denySheet: st.denyId ? {
+        who: st.denyWho,
+        kind: st.denyId.indexOf("g:") === 0 ? "troca de grupo" : "folga",
+        why: st.denyWhy,
+        onWhy: e => this.setState({ denyWhy: e.target.value }),
+        okLabel: (st.denyWhy || "").trim() ? "Recusar o pedido" : "Escreva o motivo",
+        okStyle: "flex:1;min-height:44px;border-radius:12px;border:none;color:#fff;font-size:13px;font-weight:700;font-family:Manrope,sans-serif;background:" + ((st.denyWhy || "").trim() ? "#8a6413" : "#e0d3ab") + ";cursor:" + ((st.denyWhy || "").trim() ? "pointer" : "not-allowed"),
+        onOk: () => {
+          const w = (st.denyWhy || "").trim();
+          if (!w) return;
+          const id = st.denyId;
+          const entry = {
+            when: "agora", who: st.denyWho,
+            date: id.indexOf("g:") === 0 ? "grupo" : "folga",
+            type: "O", why: w,
+            by: meta.person + " recusou", status: "Recusado"
+          };
+          const logs2 = [entry].concat(st.denyLogs || []);
+          const msg = "Pedido recusado. " + st.denyWho + " recebe a recusa junto com o motivo, e a linha entra nos Registros.";
+          if (id.indexOf("g:") === 0) {
+            const pi = Number(id.slice(2));
+            this.setState({ gReq: st.gReq.map(x => x.pi === pi ? Object.assign({}, x, { st: "neg", negWhy: w }) : x), denyLogs: logs2, denyId: null, denyWhy: "", __toast: msg });
+          } else {
+            const nm = Object.assign({}, st.marks);
+            delete nm[id.slice(2)];
+            this.setState({ marks: nm, denyLogs: logs2, denyId: null, denyWhy: "", __toast: msg });
+          }
+        },
+        onNo: () => this.setState({ denyId: null, denyWhy: "" })
+      } : null,
+      repetirMesStyle: canEdit ? "min-height:44px;padding:0 14px;border-radius:10px;border:1px solid #e6e1f2;background:#fff;color:#5b5473;font-family:Manrope,sans-serif;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap" : "display:none",
+      onNewTurma: canEdit ? (() => {
+        const used = TKEYS.join("");
+        const nk = "ABCDEFGH".split("").filter(c => used.indexOf(c) < 0)[0] || "";
+        this.setState({ tSheet: true, tEdit: null, tKey: nk, tDows: [], tFrom: 1, tTo: DAYS });
+      }) : null,
+      newTurmaStyle: canEdit ? "min-height:44px;padding:0 14px;border-radius:10px;border:1px solid #cdbdf8;background:#f7f3ff;color:#6C2BF2;font-family:Manrope,sans-serif;font-size:12px;font-weight:700;cursor:pointer" : "display:none",
+      tSheet: st.tSheet ? {
+        title: st.tEdit ? "Turma " + st.tEdit : "Nova turma de folga",
+        hint: "A turma organiza a cobertura dos shows: escolha quantos dias da semana quiser e até quando a regra vale. Ela não é um grupo de 08 e não muda o supervisor de ninguém.",
+        nameLabel: "Nome da turma",
+        nameValue: st.tKey,
+        onName: e => this.setState({ tKey: e.target.value.slice(0, 12) }),
+        dowLabel: "Folga nestes dias da semana",
+        dowOpts: FULLWD.map((w, i) => {
+          const on = st.tDows.indexOf(i) >= 0;
+          return {
+            label: w.slice(0, 3),
+            onClick: () => this.setState(s0 => ({ tDows: s0.tDows.indexOf(i) >= 0 ? s0.tDows.filter(x => x !== i) : s0.tDows.concat([i]) })),
+            style: "min-height:44px;padding:0 14px;border-radius:10px;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;cursor:pointer;text-transform:capitalize;border:1px solid " + (on ? "#6C2BF2" : "#e6e1f2") + ";background:" + (on ? "#f7f3ff" : "#fff") + ";color:" + (on ? "#6C2BF2" : "#6b6482")
+          };
+        }),
+        rangeLabel: "Vigência",
+        fromValue: String(st.tFrom),
+        toValue: String(st.tTo),
+        onFrom: e => { const v = Math.min(DAYS, Math.max(1, parseInt(e.target.value, 10) || 1)); this.setState({ tFrom: v, tTo: Math.max(v, st.tTo) }); },
+        onTo: e => { const v = Math.min(DAYS, Math.max(1, parseInt(e.target.value, 10) || 1)); this.setState({ tTo: v, tFrom: Math.min(v, st.tFrom) }); },
+        onAllMonth: () => this.setState({ tFrom: 1, tTo: DAYS }),
+        allMonthStyle: "height:30px;padding:0 11px;border-radius:10px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;cursor:pointer",
+        preview: (function () {
+          if (!st.tDows.length) return "Escolha ao menos um dia da semana.";
+          const ds = [];
+          for (let d = st.tFrom; d <= st.tTo; d++) if (st.tDows.indexOf(dow(d)) >= 0) ds.push(d);
+          const ns = st.tDows.slice().sort((x, y) => x - y).map(i => FULLWD[i]);
+          const nm = ns.length === 1 ? ns[0] : ns.slice(0, -1).join(", ") + " e " + ns[ns.length - 1];
+          return "Folga " + nm + ", de " + st.tFrom + " a " + st.tTo + " de setembro · " + ds.length + (ds.length === 1 ? " dia" : " dias") + (ds.length ? " (" + ds.join(", ") + ")" : "");
+        })(),
+        conflict: (function () {
+          const clash = TL.filter(t => t.key !== st.tEdit).filter(t => t.dows.some(dw => st.tDows.indexOf(dw) >= 0) && t.from <= st.tTo && t.to >= st.tFrom);
+          if (!clash.length) return false;
+          return "Coincide com a turma " + clash.map(t => t.key).join(", ") + " em pelo menos um dia da vigência. Duas turmas folgando junto podem deixar o dia sem cobertura.";
+        })(),
+        canSave: !!st.tKey.trim() && st.tDows.length > 0 && !TL.some(t => t.key === st.tKey.trim() && t.key !== st.tEdit),
+        saveLabel: st.tEdit ? "Salvar turma" : "Criar turma",
+        saveStyle: "height:40px;padding:0 16px;border-radius:12px;border:none;color:#fff;font-size:13px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;background:" + (st.tKey.trim() && st.tDows.length ? "#6C2BF2" : "#cec5e6"),
+        onSave: () => {
+          const k = st.tKey.trim();
+          if (!k || !st.tDows.length) return;
+          const rec = { key: k, dows: st.tDows.slice().sort((x, y) => x - y), from: st.tFrom, to: st.tTo };
+          const list = st.tEdit ? st.turmas.map(t => t.key === st.tEdit ? rec : t) : st.turmas.concat([rec]);
+          const grp2 = Object.assign({}, st.grp);
+          if (st.tEdit && st.tEdit !== k) PEOPLE.forEach((p, i) => { if ((st.grp[i] || p.turma) === st.tEdit) grp2[i] = k; });
+          this.setState({ turmas: list, grp: grp2, tSheet: false, tEdit: null });
+        },
+        removable: !!st.tEdit && !PEOPLE.some((p, i) => (st.grp[i] || p.turma) === st.tEdit) && TL.length > 1,
+        removeLabel: "Excluir turma",
+        onRemove: () => this.setState({ turmas: st.turmas.filter(t => t.key !== st.tEdit), tSheet: false, tEdit: null }),
+        blockedNote: st.tEdit && PEOPLE.some((p, i) => (st.grp[i] || p.turma) === st.tEdit) ? "Para excluir, mova antes as pessoas desta turma." : false,
+        onClose: () => this.setState({ tSheet: false, tEdit: null })
+      } : false,
+      groupsTitle: "Turmas de folga · área " + st.op,
+      groupsNote: "dias e vigência editáveis · criadas aqui, não são os grupos de 08",
+      myGroup: groupOf(3), myGroupPending: reqOf(3) ? "Troca para a turma " + reqOf(3).to + " aguardando a supervisão" : false,
+      onAskGroup: () => this.setState({ gSheet: true, gPick: nextTurma(groupOf(3)) }),
+      gSheet: st.gSheet ? {
+        current: "Hoje você está na turma " + groupOf(3) + " · folga " + turmaLabel(groupOf(3)) + " · grupo " + PEOPLE[3].unit + " (não muda)",
+        why: st.gWhy,
+        onWhy: e => this.setState({ gWhy: e.target.value }),
+        prazo: "A semana da troca começa em 16 dias. Dentro do prazo de 5 dias — a supervisão só precisa aprovar.",
+        sendStyle: "height:40px;border-radius:12px;border:none;color:#fff;font-size:13px;font-weight:700;font-family:Manrope,sans-serif;background:" + (st.gWhy.trim() ? "#6C2BF2" : "#cec5e6") + ";cursor:" + (st.gWhy.trim() ? "pointer" : "not-allowed"),
+        sendLabel: st.gWhy.trim() ? "Enviar pedido" : "Escreva o motivo para enviar",
+        options: TKEYS.map(k => [k, "Turma " + k + " · " + dowsLabel(k)]).map(o => ({
+          label: o[1],
+          onClick: () => this.setState({ gPick: o[0] }),
+          style: "flex:1;height:38px;border-radius:11px;font-family:Manrope,sans-serif;font-size:12px;font-weight:700;cursor:pointer;border:1px solid " + (st.gPick === o[0] ? "#6C2BF2" : "#e6e1f2") + ";background:" + (st.gPick === o[0] ? "#f7f3ff" : "#fff") + ";color:" + (st.gPick === o[0] ? "#6C2BF2" : "#6b6482")
+        })),
+        onSend: () => { if (!st.gWhy.trim()) return; this.setState({
+          gSheet: false,
+          gReq: st.gReq.filter(r => r.pi !== 3).concat([{ pi: 3, to: st.gPick, why: st.gWhy, when: "hoje 10:40", st: "pend" }])
+        }); },
+        onClose: () => this.setState({ gSheet: false })
+      } : false,
+      mob: mob
+    };
+  }
+}
+
+</script>
+</body>
+</html>

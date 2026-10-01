@@ -6,6 +6,7 @@ import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { LOG_DOMAIN } from "@workspace/shared";
+import { operationalDate } from "../lib/operational-date.js";
 
 const router: IRouter = Router();
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
@@ -123,30 +124,23 @@ router.post("/restrictions", requireAuth, requireOrganization, async (req, res):
       return;
     }
 
-    const [restriction] = await db
-      .insert(restrictionsTable)
-      .values({
-        userId,
-        type: type as any,
-        periodStart,
-        periodEnd,
-        status: "ACTIVE",
-        notes: notes ?? null,
-        createdBy: user.sub,
-      })
-      .returning();
-
     const typeLabel = RESTRICTION_TYPE_LABELS[type] ?? type;
-    writeHistoryEvent({
-      category: "RESTRICTION",
-      action: "restriction.created",
-      title: `Restrição criada: ${typeLabel}`,
-      narrative: `Restrição do tipo "${typeLabel}" criada para ${member.name} de ${periodStart} a ${periodEnd}.`,
-      entityType: "restriction",
-      entityId: restriction!.id,
-      actorId: user.sub,
-      actorType: "HUMAN",
-    }).catch(() => {});
+    const [restriction] = await db.transaction(async (tx) => {
+      const [row] = await tx.insert(restrictionsTable).values({
+        userId, type: type as any, periodStart, periodEnd,
+        status: "ACTIVE", notes: notes ?? null, createdBy: user.sub,
+      }).returning();
+      if (!row) throw new Error("Não foi possível criar restrição");
+      await writeHistoryEvent({
+        category: "RESTRICTION", action: "restriction.created",
+        title: `Restrição criada: ${typeLabel}`,
+        narrative: `Restrição do tipo "${typeLabel}" criada para ${member.name} de ${periodStart} a ${periodEnd}.`,
+        entityType: "restriction", entityId: row.id,
+        actorId: user.sub, actorType: "HUMAN", orgId: user.organizationId,
+        beforeState: null, afterState: row,
+      }, tx as any);
+      return [row] as const;
+    });
 
     log.info({ restrictionId: restriction!.id, userId, type }, "restrição criada");
     res.status(201).json({ restriction: { ...restriction, userName: member.name } });
@@ -193,22 +187,18 @@ router.patch("/restrictions/:id", requireAuth, requireOrganization, async (req, 
     if (notes !== undefined) updates.notes = notes;
     if (type !== undefined) updates.type = type;
 
-    const [updated] = await db
-      .update(restrictionsTable)
-      .set(updates as any)
-      .where(eq(restrictionsTable.id, id))
-      .returning();
-
-    writeHistoryEvent({
-      category: "RESTRICTION",
-      action: "restriction.updated",
-      title: "Restrição atualizada",
-      narrative: `Restrição atualizada pelo supervisor.`,
-      entityType: "restriction",
-      entityId: id,
-      actorId: user.sub,
-      actorType: "HUMAN",
-    }).catch(() => {});
+    const [updated] = await db.transaction(async (tx) => {
+      const [row] = await tx.update(restrictionsTable).set(updates as any)
+        .where(eq(restrictionsTable.id, id)).returning();
+      if (!row) throw new Error("Restrição não encontrada");
+      await writeHistoryEvent({
+        category: "RESTRICTION", action: "restriction.updated", title: "Restrição atualizada",
+        narrative: "Restrição atualizada pelo supervisor.", entityType: "restriction", entityId: id,
+        actorId: user.sub, actorType: "HUMAN", orgId: user.organizationId,
+        beforeState: existing, afterState: row, metadata: { reason: req.body?.reason ?? null },
+      }, tx as any);
+      return [row] as const;
+    });
 
     log.info({ restrictionId: id }, "restrição atualizada");
     res.json({ restriction: updated });
@@ -247,23 +237,21 @@ router.post("/restrictions/:id/encerrar", requireAuth, requireOrganization, asyn
       return;
     }
 
-    const today = new Date().toISOString().slice(0, 10);
-    const [updated] = await db
-      .update(restrictionsTable)
-      .set({ status: "EXPIRED", periodEnd: today } as any)
-      .where(eq(restrictionsTable.id, id))
-      .returning();
-
-    writeHistoryEvent({
-      category: "RESTRICTION",
-      action: "restriction.expired",
-      title: "Restrição encerrada",
-      narrative: `Restrição encerrada antecipadamente pelo supervisor em ${today}.`,
-      entityType: "restriction",
-      entityId: id,
-      actorId: user.sub,
-      actorType: "HUMAN",
-    }).catch(() => {});
+  const today = operationalDate();
+    const [updated] = await db.transaction(async (tx) => {
+      const [row] = await tx.update(restrictionsTable)
+        .set({ status: "EXPIRED", periodEnd: today } as any)
+        .where(eq(restrictionsTable.id, id)).returning();
+      if (!row) throw new Error("Restrição não encontrada");
+      await writeHistoryEvent({
+        category: "RESTRICTION", action: "restriction.expired", title: "Restrição encerrada",
+        narrative: `Restrição encerrada antecipadamente pelo supervisor em ${today}.`,
+        entityType: "restriction", entityId: id, actorId: user.sub,
+        actorType: "HUMAN", orgId: user.organizationId,
+        beforeState: existing, afterState: row, metadata: { reason: req.body?.reason ?? null },
+      }, tx as any);
+      return [row] as const;
+    });
 
     log.info({ restrictionId: id }, "restrição encerrada");
     res.json({ restriction: updated });

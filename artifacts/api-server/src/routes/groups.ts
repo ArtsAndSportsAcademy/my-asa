@@ -13,6 +13,8 @@ import type { OperationalGroup } from "@workspace/db";
 import { requireAuth, requireOrganization, requireRole } from "../middlewares/auth.js";
 import { recordAudit } from "../lib/audit.service.js";
 import { requestLogger } from "../lib/logger.js";
+import { registerUndo, type UndoChange } from "../services/undo.js";
+import { writeHistoryEvent } from "../lib/history-helper.js";
 
 const router: IRouter = Router();
 
@@ -390,7 +392,7 @@ export async function addGroupMemberCore(actor: GroupActor, id: string, userId: 
 }
 
 /** Remove (desativa) um membro do grupo. */
-export async function removeGroupMemberCore(actor: GroupActor, id: string, userId: string): Promise<OperationalGroup> {
+export async function removeGroupMemberCore(actor: GroupActor, id: string, userId: string): Promise<OperationalGroup & { undo: Awaited<ReturnType<typeof registerUndo>> }> {
   const group = await loadManageableGroup(actor, id);
   const roleRecord = await db.query.userRolesTable.findFirst({
     where: and(
@@ -401,12 +403,21 @@ export async function removeGroupMemberCore(actor: GroupActor, id: string, userI
     ),
   });
   if (!roleRecord) throw new GroupActionError(404, "NOT_FOUND", "Membro não encontrado no grupo");
-  await db.update(userRolesTable).set({ active: false }).where(eq(userRolesTable.id, roleRecord.id));
-  await db.update(teamMembershipsTable)
-    .set({ active: false, isPrimary: false, endsAt: new Date(), updatedAt: new Date() })
-    .where(and(eq(teamMembershipsTable.teamId, id), eq(teamMembershipsTable.userId, userId), eq(teamMembershipsTable.active, true)));
-  await recordAudit({ actorId: actor.userId, action: "MEMBER_REMOVED", targetResource: `group:${id}:user:${userId}` });
-  return group;
+  const undo = await db.transaction(async tx => {
+    const [lockedRole] = await tx.select().from(userRolesTable).where(eq(userRolesTable.id, roleRecord.id)).for("update");
+    if (!lockedRole?.active) throw new GroupActionError(409, "CONFLICT", "Vínculo já foi alterado");
+    const memberships = await tx.select().from(teamMembershipsTable).where(and(eq(teamMembershipsTable.teamId, id), eq(teamMembershipsTable.userId, userId), eq(teamMembershipsTable.active, true))).for("update");
+    const changes: UndoChange[] = [{ table: "role", id: roleRecord.id, before: { active: true }, after: { active: false } }];
+    await tx.update(userRolesTable).set({ active: false }).where(eq(userRolesTable.id, roleRecord.id));
+    const now = new Date();
+    for (const membership of memberships) {
+      await tx.update(teamMembershipsTable).set({ active: false, isPrimary: false, endsAt: now, updatedAt: now }).where(eq(teamMembershipsTable.id, membership.id));
+      changes.push({ table: "membership", id: membership.id, before: { active: true, isPrimary: membership.isPrimary, endsAt: membership.endsAt }, after: { active: false, isPrimary: false, endsAt: now, updatedAt: now } });
+    }
+    await writeHistoryEvent({ category: "OPERATIONAL_CHANGE", action: "group.member_removed", title: "Pessoa removida do grupo", narrative: "Vínculo desativado, sem apagar a pessoa ou seu histórico.", entityType: "group", entityId: id, actorId: actor.userId, orgId: actor.organizationId, beforeState: { role: lockedRole, memberships }, afterState: { changes: changes.map(c => c.after) } }, tx);
+    return registerUndo(tx, { organizationId: actor.organizationId, actorId: actor.userId, kind: "group_member", entityId: id, changes });
+  });
+  return { ...group, undo };
 }
 
 /**
@@ -588,8 +599,9 @@ router.delete("/operational-groups/:id/members/:userId", requireAuth, requireOrg
   const userId = req.params.userId as string;
 
   try {
-    await removeGroupMemberCore({ role, userId: sub, organizationId }, id, userId);
+    const result = await removeGroupMemberCore({ role, userId: sub, organizationId }, id, userId);
     log.info({ groupId: id, userId }, "Member removed from group");
+    res.setHeader("X-MyASA-Undo", JSON.stringify(result.undo));
     res.status(204).send();
   } catch (err) {
     if (err instanceof GroupActionError) {

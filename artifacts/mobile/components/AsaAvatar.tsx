@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Animated, Pressable, StyleSheet } from "react-native";
+import { Animated, Pressable, StyleSheet, type StyleProp, type ViewStyle } from "react-native";
+import { Image as ExpoImage } from "expo-image";
 
 export type AsaPose =
   | "idle"
@@ -57,36 +58,39 @@ const SIZE_MAP: Record<AsaSize, number> = {
   large:  120,
 };
 
-const POSE_IMAGES: Record<AsaPose, any> = {
-  idle:              require("@/assets/images/asa-poses/idle.png"),
-  bomdia:            require("@/assets/images/asa-poses/bomdia.png"),
-  boanoite:          require("@/assets/images/asa-poses/boanoite.png"),
-  duvida:            require("@/assets/images/asa-poses/duvida.png"),
-  aviso_importante:  require("@/assets/images/asa-poses/aviso_importante.png"),
-  arquivo:           require("@/assets/images/asa-poses/arquivo.png"),
-  lembrete:          require("@/assets/images/asa-poses/lembrete.png"),
-  tarefa_concluida:  require("@/assets/images/asa-poses/tarefa_concluida.png"),
-  biblioteca:        require("@/assets/images/asa-poses/biblioteca.png"),
-  analisando:        require("@/assets/images/asa-poses/analisando.png"),
-  carregando:        require("@/assets/images/asa-poses/carregando.png"),
-  enviando:          require("@/assets/images/asa-poses/enviando.png"),
-  chuva:             require("@/assets/images/asa-poses/chuva.png"),
-  frio:              require("@/assets/images/asa-poses/frio.png"),
-  recomendacao:      require("@/assets/images/asa-poses/recomendacao.png"),
-  comemoracao:       require("@/assets/images/asa-poses/comemoracao.png"),
-  vazio:             require("@/assets/images/asa-poses/vazio.png"),
-  focado:            require("@/assets/images/asa-poses/focado.png"),
-  planejando:        require("@/assets/images/asa-poses/planejando.png"),
-  feliz:             require("@/assets/images/asa-poses/feliz.png"),
+const POSE_IMAGES: Record<AsaPose, number> = {
+  idle: require("../assets/images/asa-poses-clean/oi.webp"),
+  bomdia: require("../assets/images/asa-poses-clean/bom-dia.webp"),
+  boanoite: require("../assets/images/asa-poses-clean/sonolenta.webp"),
+  duvida: require("../assets/images/asa-poses-clean/duvida.webp"),
+  aviso_importante: require("../assets/images/asa-poses-clean/aviso-importante.webp"),
+  arquivo: require("../assets/images/asa-poses-clean/estudando.webp"),
+  lembrete: require("../assets/images/asa-poses-clean/lembrete.webp"),
+  tarefa_concluida: require("../assets/images/asa-poses-clean/tarefa-concluida.webp"),
+  biblioteca: require("../assets/images/asa-poses-clean/estudando.webp"),
+  analisando: require("../assets/images/asa-poses-clean/consultando.webp"),
+  carregando: require("../assets/images/asa-poses-clean/pensativa.webp"),
+  enviando: require("../assets/images/asa-poses-clean/travessa.webp"),
+  chuva: require("../assets/images/asa-poses-clean/sonolenta.webp"),
+  frio: require("../assets/images/asa-poses-clean/sonolenta.webp"),
+  recomendacao: require("../assets/images/asa-poses-clean/pensativa.webp"),
+  comemoracao: require("../assets/images/asa-poses-clean/vencemos.webp"),
+  vazio: require("../assets/images/asa-poses-clean/oi.webp"),
+  focado: require("../assets/images/asa-poses-clean/estudando.webp"),
+  planejando: require("../assets/images/asa-poses-clean/pensativa.webp"),
+  feliz: require("../assets/images/asa-poses-clean/olhos-de-estrela.webp"),
 };
 
 interface AsaAvatarProps {
   size?: AsaSize;
   pose?: AsaPose;
   state?: AvatarState;
+  onPress?: () => void;
+  accessibilityLabel?: string;
+  containerStyle?: StyleProp<ViewStyle>;
 }
 
-export function AsaAvatar({ size = "medium", pose, state }: AsaAvatarProps) {
+export function AsaAvatar({ size = "medium", pose, state, onPress, accessibilityLabel, containerStyle }: AsaAvatarProps) {
   const resolvedPose: AsaPose = pose ?? avatarStateToPose(state);
   const dimension = SIZE_MAP[size];
 
@@ -135,11 +139,12 @@ export function AsaAvatar({ size = "medium", pose, state }: AsaAvatarProps) {
 
   return (
     <Pressable
-      onPress={handlePress}
-      style={[styles.container, { width: dimension, height: dimension }]}
+      onPress={onPress ?? handlePress}
+      accessibilityRole={onPress ? "button" : undefined}
+      accessibilityLabel={accessibilityLabel}
+      style={[styles.container, { width: dimension, height: dimension }, containerStyle]}
     >
-      <Animated.Image
-        source={POSE_IMAGES[activePose]}
+      <Animated.View
         style={[
           styles.image,
           {
@@ -148,9 +153,14 @@ export function AsaAvatar({ size = "medium", pose, state }: AsaAvatarProps) {
             transform: [{ translateY: floatAnim }],
           },
         ]}
-        resizeMode="contain"
-        fadeDuration={0}
-      />
+      >
+        <ExpoImage
+          source={POSE_IMAGES[activePose]}
+          style={StyleSheet.absoluteFill}
+          contentFit="contain"
+          transition={0}
+        />
+      </Animated.View>
     </Pressable>
   );
 }

@@ -1,0 +1,14 @@
+.global-asa-message-body{min-width:0;max-width:88%;display:grid;gap:7px}
+.global-asa-message-body>p{max-width:none!important}
+.global-asa-proposal{display:grid;gap:5px;padding:10px;border:1px solid #d9d2e4;border-radius:6px;background:#fff;color:#302a3b;line-height:1.4}
+.global-asa-proposal strong{font-size:12px}
+.global-asa-proposal span{font-size:11px;color:#625c6d;overflow-wrap:anywhere}
+.global-asa-proposal-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:3px}
+.global-asa-proposal-actions button{min-height:36px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:6px 9px;border:1px solid #c9c3d2;border-radius:5px;background:#fff;color:#282331;font:600 12px Manrope,Arial,sans-serif;cursor:pointer}
+.global-asa-proposal-actions button:first-child{border-color:#246a55;background:#246a55;color:#fff}
+.global-asa-proposal-actions button:disabled{opacity:.55;cursor:wait}
+.global-asa-proposal-state{font-weight:600}
+.global-asa-undo{display:grid;justify-items:start;gap:5px;margin-top:2px}
+.global-asa-undo button{min-height:36px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:6px 9px;border:1px solid #b9d4ca;border-radius:5px;background:#f4faf7;color:#174c3c;font:600 12px Manrope,Arial,sans-serif;cursor:pointer}
+.global-asa-undo button:disabled{opacity:.55;cursor:wait}
+.global-asa-undo span{font-size:11px;color:#52645b;line-height:1.4;overflow-wrap:anywhere}

@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  aside a { text-decoration: none; }
+  body { margin: 0; background: #f4f2fa; font-family: Manrope, system-ui, sans-serif; color: #1b1630; }
+  a { color: #6C2BF2; text-decoration: none; }
+  a:hover { color: #4a17b8; text-decoration: underline; }
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 3px solid #6C2BF2; outline-offset: 2px; border-radius: 8px; }
+</style>
+</helmet>
+
+<div style="max-width:1400px;margin:0 auto;padding:44px 28px 88px;display:flex;flex-direction:column;gap:40px">
+
+  <header style="display:flex;flex-direction:column;gap:22px">
+    <div style="display:flex;align-items:flex-start;gap:18px">
+      <img src="assets/asa/pensativa.png" alt="My ASA" style="width:52px;height:52px;object-fit:contain;flex:none;margin-top:4px" />
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#6b6482">28 · sempre por perto · rodapé da barra lateral</div>
+        <h1 style="font-family:Outfit,sans-serif;font-size:38px;line-height:1.05;font-weight:700;margin:0;letter-spacing:-0.02em">Perfil e configurações</h1>
+        <p style="margin:0;max-width:66ch;font-size:15px;line-height:1.55;color:#5b5473;text-wrap:pretty">Esta tela existe para cumprir promessas que outras telas fazem: a visibilidade do aniversário que o Mural promete respeitar, a regra de notificação que o aviso fixado depende, a folga de contato que o cartão do grupo obedece. Cadastro é em Pessoas — aqui é só o que a própria pessoa decide sobre si.</p>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:13px 16px;background:#fff;border:1px solid #e6e1f2;border-radius:16px">
+      <span style="font-size:13px;font-weight:600;color:#5b5473;margin-right:4px">Ver como</span>
+      <sc-for list="{{ profileTabs }}" as="tab" hint-placeholder-count="4">
+        <button type="button" onClick="{{ tab.onClick }}" style="{{ tab.style }}">
+          <span style="width:8px;height:8px;border-radius:50%;background:{{ tab.dot }};display:inline-block"></span>
+          <span>{{ tab.name }}</span>
+        </button>
+      </sc-for>
+      <span style="flex:1"></span>
+      <span style="font-size:13px;color:#6b6482">{{ profileHint }}</span>
+    </div>
+  </header>
+
+  <div style="display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start">
+
+    <div style="flex:1 1 900px;min-width:0;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Web · 1920 × 1080</span>
+        <span style="font-size:11.5px;color:#6b6482">exibido a 70% — proporção real de tela</span>
+      </div>
+      <div style="width:1344px;height:756px;border:1px solid #ddd6ee;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="width:1920px;height:1080px;transform:scale(0.7);transform-origin:top left;display:flex">
+
+          <aside style="width:236px;flex:none;background:linear-gradient(180deg,#1c1440 0%,#241a52 100%);display:flex;flex-direction:column;color:#fff">
+            <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 12px">
+              <img src="assets/asa-wing.png" alt="" style="width:26px;height:26px;object-fit:contain" />
+              <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">My ASA</span>
+            </div>
+            <div style="padding:0 12px 10px">
+              <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border-radius:10px;padding:8px 10px;font-size:11.5px;color:#b9b0da">
+                <span style="width:11px;height:11px;border:1.5px solid #b9b0da;border-radius:50%"></span>
+                <a href="27%20Assistente%20ASA.dc.html" style="color:inherit;text-decoration:none">Buscar ou perguntar à ASA</a>
+              </div>
+            </div>
+            <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:12px;padding:2px 10px 10px">
+              <sc-for list="{{ shellNav }}" as="g" hint-placeholder-count="4">
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#7d72a8;padding:0 8px 4px">{{ g.title }}</div>
+                  <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+                    <a href="{{ it.href }}" style="{{ it.style }}">{{ it.label }}</a>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+            <div style="border-top:1px solid rgba(255,255,255,.1);padding:12px;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.1)">
+              <span style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+              <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                <span style="font-size:12.5px;font-weight:600">{{ personName }}</span>
+                <span style="{{ personChipStyle }}">{{ profileName }}</span>
+              </div>
+              <span style="flex:1"></span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:14px;color:#fff">·</span>
+            </div>
+          </aside>
+
+          <div style="flex:1;display:flex;flex-direction:column;background:#faf9fe;min-width:0">
+            <header style="display:flex;align-items:center;gap:12px;padding:13px 20px;border-bottom:1px solid #ebe6f6;background:#fff">
+              <div style="display:flex;flex-direction:column;gap:1px">
+                <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">Perfil e configurações</span>
+                <span style="font-size:11.5px;color:#6b6482">{{ scopeLine }}</span>
+              </div>
+              <span style="flex:1"></span>
+              <span style="{{ savedStyle }}">{{ savedLabel }}</span>
+              <div style="display:flex;align-items:center;gap:7px;background:linear-gradient(135deg,#6C2BF2,#2E3BD6);color:#fff;border-radius:999px;padding:5px 13px 5px 5px;font-size:12.5px;font-weight:600">
+                <img src="assets/asa/oi.png" alt="ASA" style="width:26px;height:26px;object-fit:contain" />
+                <span>ASA</span>
+              </div>
+            </header>
+
+            <div style="flex:1;min-height:0;overflow-y:auto;padding:18px 20px 28px;display:flex;justify-content:center">
+              <div style="width:100%;max-width:880px;display:flex;flex-direction:column;gap:14px">
+
+                <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:16px 18px;display:flex;align-items:center;gap:15px;flex-wrap:wrap">
+                  <span style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none;display:flex;align-items:center;justify-content:center;font-family:Outfit,sans-serif;font-size:22px;font-weight:700;color:#fff">{{ initials }}</span>
+                  <div style="flex:1 1 300px;min-width:240px;display:flex;flex-direction:column;gap:4px">
+                    <span style="font-family:Outfit,sans-serif;font-size:20px;font-weight:700;line-height:1.2">{{ personName }}</span>
+                    <span style="font-size:12.5px;color:#6b6482">{{ personRole }}</span>
+                    <span style="font-size:11.5px;color:#6b6482">{{ cadastroNote }}</span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:7px;flex:none">
+                    <span onClick="{{ p1 }}" style="font-size:12px;font-weight:700;color:#6C2BF2;cursor:pointer">trocar foto</span>
+                    <span onClick="{{ p2 }}" style="font-size:12px;font-weight:700;color:#6C2BF2;cursor:pointer">mudar senha</span>
+                  </div>
+                </div>
+
+                <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:15px 18px;display:flex;flex-direction:column;gap:12px">
+                  <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+                    <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">O que é seu para mudar</span>
+                    <span style="flex:1"></span>
+                    <span style="font-size:11.5px;color:#6b6482">nome completo, vínculo e perfil de acesso só mudam em Pessoas</span>
+                  </div>
+                  <div style="display:flex;flex-wrap:wrap;gap:11px">
+                    <sc-for list="{{ fields }}" as="f" hint-placeholder-count="4">
+                      <div style="flex:1 1 240px;min-width:220px;display:flex;flex-direction:column;gap:5px">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">{{ f.label }}</span>
+                        <div style="{{ f.boxStyle }}">
+                          <span style="font-size:13px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ f.value }}</span>
+                          <span style="flex:1"></span>
+                          <span style="{{ f.tagStyle }}">{{ f.tag }}</span>
+                        </div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+
+                <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:15px 18px;display:flex;flex-direction:column;gap:13px">
+                  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                    <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">Quem vê o que sobre você</span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#B03C7D;background:#fbeaf3;padding:4px 9px;border-radius:6px">Sua escolha, de ninguém mais</span>
+                  </div>
+                  <sc-for list="{{ visRows }}" as="v" hint-placeholder-count="3">
+                    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:11px 13px;background:#faf9fe;border:1px solid #f0ecf8;border-radius:13px">
+                      <div style="flex:1 1 260px;min-width:230px;display:flex;flex-direction:column;gap:2px">
+                        <span style="font-size:13px;font-weight:700">{{ v.label }}</span>
+                        <span style="font-size:11.5px;line-height:1.45;color:#6b6482;text-wrap:pretty">{{ v.note }}</span>
+                      </div>
+                      <div style="display:flex;gap:6px;flex-wrap:wrap;flex:none">
+                        <sc-for list="{{ v.options }}" as="o" hint-placeholder-count="3">
+                          <button type="button" onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button>
+                        </sc-for>
+                      </div>
+                    </div>
+                  </sc-for>
+                  <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:#fbeaf3;border:1px solid #f4d3e5;border-radius:13px">
+                    <img src="assets/asa/lembrete.png" alt="" style="width:30px;height:30px;object-fit:contain;flex:none" />
+                    <span style="font-size:12px;line-height:1.5;color:#7d2c5c;text-wrap:pretty">{{ bdayEcho }}</span>
+                  </div>
+                </div>
+
+                <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:15px 18px;display:flex;flex-direction:column;gap:12px">
+                  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                    <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">Como o My ASA te avisa</span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6b6482;background:#f0eef5;padding:4px 9px;border-radius:6px">Sem chave para desligar</span>
+                    <span style="flex:1"></span>
+                    <span style="font-size:11.5px;color:#6b6482">{{ avisaHint }}</span>
+                  </div>
+                  <span style="font-size:12.5px;line-height:1.5;color:#4a4363;text-wrap:pretty">{{ avisaLine }}</span>
+                  <div style="display:flex;align-items:center;gap:13px;flex-wrap:wrap;padding:12px 14px;background:#faf9fe;border:1px solid #e6e1f2;border-radius:13px">
+                    <div style="flex:1 1 260px;min-width:230px;display:flex;flex-direction:column;gap:3px">
+                      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                        <span style="font-size:13px;font-weight:700">Silêncio noturno</span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#0E8F86;background:#e3f4f1;padding:3px 7px;border-radius:5px">A única coisa sua aqui</span>
+                      </div>
+                      <span style="font-size:11.5px;line-height:1.45;color:#6b6482;text-wrap:pretty">{{ silencioNote }}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:7px;flex:none">
+                      <input type="text" value="{{ silencioDe }}" onChange="{{ onSilencioDe }}" style="width:66px;flex:none;border:1px solid #e6e1f2;border-radius:9px;padding:8px 10px;font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:700;color:#3d3559;background:#fff;outline:none;text-align:center" />
+                      <span style="font-size:11.5px;color:#6b6482">às</span>
+                      <input type="text" value="{{ silencioAte }}" onChange="{{ onSilencioAte }}" style="width:66px;flex:none;border:1px solid #e6e1f2;border-radius:9px;padding:8px 10px;font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:700;color:#3d3559;background:#fff;outline:none;text-align:center" />
+                      <button type="button" onClick="{{ onSilencioToggle }}" style="{{ silencioSwitch }}">
+                        <span style="display:block;width:21px;height:21px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(40,20,90,.35)"></span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style="display:flex;flex-direction:column">
+                    <sc-for list="{{ avisaRows }}" as="n" hint-placeholder-count="6">
+                      <div style="{{ n.rowStyle }}">
+                        <span style="{{ n.dotStyle }}"></span>
+                        <div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:1px">
+                          <span style="font-size:13px;font-weight:600">{{ n.label }}</span>
+                          <span style="{{ n.subStyle }}">{{ n.sub }}</span>
+                        </div>
+                        <span style="{{ n.howStyle }}">{{ n.how }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+
+                <sc-if value="{{ hasExtra }}" hint-placeholder-val="{{ true }}">
+                  <div style="{{ extraCardStyle }}">
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                      <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">{{ extraTitle }}</span>
+                      <span style="{{ extraChipStyle }}">{{ extraChip }}</span>
+                    </div>
+                    <span style="font-size:12.5px;line-height:1.5;color:#4a4363;text-wrap:pretty">{{ extraLine }}</span>
+                    <sc-for list="{{ extraRows }}" as="e" hint-placeholder-count="3">
+                      <div style="display:flex;flex-direction:column;gap:8px">
+                        <sc-if value="{{ e.isHead }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-top:5px">
+                            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#3d3559">{{ e.label }}</span>
+                            <span style="{{ e.headNoteStyle }}">{{ e.note }}</span>
+                          </div>
+                        </sc-if>
+                        <sc-if value="{{ e.isRow }}" hint-placeholder-val="{{ true }}">
+                          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:11px 13px;background:#fff;border:1px solid #e6e1f2;border-radius:13px">
+                            <div style="flex:1 1 240px;min-width:220px;display:flex;flex-direction:column;gap:3px">
+                              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                                <span style="font-size:13px;font-weight:700">{{ e.label }}</span>
+                                <span style="{{ e.lockStyle }}">{{ e.lockLabel }}</span>
+                              </div>
+                              <span style="font-size:11.5px;line-height:1.45;color:#6b6482;text-wrap:pretty">{{ e.note }}</span>
+                            </div>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap;flex:none">
+                              <sc-for list="{{ e.options }}" as="o" hint-placeholder-count="3">
+                                <button type="button" onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button>
+                              </sc-for>
+                            </div>
+                          </div>
+                        </sc-if>
+                      </div>
+                    </sc-for>
+                    <span style="{{ extraFixasStyle }}">{{ extraFixas }}</span>
+                    <span style="{{ extraAuditStyle }}">{{ extraAudit }}</span>
+                  </div>
+                </sc-if>
+
+                <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:13px 16px;background:#fff;border:1px solid #e6e1f2;border-radius:16px">
+                  <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                    <span style="font-size:13px;font-weight:700">Sessões abertas</span>
+                    <span style="font-size:11.5px;color:#6b6482">{{ sessions }}</span>
+                  </div>
+                  <span style="flex:1"></span>
+                  <span onClick="{{ p3 }}" style="font-size:12px;font-weight:700;color:#6C2BF2;cursor:pointer">encerrar as outras</span>
+                  <button type="button" onClick="{{ p4 }}" style="cursor:pointer;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;color:#B4302F;background:#fff;border:1px solid #f0d3d3;border-radius:999px;padding:9px 18px">Sair da conta</button>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:0 0 390px;min-width:390px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Mobile · entra pelo avatar, não pelo menu</div>
+      <div style="width:390px;height:844px;border-radius:38px;border:1px solid #ddd6ee;background:#fff;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="background:linear-gradient(135deg,#1c1440,#2b1f63);color:#fff;padding:16px 18px 18px;display:flex;align-items:center;gap:12px">
+          <span style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none;display:flex;align-items:center;justify-content:center;font-family:Outfit,sans-serif;font-size:15px;font-weight:700">{{ initials }}</span>
+          <div style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1">
+            <span style="font-size:16px;font-weight:600;font-family:Outfit,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ personName }}</span>
+            <span style="font-size:11.5px;color:#c4bce0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ personRole }}</span>
+          </div>
+        </div>
+
+        <div style="flex:1;padding:14px;background:#faf9fe;display:flex;flex-direction:column;gap:10px;overflow:hidden">
+
+          <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;display:flex;flex-direction:column;overflow:hidden">
+            <sc-for list="{{ mobileRows }}" as="r" hint-placeholder-count="4">
+              <div style="{{ r.style }}">
+                <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                  <span style="font-size:13px;font-weight:600">{{ r.label }}</span>
+                  <span style="font-size:11px;color:#6b6482;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.sub }}</span>
+                </div>
+                <span style="flex:1"></span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6b6482">›</span>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="background:#fff;border:1px solid #f4d3e5;border-radius:16px;padding:13px;display:flex;flex-direction:column;gap:10px">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#B03C7D">Aniversário no mural</span>
+            <div style="display:flex;align-items:center;gap:11px">
+              <span style="font-size:12.5px;line-height:1.4;color:#524b6b;flex:1;text-wrap:pretty">{{ bdayMobile }}</span>
+              <button type="button" onClick="{{ onBdayToggle }}" style="{{ switchStyle }}">
+                <span style="{{ knobStyle }}"></span>
+              </button>
+            </div>
+            <span style="font-size:11px;color:#6b6482;text-wrap:pretty">A idade nunca aparece — só dia e mês. Isso é regra da casa, não escolha.</span>
+          </div>
+
+          <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:13px;display:flex;flex-direction:column;gap:9px">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6b6482">Só o silêncio noturno é seu</span>
+            <span style="font-size:12.5px;line-height:1.45;color:#524b6b;text-wrap:pretty">{{ avisaMobile }}</span>
+          </div>
+
+          <span style="flex:1"></span>
+
+          <button type="button" onClick="{{ p4 }}" style="cursor:pointer;font-family:Manrope,sans-serif;font-size:13px;font-weight:700;color:#B4302F;background:#fff;border:1px solid #f0d3d3;border-radius:14px;padding:13px;width:100%">Sair da conta</button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid #ebe6f6;background:#fff;padding:10px 4px 16px">
+          <sc-for list="{{ mobileTabs }}" as="t" hint-placeholder-count="5">
+            <div style="{{ t.style }}">
+              <span style="display:block;width:20px;height:20px;border-radius:7px;border:1.75px solid currentColor;opacity:.75"></span>
+              <span style="font-size:10px;font-weight:600;text-align:center">{{ t.label }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">O que esta tela decide</span>
+    <div style="display:flex;flex-wrap:wrap;gap:12px">
+      <div style="flex:1 1 300px;min-width:260px;display:flex;gap:11px;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:13px 15px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6C2BF2;flex:none;padding-top:2px">01</span>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+          <span style="font-size:13px;font-weight:700;line-height:1.3">Cadastro é em Pessoas; escolha é aqui</span>
+          <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Nome completo, vínculo, grupo e perfil de acesso são cadastro — mudam em 07, por quem tem alcance. Aqui fica só o que a própria pessoa decide sobre si: foto, nome de uso, contato, senha e visibilidade.</span>
+        </div>
+      </div>
+      <div style="flex:1 1 300px;min-width:260px;display:flex;gap:11px;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:13px 15px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6C2BF2;flex:none;padding-top:2px">02</span>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+          <span style="font-size:13px;font-weight:700;line-height:1.3">A visibilidade é da pessoa, não da gestão</span>
+          <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Telefone, e-mail e data de nascimento têm três níveis, e quem escolhe é o dono. O Mural e o cartão do grupo obedecem — não existe alcance que passe por cima disso.</span>
+        </div>
+      </div>
+      <div style="flex:1 1 300px;min-width:260px;display:flex;gap:11px;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:13px 15px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6C2BF2;flex:none;padding-top:2px">03</span>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+          <span style="font-size:13px;font-weight:700;line-height:1.3">A idade não existe no sistema</span>
+          <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Guarda-se dia e mês. Não é uma configuração que dá para ligar: é ausência de campo, e por isso nenhuma tela pode vazar.</span>
+        </div>
+      </div>
+      <div style="flex:1 1 300px;min-width:260px;display:flex;gap:11px;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:13px 15px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6C2BF2;flex:none;padding-top:2px">04</span>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+          <span style="font-size:13px;font-weight:700;line-height:1.3">A casa escolhe o quê; a pessoa escolhe quando</span>
+          <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Não existe painel de notificação no perfil: quem silencia algo hoje não sabe amanhã, e o problema volta como culpa dela. O que interrompe é decidido na Administração. O que fica com a pessoa é o horário do silêncio noturno — porque dormir é dela, não da casa.</span>
+        </div>
+      </div>
+      <div style="flex:1 1 300px;min-width:260px;display:flex;gap:11px;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:13px 15px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6C2BF2;flex:none;padding-top:2px">05</span>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+          <span style="font-size:13px;font-weight:700;line-height:1.3">Cada perfil ganha só o seu bloco a mais</span>
+          <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Supervisão configura os grupos que supervisiona, Direção a assinatura dos relatórios, Administração as regras da organização inteira. Ninguém vê o bloco de outro perfil — não é ocultar, é não existir para ele.</span>
+        </div>
+      </div>
+      <div style="flex:1 1 300px;min-width:260px;display:flex;gap:11px;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:13px 15px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#6C2BF2;flex:none;padding-top:2px">06</span>
+        <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+          <span style="font-size:13px;font-weight:700;line-height:1.3">Entra pelo avatar, não pelo menu</span>
+          <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">No web mora no rodapé da barra lateral; no mobile, no avatar. Configuração não disputa espaço na navegação com o que se usa todo dia.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6b6482">{{ footerStamp }}</span>
+</div>
+
+  <sc-if value="{{ toastMsg }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:12px;background:#1c1440;color:#fff;border-radius:14px;padding:13px 18px;box-shadow:0 18px 40px -20px rgba(20,8,60,.7);max-width:560px">
+      <span style="font-size:13.5px;line-height:1.45;flex:1;text-wrap:pretty">{{ toastMsg }}</span>
+      <button type="button" onClick="{{ onFecharToast }}" style="border:none;background:rgba(255,255,255,.16);color:#fff;border-radius:9px;width:28px;height:28px;font-size:13px;cursor:pointer;flex:none">✕</button>
+    </div>
+  </sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1400},&quot;perfilInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ADM&quot;,&quot;DIR&quot;,&quot;SUP&quot;,&quot;MEM&quot;],&quot;default&quot;:&quot;MEM&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Perfil&quot;},&quot;aniversarioNoMural&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Comportamento&quot;}}">
+const PROFILES = [
+  { key: "ADM", name: "Administração", dot: "#6C2BF2", hint: "o próprio perfil + as regras que valem para todos", person: "Carolina", role: "Administração · Arts and Sports Academy", initials: "CM",
+    fields: [["Nome de uso","Carolina","seu"],["Telefone","(54) 99612-0184","seu"],["E-mail","carolina@asa.com.br","seu"],["Perfil de acesso","Administração","em Pessoas"]],
+    sessions: "Este computador · celular Android · tablet do escritório" },
+  { key: "DIR", name: "Direção", dot: "#2E63D6", hint: "próprio perfil e a assinatura dos relatórios", person: "Cris Garcia", role: "Direção · visão organizacional", initials: "BA",
+    fields: [["Nome de uso","Beatriz","seu"],["Telefone","(54) 99188-4420","seu"],["E-mail","beatriz@asa.com.br","seu"],["Perfil de acesso","Direção","em Pessoas"]],
+    sessions: "Este computador · iPhone" },
+  { key: "SUP", name: "Supervisão", dot: "#0E8F86", hint: "próprio perfil e as notificações dos grupos dela", person: "Deborah", role: "Supervisão · Área Elenco · Snowland", initials: "DS",
+    fields: [["Nome de uso","Débora","seu"],["Telefone","(54) 99741-2233","seu"],["E-mail","debora@asa.com.br","seu"],["Grupos que supervisiona","Bailarinos A, B e Técnica","em Áreas"]],
+    sessions: "Celular Android · computador do camarim" },
+  { key: "MEM", name: "Elenco", dot: "#C2508F", hint: "foto, contato, senha — e a visibilidade, que é escolha dela", person: "Julia", role: "Elenco · posição 4 · grupo B", initials: "JR",
+    fields: [["Nome de uso","Julia","seu"],["Telefone","(54) 99503-7716","seu"],["E-mail","julia.r@asa.com.br","seu"],["Grupo","Bailarinos · grupo B","em Áreas"]],
+    sessions: "Este celular · nenhum outro" }
+];
+
+const NAV = [
+  { title: "Porta de entrada", items: [["17", "Início / Meu Dia", ["ADM","DIR","SUP","MEM"], "Meu Dia"]] },
+  { title: "O dia", items: [
+    ["20", "Agenda", ["ADM","DIR","SUP","MEM"], "Minha agenda"],
+    ["15", "Escalas", ["ADM","DIR","SUP","MEM"], "Minha escala"],
+    ["13", "Shows", ["ADM","DIR","SUP","MEM"], "Shows"],
+    ["14", "Livro do Dia", ["ADM","DIR","SUP","MEM"], "Meus shows"],
+    ["19", "Check-in e ocorrências", ["ADM","DIR","SUP","MEM"], "Check-in"],
+    ["10", "Responsabilidades e tarefas", ["ADM","DIR","SUP","MEM"], "Minhas tarefas"],
+    ["18", "Folgas", ["ADM","DIR","SUP","MEM"], "Minhas folgas"]
+  ] },
+  { title: "Gestão", items: [
+    ["16", "Painel", ["ADM","DIR","SUP"], null],
+    ["06", "Locais", ["ADM","DIR","SUP"], null],
+    ["07", "Pessoas", ["ADM","DIR","SUP"], null],
+    ["08", "Áreas", ["ADM","DIR","SUP","MEM"], "Meu grupo"],
+    ["25", "Reconhecimentos", ["ADM","DIR","SUP"], null]
+  ] },
+  { title: "Comunicação", items: [
+    ["22", "Avisos e Mural", ["ADM","DIR","SUP","MEM"], "Mural"],
+    ["23", "Mensagens", ["ADM","DIR","SUP","MEM"], "Conversas"],
+    ["24", "Biblioteca", ["ADM","DIR","SUP","MEM"], "Biblioteca"]
+  ] }
+];
+
+const NAV_HREF = {
+  "06": "06%20Locais.dc.html",
+  "07": "07%20Pessoas.dc.html",
+  "08": "08%20%C3%81reas.dc.html",
+  "10": "10%20Responsabilidades%20e%20Tarefas.dc.html",
+  "13": "13%20Shows.dc.html",
+  "14": "14%20Livro%20do%20Dia.dc.html",
+  "15": "15%20Escalas.dc.html",
+  "16": "16%20Painel%20e%20indicadores.dc.html",
+  "17": "17%20Meu%20Dia.dc.html",
+  "18": "18%20Folgas.dc.html",
+  "19": "19%20Check-in%20e%20ocorr%C3%AAncias.dc.html",
+  "20": "20%20Agenda.dc.html",
+  "22": "22%20Avisos%20e%20Mural.dc.html",
+  "23": "23%20Mensagens.dc.html",
+  "24": "24%20Biblioteca.dc.html",
+  "25": "25%20Reconhecimentos.dc.html",
+  "27": "27%20Assistente%20ASA.dc.html",
+  "28": "28%20Perfil%20e%20configura%C3%A7%C3%B5es.dc.html"
+};
+
+const MOBILE = {
+  ADM: ["Meu Dia", "Painel", "Escalas", "Mural", "Mais"],
+  DIR: ["Meu Dia", "Painel", "Agenda", "Mural", "Mais"],
+  SUP: ["Meu Dia", "Escalas", "Equipe", "Mural", "Mais"],
+  MEM: ["Meu Dia", "Escala", "Mural", "Conversas", "Mais"]
+};
+
+const VIS = [
+  { key: "tel", label: "Telefone", note: "quem consegue ligar para você direto do cartão do grupo",
+    options: [["gestao","só gestão"],["grupo","meu grupo"],["asa","toda a ASA"]], def: "grupo" },
+  { key: "mail", label: "E-mail", note: "aparece no cartão público de quem pode ver",
+    options: [["gestao","só gestão"],["grupo","meu grupo"],["asa","toda a ASA"]], def: "gestao" },
+  { key: "bday", label: "Data de nascimento", note: "dia e mês, nunca o ano — e o mural é da ASA inteira, não só do seu grupo",
+    options: [["off","não aparece"],["lista","só na lista"],["mural","mural no meu dia"]], def: "mural" }
+];
+
+const AVISA = {
+  base: [
+    { label: "Aviso esperando seu ciente", how: "push", sub: "e fica fixado no alto do mural até você confirmar" },
+    { label: "Escala publicada ou alterada", how: "push", sub: "troca de última hora chega na hora, sempre" },
+    { label: "Folga respondida", how: "push", sub: "com o motivo, quando for negada" },
+    { label: "Reconhecimento que você recebeu", how: "push", sub: "e fica no seu perfil" },
+    { label: "Comentário no que você publicou", how: "no app", sub: "" },
+    { label: "Aniversário de alguém da ASA", how: "no app", sub: "no alto do mural, no dia — a casa inteira, não só o seu grupo" }
+  ],
+  SUP: [
+    { label: "Check-in em falta nos seus grupos", how: "push", sub: "15 minutos antes da passagem" },
+    { label: "Ocorrência aberta na sua área", how: "push", sub: "" }
+  ],
+  DIR: [
+    { label: "Relatório da organização", how: "no app", sub: "no dia e hora que você escolhe abaixo" },
+    { label: "Local abaixo da média por duas semanas", how: "no app", sub: "" }
+  ],
+  ADM: [
+    { label: "Aviso sem ciente por 24 horas", how: "push", sub: "volta para o topo da sua lista" },
+    { label: "Pessoa cadastrada sem acesso criado", how: "no app", sub: "" }
+  ]
+};
+
+const EXTRA = {
+  ADM: {
+    title: "Regras da organização",
+    chip: "vale para as 58 pessoas",
+    line: "Isto não é preferência sua — é como o My ASA se comporta para todo mundo. Só a Administração muda, cada mudança fica registrada com nome e hora, e o que está marcado como regra da casa não tem chave.",
+    audit: "Última mudança: cobrança de ciente passou a repetir em 48h · Carolina, 21 de agosto às 09:14",
+    fixas: "Três coisas não têm chave, aqui nem em lugar nenhum: a idade da pessoa não é guardada, reconhecimento não publica sem motivo escrito, e ninguém silencia notificação para si — só o horário do silêncio noturno é escolha de cada um.",
+    rows: [
+      { key: "cobranca", label: "Cobrança de quem não deu ciente", note: "a ASA lembra quem ainda não confirmou, até confirmar",
+        options: [["nao","não cobra"],["24","em 24h"],["2448","em 24h e 48h"]], def: "2448" },
+      { key: "publica", label: "Quem pode publicar aviso", note: "supervisor sempre limitado aos grupos da própria área",
+        options: [["adm","só Administração"],["dir","com a Direção"],["sup","as três"]], def: "sup" },
+      { key: "recado", label: "Quem publica recado livre", note: "foto, carona, marco — a vida da casa",
+        options: [["todos","qualquer pessoa"],["gestao","só gestão"]], def: "todos" },
+      { key: "janela", label: "Silêncio noturno da casa", note: "o padrão que cada pessoa pode deslocar no perfil dela; urgente atravessa sempre",
+        options: [["2206","22h às 06h"],["2307","23h às 07h"],["off","sem silêncio"]], def: "2206" }
+    ]
+  },
+  DIR: {
+    title: "Assinatura de relatórios",
+    chip: "só sua",
+    line: "O relatório é montado do painel — nada de novo é calculado aqui. Chega no app; você escolhe quando e com que profundidade.",
+    rows: [
+      { key: "quando", label: "Quando chega", note: "sempre com o fechamento da semana anterior",
+        options: [["seg","segunda 07:00"],["dia","todo dia 07:00"],["fora","só quando algo sai da média"]], def: "seg" },
+      { key: "formato", label: "O que vem nele", note: "montado do painel, sem conta nova",
+        options: [["resumo","só o que saiu da média"],["tudo","o painel inteiro"]], def: "resumo" }
+    ]
+  },
+  SUP: {
+    title: "Grupos que te notificam",
+    chip: "os três são seus",
+    line: "Você supervisiona três grupos e não precisa receber tudo dos três no mesmo peso. O que você desligar aqui continua aparecendo no seu Meu Dia — só não te interrompe.",
+    rows: [
+      { key: "g1", label: "Bailarinos A", note: "18 pessoas · 2 shows por dia",
+        options: [["tudo","tudo"],["urg","só urgente"],["nada","nada"]], def: "tudo" },
+      { key: "g2", label: "Bailarinos B", note: "14 pessoas · show das 20h",
+        options: [["tudo","tudo"],["urg","só urgente"],["nada","nada"]], def: "tudo" },
+      { key: "g3", label: "Técnica", note: "6 pessoas · luz e som",
+        options: [["tudo","tudo"],["urg","só urgente"],["nada","nada"]], def: "urg" }
+    ]
+  }
+};
+
+const RULES = [
+  { n: "01", title: "Cadastro é em Pessoas; escolha é aqui", body: "Nome completo, vínculo, grupo e perfil de acesso são cadastro — mudam em 07, por quem tem alcance. Aqui fica só o que a própria pessoa decide sobre si: foto, nome de uso, contato, senha e visibilidade." },
+  { n: "02", title: "A visibilidade é da pessoa, não da gestão", body: "Telefone, e-mail e data de nascimento têm três níveis, e quem escolhe é o dono. O Mural e o cartão do grupo obedecem — não existe alcance que passe por cima disso." },
+  { n: "03", title: "A idade não existe no sistema", body: "Guarda-se dia e mês. Não é uma configuração que dá para ligar: é ausência de campo, e por isso nenhuma tela pode vazar." },
+  { n: "04", title: "Notificação não é preferência", body: "Não existe painel de notificação no perfil de ninguém. Quem escolhe não ver algo hoje não sabe amanhã — e o problema volta como culpa dela. Quem define o que interrompe é a casa, na Administração; esta tela só mostra à pessoa o que vai chegar." },
+  { n: "05", title: "Cada perfil ganha só o seu bloco a mais", body: "Supervisão configura os grupos que supervisiona, Direção a assinatura dos relatórios, Administração as regras da organização inteira. Ninguém vê o bloco de outro perfil — não é ocultar, é não existir para ele." },
+  { n: "06", title: "Entra pelo avatar, não pelo menu", body: "No web mora no rodapé da barra lateral; no mobile, no avatar. Configuração não disputa espaço na navegação com o que se usa todo dia." }
+];
+
+class Component extends DCLogic {
+  state = { profile: null, vis: {}, notif: {}, extra: {}, touched: false };
+
+  renderVals() {
+    const active = this.state.profile || this.props.perfilInicial || "MEM";
+    const meta = PROFILES.find(p => p.key === active) || PROFILES[0];
+    const dot = meta.dot;
+
+    const profileTabs = PROFILES.map(p => ({
+      name: p.name,
+      dot: p.dot,
+      onClick: () => this.setState({ profile: p.key }),
+      style: "display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-family:Manrope,sans-serif;font-size:13px;font-weight:600;padding:8px 14px;border-radius:999px;"
+        + (p.key === active
+          ? "border:1px solid " + p.dot + ";background:" + p.dot + "14;color:" + p.dot + ";"
+          : "border:1px solid #e6e1f2;background:#fff;color:#5b5473;")
+    }));
+
+    const shellNav = NAV.map(g => ({
+      title: g.title,
+      items: g.items.filter(it => it[2].indexOf(active) >= 0).map(it => ({
+        href: NAV_HREF[it[0]],
+        label: (active === "MEM" && it[3]) ? it[3] : it[1],
+        style: "font-size:12px;font-weight:500;padding:6px 9px;border-radius:8px;color:#c3bbe0;"
+      }))
+    })).filter(g => g.items.length);
+
+    const visRows = VIS.map(v => {
+      const cur = this.state.vis[v.key] || v.def;
+      return {
+        label: v.label,
+        note: v.note,
+        options: v.options.map(o => ({
+          label: o[1],
+          onClick: () => this.setState(s => ({ vis: Object.assign({}, s.vis, { [v.key]: o[0] }), touched: true })),
+          style: "cursor:pointer;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;border-radius:999px;padding:8px 13px;"
+            + (cur === o[0]
+              ? "border:1px solid " + dot + ";background:" + dot + "14;color:" + dot + ";"
+              : "border:1px solid #e6e1f2;background:#fff;color:#6b6482;")
+        }))
+      };
+    });
+
+    const bdayVis = this.state.vis.bday || (this.props.aniversarioNoMural === false ? "off" : "mural");
+    const bdayEcho = bdayVis === "mural"
+      ? "No seu dia, seu nome sobe para o alto do mural de todo mundo, com dia e mês. É o que o Mural promete respeitar — e é esta chave que ele lê."
+      : bdayVis === "lista"
+        ? "Sua data aparece na lista da semana, mas você não sobe para o alto do mural no seu dia. Ninguém é avisado."
+        : "Você não aparece em lugar nenhum: nem na lista da semana, nem no alto do mural. Quem quiser saber, pergunta.";
+
+    const avisa = AVISA.base.concat(AVISA[active] || []);
+    const avisaRows = avisa.map((n, i) => ({
+      label: n.label,
+      sub: n.sub,
+      subStyle: n.sub ? "font-size:11px;color:#6b6482;" : "display:none;",
+      rowStyle: "display:flex;align-items:center;gap:11px;padding:11px 2px;" + (i ? "border-top:1px solid #f5f2fa;" : ""),
+      dotStyle: "flex:none;width:7px;height:7px;border-radius:50%;background:" + (n.how === "push" ? dot : "#d8d2e6") + ";",
+      how: n.how,
+      howStyle: "flex:none;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:4px 9px;border-radius:6px;"
+        + (n.how === "push" ? "color:" + dot + ";background:" + dot + "14;" : "color:#6b6482;background:#f4f2fa;")
+    }));
+
+    const ex = EXTRA[active];
+    const extraRows = ex ? ex.rows.map(r => {
+      if (r.head) {
+        return {
+          isHead: true, isRow: false, label: r.head, note: r.note,
+          headNoteStyle: "font-size:11.5px;color:#6b6482;flex:none;",
+          options: []
+        };
+      }
+      const cur = this.state.extra[r.key] || r.def;
+      const single = r.options.length === 1;
+      return {
+        isHead: false,
+        isRow: true,
+        locked: single,
+        lockLabel: single ? "regra da casa" : "",
+        lockStyle: single
+          ? "font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6b6482;background:#f0eef5;padding:3px 7px;border-radius:5px;flex:none;"
+          : "display:none;",
+        label: r.label,
+        note: r.note,
+        headNoteStyle: "display:none;",
+        options: r.options.map(o => ({
+          label: o[1],
+          onClick: single ? (() => {}) : (() => this.setState(s => ({ extra: Object.assign({}, s.extra, { [r.key]: o[0] }), touched: true }))),
+          style: "cursor:" + (single ? "default" : "pointer") + ";font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;border-radius:999px;padding:8px 13px;"
+            + (single
+              ? "border:1px dashed " + dot + "66;background:" + dot + "0f;color:" + dot + ";"
+              : cur === o[0]
+                ? "border:1px solid " + dot + ";background:" + dot + "14;color:" + dot + ";"
+                : "border:1px solid #e6e1f2;background:#fff;color:#6b6482;")
+        }))
+      };
+    }) : [];
+
+    const mobileRows = [
+      { label: "Foto e nome de uso", sub: meta.person + " · " + meta.fields[0][1] },
+      { label: "Contato", sub: meta.fields[1][1] + " · " + meta.fields[2][1] },
+      { label: "Senha e sessões", sub: meta.sessions },
+      { label: "Quem vê o que sobre você", sub: "três escolhas suas" },
+      { label: "Como o My ASA te avisa", sub: avisa.length + " situações · em leitura" }
+    ].concat(ex ? [{ label: ex.title, sub: ex.chip }] : []);
+
+    return {
+      p1: () => this.setState({ __toast: "Escolha a foto do seu perfil. Ela aparece na escala, no mural e nas conversas." }),
+      p2: () => this.setState({ __toast: "Pede a senha atual e a nova, duas vezes. Ninguém da ASA vê a senha que você escolher." }),
+      p3: () => this.setState({ __toast: "Desconecta o My ASA de todos os outros aparelhos. Você continua conectada neste." }),
+      p4: () => this.setState({ __toast: "Sai da sua conta neste aparelho. Para voltar, é usuário e senha de novo." }),
+      toastMsg: this.state.__toast || null,
+      onFecharToast: () => this.setState({ __toast: null }),
+      profileTabs: profileTabs,
+      profileHint: meta.hint,
+      profileName: meta.name,
+      personName: meta.person,
+      personRole: meta.role,
+      initials: meta.initials,
+      personChipStyle: "font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:" + dot + ";padding:2px 7px;border-radius:999px;width:fit-content",
+      scopeLine: active === "ADM"
+        ? "seu perfil e as regras da organização"
+        : active === "DIR"
+          ? "seu perfil, notificações e relatórios"
+          : active === "SUP"
+            ? "seu perfil e os grupos que você supervisiona"
+            : "seu perfil, seu contato e sua visibilidade",
+      savedLabel: this.state.touched ? "salvo automaticamente" : "nada mudou ainda",
+      savedStyle: "font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 10px;border-radius:999px;"
+        + (this.state.touched ? "color:#0E8F86;background:#e3f4f1;" : "color:#6b6482;background:#f0eef5;"),
+      shellNav: shellNav,
+      cadastroNote: "Cadastro, vínculo e perfil de acesso mudam em 07 Pessoas — não aqui.",
+      fields: meta.fields.map(f => ({
+        label: f[0],
+        value: f[1],
+        tag: f[2] === "seu" ? "editar" : f[2],
+        tagStyle: f[2] === "seu"
+          ? "font-size:11px;font-weight:700;color:" + dot + ";cursor:pointer;flex:none;"
+          : "font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6b6482;background:#f0eef5;padding:4px 8px;border-radius:6px;flex:none;",
+        boxStyle: "display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:12px;"
+          + (f[2] === "seu" ? "background:#fff;border:1px solid #e6e1f2;" : "background:#faf9fe;border:1px dashed #ddd6ee;")
+      })),
+      visRows: visRows,
+      bdayEcho: bdayEcho,
+      avisaHint: avisa.filter(n => n.how === "push").length + " interrompem · " + avisa.filter(n => n.how !== "push").length + " só no app",
+      avisaLine: active === "ADM"
+        ? "Esta é a lista que você define para a casa, nas regras da organização abaixo — e é a mesma que cada pessoa vê no perfil dela, em leitura."
+        : "Você não desliga nada disso, e ninguém desliga por você. Quem escolhe não ver algo hoje não sabe amanhã — então a casa decide o que interrompe, e aqui você confere o que vai chegar.",
+      avisaRows: avisaRows,
+      silencioDe: this.state.silDe === undefined ? "22:00" : this.state.silDe,
+      silencioAte: this.state.silAte === undefined ? "06:00" : this.state.silAte,
+      onSilencioDe: (e) => { const v = e.target.value; this.setState({ silDe: v, touched: true }); },
+      onSilencioAte: (e) => { const v = e.target.value; this.setState({ silAte: v, touched: true }); },
+      onSilencioToggle: () => this.setState(s => ({ silOn: s.silOn === false, touched: true })),
+      silencioNote: this.state.silOn === false
+        ? "Desligado: tudo chega na hora que acontece, de madrugada inclusive. Você mesma escolheu isso."
+        : "A casa põe 22h às 06h; você desloca para o seu horário. Nesse intervalo o push espera a manhã — aviso marcado como urgente atravessa de qualquer forma.",
+      silencioSwitch: "cursor:pointer;flex:none;width:46px;height:27px;border-radius:999px;border:none;padding:3px;display:flex;align-items:center;"
+        + (this.state.silOn === false ? "background:#e0dbec;justify-content:flex-start;" : "background:#0E8F86;justify-content:flex-end;"),
+      avisaMobile: avisa.filter(n => n.how === "push").length + " situações te interrompem por push; o resto espera você abrir o app. Você não desliga nenhuma — o que é seu é a janela do silêncio noturno, hoje das " + (this.state.silDe === undefined ? "22:00" : this.state.silDe) + " às " + (this.state.silAte === undefined ? "06:00" : this.state.silAte) + ".",
+      hasExtra: !!ex,
+      extraTitle: ex ? ex.title : "",
+      extraChip: ex ? ex.chip : "",
+      extraChipStyle: ex
+        ? "font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:" + dot + ";background:" + dot + "1a;padding:4px 9px;border-radius:6px;"
+        : "display:none;",
+      extraLine: ex ? ex.line : "",
+      extraCardStyle: "background:" + (ex ? dot + "0a" : "#fff") + ";border:1px solid " + dot + "33;border-radius:16px;padding:15px 18px;display:flex;flex-direction:column;gap:12px;",
+      extraRows: extraRows,
+      extraFixas: ex && ex.fixas ? ex.fixas : "",
+      extraFixasStyle: ex && ex.fixas
+        ? "font-size:12px;line-height:1.5;color:#5b5473;background:#fff;border:1px dashed #ddd6ee;border-radius:12px;padding:11px 13px;text-wrap:pretty;"
+        : "display:none;",
+      extraAudit: ex && ex.audit ? ex.audit : "",
+      extraAuditStyle: ex && ex.audit
+        ? "font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#6b6482;padding-top:4px;"
+        : "display:none;",
+      sessions: meta.sessions,
+      mobileRows: mobileRows.map((r, i) => ({
+        label: r.label,
+        sub: r.sub,
+        style: "display:flex;align-items:center;gap:10px;padding:12px 13px;" + (i ? "border-top:1px solid #f5f2fa;" : "")
+      })),
+      bdayMobile: bdayVis === "mural"
+        ? "Meu nome sobe no mural no meu dia"
+        : bdayVis === "lista"
+          ? "Só na lista da semana, sem subir no mural"
+          : "Não aparece em lugar nenhum",
+      onBdayToggle: () => this.setState(s => ({
+        vis: Object.assign({}, s.vis, { bday: (s.vis.bday || (this.props.aniversarioNoMural === false ? "off" : "mural")) === "mural" ? "off" : "mural" }),
+        touched: true
+      })),
+      switchStyle: "cursor:pointer;flex:none;width:46px;height:27px;border-radius:999px;border:none;padding:3px;display:flex;align-items:center;"
+        + (bdayVis === "mural" ? "background:#C2508F;justify-content:flex-end;" : "background:#e0dbec;justify-content:flex-start;"),
+      knobStyle: "display:block;width:21px;height:21px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(40,20,90,.35);",
+      mobileTabs: MOBILE[active].map((label, i) => ({
+        label: label,
+        style: "display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 2px;" + (i === 4 ? "color:" + dot + ";" : "color:#6b6482;")
+      })),
+      rules: RULES,
+      footerStamp: "28 Perfil e configurações · " + meta.name + " · cadastro em Pessoas · visibilidade é da pessoa · aviso no app não desliga"
+    };
+  }
+}
+</script>
+</body>
+</html>

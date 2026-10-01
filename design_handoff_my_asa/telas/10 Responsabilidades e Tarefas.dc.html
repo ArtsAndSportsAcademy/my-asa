@@ -1,0 +1,1589 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  aside a { text-decoration: none; }
+  body { margin: 0; background: #f4f2fa; font-family: Manrope, system-ui, sans-serif; color: #1b1630; }
+  a { color: #6C2BF2; text-decoration: none; }
+  a:hover { color: #4a17b8; text-decoration: underline; }
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 3px solid #6C2BF2; outline-offset: 2px; border-radius: 8px; }
+</style>
+</helmet>
+
+<div style="max-width:1720px;margin:0 auto;padding:44px 28px 88px;display:flex;flex-direction:column;gap:32px">
+
+  <header style="display:flex;flex-direction:column;gap:22px">
+    <div style="display:flex;align-items:flex-start;gap:18px">
+      <img src="assets/asa-wing.png" alt="My ASA" style="width:52px;height:52px;object-fit:contain;flex:none;margin-top:4px" />
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#6b6482">10 · fundação</div>
+        <h1 style="font-family:Outfit,sans-serif;font-size:38px;line-height:1.05;font-weight:700;margin:0;letter-spacing:-0.02em">Responsabilidades e tarefas</h1>
+        <p style="margin:0;max-width:82ch;font-size:15px;line-height:1.55;color:#5b5473;text-wrap:pretty">Dois objetos. A <strong>responsabilidade</strong> é o resultado permanente pelo qual a casa responde: mora numa <strong>área</strong>, quem a criou fica como <strong>responsável</strong> pela definição, e vários <strong>participantes</strong> a sustentam — de qualquer área. O que separa responsabilidade de tarefa é a data: <strong>responsabilidade nunca fica pronta</strong> — com cadência ela gera tarefa sozinha, sem cadência fica lá como “isso é desta área” até alguém disparar. <strong>Tarefa fecha</strong>: nasce de uma responsabilidade ou avulsa, e é pessoal ou de grupo. Quando é de grupo, cada tarefa diz <strong>como fecha</strong> — titular responde, cada um marca o seu, ou qualquer um fecha pelo grupo. Nada entra na lista de ninguém sozinho: a ASA prepara o lote do dia e o responsável confirma de uma vez.</p>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:13px 16px;background:#fff;border:1px solid #e6e1f2;border-radius:16px">
+      <span style="font-size:13px;font-weight:600;color:#5b5473;margin-right:4px">Ver como</span>
+      <sc-for list="{{ profileTabs }}" as="tab" hint-placeholder-count="4">
+        <button type="button" onClick="{{ tab.onClick }}" style="{{ tab.style }}">
+          <span style="width:8px;height:8px;border-radius:50%;background:{{ tab.dot }};display:inline-block"></span>
+          <span>{{ tab.name }}</span>
+        </button>
+      </sc-for>
+      <span style="flex:1"></span>
+      <span style="font-size:13px;color:#6b6482">{{ profileHint }}</span>
+    </div>
+  </header>
+
+  <div style="display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start">
+
+    <div style="flex:none;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Web · 1920 × 1080</span>
+        <span style="font-size:11.5px;color:#6b6482">exibido a 70% — proporção real de tela</span>
+      </div>
+      <div style="width:1344px;height:756px;border:1px solid #ddd6ee;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="width:1920px;height:1080px;transform:scale(0.7);transform-origin:top left;display:flex">
+
+          <aside style="width:222px;flex:none;background:linear-gradient(180deg,#1c1440 0%,#241a52 100%);display:flex;flex-direction:column;color:#fff">
+            <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 12px">
+              <img src="assets/asa-wing.png" alt="" style="width:26px;height:26px;object-fit:contain" />
+              <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">My ASA</span>
+            </div>
+            <div style="padding:0 12px 10px">
+              <a href="27%20Assistente%20ASA.dc.html" style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border-radius:10px;padding:8px 10px;font-size:11.5px;color:#b9b0da;text-decoration:none;cursor:pointer">
+                <span style="width:11px;height:11px;border:1.5px solid #b9b0da;border-radius:50%"></span>
+                <span>Buscar ou perguntar à ASA</span>
+              </a>
+            </div>
+            <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:12px;padding:2px 10px 10px">
+              <sc-for list="{{ shellNav }}" as="g" hint-placeholder-count="4">
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#7d72a8;padding:0 8px 4px">{{ g.title }}</div>
+                  <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+                    <a href="{{ it.href }}" style="{{ it.style }}">{{ it.label }}</a>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+            <div style="border-top:1px solid rgba(255,255,255,.1);padding:12px;display:flex;align-items:center;gap:10px">
+              <span style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+              <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                <span style="font-size:12.5px;font-weight:600">{{ personName }}</span>
+                <span style="{{ personChipStyle }}">{{ profileName }}</span>
+              </div>
+            </div>
+          </aside>
+
+          <div style="position:relative;flex:1;display:flex;flex-direction:column;background:#faf9fe;min-width:0">
+
+            <header style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid #ebe6f6;background:#fff">
+              <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">{{ pageTitle }}</span>
+              <span style="flex:1"></span>
+              <span style="{{ readonlyChipStyle }}">somente leitura</span>
+              <span style="font-size:12.5px;color:#6b6482">{{ scopeLabel }}</span>
+              <button type="button" onClick="{{ toggleAsa }}" style="{{ asaBtnStyle }}">
+                <img src="assets/asa/oi.png" alt="ASA" style="width:26px;height:26px;object-fit:contain" />
+                <span>ASA</span>
+              </button>
+            </header>
+
+            <div style="display:flex;align-items:center;gap:6px;padding:0 20px;background:#fff;border-bottom:1px solid #ebe6f6">
+              <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+                <button type="button" onClick="{{ t.onClick }}" style="{{ t.style }}">{{ t.label }}</button>
+              </sc-for>
+            </div>
+
+            <sc-if value="{{ loteBar }}" hint-placeholder-val="{{ false }}">
+              <div style="{{ loteBar.style }}">
+                <img src="assets/asa/estudando.png" alt="" style="width:24px;height:24px;object-fit:contain;flex:none" />
+                <span style="{{ loteBar.chip }}">Lote do dia</span>
+                <span style="{{ loteBar.textStyle }}">{{ loteBar.text }}</span>
+                <span style="flex:1"></span>
+                <button type="button" onClick="{{ loteBar.onOpen }}" style="{{ loteBar.ctaStyle }}">{{ loteBar.cta }}</button>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isTarefas }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-direction:column;min-height:0;flex:1">
+                <div style="display:flex;align-items:flex-start;gap:10px;padding:13px 20px;background:#fff;border-bottom:1px solid #ebe6f6">
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482;padding-top:2px;flex:none">Tarefa</span>
+                  <span style="font-size:12.5px;line-height:1.5;color:#5b5473;max-width:96ch;text-wrap:pretty">{{ tarefasAbout }}</span>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;align-items:center;gap:9px;padding:12px 20px;background:#fff;border-bottom:1px solid #ebe6f6">
+                  <sc-for list="{{ filters }}" as="f" hint-placeholder-count="5">
+                    <button type="button" onClick="{{ f.onClick }}" style="{{ f.style }}">{{ f.label }}</button>
+                  </sc-for>
+                  <span style="flex:1;min-width:20px"></span>
+                  <span style="font-size:12px;color:#6b6482">{{ countLabel }}</span>
+                  <sc-if value="{{ canAvulsa }}" hint-placeholder-val="{{ false }}">
+                    <button type="button" onClick="{{ onNewAvulsa }}" style="height:32px;padding:0 14px;border-radius:11px;border:1px solid #ddd0fb;background:#fff;color:#6C2BF2;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap">Tarefa avulsa</button>
+                  </sc-if>
+                </div>
+
+                <div style="flex:1;min-height:0;overflow:auto">
+                  <sc-for list="{{ taskGroups }}" as="g" hint-placeholder-count="3">
+                    <div>
+                      <div style="display:flex;align-items:center;gap:9px;padding:9px 20px;background:#f7f5fd;border-bottom:1px solid #e6e1f2">
+                        <span style="{{ g.dot }}"></span>
+                        <span style="font-size:11.5px;font-weight:700;color:#5b5473">{{ g.title }}</span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6b6482">{{ g.count }}</span>
+                      </div>
+                      <sc-for list="{{ g.rows }}" as="t" hint-placeholder-count="4">
+                        <div style="{{ t.style }}">
+                          <button type="button" onClick="{{ t.onCheck }}" title="{{ t.checkTitle }}" style="{{ t.checkStyle }}">{{ t.checkMark }}</button>
+                          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                            <span style="{{ t.titleStyle }}">{{ t.title }}</span>
+                            <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+                              <span style="{{ t.originStyle }}">{{ t.origin }}</span>
+                              <button type="button" onClick="{{ t.onMode }}" title="{{ t.modeTitle }}" style="{{ t.modeStyle }}">{{ t.modeLabel }}</button>
+                              <span style="font-size:11px;color:#6b6482">{{ t.sub }}</span>
+                            </div>
+                          </div>
+                          <div style="width:186px;flex:none;display:flex;flex-direction:column;gap:5px">
+                            <div style="display:flex;align-items:center;gap:8px">
+                              <span style="{{ t.avatarStyle }}">{{ t.initials }}</span>
+                              <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                                <span style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.who }}</span>
+                                <span style="font-size:10.5px;color:#6b6482;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.whoNote }}</span>
+                              </div>
+                            </div>
+                            <div style="{{ t.crewStyle }}">
+                              <sc-for list="{{ t.crew }}" as="m" hint-placeholder-count="3">
+                                <button type="button" onClick="{{ m.onClick }}" title="{{ m.title }}" style="{{ m.style }}">{{ m.initials }}</button>
+                              </sc-for>
+                              <span style="{{ t.crewNoteStyle }}">{{ t.crewNote }}</span>
+                            </div>
+                          </div>
+                          <span style="width:96px;flex:none;font-family:'JetBrains Mono',monospace;font-size:11px;color:#6b6482">{{ t.when }}</span>
+                          <span style="width:112px;flex:none"><span style="{{ t.stateStyle }}">{{ t.state }}</span></span>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </sc-for>
+                  <sc-if value="{{ tasksEmpty }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:9px;padding:72px 20px">
+                      <img src="assets/asa-wing.png" alt="" style="width:46px;height:46px;object-fit:contain" />
+                      <span style="font-size:14px;font-weight:600">{{ tasksEmpty.title }}</span>
+                      <span style="font-size:12.5px;color:#6b6482;text-align:center;max-width:48ch;line-height:1.5">{{ tasksEmpty.body }}</span>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isResp }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1;min-height:0;overflow:auto;padding:18px 20px 24px;display:flex;flex-direction:column;gap:16px">
+                <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
+                  <div style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:280px">
+                    <span style="font-family:Outfit,sans-serif;font-size:19px;font-weight:600">Responsabilidades</span>
+                    <div style="display:flex;align-items:flex-start;gap:10px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482;padding-top:2px;flex:none">Responsabilidade</span>
+                      <span style="font-size:12.5px;line-height:1.5;color:#5b5473;max-width:92ch;text-wrap:pretty">{{ respAbout }}</span>
+                    </div>
+                    <span style="font-size:12.5px;line-height:1.5;color:#6b6482;max-width:88ch">{{ respNote }}</span>
+                  </div>
+                  <sc-if value="{{ canCreateResp }}" hint-placeholder-val="{{ false }}">
+                    <button type="button" onClick="{{ onNewResp }}" style="height:32px;padding:0 14px;border-radius:11px;border:none;background:#6C2BF2;color:#fff;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap">Nova responsabilidade</button>
+                  </sc-if>
+                </div>
+
+                <sc-for list="{{ respCards }}" as="r" hint-placeholder-count="3">
+                  <div style="{{ r.style }}">
+                    <div style="display:flex;align-items:flex-start;gap:11px;flex-wrap:wrap">
+                      <span style="{{ r.dot }}"></span>
+                      <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:240px">
+                        <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600;line-height:1.25">{{ r.name }}</span>
+                        <span style="font-size:11.5px;color:#6b6482">{{ r.meta }}</span>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:8px;flex:none">
+                        <span style="{{ r.barWrap }}"><span style="{{ r.barFill }}"></span></span>
+                        <span style="{{ r.rateStyle }}">{{ r.rate }}</span>
+                        <button type="button" onClick="{{ r.onOpen }}" style="height:28px;padding:0 12px;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6C2BF2;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap">{{ r.openLabel }}</button>
+                      </div>
+                    </div>
+
+                    <div style="display:flex;flex-wrap:wrap;gap:16px">
+                      <div style="display:flex;flex-direction:column;gap:6px;min-width:210px">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Responsável pela definição</span>
+                        <div style="display:flex;align-items:center;gap:8px">
+                          <span style="{{ r.ownerAvatar }}">{{ r.ownerInitials }}</span>
+                          <div style="display:flex;flex-direction:column;gap:1px">
+                            <span style="font-size:12px;font-weight:700">{{ r.owner }}</span>
+                            <span style="font-size:10.5px;color:#6b6482">{{ r.ownerNote }}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:6px;flex:1;min-width:240px">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">{{ r.partLabel }}</span>
+                        <div style="display:flex;flex-wrap:wrap;gap:5px">
+                          <sc-for list="{{ r.parts }}" as="p" hint-placeholder-count="4">
+                            <span style="{{ p.style }}">{{ p.name }}</span>
+                          </sc-for>
+                          <sc-if value="{{ r.noParts }}" hint-placeholder-val="{{ false }}">
+                            <span style="font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:999px;background:#fdf5f5;color:#a12c2c">{{ r.noParts }}</span>
+                          </sc-if>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style="border:1px solid #e6e1f2;border-radius:13px;background:#fff;overflow:hidden">
+                      <div style="display:flex;gap:10px;padding:8px 13px;background:#f7f5fd;border-bottom:1px solid #e6e1f2;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:#6b6482">
+                        <span style="flex:1;min-width:0">Tarefa</span>
+                        <span style="width:140px;flex:none">Titular</span>
+                        <span style="width:126px;flex:none">Substitutos</span>
+                        <span style="width:96px;flex:none">Dispara</span>
+                        <span style="width:88px;flex:none;text-align:right">30 dias</span>
+                      </div>
+                      <sc-for list="{{ r.items }}" as="i" hint-placeholder-count="3">
+                        <div style="display:flex;gap:10px;align-items:center;padding:9px 13px;border-bottom:1px solid #f2eefa">
+                          <span style="flex:1;min-width:0;font-size:12.5px;color:#1b1630">{{ i.name }}</span>
+                          <div style="width:140px;flex:none;display:flex;align-items:center;gap:7px">
+                            <span style="{{ i.titAvatar }}">{{ i.titInitials }}</span>
+                            <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                              <span style="font-size:11.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ i.tit }}</span>
+                              <span style="{{ i.titNoteStyle }}">{{ i.titNote }}</span>
+                            </div>
+                          </div>
+                          <span style="{{ i.subsStyle }}">{{ i.subs }}</span>
+                          <span style="width:96px;flex:none;font-size:11px;color:#5b5473">{{ i.cad }}</span>
+                          <span style="{{ i.rateStyle }}">{{ i.rate }}</span>
+                        </div>
+                      </sc-for>
+                      <sc-if value="{{ r.noItems }}" hint-placeholder-val="{{ false }}">
+                        <div style="padding:20px 13px;text-align:center;font-size:12px;color:#a12c2c">{{ r.noItems }}</div>
+                      </sc-if>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ lote }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;inset:0;background:rgba(28,20,64,.32);display:flex;justify-content:flex-end;z-index:7">
+                <div style="width:560px;max-width:94%;background:#fff;display:flex;flex-direction:column;box-shadow:-24px 0 54px -30px rgba(40,20,90,.5)">
+                  <div style="display:flex;align-items:center;gap:11px;padding:14px 17px;border-bottom:1px solid #f0ecf9">
+                    <img src="assets/asa/estudando.png" alt="" style="width:32px;height:32px;object-fit:contain;flex:none" />
+                    <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0">
+                      <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">{{ lote.title }}</span>
+                      <span style="font-size:11.5px;color:#6b6482">{{ lote.sub }}</span>
+                    </div>
+                    <button type="button" onClick="{{ lote.onClose }}" style="width:28px;height:28px;flex:none;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:14px;cursor:pointer">×</button>
+                  </div>
+                  <div style="flex:1;overflow:auto;padding:15px 17px 20px;display:flex;flex-direction:column;gap:12px">
+                    <div style="padding:11px 12px;background:#f7f3ff;border:1px solid #e5d8fb;border-radius:12px;font-size:12px;line-height:1.5;color:#3c3559">{{ lote.intro }}</div>
+                    <sc-for list="{{ lote.items }}" as="i" hint-placeholder-count="3">
+                      <div style="{{ i.style }}">
+                        <div style="display:flex;align-items:flex-start;gap:10px">
+                          <button type="button" onClick="{{ i.onToggle }}" style="{{ i.checkStyle }}">{{ i.checkMark }}</button>
+                          <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0">
+                            <span style="{{ i.titleStyle }}">{{ i.name }}</span>
+                            <span style="font-size:11px;color:#6b6482">{{ i.meta }}</span>
+                          </div>
+                          <span style="{{ i.cadStyle }}">{{ i.cad }}</span>
+                        </div>
+                        <sc-if value="{{ i.pickerOpen }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex;flex-direction:column;gap:7px;padding:10px 11px;border-radius:11px;background:#fdf7e8;border:1px solid #f0d9a8">
+                            <span style="font-size:11.5px;line-height:1.45;color:#5c4310">{{ i.pickerNote }}</span>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap">
+                              <sc-for list="{{ i.options }}" as="o" hint-placeholder-count="2">
+                                <button type="button" onClick="{{ o.onClick }}" style="{{ o.style }}">
+                                  <span>{{ o.name }}</span>
+                                  <span style="{{ o.noteStyle }}">{{ o.note }}</span>
+                                </button>
+                              </sc-for>
+                              <sc-if value="{{ i.noOption }}" hint-placeholder-val="{{ false }}">
+                                <span style="font-size:11.5px;line-height:1.45;color:#a12c2c">{{ i.noOption }}</span>
+                              </sc-if>
+                            </div>
+                          </div>
+                        </sc-if>
+                        <sc-if value="{{ i.assigned }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:11px;background:#faf9fe;border:1px solid #eee9f8">
+                            <span style="{{ i.assigned.avatarStyle }}">{{ i.assigned.initials }}</span>
+                            <div style="display:flex;flex-direction:column;gap:1px;flex:1;min-width:0">
+                              <span style="font-size:12px;font-weight:700">{{ i.assigned.name }}</span>
+                              <span style="font-size:10.5px;color:#6b6482">{{ i.assigned.note }}</span>
+                            </div>
+                            <button type="button" onClick="{{ i.assigned.onChange }}" style="{{ i.assigned.changeStyle }}">trocar</button>
+                          </div>
+                        </sc-if>
+                      </div>
+                    </sc-for>
+                    <sc-if value="{{ lote.blocked }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;gap:8px;padding:10px 11px;border-radius:11px;border:1px solid #f0d9a8;background:#fdf7e8;color:#5c4310;font-size:11.5px;line-height:1.45">
+                        <span style="opacity:.6">!</span>
+                        <span>{{ lote.blocked }}</span>
+                      </div>
+                    </sc-if>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:9px;padding:13px 17px;border-top:1px solid #f0ecf9;background:#fff">
+                    <span style="font-size:11.5px;color:#6b6482;flex:1;line-height:1.4">{{ lote.footNote }}</span>
+                    <button type="button" onClick="{{ lote.onClose }}" style="height:34px;padding:0 13px;border-radius:11px;border:1px solid #e6e1f2;background:#fff;color:#5b5473;font-size:12.5px;font-weight:600;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap">Depois</button>
+                    <button type="button" onClick="{{ lote.onConfirm }}" style="{{ lote.confirmStyle }}">{{ lote.confirmLabel }}</button>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ respDet }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;inset:0;background:rgba(28,20,64,.32);display:flex;justify-content:flex-end;z-index:8">
+                <div style="width:548px;max-width:94%;background:#fff;display:flex;flex-direction:column;box-shadow:-24px 0 54px -30px rgba(40,20,90,.5)">
+                  <div style="display:flex;align-items:center;gap:11px;padding:14px 17px;border-bottom:1px solid #f0ecf9">
+                    <span style="{{ respDet.dot }}"></span>
+                    <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0">
+                      <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">{{ respDet.title }}</span>
+                      <span style="font-size:11.5px;color:#6b6482">{{ respDet.sub }}</span>
+                    </div>
+                    <button type="button" onClick="{{ respDet.onClose }}" style="width:28px;height:28px;flex:none;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:14px;cursor:pointer">×</button>
+                  </div>
+
+                  <div style="flex:1;overflow:auto;padding:16px 17px 20px;display:flex;flex-direction:column;gap:17px">
+                    <div style="display:flex;flex-direction:column;gap:7px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Responde por</span>
+                      <input value="{{ respDet.nameValue }}" onChange="{{ respDet.onName }}" readOnly="{{ respDet.readOnly }}" placeholder="Ex: elenco vestido e caracterizado na chamada" style="height:38px;padding:0 11px;border:1px solid #e6e1f2;border-radius:11px;background:#faf9fe;font-family:Manrope,sans-serif;font-size:13.5px;color:#3c3559;outline:none" />
+                    </div>
+
+                    <div style="display:flex;flex-direction:column;gap:9px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Área</span>
+                      <div style="display:flex;gap:6px;flex-wrap:wrap">
+                        <sc-for list="{{ respDet.areas }}" as="a" hint-placeholder-count="4">
+                          <button type="button" onClick="{{ a.onClick }}" style="{{ a.style }}">{{ a.label }}</button>
+                        </sc-for>
+                      </div>
+                      <span style="font-size:11.5px;line-height:1.45;color:#5b5473">{{ respDet.areaNote }}</span>
+                    </div>
+
+                    <div style="display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:12px;border:1px solid #e6e1f2;background:#faf9fe">
+                      <span style="{{ respDet.ownerAvatar }}">{{ respDet.ownerInitials }}</span>
+                      <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0">
+                        <span style="font-size:12.5px;font-weight:700">{{ respDet.owner }}</span>
+                        <span style="font-size:11px;line-height:1.4;color:#5b5473">{{ respDet.ownerNote }}</span>
+                      </div>
+                    </div>
+
+                    <div style="display:flex;flex-direction:column;gap:9px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Participantes</span>
+                      <div style="display:flex;gap:6px;flex-wrap:wrap">
+                        <sc-for list="{{ respDet.parts }}" as="p" hint-placeholder-count="5">
+                          <button type="button" onClick="{{ p.onClick }}" style="{{ p.style }}">{{ p.label }}</button>
+                        </sc-for>
+                      </div>
+                      <span style="font-size:11.5px;line-height:1.45;color:#5b5473">{{ respDet.partNote }}</span>
+                    </div>
+
+                    <div style="display:flex;flex-direction:column;gap:7px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Como se sabe que foi cumprida</span>
+                      <input value="{{ respDet.proofValue }}" onChange="{{ respDet.onProof }}" readOnly="{{ respDet.readOnly }}" placeholder="Ex: conferência marcada no Livro do Dia antes da chamada" style="height:36px;padding:0 11px;border:1px solid #e6e1f2;border-radius:11px;background:#faf9fe;font-family:Manrope,sans-serif;font-size:13px;color:#3c3559;outline:none" />
+                    </div>
+
+                    <div style="display:flex;flex-direction:column;gap:10px">
+                      <div style="display:flex;align-items:baseline;gap:10px">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Tarefas desta responsabilidade</span>
+                        <span style="flex:1"></span>
+                        <span style="font-size:11px;color:#6b6482">{{ respDet.itemsHint }}</span>
+                      </div>
+
+                      <sc-for list="{{ respDet.items }}" as="i" hint-placeholder-count="2">
+                        <div style="display:flex;flex-direction:column;gap:10px;padding:12px 13px;border-radius:13px;border:1px solid #e6e1f2;background:#fff">
+                          <div style="display:flex;align-items:center;gap:9px">
+                            <input value="{{ i.nameValue }}" onChange="{{ i.onName }}" readOnly="{{ respDet.readOnly }}" placeholder="O que é feito" style="flex:1;min-width:0;height:34px;padding:0 11px;border:1px solid #e6e1f2;border-radius:10px;background:#faf9fe;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:600;color:#3c3559;outline:none" />
+                            <button type="button" onClick="{{ i.onRemove }}" style="{{ i.removeStyle }}">remover</button>
+                          </div>
+                          <div style="display:flex;flex-direction:column;gap:6px">
+                            <span style="font-size:10.5px;color:#6b6482">Titular · quem a ASA cobra por esta tarefa</span>
+                            <div style="display:flex;gap:5px;flex-wrap:wrap">
+                              <sc-for list="{{ i.titulares }}" as="t" hint-placeholder-count="3">
+                                <button type="button" onClick="{{ t.onClick }}" style="{{ t.style }}">{{ t.label }}</button>
+                              </sc-for>
+                            </div>
+                          </div>
+                          <div style="display:flex;flex-direction:column;gap:6px">
+                            <span style="font-size:10.5px;color:#6b6482">Substitutos · em ordem de chamada</span>
+                            <div style="display:flex;gap:5px;flex-wrap:wrap">
+                              <sc-for list="{{ i.subs }}" as="s" hint-placeholder-count="3">
+                                <button type="button" onClick="{{ s.onClick }}" style="{{ s.style }}">{{ s.label }}</button>
+                              </sc-for>
+                              <sc-if value="{{ i.noSubOption }}" hint-placeholder-val="{{ false }}">
+                                <span style="font-size:11px;color:#6b6482">{{ i.noSubOption }}</span>
+                              </sc-if>
+                            </div>
+                          </div>
+                          <div style="display:flex;flex-direction:column;gap:6px">
+                            <span style="font-size:10.5px;color:#6b6482">Dispara</span>
+                            <div style="display:flex;gap:5px;flex-wrap:wrap">
+                              <sc-for list="{{ i.cads }}" as="c" hint-placeholder-count="4">
+                                <button type="button" onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.label }}</button>
+                              </sc-for>
+                            </div>
+                          </div>
+                          <div style="display:flex;flex-direction:column;gap:6px">
+                            <span style="font-size:10.5px;color:#6b6482">Como fecha · vale para as tarefas que nascerem daqui</span>
+                            <div style="display:flex;gap:5px;flex-wrap:wrap">
+                              <sc-for list="{{ i.modos }}" as="m" hint-placeholder-count="3">
+                                <button type="button" onClick="{{ m.onClick }}" style="{{ m.style }}">{{ m.label }}</button>
+                              </sc-for>
+                            </div>
+                            <span style="font-size:10.5px;color:#6b6482;line-height:1.45">{{ i.modoNote }}</span>
+                          </div>
+                          <sc-if value="{{ i.health }}" hint-placeholder-val="{{ false }}">
+                            <div style="display:flex;align-items:center;gap:9px">
+                              <span style="{{ i.health.barWrap }}"><span style="{{ i.health.barFill }}"></span></span>
+                              <span style="{{ i.health.rateStyle }}">{{ i.health.rate }}</span>
+                            </div>
+                          </sc-if>
+                          <sc-if value="{{ i.warn }}" hint-placeholder-val="{{ false }}">
+                            <span style="font-size:11px;line-height:1.45;padding:8px 10px;border-radius:10px;border:1px solid #f0d9a8;background:#fdf7e8;color:#5c4310">{{ i.warn }}</span>
+                          </sc-if>
+                        </div>
+                      </sc-for>
+
+                      <sc-if value="{{ respDet.onAddItem }}" hint-placeholder-val="{{ false }}">
+                        <button type="button" onClick="{{ respDet.onAddItem }}" style="height:36px;border-radius:11px;border:1px dashed #ddd0fb;background:#faf9fe;color:#6C2BF2;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer">Adicionar tarefa</button>
+                      </sc-if>
+                      <sc-if value="{{ respDet.noItems }}" hint-placeholder-val="{{ false }}">
+                        <span style="font-size:11.5px;line-height:1.45;padding:10px 11px;border-radius:11px;border:1px solid #f0bcbc;background:#fdf5f5;color:#7d2626">{{ respDet.noItems }}</span>
+                      </sc-if>
+                    </div>
+
+                    <sc-if value="{{ respDet.misses }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;flex-direction:column;gap:7px">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Quando falhou</span>
+                        <sc-for list="{{ respDet.misses }}" as="m" hint-placeholder-count="2">
+                          <div style="display:flex;gap:9px;align-items:baseline;padding:8px 10px;border-radius:10px;background:#faf9fe;border:1px solid #eee9f8">
+                            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6b6482;flex:none;width:52px">{{ m.when }}</span>
+                            <span style="font-size:11.5px;color:#3c3559;flex:1;line-height:1.45">{{ m.what }}</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{ respDet.reflex }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;flex-direction:column;gap:8px;padding:12px 13px;border-radius:12px;border:1px solid #f0d9a8;background:#fdf7e8;color:#5c4310">
+                        <span style="font-size:12.5px;font-weight:700">{{ respDet.reflex.title }}</span>
+                        <div style="display:flex;flex-direction:column;gap:4px">
+                          <sc-for list="{{ respDet.reflex.lines }}" as="ln" hint-placeholder-count="2">
+                            <div style="display:flex;gap:8px;font-size:12px;line-height:1.45">
+                              <span style="opacity:.5">·</span>
+                              <span>{{ ln }}</span>
+                            </div>
+                          </sc-for>
+                        </div>
+                      </div>
+                    </sc-if>
+                  </div>
+
+                  <div style="display:flex;align-items:center;gap:9px;padding:13px 17px;border-top:1px solid #f0ecf9;background:#fff">
+                    <span style="font-size:11.5px;color:#6b6482;flex:1;line-height:1.4">{{ respDet.footNote }}</span>
+                    <button type="button" onClick="{{ respDet.onClose }}" style="{{ respDet.cancelStyle }}">Cancelar</button>
+                    <button type="button" onClick="{{ respDet.onSave }}" style="{{ respDet.saveStyle }}">{{ respDet.saveLabel }}</button>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ asaOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;right:0;top:0;bottom:0;width:352px;background:#fff;border-left:1px solid #e6e1f2;box-shadow:-24px 0 48px -34px rgba(40,20,90,.4);display:flex;flex-direction:column;z-index:9">
+                <div style="display:flex;align-items:center;gap:10px;padding:13px 15px;border-bottom:1px solid #f0ecf9">
+                  <img src="assets/asa/estudando.png" alt="" style="width:30px;height:30px;object-fit:contain" />
+                  <div style="display:flex;flex-direction:column;gap:1px;flex:1">
+                    <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">ASA · responsabilidades</span>
+                    <span style="font-size:11px;color:#6b6482">{{ asaHint }}</span>
+                  </div>
+                  <button type="button" onClick="{{ toggleAsa }}" style="width:26px;height:26px;border-radius:8px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:13px;cursor:pointer">×</button>
+                </div>
+                <div style="flex:1;overflow:auto;padding:14px 15px;display:flex;flex-direction:column;gap:12px">
+                  <div style="padding:12px 13px;background:#f7f3ff;border:1px solid #e5d8fb;border-radius:13px">
+                    <span style="font-size:12.5px;line-height:1.5;color:#3c3559">{{ asaIntro }}</span>
+                  </div>
+                  <sc-for list="{{ asaCards }}" as="c" hint-placeholder-count="3">
+                    <div style="border:1px solid #e6e1f2;border-radius:13px;padding:12px 13px;display:flex;flex-direction:column;gap:8px;background:#fff">
+                      <div style="display:flex;align-items:center;gap:8px">
+                        <span style="{{ c.tagStyle }}">{{ c.tag }}</span>
+                        <span style="flex:1"></span>
+                        <span style="font-size:10.5px;color:#6b6482;font-family:'JetBrains Mono',monospace">{{ c.conf }}</span>
+                      </div>
+                      <span style="font-size:13px;font-weight:600;line-height:1.4">{{ c.title }}</span>
+                      <span style="font-size:12px;line-height:1.5;color:#5b5473">{{ c.why }}</span>
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;line-height:1.5;color:#6C2BF2">{{ c.nums }}</span>
+                      <sc-if value="{{ c.open }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex;flex-direction:column;gap:4px;padding:9px 10px;background:#faf9fe;border:1px solid #eee9f8;border-radius:10px">
+                          <sc-for list="{{ c.lines }}" as="ln" hint-placeholder-count="3">
+                            <div style="display:flex;gap:7px;font-size:11.5px;line-height:1.45;color:#3c3559">
+                              <span style="color:#6b6482">·</span>
+                              <span>{{ ln }}</span>
+                            </div>
+                          </sc-for>
+                        </div>
+                      </sc-if>
+                      <div style="display:flex;gap:7px;padding-top:2px">
+                        <button type="button" onClick="{{ c.onReflex }}" style="height:29px;padding:0 11px;border-radius:9px;border:1px solid #ddd0fb;background:#fff;color:#6C2BF2;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap">{{ c.reflexLabel }}</button>
+                        <button type="button" onClick="{{ c.onApply }}" style="height:29px;padding:0 12px;border-radius:9px;border:none;background:#1b1630;color:#fff;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap">{{ c.cta }}</button>
+                        <span style="flex:1"></span>
+                        <button type="button" onClick="{{ c.onDismiss }}" style="height:29px;padding:0 11px;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:11.5px;font-weight:600;font-family:Manrope,sans-serif;cursor:pointer">Depois</button>
+                      </div>
+                    </div>
+                  </sc-for>
+                  <sc-if value="{{ asaMapa }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;flex-direction:column;gap:9px;border:1px solid #e6e1f2;border-radius:13px;padding:12px 13px;background:#fff">
+                      <div style="display:flex;align-items:center;gap:8px">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:3px 8px;border-radius:999px;background:#e9f2ff;color:#2E63D6">Quem responde por quê</span>
+                        <span style="flex:1"></span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#6b6482">{{ asaMapa.conf }}</span>
+                      </div>
+                      <span style="font-size:12px;line-height:1.5;color:#5b5473">{{ asaMapa.why }}</span>
+                      <div style="display:flex;flex-direction:column;gap:5px">
+                        <sc-for list="{{ asaMapa.rows }}" as="p" hint-placeholder-count="5">
+                          <div style="{{ p.style }}">
+                            <button type="button" onClick="{{ p.onClick }}" style="{{ p.headStyle }}">
+                              <span style="{{ p.avatarStyle }}">{{ p.initials }}</span>
+                              <span style="display:flex;flex-direction:column;gap:1px;flex:1;min-width:0;text-align:left">
+                                <span style="font-size:12px;font-weight:700;color:#1b1630">{{ p.name }}</span>
+                                <span style="{{ p.metaStyle }}">{{ p.meta }}</span>
+                              </span>
+                              <span style="{{ p.loadStyle }}">{{ p.load }}</span>
+                            </button>
+                            <sc-if value="{{ p.open }}" hint-placeholder-val="{{ false }}">
+                              <div style="display:flex;flex-direction:column;gap:6px;padding:9px 10px;border-top:1px solid #f0ecf9">
+                                <sc-for list="{{ p.lines }}" as="ln" hint-placeholder-count="3">
+                                  <div style="display:flex;gap:8px;align-items:baseline">
+                                    <span style="{{ ln.dot }}"></span>
+                                    <span style="flex:1;min-width:0;font-size:11.5px;line-height:1.45;color:#3c3559">{{ ln.text }}</span>
+                                    <span style="{{ ln.tagStyle }}">{{ ln.tag }}</span>
+                                  </div>
+                                </sc-for>
+                                <sc-if value="{{ p.warn }}" hint-placeholder-val="{{ false }}">
+                                  <span style="font-size:11px;line-height:1.45;padding:7px 9px;border-radius:9px;border:1px solid #f0d9a8;background:#fdf7e8;color:#5c4310">{{ p.warn }}</span>
+                                </sc-if>
+                                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                                  <button type="button" onClick="{{ p.onTasks }}" style="height:28px;padding:0 11px;border-radius:9px;border:1px solid #ddd0fb;background:#fff;color:#6C2BF2;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap">{{ p.tasksLabel }}</button>
+                                  <sc-if value="{{ p.onResp }}" hint-placeholder-val="{{ false }}">
+                                    <button type="button" onClick="{{ p.onResp }}" style="height:28px;padding:0 11px;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#5b5473;font-size:11.5px;font-weight:600;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap">{{ p.respLabel }}</button>
+                                  </sc-if>
+                                </div>
+                              </div>
+                            </sc-if>
+                          </div>
+                        </sc-for>
+                      </div>
+                      <sc-if value="{{ asaMapa.more }}" hint-placeholder-val="{{ false }}">
+                        <button type="button" onClick="{{ asaMapa.more.onClick }}" style="height:30px;border-radius:10px;border:1px dashed #ddd0fb;background:#faf9fe;color:#6C2BF2;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer">{{ asaMapa.more.label }}</button>
+                      </sc-if>
+                      <span style="font-size:11px;line-height:1.45;color:#6b6482">{{ asaMapa.foot }}</span>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ asaEmpty }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:30px 14px;background:#faf9fe;border:1px dashed #ddd6ee;border-radius:13px">
+                      <img src="assets/asa-wing.png" alt="" style="width:38px;height:38px;object-fit:contain" />
+                      <span style="font-size:12.5px;font-weight:600">Nada pendente aqui</span>
+                      <span style="font-size:11.5px;color:#6b6482;text-align:center;line-height:1.5">{{ asaEmpty }}</span>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-if>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:0 0 390px;min-width:390px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Mobile · segue o Ver como</div>
+      <div style="width:390px;border:1px solid #ddd6ee;border-radius:38px;overflow:hidden;background:#1c1440;padding:9px;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="position:relative;background:#faf9fe;border-radius:30px;overflow:hidden;display:flex;flex-direction:column;height:826px">
+          <sc-if value="{{ moreOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:0;right:0;top:0;bottom:0;z-index:9;background:rgba(28,20,64,.42);display:flex;align-items:flex-end">
+              <div style="width:100%;max-height:88%;overflow-y:auto;background:#faf9fe;border-radius:22px 22px 30px 30px;padding:14px 14px 18px;display:flex;flex-direction:column;gap:12px">
+                <div style="display:flex;align-items:flex-start;gap:10px">
+                  <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0">
+                    <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">{{ moreTitle }}</span>
+                    <span style="font-size:11px;color:#6b6482">{{ moreSub }}</span>
+                  </div>
+                  <button type="button" onClick="{{ onCloseMore }}" style="width:28px;height:28px;flex:none;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:14px;cursor:pointer">×</button>
+                </div>
+                <a href="{{ moreAsa }}" style="display:flex;align-items:center;gap:11px;padding:12px;border-radius:14px;background:#f4edfe;border:1px solid #ddcbfa;text-decoration:none">
+                  <img src="assets/asa/oi.png" alt="" style="width:36px;height:36px;object-fit:contain;flex:none" />
+                  <span style="display:flex;flex-direction:column;gap:1px;min-width:0;flex:1">
+                    <span style="font-size:13px;font-weight:700;color:#5B23C9">Perguntar à ASA</span>
+                    <span style="font-size:11px;color:#5f4b8a">ela resolve sem você procurar a tela</span>
+                  </span>
+                </a>
+                <sc-for list="{{ moreGroups }}" as="g" hint-placeholder-count="4">
+                  <div style="display:flex;flex-direction:column;gap:6px">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482;padding:0 2px">{{ g.title }}</span>
+                    <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+                      <a href="{{ it.href }}" style="{{ it.style }}">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6b6482;flex:none;min-width:17px">{{ it.num }}</span>
+                        <span style="font-size:13px;font-weight:600;flex:1;min-width:0">{{ it.label }}</span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6b6482;flex:none">›</span>
+                      </a>
+                    </sc-for>
+                  </div>
+                </sc-for>
+                <a href="{{ morePerfil }}" style="display:flex;align-items:center;gap:10px;padding:12px;border-radius:14px;background:#fff;border:1px solid #eee9f6;text-decoration:none;color:#1b1630">
+                  <span style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+                  <span style="font-size:13px;font-weight:600;flex:1">Perfil e configurações</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6b6482">›</span>
+                </a>
+              </div>
+            </div>
+          </sc-if>
+          <div style="position:absolute;left:0;right:0;bottom:0;z-index:5;display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid #ebe6f6;background:#fff;padding:9px 4px 12px">
+            <sc-for list="{{ mobileTabs }}" as="t" hint-placeholder-count="5">
+              <a href="{{ t.href }}" onClick="{{ t.onClick }}" style="{{ t.style }}">
+                <span style="display:block;width:19px;height:19px;border-radius:6px;border:1.7px solid currentColor;opacity:.75"></span>
+                <span style="font-size:9.5px;font-weight:600;text-align:center">{{ t.label }}</span>
+              </a>
+            </sc-for>
+          </div>
+          
+          <div style="padding:12px 14px 10px;background:#fff;border-bottom:1px solid #ebe6f6;display:flex;flex-direction:column;gap:2px">
+            <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">{{ mob.title }}</span>
+            <span style="font-size:11.5px;color:#6b6482">{{ mob.sub }}</span>
+          </div>
+          <div style="flex:1;overflow:auto;padding:12px 14px 76px;display:flex;flex-direction:column;gap:11px">
+            <sc-if value="{{ mob.lote }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:9px;padding:12px 13px;border-radius:14px;background:#fdf7e8;border:1px solid #f0d9a8">
+                <span style="font-size:12.5px;font-weight:700;color:#5c4310">{{ mob.lote.title }}</span>
+                <span style="font-size:11.5px;line-height:1.45;color:#5c4310">{{ mob.lote.body }}</span>
+                <button type="button" onClick="{{ mob.lote.onOpen }}" style="height:38px;border-radius:11px;border:none;background:#1b1630;color:#fff;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer">{{ mob.lote.cta }}</button>
+              </div>
+            </sc-if>
+            <sc-for list="{{ mob.cards }}" as="c" hint-placeholder-count="4">
+              <div style="{{ c.style }}">
+                <div style="display:flex;align-items:flex-start;gap:10px">
+                  <button type="button" onClick="{{ c.onCheck }}" style="{{ c.checkStyle }}">{{ c.checkMark }}</button>
+                  <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:0">
+                    <span style="{{ c.titleStyle }}">{{ c.title }}</span>
+                    <span style="{{ c.originStyle }}">{{ c.origin }}</span>
+                    <span style="font-size:11px;color:#6b6482">{{ c.sub }}</span>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ mob.empty }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:30px 14px;background:#fff;border:1px dashed #ddd6ee;border-radius:14px">
+                <img src="assets/asa-wing.png" alt="" style="width:38px;height:38px;object-fit:contain" />
+                <span style="font-size:12px;color:#6b6482;text-align:center;line-height:1.5">{{ mob.empty }}</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{ mob.foot }}" hint-placeholder-val="{{ false }}">
+              <span style="font-size:11px;line-height:1.45;color:#4a2a9c;background:#f7f3ff;border:1px solid #e5d8fb;border-radius:11px;padding:9px 10px">{{ mob.foot }}</span>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1720},&quot;perfilInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ADM&quot;,&quot;DIR&quot;,&quot;SUP&quot;,&quot;MEM&quot;],&quot;default&quot;:&quot;ADM&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Demonstração&quot;}}">
+const PROFILES = [
+  { key: "ADM", name: "Administração", person: "Barbara Sorroche", dot: "#6C2BF2", scope: "Toda a empresa", hint: "Define responsabilidade, confirma o lote de qualquer área." },
+  { key: "DIR", name: "Direção", person: "Cris Garcia", dot: "#2E63D6", scope: "Toda a empresa", hint: "Como a Administração: define responsabilidade, confirma qualquer lote e marca tarefa." },
+  { key: "SUP", name: "Supervisão", person: "Deborah", dot: "#0E8F86", scope: "Bailarinos", hint: "Responde por Elenco pronto: confirma o lote dela e distribui." },
+  { key: "MEM", name: "Elenco", person: "Julia", dot: "#C2508F", scope: "Minhas tarefas", hint: "Vê o que é dela hoje e marca como feita." }
+];
+
+const NAV = [
+  { title: "Porta de entrada", items: [
+    ["17", "Início / Meu Dia", ["ADM","DIR","SUP","MEM"], "Meu Dia"]
+  ] },
+  { title: "O dia", items: [
+    ["20", "Agenda", ["ADM","DIR","SUP","MEM"], "Minha agenda"],
+    ["15", "Escalas", ["ADM","DIR","SUP","MEM"], "Minha escala"],
+    ["13", "Shows", ["ADM","DIR","SUP","MEM"], "Shows"],
+    ["14", "Livro do Dia", ["ADM","DIR","SUP","MEM"], "Meus shows"],
+    ["19", "Check-in e ocorrências", ["ADM","DIR","SUP","MEM"], "Check-in"],
+    ["10", "Responsabilidades e tarefas", ["ADM","DIR","SUP","MEM"], "Minhas tarefas"],
+    ["18", "Folgas", ["ADM","DIR","SUP","MEM"], "Minhas folgas"]
+  ] },
+  { title: "Gestão", items: [
+    ["16", "Painel", ["ADM","DIR","SUP"], null],
+    ["06", "Locais", ["ADM","DIR","SUP"], null],
+    ["07", "Pessoas", ["ADM","DIR","SUP"], null],
+    ["08", "Áreas", ["ADM","DIR","SUP","MEM"], "Meu grupo"],
+    ["25", "Reconhecimentos", ["ADM","DIR","SUP"], null]
+  ] },
+  { title: "Comunicação", items: [
+    ["22", "Avisos e Mural", ["ADM","DIR","SUP","MEM"], "Mural"],
+    ["23", "Mensagens", ["ADM","DIR","SUP","MEM"], "Conversas"],
+    ["24", "Biblioteca", ["ADM","DIR","SUP","MEM"], "Biblioteca"]
+  ] }
+];
+
+
+const MOBILE_TABS = {
+  ADM: [["17","Meu Dia"],["16","Painel"],["15","Escalas"],["22","Mural"],["mais","Mais"]],
+  DIR: [["17","Meu Dia"],["16","Painel"],["20","Agenda"],["22","Mural"],["mais","Mais"]],
+  SUP: [["17","Meu Dia"],["15","Escalas"],["07","Equipe"],["22","Mural"],["mais","Mais"]],
+  MEM: [["17","Meu Dia"],["15","Escala"],["22","Mural"],["23","Conversas"],["mais","Mais"]]
+};
+
+const NAV_HREF = {
+  "10": "10%20Responsabilidades%20e%20Tarefas.dc.html",
+  "13": "13%20Shows.dc.html",
+  "14": "14%20Livro%20do%20Dia.dc.html",
+  "15": "15%20Escalas.dc.html",
+  "16": "16%20Painel%20e%20indicadores.dc.html",
+  "17": "17%20Meu%20Dia.dc.html",
+  "18": "18%20Folgas.dc.html",
+  "19": "19%20Check-in%20e%20ocorr%C3%AAncias.dc.html",
+  "20": "20%20Agenda.dc.html",
+  "22": "22%20Avisos%20e%20Mural.dc.html",
+  "23": "23%20Mensagens.dc.html",
+  "24": "24%20Biblioteca.dc.html", "25": "25%20Reconhecimentos.dc.html",
+  "27": "27%20Assistente%20ASA.dc.html",
+  "28": "28%20Perfil%20e%20configura%C3%A7%C3%B5es.dc.html",
+  "06": "06%20Locais.dc.html",
+  "07": "07%20Pessoas.dc.html",
+  "08": "08%20%C3%81reas.dc.html"
+};
+
+const PEOPLE = [
+  { name: "Barbara Sorroche", area: "Gestão", role: "ADM", on: true },
+  { name: "Cris Garcia", area: "Direção", role: "DIR", on: true },
+  { name: "Deborah", area: "Bailarinos", role: "SUP", on: true },
+  { name: "Rodrigo", area: "Bailarinos", role: "SUP", on: true },
+  { name: "Cássia", area: "Patinadores", role: "SUP", on: true },
+  { name: "Rodrigo", area: "Produção", role: "SUP", on: true },
+  { name: "Rodrigo", area: "Produção", role: "SUP", on: true },
+  { name: "Rodrigo", area: "Produção", role: "SUP", on: true },
+  { name: "Lucas", area: "Produção", role: "SUP", on: true },
+  { name: "Mariza", area: "Produção", role: "MEM", on: false, off: "de folga hoje" },
+  { name: "Lucas", area: "Produção", role: "MEM", on: true },
+  { name: "Isadora", area: "Bailarinos", role: "MEM", on: true },
+  { name: "Amanda", area: "Patinadores", role: "MEM", on: false, off: "fora da escala hoje" },
+  { name: "Gabriel", area: "Produção", role: "MEM", on: true },
+  { name: "Maico", area: "Produção", role: "MEM", on: true },
+  { name: "Gabriel", area: "Produção", role: "MEM", on: true },
+  { name: "Julia", area: "Bailarinos", role: "MEM", on: true }
+];
+
+const DOTS = ["#7E4BD8", "#B06E00", "#2E63D6", "#0E8F86", "#C2508F", "#0b6b64"];
+
+// A responsabilidade mora numa área; participante pode vir de qualquer uma.
+const AREAS = ["Produção", "Bailarinos", "Patinadores", "Gestão"];
+
+const CADS = ["Todo show", "Todo dia", "Semanal", "Sob demanda"];
+
+// Como a tarefa fecha — depende da tarefa, não da responsabilidade.
+const MODES = ["titular", "cada", "primeiro"];
+const MODE = {
+  titular:  { label: "titular responde", verb: "Titular responde pelo grupo",
+              note: "Um marca e fecha para todos. A ASA cobra só o titular; os participantes ajudam mas não são cobrados." },
+  cada:     { label: "cada um marca", verb: "Cada um marca o seu",
+              note: "Só fecha quando todos marcarem. A ASA cobra individualmente quem não marcou." },
+  primeiro: { label: "qualquer um fecha", verb: "Qualquer um fecha pelo grupo",
+              note: "O primeiro que concluir encerra para todos. A ASA cobra o grupo, não uma pessoa." }
+};
+const modeOf = t => MODE[t && t.mode] ? t.mode : "titular";
+const crewOf = t => (t.crew && t.crew.length) ? t.crew : [t.who];
+const isGrupal = t => !!(t.crew && t.crew.length > 1);
+const marcados = t => crewOf(t).filter(n => (t.checks || {})[n]);
+
+// Responsabilidade: resultado permanente. Tem responsável (quem criou) e participantes.
+// Titular é por tarefa, dentro dela — a responsabilidade não precisa de dono único.
+const RESPS0 = [
+  { id: 1, area: "Produção", name: "Elenco vestido e caracterizado na chamada", owner: "Rodrigo", since: "mar 2024",
+    parts: ["Mariza", "Lucas", "Isadora", "Julia"],
+    proof: "Conferência marcada no Livro do Dia antes da chamada",
+    misses: [{ when: "22 ago", what: "Show da tarde: conferência não foi marcada, figurino saiu na hora." }, { when: "9 ago", what: "Titular de folga e ninguém pegou — virou ocorrência #128." }],
+    items: [
+      { id: 11, name: "Conferir figurino do elenco", mode: "cada", tit: "Mariza", subs: ["Lucas", "Isadora"], cad: "Todo show", done: 28, total: 30 },
+      { id: 12, name: "Repor peças danificadas", mode: "titular", tit: "Lucas", subs: ["Mariza"], cad: "Semanal", done: 4, total: 4 },
+      { id: 13, name: "Caracterização de quem entrou agora", mode: "titular", tit: "Isadora", subs: ["Julia"], cad: "Sob demanda", done: 6, total: 7 }
+    ] },
+  { id: 2, area: "Produção", name: "Palco e equipamento em condição de uso", owner: "Rodrigo", since: "jan 2023",
+    parts: ["Lucas", "Gabriel", "Deborah"],
+    proof: "Check-in de palco liberado no 19 antes da abertura",
+    misses: [{ when: "ontem", what: "Teste de equipamento venceu sem ser feito — ocorrência #142." }],
+    items: [
+      { id: 21, name: "Varredura de palco antes da abertura", mode: "titular", tit: "Lucas", subs: ["Gabriel", "Rodrigo"], cad: "Todo show", done: 30, total: 30 },
+      { id: 22, name: "Teste de equipamento de queda", mode: "titular", tit: "Gabriel", subs: ["Lucas"], cad: "Semanal", done: 2, total: 4 },
+      { id: 23, name: "Briefing de segurança com o elenco", mode: "titular", tit: "Rodrigo", subs: ["Deborah"], cad: "Todo show", done: 27, total: 30 }
+    ] },
+  { id: 3, area: "Produção", name: "Casa aberta no horário e público respondido", owner: "Rodrigo", since: "set 2023",
+    parts: ["Maico", "Gabriel"],
+    proof: "Casa aberta no horário publicado e ocorrência respondida em 48h",
+    misses: [{ when: "24 ago", what: "Duas ocorrências do público passaram de 48h sem resposta." }],
+    items: [
+      { id: 31, name: "Abertura da casa e conferência de acessos", mode: "primeiro", tit: "Maico", subs: ["Gabriel"], cad: "Todo dia", done: 29, total: 30 },
+      { id: 32, name: "Retorno de ocorrências do público", mode: "titular", tit: "Rodrigo", subs: ["Maico"], cad: "Sob demanda", done: 11, total: 13 }
+    ] },
+  { id: 4, area: "Bailarinos", name: "Elenco pronto para o show", owner: "Victor Oliveira", since: "fev 2022",
+    parts: ["Rodrigo", "Cássia", "Isadora", "Julia"],
+    proof: "Aquecimento e reposição registrados no Livro do Dia",
+    misses: [{ when: "18 ago", what: "Semana sem ensaio de reposição: três faltas não foram repostas." }],
+    items: [
+      { id: 41, name: "Aquecimento dirigido antes do show", mode: "titular", tit: "Deborah", subs: ["Rodrigo"], cad: "Todo show", done: 30, total: 30 },
+      { id: 42, name: "Ensaio de reposição para quem faltou", mode: "titular", tit: "Rodrigo", subs: ["Deborah", "Cássia"], cad: "Semanal", done: 3, total: 4 },
+      { id: 43, name: "Marcação nova com quem entrou", mode: "titular", tit: "Cássia", subs: [], cad: "Sob demanda", done: 2, total: 2 }
+    ] }
+];
+
+const TASKS0 = [
+  { id: 1, item: 21, resp: 2, title: "Varredura de palco antes da abertura", who: "Lucas", when: "16:40", state: "Feita",
+    mode: "titular", crew: ["Lucas", "Gabriel"] },
+  { id: 2, item: 31, resp: 3, title: "Abertura da casa e conferência de acessos", who: "Maico", when: "16:00", state: "Feita",
+    mode: "primeiro", crew: ["Maico", "Gabriel"], by: "Maico" },
+  { id: 3, item: 23, resp: 2, title: "Briefing de segurança com o elenco", who: "Rodrigo", when: "18:30", state: "A fazer",
+    mode: "titular", crew: ["Rodrigo", "Deborah"] },
+  { id: 4, item: 0, resp: 3, title: "Levar as capas novas para o Palco B", who: "Gabriel", when: "hoje", state: "A fazer", from: "Rodrigo",
+    mode: "titular", crew: [] },
+  { id: 5, item: 0, resp: 4, title: "Conferir sapatilhas do elenco novo", who: "Julia", when: "hoje", state: "A fazer", from: "Deborah",
+    mode: "titular", crew: [] },
+  { id: 6, item: 22, resp: 2, title: "Teste de equipamento de queda", who: "Gabriel", when: "ontem", state: "Vencida", oc: "#142",
+    mode: "titular", crew: [] },
+  { id: 7, item: 0, resp: 1, title: "Contagem do estoque de figurino", who: "Mariza", when: "hoje", state: "A fazer", from: "Rodrigo",
+    mode: "cada", crew: ["Mariza", "Lucas", "Isadora"], checks: { "Mariza": true } }
+];
+
+const findP = n => PEOPLE.find(p => p.name === n) || { name: n, area: "", role: "MEM", on: true };
+const initialsOf = n => (n || "?").split(" ").map(x => x[0]).join("").slice(0, 2).toUpperCase();
+const first = n => (n || "").split(" ")[0];
+const plural = (n, s, p) => n + " " + (n === 1 ? s : p);
+const avatar = (size, tone) => "width:" + size + "px;height:" + size + "px;flex:none;border-radius:" + Math.round(size / 3) + "px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:" + (size > 30 ? 12 : 10) + "px;font-weight:700;background:" + tone + "1f;color:" + tone;
+const btn = (on, dot) => "display:flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:11px;white-space:nowrap;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;border:1px solid " + (on ? dot : "#e6e1f2") + ";background:" + (on ? dot + "14" : "#fff") + ";color:" + (on ? dot : "#5b5473");
+const chip = (on, canClick) => "height:30px;padding:0 12px;border-radius:10px;white-space:nowrap;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;cursor:" + (canClick ? "pointer" : "default") + ";border:1px solid " + (on ? "#6C2BF2" : "#e6e1f2") + ";background:" + (on ? "#f2ecfe" : "#fff") + ";color:" + (on ? "#6C2BF2" : canClick ? "#6b6482" : "#c8c0e4");
+const smallChip = (on, canClick) => "height:27px;padding:0 10px;border-radius:9px;white-space:nowrap;font-family:Manrope,sans-serif;font-size:11px;font-weight:700;cursor:" + (canClick ? "pointer" : "default") + ";border:1px solid " + (on ? "#6C2BF2" : "#e6e1f2") + ";background:" + (on ? "#f2ecfe" : "#fff") + ";color:" + (on ? "#6C2BF2" : canClick ? "#6b6482" : "#c8c0e4");
+const rateTone = pct => pct >= 95 ? ["#0b6b64", "#e2f4f2"] : pct >= 80 ? ["#8a6413", "#fdf1dc"] : ["#a12c2c", "#fdf5f5"];
+
+class Component extends DCLogic {
+  state = {
+    profile: "ADM", tab: "tarefas", filter: "Hoje",
+    resps: JSON.parse(JSON.stringify(RESPS0)),
+    tasks: JSON.parse(JSON.stringify(TASKS0)),
+    nextId: 20, nextItemId: 90, nextRespId: 5,
+    lote: false, picks: {}, skips: {}, confirmed: {},
+    respDet: null, respDraft: null,
+    asa: false, asaCard: null, asaPerson: null, asaAll: false, pessoa: null, dismissed: {}
+  };
+
+  componentDidMount() {
+    const p = this.props.perfilInicial;
+    if (p && p !== this.state.profile) this.setState({ profile: p });
+  }
+
+  respOf(id) { return this.state.resps.find(r => r.id === id) || this.state.resps[0]; }
+  dotOf(id) { const i = this.state.resps.findIndex(r => r.id === id); return DOTS[(i < 0 ? 0 : i) % DOTS.length]; }
+  itemOf(iid) {
+    let found = null;
+    this.state.resps.forEach(r => r.items.forEach(i => { if (i.id === iid) found = { item: i, resp: r }; }));
+    return found;
+  }
+  // O lote: o que a cadência mandaria disparar hoje e ainda não virou tarefa.
+  suggestions() {
+    const st = this.state;
+    const out = [];
+    st.resps.forEach(r => r.items.forEach(i => {
+      if (i.cad === "Sob demanda") return;
+      if (st.confirmed[i.id]) return;
+      if (st.tasks.some(t => t.item === i.id && t.state !== "Vencida")) return;
+      out.push({ item: i, resp: r });
+    }));
+    return out;
+  }
+
+  renderVals() {
+    const self0 = this;
+    const st = this.state;
+    const active = st.profile;
+    const meta = PROFILES.find(p => p.key === active) || PROFILES[0];
+    // Direção manda como a Administração: cria, confirma lote e marca em qualquer área.
+    const isAdm = active === "ADM" || active === "DIR", isDir = false, isSup = active === "SUP", isMem = active === "MEM";
+    const mePerson = meta.person;
+    const myArea = findP(mePerson).area;
+    const myResps = st.resps.filter(r => r.owner === mePerson);
+    const inResps = st.resps.filter(r => r.parts.indexOf(mePerson) >= 0);
+    const mineResp = r => !!r && (r.owner === mePerson || r.parts.indexOf(mePerson) >= 0 || r.area === myArea);
+    const canConfirm = r => isAdm || (!!r && r.owner === mePerson);
+    const canEdit = isAdm || isSup;
+
+    const profileTabs = PROFILES.map(p => ({
+      name: p.name, dot: p.dot,
+      onClick: () => this.setState({ profile: p.key, tab: "tarefas", filter: "Hoje", lote: false, respDet: null, respDraft: null, asa: false, asaCard: null, asaPerson: null, pessoa: null, picks: {}, skips: {} }),
+      style: btn(p.key === active, p.dot)
+    }));
+
+    const shellNav = NAV.map(g => ({
+      title: g.title,
+      items: g.items.filter(it => it[2].indexOf(active) >= 0).map(it => {
+        const on = it[0] === "10";
+        return {
+          href: NAV_HREF[it[0]],
+          label: (isMem && it[3] ? it[3] : it[1]),
+          style: "font-size:12px;padding:6px 9px;border-radius:9px;color:" + (on ? "#fff" : "#c8c0e4") + ";background:" + (on ? "rgba(255,255,255,.13)" : "transparent") + ";font-weight:" + (on ? 700 : 500)
+        };
+      })
+    }));
+
+    const tabDefs = [["tarefas", isMem ? "Minhas tarefas" : "Tarefas"], ["resp", isMem ? "Minhas responsabilidades" : "Responsabilidades"]];
+    const tabs = tabDefs.map(t => ({
+      label: t[1],
+      onClick: () => this.setState({ tab: t[0], respDet: null, respDraft: null }),
+      style: "border:none;background:transparent;font-family:Manrope,sans-serif;font-size:13px;font-weight:" + (st.tab === t[0] ? 700 : 500) + ";color:" + (st.tab === t[0] ? "#6C2BF2" : "#6b6482") + ";padding:11px 4px;margin-right:12px;cursor:pointer;border-bottom:2px solid " + (st.tab === t[0] ? "#6C2BF2" : "transparent")
+    }));
+
+    const visible = st.tasks.filter(t => {
+      if (isMem) return t.who === mePerson;
+      if (isSup) return t.who === mePerson || mineResp(this.respOf(t.resp));
+      return true;
+    });
+
+    const FILTERS = isMem ? ["Hoje", "Em aberto", "Feitas"] : ["Hoje", "Em aberto", "Vencidas", "Feitas", "Minhas"];
+    const filters = (st.pessoa ? [{
+      label: "só " + st.pessoa + " ×",
+      onClick: () => this.setState({ pessoa: null }),
+      style: "height:32px;padding:0 12px;border-radius:11px;white-space:nowrap;font-family:Manrope,sans-serif;font-size:12px;font-weight:700;cursor:pointer;border:1px solid #2E63D6;background:#e9f2ff;color:#2E63D6"
+    }] : []).concat(FILTERS.map(f => ({
+      label: f,
+      onClick: () => this.setState({ filter: f }),
+      style: "height:32px;padding:0 12px;border-radius:11px;white-space:nowrap;font-family:Manrope,sans-serif;font-size:12px;font-weight:700;cursor:pointer;border:1px solid " + (st.filter === f ? "#6C2BF2" : "#e6e1f2") + ";background:" + (st.filter === f ? "#f2ecfe" : "#fff") + ";color:" + (st.filter === f ? "#6C2BF2" : "#6b6482")
+    })));
+
+    const filtered = visible.filter(t => {
+      if (st.pessoa && t.who !== st.pessoa && crewOf(t).indexOf(st.pessoa) < 0) return false;
+      if (st.filter === "Em aberto") return t.state === "A fazer";
+      if (st.filter === "Vencidas") return t.state === "Vencida";
+      if (st.filter === "Feitas") return t.state === "Feita";
+      if (st.filter === "Minhas") return t.who === mePerson;
+      return true;
+    });
+
+    const canCheck = t => t.state !== "Feita" && (isAdm || crewOf(t).indexOf(mePerson) >= 0 || (isSup && canConfirm(this.respOf(t.resp))));
+    const patchTask = (id, patch) => this.setState({ tasks: st.tasks.map(x => x.id === id ? Object.assign({}, x, patch) : x) });
+
+    // Modo "cada um marca": a tarefa só fecha quando o último marcar.
+    const toggleCheck = (t, name) => {
+      const checks = Object.assign({}, t.checks || {});
+      if (checks[name]) delete checks[name]; else checks[name] = true;
+      const todos = crewOf(t).every(n => checks[n]);
+      patchTask(t.id, { checks: checks, state: todos ? "Feita" : (t.state === "Feita" ? "A fazer" : t.state), when: todos ? "agora" : t.when });
+    };
+    const fechar = (t, quem) => patchTask(t.id, { state: "Feita", when: "agora", by: quem });
+
+    // Grupo veio do lote (titular + substitutos) ou, na avulsa, dos participantes da responsabilidade.
+    const crewPadrao = t => {
+      const src = t.item ? this.itemOf(t.item) : null;
+      if (src) return [src.item.tit].concat(src.item.subs || []);
+      const r = this.respOf(t.resp);
+      return [r.owner].concat(r.parts).slice(0, 3);
+    };
+    const cycleMode = t => {
+      const next = MODES[(MODES.indexOf(modeOf(t)) + 1) % MODES.length];
+      const crew = (t.crew && t.crew.length) ? t.crew : (next === "titular" ? [] : crewPadrao(t));
+      patchTask(t.id, { mode: next, crew: crew, checks: {} });
+    };
+
+    const taskRow = t => {
+      const r = this.respOf(t.resp);
+      const dot = this.dotOf(t.resp);
+      const src = t.item ? this.itemOf(t.item) : null;
+      const done = t.state === "Feita", late = t.state === "Vencida", may = canCheck(t);
+      const md = modeOf(t), crew = crewOf(t), grupal = isGrupal(t), mk = marcados(t);
+      const eu = crew.indexOf(mePerson) >= 0;
+      const meuCheck = md === "cada" && eu && !!(t.checks || {})[mePerson];
+      return {
+        title: t.title,
+        titleStyle: "font-size:13px;font-weight:600;line-height:1.35;color:" + (done ? "#6b6482" : "#1b1630") + (done ? ";text-decoration:line-through" : ""),
+        modeLabel: grupal ? MODE[md].label : "pessoal",
+        modeTitle: grupal ? MODE[md].note : "Uma pessoa só: o titular marca e fecha.",
+        onMode: () => { if (isAdm || (isSup && canConfirm(r))) cycleMode(t); },
+        modeStyle: "font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;padding:3px 8px;border-radius:999px;font-family:Manrope,sans-serif;border:1px solid " + (grupal ? "#ddd0fb" : "#e6e1f2") + ";background:" + (grupal ? "#f7f3ff" : "#fff") + ";color:" + (grupal ? "#6C2BF2" : "#6b6482") + ";cursor:" + (isAdm || isSup ? "pointer" : "default"),
+        crew: grupal ? crew.map(n => {
+          const ok = !!(t.checks || {})[n];
+          const tit = n === t.who;
+          return {
+            initials: initialsOf(n),
+            title: n + (tit ? " · titular" : "") + (md === "cada" ? (ok ? " · marcou" : " · não marcou") : ""),
+            onClick: () => { if (md === "cada" && (isAdm || n === mePerson || (isSup && canConfirm(r)))) toggleCheck(t, n); },
+            style: "width:24px;height:24px;flex:none;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;font-family:Manrope,sans-serif;cursor:" + (md === "cada" ? "pointer" : "default") + ";border:1px solid " + (md === "cada" && ok ? "#0b6b64" : tit ? dot : "#e6e1f2") + ";background:" + (md === "cada" && ok ? "#e2f4f2" : tit ? dot + "1f" : "#fff") + ";color:" + (md === "cada" && ok ? "#0b6b64" : tit ? dot : "#6b6482")
+          };
+        }) : [],
+        crewStyle: grupal ? "display:flex;align-items:center;gap:4px;flex-wrap:wrap" : "display:none",
+        crewNote: md === "cada"
+          ? mk.length + " de " + crew.length + " marcaram"
+          : md === "primeiro"
+            ? (done ? "fechada por " + first(t.by || t.who) : "qualquer um fecha")
+            : plural(crew.length - 1, "ajuda", "ajudam"),
+        crewNoteStyle: "font-size:10px;color:" + (md === "cada" && mk.length < crew.length && late ? "#a12c2c" : "#6b6482"),
+        origin: src ? r.area : "avulsa",
+        originStyle: "font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:999px;white-space:nowrap;color:" + (src ? dot : "#6b6482") + ";background:" + (src ? dot + "14" : "#f4f2fa"),
+        sub: src ? src.resp.name + " · " + src.item.cad.toLowerCase() : "pedida por " + (t.from || "—"),
+        who: t.who, initials: initialsOf(t.who),
+        avatarStyle: avatar(28, done ? "#6b6482" : dot),
+        whoNote: t.subFor ? "no lugar de " + first(t.subFor) : md === "cada" ? "abriu o grupo" : grupal ? "titular" : findP(t.who).area || "—",
+        when: done ? "feita " + t.when : t.when,
+        state: late ? "vencida · " + (t.oc || "") : done ? "feita" : md === "cada" ? mk.length + "/" + crew.length : "a fazer",
+        stateStyle: "font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;padding:3px 8px;border-radius:999px;background:" + (late ? "#fdf5f5" : done ? "#e2f4f2" : "#f4f2fa") + ";color:" + (late ? "#a12c2c" : done ? "#0b6b64" : "#6b6482"),
+        checkMark: done ? "✓" : meuCheck ? "✓" : "",
+        checkTitle: md === "cada" ? (eu ? "Marcar o seu" : "Marcar por quem falta") : md === "primeiro" ? "Fechar pelo grupo" : "Fechar como titular",
+        checkStyle: "width:26px;height:26px;flex:none;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;font-family:Manrope,sans-serif;cursor:" + (may ? "pointer" : "default") + ";border:1px solid " + (done || meuCheck ? "#0b6b64" : late ? "#f0bcbc" : "#ddd6ee") + ";background:" + (done || meuCheck ? "#e2f4f2" : "#fff") + ";color:#0b6b64",
+        onCheck: () => {
+          if (!may) return;
+          if (md === "cada") { toggleCheck(t, eu ? mePerson : (crew.filter(n => !(t.checks || {})[n])[0] || mePerson)); return; }
+          fechar(t, md === "primeiro" ? (eu ? mePerson : t.who) : t.who);
+        },
+        style: "display:flex;gap:11px;align-items:center;padding:10px 20px;border-bottom:1px solid #f2eefa;background:" + (late ? "#fffcfc" : "#fff")
+      };
+    };
+
+    const taskGroups = [
+      { key: "Vencida", title: "Vencidas", dot: "#a12c2c" },
+      { key: "A fazer", title: "Em aberto", dot: "#B06E00" },
+      { key: "Feita", title: "Feitas hoje", dot: "#0b6b64" }
+    ].map(g => {
+      const list = filtered.filter(t => t.state === g.key);
+      return { title: g.title, count: plural(list.length, "tarefa", "tarefas"), dot: "width:9px;height:9px;flex:none;border-radius:3px;background:" + g.dot, rows: list.map(taskRow) };
+    }).filter(g => g.rows.length);
+
+    const sugg = this.suggestions().filter(s => canConfirm(s.resp));
+    const loteCount = sugg.length;
+    const pickOf = s => st.picks[s.item.id] || (findP(s.item.tit).on ? s.item.tit : null);
+    const readyCount = sugg.filter(s => !st.skips[s.item.id] && pickOf(s)).length;
+    const missingPick = sugg.filter(s => !st.skips[s.item.id] && !pickOf(s));
+
+    const lote = (st.lote && loteCount) ? {
+      title: "Lote do dia",
+      sub: (isAdm ? "todas as áreas" : myResps.map(r => r.name).join(" · ")) + " · " + plural(loteCount, "sugestão", "sugestões"),
+      intro: "Isto ainda não é tarefa de ninguém. A ASA juntou o que a cadência manda disparar hoje e parou aqui — nada entra na lista de uma pessoa sem você dizer sim.",
+      items: sugg.map(s => {
+        const i = s.item, r = s.resp, dot = this.dotOf(r.id);
+        const tit = findP(i.tit);
+        const picked = pickOf(s);
+        const skipped = !!st.skips[i.id];
+        const forced = picked && picked !== i.tit;
+        const avail = i.subs.filter(x => findP(x).on);
+        return {
+          name: i.name,
+          titleStyle: "font-size:13px;font-weight:600;line-height:1.35;color:" + (skipped ? "#6b6482" : "#1b1630") + (skipped ? ";text-decoration:line-through" : ""),
+          meta: r.area + " · " + r.name + " · titular " + i.tit + (tit.on ? "" : " (" + (tit.off || "fora hoje") + ")"),
+          cad: i.cad,
+          cadStyle: "flex:none;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:999px;white-space:nowrap;color:" + dot + ";background:" + dot + "14",
+          checkMark: skipped ? "" : "✓",
+          checkStyle: "width:26px;height:26px;flex:none;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;cursor:pointer;font-family:Manrope,sans-serif;border:1px solid " + (skipped ? "#ddd6ee" : "#6C2BF2") + ";background:" + (skipped ? "#fff" : "#f2ecfe") + ";color:#6C2BF2",
+          onToggle: () => this.setState({ skips: Object.assign({}, st.skips, { [i.id]: !skipped }) }),
+          pickerOpen: !skipped && !picked,
+          pickerNote: i.tit + " está " + (tit.off || "fora hoje") + ". Escolha quem cobre entre os substitutos — a ordem é a ordem de chamada.",
+          options: i.subs.map(x => {
+            const sp = findP(x);
+            return {
+              name: x, note: sp.on ? "escalado hoje" : (sp.off || "fora hoje"),
+              noteStyle: "font-size:10px;font-weight:500;color:" + (sp.on ? "#0b6b64" : "#a12c2c"),
+              onClick: () => { if (sp.on) this.setState({ picks: Object.assign({}, st.picks, { [i.id]: x }) }); },
+              style: "display:flex;flex-direction:column;gap:1px;align-items:flex-start;padding:7px 11px;border-radius:10px;font-family:Manrope,sans-serif;font-size:12px;font-weight:700;cursor:" + (sp.on ? "pointer" : "not-allowed") + ";border:1px solid " + (sp.on ? "#ddd0fb" : "#eee") + ";background:#fff;color:" + (sp.on ? "#3c3559" : "#6b6482")
+            };
+          }),
+          noOption: (!i.subs.length || !avail.length) ? (i.subs.length ? "Todos os substitutos estão fora hoje. Tire do lote ou aponte outro substituto na responsabilidade." : "Esta tarefa não tem substituto cadastrado — só o titular pode fazê-la.") : false,
+          assigned: (!skipped && picked) ? {
+            name: picked, initials: initialsOf(picked),
+            avatarStyle: avatar(26, dot),
+            note: forced ? "substituto · no lugar de " + i.tit : "titular",
+            changeStyle: i.subs.length ? "height:26px;padding:0 10px;flex:none;border-radius:8px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:11px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer" : "display:none",
+            onChange: () => {
+              const order = [i.tit].concat(i.subs);
+              const k = order.indexOf(picked);
+              this.setState({ picks: Object.assign({}, st.picks, { [i.id]: order[(k + 1) % order.length] }) });
+            }
+          } : false,
+          style: "display:flex;flex-direction:column;gap:9px;padding:12px 13px;border-radius:14px;border:1px solid " + (skipped ? "#eee9f8" : "#e6e1f2") + ";background:" + (skipped ? "#faf9fe" : "#fff")
+        };
+      }),
+      blocked: missingPick.length ? plural(missingPick.length, "sugestão está", "sugestões estão") + " sem quem faça: o titular está fora e nenhum substituto disponível foi escolhido. Tirar do lote conta contra o cumprimento no mês." : false,
+      footNote: readyCount ? "Confirmar cria " + plural(readyCount, "tarefa", "tarefas") + " na lista de quem você apontou." : "Nada selecionado.",
+      confirmLabel: readyCount ? "Confirmar " + plural(readyCount, "tarefa", "tarefas") : "Nada para confirmar",
+      confirmStyle: "height:34px;padding:0 15px;border-radius:11px;border:none;color:#fff;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;white-space:nowrap;background:" + (readyCount ? "#6C2BF2" : "#cec5e6") + ";cursor:" + (readyCount ? "pointer" : "not-allowed"),
+      onConfirm: () => {
+        if (!readyCount) return;
+        let id = st.nextId;
+        const born = [];
+        const conf = Object.assign({}, st.confirmed);
+        sugg.forEach(s => {
+          conf[s.item.id] = true;
+          if (st.skips[s.item.id]) return;
+          const who = pickOf(s);
+          if (!who) return;
+          const md = s.item.mode || "titular";
+          const crew = md === "titular" ? [] : [s.item.tit].concat(s.item.subs || []);
+          born.push({ id: id++, item: s.item.id, resp: s.resp.id, title: s.item.name, who: who, when: s.item.cad === "Todo show" ? "antes da chamada" : "hoje", state: "A fazer", subFor: who !== s.item.tit ? s.item.tit : null, mode: md, crew: crew, checks: {} });
+        });
+        this.setState({ tasks: st.tasks.concat(born), nextId: id, confirmed: conf, lote: false, picks: {}, skips: {} });
+      },
+      onClose: () => this.setState({ lote: false })
+    } : false;
+
+    const respScoped = st.resps.filter(r => {
+      // Elenco lê só o que sustenta: participante, responsável, ou titular/substituto de alguma tarefa.
+      if (isMem) return r.owner === mePerson || r.parts.indexOf(mePerson) >= 0
+        || r.items.some(i => i.tit === mePerson || (i.subs || []).indexOf(mePerson) >= 0);
+      if (isSup) return mineResp(r);
+      return true;
+    });
+
+    const respCards = respScoped.map(r => {
+      const dot = this.dotOf(r.id);
+      const dn = r.items.reduce((a, i) => a + i.done, 0), tt = r.items.reduce((a, i) => a + i.total, 0);
+      const pct = tt ? Math.round(dn / tt * 100) : 0;
+      const tone = rateTone(pct);
+      return {
+        name: r.name,
+        meta: r.area + " · " + plural(r.items.length, "tarefa dentro dela", "tarefas dentro dela") + " · " + r.proof,
+        dot: "width:12px;height:12px;flex:none;border-radius:4px;margin-top:5px;background:" + dot,
+        owner: r.owner, ownerInitials: initialsOf(r.owner),
+        ownerAvatar: avatar(28, dot),
+        ownerNote: "criou em " + r.since + " · " + (findP(r.owner).role === "ADM" ? "administração" : "supervisão"),
+        partLabel: "Participantes · " + plural(r.parts.length, "pessoa", "pessoas"),
+        parts: r.parts.map(p => ({
+          name: p,
+          style: "font-size:11.5px;font-weight:600;padding:4px 9px;border-radius:999px;background:#faf9fe;border:1px solid #eee9f8;color:#3c3559;white-space:nowrap"
+        })),
+        noParts: r.parts.length ? false : "sem participantes",
+        rate: tt ? dn + "/" + tt : "—",
+        rateStyle: "font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;white-space:nowrap;color:" + tone[0],
+        barWrap: "display:block;width:96px;height:7px;border-radius:999px;background:#f0ecf9;overflow:hidden",
+        barFill: "display:block;height:7px;border-radius:999px;width:" + pct + "%;background:" + tone[0],
+        openLabel: canEdit ? "editar" : "ver",
+        onOpen: () => this.setState({ respDet: r.id, respDraft: JSON.parse(JSON.stringify(r)) }),
+        items: r.items.map(i => {
+          const ip = Math.round(i.done / (i.total || 1) * 100);
+          const it = rateTone(ip);
+          const tit = findP(i.tit);
+          return {
+            name: i.name,
+            tit: i.tit, titInitials: initialsOf(i.tit), titAvatar: avatar(24, dot),
+            titNote: tit.on ? "disponível hoje" : (tit.off || "fora hoje"),
+            titNoteStyle: "font-size:10px;color:" + (tit.on ? "#6b6482" : "#a12c2c"),
+            subs: i.subs.length ? i.subs.map(first).join(", ") : "nenhum",
+            subsStyle: "width:126px;flex:none;font-size:11px;color:" + (i.subs.length ? "#3c3559" : "#a12c2c"),
+            cad: i.cad,
+            rate: i.total ? i.done + "/" + i.total : "novo",
+            rateStyle: "width:88px;flex:none;text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:" + it[0]
+          };
+        }),
+        noItems: r.items.length ? false : "Nenhuma tarefa dentro dela: esta responsabilidade não produz nada ainda.",
+        style: "display:flex;flex-direction:column;gap:13px;padding:15px 16px;border-radius:16px;border:1px solid #e6e1f2;background:#fff"
+      };
+    });
+
+    let respDet = null;
+    if (st.respDet !== null) {
+      const saved = st.resps.find(r => r.id === st.respDet);
+      const d = st.respDraft || (saved ? JSON.parse(JSON.stringify(saved)) : null);
+      if (d) {
+        const isNew = !saved;
+        const dot = saved ? this.dotOf(d.id) : DOTS[st.resps.length % DOTS.length];
+        const setD = patch => this.setState({ respDraft: Object.assign({}, d, patch) });
+        const setItem = (iid, patch) => setD({ items: d.items.map(x => x.id === iid ? Object.assign({}, x, patch) : x) });
+        const pool = PEOPLE.filter(p => p.name !== (d.owner || mePerson));
+        const changed = !saved || JSON.stringify(d) !== JSON.stringify(saved);
+        const lines = [];
+        if (saved) {
+          if (d.area !== saved.area) lines.push("Sai de " + saved.area + " e passa a " + d.area + ": muda quem vê isto por padrão e onde ela é cobrada. Os participantes continuam os mesmos.");
+          if (JSON.stringify(d.parts) !== JSON.stringify(saved.parts)) lines.push(d.parts.length ? "Participantes: " + d.parts.join(", ") + ". São eles que podem ser titular ou substituto das tarefas daqui." : "Sem participantes: nenhuma tarefa desta responsabilidade tem quem receber.");
+          const oldIds = saved.items.map(i => i.id), newIds = d.items.map(i => i.id);
+          if (newIds.some(i => oldIds.indexOf(i) < 0)) lines.push("Tarefa nova entra no lote a partir de amanhã, na cadência que você escolheu.");
+          if (oldIds.some(i => newIds.indexOf(i) < 0)) lines.push("A tarefa removida para de ser sugerida. O que já está em aberto continua na lista de quem recebeu.");
+          d.items.forEach(i => {
+            const o = saved.items.find(x => x.id === i.id);
+            if (o && o.tit !== i.tit) lines.push("Em “" + i.name + "”, a ASA passa a cobrar " + i.tit + " no lugar de " + o.tit + ".");
+            if (o && o.cad !== i.cad) lines.push("“" + i.name + "” passa a disparar " + i.cad.toLowerCase() + ".");
+          });
+        } else {
+          lines.push("Nasce em " + d.area + " com você como responsável pela definição — é o seu nome que fica nela, e é você que confirma o lote dela.");
+          lines.push("Titular é por tarefa: cada tarefa dentro dela tem o seu, escolhido entre os participantes.");
+        }
+        respDet = {
+          title: isNew ? "Nova responsabilidade" : d.name || "Sem nome",
+          sub: isNew ? "nada gravado ainda" : d.area + " · responsável " + d.owner + " · " + plural(d.items.length, "tarefa", "tarefas"),
+          dot: "width:12px;height:12px;flex:none;border-radius:4px;background:" + dot,
+          onClose: () => this.setState({ respDet: null, respDraft: null }),
+          readOnly: !canEdit,
+          nameValue: d.name, onName: e => setD({ name: e.target.value }),
+          areas: AREAS.map(x => ({
+            label: x,
+            onClick: () => { if (canEdit) setD({ area: x }); },
+            style: chip(d.area === x, canEdit)
+          })),
+          areaNote: "A área diz onde isto é cobrado e quem vê por padrão. Quem confirma o lote é o responsável — trocar a área não mexe em quem sustenta.",
+          owner: d.owner || mePerson,
+          ownerInitials: initialsOf(d.owner || mePerson),
+          ownerAvatar: avatar(32, dot),
+          ownerNote: isNew
+            ? "Responsável pela definição: quem cria fica com ela. Você responde pelo que esta responsabilidade diz, não por executar cada tarefa."
+            : "Responsável pela definição desde " + d.since + ". Responde pelo que ela diz — executar é dos titulares de cada tarefa.",
+          parts: [{ name: d.owner || mePerson, area: "responsável" }].concat(pool.map(p => ({ name: p.name, area: p.area }))).map(m => ({
+            label: m.name + " · " + m.area,
+            onClick: () => { if (canEdit && m.name !== (d.owner || mePerson)) setD({ parts: d.parts.indexOf(m.name) >= 0 ? d.parts.filter(x => x !== m.name) : d.parts.concat([m.name]) }); },
+            style: chip(d.parts.indexOf(m.name) >= 0 || m.name === (d.owner || mePerson), canEdit && m.name !== (d.owner || mePerson))
+          })),
+          partNote: d.parts.length
+            ? "Vários sustentam a mesma responsabilidade, de qualquer área. Só participante pode ser titular ou substituto das tarefas daqui."
+            : "Sem participante, só o responsável sobra — e ele responde pela definição, não por fazer.",
+          proofValue: d.proof, onProof: e => setD({ proof: e.target.value }),
+          itemsHint: canEdit ? "cada uma tem titular e cadência próprios" : "leitura",
+          items: d.items.map(i => {
+            const ip = i.total ? Math.round(i.done / i.total * 100) : 0;
+            const it = rateTone(ip);
+            const opts = d.parts.concat([d.owner || mePerson]);
+            return {
+              nameValue: i.name, onName: e => setItem(i.id, { name: e.target.value }),
+              onRemove: () => { if (canEdit) setD({ items: d.items.filter(x => x.id !== i.id) }); },
+              removeStyle: canEdit ? "height:30px;padding:0 11px;flex:none;border-radius:9px;border:1px solid #f0bcbc;background:#fff;color:#a12c2c;font-size:11px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer" : "display:none",
+              titulares: opts.map(n => ({
+                label: n,
+                onClick: () => { if (canEdit) setItem(i.id, { tit: n, subs: i.subs.filter(s => s !== n) }); },
+                style: smallChip(i.tit === n, canEdit)
+              })),
+              subs: opts.filter(n => n !== i.tit).map(n => ({
+                label: (i.subs.indexOf(n) >= 0 ? (i.subs.indexOf(n) + 1) + "º · " : "") + n,
+                onClick: () => { if (canEdit) setItem(i.id, { subs: i.subs.indexOf(n) >= 0 ? i.subs.filter(s => s !== n) : i.subs.concat([n]) }); },
+                style: smallChip(i.subs.indexOf(n) >= 0, canEdit)
+              })),
+              noSubOption: opts.filter(n => n !== i.tit).length ? false : "Adicione participantes para ter substituto.",
+              cads: CADS.map(x => ({ label: x, onClick: () => { if (canEdit) setItem(i.id, { cad: x }); }, style: smallChip(i.cad === x, canEdit) })),
+              modos: MODES.map(m => ({ label: MODE[m].verb, onClick: () => { if (canEdit) setItem(i.id, { mode: m }); }, style: smallChip((i.mode || "titular") === m, canEdit) })),
+              modoNote: MODE[i.mode || "titular"].note,
+              health: i.total ? {
+                rate: i.done + "/" + i.total + " · " + ip + "%",
+                rateStyle: "font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;white-space:nowrap;color:" + it[0],
+                barWrap: "display:block;flex:1;height:7px;border-radius:999px;background:#f0ecf9;overflow:hidden",
+                barFill: "display:block;height:7px;border-radius:999px;width:" + ip + "%;background:" + it[0]
+              } : false,
+              warn: !i.tit ? "Sem titular: esta tarefa não entra no lote e ninguém é cobrado por ela."
+                : !i.subs.length && i.cad !== "Sob demanda" ? "Sem substituto: um dia de folga do titular já deixa a sugestão sem quem receber."
+                : false
+            };
+          }),
+          onAddItem: canEdit ? () => {
+            const id = st.nextItemId;
+            this.setState({ nextItemId: id + 1, respDraft: Object.assign({}, d, { items: d.items.concat([{ id: id, name: "", tit: "", subs: [], cad: "Todo show", done: 0, total: 0 }]) }) });
+          } : false,
+          noItems: d.items.length ? false : "Uma responsabilidade sem tarefa não produz nada: ela nunca entra no lote e nunca conta como cumprida. Adicione ao menos uma.",
+          misses: (!isNew && d.misses && d.misses.length) ? d.misses : false,
+          reflex: changed && lines.length ? { title: isNew ? "O que esta responsabilidade passa a valer" : "O que muda quando você salvar", lines: lines } : false,
+          footNote: !canEdit ? (isMem ? "Você sustenta esta responsabilidade. Definir e mudar titular é de quem coordena." : "Leitura: definir responsabilidade é de quem coordena.")
+            : isNew && !d.name.trim() ? "Falta o nome."
+            : d.items.some(i => !i.name.trim() || !i.tit) ? "Toda tarefa precisa de nome e titular."
+            : changed ? "Muda o lote de amanhã, não o que já está em aberto." : "Nada mudou ainda.",
+          cancelStyle: canEdit ? "height:34px;padding:0 13px;border-radius:11px;border:1px solid #e6e1f2;background:#fff;color:#5b5473;font-size:12.5px;font-weight:600;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap" : "display:none",
+          saveLabel: !canEdit ? "Fechar" : isNew ? "Criar responsabilidade" : changed ? "Salvar" : "Sem mudanças",
+          saveStyle: (() => {
+            const ok = !canEdit || (changed && d.name.trim() && !d.items.some(i => !i.name.trim() || !i.tit));
+            return "height:34px;padding:0 14px;border-radius:11px;border:none;color:#fff;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;white-space:nowrap;background:" + (ok ? "#6C2BF2" : "#cec5e6") + ";cursor:" + (ok ? "pointer" : "not-allowed");
+          })(),
+          onSave: () => {
+            if (!canEdit) { this.setState({ respDet: null, respDraft: null }); return; }
+            if (!changed) { this.setState({ respDet: null, respDraft: null }); return; }
+            if (!d.name.trim() || d.items.some(i => !i.name.trim() || !i.tit)) return;
+            const rec = Object.assign({}, d, { owner: d.owner || mePerson, since: d.since || "agora" });
+            this.setState({ resps: saved ? st.resps.map(r => r.id === d.id ? rec : r) : st.resps.concat([rec]), respDet: null, respDraft: null });
+          }
+        };
+      }
+    }
+
+    const overdue = visible.filter(t => t.state === "Vencida");
+    const flatItems = [];
+    st.resps.forEach(r => r.items.forEach(i => flatItems.push({ item: i, resp: r })));
+    const noSub = flatItems.filter(x => !x.item.subs.length && x.item.cad !== "Sob demanda");
+    const titOff = flatItems.filter(x => !findP(x.item.tit).on && sugg.some(s => s.item.id === x.item.id));
+    const weak = flatItems.filter(x => x.item.total && x.item.done / x.item.total < 0.8);
+    const emptyResp = st.resps.filter(r => !r.items.length || !r.parts.length);
+
+    const asaRaw = [];
+    if (overdue.length) asaRaw.push({
+      key: "a1", tag: "Venceu sem ser feita", conf: "regra",
+      title: overdue.length === 1 ? overdue[0].title + " venceu ontem" : overdue.length + " tarefas venceram sem serem feitas",
+      why: "Já virou ocorrência no 19 sozinha, e hoje eu cobro o responsável. Não é castigo: é o que faz a responsabilidade significar alguma coisa.",
+      nums: overdue.map(t => t.title + " · " + t.who + " · " + (t.oc || "sem ocorrência")).join(" · "),
+      lines: ["A ocorrência já está aberta no 19 — não precisa registrar de novo.", "Se venceu porque a cadência está errada, mude a cadência da tarefa, não a pessoa.", "Eu não refaço nem reatribuo."],
+      cta: "Ver a tarefa"
+    });
+    if (loteCount && !isMem) asaRaw.push({
+      key: "a2", tag: "Lote não confirmado", conf: "cadência",
+      title: plural(loteCount, "sugestão esperando", "sugestões esperando") + " a sua confirmação",
+      why: "Enquanto você não confirma, isto não existe para ninguém: a lista de hoje está incompleta e a responsabilidade não conta como cumprida.",
+      nums: sugg.map(s => s.item.name + " · " + s.item.cad.toLowerCase()).join(" · "),
+      lines: ["Confirmar leva um minuto: é um lote só, não uma a uma.", "O que não servir para hoje você tira do lote.", "Eu não crio tarefa por você — foi assim que vocês pediram."],
+      cta: "Abrir o lote"
+    });
+    if (titOff.length) asaRaw.push({
+      key: "a3", tag: "Titular fora", conf: "cruzamento",
+      title: titOff.length === 1 ? "O titular de “" + titOff[0].item.name + "” não está disponível hoje" : titOff.length + " tarefas com titular fora hoje",
+      why: "Titular de folga não é problema — é para isso que existem substitutos. Vira problema quando ninguém escolhe quem cobre.",
+      nums: titOff.map(x => x.item.tit + " · " + (findP(x.item.tit).off || "fora") + " · " + x.item.name).join(" · "),
+      lines: ["A escolha do substituto é sua, no lote — eu não escalo ninguém.", "Substituto fora de escala no dia não aparece como opção.", "Se isso se repete, talvez o titular esteja errado."],
+      cta: "Abrir o lote"
+    });
+    if (noSub.length && !isMem) asaRaw.push({
+      key: "a4", tag: "Sem substituto", conf: "dado",
+      title: noSub.length === 1 ? "“" + noSub[0].item.name + "” não tem substituto" : noSub.length + " tarefas sem substituto",
+      why: "Uma folga do titular já basta para a sugestão nascer sem ninguém para receber. Substituto é o que faz a responsabilidade sobreviver a férias.",
+      nums: noSub.map(x => x.item.name + " · titular " + x.item.tit).join(" · "),
+      lines: ["O substituto sai dos participantes da responsabilidade.", "Dois substitutos bastam na maioria dos casos.", "Eu não aponto substituto — é de quem criou a responsabilidade."],
+      cta: "Abrir a responsabilidade"
+    });
+    if (emptyResp.length && !isMem) asaRaw.push({
+      key: "a6", tag: "Responsabilidade vazia", conf: "dado",
+      title: emptyResp.length === 1 ? "“" + emptyResp[0].name + "” não produz nada" : emptyResp.length + " responsabilidades sem tarefa ou sem participante",
+      why: "Sem tarefa dentro, ela nunca entra no lote. Sem participante, não há quem receber. Nos dois casos ela é só uma frase bonita.",
+      nums: emptyResp.map(r => r.name + " · " + plural(r.items.length, "tarefa", "tarefas") + " · " + plural(r.parts.length, "participante", "participantes")).join(" · "),
+      lines: ["Uma tarefa e um participante já a tiram do papel.", "Se não tem o que fazer, talvez ela caiba dentro de outra.", "Eu não crio tarefa dentro dela por você."],
+      cta: "Abrir a responsabilidade"
+    });
+    if (weak.length && !isMem) asaRaw.push({
+      key: "a5", tag: "Cumprimento baixo", conf: "30 dias",
+      title: weak.length === 1 ? "“" + weak[0].item.name + "” é cumprida em menos de 80% dos casos" : weak.length + " tarefas abaixo de 80%",
+      why: "Isto não sai de relatório: sai das tarefas que nasceram dela. Quando cai muito, ou a cadência não cabe na rotina, ou o titular está sobrecarregado.",
+      nums: weak.map(x => x.item.name + " · " + x.item.done + "/" + x.item.total + " · " + x.item.tit).join(" · "),
+      lines: ["Olhe a cadência primeiro: semanal que ninguém cumpre costuma ser quinzenal na vida real.", "Depois olhe quantas tarefas o mesmo titular carrega.", "Eu não mudo cadência nem titular."],
+      cta: "Abrir a responsabilidade"
+    });
+
+    const faltaMarcar = visible.filter(t => modeOf(t) === "cada" && t.state !== "Feita" && marcados(t).length < crewOf(t).length);
+    if (faltaMarcar.length && !isDir) asaRaw.push({
+      key: "a7", tag: "Cada um marca", conf: "regra",
+      title: faltaMarcar.length === 1
+        ? "“" + faltaMarcar[0].title + "” espera " + plural(crewOf(faltaMarcar[0]).length - marcados(faltaMarcar[0]).length, "marcação", "marcações")
+        : faltaMarcar.length + " tarefas de grupo com gente que não marcou",
+      why: "Nesta tarefa cada um responde pelo seu pedaço, então eu não cobro só o titular: cobro quem não marcou, pelo nome.",
+      nums: faltaMarcar.map(t => t.title + " · falta " + crewOf(t).filter(n => !(t.checks || {})[n]).map(first).join(", ")).join(" · "),
+      lines: ["Se na verdade um marca pelos outros, o modo certo é “titular responde”.", "O modo é da tarefa: dá para trocar na própria linha.", "Eu não marco por ninguém — só mostro quem falta."],
+      cta: "Ver as tarefas"
+    });
+
+    // Quem está encarregado de quê: cruza responsabilidade, titular, substituto e tarefa de hoje.
+    const mapaScope = respScoped.length ? respScoped : st.resps;
+    const nomes = [];
+    const push = n => { if (n && nomes.indexOf(n) < 0) nomes.push(n); };
+    mapaScope.forEach(r => {
+      push(r.owner);
+      r.parts.forEach(push);
+      r.items.forEach(i => push(i.tit));
+    });
+    const cargaDe = n => {
+      const own = mapaScope.filter(r => r.owner === n);
+      const part = mapaScope.filter(r => r.owner !== n && r.parts.indexOf(n) >= 0);
+      const tits = flatItems.filter(x => x.item.tit === n);
+      const subs = flatItems.filter(x => x.item.tit !== n && (x.item.subs || []).indexOf(n) >= 0);
+      const hoje = st.tasks.filter(t => t.state !== "Feita" && (t.who === n || crewOf(t).indexOf(n) >= 0));
+      const late = hoje.filter(t => t.state === "Vencida");
+      const solo = tits.filter(x => !(x.item.subs || []).length && x.item.cad !== "Sob demanda");
+      return { own: own, part: part, tits: tits, subs: subs, hoje: hoje, late: late, solo: solo };
+    };
+    const mapaRows = nomes.map(n => ({ n: n, c: cargaDe(n) }))
+      .sort((a, b) => (b.c.tits.length * 3 + b.c.own.length * 2 + b.c.hoje.length) - (a.c.tits.length * 3 + a.c.own.length * 2 + a.c.hoje.length));
+
+    const asaMapa = mapaRows.length ? {
+      conf: "cruzamento",
+      why: isMem
+        ? "Quem sustenta o mesmo que você. Serve para você saber a quem pedir quando o seu pedaço depende de outro."
+        : "Eu não decido de quem é o quê — mostro o que já está escrito nas responsabilidades. Titular é por tarefa, então a mesma pessoa pode carregar mais de um pedaço.",
+      rows: (st.asaAll ? mapaRows : mapaRows.slice(0, 5)).map(row => {
+        const n = row.n, c = row.c, p = findP(n);
+        const open = st.asaPerson === n;
+        const risco = c.late.length || c.solo.length;
+        const dot = risco ? "#a12c2c" : c.tits.length ? "#2E63D6" : "#6b6482";
+        const lines = [];
+        c.own.forEach(r => lines.push({ text: "responde pela definição de “" + r.name + "”", tag: r.area, tone: "#6C2BF2" }));
+        c.tits.forEach(x => lines.push({ text: "titular de “" + x.item.name + "”", tag: x.item.cad.toLowerCase(), tone: "#2E63D6" }));
+        c.part.forEach(r => lines.push({ text: "sustenta “" + r.name + "”", tag: "participante", tone: "#6b6482" }));
+        c.subs.forEach(x => lines.push({ text: "substituto em “" + x.item.name + "”", tag: "reserva", tone: "#6b6482" }));
+        const shown = lines.slice(0, 6);
+        const alvo = c.own[0] || c.part[0] || (c.tits[0] && c.tits[0].resp);
+        return {
+          initials: initialsOf(n), name: n,
+          meta: (p.area || "—") + (p.on ? "" : " · " + (p.off || "fora hoje")) + " · " + plural(c.hoje.length, "tarefa hoje", "tarefas hoje"),
+          metaStyle: "font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:" + (p.on ? "#6b6482" : "#a12c2c"),
+          avatarStyle: avatar(28, dot),
+          load: c.tits.length ? plural(c.tits.length, "titular", "titulares") : c.own.length ? "define" : "apoia",
+          loadStyle: "font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;white-space:nowrap;padding:3px 8px;border-radius:999px;background:" + dot + "14;color:" + dot,
+          open: open,
+          onClick: () => this.setState({ asaPerson: open ? null : n }),
+          headStyle: "display:flex;align-items:center;gap:9px;width:100%;padding:8px 9px;border:none;background:transparent;font-family:Manrope,sans-serif;cursor:pointer;text-align:left",
+          lines: shown.map(l => ({
+            text: l.text + (shown.length < lines.length && l === shown[shown.length - 1] ? " · +" + (lines.length - shown.length) + " outros" : ""),
+            dot: "width:5px;height:5px;flex:none;border-radius:2px;margin-top:5px;background:" + l.tone,
+            tag: l.tag,
+            tagStyle: "flex:none;font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;color:" + l.tone
+          })),
+          warn: c.late.length
+            ? plural(c.late.length, "tarefa vencida", "tarefas vencidas") + " no nome de " + first(n) + " — já virou ocorrência no 19."
+            : c.solo.length
+              ? "Titular sem substituto em " + plural(c.solo.length, "tarefa", "tarefas") + ": uma folga já deixa a sugestão sem quem receba."
+              : false,
+          tasksLabel: "Ver as tarefas de " + first(n),
+          onTasks: () => this.setState({ tab: "tarefas", filter: "Hoje", pessoa: n, asa: false, asaPerson: null }),
+          respLabel: alvo ? "Abrir “" + alvo.name + "”" : "",
+          onResp: alvo ? () => this.setState({ tab: "resp", respDet: alvo.id, respDraft: JSON.parse(JSON.stringify(alvo)), asa: false, asaPerson: null }) : false,
+          style: "border:1px solid " + (open ? "#ddd0fb" : "#eee9f8") + ";border-radius:11px;background:" + (open ? "#faf9fe" : "#fff") + ";overflow:hidden"
+        };
+      }),
+      more: mapaRows.length > 5 ? {
+        label: st.asaAll ? "Mostrar só quem carrega mais" : "Ver todas as " + mapaRows.length + " pessoas",
+        onClick: () => this.setState({ asaAll: !st.asaAll, asaPerson: null })
+      } : false,
+      foot: isMem
+        ? "Quem coordena pode mudar isto; eu só mostro como está hoje."
+        : "Titular é por tarefa, não pela responsabilidade inteira — para mudar, abra a responsabilidade."
+    } : false;
+
+    const asaCards = asaRaw.filter(c => !st.dismissed[c.key]).map(c => ({
+      tag: c.tag, conf: c.conf, title: c.title, why: c.why, nums: c.nums, lines: c.lines,
+      open: st.asaCard === c.key,
+      tagStyle: "font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:3px 8px;border-radius:999px;background:#f2ecfe;color:#6C2BF2",
+      reflexLabel: st.asaCard === c.key ? "Esconder reflexo" : "Ver reflexo",
+      onReflex: () => this.setState({ asaCard: st.asaCard === c.key ? null : c.key }),
+      cta: c.cta,
+      onApply: () => {
+        if (c.key === "a2" || c.key === "a3") { this.setState({ lote: true, asa: false, asaCard: null }); return; }
+        if (c.key === "a1") { this.setState({ tab: "tarefas", filter: "Vencidas", asa: false, asaCard: null }); return; }
+        if (c.key === "a7") { this.setState({ tab: "tarefas", filter: "Em aberto", asa: false, asaCard: null }); return; }
+        const r = c.key === "a4" ? noSub[0].resp : c.key === "a6" ? emptyResp[0] : weak[0].resp;
+        if (r) this.setState({ tab: "resp", respDet: r.id, respDraft: JSON.parse(JSON.stringify(r)), asa: false, asaCard: null });
+      },
+      onDismiss: () => this.setState({ dismissed: Object.assign({}, st.dismissed, { [c.key]: true }), asaCard: null })
+    }));
+
+    const myTasks = st.tasks.filter(t => t.who === mePerson);
+    const mob = {
+      title: isMem ? "Minhas tarefas" : isSup ? "Tarefas do dia" : isDir ? "Tarefas · leitura" : "Tarefas",
+      sub: isMem ? plural(myTasks.filter(t => t.state === "A fazer").length, "em aberto", "em aberto") + " · hoje" : plural(visible.filter(t => t.state === "A fazer").length, "tarefa em aberto", "tarefas em aberto"),
+      lote: (!isMem && !isDir && loteCount) ? {
+        title: plural(loteCount, "sugestão do dia", "sugestões do dia"),
+        body: "A ASA preparou o lote. Confirmar no celular vale para tudo de uma vez — escolher substituto também.",
+        cta: "Abrir o lote",
+        onOpen: () => this.setState({ lote: true })
+      } : false,
+      cards: (isMem ? myTasks : visible).slice(0, 10).map(t => {
+        const r = this.respOf(t.resp), dot = this.dotOf(t.resp);
+        const src = t.item ? this.itemOf(t.item) : null;
+        const done = t.state === "Feita", late = t.state === "Vencida", may = canCheck(t);
+        return {
+          title: t.title,
+          titleStyle: "font-size:13px;font-weight:700;line-height:1.35;color:" + (done ? "#6b6482" : "#1b1630") + (done ? ";text-decoration:line-through" : ""),
+          origin: (src ? r.area : "avulsa · pedida por " + (t.from || "—")) + (isGrupal(t) ? " · " + MODE[modeOf(t)].label : ""),
+          originStyle: "font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:" + (src ? dot : "#6b6482"),
+          sub: isMem ? (late ? "venceu ontem · " + (t.oc || "") : done ? "feita " + t.when : t.when) : t.who + " · " + (done ? "feita" : late ? "vencida" : t.when),
+          checkMark: done ? "✓" : "",
+          checkStyle: "width:30px;height:30px;flex:none;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;font-family:Manrope,sans-serif;cursor:" + (may ? "pointer" : "default") + ";border:1px solid " + (done ? "#0b6b64" : late ? "#f0bcbc" : "#ddd6ee") + ";background:" + (done ? "#e2f4f2" : "#fff") + ";color:#0b6b64",
+          onCheck: () => { if (may) this.setState({ tasks: st.tasks.map(x => x.id === t.id ? Object.assign({}, x, { state: "Feita", when: "agora" }) : x) }); },
+          style: "display:flex;flex-direction:column;gap:8px;padding:12px 13px;background:#fff;border:1px solid " + (late ? "#f0bcbc" : "#e6e1f2") + ";border-radius:14px"
+        };
+      }),
+      empty: (isMem ? myTasks.length : visible.length) ? false : "Nada para você hoje. Quando o responsável confirmar o lote, aparece aqui.",
+      foot: isMem
+        ? "Você marca o que é seu. O responsável também pode marcar por você — e o Livro do Dia mostra a mesma tarefa, não outra."
+        : isDir ? "Direção lê. Confirmar lote e criar tarefa é de quem opera." : false
+    };
+
+    return {
+      profileTabs: profileTabs, profileHint: meta.hint, profileName: meta.name, personName: meta.person,
+      mobileTabs: (function () {
+        const set = MOBILE_TABS[active];
+        const inBar = set.some(t => t[0] === "10");
+        return set.map(t => {
+          const on = inBar ? t[0] === "10" : t[0] === "mais";
+          return {
+            href: t[0] === "mais" ? "#mais" : NAV_HREF[t[0]],
+            label: t[1],
+            onClick: t[0] === "mais"
+              ? ((e) => { if (e && e.preventDefault) e.preventDefault(); self0.setState({ more: true }); })
+              : (() => {}),
+            style: "display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 2px;text-decoration:none;"
+              + (on ? "color:" + meta.dot + ";font-weight:700;" : "color:#6b6482;")
+          };
+        });
+      })(),
+      moreOpen: !!st.more,
+      onCloseMore: () => this.setState({ more: false }),
+      moreTitle: "Tudo no My ASA",
+      moreSub: meta.name + " · " + (isMem ? "o que é seu" : "o que você acessa"),
+      moreGroups: NAV.map(g => ({
+        title: g.title,
+        items: g.items.filter(it => it[2].indexOf(active) >= 0).map(it => ({
+          href: NAV_HREF[it[0]],
+          num: it[0],
+          label: (isMem && it[3]) ? it[3] : it[1],
+          style: "display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:12px;text-decoration:none;color:#1b1630;"
+            + (it[0] === "10" ? "background:" + meta.dot + "14;border:1px solid " + meta.dot + "40;" : "background:#fff;border:1px solid #eee9f6;")
+        }))
+      })).filter(g => g.items.length),
+      morePerfil: NAV_HREF["28"],
+      moreAsa: NAV_HREF["27"],
+      shellNav: shellNav, tabs: tabs,
+      pageTitle: isMem ? (st.tab === "resp" ? "Minhas responsabilidades" : "Minhas tarefas") : "Responsabilidades e tarefas",
+      scopeLabel: meta.scope,
+      personChipStyle: "font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:" + meta.dot + ";background:" + meta.dot + "26;padding:2px 7px;border-radius:999px;width:fit-content",
+      readonlyChipStyle: isDir ? "font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;color:#8a6413;background:#fdf1dc;padding:4px 9px;border-radius:999px" : "display:none",
+      asaBtnStyle: "display:flex;align-items:center;gap:8px;height:34px;padding:0 12px 0 8px;border-radius:12px;border:1px solid " + (st.asa ? "#6C2BF2" : "#e6e1f2") + ";background:" + (st.asa ? "#f7f3ff" : "#fff") + ";color:#3c3559;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;cursor:pointer",
+      toggleAsa: () => this.setState({ asa: !st.asa }),
+      asaOpen: st.asa,
+      asaHint: isMem ? "quem responde por quê · suas tarefas" : "quem responde por quê · lote · cumprimento",
+      asaIntro: isMem
+        ? "Eu não crio tarefa para você nem marco nada como feito. Aviso o que é seu e o que venceu."
+        : isDir ? "Leitura: onde a casa está cumprindo o que prometeu e onde não está."
+        : "Eu sei quem está encarregado de quê, preparo o lote e cruzo titular com folga e escala. Confirmar, distribuir e marcar é de vocês.",
+      asaMapa: asaMapa,
+      asaCards: asaCards,
+      asaEmpty: (asaCards.length || asaMapa) ? false : (isMem ? "Nada vencido e nada esquecido." : "Lote confirmado, nenhum titular fora e nenhuma responsabilidade órfã."),
+      loteBar: (!isMem && !isDir && loteCount && !st.lote) ? {
+        text: "A ASA preparou " + plural(loteCount, "tarefa", "tarefas") + " para hoje · " + sugg.map(s => s.resp.area).filter((v, i, a) => a.indexOf(v) === i).join(", "),
+        style: "display:flex;align-items:center;gap:11px;padding:9px 20px;background:#fdf7e8;border-bottom:1px solid #f0d9a8",
+        chip: "font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:3px 8px;border-radius:999px;background:#fff;color:#8a6413",
+        textStyle: "font-size:12px;font-weight:600;color:#8a6413",
+        cta: "Confirmar o lote",
+        ctaStyle: "height:28px;padding:0 12px;border-radius:9px;border:none;background:#1b1630;color:#fff;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap",
+        onOpen: () => this.setState({ lote: true })
+      } : false,
+      isTarefas: st.tab === "tarefas", isResp: st.tab === "resp",
+      tarefasAbout: "Fecha. Tem data, tem quem responde, e sai da lista quando é feita. Nasce de uma responsabilidade (pela cadência dela) ou avulsa, e pode ser pessoal ou de grupo — quando é de grupo, a própria tarefa diz como fecha.",
+      respAbout: "Não fecha. É o resultado permanente pelo qual a casa responde, dentro de uma área — com cadência, gera tarefa sozinha; sem cadência, fica aqui como “isso é nosso” até alguém disparar. Guarda quem a definiu, os participantes e o histórico do que nasceu dela.",
+      filters: filters,
+      countLabel: filtered.length === visible.length ? plural(visible.length, "tarefa", "tarefas") : filtered.length + " de " + visible.length,
+      canAvulsa: !isDir,
+      onNewAvulsa: () => {
+        const r = myResps[0] || inResps[0] || st.resps[0];
+        const to = isMem ? mePerson : (r.parts.find(m => m !== mePerson) || mePerson);
+        this.setState({
+          tasks: st.tasks.concat([{ id: st.nextId, item: 0, resp: r.id, title: "Nova tarefa avulsa", who: to, when: "hoje", state: "A fazer", from: mePerson, mode: "titular", crew: [], checks: {} }]),
+          nextId: st.nextId + 1, filter: "Hoje"
+        });
+      },
+      taskGroups: taskGroups,
+      tasksEmpty: taskGroups.length ? false : {
+        title: isMem ? "Nada para você hoje" : "Nenhuma tarefa com esse filtro",
+        body: isMem ? "Quando o responsável confirmar o lote do dia, o que for seu aparece aqui." : "Troque o filtro, ou confirme o lote do dia para as tarefas nascerem."
+      },
+      respNote: canEdit
+        ? "Cada uma é permanente e mora numa área. Quem a criou fica como responsável pela definição e confirma o lote dela, vários participantes de qualquer área a sustentam, e o titular é de cada tarefa dentro dela — não da responsabilidade inteira."
+        : isMem
+          ? (respCards.length
+            ? "Só as que você sustenta. Isto é o que se espera de você sempre, não uma tarefa de hoje: quem mais está nela, qual tarefa é sua e o quanto vem sendo cumprida. Leitura — definir é de quem coordena."
+            : "Você não é participante de nenhuma responsabilidade hoje. Quando entrar em uma, ela aparece aqui com o que se espera de você.")
+          : "Leitura: de quem é cada coisa e o quanto está sendo cumprida.",
+      canCreateResp: canEdit,
+      onNewResp: () => {
+        this.setState({ respDet: 0, respDraft: { id: st.nextRespId, area: myArea || AREAS[0], name: "", owner: mePerson, since: "agora", parts: [], proof: "", misses: [], items: [] }, nextRespId: st.nextRespId + 1 });
+      },
+      respCards: respCards,
+      lote: lote, respDet: respDet, mob: mob
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -12,6 +12,8 @@
     "push-force": "drizzle-kit push --force --config ./drizzle.config.ts",
     "generate": "drizzle-kit generate --config ./drizzle.config.ts",
     "migrate": "tsx src/migrate.ts",
+    "audit-rls": "tsx src/audit-rls.ts",
+    "verify-empty-schema": "tsx src/verify-empty-schema.ts",
     "seed": "tsx src/schema/seed.ts",
     "seed-simulation": "tsx src/schema/seed-simulation.ts",
     "backfill-usernames": "tsx src/backfill-usernames.ts"

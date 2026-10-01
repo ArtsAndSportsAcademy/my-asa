@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
@@ -25,9 +25,27 @@ if (!basePath) {
   );
 }
 
+/**
+ * D1 do plano de lançamento: o dados-de-exemplo.json tem nomes reais do elenco (inclusive menores).
+ * Ele alimenta só a amostra local (`import.meta.env.DEV && ?amostra=1`). No build de produção, todo
+ * import dele vira esta versão vazia, com o mesmo formato — nenhum nome chega ao navegador.
+ */
+function semDadosDeExemplo(): Plugin {
+  const VAZIO = "\0myasa-dados-de-exemplo-vazio";
+  const formato = { locais: [], areas: [], supervisao_por_area_local: [], pessoas: [], shows: [], personagens: [], blocos_por_local: {} };
+  return {
+    name: "myasa-sem-dados-de-exemplo",
+    apply: "build",
+    enforce: "pre",
+    resolveId(source) { return source.endsWith("dados-de-exemplo.json") ? VAZIO : null; },
+    load(id) { return id === VAZIO ? `export default ${JSON.stringify(formato)};` : null; },
+  };
+}
+
 export default defineConfig({
   base: basePath,
   plugins: [
+    semDadosDeExemplo(),
     react(),
     tailwindcss(),
   ],
@@ -55,6 +73,12 @@ export default defineConfig({
         path.resolve(import.meta.dirname, "../.."),
       ],
     },
+    // Só ativo em dev local, quando API_PROXY_TARGET é definido explicitamente —
+    // encaminha /api para o api-server rodando à parte (ex.: verificação de ponta a
+    // ponta fora de ?amostra=1). Produção usa o rewrite do vercel.json, não isto.
+    proxy: process.env.API_PROXY_TARGET
+      ? { "/api": { target: process.env.API_PROXY_TARGET, changeOrigin: true } }
+      : undefined,
   },
   preview: {
     port,

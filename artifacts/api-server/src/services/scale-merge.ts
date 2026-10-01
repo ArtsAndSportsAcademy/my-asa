@@ -21,6 +21,7 @@ import {
 } from "@workspace/db";
 import { loadGroupMembers } from "../routes/groups.js";
 import { getNonSchedulableUserIds } from "./scheduling-eligibility.js";
+import { shiftOperationalDate } from "../lib/operational-date.js";
 
 /**
  * Dados mínimos da escala necessários para compor as alocações.
@@ -69,7 +70,7 @@ export async function resolveScaleAllocations(scale: ScaleForMerge) {
     .leftJoin(showBookRolesTable, eq(scaleAllocationsTable.positionId, showBookRolesTable.id))
     .leftJoin(usersTable, eq(scaleAllocationsTable.userId, usersTable.id))
     .leftJoin(agendaEventsTable, eq(scaleAllocationsTable.agendaEventId, agendaEventsTable.id))
-    .where(eq(scaleAllocationsTable.scaleId, scale.id));
+    .where(and(eq(scaleAllocationsTable.scaleId, scale.id), eq(scaleAllocationsTable.active, true)));
 
   // Fetch candidates per allocation
   const allocationIds = allocations.map((a) => a.id);
@@ -338,10 +339,8 @@ export async function resolveScaleAllocations(scale: ScaleForMerge) {
     }
 
     const periodDates: string[] = [];
-    const start = new Date(scale.periodStart + "T00:00:00Z");
-    const end = new Date(scale.periodEnd + "T00:00:00Z");
-    for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
-      periodDates.push(d.toISOString().slice(0, 10));
+    for (let date = scale.periodStart; date <= scale.periodEnd; date = shiftOperationalDate(date, 1)) {
+      periodDates.push(date);
     }
 
     // Folgas/restrições ACTIVE da operação que tocam o período da escala.
@@ -562,10 +561,8 @@ export async function resolveUserRecurringAllocations(
 
   // Todas as datas no período.
   const periodDates: string[] = [];
-  const start = new Date(periodStart + "T00:00:00Z");
-  const end = new Date(periodEnd + "T00:00:00Z");
-  for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
-    periodDates.push(d.toISOString().slice(0, 10));
+  for (let date = periodStart; date <= periodEnd; date = shiftOperationalDate(date, 1)) {
+    periodDates.push(date);
   }
 
   const result: Array<{

@@ -3,6 +3,7 @@ import {
   restrictionsTable,
   showBookRolesTable,
   userTagsTable,
+  showBookTagsTable,
   agendaEventsTable,
   scaleAllocationsTable,
   scalesTable,
@@ -140,6 +141,7 @@ export async function runCoverageEngine(
         inArray(scaleAllocationsTable.userId, memberIds),
         inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"]),
         eq(agendaEventsTable.date, eventDate),
+        eq(scaleAllocationsTable.active, true),
       )
     );
 
@@ -155,7 +157,9 @@ export async function runCoverageEngine(
   const userTags = await db
     .select({ userId: userTagsTable.userId, tagId: userTagsTable.tagId })
     .from(userTagsTable)
-    .where(inArray(userTagsTable.userId, memberIds));
+    .innerJoin(showBookTagsTable, eq(userTagsTable.tagId, showBookTagsTable.id))
+    // Tag retirada da pessoa, ou tag desativada, não conta para a cobertura.
+    .where(and(inArray(userTagsTable.userId, memberIds), eq(userTagsTable.active, true), eq(showBookTagsTable.active, true)));
 
   const userTagMap: Record<string, string[]> = {};
   userTags.forEach((ut) => {
@@ -304,11 +308,12 @@ function eligible_count(candidates: CandidateAnalysis[]): number {
 export async function persistEngineResult(
   scaleId: string,
   agendaEventId: string,
-  result: CoverageEngineResult
+  result: CoverageEngineResult,
+  dbLike: typeof db = db,
 ): Promise<void> {
   for (const pos of result.positions) {
     // Create allocation
-    const [alloc] = await db
+    const [alloc] = await dbLike
       .insert(scaleAllocationsTable)
       .values({
         scaleId,
@@ -323,7 +328,7 @@ export async function persistEngineResult(
 
     // Persist candidates
     if (pos.allCandidates.length > 0) {
-      await db.insert(allocationCandidatesTable).values(
+      await dbLike.insert(allocationCandidatesTable).values(
         pos.allCandidates.map((c) => ({
           scaleId,
           allocationId: alloc.id,
@@ -340,7 +345,7 @@ export async function persistEngineResult(
 
     // Persist exception if any
     if (pos.exception) {
-      await db.insert(allocationExceptionsTable).values({
+      await dbLike.insert(allocationExceptionsTable).values({
         scaleId,
         agendaEventId,
         positionId: pos.positionId,

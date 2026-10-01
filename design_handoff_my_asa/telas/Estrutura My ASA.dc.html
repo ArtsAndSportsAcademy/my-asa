@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #f4f2fa; font-family: Manrope, system-ui, sans-serif; color: #1b1630; }
+  a { color: #6C2BF2; text-decoration: none; }
+  a:hover { color: #4a17b8; text-decoration: underline; }
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 3px solid #6C2BF2; outline-offset: 2px; border-radius: 8px; }
+</style>
+</helmet>
+
+<div style="max-width:1280px;margin:0 auto;padding:48px 32px 96px;display:flex;flex-direction:column;gap:56px">
+
+  <header style="display:flex;flex-direction:column;gap:28px">
+    <div style="display:flex;align-items:flex-start;gap:20px">
+      <img src="assets/asa-wing.png" alt="My ASA" style="width:64px;height:64px;object-fit:contain;flex:none;margin-top:2px" />
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#6b6482">My ASA · estrutura do produto</div>
+        <h1 style="font-family:Outfit,sans-serif;font-size:42px;line-height:1.05;font-weight:700;margin:0;letter-spacing:-0.02em">Navegação, shell e plano por perfil</h1>
+        <p style="margin:0;max-width:62ch;font-size:16px;line-height:1.55;color:#5b5473;text-wrap:pretty">Antes de qualquer tela: como as 16 áreas do produto se organizam no menu, o layout que envolve todas elas, e o que cada perfil precisa ver em cada uma. Baseado no índice oficial (00–29), nos vereditos da reconstrução e nas suas decisões desta rodada.</p>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:14px 16px;background:#fff;border:1px solid #e6e1f2;border-radius:16px">
+      <span style="font-size:13px;font-weight:600;color:#5b5473;margin-right:4px">Ver como</span>
+      <sc-for list="{{ profileTabs }}" as="tab" hint-placeholder-count="4">
+        <button type="button" onClick="{{ tab.onClick }}" style="{{ tab.style }}">
+          <span style="width:8px;height:8px;border-radius:50%;background:{{ tab.dot }};display:inline-block"></span>
+          <span>{{ tab.name }}</span>
+        </button>
+      </sc-for>
+      <span style="flex:1"></span>
+      <span style="font-size:13px;color:#6b6482">{{ profileHint }}</span>
+    </div>
+  </header>
+
+  <section style="display:flex;flex-direction:column;gap:24px">
+    <div style="display:flex;align-items:baseline;gap:14px">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#6C2BF2">01</span>
+      <h2 style="font-family:Outfit,sans-serif;font-size:26px;font-weight:600;margin:0;letter-spacing:-0.01em">Estrutura de navegação</h2>
+      <span style="font-size:14px;color:#6b6482">16 áreas + assistente e perfil · três fusões: 11+12+15, 16+26 e 07+09</span>
+    </div>
+
+    <sc-for list="{{ navMap }}" as="group" hint-placeholder-count="5">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">{{ group.title }}</span>
+          <span style="flex:1;height:1px;background:#e6e1f2"></span>
+          <span style="font-size:12px;color:#6b6482">{{ group.hint }}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">
+          <sc-for list="{{ group.items }}" as="mod" hint-placeholder-count="4">
+            <div style="background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;align-items:baseline;gap:10px">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#6b6482">{{ mod.num }}</span>
+                <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">{{ mod.name }}</span>
+              </div>
+              <div style="font-size:13px;line-height:1.45;color:#6b6482">{{ mod.note }}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <sc-for list="{{ mod.badges }}" as="b" hint-placeholder-count="4">
+                  <span style="{{ b.style }}">{{ b.text }}</span>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+
+    <div style="display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:#6b6482;align-items:center">
+      <strong style="font-weight:600;color:#1b1630">Legenda</strong>
+      <span style="padding:3px 9px;border-radius:999px;background:#f1eafe;color:#6C2BF2;font-weight:600">total — cria e governa</span>
+      <span style="padding:3px 9px;border-radius:999px;background:#e9effc;color:#2E63D6;font-weight:600">leitura — vê tudo, não altera</span>
+      <span style="padding:3px 9px;border-radius:999px;background:#e3f4f1;color:#0E8F86;font-weight:600">escopo — só a sua área</span>
+      <span style="padding:3px 9px;border-radius:999px;background:#fbeaf3;color:#C2508F;font-weight:600">próprio — só o que é dele</span>
+      <span style="padding:3px 9px;border-radius:999px;background:#f0eef5;color:#6b6482;font-weight:600">fora do menu</span>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:24px">
+    <div style="display:flex;align-items:baseline;gap:14px">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#6C2BF2">02</span>
+      <h2 style="font-family:Outfit,sans-serif;font-size:26px;font-weight:600;margin:0;letter-spacing:-0.01em">Shell do app</h2>
+      <span style="font-size:14px;color:#6b6482">o mesmo invólucro em web e mobile — muda o conteúdo do menu, não o layout</span>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
+
+      <div style="flex:1 1 720px;min-width:640px;display:flex;flex-direction:column;gap:10px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Web · shell completo</div>
+        <div style="border:1px solid #ddd6ee;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 18px 40px -28px rgba(40,20,90,.45)">
+          <div style="display:flex;height:720px">
+
+            <aside style="width:252px;flex:none;background:linear-gradient(180deg,#1c1440 0%,#241a52 100%);display:flex;flex-direction:column;color:#fff">
+              <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 14px">
+                <img src="assets/asa-wing.png" alt="" style="width:28px;height:28px;object-fit:contain" />
+                <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600;letter-spacing:-0.01em">My ASA</span>
+              </div>
+              <div style="padding:0 12px 12px">
+                <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border-radius:10px;padding:8px 10px;font-size:12px;color:#b9b0da">
+                  <span style="width:12px;height:12px;border:1.5px solid #b9b0da;border-radius:50%"></span>
+                  <span>Buscar ou perguntar à ASA</span>
+                </div>
+              </div>
+              <div style="flex:1;overflow:auto;display:flex;flex-direction:column;gap:12px;padding:4px 10px 10px">
+                <sc-for list="{{ shellNav }}" as="g" hint-placeholder-count="4">
+                  <div style="display:flex;flex-direction:column;gap:2px">
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#7d72a8;padding:0 8px 4px">{{ g.title }}</div>
+                    <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+                      <div style="{{ it.style }}">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;opacity:.6;min-width:16px;flex:none">{{ it.num }}</span>
+                        <span>{{ it.label }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="border-top:1px solid rgba(255,255,255,.1);padding:12px;display:flex;align-items:center;gap:10px">
+                <span style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+                <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                  <span style="font-size:13px;font-weight:600">{{ personName }}</span>
+                  <span style="{{ personChipStyle }}">{{ profileName }}</span>
+                </div>
+              </div>
+            </aside>
+
+            <div style="flex:1;display:flex;flex-direction:column;background:#faf9fe;min-width:0">
+              <header style="display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid #ebe6f6;background:#fff">
+                <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                  <span style="font-family:Outfit,sans-serif;font-size:18px;font-weight:600">Meu Dia</span>
+                  <span style="font-size:12px;color:#6b6482">quarta, 26 de agosto</span>
+                </div>
+                <span style="flex:1"></span>
+                <div style="display:flex;align-items:center;gap:8px;border:1px solid #e6e1f2;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;color:#3d3559">
+                  <span style="width:8px;height:8px;border-radius:50%;background:#0E8F86"></span>
+                  <span>{{ operationLabel }}</span>
+                </div>
+                <span style="width:36px;height:36px;border-radius:12px;border:1px solid #e6e1f2;display:flex;align-items:center;justify-content:center;font-size:12px;color:#6b6482">3</span>
+                <div style="display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,#6C2BF2,#2E3BD6);color:#fff;border-radius:999px;padding:6px 14px 6px 6px;font-size:13px;font-weight:600">
+                  <img src="assets/asa-mascote.png" alt="ASA" style="width:26px;height:26px;object-fit:contain" />
+                  <span>ASA</span>
+                </div>
+              </header>
+              <div style="flex:1;padding:20px;display:flex;flex-direction:column;gap:14px">
+                <div style="border:1px dashed #cfc6e8;border-radius:14px;flex:1;display:flex;align-items:center;justify-content:center;background:repeating-linear-gradient(135deg,#f6f3fd,#f6f3fd 10px,#f1edfb 10px,#f1edfb 20px)">
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#9c93bb">conteúdo da tela · área única, sem chrome próprio</span>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:8px">
+                  <sc-for list="{{ shellRules }}" as="r" hint-placeholder-count="3">
+                    <span style="font-size:12px;color:#6b6482;background:#fff;border:1px solid #e6e1f2;border-radius:999px;padding:5px 11px">{{ r }}</span>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:0 0 390px;min-width:390px;display:flex;flex-direction:column;gap:10px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Mobile · mesmo shell, 5 abas</div>
+        <div style="width:390px;height:844px;border-radius:38px;border:1px solid #ddd6ee;background:#fff;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 18px 40px -28px rgba(40,20,90,.45)">
+          <div style="background:linear-gradient(135deg,#1c1440,#2b1f63);color:#fff;padding:16px 16px 14px;display:flex;align-items:center;gap:10px">
+            <img src="assets/asa-wing.png" alt="" style="width:22px;height:22px;object-fit:contain" />
+            <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+              <span style="font-size:14px;font-weight:600;font-family:Outfit,sans-serif">Meu Dia</span>
+              <span style="font-size:10px;color:#b9b0da">{{ operationLabel }} · {{ profileName }}</span>
+            </div>
+            <span style="flex:1"></span>
+            <span style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9)"></span>
+          </div>
+          <div style="flex:1;padding:14px;background:#faf9fe;display:flex;flex-direction:column;gap:10px;position:relative">
+            <div style="border:1px dashed #cfc6e8;border-radius:14px;flex:1;display:flex;align-items:center;justify-content:center;background:repeating-linear-gradient(135deg,#f6f3fd,#f6f3fd 10px,#f1edfb 10px,#f1edfb 20px)">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#9c93bb">conteúdo</span>
+            </div>
+            <div style="position:absolute;right:14px;bottom:14px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#6C2BF2,#2E3BD6);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 22px -10px rgba(76,30,180,.8)">
+              <img src="assets/asa-mascote.png" alt="" style="width:36px;height:36px;object-fit:contain" />
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid #ebe6f6;background:#fff;padding:8px 4px 12px">
+            <sc-for list="{{ mobileTabs }}" as="t" hint-placeholder-count="5">
+              <div style="{{ t.style }}">
+                <span style="width:18px;height:18px;border-radius:6px;border:1.5px solid currentColor;opacity:.75"></span>
+                <span style="font-size:9px;font-weight:600;text-align:center;line-height:1.2">{{ t.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
+      <div style="background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px">
+        <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">Contexto de área é do shell</span>
+        <span style="font-size:13px;line-height:1.5;color:#6b6482">A pílula no cabeçalho diz sempre qual área está sendo mostrada — e, pra quem é convocado fora da base, qual supervisor vale ali. Admin e Direção trocam; Supervisão e Elenco veem fixo, sem escolher.</span>
+      </div>
+      <div style="background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px">
+        <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">Perfil é etiqueta, não tela diferente</span>
+        <span style="font-size:13px;line-height:1.5;color:#6b6482">Mesma rota, mesmo layout: o perfil filtra itens de menu e ações. Direção ganha um estado "somente leitura" reutilizável do shell — em vez de 19 telas novas.</span>
+      </div>
+      <div style="background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px">
+        <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">A ASA mora no shell</span>
+        <span style="font-size:13px;line-height:1.5;color:#6b6482">O assistente é botão persistente (web) e FAB (mobile), não item de menu — ele responde sempre dentro do escopo do perfil de quem pergunta.</span>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#6C2BF2">03</span>
+      <h2 style="font-family:Outfit,sans-serif;font-size:26px;font-weight:600;margin:0;letter-spacing:-0.01em">Plano tela a tela, por perfil</h2>
+      <span style="font-size:14px;color:#6b6482">o que cada tela precisa mostrar — sem desenhar ainda</span>
+    </div>
+
+    <sc-for list="{{ planRows }}" as="row" hint-placeholder-count="19">
+      <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;overflow:hidden">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #f0ecf8;background:#fbfaff">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#6b6482">{{ row.num }}</span>
+          <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">{{ row.name }}</span>
+          <span style="flex:1"></span>
+          <span style="font-size:12px;color:#6b6482;text-align:right">{{ row.note }}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))">
+          <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="4">
+            <div style="{{ cell.style }}">
+              <span style="{{ cell.tagStyle }}">{{ cell.profile }}</span>
+              <span style="font-size:13px;line-height:1.5;color:#3d3559;text-wrap:pretty">{{ cell.text }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;align-items:baseline;gap:14px">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#6C2BF2">04</span>
+      <h2 style="font-family:Outfit,sans-serif;font-size:26px;font-weight:600;margin:0;letter-spacing:-0.01em">Decisões que preciso de você antes de desenhar</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px">
+      <sc-for list="{{ openDecisions }}" as="d" hint-placeholder-count="5">
+        <div style="background:#fff;border:1px solid #e6e1f2;border-left:3px solid #6C2BF2;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px">
+          <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">{{ d.title }}</span>
+          <span style="font-size:13px;line-height:1.5;color:#6b6482;text-wrap:pretty">{{ d.body }}</span>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#1c1440,#2b1f63);color:#fff;border-radius:16px;padding:18px 20px">
+      <img src="assets/asa-mascote.png" alt="" style="width:56px;height:56px;object-fit:contain;flex:none" />
+      <span style="font-size:14px;line-height:1.5;color:#e4dffa;text-wrap:pretty">Aprovada a estrutura, a primeira tela é <strong style="color:#fff">17 — Início / Meu Dia</strong>, desenhada nos quatro perfis dentro deste mesmo shell.</span>
+    </div>
+  </section>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1360},&quot;mostrarNumeros&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Estrutura&quot;},&quot;perfilInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ADM&quot;,&quot;DIR&quot;,&quot;SUP&quot;,&quot;MEM&quot;],&quot;default&quot;:&quot;SUP&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Estrutura&quot;}}">
+const PROFILES = [
+  { key: "ADM", name: "Administração", dot: "#6C2BF2", hint: "configura e governa tudo", person: "Barbara Sorroche", op: "Toda a ASA" },
+  { key: "DIR", name: "Direção", dot: "#2E63D6", hint: "visão ampla, majoritariamente leitura", person: "Cris Garcia", op: "Visão organizacional" },
+  { key: "SUP", name: "Supervisão", dot: "#0E8F86", hint: "autoridade limitada à própria área", person: "Deborah", op: "Área Patinadores · 4 grupos" },
+  { key: "MEM", name: "Elenco", dot: "#C2508F", hint: "só o próprio contexto e o que foi publicado", person: "Julia", op: "Patinadores · grupo B" }
+];
+
+const LEVELS = {
+  total:   { bg: "#f1eafe", fg: "#6C2BF2" },
+  leitura: { bg: "#e9effc", fg: "#2E63D6" },
+  escopo:  { bg: "#e3f4f1", fg: "#0E8F86" },
+  proprio: { bg: "#fbeaf3", fg: "#C2508F" },
+  fora:    { bg: "#f0eef5", fg: "#6b6482" }
+};
+
+const M = (num, name, note, levels, plan) => ({ num, name, note, levels, plan });
+
+const GROUPS = [
+  {
+    key: "dia", title: "Porta de entrada", hint: "destino padrão após o login",
+    items: [
+      M("17", "Início / Meu Dia", "O dia da pessoa + 3 linhas do Mural. Absorve as ações que viviam no Pulso do Dia.",
+        { ADM: "total", DIR: "leitura", SUP: "escopo", MEM: "proprio" },
+        {
+          ADM: "O próprio dia + pendências de governança: responsabilidades sem responsável, escalas do dia não publicadas, necessidades sem resposta.",
+          DIR: "Resumo do dia na organização inteira: shows de hoje, cobertura, ocorrências abertas, o que trava — tudo em leitura.",
+          SUP: "O dia da área: necessidades a responder, escala a revisar, check-ins em falta, ocorrências abertas, atalho pro Livro do Dia.",
+          MEM: "Próxima atividade, botão de check-in, tarefas e solicitações do dia, e três linhas do Mural com link pra abrir."
+        })
+    ]
+  },
+  {
+    key: "op", title: "O dia", hint: "o que se usa todo dia",
+    items: [
+      M("20", "Agenda", "A ferramenta de todo mundo se organizar, não um cadastro de eventos. Cada um tem a sua agenda — escala, folga, reunião, ensaio no mesmo mês — e é dali que se marca com os outros. Tudo o que se marca desemboca na Escala: uma vez só vira bloco do dia; o que repete por meses vira molde na Programação, com vigência.",
+        { ADM: "total", DIR: "total", SUP: "escopo", MEM: "proprio" },
+        {
+          ADM: "Convoca e convida, em qualquer área e qualquer local; reserva espaço; cria série longa que passa a viver na Programação.",
+          DIR: "Como a Administração: convoca, convida e decide. Não é leitura aqui.",
+          SUP: "Convoca e convida a gente da sua área; decide as propostas que caem nela — libera, ou nega com motivo e alternativa de dia/horário.",
+          MEM: "A própria agenda: vê o que o compromete e propõe reunião ou trabalho dentro da própria jornada. Só convida, nunca convoca. O que ele propõe vira compromisso quando o supervisor libera e a escala é publicada."
+        }),
+      M("11·12·15", "Escalas", "Decidido: uma página com duas abas — Programação (o molde) e Escala (o dia). Entra sempre pela Escala.",
+        { ADM: "total", DIR: "leitura", SUP: "escopo", MEM: "proprio" },
+        {
+          ADM: "Aba Programação: o que cada local pede em cada dia da semana, âncora relativa ao show ou hora fixa, vigência agendável. Aba Escala: a escala do dia varre todos os locais — necessidade, fila, montagem, publicação.",
+          DIR: "Leitura das duas abas: por que o dia é assim (molde) e como ficou hoje (escala), em todos os locais.",
+          SUP: "Responde às necessidades que caem na sua área — quem vai, de qual grupo — e publica a parte dela. Não escreve na área de outro supervisor.",
+          MEM: "Só a aba Escala, filtrada nele: \"Minha escala\", por dia e semana, com o local de cada bloco. Não vê o molde."
+        }),
+      M("13", "Shows (Livro do Show)", "O padrão de cada show: cenas, blocos, posições de palco, rodízio de elenco. A tela se chama Shows; o Livro do Dia (14) é a instância dele numa data.",
+        { ADM: "total", DIR: "leitura", SUP: "escopo", MEM: "proprio" },
+        {
+          ADM: "Cria e edita qualquer livro. Todo livro nasce com a posição genérica \"Elenco\" — nada de escolher tipo na criação.",
+          DIR: "Leitura do padrão de cada show e de quem é o delegado responsável por ele.",
+          SUP: "Edita os livros dos shows sob sua responsabilidade (via Responsabilidades, não via campo escondido).",
+          MEM: "Decidido: tem a aba, em consulta. Vê os Livros do Show publicados — pra estudar cena, bloco e posição —, sem editar nada."
+        }),
+      M("14", "Livro do Dia", "A instância: nasce do Livro do Show + data + local, editável sem afetar o padrão.",
+        { ADM: "total", DIR: "leitura", SUP: "escopo", MEM: "proprio" },
+        {
+          ADM: "Gera, edita, publica, executa e cancela em qualquer local; vê o que foi removido e pode restaurar.",
+          DIR: "Leitura do que está publicado hoje, com o estado de cada livro (rascunho, publicado, executado).",
+          SUP: "Escolhe Livro do Show + data + local e o sistema cuida do evento de agenda. Ajusta o dia, remove o que não vai rolar, publica.",
+          MEM: "\"Meus shows\": a lista dos Livros do Dia em que ele foi convocado, com o próprio nome destacado. Nada além disso."
+        }),
+      M("19", "Check-in e ocorrências", "Ocorrência vira entidade própria, com estado, não um status escondido no check-in.",
+        { ADM: "total", DIR: "leitura", SUP: "escopo", MEM: "proprio" },
+        {
+          ADM: "Acompanha check-ins e ocorrências de todos os locais; define regras e resolve o que a Supervisão escalou.",
+          DIR: "Leitura de cobertura do dia e de ocorrências abertas — sinal de saúde, não ferramenta de ação.",
+          SUP: "Ocorrências abertas das pessoas da sua área, com fluxo aberta → em análise → resolvida, e quem ainda não fez check-in.",
+          MEM: "Check-in do dia no local onde foi escalado (web e mobile, não só no celular) e registrar ocorrência: doença, acidente, impossibilidade."
+        }),
+      M("10", "Responsabilidades e tarefas", "Dois objetos, separados pelo que fecha. Responsabilidade não fecha: mora numa área, tem responsável pela definição e participantes de qualquer área. Tarefa fecha: nasce da cadência da responsabilidade ou avulsa, é pessoal ou de grupo, e diz como fecha (titular responde, cada um marca o seu, qualquer um fecha).",
+        { ADM: "total", DIR: "total", SUP: "escopo", MEM: "proprio" },
+        {
+          ADM: "Define responsabilidade em qualquer área, aponta responsável e participantes, monta as tarefas de dentro dela com titular, substitutos, cadência e modo de fechamento; confirma o lote do dia de qualquer área e marca por qualquer pessoa.",
+          DIR: "Igual à Administração: define, confirma lote e marca. Decidido — Direção não é só leitura aqui.",
+          SUP: "As responsabilidades que ela criou, que sustenta ou que são da área dela. Confirma o lote das suas, escolhe substituto quando o titular está fora e distribui.",
+          MEM: "As próprias tarefas (marca o que é dele) e, em leitura, só as responsabilidades que sustenta — o que se espera dele sempre, quem mais está nela e o quanto vem sendo cumprida."
+        }),
+      M("18", "Folgas e solicitações", "Um regime só, da ASA inteira. A folga é do grupo — o mapa aplica e mostra as exceções.",
+        { ADM: "total", DIR: "leitura", SUP: "escopo", MEM: "proprio" },
+        {
+          ADM: "Define o regime único, marca em lote no mapa mês × pessoa e decide qualquer solicitação, em qualquer grupo.",
+          DIR: "Leitura do mapa e do volume de solicitações — quem está sobrecarregado, onde há acúmulo de folga.",
+          SUP: "Mapa e decisões dos grupos da sua área. Ao propor alternativa, informa datas de verdade — não texto livre.",
+          MEM: "Vê a folga do próprio grupo, solicita mudança, acompanha o status e aceita ou recusa a alternativa proposta."
+        })
+    ]
+  },
+  {
+    key: "gestao", title: "Gestão e fundação", hint: "mexe pouco, decide muito",
+    items: [
+      M("16·26", "Painel", "Fusão: abas Agora / Histórico. Duas tentativas incompletas da mesma pergunta viram uma.",
+        { ADM: "total", DIR: "leitura", SUP: "escopo", MEM: "fora" },
+        {
+          ADM: "Agora: cobertura, exceções, livros pendentes. Histórico: tendências de check-in, folgas, tarefas, avisos.",
+          DIR: "A tela principal da Direção: a mesma visão, organização inteira, leitura, com comparação entre locais e entre áreas.",
+          SUP: "Só a própria área — hoje qualquer gestor vê tudo, e isso precisa ser fechado nesta tela.",
+          MEM: "Não acessa, nem pela tela nem pela API."
+        }),
+      M("06", "Locais", "O \"onde\". Local permanente ou evento com data de fim. Só nome, tipo e calendário de funcionamento.",
+        { ADM: "total", DIR: "leitura", SUP: "leitura", MEM: "fora" },
+        {
+          ADM: "Lista completa + encerrados; cria local permanente (Snowland, Acquamotion) ou evento com data de fim, edita o calendário de funcionamento, encerra e reabre.",
+          DIR: "Consulta geral em modo somente leitura — onde a ASA opera e quando cada lugar abre.",
+          SUP: "Leitura: precisa saber quando o local abre pra entender a necessidade que caiu na área dela. Não edita.",
+          MEM: "Não acessa. O local aparece pra ele dentro da própria escala, bloco por bloco."
+        }),
+      M("07·09", "Pessoas e acessos", "A ficha da pessoa e o acesso dela no mesmo lugar. Pessoa ≠ conta de acesso: a ficha existe antes de haver login.",
+        { ADM: "total", DIR: "leitura", SUP: "escopo", MEM: "fora" },
+        {
+          ADM: "Ficha (área, grupo, nível, situação) + seção Acesso na própria ficha: perfil, login, estado da conta, convite. Aba Acessos com a matriz dos quatro perfis. Só a Administração muda perfil.",
+          DIR: "Consulta da lista e da matriz em leitura, sem dados administrativos nem poder de conceder.",
+          SUP: "Só as pessoas dos grupos que supervisiona. Vê o perfil de cada uma como informação; não altera.",
+          MEM: "Não acessa a lista. O que ele edita é o próprio perfil, em 28."
+        }),
+      M("08", "Áreas", "Área → Grupo. O \"reporta pra quem\" e a origem da folga. A pessoa vive numa área; o grupo é subdivisão de supervisão.",
+        { ADM: "total", DIR: "leitura", SUP: "escopo", MEM: "proprio" },
+        {
+          ADM: "Cria áreas e grupos, define os supervisores de cada um e move pessoas entre grupos sem perder histórico.",
+          DIR: "Leitura da árvore inteira e do histórico de vínculos — quem responde por qual grupo.",
+          SUP: "Hub dos grupos da sua área: integrantes, atribuir tarefa, trocar delegado, reconhecer. Não vê a árvore de outra área.",
+          MEM: "\"Meu grupo\" no menu — nome do grupo, supervisora e os colegas (cartão público de cada um, respeitando a visibilidade que cada pessoa escolheu)."
+        }),
+      M("25", "Reconhecimentos", "Painel de leitura. Reconhecer se faz no Mural (22); o registro mora no perfil (28).",
+        { ADM: "total", DIR: "total", SUP: "escopo", MEM: "fora" },
+        {
+          ADM: "Histórico completo da casa, com o dado do silêncio: quem nunca foi reconhecido. Define a lista de motivos.",
+          DIR: "Mesmo alcance da Administração — histórico da casa inteira e exportação, sem editar os motivos.",
+          SUP: "Painel aberto na própria área; reconhecer, porém, alcança qualquer pessoa da casa, como para todo mundo.",
+          MEM: "Não acessa. Para ele, reconhecimento não é seção: aparece no Mural e fica no próprio perfil."
+        })
+    ]
+  },
+  {
+    key: "com", title: "Comunicação e conhecimento", hint: "vale pra organização inteira",
+    items: [
+      M("22", "Avisos e Mural", "Um mural só: aviso fica fixado até o ciente, o resto é a vida da casa (aniversários, tempo de casa, reconhecimentos) — e é daqui que qualquer pessoa reconhece qualquer pessoa.",
+        { ADM: "total", DIR: "total", SUP: "escopo", MEM: "proprio" },
+        {
+          ADM: "Cria, publica, cancela e escala avisos para qualquer área, grupo ou local; modera o Mural.",
+          DIR: "Alcance total como a Administração: publica, avisa, reconhece e interage — e vê o que foi escalado sem resposta.",
+          SUP: "Avisos só para os grupos da sua área — hoje um supervisor consegue avisar quem não é dele, e isso fecha aqui.",
+          MEM: "Lê os avisos liberados pra ele, reconhece qualquer colega sem pedir autorização, e vê o Mural — com aniversários respeitando a visibilidade escolhida por cada pessoa."
+        }),
+      M("23", "Mensagens", "Direção futura estilo conversa; grupo e \"visto\" já existem por baixo.",
+        { ADM: "total", DIR: "leitura", SUP: "escopo", MEM: "proprio" },
+        {
+          ADM: "Fala com qualquer pessoa da organização — e só dela: destinatário de outra empresa nunca pode aparecer.",
+          DIR: "Conversas de escopo organizacional, com gestão e supervisão.",
+          SUP: "Os grupos da sua área, mais a gestão.",
+          MEM: "Supervisora, colegas de grupo e conversas em que foi incluído. Sem lista aberta da organização."
+        }),
+      M("24", "Biblioteca", "Conteúdo da organização inteira, sem escopo por área — e está certo assim.",
+        { ADM: "total", DIR: "leitura", SUP: "escopo", MEM: "proprio" },
+        {
+          ADM: "Cria, versiona (com snapshot da anterior), publica e arquiva; liga documento a tarefa recorrente.",
+          DIR: "Leitura de tudo, inclusive rascunhos, como gestão.",
+          SUP: "Mesmo acesso de gestão; usa documentos como base de tarefa e treinamento dos grupos.",
+          MEM: "Só publicados e atualizados; busca, leitura e marcação de lido quando a tarefa exige."
+        })
+    ]
+  },
+  {
+    key: "sempre", title: "Sempre por perto", hint: "no shell, não na lista de áreas",
+    items: [
+      M("27", "Assistente ASA", "Botão persistente no cabeçalho (web) e FAB (mobile) — não é item de menu.",
+        { ADM: "total", DIR: "leitura", SUP: "escopo", MEM: "proprio" },
+        {
+          ADM: "Chat com contexto de governança: consultas amplas, auditoria, memórias e preferências do assistente.",
+          DIR: "Chat com contexto organizacional, em leitura — perguntas de panorama, não de ação.",
+          SUP: "Chat com o contexto da área: quem está de folga, quais necessidades ainda não respondeu, quem não fez check-in.",
+          MEM: "Chat com o próprio contexto. A ASA nunca responde o que aquele perfil não poderia ver na tela."
+        }),
+      M("28", "Perfil e configurações", "Todo perfil tem. Mora no rodapé da barra lateral / avatar do mobile.",
+        { ADM: "total", DIR: "proprio", SUP: "proprio", MEM: "proprio" },
+        {
+          ADM: "O próprio perfil + preferências da organização e regras de notificação.",
+          DIR: "Próprio perfil, preferências de notificação e assinatura de relatórios.",
+          SUP: "Próprio perfil e notificações dos grupos que supervisiona.",
+          MEM: "Foto, nome de uso, telefone, e-mail e senha — e a visibilidade de contato e data de nascimento, escolha dele."
+        })
+    ]
+  }
+];
+const OPEN_DECISIONS = [
+  { title: "✓ Web e mobile juntos", body: "Você decidiu: os dois têm prioridade. Toda tela que eu desenhar daqui pra frente vem no par web + mobile, como em 17 — Meu Dia." },
+  { title: "✓ Direção vê a Arts and Sports Academy inteira", body: "O Meu Dia da Direção passa a abrir com o panorama geral da empresa — locais, áreas, pessoas, cobertura e o que trava —, não com o dia pessoal dela." },
+  { title: "✓ Elenco tem Livro do Show e Meus shows", body: "Livro do Show entra no menu do Elenco como consulta dos livros publicados; Meus shows é a lista dos Livros do Dia em que ele foi convocado." },
+  { title: "✓ Programação e Escalas viram uma página com abas", body: "Aba Programação (o molde, quase só Admin) e aba Escala (o dia, todo dia). Elenco entra direto na aba Escala, filtrada nele." },
+  { title: "✓ Elenco vê os colegas de grupo", body: "\"Meu grupo\" mostra os colegas do grupo, cada um no cartão público que respeita a visibilidade de contato e data de nascimento escolhida pela própria pessoa." },
+  { title: "✓ Locais, Grupos e um regime de folga só", body: "Operações deixou de existir: 06 virou Locais (permanente ou evento, com calendário de funcionamento). A pessoa vive num Grupo dentro de uma Área, e o Grupo é a subdivisão que define supervisor e folga. Os locais convocam pela escala. Um regime de folga único para a ASA inteira." },
+  { title: "✓ Acesso mora dentro de Pessoas", body: "09 deixa de ser módulo. O perfil de acesso é um campo da ficha, na seção Acesso, e 07 ganha uma aba Acessos com a matriz dos quatro perfis. Uma pessoa tem um perfil só — não existe ser Supervisora numa área e Elenco em outra. Só a Administração concede ou muda perfil; Direção lê, Supervisão vê como informação." },
+  { title: "✓ Responsabilidade e tarefa numa página só, sem comissão", body: "21 Tarefas deixa de ser módulo: vive dentro de 10, que passa a se chamar Responsabilidades e tarefas e sai de Gestão para O dia. A comissão foi cortada — não se sustentava como objeto: a responsabilidade mora numa área, quem a criou responde pela definição e confirma o lote dela, e os participantes vêm de qualquer área. O que separa os dois objetos é fechar: responsabilidade não fecha, tarefa fecha." },
+  { title: "✓ Direção faz, não só lê, em Responsabilidades e tarefas", body: "Direção passa a ter os mesmos poderes da Administração nesta página: define responsabilidade, cria tarefa avulsa, confirma lote e marca como feita, em qualquer área. Nos outros módulos Direção continua em leitura." },
+  { title: "✓ Elenco lê as responsabilidades que sustenta", body: "A aba aparece para o Elenco em leitura, filtrada: só onde ele é participante, responsável ou titular/substituto de alguma tarefa. Serve para ele ver o que se espera dele de forma permanente, não só a tarefa de hoje." },
+  { title: "✓ A ASA diz quem está encarregado de quê", body: "No painel da ASA, depois dos alertas, um mapa por pessoa cruzando responsabilidade, titularidade, substituição e tarefas abertas — as cinco que carregam mais, com \"ver todas\". Cada linha abre no detalhe e leva para as tarefas daquela pessoa. A ASA mostra o que está escrito; não decide de quem é o quê." },
+  { title: "✓ Os nomes das duas áreas fundidas", body: "Aprovado: 11 Atividades + 12 Programação + 15 Escalas chamam-se \"Escalas\" na tela, com as abas Programação e Escala do dia. 16 Painel Operacional + 26 Indicadores chamam-se \"Painel\", com as abas Agora e Histórico." },
+  { title: "✓ Agenda: convocar × convidar", body: "Não existe evento genérico — existe convocar e convidar. Ensaio, show e manutenção convocam: entram na escala como qualquer bloco e não se recusam (quem não pode abre ocorrência). Reunião convida: a pessoa aceita, recusa ou propõe outro horário, e só vira bloco quando aceita. Administração, Direção e Supervisão fazem os dois; Elenco só convida." },
+  { title: "✓ Nada se marca fora da jornada", body: "A escala é a permissão da agenda: se a jornada da pessoa é 9h–18h, só existe compromisso dentro dela. Folga, recesso e qualquer indisponibilidade não têm janela — não aparecem como opção, e só reabrem se a folga mudar de verdade em 18. Marcar reunião é escolher as pessoas primeiro e ver a interseção das jornadas delas, não escolher a data. Quando a escala do dia ainda não existe, a disponibilidade vem do molde da Programação — e a ASA diz isso com essas palavras: vem do molde, pode mudar." },
+  { title: "✓ A agenda do Elenco propõe; a escala confirma", body: "O que o Elenco cria nasce como proposta. Quem coordena vê as propostas ao gerar a escala do dia, junto das necessidades do local, e libera ou nega com motivo e alternativa; a pessoa recebe o porquê e a sugestão. Publicar escala exige responder cada proposta — nem que seja negar. Publicada, o bloco existe. Com a escala do dia já publicada, só entra o que for urgente." },
+  { title: "✓ Consenso sem comitê: essencial × pode faltar", body: "Cada participante entra como essencial ou pode faltar, e cada supervisor responde só pela sua pessoa. Negar quem pode faltar: acontece sem ela. Negar quem é essencial: não acontece naquele horário, e a decisão volta para quem pediu — mover para a alternativa, fazer sem a pessoa, ou desistir. Mover reabre a permissão de todos, porque a liberação era daquele horário. A ASA cruza as alternativas oferecidas e diz qual faixa serve para todos." },
+  { title: "✓ Qualquer um reconhece qualquer um, no Mural", body: "Não há hierarquia para elogiar: quem viu o gesto escreve, seja da sua área ou não — Elenco inclusive, sem pedir autorização a ninguém. O ato de reconhecer mora no compositor do Mural (22), junto do resto da vida da casa; o único freio é escrever o motivo, porque reconhecimento sem fato não convence nem quem recebe." },
+  { title: "✓ 25 deixa de ser tela de vitrine e vira painel de gestão", body: "Reconhecimentos sai de Comunicação e entra em Gestão, sem acesso do Elenco — para ele reconhecimento não é seção do app: aparece no Mural e fica no próprio perfil (28). A tela 25 guarda o que o Mural não mostra: histórico consolidado, quem vem sendo reconhecido e por quem, e o silêncio — quem trabalha há meses e nunca ouviu nada. Sem placar, sem cota, sem reconhecido do mês; a ASA aponta o dado, o texto é sempre de quem viu." },
+  { title: "✓ Espaço é o que se reserva; online mora na Agenda", body: "06 ganhou os espaços de dentro de cada local (Palco A, sala de ensaio, sala de reunião), com capacidade e a marca de disputado ou uso livre: dois compromissos podem estar no mesmo local, nunca no mesmo espaço disputado e no mesmo horário. Online não é espaço — é uma opção do compromisso na Agenda, com campo de link que pode ficar vazio na hora e ser preenchido depois." }
+];
+
+class Component extends DCLogic {
+  state = { profile: null };
+
+  renderVals() {
+    const active = this.state.profile || this.props.perfilInicial || "SUP";
+    const showNums = this.props.mostrarNumeros ?? true;
+    const meta = PROFILES.find(p => p.key === active) || PROFILES[2];
+
+    const profileTabs = PROFILES.map(p => ({
+      name: p.name,
+      dot: p.dot,
+      onClick: () => this.setState({ profile: p.key }),
+      style: [
+        "display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;cursor:pointer;",
+        "font-family:Manrope,sans-serif;font-size:13px;font-weight:600;transition:all .15s;",
+        p.key === active
+          ? "border:1px solid " + p.dot + ";background:" + p.dot + "12;color:" + p.dot + ";box-shadow:0 0 0 3px " + p.dot + "1a"
+          : "border:1px solid #e6e1f2;background:#fff;color:#6b6482"
+      ].join("")
+    }));
+
+    const badge = (key, level) => {
+      const L = LEVELS[level];
+      const strong = key === active;
+      return {
+        text: key + " · " + (level === "proprio" ? "próprio" : level),
+        style: [
+          "font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.04em;",
+          "padding:4px 8px;border-radius:6px;text-transform:uppercase;",
+          "background:" + L.bg + ";color:" + L.fg + ";",
+          strong ? "outline:1.5px solid " + L.fg + ";outline-offset:1px;" : "opacity:.62;"
+        ].join("")
+      };
+    };
+
+    const navMap = GROUPS.map(g => ({
+      title: g.title,
+      hint: g.hint,
+      items: g.items.map(m => ({
+        num: showNums ? m.num : "",
+        name: m.name,
+        note: m.note,
+        badges: PROFILES.map(p => badge(p.key, m.levels[p.key]))
+      }))
+    }));
+
+    const memberLabel = {
+      "11·12·15": "Minha escala",
+      "06": "Minha operação",
+      "13": "Livro do Show",
+      "10": "Minhas tarefas",
+      "14": "Meus shows",
+      "08": "Minha equipe",
+      "19": "Check-in",
+      "18": "Folgas",
+      "22": "Avisos e Mural"
+    };
+
+    const shellNav = GROUPS.filter(g => g.key !== "sempre").map(g => ({
+      title: g.title,
+      items: g.items
+        .filter(m => m.levels[active] !== "fora")
+        .map(m => ({
+          num: showNums ? m.num : "",
+          label: active === "MEM" ? (memberLabel[m.num] || m.name) : m.name,
+          style: [
+            "display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;font-size:12px;",
+            m.num === "17"
+              ? "background:rgba(255,255,255,.14);color:#fff;font-weight:600;"
+              : "color:#c3bbdf;font-weight:500;"
+          ].join("")
+        }))
+    })).filter(g => g.items.length > 0);
+
+    const MOBILE = {
+      ADM: ["Meu Dia", "Painel", "Escalas", "Pessoas", "Mais"],
+      DIR: ["Meu Dia", "Painel", "Agenda", "Avisos", "Mais"],
+      SUP: ["Meu Dia", "Escalas", "Equipe", "Avisos", "Mais"],
+      MEM: ["Meu Dia", "Escala", "Mural", "Mensagens", "Mais"]
+    };
+    const mobileTabs = MOBILE[active].map((label, i) => ({
+      label,
+      style: [
+        "display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 2px;",
+        i === 0 ? "color:" + meta.dot + ";" : "color:#6b6482;"
+      ].join("")
+    }));
+
+    const planRows = GROUPS.reduce((acc, g) => acc.concat(g.items), []).map(m => ({
+      num: showNums ? m.num : "",
+      name: m.name,
+      note: m.note,
+      cells: PROFILES.map(p => {
+        const L = LEVELS[m.levels[p.key]];
+        const on = p.key === active;
+        return {
+          profile: p.name,
+          text: m.plan[p.key],
+          style: [
+            "display:flex;flex-direction:column;gap:8px;padding:14px 16px;border-right:1px solid #f0ecf8;",
+            on ? "background:" + L.bg + "55;" : "background:#fff;",
+            on ? "" : "opacity:.72;"
+          ].join(""),
+          tagStyle: [
+            "font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;",
+            "color:" + L.fg + ";"
+          ].join("")
+        };
+      })
+    }));
+
+    return {
+      profileTabs: profileTabs,
+      profileHint: meta.hint,
+      profileName: meta.name,
+      personName: meta.person,
+      operationLabel: meta.op,
+      personChipStyle: "font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:" + meta.dot + ";background:" + meta.dot + "26;padding:2px 7px;border-radius:999px;width:fit-content",
+      navMap: navMap,
+      shellNav: shellNav,
+      mobileTabs: mobileTabs,
+      planRows: planRows,
+      openDecisions: OPEN_DECISIONS,
+      shellRules: [
+        "uma única área de conteúdo por rota",
+        "estado vazio, carregando e sem permissão vêm do shell",
+        "ação primária sempre no topo à direita",
+        "nada de tela paralela por perfil"
+      ]
+    };
+  }
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #f4f2fa; font-family: Manrope, system-ui, sans-serif; color: #1b1630; }
+  a { color: #6C2BF2; text-decoration: none; }
+  a:hover { color: #4a17b8; text-decoration: underline; }
+  button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid #6C2BF2; outline-offset: 2px; border-radius: 8px; }
+  [style*="scrollbar-width:none"]::-webkit-scrollbar { display: none; }
+</style>
+</helmet>
+
+<div style="max-width:1400px;margin:0 auto;padding:44px 28px 110px;display:flex;flex-direction:column;gap:52px">
+
+  <header style="display:flex;align-items:flex-start;gap:18px">
+    <img src="assets/asa/tarefa-concluida.png" alt="" style="width:60px;height:60px;object-fit:contain;flex:none;margin-top:2px" />
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:#6b6482">Onda 1 · item 6 · último</div>
+      <h1 style="font-family:Outfit,sans-serif;font-size:38px;line-height:1.06;font-weight:700;margin:0;letter-spacing:-0.02em">Os três formulários, refeitos</h1>
+      <p style="margin:0;max-width:74ch;font-size:15px;line-height:1.6;color:#5b5473;text-wrap:pretty">Uma coluna, uma pergunta por vez, e o botão de salvar só acende quando dá. Nada de motivo obrigatório para criar coisa. Todos funcionam aqui — preencha e veja o botão mudar.</p>
+    </div>
+  </header>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#6C2BF2">1</span>
+      <h2 style="font-family:Outfit,sans-serif;font-size:25px;font-weight:600;margin:0;letter-spacing:-0.01em">Nova responsabilidade</h2>
+      <span style="font-size:14px;color:#6b6482">sete campos · era o formulário mais confuso do app</span>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start">
+      <div style="flex:1 1 520px;min-width:440px;background:#fff;border:1px solid #ddd6ee;border-radius:20px;overflow:hidden;box-shadow:0 16px 36px -30px rgba(40,20,90,.45)">
+        <div style="padding:20px 24px 16px;border-bottom:1px solid #f0ecf8;display:flex;align-items:center;gap:12px">
+          <span style="font-family:Outfit,sans-serif;font-size:20px;font-weight:600;flex:1;letter-spacing:-0.01em">Nova responsabilidade</span>
+          <span style="font-size:12px;color:#6b6482">{{ respProgress }}</span>
+        </div>
+        <div style="padding:22px 24px;display:flex;flex-direction:column;gap:20px">
+
+          <label style="display:flex;flex-direction:column;gap:7px">
+            <span style="font-size:13.5px;font-weight:700">Responde por quê?</span>
+            <span style="font-size:12.5px;color:#6b6482;line-height:1.45">O resultado, não a tarefa. Escreva como quem explica para alguém novo.</span>
+            <input value="{{ respName }}" onChange="{{ onRespName }}" placeholder="Elenco vestido e caracterizado na chamada" style="height:50px;padding:0 14px;border:1.5px solid #ddd6ee;border-radius:13px;font-family:Manrope,sans-serif;font-size:15px;color:#1b1630;box-sizing:border-box;width:100%" />
+          </label>
+
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <span style="font-size:13.5px;font-weight:700">Área</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <sc-for list="{{ respAreas }}" as="a">
+                <button type="button" onClick="{{ a.onClick }}" style="{{ a.style }}">{{ a.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <span style="font-size:13.5px;font-weight:700">Quem responde</span>
+            <span style="font-size:12.5px;color:#6b6482;line-height:1.45">Uma pessoa só. É ela que a casa procura quando não acontece.</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <sc-for list="{{ respOwners }}" as="o">
+                <button type="button" onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <span style="font-size:13.5px;font-weight:700">Quem participa <span style="font-weight:500;color:#6b6482">· opcional</span></span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <sc-for list="{{ respParts }}" as="p">
+                <button type="button" onClick="{{ p.onClick }}" style="{{ p.style }}">{{ p.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <span style="font-size:13.5px;font-weight:700">Com que frequência gera tarefa</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <sc-for list="{{ respFreq }}" as="f">
+                <button type="button" onClick="{{ f.onClick }}" style="{{ f.style }}">{{ f.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+
+          <label style="display:flex;flex-direction:column;gap:7px">
+            <span style="font-size:13.5px;font-weight:700">Como se sabe que foi cumprida <span style="font-weight:500;color:#6b6482">· opcional</span></span>
+            <input value="{{ respProof }}" onChange="{{ onRespProof }}" placeholder="Conferência marcada no Livro do Dia antes da chamada" style="height:50px;padding:0 14px;border:1.5px solid #ddd6ee;border-radius:13px;font-family:Manrope,sans-serif;font-size:15px;color:#1b1630;box-sizing:border-box;width:100%" />
+          </label>
+
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <span style="font-size:13.5px;font-weight:700">Checklist <span style="font-weight:500;color:#6b6482">· opcional</span></span>
+            <span style="font-size:12.5px;color:#6b6482;line-height:1.45">Se marcar, cada tarefa gerada nasce com estes itens para conferir.</span>
+            <button type="button" onClick="{{ onRespChecklist }}" style="{{ respChecklistStyle }}">{{ respChecklistLabel }}</button>
+          </div>
+
+        </div>
+        <div style="padding:18px 24px 22px;border-top:1px solid #f0ecf8;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <button type="button" onClick="{{ onRespSave }}" style="{{ respSaveStyle }}">{{ respSaveLabel }}</button>
+          <span style="font-size:12.5px;color:#6b6482;line-height:1.45;flex:1;min-width:180px;text-wrap:pretty">{{ respHint }}</span>
+        </div>
+      </div>
+
+      <div style="flex:1 1 320px;min-width:300px;display:flex;flex-direction:column;gap:14px">
+        <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:9px">
+          <span style="font-size:14.5px;font-weight:700">O que eu cortei</span>
+          <sc-for list="{{ respCut }}" as="c">
+            <span style="font-size:13px;line-height:1.5;color:#5b5473;text-wrap:pretty">— {{ c }}</span>
+          </sc-for>
+        </div>
+        <div style="background:#f6f4fc;border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:8px">
+          <span style="font-size:14.5px;font-weight:700">A ASA aqui</span>
+          <span style="font-size:13px;line-height:1.55;color:#5b5473;text-wrap:pretty">Você escreve uma frase — “alguém tem que conferir o figurino antes da chamada” — e ela devolve o formulário preenchido para você corrigir. Era um dos pedidos da auditoria.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#6C2BF2">2</span>
+      <h2 style="font-family:Outfit,sans-serif;font-size:25px;font-weight:600;margin:0;letter-spacing:-0.01em">Tarefa avulsa</h2>
+      <span style="font-size:14px;color:#6b6482">quatro campos · antes não abria formulário nenhum</span>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start">
+      <div style="flex:1 1 420px;min-width:380px;background:#fff;border:1px solid #ddd6ee;border-radius:20px;overflow:hidden;box-shadow:0 16px 36px -30px rgba(40,20,90,.45)">
+        <div style="padding:20px 24px 16px;border-bottom:1px solid #f0ecf8">
+          <span style="font-family:Outfit,sans-serif;font-size:20px;font-weight:600;letter-spacing:-0.01em">Tarefa avulsa</span>
+        </div>
+        <div style="padding:22px 24px;display:flex;flex-direction:column;gap:20px">
+          <label style="display:flex;flex-direction:column;gap:7px">
+            <span style="font-size:13.5px;font-weight:700">O quê</span>
+            <input value="{{ tarName }}" onChange="{{ onTarName }}" placeholder="Levar os props do Natal para o camarim" style="height:50px;padding:0 14px;border:1.5px solid #ddd6ee;border-radius:13px;font-family:Manrope,sans-serif;font-size:15px;color:#1b1630;box-sizing:border-box;width:100%" />
+          </label>
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <span style="font-size:13.5px;font-weight:700">Para quem</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <sc-for list="{{ tarWho }}" as="w">
+                <button type="button" onClick="{{ w.onClick }}" style="{{ w.style }}">{{ w.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <span style="font-size:13.5px;font-weight:700">Quando</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <sc-for list="{{ tarWhen }}" as="w">
+                <button type="button" onClick="{{ w.onClick }}" style="{{ w.style }}">{{ w.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <span style="font-size:13.5px;font-weight:700">Fecha como</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <sc-for list="{{ tarMode }}" as="m">
+                <button type="button" onClick="{{ m.onClick }}" style="{{ m.style }}">{{ m.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+        <div style="padding:18px 24px 22px;border-top:1px solid #f0ecf8;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <button type="button" onClick="{{ onTarSave }}" style="{{ tarSaveStyle }}">{{ tarSaveLabel }}</button>
+          <span style="font-size:12.5px;color:#6b6482;line-height:1.45;flex:1;min-width:160px;text-wrap:pretty">{{ tarHint }}</span>
+        </div>
+      </div>
+
+      <div style="flex:1 1 300px;min-width:280px;background:#f6f4fc;border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:8px">
+        <span style="font-size:14.5px;font-weight:700">Por que só quatro</span>
+        <span style="font-size:13px;line-height:1.55;color:#5b5473;text-wrap:pretty">Tarefa avulsa é o que você lembra no corredor. Se exigir área, checklist, prova e motivo, ninguém cria — manda no WhatsApp. Quatro campos cabem em dez segundos.</span>
+        <span style="font-size:13px;line-height:1.55;color:#5b5473;text-wrap:pretty">O “fecha como” existe porque a auditoria mostrou que tarefa de grupo e tarefa de titular se comportam diferente — e isso não estava em campo nenhum.</span>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#6C2BF2">3</span>
+      <h2 style="font-family:Outfit,sans-serif;font-size:25px;font-weight:600;margin:0;letter-spacing:-0.01em">Marcar horário na Agenda</h2>
+      <span style="font-size:14px;color:#6b6482">pessoas primeiro · o app pinta as faixas livres · você escolhe</span>
+    </div>
+
+    <div style="background:#fff;border:1px solid #ddd6ee;border-radius:20px;overflow:hidden;box-shadow:0 16px 36px -30px rgba(40,20,90,.45)">
+      <div style="padding:20px 24px 16px;border-bottom:1px solid #f0ecf8;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <span style="font-family:Outfit,sans-serif;font-size:20px;font-weight:600;letter-spacing:-0.01em;flex:1;min-width:200px">Marcar horário</span>
+        <span style="font-size:12.5px;color:#6b6482">{{ agStep }}</span>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap">
+        <div style="flex:1 1 400px;min-width:340px;padding:22px 24px;display:flex;flex-direction:column;gap:20px;border-right:1px solid #f0ecf8">
+
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <span style="font-size:13.5px;font-weight:700">1 · Quem precisa estar</span>
+            <span style="font-size:12.5px;color:#6b6482;line-height:1.45">Escolha as pessoas antes de pensar em hora. A janela sai delas.</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <sc-for list="{{ agPeople }}" as="p">
+                <button type="button" onClick="{{ p.onClick }}" style="{{ p.style }}">{{ p.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <span style="font-size:13.5px;font-weight:700">2 · Quanto tempo</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <sc-for list="{{ agDurs }}" as="d">
+                <button type="button" onClick="{{ d.onClick }}" style="{{ d.style }}">{{ d.label }}</button>
+              </sc-for>
+            </div>
+            <span style="font-size:12px;color:#6b6482;line-height:1.45">Duração livre — digite qualquer valor. A lista é só atalho.</span>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <span style="font-size:13.5px;font-weight:700">3 · O que é</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <sc-for list="{{ agKinds }}" as="k">
+                <button type="button" onClick="{{ k.onClick }}" style="{{ k.style }}">{{ k.label }}</button>
+              </sc-for>
+            </div>
+            <span style="font-size:12px;color:#6b6482;line-height:1.45">Categorias são criadas por você em Categorias — estas não são fixas.</span>
+          </div>
+
+          <label style="display:flex;flex-direction:column;gap:7px">
+            <span style="font-size:13.5px;font-weight:700">Assunto</span>
+            <input value="{{ agName }}" onChange="{{ onAgName }}" placeholder="Alinhar o figurino do Camp" style="height:50px;padding:0 14px;border:1.5px solid #ddd6ee;border-radius:13px;font-family:Manrope,sans-serif;font-size:15px;color:#1b1630;box-sizing:border-box;width:100%" />
+          </label>
+
+        </div>
+
+        <div style="flex:1 1 460px;min-width:400px;padding:22px 24px;display:flex;flex-direction:column;gap:16px;background:#faf9fe">
+          <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+            <span style="font-size:13.5px;font-weight:700">4 · Onde cabe para todos</span>
+            <span style="flex:1"></span>
+            <span style="font-size:12px;color:#6b6482">{{ agSlotsHint }}</span>
+          </div>
+
+          <div style="display:flex;gap:8px;align-items:stretch">
+            <div style="flex:none;width:42px;display:flex;flex-direction:column;padding-top:26px">
+              <sc-for list="{{ agHours }}" as="h">
+                <span style="height:34px;display:flex;align-items:flex-start;justify-content:flex-end;font-family:'JetBrains Mono',monospace;font-size:10px;color:#6b6482;padding-right:4px">{{ h }}</span>
+              </sc-for>
+            </div>
+            <sc-for list="{{ agDays }}" as="d">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                <span style="{{ d.headStyle }}">{{ d.label }}</span>
+                <div style="display:flex;flex-direction:column;position:relative">
+                  <sc-for list="{{ d.cells }}" as="c">
+                    <button type="button" onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.mark }}</button>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="display:flex;gap:16px;flex-wrap:wrap">
+            <sc-for list="{{ agLegend }}" as="l">
+              <span style="display:flex;align-items:center;gap:7px;font-size:12px;color:#5b5473">
+                <span style="{{ l.swatch }}"></span>{{ l.label }}
+              </span>
+            </sc-for>
+          </div>
+
+          <div style="{{ agPickedStyle }}">
+            <span style="font-size:13px;line-height:1.55;color:#2b2440;text-wrap:pretty">{{ agPickedText }}</span>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+            <button type="button" onClick="{{ onAgSave }}" style="{{ agSaveStyle }}">{{ agSaveLabel }}</button>
+            <span style="font-size:12.5px;color:#6b6482;line-height:1.45;flex:1;min-width:170px;text-wrap:pretty">{{ agHint }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:14px">
+      <div style="flex:1 1 320px;min-width:300px;background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:9px">
+        <span style="font-size:14.5px;font-weight:700">O que mudou de verdade</span>
+        <sc-for list="{{ agChanges }}" as="c">
+          <span style="font-size:13px;line-height:1.5;color:#5b5473;text-wrap:pretty">— {{ c }}</span>
+        </sc-for>
+      </div>
+      <div style="flex:1 1 320px;min-width:300px;background:#f6f4fc;border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:8px">
+        <span style="font-size:14.5px;font-weight:700">Aprovar e negar saiu daqui</span>
+        <span style="font-size:13px;line-height:1.55;color:#5b5473;text-wrap:pretty">Propostas viraram uma aba <strong>Pedidos</strong> dentro de Escalas, porque é lá que quem coordena já está trabalhando quando decide. Na Agenda fica só o aviso de que existem pedidos esperando.</span>
+        <span style="font-size:13px;line-height:1.55;color:#5b5473;text-wrap:pretty">“Essencial” e “pode faltar” trocaram de nome: <strong>sem esta pessoa não acontece</strong> e <strong>acontece mesmo sem ela</strong>.</span>
+      </div>
+    </div>
+  </section>
+
+  <section style="background:#1c1440;border-radius:20px;padding:26px 28px;display:flex;flex-wrap:wrap;gap:24px;align-items:center">
+    <img src="assets/asa/tarefa-concluida.png" alt="" style="width:66px;height:66px;object-fit:contain;flex:none" />
+    <div style="flex:1 1 440px;min-width:320px;display:flex;flex-direction:column;gap:9px">
+      <span style="font-family:Outfit,sans-serif;font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.01em">Onda 1 fechada</span>
+      <span style="font-size:14px;line-height:1.6;color:#dcd5f6;text-wrap:pretty">Vocabulário trocado · entrada, notificações e estados desenhados · regras escondidas atrás do “i” · botões decorativos com ação · mobile do elenco refeito · formulários simplificados. O próximo passo é a Onda 2, que é conversa: personagens, formações, como a escala publica, categorias e turmas livres.</span>
+    </div>
+  </section>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1400}}">
+const AREAS = ["Patinadores", "Bailarinos", "Produção", "Administração"];
+const PESSOAS = ["Deborah", "Victor Oliveira", "Stephani", "Rodrigo", "Barbara Sorroche"];
+const PARTS = ["Carol", "Dani", "Amanda", "Izabel", "Mariza", "Maico"];
+const FREQ = ["Todo dia", "Todo show", "Semanal", "Mensal", "Só quando eu pedir"];
+const TAR_WHO = ["Mariza", "Maico", "Lucas", "Gabriel"];
+const TAR_WHEN = ["Hoje", "Amanhã", "Esta semana", "Escolher data"];
+const TAR_MODE = ["Titular fecha", "Primeiro que fizer", "Cada um marca o seu"];
+const AG_PEOPLE = ["Julia", "Carol", "Dani", "Victor M.", "Sarah", "Mariza"];
+const AG_DURS = ["30 min", "45 min", "1h", "1h30", "2h", "3h"];
+const AG_KINDS = ["Ensaio", "Reunião", "Fisioterapia", "Criação"];
+const AG_DAYS = ["seg 14", "ter 15", "qua 16", "qui 17", "sex 18"];
+const AG_HOURS = ["08h", "09h", "10h", "11h", "12h", "13h", "14h"];
+
+// 0 livre · 1 ocupado por escala · 2 folga de alguém
+const GRID = [
+  [1, 1, 0, 0, 1, 1, 1],
+  [0, 0, 1, 1, 1, 0, 0],
+  [1, 0, 0, 1, 1, 1, 0],
+  [1, 1, 1, 0, 0, 1, 1],
+  [2, 2, 2, 2, 2, 2, 2]
+];
+
+class Component extends DCLogic {
+  state = {
+    respName: "", respArea: null, respOwner: null, respParts: [], respFreq: null, respProof: "", respChecklist: false, respSaved: false,
+    tarName: "", tarWho: null, tarWhen: null, tarMode: "Titular fecha", tarSaved: false,
+    agPeople: ["Julia", "Carol"], agDur: "1h", agKind: "Ensaio", agName: "", agSlot: null, agSaved: false
+  };
+
+  chip(on, opts) {
+    const o = opts || {};
+    return "min-height:44px;padding:0 16px;border-radius:12px;cursor:pointer;font-family:Manrope,sans-serif;font-size:14px;font-weight:600;text-align:left;" +
+      (on
+        ? "border:1.5px solid #6C2BF2;background:#f3ecfe;color:#5B23C9;"
+        : "border:1.5px solid #e6e1f2;background:#fff;color:" + (o.mute ? "#6b6482" : "#2b2440") + ";");
+  }
+
+  primary(on, label) {
+    return "min-height:52px;padding:0 26px;border:none;border-radius:14px;font-family:Manrope,sans-serif;font-size:15.5px;font-weight:700;flex:none;" +
+      (on ? "background:#6C2BF2;color:#fff;cursor:pointer;" : "background:#eee9f7;color:#6b6482;cursor:not-allowed;");
+  }
+
+  toggle(key, v) {
+    this.setState(s => {
+      const cur = s[key] || [];
+      return { [key]: cur.indexOf(v) >= 0 ? cur.filter(x => x !== v) : cur.concat([v]) };
+    });
+  }
+
+  renderVals() {
+    const s = this.state;
+    const ch = (on, mute) => this.chip(on, { mute: mute });
+
+    // ---- responsabilidade
+    const respDone = !!(s.respName.trim() && s.respArea && s.respOwner && s.respFreq);
+    const respFilled = [s.respName.trim(), s.respArea, s.respOwner, s.respFreq].filter(Boolean).length;
+
+    // ---- tarefa avulsa
+    const tarDone = !!(s.tarName.trim() && s.tarWho && s.tarWhen);
+
+    // ---- agenda
+    const agDays = AG_DAYS.map((label, di) => ({
+      label: label,
+      headStyle: "text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding-bottom:2px;color:" +
+        (di === 4 ? "#b9789a" : "#5b5473"),
+      cells: GRID[di].map((v, hi) => {
+        const key = di + ":" + hi;
+        const picked = s.agSlot === key;
+        const bg = v === 2 ? "#fdf1f5" : v === 1 ? "#ece8f6" : "#e3f4f1";
+        const bd = v === 2 ? "#f3d8e2" : v === 1 ? "#ddd6ee" : "#a9dfd4";
+        return {
+          mark: picked ? "✓" : "",
+          onClick: v === 0 ? () => this.setState({ agSlot: key, agSaved: false }) : () => this.setState({ agSlot: null }),
+          style: "height:34px;margin-bottom:2px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;font-family:Manrope,sans-serif;" +
+            (picked
+              ? "border:2px solid #6C2BF2;background:#6C2BF2;color:#fff;cursor:pointer;"
+              : "border:1px solid " + bd + ";background:" + bg + ";color:transparent;cursor:" + (v === 0 ? "pointer" : "default") + ";")
+        };
+      })
+    }));
+
+    const livres = GRID.reduce((n, col) => n + col.filter(v => v === 0).length, 0);
+    const agSlotLabel = s.agSlot
+      ? AG_DAYS[Number(s.agSlot.split(":")[0])] + " · " + AG_HOURS[Number(s.agSlot.split(":")[1])]
+      : null;
+    const agDone = !!(s.agSlot && s.agPeople.length && s.agName.trim());
+
+    return {
+      // responsabilidade
+      respName: s.respName,
+      onRespName: e => this.setState({ respName: e.target.value, respSaved: false }),
+      respProof: s.respProof,
+      onRespProof: e => this.setState({ respProof: e.target.value }),
+      respProgress: respFilled + " de 4 obrigatórios",
+      respAreas: AREAS.map(a => ({ label: a, onClick: () => this.setState({ respArea: a, respSaved: false }), style: ch(s.respArea === a) })),
+      respOwners: PESSOAS.map(p => ({ label: p, onClick: () => this.setState({ respOwner: p, respSaved: false }), style: ch(s.respOwner === p) })),
+      respParts: PARTS.map(p => ({ label: p, onClick: () => this.toggle("respParts", p), style: ch(s.respParts.indexOf(p) >= 0, true) })),
+      respFreq: FREQ.map(f => ({ label: f, onClick: () => this.setState({ respFreq: f, respSaved: false }), style: ch(s.respFreq === f) })),
+      respChecklistLabel: s.respChecklist ? "Checklist ativado — 0 itens, você adiciona depois" : "Adicionar checklist",
+      respChecklistStyle: ch(s.respChecklist, true) + "align-self:flex-start;",
+      onRespChecklist: () => this.setState({ respChecklist: !s.respChecklist }),
+      respSaveLabel: s.respSaved ? "Responsabilidade criada" : "Criar responsabilidade",
+      respSaveStyle: this.primary(respDone) + (s.respSaved ? "background:#0a6f68;" : ""),
+      onRespSave: respDone ? () => this.setState({ respSaved: true }) : () => {},
+      respHint: s.respSaved
+        ? "Criada. A primeira tarefa nasce na próxima vez que a frequência bater."
+        : respDone
+          ? "Nenhum motivo é pedido para criar. Motivo só aparece ao encerrar ou negar."
+          : "Faltam: " + [!s.respName.trim() && "o resultado", !s.respArea && "a área", !s.respOwner && "quem responde", !s.respFreq && "a frequência"].filter(Boolean).join(", ") + ".",
+      respCut: [
+        "Motivo obrigatório para criar — saiu daqui e de outras quatro telas.",
+        "Campo de prova e checklist agora são opcionais, não barreira.",
+        "Lista de tarefas embutida no formulário: você cria a responsabilidade e as tarefas vêm da frequência.",
+        "Duas colunas com dez campos viraram uma coluna com sete."
+      ],
+
+      // tarefa avulsa
+      tarName: s.tarName,
+      onTarName: e => this.setState({ tarName: e.target.value, tarSaved: false }),
+      tarWho: TAR_WHO.map(w => ({ label: w, onClick: () => this.setState({ tarWho: w, tarSaved: false }), style: ch(s.tarWho === w) })),
+      tarWhen: TAR_WHEN.map(w => ({ label: w, onClick: () => this.setState({ tarWhen: w, tarSaved: false }), style: ch(s.tarWhen === w) })),
+      tarMode: TAR_MODE.map(m => ({ label: m, onClick: () => this.setState({ tarMode: m }), style: ch(s.tarMode === m, true) })),
+      tarSaveLabel: s.tarSaved ? "Tarefa enviada" : "Criar tarefa",
+      tarSaveStyle: this.primary(tarDone) + (s.tarSaved ? "background:#0a6f68;" : ""),
+      onTarSave: tarDone ? () => this.setState({ tarSaved: true }) : () => {},
+      tarHint: s.tarSaved
+        ? "A pessoa recebe notificação agora."
+        : tarDone ? "Pronto para enviar." : "Preencha o quê, para quem e quando.",
+
+      // agenda
+      agStep: s.agSlot ? "horário escolhido" : s.agPeople.length ? "escolha uma faixa verde" : "comece pelas pessoas",
+      agPeople: AG_PEOPLE.map(p => ({ label: p, onClick: () => { this.toggle("agPeople", p); this.setState({ agSlot: null, agSaved: false }); }, style: ch(s.agPeople.indexOf(p) >= 0) })),
+      agDurs: AG_DURS.map(d => ({ label: d, onClick: () => this.setState({ agDur: d, agSlot: null }), style: ch(s.agDur === d) })),
+      agKinds: AG_KINDS.map(k => ({ label: k, onClick: () => this.setState({ agKind: k }), style: ch(s.agKind === k) })),
+      agName: s.agName,
+      onAgName: e => this.setState({ agName: e.target.value, agSaved: false }),
+      agHours: AG_HOURS,
+      agDays: agDays,
+      agSlotsHint: s.agPeople.length
+        ? livres + " faixas livres para " + s.agPeople.length + (s.agPeople.length === 1 ? " pessoa" : " pessoas")
+        : "escolha as pessoas primeiro",
+      agLegend: [
+        { label: "livre para todos", swatch: "width:15px;height:15px;border-radius:5px;background:#e3f4f1;border:1px solid #a9dfd4;flex:none" },
+        { label: "alguém está na escala", swatch: "width:15px;height:15px;border-radius:5px;background:#ece8f6;border:1px solid #ddd6ee;flex:none" },
+        { label: "alguém está de folga", swatch: "width:15px;height:15px;border-radius:5px;background:#fdf1f5;border:1px solid #f3d8e2;flex:none" }
+      ],
+      agPickedStyle: "border-radius:14px;padding:14px 16px;" +
+        (agSlotLabel ? "background:#f3ecfe;border:1.5px solid #6C2BF2;" : "background:#fff;border:1px dashed #ddd6ee;"),
+      agPickedText: agSlotLabel
+        ? (s.agKind + " de " + s.agDur + " · " + agSlotLabel + " · " + s.agPeople.join(", "))
+        : "Clique numa faixa verde para escolher o horário. As cinzas e rosas não são clicáveis — ali alguém não pode.",
+      agSaveLabel: s.agSaved ? "Convocação enviada" : "Marcar e avisar todos",
+      agSaveStyle: this.primary(agDone) + (s.agSaved ? "background:#0a6f68;" : ""),
+      onAgSave: agDone ? () => this.setState({ agSaved: true }) : () => {},
+      agHint: s.agSaved
+        ? "Entrou na agenda de todo mundo e cada um recebeu notificação."
+        : agDone ? "Todos recebem notificação e pode responder que não dá." : "Falta escolher a faixa e escrever o assunto.",
+      agChanges: [
+        "Pessoas primeiro, hora depois — antes era o contrário e dava conflito.",
+        "A faixa livre é calculada, não adivinhada: o app cruza escala e folga de quem você escolheu.",
+        "Duração livre, sem lista fechada.",
+        "As folgas mostradas vêm do módulo Folgas, não de dados soltos nesta tela."
+      ]
+    };
+  }
+}
+
+</script>
+</body>
+</html>

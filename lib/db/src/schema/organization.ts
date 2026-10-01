@@ -2,7 +2,7 @@ import { pgTable, text, uuid, timestamp, jsonb, pgEnum, integer, date, uniqueInd
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
-import { usersTable } from "./identity.js";
+import { usersTable, REGRAS_PADRAO, type RegrasCasa } from "./identity.js";
 
 export const operationStatusEnum = pgEnum("operation_status", ["DRAFT", "ACTIVE", "PAUSED", "ARCHIVED"]);
 export const groupStatusEnum = pgEnum("group_status", ["ACTIVE", "INACTIVE", "ARCHIVED"]);
@@ -12,6 +12,8 @@ export const groupScopeEnum = pgEnum("group_scope", ["OPERATION", "MULTI", "ALL"
 export const organizationsTable = pgTable("organizations", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  /** Regras da casa (Perfil da Administração): silêncio noturno padrão e antecedência do lembrete de check-in. */
+  regras: jsonb("regras").$type<RegrasCasa>().notNull().default(REGRAS_PADRAO),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

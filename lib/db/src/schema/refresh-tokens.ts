@@ -9,6 +9,10 @@ export const refreshTokensTable = pgTable("refresh_tokens", {
   tokenHash: text("token_hash").notNull().unique(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  /** Preenchido só quando a revogação foi uma troca por renovação (dá 30 s de tolerância). */
+  rotatedAt: timestamp("rotated_at", { withTimezone: true }),
+  /** O token que substituiu este na renovação. */
+  replacedBy: uuid("replaced_by"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

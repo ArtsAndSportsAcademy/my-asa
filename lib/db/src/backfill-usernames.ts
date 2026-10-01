@@ -14,7 +14,7 @@ import { normalizeUsernameBase, resolveUniqueUsername } from "./username.js";
 
 export async function backfillUsernames(): Promise<number> {
   const all = await db
-    .select({ id: usersTable.id, name: usersTable.name, username: usersTable.username })
+    .select({ id: usersTable.id, fullName: usersTable.fullName, username: usersTable.username })
     .from(usersTable);
 
   const taken = new Set(
@@ -24,7 +24,7 @@ export async function backfillUsernames(): Promise<number> {
   let filled = 0;
   for (const u of all) {
     if (u.username) continue;
-    const username = resolveUniqueUsername(normalizeUsernameBase(u.name), taken);
+    const username = resolveUniqueUsername(normalizeUsernameBase(u.fullName), taken);
     taken.add(username);
     await db.update(usersTable).set({ username }).where(eq(usersTable.id, u.id));
     filled++;

@@ -1,9 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-    <title>MyASA Web Admin</title>
+    <title>My ASA</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/pwa-192.png" />
+    <meta name="theme-color" content="#343b37" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="description" content="MyASA Web Admin — built on Replit. Update this description to reflect the app." />
     <meta name="robots" content="index, follow" />
     <meta property="og:title" content="MyASA Web Admin" />
@@ -19,6 +23,7 @@
   </head>
   <body>
     <div id="root"></div>
+    <script defer src="/mapa-palco.js"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

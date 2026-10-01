@@ -22,8 +22,10 @@ import {
   responsibilityAssignmentsTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
+import { operationalDate } from "../lib/operational-date.js";
 import { requestLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
+import { montarMeuDia } from "../services/meu-dia.js";
 
 const router: IRouter = Router();
 
@@ -33,7 +35,7 @@ router.get("/my-day", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger(LOG_DOMAIN.MY_DAY, req.requestId, req.correlationId);
   const userId = req.user!.sub;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = operationalDate();
 
   try {
     const [allocations, pendingRequests, deliveryAssignments, pendingNoticesRaw] = await Promise.all([
@@ -69,6 +71,7 @@ router.get("/my-day", requireAuth, requireOrganization, async (req, res) => {
             inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"]),
             gte(agendaEventsTable.date, today),
             inArray(agendaEventsTable.status, ["CONFIRMED", "DRAFT"]),
+            eq(scaleAllocationsTable.active, true),
           )
         )
         .orderBy(asc(agendaEventsTable.date), asc(agendaEventsTable.startTime)),
@@ -200,6 +203,8 @@ router.get("/my-day", requireAuth, requireOrganization, async (req, res) => {
             and(
               inArray(dailyBookAssignmentsTable.dailyBookId, dailyBookIds),
               eq(dailyBookAssignmentsTable.userId, userId),
+              // Atribuição substituída por uma regeneração não é mais a escala da pessoa.
+              isNull(dailyBookAssignmentsTable.supersededAt),
             )
           )
       : [];
@@ -381,4 +386,18 @@ router.get("/my-day", requireAuth, requireOrganization, async (req, res) => {
   }
 });
 
+// ─── GET /api/meu-dia ─────────────────────────────────────────────────────────
+// Tela 17 no shell novo: montada da Escala do dia (tela 15), check-in, tarefas, folgas e Mural.
+// O `/my-day` acima continua para quem ainda o chama (modelo antigo de escala).
+router.get("/meu-dia", requireAuth, requireOrganization, async (req, res) => {
+  const log = requestLogger(LOG_DOMAIN.MY_DAY, req.requestId, req.correlationId);
+  const role = req.user!.role;
+  const perfil = role === "ADMIN" ? "adm" : role === "DIR" ? "dir" : role === "SUPERVISOR_A" || role === "SUPERVISOR_B" ? "sup" : "mem";
+  try {
+    res.json(await montarMeuDia({ sub: req.user!.sub, organizationId: req.user!.organizationId, role }, perfil));
+  } catch (err) {
+    log.error({ err }, "erro ao montar Meu Dia");
+    res.status(500).json({ error: "Não consegui montar o seu dia agora." });
+  }
+});
 export default router;

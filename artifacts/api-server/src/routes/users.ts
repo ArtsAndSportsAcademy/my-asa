@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, and, inArray, isNull, like } from "drizzle-orm";
+import { randomInt } from "node:crypto";
+import { eq, and, inArray, isNull, like, ne, gt, count } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { db } from "@workspace/db";
 import {
@@ -22,13 +23,19 @@ import {
   historyEventsTable,
   historyNarrativesTable,
   operationalChangesTable,
+  areasTable,
 } from "@workspace/db";
 import { normalizeUsernameBase, resolveUniqueUsername, validateAndNormalizeUsername } from "@workspace/db";
 import { requireAuth, requireOrganization, requireRole } from "../middlewares/auth.js";
 import { recordAudit } from "../lib/audit.service.js";
+import { hashToken } from "../lib/jwt.service.js";
 import { requestLogger } from "../lib/logger.js";
-import { adminPerson, selfProfile, supervisorPerson } from "../lib/person-projection.js";
+import { adminPerson, colleaguePerson, selfProfile, supervisorPerson } from "../lib/person-projection.js";
 import { loadAuthorizationContext } from "../lib/authorization.service.js";
+import { normalizeReason, requireReason } from "../lib/reason.js";
+import { writeHistoryEvent } from "../lib/history-helper.js";
+import { listAreaLocalScopes } from "../services/area-local-scope.js";
+import { canSupervisorAccessPerson } from "../services/area-local-scope.js";
 
 const router: IRouter = Router();
 
@@ -39,14 +46,15 @@ const router: IRouter = Router();
  */
 async function attachOperationIds(
   users: (typeof usersTable.$inferSelect)[],
-  projection: "ADMIN" | "SUPERVISOR",
+  projection: "ADMIN" | "SUPERVISOR" | "COLEGA",
+  viewerId = "",
 ) {
   const ids = users.map((u) => u.id);
   if (ids.length === 0) return [];
   const roles = await db.query.userRolesTable.findMany({
     where: and(eq(userRolesTable.active, true), inArray(userRolesTable.userId, ids)),
   });
-  const [memberships, operations] = await Promise.all([
+  const [memberships, operations, areas] = await Promise.all([
     db.select({
       userId: teamMembershipsTable.userId,
       startsAt: teamMembershipsTable.startsAt,
@@ -62,15 +70,20 @@ async function attachOperationIds(
       .where(and(eq(teamMembershipsTable.active, true), inArray(teamMembershipsTable.userId, ids))),
     db.select({ id: operationsTable.id }).from(operationsTable)
       .where(eq(operationsTable.organizationId, users[0]!.organizationId)),
+    db.select({ id: areasTable.id, name: areasTable.name }).from(areasTable)
+      .where(eq(areasTable.organizationId, users[0]!.organizationId)),
   ]);
   const opsByUser = new Map<string, Set<string>>();
   const supByUser = new Map<string, Set<string>>();
   const adminUsers = new Set<string>();
+  const characterEligibleUsers = new Set<string>();
   const teamOpsByUser = new Map<string, Set<string>>();
   const organizationOperationIds = new Set(operations.map((operation) => operation.id));
+  const areaNames = new Map(areas.map((area) => [area.id, area.name]));
   for (const r of roles) {
     if (!organizationOperationIds.has(r.operationId)) continue;
     if (r.role === "ADMIN") adminUsers.add(r.userId);
+    if (r.role === "MEMBER") characterEligibleUsers.add(r.userId);
     if (!r.operationId) continue;
     const set = opsByUser.get(r.userId) ?? new Set<string>();
     set.add(r.operationId);
@@ -96,11 +109,15 @@ async function attachOperationIds(
   // `isAdmin` permite ao frontend excluir administradores das escalas/folgas
   // (não fazem parte do elenco escalável), sem precisar buscar papéis por usuário.
   return users.map((u) => ({
-    ...(projection === "ADMIN" ? adminPerson(u) : supervisorPerson(u)),
+    ...(projection === "ADMIN" ? adminPerson(u) : projection === "COLEGA" ? colleaguePerson(u, viewerId) : supervisorPerson(u)),
     operationIds: [...(opsByUser.get(u.id) ?? [])],
     teamOperationIds: [...(teamOpsByUser.get(u.id) ?? [])],
     supervisorOperationIds: [...(supByUser.get(u.id) ?? [])],
+    areaName: u.areaId ? areaNames.get(u.areaId) ?? null : null,
     isAdmin: adminUsers.has(u.id),
+    // O seletor de personagem começa pelo elenco: direção, administração e
+    // supervisão não entram como candidatos de personagem por acidente.
+    isCharacterEligible: characterEligibleUsers.has(u.id),
   }));
 }
 
@@ -125,17 +142,60 @@ router.get("/users", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger("teams", req.requestId, req.correlationId);
   const { role, sub, organizationId } = req.user!;
 
-  if (role === "MEMBER" || role === "TRAINER") {
-    res.status(403).json({ error: "FORBIDDEN", message: "Membros não podem listar usuários" });
-    return;
-  }
-
   try {
     if (role === "ADMIN") {
       const users = await db.query.usersTable.findMany({
         where: eq(usersTable.organizationId, organizationId),
       });
       res.json({ users: await attachOperationIds(users, "ADMIN") });
+      return;
+    }
+
+    // Pessoas é diretório operacional: Direção o consulta inteiro, mas recebe
+    // a mesma projeção reduzida de Supervisão (sem notas administrativas nem
+    // dados sensíveis). Não é uma permissão de escrita.
+    if (role === "DIR" || role === "DIRECTOR") {
+      const users = await db.query.usersTable.findMany({
+        where: eq(usersTable.organizationId, organizationId),
+      });
+      res.json({ users: await attachOperationIds(users, "SUPERVISOR") });
+      return;
+    }
+
+    // O elenco vê os colegas da própria área, como combinado para a tela 07.
+    // Nunca recebe a organização inteira, e a projeção remove os campos que
+    // pertencem à ficha administrativa.
+    if (role === "MEMBER" || role === "TRAINER") {
+      const [me] = await db.select({ areaId: usersTable.areaId })
+        .from(usersTable)
+        .where(and(eq(usersTable.id, sub), eq(usersTable.organizationId, organizationId)))
+        .limit(1);
+      if (!me?.areaId) {
+        res.json({ users: [] });
+        return;
+      }
+      const users = await db.query.usersTable.findMany({
+        where: and(eq(usersTable.organizationId, organizationId), eq(usersTable.areaId, me.areaId)),
+      });
+      // Colega vê telefone/e-mail só se a dona do dado deixou (28 Perfil, "quem vê o quê").
+      res.json({ users: await attachOperationIds(users, "COLEGA", sub) });
+      return;
+    }
+
+    // Supervisão vê a própria área inteira no diretório. O modelo novo é
+    // área + local; o grupo legado continua sendo usado pelos demais módulos,
+    // mas não pode esconder colegas da mesma área nesta tela de cadastro.
+    if (role === "SUPERVISOR_A" || role === "SUPERVISOR_B") {
+      const scopes = await listAreaLocalScopes(sub, organizationId);
+      const areaIds = [...new Set(scopes.map((scope) => scope.areaId))];
+      if (areaIds.length === 0) {
+        res.json({ users: [] });
+        return;
+      }
+      const users = await db.query.usersTable.findMany({
+        where: and(eq(usersTable.organizationId, organizationId), inArray(usersTable.areaId, areaIds)),
+      });
+      res.json({ users: await attachOperationIds(users, "SUPERVISOR") });
       return;
     }
 
@@ -201,7 +261,7 @@ router.get("/users/:id", requireAuth, requireOrganization, async (req, res) => {
       res.status(404).json({ error: "NOT_FOUND", message: "Usuário não encontrado" });
       return;
     }
-    if (role !== "ADMIN" && id !== sub && !(await supervisorCanViewUser(sub, id))) {
+    if (role !== "ADMIN" && id !== sub && !(await canSupervisorAccessPerson({ supervisorId: sub, organizationId, personId: id }))) {
       res.status(403).json({ error: "FORBIDDEN", message: "Pessoa fora do seu escopo de supervisão" });
       return;
     }
@@ -220,12 +280,17 @@ router.get("/users/:id", requireAuth, requireOrganization, async (req, res) => {
 router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
   const log = requestLogger("teams", req.requestId, req.correlationId);
   const {
-    name, preferredName, email, phone, password, specialization, birthDate, visitUntil,
+    fullName, name: legacyName, email, phone, password, specialization, birthDate, visitUntil,
     entryDate, professionalProfile, primaryFunction, adminNotes, personStatus,
   } = req.body;
 
-  if (!name?.trim()) {
-    res.status(400).json({ error: "BAD_REQUEST", message: "O nome é obrigatório" });
+  const formalName = typeof fullName === "string" && fullName.trim()
+    ? fullName.trim()
+    : typeof legacyName === "string" && legacyName.trim()
+      ? legacyName.trim()
+      : "";
+  if (!formalName) {
+    res.status(400).json({ error: "BAD_REQUEST", message: "O nome completo é obrigatório" });
     return;
   }
 
@@ -250,7 +315,7 @@ router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), as
     let username: string | null = null;
     let passwordHash: string | null = null;
     if (password) {
-      const usernameBase = normalizeUsernameBase(name as string);
+      const usernameBase = normalizeUsernameBase(formalName);
       const conflicting = await db.query.usersTable.findMany({
         columns: { username: true },
         where: like(usersTable.username, `${usernameBase}%`),
@@ -259,12 +324,11 @@ router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), as
       username = resolveUniqueUsername(usernameBase, taken);
       passwordHash = await bcrypt.hash(password as string, 12);
     }
-    const [newUser] = await db
-      .insert(usersTable)
-      .values({
+    const [newUser] = await db.transaction(async (tx) => {
+      const [created] = await tx.insert(usersTable).values({
         organizationId: req.user!.organizationId,
-        name: (name as string).trim(),
-        preferredName: typeof preferredName === "string" && preferredName.trim() ? preferredName.trim() : null,
+        fullName: formalName,
+        name: formalName.split(/\s+/)[0]!,
         email: normalizedEmail,
         phone: typeof phone === "string" && phone.trim() ? phone.trim() : null,
         username,
@@ -279,14 +343,15 @@ router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), as
         entryDate: (entryDate as string | undefined) ?? null,
         visitUntil: (visitUntil as string | undefined) ?? null,
         adminNotes: typeof adminNotes === "string" && adminNotes.trim() ? adminNotes.trim() : null,
-      })
-      .returning();
-
-    await recordAudit({
-      actorId: req.user!.sub,
-      action: "USER_CREATED",
-      targetResource: `user:${newUser!.id}`,
-      metadata: { email: normalizedEmail },
+      }).returning();
+      if (!created) throw new Error("Não foi possível criar a pessoa");
+      await writeHistoryEvent({
+        category: "OPERATIONAL_CHANGE", action: "user.created", title: "Pessoa criada",
+        narrative: `A pessoa ${created.fullName} foi criada no cadastro.`, entityType: "user", entityId: created.id,
+        actorId: req.user!.sub, orgId: created.organizationId, beforeState: null, afterState: created,
+        metadata: { reason: normalizeReason(req.body?.reason) },
+      }, tx as any);
+      return [created] as const;
     });
 
     log.info({ userId: newUser!.id }, "User created");
@@ -297,9 +362,25 @@ router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), as
   }
 });
 
+/** Encerra as sessões abertas da pessoa (refresh tokens), menos a do aparelho que pediu. */
+async function encerrarSessoes(executor: Pick<typeof db, "update">, userId: string, manterRefreshToken?: unknown) {
+  const manter = typeof manterRefreshToken === "string" && manterRefreshToken ? hashToken(manterRefreshToken) : null;
+  const encerradas = await executor.update(refreshTokensTable).set({ revokedAt: new Date() })
+    .where(and(eq(refreshTokensTable.userId, userId), isNull(refreshTokensTable.revokedAt), manter ? ne(refreshTokensTable.tokenHash, manter) : undefined))
+    .returning({ id: refreshTokensTable.id });
+  return encerradas.length;
+}
+
+/** Senha provisória legível para ditar no camarim: sem 0/O, 1/l/I. */
+function senhaProvisoria() {
+  const letras = "abcdefghjkmnpqrstuvwxyz", digitos = "23456789";
+  const pick = (from: string) => from[randomInt(from.length)]!;
+  return `${Array.from({ length: 4 }, () => pick(letras)).join("")}-${Array.from({ length: 4 }, () => pick(digitos)).join("")}`;
+}
+
 router.post("/users/me/password", requireAuth, async (req, res) => {
   const log = requestLogger("teams", req.requestId, req.correlationId);
-  const { currentPassword, newPassword } = req.body;
+  const { currentPassword, newPassword, refreshToken } = req.body;
 
   if (!currentPassword || !newPassword) {
     res.status(400).json({ error: "BAD_REQUEST", message: "currentPassword e newPassword são obrigatórios" });
@@ -309,13 +390,21 @@ router.post("/users/me/password", requireAuth, async (req, res) => {
     res.status(400).json({ error: "BAD_REQUEST", message: "A nova senha deve ter ao menos 6 caracteres" });
     return;
   }
+  if (newPassword === currentPassword) {
+    res.status(400).json({ error: "BAD_REQUEST", message: "A nova senha precisa ser diferente da atual" });
+    return;
+  }
 
   try {
     const me = await db.query.usersTable.findFirst({
       where: eq(usersTable.id, req.user!.sub),
     });
-    if (!me || !me.passwordHash) {
+    if (!me) {
       res.status(404).json({ error: "NOT_FOUND", message: "Usuário não encontrado" });
+      return;
+    }
+    if (!me.passwordHash) {
+      res.status(409).json({ error: "NO_PASSWORD", message: "Sua conta ainda não tem senha. Peça à Administração para definir uma senha provisória." });
       return;
     }
 
@@ -326,22 +415,99 @@ router.post("/users/me/password", requireAuth, async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(newPassword as string, 12);
-    await db
-      .update(usersTable)
-      .set({ passwordHash, mustChangePassword: false, updatedAt: new Date() })
-      .where(eq(usersTable.id, me.id));
+    // Trocar a senha encerra as sessões dos outros aparelhos; a deste aparelho continua.
+    const sessoesEncerradas = await db.transaction(async (tx) => {
+      await tx.update(usersTable).set({ passwordHash, mustChangePassword: false, updatedAt: new Date() }).where(eq(usersTable.id, me.id));
+      const encerradas = await encerrarSessoes(tx, me.id, refreshToken);
+      await writeHistoryEvent({
+        category: "OPERATIONAL_CHANGE", action: "user.password_changed", title: "Senha trocada",
+        narrative: me.mustChangePassword ? "A pessoa trocou a senha provisória por uma senha sua." : `A pessoa trocou a própria senha; ${encerradas === 1 ? "1 sessão em outro aparelho foi encerrada" : `${encerradas} sessões em outros aparelhos foram encerradas`}.`,
+        entityType: "user", entityId: me.id, actorId: me.id, orgId: me.organizationId,
+        beforeState: { mustChangePassword: me.mustChangePassword }, afterState: { mustChangePassword: false, sessoesEncerradas: encerradas },
+      }, tx as any);
+      return encerradas;
+    });
 
     await recordAudit({
       actorId: me.id,
       action: "USER_UPDATED",
       targetResource: `user:${me.id}`,
-      metadata: { change: "password" },
+      metadata: { change: "password", sessoesEncerradas },
     });
 
     log.info({ userId: me.id }, "Password changed");
-    res.json({ ok: true });
+    res.json({ ok: true, sessoesEncerradas });
   } catch (err) {
     log.error({ err }, "Error changing password");
+    res.status(500).json({ error: "INTERNAL_ERROR" });
+  }
+});
+
+/** Quantas sessões a pessoa tem abertas (aparelhos com login ativo). */
+router.get("/users/me/sessions", requireAuth, async (req, res) => {
+  const [row] = await db.select({ n: count() }).from(refreshTokensTable)
+    .where(and(eq(refreshTokensTable.userId, req.user!.sub), isNull(refreshTokensTable.revokedAt), gt(refreshTokensTable.expiresAt, new Date())));
+  res.json({ abertas: Number(row?.n ?? 0) });
+});
+
+/** Encerra as sessões dos outros aparelhos; a deste (refreshToken no corpo) continua. */
+router.post("/users/me/sessions/encerrar-outras", requireAuth, async (req, res) => {
+  const { refreshToken } = req.body ?? {};
+  if (typeof refreshToken !== "string" || !refreshToken) {
+    res.status(400).json({ error: "BAD_REQUEST", message: "Falta a sessão deste aparelho (refreshToken)." });
+    return;
+  }
+  const me = await db.query.usersTable.findFirst({ where: eq(usersTable.id, req.user!.sub), columns: { id: true, organizationId: true } });
+  if (!me) { res.status(404).json({ error: "NOT_FOUND" }); return; }
+  const encerradas = await db.transaction(async (tx) => {
+    const n = await encerrarSessoes(tx, me.id, refreshToken);
+    await writeHistoryEvent({
+      category: "OPERATIONAL_CHANGE", action: "user.sessions_revoked", title: "Sessões encerradas",
+      narrative: `A pessoa encerrou ${n === 1 ? "1 sessão em outro aparelho" : `${n} sessões em outros aparelhos`}.`,
+      entityType: "user", entityId: me.id, actorId: me.id, orgId: me.organizationId,
+      beforeState: null, afterState: { sessoesEncerradas: n },
+    }, tx as any);
+    return n;
+  });
+  res.json({ ok: true, sessoesEncerradas: encerradas });
+});
+
+/**
+ * Administração redefine a senha de alguém que esqueceu: gera uma senha provisória (mostrada uma vez),
+ * obriga a troca no próximo login e encerra todas as sessões da pessoa. Motivo obrigatório.
+ */
+router.post("/users/:id/password-reset", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
+  const log = requestLogger("teams", req.requestId, req.correlationId);
+  const id = req.params.id as string;
+  if (id === req.user!.sub) {
+    res.status(400).json({ error: "BAD_REQUEST", message: "Para a sua própria senha, use Perfil → mudar senha." });
+    return;
+  }
+  const reason = requireReason(res, req.body?.reason, "redefinir a senha");
+  if (!reason) return;
+  try {
+    const person = await db.query.usersTable.findFirst({ where: and(eq(usersTable.id, id), eq(usersTable.organizationId, req.user!.organizationId)) });
+    if (!person) { res.status(404).json({ error: "NOT_FOUND", message: "Pessoa não encontrada" }); return; }
+    if (person.status !== "ACTIVE") { res.status(409).json({ error: "CONFLICT", message: "Esta pessoa não está ativa; reative o cadastro antes de redefinir a senha." }); return; }
+    const temporaria = senhaProvisoria();
+    const passwordHash = await bcrypt.hash(temporaria, 12);
+    const encerradas = await db.transaction(async (tx) => {
+      await tx.update(usersTable).set({ passwordHash, mustChangePassword: true, updatedAt: new Date() }).where(eq(usersTable.id, person.id));
+      const n = await encerrarSessoes(tx, person.id);
+      await writeHistoryEvent({
+        category: "OPERATIONAL_CHANGE", action: "user.password_reset", title: "Senha redefinida",
+        narrative: `A Administração redefiniu a senha de ${person.fullName ?? person.name}. A pessoa troca a senha provisória no próximo login; ${n === 1 ? "1 sessão aberta foi encerrada" : `${n} sessões abertas foram encerradas`}.`,
+        entityType: "user", entityId: person.id, actorId: req.user!.sub, orgId: person.organizationId,
+        beforeState: { mustChangePassword: person.mustChangePassword }, afterState: { mustChangePassword: true, sessoesEncerradas: n },
+        metadata: { reason },
+      }, tx as any);
+      return n;
+    });
+    await recordAudit({ actorId: req.user!.sub, action: "USER_UPDATED", targetResource: `user:${person.id}`, metadata: { change: "password_reset", sessoesEncerradas: encerradas } });
+    log.info({ userId: person.id }, "Password reset by admin");
+    res.json({ senhaProvisoria: temporaria, sessoesEncerradas: encerradas });
+  } catch (err) {
+    log.error({ err }, "Error resetting password");
     res.status(500).json({ error: "INTERNAL_ERROR" });
   }
 });
@@ -350,8 +516,8 @@ router.patch("/users/:id", requireAuth, requireOrganization, async (req, res) =>
   const log = requestLogger("teams", req.requestId, req.correlationId);
   const id = req.params.id as string;
   const {
-    name, preferredName, email, phone, username, photoUrl, specialization, birthDate, visitUntil,
-    entryDate, professionalProfile, primaryFunction, adminNotes, personStatus, contactVisibility,
+    fullName, displayName, name: legacyName, preferredName: legacyPreferredName, email, phone, username, photoUrl, specialization, birthDate, visitUntil,
+    entryDate, professionalProfile, primaryFunction, adminNotes, personStatus, contactVisibility, reason,
   } = req.body;
 
   const role = req.user!.role;
@@ -364,10 +530,14 @@ router.patch("/users/:id", requireAuth, requireOrganization, async (req, res) =>
     return;
   }
 
-  // Nome, e-mail e data de nascimento permanecem exclusivos do admin.
-  if ((name !== undefined || birthDate !== undefined || entryDate !== undefined || professionalProfile !== undefined ||
+  // Nome formal, e-mail e data de nascimento permanecem exclusivos do admin.
+  if ((fullName !== undefined || legacyName !== undefined || birthDate !== undefined || entryDate !== undefined || professionalProfile !== undefined ||
       primaryFunction !== undefined || adminNotes !== undefined || personStatus !== undefined) && !isAdmin) {
-    res.status(403).json({ error: "FORBIDDEN", message: "Apenas administradores podem editar nome, e-mail ou data de nascimento." });
+    res.status(403).json({ error: "FORBIDDEN", message: "Apenas administradores podem editar nome completo, e-mail ou data de nascimento." });
+    return;
+  }
+  if (displayName !== undefined && !isSelf) {
+    res.status(403).json({ error: "FORBIDDEN", message: "O nome de exibição é escolhido pela própria pessoa no Perfil." });
     return;
   }
 
@@ -385,7 +555,14 @@ router.patch("/users/:id", requireAuth, requireOrganization, async (req, res) =>
     return;
   }
 
-  const selfServiceChange = preferredName !== undefined || email !== undefined || phone !== undefined ||
+  // preferredName é compatibilidade da tela antiga; somente a própria pessoa
+  // pode usá-lo como nome de exibição até a tela nova de Perfil substituí-la.
+  const requestedDisplayName = displayName !== undefined
+    ? displayName
+    : !isAdmin && legacyPreferredName !== undefined
+      ? legacyPreferredName
+      : undefined;
+  const selfServiceChange = requestedDisplayName !== undefined || email !== undefined || phone !== undefined ||
     username !== undefined || photoUrl !== undefined || contactVisibility !== undefined;
   if (selfServiceChange && !isAdmin && !isSelf) {
     res.status(403).json({ error: "FORBIDDEN", message: "Você só pode editar seus próprios dados de contato e perfil." });
@@ -407,9 +584,28 @@ router.patch("/users/:id", requireAuth, requireOrganization, async (req, res) =>
       return;
     }
 
+    const isDisablingPerson = personStatus === "LEFT" || personStatus === "ARCHIVED";
+    const personReason = isDisablingPerson
+      ? requireReason(res, reason, "desligar pessoa")
+      : normalizeReason(reason);
+    if (isDisablingPerson && !personReason) return;
+
     const updates: Record<string, unknown> = { updatedAt: new Date() };
-    if (name?.trim()) updates.name = (name as string).trim();
-    if (preferredName !== undefined) updates.preferredName = preferredName?.trim() || null;
+    const requestedFormalName = fullName ?? legacyName;
+    if (requestedFormalName !== undefined) {
+      if (typeof requestedFormalName !== "string" || !requestedFormalName.trim()) {
+        res.status(400).json({ error: "BAD_REQUEST", message: "O nome completo não pode ficar vazio." });
+        return;
+      }
+      updates.fullName = requestedFormalName.trim();
+    }
+    if (requestedDisplayName !== undefined) {
+      if (typeof requestedDisplayName !== "string" || !requestedDisplayName.trim()) {
+        res.status(400).json({ error: "BAD_REQUEST", message: "O nome de exibição não pode ficar vazio." });
+        return;
+      }
+      updates.name = requestedDisplayName.trim();
+    }
     if (email?.trim()) {
       const normalizedEmail = (email as string).toLowerCase().trim();
       const existing = await db.query.usersTable.findFirst({ where: eq(usersTable.email, normalizedEmail) });
@@ -471,20 +667,29 @@ router.patch("/users/:id", requireAuth, requireOrganization, async (req, res) =>
       }
     }
 
-    const [updated] = await db
-      .update(usersTable)
-      .set(updates as any)
-      .where(eq(usersTable.id, id))
-      .returning();
-
-    await recordAudit({ actorId: req.user!.sub, action: "USER_UPDATED", targetResource: `user:${id}` });
-    if ((personStatus === "LEFT" || personStatus === "ARCHIVED") && updated) {
-      await db.update(usersTable).set({ status: "INACTIVE" }).where(eq(usersTable.id, id));
-      await db.update(refreshTokensTable)
-        .set({ revokedAt: new Date() })
-        .where(and(eq(refreshTokensTable.userId, id), isNull(refreshTokensTable.revokedAt)));
-      updated.status = "INACTIVE";
-    }
+    const [updated] = await db.transaction(async (tx) => {
+      const [row] = await tx.update(usersTable).set(updates as any)
+        .where(eq(usersTable.id, id)).returning();
+      if (!row) throw new Error("Usuário não encontrado");
+      if ((personStatus === "LEFT" || personStatus === "ARCHIVED")) {
+        await tx.update(usersTable).set({ status: "INACTIVE", updatedAt: new Date() }).where(eq(usersTable.id, id));
+        await tx.update(refreshTokensTable).set({ revokedAt: new Date() })
+          .where(and(eq(refreshTokensTable.userId, id), isNull(refreshTokensTable.revokedAt)));
+        row.status = "INACTIVE";
+      }
+      const displayNameChanged = requestedDisplayName !== undefined && requestedDisplayName.trim() !== user.name;
+      await writeHistoryEvent({
+        category: "OPERATIONAL_CHANGE", action: displayNameChanged ? "user.display_name_changed" : "user.updated",
+        title: displayNameChanged ? "Nome de exibição atualizado" : "Cadastro de pessoa atualizado",
+        narrative: displayNameChanged
+          ? `O nome de exibição de ${user.fullName} mudou de "${user.name}" para "${row.name}".`
+          : `O cadastro de ${row.fullName} foi atualizado.${personReason ? ` Motivo: ${personReason}` : ""}`,
+        entityType: "user", entityId: id, actorId: req.user!.sub, orgId: row.organizationId,
+        beforeState: user, afterState: row,
+        metadata: { reason: personReason, calculatedReflection: personStatus !== undefined ? `Situação da pessoa alterada de ${user.personStatus} para ${personStatus}.` : null },
+      }, tx as any);
+      return [row] as const;
+    });
     res.json({ user: isAdmin ? adminPerson(updated!) : selfProfile(updated!) });
   } catch (err) {
     log.error({ err }, "Error updating user");
@@ -495,10 +700,10 @@ router.patch("/users/:id", requireAuth, requireOrganization, async (req, res) =>
 router.patch("/users/:id/status", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
   const log = requestLogger("teams", req.requestId, req.correlationId);
   const id = req.params.id as string;
-  const { status } = req.body;
+  const { status, reason } = req.body as { status?: string; reason?: string };
   const VALID = ["ACTIVE", "INACTIVE"] as const;
 
-  if (!VALID.includes(status)) {
+  if (!status || !VALID.includes(status as (typeof VALID)[number])) {
     res.status(400).json({ error: "BAD_REQUEST", message: `status deve ser: ${VALID.join(", ")}` });
     return;
   }
@@ -515,6 +720,10 @@ router.patch("/users/:id/status", requireAuth, requireOrganization, requireRole(
       res.status(404).json({ error: "NOT_FOUND" });
       return;
     }
+    const statusReason = status === "INACTIVE"
+      ? requireReason(res, reason, "desligar pessoa")
+      : normalizeReason(reason);
+    if (status === "INACTIVE" && !statusReason) return;
     if (status === "ACTIVE" && (user.personStatus === "LEFT" || user.personStatus === "ARCHIVED")) {
       res.status(409).json({
         error: "PERSON_NOT_ACTIVE",
@@ -523,23 +732,21 @@ router.patch("/users/:id/status", requireAuth, requireOrganization, requireRole(
       return;
     }
 
-    const [updated] = await db
-      .update(usersTable)
-      .set({ status: status as "ACTIVE" | "INACTIVE", updatedAt: new Date() })
-      .where(eq(usersTable.id, id))
-      .returning();
-
-    if (status === "INACTIVE") {
-      await db.update(refreshTokensTable)
-        .set({ revokedAt: new Date() })
+    const [updated] = await db.transaction(async (tx) => {
+      const [row] = await tx.update(usersTable)
+        .set({ status: status as "ACTIVE" | "INACTIVE", updatedAt: new Date() })
+        .where(eq(usersTable.id, id)).returning();
+      if (!row) throw new Error("Usuário não encontrado");
+      if (status === "INACTIVE") await tx.update(refreshTokensTable).set({ revokedAt: new Date() })
         .where(and(eq(refreshTokensTable.userId, id), isNull(refreshTokensTable.revokedAt)));
-    }
-
-    await recordAudit({
-      actorId: req.user!.sub,
-      action: "USER_STATUS_CHANGED",
-      targetResource: `user:${id}`,
-      metadata: { from: user.status, to: status },
+      await writeHistoryEvent({
+        category: "OPERATIONAL_CHANGE", action: "user.status_changed", title: "Acesso da pessoa alterado",
+        narrative: `Acesso da pessoa alterado de ${user.status} para ${status}. Motivo: ${statusReason ?? "não informado"}.`,
+        entityType: "user", entityId: id, actorId: req.user!.sub, orgId: user.organizationId,
+        beforeState: user, afterState: row,
+        metadata: { from: user.status, to: status, reason: statusReason, calculatedReflection: `Acesso da pessoa alterado de ${user.status} para ${status}.` },
+      }, tx as any);
+      return [row] as const;
     });
 
     log.info({ userId: id, from: user.status, to: status }, "User status changed");
@@ -553,6 +760,8 @@ router.patch("/users/:id/status", requireAuth, requireOrganization, requireRole(
 router.delete("/users/:id", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
   const log = requestLogger("teams", req.requestId, req.correlationId);
   const id = req.params.id as string;
+  const reason = requireReason(res, req.body?.reason, "desativar pessoa");
+  if (!reason) return;
 
   if (id === req.user!.sub) {
     res.status(400).json({ error: "BAD_REQUEST", message: "Não é possível excluir o próprio usuário" });
@@ -568,62 +777,24 @@ router.delete("/users/:id", requireAuth, requireOrganization, requireRole("ADMIN
       return;
     }
 
-    try {
-      await db.transaction(async (tx) => {
-        // 1) Registos incidentais/pessoais que se acumulam só por existir e navegar
-        //    na app (papéis, sessões, push, notificações, leituras, participação em
-        //    conversas). Não são dados de trabalho partilhados — apagam-se sempre.
-        //    (Tabelas com onDelete: cascade — ex.: participações em agenda, ASA,
-        //    reconhecimentos — são removidas automaticamente ao apagar o utilizador.)
-        await tx.delete(userRolesTable).where(eq(userRolesTable.userId, id));
-        await tx.delete(refreshTokensTable).where(eq(refreshTokensTable.userId, id));
-        await tx.delete(deviceTokensTable).where(eq(deviceTokensTable.userId, id));
-        await tx.delete(notificationsTable).where(eq(notificationsTable.userId, id));
-        await tx.delete(userNotificationsTable).where(eq(userNotificationsTable.userId, id));
-        await tx.delete(libraryViewsTable).where(eq(libraryViewsTable.userId, id));
-        await tx.delete(messageThreadParticipantsTable).where(eq(messageThreadParticipantsTable.userId, id));
-        // Avisos RECEBIDOS pela pessoa (participação pessoal, não o aviso em si).
-        await tx.delete(noticeConfirmationsTable).where(eq(noticeConfirmationsTable.userId, id));
-        await tx.delete(noticeEscalationsTable).where(eq(noticeEscalationsTable.recipientId, id));
-        await tx.update(noticeEscalationsTable).set({ escalatedBy: null }).where(eq(noticeEscalationsTable.escalatedBy, id));
-        await tx.delete(noticeRecipientsTable).where(eq(noticeRecipientsTable.userId, id));
-        // 2) Colunas de "ator" ANULÁVEIS em registos de auditoria/histórico: preservar
-        //    o registo (útil para a operação) e só remover a atribuição à pessoa.
-        await tx.update(securityAuditLogTable).set({ actorId: null }).where(eq(securityAuditLogTable.actorId, id));
-        await tx.update(historyEventsTable).set({ actorId: null }).where(eq(historyEventsTable.actorId, id));
-        await tx.update(historyNarrativesTable).set({ createdBy: null }).where(eq(historyNarrativesTable.createdBy, id));
-        await tx.update(operationalChangesTable).set({ actorId: null }).where(eq(operationalChangesTable.actorId, id));
-        // 3) Finalmente o utilizador. Se ainda houver FKs (dados de TRABALHO reais —
-        //    p.ex. escalas/tarefas/folgas que ele criou ou em que está alocado), o
-        //    PostgreSQL lança 23503 e devolvemos 409 (a transação reverte tudo).
-        await tx.delete(usersTable).where(eq(usersTable.id, id));
-      });
-    } catch (err) {
-      const code = (err as { code?: string })?.code ?? (err as { cause?: { code?: string } })?.cause?.code;
-      if (code === "23503") {
-        res.status(409).json({
-          error: "CONFLICT",
-          message:
-            "Não é possível excluir: este usuário possui dados de trabalho vinculados (tarefas, escalas, folgas, etc.). Use 'Desativar' para removê-lo sem apagar o histórico.",
-        });
-        return;
-      }
-      throw err;
-    }
+    const [updated] = await db.transaction(async (tx) => {
+      const [row] = await tx.update(usersTable)
+        .set({ status: "INACTIVE", personStatus: "ARCHIVED", archivedAt: new Date(), archivedBy: req.user!.sub, updatedAt: new Date() })
+        .where(and(eq(usersTable.id, id), eq(usersTable.status, "ACTIVE")))
+        .returning();
+      if (!row) throw new Error("Usuário já está desativado");
+      await tx.update(refreshTokensTable).set({ revokedAt: new Date() }).where(and(eq(refreshTokensTable.userId, id), isNull(refreshTokensTable.revokedAt)));
+      await writeHistoryEvent({
+        category: "OPERATIONAL_CHANGE", action: "user.deactivated", title: "Pessoa desativada",
+        narrative: `A pessoa ${user.name} foi desativada. Motivo: ${reason}`,
+        entityType: "user", entityId: id, actorId: req.user!.sub, orgId: user.organizationId,
+        beforeState: user, afterState: row, metadata: { reason },
+      }, tx as any);
+      return [row] as const;
+    });
 
-    try {
-      await recordAudit({
-        actorId: req.user!.sub,
-        action: "USER_DELETED",
-        targetResource: `user:${id}`,
-        metadata: { email: user.email, name: user.name },
-      });
-    } catch (auditErr) {
-      log.warn({ err: auditErr, userId: id }, "Failed to record USER_DELETED audit (user already deleted)");
-    }
-
-    log.info({ userId: id }, "User deleted");
-    res.status(204).send();
+    log.info({ userId: id }, "User deactivated");
+    res.json({ user: adminPerson(updated!), deactivated: true });
   } catch (err) {
     log.error({ err }, "Error deleting user");
     res.status(500).json({ error: "INTERNAL_ERROR" });

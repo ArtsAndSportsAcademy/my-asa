@@ -24,12 +24,17 @@ import {
   organizationsTable,
   operationsTable,
   usersTable,
+  locationsTable,
+  charactersTable,
+  characterCastTable,
   showBooksTable,
   showBookScenesTable,
   showBookBlocksTable,
   showBookRolesTable,
   showBookLinesTable,
+  rotationDailyAdvancesTable,
   folgasTable,
+  scalesTable,
   agendaEventsTable,
   dailyBooksTable,
   dailyBookScenesTable,
@@ -79,6 +84,12 @@ function addDays(dateISO: string, days: number): string {
 
 const TAG = `dbfilltest_${Date.now()}`;
 
+const TEST_PROFILE = {
+  administration: "ADMIN",
+  supervision: "SUPERVISOR_A",
+  cast: "MEMBER",
+} as const;
+
 async function run() {
   // ─── Seed base ────────────────────────────────────────────────────────────────
   const [org] = await db
@@ -93,15 +104,21 @@ async function run() {
     .returning();
   const operationId = op!.id;
 
-  async function mkUser(label: string): Promise<string> {
+  async function mkUser(label: string, role: keyof typeof TEST_PROFILE = "cast"): Promise<string> {
     const [u] = await db
       .insert(usersTable)
       .values({ organizationId: orgId, name: `${TAG}_${label}` })
       .returning();
+    await db.insert(userRolesTable).values({
+      userId: u!.id,
+      operationId,
+      role: TEST_PROFILE[role],
+      active: true,
+    });
     return u!.id;
   }
 
-  const uDow = await mkUser("dow");
+  const uDow = await mkUser("dow", "cast");
   const uManual = await mkUser("manual");
   const uRotA = await mkUser("rotA");
   const uRotB = await mkUser("rotB");
@@ -112,6 +129,30 @@ async function run() {
   const uTit = await mkUser("titular");
   const uSub1 = await mkUser("sub1");
   const uSub2 = await mkUser("sub2");
+
+  // Os casos de rodízio usam as entidades próprias do Bloco 2; os demais
+  // cenários continuam cobrindo as linhas legadas que não representam personagem.
+  const [rotationLocation] = await db.insert(locationsTable).values({
+    organizationId: orgId,
+    name: `${TAG}_location`,
+  }).returning();
+  const [rotationCharacterC] = await db.insert(charactersTable).values({
+    name: `${TAG}_character_c`,
+    locationId: rotationLocation!.id,
+    mode: "rodizio",
+  }).returning();
+  const [rotationCharacterD] = await db.insert(charactersTable).values({
+    name: `${TAG}_character_d`,
+    locationId: rotationLocation!.id,
+    mode: "rodizio",
+  }).returning();
+  await db.insert(characterCastTable).values([
+    { characterId: rotationCharacterC!.id, personId: uRotA, order: 0, timesDone: 0 },
+    { characterId: rotationCharacterC!.id, personId: uRotB, order: 1, timesDone: 0 },
+    { characterId: rotationCharacterD!.id, personId: u2A, order: 0, timesDone: 2 },
+    { characterId: rotationCharacterD!.id, personId: u2B, order: 1, timesDone: 0 },
+    { characterId: rotationCharacterD!.id, personId: u2C, order: 2, timesDone: 1 },
+  ]);
 
   const [showBook] = await db
     .insert(showBooksTable)
@@ -136,10 +177,10 @@ async function run() {
       .returning();
     return r!.id;
   }
-  async function mkLine(positionId: string, type: string, config: unknown): Promise<string> {
+  async function mkLine(positionId: string, type: string, config: unknown, characterId?: string): Promise<string> {
     const [l] = await db
       .insert(showBookLinesTable)
-      .values({ positionId, type: type as any, config: config as any, order: 0 })
+      .values({ positionId, characterId: characterId ?? null, type: type as any, config: config as any, order: 0 })
       .returning();
     return l!.id;
   }
@@ -159,14 +200,14 @@ async function run() {
 
   // Papel (c): ROTATION com [uRotA, uRotB], contadores iguais (0).
   const roleRotC = await mkRole("PapelRodizioC", 2);
-  const lineRotC = await mkLine(roleRotC, "ROTATION", { memberIds: [uRotA, uRotB] });
+  const lineRotC = await mkLine(roleRotC, "ROTATION", { memberIds: [uRotA, uRotB] }, rotationCharacterC!.id);
 
   // Papel (d): ROTATION com [u2A, u2B, u2C], contadores A:2 B:0 C:1.
   const roleRotD = await mkRole("PapelRodizioD", 3);
   await mkLine(roleRotD, "ROTATION", {
     memberIds: [u2A, u2B, u2C],
     executionCounts: { [u2A]: 2, [u2B]: 0, [u2C]: 1 },
-  });
+  }, rotationCharacterD!.id);
 
   // Papel (e): FIXED_PERSON com uFixed (sem substituto).
   const roleFixed = await mkRole("PapelPessoaFixa", 4);
@@ -461,6 +502,12 @@ async function run() {
     await db.delete(showBookBlocksTable).where(eq(showBookBlocksTable.showBookId, showBookId));
     await db.delete(showBookScenesTable).where(eq(showBookScenesTable.showBookId, showBookId));
     await db.delete(showBooksTable).where(eq(showBooksTable.id, showBookId));
+    await db.delete(userRolesTable).where(eq(userRolesTable.operationId, operationId));
+    await db.delete(characterCastTable).where(eq(characterCastTable.characterId, rotationCharacterC!.id));
+    await db.delete(characterCastTable).where(eq(characterCastTable.characterId, rotationCharacterD!.id));
+    await db.delete(charactersTable).where(eq(charactersTable.id, rotationCharacterC!.id));
+    await db.delete(charactersTable).where(eq(charactersTable.id, rotationCharacterD!.id));
+    await db.delete(locationsTable).where(eq(locationsTable.id, rotationLocation!.id));
     for (const id of [uDow, uManual, uRotA, uRotB, u2A, u2B, u2C, uFixed, uTit, uSub1, uSub2]) {
       await db.delete(usersTable).where(eq(usersTable.id, id));
     }
@@ -526,13 +573,28 @@ async function runIntegrationC() {
   const orgId = org!.id;
   const [op] = await db.insert(operationsTable).values({ organizationId: orgId, name: `${TAG2}_op`, status: "ACTIVE" }).returning();
   const operationId = op!.id;
-  const mk = async (label: string) => {
+  const mk = async (label: string, role: typeof TEST_PROFILE[keyof typeof TEST_PROFILE]) => {
     const [u] = await db.insert(usersTable).values({ organizationId: orgId, name: `${TAG2}_${label}` }).returning();
+    await db.insert(userRolesTable).values({ userId: u!.id, operationId, role, active: true });
     return u!.id;
   };
-  const admin = await mk("admin");
-  const mRotA = await mk("A");
-  const mRotB = await mk("B");
+  const admin = await mk("admin", TEST_PROFILE.administration);
+  const mRotA = await mk("A", TEST_PROFILE.cast);
+  const mRotB = await mk("B", TEST_PROFILE.cast);
+
+  const [rotationLocation] = await db.insert(locationsTable).values({
+    organizationId: orgId,
+    name: `${TAG2}_location`,
+  }).returning();
+  const [rotationCharacter] = await db.insert(charactersTable).values({
+    name: `${TAG2}_character`,
+    locationId: rotationLocation!.id,
+    mode: "rodizio",
+  }).returning();
+  await db.insert(characterCastTable).values([
+    { characterId: rotationCharacter!.id, personId: mRotA, order: 0, timesDone: 0 },
+    { characterId: rotationCharacter!.id, personId: mRotB, order: 1, timesDone: 0 },
+  ]);
 
   const [showBook] = await db.insert(showBooksTable).values({ operationId, title: `${TAG2}_sb`, createdBy: admin }).returning();
   const showBookId = showBook!.id;
@@ -541,7 +603,13 @@ async function runIntegrationC() {
   const [role] = await db.insert(showBookRolesTable).values({ showBookId, blockId: block!.id, name: "Rodizio", order: 0 }).returning();
   const roleId = role!.id;
   // Contadores iguais (vazio) → vencedor = primeiro membro (mRotA).
-  const [line] = await db.insert(showBookLinesTable).values({ positionId: roleId, type: "ROTATION" as any, config: { memberIds: [mRotA, mRotB] } as any, order: 0 }).returning();
+  const [line] = await db.insert(showBookLinesTable).values({
+    positionId: roleId,
+    characterId: rotationCharacter!.id,
+    type: "ROTATION" as any,
+    config: { characterId: rotationCharacter!.id, memberIds: [mRotA, mRotB] } as any,
+    order: 0,
+  }).returning();
   const lineId = line!.id;
 
   const eventDate = "2026-07-06";
@@ -568,8 +636,14 @@ async function runIntegrationC() {
     // 3) Disponibilidade muda ENTRE gerar e publicar: mRotA entra de folga.
     await db.insert(folgasTable).values({ userId: mRotA, operationId, type: "DAY_OFF", startDate: eventDate, endDate: eventDate, status: "ACTIVE", createdBy: admin });
 
+    // O Livro só publica depois da Escala do dia publicada (tela 15). Show sem local: vale a Escala da operação na data.
+    await db.insert(scalesTable).values({ operationId, title: `${TAG2}_escala`, periodStart: eventDate, periodEnd: eventDate, status: "PUBLISHED", publishedAt: new Date(), createdBy: admin });
+
     // 4) PUBLICAR pela rota real.
-    const pub = await httpJson(port, "POST", `/api/daily-book/${dailyBookId}/publish`, token, {});
+    const pub = await httpJson(port, "POST", `/api/daily-book/${dailyBookId}/publish`, token, {
+      expectedVersion: persisted!.version,
+      baseSnapshot: { scenes: (persisted!.snapshotJson as any)?.scenes ?? [] },
+    });
     eqAssert(pub.status, 200, "(c) publish retorna 200");
     eqAssert(pub.json?.dailyBook?.status, "PUBLISHED", "(c) publish marca PUBLISHED");
 
@@ -594,12 +668,17 @@ async function runIntegrationC() {
       await db.delete(dailyBooksTable).where(eq(dailyBooksTable.id, dailyBookId));
     }
     await db.delete(folgasTable).where(eq(folgasTable.operationId, operationId));
+    await db.delete(scalesTable).where(eq(scalesTable.operationId, operationId));
     await db.delete(agendaEventsTable).where(eq(agendaEventsTable.id, agendaEventId));
+    await db.delete(rotationDailyAdvancesTable).where(eq(rotationDailyAdvancesTable.sourceLineId, lineId));
     await db.delete(showBookLinesTable).where(eq(showBookLinesTable.positionId, roleId));
     await db.delete(showBookRolesTable).where(eq(showBookRolesTable.showBookId, showBookId));
     await db.delete(showBookBlocksTable).where(eq(showBookBlocksTable.showBookId, showBookId));
     await db.delete(showBookScenesTable).where(eq(showBookScenesTable.showBookId, showBookId));
     await db.delete(showBooksTable).where(eq(showBooksTable.id, showBookId));
+    await db.delete(characterCastTable).where(eq(characterCastTable.characterId, rotationCharacter!.id));
+    await db.delete(charactersTable).where(eq(charactersTable.id, rotationCharacter!.id));
+    await db.delete(locationsTable).where(eq(locationsTable.id, rotationLocation!.id));
     // history events (generate/publish) referenciam o ator → limpar antes dos usuários
     await pool.query(
       `delete from history_events where actor_id = any($1::uuid[]) or mo_id in (select id from operational_changes where actor_id = any($1::uuid[]))`,
@@ -609,6 +688,7 @@ async function runIntegrationC() {
     // notificações (sino in-app + push) geradas na publicação referenciam o usuário
     await pool.query(`delete from user_notifications where user_id = any($1::uuid[])`, [[admin, mRotA, mRotB]]);
     await pool.query(`delete from notifications where user_id = any($1::uuid[])`, [[admin, mRotA, mRotB]]);
+    await db.delete(userRolesTable).where(eq(userRolesTable.operationId, operationId));
     for (const id of [admin, mRotA, mRotB]) {
       await db.delete(usersTable).where(eq(usersTable.id, id));
     }
@@ -637,14 +717,15 @@ async function runIntegrationD() {
   const [op2] = await db.insert(operationsTable).values({ organizationId: orgId, name: `${TAG}_op2`, status: "ACTIVE" }).returning();
   const operationId = op1!.id;
   const operation2Id = op2!.id;
-  const mk = async (label: string) => {
+  const mk = async (label: string, role: typeof TEST_PROFILE[keyof typeof TEST_PROFILE], roleOperationId: string) => {
     const [u] = await db.insert(usersTable).values({ organizationId: orgId, name: `${TAG}_${label}` }).returning();
+    await db.insert(userRolesTable).values({ userId: u!.id, operationId: roleOperationId, role, active: true });
     return u!.id;
   };
-  const supA = await mk("supA");
-  const supB = await mk("supB");
-  const memC = await mk("memC");
-  const memD = await mk("memD");
+  const supA = await mk("supA", TEST_PROFILE.supervision, operationId);
+  const supB = await mk("supB", TEST_PROFILE.supervision, operationId);
+  const memC = await mk("memC", TEST_PROFILE.cast, operationId);
+  const memD = await mk("memD", TEST_PROFILE.cast, operation2Id);
 
   const [sbA] = await db.insert(showBooksTable).values({ operationId, title: `${TAG}_showA`, createdBy: supA, responsibleId: supA }).returning();
   const [sbB] = await db.insert(showBooksTable).values({ operationId, title: `${TAG}_showB`, createdBy: supB, responsibleId: supB }).returning();
@@ -658,8 +739,15 @@ async function runIntegrationD() {
   // Admin de OUTRA organização (isolamento multi-tenant).
   const [org2] = await db.insert(organizationsTable).values({ name: `${TAG}_org2` }).returning();
   const org2Id = org2!.id;
+  const [org2AccessOperation] = await db.insert(operationsTable).values({
+    organizationId: org2Id,
+    name: `${TAG}_org2_access`,
+    status: "ACTIVE",
+  }).returning();
+  const org2AccessOperationId = org2AccessOperation!.id;
   const [adminE0] = await db.insert(usersTable).values({ organizationId: org2Id, name: `${TAG}_adminE` }).returning();
   const adminE = adminE0!.id;
+  await db.insert(userRolesTable).values({ userId: adminE, operationId: org2AccessOperationId, role: TEST_PROFILE.administration, active: true });
   const tokenAdminE = signAccessToken({ sub: adminE, jti: "t", organizationId: org2Id, role: "ADMIN", operationIds: [] });
 
   try {
@@ -709,11 +797,17 @@ async function runIntegrationD() {
   } finally {
     await db.delete(showBooksTable).where(eq(showBooksTable.id, showAId));
     await db.delete(showBooksTable).where(eq(showBooksTable.id, showBId));
+    await db.delete(userRolesTable).where(eq(userRolesTable.userId, supA));
+    await db.delete(userRolesTable).where(eq(userRolesTable.userId, supB));
+    await db.delete(userRolesTable).where(eq(userRolesTable.userId, memC));
+    await db.delete(userRolesTable).where(eq(userRolesTable.userId, memD));
+    await db.delete(userRolesTable).where(eq(userRolesTable.userId, adminE));
     for (const id of [supA, supB, memC, memD, adminE]) {
       await db.delete(usersTable).where(eq(usersTable.id, id));
     }
     await db.delete(operationsTable).where(eq(operationsTable.id, operationId));
     await db.delete(operationsTable).where(eq(operationsTable.id, operation2Id));
+    await db.delete(operationsTable).where(eq(operationsTable.id, org2AccessOperationId));
     await db.delete(organizationsTable).where(eq(organizationsTable.id, orgId));
     await db.delete(organizationsTable).where(eq(organizationsTable.id, org2Id));
     await new Promise<void>((r) => server.close(() => r()));
@@ -737,13 +831,14 @@ async function runIntegrationE() {
   const opAId = op1!.id;
   const opBId = op2!.id;
 
-  const mk = async (label: string) => {
+  const mk = async (label: string, role: typeof TEST_PROFILE[keyof typeof TEST_PROFILE]) => {
     const [u] = await db.insert(usersTable).values({ organizationId: orgId, name: `${TAG}_${label}` }).returning();
+    await db.insert(userRolesTable).values({ userId: u!.id, operationId: opAId, role, active: true });
     return u!.id;
   };
   // supX é supervisor ATIVO na op A, mas apenas MEMBER na op B.
-  const supX = await mk("supX");
-  const other = await mk("other"); // alvo da delegação
+  const supX = await mk("supX", TEST_PROFILE.supervision);
+  const other = await mk("other", TEST_PROFILE.cast); // alvo da delegação
   await db.insert(userRolesTable).values([
     { userId: supX, operationId: opAId, role: "SUPERVISOR_A", active: true },
     { userId: supX, operationId: opBId, role: "MEMBER", active: true },
@@ -834,6 +929,7 @@ async function runIntegrationE() {
     await db.delete(showBooksTable).where(eq(showBooksTable.id, showAId));
     await db.delete(showBooksTable).where(eq(showBooksTable.id, showBId));
     await db.delete(userRolesTable).where(eq(userRolesTable.userId, supX));
+    await db.delete(userRolesTable).where(eq(userRolesTable.userId, other));
     for (const id of [supX, other]) {
       await db.delete(usersTable).where(eq(usersTable.id, id));
     }
@@ -844,7 +940,7 @@ async function runIntegrationE() {
   }
 }
 
-(async () => {
+await (async () => {
   try {
     await run();
     await runIntegrationC();
@@ -861,8 +957,8 @@ async function runIntegrationE() {
   console.log(`\n${passed} asserts passaram, ${failures.length} falharam.`);
   if (failures.length > 0) {
     console.error("FALHAS:\n - " + failures.join("\n - "));
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
   console.log("✓ Todos os testes do preenchimento do Livro do Dia passaram.");
-  process.exit(0);
 })();

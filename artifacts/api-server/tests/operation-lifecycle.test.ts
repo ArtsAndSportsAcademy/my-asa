@@ -69,6 +69,10 @@ async function run() {
   if (!address || typeof address === "string") throw new Error("Não foi possível iniciar o servidor de teste");
 
   const organizationId = randomUUID();
+  // O perfil de acesso é persistido em user_roles. Como o endpoint que o teste
+  // exercita cria a operação nova, usamos uma operação de ancoragem somente
+  // para que o ADMIN já tenha um perfil válido antes do primeiro request.
+  const accessOperationId = randomUUID();
   const adminId = randomUUID();
   const supervisorId = randomUUID();
   const memberId = randomUUID();
@@ -77,7 +81,12 @@ async function run() {
   try {
     await pool.query(`insert into organizations (id, name) values ($1, $2)`, [organizationId, `Ops Test ${organizationId}`]);
     await pool.query(
-      `insert into users (id, organization_id, name, username) values ($1, $4, $5, $6), ($2, $4, $7, $8), ($3, $4, $9, $10)`,
+      `insert into operations (id, organization_id, name, status) values ($1, $2, $3, 'ACTIVE')`,
+      [accessOperationId, organizationId, `Ops Test Access ${organizationId}`],
+    );
+    await pool.query(
+      `insert into users (id, organization_id, nome_completo, nome_de_exibicao, username) values
+        ($1, $4, $5, 'Administrador', $6), ($2, $4, $7, 'Supervisor', $8), ($3, $4, $9, 'Membro', $10)`,
       [
         adminId,
         supervisorId,
@@ -90,6 +99,11 @@ async function run() {
         "Membro Teste",
         `membro.${organizationId}`,
       ],
+    );
+    await pool.query(
+      `insert into user_roles (user_id, operation_id, role, active) values
+        ($1, $4, 'ADMIN', true), ($2, $4, 'SUPERVISOR_A', true), ($3, $4, 'MEMBER', true)`,
+      [adminId, supervisorId, memberId, accessOperationId],
     );
 
     const adminToken = signAccessToken({
@@ -178,9 +192,22 @@ async function run() {
     }
   } finally {
     await pool.query(`delete from security_audit_log where actor_id = any($1::uuid[])`, [[adminId, supervisorId, memberId]]);
+    // Operações agora gravam no Registro operacional; a fixture remove primeiro
+    // as relações e eventos que referenciam seus atores, antes de limpar usuários.
+    await pool.query(
+      `delete from history_relations where source_event_id in (select id from history_events where org_id = $1 or actor_id = any($2::uuid[]))
+        or target_event_id in (select id from history_events where org_id = $1 or actor_id = any($2::uuid[]))`,
+      [organizationId, [adminId, supervisorId, memberId]],
+    );
+    await pool.query(
+      `delete from history_events where org_id = $1 or actor_id = any($2::uuid[])`,
+      [organizationId, [adminId, supervisorId, memberId]],
+    );
     if (createdOperationId) {
       await pool.query(`delete from operations where id = $1`, [createdOperationId]);
     }
+    await pool.query(`delete from user_roles where user_id = any($1::uuid[])`, [[adminId, supervisorId, memberId]]);
+    await pool.query(`delete from operations where id = $1`, [accessOperationId]);
     await pool.query(`delete from users where id = any($1::uuid[])`, [[adminId, supervisorId, memberId]]);
     await pool.query(`delete from organizations where id = $1`, [organizationId]);
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));

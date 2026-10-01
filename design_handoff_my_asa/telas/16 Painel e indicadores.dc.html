@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  aside a { text-decoration: none; }
+  body { margin: 0; background: #f4f2fa; font-family: Manrope, system-ui, sans-serif; color: #1b1630; }
+  a { color: #6C2BF2; text-decoration: none; }
+  a:hover { color: #4a17b8; text-decoration: underline; }
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 3px solid #6C2BF2; outline-offset: 2px; border-radius: 8px; }
+</style>
+</helmet>
+
+<div style="max-width:1400px;margin:0 auto;padding:44px 28px 88px;display:flex;flex-direction:column;gap:40px">
+
+  <header style="display:flex;flex-direction:column;gap:22px">
+    <div style="display:flex;align-items:flex-start;gap:18px">
+      <img src="assets/asa-wing.png" alt="My ASA" style="width:52px;height:52px;object-fit:contain;flex:none;margin-top:4px" />
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#6b6482">16 · gestão · fusão 16+26</div>
+        <h1 style="font-family:Outfit,sans-serif;font-size:38px;line-height:1.05;font-weight:700;margin:0;letter-spacing:-0.02em">Painel e indicadores</h1>
+        <p style="margin:0;max-width:66ch;font-size:15px;line-height:1.55;color:#5b5473;text-wrap:pretty">O painel não guarda dado nenhum: ele lê escala, livro do dia, check-in, tarefas e folgas. Quatro perguntas na mesma ordem, sempre — se hoje tem gente para tudo, o que cumprimos, se as pessoas aguentam, e o que está travado. Todo número leva para a tela onde se resolve.</p>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:13px 16px;background:#fff;border:1px solid #e6e1f2;border-radius:16px">
+      <span style="font-size:13px;font-weight:600;color:#5b5473;margin-right:4px">Ver como</span>
+      <sc-for list="{{ profileTabs }}" as="tab" hint-placeholder-count="4">
+        <button type="button" onClick="{{ tab.onClick }}" style="{{ tab.style }}">
+          <span style="width:8px;height:8px;border-radius:50%;background:{{ tab.dot }};display:inline-block"></span>
+          <span>{{ tab.name }}</span>
+        </button>
+      </sc-for>
+      <span style="flex:1"></span>
+      <span style="font-size:13px;color:#6b6482">{{ profileHint }}</span>
+    </div>
+  </header>
+
+  <div style="display:flex;flex-direction:column;gap:26px">
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Web · 1920 × 1080</span>
+        <span style="font-size:11.5px;color:#6b6482">exibido a 70% — proporção real de tela</span>
+      </div>
+      <div style="width:1344px;height:756px;border:1px solid #ddd6ee;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="width:1920px;height:1080px;transform:scale(0.7);transform-origin:top left;display:flex">
+
+          <aside style="width:236px;flex:none;background:linear-gradient(180deg,#1c1440 0%,#241a52 100%);display:flex;flex-direction:column;color:#fff">
+            <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 12px">
+              <img src="assets/asa-wing.png" alt="" style="width:26px;height:26px;object-fit:contain" />
+              <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">My ASA</span>
+            </div>
+            <div style="padding:0 12px 10px">
+              <a href="27%20Assistente%20ASA.dc.html" style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border-radius:10px;padding:8px 10px;font-size:11.5px;color:#b9b0da;text-decoration:none;cursor:pointer">
+                <span style="width:11px;height:11px;border:1.5px solid #b9b0da;border-radius:50%"></span>
+                <span>Buscar ou perguntar à ASA</span>
+              </a>
+            </div>
+            <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:12px;padding:2px 10px 10px">
+              <sc-for list="{{ shellNav }}" as="g" hint-placeholder-count="4">
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#7d72a8;padding:0 8px 4px">{{ g.title }}</div>
+                  <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+                    <a href="{{ it.href }}" style="{{ it.style }}">{{ it.label }}</a>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+            <a href="28%20Perfil%20e%20configura%C3%A7%C3%B5es.dc.html" style="border-top:1px solid rgba(255,255,255,.1);padding:12px;display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit">
+              <span style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+              <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                <span style="font-size:12.5px;font-weight:600">{{ personName }}</span>
+                <span style="{{ personChipStyle }}">{{ profileName }}</span>
+              </div>
+            </a>
+          </aside>
+
+          <div style="flex:1;display:flex;flex-direction:column;background:#faf9fe;min-width:0">
+            <header style="display:flex;align-items:center;gap:12px;padding:13px 20px;border-bottom:1px solid #ebe6f6;background:#fff">
+              <div style="display:flex;flex-direction:column;gap:1px">
+                <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">{{ screenTitle }}</span>
+                <span style="font-size:11.5px;color:#6b6482">{{ scopeLine }}</span>
+              </div>
+              <span style="flex:1"></span>
+              <span style="{{ readonlyChipStyle }}">{{ readonlyChip }}</span>
+              <div style="display:flex;align-items:center;gap:8px;border:1px solid #e6e1f2;border-radius:999px;padding:6px 12px;font-size:12.5px;font-weight:600;color:#3d3559">
+                <span style="width:8px;height:8px;border-radius:50%;background:#0E8F86"></span>
+                <span>{{ operationLabel }}</span>
+              </div>
+              <a href="27%20Assistente%20ASA.dc.html" style="display:flex;align-items:center;gap:7px;background:linear-gradient(135deg,#6C2BF2,#2E3BD6);color:#fff;border-radius:999px;padding:5px 13px 5px 5px;font-size:12.5px;font-weight:600;text-decoration:none">
+                <img src="assets/asa/oi.png" alt="ASA" style="width:26px;height:26px;object-fit:contain" />
+                <span>ASA</span>
+              </a>
+            </header>
+
+            <div style="flex:1;min-height:0;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:14px">
+
+              <sc-if value="{{ hasPanel }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+
+                  <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:15px 17px;display:flex;flex-direction:column;gap:12px">
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                      <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">Hoje tem gente para tudo?</span>
+                      <span style="flex:1"></span>
+                      <span style="font-size:11.5px;color:#6b6482">quarta, 26 de agosto · 07:42</span>
+                    </div>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap">
+                      <sc-for list="{{ todayTiles }}" as="t" hint-placeholder-count="4">
+                        <div style="{{ t.boxStyle }}">
+                          <span style="{{ t.numStyle }}">{{ t.num }}</span>
+                          <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                            <span style="font-size:12.5px;font-weight:600;line-height:1.25">{{ t.label }}</span>
+                            <span style="font-size:11px;color:#6b6482;line-height:1.3">{{ t.sub }}</span>
+                          </div>
+                        </div>
+                      </sc-for>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:2px">
+                      <sc-for list="{{ todayShows }}" as="s" hint-placeholder-count="4">
+                        <div style="{{ s.rowStyle }}">
+                          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#6b6482;width:46px;flex:none">{{ s.time }}</span>
+                          <span style="{{ s.dotStyle }}"></span>
+                          <span style="font-size:13.5px;font-weight:600;width:190px;flex:none">{{ s.title }}</span>
+                          <span style="font-size:12px;color:#6b6482;min-width:0">{{ s.sub }}</span>
+                          <span style="flex:1"></span>
+                          <span style="{{ s.tagStyle }}">{{ s.tag }}</span>
+                          <a href="{{ s.linkHref }}" style="{{ s.linkStyle }}">{{ s.link }}</a>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+
+                  <div style="display:grid;grid-template-columns:1fr 300px;gap:12px;align-items:start;min-width:0">
+                  <div style="grid-column:1;grid-row:1;display:flex;flex-direction:column;gap:10px;min-width:0">
+                    <div style="display:flex;flex-direction:column;gap:8px">
+                      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                        <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">O que a gente cumpriu</span>
+                        <span style="flex:1"></span>
+                        <div style="display:flex;background:#fff;border:1px solid #e6e1f2;border-radius:999px;padding:3px">
+                          <sc-for list="{{ periodTabs }}" as="p" hint-placeholder-count="3">
+                            <button type="button" onClick="{{ p.onClick }}" style="{{ p.style }}">{{ p.label }}</button>
+                          </sc-for>
+                        </div>
+                        <div style="display:flex;background:#fff;border:1px solid #e6e1f2;border-radius:999px;padding:3px">
+                          <sc-for list="{{ viewTabs }}" as="v" hint-placeholder-count="2">
+                            <button type="button" onClick="{{ v.onClick }}" style="{{ v.style }}">{{ v.label }}</button>
+                          </sc-for>
+                        </div>
+                      </div>
+                      <span style="font-size:11.5px;color:#6b6482;line-height:1.4;text-wrap:pretty">{{ controlHint }}</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+                      <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+                        <div style="background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:13px 14px;display:flex;flex-direction:column;gap:9px;min-width:0">
+                          <span style="font-size:11.5px;font-weight:600;color:#6b6482;line-height:1.3">{{ k.label }}</span>
+                          <div style="{{ k.valueRowStyle }}">
+                            <span style="{{ k.valueStyle }}">{{ k.value }}</span>
+                            <span style="{{ k.deltaStyle }}">{{ k.delta }}</span>
+                          </div>
+                          <div style="{{ k.sparkWrapStyle }}">
+                            <sc-for list="{{ k.spark }}" as="b" hint-placeholder-count="8">
+                              <span style="{{ b.style }}"></span>
+                            </sc-for>
+                          </div>
+                          <span style="font-size:10.5px;color:#6b6482;line-height:1.35">{{ k.note }}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+
+                    <div style="grid-column:1 / -1;grid-row:2;background:#fff;border:1px solid #e6e1f2;border-radius:16px;display:flex;flex-direction:column;overflow:hidden;min-width:0">
+                      <div style="display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid #f0ecf8;flex-wrap:wrap">
+                        <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">Como está cada pessoa</span>
+                        <span style="flex:1"></span>
+                        <span style="font-size:11.5px;color:#6b6482">{{ peopleHint }}</span>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:10px;padding:9px 16px 0;background:#faf9fe">
+                        <span style="width:168px;flex:none"></span>
+                        <span style="width:210px;flex:none;font-family:Outfit,sans-serif;font-size:11.5px;font-weight:700;color:#3d3559;border-bottom:2px solid #e6e1f2;padding-bottom:5px">Quanto trabalhou</span>
+                        <span style="flex:1;min-width:0;font-family:Outfit,sans-serif;font-size:11.5px;font-weight:700;color:#3d3559;border-bottom:2px solid #e6e1f2;padding-bottom:5px">Como chegou</span>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:10px;padding:7px 16px 8px;background:#faf9fe;border-bottom:1px solid #f0ecf8">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#6b6482;width:168px;flex:none">pessoa</span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#6b6482;width:104px;flex:none">turnos</span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#6b6482;width:96px;flex:none">folga acumulada</span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#6b6482;flex:1;min-width:0">atrasos e motivo</span>
+                      </div>
+                      <sc-for list="{{ people }}" as="p" hint-placeholder-count="6">
+                        <div style="{{ p.rowStyle }}">
+                          <div style="display:flex;align-items:center;gap:9px;width:168px;flex:none;min-width:0">
+                            <span style="{{ p.avatarStyle }}">{{ p.initials }}</span>
+                            <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                              <span style="font-size:13px;font-weight:600">{{ p.name }}</span>
+                              <span style="font-size:10.5px;color:#6b6482">{{ p.role }}</span>
+                            </div>
+                          </div>
+                          <div style="display:flex;align-items:center;gap:8px;width:104px;flex:none">
+                            <span style="font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:700;color:#3d3559;width:20px">{{ p.turnos }}</span>
+                            <span style="flex:1;height:6px;border-radius:3px;background:#f0eef5;overflow:hidden;display:block">
+                              <span style="{{ p.barStyle }}"></span>
+                            </span>
+                          </div>
+                          <span style="{{ p.folgaStyle }}">{{ p.folga }}</span>
+                          <div style="flex:1;display:flex;align-items:center;gap:8px;min-width:0">
+                            <span style="{{ p.atrasoStyle }}">{{ p.atrasos }}</span>
+                            <span style="font-size:11.5px;color:#6b6482;min-width:0">{{ p.motivo }}</span>
+                          </div>
+                        </div>
+                      </sc-for>
+                      <div style="padding:10px 16px;display:flex;align-items:center;gap:8px;border-top:1px solid #f0ecf8">
+                        <img src="assets/asa/duvida.png" alt="" style="width:26px;height:26px;object-fit:contain" />
+                        <span style="font-size:11px;color:#6b6482;line-height:1.4;text-wrap:pretty">{{ peopleFoot }}</span>
+                      </div>
+                    </div>
+
+                    <div style="grid-column:2;grid-row:1;display:flex;flex-direction:column;gap:12px;min-width:0">
+                      <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:11px">
+                        <div style="display:flex;align-items:center;gap:9px">
+                          <img src="assets/asa/aviso-importante.png" alt="" style="width:30px;height:30px;object-fit:contain" />
+                          <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">O que está travado</span>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:7px">
+                          <sc-for list="{{ blocked }}" as="b" hint-placeholder-count="4">
+                            <div style="display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:11px;background:#faf9fe;border:1px solid #f0ecf8">
+                              <span style="{{ b.numStyle }}">{{ b.num }}</span>
+                              <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                                <span style="font-size:12.5px;font-weight:600;line-height:1.25">{{ b.title }}</span>
+                                <span style="font-size:10.5px;color:#6b6482">{{ b.sub }}</span>
+                              </div>
+                              <span style="flex:1"></span>
+                              <a href="{{ b.destHref }}" style="{{ b.destStyle }}">{{ b.dest }}</a>
+                            </div>
+                          </sc-for>
+                        </div>
+                        <span style="font-size:10.5px;color:#6b6482;line-height:1.4;text-wrap:pretty">Fila de trabalho, não indicador: cada linha some quando alguém resolve.</span>
+                      </div>
+
+                      <div style="background:linear-gradient(135deg,#efe9fe,#e6ecfc);border:1px solid #ddd3fa;border-radius:16px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start">
+                        <img src="assets/asa/olhos-de-estrela.png" alt="" style="width:44px;height:44px;object-fit:contain;flex:none" />
+                        <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+                          <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#6C2BF2">ASA lê o painel</span>
+                          <span style="font-size:12.5px;line-height:1.45;color:#3d3559;text-wrap:pretty">{{ asaTip }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ noPanel }}" hint-placeholder-val="{{ false }}">
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:20px">
+                  <img src="assets/asa/consultando.png" alt="" style="width:110px;height:110px;object-fit:contain" />
+                  <span style="font-family:Outfit,sans-serif;font-size:22px;font-weight:600">O Elenco não tem Painel</span>
+                  <span style="font-size:13.5px;line-height:1.55;color:#5b5473;max-width:46ch;text-wrap:pretty">Indicador de equipe é ferramenta de quem escala. O que interessa à Julia — os turnos dela, a pontualidade dela, a folga acumulada dela — já está no Meu Dia e na ficha dela, sem comparação com colegas. Um painel aqui só criaria ranking entre pares.</span>
+                  <span style="font-size:12px;font-weight:600;color:#6C2BF2">ver Meu Dia · 17</span>
+                </div>
+              </sc-if>
+            </div>
+
+            <footer style="display:flex;align-items:center;gap:8px;padding:8px 20px;border-top:1px solid #ebe6f6;background:#fff;flex:none;min-height:40px;box-sizing:border-box">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#6b6482">origem dos números</span>
+              <sc-for list="{{ sources }}" as="s" hint-placeholder-count="5">
+                <span style="flex:none;white-space:nowrap;font-size:11px;font-weight:600;color:#6b6482;background:#faf9fe;border:1px solid #f0ecf8;border-radius:999px;padding:4px 10px">{{ s }}</span>
+              </sc-for>
+              <span style="flex:1"></span>
+              <span style="font-size:11px;color:#6b6482">{{ footerStamp }}</span>
+            </footer>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:0 0 390px;min-width:390px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Mobile · o painel cabe em três cartões</div>
+      <div style="width:390px;height:844px;border-radius:38px;border:1px solid #ddd6ee;background:#fff;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="background:linear-gradient(135deg,#1c1440,#2b1f63);color:#fff;padding:16px 18px 18px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <img src="assets/asa-wing.png" alt="" style="width:24px;height:24px;object-fit:contain" />
+            <div style="display:flex;flex-direction:column;gap:1px;min-width:0;flex:1">
+              <span style="font-size:16px;font-weight:600;font-family:Outfit,sans-serif">Painel</span>
+              <span style="font-size:11.5px;color:#c4bce0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ operationLabel }} · {{ periodLabel }}</span>
+            </div>
+            <span style="flex:1"></span>
+            <span style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9)"></span>
+          </div>
+        </div>
+
+        <div style="flex:1;padding:14px;background:#faf9fe;display:flex;flex-direction:column;gap:10px;overflow:hidden">
+
+          <sc-if value="{{ hasPanel }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:12px 13px;display:flex;flex-direction:column;gap:9px">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#7d769a">Hoje tem gente para tudo?</span>
+                <div style="display:flex;gap:6px">
+                  <sc-for list="{{ todayTiles }}" as="t" hint-placeholder-count="4">
+                    <div style="{{ t.mobileBoxStyle }}">
+                      <span style="{{ t.mobileNumStyle }}">{{ t.num }}</span>
+                      <span style="font-size:10.5px;font-weight:600;color:#5f5878;line-height:1.25;text-align:center">{{ t.short }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:12px 13px;display:flex;flex-direction:column;gap:10px">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#7d769a">Cumprimento</span>
+                <div style="display:flex;gap:5px">
+                  <sc-for list="{{ periodTabs }}" as="p" hint-placeholder-count="3">
+                    <button type="button" onClick="{{ p.onClick }}" style="{{ p.mobileStyle }}">{{ p.label }}</button>
+                  </sc-for>
+                </div>
+                <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <span style="font-family:Outfit,sans-serif;font-size:23px;font-weight:700;width:70px;flex:none">{{ k.value }}</span>
+                    <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                      <span style="font-size:13px;font-weight:600;line-height:1.25">{{ k.label }}</span>
+                      <span style="{{ k.deltaMobileStyle }}">{{ k.delta }}</span>
+                    </div>
+                    <span style="flex:1"></span>
+                    <span style="display:flex;align-items:flex-end;gap:3px;height:26px">
+                      <sc-for list="{{ k.spark }}" as="b" hint-placeholder-count="8">
+                        <span style="{{ b.mobileStyle }}"></span>
+                      </sc-for>
+                    </span>
+                  </div>
+                </sc-for>
+              </div>
+
+              <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:12px 13px;display:flex;flex-direction:column;gap:9px">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#7d769a">Pessoas com sinal</span>
+                <sc-for list="{{ peopleMobile }}" as="p" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <span style="{{ p.avatarStyle }}">{{ p.initials }}</span>
+                    <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                      <span style="font-size:13px;font-weight:600">{{ p.name }}</span>
+                      <span style="font-size:11.5px;color:#7d769a">{{ p.motivo }}</span>
+                    </div>
+                    <span style="flex:1"></span>
+                    <span style="{{ p.atrasoStyle }}">{{ p.atrasos }}</span>
+                  </div>
+                </sc-for>
+              </div>
+
+              <div style="background:#fdeee4;border:1px solid #f6d9c2;border-radius:16px;padding:12px 13px;display:flex;flex-direction:column;gap:6px">
+                <span style="font-size:13px;font-weight:700;color:#B4560B">{{ blockedTop.title }}</span>
+                <span style="font-size:12px;line-height:1.45;color:#524b6b">{{ blockedTop.sub }}</span>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ noPanel }}" hint-placeholder-val="{{ false }}">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:20px">
+              <img src="assets/asa/consultando.png" alt="" style="width:80px;height:80px;object-fit:contain" />
+              <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">Sem painel para o Elenco</span>
+              <span style="font-size:13px;line-height:1.5;color:#5f5878;text-wrap:pretty">Seus números moram no Meu Dia — sem comparação com colegas.</span>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid #ebe6f6;background:#fff;padding:10px 4px 16px">
+          <sc-for list="{{ mobileTabs }}" as="t" hint-placeholder-count="5">
+            <div style="{{ t.style }}">
+              <span style="width:20px;height:20px;border-radius:7px;border:1.75px solid currentColor;opacity:.75"></span>
+              <span style="font-size:10px;font-weight:600;text-align:center">{{ t.label }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section style="display:flex;flex-direction:column;gap:16px">
+    <button type="button" onClick="{{ toggleNotas }}" style="{{ notasBtnStyle }}">
+      <span style="width:20px;height:20px;border-radius:50%;background:#f1eafe;color:#6C2BF2;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none">i</span>
+      <span>{{ notasLabel }}</span>
+    </button>
+    <sc-if value="{{ verNotas }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <span style="font-size:13.5px;color:#6b6482">para não virar galeria de gráficos em seis meses</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px">
+        <sc-for list="{{ rules }}" as="r" hint-placeholder-count="6">
+          <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:15px 17px;display:flex;flex-direction:column;gap:7px">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#6C2BF2">{{ r.kicker }}</span>
+            <span style="font-family:Outfit,sans-serif;font-size:15.5px;font-weight:600;line-height:1.25">{{ r.title }}</span>
+            <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">{{ r.text }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#1c1440,#2b1f63);color:#fff;border-radius:16px;padding:16px 20px">
+        <img src="assets/asa/estudando.png" alt="" style="width:52px;height:52px;object-fit:contain;flex:none" />
+        <span style="font-size:13.5px;line-height:1.5;color:#e4dffa;text-wrap:pretty">Toda origem é rastreável: prontidão vem do Livro do Dia e da Escala, cumprimento vem do check-in e das tarefas, carga vem dos turnos escalados e das folgas, e a fila de travados é a soma das pendências que os próprios módulos declaram. O painel não calcula nada que os módulos não saibam explicar.</span>
+      </div>
+      </div>
+    </sc-if>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1400},&quot;perfilInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ADM&quot;,&quot;DIR&quot;,&quot;SUP&quot;,&quot;MEM&quot;],&quot;default&quot;:&quot;SUP&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Tela&quot;},&quot;periodoInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;7&quot;,&quot;30&quot;,&quot;90&quot;],&quot;default&quot;:&quot;30&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Tela&quot;}}">
+const PROFILES = [
+  { key: "ADM", name: "Administração", dot: "#6C2BF2", hint: "os três locais, com os botões", person: "Barbara Sorroche", op: "Toda a ASA", scope: "3 locais · 58 pessoas" },
+  { key: "DIR", name: "Direção", dot: "#2E63D6", hint: "panorama em leitura, tendência importa mais que valor", person: "Cris Garcia", op: "Visão organizacional", scope: "Arts and Sports Academy · agregado por local" },
+  { key: "SUP", name: "Supervisão", dot: "#0E8F86", hint: "só a área dela — carga pesa mais que cumprimento", person: "Deborah", op: "Área Patinadores", scope: "Área Patinadores · 22 pessoas · Snowland" },
+  { key: "MEM", name: "Elenco", dot: "#C2508F", hint: "não tem painel, e isso é decisão", person: "Julia", op: "Patinadores · Snowland", scope: "" }
+];
+
+const NAV = [
+  { title: "Porta de entrada", items: [
+    ["17", "Início / Meu Dia", ["ADM","DIR","SUP","MEM"], "Meu Dia"]
+  ] },
+  { title: "O dia", items: [
+    ["20", "Agenda", ["ADM","DIR","SUP","MEM"], "Minha agenda"],
+    ["15", "Escalas", ["ADM","DIR","SUP","MEM"], "Minha escala"],
+    ["13", "Shows", ["ADM","DIR","SUP","MEM"], "Shows"],
+    ["14", "Livro do Dia", ["ADM","DIR","SUP","MEM"], "Meus shows"],
+    ["19", "Check-in e ocorrências", ["ADM","DIR","SUP","MEM"], "Check-in"],
+    ["10", "Responsabilidades e tarefas", ["ADM","DIR","SUP","MEM"], "Minhas tarefas"],
+    ["18", "Folgas", ["ADM","DIR","SUP","MEM"], "Minhas folgas"]
+  ] },
+  { title: "Gestão", items: [
+    ["16", "Painel", ["ADM","DIR","SUP"], null],
+    ["06", "Locais", ["ADM","DIR","SUP"], null],
+    ["07", "Pessoas", ["ADM","DIR","SUP"], null],
+    ["08", "Áreas", ["ADM","DIR","SUP","MEM"], "Meu grupo"],
+    ["25", "Reconhecimentos", ["ADM","DIR","SUP"], null]
+  ] },
+  { title: "Comunicação", items: [
+    ["22", "Avisos e Mural", ["ADM","DIR","SUP","MEM"], "Mural"],
+    ["23", "Mensagens", ["ADM","DIR","SUP","MEM"], "Conversas"],
+    ["24", "Biblioteca", ["ADM","DIR","SUP","MEM"], "Biblioteca"]
+  ] }
+];
+
+const DEST_HREF = {
+  "escala": "15%20Escalas.dc.html", "check-in": "19%20Check-in%20e%20ocorr%C3%AAncias.dc.html",
+  "folgas": "18%20Folgas.dc.html", "tarefas": "10%20Responsabilidades%20e%20Tarefas.dc.html",
+  "resp.": "10%20Responsabilidades%20e%20Tarefas.dc.html", "pessoas": "07%20Pessoas.dc.html",
+  "local": "06%20Locais.dc.html", "acompanhar": "19%20Check-in%20e%20ocorr%C3%AAncias.dc.html",
+  "ver": "07%20Pessoas.dc.html"
+};
+const NAV_HREF = {
+  "10": "10%20Responsabilidades%20e%20Tarefas.dc.html",
+  "13": "13%20Shows.dc.html",
+  "14": "14%20Livro%20do%20Dia.dc.html",
+  "15": "15%20Escalas.dc.html",
+  "16": "16%20Painel%20e%20indicadores.dc.html",
+  "17": "17%20Meu%20Dia.dc.html",
+  "18": "18%20Folgas.dc.html",
+  "19": "19%20Check-in%20e%20ocorr%C3%AAncias.dc.html",
+  "20": "20%20Agenda.dc.html",
+  "22": "22%20Avisos%20e%20Mural.dc.html",
+  "23": "23%20Mensagens.dc.html",
+  "24": "24%20Biblioteca.dc.html", "25": "25%20Reconhecimentos.dc.html",
+  "27": "27%20Assistente%20ASA.dc.html",
+  "28": "28%20Perfil%20e%20configura%C3%A7%C3%B5es.dc.html",
+  "06": "06%20Locais.dc.html",
+  "07": "07%20Pessoas.dc.html",
+  "08": "08%20%C3%81reas.dc.html"
+};
+
+const MOBILE = {
+  ADM: ["Meu Dia", "Painel", "Escalas", "Mural", "Mais"],
+  DIR: ["Meu Dia", "Painel", "Agenda", "Mural", "Mais"],
+  SUP: ["Meu Dia", "Escalas", "Equipe", "Mural", "Mais"],
+  MEM: ["Meu Dia", "Escala", "Mural", "Conversas", "Mais"]
+};
+
+const TONES = {
+  ok:   { bg: "#e3f4f1", fg: "#0E8F86" },
+  warn: { bg: "#fdeee4", fg: "#C2600F" },
+  bad:  { bg: "#fbe7e7", fg: "#B4302F" },
+  mute: { bg: "#f0eef5", fg: "#6b6482" },
+  mine: { bg: "#fbeaf3", fg: "#C2508F" }
+};
+
+const PERIODS = [
+  { key: "7", label: "7 dias" },
+  { key: "30", label: "30 dias" },
+  { key: "90", label: "90 dias" }
+];
+
+const TODAY = {
+  SUP: [
+    { num: "2", label: "shows na sua área", sub: "ambos com livro publicado", short: "shows", tone: "ok" },
+    { num: "1", label: "posição descoberta", sub: "cena 5 das 9h — Izabel não vem", short: "descoberta", tone: "bad" },
+    { num: "2", label: "sem check-in", sub: "passagem começa em 18 min", short: "sem check-in", tone: "warn" },
+    { num: "0", label: "escalas em rascunho", sub: "amanhã já publicada", short: "rascunhos", tone: "ok" }
+  ],
+  ADM: [
+    { num: "4", label: "shows nos 3 locais", sub: "3 com livro publicado", short: "shows", tone: "ok" },
+    { num: "1", label: "posição descoberta", sub: "Snowland · cena 5 das 9h", short: "descoberta", tone: "bad" },
+    { num: "5", label: "sem check-in", sub: "2 em Snowland, 3 em Hotelaria", short: "sem check-in", tone: "warn" },
+    { num: "1", label: "escala em rascunho", sub: "Hotelaria · show amanhã 20h", short: "rascunhos", tone: "warn" }
+  ],
+  DIR: [
+    { num: "3", label: "locais abertos", sub: "4 shows programados", short: "locais", tone: "ok" },
+    { num: "1", label: "posição descoberta", sub: "supervisão já tratando", short: "descoberta", tone: "warn" },
+    { num: "91%", label: "prontidão do dia", sub: "média das últimas 4 quartas: 89%", short: "prontidão", tone: "ok" },
+    { num: "1", label: "ocorrência aberta", sub: "impossibilidade avisada 07:40", short: "ocorrência", tone: "warn" }
+  ]
+};
+
+const SHOWS = {
+  SUP: [
+    { time: "08:00", title: "Passagem do show", sub: "16 de 18 com check-in", tag: "2 sem check-in", link: "abrir check-in", linkTo: "19", tone: "warn" },
+    { time: "09:00", title: "Show Patinação", sub: "livro publicado · cena 5 descoberta", tag: "substituir", link: "abrir escala", linkTo: "15", tone: "bad" },
+    { time: "16:00", title: "Show Patinação", sub: "livro publicado · elenco completo", tag: "de pé", link: "", tone: "ok" }
+  ],
+  ADM: [
+    { time: "09:00", title: "Show Patinação · Snowland", sub: "cena 5 descoberta", tag: "substituir", link: "abrir escala", linkTo: "15", tone: "bad" },
+    { time: "11:30", title: "Aula Camp · Acquamotion", sub: "sem responsável definido", tag: "sem dono", link: "atribuir", linkTo: "10", tone: "warn" },
+    { time: "16:00", title: "Show Patinação · Snowland", sub: "livro publicado", tag: "de pé", link: "", tone: "ok" },
+    { time: "20:00", title: "Noite temática · Hotelaria", sub: "escala em rascunho — amanhã", tag: "publicar", link: "abrir escala", linkTo: "15", tone: "warn" }
+  ],
+  DIR: [
+    { time: "100%", title: "Snowland", sub: "2 shows · 18 escalados", tag: "saudável", link: "", tone: "ok" },
+    { time: "92%", title: "Acquamotion", sub: "1 aula sem responsável", tag: "atenção", link: "", tone: "warn" },
+    { time: "100%", title: "Hotelaria", sub: "escala de amanhã em rascunho", tag: "amanhã", link: "", tone: "mute" }
+  ]
+};
+
+const KPIS = {
+  SUP: [
+    { label: "Check-in no prazo", vals: { "7": "96%", "30": "94%", "90": "92%" }, delta: { "7": "+2 pts", "30": "+2 pts", "90": "−1 pt" }, dir: { "7": 1, "30": 1, "90": -1 }, spark: [.7,.8,.75,.9,.85,.92,.94,.96], note: "de 168 turnos no período", tone: "ok" },
+    { label: "Atrasos avisados", vals: { "7": "3", "30": "11", "90": "34" }, delta: { "7": "−1", "30": "+2", "90": "+6" }, dir: { "7": 1, "30": -1, "90": -1 }, spark: [.4,.5,.45,.6,.55,.7,.65,.5], note: "7 por transporte · 3 saúde · 1 outro", tone: "warn" },
+    { label: "Faltas com substituição", vals: { "7": "1", "30": "3", "90": "9" }, delta: { "7": "=", "30": "−1", "90": "+2" }, dir: { "7": 0, "30": 1, "90": -1 }, spark: [.3,.2,.35,.25,.3,.2,.25,.3], note: "nenhum show ficou descoberto", tone: "bad" },
+    { label: "Shows sem troca de última hora", vals: { "7": "12 de 14", "30": "48 de 56", "90": "142 de 164" }, delta: { "7": "+1", "30": "+4", "90": "+9" }, dir: { "7": 1, "30": 1, "90": 1 }, spark: [.6,.65,.7,.68,.75,.8,.82,.86], note: "o número que a plateia sente", tone: "ok" }
+  ],
+  ADM: [
+    { label: "Check-in no prazo", vals: { "7": "93%", "30": "91%", "90": "90%" }, delta: { "7": "+3 pts", "30": "+1 pt", "90": "+2 pts" }, dir: { "7": 1, "30": 1, "90": 1 }, spark: [.6,.7,.68,.75,.8,.85,.88,.93], note: "média dos três locais", tone: "ok" },
+    { label: "Atrasos avisados", vals: { "7": "9", "30": "31", "90": "94" }, delta: { "7": "−4", "30": "−6", "90": "+11" }, dir: { "7": 1, "30": 1, "90": -1 }, spark: [.7,.65,.6,.55,.6,.5,.45,.4], note: "transporte responde por 6 de 10", tone: "warn" },
+    { label: "Escalas publicadas no prazo", vals: { "7": "6 de 7", "30": "27 de 30", "90": "82 de 90" }, delta: { "7": "=", "30": "+2", "90": "+5" }, dir: { "7": 0, "30": 1, "90": 1 }, spark: [.7,.75,.8,.78,.85,.88,.9,.9], note: "prazo = 48h antes do primeiro show", tone: "ok" },
+    { label: "Tarefas concluídas no prazo", vals: { "7": "84%", "30": "79%", "90": "81%" }, delta: { "7": "+5 pts", "30": "−2 pts", "90": "=" }, dir: { "7": 1, "30": -1, "90": 0 }, spark: [.8,.75,.7,.72,.68,.75,.8,.84], note: "Produção concentra os atrasos", tone: "warn" }
+  ],
+  DIR: [
+    { label: "Prontidão média", vals: { "7": "93%", "30": "91%", "90": "90%" }, delta: { "7": "+3 pts", "30": "+1 pt", "90": "+2 pts" }, dir: { "7": 1, "30": 1, "90": 1 }, spark: [.6,.7,.68,.75,.8,.85,.88,.93], note: "estável há três meses", tone: "ok" },
+    { label: "Shows realizados", vals: { "7": "23", "30": "96", "90": "281" }, delta: { "7": "+1", "30": "+4", "90": "+18" }, dir: { "7": 1, "30": 1, "90": 1 }, spark: [.5,.6,.65,.7,.72,.78,.8,.85], note: "nenhum cancelado por falta de gente", tone: "ok" },
+    { label: "Locais abaixo da média", vals: { "7": "1", "30": "1", "90": "1" }, delta: { "7": "=", "30": "=", "90": "=" }, dir: { "7": 0, "30": 0, "90": 0 }, spark: [.4,.4,.45,.4,.42,.4,.4,.4], note: "Acquamotion, terceiro mês seguido", tone: "warn" },
+    { label: "Pessoas com carga acima do teto", vals: { "7": "4", "30": "7", "90": "12" }, delta: { "7": "+2", "30": "+3", "90": "+5" }, dir: { "7": -1, "30": -1, "90": -1 }, spark: [.3,.35,.4,.45,.5,.6,.65,.7], note: "risco de saída, não de escala", tone: "bad" }
+  ]
+};
+
+const PEOPLE = {
+  SUP: [
+    { name: "Louis", role: "Técnica · luz", turnos: { "7": 6, "30": 24, "90": 71 }, load: .92, atrasos: { "7": 2, "30": 4, "90": 11 }, motivo: "transporte em 3 de 4 — mora em Gramado", folga: "6 dias", tone: "bad" },
+    { name: "Maico", role: "Apoio de palco", turnos: { "7": 5, "30": 21, "90": 62 }, load: .78, atrasos: { "7": 1, "30": 3, "90": 7 }, motivo: "2 sem chegada confirmada — falar com ele", folga: "3 dias", tone: "warn" },
+    { name: "Arthur", role: "Patinadores · posição 2", turnos: { "7": 6, "30": 25, "90": 74 }, load: .95, atrasos: { "7": 0, "30": 1, "90": 2 }, motivo: "saúde, uma vez", folga: "9 dias", tone: "warn" },
+    { name: "Julia", role: "Patinadores · posição 4", turnos: { "7": 5, "30": 19, "90": 58 }, load: .7, atrasos: { "7": 0, "30": 1, "90": 3 }, motivo: "transporte, em turno de noite", folga: "2 dias", tone: "ok" },
+    { name: "Carol", role: "Patinadores · posição 5", turnos: { "7": 4, "30": 17, "90": 54 }, load: .62, atrasos: { "7": 0, "30": 0, "90": 1 }, motivo: "1 falta hoje · enfermidade", folga: "4 dias", tone: "ok" },
+    { name: "Sofia", role: "Patinadores · posição 7", turnos: { "7": 4, "30": 16, "90": 49 }, load: .58, atrasos: { "7": 0, "30": 0, "90": 0 }, motivo: "sem atrasos no período", folga: "1 dia", tone: "ok" }
+  ],
+  ADM: [
+    { name: "Louis", role: "Snowland · técnica", turnos: { "7": 6, "30": 24, "90": 71 }, load: .92, atrasos: { "7": 2, "30": 4, "90": 11 }, motivo: "transporte em 3 de 4", folga: "6 dias", tone: "bad" },
+    { name: "Arthur", role: "Snowland · elenco", turnos: { "7": 6, "30": 25, "90": 74 }, load: .95, atrasos: { "7": 0, "30": 1, "90": 2 }, motivo: "carga no teto há 5 semanas", folga: "9 dias", tone: "bad" },
+    { name: "Diogo", role: "Hotelaria · recepção", turnos: { "7": 6, "30": 26, "90": 76 }, load: .97, atrasos: { "7": 1, "30": 5, "90": 13 }, motivo: "imprevisto pessoal em 3 de 5", folga: "11 dias", tone: "bad" },
+    { name: "Maico", role: "Snowland · apoio", turnos: { "7": 5, "30": 21, "90": 62 }, load: .78, atrasos: { "7": 1, "30": 3, "90": 7 }, motivo: "2 sem chegada confirmada", folga: "3 dias", tone: "warn" },
+    { name: "Amanda", role: "Acquamotion · instrução", turnos: { "7": 5, "30": 22, "90": 65 }, load: .8, atrasos: { "7": 1, "30": 4, "90": 9 }, motivo: "transporte, todas de manhã", folga: "5 dias", tone: "warn" },
+    { name: "Julia", role: "Snowland · elenco", turnos: { "7": 5, "30": 19, "90": 58 }, load: .7, atrasos: { "7": 0, "30": 1, "90": 3 }, motivo: "transporte, turno de noite", folga: "2 dias", tone: "ok" }
+  ],
+  DIR: [
+    { name: "Diogo", role: "Hotelaria · recepção", turnos: { "7": 6, "30": 26, "90": 76 }, load: .97, atrasos: { "7": 1, "30": 5, "90": 13 }, motivo: "imprevisto pessoal em 3 de 5", folga: "11 dias", tone: "bad" },
+    { name: "Arthur", role: "Snowland · elenco", turnos: { "7": 6, "30": 25, "90": 74 }, load: .95, atrasos: { "7": 0, "30": 1, "90": 2 }, motivo: "carga no teto há 5 semanas", folga: "9 dias", tone: "bad" },
+    { name: "Louis", role: "Snowland · técnica", turnos: { "7": 6, "30": 24, "90": 71 }, load: .92, atrasos: { "7": 2, "30": 4, "90": 11 }, motivo: "transporte em 3 de 4", folga: "6 dias", tone: "bad" },
+    { name: "Amanda", role: "Acquamotion · instrução", turnos: { "7": 5, "30": 22, "90": 65 }, load: .8, atrasos: { "7": 1, "30": 4, "90": 9 }, motivo: "transporte, todas de manhã", folga: "5 dias", tone: "warn" },
+    { name: "Maico", role: "Snowland · apoio", turnos: { "7": 5, "30": 21, "90": 62 }, load: .78, atrasos: { "7": 1, "30": 3, "90": 7 }, motivo: "2 sem chegada confirmada", folga: "3 dias", tone: "warn" },
+    { name: "Deborah", role: "Snowland · supervisão", turnos: { "7": 6, "30": 24, "90": 70 }, load: .9, atrasos: { "7": 0, "30": 0, "90": 1 }, motivo: "escala e cobre — sem folga marcada", folga: "8 dias", tone: "warn" }
+  ]
+};
+
+const BLOCKED = {
+  SUP: [
+    { num: "1", title: "Posição descoberta hoje", sub: "cena 5 · show das 9h", dest: "escala", tone: "bad" },
+    { num: "1", title: "Folga a decidir", sub: "Isadora · 12 a 14 de setembro", dest: "folgas", tone: "warn" },
+    { num: "2", title: "Atrasos sem chegada", sub: "Maico · dois turnos", dest: "check-in", tone: "warn" },
+    { num: "3", title: "Tarefas atrasadas", sub: "figurino e perucas", dest: "tarefas", tone: "warn" }
+  ],
+  ADM: [
+    { num: "1", title: "Responsabilidade sem dono", sub: "Perucas · desde ontem", dest: "resp.", tone: "bad" },
+    { num: "1", title: "Escala em rascunho", sub: "Hotelaria · show amanhã 20h", dest: "escala", tone: "warn" },
+    { num: "4", title: "Pessoas sem acesso criado", sub: "cadastradas esta semana", dest: "pessoas", tone: "warn" },
+    { num: "6", title: "Tarefas atrasadas", sub: "Produção concentra 4", dest: "tarefas", tone: "warn" }
+  ],
+  DIR: [
+    { num: "1", title: "Ocorrência aberta", sub: "em análise há 40 min", dest: "acompanhar", tone: "warn" },
+    { num: "7", title: "Pessoas acima do teto", sub: "3 sem folga marcada", dest: "pessoas", tone: "bad" },
+    { num: "1", title: "Local abaixo da média", sub: "Acquamotion · 3º mês", dest: "local", tone: "warn" },
+    { num: "6", title: "Tarefas atrasadas", sub: "Produção, três semanas seguidas", dest: "tarefas", tone: "warn" }
+  ]
+};
+
+const TIPS = {
+  SUP: "Três dos quatro atrasos do Rafa foram por transporte, todos em turno de manhã. Quer que eu proponha ele só em turnos de noite na próxima escala?",
+  ADM: "Diogo está com 26 turnos em 30 dias e 11 dias de folga acumulada. Ele é o próximo risco de saída da operação — quer abrir a folga dele?",
+  DIR: "Acquamotion está abaixo da média pelo terceiro mês, sempre no turno da manhã. Quer o comparativo de janela de check-in entre os três locais?"
+};
+
+const RULES = [
+  { kicker: "origem", title: "O painel não guarda dado próprio", text: "Cada número aponta para o módulo que o produziu — check-in, escala, livro do dia, tarefas, folgas. Se um indicador não consegue dizer de onde veio, ele não entra na tela." },
+  { kicker: "ação", title: "Número sem destino é decoração", text: "Toda linha leva para onde se resolve: posição descoberta abre a escala, atraso sem chegada abre o check-in, tarefa atrasada abre a tarefa. Quem lê já está a um toque de agir." },
+  { kicker: "leitura", title: "Valor e tendência, escolha do usuário", text: "O mesmo indicador em duas leituras: o número de agora, ou a curva do período. A Direção vive na tendência, a Supervisão no valor — e nenhuma das duas precisa da outra atrapalhando." },
+  { kicker: "período", title: "7, 30 e 90 dias — nunca “desde sempre”", text: "Sete dias mostra o efeito de uma decisão da semana, trinta mostra o hábito, noventa mostra a estação. Acumulado desde a fundação não responde pergunta nenhuma." },
+  { kicker: "pessoas", title: "Nome e motivo aparecem juntos", text: "Nomear sem motivo cria ranking de culpa. “Louis · 4 atrasos · transporte em 3 de 4” é uma decisão de escala esperando para ser tomada — e é por isso que motivo virou obrigatório no check-in." },
+  { kicker: "escopo", title: "Elenco não tem painel", text: "Indicador comparativo é ferramenta de quem escala. O que é do Elenco — turnos, pontualidade, folga acumulada — fica no Meu Dia e na ficha dele, sem colega ao lado para comparar." }
+];
+
+class Component extends DCLogic {
+  state = { profile: null, period: null, view: "valor" };
+
+  renderVals() {
+    const active = this.state.profile || this.props.perfilInicial || "SUP";
+    const meta = PROFILES.find(p => p.key === active) || PROFILES[2];
+    const isDir = active === "DIR";
+    const isMem = active === "MEM";
+    const per = this.state.period || this.props.periodoInicial || "30";
+    const perLabel = (PERIODS.find(p => p.key === per) || PERIODS[1]).label;
+    const trend = this.state.view === "tendencia";
+    const scopeKey = isMem ? "SUP" : active;
+
+    const profileTabs = PROFILES.map(p => ({
+      name: p.name,
+      dot: p.dot,
+      onClick: () => this.setState({ profile: p.key }),
+      style: [
+        "display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;cursor:pointer;",
+        "font-family:Manrope,sans-serif;font-size:13px;font-weight:600;",
+        p.key === active
+          ? "border:1px solid " + p.dot + ";background:" + p.dot + "12;color:" + p.dot + ";box-shadow:0 0 0 3px " + p.dot + "1a"
+          : "border:1px solid #e6e1f2;background:#fff;color:#6b6482"
+      ].join("")
+    }));
+
+    const shellNav = NAV.map(g => ({
+      title: g.title,
+      items: g.items.filter(it => it[2].indexOf(active) >= 0).map(it => ({
+        href: NAV_HREF[it[0]],
+        label: it[1],
+        style: [
+          "display:flex;align-items:center;gap:8px;padding:6.5px 9px;border-radius:8px;font-size:12px;",
+          it[0] === "16" ? "background:rgba(255,255,255,.14);color:#fff;font-weight:600;" : "color:#c3bbdf;font-weight:500;"
+        ].join("")
+      }))
+    })).filter(g => g.items.length > 0);
+
+    const pill = (on, dot) => "cursor:pointer;border:none;background:" + (on ? dot : "transparent") + ";color:" + (on ? "#fff" : "#6b6482") + ";font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;padding:7px 15px;border-radius:999px;";
+
+    const periodTabs = PERIODS.map(p => ({
+      label: p.label,
+      onClick: () => this.setState({ period: p.key }),
+      style: pill(p.key === per, meta.dot),
+      mobileStyle: "flex:1;cursor:pointer;font-family:Manrope,sans-serif;font-size:12px;font-weight:700;padding:9px 6px;border-radius:999px;min-height:38px;" + (p.key === per ? "border:1px solid " + meta.dot + ";background:" + meta.dot + "14;color:" + meta.dot + ";" : "border:1px solid #e6e1f2;background:#fff;color:#6b6482;")
+    }));
+
+    const viewTabs = [
+      { key: "valor", label: "Valor" },
+      { key: "tendencia", label: "Tendência" }
+    ].map(v => ({
+      label: v.label,
+      onClick: () => this.setState({ view: v.key }),
+      style: pill(v.key === this.state.view, "#1c1440")
+    }));
+
+    const todayTiles = (TODAY[scopeKey] || []).map(t => {
+      const T = TONES[t.tone];
+      return {
+        num: t.num,
+        label: t.label,
+        sub: t.sub,
+        short: t.short,
+        boxStyle: "flex:1 1 170px;min-width:158px;display:flex;align-items:center;gap:11px;background:#faf9fe;border:1px solid #f0ecf8;border-radius:14px;padding:11px 13px;",
+        numStyle: "flex:none;min-width:44px;height:38px;padding:0 9px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-family:Outfit,sans-serif;font-size:18px;font-weight:700;background:" + T.bg + ";color:" + T.fg + ";",
+        mobileBoxStyle: "flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:#faf9fe;border:1px solid #f0ecf8;border-radius:12px;padding:10px 6px;",
+        mobileNumStyle: "font-family:Outfit,sans-serif;font-size:20px;font-weight:700;color:" + T.fg + ";"
+      };
+    });
+
+    const todayShows = (SHOWS[scopeKey] || []).slice(0, 3).map(s => {
+      const T = TONES[s.tone];
+      return {
+        time: s.time,
+        title: s.title,
+        sub: s.sub,
+        tag: s.tag,
+        link: isDir ? "" : s.link,
+        linkHref: NAV_HREF[s.linkTo] || "15%20Escalas.dc.html",
+        rowStyle: "display:flex;align-items:center;gap:10px;padding:8px;border-radius:10px;" + (s.tone === "bad" ? "background:#fdf6f6;" : ""),
+        dotStyle: "width:8px;height:8px;border-radius:50%;flex:none;background:" + T.fg + ";" + (s.tone === "mute" ? "opacity:.5;" : ""),
+        tagStyle: "font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:6px;flex:none;background:" + T.bg + ";color:" + T.fg + ";",
+        linkStyle: (!isDir && s.link) ? "font-size:11.5px;font-weight:700;color:#6C2BF2;flex:none;cursor:pointer;" : "display:none;"
+      };
+    });
+
+    const kpis = (KPIS[scopeKey] || []).map(k => {
+      const T = TONES[k.tone];
+      const dir = k.dir[per];
+      const dTone = dir > 0 ? TONES.ok : dir < 0 ? TONES.bad : TONES.mute;
+      const arrow = dir > 0 ? "▲ " : dir < 0 ? "▼ " : "";
+      return {
+        label: k.label,
+        value: k.vals[per],
+        delta: arrow + k.delta[per],
+        note: k.note,
+        valueRowStyle: trend ? "display:flex;align-items:baseline;gap:8px;" : "display:flex;flex-direction:column;gap:3px;",
+        valueStyle: trend
+          ? "font-family:Outfit,sans-serif;font-size:20px;font-weight:700;letter-spacing:-0.01em;color:#1b1630;"
+          : "font-family:Outfit,sans-serif;font-size:30px;font-weight:700;letter-spacing:-0.02em;line-height:1;color:#1b1630;",
+        deltaStyle: "font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:" + dTone.fg + ";" + (trend ? "" : "width:fit-content;"),
+        deltaMobileStyle: "font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;color:" + dTone.fg + ";",
+        sparkWrapStyle: trend
+          ? "display:flex;align-items:flex-end;gap:3px;height:40px;"
+          : "display:flex;align-items:flex-end;gap:3px;height:14px;opacity:.55;",
+        spark: k.spark.map((v, i) => {
+          const last = i === k.spark.length - 1;
+          const h = Math.round(v * 100);
+          return {
+            style: "flex:1;display:block;border-radius:3px 3px 0 0;height:" + h + "%;background:" + (last ? T.fg : T.bg) + ";" + (last ? "" : "opacity:.9;"),
+            mobileStyle: "width:4px;display:block;border-radius:2px;height:" + Math.max(4, Math.round(v * 26)) + "px;background:" + (last ? T.fg : T.bg) + ";"
+          };
+        })
+      };
+    });
+
+    const rawPeople = (PEOPLE[scopeKey] || []).slice(0, 4);
+    const maxTurnos = rawPeople.reduce((m, p) => Math.max(m, p.turnos[per]), 1);
+    const people = rawPeople.map(p => {
+      const T = TONES[p.tone];
+      const at = p.atrasos[per];
+      const aTone = at >= 4 ? TONES.bad : at >= 2 ? TONES.warn : TONES.ok;
+      return {
+        name: p.name,
+        role: p.role,
+        initials: p.name.slice(0, 1) + (p.name.split(" ")[1] || "").slice(0, 1),
+        turnos: String(p.turnos[per]),
+        atrasos: at === 0 ? "0" : String(at),
+        motivo: p.motivo,
+        folga: p.folga,
+        rowStyle: "display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid #f5f2fa;" + (p.tone === "bad" ? "background:#fdf6f6;" : ""),
+        avatarStyle: "flex:none;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;background:" + T.bg + ";color:" + T.fg + ";",
+        barStyle: "display:block;height:6px;border-radius:3px;width:" + Math.round((p.turnos[per] / maxTurnos) * 100) + "%;background:" + T.fg + ";",
+        atrasoStyle: "font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;flex:none;background:" + aTone.bg + ";color:" + aTone.fg + ";",
+        folgaStyle: "font-size:12px;font-weight:600;width:96px;flex:none;color:" + (parseInt(p.folga, 10) >= 6 ? "#B4302F" : "#6b6482") + ";"
+      };
+    });
+
+    const blocked = (BLOCKED[scopeKey] || []).slice(0, 3).map(b => {
+      const T = TONES[b.tone];
+      return {
+        num: b.num,
+        title: b.title,
+        sub: b.sub,
+        dest: isDir ? "ver" : b.dest,
+        destHref: DEST_HREF[b.dest] || "07%20Pessoas.dc.html",
+        numStyle: "flex:none;width:26px;height:26px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;background:" + T.bg + ";color:" + T.fg + ";",
+        destStyle: "font-size:10.5px;font-weight:700;color:#6C2BF2;flex:none;cursor:pointer;"
+      };
+    });
+
+    return {
+      verNotas: !!this.state.__notas,
+      toggleNotas: () => this.setState(s => ({ __notas: !s.__notas })),
+      notasBtnStyle: "display:flex;align-items:center;gap:9px;padding:8px 14px;border-radius:999px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;align-self:flex-start",
+      notasLabel: this.state.__notas ? "ocultar notas de desenho" : "notas de desenho",
+
+      profileTabs: profileTabs,
+      profileHint: meta.hint,
+      profileName: meta.name,
+      personName: meta.person,
+      operationLabel: meta.op,
+      personChipStyle: "font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:" + meta.dot + ";padding:2px 7px;border-radius:999px;width:fit-content",
+      screenTitle: isMem ? "Painel" : "Painel · " + meta.name,
+      scopeLine: isMem ? "sem painel neste perfil" : meta.scope + " · " + perLabel,
+      readonlyChip: isDir ? "somente leitura" : "",
+      readonlyChipStyle: isDir
+        ? "font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#2E63D6;background:#e9effc;padding:5px 10px;border-radius:999px;"
+        : "display:none;",
+      shellNav: shellNav,
+      mobileTabs: MOBILE[active].map((label, i) => ({
+        label: label,
+        style: "display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 2px;" + (((active === "ADM" || active === "DIR") && i === 1) || (active === "SUP" && i === 4) ? "color:" + meta.dot + ";" : "color:#6b6482;")
+      })),
+      hasPanel: !isMem,
+      noPanel: isMem,
+      periodTabs: periodTabs,
+      viewTabs: viewTabs,
+      periodLabel: perLabel,
+      controlHint: (trend
+        ? "Tendência: a curva do período, com a variação contra o período anterior. "
+        : "Valor: o número do período em destaque, com a variação ao lado. ") + perLabel + " · o seletor vale só para este bloco e os dois de baixo — o de cima é sempre hoje.",
+      todayTiles: todayTiles,
+      todayShows: todayShows,
+      kpis: kpis,
+      people: people,
+      peopleMobile: people.slice(0, 3),
+      peopleHint: (isDir ? "leitura · " : "") + "ordenado por carga · " + perLabel + " · 4 primeiros de " + ((PEOPLE[scopeKey] || []).length + (active === "SUP" ? 16 : 52)),
+      peopleFoot: isDir
+        ? "Folga acumulada é o que a pessoa tem direito e ainda não tirou — não a próxima folga marcada, que fica na Agenda."
+        : "Folga acumulada = dias a que ela tem direito e ainda não tirou. Turnos no teto com folga acumulada é o padrão que antecede pedido de demissão.",
+      blocked: blocked,
+      blockedTop: { title: blocked.length ? blocked[0].title : "", sub: blocked.length ? blocked[0].sub : "" },
+      asaTip: TIPS[scopeKey],
+      sources: ["check-in", "escalas", "livro do dia", "tarefas", "folgas"],
+      footerStamp: "atualizado 07:42 · " + (isMem ? "sem indicadores neste perfil" : perLabel + " · " + meta.scope),
+      rules: RULES
+    };
+  }
+}
+</script>
+</body>
+</html>

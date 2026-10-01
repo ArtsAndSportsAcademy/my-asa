@@ -14,11 +14,9 @@
  *
  * Rode diretamente com: `pnpm --filter @workspace/db run migrate`.
  */
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { drizzle } from "drizzle-orm/node-postgres";
-import { migrate } from "drizzle-orm/node-postgres/migrator";
 import pg from "pg";
+import { applyMigrations } from "./migration-runner.js";
+import { normalizeDatabaseUrl } from "./database-url.js";
 
 const { Pool } = pg;
 
@@ -29,15 +27,11 @@ async function main() {
     );
   }
 
-  const here = path.dirname(fileURLToPath(import.meta.url));
-  const migrationsFolder = path.resolve(here, "../drizzle");
-
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  const db = drizzle(pool);
+  const pool = new Pool({ connectionString: normalizeDatabaseUrl(process.env.DATABASE_URL) });
 
   try {
-    console.log(`Applying migrations from ${migrationsFolder} ...`);
-    await migrate(db, { migrationsFolder });
+    console.log("Applying migrations from lib/db/drizzle ...");
+    await applyMigrations(pool);
     console.log("Migrations applied. Database is in sync with the schema.");
   } finally {
     await pool.end();

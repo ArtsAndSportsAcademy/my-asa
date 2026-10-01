@@ -1,0 +1,1992 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<script src="./mapa-palco.js"></script>
+<style>
+  aside a { text-decoration: none; }
+  body { margin: 0; background: #f4f2fa; font-family: Manrope, system-ui, sans-serif; color: #1b1630; }
+  a { color: #6C2BF2; text-decoration: none; }
+  a:hover { color: #4a17b8; text-decoration: underline; }
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 3px solid #6C2BF2; outline-offset: 2px; border-radius: 8px; }
+</style>
+</helmet>
+
+<div style="max-width:1560px;margin:0 auto;padding:44px 28px 88px;display:flex;flex-direction:column;gap:32px">
+
+  <header style="display:flex;flex-direction:column;gap:22px">
+    <div style="display:flex;align-items:flex-start;gap:18px">
+      <img src="assets/asa/pensativa.png" alt="My ASA" style="width:52px;height:52px;object-fit:contain;flex:none;margin-top:4px" />
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#6b6482">13 · biblioteca de estudo e palco</div>
+        <h1 style="font-family:Outfit,sans-serif;font-size:38px;line-height:1.05;font-weight:700;margin:0;letter-spacing:-0.02em">Shows</h1>
+        <p style="margin:0;max-width:74ch;font-size:15px;line-height:1.55;color:#5b5473;text-wrap:pretty">Duas abas. <strong>Shows</strong> é a estante: dentro de cada um ficam as informações gerais, os links do Drive e o Livro oficial — cenas com slots numerados à esquerda, quadros-chave do palco à direita. <strong>Personagens</strong> é a lista por local com as filas de titular e rodízio; personagem pertence ao local, não a um show, porque Astrid aparece em dois shows do Snowland e é a mesma fila. A <strong>biblioteca de formações</strong> não fica aqui: ela mora no Livro do Dia, junto de quem está resolvendo o dia, com a navegação show → cena → quantidade. A escalação por data também não acontece aqui; ela vive em Escalas.</p>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:13px 16px;background:#fff;border:1px solid #e6e1f2;border-radius:16px">
+      <span style="font-size:13px;font-weight:600;color:#5b5473;margin-right:4px">Ver como</span>
+      <sc-for list="{{ profileTabs }}" as="tab" hint-placeholder-count="4">
+        <button type="button" onClick="{{ tab.onClick }}" style="{{ tab.style }}">
+          <span style="width:8px;height:8px;border-radius:50%;background:{{ tab.dot }};display:inline-block"></span>
+          <span>{{ tab.name }}</span>
+        </button>
+      </sc-for>
+      <span style="flex:1"></span>
+      <span style="font-size:13px;color:#6b6482">{{ profileHint }}</span>
+    </div>
+  </header>
+
+  <div style="display:flex;flex-direction:column;gap:10px;padding-bottom:6px">
+    <div style="display:flex;align-items:baseline;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Web · 1920 × 1080</span>
+        <span style="font-size:11.5px;color:#6b6482">exibido a 70% — proporção real de tela</span>
+      </div>
+    <div style="position:relative;width:1344px;height:756px;border:1px solid #ddd6ee;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+      <div style="width:1920px;height:1080px;transform:scale(0.7);transform-origin:top left;display:flex">
+
+        <aside style="width:222px;flex:none;background:linear-gradient(180deg,#1c1440 0%,#241a52 100%);display:flex;flex-direction:column;color:#fff">
+          <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 12px">
+            <img src="assets/asa-wing.png" alt="" style="width:26px;height:26px;object-fit:contain" />
+            <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">My ASA</span>
+          </div>
+          <div style="padding:0 12px 10px">
+            <a href="27%20Assistente%20ASA.dc.html" style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border-radius:10px;padding:8px 10px;font-size:11.5px;color:#b9b0da;text-decoration:none;cursor:pointer">
+              <span style="width:11px;height:11px;border:1.5px solid #b9b0da;border-radius:50%"></span>
+              <span>Buscar ou perguntar à ASA</span>
+            </a>
+          </div>
+          <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:12px;padding:2px 10px 10px">
+            <sc-for list="{{ shellNav }}" as="g" hint-placeholder-count="4">
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#7d72a8;padding:0 8px 4px">{{ g.title }}</div>
+                <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+                  <a href="{{ it.href }}" style="{{ it.style }}">{{ it.label }}</a>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+          <div style="border-top:1px solid rgba(255,255,255,.1);padding:12px;display:flex;align-items:center;gap:10px">
+            <span style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+            <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+              <span style="font-size:12.5px;font-weight:600">{{ personName }}</span>
+              <span style="{{ personChipStyle }}">{{ profileName }}</span>
+            </div>
+          </div>
+        </aside>
+
+        <div style="flex:1;display:flex;flex-direction:column;background:#faf9fe;min-width:0">
+
+          <header style="display:flex;align-items:center;gap:10px;padding:12px 20px;border-bottom:1px solid #ebe6f6;background:#fff;flex:none">
+            <div style="display:flex;align-items:center;gap:7px;min-width:0">
+              <sc-for list="{{ crumbs }}" as="c" hint-placeholder-count="2">
+                <button type="button" onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.label }}</button>
+              </sc-for>
+            </div>
+            <span style="flex:1"></span>
+            <span style="{{ readonlyChipStyle }}">somente leitura</span>
+            <span style="{{ opFilterStyle }}">
+              <span style="width:8px;height:8px;border-radius:50%;background:#0E8F86"></span>
+              <span>{{ operationLabel }}</span>
+            </span>
+            <span style="width:34px;height:34px;border-radius:12px;border:1px solid #e6e1f2;display:flex;align-items:center;justify-content:center;font-size:12px;color:#6b6482">2</span>
+            <button type="button" onClick="{{ toggleAsa }}" style="{{ asaBtnStyle }}">
+              <img src="assets/asa/oi.png" alt="ASA" style="width:26px;height:26px;object-fit:contain" />
+              <span>ASA</span>
+            </button>
+          </header>
+
+          <sc-if value="{{ isSection }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;align-items:center;gap:4px;padding:0 20px;background:#fff;border-bottom:1px solid #ebe6f6;flex:none">
+              <sc-for list="{{ sectionTabs }}" as="t" hint-placeholder-count="3">
+                <button type="button" onClick="{{ t.onClick }}" style="{{ t.style }}">{{ t.label }}</button>
+              </sc-for>
+              <span style="flex:1"></span>
+              <span style="font-size:11.5px;color:#6b6482">{{ sectionHint }}</span>
+            </div>
+          </sc-if>
+
+          <div style="flex:1;display:flex;min-height:0">
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+
+              <sc-if value="{{ isEstante }}" hint-placeholder-val="{{ true }}">
+                <div style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+                  <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:14px 20px;background:#fff;border-bottom:1px solid #ebe6f6;flex:none">
+                    <div style="display:flex;align-items:center;gap:8px;height:34px;padding:0 12px;border:1px solid #e6e1f2;border-radius:10px;background:#faf9fe;min-width:230px">
+                      <span style="width:12px;height:12px;border:1.5px solid #6b6482;border-radius:50%"></span>
+                      <span style="font-size:12.5px;color:#6b6482">Pesquisar show por nome</span>
+                    </div>
+                    <sc-for list="{{ estadoFilters }}" as="f" hint-placeholder-count="4">
+                      <button type="button" onClick="{{ f.onClick }}" style="{{ f.style }}">{{ f.label }}</button>
+                    </sc-for>
+                    <span style="flex:1"></span>
+                    <button type="button" onClick="{{ toggleFav }}" style="{{ favBtnStyle }}">★ Favoritos</button>
+                    <button type="button" onClick="{{ toggleSort }}" style="{{ sortBtnStyle }}">{{ sortLabel }}</button>
+                  </div>
+
+                  <div style="flex:1;overflow:auto;padding:18px 20px 26px;display:flex;flex-direction:column;gap:24px">
+                    <div style="{{ updatedBannerStyle }}">
+                      <img src="assets/asa/atencao.png" alt="" style="width:30px;height:30px;object-fit:contain;flex:none" />
+                      <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                        <span style="font-size:13px;font-weight:700;color:#7a4a00">2 shows foram atualizados desde a sua última visita</span>
+                        <span style="font-size:12px;color:#8a6a30">Patinação — Inverno 2026 (Livro oficial, Cena Molduras) · Splash Nights (2 links novos no Drive)</span>
+                      </div>
+                      <span style="flex:1"></span>
+                      <span style="font-size:11.5px;font-weight:600;color:#B06E00;white-space:nowrap">o destaque fica até você abrir</span>
+                    </div>
+
+                    <sc-for list="{{ opGroups }}" as="g" hint-placeholder-count="3">
+                      <div style="display:flex;flex-direction:column;gap:12px">
+                        <div style="display:flex;align-items:center;gap:10px">
+                          <span style="width:9px;height:9px;border-radius:50%;background:{{ g.dot }}"></span>
+                          <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">{{ g.name }}</span>
+                          <span style="font-size:12px;color:#6b6482">{{ g.count }}</span>
+                          <span style="{{ g.lockStyle }}">{{ g.lockLabel }}</span>
+                        </div>
+                        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(252px,1fr));gap:14px">
+                          <sc-for list="{{ g.shows }}" as="s" hint-placeholder-count="3">
+                            <button type="button" onClick="{{ s.onClick }}" style="{{ s.style }}">
+                              <span style="{{ s.coverStyle }}">
+                                <span style="font-family:Outfit,sans-serif;font-size:34px;font-weight:700;color:rgba(255,255,255,.9)">{{ s.initial }}</span>
+                                <span style="position:absolute;left:10px;bottom:8px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.65)">capa</span>
+                                <span style="{{ s.updatedStyle }}">Atualizado</span>
+                                <span style="{{ s.favStyle }}">★</span>
+                              </span>
+                              <span style="display:flex;flex-direction:column;gap:7px;padding:11px 13px 13px">
+                                <span style="display:flex;align-items:center;gap:7px">
+                                  <span style="{{ s.estadoStyle }}">{{ s.estado }}</span>
+                                  <span style="font-size:11px;color:#6b6482">{{ s.conteudos }}</span>
+                                </span>
+                                <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600;line-height:1.2;color:#1b1630">{{ s.name }}</span>
+                                <span style="font-size:12px;line-height:1.45;color:#6b6482">{{ s.desc }}</span>
+                                <span style="display:flex;align-items:center;gap:6px;margin-top:2px">
+                                  <span style="width:20px;height:20px;border-radius:50%;background:#efe9fb;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#6C2BF2">{{ s.respIni }}</span>
+                                  <span style="font-size:11.5px;color:#6b6482">{{ s.resp }}</span>
+                                  <span style="flex:1"></span>
+                                  <span style="font-size:11px;color:#6b6482">{{ s.alterado }}</span>
+                                </span>
+                              </span>
+                            </button>
+                          </sc-for>
+                        </div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ isPers }}" hint-placeholder-val="{{ false }}">
+                <div style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+                  <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:14px 20px;background:#fff;border-bottom:1px solid #ebe6f6;flex:none">
+                    <span style="font-size:12.5px;font-weight:600;color:#5b5473;margin-right:2px">Local</span>
+                    <sc-for list="{{ localTabs }}" as="l" hint-placeholder-count="3">
+                      <button type="button" onClick="{{ l.onClick }}" style="{{ l.style }}">{{ l.label }}</button>
+                    </sc-for>
+                    <span style="flex:1"></span>
+                    <button type="button" onClick="{{ onNovoPers }}" style="{{ novoPersStyle }}">+ Novo personagem</button>
+                  </div>
+
+                  <div style="flex:1;overflow:auto;padding:18px 20px 26px;display:flex;flex-direction:column;gap:14px">
+                    <div style="display:flex;align-items:center;gap:11px;padding:11px 14px;border-radius:13px;background:#f3ecfe;border:1px solid #e0d2fb">
+                      <img src="assets/asa/oi.png" alt="" style="width:26px;height:26px;object-fit:contain;flex:none" />
+                      <span style="font-size:12.5px;line-height:1.5;color:#4a3d6b;text-wrap:pretty">Personagem pertence ao <strong>local</strong>, não a um show &mdash; Astrid aparece em dois shows do Snowland e é a mesma fila. Quem entra hoje sai daqui; o Livro do Dia só copia.</span>
+                    </div>
+
+                    <sc-if value="{{ novoPersOpen }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;flex-direction:column;gap:12px;padding:16px 18px;background:#fff;border:1.5px solid #d9cdfa;border-radius:16px">
+                        <div style="display:flex;align-items:center;gap:9px">
+                          <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">Novo personagem</span>
+                          <span style="font-size:12px;color:#6b6482">quatro campos</span>
+                          <span style="flex:1"></span>
+                          <button type="button" onClick="{{ onNovoPers }}" style="min-height:32px;padding:0 12px;border:1px solid #e6e1f2;border-radius:9px;background:#fff;color:#6b6482;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:600;cursor:pointer">Fechar</button>
+                        </div>
+                        <div style="display:flex;flex-wrap:wrap;gap:14px">
+                          <div style="display:flex;flex-direction:column;gap:5px;flex:1 1 220px">
+                            <span style="font-size:12px;font-weight:700;color:#5b5473">Nome</span>
+                            <span style="display:flex;align-items:center;min-height:40px;padding:0 13px;border:1.5px solid #ddd6ee;border-radius:11px;font-size:13px;color:#6b6482">Ex.: Sereia</span>
+                          </div>
+                          <div style="display:flex;flex-direction:column;gap:5px;flex:1 1 180px">
+                            <span style="font-size:12px;font-weight:700;color:#5b5473">Local</span>
+                            <span style="display:flex;align-items:center;min-height:40px;padding:0 13px;border:1.5px solid #ddd6ee;border-radius:11px;font-size:13px;color:#1b1630;font-weight:600">{{ novoPersLocal }}</span>
+                          </div>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:7px">
+                          <span style="font-size:12px;font-weight:700;color:#5b5473">Modo</span>
+                          <div style="display:flex;flex-wrap:wrap;gap:8px">
+                            <sc-for list="{{ novoPersModos }}" as="m" hint-placeholder-count="2">
+                              <button type="button" onClick="{{ m.onClick }}" style="{{ m.style }}">{{ m.label }}</button>
+                            </sc-for>
+                          </div>
+                          <span style="font-size:11.5px;line-height:1.45;color:#6b6482;text-wrap:pretty">{{ novoPersNota }}</span>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:5px">
+                          <span style="font-size:12px;font-weight:700;color:#5b5473">Fila — quem pode fazer, na ordem</span>
+                          <span style="display:flex;align-items:center;min-height:40px;padding:0 13px;border:1.5px solid #ddd6ee;border-radius:11px;font-size:13px;color:#6b6482">Buscar pessoa e adicionar</span>
+                        </div>
+                        <div style="display:flex;gap:9px">
+                          <button type="button" onClick="{{ onNovoPers }}" style="min-height:40px;padding:0 18px;border:none;border-radius:11px;background:#6C2BF2;color:#fff;font-family:Manrope,sans-serif;font-size:13px;font-weight:700;cursor:pointer">Criar personagem</button>
+                          <button type="button" onClick="{{ onNovoPers }}" style="min-height:40px;padding:0 16px;border:1px solid #e6e1f2;border-radius:11px;background:#fff;color:#5b5473;font-family:Manrope,sans-serif;font-size:13px;font-weight:600;cursor:pointer">Cancelar</button>
+                        </div>
+                      </div>
+                    </sc-if>
+
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:13px">
+                      <sc-for list="{{ persList }}" as="pc" hint-placeholder-count="6">
+                        <div style="{{ pc.cardStyle }}">
+                          <div style="display:flex;align-items:center;gap:8px">
+                            <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600;line-height:1.2">{{ pc.nome }}</span>
+                            <span style="{{ pc.modoStyle }}">{{ pc.modoLabel }}</span>
+                          </div>
+                          <span style="font-size:11.5px;line-height:1.45;color:#6b6482">{{ pc.shows }}</span>
+                          <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;line-height:1.5;color:#6b6482">{{ pc.ses }}</span>
+
+                          <div style="display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:11px;background:#faf9fe;border:1px solid #efeaf8">
+                            <span style="width:26px;height:26px;border-radius:50%;background:#efe9fb;color:#6C2BF2;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex:none">{{ pc.ini }}</span>
+                            <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                              <span style="font-size:13px;font-weight:700">{{ pc.quem }}</span>
+                              <span style="font-size:11px;color:#6b6482">{{ pc.detalhe }}</span>
+                            </div>
+                          </div>
+
+                          <div style="display:flex;flex-wrap:wrap;gap:5px">
+                            <sc-for list="{{ pc.fila }}" as="f" hint-placeholder-count="3">
+                              <span style="{{ f.style }}">{{ f.label }}</span>
+                            </sc-for>
+                          </div>
+
+                          <span style="{{ pc.alertaStyle }}">{{ pc.alerta }}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ isShow }}" hint-placeholder-val="{{ false }}">
+                <div style="flex:1;overflow:auto;padding:0 0 26px">
+                  <div style="display:flex;gap:18px;padding:20px;background:#fff;border-bottom:1px solid #ebe6f6">
+                    <div style="width:132px;height:96px;flex:none;border-radius:14px;background:linear-gradient(140deg,#3a2a7d,#6C2BF2 60%,#9d6bff);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden">
+                      <span style="font-family:Outfit,sans-serif;font-size:38px;font-weight:700;color:rgba(255,255,255,.92)">P</span>
+                      <span style="position:absolute;left:9px;bottom:7px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.6)">capa</span>
+                    </div>
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:7px">
+                      <div style="display:flex;align-items:center;gap:8px">
+                        <span style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#0E8F86;background:#0E8F8622;padding:2px 8px;border-radius:999px">publicado</span>
+                        <span style="font-size:11.5px;color:#6b6482">Snowland · 10 links no Drive · alterado hoje, 09:12</span>
+                      </div>
+                      <h2 style="margin:0;font-family:Outfit,sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.02em">Patinação — Inverno 2026</h2>
+                      <p style="margin:0;max-width:70ch;font-size:13px;line-height:1.5;color:#5b5473">Espetáculo principal da temporada de inverno, 8 cenas, elenco de 18 pessoas mais 4 personagens. Show de referência para o treinamento de novos bailarinos.</p>
+                      <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
+                        <span style="width:22px;height:22px;border-radius:50%;background:#e6f5f3;display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:700;color:#0E7F76">DP</span>
+                        <span style="font-size:12px;color:#5b5473">Deborah · responsável</span>
+                      </div>
+                    </div>
+                    <div style="flex:none;display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+                      <div style="display:flex;gap:8px">
+                        <button type="button" onClick="{{ toggleFav }}" style="{{ showFavStyle }}">★ Favorito</button>
+                        <button type="button" onClick="{{ openLivro }}" style="display:flex;align-items:center;gap:7px;height:34px;padding:0 15px;border:none;border-radius:10px;background:#6C2BF2;color:#fff;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;cursor:pointer">Abrir Livro oficial</button>
+                      </div>
+                      <span style="{{ editHintStyle }}">{{ editHint }}</span>
+                    </div>
+                  </div>
+
+                  <div style="padding:18px 20px;display:flex;flex-direction:column;gap:16px">
+                    <div style="display:flex;align-items:center;gap:11px;padding:11px 14px;border:1px solid #f7d8d5;background:#fdeceb;border-radius:13px">
+                      <span style="width:24px;height:24px;border-radius:8px;background:#C2453C;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex:none">!</span>
+                      <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                        <span style="font-size:12.5px;font-weight:700;color:#8e2f28">1 link sem permissão de acesso</span>
+                        <span style="font-size:11.5px;color:#a35a52">Google Drive · “Coreografia — Cena Molduras” · verificado hoje às 06:00</span>
+                      </div>
+                      <span style="flex:1"></span>
+                      <span style="font-size:11.5px;font-weight:600;color:#C2453C">Pedir acesso</span>
+                    </div>
+
+                    <button type="button" onClick="{{ openLivro }}" style="display:flex;align-items:center;gap:14px;text-align:left;padding:15px 16px;border:1px solid #d9cdfa;border-radius:15px;background:linear-gradient(100deg,#f7f2ff,#fff 70%);cursor:pointer;font-family:Manrope,sans-serif">
+                      <span style="width:44px;height:44px;border-radius:13px;background:#6C2BF2;color:#fff;display:flex;align-items:center;justify-content:center;font-size:19px;flex:none">◫</span>
+                      <span style="display:flex;flex-direction:column;gap:3px;min-width:0">
+                        <span style="display:flex;align-items:center;gap:8px">
+                          <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600;color:#1b1630">Livro oficial do Show</span>
+                          <span style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6C2BF2;background:#6C2BF21f;padding:2px 7px;border-radius:999px">v4 publicada</span>
+                          <span style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#B06E00;background:#B06E001f;padding:2px 7px;border-radius:999px">v5 em edição</span>
+                        </span>
+                        <span style="font-size:12.5px;color:#5b5473">8 cenas · 62 slots · 19 quadros-chave · a posição inicial de cada cena alimenta o Livro do Dia</span>
+                      </span>
+                      <span style="flex:1"></span>
+                      <span style="font-size:18px;color:#6C2BF2">›</span>
+                    </button>
+
+                    <div style="border:1px solid #e6e1f2;border-radius:15px;background:#fff;overflow:hidden">
+                      <div style="padding:14px 16px;border-bottom:1px solid #f0ecf8;display:flex;align-items:center;gap:11px;flex-wrap:wrap">
+                        <span style="width:26px;height:26px;flex:none;border-radius:8px;background:#6C2BF21a;color:#6C2BF2;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">☺</span>
+                        <span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:180px">
+                          <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">Personagens deste show</span>
+                          <span style="font-size:11.5px;color:#6b6482;line-height:1.45;text-wrap:pretty">Quem faz cada personagem é resolvido uma vez por dia — o mesmo Astrid em todos os livros do dia.</span>
+                        </span>
+                        <button type="button" onClick="{{ onTogglePers }}" style="{{ persSwitchStyle }}">
+                          <span style="{{ persKnobStyle }}"></span>
+                          <span style="font-size:12.5px;font-weight:700">{{ persSwitchLabel }}</span>
+                        </button>
+                      </div>
+
+                      <sc-if value="{{ persOn }}" hint-collapse="true">
+                        <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+                          <div style="display:flex;flex-wrap:wrap;gap:9px">
+                            <sc-for list="{{ showPers }}" as="p">
+                              <span style="display:flex;align-items:center;gap:9px;background:#faf9fe;border:1px solid #e9e4f5;border-radius:12px;padding:9px 10px 9px 12px;min-height:44px;box-sizing:border-box">
+                                <span style="{{ p.dotStyle }}"></span>
+                                <span style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                                  <span style="font-size:13.5px;font-weight:700;line-height:1.2">{{ p.nome }}</span>
+                                  <span style="font-size:11px;color:#6b6482;line-height:1.3">{{ p.modo }}</span>
+                                </span>
+                                <button type="button" onClick="{{ p.onRemove }}" style="width:30px;height:30px;flex:none;border:1px solid #e6e1f2;border-radius:9px;background:#fff;color:#6b6482;font-size:14px;cursor:pointer">×</button>
+                              </span>
+                            </sc-for>
+                            <button type="button" onClick="{{ onAddPers }}" style="min-height:44px;padding:0 16px;border:1.5px dashed #c9bff0;border-radius:12px;background:#fff;color:#5B23C9;font-family:Manrope,sans-serif;font-size:13px;font-weight:700;cursor:pointer">+ Agregar personagem</button>
+                          </div>
+
+                          <sc-if value="{{ addOpen }}" hint-collapse="true">
+                            <div style="background:#faf9fe;border:1.5px solid #6C2BF2;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:12px">
+                              <span style="font-size:13.5px;font-weight:700">Agregar personagem</span>
+                              <div style="display:flex;flex-direction:column;gap:8px">
+                                <span style="font-size:12px;font-weight:700;color:#4b4465">De qual local</span>
+                                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                                  <sc-for list="{{ addLocais }}" as="l">
+                                    <button type="button" onClick="{{ l.onClick }}" style="{{ l.style }}">{{ l.label }}</button>
+                                  </sc-for>
+                                </div>
+                              </div>
+                              <div style="display:flex;flex-direction:column;gap:8px">
+                                <span style="font-size:12px;font-weight:700;color:#4b4465">Personagem</span>
+                                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                                  <sc-for list="{{ addOpcoes }}" as="o">
+                                    <button type="button" onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button>
+                                  </sc-for>
+                                </div>
+                              </div>
+                              <span style="font-size:11.5px;color:#6b6482;line-height:1.45;text-wrap:pretty">A lista é a do local escolhido. O modo de cada personagem (titular ou rodízio) vem da lista de Personagens, não daqui.</span>
+                            </div>
+                          </sc-if>
+                        </div>
+                      </sc-if>
+
+                      <sc-if value="{{ persOff }}" hint-collapse="true">
+                        <div style="padding:14px 16px;display:flex;flex-direction:column;gap:5px">
+                          <span style="font-size:13.5px;font-weight:700">Este show não usa personagens</span>
+                          <span style="font-size:12px;line-height:1.5;color:#5b5473;max-width:58ch;text-wrap:pretty">O elenco entra por posição na formação, sem personagem nomeado. Patinação livre e flashmob costumam ser assim.</span>
+                        </div>
+                      </sc-if>
+                    </div>
+
+                    <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start">
+
+                      <div style="flex:1 1 560px;min-width:420px;display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid #e6e1f2;border-radius:15px;background:#fff">
+                        <div style="display:flex;align-items:center;gap:9px">
+                          <span style="width:26px;height:26px;flex:none;border-radius:8px;background:#0E8F861a;color:#0E8F86;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">△</span>
+                          <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">Links do Google Drive</span>
+                          <span style="flex:1"></span>
+                          <span style="font-size:11px;color:#6b6482">{{ driveCount }} · verificados hoje, 06:00</span>
+                        </div>
+                        <p style="margin:0;font-size:11.5px;line-height:1.45;color:#6b6482;text-wrap:pretty">O acervo continua no Drive. Aqui ficam os atalhos com tipo e escopo — nada é armazenado no My ASA.</p>
+
+                        <button type="button" onClick="{{ a1 }}" style="display:flex;align-items:center;gap:11px;text-align:left;padding:11px 12px;border:1px solid #cfeae6;border-radius:12px;background:#f2fbf9;cursor:pointer;font-family:Manrope,sans-serif">
+                          <span style="width:32px;height:32px;flex:none;border-radius:9px;background:#0E8F86;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px">△</span>
+                          <span style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                            <span style="display:flex;align-items:center;gap:7px">
+                              <span style="font-size:13px;font-weight:700;color:#1b1630">Pasta do show — Inverno 2026</span>
+                              <span style="font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#0E7F76;background:#0E8F8626;padding:2px 7px;border-radius:999px">pasta principal</span>
+                            </span>
+                            <span style="font-size:11.5px;color:#5b7a76">Tudo do show vive aqui dentro · acesso liberado para quem é escalado</span>
+                          </span>
+                          <span style="flex:1"></span>
+                          <span style="font-size:15px;color:#0E8F86">↗</span>
+                        </button>
+
+                        <div style="display:flex;flex-wrap:wrap;gap:6px">
+                          <sc-for list="{{ driveFilters }}" as="f" hint-placeholder-count="6">
+                            <button type="button" onClick="{{ f.onClick }}" style="{{ f.style }}">{{ f.label }}</button>
+                          </sc-for>
+                        </div>
+
+                        <div style="display:flex;flex-direction:column">
+                          <sc-for list="{{ driveLinks }}" as="l" hint-placeholder-count="6">
+                            <div style="display:flex;align-items:center;gap:9px;padding:9px 2px;border-top:1px solid #f0ecf8">
+                              <span style="{{ l.typeStyle }}">{{ l.type }}</span>
+                              <span style="font-size:12.5px;font-weight:600;color:#1b1630;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">{{ l.label }}</span>
+                              <span style="{{ l.scopeStyle }}">{{ l.scope }}</span>
+                              <span style="flex:1"></span>
+                              <span style="{{ l.stateStyle }}">{{ l.state }}</span>
+                              <span style="font-size:13px;color:#c3bcd6">↗</span>
+                            </div>
+                          </sc-for>
+                          <span style="{{ driveEmptyStyle }}">Nenhum link deste tipo ainda.</span>
+                        </div>
+                        <button type="button" onClick="{{ onAddDrive }}" style="{{ driveAddStyle }}">+ adicionar link do Drive</button>
+                      </div>
+
+                      <div style="flex:1 1 280px;min-width:264px;display:flex;flex-direction:column;gap:12px">
+                        <div style="display:flex;flex-direction:column;gap:9px;padding:14px;border:1px solid #e6e1f2;border-radius:15px;background:#fff">
+                          <div style="display:flex;align-items:center;gap:9px">
+                            <span style="width:24px;height:24px;flex:none;border-radius:8px;background:#6C2BF21a;color:#6C2BF2;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">i</span>
+                            <span style="font-family:Outfit,sans-serif;font-size:14.5px;font-weight:600">Informações gerais</span>
+                          </div>
+                          <sc-for list="{{ infoFields }}" as="f" hint-placeholder-count="6">
+                            <div style="display:flex;align-items:baseline;gap:9px">
+                              <span style="font-size:11.5px;color:#6b6482;min-width:104px">{{ f.k }}</span>
+                              <span style="font-size:12.5px;font-weight:600;color:#1b1630;line-height:1.35">{{ f.v }}</span>
+                            </div>
+                          </sc-for>
+                        </div>
+
+                        <div style="display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid #e6e1f2;border-radius:15px;background:#fff">
+                          <div style="display:flex;align-items:center;gap:9px">
+                            <span style="width:24px;height:24px;flex:none;border-radius:8px;background:#2E3BD61a;color:#2E3BD6;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">⏱</span>
+                            <span style="font-family:Outfit,sans-serif;font-size:14.5px;font-weight:600">Horários habituais</span>
+                          </div>
+                          <p style="margin:0;font-size:11.5px;line-height:1.45;color:#6b6482;text-wrap:pretty">O horário mora aqui. A Programação do local seleciona destes — não digita. Mudar um horário aqui propaga para onde o show foi selecionado.</p>
+                          <sc-for list="{{ horarios }}" as="h" hint-placeholder-count="4">
+                            <div style="display:flex;align-items:center;gap:9px;padding:8px 10px;border:1px solid #e6e1f2;border-radius:11px;background:#fbfaff">
+                              <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#2E3BD6;flex:none">{{ h.time }}</span>
+                              <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                                <span style="font-size:11.5px;font-weight:600;color:#3d3559">{{ h.dur }}</span>
+                                <span style="font-size:10.5px;color:#6b6482">{{ h.sub }}</span>
+                              </div>
+                            </div>
+                          </sc-for>
+                          <button type="button" onClick="{{ onAddHorario }}" style="{{ horarioAddStyle }}">+ horário habitual</button>
+                        </div>
+
+                        <div style="display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid #e6e1f2;border-radius:15px;background:#fff">
+                          <div style="display:flex;align-items:center;gap:9px">
+                            <span style="width:24px;height:24px;flex:none;border-radius:8px;background:#0E7F761a;color:#0E7F76;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">✎</span>
+                            <span style="font-family:Outfit,sans-serif;font-size:14.5px;font-weight:600">Observações</span>
+                            <span style="flex:1"></span>
+                            <span style="font-size:11px;color:#6b6482">{{ obsCount }}</span>
+                          </div>
+                          <sc-for list="{{ obsList }}" as="o" hint-placeholder-count="2">
+                            <div style="display:flex;flex-direction:column;gap:3px;padding:9px 10px;border-left:2px solid #d8e8e5;background:#f8fbfa;border-radius:0 9px 9px 0">
+                              <span style="font-size:12px;line-height:1.45;color:#1b1630">{{ o.text }}</span>
+                              <span style="font-size:10.5px;color:#6b6482">{{ o.meta }}</span>
+                            </div>
+                          </sc-for>
+                          <button type="button" onClick="{{ onAddObs }}" style="{{ obsAddStyle }}">+ nova observação</button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style="display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid #e6e1f2;border-radius:15px;background:#fff">
+                      <div style="display:flex;align-items:center;gap:9px">
+                        <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">Histórico de versões</span>
+                        <span style="font-size:11.5px;color:#6b6482">12 alterações</span>
+                      </div>
+                      <sc-for list="{{ historico }}" as="h" hint-placeholder-count="4">
+                        <div style="display:flex;gap:11px;padding:9px 0;border-top:1px solid #f0ecf8">
+                          <span style="width:22px;height:22px;border-radius:50%;background:#f1eef8;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#6b6482;flex:none">{{ h.ini }}</span>
+                          <div style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1">
+                            <span style="font-size:12.5px;color:#1b1630"><strong style="font-weight:700">{{ h.who }}</strong> {{ h.what }}</span>
+                            <span style="font-size:11.5px;color:#6b6482">{{ h.detail }}</span>
+                          </div>
+                          <span style="font-size:11px;color:#6b6482;white-space:nowrap">{{ h.when }}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ isLivro }}" hint-placeholder-val="{{ false }}">
+                <div style="flex:1;display:flex;flex-direction:column;min-height:0">
+                  <div style="display:flex;align-items:center;gap:11px;padding:11px 20px;background:#fff;border-bottom:1px solid #ebe6f6;flex:none">
+                    <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">Livro oficial</span>
+                    <span style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#0E8F86;background:#0E8F8622;padding:2px 8px;border-radius:999px">v4 publicada</span>
+                    <span style="{{ draftChipStyle }}">v5 em edição · rascunho</span>
+                    <span style="flex:1"></span>
+                    <span style="font-size:11.5px;color:#6b6482">{{ savedLabel }}</span>
+                    <button type="button" onClick="{{ a2 }}" style="height:31px;padding:0 13px;border:1px solid #e6e1f2;border-radius:9px;background:#fff;color:#5b5473;font-family:Manrope,sans-serif;font-size:12px;font-weight:600;cursor:pointer">Histórico</button>
+                    <button type="button" onClick="{{ openPublish }}" style="{{ publishBtnStyle }}">Publicar alteração</button>
+                  </div>
+
+                  <div style="flex:1;display:flex;min-height:0">
+
+                    <div style="width:352px;flex:none;border-right:1px solid #ebe6f6;background:#fff;display:flex;flex-direction:column;min-height:0">
+                      <div style="display:flex;align-items:center;gap:8px;padding:11px 14px;border-bottom:1px solid #f0ecf8;flex:none">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:#6b6482">Estrutura escrita</span>
+                        <span style="flex:1"></span>
+                        <button type="button" onClick="{{ onAddScene }}" style="{{ addSceneStyle }}">+ cena</button>
+                      </div>
+                      <div style="flex:1;overflow:auto;padding:8px 10px 14px;display:flex;flex-direction:column;gap:4px">
+                        <sc-for list="{{ scenes }}" as="c" hint-placeholder-count="8">
+                          <div style="display:flex;flex-direction:column">
+                            <button type="button" onClick="{{ c.onClick }}" style="{{ c.style }}">
+                              <span style="{{ c.caretStyle }}">▸</span>
+                              <span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;text-align:left">
+                                <span style="font-size:13px;font-weight:600;color:#1b1630">{{ c.name }}</span>
+                                <span style="font-size:11px;color:#6b6482">{{ c.meta }}</span>
+                              </span>
+                              <span style="{{ c.warnStyle }}">{{ c.warnLabel }}</span>
+                            </button>
+
+                            <sc-if value="{{ c.open }}" hint-placeholder-val="{{ false }}">
+                              <div style="display:flex;flex-direction:column;gap:9px;padding:8px 10px 12px 26px">
+                                <sc-for list="{{ c.groups }}" as="gr" hint-placeholder-count="3">
+                                  <div style="display:flex;flex-direction:column;gap:4px">
+                                    <div style="display:flex;align-items:center;gap:7px">
+                                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">{{ gr.title }}</span>
+                                      <span style="height:1px;flex:1;background:#f0ecf8"></span>
+                                    </div>
+                                    <sc-for list="{{ gr.slots }}" as="sl" hint-placeholder-count="4">
+                                      <button type="button" onClick="{{ sl.onClick }}" style="{{ sl.style }}">
+                                        <span style="{{ sl.chipStyle }}">{{ sl.label }}</span>
+                                        <span style="display:flex;flex-direction:column;gap:1px;min-width:0;flex:1;text-align:left">
+                                          <span style="{{ sl.personStyle }}">{{ sl.person }}</span>
+                                          <span style="font-size:10.5px;color:#6b6482;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ sl.sub }}</span>
+                                        </span>
+                                        <span style="{{ sl.critStyle }}">{{ sl.crit }}</span>
+                                      </button>
+                                    </sc-for>
+                                    <button type="button" onClick="{{ gr.onAdd }}" style="{{ gr.addStyle }}">+ slot</button>
+                                  </div>
+                                </sc-for>
+
+                                <sc-if value="{{ c.hasPend }}" hint-placeholder-val="{{ false }}">
+                                  <div style="display:flex;flex-direction:column;gap:7px;padding:11px;border:1px dashed #e0d6f5;border-radius:12px;background:#faf8ff">
+                                    <span style="font-size:11.5px;font-weight:700;color:#6C2BF2">Esta cena pode crescer</span>
+                                    <div style="display:flex;flex-wrap:wrap;gap:6px">
+                                      <sc-for list="{{ c.pend }}" as="p" hint-placeholder-count="3">
+                                        <span style="{{ p.style }}">{{ p.label }}</span>
+                                      </sc-for>
+                                    </div>
+                                    <span style="font-size:10.5px;color:#6b6482;line-height:1.4">Convites, não erros. O livro salva incompleto.</span>
+                                  </div>
+                                </sc-if>
+                              </div>
+                            </sc-if>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </div>
+
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column;min-height:0;background:#faf9fe">
+                      <div style="display:flex;align-items:center;gap:11px;padding:12px 18px;border-bottom:1px solid #ebe6f6;background:#fff;flex:none">
+                        <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                          <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">{{ sceneName }}</span>
+                          <span style="font-size:11.5px;color:#6b6482">{{ sceneMeta }}</span>
+                        </div>
+                        <span style="flex:1"></span>
+                        <sc-for list="{{ sceneChars }}" as="ch" hint-placeholder-count="3">
+                          <span style="display:flex;align-items:center;gap:6px;padding:4px 9px 4px 5px;border:1px solid #f2dbe9;background:#fdf3f9;border-radius:999px">
+                            <span style="width:19px;height:19px;border-radius:50%;background:#C2508F;color:#fff;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700">{{ ch.label }}</span>
+                            <span style="font-size:11.5px;font-weight:600;color:#8d3663">{{ ch.role }}</span>
+                          </span>
+                        </sc-for>
+                      </div>
+
+                      <div style="flex:1;min-height:0;padding:14px 18px 16px;display:flex;flex-direction:column;gap:10px">
+                        <div style="flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+                          <span style="{{ frameKindStyle }}">{{ frameKind }}</span>
+                          <span style="font-size:11px;color:#6b6482;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:30ch">{{ frameMomento }}</span>
+                          <span style="flex:1"></span>
+                          <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Palco</span>
+                          <sc-for list="{{ stagePresets }}" as="s" hint-placeholder-count="4">
+                            <button type="button" onClick="{{ s.onClick }}" style="{{ s.style }}">{{ s.label }}</button>
+                          </sc-for>
+                        </div>
+
+                        <div title="Ligue as zonas que este palco usa e arraste cada nome no mapa para reposicionar" style="{{ zonesRowStyle }}">
+                          <span style="flex:none;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Zonas</span>
+                          <sc-for list="{{ zoneChips }}" as="c" hint-placeholder-count="7">
+                            <button type="button" title="{{ c.title }}" onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.label }}</button>
+                          </sc-for>
+                          <button type="button" onClick="{{ resetPositions }}" style="{{ resetStyle }}">restaurar posições</button>
+                        </div>
+                        <div ref="{{ mapRef }}" style="position:relative;flex:1;min-height:0;border:1px solid #e6e1f2;border-radius:16px;background:#faf9fe;overflow:hidden">
+                          <div style="{{ stageFloorStyle }}"></div>
+                          <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none">
+                            <polygon points="{{ stagePoints }}" fill="none" stroke="#c9bff0" stroke-width="1.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polygon>
+                          </svg>
+                          <sc-for list="{{ openings }}" as="o" hint-placeholder-count="4">
+                            <span style="{{ o.style }}"></span>
+                          </sc-for>
+                          <sc-for list="{{ zoneLabels }}" as="z" hint-placeholder-count="6">
+                            <span onPointerDown="{{ z.onPointerDown }}" style="{{ z.style }}">{{ z.label }}</span>
+                          </sc-for>
+
+                          <div style="{{ noStageStyle }}">
+                            <img src="assets/asa/duvida.png" alt="" style="width:38px;height:38px;object-fit:contain" />
+                            <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600;color:#1b1630">Este show não tem palco fixo</span>
+                            <span style="font-size:12px;line-height:1.5;color:#5b5473;max-width:44ch;text-align:center">O quadro-chave vira uma lista por zona. Ninguém precisa de coordenada — só de saber onde está.</span>
+                            <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
+                              <sc-for list="{{ zoneLists }}" as="z" hint-placeholder-count="3">
+                                <span style="display:flex;flex-direction:column;gap:3px;padding:9px 12px;border:1px solid #e6e1f2;border-radius:11px;background:#fff;text-align:left">
+                                  <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">{{ z.title }}</span>
+                                  <span style="font-size:11.5px;font-weight:600;color:#1b1630;max-width:22ch;line-height:1.4">{{ z.people }}</span>
+                                </span>
+                              </sc-for>
+                            </div>
+                          </div>
+
+
+                          <div style="position:absolute;left:10px;bottom:10px;display:flex;flex-direction:column;align-items:flex-start;gap:5px;z-index:2;pointer-events:none">
+    <button type="button" onClick="{{ toggleNotas }}" style="{{ notasBtnStyle }}">
+      <span style="width:20px;height:20px;border-radius:50%;background:#f1eafe;color:#6C2BF2;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none">i</span>
+      <span>{{ notasLabel }}</span>
+    </button>
+    <sc-if value="{{ verNotas }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:12px">
+                            <sc-for list="{{ notes }}" as="n" hint-placeholder-count="2">
+                                <span style="{{ n.style }}">{{ n.label }}</span>
+                              </sc-for>
+      </div>
+    </sc-if>
+                          </div>
+
+                          <sc-for list="{{ markers }}" as="m" hint-placeholder-count="12">
+                            <button type="button" onClick="{{ m.onClick }}" onPointerDown="{{ m.onPointerDown }}" style="{{ m.style }}">
+                              <span style="{{ m.labelStyle }}">{{ m.label }}</span>
+                              <span style="{{ m.nameStyle }}">{{ m.person }}</span>
+                            </button>
+                          </sc-for>
+
+                          <div style="{{ slotCardStyle }}">
+                            <div style="display:flex;align-items:center;gap:8px">
+                              <span style="{{ selChipStyle }}">{{ selLabel }}</span>
+                              <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                                <span style="font-size:13px;font-weight:700;color:#1b1630">{{ selRole }}</span>
+                                <span style="font-size:10.5px;color:#6b6482">{{ selWhere }}</span>
+                              </div>
+                              <span style="flex:1"></span>
+                              <button type="button" onClick="{{ closeSlot }}" style="border:none;background:none;color:#6b6482;font-size:15px;cursor:pointer;line-height:1">×</button>
+                            </div>
+                            <div style="height:1px;background:#f0ecf8"></div>
+                            <div style="display:flex;flex-direction:column;gap:5px">
+                              <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Titular</span>
+                              <div style="display:flex;align-items:center;gap:7px">
+                                <span style="{{ selPersonDotStyle }}">{{ selPersonIni }}</span>
+                                <span style="{{ selPersonStyle }}">{{ selPerson }}</span>
+                              </div>
+                            </div>
+                            <div style="display:flex;flex-direction:column;gap:5px">
+                              <div style="display:flex;align-items:center;gap:7px">
+                                <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">{{ selCritTitle }}</span>
+                                <span style="{{ selCritChipStyle }}">{{ selCrit }}</span>
+                              </div>
+                              <sc-for list="{{ selSubs }}" as="s" hint-placeholder-count="2">
+                                <div style="display:flex;align-items:center;gap:7px">
+                                  <span style="{{ s.numStyle }}">{{ s.num }}</span>
+                                  <span style="font-size:12px;color:#1b1630">{{ s.name }}</span>
+                                  <span style="flex:1"></span>
+                                  <span style="{{ s.tagStyle }}">{{ s.tag }}</span>
+                                </div>
+                              </sc-for>
+                              <span style="{{ selEmptyStyle }}">Sem substituto cadastrado</span>
+                              <button type="button" onClick="{{ onAddSub }}" style="{{ addSubStyle }}">+ substituto</button>
+                              <sc-if value="{{ subPickOpen }}" hint-placeholder-val="{{ false }}">
+                                <div style="display:flex;flex-wrap:wrap;gap:5px;padding:8px;border-radius:10px;background:#fbf9ff;border:1px dashed #ddd0fa">
+                                  <sc-for list="{{ subOptions }}" as="o" hint-placeholder-count="6">
+                                    <button type="button" onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button>
+                                  </sc-for>
+                                </div>
+                              </sc-if>
+                            </div>
+                            <div style="display:flex;flex-direction:column;gap:3px">
+                              <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Observações</span>
+                              <span style="font-size:11.5px;line-height:1.45;color:#5b5473">{{ selObs }}</span>
+                            </div>
+                            <span style="font-size:10.5px;color:#6b6482;line-height:1.4">Escalar por data acontece em Escalas. Aqui é o molde.</span>
+                          </div>
+                        </div>
+
+                        <div style="flex:none;display:flex;flex-direction:column;gap:7px">
+                          <div style="display:flex;align-items:center;gap:8px">
+                            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:#6b6482">Quadros-chave</span>
+                            <span style="font-size:11px;color:#6b6482">{{ framesHint }}</span>
+                          </div>
+                          <div style="display:flex;gap:9px;overflow:auto;padding-bottom:2px">
+                            <sc-for list="{{ frames }}" as="f" hint-placeholder-count="4">
+                              <button type="button" onClick="{{ f.onClick }}" style="{{ f.style }}">
+                                <span style="{{ f.thumbStyle }}">
+                                  <sc-for list="{{ f.dots }}" as="d" hint-placeholder-count="8">
+                                    <span style="{{ d.style }}"></span>
+                                  </sc-for>
+                                </span>
+                                <span style="display:flex;flex-direction:column;gap:1px;text-align:left;padding:0 2px">
+                                  <span style="{{ f.nameStyle }}">{{ f.name }}</span>
+                                  <span style="font-size:10px;color:#6b6482;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:118px">{{ f.momento }}</span>
+                                </span>
+                              </button>
+                            </sc-for>
+                            <button type="button" onClick="{{ onAddFrame }}" style="{{ addFrameStyle }}">+ quadro-chave</button>
+                          </div>
+                        </div>
+
+                        <div style="flex:none;border:1px solid #e6e1f2;border-radius:14px;background:#fff;overflow:hidden">
+                          <button type="button" onClick="{{ toggleFicha }}" style="width:100%;display:flex;align-items:center;gap:10px;padding:11px 14px;border:none;background:none;cursor:pointer;font-family:Manrope,sans-serif;text-align:left">
+                            <span style="{{ fichaCaretStyle }}">▸</span>
+                            <span style="font-size:13px;font-weight:700;color:#1b1630">Ficha e materiais</span>
+                            <span style="font-size:11.5px;color:#6b6482">{{ fichaScope }}</span>
+                            <span style="flex:1"></span>
+                            <span style="font-size:11px;color:#6b6482">{{ fichaCount }}</span>
+                          </button>
+                          <sc-if value="{{ fichaOpen }}" hint-placeholder-val="{{ false }}">
+                            <div style="padding:0 14px 14px;display:flex;flex-direction:column;gap:12px">
+                              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:9px">
+                                <sc-for list="{{ fichaFields }}" as="f" hint-placeholder-count="8">
+                                  <div style="display:flex;flex-direction:column;gap:2px;padding:8px 10px;border:1px solid #f0ecf8;border-radius:10px;background:#faf9fe">
+                                    <span style="font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;color:#6b6482">{{ f.k }}</span>
+                                    <span style="{{ f.vStyle }}">{{ f.v }}</span>
+                                  </div>
+                                </sc-for>
+                              </div>
+                              <div style="display:flex;flex-wrap:wrap;gap:7px">
+                                <sc-for list="{{ fichaFiles }}" as="a" hint-placeholder-count="5">
+                                  <span style="{{ a.style }}">
+                                    <span style="{{ a.dotStyle }}"></span>
+                                    <span>{{ a.label }}</span>
+                                    <span style="color:#6b6482;font-weight:500">{{ a.scope }}</span>
+                                  </span>
+                                </sc-for>
+                              </div>
+                            </div>
+                          </sc-if>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+
+            <sc-if value="{{ asaOpen }}" hint-placeholder-val="{{ false }}">
+              <aside style="width:314px;flex:none;border-left:1px solid #ebe6f6;background:#fff;display:flex;flex-direction:column;min-height:0">
+                <div style="display:flex;align-items:center;gap:9px;padding:12px 14px;border-bottom:1px solid #f0ecf8;flex:none">
+                  <img src="assets/asa-wing.png" alt="" style="width:28px;height:28px;object-fit:contain" />
+                  <div style="display:flex;flex-direction:column;gap:1px">
+                    <span style="font-family:Outfit,sans-serif;font-size:14px;font-weight:600">ASA</span>
+                    <span style="font-size:10.5px;color:#6b6482">só responde com o que está cadastrado</span>
+                  </div>
+                  <span style="flex:1"></span>
+                  <button type="button" onClick="{{ toggleAsa }}" style="border:none;background:none;color:#6b6482;font-size:16px;cursor:pointer;line-height:1">×</button>
+                </div>
+
+                <div style="flex:1;overflow:auto;padding:13px 14px;display:flex;flex-direction:column;gap:11px">
+                  <div style="display:flex;gap:8px">
+                    <img src="assets/asa/consultando.png" alt="" style="width:24px;height:24px;object-fit:contain;flex:none;margin-top:2px" />
+                    <div style="padding:9px 11px;border-radius:13px 13px 13px 4px;background:#f4f2fa;font-size:12px;line-height:1.5;color:#3a3352">{{ asaIntro }}</div>
+                  </div>
+
+                  <sc-if value="{{ asaAsked }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;flex-direction:column;gap:11px">
+                      <div style="align-self:flex-end;max-width:88%;padding:9px 11px;border-radius:13px 13px 4px 13px;background:#6C2BF2;color:#fff;font-size:12px;line-height:1.45">{{ asaQuestion }}</div>
+                      <div style="display:flex;gap:8px">
+                        <img src="assets/asa/olhos-de-estrela.png" alt="" style="width:24px;height:24px;object-fit:contain;flex:none;margin-top:2px" />
+                        <div style="display:flex;flex-direction:column;gap:8px;min-width:0;flex:1">
+                          <div style="padding:9px 11px;border-radius:13px 13px 13px 4px;background:#f4f2fa;font-size:12px;line-height:1.5;color:#3a3352">{{ asaAnswer }}</div>
+                          <sc-if value="{{ asaHasList }}" hint-placeholder-val="{{ false }}">
+                            <div style="display:flex;flex-direction:column;gap:5px;padding:10px;border:1px solid #e6e1f2;border-radius:12px;background:#faf9fe">
+                              <sc-for list="{{ asaList }}" as="l" hint-placeholder-count="3">
+                                <div style="display:flex;align-items:center;gap:7px">
+                                  <span style="{{ l.dotStyle }}"></span>
+                                  <span style="font-size:11.5px;color:#1b1630">{{ l.label }}</span>
+                                  <span style="flex:1"></span>
+                                  <span style="font-size:10.5px;color:#6b6482;white-space:nowrap">{{ l.meta }}</span>
+                                </div>
+                              </sc-for>
+                            </div>
+                          </sc-if>
+                          <sc-if value="{{ asaHasPreview }}" hint-placeholder-val="{{ false }}">
+                            <div style="display:flex;flex-direction:column;gap:8px;padding:11px;border:1px solid #f0d8b0;border-radius:12px;background:#fffaf0">
+                              <div style="display:flex;align-items:center;gap:7px">
+                                <span style="width:8px;height:8px;border-radius:2px;background:#F2C230"></span>
+                                <span style="font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#8a6a10">prévia — nada foi salvo</span>
+                              </div>
+                              <span style="font-size:11.5px;line-height:1.5;color:#5b5473">{{ asaPreviewText }}</span>
+                              <div style="display:flex;gap:7px">
+                                <button type="button" onClick="{{ asaApply }}" style="{{ asaApplyStyle }}">Aplicar</button>
+                                <button type="button" onClick="{{ asaDiscard }}" style="flex:1;height:30px;border:1px solid #e6e1f2;border-radius:9px;background:#fff;color:#5b5473;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:600;cursor:pointer">Descartar</button>
+                              </div>
+                              <span style="{{ asaBlockedStyle }}">Seu perfil não edita este show — a ASA mostra, mas não aplica.</span>
+                            </div>
+                          </sc-if>
+                        </div>
+                      </div>
+                    </div>
+                  </sc-if>
+                </div>
+
+                <div style="flex:none;border-top:1px solid #f0ecf8;padding:11px 14px;display:flex;flex-direction:column;gap:8px">
+                  <div style="display:flex;flex-wrap:wrap;gap:6px">
+                    <sc-for list="{{ asaChips }}" as="c" hint-placeholder-count="4">
+                      <button type="button" onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.label }}</button>
+                    </sc-for>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:8px;height:36px;padding:0 12px;border:1px solid #e6e1f2;border-radius:11px;background:#faf9fe">
+                    <span style="font-size:12px;color:#6b6482;flex:1">Pergunte sobre este show</span>
+                    <span style="width:22px;height:22px;border-radius:7px;background:#6C2BF2;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px">↑</span>
+                  </div>
+                </div>
+              </aside>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+
+      <div style="{{ publishOverlayStyle }}">
+        <div style="width:560px;max-height:88%;overflow:auto;background:#fff;border-radius:20px;box-shadow:0 40px 90px -30px rgba(28,20,64,.6);display:flex;flex-direction:column">
+          <div style="display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid #f0ecf8">
+            <img src="assets/asa/aviso-importante.png" alt="" style="width:30px;height:30px;object-fit:contain" />
+            <div style="display:flex;flex-direction:column;gap:1px">
+              <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">Publicar alteração</span>
+              <span style="font-size:11.5px;color:#6b6482">Patinação — Inverno 2026 · v5 substitui a v4</span>
+            </div>
+            <span style="flex:1"></span>
+            <button type="button" onClick="{{ closePublish }}" style="border:none;background:none;color:#6b6482;font-size:19px;cursor:pointer;line-height:1">×</button>
+          </div>
+
+          <div style="padding:16px 18px;display:flex;flex-direction:column;gap:16px">
+            <div style="display:flex;flex-direction:column;gap:7px">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">O que mudou</span>
+              <sc-for list="{{ diff }}" as="d" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:9px;padding:8px 11px;border:1px solid #f0ecf8;border-radius:10px;background:#faf9fe">
+                  <span style="{{ d.tagStyle }}">{{ d.tag }}</span>
+                  <span style="font-size:12px;color:#1b1630;flex:1">{{ d.label }}</span>
+                  <span style="font-size:11px;color:#6b6482;white-space:nowrap">{{ d.where }}</span>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Quem recebe a notificação</span>
+              <div style="display:flex;flex-wrap:wrap;gap:7px">
+                <sc-for list="{{ audiences }}" as="a" hint-placeholder-count="6">
+                  <button type="button" onClick="{{ a.onClick }}" style="{{ a.style }}">{{ a.label }}</button>
+                </sc-for>
+              </div>
+              <div style="display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid #d9cdfa;border-radius:11px;background:#f7f2ff">
+                <span style="font-family:Outfit,sans-serif;font-size:19px;font-weight:700;color:#6C2BF2">{{ recipientCount }}</span>
+                <span style="font-size:12px;line-height:1.4;color:#4a3a7a">{{ recipientText }}</span>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Mensagem</span>
+              <div style="padding:11px 12px;border:1px solid #e6e1f2;border-radius:11px;background:#faf9fe;font-size:12.5px;line-height:1.5;color:#3a3352">A Cena Molduras teve o quadro de splice ajustado e a posição BR 4 ganhou substituto. Confiram antes do próximo ensaio.</div>
+              <button type="button" onClick="{{ toggleImportant }}" style="{{ importantStyle }}">
+                <span style="{{ importantBoxStyle }}">✓</span>
+                <span>Marcar como importante</span>
+              </button>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:9px;padding:14px 18px;border-top:1px solid #f0ecf8;background:#faf9fe">
+            <span style="font-size:11.5px;color:#6b6482;flex:1;line-height:1.4">Depois de publicar, o show fica marcado como Atualizado e você pode ver quem recebeu e quem abriu.</span>
+            <button type="button" onClick="{{ closePublish }}" style="height:36px;padding:0 15px;border:1px solid #e6e1f2;border-radius:10px;background:#fff;color:#5b5473;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:600;cursor:pointer">Cancelar</button>
+            <button type="button" onClick="{{ closePublish }}" style="height:36px;padding:0 17px;border:none;border-radius:10px;background:#6C2BF2;color:#fff;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;cursor:pointer">Publicar e notificar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:14px">
+    <sc-for list="{{ decisions }}" as="d" hint-placeholder-count="4">
+      <div style="flex:1 1 300px;min-width:280px;display:flex;flex-direction:column;gap:5px;padding:14px 16px;border:1px solid #e6e1f2;border-radius:15px;background:#fff">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">{{ d.k }}</span>
+        <span style="font-family:Outfit,sans-serif;font-size:14.5px;font-weight:600;color:#1b1630">{{ d.t }}</span>
+        <span style="font-size:12.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">{{ d.b }}</span>
+      </div>
+    </sc-for>
+  </div>
+</div>
+
+
+  <sc-if value="{{ toastMsg }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:12px;background:#1c1440;color:#fff;border-radius:14px;padding:13px 18px;box-shadow:0 18px 40px -20px rgba(20,8,60,.7);max-width:560px">
+      <span style="font-size:13.5px;line-height:1.45;flex:1;text-wrap:pretty">{{ toastMsg }}</span>
+      <button type="button" onClick="{{ onFecharToast }}" style="border:none;background:rgba(255,255,255,.16);color:#fff;border-radius:9px;width:28px;height:28px;font-size:13px;cursor:pointer;flex:none">✕</button>
+    </div>
+  </sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;perfilInicial&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;ADM&quot;, &quot;DIR&quot;, &quot;SUP&quot;, &quot;MEM&quot;], &quot;default&quot;: &quot;SUP&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Contexto&quot; },
+  &quot;visaoInicial&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;estante&quot;, &quot;show&quot;, &quot;livro&quot;], &quot;default&quot;: &quot;estante&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Contexto&quot; },
+  &quot;formatoPalco&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;L&quot;, &quot;RET&quot;, &quot;QUAD&quot;, &quot;NONE&quot;], &quot;default&quot;: &quot;L&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Palco&quot; }
+}">
+const PROFILES = [
+  { key: "ADM", name: "Administração", person: "Barbara Sorroche", dot: "#6C2BF2", op: "Toda a ASA", hint: "Edita shows, conteúdos e livros de qualquer local." },
+  { key: "DIR", name: "Direção", person: "Cris Garcia", dot: "#2E63D6", op: "Visão organizacional", hint: "Consulta tudo que está publicado, sem editar." },
+  { key: "SUP", name: "Supervisão", person: "Deborah", dot: "#0E8F86", op: "Área Patinadores", hint: "Edita os shows sob sua responsabilidade, lê os demais." },
+  { key: "MEM", name: "Elenco", person: "Julia", dot: "#C2508F", op: "Patinadores", hint: "Estuda os shows publicados de todos os locais." }
+];
+
+const NAV = [
+  { title: "Porta de entrada", items: [
+    ["17", "Início / Meu Dia", ["ADM","DIR","SUP","MEM"], "Meu Dia"]
+  ] },
+  { title: "O dia", items: [
+    ["20", "Agenda", ["ADM","DIR","SUP","MEM"], "Minha agenda"],
+    ["15", "Escalas", ["ADM","DIR","SUP","MEM"], "Minha escala"],
+    ["13", "Shows", ["ADM","DIR","SUP","MEM"], "Shows"],
+    ["14", "Livro do Dia", ["ADM","DIR","SUP","MEM"], "Meus shows"],
+    ["19", "Check-in e ocorrências", ["ADM","DIR","SUP","MEM"], "Check-in"],
+    ["10", "Responsabilidades e tarefas", ["ADM","DIR","SUP","MEM"], "Minhas tarefas"],
+    ["18", "Folgas", ["ADM","DIR","SUP","MEM"], "Minhas folgas"]
+  ] },
+  { title: "Gestão", items: [
+    ["16", "Painel", ["ADM","DIR","SUP"], null],
+    ["06", "Locais", ["ADM","DIR","SUP"], null],
+    ["07", "Pessoas", ["ADM","DIR","SUP"], null],
+    ["08", "Áreas", ["ADM","DIR","SUP","MEM"], "Meu grupo"],
+    ["25", "Reconhecimentos", ["ADM","DIR","SUP"], null]
+  ] },
+  { title: "Comunicação", items: [
+    ["22", "Avisos e Mural", ["ADM","DIR","SUP","MEM"], "Mural"],
+    ["23", "Mensagens", ["ADM","DIR","SUP","MEM"], "Conversas"],
+    ["24", "Biblioteca", ["ADM","DIR","SUP","MEM"], "Biblioteca"]
+  ] }
+];
+
+const NAV_HREF = {
+  "10": "10%20Responsabilidades%20e%20Tarefas.dc.html",
+  "13": "13%20Shows.dc.html",
+  "14": "14%20Livro%20do%20Dia.dc.html",
+  "15": "15%20Escalas.dc.html",
+  "16": "16%20Painel%20e%20indicadores.dc.html",
+  "17": "17%20Meu%20Dia.dc.html",
+  "18": "18%20Folgas.dc.html",
+  "19": "19%20Check-in%20e%20ocorr%C3%AAncias.dc.html",
+  "20": "20%20Agenda.dc.html",
+  "22": "22%20Avisos%20e%20Mural.dc.html",
+  "23": "23%20Mensagens.dc.html",
+  "24": "24%20Biblioteca.dc.html", "25": "25%20Reconhecimentos.dc.html",
+  "27": "27%20Assistente%20ASA.dc.html",
+  "28": "28%20Perfil%20e%20configura%C3%A7%C3%B5es.dc.html",
+  "06": "06%20Locais.dc.html",
+  "07": "07%20Pessoas.dc.html",
+  "08": "08%20%C3%81reas.dc.html"
+};
+
+const EST = {
+  publicado: { fg: "#0E8F86", bg: "#0E8F8622", label: "publicado" },
+  rascunho:  { fg: "#B06E00", bg: "#B06E001f", label: "rascunho" },
+  arquivado: { fg: "#7d72a8", bg: "#7d72a81f", label: "arquivado" }
+};
+
+const OPS = [
+  { name: "Snowland", dot: "#0E8F86", cover: ["#3a2a7d", "#6C2BF2", "#9d6bff"] },
+  { name: "Acquamotion", dot: "#2E63D6", cover: ["#123a6e", "#2E63D6", "#5fa8ff"] },
+  { name: "Hotelaria", dot: "#C2508F", cover: ["#6b2148", "#C2508F", "#f09bc4"] }
+];
+
+const SHOWS = [
+  { op: "Snowland", name: "Patinação — Inverno 2026", desc: "Espetáculo principal da temporada. 8 cenas, elenco de 18 mais 4 personagens.", resp: "Deborah", estado: "publicado", alterado: "hoje, 09:12", conteudos: "10 links", updated: true, fav: true, main: true },
+  { op: "Snowland", name: "Abertura de Temporada", desc: "Show curto de abertura, 3 cenas. Estrutura ainda sendo montada.", resp: "Deborah", estado: "rascunho", alterado: "ontem", conteudos: "2 links", updated: false, fav: false },
+  { op: "Snowland", name: "Parada de Natal", desc: "Desfile com personagens e carro alegórico. Reaproveita o Finale do inverno.", resp: "Rodrigo", estado: "publicado", alterado: "12 ago", conteudos: "6 links", updated: false, fav: true },
+  { op: "Snowland", name: "Encontro com o Yeti", desc: "Ativação de meet and greet. Temporada encerrada.", resp: "Rodrigo", estado: "arquivado", alterado: "3 mar", conteudos: "4 links", updated: false, fav: false },
+  { op: "Acquamotion", name: "Splash Nights", desc: "Show noturno na piscina externa, 5 cenas com trilha ao vivo.", resp: "Stephani", estado: "publicado", alterado: "hoje, 07:40", conteudos: "7 links", updated: true, fav: false },
+  { op: "Acquamotion", name: "Aquagym Show", desc: "Apresentação curta de encerramento da aula. Em construção.", resp: "Stephani", estado: "rascunho", alterado: "22 ago", conteudos: "1 link", updated: false, fav: false },
+  { op: "Hotelaria", name: "Recepção Musical", desc: "Recepção cantada no lobby, dois blocos e figurino leve.", resp: "Rodrigo", estado: "publicado", alterado: "19 ago", conteudos: "3 links", updated: false, fav: false },
+  { op: "Hotelaria", name: "Café da Manhã Encantado", desc: "Personagens circulando entre as mesas, sem palco fixo.", resp: "Rodrigo", estado: "publicado", alterado: "6 ago", conteudos: "2 links", updated: false, fav: false }
+];
+
+const LBL = ["1", "2", "3", "&", "4", "5", "6"];
+
+const SCENES0 = [
+  { name: "Bandeiras", chars: [["*","Rainha","Julia"],["Y","Yeti","Caleb"],["M","Mensageiro","Cláudio S."]],
+    bl: ["Simon","Amanda","Junior","Arthur"], br: ["Jefferson","Fatturi","Carol","Daniele"],
+    frames: [["Posição inicial","inicial","antes dos tambores"],["Locação — tambores","locacao","na virada da percussão"]] },
+  { name: "Vilarejo", chars: [["*","Astrid","Sofia"]],
+    bl: ["Jefferson","Daia","Junior","Kauã","Simon","Carol"], br: ["Fatturi","Louis","Amanda","Arthur","Daniele","Izabel"],
+    frames: [["Posição inicial","inicial","entrada do vilarejo"],["Splice","splice","sempre pela frente"],["Saída","saida","corta para Astrid"]] },
+  { name: "Vilarejo Astrid", chars: [["*","Astrid","Sofia"],["Y","Yeti","Caleb"],["M","Mensageiro","Cláudio S."]],
+    bl: ["Junior","Simon","Jefferson","Arthur","Louis","Cássia","Kauã"], br: ["Izabel","Carol","Fatturi","Daia","Amanda","Daniele","Diogo"],
+    frames: [["Posição inicial","inicial","logo após o vilarejo"],["Splice consecutivo","splice","sempre pela frente"],["Locação — troca de lado","locacao","no “o que há?”"],["Saída","saida","spin e saída pelo BL"]] },
+  { name: "Pássaros", chars: [["*","Astrid","Sofia"]],
+    bl: ["Louis","Izabel","Caleb"], br: ["Fatturi","Carol","Diogo"],
+    frames: [["Posição inicial","inicial","solo de Sofia"],["Lift","locacao","lift no meio da quadra"]] },
+  { name: "Molduras", chars: [["*","Astrid","Sofia"]],
+    bl: ["Vinicius","Daia","Louis","Carol","Diogo","Amanda"], br: ["Kauã","Fatturi","Jefferson","Cássia","Daniele","Junior"],
+    frames: [["Posição inicial","inicial","molduras left, right e meio"],["Splice","splice","entrada aérea"],["Saída — leva moldura","saida","quem leva a moldura sai"]] },
+  { name: "Borboletas", chars: [["*","Astrid","Sofia"],["R","Rainha","Julia"]],
+    bl: [], br: ["Amanda","Daniele","Jefferson"],
+    frames: [["Posição inicial","inicial","entra só pelo BR"]] },
+  { name: "Imaginar", chars: [["*","Astrid","Sofia"],["R","Rainha","Julia"],["Y","Yeti","Caleb"]],
+    bl: ["Junior","Simon","Arthur","Daia"], br: ["Jefferson","Cássia","Fatturi","Diogo","Kauã"],
+    frames: [["Posição inicial","inicial","3 condados e sereia"],["Locação — chiffon","locacao","saída dos chiffons"]] },
+  { name: "Finale", chars: [["*","Astrid","Sofia"],["R","Rainha","Julia"],["Y","Yeti","Caleb"],["M","Mensageiro","Cláudio S."]],
+    bl: ["Arthur","Louis","Junior","Vinicius","Diogo","Simon"], br: ["Daia","Jefferson","Fatturi","Amanda","Kauã","Cássia"],
+    frames: [["Posição inicial","inicial","desfile de personagens"],["Trick section","splice","todos, meio com Arthur"]] }
+];
+
+const ROSTER = ["Carol","Daniele","Amanda","Daia","Izabel","Sofia","Julia","Diogo","Arthur","Jefferson","Junior","Simon","Kauã","Caleb","Fatturi","Louis","Cássia","Vinicius"];
+
+const SUBS0 = {
+  "Vilarejo Astrid|BL|1": [["Diogo", ""], ["Amanda", "de folga na 3ª"]],
+  "Vilarejo Astrid|BL|2": [["Kauã", ""]],
+  "Vilarejo Astrid|BL|3": [],
+  "Vilarejo Astrid|BL|&": [["Louis", ""], ["Izabel", "pulado — restrição de aéreo"]],
+  "Vilarejo Astrid|BR|4": [["Daniele", ""], ["Sofia", ""], ["Fatturi", ""]],
+  "Vilarejo Astrid|PER|*": [["Julia", ""], ["Amanda", "só com ensaio prévio"]],
+  "Molduras|BL|1": [],
+  "Borboletas|BR|1": []
+};
+
+const CRIT = {
+  "Vilarejo Astrid|BL|1": "rodizio",
+  "Vilarejo Astrid|BL|&": "rodizio",
+  "Vilarejo Astrid|BR|4": "prioridade",
+  "Vilarejo Astrid|PER|*": "prioridade"
+};
+
+const CRITMETA = {
+  rodizio:    { label: "rodízio", fg: "#2E63D6", bg: "#2E63D61a", title: "Fila do rodízio" },
+  prioridade: { label: "prioridade", fg: "#6C2BF2", bg: "#6C2BF21a", title: "Ordem de substituição" },
+  nenhum:     { label: "sem regra", fg: "#6b6482", bg: "#6b64821a", title: "Substitutos" }
+};
+
+const TYPES = {
+  "vídeo":       { fg: "#2E63D6", bg: "#eef1fd" },
+  "música":      { fg: "#C2508F", bg: "#fdf3f9" },
+  "texto":       { fg: "#5b5473", bg: "#f1eff7" },
+  "coreografia": { fg: "#6C2BF2", bg: "#f3ebff" },
+  "figurino":    { fg: "#B06E00", bg: "#fff4e4" },
+  "planta":      { fg: "#0E8F86", bg: "#e6f5f3" }
+};
+
+// Horário é dado do show: duração, chamada e variante habitual vêm com ele.
+const HORARIOS = [
+  ["14:00", "50 min · chamada 60 min antes", "todos os dias em que o local abre · base oficial v4"],
+  ["16:00", "50 min · chamada 30 min antes", "quarta a domingo · costuma usar elenco reduzido"],
+  ["20:00", "50 min · chamada 60 min antes", "sábado · base oficial v4"]
+];
+
+const DRIVE = [
+  ["Vídeos — passagens e ensaios", "vídeo", "show", "ok", "9 arquivos"],
+  ["Projeção Imaginar", "vídeo", "cena", "aviso", "atualizado ontem"],
+  ["Trilha oficial + stems", "música", "show", "ok", ""],
+  ["Tambores — Bandeiras", "música", "cena", "ok", ""],
+  ["Falas do vilarejo", "texto", "cena", "ok", ""],
+  ["Deixas do Mensageiro", "texto", "bloco", "ok", ""],
+  ["Coreografia — Cena Molduras", "coreografia", "cena", "erro", "sem acesso"],
+  ["Figurino — BR 4", "figurino", "slot", "ok", ""],
+  ["Marcações de palco (PDF)", "planta", "show", "ok", ""]
+];
+
+const OBS = [
+  ["Piso escorrega no BR quando chove — reduzir velocidade na saída da perna estreita.", "Deborah · 12 ago"],
+  ["Canhão 3 desalinhado desde julho. A entrada aérea da Molduras está sem foco.", "Rodrigo · 3 jul"]
+];
+
+const INFO = [
+  ["Duração", "42 min"],
+  ["Cenas", "8 cenas · 19 quadros-chave"],
+  ["Elenco base", "18 pessoas + 4 personagens"],
+  ["Tempo de troca", "3 min entre cenas"],
+  ["Vigência", "junho a setembro de 2026"],
+  ["Local", "Pista principal · Snowland"]
+];
+
+const HIST = [
+  ["DP", "Deborah", "ajustou o quadro de splice", "Livro oficial · Cena Molduras · 4 marcadores movidos", "hoje, 09:12"],
+  ["DP", "Deborah", "adicionou substituto", "Livro oficial · Molduras · BR 4 → Daniele", "hoje, 08:55"],
+  ["CR", "Barbara Sorroche", "substituiu um vídeo", "Vídeos · “Cena Molduras — aéreo”", "ontem, 17:20"],
+  ["RO", "Rodrigo", "publicou a v4", "8 cenas · 19 quadros-chave · 62 slots", "24 ago, 11:03"]
+];
+
+const PERS_LOCAL = {
+  Snowland: ["Astrid", "Guardião", "Chocolato", "Igno", "Mensageira", "Mensageiro", "Rainha", "Yeti", "Nanook"],
+  Acquamotion: ["Guardião do Tempo", "Sereia", "Tritão"],
+  Hotelaria: ["Antonella", "Nonna", "Frida", "Cuca"]
+};
+
+const PERS_MODO = {
+  "Astrid": "titular", "Guardião": "rodizio", "Chocolato": "titular", "Igno": "rodizio",
+  "Mensageira": "titular", "Mensageiro": "titular", "Rainha": "titular", "Yeti": "rodizio",
+  "Nanook": "rodizio", "Guardião do Tempo": "titular", "Sereia": "rodizio", "Tritão": "titular",
+  "Antonella": "titular", "Nonna": "titular", "Frida": "titular", "Cuca": "rodizio"
+};
+
+const chipPers = on => "min-height:40px;padding:0 13px;border-radius:11px;cursor:pointer;font-family:Manrope,sans-serif;font-size:13px;font-weight:600;white-space:nowrap;" +
+  (on ? "border:1.5px solid #6C2BF2;background:#f3ecfe;color:#5B23C9;" : "border:1.5px solid #e6e1f2;background:#fff;color:#2b2440;");
+
+const FICHA = [
+  ["Duração", "42 min"], ["Tempo de troca", "3 min entre cenas"], ["Figurinos", "4 trocas completas"],
+  ["Maquiagem", "base de gelo + glitter"], ["Objetos", "molduras, bandeiras, baú"], ["Preparação", "aquecimento 40 min antes"],
+  ["Entradas", "BL e BR, canhões 2 e 3"], ["Segurança", "aéreo só com 2 apoios"]
+];
+
+const FICHA_FILES = [
+  ["Trilha oficial", "show", "#C2508F"], ["Marcação de palco (PDF)", "show", "#2E3BD6"],
+  ["Vídeo do splice", "cena", "#2E63D6"], ["Deixas do Mensageiro", "bloco", "#5b5473"],
+  ["Foto da formação inicial", "quadro", "#0E8F86"], ["Figurino BR 4", "slot", "#B06E00"]
+];
+
+const AUD = ["Pessoas específicas", "Locais", "Grupos", "Participantes do show", "Todos", "Ninguém"];
+
+// Palco como polígono. Presets agora; editor de vértices depois — o dado já é polígono.
+// Marcador guarda % da caixa envolvente, nunca do interior: trocar o formato não move ninguém.
+// Geometria do palco vem de mapa-palco.js — mesma fonte que o Livro do Dia usa.
+const STAGES = window.ASA_MAPA.STAGES;
+
+const ZONE_NAMES = ["BACKSTAGE LEFT", "BACKSTAGE RIGHT", "STAGE LEFT", "STAGE RIGHT",
+                    "CENTRO", "UPSTAGE", "DOWNSTAGE"];
+
+const ZONE_SHORT = {
+  "BACKSTAGE LEFT": "bs left", "BACKSTAGE RIGHT": "bs right",
+  "STAGE LEFT": "st left", "STAGE RIGHT": "st right",
+  "CENTRO": "centro", "UPSTAGE": "upstage", "DOWNSTAGE": "downstage"
+};
+
+const MODES = window.ASA_MAPA.MODES;
+const layout = window.ASA_MAPA.layout;
+const buildMarkers = window.ASA_MAPA.buildMarkers;
+
+const NOTES = {
+  splice: ["SPLICE", "SEMPRE PELA FRENTE"],
+  saida: ["SAÍDA"],
+  locacao: ["TROCA DE LADO"],
+  inicial: []
+};
+
+const FKIND = {
+  inicial:  { label: "posição inicial", fg: "#0E8F86", bg: "#e6f5f3", bd: "#cfeae6" },
+  splice:   { label: "splice", fg: "#6C2BF2", bg: "#f3ebff", bd: "#e5d8fb" },
+  locacao:  { label: "locação", fg: "#2E63D6", bg: "#eef1fd", bd: "#dbe1fa" },
+  saida:    { label: "saída", fg: "#B06E00", bg: "#fff4e4", bd: "#f0d8b0" }
+};
+
+const CHIPS = {
+  op: [
+    ["Quais posições estão sem substituto?", "gaps"],
+    ["Mostre os vídeos da Cena Molduras", "videos"],
+    ["Duplique o quadro inicial da Vilarejo Astrid", "dup"],
+    ["Compare a v5 com a v4", "diff"]
+  ],
+  mem: [
+    ["Resuma o Livro oficial", "resumo"],
+    ["Onde eu entro na Cena Molduras?", "onde"],
+    ["Mostre os vídeos da Cena Molduras", "videos"],
+    ["Quais conteúdos mudaram esta semana?", "diff"]
+  ]
+};
+
+const ASA = {
+  gaps: { q: "Quais posições estão sem substituto?",
+    a: "Encontrei 3 slots sem substituto cadastrado. Nenhum deles impede o livro de salvar.",
+    list: [["Vilarejo Astrid · BL 3", "titular Jefferson", "#C2453C"], ["Molduras · BL 1", "titular Vinicius", "#C2453C"], ["Borboletas · BR 1", "sem titular também", "#B06E00"]] },
+  videos: { q: "Mostre os vídeos da Cena Molduras",
+    a: "A cena Molduras tem 2 vídeos e 1 link do Drive. Um dos links está sem permissão.",
+    list: [["Cena Molduras — aéreo", "4 min · novo", "#2E63D6"], ["Passagem 12/08 (trecho)", "6 min", "#2E63D6"], ["Coreografia — Drive", "sem acesso", "#C2453C"]] },
+  dup: { q: "Duplique o quadro inicial da Vilarejo Astrid",
+    a: "Posso duplicar. A cópia entra depois do original, com os mesmos 17 marcadores e sem tipo definido.",
+    preview: "Novo quadro “Posição inicial (cópia)” na Vilarejo Astrid, 17 marcadores nas mesmas coordenadas. Tipo e momento ficam em branco para você preencher." },
+  diff: { q: "Compare a v5 com a v4",
+    a: "A v5 tem 3 alterações em relação à publicada: um quadro ajustado, um substituto novo e um vídeo trocado.",
+    list: [["Molduras · quadro Splice", "4 marcadores movidos", "#6C2BF2"], ["Molduras · BR 4", "substituto Daniele", "#0E8F86"], ["Vídeos", "1 arquivo substituído", "#2E63D6"]] },
+  resumo: { q: "Resuma o Livro oficial",
+    a: "Patinação — Inverno 2026: 42 min, 8 cenas, 62 slots. Você aparece em 5 cenas. Os quadros marcados como posição inicial são os que vão para o Livro do Dia.",
+    list: [["Cenas com você", "Vilarejo, Vilarejo Astrid, Molduras, Imaginar, Finale", "#6C2BF2"], ["Seu slot mais frequente", "BR 5", "#C2508F"]] },
+  onde: { q: "Onde eu entro na Cena Molduras?",
+    a: "Na Molduras você é o slot BR 5, entra pelo Backstage Right. Não é titular do aéreo, é apoio da moldura do meio.",
+    list: [["Quadro inicial", "BR 5, terceira da fila", "#0E8F86"], ["Quadro Splice", "você atravessa por trás", "#6C2BF2"]] }
+};
+
+const DIFF = [
+  ["quadro", "Splice ajustado — 4 marcadores movidos", "Cena Molduras", "#6C2BF2", "#f3ebff"],
+  ["slot", "BR 4 ganhou substituto (Daniele)", "Cena Molduras", "#0E8F86", "#e6f5f3"],
+  ["arquivo", "Vídeo “Cena Molduras — aéreo” substituído", "Vídeos", "#2E63D6", "#eef1fd"]
+];
+
+const DEC = [
+  ["decisão 1", "Slot é a identidade, pessoa é camada", "O rótulo do slot (1, 4, &, M) vive na cena e aparece em todos os quadros. Trocar quem faz não redesenha nenhum quadro."],
+  ["decisão 2", "Quadros-chave, não frames", "Cada quadro existe por um motivo — posição inicial, splice, locação, saída. Uma cena costuma ter 2 a 4, não 15."],
+  ["decisão 3", "O Livro do Dia é uma projeção", "A posição inicial de cada cena mais a escalação da data geram o Livro do Dia. Nenhum documento novo é escrito."],
+  ["decisão 4", "Incompleto não é erro", "Posição sem titular, cena sem quadro, slot sem substituto: tudo salva. O sistema convida, não bloqueia."]
+];
+
+const btn = "display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;cursor:pointer;font-family:Manrope,sans-serif;font-size:13px;font-weight:600;";
+const pill = "height:30px;padding:0 12px;border-radius:999px;cursor:pointer;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:600;";
+
+const PERS_LOCAIS = ["Snowland", "Acquamotion", "Hotelaria"];
+
+// A hora NUNCA faz parte do nome do show: ela é da Sessão (Bloco 2, início e fim).
+// "Yeti" é um show com duas sessões; a escala é que fala "YETI 16:00" para distingui-las.
+const PERSONAGENS = {
+  Snowland: [
+    { nome: "Astrid", shows: "Musical do Natal · Show de patinação", ses: "12:30–13:10 · 14:00–14:40", modo: "titular", fila: ["Julia", "Carol", "Amanda"] },
+    { nome: "Guardião", shows: "Musical do Natal", ses: "12:30–13:10", modo: "rodizio", fila: ["Arthur", "Diogo", "Jefferson"], hist: [8, 6, 5] },
+    { nome: "Chocolato", shows: "Musical do Natal", ses: "12:30–13:10", modo: "titular", fila: ["Simon", "Kauã"] },
+    { nome: "Igno", shows: "Musical do Natal", ses: "12:30–13:10", modo: "rodizio", fila: ["Dani", "Daiane", "Izabel", "Sofia"], hist: [7, 7, 4, 9] },
+    { nome: "Mensageira", shows: "Musical do Natal", ses: "12:30–13:10", modo: "titular", fila: ["Sofia", "Julia"] },
+    { nome: "Mensageiro", shows: "Musical do Natal", ses: "12:30–13:10", modo: "titular", fila: ["Caleb", "Junior"] },
+    { nome: "Rainha", shows: "Musical do Natal", ses: "12:30–13:10", modo: "titular", fila: ["Carol", "Dani"] },
+    { nome: "Yeti", shows: "Yeti", ses: "10:00–10:20 · 16:00–16:20 · 16:40–17:00", modo: "rodizio", fila: ["Junior", "Simon", "Caleb"], hist: [11, 9, 12] },
+    { nome: "Nanook", shows: "Nanook", ses: "11:00–11:20", modo: "rodizio", fila: ["Kauã", "Diogo"], hist: [6, 9] }
+  ],
+  Acquamotion: [
+    { nome: "Guardião do Tempo", shows: "Os Guardiões e o Globo do Tempo", ses: "13:00–13:50", modo: "titular", fila: ["Victor M.", "Miguel"] },
+    { nome: "Sereia", shows: "Acquashow Duo · Acquashow Trio", ses: "15:00–15:20", modo: "rodizio", fila: ["Sthefany", "Mariela", "Luize", "Sarah"], hist: [9, 6, 8, 6] },
+    { nome: "Tritão", shows: "Acquashow Trio", ses: "15:00–15:20", modo: "titular", fila: ["Daniel"] }
+  ],
+  Hotelaria: [
+    { nome: "Antonella", shows: "Antonella", ses: "20:00–20:40", modo: "titular", fila: ["Isadora", "Cássia"] },
+    { nome: "Nonna", shows: "Nonna e Frida", ses: "19:30–20:10", modo: "titular", fila: ["Cássia", "Isadora"] },
+    { nome: "Frida", shows: "Nonna e Frida", ses: "19:30–20:10", modo: "titular", fila: ["Louis", "Vinicius"] },
+    { nome: "Cuca", shows: "Cuca", ses: "18:00–18:30", modo: "rodizio", fila: ["Antônio", "Louis"], hist: [4, 5] }
+  ]
+};
+
+class Component extends DCLogic {
+  state = {
+    profile: null, view: null, asa: true, asaKey: null, applied: false,
+    stage: null, driveType: "Todos",
+    scene: 2, frame: 0, slot: "PER|*", ficha: false, publish: false,
+    estado: "Todos", fav: false, sortName: false, important: true,
+    aud: ["Participantes do show"],
+    zoneMap: {}, dragKey: null,
+    markerMap: {}, dragMarker: null
+  };
+
+  mapRef = React.createRef();
+
+  // Posição dos rótulos de zona: preset como ponto de partida, override por show/formato.
+  zoneEntries(stageKey, presetZones) {
+    const over = this.state.zoneMap[stageKey];
+    if (!over) return presetZones.map(z => ({ name: z[0], x: z[1], y: z[2] }));
+    return ZONE_NAMES.map(n => over[n]).filter(Boolean).map(v => ({ name: v.name, x: v.x, y: v.y }));
+  }
+
+  seedZones(stageKey, presetZones) {
+    const out = {};
+    presetZones.forEach(z => { out[z[0]] = { name: z[0], x: z[1], y: z[2] }; });
+    return out;
+  }
+
+  editZones(stageKey, presetZones, fn) {
+    this.setState(s => {
+      const cur = s.zoneMap[stageKey] || this.seedZones(stageKey, presetZones);
+      const next = fn(Object.assign({}, cur));
+      return { zoneMap: Object.assign({}, s.zoneMap, { [stageKey]: next }) };
+    });
+  }
+
+  toggleZone(stageKey, presetZones, name, spawn) {
+    this.editZones(stageKey, presetZones, z => {
+      if (z[name]) delete z[name];
+      else z[name] = { name: name, x: spawn[0], y: spawn[1] };
+      return z;
+    });
+  }
+
+  startZoneDrag(e, stageKey, presetZones, name) {
+    e.preventDefault();
+    e.stopPropagation();
+    const box = this.mapRef.current;
+    if (!box) return;
+    const target = e.currentTarget;
+    if (target.setPointerCapture) target.setPointerCapture(e.pointerId);
+    this.setState({ dragKey: stageKey + "|" + name });
+
+    const move = ev => {
+      const r = box.getBoundingClientRect();
+      const x = Math.max(6, Math.min(94, ((ev.clientX - r.left) / r.width) * 100));
+      const y = Math.max(4, Math.min(96, ((ev.clientY - r.top) / r.height) * 100));
+      this.editZones(stageKey, presetZones, z => {
+        z[name] = { name: name, x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 };
+        return z;
+      });
+    };
+    const up = () => {
+      target.removeEventListener("pointermove", move);
+      target.removeEventListener("pointerup", up);
+      target.removeEventListener("pointercancel", up);
+      this.setState({ dragKey: null });
+    };
+    target.addEventListener("pointermove", move);
+    target.addEventListener("pointerup", up);
+    target.addEventListener("pointercancel", up);
+  }
+
+  // Arrastar marcador grava override em % da caixa do mapa, por formato/cena/quadro.
+  // Clique curto continua selecionando: só vira arraste depois de 3px de movimento.
+  startMarkerDrag(e, posKey, slotKey) {
+    const box = this.mapRef.current;
+    if (!box) return;
+    const target = e.currentTarget;
+    const x0 = e.clientX, y0 = e.clientY;
+    let live = false;
+    if (target.setPointerCapture) target.setPointerCapture(e.pointerId);
+
+    const move = ev => {
+      if (!live && Math.abs(ev.clientX - x0) < 3 && Math.abs(ev.clientY - y0) < 3) return;
+      if (!live) { live = true; this.setState({ dragMarker: posKey + "|" + slotKey, slot: slotKey }); }
+      const r = box.getBoundingClientRect();
+      const x = Math.max(4, Math.min(96, ((ev.clientX - r.left) / r.width) * 100));
+      const y = Math.max(4, Math.min(96, ((ev.clientY - r.top) / r.height) * 100));
+      this.setState(s => {
+        const cur = s.markerMap[posKey] || {};
+        const next = Object.assign({}, cur, { [slotKey]: { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 } });
+        return { markerMap: Object.assign({}, s.markerMap, { [posKey]: next }) };
+      });
+    };
+    const up = () => {
+      target.removeEventListener("pointermove", move);
+      target.removeEventListener("pointerup", up);
+      target.removeEventListener("pointercancel", up);
+      if (live) this.setState({ dragMarker: null });
+    };
+    target.addEventListener("pointermove", move);
+    target.addEventListener("pointerup", up);
+    target.addEventListener("pointercancel", up);
+  }
+
+  resetMarkers(posKey) {
+    this.setState(s => {
+      const next = Object.assign({}, s.markerMap);
+      delete next[posKey];
+      return { markerMap: next };
+    });
+  }
+
+  renderVals() {
+    const p = this.state.profile || this.props.perfilInicial || "SUP";
+    const meta = PROFILES.find(x => x.key === p) || PROFILES[2];
+    const view = this.state.view || this.props.visaoInicial || "estante";
+    const st = this.state;
+    const canEdit = p === "ADM" || p === "SUP";
+    const isMem = p === "MEM";
+
+    const go = v => () => this.setState({ view: v, slot: v === "livro" ? st.slot : null, publish: false });
+
+    const profileTabs = PROFILES.map(x => ({
+      name: x.name, dot: x.dot,
+      onClick: () => this.setState({ profile: x.key, view: view, asaKey: null, applied: false, publish: false }),
+      style: btn + (x.key === p
+        ? "border:1px solid " + x.dot + ";background:" + x.dot + "14;color:" + x.dot + ";"
+        : "border:1px solid #e6e1f2;background:#fff;color:#5b5473;")
+    }));
+
+    const shellNav = NAV.map(g => ({
+      title: g.title,
+      items: g.items.filter(it => it[2].indexOf(p) >= 0).map(it => ({
+        href: NAV_HREF[it[0]],
+        label: (isMem && it[3]) ? it[3] : it[1],
+        style: "display:flex;align-items:center;padding:7px 9px;border-radius:9px;font-size:12.5px;" +
+          (it[0] === "13" ? "background:rgba(255,255,255,.14);color:#fff;font-weight:600;" : "color:#b9b0da;")
+      }))
+    }));
+
+    // ---------- abas da seção: Shows · Personagens · Formações ----------
+    const isSection = view === "estante" || view === "pers";
+    const tabBtn = "border:none;background:none;padding:12px 14px;font-family:Manrope,sans-serif;font-size:13px;cursor:pointer;";
+    const sectionTabs = [["estante", "Shows"], ["pers", "Personagens"]].map(t => ({
+      label: t[1],
+      onClick: go(t[0]),
+      style: tabBtn + (view === t[0]
+        ? "font-weight:700;color:#1b1630;border-bottom:2px solid #6C2BF2;"
+        : "font-weight:600;color:#6b6482;border-bottom:2px solid transparent;")
+    }));
+    const sectionHint = view === "estante"
+      ? "o show é o padrão ideal — a escalação por data vive em Escalas"
+      : "personagem pertence ao local, não a um show";
+
+    const pill = (on, fg) => "min-height:32px;padding:0 13px;border-radius:999px;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;" +
+      (on ? "border:1px solid " + fg + ";background:" + fg + "14;color:" + fg + ";" : "border:1px solid #e6e1f2;background:#fff;color:#5b5473;");
+
+    const novoPersStyle = canEdit
+      ? "display:flex;align-items:center;gap:7px;min-height:34px;padding:0 15px;border:1.5px solid #6C2BF2;border-radius:10px;background:#fff;color:#5B23C9;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;cursor:pointer;"
+      : "display:none;";
+
+    // ---------- personagens ----------
+    const pLocal = st.persLocal || "Snowland";
+    const localTabs = PERS_LOCAIS.map(l => ({
+      label: l,
+      onClick: () => this.setState({ persLocal: l }),
+      style: pill(l === pLocal, "#6C2BF2")
+    }));
+
+    const persList = (PERSONAGENS[pLocal] || []).map(c => {
+      const rod = c.modo === "rodizio";
+      let quem = c.fila[0], detalhe = "titular · " + (c.fila.length - 1) + (c.fila.length === 2 ? " substituto" : " substitutos");
+      let ordem = c.fila.map((n, i) => ({ n: n, v: i }));
+      if (rod && c.hist) {
+        ordem = c.fila.map((n, i) => ({ n: n, v: c.hist[i] })).sort((a, b) => a.v - b.v);
+        quem = ordem[0].n;
+        detalhe = "fez " + ordem[0].v + "× · o menor da fila";
+      }
+      const curta = c.fila.length < 2;
+      return {
+        nome: c.nome,
+        ini: quem.charAt(0),
+        quem: quem,
+        detalhe: detalhe,
+        shows: c.shows,
+        ses: c.ses,
+        modoLabel: rod ? "rodízio" : "titular",
+        modoStyle: "font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:6px;flex:none;" +
+          (rod ? "background:#fdf3e4;color:#8F5409;" : "background:#f3ecfe;color:#5B23C9;"),
+        cardStyle: "display:flex;flex-direction:column;gap:9px;padding:14px 15px;background:#fff;border-radius:15px;border:1px solid " + (curta ? "#f2dfbe" : "#e6e1f2") + ";",
+        fila: ordem.map((e, i) => ({
+          label: rod && c.hist ? e.n + " · " + e.v + "×" : (i === 0 ? e.n : e.n),
+          style: "font-size:11.5px;padding:4px 9px;border-radius:999px;" +
+            (i === 0 ? "background:#e3f4f1;color:#0a6f68;font-weight:700;" : "background:#f4f2fa;color:#6b6482;")
+        })),
+        alerta: curta ? "Fila com uma pessoa só — sem substituto, o Livro do Dia abre lacuna se ela faltar." : "",
+        alertaStyle: curta
+          ? "font-size:11.5px;line-height:1.45;color:#8F5409;background:#fdf3e4;border-radius:9px;padding:7px 10px;"
+          : "display:none;"
+      };
+    });
+
+    // ---------- estante ----------
+    const visible = SHOWS.filter(s => {
+      if (isMem || p === "DIR") { if (s.estado !== "publicado") return false; }
+      if (p === "SUP" && s.estado === "rascunho" && s.op !== "Snowland") return false;
+      if (st.estado !== "Todos" && s.estado !== st.estado.toLowerCase()) return false;
+      if (st.fav && !s.fav) return false;
+      return true;
+    });
+
+    const opGroups = OPS.map(o => {
+      let list = visible.filter(s => s.op === o.name);
+      if (st.sortName) list = list.slice().sort((a, b) => a.name.localeCompare(b.name));
+      const locked = p === "SUP" && o.name !== "Snowland";
+      return {
+        name: o.name, dot: o.dot, count: list.length + (list.length === 1 ? " show" : " shows"),
+        lockLabel: locked ? "somente leitura" : (isMem ? "estudo" : ""),
+        lockStyle: (locked || isMem)
+          ? "font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#6b6482;background:#6b64821a;padding:2px 7px;border-radius:999px;"
+          : "display:none;",
+        shows: list.map(s => ({
+          name: s.name, desc: s.desc, resp: s.resp, alterado: s.alterado, conteudos: s.conteudos,
+          initial: s.name.charAt(0), respIni: s.resp.split(" ").map(w => w.charAt(0)).join("").slice(0, 2),
+          estado: EST[s.estado].label,
+          estadoStyle: "font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:" + EST[s.estado].fg + ";background:" + EST[s.estado].bg + ";padding:2px 7px;border-radius:999px;",
+          coverStyle: "position:relative;display:flex;align-items:center;justify-content:center;height:96px;background:linear-gradient(140deg," + o.cover[0] + "," + o.cover[1] + " 60%," + o.cover[2] + ");",
+          updatedStyle: s.updated
+            ? "position:absolute;top:8px;left:8px;font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#7a4a00;background:#F2C230;padding:2px 7px;border-radius:999px;"
+            : "display:none;",
+          favStyle: s.fav ? "position:absolute;top:7px;right:9px;font-size:13px;color:#F2C230;" : "display:none;",
+          style: "display:flex;flex-direction:column;text-align:left;padding:0;overflow:hidden;border:1px solid " + (s.main ? "#d9cdfa" : "#e6e1f2") + ";border-radius:15px;background:#fff;cursor:pointer;font-family:Manrope,sans-serif;",
+          onClick: s.main ? go("show") : (() => this.setState({ view: "show" }))
+        }))
+      };
+    }).filter(g => g.shows.length > 0);
+
+    const estadoFilters = ["Todos", "Publicado", "Rascunho", "Arquivado"]
+      .filter(f => !(isMem || p === "DIR") || f === "Todos" || f === "Publicado")
+      .map(f => ({
+        label: f,
+        onClick: () => this.setState({ estado: f }),
+        style: pill + (st.estado === f
+          ? "border:1px solid #6C2BF2;background:#f3ebff;color:#6C2BF2;"
+          : "border:1px solid #e6e1f2;background:#fff;color:#5b5473;")
+      }));
+
+    const SCENES = this.state.scenes || SCENES0;
+    // ---------- livro ----------
+    const sceneIdx = st.scene;
+    const scene = SCENES[sceneIdx];
+    const frameIdx = Math.max(0, Math.min(st.frame, scene.frames.length - 1));
+    const frame = scene.frames[frameIdx] || ["Sem quadro", "inicial", "defina o momento"];
+
+    const personOf = (sc, side, label) => {
+      if (side === "PER") { const c = sc.chars.find(x => x[0] === label); return c ? c[2] : ""; }
+      const arr = side === "BL" ? sc.bl : sc.br;
+      const i = arr.map((n, k) => LBL[k]).indexOf(label);
+      return i >= 0 ? arr[i] : "";
+    };
+    const SUBS = Object.assign({}, SUBS0, this.state.subs || {});
+    const roleOf = (sc, side, label) => {
+      if (side === "PER") { const c = sc.chars.find(x => x[0] === label); return c ? c[1] : ""; }
+      return side === "BL" ? "backstage left" : "backstage right";
+    };
+    const key = (sc, side, label) => sc.name + "|" + side + "|" + label;
+
+    const scenes = SCENES.map((sc, i) => {
+      const open = i === sceneIdx;
+      const total = sc.bl.length + sc.br.length + sc.chars.length;
+      const gaps = [].concat(
+        sc.bl.map((n, k) => ["BL", LBL[k]]), sc.br.map((n, k) => ["BR", LBL[k]]), sc.chars.map(c => ["PER", c[0]])
+      ).filter(t => (SUBS[key(sc, t[0], t[1])] || []).length === 0 && SUBS.hasOwnProperty(key(sc, t[0], t[1])));
+      const noStage = sc.frames.length < 2;
+      const groups = [
+        { title: "Personagens", slots: sc.chars.map(c => ["PER", c[0]]), add: true, side: "PER" },
+        { title: "Backstage left", slots: sc.bl.map((n, k) => ["BL", LBL[k]]), add: true, side: "BL" },
+        { title: "Backstage right", slots: sc.br.map((n, k) => ["BR", LBL[k]]), add: true, side: "BR" }
+      ].filter(g => g.slots.length > 0 || open).map(g => ({
+        title: g.title,
+        addStyle: canEdit ? "font-size:10.5px;font-weight:600;color:#a293d8;padding:2px 4px;cursor:pointer;border:none;background:none;font-family:Manrope,sans-serif;" : "display:none;",
+        onAdd: canEdit ? (() => {
+          const next = JSON.parse(JSON.stringify(SCENES));
+          const t = next[i];
+          if (g.side === "PER") t.chars.push(["+", "Novo personagem", ""]);
+          else if (g.side === "BL") t.bl.push("");
+          else t.br.push("");
+          this.setState({ scenes: next, scene: i });
+        }) : undefined,
+        slots: g.slots.map(t => {
+          const side = t[0], label = t[1];
+          const k = key(sc, side, label);
+          const subs = SUBS[k];
+          const person = personOf(sc, side, label);
+          const sel = open && st.slot === side + "|" + label;
+          const crit = CRIT[k];
+          const previewed = st.applied && k === "Vilarejo Astrid|BL|3";
+          return {
+            label: label,
+            person: person || "sem titular",
+            personStyle: "font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:" + (person ? "#1b1630" : "#B06E00") + ";",
+            sub: subs && subs.length ? subs.length + (subs.length === 1 ? " substituto" : " substitutos") : (subs ? "sem substituto" : roleOf(sc, side, label).split(" · ")[0]),
+            crit: crit ? CRITMETA[crit].label : "",
+            critStyle: crit
+              ? "font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:" + CRITMETA[crit].fg + ";background:" + CRITMETA[crit].bg + ";padding:2px 6px;border-radius:999px;white-space:nowrap;"
+              : "display:none;",
+            chipStyle: "width:24px;height:24px;flex:none;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;" +
+              (side === "PER" ? "background:#C2508F;color:#fff;" : (person ? "background:#efe9fb;color:#6C2BF2;" : "background:#fff4e4;color:#B06E00;border:1px dashed #f0d8b0;")),
+            style: "display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;border-radius:9px;cursor:pointer;font-family:Manrope,sans-serif;text-align:left;" +
+              (sel ? "border:1px solid #6C2BF2;background:#f7f2ff;" : (previewed ? "border:1px solid #f0d8b0;background:#fffaf0;" : "border:1px solid transparent;background:none;")),
+            onClick: () => this.setState({ scene: i, slot: side + "|" + label })
+          };
+        })
+      }));
+      const pend = [];
+      if (noStage) pend.push("Adicionar quadro-chave");
+      if (gaps.length) pend.push("Adicionar substituto");
+      if (sc.bl.length === 0) pend.push("Criar slot no backstage left");
+      if (sc.frames.length < 3) pend.push("Anexar música");
+      return {
+        name: sc.name,
+        meta: total + " slots · " + sc.frames.length + (sc.frames.length === 1 ? " quadro" : " quadros"),
+        open: open,
+        groups: groups,
+        pend: pend.map(l => ({ label: l, style: "font-size:11px;font-weight:600;color:#6C2BF2;background:#efe9fb;border:1px solid #e0d6f5;padding:4px 9px;border-radius:999px;" })),
+        hasPend: pend.length > 0,
+        warnLabel: gaps.length ? String(gaps.length) : "",
+        warnStyle: gaps.length
+          ? "width:18px;height:18px;flex:none;border-radius:50%;background:#fff4e4;color:#B06E00;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;"
+          : "display:none;",
+        caretStyle: "font-size:9px;color:#6b6482;flex:none;transition:transform .15s;transform:rotate(" + (open ? "90" : "0") + "deg);",
+        style: "display:flex;align-items:center;gap:9px;width:100%;padding:9px 10px;border-radius:11px;cursor:pointer;font-family:Manrope,sans-serif;" +
+          (open ? "border:1px solid #ddd6ee;background:#faf8ff;" : "border:1px solid transparent;background:none;"),
+        onClick: () => this.setState({ scene: i, frame: 0, slot: null })
+      };
+    });
+
+    const stageKey = st.stage || this.props.formatoPalco || "L";
+    const stage = STAGES[stageKey] || STAGES.L;
+    const hasStage = !!stage.points;
+    const zoneEntries = this.zoneEntries(stageKey, stage.zones);
+    const zoneSpawn = stage.notes && stage.notes[0] ? stage.notes[0] : [50, 50];
+
+    const raw = buildMarkers(scene, frame[1], stage);
+    const posKey = stageKey + "|" + st.scene + "|" + st.frame;
+    const moved = this.state.markerMap[posKey] || {};
+    const markers = raw.map(m => {
+      const person = personOf(scene, m.side, m.label);
+      const slotKey = m.side + "|" + m.label;
+      const sel = st.slot === slotKey;
+      const over = moved[slotKey];
+      if (over) { m = Object.assign({}, m, { x: over.x, y: over.y }); }
+      const dragging = this.state.dragMarker === posKey + "|" + slotKey;
+      const isChar = m.side === "PER";
+      const size = isChar ? 28 : 24;
+      const bg = isChar ? "#C2508F" : (person ? "#6C2BF2" : "#fff");
+      const fg = isChar ? "#fff" : (person ? "#fff" : "#B06E00");
+      return {
+        label: m.label, person: person || "vago",
+        onClick: () => this.setState({ slot: slotKey }),
+        onPointerDown: (hasStage && canEdit) ? (e => this.startMarkerDrag(e, posKey, slotKey)) : null,
+        style: "position:absolute;left:" + m.x + "%;top:" + m.y + "%;transform:translate(-50%,-50%);width:" + size + "px;height:" + size + "px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:Manrope,sans-serif;touch-action:none;background:" + bg + ";" +
+          (!canEdit ? "cursor:pointer;" : (dragging ? "cursor:grabbing;" : "cursor:grab;")) +
+          (sel ? "border:2.5px solid #F2C230;box-shadow:0 0 0 5px #F2C23033;z-index:4;" : (person ? "border:1.5px solid rgba(255,255,255,.7);box-shadow:0 3px 8px -2px rgba(40,20,90,.4);" : "border:1.5px dashed #f0d8b0;")) +
+          (dragging ? "z-index:5;box-shadow:0 0 0 5px #6C2BF229,0 10px 20px -8px rgba(40,20,90,.5);" : ""),
+        labelStyle: "font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:" + fg + ";",
+        // o mapa fala por número, como no livro impresso; o nome aparece só no marcador selecionado
+        nameStyle: sel
+          ? "position:absolute;top:" + (size + 4) + "px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:700;white-space:nowrap;padding:2px 7px;border-radius:999px;background:#fff;border:1px solid #f0d8b0;box-shadow:0 3px 8px -3px rgba(40,20,90,.35);color:" + (person ? "#1b1630" : "#B06E00") + ";"
+          : "display:none;"
+      };
+    });
+
+    // anotações moram na margem do mapa, como no livro impresso — nunca sobre os marcadores
+    const notes = hasStage ? (NOTES[frame[1]] || []).map(n => ({
+      label: n,
+      style: "font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.14em;color:#a293d8;background:#fff;border:1px dashed #e0d6f5;padding:3px 9px;border-radius:999px;white-space:nowrap;"
+    })) : [];
+
+    const frames = scene.frames.map((f, i) => {
+      const fk = FKIND[f[1]];
+      const dots = buildMarkers(scene, f[1], stage).map(m => ({
+        style: "position:absolute;left:" + m.x + "%;top:" + m.y + "%;transform:translate(-50%,-50%);width:4px;height:4px;border-radius:50%;background:" + (m.side === "PER" ? "#C2508F" : "#8b6ce0") + ";"
+      }));
+      return {
+        name: f[0], momento: f[2], dots: dots,
+        nameStyle: "font-size:11.5px;font-weight:700;color:" + (i === frameIdx ? "#6C2BF2" : "#1b1630") + ";white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:118px;",
+        thumbStyle: "position:relative;display:block;width:122px;height:56px;border-radius:8px;background:" + fk.bg + ";border:1px solid " + fk.bd + ";overflow:hidden;" +
+          (hasStage ? "clip-path:" + stage.clip + ";" : ""),
+        style: "flex:none;display:flex;flex-direction:column;gap:5px;padding:6px;border-radius:12px;cursor:pointer;font-family:Manrope,sans-serif;background:#fff;" +
+          (i === frameIdx ? "border:1.5px solid #6C2BF2;" : "border:1px solid #e6e1f2;"),
+        onClick: () => this.setState({ frame: i })
+      };
+    });
+
+    // slot detail
+    const parts = (st.slot || "").split("|");
+    const hasSlot = parts.length === 2 && view === "livro";
+    const sSide = parts[0], sLabel = parts[1];
+    const sKey = hasSlot ? key(scene, sSide, sLabel) : "";
+    const sPerson = hasSlot ? personOf(scene, sSide, sLabel) : "";
+    const sSubsRaw = hasSlot ? (SUBS[sKey] || []) : [];
+    const sCrit = CRIT[sKey] || "nenhum";
+    const cm = CRITMETA[sCrit];
+
+    const selSubs = sSubsRaw.map((s, i) => ({
+      num: sCrit === "rodizio" ? String(i + 1) + "º" : String(i + 1),
+      name: s[0],
+      tag: s[1] ? s[1] : (sCrit === "rodizio" ? (i === 0 ? "próximo" : "") : (i === 0 ? "1º substituto" : "")),
+      numStyle: "width:19px;height:19px;flex:none;border-radius:6px;background:" + cm.bg + ";color:" + cm.fg + ";display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;",
+      tagStyle: "font-size:10px;font-weight:600;white-space:nowrap;color:" + (s[1] ? "#B06E00" : "#6b6482") + ";"
+    }));
+
+    // asa
+    const chipSet = isMem ? CHIPS.mem : CHIPS.op;
+    const asaKey = st.asaKey;
+    const a = asaKey ? ASA[asaKey] : null;
+
+    const DRIVE_ALL = this.state.drive || DRIVE;
+    const driveVisible = st.driveType === "Todos" ? DRIVE_ALL : DRIVE_ALL.filter(l => l[1] === st.driveType);
+
+    const audCount = st.aud.indexOf("Ninguém") >= 0 ? 0
+      : st.aud.indexOf("Todos") >= 0 ? 212
+      : st.aud.reduce((n, x) => n + ({ "Pessoas específicas": 3, "Locais": 96, "Grupos": 24, "Participantes do show": 18 })[x] || 0, 0);
+
+    return {
+      verNotas: !!this.state.__notas,
+      toggleNotas: () => this.setState(s => ({ __notas: !s.__notas })),
+      notasBtnStyle: "display:flex;align-items:center;gap:9px;padding:8px 14px;border-radius:999px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;align-self:flex-start",
+      notasLabel: this.state.__notas ? "ocultar notas de desenho" : "notas de desenho",
+
+      a1: () => this.setState({ __toast: "Abre o atalho no Drive, em uma aba nova. O arquivo continua lá — o My ASA só guarda o caminho." }),
+      a2: () => this.setState({ __toast: "Histórico deste livro: quem mudou o quê, quando, e a versão que estava publicada antes." }),
+      toastMsg: this.state.__toast || null,
+      onFecharToast: () => this.setState({ __toast: null }),
+      profileTabs: profileTabs, profileHint: meta.hint, profileName: meta.name, personName: meta.person,
+      shellNav: shellNav, operationLabel: meta.op,
+      personChipStyle: "font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:" + meta.dot + ";background:" + meta.dot + "26;padding:2px 7px;border-radius:999px;width:fit-content;",
+      readonlyChipStyle: canEdit ? "display:none;" : "font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#6b6482;background:#6b64821a;padding:4px 9px;border-radius:999px;",
+      opFilterStyle: "display:flex;align-items:center;gap:7px;height:34px;padding:0 12px;border:1px solid #e6e1f2;border-radius:10px;background:#fff;font-size:12px;font-weight:600;color:#5b5473;white-space:nowrap;",
+
+      crumbs: [
+        { label: "Shows", onClick: go("estante"), style: "border:none;background:none;padding:0;font-family:Outfit,sans-serif;font-size:16px;font-weight:600;cursor:pointer;color:" + (isSection ? "#1b1630" : "#6b6482") },
+        { label: isSection ? "" : "›", onClick: () => {}, style: isSection ? "display:none;" : "border:none;background:none;padding:0;font-size:13px;color:#c3bcd6;cursor:default;" },
+        { label: "Patinação — Inverno 2026", onClick: go("show"), style: isSection ? "display:none;" : "border:none;background:none;padding:0;font-family:Outfit,sans-serif;font-size:16px;font-weight:600;cursor:pointer;color:" + (view === "show" ? "#1b1630" : "#6b6482") },
+        { label: view === "livro" ? "›" : "", onClick: () => {}, style: view === "livro" ? "border:none;background:none;padding:0;font-size:13px;color:#c3bcd6;cursor:default;" : "display:none;" },
+        { label: "Livro oficial", onClick: () => {}, style: view === "livro" ? "border:none;background:none;padding:0;font-family:Outfit,sans-serif;font-size:16px;font-weight:600;color:#1b1630;cursor:default;" : "display:none;" }
+      ],
+
+      persOn: st.persOn === false ? null : true,
+      persOff: st.persOn === false ? true : null,
+      onTogglePers: () => this.setState({ persOn: st.persOn === false }),
+      persSwitchLabel: st.persOn === false ? "não usa personagens" : "usa personagens",
+      persSwitchStyle: "display:flex;align-items:center;gap:10px;min-height:44px;padding:0 14px;border-radius:999px;cursor:pointer;font-family:Manrope,sans-serif;flex:none;" +
+        (st.persOn === false ? "border:1.5px solid #e6e1f2;background:#fff;color:#6b6482;" : "border:1.5px solid #6C2BF2;background:#f3ecfe;color:#5B23C9;"),
+      persKnobStyle: "width:32px;height:19px;border-radius:99px;flex:none;display:block;background-color:" +
+        (st.persOn === false ? "#ddd6ee" : "#6C2BF2") +
+        ";background-image:radial-gradient(circle 7.5px at " + (st.persOn === false ? "9.5px" : "22.5px") + " 50%, #fff 98%, transparent 100%);",
+      showPers: (st.showPers || ["Astrid", "Guardião", "Chocolato", "Rainha"]).map(nome => {
+        const modo = PERS_MODO[nome] || "titular";
+        return {
+          nome: nome,
+          modo: modo === "rodizio" ? "rodízio" : "titular + substitutos",
+          dotStyle: "width:9px;height:9px;border-radius:50%;flex:none;background:" + (modo === "rodizio" ? "#C97A17" : "#6C2BF2"),
+          onRemove: () => this.setState(s2 => ({ showPers: (s2.showPers || ["Astrid", "Guardião", "Chocolato", "Rainha"]).filter(x => x !== nome) }))
+        };
+      }),
+      onAddPers: () => this.setState({ addOpen: !st.addOpen }),
+      addOpen: st.addOpen ? true : null,
+      addLocais: ["Snowland", "Acquamotion", "Hotelaria"].map(l => ({
+        label: l,
+        onClick: () => this.setState({ addLocal: l }),
+        style: chipPers(l === (st.addLocal || "Snowland"))
+      })),
+      addOpcoes: (() => {
+        const atual = st.showPers || ["Astrid", "Guardião", "Chocolato", "Rainha"];
+        const disp = (PERS_LOCAL[st.addLocal || "Snowland"] || []).filter(n => atual.indexOf(n) < 0);
+        if (!disp.length) return [{ label: "todos já estão no show", onClick: () => {}, style: "min-height:40px;padding:0 13px;border-radius:11px;border:1px dashed #ddd6ee;background:#fff;color:#6b6482;font-family:Manrope,sans-serif;font-size:13px;font-weight:600;cursor:default" }];
+        return disp.map(n => ({
+          label: n,
+          onClick: () => this.setState(s2 => ({ showPers: (s2.showPers || atual).concat([n]), addOpen: false })),
+          style: chipPers(false)
+        }));
+      })(),
+
+      isEstante: view === "estante", isShow: view === "show", isLivro: view === "livro",
+      isSection: isSection, sectionTabs: sectionTabs, sectionHint: sectionHint,
+      isPers: view === "pers",
+      localTabs: localTabs, persList: persList, novoPersStyle: novoPersStyle,
+      novoPersOpen: !!st.novoPers,
+      onNovoPers: () => this.setState({ novoPers: !st.novoPers }),
+      novoPersModos: [["titular", "Titular com substitutos"], ["rodizio", "Rodízio por quem menos fez"]].map(m => ({
+        label: m[1],
+        onClick: () => this.setState({ novoPersModo: m[0] }),
+        style: pill((st.novoPersModo || "titular") === m[0], "#6C2BF2")
+      })),
+      novoPersLocal: pLocal,
+      novoPersNota: (st.novoPersModo || "titular") === "rodizio"
+        ? "No rodízio entra quem tem o menor número de vezes. Empate desempata pela ordem da fila."
+        : "O primeiro da fila é o titular; os outros são substitutos, na ordem.",
+      openLivro: go("livro"),
+
+      estadoFilters: estadoFilters, opGroups: opGroups,
+      toggleFav: () => this.setState({ fav: !st.fav }),
+      favBtnStyle: pill + (st.fav ? "border:1px solid #F2C230;background:#fffaf0;color:#8a6a10;" : "border:1px solid #e6e1f2;background:#fff;color:#5b5473;"),
+      toggleSort: () => this.setState({ sortName: !st.sortName }),
+      sortLabel: st.sortName ? "Ordem: nome" : "Ordem: última alteração",
+      sortBtnStyle: pill + "border:1px solid #e6e1f2;background:#fff;color:#5b5473;",
+      updatedBannerStyle: "display:flex;align-items:center;gap:12px;padding:11px 14px;border:1px solid #f0d8b0;background:#fffaf0;border-radius:14px;",
+
+      showFavStyle: pill + "height:34px;border:1px solid #F2C230;background:#fffaf0;color:#8a6a10;",
+      editHint: canEdit ? "Você edita este show" : (isMem ? "Aberto para estudo" : "Consulta apenas"),
+      editHintStyle: "font-size:11px;color:#6b6482;",
+      driveCount: (DRIVE.length + 1) + " links",
+      infoFields: INFO.map(f => ({ k: f[0], v: f[1] })),
+      horarios: (this.state.horarios || HORARIOS).map(h => ({ time: h[0], dur: h[1], sub: h[2] })),
+      horarioAddStyle: canEdit ? "font-size:11.5px;font-weight:700;color:#2E3BD6;cursor:pointer;width:fit-content;border:none;background:none;padding:0;font-family:Manrope,sans-serif;" : "display:none;",
+      onAddHorario: canEdit ? (() => {
+        const cur = this.state.horarios || HORARIOS;
+        this.setState({ horarios: cur.concat([["--:--", "defina duração e chamada", "novo horário habitual"]]) });
+      }) : undefined,
+      obsList: (this.state.obs || OBS).map(o => ({ text: o[0], meta: o[1] })),
+      obsCount: (this.state.obs || OBS).length + " notas",
+      obsAddStyle: canEdit ? "font-size:11.5px;font-weight:700;color:#0E7F76;cursor:pointer;width:fit-content;border:none;background:none;padding:0;font-family:Manrope,sans-serif;" : "display:none;",
+      onAddObs: canEdit ? (() => {
+        const cur = this.state.obs || OBS;
+        this.setState({ obs: [["Nova observação — escreva aqui o que o elenco precisa saber.", meta.person + " · agora"]].concat(cur) });
+      }) : undefined,
+      driveFilters: ["Todos"].concat(Object.keys(TYPES)).map(t => ({
+        label: t,
+        onClick: () => this.setState({ driveType: t }),
+        style: "padding:5px 11px;border-radius:999px;cursor:pointer;font-family:Manrope,sans-serif;font-size:11px;font-weight:600;" +
+          (st.driveType === t ? "border:1px solid #0E8F86;background:#e6f5f3;color:#0E7F76;" : "border:1px solid #e6e1f2;background:#fff;color:#5b5473;")
+      })),
+      driveLinks: driveVisible.map(l => ({
+        label: l[0], type: l[1], scope: "· " + l[2],
+        typeStyle: "font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;flex:none;color:" + TYPES[l[1]].fg + ";background:" + TYPES[l[1]].bg + ";padding:3px 8px;border-radius:999px;",
+        scopeStyle: "font-size:11px;color:#6b6482;white-space:nowrap;flex:none;",
+        state: l[3] === "erro" ? "sem acesso" : l[3] === "aviso" ? (l[4] || "verificar") : (l[4] || "ok"),
+        stateStyle: "font-size:10.5px;font-weight:600;white-space:nowrap;color:" + (l[3] === "erro" ? "#C2453C" : l[3] === "aviso" ? "#B06E00" : "#6b6482") + ";"
+      })),
+      driveEmptyStyle: driveVisible.length ? "display:none;" : "font-size:11.5px;color:#6b6482;padding:12px 2px;border-top:1px solid #f0ecf8;",
+      driveAddStyle: canEdit ? "font-size:11.5px;font-weight:700;color:#0E7F76;cursor:pointer;width:fit-content;border:none;background:none;padding:0;font-family:Manrope,sans-serif;" : "display:none;",
+      onAddDrive: canEdit ? (() => {
+        const cur = this.state.drive || DRIVE;
+        const tipo = st.driveType === "Todos" ? "vídeo" : st.driveType;
+        this.setState({ drive: cur.concat([["Novo link do Drive", tipo, "show", "aviso", "cole o endereço"]]) });
+      }) : undefined,
+
+      stagePresets: Object.keys(STAGES).filter(k => canEdit || k === stageKey).map(k => ({
+        label: STAGES[k].label,
+        onClick: canEdit ? (() => this.setState({ stage: k })) : (() => {}),
+        style: "padding:5px 11px;border-radius:999px;font-family:Manrope,sans-serif;font-size:11px;font-weight:600;" +
+          (canEdit ? "cursor:pointer;" : "cursor:default;") +
+          (k === stageKey ? "border:1px solid #6C2BF2;background:#f3ebff;color:#6C2BF2;" : "border:1px solid #e6e1f2;background:#fff;color:#5b5473;")
+      })),
+      stagePoints: stage.points,
+      stageFloorStyle: hasStage
+        ? "position:absolute;inset:0;background-color:#fff;background-image:linear-gradient(#f4f2fa 1px,transparent 1px),linear-gradient(90deg,#f4f2fa 1px,transparent 1px);background-size:40px 40px;clip-path:" + stage.clip + ";"
+        : "display:none;",
+      mapRef: this.mapRef,
+      zonesRowStyle: canEdit
+        ? "flex:none;display:flex;flex-wrap:nowrap;align-items:center;gap:6px;overflow-x:auto;"
+        : "display:none;",
+      resetPositions: () => this.resetMarkers(posKey),
+      resetStyle: (canEdit && Object.keys(moved).length)
+        ? "flex:none;margin-left:4px;padding:4px 9px;border-radius:999px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;border:1px solid #e6e1f2;background:#fff;color:#5b5473;"
+        : "display:none;",
+      zoneLabels: zoneEntries.map(z => ({
+        label: z.name,
+        onPointerDown: (hasStage && canEdit) ? (e => this.startZoneDrag(e, stageKey, stage.zones, z.name)) : null,
+        style: "position:absolute;left:" + z.x + "%;top:" + z.y + "%;transform:translate(-50%,-50%);" +
+          "font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;white-space:nowrap;" +
+          "padding:3px 6px;border-radius:7px;user-select:none;touch-action:none;z-index:3;" +
+          (!canEdit
+            ? "color:#c3bcd6;background:transparent;cursor:default;pointer-events:none;"
+            : (this.state.dragKey === stageKey + "|" + z.name
+              ? "color:#6C2BF2;background:#f3ebff;box-shadow:0 0 0 1px #d8c8fb;cursor:grabbing;"
+              : "color:#c3bcd6;background:transparent;cursor:grab;"))
+      })),
+      zoneChips: ZONE_NAMES.map(n => {
+        const on = zoneEntries.some(z => z.name === n);
+        return {
+          label: ZONE_SHORT[n],
+          title: n,
+          onClick: () => this.toggleZone(stageKey, stage.zones, n, zoneSpawn),
+          style: "flex:none;padding:4px 8px;border-radius:999px;cursor:pointer;font-family:'JetBrains Mono',monospace;" +
+            "font-size:9px;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;" +
+            (on ? "border:1px solid #cbb8f7;background:#f6f0ff;color:#6C2BF2;"
+                : "border:1px dashed #e0daf0;background:#fff;color:#6b6482;")
+        };
+      }),
+      openings: stage.openings.map(o => ({
+        style: "position:absolute;left:" + o[0] + "%;top:" + o[1] + "%;transform:translate(-50%,-50%);border-radius:999px;background:#efe9fb;" +
+          (o[2] === "h" ? "width:34px;height:5px;" : "width:5px;height:34px;")
+      })),
+      noStageStyle: hasStage
+        ? "display:none;"
+        : "position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:24px;",
+      zoneLists: [
+        { title: "Backstage left", people: scene.bl.join(" · ") || "ninguém" },
+        { title: "Backstage right", people: scene.br.join(" · ") || "ninguém" },
+        { title: "Personagens", people: scene.chars.map(c => c[1]).join(" · ") || "nenhum" }
+      ],
+
+      historico: HIST.map(h => ({ ini: h[0], who: h[1], what: h[2], detail: h[3], when: h[4] })),
+
+      scenes: scenes, sceneName: scene.name,
+      sceneMeta: (scene.bl.length + scene.br.length + scene.chars.length) + " slots · " + scene.frames.length + " quadros-chave · " + frame[0],
+      sceneChars: scene.chars.map(c => ({ label: c[0], role: c[1] })),
+      frames: frames, framesHint: "o mapa fala por número · a posição inicial alimenta o Livro do Dia",
+      addFrameStyle: canEdit ? "flex:none;align-self:center;padding:0 14px;height:70px;display:flex;align-items:center;border:1px dashed #ddd6ee;border-radius:12px;font-size:11.5px;font-weight:600;color:#a293d8;cursor:pointer;white-space:nowrap;" : "display:none;",
+      addSceneStyle: canEdit ? "font-size:11px;font-weight:700;color:#6C2BF2;background:#efe9fb;padding:3px 9px;border-radius:999px;cursor:pointer;border:none;font-family:Manrope,sans-serif;" : "display:none;",
+      onAddScene: canEdit ? (() => {
+        const next = JSON.parse(JSON.stringify(SCENES));
+        next.push({ name: "Cena " + (next.length + 1), chars: [], bl: [], br: [], frames: [["Posição inicial", "inicial", "defina o momento"]] });
+        this.setState({ scenes: next, scene: next.length - 1, frame: 0, slot: null });
+      }) : undefined,
+      onAddFrame: canEdit ? (() => {
+        const next = JSON.parse(JSON.stringify(SCENES));
+        next[sceneIdx].frames.push(["Novo quadro", "inicial", "defina o momento"]);
+        this.setState({ scenes: next, frame: next[sceneIdx].frames.length - 1 });
+      }) : undefined,
+      frameKind: FKIND[frame[1]].label, frameMomento: frame[2],
+      frameKindStyle: "font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:" + FKIND[frame[1]].fg + ";background:" + FKIND[frame[1]].bg + ";border:1px solid " + FKIND[frame[1]].bd + ";padding:3px 9px;border-radius:999px;",
+      markers: markers, notes: notes,
+
+      slotCardStyle: hasSlot
+        ? "position:absolute;right:14px;bottom:14px;width:262px;display:flex;flex-direction:column;gap:10px;padding:13px;background:#fff;border:1px solid #ddd6ee;border-radius:15px;box-shadow:0 18px 40px -22px rgba(28,20,64,.55);z-index:5;"
+        : "display:none;",
+      selLabel: sLabel, selRole: hasSlot ? roleOf(scene, sSide, sLabel).split(" · ")[0] : "",
+      selWhere: hasSlot ? scene.name + " · " + (sSide === "PER" ? "personagem" : sSide === "BL" ? "backstage left" : "backstage right") : "",
+      selChipStyle: "width:30px;height:30px;flex:none;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;" +
+        (sSide === "PER" ? "background:#C2508F;color:#fff;" : "background:#efe9fb;color:#6C2BF2;"),
+      selPerson: sPerson || "sem titular definido",
+      selPersonStyle: "font-size:13px;font-weight:700;color:" + (sPerson ? "#1b1630" : "#B06E00") + ";",
+      selPersonIni: sPerson ? sPerson.slice(0, 2).toUpperCase() : "—",
+      selPersonDotStyle: "width:22px;height:22px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:700;" +
+        (sPerson ? "background:#efe9fb;color:#6C2BF2;" : "background:#fff4e4;color:#B06E00;"),
+      selCritTitle: cm.title,
+      selCrit: cm.label,
+      selCritChipStyle: "font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:" + cm.fg + ";background:" + cm.bg + ";padding:2px 7px;border-radius:999px;",
+      selSubs: selSubs,
+      subPickOpen: !!st.subPick,
+      onAddSub: (canEdit && hasSlot) ? (() => this.setState({ subPick: !st.subPick })) : undefined,
+      addSubStyle: (canEdit && hasSlot)
+        ? "align-self:flex-start;height:26px;padding:0 10px;border-radius:8px;border:1px dashed #ddd0fa;background:#fbf9ff;color:#5B23C9;font-family:Manrope,sans-serif;font-size:11px;font-weight:700;cursor:pointer"
+        : "display:none;",
+      subOptions: (canEdit && hasSlot ? ROSTER.filter(n => n !== sPerson && !sSubsRaw.some(s => s[0] === n)) : []).map(n => ({
+        label: n,
+        onClick: () => {
+          const cur = (this.state.subs && this.state.subs[sKey]) || sSubsRaw;
+          this.setState({
+            subs: Object.assign({}, this.state.subs, { [sKey]: cur.concat([[n, ""]]) }),
+            subPick: false
+          });
+        },
+        style: "height:26px;padding:0 10px;border-radius:8px;border:1px solid #e6e1f2;background:#fff;color:#3c3559;font-family:Manrope,sans-serif;font-size:11px;font-weight:600;cursor:pointer"
+      })),
+      selEmptyStyle: selSubs.length ? "display:none;" : "font-size:11.5px;color:#B06E00;background:#fff4e4;border:1px dashed #f0d8b0;padding:6px 9px;border-radius:9px;",
+      selObs: sSide === "PER" ? "Entra pelo canhão 2. Não troca de lado durante o splice." : "Apoio da moldura do meio. Não faz aéreo.",
+      closeSlot: () => this.setState({ slot: null }),
+
+      fichaOpen: st.ficha, toggleFicha: () => this.setState({ ficha: !st.ficha }),
+      fichaCaretStyle: "font-size:10px;color:#6b6482;transition:transform .15s;transform:rotate(" + (st.ficha ? "90" : "0") + "deg);",
+      fichaScope: "show · cena · bloco · slot · quadro",
+      fichaCount: "8 campos · 6 materiais",
+      fichaFields: FICHA.map(f => ({ k: f[0], v: f[1], vStyle: "font-size:12px;font-weight:600;color:#1b1630;line-height:1.35;" })),
+      fichaFiles: FICHA_FILES.map(f => ({
+        label: f[0], scope: "· " + f[1],
+        style: "display:flex;align-items:center;gap:7px;padding:5px 10px;border:1px solid #e6e1f2;border-radius:999px;background:#fff;font-size:11.5px;font-weight:600;color:#3a3352;",
+        dotStyle: "width:7px;height:7px;border-radius:50%;background:" + f[2] + ";"
+      })),
+
+      savedLabel: canEdit ? "salvo automaticamente · 09:12" : "última alteração 09:12",
+      draftChipStyle: canEdit ? "font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#B06E00;background:#B06E001f;padding:2px 8px;border-radius:999px;" : "display:none;",
+      publishBtnStyle: canEdit
+        ? "height:31px;padding:0 14px;border:none;border-radius:9px;background:#6C2BF2;color:#fff;font-family:Manrope,sans-serif;font-size:12px;font-weight:700;cursor:pointer;"
+        : "display:none;",
+
+      asaOpen: st.asa, toggleAsa: () => this.setState({ asa: !st.asa }),
+      asaBtnStyle: "display:flex;align-items:center;gap:7px;height:34px;padding:0 13px 0 7px;border-radius:11px;cursor:pointer;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;" +
+        (st.asa ? "border:1px solid #6C2BF2;background:#f3ebff;color:#6C2BF2;" : "border:1px solid #e6e1f2;background:#fff;color:#5b5473;"),
+      asaIntro: isMem
+        ? "Posso te ajudar a estudar este show. Só falo do que está cadastrado — se não tem vídeo, eu digo que não tem."
+        : "Consulto e preparo alterações neste show. Toda mudança passa por uma prévia antes de valer.",
+      asaChips: chipSet.map(c => ({
+        label: c[0],
+        onClick: () => this.setState({ asaKey: c[1], applied: false }),
+        style: "padding:6px 11px;border-radius:999px;cursor:pointer;font-family:Manrope,sans-serif;font-size:11px;font-weight:600;text-align:left;" +
+          (asaKey === c[1] ? "border:1px solid #6C2BF2;background:#f3ebff;color:#6C2BF2;" : "border:1px solid #e6e1f2;background:#fff;color:#5b5473;")
+      })),
+      asaAsked: !!a, asaQuestion: a ? a.q : "", asaAnswer: a ? a.a : "",
+      asaHasList: !!(a && a.list),
+      asaList: (a && a.list ? a.list : []).map(l => ({
+        label: l[0], meta: l[1],
+        dotStyle: "width:7px;height:7px;flex:none;border-radius:50%;background:" + l[2] + ";"
+      })),
+      asaHasPreview: !!(a && a.preview),
+      asaPreviewText: a && a.preview ? (st.applied ? "Aplicado no rascunho v5. O quadro novo está na tira, sem tipo definido." : a.preview) : "",
+      asaApply: canEdit ? (() => this.setState({ applied: true, view: "livro", scene: 2 })) : (() => {}),
+      asaApplyStyle: canEdit
+        ? "flex:1;height:30px;border:none;border-radius:9px;background:#6C2BF2;color:#fff;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;cursor:pointer;"
+        : "display:none;",
+      asaDiscard: () => this.setState({ asaKey: null, applied: false }),
+      asaBlockedStyle: canEdit ? "display:none;" : "font-size:10.5px;line-height:1.4;color:#8a6a30;",
+
+      openPublish: () => this.setState({ publish: true }),
+      closePublish: () => this.setState({ publish: false }),
+      publishOverlayStyle: (st.publish && canEdit)
+        ? "position:absolute;inset:0;background:rgba(28,20,64,.42);display:flex;align-items:center;justify-content:center;padding:30px;z-index:20;"
+        : "display:none;",
+      diff: DIFF.map(d => ({
+        tag: d[0], label: d[1], where: d[2],
+        tagStyle: "font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:" + d[3] + ";background:" + d[4] + ";padding:2px 8px;border-radius:999px;white-space:nowrap;"
+      })),
+      audiences: AUD.map(x => ({
+        label: x,
+        onClick: () => {
+          let next;
+          if (x === "Ninguém") next = ["Ninguém"];
+          else if (st.aud.indexOf(x) >= 0) next = st.aud.filter(y => y !== x);
+          else next = st.aud.filter(y => y !== "Ninguém").concat([x]);
+          this.setState({ aud: next });
+        },
+        style: pill + (st.aud.indexOf(x) >= 0
+          ? "border:1px solid #6C2BF2;background:#f3ebff;color:#6C2BF2;"
+          : "border:1px solid #e6e1f2;background:#fff;color:#5b5473;")
+      })),
+      recipientCount: String(audCount),
+      recipientText: audCount === 0
+        ? "ninguém é notificado. O show ainda fica marcado como Atualizado para quem abrir."
+        : "pessoas recebem a notificação. Depois você consulta quem recebeu e quem visualizou.",
+      toggleImportant: () => this.setState({ important: !st.important }),
+      importantStyle: "display:flex;align-items:center;gap:9px;width:fit-content;padding:7px 12px 7px 9px;border-radius:10px;cursor:pointer;font-family:Manrope,sans-serif;font-size:12px;font-weight:600;" +
+        (st.important ? "border:1px solid #6C2BF2;background:#f7f2ff;color:#4a3a7a;" : "border:1px solid #e6e1f2;background:#fff;color:#5b5473;"),
+      importantBoxStyle: "width:17px;height:17px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;" +
+        (st.important ? "background:#6C2BF2;color:#fff;" : "background:#fff;border:1px solid #ddd6ee;color:transparent;"),
+
+      decisions: DEC.map(d => ({ k: d[0], t: d[1], b: d[2] }))
+    };
+  }
+}
+
+</script>
+</body>
+</html>

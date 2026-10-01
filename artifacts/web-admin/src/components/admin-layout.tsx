@@ -13,6 +13,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useAuth } from "@/hooks/useAuth";
 import { useLogout, useGetMyActiveDelegations } from "@workspace/api-client-react";
 import { AsaAvatar, type AsaPose } from "@/components/AsaAvatar";
+import { GlobalSearch } from "./global-search";
+import { PwaSetup } from "./pwa-setup";
 
 // ─── Nav definitions ──────────────────────────────────────────────────────────
 
@@ -68,6 +70,7 @@ const ADMIN_NAV: NavGroup[] = [
     label: "CONHECIMENTO",
     items: [
       { href: "/admin/library", icon: Library, label: "Biblioteca" },
+      { href: "/admin/formations", icon: Boxes, label: "Formações" },
     ],
   },
   {
@@ -88,6 +91,7 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/operations", icon: Briefcase, label: "Operações" },
       { href: "/admin/groups",     icon: Users2,    label: "Grupos"    },
       { href: "/admin/users",      icon: Users,     label: "Usuários"  },
+      { href: "/admin/locations",  icon: Boxes,     label: "Locais" },
     ],
   },
 ];
@@ -138,6 +142,7 @@ const SUPERVISOR_NAV: NavGroup[] = [
     label: "CONHECIMENTO",
     items: [
       { href: "/supervisor/library", icon: Library, label: "Biblioteca" },
+      { href: "/admin/formations", icon: Boxes, label: "Formações" },
     ],
   },
   {
@@ -347,7 +352,7 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
       <aside className="w-56 shrink-0 border-r bg-card flex flex-col sticky top-0 h-screen overflow-y-auto">
         <div className="h-16 flex items-center gap-2.5 px-4 border-b shrink-0">
           <img
-            src="/asinha.svg"
+            src="/asa-wing.png"
             alt="Asinha MyASA"
             className="w-7 h-8 shrink-0"
           />
@@ -479,6 +484,8 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
               <span className="text-sm font-medium">{title}</span>
             </>
           )}
+          <GlobalSearch />
+          <Link href="/print/day" className="text-xs text-muted-foreground hover:text-foreground whitespace-nowrap">Imprimir o dia</Link>
         </header>
 
         <main className="flex-1 p-6 md:p-8">
@@ -487,6 +494,7 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
             {subtitle && <p className="text-muted-foreground mt-1">{subtitle}</p>}
           </div>
           {children}
+          <PwaSetup />
         </main>
       </div>
     </div>

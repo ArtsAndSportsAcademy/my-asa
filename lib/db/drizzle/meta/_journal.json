@@ -120,6 +120,174 @@
       "when": 1786723200000,
       "tag": "0016_operation_lifecycle",
       "breakpoints": true
-    }
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1786838400000,
+      "tag": "0017_block1_integrity",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1786924800000,
+      "tag": "0018_block2_entities",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1787011200000,
+      "tag": "0019_block2_backfill",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1787097600000,
+      "tag": "0020_block2_legacy_key_nullable",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1787184000000,
+      "tag": "0021_block3_schedule_conflicts",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1787270400000,
+      "tag": "0022_block4_formation_library",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1787356800000,
+      "tag": "0023_block5_lifecycle_flags",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1787356801000,
+      "tag": "0024_formations_organization_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1787438400000,
+      "tag": "0025_block6_areas_and_http_entities",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1787438401000,
+      "tag": "0026_block6_occurrence_lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1787524800000,
+      "tag": "0027_block7_delivery_and_pwa",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1787524801000,
+      "tag": "0028_block7_private_tables_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1787524802000,
+      "tag": "0029_lock_down_public_data_api",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1787611200000,
+      "tag": "0030_person_display_name",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1787697600000,
+      "tag": "0031_show_location_and_types",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1787697601000,
+      "tag": "0032_show_type_defaults",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1787784000000,
+      "tag": "0033_show_book_keyframes",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1787870400000,
+      "tag": "0034_show_book_slots_groups_and_drive_links",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1787956800000,
+      "tag": "0035_show_book_marker_colors",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1788043200000,
+      "tag": "0036_show_details_and_session_validity",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1788129600000,
+      "tag": "0037_logical_removal_markers",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1788216000000,
+      "tag": "0038_formations_scene_id",
+      "breakpoints": true
+    },
+    {"idx":39,"version":"7","when":1788302400000,"tag":"0039_escalas_programacao","breakpoints":true},
+    {"idx":40,"version":"7","when":1788306000000,"tag":"0040_escalas_rls","breakpoints":true},
+    {"idx":41,"version":"7","when":1788392400000,"tag":"0041_escala_cell_adjustments_and_confirmations","breakpoints":true},
+    {"idx":42,"version":"7","when":1788478800000,"tag":"0042_grupo_b_folgas_checkins","breakpoints":true},
+    {"idx":43,"version":"7","when":1788565200000,"tag":"0043_grupo_c_comunicacao","breakpoints":true},
+    {"idx":44,"version":"7","when":1788651600000,"tag":"0044_grupo_c_biblioteca","breakpoints":true},
+    {"idx":45,"version":"7","when":1788738000000,"tag":"0045_library_document_files","breakpoints":true},
+    {"idx":46,"version":"7","when":1788824400000,"tag":"0046_responsibilities_tasks_foundation","breakpoints":true},
+    {"idx":47,"version":"7","when":1790380800000,"tag":"0047_agenda_journey_proposals","breakpoints":true},
+    {"idx":48,"version":"7","when":1790553600000,"tag":"0048_asa_memory_disabled","breakpoints":true},
+    {"idx":49,"version":"7","when":1790640000000,"tag":"0049_perfil_privacidade_silencio","breakpoints":true},
+    {"idx":50,"version":"7","when":1790726400000,"tag":"0050_refresh_token_tolerancia","breakpoints":true},
+    {"idx":51,"version":"7","when":1790812800000,"tag":"0051_solicitacoes","breakpoints":true},
+    {"idx":52,"version":"7","when":1790816400000,"tag":"0052_library_page_citations","breakpoints":true}
   ]
 }

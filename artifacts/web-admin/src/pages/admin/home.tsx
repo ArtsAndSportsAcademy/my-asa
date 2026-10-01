@@ -722,7 +722,7 @@ function MemberHome() {
       </div>
 
       <div className="flex items-center gap-3 p-4 rounded-xl bg-primary/5 border border-primary/10 text-sm">
-        <img src="/asinha.svg" alt="" className="w-8 h-9 shrink-0 opacity-70" />
+        <img src="/asa-wing.png" alt="" className="w-8 h-9 shrink-0 opacity-70 object-contain" />
         <p className="text-muted-foreground">
           Leve sua operação no bolso: o{" "}
           <strong className="text-foreground">app MyASA</strong> traz seu status do dia,

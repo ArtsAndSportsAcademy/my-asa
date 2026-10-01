@@ -1,0 +1,18 @@
+/* 17 Meu Dia — o visual está inline em meu-dia.tsx, copiado do .dc.html.
+   Aqui só o que estilo inline não resolve: foco, alvo de toque, esqueleto e refluxo no celular. */
+.md-root{background:#faf9fe}
+.md-root + .asa-install{margin:4px 20px 24px}
+.md-root a:focus-visible,.md-root button:focus-visible{outline:3px solid #6C2BF2;outline-offset:2px;border-radius:8px}
+.md-hit{position:relative;display:inline-flex;align-items:center}
+.md-hit::after{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
+.md-root button:disabled{opacity:.7;cursor:default}
+.md-row:hover{background:#f6f3fd}
+.md-skeleton{height:96px;border-radius:16px;background:linear-gradient(90deg,#f1edf9,#faf8fe,#f1edf9);background-size:200% 100%;animation:md-pulse 1.4s linear infinite;margin-bottom:14px}
+@keyframes md-pulse{from{background-position:200% 0}to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.md-skeleton{animation:none}}
+@media(max-width:900px){
+  .md-grid{grid-template-columns:1fr!important;padding:14px 16px!important}
+  .md-hero{flex-wrap:wrap}
+  .md-root + .asa-install{margin:4px 16px 96px}
+  .md-hero > a,.md-hero > button{width:100%;justify-content:center;min-height:52px;border-radius:14px!important}
+}

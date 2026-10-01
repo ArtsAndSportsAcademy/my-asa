@@ -106,7 +106,7 @@ router.post("/supervisor-requests", requireAuth, requireOrganization, async (req
     const [member] = await db
       .select({ name: usersTable.name })
       .from(usersTable)
-      .where(eq(usersTable.id, memberId))
+      .where(and(eq(usersTable.id, memberId), eq(usersTable.organizationId, user.organizationId)))
       .limit(1);
 
     if (!member) {
@@ -117,39 +117,62 @@ router.post("/supervisor-requests", requireAuth, requireOrganization, async (req
     const [targetOp] = await db
       .select({ name: operationsTable.name })
       .from(operationsTable)
-      .where(eq(operationsTable.id, targetOperationId))
+      .where(and(eq(operationsTable.id, targetOperationId), eq(operationsTable.organizationId, user.organizationId)))
       .limit(1);
 
     const [requestorOp] = await db
       .select({ name: operationsTable.name })
       .from(operationsTable)
-      .where(eq(operationsTable.id, requestorOperationId))
+      .where(and(eq(operationsTable.id, requestorOperationId), eq(operationsTable.organizationId, user.organizationId)))
       .limit(1);
 
-    const [request] = await db
-      .insert(supervisorRequestsTable)
-      .values({
-        requestorId: user.sub,
-        requestorOperationId,
-        targetSupervisorId: targetSupervisorId ?? null,
-        targetOperationId,
-        memberId,
-        agendaEventId: agendaEventId ?? null,
-        reason,
-        status: "PENDING",
-      })
-      .returning();
+    if (!targetOp || !requestorOp) {
+      res.status(404).json({ error: "Not Found", message: "Operação não encontrada na organização" });
+      return;
+    }
 
-    writeHistoryEvent({
-      category: "SUPERVISOR_REQUEST",
-      action: "supervisor_request.created",
-      title: "Solicitação entre supervisores criada",
-      narrative: `Supervisor solicitou uso do membro ${member.name} (de ${targetOp?.name ?? targetOperationId}) para ${requestorOp?.name ?? requestorOperationId}. Motivo: ${reason}`,
-      entityType: "supervisor_request",
-      entityId: request!.id,
-      actorId: user.sub,
-      actorType: "HUMAN",
-    }).catch(() => {});
+    if (targetSupervisorId) {
+      const [targetSupervisor] = await db
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(and(eq(usersTable.id, targetSupervisorId), eq(usersTable.organizationId, user.organizationId)))
+        .limit(1);
+      if (!targetSupervisor) {
+        res.status(404).json({ error: "Not Found", message: "Supervisor não encontrado na organização" });
+        return;
+      }
+    }
+
+    const request = await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(supervisorRequestsTable)
+        .values({
+          requestorId: user.sub,
+          requestorOperationId,
+          targetSupervisorId: targetSupervisorId ?? null,
+          targetOperationId,
+          memberId,
+          agendaEventId: agendaEventId ?? null,
+          reason,
+          status: "PENDING",
+        })
+        .returning();
+      await writeHistoryEvent({
+        category: "SUPERVISOR_REQUEST",
+        action: "supervisor_request.created",
+        title: "Solicitação entre supervisores criada",
+        narrative: `Supervisor solicitou uso do membro ${member.name} (de ${targetOp.name}) para ${requestorOp.name}. Motivo: ${reason}`,
+        entityType: "supervisor_request",
+        entityId: created!.id,
+        actorId: user.sub,
+        actorType: "HUMAN",
+        operationId: requestorOperationId,
+        orgId: user.organizationId,
+        afterState: { targetOperationId, memberId, agendaEventId: agendaEventId ?? null, status: "PENDING" },
+        metadata: { reason },
+      }, tx as any);
+      return created!;
+    });
 
     // Notify target supervisor about the new request (fire-and-forget)
     if (targetSupervisorId) {
@@ -208,6 +231,19 @@ router.post("/supervisor-requests/:id/respond", requireAuth, requireOrganization
       return;
     }
 
+    const [requestOperation] = await db
+      .select({ id: operationsTable.id })
+      .from(operationsTable)
+      .where(and(
+        eq(operationsTable.id, existing.requestorOperationId),
+        eq(operationsTable.organizationId, user.organizationId),
+      ))
+      .limit(1);
+    if (!requestOperation) {
+      res.status(404).json({ error: "Solicitação não encontrada" });
+      return;
+    }
+
     if (existing.status !== "PENDING") {
       res.status(409).json({ error: "Solicitação já foi respondida" });
       return;
@@ -218,28 +254,34 @@ router.post("/supervisor-requests/:id/respond", requireAuth, requireOrganization
       return;
     }
 
-    const [updated] = await db
-      .update(supervisorRequestsTable)
-      .set({
-        status: decision,
-        responseReason: responseReason ?? null,
-        respondedAt: new Date(),
-        respondedBy: user.sub,
-      })
-      .where(eq(supervisorRequestsTable.id, id))
-      .returning();
-
     const label = decision === "APPROVED" ? "aprovou" : "negou";
-    writeHistoryEvent({
-      category: "SUPERVISOR_REQUEST",
-      action: `supervisor_request.${decision.toLowerCase()}`,
-      title: `Solicitação entre supervisores ${label}`,
-      narrative: `Supervisor ${label} a solicitação de uso de membro.${responseReason ? ` Motivo: ${responseReason}` : ""}`,
-      entityType: "supervisor_request",
-      entityId: id,
-      actorId: user.sub,
-      actorType: "HUMAN",
-    }).catch(() => {});
+    const updated = await db.transaction(async (tx) => {
+      const [persisted] = await tx
+        .update(supervisorRequestsTable)
+        .set({
+          status: decision,
+          responseReason: responseReason ?? null,
+          respondedAt: new Date(),
+          respondedBy: user.sub,
+        })
+        .where(eq(supervisorRequestsTable.id, id))
+        .returning();
+      await writeHistoryEvent({
+        category: "SUPERVISOR_REQUEST",
+        action: `supervisor_request.${decision.toLowerCase()}`,
+        title: `Solicitação entre supervisores ${label}`,
+        narrative: `Supervisor ${label} a solicitação de uso de membro.${responseReason ? ` Motivo: ${responseReason}` : ""}`,
+        entityType: "supervisor_request",
+        entityId: id,
+        actorId: user.sub,
+        actorType: "HUMAN",
+        operationId: existing.requestorOperationId,
+        orgId: user.organizationId,
+        beforeState: { status: existing.status, responseReason: existing.responseReason },
+        afterState: { status: persisted!.status, responseReason: persisted!.responseReason },
+      }, tx as any);
+      return persisted!;
+    });
 
     // Notify the requestor about the decision (fire-and-forget)
     const decisionTitle = decision === "APPROVED" ? "Solicitação aprovada" : "Solicitação negada";

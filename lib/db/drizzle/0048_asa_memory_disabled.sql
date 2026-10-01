@@ -1,0 +1,1 @@
+ALTER TYPE asa_memory_status ADD VALUE IF NOT EXISTS 'DISABLED';

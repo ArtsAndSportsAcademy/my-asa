@@ -38,7 +38,8 @@ export default function ForcePasswordChange() {
     }
 
     changeMutation.mutate(
-      { data: { currentPassword, newPassword } },
+      // A sessão deste aparelho continua; as outras são encerradas pelo servidor.
+      { data: { currentPassword, newPassword, refreshToken: localStorage.getItem("myasa_refresh_token") ?? undefined } as { currentPassword: string; newPassword: string } },
       {
         onSuccess: () => {
           markPasswordChanged();
@@ -55,7 +56,7 @@ export default function ForcePasswordChange() {
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-8">
       <div className="w-full max-w-md space-y-6">
         <div className="flex flex-col items-center gap-3">
-          <img src="/asinha.svg" alt="Asinha MyASA" className="w-16 h-18" />
+          <img src="/asa-wing.png" alt="Asa My ASA" className="w-16 h-18 object-contain" />
           <h1 className="text-2xl font-bold text-foreground">MyASA</h1>
         </div>
 

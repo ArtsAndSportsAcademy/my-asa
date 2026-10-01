@@ -1,0 +1,22 @@
+.global-asa-operation {
+  width: min(132px, 34vw);
+  height: 38px;
+  flex: 0 1 132px;
+  margin-left: auto;
+  padding: 0 7px;
+  border: 1px solid #ded8e9;
+  border-radius: 6px;
+  background: #fff;
+  color: #342b50;
+  font: 12px Manrope, Arial, sans-serif;
+  text-overflow: ellipsis;
+}
+
+.global-asa-operation:focus {
+  outline: 2px solid rgba(108, 43, 242, 0.2);
+  border-color: #6c2bf2;
+}
+
+.global-asa-operation + .global-asa-icon {
+  margin-left: 0;
+}

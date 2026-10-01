@@ -9,17 +9,19 @@ import {
   useDeleteUser,
   useAddUserRole,
   useListUserRoles,
-  useRemoveUserRole,
   getListUserRolesQueryKey,
   useGetOperations,
+  customFetch,
 } from "@workspace/api-client-react";
-import type { User, UserRole } from "@workspace/api-client-react";
+import type { User, UserRole, UserCreate, UserCreateSpecialization } from "@workspace/api-client-react";
 import AdminLayout from "@/components/admin-layout";
+import { PwaInstallationReport } from "@/components/pwa-installation-report";
 import { AsaEmptyState } from "@/components/AsaEmptyState";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -92,7 +94,6 @@ export default function UsersPage() {
   const statusMutation = useUpdateUserStatus();
   const deleteMutation = useDeleteUser();
   const assignRoleMutation = useAddUserRole();
-  const removeRoleMutation = useRemoveUserRole();
 
   const { data: opsData } = useGetOperations();
   const operations = opsData?.operations ?? [];
@@ -105,17 +106,19 @@ export default function UsersPage() {
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
 
   const [createForm, setCreateForm] = useState({
-    name: "", preferredName: "", phone: "", password: "", createAccess: true,
+    fullName: "", phone: "", password: "", createAccess: true,
     role: "MEMBER", operationId: "", specialization: "", professionalProfile: "MEMBER",
     primaryFunction: "", birthDate: "", entryDate: "", visitUntil: "",
   });
   const [editForm, setEditForm] = useState({
-    name: "", preferredName: "", email: "", phone: "", username: "", specialization: "",
+    fullName: "", email: "", phone: "", username: "", specialization: "",
     professionalProfile: "", primaryFunction: "", personStatus: "ACTIVE",
     birthDate: "", entryDate: "", visitUntil: "",
   });
   const [addRoleOpId, setAddRoleOpId] = useState("");
   const [addRoleRole, setAddRoleRole] = useState("MEMBER");
+  const [profileReason, setProfileReason] = useState("");
+  const [createProfileReason, setCreateProfileReason] = useState("");
 
   const editRolesQuery = useListUserRoles(editUser?.id ?? "", {
     query: { enabled: !!editUser?.id, queryKey: getListUserRolesQueryKey(editUser?.id ?? "") },
@@ -132,19 +135,20 @@ export default function UsersPage() {
   };
 
   const handleAddRole = () => {
-    if (!editUser) return;
+    if (!editUser || !profileReason.trim()) return;
     const operationId = addRoleOpId || operations[0]?.id;
     if (!operationId) {
       toast({ title: "Cadastre uma operação primeiro", variant: "destructive" });
       return;
     }
     assignRoleMutation.mutate(
-      { id: editUser.id, data: { operationId, role: addRoleRole as any } },
+      { id: editUser.id, data: { operationId, role: addRoleRole, reason: profileReason.trim() } as any },
       {
         onSuccess: () => {
           toast({ title: "Operação adicionada à pessoa" });
           setAddRoleOpId("");
           setAddRoleRole("MEMBER");
+          setProfileReason("");
           invalidateRoles();
           invalidate();
         },
@@ -156,22 +160,18 @@ export default function UsersPage() {
     );
   };
 
-  const handleRemoveRole = (roleId: string) => {
-    if (!editUser) return;
-    removeRoleMutation.mutate(
-      { id: editUser.id, roleId },
-      {
-        onSuccess: () => {
+  const [removingProfile, setRemovingProfile] = useState(false);
+  const handleRemoveRole = async (roleId: string) => {
+    if (!editUser || !profileReason.trim()) return;
+    setRemovingProfile(true);
+    try {
+      await customFetch(`/api/users/${editUser.id}/roles/${roleId}`, { method: "DELETE", body: JSON.stringify({ reason: profileReason.trim() }) });
           toast({ title: "Operação removida da pessoa" });
+          setProfileReason("");
           invalidateRoles();
           invalidate();
-        },
-        onError: (err: any) => {
-          const msg = err?.response?.data?.message ?? "Erro ao remover operação";
-          toast({ title: msg, variant: "destructive" });
-        },
-      }
-    );
+    } catch (err) { toast({ title: (err as Error).message, variant: "destructive" }); }
+    finally { setRemovingProfile(false); }
   };
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
@@ -181,30 +181,35 @@ export default function UsersPage() {
     return true;
   });
 
-  const resetCreateForm = () =>
-    setCreateForm({ name: "", preferredName: "", phone: "", password: "", createAccess: true, role: "MEMBER", operationId: "", specialization: "", professionalProfile: "MEMBER", primaryFunction: "", birthDate: "", entryDate: "", visitUntil: "" });
+  const resetCreateForm = () => {
+    setCreateProfileReason("");
+    setCreateForm({ fullName: "", phone: "", password: "", createAccess: true, role: "MEMBER", operationId: "", specialization: "", professionalProfile: "MEMBER", primaryFunction: "", birthDate: "", entryDate: "", visitUntil: "" });
+  };
 
   const handleCreate = () => {
-    const { name, password, role, operationId, specialization } = createForm;
-    if (!name.trim() || (createForm.createAccess && password.length < 6)) {
+    const { fullName, password, role, operationId, specialization } = createForm;
+    if (!fullName.trim() || (createForm.createAccess && password.length < 6)) {
       toast({ title: "Preencha nome e senha provisória", variant: "destructive" });
       return;
     }
     const effectiveOperationId = operationId || operations[0]?.id;
+    if (effectiveOperationId && !createProfileReason.trim()) {
+      toast({ title: "Escreva o motivo da atribuição do perfil", variant: "destructive" });
+      return;
+    }
     createMutation.mutate(
       {
         data: {
-          name: name.trim(),
-          preferredName: createForm.preferredName.trim() || null,
+          fullName: fullName.trim(),
           phone: createForm.phone.trim() || null,
           password: createForm.createAccess ? password : null,
           professionalProfile: createForm.professionalProfile || null,
           primaryFunction: createForm.primaryFunction.trim() || null,
-          specialization: (specialization || undefined) as any,
-          ...(createForm.birthDate ? { birthDate: createForm.birthDate as any } : {}),
-          ...(createForm.entryDate ? { entryDate: createForm.entryDate as any } : {}),
-          ...(createForm.visitUntil ? { visitUntil: createForm.visitUntil as any } : {}),
-        },
+          specialization: (specialization || undefined) as UserCreateSpecialization | undefined,
+          ...(createForm.birthDate ? { birthDate: createForm.birthDate } : {}),
+          ...(createForm.entryDate ? { entryDate: createForm.entryDate } : {}),
+          ...(createForm.visitUntil ? { visitUntil: createForm.visitUntil } : {}),
+        } satisfies UserCreate,
       },
       {
         onSuccess: (res) => {
@@ -225,7 +230,7 @@ export default function UsersPage() {
             return;
           }
           assignRoleMutation.mutate(
-            { id: newUser.id, data: { operationId: effectiveOperationId, role: role as any } },
+            { id: newUser.id, data: { operationId: effectiveOperationId, role, reason: createProfileReason.trim() } as any },
             {
               onSuccess: () => {
                 toast({ title: "Usuário criado com sucesso" });
@@ -255,13 +260,12 @@ export default function UsersPage() {
 
   const handleEdit = () => {
     if (!editUser) return;
-    const { name, preferredName, email, phone, username, specialization, professionalProfile, primaryFunction, personStatus, birthDate, entryDate, visitUntil } = editForm;
+    const { fullName, email, phone, username, specialization, professionalProfile, primaryFunction, personStatus, birthDate, entryDate, visitUntil } = editForm;
     updateMutation.mutate(
       {
         id: editUser.id,
         data: {
-          name: name.trim() || undefined,
-          preferredName: preferredName.trim() || null,
+          fullName: fullName.trim() || undefined,
           email: email.trim() || undefined,
           phone: phone.trim() || null,
           username: username.trim() || undefined,
@@ -272,6 +276,7 @@ export default function UsersPage() {
           ...(birthDate !== undefined ? { birthDate: (birthDate || null) as any } : {}),
           ...(entryDate !== undefined ? { entryDate: (entryDate || null) as any } : {}),
           visitUntil: (visitUntil || null) as any,
+          ...({ reason: profileReason.trim() } as any),
         },
       },
       {
@@ -321,10 +326,10 @@ export default function UsersPage() {
   };
 
   const openEdit = (user: User) => {
+    setProfileReason("");
     setEditUser(user);
     setEditForm({
-      name: user.name,
-      preferredName: user.preferredName ?? "",
+      fullName: (user as any).fullName ?? user.name,
       email: user.email ?? "",
       phone: user.phone ?? "",
       username: user.username ?? "",
@@ -365,6 +370,7 @@ export default function UsersPage() {
           </div>
         </div>
 
+        {isAdmin && <PwaInstallationReport />}
         {error && (
           <div className="flex items-center gap-2 p-4 border border-destructive/30 bg-destructive/10 rounded-lg text-sm text-destructive">
             <AlertCircle className="w-4 h-4" />
@@ -490,13 +496,12 @@ export default function UsersPage() {
               <Label>Nome completo</Label>
               <Input
                 placeholder="Ana Paula Silva"
-                value={createForm.name}
-                onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
+                value={createForm.fullName}
+                onChange={(e) => setCreateForm((f) => ({ ...f, fullName: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
               <div className="grid gap-3 sm:grid-cols-2 mb-4">
-                <div className="space-y-2"><Label>Nome preferido</Label><Input value={createForm.preferredName} onChange={(e) => setCreateForm((f) => ({ ...f, preferredName: e.target.value }))} /></div>
                 <div className="space-y-2"><Label>Telefone</Label><Input value={createForm.phone} onChange={(e) => setCreateForm((f) => ({ ...f, phone: e.target.value }))} /></div>
                 <div className="space-y-2"><Label>Perfil na ASA</Label><select className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm" value={createForm.professionalProfile} onChange={(e) => setCreateForm((f) => ({ ...f, professionalProfile: e.target.value }))}><option value="DIRECTION">Direção</option><option value="MANAGEMENT">Gestão</option><option value="SUPERVISOR">Supervisor</option><option value="MEMBER">Elenco</option><option value="TRAINER_TEACHER">Treinador ou professor</option><option value="GUEST">Convidado</option></select></div>
                 <div className="space-y-2"><Label>Função principal</Label><Input placeholder="Ex.: Patinadora" value={createForm.primaryFunction} onChange={(e) => setCreateForm((f) => ({ ...f, primaryFunction: e.target.value }))} /></div>
@@ -576,9 +581,10 @@ export default function UsersPage() {
               </div>
             )}
           </div>
+          {operations.length > 0 && <div className="space-y-2"><Label htmlFor="initial-profile-reason">Motivo da atribuição do perfil</Label><Textarea id="initial-profile-reason" value={createProfileReason} onChange={event => setCreateProfileReason(event.target.value)} /><p className="text-xs text-muted-foreground">O motivo e a confirmação do perfil ficam nesta mesma tela.</p></div>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
-            <Button onClick={handleCreate} disabled={createMutation.isPending}>
+            <Button onClick={handleCreate} disabled={createMutation.isPending || (operations.length > 0 && !createProfileReason.trim())}>
               {createMutation.isPending ? "Criando..." : "Criar usuário"}
             </Button>
           </DialogFooter>
@@ -593,7 +599,7 @@ export default function UsersPage() {
           <div className="space-y-4 py-2">
             <p className="text-sm text-muted-foreground">
               O nome de usuário foi gerado automaticamente. Use-o para informar o login a{" "}
-              <strong className="text-foreground">{createdUser?.name}</strong>.
+              <strong className="text-foreground">{(createdUser as any)?.fullName ?? createdUser?.name}</strong>.
             </p>
             <div className="space-y-2">
               <Label>Nome de usuário (login)</Label>
@@ -631,13 +637,12 @@ export default function UsersPage() {
             <div className="space-y-2">
               <Label>Nome completo</Label>
               <Input
-                value={editForm.name}
-                onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                value={editForm.fullName}
+                onChange={(e) => setEditForm((f) => ({ ...f, fullName: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
               <div className="grid gap-3 sm:grid-cols-2 mb-4">
-                <div className="space-y-2"><Label>Nome preferido</Label><Input value={editForm.preferredName} onChange={(e) => setEditForm((f) => ({ ...f, preferredName: e.target.value }))} /></div>
                 <div className="space-y-2"><Label>Telefone</Label><Input value={editForm.phone} onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))} /></div>
                 <div className="space-y-2"><Label>Perfil na ASA</Label><select className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm" value={editForm.professionalProfile} onChange={(e) => setEditForm((f) => ({ ...f, professionalProfile: e.target.value }))}><option value="">Não informado</option><option value="DIRECTION">Direção</option><option value="MANAGEMENT">Gestão</option><option value="SUPERVISOR">Supervisor</option><option value="MEMBER">Elenco</option><option value="TRAINER_TEACHER">Treinador ou professor</option><option value="GUEST">Convidado</option></select></div>
                 <div className="space-y-2"><Label>Função principal</Label><Input value={editForm.primaryFunction} onChange={(e) => setEditForm((f) => ({ ...f, primaryFunction: e.target.value }))} /></div>
@@ -701,6 +706,9 @@ export default function UsersPage() {
 
             <div className="space-y-2 border-t pt-4">
               <Label>Operações <span className="text-muted-foreground text-xs">(uma pessoa pode pertencer a várias)</span></Label>
+              <Label htmlFor="profile-reason">Motivo para alterar o perfil ou desligar a pessoa</Label>
+              <Textarea id="profile-reason" value={profileReason} onChange={event => setProfileReason(event.target.value)} />
+              <p className="text-xs text-muted-foreground">Escreva o motivo e confirme na ação abaixo. Não haverá segunda confirmação nem desfazer.</p>
               {editRolesQuery.isLoading ? (
                 <p className="text-xs text-muted-foreground">A carregar...</p>
               ) : editUserRoles.length === 0 ? (
@@ -717,7 +725,7 @@ export default function UsersPage() {
                         variant="ghost"
                         size="sm"
                         className="text-destructive hover:text-destructive"
-                        disabled={removeRoleMutation.isPending}
+                        disabled={removingProfile || !profileReason.trim()}
                         onClick={() => handleRemoveRole(r.id)}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -754,18 +762,18 @@ export default function UsersPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={assignRoleMutation.isPending || operations.length === 0}
+                  disabled={assignRoleMutation.isPending || operations.length === 0 || !profileReason.trim()}
                   onClick={handleAddRole}
                 >
                   <Plus className="w-4 h-4 mr-1" />
-                  Adicionar
+                  Confirmar perfil
                 </Button>
               </div>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditUser(null)}>Cancelar</Button>
-            <Button onClick={handleEdit} disabled={updateMutation.isPending}>
+            <Button onClick={handleEdit} disabled={updateMutation.isPending || (["LEFT", "ARCHIVED"].includes(editForm.personStatus) && !profileReason.trim())}>
               {updateMutation.isPending ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>

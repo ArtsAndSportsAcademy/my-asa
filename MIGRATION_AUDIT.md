@@ -1,5 +1,7 @@
 # MyASA — Guia de Migração: Vercel + Supabase
 
+> **Nota de atualização (01/10/2026):** este documento preserva decisões históricas da migração. As referências abaixo a Anthropic, SDK, chave de API ou batch não fazem mais parte da ASA atual; a assistente foi definida para operar sem modelo e sem chave. Não configure essas variáveis para executar o MyASA.
+
 > **Status:** Preparação concluída. A migração em si ainda não foi executada.  
 > Este documento descreve todos os passos necessários para mover o projeto do Replit para Vercel (web-admin) + Supabase (banco de dados) + Railway/Render/Fly.io (API Express).
 

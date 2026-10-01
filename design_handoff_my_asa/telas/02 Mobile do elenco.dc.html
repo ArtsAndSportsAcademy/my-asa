@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #f4f2fa; font-family: Manrope, system-ui, sans-serif; color: #1b1630; }
+  a { color: #6C2BF2; text-decoration: none; }
+  a:hover { color: #4a17b8; text-decoration: underline; }
+  button:focus-visible, a:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3px solid #6C2BF2; outline-offset: 2px; border-radius: 8px; }
+  [style*="scrollbar-width:none"]::-webkit-scrollbar { display: none; }
+</style>
+</helmet>
+
+<div style="max-width:1560px;margin:0 auto;padding:44px 28px 110px;display:flex;flex-direction:column;gap:40px">
+
+  <header style="display:flex;align-items:flex-start;gap:18px">
+    <img src="assets/asa/bom-dia.png" alt="ASA" style="width:60px;height:60px;object-fit:contain;flex:none;margin-top:2px" />
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:#6b6482">Onda 1 · item 5</div>
+      <h1 style="font-family:Outfit,sans-serif;font-size:38px;line-height:1.06;font-weight:700;margin:0;letter-spacing:-0.02em">O celular, nos quatro perfis</h1>
+      <p style="margin:0;max-width:76ch;font-size:15px;line-height:1.6;color:#5b5473;text-wrap:pretty">Mesma casca para todo mundo: <strong>abas fixas embaixo</strong> nas telas de topo, <strong>voltar</strong> nas telas internas, e a aba <strong>Mais</strong> como saída para qualquer módulo. O que muda entre perfis é o conteúdo — não a navegação.</p>
+    </div>
+  </header>
+
+  <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:#fff;border:1px solid #e6e1f2;border-radius:14px;padding:12px 14px;position:sticky;top:0;z-index:8">
+    <span style="font-size:12.5px;font-weight:700;color:#4b4465;flex:none">Ver como</span>
+    <sc-for list="{{ profileTabs }}" as="p">
+      <button type="button" onClick="{{ p.onClick }}" style="{{ p.style }}">
+        <span style="{{ p.dotStyle }}"></span>{{ p.label }}
+      </button>
+    </sc-for>
+    <span style="flex:1"></span>
+    <span style="font-size:12.5px;color:#6b6482;text-wrap:pretty">{{ profileNote }}</span>
+  </div>
+
+  <section style="display:flex;flex-wrap:wrap;gap:30px;align-items:flex-start">
+    <sc-for list="{{ screens }}" as="s">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;flex-direction:column;gap:3px;max-width:390px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#6C2BF2">{{ s.kicker }}</span>
+          <span style="font-size:13px;color:#5b5473;line-height:1.45;text-wrap:pretty">{{ s.why }}</span>
+        </div>
+
+        <div style="width:390px;height:844px;border-radius:38px;border:1px solid #ddd6ee;background:#f7f5fd;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+
+          <sc-if value="{{ s.isHome }}" hint-placeholder-val="{{ false }}">
+            <div style="background:linear-gradient(150deg,#1c1440,#2f2170);color:#fff;padding:16px 18px 20px;display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;align-items:center;gap:11px">
+                <span style="{{ s.avatarStyle }}">{{ s.initials }}</span>
+                <span style="flex:1;display:flex;flex-direction:column;gap:1px;min-width:0">
+                  <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">{{ s.greeting }}</span>
+                  <span style="font-size:11.5px;color:#c8bff0">{{ s.sub }}</span>
+                </span>
+                <button type="button" onClick="{{ s.onBell }}" style="width:44px;height:44px;border-radius:13px;background:rgba(255,255,255,.12);border:none;color:#fff;display:flex;align-items:center;justify-content:center;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;flex:none;cursor:pointer">{{ s.bell }}</button>
+              </div>
+              <sc-if value="{{ s.hero }}" hint-placeholder-val="{{ false }}">
+                <div style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);border-radius:18px;padding:16px 17px;display:flex;flex-direction:column;gap:12px">
+                  <div style="display:flex;align-items:baseline;gap:10px">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#bfb4e8;white-space:nowrap;flex:none">{{ s.hero.kicker }}</span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#7bdcc9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">{{ s.hero.flag }}</span>
+                  </div>
+                  <div style="display:flex;align-items:flex-start;gap:14px">
+                    <span style="{{ s.hero.bigStyle }}">{{ s.hero.big }}</span>
+                    <span style="flex:1;display:flex;flex-direction:column;gap:3px;min-width:0">
+                      <span style="font-family:Outfit,sans-serif;font-size:18px;font-weight:600;line-height:1.2;text-wrap:pretty">{{ s.hero.title }}</span>
+                      <span style="font-size:12.5px;color:#c8bff0;line-height:1.4">{{ s.hero.meta }}</span>
+                    </span>
+                  </div>
+                  <button type="button" onClick="{{ s.hero.onClick }}" style="{{ s.hero.btnStyle }}">{{ s.hero.btn }}</button>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ s.isInner }}" hint-collapse="true">
+            <div style="background:#fff;border-bottom:1px solid #e9e4f5;padding:14px 16px;display:flex;align-items:center;gap:10px">
+              <button type="button" onClick="{{ s.onBack }}" style="width:44px;height:44px;flex:none;border:1px solid #e6e1f2;border-radius:13px;background:#fff;color:#4b4465;font-size:19px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center">‹</button>
+              <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px">
+                <span style="font-family:Outfit,sans-serif;font-size:18px;font-weight:600;letter-spacing:-0.01em">{{ s.title }}</span>
+                <sc-if value="{{ s.titleSub }}" hint-collapse="true">
+                  <span style="font-size:11.5px;color:#6b6482">{{ s.titleSub }}</span>
+                </sc-if>
+              </span>
+              <sc-if value="{{ s.badge }}" hint-collapse="true">
+                <span style="{{ s.badgeStyle }}">{{ s.badge }}</span>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ s.isTop }}" hint-collapse="true">
+            <div style="background:#fff;border-bottom:1px solid #e9e4f5;padding:14px 16px;display:flex;align-items:center;gap:10px">
+              <span style="flex:1;min-width:0;font-family:Outfit,sans-serif;font-size:19px;font-weight:600;letter-spacing:-0.01em">{{ s.title }}</span>
+              <sc-if value="{{ s.badge }}" hint-collapse="true">
+                <span style="{{ s.badgeStyle }}">{{ s.badge }}</span>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <div style="flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;-ms-overflow-style:none;padding:16px;display:flex;flex-direction:column;gap:16px">
+            <sc-for list="{{ s.groups }}" as="g">
+              <div style="display:flex;flex-direction:column;gap:9px">
+                <sc-if value="{{ g.title }}" hint-collapse="true">
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">{{ g.title }}</span>
+                </sc-if>
+                <sc-for list="{{ g.rows }}" as="r">
+                  <button type="button" onClick="{{ r.onClick }}" style="{{ r.rowStyle }}">
+                    <sc-if value="{{ r.lead }}" hint-collapse="true">
+                      <span style="{{ r.leadStyle }}">{{ r.lead }}</span>
+                    </sc-if>
+                    <sc-if value="{{ r.bar }}" hint-collapse="true">
+                      <span style="{{ r.barStyle }}"></span>
+                    </sc-if>
+                    <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+                      <span style="{{ r.nameStyle }}">{{ r.name }}</span>
+                      <sc-if value="{{ r.meta }}" hint-collapse="true">
+                        <span style="font-size:11.5px;color:#6b6482;line-height:1.45;text-wrap:pretty">{{ r.meta }}</span>
+                      </sc-if>
+                    </span>
+                    <sc-if value="{{ r.tag }}" hint-collapse="true">
+                      <span style="{{ r.tagStyle }}">{{ r.tag }}</span>
+                    </sc-if>
+                    <sc-if value="{{ r.chev }}" hint-collapse="true">
+                      <span style="flex:none;font-size:17px;color:#6b6482">›</span>
+                    </sc-if>
+                  </button>
+                </sc-for>
+                <sc-if value="{{ g.note }}" hint-collapse="true">
+                  <span style="font-size:11.5px;line-height:1.5;color:#6b6482;text-wrap:pretty">{{ g.note }}</span>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+
+          <sc-if value="{{ s.showTabs }}" hint-collapse="true">
+            <div style="display:flex;border-top:1px solid #e9e4f5;background:#fff;padding:8px 6px 12px">
+              <sc-for list="{{ s.tabs }}" as="t">
+                <button type="button" onClick="{{ t.onClick }}" style="{{ t.style }}">
+                  <span style="{{ t.iconStyle }}"></span>
+                  <span style="font-size:10.5px;font-weight:600">{{ t.label }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-for>
+  </section>
+
+  <section style="display:flex;flex-wrap:wrap;gap:14px">
+    <div style="flex:1 1 340px;min-width:300px;background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:9px">
+      <span style="font-size:14.5px;font-weight:700">Regra de navegação, igual nos quatro perfis</span>
+      <sc-for list="{{ navRules }}" as="n">
+        <span style="font-size:13px;line-height:1.5;color:#5b5473;text-wrap:pretty">— {{ n }}</span>
+      </sc-for>
+    </div>
+    <div style="flex:1 1 340px;min-width:300px;background:#f6f4fc;border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:9px">
+      <span style="font-size:14.5px;font-weight:700">O que muda de perfil para perfil</span>
+      <sc-for list="{{ profileDiff }}" as="d">
+        <span style="font-size:13px;line-height:1.5;color:#5b5473;text-wrap:pretty">— {{ d }}</span>
+      </sc-for>
+    </div>
+  </section>
+
+  <sc-if value="{{ toastMsg }}" hint-collapse="true">
+    <div style="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:12px;background:#1c1440;color:#fff;border-radius:14px;padding:13px 18px;box-shadow:0 18px 40px -20px rgba(20,8,60,.7);max-width:560px">
+      <span style="font-size:13.5px;line-height:1.45;flex:1;text-wrap:pretty">{{ toastMsg }}</span>
+      <button type="button" onClick="{{ onFecharToast }}" style="border:none;background:rgba(255,255,255,.16);color:#fff;border-radius:9px;width:28px;height:28px;font-size:13px;cursor:pointer;flex:none">✕</button>
+    </div>
+  </sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1560},&quot;perfil&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;MEM&quot;,&quot;SUP&quot;,&quot;ADM&quot;,&quot;DIR&quot;],&quot;default&quot;:&quot;MEM&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Contexto&quot;}}">
+const HREF = {
+  escalas: "15%20Escalas.dc.html",
+  meudia: "17%20Meu%20Dia.dc.html",
+  folgas: "18%20Folgas.dc.html",
+  checkin: "19%20Check-in%20e%20ocorr%C3%AAncias.dc.html",
+  avisos: "22%20Avisos%20e%20Mural.dc.html",
+  mensagens: "23%20Mensagens.dc.html",
+  biblioteca: "24%20Biblioteca.dc.html",
+  perfil: "28%20Perfil%20e%20configura%C3%A7%C3%B5es.dc.html",
+  shows: "13%20Shows.dc.html",
+  livro: "14%20Livro%20do%20Dia.dc.html",
+  painel: "16%20Painel%20e%20indicadores.dc.html",
+  agenda: "20%20Agenda.dc.html",
+  pessoas: "07%20Pessoas.dc.html",
+  tarefas: "10%20Responsabilidades%20e%20Tarefas.dc.html",
+  reconhec: "25%20Reconhecimentos.dc.html",
+  asa: "27%20Assistente%20ASA.dc.html"
+};
+
+const MAIS_BASE = [
+  { title: "o meu", rows: [
+    ["Meu perfil e configurações", "foto, senha, notificações", "perfil"],
+    ["Minhas folgas", "próximas e pedidos", "folgas"],
+    ["Meus reconhecimentos", "", "reconhec"]
+  ]},
+  { title: "a casa", rows: [
+    ["Avisos e Mural", "", "avisos"],
+    ["Mensagens", "", "mensagens"],
+    ["Biblioteca", "documentos e procedimentos", "biblioteca"],
+    ["Shows", "cenas, personagens e links", "shows"]
+  ]},
+  { title: "ajuda", rows: [
+    ["Perguntar à ASA", "", "asa"],
+    ["Ajuda e contato", "versão 1.0.0", null]
+  ]}
+];
+
+const MAIS_GESTAO = { title: "gestão", rows: [
+  ["Escalas", "montar, publicar e pedidos", "escalas"],
+  ["Livro do Dia", "", "livro"],
+  ["Painel e indicadores", "", "painel"],
+  ["Agenda", "", "agenda"],
+  ["Pessoas", "", "pessoas"],
+  ["Responsabilidades e tarefas", "", "tarefas"]
+]};
+
+const PROFILES = {
+  MEM: {
+    label: "Elenco", dot: "#6C2BF2", initials: "JU", who: "Julia",
+    note: "quatro abas: Hoje · Escala · Presença · Mais",
+    tabs: ["Hoje", "Escala", "Presença", "Mais"],
+    diff: [
+      "Elenco vê só o que é dele: sua escala, sua presença, suas folgas.",
+      "Supervisão ganha a aba Equipe — quem falta, quem não marcou, o que decidir.",
+      "Administração e Direção têm Painel no lugar da Presença; a Direção não age, só olha.",
+      "A aba Mais muda de tamanho: o elenco vê 9 itens, a Administração vê 15."
+    ]
+  },
+  SUP: {
+    label: "Supervisão", dot: "#0E8F86", initials: "DE", who: "Deborah",
+    note: "cinco abas: Hoje · Escala · Equipe · Mural · Mais",
+    tabs: ["Hoje", "Escala", "Equipe", "Mural", "Mais"],
+    diff: [
+      "A supervisão também está escalada — a aba Escala mostra a dela, não a dos outros.",
+      "Equipe é a tela de decisão: falta, atraso, troca pedida, posição sem cobertura.",
+      "Só aparece a área dela. “Toda a ASA” existe no computador, em leitura.",
+      "Motivo de doença e acidente ela vê; os outros perfis não."
+    ]
+  },
+  ADM: {
+    label: "Administração", dot: "#C97A17", initials: "BA", who: "Barbara",
+    note: "cinco abas: Hoje · Painel · Escalas · Mural · Mais",
+    tabs: ["Hoje", "Painel", "Escalas", "Mural", "Mais"],
+    diff: [
+      "Administração no celular é acompanhamento e desbloqueio, não montagem.",
+      "Montar escala, folga e responsabilidade continua sendo no computador.",
+      "O que ela resolve pelo celular: publicar, aprovar folga, redefinir senha, publicar aviso.",
+      "É o único perfil que vê pendência de outras áreas."
+    ]
+  },
+  DIR: {
+    label: "Direção", dot: "#B4302F", initials: "CG", who: "Cris",
+    note: "cinco abas: Hoje · Painel · Agenda · Mural · Mais · tudo em leitura",
+    tabs: ["Hoje", "Painel", "Agenda", "Mural", "Mais"],
+    diff: [
+      "Direção é leitura. Nenhum botão que muda escala, folga ou pessoa.",
+      "O celular dela responde uma pergunta: o show de hoje acontece inteiro?",
+      "Sem histórico individual de ninguém — só o impacto no show.",
+      "Pedir alguma coisa é por mensagem, para a pessoa responsável."
+    ]
+  }
+};
+
+const DATA = {
+  MEM: {
+    home: {
+      greeting: "Bom dia, Julia", sub: "quinta, 10 de setembro · Snowland", bell: "3",
+      hero: { kicker: "agora", flag: "em 12 min", big: "09:40", title: "Treino gelo", meta: "Pista · até 11:00 · com Carol e Dani", btn: "Marcar presença", done: "Presença marcada às 09:28" },
+      groups: [
+        { title: "depois disso", rows: [
+          ["11:00", "Nanook", "Portão azul · 20 min", null, "#6C2BF2", "escalas"],
+          ["11:30", "Almoço", "Refeitório", null, "#0a6f68", null],
+          ["12:30", "Musical — Igno", "Teatro · trocou hoje", "mudou", "#C97A17", "shows"],
+          ["14:00", "Show de patinação", "Pista", null, "#6C2BF2", "livro"]
+        ]},
+        { title: "mudou desde ontem", rows: [
+          [null, "Seu Musical 12:30 virou Igno", "você fazia Mensageira · ver a cena", null, "#C97A17", "shows"]
+        ]},
+        { title: "no mural", rows: [
+          [null, "Cássia achou luvas pretas", "está com a Mariza", null, "#c9bff0", "avisos"]
+        ]}
+      ]
+    },
+    core: {
+      title: "Minha escala", titleSub: "quinta, 10/09 · Snowland", badge: "publicada", badgeTone: "#0a6f68",
+      groups: [{ title: "o dia todo", rows: [
+        ["08:40", "Ensaio bailarinos", "Sala 2 · com Victor", null, "#6C2BF2", null],
+        ["09:40", "Treino gelo", "Pista · Deborah acompanha", "agora", "#6C2BF2", null],
+        ["11:00", "Nanook", "Portão azul", null, "#6C2BF2", null],
+        ["11:30", "Almoço", "Refeitório", null, "#0a6f68", null],
+        ["12:30", "Musical — Igno", "Teatro", "mudou", "#C97A17", null],
+        ["14:00", "Show de patinação", "Pista", null, "#6C2BF2", "livro"],
+        ["15:15", "Flashmob", "Praça central", null, "#6C2BF2", null],
+        ["16:00", "Fisioterapia", "Sala de apoio", null, "#0a6f68", null]
+      ], note: "Salva no celular às 07:12 — abre mesmo sem sinal." }]
+    },
+    action: {
+      title: "Presença", badge: "fecha 09:55", badgeTone: "#C97A17",
+      groups: [
+        { title: "hoje", rows: [
+          [null, "Estou aqui", "um toque confirma a sua presença", "marcar", "#6C2BF2", null],
+          [null, "Não vou conseguir ir", "você escolhe o motivo e a Deborah é avisada", null, "#C2334D", null]
+        ], note: "Só a sua supervisão e a Administração veem o motivo. Para os demais aparece “ausência justificada”." },
+        { title: "seus últimos dias", rows: [
+          [null, "Ontem, 09/09", "", "no horário", "#0a6f68", null],
+          [null, "Terça, 08/09", "", "no horário", "#0a6f68", null],
+          [null, "Segunda, 07/09", "", "atraso 12min", "#B36A0C", null],
+          [null, "Domingo, 06/09", "", "folga", "#6b6482", null]
+        ]}
+      ]
+    }
+  },
+  SUP: {
+    home: {
+      greeting: "Bom dia, Deborah", sub: "quinta, 10/09 · Patinadores · Snowland", bell: "6",
+      hero: { kicker: "resolver", flag: "antes das 11h", big: "2", title: "Posições sem cobertura", meta: "11:00 e 16:00 — Cássia de folga", btn: "Resolver agora", done: "Cobertura enviada para aprovação" },
+      groups: [
+        { title: "a sua área hoje", rows: [
+          [null, "Sem check-in", "2 pessoas · passagem em 18 min", "cutucar", "#C2334D", "checkin"],
+          [null, "Troca pedida", "Mariza ↔ Matheus, 14:00", "decidir", "#C97A17", "escalas"],
+          [null, "Escala de amanhã", "rascunho pronto · falta você aprovar", "aprovar", "#6C2BF2", "escalas"]
+        ]},
+        { title: "você também está escalada", rows: [
+          ["09:40", "Acompanhar treino gelo", "Pista", null, "#0E8F86", null],
+          ["15:00", "Fisioterapia", "Sala de apoio", null, "#0a6f68", null]
+        ]}
+      ]
+    },
+    core: {
+      title: "Minha escala", titleSub: "quinta, 10/09 · Snowland", badge: "publicada", badgeTone: "#0a6f68",
+      groups: [{ title: "o seu dia", rows: [
+        ["08:40", "Reunião de área", "Sala adm", null, "#0E8F86", null],
+        ["09:40", "Acompanhar treino gelo", "Pista", "agora", "#0E8F86", null],
+        ["11:00", "Acompanhar Nanook", "Portão azul", null, "#0E8F86", null],
+        ["12:00", "Almoço", "Refeitório", null, "#0a6f68", null],
+        ["13:00", "Passagem do show", "Pista", null, "#0E8F86", null],
+        ["15:00", "Fisioterapia", "Sala de apoio", null, "#0a6f68", null],
+        ["16:00", "Ensaio musical", "Teatro", null, "#0E8F86", null]
+      ], note: "Supervisor também patina — esta aba é a escala dela, não a dos outros." }]
+    },
+    action: {
+      title: "Equipe", titleSub: "Patinadores · 14 pessoas", badge: "4 a resolver", badgeTone: "#C2334D",
+      groups: [
+        { title: "agora", rows: [
+          [null, "Cássia", "de folga · deixa 11:00 e 16:00 sem ninguém", "cobrir", "#C2334D", null],
+          [null, "Arthur", "sem check-in · chamada em 18 min", "cutucar", "#C2334D", null],
+          [null, "Izabel", "ocorrência aberta hoje", "ver motivo", "#C97A17", null],
+          [null, "Mariza ↔ Matheus", "troca pedida para 14:00", "decidir", "#C97A17", null]
+        ]},
+        { title: "o resto da área", rows: [
+          [null, "10 pessoas em dia", "presença marcada, sem pendência", "ok", "#0a6f68", null]
+        ], note: "Só a sua área. “Toda a ASA” existe no computador, em leitura." }
+      ]
+    }
+  },
+  ADM: {
+    home: {
+      greeting: "Bom dia, Barbara", sub: "quinta, 10/09 · toda a ASA", bell: "11",
+      hero: { kicker: "trava o dia", flag: "show às 20h", big: "1", title: "Hotelaria ainda em rascunho", meta: "Noite Alemã · ninguém aprovou", btn: "Publicar agora", done: "Escala de Hotelaria publicada" },
+      groups: [
+        { title: "esperando você", rows: [
+          [null, "3 folgas para aprovar", "Julia, Miguel e Sarah", "aprovar", "#6C2BF2", "folgas"],
+          [null, "2 senhas para redefinir", "Kauã e Simon", "redefinir", "#C97A17", "pessoas"],
+          [null, "Aviso do uniforme", "18 de 42 deram ciente", "ver quem", "#C97A17", "avisos"]
+        ]},
+        { title: "o dia nos três locais", rows: [
+          [null, "Snowland", "42 escalados · 2 sem check-in", "ok", "#0a6f68", "escalas"],
+          [null, "Acquamotion", "9 escalados · tudo em dia", "ok", "#0a6f68", "escalas"],
+          [null, "Hotelaria", "escala em rascunho", "travado", "#C2334D", "escalas"]
+        ]}
+      ]
+    },
+    core: {
+      title: "Painel", titleSub: "hoje · toda a ASA", badge: "3 alertas", badgeTone: "#C2334D",
+      groups: [
+        { title: "hoje", rows: [
+          [null, "Presença", "51 de 53 marcaram", "96%", "#0a6f68", "checkin"],
+          [null, "Escalas publicadas", "2 de 3 locais", "travado", "#C2334D", "escalas"],
+          [null, "Avisos sem ciente", "24 pessoas no uniforme", "cobrar", "#C97A17", "avisos"],
+          [null, "Tarefas atrasadas", "6 em Produção, 3 semanas seguidas", "ver", "#C97A17", "tarefas"]
+        ]},
+        { title: "o mês", rows: [
+          [null, "Folgas pedidas", "14 · 11 aprovadas", "", "#6b6482", "folgas"],
+          [null, "Ocorrências", "5 · 2 de saúde", "", "#6b6482", "checkin"]
+        ], note: "Todo número abre a tela onde se resolve." }
+      ]
+    },
+    action: {
+      title: "Escalas", titleSub: "três locais", badge: "1 travada", badgeTone: "#C2334D",
+      groups: [
+        { title: "amanhã", rows: [
+          [null, "Snowland", "publicada às 18:02 por Deborah", "ok", "#0a6f68", "escalas"],
+          [null, "Acquamotion", "publicada às 17:40 por Stephani", "ok", "#0a6f68", "escalas"],
+          [null, "Hotelaria — Noite Alemã", "rascunho · ninguém aprovou", "publicar", "#C2334D", "escalas"]
+        ], note: "Montar escala é no computador. Pelo celular você publica, aprova e desbloqueia." },
+        { title: "pedidos", rows: [
+          [null, "Troca Mariza ↔ Matheus", "Deborah já aprovou", "confirmar", "#6C2BF2", "escalas"],
+          [null, "Folga extra de Sarah", "05/10", "decidir", "#C97A17", "folgas"]
+        ]}
+      ]
+    }
+  },
+  DIR: {
+    home: {
+      greeting: "Bom dia, Cris", sub: "quinta, 10/09 · leitura", bell: "2",
+      hero: { kicker: "o show de hoje", flag: "acontece inteiro", big: "✓", title: "Patinação 14:00", meta: "14 escalados · 2 faltas cobertas", btn: "Ver o livro do dia", done: "Livro do dia aberto" },
+      groups: [
+        { title: "hoje, em uma linha por local", rows: [
+          [null, "Snowland", "show completo · 2 faltas cobertas", "ok", "#0a6f68", "livro"],
+          [null, "Acquamotion", "Acquashow duo confirmado", "ok", "#0a6f68", "livro"],
+          [null, "Hotelaria", "Noite Alemã às 20h · escala em rascunho", "atenção", "#C97A17", "escalas"]
+        ]},
+        { title: "o que eu deveria saber", rows: [
+          [null, "Produção acumula 6 tarefas atrasadas", "terceira semana seguida", null, "#C97A17", "painel"],
+          [null, "Aniversário da Deborah em 2 dias", "4 anos de casa", null, "#c9bff0", "pessoas"]
+        ], note: "Nenhum botão aqui muda escala, folga ou pessoa. Pedir é por mensagem." }
+      ]
+    },
+    core: {
+      title: "Painel", titleSub: "leitura · sem histórico individual", badge: "setembro", badgeTone: "#6b6482",
+      groups: [
+        { title: "os shows", rows: [
+          [null, "Shows completos", "28 de 30 no mês", "93%", "#0a6f68", null],
+          [null, "Shows com falta descoberta", "2 · ambos em Hotelaria", "ver", "#C97A17", null]
+        ]},
+        { title: "a casa", rows: [
+          [null, "Presença média", "setembro", "95%", "#0a6f68", null],
+          [null, "Pessoas na academia", "58 · 42 escaladas hoje", "", "#6b6482", null],
+          [null, "Reconhecimentos no mês", "17", "", "#6b6482", "reconhec"]
+        ], note: "Impacto no show, não ficha de ninguém." }
+      ]
+    },
+    action: {
+      title: "Agenda", titleSub: "sua semana", badge: "leitura", badgeTone: "#B36A0C",
+      groups: [
+        { title: "hoje", rows: [
+          ["10:00", "Reunião com a Barbara", "Sala adm", null, "#B4302F", null],
+          ["14:00", "Show de patinação", "Pista · acompanhar", null, "#B4302F", "livro"]
+        ]},
+        { title: "esta semana", rows: [
+          [null, "sex 11", "Noite Alemã · Hotelaria, 20h", null, "#B4302F", null],
+          [null, "sáb 12", "sem compromisso marcado", null, "#6b6482", null],
+          [null, "dom 13", "Acquashow · Acquamotion, 15h", null, "#B4302F", null]
+        ], note: "Para marcar com alguém, a Direção pede pela Agenda no computador." }
+      ]
+    }
+  }
+};
+
+const MURAL = {
+  title: "Mural", badge: "1 pendente", badgeTone: "#C2334D",
+  groups: [
+    { title: "pede o seu ciente", rows: [
+      [null, "Uniforme novo a partir de segunda", "Barbara Sorroche · há 2h · retirada com a Mariza até sexta", "dar ciente", "#C2334D", null]
+    ]},
+    { title: "mural", rows: [
+      [null, "Cássia · ontem", "Achei um par de luvas pretas no camarim 2. Está com a Mariza.", null, "#c9bff0", null],
+      [null, "Rodrigo · 2 dias", "Props do Natal chegaram. Quem for do musical, passa lá antes de sexta.", null, "#c9bff0", null],
+      [null, "Deborah · 3 dias", "Obrigada pelo empenho de domingo — a casa estava cheia e o show saiu redondo.", null, "#c9bff0", null]
+    ]}
+  ]
+};
+
+class Component extends DCLogic {
+  state = { perfil: null, heroDone: {}, toast: null };
+
+  renderVals() {
+    const key = this.state.perfil || this.props.perfil || "MEM";
+    const P = PROFILES[key];
+    const D = DATA[key];
+    const isDir = key === "DIR";
+    const gestao = key === "ADM" || key === "SUP";
+
+    const toast = m => () => this.setState({ toast: m });
+
+    const profileTabs = Object.keys(PROFILES).map(k => {
+      const on = k === key;
+      return {
+        label: PROFILES[k].label,
+        onClick: () => this.setState({ perfil: k, heroDone: {} }),
+        dotStyle: "width:9px;height:9px;border-radius:50%;flex:none;background:" + PROFILES[k].dot,
+        style: "display:flex;align-items:center;gap:8px;min-height:40px;padding:0 15px;border-radius:999px;cursor:pointer;font-family:Manrope,sans-serif;font-size:13px;font-weight:600;" +
+          (on ? "border:1.5px solid " + PROFILES[k].dot + ";background:" + PROFILES[k].dot + "14;color:#2b2440;" : "border:1px solid #e6e1f2;background:#fff;color:#5b5473;")
+      };
+    });
+
+    const tabsFor = current => P.tabs.map(t => {
+      const on = t === current;
+      return {
+        label: t,
+        onClick: t === "Mais" ? toast("A aba Mais é a saída de qualquer tela: menu completo com tudo que o perfil alcança.") : toast("Aba " + t + " — na quarta moldura você vê o menu completo deste perfil."),
+        style: "flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 2px;min-height:48px;box-sizing:border-box;border:none;background:none;cursor:pointer;font-family:Manrope,sans-serif;color:" +
+          (on ? P.dot : "#6b6482"),
+        iconStyle: "width:22px;height:22px;border-radius:8px;display:block;background:" + (on ? P.dot : "#d8d2e8")
+      };
+    });
+
+    const VERB = {
+      "cobrir": "Escolhe quem cobre a posição, entre quem está livre neste horário e já fez o personagem antes.",
+      "cutucar": "Manda um lembrete de check-in para quem ainda não marcou. Só a supervisão da pessoa pode.",
+      "ver motivo": "Abre a ocorrência com o motivo. Doença e acidente só você e a Administração veem.",
+      "decidir": "Aceitar ou negar. As duas pessoas são notificadas e a escala se ajusta sozinha.",
+      "aprovar": "Aprova o que está esperando. Quem pediu recebe notificação na hora.",
+      "redefinir": "Define uma senha provisória e mostra para você passar à pessoa. Ela cria a dela ao entrar.",
+      "publicar": "Publica a escala agora, sem esperar o horário automático. Todos os escalados são notificados.",
+      "confirmar": "Confirma a troca já aprovada pela supervisão e fecha o pedido.",
+      "ver quem": "Lista nominal de quem ainda não deu ciente, com o tempo desde a publicação.",
+      "dar ciente": "Registra que você leu. A Administração vê seu nome na lista de cientes.",
+      "cobrar": "Manda lembrete para quem ainda não deu ciente.",
+      "marcar": "Confirma a sua presença agora, com a hora do toque.",
+      "ver": "Abre a lista completa por trás deste número.",
+      "atenção": "Abre o que está pendente neste local.",
+      "travado": "Mostra o que está travando a publicação — quem falta aprovar.",
+      "ajustada": "Mostra a formação escolhida para o número de gente presente hoje.",
+      "sugestão": "A ASA sugeriu com base em quem está livre e já fez a posição.",
+      "antes": "Mostra o antes e o depois da mudança, lado a lado.",
+      "ok": "Sem pendência aqui.",
+      "folga": "Folga publicada — a pessoa sai da escala do dia.",
+      "mudou": "Abre a linha que mudou, com o antes e o depois."
+    };
+
+    const mkRows = rows => rows.map(r => {
+      const lead = r[0], name = r[1], meta = r[2], tag = r[3], tone = r[4], link = r[5];
+      const href = link ? HREF[link] : null;
+      const verb = tag && VERB[tag];
+      return {
+        onClick: href
+          ? () => { window.location.href = href; }
+          : verb
+            ? toast(VERB[tag])
+            : toast(name + (meta ? " — " + meta : "")),
+        lead: lead,
+        leadStyle: "font-family:Outfit,sans-serif;font-size:16px;font-weight:700;letter-spacing:-0.01em;flex:none;min-width:52px;color:#1b1630",
+        bar: lead ? null : true,
+        barStyle: "width:4px;align-self:stretch;border-radius:99px;flex:none;background:" + tone,
+        name: name,
+        nameStyle: "font-size:14px;font-weight:600;line-height:1.3;text-wrap:pretty;color:#1b1630",
+        meta: meta || null,
+        tag: tag,
+        tagStyle: "flex:none;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 9px;border-radius:6px;white-space:nowrap;color:" +
+          tone + ";background:" + tone + "1a",
+        chev: href ? true : null,
+        href: href,
+        rowStyle: "display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:#fff;border:1px solid #e9e4f5;border-radius:14px;padding:13px 15px;min-height:48px;box-sizing:border-box;cursor:pointer;font-family:Manrope,sans-serif;color:inherit"
+      };
+    });
+
+    const mkGroups = groups => groups.map(g => ({
+      title: g.title || null,
+      rows: g.__ready ? g.rows : mkRows(g.rows),
+      note: g.note || null
+    }));
+
+    const badgeStyle = tone => "flex:none;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 10px;border-radius:999px;white-space:nowrap;color:" +
+      tone + ";background:" + tone + "1a";
+
+    const heroKey = key + ":home";
+    const done = !!this.state.heroDone[heroKey];
+    const h = D.home.hero;
+
+    const home = {
+      kicker: "Hoje · " + P.label,
+      why: "Primeira tela depois do login. Abre o que precisa de você, com o botão junto.",
+      isHome: true, isInner: null, isTop: null, showTabs: true, tabs: tabsFor("Hoje"),
+      initials: P.initials,
+      avatarStyle: "width:38px;height:38px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-family:Outfit,sans-serif;font-size:14px;font-weight:700;color:#fff;background:linear-gradient(135deg,#8b5cf6,#3b45d9)",
+      greeting: D.home.greeting, sub: D.home.sub, bell: D.home.bell,
+      onBell: toast("Central de notificações: o que exige ação sua fica no topo, com o botão junto."),
+      hero: {
+        kicker: h.kicker, flag: done ? "resolvido" : h.flag,
+        big: h.big,
+        bigStyle: "font-family:Outfit,sans-serif;font-size:" + (h.big.length > 2 ? "34px" : "44px") + ";font-weight:700;line-height:1;letter-spacing:-0.02em;flex:none",
+        title: h.title, meta: h.meta,
+        btn: done ? h.done : h.btn,
+        btnStyle: "width:100%;min-height:52px;border:none;border-radius:14px;font-family:Manrope,sans-serif;font-size:15.5px;font-weight:700;cursor:pointer;" +
+          (done ? "background:rgba(122,220,201,.18);color:#7bdcc9;" : "background:#fff;color:#2b1f63;"),
+        onClick: () => this.setState(s => ({ heroDone: Object.assign({}, s.heroDone, { [heroKey]: !s.heroDone[heroKey] }) }))
+      },
+      groups: mkGroups(D.home.groups),
+      title: null, titleSub: null, badge: null, badgeStyle: "", onBack: null
+    };
+
+    const inner = (d, kicker, why, tabLabel) => ({
+      kicker: kicker, why: why,
+      isHome: null, isInner: null, isTop: true, showTabs: true, tabs: tabsFor(tabLabel),
+      title: d.title, titleSub: d.titleSub || null,
+      badge: d.badge || null, badgeStyle: badgeStyle(d.badgeTone || "#6b6482"),
+      groups: mkGroups(d.groups),
+      hero: null, initials: "", avatarStyle: "", greeting: "", sub: "", bell: "", onBell: null, onBack: null
+    });
+
+    const maisGroups = (gestao ? [MAIS_GESTAO].concat(MAIS_BASE) : MAIS_BASE).map(g => ({
+      title: g.title,
+      rows: g.rows.map(r => ({
+        onClick: r[2]
+          ? () => { window.location.href = HREF[r[2]]; }
+          : toast("Ajuda, contato da Administração e versão do app. Desenhada em 01 Entrada, notificações e estados."),
+        lead: null, leadStyle: "", bar: null, barStyle: "",
+        name: r[0],
+        nameStyle: "font-size:14.5px;font-weight:600;line-height:1.3;color:#1b1630",
+        meta: r[1] || null,
+        tag: null, tagStyle: "",
+        chev: true,
+        href: r[2] ? HREF[r[2]] : null,
+        rowStyle: "display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:#fff;border:1px solid #e9e4f5;border-radius:14px;padding:13px 15px;min-height:48px;box-sizing:border-box;cursor:pointer;font-family:Manrope,sans-serif;color:inherit"
+      })),
+      note: null
+    }));
+
+    const mais = {
+      kicker: "Mais · " + P.label,
+      why: "A saída de qualquer tela. Cada linha abre um módulo de verdade — nada de beco sem saída.",
+      isHome: null, isInner: null, isTop: true, showTabs: true, tabs: tabsFor("Mais"),
+      title: "Mais", titleSub: P.label + " · " + (gestao ? "15 itens" : isDir ? "10 itens" : "9 itens"),
+      badge: null, badgeStyle: "",
+      groups: maisGroups,
+      hero: null, initials: "", avatarStyle: "", greeting: "", sub: "", bell: "", onBell: null, onBack: null
+    };
+
+    const detalhe = {
+      kicker: "Tela interna · voltar",
+      why: "Qualquer tela aberta de dentro de outra troca as abas por um voltar de 44 px. Nunca as duas coisas juntas.",
+      isHome: null, isInner: true, isTop: null, showTabs: null, tabs: [],
+      title: isDir ? "Livro do dia" : key === "MEM" ? "Musical — Igno" : "Cássia",
+      titleSub: isDir ? "Patinação 14:00 · Snowland" : key === "MEM" ? "Teatro · 12:30 · trocou hoje" : "Patinadores · de folga hoje",
+      badge: "aberto de Hoje", badgeTone: "#6b6482", badgeStyle: badgeStyle("#6b6482"),
+      onBack: toast("Voltar devolve para a tela de onde você veio, com a rolagem no mesmo lugar."),
+      groups: mkGroups(
+        isDir
+          ? [{ title: "as cenas de hoje", rows: [
+              [null, "Abertura", "6 pessoas · formação de 6", "ok", "#0a6f68", null],
+              [null, "Molduras", "4 pessoas · formação reduzida", "ajustada", "#C97A17", null],
+              [null, "Final", "14 pessoas · completo", "ok", "#0a6f68", null]
+            ], note: "Direção vê o livro, não edita." }]
+          : key === "MEM"
+            ? [{ title: "a sua cena", rows: [
+                [null, "Sua posição", "entrada pela direita, 2º tempo", null, "#6C2BF2", null],
+                [null, "Antes era", "Mensageira — trocou hoje às 08:12", "antes", "#C97A17", null],
+                [null, "Quem contracena", "Carol (Astrid) e Arthur (Guardião)", null, "#6C2BF2", null]
+              ], note: "Aberto do aviso de mudança no Hoje — volta para lá com o voltar." }]
+            : [{ title: "hoje", rows: [
+                [null, "De folga", "turma B · folga publicada em 01/09", "folga", "#6b6482", null],
+                [null, "Deixa sem cobertura", "Nanook 11:00 e Yeti 16:00", "cobrir", "#C2334D", null],
+                [null, "Quem pode cobrir", "Amanda e Daiane estão livres nos dois", "sugestão", "#6C2BF2", null]
+              ], note: "Motivo de saúde só aparece para você e para a Administração." }]
+      ),
+      hero: null, initials: "", avatarStyle: "", greeting: "", sub: "", bell: "", onBell: null
+    };
+
+    const coreLabel = key === "MEM" ? "Escala" : key === "SUP" ? "Escala" : "Painel";
+    const actionLabel = key === "MEM" ? "Presença" : key === "SUP" ? "Equipe" : key === "ADM" ? "Escalas" : "Agenda";
+
+    // Presença do elenco: dois botões de verdade, com estado
+    if (key === "MEM") {
+      const pres = this.state.presenca || "aberta";
+      const g0 = D.action.groups[0];
+      const rows = mkRows(g0.rows);
+      rows[0].name = pres === "presente" ? "Presença confirmada às 09:28" : "Estou aqui";
+      rows[0].meta = pres === "presente" ? "dentro do horário · toque para desfazer" : "um toque confirma a sua presença";
+      rows[0].tag = pres === "presente" ? "feito" : "marcar";
+      rows[0].tagStyle = rows[0].tagStyle.replace(/#6C2BF2/g, pres === "presente" ? "#0a6f68" : "#6C2BF2");
+      rows[0].onClick = () => this.setState(s => ({ presenca: s.presenca === "presente" ? "aberta" : "presente", motivos: false }));
+      rows[1].name = pres === "ausente" ? "A Deborah já foi avisada" : "Não vou conseguir ir";
+      rows[1].meta = pres === "ausente" ? "a escala do dia já mostra a sua falta" : "você escolhe o motivo e a Deborah é avisada";
+      rows[1].onClick = () => this.setState(s => ({ motivos: !s.motivos, presenca: s.presenca === "ausente" ? "aberta" : s.presenca }));
+      if (this.state.motivos) {
+        ["Doença", "Acidente", "Problema pessoal", "Transporte"].forEach(m => {
+          rows.push({
+            onClick: () => this.setState({ presenca: "ausente", motivos: false }),
+            lead: null, leadStyle: "", bar: true,
+            barStyle: "width:4px;align-self:stretch;border-radius:99px;flex:none;background:#C2334D",
+            name: m, nameStyle: "font-size:14px;font-weight:600;line-height:1.3;color:#1b1630",
+            meta: null, tag: null, tagStyle: "", chev: null, href: null,
+            rowStyle: "display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:#fff;border:1.5px solid #f0d3da;border-radius:14px;padding:13px 15px;min-height:48px;box-sizing:border-box;cursor:pointer;font-family:Manrope,sans-serif;color:inherit"
+          });
+        });
+      }
+      D.action = Object.assign({}, D.action, {
+        badge: pres === "presente" ? "presente" : pres === "ausente" ? "ausência avisada" : "fecha 09:55",
+        badgeTone: pres === "presente" ? "#0a6f68" : pres === "ausente" ? "#C97A17" : "#C97A17",
+        groups: [Object.assign({}, g0, { rows: rows, __ready: true })].concat(D.action.groups.slice(1))
+      });
+    }
+
+    const screens = [
+      home,
+      inner(D.core, coreLabel + " · " + P.label, key === "MEM"
+        ? "Não é grade: lista do dia, hora grande à esquerda."
+        : key === "SUP" ? "A escala dela mesma — supervisor também patina."
+        : "Número com destino: cada linha abre onde se resolve.", coreLabel),
+      inner(D.action, actionLabel + " · " + P.label, key === "MEM"
+        ? "Um botão do tamanho do polegar, com o caminho de ausência junto."
+        : key === "SUP" ? "A tela de decisão da área: falta, atraso, troca, cobertura."
+        : key === "ADM" ? "Pelo celular ela publica, aprova e desbloqueia. Montar é no computador."
+        : "Leitura. Marcar com alguém é no computador.", actionLabel),
+      inner(MURAL, "Mural · igual nos quatro perfis", "O que pede ciente vem primeiro, com o botão no cartão.", "Mural"),
+      mais,
+      detalhe
+    ];
+
+    if (key === "MEM") screens.splice(3, 1);
+
+    return {
+      profileTabs,
+      profileNote: P.note,
+      screens,
+      navRules: [
+        "Toda tela de topo tem as abas embaixo, sempre nas mesmas posições.",
+        "Toda tela aberta de dentro de outra tem voltar de 44 px e perde as abas — nunca os dois.",
+        "A aba Mais existe nos quatro perfis e leva a qualquer módulo que o perfil alcança.",
+        "O sino abre a central de notificações de qualquer tela.",
+        "Nada de tela que só se sai fechando o app."
+      ],
+      profileDiff: P.diff,
+      toastMsg: this.state.toast,
+      onFecharToast: () => this.setState({ toast: null })
+    };
+  }
+}
+
+</script>
+</body>
+</html>

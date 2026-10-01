@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #f4f2fa; font-family: Manrope, system-ui, sans-serif; color: #1b1630; }
+  a { color: #6C2BF2; text-decoration: none; }
+  a:hover { color: #4a17b8; text-decoration: underline; }
+  aside a { text-decoration: none; }
+  button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 3px solid #6C2BF2; outline-offset: 2px; border-radius: 8px; }
+  @keyframes sk { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulso { 0%,100% { opacity: .35; } 50% { opacity: .9; } }
+</style>
+</helmet>
+
+<div style="max-width:1720px;margin:0 auto;padding:44px 28px 88px;display:flex;flex-direction:column;gap:34px">
+
+  <header style="display:flex;align-items:flex-start;gap:18px">
+    <img src="assets/asa-wing.png" alt="My ASA" style="width:52px;height:52px;object-fit:contain;flex:none;margin-top:4px" />
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#6b6482">29 · fundação</div>
+      <h1 style="font-family:Outfit,sans-serif;font-size:38px;line-height:1.05;font-weight:700;margin:0;letter-spacing:-0.02em">Carregando, erro e vazio</h1>
+      <p style="margin:0;max-width:80ch;font-size:15px;line-height:1.55;color:#5b5473;text-wrap:pretty">As 23 telas do protótipo mostram dado pronto. Ligadas à API de verdade, cada uma passa por três momentos que ninguém desenhou: o instante em que o dado ainda não chegou, o instante em que não vai chegar, e o caso em que chegou e não tem nada. Esta folha define os três — e mais quatro casos que só existem neste app: conflito de versão, lacuna sem solução, conflito de horário e camarim sem sinal. É referência para construir, não tela de navegação.</p>
+    </div>
+  </header>
+
+  <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:14px">
+    <div style="background:#fff;border:1px solid #e6e1f2;border-left:3px solid #6C2BF2;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:6px">
+      <div style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">A tela nunca fica em branco</div>
+      <p style="margin:0;font-size:13.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">O esqueleto tem a forma do que vem: se são seis linhas de escala, são seis barras. Nada de rodinha girando no meio do nada — a pessoa precisa reconhecer a tela antes do dado chegar.</p>
+    </div>
+    <div style="background:#fff;border:1px solid #e6e1f2;border-left:3px solid #C2334D;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:6px">
+      <div style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">O erro diz o que fazer</div>
+      <p style="margin:0;font-size:13.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Não &ldquo;erro 500&rdquo;, não &ldquo;algo deu errado&rdquo;. Diz o que não carregou, e traz <strong>Tentar de novo</strong>. Quando a ação era salvar, diz explicitamente se o que foi digitado se perdeu ou não.</p>
+    </div>
+    <div style="background:#fff;border:1px solid #e6e1f2;border-left:3px solid #0E8F86;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:6px">
+      <div style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">Vazio tem três sabores</div>
+      <p style="margin:0;font-size:13.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Primeiro uso <em>ensina</em> e oferece a primeira ação. Filtro sem resultado <em>oferece limpar o filtro</em>. Nada mesmo <em>tranquiliza</em>: dia sem ocorrência é boa notícia, não buraco.</p>
+    </div>
+    <div style="background:#fff;border:1px solid #e6e1f2;border-left:3px solid #C97A17;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:6px">
+      <div style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">O erro fica onde nasceu</div>
+      <p style="margin:0;font-size:13.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Se um painel falhou, só ele mostra erro — o resto da tela continua útil. Página inteira de erro só quando não há nada a mostrar: sem sessão, sem conexão, sem permissão.</p>
+    </div>
+  </section>
+
+  <div style="height:1px;background:#e6e1f2"></div>
+
+  <section style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Tela inteira · web 1920 × 1080</div>
+      <h2 style="font-family:Outfit,sans-serif;font-size:26px;font-weight:600;margin:0;letter-spacing:-0.01em">Carregando — o esqueleto tem a forma da Escala</h2>
+      <p style="margin:0;max-width:78ch;font-size:13.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">A barra lateral, o cabeçalho e as abas aparecem <strong>imediatamente e de verdade</strong> — não são dado do servidor, são a moldura do app. Só o miolo é esqueleto. Quem abre já sabe onde está e já pode navegar para outro lugar.</p>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start">
+      <div style="flex:none;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482;white-space:nowrap">Web · 1920 × 1080</span>
+          <span style="font-size:11.5px;color:#6b6482;white-space:nowrap">exibido a 70%</span>
+        </div>
+        <div style="width:1344px;height:756px;border:1px solid #ddd6ee;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+          <div style="width:1920px;height:1080px;transform:scale(0.7);transform-origin:top left;display:flex">
+
+            <aside style="width:222px;flex:none;background:linear-gradient(180deg,#1c1440 0%,#241a52 100%);display:flex;flex-direction:column;color:#fff">
+              <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 12px">
+                <img src="assets/asa-wing.png" alt="" style="width:26px;height:26px;object-fit:contain" />
+                <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">My ASA</span>
+              </div>
+              <div style="padding:0 12px 10px">
+                <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border-radius:10px;padding:8px 10px;font-size:11.5px;color:#b9b0da">
+                  <span style="width:11px;height:11px;border:1.5px solid #b9b0da;border-radius:50%"></span>
+                  <span>Buscar ou perguntar à ASA</span>
+                </div>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:12px;padding:2px 10px 10px">
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#7d72a8;padding:0 8px 4px">Operação</div>
+                  <span style="display:block;padding:7px 10px;border-radius:9px;font-size:12px;color:#c6bde6">Meu Dia</span>
+                  <span style="display:block;padding:7px 10px;border-radius:9px;font-size:12px;background:rgba(255,255,255,.13);color:#fff;font-weight:600">Escalas</span>
+                  <span style="display:block;padding:7px 10px;border-radius:9px;font-size:12px;color:#c6bde6">Livro do Dia</span>
+                  <span style="display:block;padding:7px 10px;border-radius:9px;font-size:12px;color:#c6bde6">Shows</span>
+                  <span style="display:block;padding:7px 10px;border-radius:9px;font-size:12px;color:#c6bde6">Check-in</span>
+                  <span style="display:block;padding:7px 10px;border-radius:9px;font-size:12px;color:#c6bde6">Folgas</span>
+                  <span style="display:block;padding:7px 10px;border-radius:9px;font-size:12px;color:#c6bde6">Agenda</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#7d72a8;padding:0 8px 4px">Fundação</div>
+                  <span style="display:block;padding:7px 10px;border-radius:9px;font-size:12px;color:#c6bde6">Pessoas</span>
+                  <span style="display:block;padding:7px 10px;border-radius:9px;font-size:12px;color:#c6bde6">Áreas</span>
+                  <span style="display:block;padding:7px 10px;border-radius:9px;font-size:12px;color:#c6bde6">Locais</span>
+                </div>
+              </div>
+              <div style="border-top:1px solid rgba(255,255,255,.1);padding:12px;display:flex;align-items:center;gap:10px">
+                <span style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:12.5px;font-weight:600">Deborah</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#b9b0da">Supervisão</span>
+                </div>
+              </div>
+            </aside>
+
+            <div style="flex:1;display:flex;flex-direction:column;background:#faf9fe;min-width:0">
+              <header style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid #ebe6f6;background:#fff">
+                <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">Escalas</span>
+                <span style="flex:1"></span>
+                <span style="display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:#6b6482"><span style="width:12px;height:12px;border-radius:50%;border:2px solid #ddd6ee;border-top-color:#6C2BF2;animation:spin .8s linear infinite;display:inline-block"></span>carregando a escala de hoje</span>
+              </header>
+
+              <div style="display:flex;align-items:center;gap:6px;padding:0 20px;background:#fff;border-bottom:1px solid #ebe6f6">
+                <span style="padding:12px 14px;font-size:13px;font-weight:700;color:#1b1630;border-bottom:2px solid #6C2BF2">Escala</span>
+                <span style="padding:12px 14px;font-size:13px;font-weight:600;color:#6b6482">Programação</span>
+              </div>
+
+              <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 20px;background:#fff;border-bottom:1px solid #ebe6f6">
+                <span style="width:150px;height:19px;border-radius:6px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span>
+                <span style="flex:1"></span>
+                <span style="width:92px;height:32px;border-radius:999px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span>
+                <span style="width:118px;height:32px;border-radius:999px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span>
+              </div>
+
+              <div style="flex:1;padding:18px 20px;display:flex;flex-direction:column;gap:12px;min-height:0">
+                <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;overflow:hidden">
+                  <div style="display:grid;grid-template-columns:230px repeat(5,1fr);gap:1px;background:#f0ecf8">
+                    <div style="background:#f7f4fc;padding:11px 14px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Pessoa</div>
+                    <div style="background:#f7f4fc;padding:11px 14px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">07:40</div>
+                    <div style="background:#f7f4fc;padding:11px 14px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">09:50</div>
+                    <div style="background:#f7f4fc;padding:11px 14px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">11:00</div>
+                    <div style="background:#f7f4fc;padding:11px 14px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">12:30</div>
+                    <div style="background:#f7f4fc;padding:11px 14px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">14:00</div>
+
+                    <div style="background:#fff;padding:13px 14px;display:flex;align-items:center;gap:10px"><span style="width:26px;height:26px;border-radius:50%;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;flex:none;display:block"></span><span style="width:104px;height:14px;border-radius:5px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:100%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:78%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:100%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:62%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:100%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+
+                    <div style="background:#fff;padding:13px 14px;display:flex;align-items:center;gap:10px"><span style="width:26px;height:26px;border-radius:50%;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;flex:none;display:block"></span><span style="width:86px;height:14px;border-radius:5px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:84%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:100%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:70%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:100%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:90%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+
+                    <div style="background:#fff;padding:13px 14px;display:flex;align-items:center;gap:10px"><span style="width:26px;height:26px;border-radius:50%;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;flex:none;display:block"></span><span style="width:118px;height:14px;border-radius:5px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:66%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:100%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:100%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:74%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:100%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+
+                    <div style="background:#fff;padding:13px 14px;display:flex;align-items:center;gap:10px"><span style="width:26px;height:26px;border-radius:50%;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;flex:none;display:block"></span><span style="width:96px;height:14px;border-radius:5px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:100%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:58%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:100%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:88%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:100%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+
+                    <div style="background:#fff;padding:13px 14px;display:flex;align-items:center;gap:10px"><span style="width:26px;height:26px;border-radius:50%;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;flex:none;display:block"></span><span style="width:110px;height:14px;border-radius:5px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:92%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:100%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:64%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:100%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:80%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+
+                    <div style="background:#fff;padding:13px 14px;display:flex;align-items:center;gap:10px"><span style="width:26px;height:26px;border-radius:50%;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;flex:none;display:block"></span><span style="width:92px;height:14px;border-radius:5px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:100%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:72%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:100%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:100%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                    <div style="background:#fff;padding:13px 14px"><span style="width:56%;height:24px;border-radius:7px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:1 1 300px;min-width:280px;display:flex;flex-direction:column;gap:12px">
+        <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+          <div style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">Regras do esqueleto</div>
+          <div style="display:flex;flex-direction:column;gap:9px;font-size:13px;line-height:1.5;color:#5b5473">
+            <div><strong style="color:#1b1630">Espere 300&nbsp;ms antes de mostrar.</strong> Resposta rápida não deve piscar esqueleto — pisca pior que espera.</div>
+            <div><strong style="color:#1b1630">Depois de aparecer, fique 500&nbsp;ms no mínimo.</strong> Esqueleto que some em 80&nbsp;ms vira tremor na tela.</div>
+            <div><strong style="color:#1b1630">Três formas, não mais:</strong> barra de texto, círculo de pessoa, bloco de célula. Não desenhe um fac-símile do conteúdo.</div>
+            <div><strong style="color:#1b1630">Larguras irregulares.</strong> Barras todas do mesmo tamanho parecem tabela quebrada; irregulares parecem texto.</div>
+            <div><strong style="color:#1b1630">A moldura nunca é esqueleto.</strong> Barra lateral, cabeçalho, abas e o nome da pessoa vêm da sessão — desenhe-os de imediato.</div>
+          </div>
+        </div>
+        <div style="background:#f3ecfe;border:1px solid #e0d2fb;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:7px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5B23C9">Acessibilidade</div>
+          <p style="margin:0;font-size:13px;line-height:1.5;color:#4a3d6b;text-wrap:pretty">A região que carrega leva <strong>aria-busy</strong> enquanto espera e anuncia o resultado quando chega. Quem usa leitor de tela não vê barra cinza — precisa ouvir &ldquo;carregando escala&rdquo; e depois &ldquo;6 pessoas&rdquo;.</p>
+        </div>
+        <div style="background:#fdf3e4;border:1px solid #f2dfbe;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:7px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8F5409">Movimento</div>
+          <p style="margin:0;font-size:13px;line-height:1.5;color:#6b4a12;text-wrap:pretty">Com <strong>prefers-reduced-motion</strong>, o brilho que corre some: fica o cinza parado. O esqueleto continua, a animação não.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div style="height:1px;background:#e6e1f2"></div>
+
+  <section style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Tela inteira · web 1920 × 1080</div>
+      <h2 style="font-family:Outfit,sans-serif;font-size:26px;font-weight:600;margin:0;letter-spacing:-0.01em">Sem conexão — o único erro que toma a tela</h2>
+      <p style="margin:0;max-width:78ch;font-size:13.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">A barra lateral continua desenhada e clicável: quem está sem rede ainda precisa saber onde está. E o cartão de baixo diz o que mais importa neste app — sem sinal no camarim, <strong>a saída não é o app</strong>, é avisar a supervisão por fora.</p>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start">
+      <div style="flex:none;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482;white-space:nowrap">Web · 1920 × 1080</span>
+          <span style="font-size:11.5px;color:#6b6482;white-space:nowrap">exibido a 70%</span>
+        </div>
+        <div style="width:1344px;height:756px;border:1px solid #ddd6ee;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+          <div style="width:1920px;height:1080px;transform:scale(0.7);transform-origin:top left;display:flex">
+
+            <aside style="width:222px;flex:none;background:linear-gradient(180deg,#1c1440 0%,#241a52 100%);display:flex;flex-direction:column;color:#fff">
+              <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 12px">
+                <img src="assets/asa-wing.png" alt="" style="width:26px;height:26px;object-fit:contain" />
+                <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">My ASA</span>
+              </div>
+              <div style="padding:0 12px 10px">
+                <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.05);border-radius:10px;padding:8px 10px;font-size:11.5px;color:#7d72a8">
+                  <span style="width:11px;height:11px;border:1.5px solid #7d72a8;border-radius:50%"></span>
+                  <span>Busca indisponível</span>
+                </div>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:12px;padding:2px 10px 10px">
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#7d72a8;padding:0 8px 4px">Operação</div>
+                  <span style="display:block;padding:7px 10px;border-radius:9px;font-size:12px;color:#c6bde6">Meu Dia</span>
+                  <span style="display:block;padding:7px 10px;border-radius:9px;font-size:12px;background:rgba(255,255,255,.13);color:#fff;font-weight:600">Escalas</span>
+                  <span style="display:block;padding:7px 10px;border-radius:9px;font-size:12px;color:#c6bde6">Livro do Dia</span>
+                  <span style="display:block;padding:7px 10px;border-radius:9px;font-size:12px;color:#c6bde6">Shows</span>
+                  <span style="display:block;padding:7px 10px;border-radius:9px;font-size:12px;color:#c6bde6">Check-in</span>
+                  <span style="display:block;padding:7px 10px;border-radius:9px;font-size:12px;color:#c6bde6">Folgas</span>
+                  <span style="display:block;padding:7px 10px;border-radius:9px;font-size:12px;color:#c6bde6">Agenda</span>
+                </div>
+              </div>
+              <div style="border-top:1px solid rgba(255,255,255,.1);padding:12px;display:flex;align-items:center;gap:10px">
+                <span style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:12.5px;font-weight:600">Deborah</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#b9b0da">Supervisão</span>
+                </div>
+              </div>
+            </aside>
+
+            <div style="flex:1;display:flex;flex-direction:column;background:#faf9fe;min-width:0">
+              <div style="display:flex;align-items:center;gap:10px;padding:10px 20px;background:#fdeef1;border-bottom:1px solid #f6d7de">
+                <span style="width:9px;height:9px;border-radius:50%;background:#C2334D;flex:none;animation:pulso 2s ease-in-out infinite;display:block"></span>
+                <span style="font-size:13px;font-weight:700;color:#C2334D">Sem conexão</span>
+                <span style="font-size:13px;color:#8a3346">o app tentou às 10:42, 10:43 e 10:45</span>
+              </div>
+
+              <header style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid #ebe6f6;background:#fff">
+                <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">Escalas</span>
+                <span style="flex:1"></span>
+                <span style="font-size:12.5px;color:#6b6482">última atualização às 10:40</span>
+              </header>
+
+              <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:26px">
+                <div style="max-width:620px;display:flex;flex-direction:column;align-items:center;gap:20px;text-align:center">
+                  <img src="assets/asa/duvida.png" alt="" style="width:96px;height:96px;object-fit:contain" />
+                  <div style="display:flex;flex-direction:column;gap:9px">
+                    <h3 style="font-family:Outfit,sans-serif;font-size:27px;font-weight:600;margin:0;letter-spacing:-0.01em">O app está sem internet</h3>
+                    <p style="margin:0;font-size:15px;line-height:1.55;color:#5b5473;text-wrap:pretty">A escala de hoje não pôde ser carregada. Isso é sinal, não é a sua conta nem o seu acesso — quando a rede voltar, o app carrega sozinho.</p>
+                  </div>
+                  <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center">
+                    <button type="button" style="background:#1c1440;color:#fff;border:none;border-radius:999px;font-family:Manrope,sans-serif;font-size:13px;font-weight:700;padding:0 20px;min-height:44px;cursor:pointer">Tentar de novo</button>
+                    <button type="button" style="background:#fff;color:#5b5473;border:1px solid #e6e1f2;border-radius:999px;font-family:Manrope,sans-serif;font-size:13px;font-weight:600;padding:0 18px;min-height:44px;cursor:pointer">Ver a escala salva de ontem</button>
+                  </div>
+                  <div style="width:100%;background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:16px 18px;display:flex;align-items:center;gap:14px;text-align:left">
+                    <span style="width:38px;height:38px;border-radius:50%;background:#e3f4f1;flex:none;display:flex;align-items:center;justify-content:center;color:#0A6F68;font-size:19px;font-weight:700">!</span>
+                    <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+                      <span style="font-size:14px;font-weight:700">Se for urgente, avise a sua supervisão por fora</span>
+                      <span style="font-size:13px;color:#6b6482">Deborah &middot; Patinadores</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:1 1 300px;min-width:280px;display:flex;flex-direction:column;gap:12px">
+        <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+          <div style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">Só três erros tomam a tela</div>
+          <div style="display:flex;flex-direction:column;gap:9px;font-size:13px;line-height:1.5;color:#5b5473">
+            <div><strong style="color:#1b1630">Sem conexão</strong> — nada carrega, e a saída é o telefone.</div>
+            <div><strong style="color:#1b1630">Sessão expirada</strong> — leva para a entrada dizendo por quê, e volta para onde estava depois de entrar.</div>
+            <div><strong style="color:#1b1630">Sem permissão</strong> — diz quem libera (a Administração), não &ldquo;acesso negado&rdquo;. E não revela o que existe do outro lado.</div>
+          </div>
+          <div style="height:1px;background:#f0ecf8"></div>
+          <p style="margin:0;font-size:13px;line-height:1.5;color:#5b5473;text-wrap:pretty">Qualquer outra falha é de <em>um pedaço</em> da tela e fica dentro do painel que falhou.</p>
+        </div>
+        <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:8px">
+          <div style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">Como escrever a mensagem</div>
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;line-height:1.5">
+            <div style="display:flex;gap:9px;align-items:flex-start"><span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:#fdeef1;color:#C2334D;flex:none">não</span><span style="color:#5b5473">&ldquo;Erro ao processar requisição (500)&rdquo;</span></div>
+            <div style="display:flex;gap:9px;align-items:flex-start"><span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:#fdeef1;color:#C2334D;flex:none">não</span><span style="color:#5b5473">&ldquo;Ops! Algo deu errado.&rdquo;</span></div>
+            <div style="display:flex;gap:9px;align-items:flex-start"><span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:#e3f4f1;color:#0A6F68;flex:none">sim</span><span style="color:#1b1630;font-weight:600">&ldquo;A escala de hoje não carregou. O que você digitou não se perdeu.&rdquo;</span></div>
+          </div>
+          <div style="height:1px;background:#f0ecf8"></div>
+          <p style="margin:0;font-size:12.5px;line-height:1.5;color:#6b6482;text-wrap:pretty">O código técnico pode existir, pequeno e no rodapé do cartão, para quem for pedir ajuda citar. Nunca como título.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div style="height:1px;background:#e6e1f2"></div>
+
+  <section style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Dentro da tela · tamanho real</div>
+      <h2 style="font-family:Outfit,sans-serif;font-size:26px;font-weight:600;margin:0;letter-spacing:-0.01em">Painel que falhou, e as três formas de vazio</h2>
+      <p style="margin:0;max-width:78ch;font-size:13.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Estes são os blocos que o desenvolvedor copia. Cada um cabe no lugar de um cartão da tela, com a mesma altura do conteúdo que substitui.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));gap:16px;align-items:start">
+
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:#fdeef1;color:#C2334D">Erro de painel</span>
+          <span style="font-size:12.5px;color:#6b6482">o resto da tela continua funcionando</span>
+        </div>
+        <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid #f0ecf8">
+            <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">Ocorrências abertas</span>
+            <span style="flex:1"></span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:#fdeef1;color:#C2334D">não carregou</span>
+          </div>
+          <div style="padding:22px 18px;display:flex;flex-direction:column;align-items:center;gap:13px;text-align:center">
+            <p style="margin:0;font-size:13.5px;line-height:1.5;color:#5b5473;max-width:40ch;text-wrap:pretty">Este painel não carregou. O resto da tela está atualizado — só as ocorrências ficaram para trás.</p>
+            <button type="button" style="background:#fff;color:#1b1630;border:1px solid #ddd6ee;border-radius:999px;font-family:Manrope,sans-serif;font-size:13px;font-weight:700;padding:0 18px;min-height:44px;cursor:pointer">Tentar de novo</button>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.06em;color:#8f88a6">OCORRENCIAS&#8239;/&#8239;504 &middot; 10:42</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:#f3ecfe;color:#5B23C9">Vazio · primeiro uso</span>
+          <span style="font-size:12.5px;color:#6b6482">ensina e oferece a primeira ação</span>
+        </div>
+        <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid #f0ecf8">
+            <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">Biblioteca de formações</span>
+          </div>
+          <div style="padding:22px 18px;display:flex;flex-direction:column;align-items:center;gap:13px;text-align:center">
+            <img src="assets/asa/oi.png" alt="" style="width:62px;height:62px;object-fit:contain" />
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">Nenhuma formação guardada ainda</span>
+              <p style="margin:0;font-size:13.5px;line-height:1.5;color:#5b5473;max-width:44ch;text-wrap:pretty">Quando você montar uma cena que funcionou, salve aqui com um nome. Da próxima vez que precisar de uma para sete pessoas, ela aparece pronta.</p>
+            </div>
+            <button type="button" style="background:#1c1440;color:#fff;border:none;border-radius:999px;font-family:Manrope,sans-serif;font-size:13px;font-weight:700;padding:0 20px;min-height:44px;cursor:pointer">Salvar a cena de hoje</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:#eaf0fd;color:#2E63D6">Vazio · por filtro</span>
+          <span style="font-size:12.5px;color:#6b6482">o dado existe, o filtro é que escondeu</span>
+        </div>
+        <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:8px;padding:13px 18px;border-bottom:1px solid #f0ecf8;flex-wrap:wrap">
+            <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">Pessoas</span>
+            <span style="flex:1"></span>
+            <span style="border:1px solid #6C2BF2;background:#6C2BF214;color:#5B23C9;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600">Bailarinos ×</span>
+            <span style="border:1px solid #6C2BF2;background:#6C2BF214;color:#5B23C9;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600">Acquamotion ×</span>
+            <span style="border:1px solid #6C2BF2;background:#6C2BF214;color:#5B23C9;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600">Afastada ×</span>
+          </div>
+          <div style="padding:22px 18px;display:flex;flex-direction:column;align-items:center;gap:13px;text-align:center">
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">Nenhuma pessoa com esses três filtros</span>
+              <p style="margin:0;font-size:13.5px;line-height:1.5;color:#5b5473;max-width:44ch;text-wrap:pretty">Há <strong>9 bailarinos em Acquamotion</strong> — nenhum está afastado.</p>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:9px;justify-content:center">
+              <button type="button" style="background:#1c1440;color:#fff;border:none;border-radius:999px;font-family:Manrope,sans-serif;font-size:13px;font-weight:700;padding:0 18px;min-height:44px;cursor:pointer">Tirar &ldquo;Afastada&rdquo;</button>
+              <button type="button" style="background:#fff;color:#5b5473;border:1px solid #e6e1f2;border-radius:999px;font-family:Manrope,sans-serif;font-size:13px;font-weight:600;padding:0 16px;min-height:44px;cursor:pointer">Limpar tudo</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:#e3f4f1;color:#0A6F68">Vazio · boa notícia</span>
+          <span style="font-size:12.5px;color:#6b6482">não é buraco, é o dia correndo bem</span>
+        </div>
+        <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid #f0ecf8">
+            <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">Ocorrências de hoje</span>
+            <span style="flex:1"></span>
+            <span style="font-size:12.5px;color:#6b6482">Patinadores &middot; Snowland</span>
+          </div>
+          <div style="padding:26px 18px;display:flex;flex-direction:column;align-items:center;gap:11px;text-align:center">
+            <span style="width:46px;height:46px;border-radius:50%;background:#e3f4f1;display:flex;align-items:center;justify-content:center;color:#0A6F68;font-size:21px;font-weight:700">✓</span>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">Nenhuma ocorrência hoje</span>
+              <p style="margin:0;font-size:13.5px;line-height:1.5;color:#5b5473;max-width:40ch;text-wrap:pretty">14 pessoas escaladas, 14 check-ins feitos.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div style="height:1px;background:#e6e1f2"></div>
+
+  <section style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Ao salvar · tamanho real</div>
+      <h2 style="font-family:Outfit,sans-serif;font-size:26px;font-weight:600;margin:0;letter-spacing:-0.01em">Salvando, salvo, falhou — e o conflito de versão</h2>
+      <p style="margin:0;max-width:78ch;font-size:13.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Quando a pessoa clicou em salvar, a regra muda: ela precisa saber <strong>se o que digitou sobreviveu</strong>. O quarto cartão é o 409 que o Bloco 1 entrega — duas pessoas na mesma escala ao mesmo tempo.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px;align-items:start">
+
+      <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6b6482">Salvando</span>
+        <button type="button" style="background:#1c1440;color:#fff;border:none;border-radius:999px;font-family:Manrope,sans-serif;font-size:13px;font-weight:700;padding:0 20px;min-height:44px;cursor:default;opacity:.7;display:inline-flex;align-items:center;gap:9px;align-self:flex-start">
+          <span style="width:13px;height:13px;border-radius:50%;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:spin .8s linear infinite;display:inline-block"></span>
+          Publicando…
+        </button>
+        <p style="margin:0;font-size:13px;line-height:1.5;color:#5b5473;text-wrap:pretty">O botão vira o estado — não aparece véu sobre a tela. Desabilitado enquanto espera, para não publicar duas vezes. O resto da tela continua lendo-se.</p>
+      </div>
+
+      <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6b6482">Salvo</span>
+        <div style="display:inline-flex;align-items:center;gap:9px;background:#e3f4f1;color:#0A6F68;border-radius:999px;padding:10px 16px;font-size:13px;font-weight:700;align-self:flex-start">
+          <span style="font-size:14px">✓</span> Escala publicada às 10:42
+        </div>
+        <p style="margin:0;font-size:13px;line-height:1.5;color:#5b5473;text-wrap:pretty">Confirmação com <strong>hora</strong>, não só um &ldquo;pronto&rdquo;. Some sozinha em 6 segundos. Se a ação foi irreversível, não some: vira linha fixa com <em>Desfazer</em>.</p>
+      </div>
+
+      <div style="background:#fff;border:1px solid #f6d7de;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#C2334D">Falhou ao salvar</span>
+        <div style="background:#fdeef1;border-radius:12px;padding:13px 15px;display:flex;flex-direction:column;gap:9px">
+          <span style="font-size:13.5px;font-weight:700;color:#C2334D;line-height:1.4">Não deu para publicar a escala</span>
+          <span style="font-size:13px;color:#8a3346;line-height:1.5">O que você montou continua aqui na tela — nada se perdeu. Tente de novo em instantes.</span>
+          <div style="display:flex;gap:9px;flex-wrap:wrap">
+            <button type="button" style="background:#C2334D;color:#fff;border:none;border-radius:999px;font-family:Manrope,sans-serif;font-size:13px;font-weight:700;padding:0 18px;min-height:44px;cursor:pointer">Tentar de novo</button>
+            <button type="button" style="background:#fff;color:#8a3346;border:1px solid #f0c3cd;border-radius:999px;font-family:Manrope,sans-serif;font-size:13px;font-weight:600;padding:0 16px;min-height:44px;cursor:pointer">Copiar como texto</button>
+          </div>
+        </div>
+        <p style="margin:0;font-size:12.5px;line-height:1.5;color:#6b6482;text-wrap:pretty"><strong>Copiar como texto</strong> é a rede de segurança: se a rede não voltar, a escala vai para o grupo pelo celular e o dia acontece.</p>
+      </div>
+
+      <div style="background:#fff;border:1px solid #f2dfbe;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8F5409">Conflito de versão · 409</span>
+        <div style="background:#fdf3e4;border-radius:12px;padding:13px 15px;display:flex;flex-direction:column;gap:10px">
+          <span style="font-size:13.5px;font-weight:700;color:#8F5409;line-height:1.4">A Barbara salvou esta escala enquanto você editava</span>
+          <div style="display:flex;flex-direction:column;gap:6px;background:#fff;border-radius:9px;padding:11px 13px">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Onde as duas diferem</span>
+            <span style="font-size:13px;color:#1b1630;line-height:1.5"><strong>Miguel &middot; 11:00</strong> — de <span style="color:#8a3346">Ensaio</span> para <span style="color:#0A6F68">Hotéis</span></span>
+            <span style="font-size:13px;color:#1b1630;line-height:1.5"><strong>Sarah &middot; 14:00</strong> — de <span style="color:#8a3346">vazio</span> para <span style="color:#0A6F68">Acquashow Duo</span></span>
+          </div>
+          <div style="display:flex;gap:9px;flex-wrap:wrap">
+            <button type="button" style="background:#1c1440;color:#fff;border:none;border-radius:999px;font-family:Manrope,sans-serif;font-size:13px;font-weight:700;padding:0 16px;min-height:44px;cursor:pointer">Ver as duas lado a lado</button>
+            <button type="button" style="background:#fff;color:#6b4a12;border:1px solid #eacfa4;border-radius:999px;font-family:Manrope,sans-serif;font-size:13px;font-weight:600;padding:0 16px;min-height:44px;cursor:pointer">Manter a minha</button>
+          </div>
+        </div>
+        <p style="margin:0;font-size:12.5px;line-height:1.5;color:#6b6482;text-wrap:pretty">Nunca escolha por ela, e nunca descarte em silêncio: <strong>as duas versões ficam no histórico</strong>. O app mostra a diferença e quem decide é quem está olhando.</p>
+      </div>
+    </div>
+  </section>
+
+  <div style="height:1px;background:#e6e1f2"></div>
+
+  <section style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Mobile · 390 × 844</div>
+      <h2 style="font-family:Outfit,sans-serif;font-size:26px;font-weight:600;margin:0;letter-spacing:-0.01em">No celular, no camarim, de pressa</h2>
+      <p style="margin:0;max-width:78ch;font-size:13.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">O elenco abre o app com uma mão, antes de entrar em cena. <strong>O check-in sem sinal não fica guardado para depois</strong> — se ficasse, a supervisão veria a pessoa como quem não respondeu. O app diz isso na cara e manda avisar por fora.</p>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start">
+
+      <div style="flex:none;display:flex;flex-direction:column;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Carregando</span>
+        <div style="width:390px;border:1px solid #ddd6ee;border-radius:38px;overflow:hidden;background:#1c1440;padding:9px;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+          <div style="background:#faf9fe;border-radius:30px;overflow:hidden;display:flex;flex-direction:column;height:826px">
+            <div style="background:#fff;padding:16px 18px 13px;border-bottom:1px solid #ebe6f6;display:flex;align-items:center;gap:11px">
+              <img src="assets/asa-wing.png" alt="" style="width:26px;height:26px;object-fit:contain" />
+              <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">Meu Dia</span>
+              <span style="flex:1"></span>
+              <span style="width:13px;height:13px;border-radius:50%;border:2px solid #ddd6ee;border-top-color:#6C2BF2;animation:spin .8s linear infinite;display:block"></span>
+            </div>
+            <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:13px">
+              <span style="width:60%;height:15px;border-radius:5px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span>
+              <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:11px">
+                <span style="width:42%;height:12px;border-radius:5px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span>
+                <span style="width:82%;height:21px;border-radius:6px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span>
+                <span style="width:64%;height:13px;border-radius:5px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span>
+              </div>
+              <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:11px">
+                <span style="width:52%;height:12px;border-radius:5px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span>
+                <span style="width:70%;height:21px;border-radius:6px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span>
+                <span style="width:88%;height:13px;border-radius:5px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span>
+              </div>
+              <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:11px">
+                <span style="width:46%;height:12px;border-radius:5px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span>
+                <span style="width:76%;height:21px;border-radius:6px;background:linear-gradient(90deg,#efebf8 25%,#f7f4fc 50%,#efebf8 75%);background-size:200% 100%;animation:sk 1.6s linear infinite;display:block"></span>
+              </div>
+            </div>
+            <div style="background:#fff;border-top:1px solid #ebe6f6;padding:11px 16px 20px;display:flex;justify-content:space-between;gap:8px">
+              <span style="font-size:11.5px;font-weight:700;color:#5B23C9">Meu Dia</span>
+              <span style="font-size:11.5px;color:#8f88a6">Escala</span>
+              <span style="font-size:11.5px;color:#8f88a6">Check-in</span>
+              <span style="font-size:11.5px;color:#8f88a6">Avisos</span>
+              <span style="font-size:11.5px;color:#8f88a6">Mais</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:none;display:flex;flex-direction:column;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Sem sinal · check-in</span>
+        <div style="width:390px;border:1px solid #ddd6ee;border-radius:38px;overflow:hidden;background:#1c1440;padding:9px;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+          <div style="background:#faf9fe;border-radius:30px;overflow:hidden;display:flex;flex-direction:column;height:826px">
+            <div style="background:#fdeef1;padding:11px 18px;display:flex;align-items:center;gap:9px">
+              <span style="width:9px;height:9px;border-radius:50%;background:#C2334D;flex:none;animation:pulso 2s ease-in-out infinite;display:block"></span>
+              <span style="font-size:13px;font-weight:700;color:#C2334D">Sem sinal no camarim</span>
+            </div>
+            <div style="background:#fff;padding:16px 18px 13px;border-bottom:1px solid #ebe6f6;display:flex;align-items:center;gap:11px">
+              <span style="font-size:19px;color:#6b6482">‹</span>
+              <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">Check-in</span>
+            </div>
+            <div style="flex:1;padding:18px 16px;display:flex;flex-direction:column;gap:16px">
+              <div style="background:#fff;border:1px solid #f6d7de;border-radius:18px;padding:20px 18px;display:flex;flex-direction:column;gap:13px;align-items:center;text-align:center">
+                <img src="assets/asa/duvida.png" alt="" style="width:74px;height:74px;object-fit:contain" />
+                <span style="font-family:Outfit,sans-serif;font-size:19px;font-weight:600;line-height:1.25">O seu check-in não foi enviado</span>
+                <p style="margin:0;font-size:14px;line-height:1.55;color:#5b5473;text-wrap:pretty">O app <strong>não guarda para depois</strong> de propósito: enquanto não enviar, a sua supervisão te vê como quem ainda não respondeu.</p>
+                <button type="button" style="background:#1c1440;color:#fff;border:none;border-radius:999px;font-family:Manrope,sans-serif;font-size:14px;font-weight:700;padding:0 22px;min-height:48px;cursor:pointer;width:100%">Tentar enviar de novo</button>
+              </div>
+              <div style="background:#fff;border:1px solid #e6e1f2;border-radius:18px;padding:17px 18px;display:flex;flex-direction:column;gap:12px">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#0A6F68">Avise por fora</span>
+                <div style="display:flex;align-items:center;gap:13px">
+                  <span style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+                  <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                    <span style="font-size:15px;font-weight:700">Deborah</span>
+                    <span style="font-size:13px;color:#6b6482">Supervisão &middot; Patinadores</span>
+                  </div>
+                </div>
+                <p style="margin:0;font-size:13.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Fale com ela pelo caminho de sempre — o app não consegue avisar por você enquanto estiver sem sinal.</p>
+              </div>
+            </div>
+            <div style="background:#fff;border-top:1px solid #ebe6f6;padding:11px 16px 20px;display:flex;justify-content:space-between;gap:8px">
+              <span style="font-size:11.5px;color:#8f88a6">Meu Dia</span>
+              <span style="font-size:11.5px;color:#8f88a6">Escala</span>
+              <span style="font-size:11.5px;font-weight:700;color:#5B23C9">Check-in</span>
+              <span style="font-size:11.5px;color:#8f88a6">Avisos</span>
+              <span style="font-size:11.5px;color:#8f88a6">Mais</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:1 1 300px;min-width:280px;display:flex;flex-direction:column;gap:12px">
+        <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+          <div style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">O que muda no celular</div>
+          <div style="display:flex;flex-direction:column;gap:9px;font-size:13px;line-height:1.5;color:#5b5473">
+            <div><strong style="color:#1b1630">A faixa vermelha fica no topo, acima de tudo.</strong> Quem está de pressa não lê o meio da tela.</div>
+            <div><strong style="color:#1b1630">Botões de 48&nbsp;px aqui</strong>, não 44. Uma mão, luva de figurino, pressa.</div>
+            <div><strong style="color:#1b1630">As abas de baixo nunca somem</strong>, nem em erro de tela inteira. Nenhuma tela pode ser sem saída.</div>
+            <div><strong style="color:#1b1630">Nada de fila offline.</strong> Decisão do pacote: check-in que fica na fila mente para a supervisão.</div>
+          </div>
+        </div>
+        <div style="background:#fdf3e4;border:1px solid #f2dfbe;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:7px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8F5409">Em aberto</div>
+          <p style="margin:0;font-size:13px;line-height:1.5;color:#6b4a12;text-wrap:pretty">O app <strong>nomeia</strong> a supervisão, mas não oferece botão de ligar ou mandar mensagem: o cadastro de Pessoa não guarda telefone hoje. Se um dia guardar, é campo novo e dado pessoal — só a supervisão da área e a Administração veriam.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div style="height:1px;background:#e6e1f2"></div>
+
+  <section style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Não é erro</div>
+      <h2 style="font-family:Outfit,sans-serif;font-size:26px;font-weight:600;margin:0;letter-spacing:-0.01em">Dois casos que parecem erro e não são</h2>
+      <p style="margin:0;max-width:78ch;font-size:13.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Os dois nascem de decisões do pacote e vão ser confundidos com defeito se forem desenhados em vermelho. Não são: são o app entregando uma pergunta para um humano responder.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px;align-items:start">
+
+      <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;overflow:hidden">
+        <div style="display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid #f0ecf8">
+          <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">Lacuna sem solução &middot; Livro do Dia</span>
+          <span style="flex:1"></span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:#fdf3e4;color:#8F5409">para você decidir</span>
+        </div>
+        <div style="padding:16px 18px;display:flex;flex-direction:column;gap:13px">
+          <div style="display:flex;align-items:center;gap:13px;padding:13px 15px;border:2px dashed #eacfa4;border-radius:12px;background:#fffdf8">
+            <span style="width:38px;height:38px;border-radius:50%;background:#fdf3e4;flex:none;display:flex;align-items:center;justify-content:center;color:#8F5409;font-size:19px;font-weight:700">?</span>
+            <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+              <span style="font-size:14.5px;font-weight:700">Astrid &middot; Musical 12:30</span>
+              <span style="font-size:13px;color:#8F5409">ninguém elegível: as três da fila estão de folga ou afastadas</span>
+            </div>
+            <span style="flex:1"></span>
+            <button type="button" style="background:#1c1440;color:#fff;border:none;border-radius:999px;font-family:Manrope,sans-serif;font-size:13px;font-weight:700;padding:0 17px;min-height:44px;cursor:pointer;flex:none">Escolher</button>
+          </div>
+          <p style="margin:0;font-size:13px;line-height:1.5;color:#5b5473;text-wrap:pretty">Fica <strong>em branco e sinalizada</strong>, nunca preenchida em silêncio. Amarelo tracejado, não vermelho: o app não errou — ele encontrou um caso que só a supervisão resolve, e está dizendo qual é.</p>
+          <div style="height:1px;background:#f0ecf8"></div>
+          <p style="margin:0;font-size:12.5px;line-height:1.5;color:#6b6482;text-wrap:pretty">O Livro do Dia <strong>publica com lacuna</strong>. Travar a publicação empurraria a supervisão de volta para o papel — e a lacuna continuaria existindo, só que invisível.</p>
+        </div>
+      </div>
+
+      <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;overflow:hidden">
+        <div style="display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid #f0ecf8">
+          <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">Conflito de horário &middot; avisa, não trava</span>
+          <span style="flex:1"></span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:#fdf3e4;color:#8F5409">aviso</span>
+        </div>
+        <div style="padding:16px 18px;display:flex;flex-direction:column;gap:13px">
+          <div style="display:flex;flex-direction:column;gap:11px;padding:13px 15px;border-radius:12px;background:#fdf3e4">
+            <div style="display:flex;align-items:flex-start;gap:11px">
+              <span style="width:9px;height:9px;border-radius:50%;background:#C97A17;flex:none;margin-top:6px;display:block"></span>
+              <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+                <span style="font-size:14px;font-weight:700;color:#8F5409;line-height:1.35">Miguel está em dois lugares às 11:00</span>
+                <span style="font-size:13px;color:#6b4a12;line-height:1.5">Ensaio Portagens 11:30–12:00 &middot; Hotéis 11:00–12:00 &mdash; <strong>40 minutos em cima</strong></span>
+              </div>
+            </div>
+            <div style="display:flex;gap:9px;flex-wrap:wrap">
+              <button type="button" style="background:#fff;color:#6b4a12;border:1px solid #eacfa4;border-radius:999px;font-family:Manrope,sans-serif;font-size:13px;font-weight:700;padding:0 16px;min-height:44px;cursor:pointer">Estou ciente &middot; dizer por quê</button>
+              <button type="button" style="background:transparent;color:#8F5409;border:none;border-radius:999px;font-family:Manrope,sans-serif;font-size:13px;font-weight:600;padding:0 12px;min-height:44px;cursor:pointer;text-decoration:underline">Ajustar o horário</button>
+            </div>
+          </div>
+          <p style="margin:0;font-size:13px;line-height:1.5;color:#5b5473;text-wrap:pretty">Salvar <strong>continua funcionando</strong> com o conflito na tela. O app não sabe que o Miguel sai do ensaio cinco minutos antes; a supervisão sabe. Encavalamento leve fica mais claro; sobreposição total, mais forte.</p>
+          <div style="height:1px;background:#f0ecf8"></div>
+          <p style="margin:0;font-size:12.5px;line-height:1.5;color:#6b6482;text-wrap:pretty">Reconhecido com motivo, o aviso silencia. <strong>Se um dos horários mudar, ele volta</strong> — o que foi aceito era a combinação antiga.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div style="height:1px;background:#e6e1f2"></div>
+
+  <section style="display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Para construir</div>
+      <h2 style="font-family:Outfit,sans-serif;font-size:26px;font-weight:600;margin:0;letter-spacing:-0.01em">Que estado cada tela precisa</h2>
+    </div>
+
+    <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;overflow:hidden">
+      <div style="display:grid;grid-template-columns:1.1fr 1fr 1.25fr 1.5fr;gap:1px;background:#f0ecf8;font-size:13px">
+        <div style="background:#f7f4fc;padding:11px 15px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Tela</div>
+        <div style="background:#f7f4fc;padding:11px 15px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Esqueleto</div>
+        <div style="background:#f7f4fc;padding:11px 15px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Vazio</div>
+        <div style="background:#f7f4fc;padding:11px 15px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Caso próprio</div>
+
+        <div style="background:#fff;padding:11px 15px;font-weight:700">17 Meu Dia</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473">3 cartões empilhados</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473">&ldquo;Você não tem nada marcado hoje&rdquo; — boa notícia</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473">cada painel falha sozinho; o dia continua legível</div>
+
+        <div style="background:#fff;padding:11px 15px;font-weight:700">15 Escalas</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473">grade de 6 linhas</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473">dia de recesso — não é falta de dado</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473"><strong>409</strong> ao publicar &middot; conflito de horário</div>
+
+        <div style="background:#fff;padding:11px 15px;font-weight:700">14 Livro do Dia</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473">cenas em blocos</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473">&ldquo;ainda não gerado&rdquo; com o botão de gerar</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473"><strong>lacuna em branco</strong> &middot; 409 &middot; conflito &middot; gerando (pode demorar)</div>
+
+        <div style="background:#fff;padding:11px 15px;font-weight:700">19 Check-in</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473">um cartão só</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473">sem turno hoje &middot; nenhuma ocorrência</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473"><strong>sem sinal</strong> &mdash; não guarda, manda ligar</div>
+
+        <div style="background:#fff;padding:11px 15px;font-weight:700">13 Shows</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473">cena + posições</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473">primeiro uso: ensina o que é Livro do Show</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473">conflito ao montar &middot; formação sem par exato</div>
+
+        <div style="background:#fff;padding:11px 15px;font-weight:700">07 · 08 · 06 Fundação</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473">linhas de lista</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473">quase sempre <strong>por filtro</strong> — mostre o total sem filtro</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473">desativado não some da lista: some do filtro padrão</div>
+
+        <div style="background:#fff;padding:11px 15px;font-weight:700">22 Mural &middot; 23 Mensagens</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473">3 linhas curtas</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473">&ldquo;nenhum aviso novo&rdquo; — tranquiliza</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473">enviado sem push: diz que chegou no app, não no celular</div>
+
+        <div style="background:#fff;padding:11px 15px;font-weight:700">16 Painel</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473">números grandes em cinza</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473">período sem dado — diz o período, não zero</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473">um indicador falha, os outros ficam</div>
+
+        <div style="background:#fff;padding:11px 15px;font-weight:700">20 Agenda &middot; 18 Folgas</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473">grade da semana / mês</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473">mês vazio: oferece <strong>repetir o mês anterior</strong></div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473">proposta do elenco aguardando liberação</div>
+
+        <div style="background:#fff;padding:11px 15px;font-weight:700">01 Entrada</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473">sem esqueleto — é a primeira tela</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473">—</div>
+        <div style="background:#fff;padding:11px 15px;color:#5b5473">senha errada &middot; conta desativada (diz que a Administração libera)</div>
+      </div>
+    </div>
+
+    <div style="background:#f3ecfe;border:1px solid #e0d2fb;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:7px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5B23C9">Um lembrete que vale mais que a tabela</div>
+      <p style="margin:0;font-size:13.5px;line-height:1.55;color:#4a3d6b;text-wrap:pretty">Vazio e erro são os estados que mais aparecem <strong>na primeira semana</strong> — quando não há dado nenhum e a rede do camarim é ruim. É a primeira impressão de quarenta pessoas que ainda não decidiram se confiam no app. Vale desenhar tão bem quanto a tela cheia.</p>
+    </div>
+  </section>
+
+</div>
+
+</x-dc>
+</body>
+</html>

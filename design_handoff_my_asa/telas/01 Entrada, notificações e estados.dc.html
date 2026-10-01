@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #f4f2fa; font-family: Manrope, system-ui, sans-serif; color: #1b1630; }
+  a { color: #6C2BF2; text-decoration: none; }
+  a:hover { color: #4a17b8; text-decoration: underline; }
+  button:focus-visible, a:focus-visible { outline: 3px solid #6C2BF2; outline-offset: 2px; border-radius: 8px; }
+</style>
+</helmet>
+
+<div style="max-width:1400px;margin:0 auto;padding:44px 28px 110px;display:flex;flex-direction:column;gap:60px">
+
+  <header style="display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;align-items:flex-start;gap:18px">
+      <img src="assets/asa/bem-vindo.png" alt="" style="width:60px;height:60px;object-fit:contain;flex:none;margin-top:2px" />
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:#6b6482">Onda 1 · as telas que faltavam</div>
+        <h1 style="font-family:Outfit,sans-serif;font-size:38px;line-height:1.06;font-weight:700;margin:0;letter-spacing:-0.02em">Entrada, notificações e estados do sistema</h1>
+        <p style="margin:0;max-width:70ch;font-size:15px;line-height:1.6;color:#5b5473;text-wrap:pretty">As nove telas que todo aplicativo tem e o My ASA não tinha. Desenhadas primeiro no celular, porque é ali que quase todo o elenco vive. Sem e-mail em nenhuma delas: a senha nasce com a Administração, como você decidiu.</p>
+      </div>
+    </div>
+  </header>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#6C2BF2">A</span>
+      <h2 style="font-family:Outfit,sans-serif;font-size:25px;font-weight:600;margin:0;letter-spacing:-0.01em">Entrada</h2>
+      <span style="font-size:14px;color:#6b6482">usuário e senha · sem e-mail · a Administração redefine</span>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:26px">
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Entrar</span>
+        <div style="width:390px;height:844px;border-radius:34px;border:1px solid #ddd6ee;background:#fff;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 18px 40px -30px rgba(40,20,90,.5)">
+          <div style="background:linear-gradient(160deg,#1c1440,#3a2380);padding:52px 26px 40px;display:flex;flex-direction:column;align-items:center;gap:12px">
+            <img src="assets/asa-wing.png" alt="" style="width:56px;height:56px;object-fit:contain" />
+            <span style="font-family:Outfit,sans-serif;font-size:27px;font-weight:700;color:#fff;letter-spacing:-0.01em">My ASA</span>
+            <span style="font-size:12.5px;color:#bfb4e8;letter-spacing:.02em">Arts and Sports Academy</span>
+          </div>
+          <div style="flex:1;padding:26px 22px;display:flex;flex-direction:column;gap:14px">
+            <label style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-size:12.5px;font-weight:700;color:#4b4465">Usuário</span>
+              <span style="display:flex;align-items:center;height:52px;padding:0 14px;border:1.5px solid #ddd6ee;border-radius:13px;font-size:16px;color:#6b6482">seu.usuario</span>
+            </label>
+            <label style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-size:12.5px;font-weight:700;color:#4b4465">Senha</span>
+              <span style="display:flex;align-items:center;gap:10px;height:52px;padding:0 14px;border:1.5px solid #6C2BF2;border-radius:13px;background:#faf7ff">
+                <span style="flex:1;font-size:18px;letter-spacing:.22em;color:#1b1630">••••••••</span>
+                <span style="font-size:12.5px;font-weight:700;color:#6C2BF2">mostrar</span>
+              </span>
+            </label>
+            <div role="presentation" style="height:54px;border:none;border-radius:14px;background:#6C2BF2;color:#fff;font-family:Manrope,sans-serif;font-size:16px;font-weight:700;cursor:default;margin-top:4px">Entrar</div>
+            <div role="presentation" style="height:46px;border:none;background:none;color:#6C2BF2;font-family:Manrope,sans-serif;font-size:14px;font-weight:600;cursor:default">Esqueci minha senha</div>
+            <span style="flex:1"></span>
+            <div style="display:flex;justify-content:center;gap:14px;font-size:11.5px;color:#6b6482">
+              <span>versão 1.0.0</span><span>·</span><span style="color:#6C2BF2;font-weight:600">Ajuda</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Primeiro acesso · obrigatório</span>
+        <div style="width:390px;height:844px;border-radius:34px;border:1px solid #ddd6ee;background:#fff;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 18px 40px -30px rgba(40,20,90,.5)">
+          <div style="padding:34px 22px 18px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center">
+            <img src="assets/asa/bem-vindo.png" alt="" style="width:96px;height:96px;object-fit:contain" />
+            <span style="font-family:Outfit,sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.01em">Oi, Julia</span>
+            <span style="font-size:14px;line-height:1.5;color:#5b5473;max-width:26ch;text-wrap:pretty">Antes de entrar, crie a sua senha. A que a Barbara te passou vale só desta vez.</span>
+          </div>
+          <div style="flex:1;padding:6px 22px 22px;display:flex;flex-direction:column;gap:13px">
+            <label style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-size:12.5px;font-weight:700;color:#4b4465">Nova senha</span>
+              <span style="display:flex;align-items:center;height:52px;padding:0 14px;border:1.5px solid #6C2BF2;border-radius:13px;background:#faf7ff;font-size:18px;letter-spacing:.22em">••••••••</span>
+            </label>
+            <label style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-size:12.5px;font-weight:700;color:#4b4465">Repetir a senha</span>
+              <span style="display:flex;align-items:center;height:52px;padding:0 14px;border:1.5px solid #ddd6ee;border-radius:13px;font-size:16px;color:#6b6482">repita</span>
+            </label>
+            <div style="display:flex;flex-direction:column;gap:7px;background:#f6f4fc;border-radius:12px;padding:12px 14px">
+              <span style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#0a6f68;font-weight:600"><span style="width:16px;height:16px;border-radius:50%;background:#0a6f68;flex:none"></span>pelo menos 8 caracteres</span>
+              <span style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#0a6f68;font-weight:600"><span style="width:16px;height:16px;border-radius:50%;background:#0a6f68;flex:none"></span>uma letra e um número</span>
+              <span style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#6b6482"><span style="width:16px;height:16px;border-radius:50%;border:1.5px solid #cbc3e0;flex:none"></span>as duas iguais</span>
+            </div>
+            <div role="presentation" style="height:54px;border:none;border-radius:14px;background:#6C2BF2;color:#fff;font-family:Manrope,sans-serif;font-size:16px;font-weight:700;cursor:default">Criar senha e entrar</div>
+            <span style="font-size:12px;line-height:1.5;color:#6b6482;text-align:center;text-wrap:pretty">Ninguém da ASA vê a sua senha, nem a Administração.</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Esqueci minha senha</span>
+        <div style="width:390px;height:844px;border-radius:34px;border:1px solid #ddd6ee;background:#fff;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 18px 40px -30px rgba(40,20,90,.5)">
+          <div style="padding:20px 20px 0;display:flex;align-items:center;gap:10px">
+            <span style="width:42px;height:42px;border-radius:12px;border:1px solid #e6e1f2;display:flex;align-items:center;justify-content:center;font-size:18px;color:#6b6482">‹</span>
+            <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">Esqueci minha senha</span>
+          </div>
+          <div style="flex:1;padding:28px 22px;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center">
+            <img src="assets/asa/duvida.png" alt="" style="width:104px;height:104px;object-fit:contain" />
+            <span style="font-family:Outfit,sans-serif;font-size:21px;font-weight:600;line-height:1.25;max-width:22ch">Quem redefine é a Administração</span>
+            <span style="font-size:14px;line-height:1.55;color:#5b5473;max-width:30ch;text-wrap:pretty">O My ASA não usa e-mail. A Barbara define uma senha nova, te passa, e você cria a sua na hora de entrar.</span>
+            <div style="width:100%;display:flex;align-items:center;gap:12px;background:#f6f4fc;border-radius:14px;padding:13px 15px;text-align:left">
+              <span style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+              <span style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                <span style="font-size:13.5px;font-weight:700">Barbara Sorroche</span>
+                <span style="font-size:12px;color:#6b6482">Administração</span>
+              </span>
+            </div>
+            <span style="flex:1"></span>
+            <div role="presentation" style="width:100%;height:54px;border:none;border-radius:14px;background:#6C2BF2;color:#fff;font-family:Manrope,sans-serif;font-size:16px;font-weight:700;cursor:default">Avisar a Barbara</div>
+            <div role="presentation" style="width:100%;height:48px;border:1.5px solid #ddd6ee;border-radius:14px;background:#fff;color:#4b4465;font-family:Manrope,sans-serif;font-size:15px;font-weight:600;cursor:default">Voltar para entrar</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Conta desativada</span>
+        <div style="width:390px;height:844px;border-radius:34px;border:1px solid #ddd6ee;background:#fff;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 18px 40px -30px rgba(40,20,90,.5)">
+          <div style="flex:1;padding:30px 24px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center">
+            <img src="assets/asa/preocupada.png" alt="" style="width:104px;height:104px;object-fit:contain" />
+            <span style="font-family:Outfit,sans-serif;font-size:21px;font-weight:600;line-height:1.25;max-width:22ch">Sua conta está desativada</span>
+            <span style="font-size:14px;line-height:1.55;color:#5b5473;max-width:30ch;text-wrap:pretty">Isso costuma acontecer no fim de um contrato ou de uma temporada. Seus dados continuam guardados.</span>
+            <div role="presentation" style="width:100%;height:52px;border:none;border-radius:14px;background:#6C2BF2;color:#fff;font-family:Manrope,sans-serif;font-size:15.5px;font-weight:700;cursor:default;margin-top:6px">Falar com a Administração</div>
+          </div>
+          <div style="padding:16px;text-align:center;font-size:11.5px;color:#6b6482;border-top:1px solid #f0ecf8">versão 1.0.0 · Ajuda</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#6C2BF2">A2</span>
+      <h2 style="font-family:Outfit,sans-serif;font-size:25px;font-weight:600;margin:0;letter-spacing:-0.01em">Entrada no computador</h2>
+      <span style="font-size:14px;color:#6b6482">mesma lógica, tela dividida — é assim que a gestão entra</span>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:24px">
+
+      <div style="flex:1 1 100%;display:flex;flex-direction:column;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Entrar</span>
+        <div style="display:flex;height:620px;border:1px solid #ddd6ee;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 16px 36px -30px rgba(40,20,90,.45)">
+          <div style="width:38%;flex:none;background:linear-gradient(160deg,#1c1440,#3a2380);padding:34px 30px;display:flex;flex-direction:column;gap:14px">
+            <img src="assets/asa-wing.png" alt="" style="width:44px;height:44px;object-fit:contain" />
+            <span style="font-family:Outfit,sans-serif;font-size:26px;font-weight:700;color:#fff;letter-spacing:-0.01em">My ASA</span>
+            <span style="font-size:13px;line-height:1.55;color:#c8bff0;text-wrap:pretty">A escala, o livro do dia e as folgas da Arts and Sports Academy em um lugar só.</span>
+            <span style="flex:1"></span>
+            <span style="font-size:11.5px;color:#a99cd8">versão 1.0.0</span>
+          </div>
+          <div style="flex:1;min-width:0;padding:34px 40px;display:flex;flex-direction:column;justify-content:center;gap:14px">
+            <span style="font-family:Outfit,sans-serif;font-size:21px;font-weight:600;letter-spacing:-0.01em">Entrar</span>
+            <label style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-size:12.5px;font-weight:700;color:#4b4465">Usuário</span>
+              <span style="display:flex;align-items:center;height:48px;padding:0 14px;border:1.5px solid #ddd6ee;border-radius:12px;font-size:15px;color:#6b6482">seu.usuario</span>
+            </label>
+            <label style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-size:12.5px;font-weight:700;color:#4b4465">Senha</span>
+              <span style="display:flex;align-items:center;gap:10px;height:48px;padding:0 14px;border:1.5px solid #6C2BF2;border-radius:12px;background:#faf7ff">
+                <span style="flex:1;font-size:17px;letter-spacing:.22em">••••••••</span>
+                <span style="font-size:12.5px;font-weight:700;color:#6C2BF2">mostrar</span>
+              </span>
+            </label>
+            <div style="display:flex;align-items:center;gap:14px;margin-top:4px">
+              <div role="presentation" style="height:50px;padding:0 30px;border:none;border-radius:13px;background:#6C2BF2;color:#fff;font-family:Manrope,sans-serif;font-size:15.5px;font-weight:700;cursor:default">Entrar</div>
+              <a href="#esqueci" style="font-size:13.5px;font-weight:600">Esqueci minha senha</a>
+            </div>
+            <span style="font-size:12px;color:#6b6482;margin-top:2px">Precisa de ajuda? <a href="#suporte">Falar com a Administração</a></span>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:1 1 100%;display:flex;flex-direction:column;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Primeiro acesso · mesma moldura</span>
+        <div style="display:flex;height:620px;border:1px solid #ddd6ee;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 16px 36px -30px rgba(40,20,90,.45)">
+          <div style="width:38%;flex:none;background:linear-gradient(160deg,#1c1440,#3a2380);padding:34px 30px;display:flex;flex-direction:column;gap:14px;align-items:flex-start">
+            <img src="assets/asa/bem-vindo.png" alt="" style="width:88px;height:88px;object-fit:contain" />
+            <span style="font-family:Outfit,sans-serif;font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.01em;line-height:1.2">Bem-vinda,<br />Barbara</span>
+            <span style="font-size:13px;line-height:1.55;color:#c8bff0;text-wrap:pretty">A senha que você recebeu vale só desta vez.</span>
+          </div>
+          <div style="flex:1;min-width:0;padding:34px 40px;display:flex;flex-direction:column;justify-content:center;gap:13px">
+            <span style="font-family:Outfit,sans-serif;font-size:21px;font-weight:600;letter-spacing:-0.01em">Crie a sua senha</span>
+            <label style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-size:12.5px;font-weight:700;color:#4b4465">Nova senha</span>
+              <span style="display:flex;align-items:center;height:48px;padding:0 14px;border:1.5px solid #6C2BF2;border-radius:12px;background:#faf7ff;font-size:17px;letter-spacing:.22em">••••••••</span>
+            </label>
+            <label style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-size:12.5px;font-weight:700;color:#4b4465">Repetir a senha</span>
+              <span style="display:flex;align-items:center;height:48px;padding:0 14px;border:1.5px solid #ddd6ee;border-radius:12px;font-size:15px;color:#6b6482">repita</span>
+            </label>
+            <div style="display:flex;flex-wrap:wrap;gap:8px 16px;font-size:12.5px;font-weight:600">
+              <span style="display:flex;align-items:center;gap:7px;color:#0a6f68"><span style="width:14px;height:14px;border-radius:50%;background:#0a6f68"></span>8 caracteres</span>
+              <span style="display:flex;align-items:center;gap:7px;color:#0a6f68"><span style="width:14px;height:14px;border-radius:50%;background:#0a6f68"></span>letra e número</span>
+              <span style="display:flex;align-items:center;gap:7px;color:#6b6482"><span style="width:14px;height:14px;border-radius:50%;border:1.5px solid #cbc3e0"></span>as duas iguais</span>
+            </div>
+            <div role="presentation" style="height:50px;border:none;border-radius:13px;background:#6C2BF2;color:#fff;font-family:Manrope,sans-serif;font-size:15.5px;font-weight:700;cursor:default;align-self:flex-start;padding:0 26px;margin-top:4px">Criar senha e entrar</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:1 1 100%;display:flex;flex-direction:column;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Esqueci minha senha</span>
+        <div style="display:flex;height:620px;border:1px solid #ddd6ee;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 16px 36px -30px rgba(40,20,90,.45)">
+          <div style="width:38%;flex:none;background:linear-gradient(160deg,#1c1440,#3a2380);padding:34px 30px;display:flex;flex-direction:column;gap:14px;align-items:flex-start">
+            <img src="assets/asa/duvida.png" alt="" style="width:88px;height:88px;object-fit:contain" />
+            <span style="font-family:Outfit,sans-serif;font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.01em;line-height:1.25">Quem redefine é a Administração</span>
+            <span style="font-size:13px;line-height:1.55;color:#c8bff0;text-wrap:pretty">O My ASA não usa e-mail. É por isso que a redefinição passa por uma pessoa.</span>
+          </div>
+          <div style="flex:1;min-width:0;padding:34px 40px;display:flex;flex-direction:column;justify-content:center;gap:16px">
+            <span style="font-family:Outfit,sans-serif;font-size:21px;font-weight:600;letter-spacing:-0.01em">Pedir uma senha nova</span>
+            <span style="font-size:14px;line-height:1.6;color:#5b5473;max-width:48ch;text-wrap:pretty">A Barbara define uma senha provisória e te passa. Você entra com ela e cria a sua na hora — ninguém da ASA vê a senha que você escolher.</span>
+            <div style="display:flex;align-items:center;gap:12px;background:#f6f4fc;border-radius:14px;padding:14px 16px;max-width:360px">
+              <span style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+              <span style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                <span style="font-size:13.5px;font-weight:700">Barbara Sorroche</span>
+                <span style="font-size:12px;color:#6b6482">Administração · responde em horário comercial</span>
+              </span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <div role="presentation" style="height:50px;padding:0 26px;border:none;border-radius:13px;background:#6C2BF2;color:#fff;font-family:Manrope,sans-serif;font-size:15.5px;font-weight:700;cursor:default">Avisar a Barbara</div>
+              <a href="#entrar" style="font-size:13.5px;font-weight:600">Voltar para entrar</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:1 1 100%;display:flex;flex-direction:column;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Conta desativada</span>
+        <div style="display:flex;height:620px;border:1px solid #ddd6ee;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 16px 36px -30px rgba(40,20,90,.45)">
+          <div style="width:38%;flex:none;background:linear-gradient(160deg,#1c1440,#3a2380);padding:34px 30px;display:flex;flex-direction:column;gap:14px;align-items:flex-start">
+            <img src="assets/asa/preocupada.png" alt="" style="width:88px;height:88px;object-fit:contain" />
+            <span style="font-family:Outfit,sans-serif;font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.01em;line-height:1.25">Sua conta está desativada</span>
+            <span style="font-size:13px;line-height:1.55;color:#c8bff0;text-wrap:pretty">Costuma acontecer no fim de um contrato ou de uma temporada.</span>
+          </div>
+          <div style="flex:1;min-width:0;padding:34px 40px;display:flex;flex-direction:column;justify-content:center;gap:16px">
+            <span style="font-family:Outfit,sans-serif;font-size:21px;font-weight:600;letter-spacing:-0.01em">Seus dados continuam guardados</span>
+            <span style="font-size:14px;line-height:1.6;color:#5b5473;max-width:48ch;text-wrap:pretty">Escala, folgas e reconhecimentos ficam no histórico da ASA. Se você voltar, a Administração reativa a mesma conta — nada se perde e você não recomeça do zero.</span>
+            <div style="display:flex;align-items:center;gap:12px">
+              <div role="presentation" style="height:50px;padding:0 26px;border:none;border-radius:13px;background:#6C2BF2;color:#fff;font-family:Manrope,sans-serif;font-size:15.5px;font-weight:700;cursor:default">Falar com a Administração</div>
+              <a href="#privacidade" style="font-size:13.5px;font-weight:600">Pedir cópia dos meus dados</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
+      <div style="flex:1 1 620px;min-width:520px;display:flex;flex-direction:column;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Boas-vindas no computador · sobre o app</span>
+        <div style="position:relative;height:460px;border:1px solid #ddd6ee;border-radius:18px;overflow:hidden;background:#e9e5f4;display:flex;align-items:center;justify-content:center">
+          <div style="position:absolute;inset:0;display:flex">
+            <span style="width:210px;background:linear-gradient(180deg,#1c1440,#241a52);opacity:.5"></span>
+            <span style="flex:1;background:#faf9fe;opacity:.5"></span>
+          </div>
+          <div style="position:relative;box-sizing:border-box;width:390px;background:#fff;border-radius:20px;box-shadow:0 24px 50px -28px rgba(40,20,90,.6);padding:26px 28px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center">
+            <img src="assets/asa/oi.png" alt="" style="width:82px;height:82px;object-fit:contain" />
+            <span style="font-family:Outfit,sans-serif;font-size:21px;font-weight:700;letter-spacing:-0.01em">Seu dia abre aqui</span>
+            <span style="font-size:13.5px;line-height:1.55;color:#5b5473;max-width:40ch;text-wrap:pretty">Onde você está agora, o que vem depois e a que horas. Se a escala mudar, a ASA te avisa antes de você chegar.</span>
+            <div style="display:flex;gap:6px;margin-top:2px">
+              <span style="width:20px;height:7px;border-radius:99px;background:#6C2BF2"></span>
+              <span style="width:7px;height:7px;border-radius:99px;background:#ddd6ee"></span>
+              <span style="width:7px;height:7px;border-radius:99px;background:#ddd6ee"></span>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;margin-top:4px">
+              <div role="presentation" style="height:44px;padding:0 24px;border:none;border-radius:12px;background:#6C2BF2;color:#fff;font-family:Manrope,sans-serif;font-size:14.5px;font-weight:700;cursor:default">Continuar</div>
+              <div role="presentation" style="height:44px;padding:0 16px;border:none;background:none;color:#6b6482;font-family:Manrope,sans-serif;font-size:13.5px;font-weight:600;cursor:default">Pular</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="flex:1 1 300px;min-width:280px;background:#f6f4fc;border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:8px">
+        <span style="font-size:14.5px;font-weight:700">O que muda entre celular e computador</span>
+        <span style="font-size:13px;line-height:1.6;color:#5b5473;text-wrap:pretty">Nada de conteúdo. No celular a entrada ocupa a tela inteira e as boas-vindas viram três telas cheias; no computador a mesma coisa vira tela dividida e uma janela sobre o app. Esqueci a senha e conta desativada usam a moldura dividida com o mesmo texto do celular.</span>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#6C2BF2">B</span>
+      <h2 style="font-family:Outfit,sans-serif;font-size:25px;font-weight:600;margin:0;letter-spacing:-0.01em">Notificações</h2>
+      <span style="font-size:14px;color:#6b6482">o sino agora abre · escala e ciente não se desligam</span>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start">
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Central · celular</span>
+        <div style="width:390px;height:844px;border-radius:34px;border:1px solid #ddd6ee;background:#faf9fe;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 18px 40px -30px rgba(40,20,90,.5)">
+          <div style="background:linear-gradient(135deg,#1c1440,#2b1f63);color:#fff;padding:18px 18px 14px;display:flex;align-items:center;gap:10px">
+            <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600;flex:1">Notificações</span>
+            <span style="font-size:12px;color:#c8bff0;font-weight:600">marcar lidas</span>
+          </div>
+          <div style="display:flex;gap:7px;padding:12px 14px;background:#fff;border-bottom:1px solid #eee9f7;overflow:hidden">
+            <sc-for list="{{ notifTabs }}" as="t" hint-placeholder-count="3">
+              <button type="button" onClick="{{ t.onClick }}" style="{{ t.style }}">{{ t.label }}</button>
+            </sc-for>
+          </div>
+          <div style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+            <sc-for list="{{ notifGroups }}" as="g" hint-placeholder-count="2">
+              <div style="display:flex;flex-direction:column">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482;padding:12px 16px 6px">{{ g.title }}</span>
+                <sc-for list="{{ g.items }}" as="n" hint-placeholder-count="3">
+                  <div style="{{ n.rowStyle }}">
+                    <span style="{{ n.dotStyle }}"></span>
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                      <span style="font-size:13.5px;font-weight:700;line-height:1.35;text-wrap:pretty">{{ n.title }}</span>
+                      <span style="font-size:12px;color:#6b6482;line-height:1.4">{{ n.meta }}</span>
+                      <sc-if value="{{ n.cta }}" hint-placeholder-val="{{ true }}">
+                        <span style="{{ n.ctaStyle }}">{{ n.cta }}</span>
+                      </sc-if>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Preferências · celular</span>
+        <div style="width:390px;height:844px;border-radius:34px;border:1px solid #ddd6ee;background:#faf9fe;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 18px 40px -30px rgba(40,20,90,.5)">
+          <div style="background:#fff;border-bottom:1px solid #eee9f7;padding:18px;display:flex;align-items:center;gap:10px">
+            <span style="font-size:18px;color:#6b6482">‹</span>
+            <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600;flex:1">Notificações</span>
+          </div>
+          <div style="display:flex;gap:8px;padding:10px 16px 8px;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#6b6482">
+            <span style="flex:1"></span><span style="width:52px;text-align:center">app</span><span style="width:52px;text-align:center">celular</span>
+          </div>
+          <div style="flex:1;overflow:hidden;background:#fff">
+            <sc-for list="{{ prefs }}" as="p" hint-placeholder-count="7">
+              <div style="display:flex;align-items:center;gap:8px;padding:13px 16px;border-bottom:1px solid #f4f1fa">
+                <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:13.5px;font-weight:600;line-height:1.3">{{ p.name }}</span>
+                  <sc-if value="{{ p.note }}" hint-placeholder-val="{{ true }}">
+                    <span style="font-size:11.5px;color:#6b6482">{{ p.note }}</span>
+                  </sc-if>
+                </span>
+                <span style="{{ p.appStyle }}"></span>
+                <span style="{{ p.pushStyle }}"></span>
+              </div>
+            </sc-for>
+            <div style="display:flex;flex-direction:column;gap:11px;padding:15px 16px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="flex:1;display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:13.5px;font-weight:600">Modo silêncio</span>
+                  <span style="font-size:11.5px;color:#6b6482">urgência de escala passa mesmo assim</span>
+                </span>
+                <span style="width:46px;height:27px;border-radius:99px;background:#6C2BF2;position:relative;flex:none"><span style="position:absolute;right:3px;top:3px;width:21px;height:21px;border-radius:50%;background:#fff"></span></span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="font-size:12.5px;color:#4b4465;flex:none">das</span>
+                <span style="height:44px;flex:1;display:flex;align-items:center;justify-content:center;border:1.5px solid #ddd6ee;border-radius:12px;font-size:16px;font-weight:700">22:00</span>
+                <span style="font-size:12.5px;color:#4b4465;flex:none">às</span>
+                <span style="height:44px;flex:1;display:flex;align-items:center;justify-content:center;border:1.5px solid #ddd6ee;border-radius:12px;font-size:16px;font-weight:700">07:00</span>
+              </div>
+              <span style="font-size:11.5px;line-height:1.45;color:#6b6482;text-wrap:pretty">Cada pessoa escolhe o seu. A Administração define o horário que vem preenchido para quem nunca mexeu.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:1 1 420px;min-width:360px;display:flex;flex-direction:column;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Computador · o sino do cabeçalho</span>
+        <div style="border:1px solid #ddd6ee;border-radius:18px;background:#fff;overflow:hidden;box-shadow:0 16px 36px -30px rgba(40,20,90,.45)">
+          <div style="display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid #ebe6f6">
+            <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600;flex:1">Meu Dia</span>
+            <span style="position:relative;width:38px;height:38px;border-radius:12px;border:1.5px solid #6C2BF2;background:#f6f1fe;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#6C2BF2">3</span>
+          </div>
+          <div style="padding:16px 18px;background:#faf9fe;display:flex;flex-direction:column;gap:12px">
+            <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;overflow:hidden;max-width:400px;box-shadow:0 14px 30px -24px rgba(40,20,90,.5)">
+              <div style="display:flex;align-items:center;gap:10px;padding:12px 15px;border-bottom:1px solid #f0ecf8">
+                <span style="font-family:Outfit,sans-serif;font-size:14.5px;font-weight:600;flex:1">Notificações</span>
+                <span style="font-size:11.5px;font-weight:700;color:#6C2BF2">marcar todas como lidas</span>
+              </div>
+              <sc-for list="{{ deskNotifs }}" as="n" hint-placeholder-count="3">
+                <div style="display:flex;gap:11px;padding:12px 15px;border-bottom:1px solid #f6f4fc;align-items:flex-start">
+                  <span style="{{ n.dotStyle }}"></span>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+                    <span style="font-size:13px;font-weight:700;line-height:1.35;text-wrap:pretty">{{ n.title }}</span>
+                    <span style="font-size:11.5px;color:#6b6482">{{ n.meta }}</span>
+                  </div>
+                  <sc-if value="{{ n.cta }}" hint-placeholder-val="{{ true }}">
+                    <span style="flex:none;font-size:11.5px;font-weight:700;color:#6C2BF2;padding-top:2px">{{ n.cta }}</span>
+                  </sc-if>
+                </div>
+              </sc-for>
+              <div style="padding:11px 15px;text-align:center;font-size:12px;font-weight:600;color:#6C2BF2">Ver todas</div>
+            </div>
+            <span style="font-size:12.5px;line-height:1.5;color:#6b6482;max-width:52ch;text-wrap:pretty">Mesma lista nos dois lugares. O que exige ação fica no topo com o botão junto — dar ciente, fazer check-in, responder pedido — e some da lista quando é resolvido.</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:1 1 100%;display:flex;flex-direction:column;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Preferências no computador · dentro de Perfil e configurações</span>
+        <div style="border:1px solid #ddd6ee;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 16px 36px -30px rgba(40,20,90,.45)">
+          <div style="display:flex;align-items:center;gap:14px;padding:16px 22px;border-bottom:1px solid #ebe6f6;background:#fbfaff">
+            <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600;flex:1">Notificações</span>
+            <span style="font-size:12.5px;color:#6b6482">as mudanças salvam sozinhas</span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:26px;padding:22px">
+            <div style="flex:1 1 460px;min-width:400px;display:flex;flex-direction:column">
+              <div style="display:flex;align-items:center;gap:10px;padding:0 4px 10px;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">
+                <span style="flex:1">o que chega</span><span style="width:60px;text-align:center">no app</span><span style="width:60px;text-align:center">no celular</span>
+              </div>
+              <sc-for list="{{ prefs }}" as="p" hint-placeholder-count="7">
+                <div style="display:flex;align-items:center;gap:10px;padding:13px 4px;border-top:1px solid #f4f1fa">
+                  <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                    <span style="font-size:14px;font-weight:600;line-height:1.3">{{ p.name }}</span>
+                    <sc-if value="{{ p.note }}" hint-placeholder-val="{{ true }}">
+                      <span style="font-size:12px;color:#6b6482">{{ p.note }}</span>
+                    </sc-if>
+                  </span>
+                  <span style="width:60px;display:flex;justify-content:center"><span style="{{ p.appStyle }}"></span></span>
+                  <span style="width:60px;display:flex;justify-content:center"><span style="{{ p.pushStyle }}"></span></span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="flex:1 1 300px;min-width:280px;display:flex;flex-direction:column;gap:14px">
+              <div style="background:#faf9fe;border:1px solid #eee9f7;border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:12px">
+                <div style="display:flex;align-items:center;gap:12px">
+                  <span style="flex:1;display:flex;flex-direction:column;gap:2px">
+                    <span style="font-size:14.5px;font-weight:700">Modo silêncio</span>
+                    <span style="font-size:12px;color:#6b6482">urgência de escala passa mesmo assim</span>
+                  </span>
+                  <span style="width:46px;height:27px;border-radius:99px;background:#6C2BF2;position:relative;flex:none"><span style="position:absolute;right:3px;top:3px;width:21px;height:21px;border-radius:50%;background:#fff"></span></span>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span style="font-size:13px;color:#4b4465;flex:none">das</span>
+                  <span style="height:44px;flex:1;display:flex;align-items:center;justify-content:center;border:1.5px solid #ddd6ee;border-radius:12px;font-size:16px;font-weight:700;background:#fff">22:00</span>
+                  <span style="font-size:13px;color:#4b4465;flex:none">às</span>
+                  <span style="height:44px;flex:1;display:flex;align-items:center;justify-content:center;border:1.5px solid #ddd6ee;border-radius:12px;font-size:16px;font-weight:700;background:#fff">07:00</span>
+                </div>
+                <span style="font-size:12px;line-height:1.5;color:#6b6482;text-wrap:pretty">Cada pessoa escolhe o seu horário. A Administração define só o valor que vem preenchido para quem nunca mexeu.</span>
+              </div>
+              <div style="border:1px solid #e6e1f2;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:7px">
+                <span style="font-size:13.5px;font-weight:700">Por que dois itens estão travados</span>
+                <span style="font-size:12.5px;line-height:1.55;color:#5b5473;text-wrap:pretty">Escala publicada ou alterada e aviso que pede ciente são os dois avisos que ninguém pode perder — um coloca a pessoa no lugar certo, o outro é o que a Administração precisa provar que foi lido.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#6C2BF2">C</span>
+      <h2 style="font-family:Outfit,sans-serif;font-size:25px;font-weight:600;margin:0;letter-spacing:-0.01em">Boas-vindas</h2>
+      <span style="font-size:14px;color:#6b6482">três telas na primeira vez — é isto que substitui você explicando</span>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start">
+      <sc-for list="{{ welcome }}" as="w">
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">{{ w.step }}</span>
+          <div style="width:390px;height:844px;border-radius:34px;border:1px solid #ddd6ee;background:#fff;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 18px 40px -30px rgba(40,20,90,.5)">
+            <div style="display:flex;justify-content:flex-end;padding:18px 20px 0"><span style="font-size:13px;font-weight:600;color:#6b6482">Pular</span></div>
+            <div style="flex:1;padding:10px 28px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;text-align:center">
+              <div role="img" aria-label="ASA" style="{{ w.imgStyle }}"></div>
+              <span style="font-family:Outfit,sans-serif;font-size:24px;font-weight:700;line-height:1.2;letter-spacing:-0.01em;text-wrap:pretty">{{ w.title }}</span>
+              <span style="font-size:14.5px;line-height:1.6;color:#5b5473;text-wrap:pretty">{{ w.body }}</span>
+            </div>
+            <div style="padding:0 24px 28px;display:flex;flex-direction:column;gap:18px;align-items:center">
+              <div style="display:flex;gap:7px">
+                <sc-for list="{{ w.dots }}" as="d" hint-placeholder-count="3">
+                  <span style="{{ d }}"></span>
+                </sc-for>
+              </div>
+              <div role="presentation" style="{{ w.btnStyle }}">{{ w.btn }}</div>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#6C2BF2">C2</span>
+      <h2 style="font-family:Outfit,sans-serif;font-size:25px;font-weight:600;margin:0;letter-spacing:-0.01em">Instalar na tela de início</h2>
+      <span style="font-size:14px;color:#6b6482">o passo que decide se a notificação existe — vem depois das boas-vindas</span>
+    </div>
+
+    <p style="margin:0;max-width:80ch;font-size:14.5px;line-height:1.6;color:#5b5473;text-wrap:pretty">Não há app de loja: o My ASA se instala pelo próprio navegador. No iPhone isso não é preferência — <strong>a notificação só funciona depois de instalado na tela de início</strong>. Como o aviso é metade do valor do app, este é passo do primeiro acesso, não sugestão escondida em configurações. E o procedimento é diferente em cada celular: o app detecta qual e mostra só o certo.</p>
+
+    <div style="display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start">
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">1 · o convite</span>
+        <div style="width:390px;height:844px;border-radius:34px;border:1px solid #ddd6ee;background:#fff;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 18px 40px -30px rgba(40,20,90,.5)">
+          <div style="flex:1;padding:34px 28px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;text-align:center">
+            <img src="assets/asa/lembrete.png" alt="" style="width:104px;height:104px;object-fit:contain" />
+            <span style="font-family:Outfit,sans-serif;font-size:24px;font-weight:700;line-height:1.2;letter-spacing:-0.01em;text-wrap:pretty">Falta um passo, Julia</span>
+            <span style="font-size:14.5px;line-height:1.6;color:#5b5473;text-wrap:pretty">Coloque o My ASA na tela de início do seu celular. É assim que você recebe aviso de escala nova e lembrete de check-in — sem isso, só vendo quando abrir.</span>
+            <div style="width:100%;background:#f3ecfe;border:1px solid #e0d2fb;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:5px;text-align:left">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5B23C9">Leva 20 segundos</span>
+              <span style="font-size:13.5px;line-height:1.5;color:#4a3d6b">Não ocupa espaço como um aplicativo de loja — é o mesmo endereço, com ícone próprio.</span>
+            </div>
+          </div>
+          <div style="padding:0 24px 30px;display:flex;flex-direction:column;gap:11px">
+            <div role="presentation" style="height:54px;border-radius:14px;background:#6C2BF2;color:#fff;font-family:Manrope,sans-serif;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center">Mostrar como fazer</div>
+            <div role="presentation" style="height:48px;border-radius:14px;background:none;color:#6b6482;font-family:Manrope,sans-serif;font-size:14.5px;font-weight:600;display:flex;align-items:center;justify-content:center">Agora não</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">2a · iphone (safari)</span>
+        <div style="width:390px;height:844px;border-radius:34px;border:1px solid #ddd6ee;background:#fff;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 18px 40px -30px rgba(40,20,90,.5)">
+          <div style="padding:26px 24px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #f0ecf8">
+            <span style="font-size:19px;color:#6b6482">‹</span>
+            <span style="font-family:Outfit,sans-serif;font-size:19px;font-weight:600">No seu iPhone</span>
+          </div>
+          <div style="flex:1;padding:22px 24px;display:flex;flex-direction:column;gap:18px">
+            <div style="display:flex;gap:14px;align-items:flex-start">
+              <span style="width:32px;height:32px;border-radius:50%;background:#6C2BF2;color:#fff;font-family:Outfit,sans-serif;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none">1</span>
+              <div style="display:flex;flex-direction:column;gap:9px;min-width:0">
+                <span style="font-size:15.5px;line-height:1.45;font-weight:600;text-wrap:pretty">Toque no botão de compartilhar, embaixo</span>
+                <div style="display:flex;align-items:center;justify-content:center;gap:26px;background:#f7f4fc;border:1px solid #ebe6f6;border-radius:12px;padding:12px 16px">
+                  <span style="font-size:17px;color:#b3abc9">‹</span>
+                  <span style="font-size:17px;color:#b3abc9">›</span>
+                  <span style="width:38px;height:38px;border-radius:10px;border:2px solid #6C2BF2;color:#6C2BF2;font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center;background:#fff">⬆</span>
+                  <span style="font-size:17px;color:#b3abc9">▢</span>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:14px;align-items:flex-start">
+              <span style="width:32px;height:32px;border-radius:50%;background:#6C2BF2;color:#fff;font-family:Outfit,sans-serif;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none">2</span>
+              <div style="display:flex;flex-direction:column;gap:9px;min-width:0">
+                <span style="font-size:15.5px;line-height:1.45;font-weight:600;text-wrap:pretty">Role a lista e toque em <strong>Adicionar à Tela de Início</strong></span>
+                <div style="background:#f7f4fc;border:1px solid #ebe6f6;border-radius:12px;padding:6px 0;display:flex;flex-direction:column">
+                  <span style="padding:9px 14px;font-size:13.5px;color:#9b93b3">Adicionar aos Favoritos</span>
+                  <span style="padding:9px 14px;font-size:13.5px;color:#9b93b3">Encontrar na Página</span>
+                  <span style="padding:9px 14px;font-size:13.5px;font-weight:700;color:#1b1630;background:#ede4fd;border-left:3px solid #6C2BF2">Adicionar à Tela de Início</span>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:14px;align-items:flex-start">
+              <span style="width:32px;height:32px;border-radius:50%;background:#6C2BF2;color:#fff;font-family:Outfit,sans-serif;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none">3</span>
+              <div style="display:flex;flex-direction:column;gap:9px;min-width:0">
+                <span style="font-size:15.5px;line-height:1.45;font-weight:600;text-wrap:pretty">Confirme em <strong>Adicionar</strong> — o ícone aparece junto dos seus outros apps</span>
+                <div style="display:flex;align-items:center;gap:11px;background:#f7f4fc;border:1px solid #ebe6f6;border-radius:12px;padding:12px 14px">
+                  <span style="width:44px;height:44px;border-radius:11px;background:linear-gradient(160deg,#1c1440,#3a2380);display:flex;align-items:center;justify-content:center;flex:none"><img src="assets/asa-wing.png" alt="" style="width:26px;height:26px;object-fit:contain" /></span>
+                  <span style="font-size:14px;font-weight:600">My ASA</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="padding:0 24px 30px">
+            <div role="presentation" style="height:54px;border-radius:14px;background:#1c1440;color:#fff;font-family:Manrope,sans-serif;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center">Já adicionei</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">2b · android (chrome)</span>
+        <div style="width:390px;height:844px;border-radius:34px;border:1px solid #ddd6ee;background:#fff;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 18px 40px -30px rgba(40,20,90,.5)">
+          <div style="padding:26px 24px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #f0ecf8">
+            <span style="font-size:19px;color:#6b6482">‹</span>
+            <span style="font-family:Outfit,sans-serif;font-size:19px;font-weight:600">No seu Android</span>
+          </div>
+          <div style="flex:1;padding:22px 24px;display:flex;flex-direction:column;gap:18px">
+            <div style="background:#e3f4f1;border:1px solid #bfe4de;border-radius:14px;padding:15px 16px;display:flex;flex-direction:column;gap:11px">
+              <span style="font-size:14px;line-height:1.5;color:#0A6F68;font-weight:600;text-wrap:pretty">Na maioria dos aparelhos aparece este convite sozinho. Se apareceu, toque em <strong>Instalar</strong> — e pronto.</span>
+              <div style="background:#fff;border-radius:11px;padding:12px 14px;display:flex;align-items:center;gap:11px">
+                <span style="width:40px;height:40px;border-radius:10px;background:linear-gradient(160deg,#1c1440,#3a2380);display:flex;align-items:center;justify-content:center;flex:none"><img src="assets/asa-wing.png" alt="" style="width:24px;height:24px;object-fit:contain" /></span>
+                <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                  <span style="font-size:13.5px;font-weight:700;white-space:nowrap">Instalar My ASA</span>
+                  <span style="font-size:12px;color:#6b6482;white-space:nowrap">my-asa.app</span>
+                </div>
+                <span style="flex:1"></span>
+                <span style="background:#0A6F68;color:#fff;border-radius:999px;padding:8px 15px;font-size:12.5px;font-weight:700;flex:none">Instalar</span>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="flex:1;height:1px;background:#f0ecf8"></span>
+              <span style="font-size:12.5px;color:#6b6482;white-space:nowrap">se não apareceu</span>
+              <span style="flex:1;height:1px;background:#f0ecf8"></span>
+            </div>
+            <div style="display:flex;gap:14px;align-items:flex-start">
+              <span style="width:32px;height:32px;border-radius:50%;background:#6C2BF2;color:#fff;font-family:Outfit,sans-serif;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none">1</span>
+              <div style="display:flex;flex-direction:column;gap:9px;min-width:0">
+                <span style="font-size:15.5px;line-height:1.45;font-weight:600;text-wrap:pretty">Toque nos três pontinhos, no alto à direita</span>
+                <div style="display:flex;align-items:center;gap:12px;background:#f7f4fc;border:1px solid #ebe6f6;border-radius:12px;padding:11px 14px">
+                  <span style="flex:1;height:22px;border-radius:999px;background:#ebe6f6"></span>
+                  <span style="width:34px;height:34px;border-radius:9px;border:2px solid #6C2BF2;color:#6C2BF2;font-size:17px;font-weight:700;display:flex;align-items:center;justify-content:center;background:#fff;flex:none">⋮</span>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:14px;align-items:flex-start">
+              <span style="width:32px;height:32px;border-radius:50%;background:#6C2BF2;color:#fff;font-family:Outfit,sans-serif;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none">2</span>
+              <div style="display:flex;flex-direction:column;gap:9px;min-width:0">
+                <span style="font-size:15.5px;line-height:1.45;font-weight:600;text-wrap:pretty">Toque em <strong>Instalar aplicativo</strong></span>
+                <div style="background:#f7f4fc;border:1px solid #ebe6f6;border-radius:12px;padding:6px 0;display:flex;flex-direction:column">
+                  <span style="padding:9px 14px;font-size:13.5px;color:#9b93b3">Nova aba anônima</span>
+                  <span style="padding:9px 14px;font-size:13.5px;font-weight:700;color:#1b1630;background:#ede4fd;border-left:3px solid #6C2BF2">Instalar aplicativo</span>
+                  <span style="padding:9px 14px;font-size:13.5px;color:#9b93b3">Histórico</span>
+                </div>
+                <span style="font-size:12.5px;line-height:1.45;color:#6b6482;text-wrap:pretty">Em alguns aparelhos chama <em>Adicionar à tela inicial</em> — é a mesma coisa.</span>
+              </div>
+            </div>
+          </div>
+          <div style="padding:0 24px 30px">
+            <div role="presentation" style="height:54px;border-radius:14px;background:#1c1440;color:#fff;font-family:Manrope,sans-serif;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center">Já instalei</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">3 · só agora se pede o aviso</span>
+        <div style="width:390px;height:844px;border-radius:34px;border:1px solid #ddd6ee;background:#fff;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 18px 40px -30px rgba(40,20,90,.5)">
+          <div style="flex:1;padding:34px 28px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;text-align:center">
+            <img src="assets/asa/bem-vindo.png" alt="" style="width:100px;height:100px;object-fit:contain" />
+            <span style="font-family:Outfit,sans-serif;font-size:24px;font-weight:700;line-height:1.2;letter-spacing:-0.01em;text-wrap:pretty">Pronto — agora pode avisar você</span>
+            <span style="font-size:14.5px;line-height:1.6;color:#5b5473;text-wrap:pretty">Só faltam os avisos. São três, e nada além disso:</span>
+            <div style="width:100%;display:flex;flex-direction:column;gap:9px;text-align:left">
+              <div style="display:flex;align-items:center;gap:11px;background:#f7f4fc;border-radius:12px;padding:13px 15px">
+                <span style="width:9px;height:9px;border-radius:50%;background:#6C2BF2;flex:none"></span>
+                <span style="font-size:14px;font-weight:600">A sua escala mudou</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:11px;background:#f7f4fc;border-radius:12px;padding:13px 15px">
+                <span style="width:9px;height:9px;border-radius:50%;background:#6C2BF2;flex:none"></span>
+                <span style="font-size:14px;font-weight:600">Lembrete do check-in do turno</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:11px;background:#f7f4fc;border-radius:12px;padding:13px 15px">
+                <span style="width:9px;height:9px;border-radius:50%;background:#6C2BF2;flex:none"></span>
+                <span style="font-size:14px;font-weight:600">Aviso que pede o seu ciente</span>
+              </div>
+            </div>
+          </div>
+          <div style="padding:0 24px 30px;display:flex;flex-direction:column;gap:11px">
+            <div role="presentation" style="height:54px;border-radius:14px;background:#6C2BF2;color:#fff;font-family:Manrope,sans-serif;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center">Permitir avisos</div>
+            <span style="font-size:12.5px;line-height:1.5;color:#6b6482;text-align:center;text-wrap:pretty">O celular vai perguntar em seguida. Se você recusar, dá para ligar depois em Perfil.</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:1 1 320px;min-width:300px;display:flex;flex-direction:column;gap:14px">
+        <div style="background:#fff;border:1px solid #e6e1f2;border-left:3px solid #C2334D;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:9px">
+          <div style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">A ordem não é negociável</div>
+          <p style="margin:0;font-size:13.5px;line-height:1.55;color:#5b5473;text-wrap:pretty">Instalar <strong>antes</strong>, pedir permissão de aviso <strong>depois</strong>. No iPhone, pedir permissão fora do app instalado falha — e falha calada: a pessoa acha que autorizou e nunca recebe nada. É o erro mais fácil de cometer aqui.</p>
+        </div>
+
+        <div style="background:#fff;border:1px solid #e6e1f2;border-left:3px solid #C97A17;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:9px">
+          <div style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">No iPhone só funciona no Safari</div>
+          <p style="margin:0;font-size:13.5px;line-height:1.55;color:#5b5473;text-wrap:pretty">Se a pessoa abriu o link pelo WhatsApp ou pelo Chrome, o menu não tem <em>Adicionar à Tela de Início</em> e ela vai procurar até desistir. Detecte e diga antes:</p>
+          <div style="background:#fdf3e4;border-radius:12px;padding:13px 15px;display:flex;flex-direction:column;gap:7px">
+            <span style="font-size:13.5px;font-weight:700;color:#8F5409;line-height:1.4">Abra este endereço no Safari</span>
+            <span style="font-size:13px;color:#6b4a12;line-height:1.5">No iPhone, a instalação só existe lá. Toque nos três pontinhos e escolha <strong>Abrir no Safari</strong>.</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#8F5409;background:#fff;border-radius:7px;padding:7px 10px">my-asa.app</span>
+          </div>
+        </div>
+
+        <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:9px">
+          <div style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">&ldquo;Agora não&rdquo; existe</div>
+          <p style="margin:0;font-size:13.5px;line-height:1.55;color:#5b5473;text-wrap:pretty">Ninguém fica preso fora do app por não conseguir instalar — quem está com pressa entra e resolve depois. Mas o app não esquece: fica uma <strong>faixa fina no topo de Meu Dia</strong>, dispensável por sessão, até instalar.</p>
+          <div style="display:flex;align-items:center;gap:10px;background:#f3ecfe;border-radius:11px;padding:11px 13px">
+            <span style="width:26px;height:26px;border-radius:7px;background:linear-gradient(160deg,#1c1440,#3a2380);flex:none;display:flex;align-items:center;justify-content:center"><img src="assets/asa-wing.png" alt="" style="width:15px;height:15px;object-fit:contain" /></span>
+            <span style="font-size:12.5px;line-height:1.4;color:#4a3d6b;flex:1;min-width:0">Você ainda não recebe avisos no celular</span>
+            <span style="font-size:12.5px;font-weight:700;color:#5B23C9;flex:none">Instalar</span>
+          </div>
+        </div>
+
+        <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:9px">
+          <div style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">A Administração precisa enxergar</div>
+          <p style="margin:0;font-size:13.5px;line-height:1.55;color:#5b5473;text-wrap:pretty">Em Pessoas, uma marca de <strong>quem ainda não instalou</strong>. Sem isso a Barbara não tem como saber por que metade do elenco não responde aviso — e vai culpar o app, ou a pessoa.</p>
+        </div>
+
+        <div style="background:#e3f4f1;border:1px solid #bfe4de;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:7px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#0A6F68">No piloto</div>
+          <p style="margin:0;font-size:13.5px;line-height:1.55;color:#0A6F68;text-wrap:pretty">Instalar junto, presencialmente, todo mundo ao mesmo tempo — dez minutos numa reunião. Instrução mandada por mensagem não é seguida: metade instala, metade some, e a primeira semana mede a coisa errada.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#6C2BF2">D</span>
+      <h2 style="font-family:Outfit,sans-serif;font-size:25px;font-weight:600;margin:0;letter-spacing:-0.01em">Estados do sistema</h2>
+      <span style="font-size:14px;color:#6b6482">valem para as 19 telas — é isto que faz o app parecer confiável num dia ruim</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:16px">
+
+      <div style="background:#fff;border:1px solid #e6e1f2;border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:14px;min-height:220px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#6C2BF2">Carregando</span>
+        <div style="display:flex;flex-direction:column;gap:9px">
+          <span style="height:13px;width:62%;border-radius:99px;background:#eee9f7"></span>
+          <span style="height:13px;width:88%;border-radius:99px;background:#f2eefa"></span>
+          <span style="height:13px;width:74%;border-radius:99px;background:#f6f3fd"></span>
+        </div>
+        <span style="flex:1"></span>
+        <span style="font-size:13px;color:#5b5473;line-height:1.5;text-wrap:pretty">Buscando a escala de hoje…</span>
+        <span style="font-size:11.5px;color:#6b6482;line-height:1.45;text-wrap:pretty">Nunca uma roda girando sozinha: a forma do que vem já aparece.</span>
+      </div>
+
+      <div style="background:#fff;border:1px solid #e6e1f2;border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center;min-height:220px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#0a6f68;align-self:flex-start">Vazio</span>
+        <img src="assets/asa/oi.png" alt="" style="width:64px;height:64px;object-fit:contain" />
+        <span style="font-size:14.5px;font-weight:700;line-height:1.3">Você ainda não pediu folga</span>
+        <span style="font-size:12.5px;color:#5b5473;line-height:1.5;text-wrap:pretty">Quando pedir, o andamento aparece aqui.</span>
+        <div role="presentation" style="height:44px;padding:0 20px;border:none;border-radius:12px;background:#6C2BF2;color:#fff;font-family:Manrope,sans-serif;font-size:14px;font-weight:700;cursor:default">Pedir folga</div>
+      </div>
+
+      <div style="background:#fff;border:1px solid #f0d3da;border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center;min-height:220px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#C2334D;align-self:flex-start">Erro</span>
+        <img src="assets/asa/preocupada.png" alt="" style="width:64px;height:64px;object-fit:contain" />
+        <span style="font-size:14.5px;font-weight:700;line-height:1.3">Não consegui carregar a escala</span>
+        <span style="font-size:12.5px;color:#5b5473;line-height:1.5;text-wrap:pretty">O problema é nosso, não seu. Tente de novo em alguns segundos.</span>
+        <div role="presentation" style="height:44px;padding:0 20px;border:1.5px solid #C2334D;border-radius:12px;background:#fff;color:#C2334D;font-family:Manrope,sans-serif;font-size:14px;font-weight:700;cursor:default">Tentar de novo</div>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#6b6482">erro ESC-503 · 09:41</span>
+      </div>
+
+      <div style="background:#fff;border:1px solid #f2ddbc;border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:12px;min-height:220px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#8f5409">Sem conexão</span>
+        <div style="display:flex;gap:11px;align-items:flex-start;background:#fff8f1;border-radius:12px;padding:12px 13px">
+          <img src="assets/asa/atencao.png" alt="" style="width:34px;height:34px;object-fit:contain;flex:none" />
+          <span style="font-size:12.5px;line-height:1.5;color:#7d4a10;text-wrap:pretty">Você está sem internet. Mostrando a escala salva às <strong>07:12</strong>.</span>
+        </div>
+        <span style="flex:1"></span>
+        <span style="font-size:12.5px;color:#5b5473;line-height:1.5;text-wrap:pretty">A escala e o livro do dia ficam salvos no celular. É o estado mais importante do app — dentro do parque o sinal cai.</span>
+        <div role="presentation" style="height:44px;border:1.5px solid #ddd6ee;border-radius:12px;background:#fff;color:#4b4465;font-family:Manrope,sans-serif;font-size:14px;font-weight:700;cursor:default">Tentar atualizar</div>
+      </div>
+
+      <div style="background:#fff;border:1px solid #e6e1f2;border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center;min-height:220px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#2E63D6;align-self:flex-start">Sem permissão</span>
+        <span style="width:56px;height:56px;border-radius:16px;background:#eaf0fd;border:1.5px solid #cbd9f6;display:flex;align-items:center;justify-content:center;font-size:24px;color:#2E63D6">•</span>
+        <span style="font-size:14.5px;font-weight:700;line-height:1.3">Esta área é da Administração</span>
+        <span style="font-size:12.5px;color:#5b5473;line-height:1.5;text-wrap:pretty">Se você precisa dela para o seu trabalho, é só pedir.</span>
+        <div role="presentation" style="height:44px;padding:0 20px;border:1.5px solid #2E63D6;border-radius:12px;background:#fff;color:#2E63D6;font-family:Manrope,sans-serif;font-size:14px;font-weight:700;cursor:default">Falar com a Barbara</div>
+      </div>
+
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#6C2BF2">E</span>
+      <h2 style="font-family:Outfit,sans-serif;font-size:25px;font-weight:600;margin:0;letter-spacing:-0.01em">Rodapé e ajuda</h2>
+      <span style="font-size:14px;color:#6b6482">nenhuma tela tinha para onde ir quando algo dá errado</span>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start">
+      <div style="flex:1 1 520px;min-width:400px;display:flex;flex-direction:column;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Computador · fecha toda tela</span>
+        <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:18px 22px;display:flex;flex-wrap:wrap;gap:16px;align-items:center">
+          <div style="display:flex;align-items:center;gap:10px;flex:none">
+            <img src="assets/asa-wing.png" alt="" style="width:24px;height:24px;object-fit:contain" />
+            <span style="font-size:12.5px;color:#6b6482">My ASA · versão 1.0.0</span>
+          </div>
+          <div style="flex:1 1 300px;display:flex;flex-wrap:wrap;gap:18px;font-size:12.5px;font-weight:600">
+            <a href="#ajuda">Ajuda</a><a href="#novidades">O que mudou</a><a href="#privacidade">Privacidade e dados</a><a href="#suporte">Falar com a Administração</a>
+          </div>
+          <span style="font-size:12px;color:#6b6482;flex:none">sincronizado 09:41</span>
+        </div>
+        <div style="background:#f6f4fc;border-radius:14px;padding:15px 18px;display:flex;flex-direction:column;gap:6px">
+          <span style="font-size:13.5px;font-weight:700">Por que "Privacidade e dados" precisa estar aí</span>
+          <span style="font-size:12.5px;line-height:1.55;color:#5b5473;text-wrap:pretty">O app guarda telefone, data de nascimento e ocorrências de doença e acidente — isso é dado de saúde. A pessoa precisa ter um lugar visível para ver o que é guardado sobre ela, quem consulta e como pedir cópia ou apagamento.</span>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Celular · Ajuda</span>
+        <div style="width:390px;border-radius:26px;border:1px solid #ddd6ee;background:#fff;overflow:hidden;box-shadow:0 18px 40px -30px rgba(40,20,90,.5)">
+          <div style="padding:16px 18px;border-bottom:1px solid #f0ecf8;display:flex;align-items:center;gap:10px">
+            <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600;flex:1">Ajuda</span>
+            <span style="font-size:18px;color:#6b6482">✕</span>
+          </div>
+          <sc-for list="{{ helpItems }}" as="h" hint-placeholder-count="5">
+            <div style="display:flex;align-items:center;gap:12px;padding:15px 18px;border-bottom:1px solid #f6f4fc">
+              <span style="font-size:14px;font-weight:600;flex:1;line-height:1.3">{{ h }}</span>
+              <span style="font-size:16px;color:#6b6482">›</span>
+            </div>
+          </sc-for>
+          <div style="padding:16px 18px;font-size:11.5px;color:#6b6482;text-align:center">My ASA 1.0.0 · Arts and Sports Academy</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="background:#fff;border:1px solid #e6e1f2;border-radius:20px;padding:24px 26px;display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start">
+    <img src="assets/asa/lembrete.png" alt="" style="width:58px;height:58px;object-fit:contain;flex:none" />
+    <div style="flex:1 1 460px;min-width:320px;display:flex;flex-direction:column;gap:10px">
+      <span style="font-family:Outfit,sans-serif;font-size:20px;font-weight:600;letter-spacing:-0.01em">Três decisões que eu tomei aqui — confirme ou mude</span>
+      <span style="font-size:14px;line-height:1.6;color:#4b4465;text-wrap:pretty"><strong>1.</strong> Sem e-mail em lugar nenhum: entra com usuário e senha, e quem redefine é a Administração. <strong>2.</strong> Escala publicada e aviso com ciente não podem ser desligados nas preferências — são os dois avisos que ninguém pode perder. <strong>3.</strong> "Silêncio das 22h às 7h" vem ligado por padrão, porque o elenco não deve ser acordado por notificação de app.</span>
+    </div>
+  </section>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440},&quot;filtroNotificacoes&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;tudo&quot;,&quot;acao&quot;,&quot;lidas&quot;],&quot;default&quot;:&quot;tudo&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Notificações&quot;},&quot;perfil&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Elenco&quot;,&quot;Supervisão&quot;,&quot;Administração&quot;,&quot;Direção&quot;],&quot;default&quot;:&quot;Elenco&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Contexto&quot;}}">
+const NOTIFS = [
+  { g: "Hoje", unread: true, urgent: true, title: "Aviso: uniforme novo a partir de segunda", meta: "Barbara Sorroche · 09:12 · pede seu ciente", cta: "Dar ciente" },
+  { g: "Hoje", unread: true, urgent: true, title: "Seu check-in fecha em 15 minutos", meta: "ASA · 09:25 · Snowland", cta: "Fazer check-in" },
+  { g: "Hoje", unread: true, urgent: false, title: "Escala de amanhã publicada", meta: "Deborah · 08:40 · 6 blocos, 1 mudou", cta: "Ver escala" },
+  { g: "Ontem", unread: false, urgent: false, title: "Sua folga de 14/09 foi aprovada", meta: "Barbara Sorroche · 18:02", cta: null },
+  { g: "Ontem", unread: false, urgent: false, title: "Victor comentou na tarefa de figurinos", meta: "Victor Oliveira · 16:30", cta: null },
+  { g: "Ontem", unread: false, urgent: false, title: "Cássia te reconheceu no Mural", meta: "Cássia · 14:11 · cuidado com o grupo", cta: null }
+];
+
+const PREFS = [
+  ["Escala publicada ou alterada", "não pode ser desligado", true, true, true],
+  ["Aviso que pede ciente", "não pode ser desligado", true, true, true],
+  ["Check-in abrindo ou fechando", "", true, true, false],
+  ["Folga: pedido e resposta", "", true, true, false],
+  ["Tarefa atribuída ou atrasada", "", true, false, false],
+  ["Mensagem nova", "", true, true, false],
+  ["Mural e reconhecimento", "", true, false, false]
+];
+
+const WELCOME = [
+  { step: "1 de 3", img: "assets/asa/oi.png", title: "Seu dia abre aqui", body: "Onde você está agora, o que vem depois e a que horas. Se a escala mudar, a ASA te avisa antes de você chegar.", btn: "Continuar" },
+  { step: "2 de 3", img: "assets/asa/tarefa-concluida.png", title: "Presença em um toque", body: "Chegou no local, marca presença. Não vai conseguir ir? Registra o motivo por aqui mesmo — sua supervisão vê na hora.", btn: "Continuar" },
+  { step: "3 de 3", img: "assets/asa/consultando.png", title: "Pergunte à ASA", body: "\"Que horas eu entro amanhã?\", \"quando é minha próxima folga?\". Ela responde só o que é seu.", btn: "Começar" }
+];
+
+const HELP = [
+  "Como funciona a minha escala",
+  "Como pedir folga ou troca",
+  "Como fazer check-in",
+  "Meus dados e privacidade",
+  "Falar com a Administração"
+];
+
+class Component extends DCLogic {
+  state = { filter: null };
+
+  renderVals() {
+    const filter = this.state.filter || this.props.filtroNotificacoes || "tudo";
+    const perfil = this.props.perfil || "Elenco";
+
+    const tabDefs = [["tudo", "Tudo"], ["acao", "Precisa de você"], ["lidas", "Lidas"]];
+    const acaoCount = NOTIFS.filter(n => n.cta && n.unread).length;
+    const notifTabs = tabDefs.map(t => {
+      const on = t[0] === filter;
+      return {
+        label: t[0] === "acao" ? t[1] + " · " + acaoCount : t[1],
+        onClick: () => this.setState({ filter: t[0] }),
+        style: "flex:none;padding:7px 12px;border-radius:999px;cursor:pointer;font-family:Manrope,sans-serif;font-size:12px;font-weight:600;white-space:nowrap;" +
+          (on ? "border:1px solid #6C2BF2;background:#f3ecfe;color:#6C2BF2;" : "border:1px solid #e6e1f2;background:#fff;color:#6b6482;")
+      };
+    });
+
+    const pass = n => filter === "tudo" ? true : filter === "acao" ? !!n.cta && n.unread : !n.unread;
+    const groups = [];
+    ["Hoje", "Ontem"].forEach(g => {
+      const items = NOTIFS.filter(n => n.g === g && pass(n)).map(n => ({
+        title: n.title,
+        meta: n.meta,
+        cta: n.cta,
+        rowStyle: "display:flex;gap:11px;padding:13px 16px;border-bottom:1px solid #f0ecf8;align-items:flex-start;" +
+          (n.urgent && n.unread ? "background:#fdfbff;" : "background:#fff;"),
+        dotStyle: "width:9px;height:9px;border-radius:50%;flex:none;margin-top:5px;background:" +
+          (n.unread ? (n.urgent ? "#C2334D" : "#6C2BF2") : "#e0daf0"),
+        ctaStyle: "align-self:flex-start;margin-top:3px;padding:8px 14px;border-radius:10px;font-size:12.5px;font-weight:700;" +
+          (n.urgent ? "background:#6C2BF2;color:#fff;" : "background:#f3ecfe;color:#6C2BF2;")
+      }));
+      if (items.length) groups.push({ title: g, items: items });
+    });
+
+    const deskNotifs = NOTIFS.slice(0, 3).map(n => ({
+      title: n.title,
+      meta: n.meta,
+      cta: n.cta,
+      dotStyle: "width:8px;height:8px;border-radius:50%;flex:none;margin-top:5px;background:" + (n.urgent ? "#C2334D" : "#6C2BF2")
+    }));
+
+    const sw = (on, locked) => "width:46px;height:27px;border-radius:99px;flex:none;display:block;" +
+      "background-color:" + (on ? (locked ? "#b9a4f0" : "#6C2BF2") : "#ddd6ee") + ";" +
+      "background-image:radial-gradient(circle 10.5px at " + (on ? "32.5px" : "13.5px") + " 50%, #fff 98%, transparent 100%);";
+
+    const prefs = PREFS.map(p => ({
+      name: p[0],
+      note: p[1] || null,
+      appStyle: sw(p[2], p[4]),
+      pushStyle: sw(p[3], p[4])
+    }));
+
+    const welcome = WELCOME.map((w, i) => ({
+      step: w.step,
+      imgStyle: "width:132px;height:132px;flex:none;background-repeat:no-repeat;background-position:center;background-size:contain;background-image:url(" + w.img + ")",
+      title: w.title,
+      body: w.body,
+      btn: w.btn,
+      btnStyle: "width:100%;height:54px;border:none;border-radius:14px;background:#6C2BF2;color:#fff;font-family:Manrope,sans-serif;font-size:16px;font-weight:700;cursor:pointer",
+      dots: [0, 1, 2].map(d => "width:" + (d === i ? "22px" : "8px") + ";height:8px;border-radius:99px;background:" + (d === i ? "#6C2BF2" : "#ddd6ee") + ";display:block")
+    }));
+
+    return {
+      notifTabs,
+      notifGroups: groups,
+      deskNotifs,
+      prefs,
+      welcome,
+      helpItems: HELP,
+      perfilLabel: perfil
+    };
+  }
+}
+
+</script>
+</body>
+</html>

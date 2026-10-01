@@ -25,6 +25,21 @@ export type Capability = typeof CAPABILITIES[keyof typeof CAPABILITIES];
 
 const ROLE_CAPABILITIES: Record<string, Capability[]> = {
   ADMIN: Object.values(CAPABILITIES),
+  // Direção acompanha toda a operação, mas não recebe nenhuma capacidade de
+  // gestão. As exceções de escrita (Agenda/Mural/Mensagens) continuam sendo
+  // tratadas pelas rotas próprias do produto, não por herança implícita.
+  DIR: [
+    CAPABILITIES.VIEW_HOME,
+    CAPABILITIES.VIEW_OWN_SCHEDULE,
+    CAPABILITIES.VIEW_OPERATIONAL_SCHEDULES,
+    CAPABILITIES.VIEW_AGENDA,
+    CAPABILITIES.VIEW_SHOW_BOOK,
+    CAPABILITIES.VIEW_PEOPLE,
+    CAPABILITIES.VIEW_OPERATIONS,
+    CAPABILITIES.VIEW_COMMUNICATION,
+    CAPABILITIES.VIEW_MEMBER_WORK,
+    CAPABILITIES.USE_ASA,
+  ],
   SUPERVISOR_A: [
     CAPABILITIES.VIEW_HOME,
     CAPABILITIES.VIEW_OWN_SCHEDULE,
@@ -62,7 +77,7 @@ const ROLE_CAPABILITIES: Record<string, Capability[]> = {
 
 ROLE_CAPABILITIES.SUPERVISOR_B = ROLE_CAPABILITIES.SUPERVISOR_A;
 
-const ROLE_PRIORITY = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B", "MEMBER", "TRAINER"];
+const ROLE_PRIORITY = ["ADMIN", "DIR", "SUPERVISOR_A", "SUPERVISOR_B", "MEMBER", "TRAINER"];
 
 export function resolvePrimaryRole(roles: Array<{ role: string }>): string | null {
   return ROLE_PRIORITY.find((role) => roles.some((record) => record.role === role)) ?? null;

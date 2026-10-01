@@ -2,6 +2,7 @@ import app from "./application.js";
 import { logger } from "./lib/logger.js";
 import { startTaskReminderScheduler } from "./services/taskReminderService.js";
 import { runProdBootstrap } from "./lib/bootstrap.js";
+import { startOperationalScheduler } from "./services/operational-jobs.js";
 
 const rawPort = process.env["PORT"];
 
@@ -32,6 +33,7 @@ async function start() {
 
     logger.info({ port }, "Server listening");
     startTaskReminderScheduler();
+    startOperationalScheduler();
   });
 }
 

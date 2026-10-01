@@ -54,8 +54,12 @@ export type UserContactVisibility = {
 
 export interface User {
   id: string;
+  /** Nome de exibição. Mantido por compatibilidade com consumidores legados. */
   name: string;
-  preferredName?: string | null;
+  /** Nome que aparece no app. */
+  displayName: string;
+  /** Nome formal; disponível somente na ficha e no cadastro autorizados. */
+  fullName?: string;
   email?: string | null;
   phone?: string | null;
   username?: string | null;
@@ -287,8 +291,8 @@ export const UserCreateSpecialization = {
 } as const;
 
 export interface UserCreate {
-  name: string;
-  preferredName?: string | null;
+  /** Nome formal cadastrado pela Administração. */
+  fullName: string;
   email?: string | null;
   phone?: string | null;
   /** @minLength 6 */
@@ -341,8 +345,10 @@ export type UserUpdateContactVisibility = {
 };
 
 export interface UserUpdate {
-  name?: string;
-  preferredName?: string | null;
+  /** Nome formal; somente Administração. */
+  fullName?: string;
+  /** Nome que aparece no app; somente a própria pessoa pode alterar. */
+  displayName?: string;
   email?: string;
   phone?: string | null;
   photoUrl?: string | null;
@@ -2528,45 +2534,6 @@ export interface AddTaskEvidenceRequest {
   mandatoryEvidenceRefId?: string;
 }
 
-export interface AnthropicConversation {
-  id: number;
-  title: string;
-  userId?: string;
-  organizationId?: string | null;
-  createdAt: string;
-  updatedAt?: string;
-}
-
-export interface AnthropicMessage {
-  id: number;
-  conversationId: number;
-  role: string;
-  content: string;
-  createdAt: string;
-}
-
-export interface AnthropicConversationInput {
-  title: string;
-}
-
-export interface AnthropicMessageInput {
-  content: string;
-}
-
-export interface AnthropicConversationWithMessages {
-  id: number;
-  title: string;
-  userId?: string;
-  organizationId?: string | null;
-  createdAt: string;
-  updatedAt?: string;
-  messages: AnthropicMessage[];
-}
-
-export interface AnthropicError {
-  error: string;
-}
-
 export type AsaMemoryType = typeof AsaMemoryType[keyof typeof AsaMemoryType];
 
 
@@ -2583,6 +2550,7 @@ export const AsaMemoryStatus = {
   PENDING: 'PENDING',
   APPROVED: 'APPROVED',
   REJECTED: 'REJECTED',
+  DISABLED: 'DISABLED',
 } as const;
 
 export interface AsaMemory {
@@ -2622,6 +2590,7 @@ export type UpdateAsaMemoryRequestStatus = typeof UpdateAsaMemoryRequestStatus[k
 export const UpdateAsaMemoryRequestStatus = {
   APPROVED: 'APPROVED',
   REJECTED: 'REJECTED',
+  DISABLED: 'DISABLED',
 } as const;
 
 export interface UpdateAsaMemoryRequest {
@@ -3438,6 +3407,7 @@ export const ListAsaMemoriesStatus = {
   PENDING: 'PENDING',
   APPROVED: 'APPROVED',
   REJECTED: 'REJECTED',
+  DISABLED: 'DISABLED',
 } as const;
 
 export type ListAsaAuditLogParams = {

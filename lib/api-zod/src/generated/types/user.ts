@@ -12,8 +12,12 @@ import type { UserStatus } from './userStatus';
 
 export interface User {
   id: string;
+  /** Nome de exibição. Mantido por compatibilidade com consumidores legados. */
   name: string;
-  preferredName?: string | null;
+  /** Nome que aparece no app. */
+  displayName: string;
+  /** Nome formal; disponível somente na ficha e no cadastro autorizados. */
+  fullName?: string;
   email?: string | null;
   phone?: string | null;
   username?: string | null;

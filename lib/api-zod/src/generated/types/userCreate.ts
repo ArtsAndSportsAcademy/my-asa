@@ -9,8 +9,8 @@ import type { UserCreatePersonStatus } from './userCreatePersonStatus';
 import type { UserCreateSpecialization } from './userCreateSpecialization';
 
 export interface UserCreate {
-  name: string;
-  preferredName?: string | null;
+  /** Nome formal cadastrado pela Administração. */
+  fullName: string;
   email?: string | null;
   phone?: string | null;
   /** @minLength 6 */

@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  aside a { text-decoration: none; }
+  body { margin: 0; background: #f4f2fa; font-family: Manrope, system-ui, sans-serif; color: #1b1630; }
+  a { color: #6C2BF2; text-decoration: none; }
+  a:hover { color: #4a17b8; text-decoration: underline; }
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 3px solid #6C2BF2; outline-offset: 2px; border-radius: 8px; }
+</style>
+</helmet>
+
+<div style="max-width:1720px;margin:0 auto;padding:44px 28px 88px;display:flex;flex-direction:column;gap:32px">
+
+  <header style="display:flex;flex-direction:column;gap:22px">
+    <div style="display:flex;align-items:flex-start;gap:18px">
+      <img src="assets/asa-wing.png" alt="My ASA" style="width:52px;height:52px;object-fit:contain;flex:none;margin-top:4px" />
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#6b6482">08 · fundação</div>
+        <h1 style="font-family:Outfit,sans-serif;font-size:38px;line-height:1.05;font-weight:700;margin:0;letter-spacing:-0.02em">Áreas</h1>
+        <p style="margin:0;max-width:78ch;font-size:15px;line-height:1.55;color:#5b5473;text-wrap:pretty">A empresa se organiza em dois níveis: <strong>área</strong> é a equipe — Patinadores, Bailarinos, Produção, Gestão — e tem um ou mais supervisores; <strong>grupo</strong> é a subdivisão dela, a extensão de um supervisor. Cada pessoa está em um grupo e tem um supervisor só: é ele que responde por folga, situação e desenvolvimento dela. Grupo não escala e não define folga — quem recebe gente é o local, pela Escala; folga se organiza em Folgas. Mover alguém de grupo troca quem responde por ela, então a mudança mostra o reflexo antes de gravar.</p>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:13px 16px;background:#fff;border:1px solid #e6e1f2;border-radius:16px">
+      <span style="font-size:13px;font-weight:600;color:#5b5473;margin-right:4px">Ver como</span>
+      <sc-for list="{{ profileTabs }}" as="tab" hint-placeholder-count="4">
+        <button type="button" onClick="{{ tab.onClick }}" style="{{ tab.style }}">
+          <span style="width:8px;height:8px;border-radius:50%;background:{{ tab.dot }};display:inline-block"></span>
+          <span>{{ tab.name }}</span>
+        </button>
+      </sc-for>
+      <span style="flex:1"></span>
+      <span style="font-size:13px;color:#6b6482">{{ profileHint }}</span>
+    </div>
+  </header>
+
+  <div style="display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start">
+
+    <div style="flex:none;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Web · 1920 × 1080</span>
+        <span style="font-size:11.5px;color:#6b6482">exibido a 70% — proporção real de tela</span>
+      </div>
+      <div style="width:1344px;height:756px;border:1px solid #ddd6ee;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="width:1920px;height:1080px;transform:scale(0.7);transform-origin:top left;display:flex">
+
+          <aside style="width:222px;flex:none;background:linear-gradient(180deg,#1c1440 0%,#241a52 100%);display:flex;flex-direction:column;color:#fff">
+            <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 12px">
+              <img src="assets/asa-wing.png" alt="" style="width:26px;height:26px;object-fit:contain" />
+              <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">My ASA</span>
+            </div>
+            <div style="padding:0 12px 10px">
+              <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border-radius:10px;padding:8px 10px;font-size:11.5px;color:#b9b0da">
+                <span style="width:11px;height:11px;border:1.5px solid #b9b0da;border-radius:50%"></span>
+                <a href="27%20Assistente%20ASA.dc.html" style="color:inherit;text-decoration:none">Buscar ou perguntar à ASA</a>
+              </div>
+            </div>
+            <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:12px;padding:2px 10px 10px">
+              <sc-for list="{{ shellNav }}" as="g" hint-placeholder-count="4">
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#7d72a8;padding:0 8px 4px">{{ g.title }}</div>
+                  <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+                    <a href="{{ it.href }}" style="{{ it.style }}">{{ it.label }}</a>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+            <div style="border-top:1px solid rgba(255,255,255,.1);padding:12px;display:flex;align-items:center;gap:10px">
+              <span style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+              <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                <span style="font-size:12.5px;font-weight:600">{{ personName }}</span>
+                <span style="{{ personChipStyle }}">{{ profileName }}</span>
+              </div>
+            </div>
+          </aside>
+
+          <div style="position:relative;flex:1;display:flex;flex-direction:column;background:#faf9fe;min-width:0">
+
+            <header style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid #ebe6f6;background:#fff">
+              <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">{{ pageTitle }}</span>
+              <span style="flex:1"></span>
+              <span style="{{ readonlyChipStyle }}">somente leitura</span>
+              <span style="font-size:12.5px;color:#6b6482">{{ scopeLabel }}</span>
+              <button type="button" onClick="{{ toggleAsa }}" style="{{ asaBtnStyle }}">
+                <img src="assets/asa/oi.png" alt="ASA" style="width:26px;height:26px;object-fit:contain" />
+                <span>ASA</span>
+              </button>
+            </header>
+
+            <div style="display:flex;align-items:center;gap:6px;padding:0 20px;background:#fff;border-bottom:1px solid #ebe6f6">
+              <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+                <button type="button" onClick="{{ t.onClick }}" style="{{ t.style }}">{{ t.label }}</button>
+              </sc-for>
+            </div>
+
+            <sc-if value="{{ asaBar }}" hint-placeholder-val="{{ false }}">
+              <div style="{{ asaBar.style }}">
+                <img src="assets/asa/oi.png" alt="" style="width:22px;height:22px;object-fit:contain;flex:none" />
+                <span style="{{ asaBar.chip }}">ASA</span>
+                <span style="{{ asaBar.textStyle }}">{{ asaBar.text }}</span>
+                <span style="flex:1"></span>
+                <button type="button" onClick="{{ asaBar.onOpen }}" style="{{ asaBar.ctaStyle }}">{{ asaBar.cta }}</button>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isEstrutura }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-direction:column;min-height:0;flex:1">
+
+                <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 20px;background:#fff;border-bottom:1px solid #ebe6f6">
+                  <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">{{ boardTitle }}</span>
+                  <span style="font-size:12.5px;color:#6b6482">{{ boardNote }}</span>
+                  <span style="flex:1;min-width:20px"></span>
+                  <sc-if value="{{ movePill }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;align-items:center;gap:9px;height:32px;padding:0 6px 0 12px;border-radius:11px;background:#f7f3ff;border:1px solid #ddd0fb">
+                      <span style="font-size:12px;font-weight:700;color:#4a2a9c;white-space:nowrap">{{ movePill.text }}</span>
+                      <button type="button" onClick="{{ movePill.onCancel }}" style="height:24px;padding:0 9px;border-radius:8px;border:none;background:#fff;color:#6C2BF2;font-size:11px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer">Cancelar</button>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ false }}">
+                    <button type="button" onClick="{{ onNewGroup }}" style="height:32px;padding:0 14px;border-radius:11px;border:none;background:#6C2BF2;color:#fff;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap">Novo grupo</button>
+                  </sc-if>
+                </div>
+
+                <div style="flex:1;min-height:0;overflow:auto;padding:16px 20px 24px">
+                  <sc-if value="{{ hasStructure }}" hint-placeholder-val="{{ true }}">
+                    <div style="display:flex;flex-direction:column;gap:26px">
+                      <sc-for list="{{ areas }}" as="a" hint-placeholder-count="2">
+                        <div style="display:flex;flex-direction:column;gap:13px">
+
+                          <div style="display:flex;align-items:center;gap:11px;padding-bottom:9px;border-bottom:1px solid #e6e1f2">
+                            <span style="width:11px;height:11px;border-radius:50%;flex:none;background:{{ a.dot }}"></span>
+                            <span style="font-family:Outfit,sans-serif;font-size:18px;font-weight:600">{{ a.name }}</span>
+                            <span style="{{ a.supStyle }}">{{ a.supLabel }}</span>
+                            <span style="flex:1"></span>
+                            <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#6b6482;white-space:nowrap">{{ a.counts }}</span>
+                          </div>
+
+                          <sc-for list="{{ a.funcs }}" as="f" hint-placeholder-count="2">
+                            <div style="display:flex;flex-direction:column;gap:9px">
+                              <sc-if value="{{ f.showHeader }}" hint-placeholder-val="{{ false }}">
+                                <div style="display:flex;align-items:center;gap:9px">
+                                  <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Área</span>
+                                  <span style="font-size:13.5px;font-weight:700;color:#3c3559">{{ f.name }}</span>
+                                  <span style="font-size:11.5px;color:#6b6482">{{ f.note }}</span>
+                                </div>
+                              </sc-if>
+                              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(292px,1fr));gap:13px;align-items:start">
+                                <sc-for list="{{ f.groups }}" as="t" hint-placeholder-count="3">
+                                  <div style="{{ t.style }}">
+                                    <div style="display:flex;align-items:center;gap:9px">
+                                      <span style="width:10px;height:10px;border-radius:50%;flex:none;background:{{ t.dot }}"></span>
+                                      <div style="display:flex;flex-direction:column;gap:1px;flex:1;min-width:0">
+                                        <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.name }}</span>
+                                        <span style="font-size:10.5px;color:#6b6482;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.pathLabel }}</span>
+                                      </div>
+                                      <span style="{{ t.sizeChip }}">{{ t.sizeLabel }}</span>
+                                    </div>
+
+                                    <div style="{{ t.leadBoxStyle }}">
+                                      <span style="font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:#6b6482;flex:none">Supervisor</span>
+                                      <span style="{{ t.leadStyle }}">{{ t.lead }}</span>
+                                    </div>
+
+                                    <div style="display:flex;flex-direction:column;gap:5px">
+                                      <sc-for list="{{ t.members }}" as="m" hint-placeholder-count="4">
+                                        <div onClick="{{ m.onClick }}" style="{{ m.style }}">
+                                          <span style="{{ m.avatarStyle }}">{{ m.initials }}</span>
+                                          <div style="display:flex;flex-direction:column;gap:1px;flex:1;min-width:0">
+                                            <span style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ m.name }}</span>
+                                            <span style="font-size:10px;color:#6b6482;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ m.meta }}</span>
+                                          </div>
+                                          <span style="{{ m.tagStyle }}">{{ m.tag }}</span>
+                                        </div>
+                                      </sc-for>
+                                      <sc-if value="{{ t.more }}" hint-placeholder-val="{{ false }}">
+                                        <button type="button" onClick="{{ t.onMore }}" style="{{ t.moreStyle }}">{{ t.more }}</button>
+                                      </sc-if>
+                                      <sc-if value="{{ t.emptyMembers }}" hint-placeholder-val="{{ false }}">
+                                        <span style="font-size:11.5px;line-height:1.45;color:#a12c2c;background:#fdf5f5;border:1px dashed #f0bcbc;border-radius:10px;padding:9px 10px">{{ t.emptyMembers }}</span>
+                                      </sc-if>
+                                    </div>
+
+                                    <sc-if value="{{ t.dropHere }}" hint-placeholder-val="{{ false }}">
+                                      <button type="button" onClick="{{ t.onDrop }}" style="{{ t.dropStyle }}">{{ t.dropHere }}</button>
+                                    </sc-if>
+
+                                    <sc-if value="{{ t.warn }}" hint-placeholder-val="{{ false }}">
+                                      <span style="{{ t.warnStyle }}">{{ t.warn }}</span>
+                                    </sc-if>
+
+                                    <div style="display:flex;align-items:center;gap:9px;padding-top:2px">
+                                      <span style="font-size:11px;color:#6b6482">{{ t.foot }}</span>
+                                      <span style="flex:1"></span>
+                                      <button type="button" onClick="{{ t.onOpen }}" style="{{ t.openStyle }}">{{ t.openLabel }}</button>
+                                    </div>
+                                  </div>
+                                </sc-for>
+                              </div>
+                            </div>
+                          </sc-for>
+
+                          <sc-if value="{{ a.orphans }}" hint-placeholder-val="{{ false }}">
+                            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:9px;padding:11px 13px;border-radius:12px;border:1px dashed #f0bcbc;background:#fdf5f5">
+                              <span style="font-size:11.5px;font-weight:700;color:#a12c2c">Fora de grupo</span>
+                              <span style="font-size:11.5px;color:#8a4a4a;line-height:1.45;flex:1;min-width:200px">{{ a.orphans }}</span>
+                              <button type="button" onClick="{{ a.onOrphan }}" style="{{ a.orphanStyle }}">{{ a.orphanCta }}</button>
+                            </div>
+                          </sc-if>
+
+                        </div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ emptyState }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:9px;padding:64px 20px">
+                      <img src="assets/asa/duvida.png" alt="" style="width:46px;height:46px;object-fit:contain" />
+                      <span style="font-size:14px;font-weight:600">{{ emptyState.title }}</span>
+                      <span style="font-size:12.5px;color:#6b6482;text-align:center;max-width:48ch;line-height:1.5">{{ emptyState.body }}</span>
+                      <button type="button" onClick="{{ emptyState.onAct }}" style="{{ emptyState.actStyle }}">{{ emptyState.act }}</button>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isAreas }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1;min-height:0;overflow:auto;padding:18px 20px 24px;display:flex;flex-direction:column;gap:16px">
+                <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+                  <span style="font-family:Outfit,sans-serif;font-size:19px;font-weight:600">Áreas e supervisão</span>
+                  <span style="font-size:12.5px;color:#6b6482">{{ areaNote }}</span>
+                </div>
+
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px">
+                  <sc-for list="{{ areaCards }}" as="c" hint-placeholder-count="3">
+                    <div style="{{ c.style }}">
+                      <div style="display:flex;align-items:center;gap:9px">
+                        <span style="width:10px;height:10px;border-radius:50%;flex:none;background:{{ c.dot }}"></span>
+                        <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600;flex:1;min-width:0">{{ c.name }}</span>
+                        <span style="{{ c.chip }}">{{ c.state }}</span>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:11px;background:#faf9fe;border:1px solid #eee9f8">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:#6b6482;flex:none">Supervisão</span>
+                        <span style="font-size:12px;font-weight:600;color:#3c3559;flex:1;min-width:0;text-align:right">{{ c.sups }}</span>
+                      </div>
+                      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+                        <sc-for list="{{ c.nums }}" as="n" hint-placeholder-count="3">
+                          <div style="display:flex;flex-direction:column;gap:1px">
+                            <span style="font-family:Outfit,sans-serif;font-size:19px;font-weight:700;line-height:1;color:{{ n.tone }}">{{ n.v }}</span>
+                            <span style="font-size:10px;color:#6b6482;line-height:1.3">{{ n.k }}</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:6px">
+                        <sc-for list="{{ c.rows }}" as="g" hint-placeholder-count="3">
+                          <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:11px;background:#faf9fe;border:1px solid #eee9f8">
+                            <span style="{{ g.badge }}">{{ g.key }}</span>
+                            <div style="display:flex;flex-direction:column;gap:1px;flex:1;min-width:0">
+                              <span style="font-size:11.5px;font-weight:600;color:#3c3559">{{ g.name }}</span>
+                              <span style="font-size:10.5px;color:#6b6482;line-height:1.4">{{ g.who }}</span>
+                            </div>
+                            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#6b6482;flex:none">{{ g.count }}</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                      <sc-if value="{{ c.risk }}" hint-placeholder-val="{{ false }}">
+                        <span style="{{ c.riskStyle }}">{{ c.risk }}</span>
+                      </sc-if>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isRegistros }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1;min-height:0;overflow:auto;padding:18px 20px 24px;display:flex;flex-direction:column;gap:14px">
+                <div style="display:flex;align-items:baseline;gap:12px">
+                  <span style="font-family:Outfit,sans-serif;font-size:19px;font-weight:600">Registros</span>
+                  <span style="font-size:12.5px;color:#6b6482">quem mudou de grupo, quem virou supervisor, quem ficou sem</span>
+                </div>
+                <div style="border:1px solid #e6e1f2;border-radius:14px;background:#fff;overflow:hidden">
+                  <div style="display:flex;gap:10px;padding:9px 14px;background:#f7f5fd;border-bottom:1px solid #e6e1f2;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:#6b6482">
+                    <span style="width:96px;flex:none">Quando</span>
+                    <span style="width:132px;flex:none">Grupo</span>
+                    <span style="width:106px;flex:none">O que mudou</span>
+                    <span style="flex:1">De → para</span>
+                    <span style="width:168px;flex:none">Reflexo</span>
+                    <span style="width:96px;flex:none">Quem</span>
+                  </div>
+                  <sc-for list="{{ logs }}" as="l" hint-placeholder-count="6">
+                    <div style="display:flex;gap:10px;padding:10px 14px;border-bottom:1px solid #f2eefa;font-size:12.5px;align-items:flex-start">
+                      <span style="width:96px;flex:none;color:#6b6482;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.4">{{ l.when }}</span>
+                      <span style="width:132px;flex:none;font-weight:600;line-height:1.4">{{ l.group }}</span>
+                      <span style="width:106px;flex:none;color:#5b5473;line-height:1.4">{{ l.what }}</span>
+                      <span style="flex:1;color:#3c3559;line-height:1.4">{{ l.diff }}</span>
+                      <span style="width:168px;flex:none;color:#6b6482;font-size:11.5px;line-height:1.4">{{ l.effect }}</span>
+                      <span style="width:96px;flex:none;color:#5b5473;font-size:11.5px">{{ l.by }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ det }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;inset:0;background:rgba(28,20,64,.32);display:flex;justify-content:flex-end;z-index:7">
+                <div style="width:500px;max-width:92%;background:#fff;display:flex;flex-direction:column;box-shadow:-24px 0 54px -30px rgba(40,20,90,.5)">
+                  <div style="display:flex;align-items:center;gap:11px;padding:14px 17px;border-bottom:1px solid #f0ecf9">
+                    <span style="width:10px;height:10px;border-radius:50%;flex:none;background:{{ det.dot }}"></span>
+                    <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0">
+                      <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">{{ det.title }}</span>
+                      <span style="font-size:11.5px;color:#6b6482">{{ det.sub }}</span>
+                    </div>
+                    <button type="button" onClick="{{ det.onClose }}" style="width:28px;height:28px;flex:none;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:14px;cursor:pointer">×</button>
+                  </div>
+
+                  <div style="flex:1;overflow:auto;padding:16px 17px 20px;display:flex;flex-direction:column;gap:17px">
+
+                    <div style="display:flex;flex-direction:column;gap:7px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Nome do grupo</span>
+                      <input value="{{ det.nameValue }}" onChange="{{ det.onName }}" readOnly="{{ det.readOnly }}" placeholder="Snowland, Acquamotion, Hotelaria…" style="height:36px;padding:0 11px;border:1px solid #e6e1f2;border-radius:11px;background:#faf9fe;font-family:Manrope,sans-serif;font-size:13px;color:#3c3559;outline:none" />
+                    </div>
+
+                    <div style="display:flex;flex-direction:column;gap:9px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Área</span>
+                      <div style="display:flex;gap:6px;flex-wrap:wrap">
+                        <sc-for list="{{ det.funcs }}" as="o" hint-placeholder-count="3">
+                          <button type="button" onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button>
+                        </sc-for>
+                      </div>
+                      <span style="font-size:11.5px;line-height:1.45;color:#5b5473">{{ det.funcNote }}</span>
+                    </div>
+
+                    <div style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:11px;background:#faf9fe;border:1px solid #eee9f8">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:#6b6482;flex:none">Área</span>
+                      <span style="font-size:12px;font-weight:600;color:#3c3559;flex:1;min-width:0;text-align:right">{{ det.areaLabel }}</span>
+                    </div>
+
+                    <div style="display:flex;flex-direction:column;gap:9px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Supervisor do grupo</span>
+                      <sc-if value="{{ det.leadFixed }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex;align-items:center;gap:9px;padding:10px 11px;border-radius:11px;border:1px solid #c2e7e3;background:#f2faf8">
+                          <span style="width:9px;height:9px;flex:none;border-radius:50%;background:#0E8F86"></span>
+                          <span style="font-size:12.5px;font-weight:600;flex:1;min-width:0;color:#0b6b64">{{ det.leadFixed.name }}</span>
+                          <span style="font-size:11px;color:#0b6b64;opacity:.75">{{ det.leadFixed.note }}</span>
+                        </div>
+                      </sc-if>
+                      <sc-if value="{{ det.leadChoice }}" hint-placeholder-val="{{ true }}">
+                        <div style="display:flex;flex-direction:column;gap:5px">
+                          <sc-for list="{{ det.leadOptions }}" as="l" hint-placeholder-count="4">
+                            <div onClick="{{ l.onClick }}" style="{{ l.style }}">
+                              <span style="{{ l.dot }}"></span>
+                              <span style="font-size:12.5px;font-weight:600;flex:1;min-width:0">{{ l.name }}</span>
+                              <span style="font-size:11px;color:#6b6482">{{ l.note }}</span>
+                            </div>
+                          </sc-for>
+                        </div>
+                      </sc-if>
+                      <span style="font-size:11.5px;line-height:1.45;color:#5b5473">{{ det.leadNote }}</span>
+                    </div>
+
+                    <sc-if value="{{ det.reflex }}" hint-placeholder-val="{{ false }}">
+                      <div style="{{ det.reflex.style }}">
+                        <span style="font-size:12.5px;font-weight:700">{{ det.reflex.title }}</span>
+                        <div style="display:flex;flex-direction:column;gap:4px">
+                          <sc-for list="{{ det.reflex.lines }}" as="ln" hint-placeholder-count="3">
+                            <div style="display:flex;gap:8px;font-size:12px;line-height:1.45">
+                              <span style="opacity:.5">·</span>
+                              <span>{{ ln }}</span>
+                            </div>
+                          </sc-for>
+                        </div>
+                      </div>
+                    </sc-if>
+
+                    <div style="display:flex;flex-direction:column;gap:6px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Motivo da mudança (opcional)</span>
+                      <textarea value="{{ det.why }}" onChange="{{ det.onWhy }}" readOnly="{{ det.readOnly }}" placeholder="Se quiser deixar registrado o porquê, escreva aqui. Não é obrigatório." style="min-height:54px;resize:vertical;padding:9px 11px;border:1px solid #e6e1f2;border-radius:11px;background:#faf9fe;font-size:12.5px;line-height:1.45;color:#3c3559;font-family:Manrope,sans-serif"></textarea>
+                    </div>
+                  </div>
+
+                  <div style="display:flex;align-items:center;gap:9px;padding:13px 17px;border-top:1px solid #f0ecf9;background:#fff">
+                    <span style="font-size:11.5px;color:#6b6482;flex:1;line-height:1.4">{{ det.footNote }}</span>
+                    <button type="button" onClick="{{ det.onClose }}" style="{{ det.cancelStyle }}">Cancelar</button>
+                    <button type="button" onClick="{{ det.onSave }}" style="{{ det.saveStyle }}">{{ det.saveLabel }}</button>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ moveSheet }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;inset:0;background:rgba(28,20,64,.34);display:flex;align-items:center;justify-content:center;z-index:9">
+                <div style="width:440px;max-width:92%;background:#fff;border-radius:16px;padding:17px 18px;display:flex;flex-direction:column;gap:13px;box-shadow:0 30px 60px -28px rgba(40,20,90,.5)">
+                  <div style="display:flex;align-items:flex-start;gap:10px">
+                    <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:0">
+                      <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">{{ moveSheet.title }}</span>
+                      <span style="font-size:11.5px;color:#6b6482;line-height:1.45">{{ moveSheet.sub }}</span>
+                    </div>
+                    <button type="button" onClick="{{ moveSheet.onNo }}" style="width:26px;height:26px;flex:none;border-radius:8px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:13px;cursor:pointer">×</button>
+                  </div>
+                  <div style="{{ moveSheet.boxStyle }}">
+                    <sc-for list="{{ moveSheet.lines }}" as="ln" hint-placeholder-count="3">
+                      <div style="display:flex;gap:8px;font-size:12px;line-height:1.45">
+                        <span style="opacity:.5">·</span>
+                        <span>{{ ln }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <textarea value="{{ moveSheet.why }}" onChange="{{ moveSheet.onWhy }}" placeholder="Motivo (opcional) — a mudança fica nos Registros de qualquer forma." style="min-height:52px;resize:vertical;padding:9px 11px;border:1px solid #e6e1f2;border-radius:11px;background:#faf9fe;font-size:12px;line-height:1.45;color:#3c3559;font-family:Manrope,sans-serif"></textarea>
+                  <div style="display:flex;gap:8px">
+                    <button type="button" onClick="{{ moveSheet.onOk }}" style="{{ moveSheet.okStyle }}">{{ moveSheet.okLabel }}</button>
+                    <button type="button" onClick="{{ moveSheet.onNo }}" style="height:34px;padding:0 13px;border-radius:11px;border:1px solid #e6e1f2;background:#fff;color:#5b5473;font-size:12.5px;font-weight:600;font-family:Manrope,sans-serif;cursor:pointer">Cancelar</button>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ asaOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;right:0;top:0;bottom:0;width:352px;background:#fff;border-left:1px solid #e6e1f2;box-shadow:-24px 0 48px -34px rgba(40,20,90,.4);display:flex;flex-direction:column;z-index:8">
+                <div style="display:flex;align-items:center;gap:10px;padding:13px 15px;border-bottom:1px solid #f0ecf9">
+                  <img src="assets/asa/estudando.png" alt="" style="width:30px;height:30px;object-fit:contain" />
+                  <div style="display:flex;flex-direction:column;gap:1px;flex:1">
+                    <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">ASA · áreas</span>
+                    <span style="font-size:11px;color:#6b6482">{{ asaHint }}</span>
+                  </div>
+                  <button type="button" onClick="{{ toggleAsa }}" style="width:26px;height:26px;border-radius:8px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:13px;cursor:pointer">×</button>
+                </div>
+                <div style="flex:1;overflow:auto;padding:14px 15px;display:flex;flex-direction:column;gap:12px">
+                  <div style="padding:12px 13px;background:#f7f3ff;border:1px solid #e5d8fb;border-radius:13px">
+                    <span style="font-size:12.5px;line-height:1.5;color:#3c3559">{{ asaIntro }}</span>
+                  </div>
+                  <sc-for list="{{ asaCards }}" as="c" hint-placeholder-count="3">
+                    <div style="{{ c.style }}">
+                      <div style="display:flex;align-items:center;gap:8px">
+                        <span style="{{ c.tagStyle }}">{{ c.tag }}</span>
+                        <span style="flex:1"></span>
+                        <span style="font-size:10.5px;color:#6b6482;font-family:'JetBrains Mono',monospace">{{ c.conf }}</span>
+                      </div>
+                      <span style="font-size:13px;font-weight:600;line-height:1.4">{{ c.title }}</span>
+                      <span style="font-size:12px;line-height:1.5;color:#5b5473">{{ c.why }}</span>
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;line-height:1.5;color:#6C2BF2">{{ c.nums }}</span>
+                      <sc-if value="{{ c.open }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex;flex-direction:column;gap:4px;padding:9px 10px;background:#faf9fe;border:1px solid #eee9f8;border-radius:10px">
+                          <sc-for list="{{ c.lines }}" as="ln" hint-placeholder-count="3">
+                            <div style="display:flex;gap:7px;font-size:11.5px;line-height:1.45;color:#3c3559">
+                              <span style="color:#6b6482">·</span>
+                              <span>{{ ln }}</span>
+                            </div>
+                          </sc-for>
+                        </div>
+                      </sc-if>
+                      <div style="display:flex;gap:7px;padding-top:2px">
+                        <button type="button" onClick="{{ c.onReflex }}" style="height:29px;padding:0 11px;border-radius:9px;border:1px solid #ddd0fb;background:#fff;color:#6C2BF2;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap">{{ c.reflexLabel }}</button>
+                        <button type="button" onClick="{{ c.onApply }}" style="{{ c.ctaStyle }}">{{ c.cta }}</button>
+                        <span style="flex:1"></span>
+                        <button type="button" onClick="{{ c.onDismiss }}" style="height:29px;padding:0 11px;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:11.5px;font-weight:600;font-family:Manrope,sans-serif;cursor:pointer">Depois</button>
+                      </div>
+                    </div>
+                  </sc-for>
+                  <sc-if value="{{ asaEmpty }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:30px 14px;background:#faf9fe;border:1px dashed #ddd6ee;border-radius:13px">
+                      <img src="assets/asa-wing.png" alt="" style="width:38px;height:38px;object-fit:contain" />
+                      <span style="font-size:12.5px;font-weight:600">Nada pendente aqui</span>
+                      <span style="font-size:11.5px;color:#6b6482;text-align:center;line-height:1.5">{{ asaEmpty }}</span>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-if>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:0 0 390px;min-width:390px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Mobile · segue o Ver como</div>
+      <div style="width:390px;border:1px solid #ddd6ee;border-radius:38px;overflow:hidden;background:#1c1440;padding:9px;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="position:relative;background:#faf9fe;border-radius:30px;overflow:hidden;display:flex;flex-direction:column;height:826px">
+
+          <div style="padding:12px 14px 10px;background:#fff;border-bottom:1px solid #ebe6f6;display:flex;flex-direction:column;gap:2px">
+            <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">{{ mob.title }}</span>
+            <span style="font-size:11.5px;color:#6b6482">{{ mob.sub }}</span>
+          </div>
+
+          <div style="flex:1;overflow:auto;padding:12px 14px 18px;display:flex;flex-direction:column;gap:11px">
+            <sc-if value="{{ mob.note }}" hint-placeholder-val="{{ false }}">
+              <div style="{{ mob.noteStyle }}">{{ mob.note }}</div>
+            </sc-if>
+
+            <sc-if value="{{ mob.mine }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:11px;padding:13px 14px;background:#fff;border:1px solid #e6e1f2;border-radius:14px">
+                <div style="display:flex;align-items:center;gap:9px">
+                  <span style="width:9px;height:9px;border-radius:50%;flex:none;background:{{ mob.mine.dot }}"></span>
+                  <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600;flex:1;min-width:0">{{ mob.mine.name }}</span>
+                  <span style="{{ mob.mine.chip }}">{{ mob.mine.size }}</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:5px">
+                  <sc-for list="{{ mob.mine.rows }}" as="r" hint-placeholder-count="4">
+                    <div style="display:flex;align-items:baseline;gap:8px">
+                      <span style="font-size:11px;color:#6b6482;flex:1;min-width:0">{{ r.k }}</span>
+                      <span style="font-size:11.5px;font-weight:700;color:#3c3559;text-align:right">{{ r.v }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:5px">
+                  <sc-for list="{{ mob.mine.people }}" as="p" hint-placeholder-count="5">
+                    <span style="{{ p.style }}">{{ p.name }}</span>
+                  </sc-for>
+                </div>
+                <sc-if value="{{ mob.mine.warn }}" hint-placeholder-val="{{ false }}">
+                  <span style="font-size:11px;line-height:1.45;color:#8a6413;background:#fdf7e8;border:1px solid #f0d9a8;border-radius:10px;padding:8px 9px">{{ mob.mine.warn }}</span>
+                </sc-if>
+              </div>
+            </sc-if>
+
+            <sc-for list="{{ mob.cards }}" as="c" hint-placeholder-count="4">
+              <div style="{{ c.style }}">
+                <div style="display:flex;align-items:center;gap:9px">
+                  <span style="width:9px;height:9px;border-radius:50%;flex:none;background:{{ c.dot }}"></span>
+                  <span style="font-size:13.5px;font-weight:700;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</span>
+                  <span style="{{ c.chip }}">{{ c.size }}</span>
+                </div>
+                <span style="font-size:11px;color:#6b6482">{{ c.meta }}</span>
+                <div style="display:flex;flex-wrap:wrap;gap:5px">
+                  <sc-for list="{{ c.people }}" as="p" hint-placeholder-count="4">
+                    <span style="{{ p.style }}">{{ p.name }}</span>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1720},&quot;perfilInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ADM&quot;,&quot;DIR&quot;,&quot;SUP&quot;,&quot;MEM&quot;],&quot;default&quot;:&quot;SUP&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Demonstração&quot;}}">
+const PROFILES = [
+  { key: "ADM", name: "Administração", person: "Barbara Sorroche", dot: "#6C2BF2", scope: "Toda a estrutura", hint: "Cria área e grupo. Aponta qual supervisor responde por qual grupo." },
+  { key: "DIR", name: "Direção", person: "Cris Garcia", dot: "#2E63D6", scope: "Visão organizacional", hint: "Lê a estrutura inteira, não move ninguém." },
+  { key: "SUP", name: "Supervisão", person: "Deborah", dot: "#0E8F86", scope: "Patinadores", hint: "Move gente entre grupos da sua área." },
+  { key: "MEM", name: "Elenco", person: "Julia", dot: "#C2508F", scope: "Patinadores · Snowland", hint: "Vê o próprio grupo, o supervisor e quem trabalha junto." }
+];
+
+const NAV = [
+  { title: "Porta de entrada", items: [
+    ["17", "Início / Meu Dia", ["ADM","DIR","SUP","MEM"], "Meu Dia"]
+  ] },
+  { title: "O dia", items: [
+    ["20", "Agenda", ["ADM","DIR","SUP","MEM"], "Minha agenda"],
+    ["15", "Escalas", ["ADM","DIR","SUP","MEM"], "Minha escala"],
+    ["13", "Shows", ["ADM","DIR","SUP","MEM"], "Shows"],
+    ["14", "Livro do Dia", ["ADM","DIR","SUP","MEM"], "Meus shows"],
+    ["19", "Check-in e ocorrências", ["ADM","DIR","SUP","MEM"], "Check-in"],
+    ["10", "Responsabilidades e tarefas", ["ADM","DIR","SUP","MEM"], "Minhas tarefas"],
+    ["18", "Folgas", ["ADM","DIR","SUP","MEM"], "Minhas folgas"]
+  ] },
+  { title: "Gestão", items: [
+    ["16", "Painel", ["ADM","DIR","SUP"], null],
+    ["06", "Locais", ["ADM","DIR","SUP"], null],
+    ["07", "Pessoas", ["ADM","DIR","SUP"], null],
+    ["08", "Áreas", ["ADM","DIR","SUP","MEM"], "Meu grupo"],
+    ["25", "Reconhecimentos", ["ADM","DIR","SUP"], null]
+  ] },
+  { title: "Comunicação", items: [
+    ["22", "Avisos e Mural", ["ADM","DIR","SUP","MEM"], "Mural"],
+    ["23", "Mensagens", ["ADM","DIR","SUP","MEM"], "Conversas"],
+    ["24", "Biblioteca", ["ADM","DIR","SUP","MEM"], "Biblioteca"]
+  ] }
+];
+
+const NAV_HREF = {
+  "06": "06%20Locais.dc.html",
+  "07": "07%20Pessoas.dc.html",
+  "08": "08%20%C3%81reas.dc.html",
+  "10": "10%20Responsabilidades%20e%20Tarefas.dc.html",
+  "13": "13%20Shows.dc.html",
+  "14": "14%20Livro%20do%20Dia.dc.html",
+  "15": "15%20Escalas.dc.html",
+  "16": "16%20Painel%20e%20indicadores.dc.html",
+  "17": "17%20Meu%20Dia.dc.html",
+  "18": "18%20Folgas.dc.html",
+  "19": "19%20Check-in%20e%20ocorr%C3%AAncias.dc.html",
+  "20": "20%20Agenda.dc.html",
+  "22": "22%20Avisos%20e%20Mural.dc.html",
+  "23": "23%20Mensagens.dc.html",
+  "24": "24%20Biblioteca.dc.html",
+  "25": "25%20Reconhecimentos.dc.html",
+  "27": "27%20Assistente%20ASA.dc.html",
+  "28": "28%20Perfil%20e%20configura%C3%A7%C3%B5es.dc.html"
+};
+
+// Dois níveis: Área (a equipe, com supervisores) → Grupo (subdivisão da área).
+// Função foi retirada: em duas das três áreas antigas ela repetia o nome da área.
+const AREAS = [
+  { key: "Patinadores", dot: "#7E4BD8" },
+  { key: "Bailarinos", dot: "#0E8F86" },
+  { key: "Produção", dot: "#2E63D6" },
+  { key: "Gestão", dot: "#B06E00" }
+];
+
+// Espelho de AREAS: mantém um nível só, sem quebrar quem consulta a árvore.
+const FUNCS = AREAS.map(a => ({ key: a.key, area: a.key }));
+
+const SUPS = {
+  "Patinadores": [
+    { name: "Deborah", state: "Ativa" }
+  ],
+  "Bailarinos": [
+    { name: "Victor Oliveira", state: "Ativa" },
+    { name: "Stephani", state: "Ativa" }
+  ],
+  "Produção": [
+    { name: "Rodrigo", state: "Ativa" }
+  ],
+  "Gestão": [
+    { name: "Barbara Sorroche", state: "Ativa" }
+  ]
+};
+
+const GROUPS0 = [
+  { id: 1, name: "Snowland", func: "Patinadores", lead: "Deborah" },
+  { id: 2, name: "Acquamotion", func: "Patinadores", lead: "Deborah" },
+  { id: 3, name: "Snowland", func: "Bailarinos", lead: "Victor Oliveira" },
+  { id: 4, name: "Acquamotion", func: "Bailarinos", lead: "Stephani" },
+  { id: 5, name: "Equipe fixa", func: "Produção", lead: "Rodrigo" },
+  { id: 6, name: "Hotelaria", func: "Produção", lead: "" },
+  { id: 7, name: "Liderança", func: "Gestão", lead: "Barbara Sorroche" }
+];
+
+const mk = (names, group, func) => names.map(n => {
+  const away = n.indexOf("*") >= 0;
+  return { name: n.replace("*", ""), group: group, func: func, state: away ? "Afastada" : "Ativa" };
+});
+
+const PEOPLE0 = [].concat(
+  mk(["Carol", "Dani", "Amanda", "Daia", "Izabel", "Sofia", "Julia"], 1, "Patinadores"),
+  mk(["Diogo", "Arthur", "Jefferson", "Junior", "Simon", "Kauã", "Caleb"], 2, "Patinadores"),
+  mk(["Louis", "Cássia", "Isadora", "Vinicius", "Antônio"], 3, "Bailarinos"),
+  mk(["Sthefany", "Mariela", "Luize", "Victor M.", "Geovani", "Miguel", "Daniel", "Matheus", "Sarah"], 4, "Bailarinos"),
+  mk(["Maico", "Lucas", "Gabriel", "Mariza"], 5, "Produção"),
+  mk(["Barbara Sorroche", "Cris Garcia"], 7, "Gestão"),
+  mk(["Esther"], 0, "Bailarinos"),
+  mk(["Cláudio S."], 0, "Produção")
+).map((p, i) => Object.assign({ id: i + 1 }, p));
+
+const btn = (on, dot) => "display:flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:11px;white-space:nowrap;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;border:1px solid " + (on ? dot : "#e6e1f2") + ";background:" + (on ? dot + "14" : "#fff") + ";color:" + (on ? dot : "#5b5473");
+const avatar = (size, tone) => "width:" + size + "px;height:" + size + "px;flex:none;border-radius:" + Math.round(size / 3) + "px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:" + (size > 30 ? 12 : 9) + "px;font-weight:700;background:" + tone + "1f;color:" + tone;
+const initialsOf = n => (n || "?").split(" ").map(x => x[0]).join("").slice(0, 2).toUpperCase();
+const first = n => (n || "").split(" ")[0];
+const areaOf = fn => { const f = FUNCS.find(x => x.key === fn); return f ? f.area : ""; };
+const poolOf = ar => SUPS[ar] || [];
+const soloOf = ar => { const p = poolOf(ar); return p.length === 1 ? p[0].name : ""; };
+const dotOf = ar => { const a = AREAS.find(x => x.key === ar); return a ? a.dot : "#6b6482"; };
+const plural = (n, s, p) => n + " " + (n === 1 ? s : p);
+
+class Component extends DCLogic {
+  state = {
+    profile: "SUP", tab: "areas", open: null, draft: null, why: "",
+    moving: null, moveTo: null, moveWhy: "", expanded: {},
+    asa: false, asaCard: null, dismissed: {},
+    groups: JSON.parse(JSON.stringify(GROUPS0)),
+    people: JSON.parse(JSON.stringify(PEOPLE0)),
+    logs: [
+      { when: "hoje 09:10", group: "Hotelaria", what: "Supervisor", diff: "Rodrigo → ninguém", effect: "os shows de Hotelaria passaram a pedir folga para a liderança", by: "Barbara Sorroche" },
+      { when: "28 ago 16:40", group: "Snowland", what: "Entrada", diff: "Sofia veio de Acquamotion", effect: "Deborah passou a responder por 7 pessoas em Snowland", by: "Deborah" },
+      { when: "24 ago 11:05", group: "Acquamotion", what: "Supervisor", diff: "ninguém → Stephani", effect: "os bailarinos de Acquamotion ganharam aprovador próprio", by: "Barbara Sorroche" },
+      { when: "21 ago 08:30", group: "Hotelaria", what: "Criação", diff: "grupo criado dentro de Produção", effect: "nasceu vazio e sem supervisor — Hotelaria é show pontual, não dia inteiro", by: "Barbara Sorroche" },
+      { when: "15 ago 14:12", group: "Patinadores", what: "Nome", diff: "Patinação → Patinadores", effect: "nome atualizado em Folgas e Escalas", by: "Barbara Sorroche" },
+      { when: "9 ago 10:00", group: "Snowland", what: "Entrada", diff: "Mariela entrou na estrutura", effect: "Victor Oliveira passou a responder por ela", by: "Victor Oliveira" }
+    ]
+  };
+
+  componentDidMount() {
+    const p = this.props.perfilInicial;
+    if (p === "MEM") this.setState({ tab: "estrutura" });
+    if (p && p !== this.state.profile) this.setState({ profile: p });
+  }
+
+  scopeOf(p) {
+    if (p === "ADM" || p === "DIR") return null;
+    const meta = PROFILES.find(x => x.key === p);
+    const me = meta && this.state.people.find(x => x.name === meta.person);
+    if (me && me.func) return me.func;
+    const sup = meta && Object.keys(SUPS).find(a => SUPS[a].some(s => s.name === meta.person));
+    return sup || AREAS[0].key;
+  }
+  groupOf(id) { return this.state.groups.find(g => g.id === id); }
+  membersOf(id) { return this.state.people.filter(p => p.group === id); }
+  activeIn(id) { return this.state.people.filter(p => p.group === id && p.state === "Ativa"); }
+  effLead(g) { return soloOf(areaOf(g.func)) || g.lead; }
+  isAutoLead(g) { return !!soloOf(areaOf(g.func)); }
+  leadState(g) {
+    const lead = this.effLead(g);
+    if (!lead) return "vazio";
+    const s = poolOf(areaOf(g.func)).find(x => x.name === lead);
+    if (!s) return "fora";
+    return s.state === "Ativa" ? "ok" : "inativo";
+  }
+  leadLabel(g) {
+    const ls = this.leadState(g);
+    const lead = this.effLead(g);
+    if (ls === "vazio") return "sem supervisor";
+    if (ls === "inativo") return lead + " · afastada";
+    if (ls === "fora") return lead + " · não é supervisor desta área";
+    return lead + (this.isAutoLead(g) ? " · único da área" : "");
+  }
+  escalaTo(ar) { return "a liderança"; }
+
+  renderVals() {
+    const st = this.state;
+    const active = st.profile;
+    const meta = PROFILES.find(p => p.key === active) || PROFILES[2];
+    const isMem = active === "MEM";
+    const isDir = active === "DIR";
+    const canEdit = active === "ADM" || active === "SUP";
+    const canStructure = active === "ADM";
+    const scope = this.scopeOf(active);
+    const mePerson = st.people.find(p => p.name === meta.person);
+    const myGroup = mePerson ? this.groupOf(mePerson.group) : null;
+
+    const profileTabs = PROFILES.map(p => ({
+      name: p.name, dot: p.dot,
+      onClick: () => this.setState({ profile: p.key, tab: p.key === "MEM" ? "estrutura" : "areas", open: null, draft: null, why: "", moving: null, moveTo: null, moveWhy: "", asa: false, asaCard: null }),
+      style: btn(p.key === active, p.dot)
+    }));
+
+    const shellNav = NAV.map(g => ({
+      title: g.title,
+      items: g.items.filter(it => it[2].indexOf(active) >= 0).map(it => {
+        const on = it[0] === "08";
+        return {
+          href: NAV_HREF[it[0]],
+          label: (isMem && it[3] ? it[3] : it[1]),
+          style: "font-size:12px;padding:6px 9px;border-radius:9px;color:" + (on ? "#fff" : "#c8c0e4") + ";background:" + (on ? "rgba(255,255,255,.13)" : "transparent") + ";font-weight:" + (on ? 700 : 500)
+        };
+      })
+    }));
+
+    const tabDefs = isMem
+      ? [["estrutura", "Meu grupo"]]
+      : [["areas", "Áreas"], ["estrutura", "Grupos"], ["registros", "Registros"]];
+    const tabs = tabDefs.filter(t => !(isMem && t[0] !== "estrutura")).map(t => ({
+      label: t[1],
+      onClick: () => this.setState({ tab: t[0], open: null }),
+      style: "border:none;background:transparent;font-family:Manrope,sans-serif;font-size:13px;font-weight:" + (st.tab === t[0] ? 700 : 500) + ";color:" + (st.tab === t[0] ? "#6C2BF2" : "#6b6482") + ";padding:11px 4px;margin-right:12px;cursor:pointer;border-bottom:2px solid " + (st.tab === t[0] ? "#6C2BF2" : "transparent")
+    }));
+
+    const scopedGroups = st.groups.filter(g => {
+      if (isMem) return myGroup && g.id === myGroup.id;
+      return !scope || areaOf(g.func) === scope;
+    });
+
+    const movingPerson = st.moving ? st.people.find(p => p.id === st.moving) : null;
+
+    const cardOf = g => {
+      const all = this.membersOf(g.id);
+      const act = all.filter(p => p.state === "Ativa");
+      const ar = areaOf(g.func);
+      const ls = this.leadState(g);
+      const canDrop = movingPerson && movingPerson.group !== g.id && movingPerson.func === g.func;
+      const isOpen = !!st.expanded[g.id];
+      const shown = (isMem || isOpen || all.length <= 5) ? all : all.slice(0, 5);
+      return {
+        name: g.name, dot: dotOf(ar),
+        pathLabel: ar,
+        sizeLabel: String(act.length) + (all.length !== act.length ? "+" + (all.length - act.length) : ""),
+        sizeChip: "font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;white-space:nowrap;padding:3px 8px;border-radius:999px;background:#e2f4f2;color:#0b6b64",
+        lead: this.leadLabel(g),
+        leadBoxStyle: "display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:11px;background:" + (ls === "ok" ? "#faf9fe" : "#fdf5f5") + ";border:1px solid " + (ls === "ok" ? "#eee9f8" : "#f4d3d3"),
+        leadStyle: "font-size:12px;font-weight:600;flex:1;min-width:0;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:" + (ls === "ok" ? "#3c3559" : "#a12c2c"),
+        members: shown.map(p => {
+          const away = p.state !== "Ativa";
+          const sel = movingPerson && movingPerson.id === p.id;
+          return {
+            name: p.name, initials: initialsOf(p.name),
+            meta: away ? p.state.toLowerCase() + " · continua no grupo" : (this.effLead(g) ? "responde a " + first(this.effLead(g)) : "sem supervisor direto"),
+            tag: away ? "fora" : (canEdit ? "mover" : ""),
+            tagStyle: (!away && !canEdit) ? "display:none" : "font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;flex:none;padding:2px 7px;border-radius:999px;background:" + (away ? "#fdf1dc" : sel ? "#6C2BF2" : "#f4f2fa") + ";color:" + (away ? "#8a6413" : sel ? "#fff" : "#6b6482"),
+            avatarStyle: avatar(24, away ? "#6b6482" : dotOf(ar)),
+            onClick: () => {
+              if (!canEdit) return;
+              if (sel) this.setState({ moving: null });
+              else this.setState({ moving: p.id, moveTo: null, moveWhy: "" });
+            },
+            style: "display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:10px;cursor:" + (canEdit ? "pointer" : "default") + ";border:1px solid " + (sel ? "#6C2BF2" : "#f2eefa") + ";background:" + (sel ? "#f7f3ff" : "#fff")
+          };
+        }),
+        more: all.length > shown.length ? "mostrar as outras " + (all.length - shown.length) : (isOpen && all.length > 5 ? "mostrar menos" : false),
+        moreStyle: "height:28px;border-radius:10px;border:1px solid #e6e1f2;background:#fff;color:#6C2BF2;font-family:Manrope,sans-serif;font-size:11px;font-weight:700;cursor:pointer",
+        onMore: () => this.setState({ expanded: Object.assign({}, st.expanded, { [g.id]: !isOpen }) }),
+        emptyMembers: all.length === 0 ? "Grupo vazio. Ninguém responde a este supervisor e ele não aparece em Folgas." : false,
+        dropHere: canDrop ? "Trazer " + first(movingPerson.name) + " para " + g.name : false,
+        dropStyle: "height:32px;border-radius:11px;border:1px dashed #6C2BF2;background:#f7f3ff;color:#6C2BF2;font-family:Manrope,sans-serif;font-size:12px;font-weight:700;cursor:pointer",
+        onDrop: () => this.setState({ moveTo: g.id }),
+        warn: ls === "vazio" && all.length > 0
+          ? plural(all.length, "pessoa", "pessoas") + " sem supervisor. " + ar + " tem " + plural(poolOf(ar).length, "supervisor", "supervisores") + ", e a liderança precisa dizer qual responde por este grupo — até lá, folga e situação delas sobem para a liderança."
+          : ls === "inativo"
+            ? this.effLead(g) + " está afastada e continua como supervisora: os pedidos ficam parados até a liderança apontar outra."
+            : false,
+        warnStyle: "font-size:11.5px;line-height:1.45;border-radius:10px;padding:8px 10px;color:" + (ls === "ok" ? "#8a6413" : "#a12c2c") + ";background:" + (ls === "ok" ? "#fdf7e8" : "#fdf5f5") + ";border:1px solid " + (ls === "ok" ? "#f0d9a8" : "#f0bcbc"),
+        foot: plural(all.length, "pessoa", "pessoas") + (act.length !== all.length ? " · " + (all.length - act.length) + " afastada" : ""),
+        openLabel: canEdit ? "editar grupo" : "ver detalhes",
+        openStyle: "height:26px;padding:0 10px;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6C2BF2;font-size:11px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap",
+        onOpen: () => this.setState({ open: g.id, draft: JSON.parse(JSON.stringify(g)), why: "" }),
+        style: "display:flex;flex-direction:column;gap:10px;padding:14px 15px;background:#fff;border:1px solid " + (ls !== "ok" ? "#f0bcbc" : "#e6e1f2") + ";border-radius:14px"
+      };
+    };
+
+    const areasView = AREAS.filter(a => !scope || a.key === scope).map(a => {
+      const funcsHere = FUNCS.filter(f => f.area === a.key);
+      const funcs = funcsHere.map(f => {
+        const gs = scopedGroups.filter(g => g.func === f.key);
+        return {
+          name: f.key,
+          showHeader: false,
+          note: "",
+          groups: gs.map(cardOf)
+        };
+      }).filter(f => f.groups.length);
+      const orph = st.people.filter(p => !p.group && areaOf(p.func) === a.key);
+      const gsHere = scopedGroups.filter(g => areaOf(g.func) === a.key);
+      const gCount = gsHere.length;
+      const pCount = st.people.filter(p => p.group && gsHere.some(g => g.id === p.group)).length;
+      return {
+        name: a.key, dot: a.dot,
+        supLabel: poolOf(a.key).length
+          ? (soloOf(a.key) ? "supervisor · " + soloOf(a.key) : plural(poolOf(a.key).length, "supervisor", "supervisores") + " · " + poolOf(a.key).map(s => first(s.name)).join(", "))
+          : "sem supervisor",
+        supStyle: "font-size:11px;font-weight:700;white-space:nowrap;padding:3px 9px;border-radius:999px;background:" + (poolOf(a.key).length ? "#f2ecfe" : "#fdf5f5") + ";color:" + (poolOf(a.key).length ? "#6C2BF2" : "#a12c2c"),
+        counts: plural(gCount, "grupo", "grupos") + " · " + plural(pCount, "pessoa", "pessoas"),
+        funcs: funcs,
+        orphans: (isMem || !orph.length) ? false : orph.map(p => p.name).join(", ") + " — ninguém responde por " + (orph.length === 1 ? "ela" : "elas") + ": não entra em Folgas nem em pedido de cobertura.",
+        orphanCta: canEdit ? "Colocar em um grupo" : "Avisar a administração",
+        orphanStyle: "height:28px;padding:0 11px;border-radius:9px;border:none;background:#a12c2c;color:#fff;font-size:11px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap",
+        onOrphan: () => { if (orph.length) this.setState({ moving: orph[0].id, moveTo: null, moveWhy: "", tab: "estrutura" }); }
+      };
+    }).filter(a => a.funcs.length || a.orphans);
+
+    let emptyState = false;
+    if (!areasView.length) emptyState = {
+      title: isMem ? "Você ainda não está em um grupo" : "Nenhum grupo nesta área",
+      body: isMem ? "Enquanto ninguém te colocar num grupo, não há supervisor que responda por você — e a folga não tem para quem ir." : "Crie o primeiro grupo para que cada pessoa da área tenha um supervisor que responde por ela.",
+      act: canEdit && !isMem ? "Criar o primeiro grupo" : "",
+      actStyle: canEdit && !isMem ? "height:32px;padding:0 14px;border-radius:11px;border:none;background:#6C2BF2;color:#fff;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer" : "display:none",
+      onAct: () => this.newGroup()
+    };
+
+    let moveSheet = false;
+    if (movingPerson && st.moveTo) {
+      const to = this.groupOf(st.moveTo);
+      const from = movingPerson.group ? this.groupOf(movingPerson.group) : null;
+      const ar = areaOf(to.func);
+      const lines = [];
+      if (from) lines.push(from.name + " fica com " + plural(this.activeIn(from.id).length - (movingPerson.state === "Ativa" ? 1 : 0), "pessoa", "pessoas") + " · " + to.name + " passa a " + (this.activeIn(to.id).length + (movingPerson.state === "Ativa" ? 1 : 0)) + ".");
+      else lines.push(movingPerson.name + " está fora de grupo e passa a ter supervisor por primeira vez.");
+      lines.push(this.effLead(to)
+        ? "Quem responde por " + first(movingPerson.name) + " passa a ser " + this.effLead(to) + " — folga, situação e desenvolvimento vão para ele a partir de hoje."
+        : to.name + " está sem supervisor apontado: enquanto estiver, os pedidos de " + first(movingPerson.name) + " sobem para a liderança.");
+      lines.push("Não muda o que ela faz nem onde é escalada — grupo é gestão, e o local vem da atividade na Escala.");
+      const risky = !this.effLead(to);
+      moveSheet = {
+        title: "Mover " + movingPerson.name + " para " + to.name,
+        sub: (from ? from.name : "fora de grupo") + " → " + to.name + " · área " + ar,
+        lines: lines,
+        boxStyle: "display:flex;flex-direction:column;gap:4px;padding:11px 12px;border-radius:12px;border:1px solid " + (risky ? "#f0d9a8" : "#c2e7e3") + ";background:" + (risky ? "#fdf7e8" : "#f2faf8") + ";color:" + (risky ? "#5c4310" : "#0b6b64"),
+        why: st.moveWhy,
+        onWhy: e => this.setState({ moveWhy: e.target.value }),
+        okLabel: "Confirmar mudança",
+        okStyle: "flex:1;height:34px;border-radius:11px;border:none;color:#fff;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;background:#6C2BF2;cursor:pointer",
+        onOk: () => {
+          const people = st.people.map(p => p.id === movingPerson.id ? Object.assign({}, p, { group: to.id }) : p);
+          const entry = {
+            when: "agora", group: to.name, what: from ? "Mudança" : "Entrada",
+            diff: movingPerson.name + (from ? " veio de " + from.name : " entrou na estrutura"),
+            effect: st.moveWhy.trim() || (lines[0] || (from ? "passa a responder a " + (to.lead || "quem liderar " + to.name) : "entrou na estrutura")), by: meta.person
+          };
+          this.setState({ people: people, logs: [entry].concat(st.logs), moving: null, moveTo: null, moveWhy: "" });
+        },
+        onNo: () => this.setState({ moveTo: null, moveWhy: "" })
+      };
+    }
+
+    const movePill = movingPerson && !st.moveTo ? {
+      text: "Movendo " + first(movingPerson.name) + " — grupos da área " + movingPerson.func,
+      onCancel: () => this.setState({ moving: null })
+    } : false;
+
+    const areaCards = AREAS.filter(a => !scope || a.key === scope).map(a => {
+      const gs = st.groups.filter(g => areaOf(g.func) === a.key);
+      const funcsHere = FUNCS.filter(f => f.area === a.key);
+      const ppl = st.people.filter(p => areaOf(p.func) === a.key);
+      const inGroup = ppl.filter(p => p.group);
+      const orph = ppl.filter(p => !p.group);
+      const noLead = gs.filter(g => this.leadState(g) !== "ok");
+      const pool = poolOf(a.key);
+      const solo = soloOf(a.key);
+      const state = !pool.length ? "sem supervisor" : orph.length ? "gente sem grupo" : noLead.length ? "grupo sem supervisor" : "em ordem";
+      const bad = !pool.length || orph.length > 0 || noLead.length > 0;
+      return {
+        name: a.key, dot: a.dot,
+        sups: pool.length
+          ? (solo ? solo + " — responde por todos os grupos da área" : pool.map(s => s.name + (s.state === "Ativa" ? "" : " (" + s.state.toLowerCase() + ")")).join(", "))
+          : "nenhum supervisor cadastrado nesta área",
+        state: state,
+        chip: "font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;padding:3px 8px;border-radius:999px;background:" + (bad ? "#fdf5f5" : "#e2f4f2") + ";color:" + (bad ? "#a12c2c" : "#0b6b64"),
+        nums: [
+          { k: "grupos", v: String(gs.length), tone: "#3c3559" },
+          { k: "pessoas", v: String(inGroup.length), tone: "#0E8F86" }
+        ],
+        rows: funcsHere.map(f => {
+          const fg = gs.filter(g => g.func === f.key);
+          const fp = inGroup.filter(p => p.func === f.key);
+          const leads = fg.filter(g => this.leadState(g) === "ok").map(g => first(this.effLead(g))).filter((v, i, a) => a.indexOf(v) === i);
+          return {
+            key: String(fg.length),
+            name: f.key,
+            who: leads.length ? leads.join(", ") : "sem supervisor apontado",
+            count: fp.length + "p",
+            badge: "width:20px;height:20px;flex:none;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;background:" + (leads.length === fg.length ? "#e2f4f2" : "#fdf5f5") + ";color:" + (leads.length === fg.length ? "#0b6b64" : "#a12c2c")
+          };
+        }).concat(orph.length ? [{
+          key: "!", name: "Fora de grupo",
+          who: orph.map(p => first(p.name)).join(", ") + " — sem supervisor",
+          count: orph.length + "p",
+          badge: "width:20px;height:20px;flex:none;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;background:#fdf5f5;color:#a12c2c"
+        }] : []),
+        risk: !pool.length
+          ? "Área sem supervisor: ninguém responde pelas pessoas dela, e todo pedido sobe direto para a liderança."
+          : orph.length
+            ? plural(orph.length, "pessoa", "pessoas") + " sem grupo nesta área. Ninguém responde por " + (orph.length === 1 ? "ela" : "elas") + " em folga, situação ou cobertura."
+            : noLead.length
+              ? plural(noLead.length, "grupo", "grupos") + " sem supervisor ativo: " + noLead.map(g => g.name).join(", ") + "."
+              : false,
+        riskStyle: "font-size:11.5px;line-height:1.45;border-radius:10px;padding:8px 10px;color:#a12c2c;background:#fdf5f5;border:1px solid #f0bcbc",
+        style: "display:flex;flex-direction:column;gap:11px;padding:14px 15px;background:#fff;border:1px solid " + (bad ? "#f0bcbc" : "#e6e1f2") + ";border-radius:13px"
+      };
+    });
+
+    const logs = st.logs.filter(l => {
+      if (!scope) return true;
+      const g = st.groups.find(x => x.name === l.group);
+      return !g || areaOf(g.func) === scope;
+    });
+
+    let det = null;
+    if (st.open) {
+      const saved = this.groupOf(st.open);
+      const d = st.draft && st.draft.name !== undefined ? st.draft : (saved ? JSON.parse(JSON.stringify(saved)) : null);
+      if (d) {
+        const isNew = !saved;
+        const setD = patch => this.setState({ draft: Object.assign({}, d, patch) });
+        const changed = !saved || d.name !== saved.name || d.func !== saved.func || d.lead !== saved.lead;
+        const all = saved ? this.membersOf(saved.id) : [];
+        const ar = areaOf(d.func);
+
+        const lines = [];
+        if (saved) {
+          if (d.lead !== saved.lead) lines.push(d.lead
+            ? "Quem responde por " + plural(all.length, "pessoa", "pessoas") + " passa a ser " + d.lead + ": folga, situação e desenvolvimento delas vão para ele."
+            : "O grupo fica sem supervisor apontado: os pedidos das " + all.length + " pessoas sobem para a liderança até você apontar um dos supervisores de " + ar + ".");
+          if (d.func !== saved.func) lines.push("O grupo passa para a área " + ar + " — quem pode supervisioná-lo passa a ser " + (poolOf(ar).length ? poolOf(ar).map(s => s.name).join(", ") : "ninguém, porque a área não tem supervisor cadastrado") + ". Isso não muda o cargo de cada pessoa: cargo é em Pessoas.");
+          if (d.name !== saved.name) lines.push("O nome muda em Folgas, nas Escalas e nos registros já publicados.");
+        } else {
+          lines.push("O grupo nasce vazio em " + d.func + " (" + ar + ") — mova gente para ele para que exista de fato.");
+          lines.push(soloOf(ar)
+            ? soloOf(ar) + " é o único supervisor de " + ar + ", então responde por este grupo automaticamente."
+            : d.lead ? d.lead + " passa a responder por quem entrar nele." : ar + " tem " + poolOf(ar).length + " supervisores: aponte qual responde por este grupo, senão os pedidos sobem para a liderança.");
+          lines.push("Grupo não escala e não define folga: ele define quem responde por quem.");
+        }
+
+        const leadPool = poolOf(ar);
+        const solo = soloOf(ar);
+        det = {
+          title: d.name || "Novo grupo", dot: dotOf(ar),
+          sub: isNew ? "grupo novo — nada gravado ainda" : plural(all.length, "pessoa", "pessoas") + " · " + this.activeIn(saved.id).length + " ativas · " + d.func,
+          nameValue: d.name,
+          onName: e => setD({ name: e.target.value }),
+          readOnly: !canEdit,
+          onClose: () => this.setState({ open: null, draft: null, why: "" }),
+          funcs: FUNCS.filter(f => !scope || f.area === scope || f.key === d.func).map(f => ({
+            label: f.key,
+            onClick: () => { if (canStructure) setD({ func: f.key, lead: (SUPS[f.area] || []).some(s => s.name === d.lead) ? d.lead : "" }); },
+            style: "height:30px;padding:0 12px;border-radius:10px;white-space:nowrap;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;cursor:" + (canStructure ? "pointer" : "default") + ";border:1px solid " + (d.func === f.key ? dotOf(f.area) : "#e6e1f2") + ";background:" + (d.func === f.key ? dotOf(f.area) + "14" : "#fff") + ";color:" + (d.func === f.key ? dotOf(f.area) : canStructure ? "#6b6482" : "#c8c0e4")
+          })),
+          funcNote: canStructure
+            ? "A área é a equipe a que o grupo pertence, e é ela que define quem pode supervisioná-lo."
+            : "Mudar a área de um grupo é da administração.",
+          areaLabel: ar + " · " + (leadPool.length ? plural(leadPool.length, "supervisor", "supervisores") + ": " + leadPool.map(s => s.name).join(", ") : "sem supervisor cadastrado"),
+          leadFixed: solo ? { name: solo, note: "único supervisor de " + ar + " — responde por todos os grupos dela" } : false,
+          leadChoice: !solo,
+          leadOptions: (leadPool.length ? leadPool : [{ name: "nenhum supervisor em " + ar, state: "—" }]).map(p => {
+            const on = d.lead === p.name;
+            const ok = p.state === "Ativa";
+            const load = st.groups.filter(g => this.effLead(g) === p.name).reduce((n, g) => n + this.activeIn(g.id).length, 0);
+            return {
+              name: p.name,
+              note: !leadPool.length ? "cadastre um supervisor da área" : !ok ? p.state.toLowerCase() : on ? "responde por este grupo" : load ? "já responde por " + load : "sem ninguém ainda",
+              onClick: () => { if (canEdit && leadPool.length && ok) setD({ lead: on ? "" : p.name }); },
+              dot: "width:9px;height:9px;flex:none;border-radius:50%;background:" + (on ? "#6C2BF2" : "#DAD4EA"),
+              style: "display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:11px;cursor:" + (canEdit && leadPool.length && ok ? "pointer" : "default") + ";border:1px solid " + (on ? "#6C2BF2" : "#e6e1f2") + ";background:" + (on ? "#f7f3ff" : "#fff")
+            };
+          }),
+          leadNote: solo
+            ? "A área tem um supervisor só, então não há o que escolher: ele responde por todos os grupos dela. A escolha aparece quando a área passa a ter dois ou mais."
+            : "A área tem mais de um supervisor, então a liderança aponta qual responde por este grupo. Cada pessoa tem um supervisor só; clicar no mesmo nome de novo deixa o grupo sem supervisor e os pedidos sobem para a liderança.",
+          reflex: changed && lines.length ? {
+            title: isNew ? "O que este grupo passa a valer" : "O que muda quando você salvar",
+            lines: lines,
+            style: "display:flex;flex-direction:column;gap:8px;padding:12px 13px;border-radius:12px;border:1px solid #f0d9a8;background:#fdf7e8;color:#5c4310"
+          } : false,
+          why: st.why,
+          onWhy: e => this.setState({ why: e.target.value }),
+          footNote: !canEdit ? (isMem ? "Seu grupo é definido pela supervisão." : "Direção lê a estrutura, não edita.") : changed ? (st.why.trim() ? "O motivo vai para os Registros junto com o reflexo." : "A mudança e o reflexo vão para os Registros de qualquer forma.") : "Nada mudou ainda.",
+          cancelStyle: canEdit ? "height:34px;padding:0 13px;border-radius:11px;border:1px solid #e6e1f2;background:#fff;color:#5b5473;font-size:12.5px;font-weight:600;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap" : "display:none",
+          saveLabel: !canEdit ? "Fechar" : changed ? (isNew ? "Criar grupo" : "Salvar grupo") : "Sem mudanças",
+          saveStyle: "height:34px;padding:0 14px;border-radius:11px;border:none;color:#fff;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;white-space:nowrap;background:" + ((!canEdit || changed) ? "#6C2BF2" : "#cec5e6") + ";cursor:" + ((!canEdit || changed) ? "pointer" : "not-allowed"),
+          onSave: () => {
+            if (!canEdit) { this.setState({ open: null, draft: null }); return; }
+            if (!changed) return;
+            const groupsNew = saved ? st.groups.map(g => g.id === d.id ? JSON.parse(JSON.stringify(d)) : g) : st.groups.concat([JSON.parse(JSON.stringify(d))]);
+            const diffs = [];
+            if (isNew) diffs.push("grupo criado em " + d.func + " · " + ar + " · sup. " + (d.lead || "ninguém"));
+            else {
+              if (d.name !== saved.name) diffs.push("nome: " + saved.name + " → " + d.name);
+              if (d.func !== saved.func) diffs.push("área: " + saved.func + " → " + d.func);
+              if (d.lead !== saved.lead) diffs.push("supervisor: " + (saved.lead || "ninguém") + " → " + (d.lead || "ninguém"));
+            }
+            const entry = {
+              when: "agora", group: d.name,
+              what: isNew ? "Criação" : (d.lead !== saved.lead ? "Supervisor" : d.func !== saved.func ? "Área" : "Nome"),
+              diff: diffs.join(" · "), effect: st.why.trim() || (lines[0] || "sem reflexo em quem responde por quem"), by: meta.person
+            };
+            this.setState({ groups: groupsNew, logs: [entry].concat(st.logs), open: null, draft: null, why: "" });
+          }
+        };
+      }
+    }
+
+    const orphans = st.people.filter(p => !p.group && (!scope || areaOf(p.func) === scope));
+    const noLead = scopedGroups.filter(g => this.leadState(g) !== "ok");
+    const emptyGroups = scopedGroups.filter(g => this.membersOf(g.id).length === 0);
+    const noMgr = AREAS.filter(a => !poolOf(a.key).length && (!scope || a.key === scope));
+
+    const asaRaw = [];
+    if (orphans.length) asaRaw.push({
+      key: "g1", tag: "Sem supervisor", conf: "dado",
+      title: orphans.length === 1
+        ? orphans[0].name + " não está em nenhum grupo"
+        : orphans.length + " pessoas não estão em nenhum grupo",
+      why: "Sem grupo não há supervisor: o pedido de folga dela não tem destino, e ela não aparece quando alguém procura quem pode cobrir.",
+      nums: orphans.map(p => p.name + " · " + p.func).join(" · "),
+      lines: [
+        "Proponho o grupo da mesma área com menos gente por supervisor.",
+        "Você confirma o destino — eu não movo ninguém.",
+        "Se a pessoa saiu da empresa, o lugar de resolver é Pessoas, não aqui."
+      ],
+      cta: "Colocar em um grupo"
+    });
+    if (noLead.length) {
+      const one = noLead.length === 1;
+      const kind = one ? this.leadState(noLead[0]) : "vários";
+      asaRaw.push({
+        key: "g2", tag: kind === "inativo" ? "Supervisor afastado" : "Grupo sem supervisor", conf: "dado",
+        title: one
+          ? (kind === "inativo"
+            ? noLead[0].name + " tem " + noLead[0].lead + " como supervisora, mas ela está afastada"
+            : kind === "fora"
+              ? noLead[0].name + " aponta " + noLead[0].lead + ", que não é supervisor desta área"
+              : noLead[0].name + " está sem supervisor")
+          : noLead.length + " grupos sem supervisor ativo",
+        why: "A área tem supervisor, mas este grupo não tem nenhum deles apontado — então folga e situação de quem está nele sobem para a liderança.",
+        nums: noLead.map(g => g.name + " · " + this.membersOf(g.id).length + "p · " + (this.effLead(g) || "ninguém")).join(" · "),
+        lines: [
+          "Proponho quem já supervisiona na mesma área e tem menos gente.",
+          "Se a área tem um supervisor só, ele já responde por todos os grupos dela — não há o que apontar.",
+          "Eu não aponto ninguém — a escolha é da liderança."
+        ],
+        cta: "Abrir o grupo"
+      });
+    }
+    if (noMgr.length) asaRaw.push({
+      key: "g4", tag: "Área sem supervisor", conf: "dado",
+      title: noMgr.length === 1 ? noMgr[0].key + " não tem nenhum supervisor" : noMgr.length + " áreas sem supervisor",
+      why: "Sem supervisor cadastrado na área, nenhum grupo dela pode ter quem responde: tudo sobe direto para a liderança.",
+      nums: noMgr.map(a => a.key + " · " + st.groups.filter(g => areaOf(g.func) === a.key).length + " grupos").join(" · "),
+      lines: ["Quem vira supervisor é definido em Pessoas e em Perfis e acessos.", "Com um supervisor só, ele responde por todos os grupos da área automaticamente.", "Com dois ou mais, a liderança aponta qual responde por qual grupo."],
+      cta: "Ver a área"
+    });
+    if (emptyGroups.length) asaRaw.push({
+      key: "g5", tag: "Grupo vazio", conf: "dado",
+      title: emptyGroups.length === 1 ? emptyGroups[0].name + " não tem ninguém" : emptyGroups.length + " grupos vazios",
+      why: "Grupo vazio aparece em Folgas e nos filtros sem nunca ter gente, e polui a estrutura de quem procura.",
+      nums: emptyGroups.map(g => g.name + " · " + g.func).join(" · "),
+      lines: ["Se o grupo ainda vai receber gente, mova alguém para ele.", "Se não vai, a administração pode removê-lo.", "Eu não apago grupo."],
+      cta: "Abrir o grupo"
+    });
+
+    const asaCards = (isMem ? [] : asaRaw).filter(c => !st.dismissed[c.key]).map(c => ({
+      tag: c.tag, conf: c.conf, title: c.title, why: c.why, nums: c.nums, lines: c.lines,
+      open: st.asaCard === c.key,
+      style: "border:1px solid #e6e1f2;border-radius:13px;padding:12px 13px;display:flex;flex-direction:column;gap:8px;background:#fff",
+      tagStyle: "font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:3px 8px;border-radius:999px;background:#f2ecfe;color:#6C2BF2",
+      reflexLabel: st.asaCard === c.key ? "Esconder reflexo" : "Ver reflexo",
+      onReflex: () => this.setState({ asaCard: st.asaCard === c.key ? null : c.key }),
+      cta: canEdit ? c.cta : "Sugerir à administração",
+      ctaStyle: "height:29px;padding:0 12px;border-radius:9px;border:none;background:#1b1630;color:#fff;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap",
+      onApply: () => {
+        if (!canEdit) { this.setState({ dismissed: Object.assign({}, st.dismissed, { [c.key]: true }), asaCard: null }); return; }
+        if (c.key === "g1" && orphans.length) {
+          this.setState({ moving: orphans[0].id, moveTo: null, moveWhy: "", asa: false, asaCard: null, tab: "estrutura" });
+          return;
+        }
+        if (c.key === "g2" && noLead.length) {
+          const g = noLead[0];
+          this.setState({ open: g.id, draft: JSON.parse(JSON.stringify(g)), why: "Supervisor apontado pela ASA", asa: false, asaCard: null, tab: "estrutura" });
+          return;
+        }
+        if (c.key === "g4") { this.setState({ tab: "areas", asa: false, asaCard: null }); return; }
+        if (c.key === "g5" && emptyGroups.length) {
+          const g = emptyGroups[0];
+          this.setState({ open: g.id, draft: JSON.parse(JSON.stringify(g)), why: "Grupo vazio apontado pela ASA", asa: false, asaCard: null, tab: "estrutura" });
+          return;
+        }
+        this.setState({ dismissed: Object.assign({}, st.dismissed, { [c.key]: true }), asaCard: null });
+      },
+      onDismiss: () => this.setState({ dismissed: Object.assign({}, st.dismissed, { [c.key]: true }), asaCard: null })
+    }));
+
+    const mob = {
+      title: isMem ? "Meu grupo" : isDir ? "Áreas · leitura" : "Áreas",
+      sub: isMem
+        ? (myGroup ? myGroup.name + " · " + myGroup.func : "sem grupo")
+        : (scope || plural(AREAS.length, "área", "áreas")) + " · " + plural(scopedGroups.length, "grupo", "grupos"),
+      note: isMem ? false : canEdit ? "No celular a estrutura é leitura. Mover gente de grupo só no computador, para você ver o reflexo antes." : false,
+      noteStyle: "padding:10px 12px;border-radius:12px;font-size:11.5px;line-height:1.45;background:#f7f3ff;border:1px solid #e5d8fb;color:#4a2a9c",
+      mine: isMem && myGroup ? (function (self) {
+        const all = self.membersOf(myGroup.id);
+        const ar = areaOf(myGroup.func);
+        const ls = self.leadState(myGroup);
+        return {
+          name: myGroup.name, dot: dotOf(ar),
+          size: String(all.length),
+          chip: "font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;white-space:nowrap;padding:3px 8px;border-radius:999px;background:" + (ls === "ok" ? "#e2f4f2" : "#fdf1dc") + ";color:" + (ls === "ok" ? "#0b6b64" : "#8a6413"),
+          rows: [
+            { k: "Área", v: ar },
+            { k: "Supervisor", v: self.leadLabel(myGroup) },
+            { k: "Supervisão da área", v: poolOf(ar).length ? poolOf(ar).map(x => x.name).join(", ") : "nenhuma" }
+          ],
+          people: all.map(p => ({
+            name: first(p.name),
+            style: "font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;background:" + (p.state === "Ativa" ? "#f4f2fa" : "#fdf1dc") + ";color:" + (p.state === "Ativa" ? "#3c3559" : "#8a6413")
+          })),
+          warn: ls !== "ok" ? "Seu grupo está sem supervisor ativo. Enquanto isso, seus pedidos vão para a liderança." : false
+        };
+      })(this) : false,
+      cards: (isMem ? [] : scopedGroups).map(g => {
+        const all = this.membersOf(g.id);
+        const act = all.filter(p => p.state === "Ativa");
+        const ar = areaOf(g.func);
+        const ls = this.leadState(g);
+        return {
+          name: g.name, dot: dotOf(ar),
+          size: String(act.length),
+          chip: "font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;white-space:nowrap;padding:3px 7px;border-radius:999px;background:" + (ls === "ok" ? "#e2f4f2" : "#fdf1dc") + ";color:" + (ls === "ok" ? "#0b6b64" : "#8a6413"),
+          meta: g.func + " · sup. " + (this.effLead(g) ? first(this.effLead(g)) : "ninguém"),
+          people: (all.length ? all : [{ name: "vazio", state: "Ativa" }]).map(p => ({
+            name: first(p.name),
+            style: "font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;background:" + (p.state === "Ativa" ? "#f4f2fa" : "#fdf1dc") + ";color:" + (p.state === "Ativa" ? "#3c3559" : "#8a6413")
+          })),
+          style: "display:flex;flex-direction:column;gap:8px;padding:12px 13px;background:#fff;border:1px solid " + (ls === "ok" ? "#e6e1f2" : "#f0d9a8") + ";border-radius:13px"
+        };
+      })
+    };
+
+    return {
+      profileTabs: profileTabs, profileHint: meta.hint, profileName: meta.name, personName: meta.person,
+      shellNav: shellNav, tabs: tabs,
+      pageTitle: isMem ? "Meu grupo" : "Áreas",
+      scopeLabel: meta.scope,
+      canEdit: canEdit,
+      readonlyChipStyle: canEdit ? "display:none" : "font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;color:#8a6413;background:#fdf1dc;padding:4px 9px;border-radius:999px",
+      personChipStyle: "font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:" + meta.dot + ";background:" + meta.dot + "26;padding:2px 7px;border-radius:999px;width:fit-content",
+      asaBtnStyle: "display:flex;align-items:center;gap:8px;height:34px;padding:0 12px 0 8px;border-radius:12px;border:1px solid " + (st.asa ? "#6C2BF2" : "#e6e1f2") + ";background:" + (st.asa ? "#f7f3ff" : "#fff") + ";color:#3c3559;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;cursor:pointer",
+      toggleAsa: () => this.setState({ asa: !st.asa }),
+      asaOpen: st.asa,
+      asaHint: isMem ? "sobre o seu grupo" : "supervisor apontado, gente sem grupo",
+      asaIntro: isMem
+        ? "Eu não mexo no seu grupo. Se ele ficar sem supervisor apontado, seus pedidos passam a subir para a liderança."
+        : isDir ? "Leitura da estrutura: quem está sem supervisor apontado, quais grupos estão sem gente e onde falta supervisão."
+        : "Eu comparo a estrutura com uma regra só: toda pessoa tem um supervisor, e todo grupo tem quem responda por ele. Aponto o que fura — mover gente é você.",
+      asaCards: asaCards,
+      asaEmpty: asaCards.length ? false : (isMem ? "Seu grupo tem supervisor ativo." : "Todo mundo tem grupo, todo grupo tem supervisor apontado e toda área tem supervisão."),
+      asaBar: (!isMem && asaCards.length) ? {
+        text: asaCards.length + (asaCards.length === 1 ? " ponto de atenção na estrutura" : " pontos de atenção na estrutura") + " · " + asaCards.map(c => c.tag.toLowerCase()).join(", "),
+        style: "display:flex;align-items:center;gap:11px;padding:9px 20px;background:#fdf7e8;border-bottom:1px solid #f0d9a8",
+        chip: "font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:3px 8px;border-radius:999px;background:#fff;color:#8a6413",
+        textStyle: "font-size:12px;font-weight:600;color:#8a6413",
+        cta: "Abrir a ASA",
+        ctaStyle: "height:28px;padding:0 12px;border-radius:9px;border:none;background:#1b1630;color:#fff;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap",
+        onOpen: () => this.setState({ asa: true })
+      } : false,
+      isEstrutura: st.tab === "estrutura", isAreas: st.tab === "areas", isRegistros: st.tab === "registros",
+      boardTitle: isMem ? (myGroup ? myGroup.name : "Seu grupo") : (scope ? scope : "Área → grupo"),
+      boardNote: isMem ? "quem responde por você e quem trabalha junto" : canEdit ? "clique numa pessoa para mover de grupo" : "leitura da estrutura",
+      areas: areasView, hasStructure: areasView.length > 0, emptyState: emptyState,
+      movePill: movePill, moveSheet: moveSheet,
+      onNewGroup: () => this.newGroup(),
+      areaNote: scope ? "a sua área, com quem responde por cada grupo" : "as três áreas, os supervisores de cada uma e onde a linha de resposta quebra",
+      areaCards: areaCards,
+      logs: logs, det: det, mob: mob
+    };
+  }
+
+  newGroup() {
+    const st = this.state;
+    const id = Math.max.apply(null, st.groups.map(g => g.id)) + 1;
+    const scope = this.scopeOf(st.profile);
+    const fn = scope ? (FUNCS.find(f => f.area === scope) || FUNCS[0]).key : FUNCS[0].key;
+    this.setState({ open: id, why: "", draft: { id: id, name: "", func: fn, lead: "" } });
+  }
+}
+
+</script>
+</body>
+</html>

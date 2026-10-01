@@ -16,16 +16,18 @@ import { requestLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
 import { sendNotification } from "../services/notificationService.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
+import { operationalDate } from "../lib/operational-date.js";
 
 const router: IRouter = Router();
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
+type FolgaMutationExecutor = Pick<typeof db, "insert" | "update">;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function offsetDate(date: string, days: number): string {
   const d = new Date(date + "T00:00:00Z");
   d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
+  return operationalDate(d);
 }
 
 /**
@@ -128,15 +130,16 @@ async function cancelAndSplitRange(
   },
   firstDay: string,
   lastDay: string,
-  createdBy: string
+  createdBy: string,
+  executor: FolgaMutationExecutor = db,
 ): Promise<void> {
-  await db
+  await executor
     .update(folgasTable)
     .set({ status: "CANCELLED", updatedAt: new Date() })
     .where(eq(folgasTable.id, f.id));
 
   if (f.startDate < firstDay) {
-    await db.insert(folgasTable).values({
+    await executor.insert(folgasTable).values({
       userId: f.userId,
       operationId: f.operationId,
       type: f.type as any,
@@ -150,7 +153,7 @@ async function cancelAndSplitRange(
   }
 
   if (f.endDate > lastDay) {
-    await db.insert(folgasTable).values({
+    await executor.insert(folgasTable).values({
       userId: f.userId,
       operationId: f.operationId,
       type: f.type as any,
@@ -179,15 +182,16 @@ async function cancelAndSplit(
     notes: string | null;
   },
   targetDate: string,
-  createdBy: string
+  createdBy: string,
+  executor: FolgaMutationExecutor = db,
 ): Promise<void> {
-  await db
+  await executor
     .update(folgasTable)
     .set({ status: "CANCELLED", updatedAt: new Date() })
     .where(eq(folgasTable.id, f.id));
 
   if (f.startDate < targetDate) {
-    await db.insert(folgasTable).values({
+    await executor.insert(folgasTable).values({
       userId: f.userId,
       operationId: f.operationId,
       type: f.type as any,
@@ -201,7 +205,7 @@ async function cancelAndSplit(
   }
 
   if (f.endDate > targetDate) {
-    await db.insert(folgasTable).values({
+    await executor.insert(folgasTable).values({
       userId: f.userId,
       operationId: f.operationId,
       type: f.type as any,
@@ -480,63 +484,71 @@ router.post("/folgas/grid/toggle", requireAuth, requireOrganization, async (req,
   if (scopeErr) { res.status(403).json({ error: "Forbidden", message: scopeErr }); return; }
 
   try {
-    const existing = await db
-      .select({
-        id: folgasTable.id,
-        startDate: folgasTable.startDate,
-        endDate: folgasTable.endDate,
-        type: folgasTable.type,
-        userId: folgasTable.userId,
-        operationId: folgasTable.operationId,
-        notes: folgasTable.notes,
-      })
-      .from(folgasTable)
-      .where(and(
-        eq(folgasTable.userId, userId),
-        eq(folgasTable.operationId, operationId),
-        eq(folgasTable.status, "ACTIVE"),
-        lte(folgasTable.startDate, date),
-        gte(folgasTable.endDate, date),
-      ));
+    await db.transaction(async (tx) => {
+      const existing = await tx
+        .select({
+          id: folgasTable.id,
+          startDate: folgasTable.startDate,
+          endDate: folgasTable.endDate,
+          type: folgasTable.type,
+          userId: folgasTable.userId,
+          operationId: folgasTable.operationId,
+          notes: folgasTable.notes,
+        })
+        .from(folgasTable)
+        .where(and(
+          eq(folgasTable.userId, userId),
+          eq(folgasTable.operationId, operationId),
+          eq(folgasTable.status, "ACTIVE"),
+          lte(folgasTable.startDate, date),
+          gte(folgasTable.endDate, date),
+        ));
 
-    for (const f of existing) {
-      await cancelAndSplit(f, date, user.sub);
-    }
+      for (const f of existing) {
+        await cancelAndSplit(f, date, user.sub, tx as any);
+      }
 
-    if (type) {
-      await db.insert(folgasTable).values({
-        userId,
-        operationId,
-        type: type as any,
-        startDate: date,
-        endDate: date,
-        status: "ACTIVE",
-        origem: "MANUAL",
-        createdBy: user.sub,
-      });
+      if (type) {
+        const [created] = await tx.insert(folgasTable).values({
+          userId,
+          operationId,
+          type: type as any,
+          startDate: date,
+          endDate: date,
+          status: "ACTIVE",
+          origem: "MANUAL",
+          createdBy: user.sub,
+        }).returning();
 
-      await writeHistoryEvent({
-        category: "ABSENCE",
-        action: "FOLGA_GRID_SET",
-        title: `Folga ${type} registrada em ${date}`,
-        narrative: `Gestor registrou ausência tipo ${type} para o membro no dia ${date}.`,
-        entityType: "folga",
-        entityId: `${userId}:${date}`,
-        actorId: user.sub,
-        operationId,
-      }).catch(() => {});
-    } else if (existing.length > 0) {
-      await writeHistoryEvent({
-        category: "ABSENCE",
-        action: "FOLGA_GRID_CLEAR",
-        title: `Folga removida em ${date}`,
-        narrative: `Gestor removeu ausência do membro no dia ${date}.`,
-        entityType: "folga",
-        entityId: `${userId}:${date}`,
-        actorId: user.sub,
-        operationId,
-      }).catch(() => {});
-    }
+        await writeHistoryEvent({
+          category: "ABSENCE",
+          action: "FOLGA_GRID_SET",
+          title: `Folga ${type} registrada em ${date}`,
+          narrative: `Gestor registrou ausência tipo ${type} para o membro no dia ${date}.`,
+          entityType: "folga",
+          entityId: created?.id ?? `${userId}:${date}`,
+          actorId: user.sub,
+          operationId,
+          orgId: user.organizationId,
+          beforeState: { activeFolgas: existing },
+          afterState: created ?? null,
+        }, tx as any);
+      } else if (existing.length > 0) {
+        await writeHistoryEvent({
+          category: "ABSENCE",
+          action: "FOLGA_GRID_CLEAR",
+          title: `Folga removida em ${date}`,
+          narrative: `Gestor removeu ausência do membro no dia ${date}.`,
+          entityType: "folga",
+          entityId: `${userId}:${date}`,
+          actorId: user.sub,
+          operationId,
+          orgId: user.organizationId,
+          beforeState: { activeFolgas: existing },
+          afterState: null,
+        }, tx as any);
+      }
+    });
 
     log.info({ userId, date, type: type ?? "clear" }, "célula da grade alterada");
     res.json({ ok: true });
@@ -572,55 +584,62 @@ router.post("/folgas/grid/bulk", requireAuth, requireOrganization, async (req, r
   try {
     const sortedDates = [...dates].sort();
 
-    for (const date of sortedDates) {
-      const existing = await db
-        .select({
-          id: folgasTable.id,
-          startDate: folgasTable.startDate,
-          endDate: folgasTable.endDate,
-          type: folgasTable.type,
-          userId: folgasTable.userId,
-          operationId: folgasTable.operationId,
-          notes: folgasTable.notes,
-        })
-        .from(folgasTable)
-        .where(and(
-          eq(folgasTable.userId, userId),
-          eq(folgasTable.operationId, operationId),
-          eq(folgasTable.status, "ACTIVE"),
-          lte(folgasTable.startDate, date),
-          gte(folgasTable.endDate, date),
-        ));
+    await db.transaction(async (tx) => {
+      const beforeState: Record<string, unknown>[] = [];
+      for (const date of sortedDates) {
+        const existing = await tx
+          .select({
+            id: folgasTable.id,
+            startDate: folgasTable.startDate,
+            endDate: folgasTable.endDate,
+            type: folgasTable.type,
+            userId: folgasTable.userId,
+            operationId: folgasTable.operationId,
+            notes: folgasTable.notes,
+          })
+          .from(folgasTable)
+          .where(and(
+            eq(folgasTable.userId, userId),
+            eq(folgasTable.operationId, operationId),
+            eq(folgasTable.status, "ACTIVE"),
+            lte(folgasTable.startDate, date),
+            gte(folgasTable.endDate, date),
+          ));
+        beforeState.push({ date, activeFolgas: existing });
 
-      for (const f of existing) {
-        await cancelAndSplit(f, date, user.sub);
+        for (const f of existing) {
+          await cancelAndSplit(f, date, user.sub, tx as any);
+        }
+
+        if (type) {
+          await tx.insert(folgasTable).values({
+            userId,
+            operationId,
+            type: type as any,
+            startDate: date,
+            endDate: date,
+            status: "ACTIVE",
+            origem: "MANUAL",
+            createdBy: user.sub,
+          });
+        }
       }
 
-      if (type) {
-        await db.insert(folgasTable).values({
-          userId,
-          operationId,
-          type: type as any,
-          startDate: date,
-          endDate: date,
-          status: "ACTIVE",
-          origem: "MANUAL",
-          createdBy: user.sub,
-        });
-      }
-    }
-
-    await writeHistoryEvent({
-      category: "ABSENCE",
-      action: "FOLGA_GRID_BULK",
-      title: `Bulk de folgas: ${dates.length} dia(s) ${type ?? "limpos"}`,
-      narrative: `Gestor aplicou ${type ?? "limpeza"} em ${dates.length} dia(s) para o membro.`,
-      entityType: "folga",
-      entityId: userId,
-      actorId: user.sub,
-      operationId,
-      metadata: { dates, type: type ?? null },
-    }).catch(() => {});
+      await writeHistoryEvent({
+        category: "ABSENCE",
+        action: "FOLGA_GRID_BULK",
+        title: `Bulk de folgas: ${dates.length} dia(s) ${type ?? "limpos"}`,
+        narrative: `Gestor aplicou ${type ?? "limpeza"} em ${dates.length} dia(s) para o membro.`,
+        entityType: "folga",
+        entityId: userId,
+        actorId: user.sub,
+        operationId,
+        orgId: user.organizationId,
+        metadata: { dates, type: type ?? null },
+        beforeState: { dates: beforeState },
+        afterState: { dates: sortedDates, type: type ?? null },
+      }, tx as any);
+    });
 
     log.info({ userId, count: dates.length, type: type ?? "clear" }, "bulk de folgas aplicado");
     res.json({ ok: true, processed: dates.length });
@@ -663,39 +682,45 @@ router.delete("/folgas/grid/reset", requireAuth, requireOrganization, async (req
     const daysInMonth = new Date(yr, mo, 0).getDate();
     const lastDay = `${yr}-${String(mo).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
 
-    const toCancel = await db
-      .select({
-        id: folgasTable.id,
-        startDate: folgasTable.startDate,
-        endDate: folgasTable.endDate,
-        type: folgasTable.type,
-        userId: folgasTable.userId,
-        operationId: folgasTable.operationId,
-        notes: folgasTable.notes,
-      })
-      .from(folgasTable)
-      .where(and(
-        eq(folgasTable.operationId, operationId),
-        eq(folgasTable.status, "ACTIVE"),
-        lte(folgasTable.startDate, lastDay),
-        gte(folgasTable.endDate, firstDay),
-      ));
+    const toCancel = await db.transaction(async (tx) => {
+      const activeFolgas = await tx
+        .select({
+          id: folgasTable.id,
+          startDate: folgasTable.startDate,
+          endDate: folgasTable.endDate,
+          type: folgasTable.type,
+          userId: folgasTable.userId,
+          operationId: folgasTable.operationId,
+          notes: folgasTable.notes,
+        })
+        .from(folgasTable)
+        .where(and(
+          eq(folgasTable.operationId, operationId),
+          eq(folgasTable.status, "ACTIVE"),
+          lte(folgasTable.startDate, lastDay),
+          gte(folgasTable.endDate, firstDay),
+        ));
 
-    for (const f of toCancel) {
-      await cancelAndSplitRange(f, firstDay, lastDay, user.sub);
-    }
+      for (const f of activeFolgas) {
+        await cancelAndSplitRange(f, firstDay, lastDay, user.sub, tx as any);
+      }
 
-    await writeHistoryEvent({
-      category: "ABSENCE",
-      action: "FOLGA_GRID_RESET",
-      title: `Grade de folgas resetada — ${mo}/${yr}`,
-      narrative: `Admin resetou todas as folgas do mês ${mo}/${yr} na operação.`,
-      entityType: "folga",
-      entityId: operationId,
-      actorId: user.sub,
-      operationId,
-      metadata: { year: yr, month: mo, cancelled: toCancel.length },
-    }).catch(() => {});
+      await writeHistoryEvent({
+        category: "ABSENCE",
+        action: "FOLGA_GRID_RESET",
+        title: `Grade de folgas resetada — ${mo}/${yr}`,
+        narrative: `Admin resetou todas as folgas do mês ${mo}/${yr} na operação.`,
+        entityType: "folga",
+        entityId: operationId,
+        actorId: user.sub,
+        operationId,
+        orgId: user.organizationId,
+        metadata: { year: yr, month: mo, cancelled: activeFolgas.length },
+        beforeState: { activeFolgas },
+        afterState: { resetRange: { firstDay, lastDay } },
+      }, tx as any);
+      return activeFolgas;
+    });
 
     log.info({ operationId, yr, mo, cancelled: toCancel.length }, "mês de folgas resetado");
     res.json({ ok: true, cancelled: toCancel.length });
@@ -727,20 +752,23 @@ router.post("/folgas", requireAuth, requireOrganization, async (req, res) => {
   }
 
   try {
-    const [folga] = await db
-      .insert(folgasTable)
-      .values({
-        userId,
-        operationId,
-        type: type as any,
-        startDate,
-        endDate,
-        status: "ACTIVE",
-        origem: "MANUAL",
-        createdBy: user.sub,
-        notes: notes ?? null,
-      })
-      .returning();
+    const scopeErr = await validateManagerScope(user, operationId, userId);
+    if (scopeErr) { res.status(403).json({ error: "Forbidden", message: scopeErr }); return; }
+    const [folga] = await db.transaction(async (tx) => {
+      const [row] = await tx.insert(folgasTable).values({
+        userId, operationId, type: type as any, startDate, endDate, status: "ACTIVE",
+        origem: "MANUAL", createdBy: user.sub, notes: notes ?? null,
+      }).returning();
+      if (!row) throw new Error("Não foi possível criar folga");
+      await writeHistoryEvent({
+        category: "ABSENCE", action: "FOLGA_CREATED", title: `Folga ${type} registrada`,
+        narrative: `Gestor registrou folga manual do tipo ${type} de ${startDate} a ${endDate}.`,
+        entityType: "folga", entityId: row.id, actorId: user.sub, operationId,
+        orgId: user.organizationId, beforeState: null, afterState: row,
+        metadata: { reason: req.body?.reason ?? null },
+      }, tx as any);
+      return [row] as const;
+    });
 
     await sendNotification({
       userId,
@@ -751,17 +779,6 @@ router.post("/folgas", requireAuth, requireOrganization, async (req, res) => {
       entityType: "folga",
       entityId: folga!.id,
     });
-
-    await writeHistoryEvent({
-      category: "ABSENCE",
-      action: "FOLGA_CREATED",
-      title: `Folga ${type} registrada`,
-      narrative: `Gestor registrou folga manual do tipo ${type} de ${startDate} a ${endDate}.`,
-      entityType: "folga",
-      entityId: folga!.id,
-      actorId: user.sub,
-      operationId,
-    }).catch(() => {});
 
     log.info({ folgaId: folga!.id, userId, type }, "folga criada");
     res.status(201).json(folga);
@@ -790,6 +807,8 @@ router.patch("/folgas/:id", requireAuth, requireOrganization, async (req, res) =
   try {
     const [existing] = await db.select().from(folgasTable).where(eq(folgasTable.id, id));
     if (!existing) { res.status(404).json({ error: "Not Found" }); return; }
+    const scopeErr = await validateManagerScope(user, existing.operationId, existing.userId);
+    if (scopeErr) { res.status(403).json({ error: "Forbidden", message: scopeErr }); return; }
     if (existing.status === "CANCELLED") {
       res.status(400).json({ error: "Bad Request", message: "Folga cancelada não pode ser editada" });
       return;
@@ -803,7 +822,17 @@ router.patch("/folgas/:id", requireAuth, requireOrganization, async (req, res) =
     if (endDate) updates.endDate = endDate;
     if (notes !== undefined) updates.notes = notes;
 
-    const [updated] = await db.update(folgasTable).set(updates).where(eq(folgasTable.id, id)).returning();
+    const [updated] = await db.transaction(async (tx) => {
+      const [row] = await tx.update(folgasTable).set(updates).where(eq(folgasTable.id, id)).returning();
+      if (!row) throw new Error("Folga não encontrada");
+      await writeHistoryEvent({
+        category: "ABSENCE", action: "FOLGA_UPDATED", title: "Folga atualizada",
+        narrative: `Gestor atualizou a folga de ${existing.startDate} a ${existing.endDate}.`, entityType: "folga", entityId: id,
+        actorId: user.sub, operationId: row.operationId, orgId: user.organizationId,
+        beforeState: existing, afterState: row, metadata: { reason: req.body?.reason ?? null },
+      }, tx as any);
+      return [row] as const;
+    });
     log.info({ folgaId: id }, "folga atualizada");
     res.json(updated);
   } catch (err) {
@@ -827,12 +856,22 @@ router.post("/folgas/:id/cancelar", requireAuth, requireOrganization, async (req
   try {
     const [existing] = await db.select().from(folgasTable).where(eq(folgasTable.id, id));
     if (!existing) { res.status(404).json({ error: "Not Found" }); return; }
+    const scopeErr = await validateManagerScope(user, existing.operationId, existing.userId);
+    if (scopeErr) { res.status(403).json({ error: "Forbidden", message: scopeErr }); return; }
 
-    const [updated] = await db
-      .update(folgasTable)
-      .set({ status: "CANCELLED", updatedAt: new Date() })
-      .where(eq(folgasTable.id, id))
-      .returning();
+    const [updated] = await db.transaction(async (tx) => {
+      const [row] = await tx.update(folgasTable)
+        .set({ status: "CANCELLED", updatedAt: new Date() })
+        .where(eq(folgasTable.id, id)).returning();
+      if (!row) throw new Error("Folga não encontrada");
+      await writeHistoryEvent({
+        category: "ABSENCE", action: "FOLGA_CANCELLED", title: "Folga cancelada",
+        narrative: `Gestor cancelou folga de ${existing.startDate} a ${existing.endDate}.`, entityType: "folga", entityId: id,
+        actorId: user.sub, operationId: existing.operationId, orgId: user.organizationId,
+        beforeState: existing, afterState: row, metadata: { reason: req.body?.reason ?? null },
+      }, tx as any);
+      return [row] as const;
+    });
 
     await sendNotification({
       userId: existing.userId,
@@ -843,17 +882,6 @@ router.post("/folgas/:id/cancelar", requireAuth, requireOrganization, async (req
       entityType: "folga",
       entityId: id,
     });
-
-    await writeHistoryEvent({
-      category: "ABSENCE",
-      action: "FOLGA_CANCELLED",
-      title: "Folga cancelada",
-      narrative: `Gestor cancelou folga de ${existing.startDate} a ${existing.endDate}.`,
-      entityType: "folga",
-      entityId: id,
-      actorId: user.sub,
-      operationId: existing.operationId,
-    }).catch(() => {});
 
     log.info({ folgaId: id }, "folga cancelada");
     res.json(updated);

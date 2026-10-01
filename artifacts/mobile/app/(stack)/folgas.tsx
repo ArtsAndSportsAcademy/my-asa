@@ -257,7 +257,7 @@ function ManagerGridView({
   const [fillModal, setFillModal] = useState<{ visible: boolean; userId?: string }>({ visible: false });
   const [cellMenu, setCellMenu] = useState<{ visible: boolean; userId: string; day: number } | null>(null);
   const [weekFillMenu, setWeekFillMenu] = useState<{ visible: boolean; userId: string }>({ visible: false, userId: "" });
-  const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
+  const [longPressTimer, setLongPressTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   const { mutate: toggleCell } = useToggleFolgaCell({
     mutation: {

@@ -3,6 +3,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { organizationsTable, operationsTable } from "./organization.js";
 import { usersTable } from "./identity.js";
+import { areasTable } from "./areas.js";
 
 export const RESPONSIBILITY_CATEGORIES = [
   "OPERAÇÃO",
@@ -25,6 +26,8 @@ export const responsibilitiesTable = pgTable("responsibilities", {
   id: uuid("id").primaryKey().defaultRandom(),
   orgId: uuid("org_id").notNull().references(() => organizationsTable.id),
   operationId: uuid("operation_id").references(() => operationsTable.id),
+  areaId: uuid("area_id").references(() => areasTable.id),
+  ownerId: uuid("owner_id").references(() => usersTable.id),
   title: text("title").notNull(),
   description: text("description"),
   category: text("category").notNull().default("OPERAÇÃO"),

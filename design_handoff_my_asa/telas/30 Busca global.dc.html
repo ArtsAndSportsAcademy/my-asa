@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #f4f2fa; font-family: Manrope, system-ui, sans-serif; color: #1b1630; }
+  a { color: #6C2BF2; text-decoration: none; }
+  a:hover { color: #4a17b8; text-decoration: underline; }
+  button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 3px solid #6C2BF2; outline-offset: 2px; border-radius: 8px; }
+</style>
+</helmet>
+
+<div style="max-width:1720px;margin:0 auto;padding:44px 28px 88px;display:flex;flex-direction:column;gap:34px">
+
+  <header style="display:flex;align-items:flex-start;gap:18px">
+    <img src="assets/asa-wing.png" alt="My ASA" style="width:52px;height:52px;object-fit:contain;flex:none;margin-top:4px" />
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#6b6482">30 · shell</div>
+      <h1 style="font-family:Outfit,sans-serif;font-size:38px;line-height:1.05;font-weight:700;margin:0;letter-spacing:-0.02em">Buscar ou perguntar à ASA</h1>
+      <p style="margin:0;max-width:80ch;font-size:15px;line-height:1.55;color:#5b5473;text-wrap:pretty">A caixa existe em todas as telas e hoje só abre o chat. Ela promete duas coisas na mesma linha — <strong>buscar</strong> e <strong>perguntar</strong> — e são coisas diferentes: buscar leva a um lugar que já existe, perguntar produz uma resposta. O desenho abaixo resolve isso sem pedir que a pessoa escolha um modo antes de digitar.</p>
+    </div>
+  </header>
+
+  <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:14px">
+    <div style="background:#fff;border:1px solid #e6e1f2;border-left:3px solid #6C2BF2;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:6px">
+      <div style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">Uma caixa, sem modo para escolher</div>
+      <p style="margin:0;font-size:13.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Nada de abas &ldquo;Buscar&rdquo; e &ldquo;Perguntar&rdquo;. A pessoa digita; o app decide o que oferecer primeiro e mostra as duas saídas sempre.</p>
+    </div>
+    <div style="background:#fff;border:1px solid #e6e1f2;border-left:3px solid #0E8F86;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:6px">
+      <div style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">Resultado primeiro, ASA por último</div>
+      <p style="margin:0;font-size:13.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Achar a Mariela leva 200&nbsp;ms; perguntar à ASA leva segundos e gasta. Quando o que foi digitado <em>parece uma pergunta</em>, a ordem se inverte sozinha.</p>
+    </div>
+    <div style="background:#fff;border:1px solid #e6e1f2;border-left:3px solid #C2334D;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:6px">
+      <div style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">A busca respeita o perfil</div>
+      <p style="margin:0;font-size:13.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Quem não pode abrir não pode achar. Uma busca que lista o que existe e nega ao clicar <strong>é vazamento</strong> — conta quem trabalha aqui e quantos shows existem.</p>
+    </div>
+    <div style="background:#fff;border:1px solid #e6e1f2;border-left:3px solid #C97A17;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:6px">
+      <div style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">Data é resultado</div>
+      <p style="margin:0;font-size:13.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">&ldquo;12 de setembro&rdquo;, &ldquo;ontem&rdquo;, &ldquo;12/09&rdquo; levam ao dia: escala, Livro do Dia e quem estava. É como a operação pensa.</p>
+    </div>
+  </section>
+
+  <div style="height:1px;background:#e6e1f2"></div>
+
+  <section style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Web 1920 × 1080 · exibido a 70%</div>
+      <h2 style="font-family:Outfit,sans-serif;font-size:26px;font-weight:600;margin:0;letter-spacing:-0.01em">Digitando &ldquo;mar&rdquo; — busca</h2>
+      <p style="margin:0;max-width:78ch;font-size:13.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Três letras já bastam. Resultados agrupados por tipo, cada linha com uma <strong>segunda linha de contexto</strong> — em quarenta pessoas há duas Marielas possíveis e três documentos com &ldquo;mar&rdquo; no nome; sem o contexto, quem busca abre o errado.</p>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start">
+      <div style="flex:none;display:flex;flex-direction:column;gap:10px">
+        <div style="width:1344px;height:756px;border:1px solid #ddd6ee;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+          <div style="width:1920px;height:1080px;transform:scale(0.7);transform-origin:top left;display:flex;position:relative">
+
+            <aside style="width:222px;flex:none;background:linear-gradient(180deg,#1c1440 0%,#241a52 100%);display:flex;flex-direction:column;color:#fff">
+              <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 12px">
+                <img src="assets/asa-wing.png" alt="" style="width:26px;height:26px;object-fit:contain" />
+                <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">My ASA</span>
+              </div>
+              <div style="padding:0 12px 10px">
+                <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);border-radius:10px;padding:8px 10px;font-size:11.5px;color:#fff">
+                  <span style="width:11px;height:11px;border:1.5px solid #fff;border-radius:50%"></span>
+                  <span>mar</span>
+                  <span style="width:1px;height:13px;background:#fff"></span>
+                </div>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:12px;padding:2px 10px 10px">
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#7d72a8;padding:0 8px 4px">Operação</div>
+                  <span style="display:block;padding:7px 10px;border-radius:9px;font-size:12px;color:#c6bde6">Meu Dia</span>
+                  <span style="display:block;padding:7px 10px;border-radius:9px;font-size:12px;background:rgba(255,255,255,.13);color:#fff;font-weight:600">Escalas</span>
+                  <span style="display:block;padding:7px 10px;border-radius:9px;font-size:12px;color:#c6bde6">Livro do Dia</span>
+                  <span style="display:block;padding:7px 10px;border-radius:9px;font-size:12px;color:#c6bde6">Shows</span>
+                  <span style="display:block;padding:7px 10px;border-radius:9px;font-size:12px;color:#c6bde6">Check-in</span>
+                </div>
+              </div>
+              <div style="border-top:1px solid rgba(255,255,255,.1);padding:12px;display:flex;align-items:center;gap:10px">
+                <span style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:12.5px;font-weight:600">Deborah</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#b9b0da">Supervisão</span>
+                </div>
+              </div>
+            </aside>
+
+            <div style="flex:1;display:flex;flex-direction:column;background:#faf9fe;min-width:0;filter:blur(1.5px);opacity:.5">
+              <header style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid #ebe6f6;background:#fff">
+                <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">Escalas</span>
+              </header>
+              <div style="flex:1;padding:18px 20px;display:flex;flex-direction:column;gap:11px">
+                <div style="height:52px;background:#fff;border:1px solid #e6e1f2;border-radius:12px"></div>
+                <div style="height:52px;background:#fff;border:1px solid #e6e1f2;border-radius:12px"></div>
+                <div style="height:52px;background:#fff;border:1px solid #e6e1f2;border-radius:12px"></div>
+                <div style="height:52px;background:#fff;border:1px solid #e6e1f2;border-radius:12px"></div>
+              </div>
+            </div>
+
+            <div style="position:absolute;inset:0;background:rgba(28,20,64,.34);display:flex;justify-content:center;padding-top:96px">
+              <div style="width:760px;max-height:820px;background:#fff;border-radius:20px;box-shadow:0 40px 90px -40px rgba(20,8,60,.7);display:flex;flex-direction:column;overflow:hidden">
+
+                <div style="display:flex;align-items:center;gap:13px;padding:19px 22px;border-bottom:1px solid #f0ecf8">
+                  <span style="width:19px;height:19px;border:2px solid #6C2BF2;border-radius:50%;flex:none"></span>
+                  <span style="flex:1;font-size:21px;font-weight:600;color:#1b1630">mar<span style="display:inline-block;width:2px;height:22px;background:#6C2BF2;vertical-align:-4px;margin-left:2px"></span></span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.06em;color:#6b6482;border:1px solid #e6e1f2;border-radius:6px;padding:4px 8px">ESC</span>
+                </div>
+
+                <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;padding:10px 0">
+
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482;padding:9px 22px 6px">Pessoas</div>
+
+                  <div style="display:flex;align-items:center;gap:13px;padding:11px 22px;background:#f3ecfe;border-left:3px solid #6C2BF2">
+                    <span style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+                    <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                      <span style="font-size:15px;font-weight:700"><span style="background:#e0d2fb;border-radius:3px">Mar</span>iela</span>
+                      <span style="font-size:12.5px;color:#6b6482">Bailarinos &middot; Acquamotion &middot; hoje no Acquashow Duo às 15:00</span>
+                    </div>
+                    <span style="flex:1"></span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.06em;color:#5B23C9;flex:none">↵ abrir</span>
+                  </div>
+
+                  <div style="display:flex;align-items:center;gap:13px;padding:11px 22px">
+                    <span style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#f0a37a,#d96a52);flex:none"></span>
+                    <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                      <span style="font-size:15px;font-weight:700"><span style="background:#f0ecf8;border-radius:3px">Mar</span>iza</span>
+                      <span style="font-size:12.5px;color:#6b6482">Produção &middot; Equipe fixa &middot; folga hoje</span>
+                    </div>
+                  </div>
+
+                  <div style="display:flex;align-items:center;gap:13px;padding:11px 22px">
+                    <span style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#7fc8b6,#3f9c88);flex:none"></span>
+                    <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                      <span style="font-size:15px;font-weight:700">Victor <span style="background:#f0ecf8;border-radius:3px">Mar</span>ssalai</span>
+                      <span style="font-size:12.5px;color:#6b6482">Bailarinos &middot; Acquamotion &middot; conhecido como Victor M.</span>
+                    </div>
+                  </div>
+
+                  <div style="height:1px;background:#f5f2fa;margin:8px 22px"></div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482;padding:5px 22px 6px">Datas e dias</div>
+
+                  <div style="display:flex;align-items:center;gap:13px;padding:11px 22px">
+                    <span style="width:38px;height:38px;border-radius:11px;background:#fdf3e4;color:#8F5409;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:.06em">MAR</span>
+                      <span style="font-family:Outfit,sans-serif;font-size:14px;font-weight:700">17</span>
+                    </span>
+                    <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                      <span style="font-size:15px;font-weight:700">Terça, 17 de <span style="background:#f0ecf8;border-radius:3px">mar</span>ço</span>
+                      <span style="font-size:12.5px;color:#6b6482">escala publicada &middot; Livro do Dia confirmado &middot; 26 pessoas</span>
+                    </div>
+                  </div>
+
+                  <div style="height:1px;background:#f5f2fa;margin:8px 22px"></div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482;padding:5px 22px 6px">Documentos</div>
+
+                  <div style="display:flex;align-items:center;gap:13px;padding:11px 22px">
+                    <span style="width:38px;height:38px;border-radius:11px;background:#eaf0fd;color:#2E63D6;flex:none;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700">▤</span>
+                    <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                      <span style="font-size:15px;font-weight:700">Procedimento de <span style="background:#f0ecf8;border-radius:3px">mar</span>cação de palco</span>
+                      <span style="font-size:12.5px;color:#6b6482">Biblioteca &middot; atualizado em 3 set &middot; você ainda não leu</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="border-top:1px solid #f0ecf8;background:#faf9fe;padding:13px 22px;display:flex;align-items:center;gap:13px">
+                  <img src="assets/asa/oi.png" alt="" style="width:30px;height:30px;object-fit:contain;flex:none" />
+                  <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                    <span style="font-size:14px;font-weight:700">Perguntar à ASA sobre &ldquo;mar&rdquo;</span>
+                    <span style="font-size:12.5px;color:#6b6482">pergunte com frase inteira para ter resposta melhor</span>
+                  </div>
+                  <span style="flex:1"></span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.06em;color:#6b6482;border:1px solid #e6e1f2;border-radius:6px;padding:5px 9px;background:#fff;flex:none">⇥ TAB</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:1 1 300px;min-width:280px;display:flex;flex-direction:column;gap:12px">
+        <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+          <div style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">A ordem dos grupos</div>
+          <p style="margin:0;font-size:13px;line-height:1.5;color:#5b5473;text-wrap:pretty">Fixa, sempre a mesma — quem busca todo dia decora a posição: <strong>Pessoas · Datas · Shows · Documentos · Avisos</strong>. Grupo sem resultado não aparece; grupo nunca troca de lugar.</p>
+          <div style="height:1px;background:#f0ecf8"></div>
+          <p style="margin:0;font-size:13px;line-height:1.5;color:#5b5473;text-wrap:pretty">Máximo <strong>3 por grupo</strong>, com &ldquo;ver todos&rdquo; quando houver mais. Lista longa em caixa flutuante ninguém lê.</p>
+        </div>
+        <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+          <div style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">Como a busca acha</div>
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;line-height:1.5;color:#5b5473">
+            <div><strong style="color:#1b1630">Sem acento e sem maiúscula.</strong> &ldquo;antonio&rdquo; acha Antônio; &ldquo;GEOVANI&rdquo; acha Geovanni.</div>
+            <div><strong style="color:#1b1630">Apelido conta.</strong> A casa fala Carol, Dani, Daia, Victor M. — o cadastro guarda o apelido e a busca procura nele.</div>
+            <div><strong style="color:#1b1630">Erro de digitação perdoa uma letra.</strong> &ldquo;marila&rdquo; acha Mariela.</div>
+            <div><strong style="color:#1b1630">Começo do nome ganha.</strong> &ldquo;mar&rdquo; põe Mariela antes de Victor Marssalai.</div>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:9px">
+          <div style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">Teclado</div>
+          <div style="display:flex;flex-direction:column;gap:7px;font-size:13px;color:#5b5473">
+            <div style="display:flex;align-items:center;gap:9px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;border:1px solid #e6e1f2;border-radius:6px;padding:4px 8px;flex:none">/</span><span>abre a busca de qualquer tela</span></div>
+            <div style="display:flex;align-items:center;gap:9px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;border:1px solid #e6e1f2;border-radius:6px;padding:4px 8px;flex:none">↑ ↓</span><span>anda pelos resultados</span></div>
+            <div style="display:flex;align-items:center;gap:9px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;border:1px solid #e6e1f2;border-radius:6px;padding:4px 8px;flex:none">↵</span><span>abre o que está marcado</span></div>
+            <div style="display:flex;align-items:center;gap:9px"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;border:1px solid #e6e1f2;border-radius:6px;padding:4px 8px;flex:none">⇥</span><span>manda para a ASA</span></div>
+          </div>
+          <p style="margin:0;font-size:12.5px;line-height:1.5;color:#6b6482;text-wrap:pretty">Atalho serve a quem monta escala no computador o dia inteiro — a Barbara, a Deborah. O elenco no celular nunca vê isto.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div style="height:1px;background:#e6e1f2"></div>
+
+  <section style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Web 1920 × 1080 · exibido a 70%</div>
+      <h2 style="font-family:Outfit,sans-serif;font-size:26px;font-weight:600;margin:0;letter-spacing:-0.01em">Frase inteira — a ASA sobe para cima</h2>
+      <p style="margin:0;max-width:78ch;font-size:13.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">Quando o texto tem quatro palavras ou mais, começa com <em>quem, quando, onde, quantos, por que</em>, ou termina em ponto de interrogação, a ASA vira a primeira linha. Os resultados da busca continuam logo abaixo — <strong>a pessoa nunca perde a outra saída</strong>.</p>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start">
+      <div style="flex:none;display:flex;flex-direction:column;gap:10px">
+        <div style="width:1344px;height:756px;border:1px solid #ddd6ee;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+          <div style="width:1920px;height:1080px;transform:scale(0.7);transform-origin:top left;display:flex;position:relative">
+
+            <aside style="width:222px;flex:none;background:linear-gradient(180deg,#1c1440 0%,#241a52 100%);display:flex;flex-direction:column;color:#fff">
+              <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 12px">
+                <img src="assets/asa-wing.png" alt="" style="width:26px;height:26px;object-fit:contain" />
+                <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">My ASA</span>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:12px;padding:12px 10px 10px">
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#7d72a8;padding:0 8px 4px">Operação</div>
+                  <span style="display:block;padding:7px 10px;border-radius:9px;font-size:12px;color:#c6bde6">Meu Dia</span>
+                  <span style="display:block;padding:7px 10px;border-radius:9px;font-size:12px;background:rgba(255,255,255,.13);color:#fff;font-weight:600">Escalas</span>
+                  <span style="display:block;padding:7px 10px;border-radius:9px;font-size:12px;color:#c6bde6">Livro do Dia</span>
+                </div>
+              </div>
+              <div style="border-top:1px solid rgba(255,255,255,.1);padding:12px;display:flex;align-items:center;gap:10px">
+                <span style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:12.5px;font-weight:600">Deborah</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#b9b0da">Supervisão</span>
+                </div>
+              </div>
+            </aside>
+
+            <div style="flex:1;display:flex;flex-direction:column;background:#faf9fe;min-width:0;filter:blur(1.5px);opacity:.5">
+              <header style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid #ebe6f6;background:#fff">
+                <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">Escalas</span>
+              </header>
+              <div style="flex:1;padding:18px 20px;display:flex;flex-direction:column;gap:11px">
+                <div style="height:52px;background:#fff;border:1px solid #e6e1f2;border-radius:12px"></div>
+                <div style="height:52px;background:#fff;border:1px solid #e6e1f2;border-radius:12px"></div>
+                <div style="height:52px;background:#fff;border:1px solid #e6e1f2;border-radius:12px"></div>
+              </div>
+            </div>
+
+            <div style="position:absolute;inset:0;background:rgba(28,20,64,.34);display:flex;justify-content:center;padding-top:96px">
+              <div style="width:760px;background:#fff;border-radius:20px;box-shadow:0 40px 90px -40px rgba(20,8,60,.7);display:flex;flex-direction:column;overflow:hidden">
+
+                <div style="display:flex;align-items:center;gap:13px;padding:19px 22px;border-bottom:1px solid #f0ecf8">
+                  <span style="width:19px;height:19px;border:2px solid #6C2BF2;border-radius:50%;flex:none"></span>
+                  <span style="flex:1;font-size:21px;font-weight:600;color:#1b1630">quem está escalado amanhã no Acquamotion<span style="display:inline-block;width:2px;height:22px;background:#6C2BF2;vertical-align:-4px;margin-left:2px"></span></span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.06em;color:#6b6482;border:1px solid #e6e1f2;border-radius:6px;padding:4px 8px;flex:none">ESC</span>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:14px;padding:16px 22px;background:#f3ecfe;border-left:3px solid #6C2BF2">
+                  <img src="assets/asa/oi.png" alt="" style="width:40px;height:40px;object-fit:contain;flex:none" />
+                  <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+                    <span style="font-size:16px;font-weight:700">Perguntar isso à ASA</span>
+                    <span style="font-size:13px;color:#5b5473;line-height:1.45">Ela olha a escala de amanhã do Acquamotion e responde em frase — com quem, em que bloco e a que horas.</span>
+                  </div>
+                  <span style="flex:1"></span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.06em;color:#5B23C9;flex:none">↵</span>
+                </div>
+
+                <div style="display:flex;flex-direction:column;padding:10px 0 14px">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482;padding:9px 22px 6px">Ou vá direto</div>
+
+                  <div style="display:flex;align-items:center;gap:13px;padding:11px 22px">
+                    <span style="width:38px;height:38px;border-radius:11px;background:#fdf3e4;color:#8F5409;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:.06em">SET</span>
+                      <span style="font-family:Outfit,sans-serif;font-size:14px;font-weight:700">17</span>
+                    </span>
+                    <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                      <span style="font-size:15px;font-weight:700">Escala de amanhã &middot; Acquamotion</span>
+                      <span style="font-size:12.5px;color:#6b6482">publicada às 18:05 por Stephani &middot; 9 pessoas</span>
+                    </div>
+                    <span style="flex:1"></span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.06em;color:#6b6482;flex:none">abrir</span>
+                  </div>
+
+                  <div style="display:flex;align-items:center;gap:13px;padding:11px 22px">
+                    <span style="width:38px;height:38px;border-radius:11px;background:#e3f4f1;color:#0A6F68;flex:none;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700">◎</span>
+                    <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                      <span style="font-size:15px;font-weight:700">Acquamotion</span>
+                      <span style="font-size:12.5px;color:#6b6482">Local &middot; opera todo dia &middot; Bailarinos com Stephani</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:1 1 300px;min-width:280px;display:flex;flex-direction:column;gap:12px">
+        <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+          <div style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">Quando a ASA sobe</div>
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;line-height:1.5;color:#5b5473">
+            <div>quatro palavras ou mais</div>
+            <div>começa com <strong>quem · quando · onde · quantos · por que · como</strong></div>
+            <div>termina em <strong>?</strong></div>
+            <div>a busca não achou nada</div>
+          </div>
+          <div style="height:1px;background:#f0ecf8"></div>
+          <p style="margin:0;font-size:13px;line-height:1.5;color:#5b5473;text-wrap:pretty">Fora disso ela fica no rodapé — presente, nunca no caminho. <strong>É regra simples de propósito</strong>: quem digita precisa conseguir prever onde a linha vai estar.</p>
+        </div>
+        <div style="background:#fff;border:1px solid #e6e1f2;border-left:3px solid #C2334D;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+          <div style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">O que cada perfil acha</div>
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;line-height:1.5;color:#5b5473">
+            <div><strong style="color:#1b1630">Elenco</strong> — a própria escala, os próprios dias, documentos publicados, avisos recebidos, e <em>o nome</em> de quem trabalha aqui. Não a ficha.</div>
+            <div><strong style="color:#1b1630">Supervisão</strong> — tudo da sua área: pessoas, escalas, livros, ocorrências.</div>
+            <div><strong style="color:#1b1630">Administração</strong> — tudo.</div>
+            <div><strong style="color:#1b1630">Direção</strong> — tudo, em leitura.</div>
+          </div>
+          <div style="height:1px;background:#f0ecf8"></div>
+          <p style="margin:0;font-size:12.5px;line-height:1.5;color:#6b6482;text-wrap:pretty">Filtrado <strong>no servidor</strong>. Uma busca que devolve o que a pessoa não pode abrir revela quantos shows, quantas pessoas e que documentos existem — mesmo sem abrir nenhum.</p>
+        </div>
+        <div style="background:#fdf3e4;border:1px solid #f2dfbe;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:7px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8F5409">Nunca sai na busca</div>
+          <p style="margin:0;font-size:13px;line-height:1.5;color:#6b4a12;text-wrap:pretty"><strong>Motivo de falta e texto de ocorrência não são pesquisáveis por ninguém</strong> — nem pela Administração. Achar uma pessoa buscando &ldquo;atestado&rdquo; transforma um dado de saúde em índice. A ocorrência se abre pela pessoa ou pelo dia, nunca pelo conteúdo.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div style="height:1px;background:#e6e1f2"></div>
+
+  <section style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Mobile 390 × 844 · e os estados</div>
+      <h2 style="font-family:Outfit,sans-serif;font-size:26px;font-weight:600;margin:0;letter-spacing:-0.01em">No celular, e quando não acha</h2>
+      <p style="margin:0;max-width:78ch;font-size:13.5px;line-height:1.5;color:#5b5473;text-wrap:pretty">No celular a busca toma a tela inteira — caixa flutuante com teclado aberto não sobra espaço para resultado. E antes de digitar ela não fica vazia: mostra <strong>o que a pessoa abriu por último</strong> e três atalhos do próprio dia.</p>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start">
+
+      <div style="flex:none;display:flex;flex-direction:column;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Antes de digitar</span>
+        <div style="width:390px;border:1px solid #ddd6ee;border-radius:38px;overflow:hidden;background:#1c1440;padding:9px;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+          <div style="background:#faf9fe;border-radius:30px;overflow:hidden;display:flex;flex-direction:column;height:826px">
+            <div style="background:#fff;padding:18px 18px 14px;border-bottom:1px solid #ebe6f6;display:flex;align-items:center;gap:12px">
+              <span style="display:flex;align-items:center;gap:10px;flex:1;height:48px;padding:0 14px;border:1.5px solid #6C2BF2;border-radius:13px;background:#faf7ff;min-width:0">
+                <span style="width:15px;height:15px;border:2px solid #6C2BF2;border-radius:50%;flex:none"></span>
+                <span style="flex:1;font-size:15.5px;color:#6b6482;min-width:0">Buscar ou perguntar</span>
+              </span>
+              <span style="font-size:14.5px;font-weight:600;color:#6C2BF2;flex:none">Sair</span>
+            </div>
+            <div style="flex:1;padding:18px 18px 0;display:flex;flex-direction:column;gap:20px">
+              <div style="display:flex;flex-direction:column;gap:9px">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Do seu dia</span>
+                <div style="display:flex;flex-wrap:wrap;gap:8px">
+                  <span style="border:1px solid #e6e1f2;background:#fff;border-radius:999px;padding:10px 15px;font-size:13.5px;font-weight:600;color:#5b5473">Minha escala de hoje</span>
+                  <span style="border:1px solid #e6e1f2;background:#fff;border-radius:999px;padding:10px 15px;font-size:13.5px;font-weight:600;color:#5b5473">Fazer check-in</span>
+                  <span style="border:1px solid #e6e1f2;background:#fff;border-radius:999px;padding:10px 15px;font-size:13.5px;font-weight:600;color:#5b5473">Pedir folga</span>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:9px">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Você abriu por último</span>
+                <div style="background:#fff;border:1px solid #e6e1f2;border-radius:14px;overflow:hidden;display:flex;flex-direction:column">
+                  <span style="display:flex;align-items:center;gap:12px;padding:14px 15px;border-bottom:1px solid #f5f2fa">
+                    <span style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+                    <span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:14.5px;font-weight:700">Mariela</span><span style="font-size:12.5px;color:#6b6482">Bailarinos &middot; Acquamotion</span></span>
+                  </span>
+                  <span style="display:flex;align-items:center;gap:12px;padding:14px 15px;border-bottom:1px solid #f5f2fa">
+                    <span style="width:34px;height:34px;border-radius:10px;background:#eaf0fd;color:#2E63D6;flex:none;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700">▤</span>
+                    <span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:14.5px;font-weight:700">Procedimento de figurino</span><span style="font-size:12.5px;color:#6b6482">Biblioteca &middot; lido em 12 set</span></span>
+                  </span>
+                  <span style="display:flex;align-items:center;gap:12px;padding:14px 15px">
+                    <span style="width:34px;height:34px;border-radius:10px;background:#e3f4f1;color:#0A6F68;flex:none;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700">◎</span>
+                    <span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:14.5px;font-weight:700">Snowland</span><span style="font-size:12.5px;color:#6b6482">Local &middot; opera todo dia</span></span>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div style="background:#e9e6ef;border-top:1px solid #dcd7e6;padding:13px 10px 22px;display:flex;flex-direction:column;gap:7px">
+              <div style="display:flex;gap:5px;justify-content:center"><span style="flex:1;height:36px;background:#fff;border-radius:6px"></span><span style="flex:1;height:36px;background:#fff;border-radius:6px"></span><span style="flex:1;height:36px;background:#fff;border-radius:6px"></span><span style="flex:1;height:36px;background:#fff;border-radius:6px"></span><span style="flex:1;height:36px;background:#fff;border-radius:6px"></span></div>
+              <div style="display:flex;gap:5px;justify-content:center"><span style="flex:1;height:36px;background:#fff;border-radius:6px"></span><span style="flex:1;height:36px;background:#fff;border-radius:6px"></span><span style="flex:1;height:36px;background:#fff;border-radius:6px"></span><span style="flex:1;height:36px;background:#fff;border-radius:6px"></span><span style="flex:1;height:36px;background:#fff;border-radius:6px"></span></div>
+              <div style="display:flex;gap:5px;justify-content:center"><span style="width:96px;height:36px;background:#c3bdd0;border-radius:6px"></span><span style="flex:1;height:36px;background:#fff;border-radius:6px"></span><span style="width:96px;height:36px;background:#c3bdd0;border-radius:6px"></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:none;display:flex;flex-direction:column;gap:10px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Resultados</span>
+        <div style="width:390px;border:1px solid #ddd6ee;border-radius:38px;overflow:hidden;background:#1c1440;padding:9px;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+          <div style="background:#faf9fe;border-radius:30px;overflow:hidden;display:flex;flex-direction:column;height:826px">
+            <div style="background:#fff;padding:18px 18px 14px;border-bottom:1px solid #ebe6f6;display:flex;align-items:center;gap:12px">
+              <span style="display:flex;align-items:center;gap:10px;flex:1;height:48px;padding:0 14px;border:1.5px solid #6C2BF2;border-radius:13px;background:#faf7ff;min-width:0">
+                <span style="width:15px;height:15px;border:2px solid #6C2BF2;border-radius:50%;flex:none"></span>
+                <span style="flex:1;font-size:15.5px;font-weight:600;min-width:0">mariela</span>
+                <span style="width:21px;height:21px;border-radius:50%;background:#e6e1f2;color:#4b4465;font-size:12px;display:flex;align-items:center;justify-content:center;flex:none">×</span>
+              </span>
+              <span style="font-size:14.5px;font-weight:600;color:#6C2BF2;flex:none">Sair</span>
+            </div>
+            <div style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482;padding:15px 18px 7px">Pessoas</span>
+              <span style="display:flex;align-items:center;gap:13px;padding:13px 18px;background:#fff;border-top:1px solid #f5f2fa;border-bottom:1px solid #f5f2fa;min-height:48px">
+                <span style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+                <span style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                  <span style="font-size:15.5px;font-weight:700">Mariela</span>
+                  <span style="font-size:13px;color:#6b6482">Bailarinos &middot; Acquamotion &middot; hoje às 15:00</span>
+                </span>
+              </span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482;padding:18px 18px 7px">Avisos</span>
+              <span style="display:flex;align-items:center;gap:13px;padding:13px 18px;background:#fff;border-top:1px solid #f5f2fa;border-bottom:1px solid #f5f2fa;min-height:48px">
+                <span style="width:42px;height:42px;border-radius:11px;background:#fdf3e4;color:#8F5409;flex:none;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700">!</span>
+                <span style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                  <span style="font-size:15.5px;font-weight:700">Troca de figurino no Acquashow</span>
+                  <span style="font-size:13px;color:#6b6482">cita Mariela &middot; 12 set &middot; você deu ciente</span>
+                </span>
+              </span>
+            </div>
+            <div style="background:#fff;border-top:1px solid #ebe6f6;padding:15px 18px 22px;display:flex;align-items:center;gap:13px">
+              <img src="assets/asa/oi.png" alt="" style="width:34px;height:34px;object-fit:contain;flex:none" />
+              <span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1">
+                <span style="font-size:14.5px;font-weight:700">Perguntar à ASA</span>
+                <span style="font-size:12.5px;color:#6b6482">&ldquo;mariela&rdquo;</span>
+              </span>
+              <span style="font-size:19px;color:#6b6482;flex:none">›</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:1 1 300px;min-width:280px;display:flex;flex-direction:column;gap:12px">
+        <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid #f0ecf8">
+            <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">Não achou nada</span>
+          </div>
+          <div style="padding:20px 18px;display:flex;flex-direction:column;align-items:center;gap:13px;text-align:center">
+            <img src="assets/asa/duvida.png" alt="" style="width:58px;height:58px;object-fit:contain" />
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">Nada com &ldquo;figurino azul&rdquo;</span>
+              <p style="margin:0;font-size:13.5px;line-height:1.5;color:#5b5473;max-width:40ch;text-wrap:pretty">A busca procura em nome de pessoa, show, documento, aviso e data.</p>
+            </div>
+            <div style="width:100%;display:flex;align-items:center;gap:12px;background:#f3ecfe;border-radius:12px;padding:13px 15px;text-align:left">
+              <img src="assets/asa/oi.png" alt="" style="width:30px;height:30px;object-fit:contain;flex:none" />
+              <span style="font-size:13.5px;line-height:1.45;color:#4a3d6b;flex:1;min-width:0">A ASA procura <strong>dentro</strong> dos documentos — pergunte a ela</span>
+              <span style="font-size:17px;color:#5B23C9;flex:none">›</span>
+            </div>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid #e6e1f2;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:9px">
+          <div style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">Vazio nunca é vazio</div>
+          <p style="margin:0;font-size:13px;line-height:1.5;color:#5b5473;text-wrap:pretty">Sem nada digitado, a busca já vale: <strong>três atalhos do dia</strong> e o que a pessoa abriu por último. Para o elenco, isso torna a caixa um atalho para o check-in — que é o que ela abre o app para fazer.</p>
+          <div style="height:1px;background:#f0ecf8"></div>
+          <p style="margin:0;font-size:13px;line-height:1.5;color:#5b5473;text-wrap:pretty">O &ldquo;último aberto&rdquo; é <strong>local, do aparelho</strong>. Não sobe para o servidor: histórico de busca de 40 pessoas é dado que ninguém pediu para guardar.</p>
+        </div>
+        <div style="background:#f3ecfe;border:1px solid #e0d2fb;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:7px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5B23C9">Ordem de construir</div>
+          <p style="margin:0;font-size:13px;line-height:1.55;color:#4a3d6b;text-wrap:pretty"><strong>Pessoas e datas primeiro</strong> — são 90% das buscas reais e cobrem os dois casos que a operação faz o dia inteiro: &ldquo;cadê a fulana&rdquo; e &ldquo;como foi o dia 12&rdquo;. Shows, documentos e avisos entram depois, sem mudar o desenho.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+</x-dc>
+</body>
+</html>

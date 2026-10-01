@@ -1,8 +1,10 @@
-import { pgTable, text, uuid, timestamp, boolean, jsonb, pgEnum, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, boolean, jsonb, pgEnum, unique, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./identity.js";
 import { operationsTable, operationalGroupsTable } from "./organization.js";
+import { areasTable } from "./areas.js";
+import { locationsTable } from "./locations.js";
 
 // ─── Enums ─────────────────────────────────────────────────────────────────────
 
@@ -34,6 +36,57 @@ export const messageContextTypeEnum = pgEnum("message_context_type", [
   "REQUEST", "DELIVERY", "NOTICE", "MO", "DAILY_BOOK", "FREE",
 ]);
 
+// ─── Mural ────────────────────────────────────────────────────────────────────
+// Avisos e reconhecimentos compartilham o mesmo feed. Reconhecimento não é uma
+// entidade paralela: é um tipo de publicação, para que a casa tenha uma única
+// linha do tempo e uma única regra de escopo.
+export const announcementTypeEnum = pgEnum("announcement_type", ["NOTICE", "RECOGNITION", "BIRTHDAY", "TENURE"]);
+export const announcementScopeEnum = pgEnum("announcement_scope", ["HOUSE", "AREA", "LOCATION"]);
+
+export const announcementsTable = pgTable("announcements", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull(),
+  authorId: uuid("author_id").notNull().references(() => usersTable.id),
+  type: announcementTypeEnum("type").notNull().default("NOTICE"),
+  scope: announcementScopeEnum("scope").notNull().default("HOUSE"),
+  areaId: uuid("area_id").references(() => areasTable.id),
+  locationId: uuid("location_id").references(() => locationsTable.id),
+  recipientId: uuid("recipient_id").references(() => usersTable.id),
+  title: text("title"),
+  body: text("body").notNull(),
+  reason: text("reason"),
+  requiresConfirmation: boolean("requires_confirmation").notNull().default(false),
+  publishedAt: timestamp("published_at", { withTimezone: true }).notNull().defaultNow(),
+  cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+  cancellationReason: text("cancellation_reason"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("announcements_org_published_idx").on(table.orgId, table.publishedAt),
+  index("announcements_recipient_idx").on(table.recipientId),
+]);
+
+export const announcementReadsTable = pgTable("announcement_reads", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  announcementId: uuid("announcement_id").notNull().references(() => announcementsTable.id),
+  userId: uuid("user_id").notNull().references(() => usersTable.id),
+  readAt: timestamp("read_at", { withTimezone: true }),
+  confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+  reaction: text("reaction"),
+  reactedAt: timestamp("reacted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [unique("announcement_reads_announcement_user_uq").on(table.announcementId, table.userId)]);
+
+export const announcementCommentsTable = pgTable("announcement_comments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  announcementId: uuid("announcement_id").notNull().references(() => announcementsTable.id),
+  authorId: uuid("author_id").notNull().references(() => usersTable.id),
+  body: text("body").notNull(),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [index("announcement_comments_post_idx").on(table.announcementId, table.createdAt)]);
+
 // ─── Notices ───────────────────────────────────────────────────────────────────
 
 export const noticesTable = pgTable("notices", {
@@ -54,6 +107,7 @@ export const noticesTable = pgTable("notices", {
   expiresAt: timestamp("expires_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+  cancellationReason: text("cancellation_reason"),
 });
 
 // ─── Notice Recipients ─────────────────────────────────────────────────────────

@@ -7,17 +7,38 @@ import {
   noticeEscalationsTable,
   usersTable,
   userRolesTable,
+  operationsTable,
 } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
 import { writeHistoryEvent } from "../lib/history-helper.js";
+import { normalizeReason, requireReason } from "../lib/reason.js";
 import { hasActiveResponsibility } from "../lib/delegation-check.js";
 import { notifyMany } from "../services/notificationService.js";
+import { hasOperationAccess } from "../lib/authorization.service.js";
 
 const MANAGER_ROLES_NOTICES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
 
 const router: IRouter = Router();
+
+async function loadNoticeScope(noticeId: string) {
+  const [row] = await db.select({
+    status: noticesTable.status,
+    operationId: noticesTable.operationId,
+    organizationId: operationsTable.organizationId,
+  }).from(noticesTable)
+    .innerJoin(operationsTable, eq(noticesTable.operationId, operationsTable.id))
+    .where(eq(noticesTable.id, noticeId)).limit(1);
+  return row ?? null;
+}
+
+async function canManageNotice(req: any, scope: { operationId: string }): Promise<boolean> {
+  if (MANAGER_ROLES_NOTICES.includes(req.user.role)) {
+    return hasOperationAccess({ userId: req.user.sub, organizationId: req.user.organizationId, operationId: scope.operationId });
+  }
+  return hasActiveResponsibility(req.user.sub, scope.operationId, "NOTICES");
+}
 
 // ─── Helper: extract delta ─────────────────────────────────────────────────────
 
@@ -49,6 +70,7 @@ async function buildNoticeDetail(noticeId: string) {
       publishedAt: noticesTable.publishedAt,
       expiresAt: noticesTable.expiresAt,
       cancelledAt: noticesTable.cancelledAt,
+      cancellationReason: noticesTable.cancellationReason,
       createdAt: noticesTable.createdAt,
       authorId: noticesTable.authorId,
       authorName: usersTable.name,
@@ -107,7 +129,8 @@ router.get("/notices", requireAuth, async (req, res): Promise<void> => {
     const userRoles = await db
       .select({ operationId: userRolesTable.operationId, role: userRolesTable.role })
       .from(userRolesTable)
-      .where(and(eq(userRolesTable.userId, userId), eq(userRolesTable.active, true)));
+      .innerJoin(operationsTable, eq(userRolesTable.operationId, operationsTable.id))
+      .where(and(eq(userRolesTable.userId, userId), eq(userRolesTable.active, true), eq(operationsTable.organizationId, req.user!.organizationId)));
 
     const adminOpIds = userRoles
       .filter((r) => ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"].includes(r.role))
@@ -215,47 +238,45 @@ router.post("/notices", requireAuth, async (req, res): Promise<void> => {
       return;
     }
   }
+  if (!(await hasOperationAccess({ userId, organizationId: req.user!.organizationId, operationId }))) {
+    res.status(403).json({ error: "Forbidden", message: "Operação fora do escopo do usuário" });
+    return;
+  }
 
   const deltaJson = (changeBefore || changeAfter)
     ? { before: changeBefore ?? null, after: changeAfter ?? null }
     : null;
 
   try {
-    const [notice] = await db
-      .insert(noticesTable)
-      .values({
-        authorId: userId,
-        operationId,
-        title: title ?? null,
-        content,
-        urgency: urgency as any,
-        type: type as any,
-        status: "DRAFT",
-        requiresConfirmation,
-        deltaJson,
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
-      })
-      .returning();
-
-    let targetUserIds: string[] = [...recipientUserIds];
-    if (targetUserIds.length === 0) {
-      const members = await db
+    const [notice] = await db.transaction(async (tx) => {
+      const [created] = await tx.insert(noticesTable).values({
+        authorId: userId, operationId, title: title ?? null, content,
+        urgency: urgency as any, type: type as any, status: "DRAFT", requiresConfirmation,
+        deltaJson, expiresAt: expiresAt ? new Date(expiresAt) : null,
+      }).returning();
+      if (!created) throw new Error("Não foi possível criar aviso");
+      let targetUserIds: string[] = [...recipientUserIds];
+      if (targetUserIds.length === 0) {
+        const members = await tx
         .select({ userId: userRolesTable.userId })
         .from(userRolesTable)
         .where(and(eq(userRolesTable.operationId, operationId), eq(userRolesTable.active, true)));
-      targetUserIds = [...new Set(members.map((m) => m.userId))];
-    }
+        targetUserIds = [...new Set(members.map((m) => m.userId))];
+      }
 
-    if (targetUserIds.length > 0) {
-      await db.insert(noticeRecipientsTable).values(
-        targetUserIds.map((uid) => ({
-          noticeId: notice.id,
-          userId: uid,
-          groupId: null as string | null,
-          status: "PENDING" as const,
-        }))
-      );
-    }
+      if (targetUserIds.length > 0) {
+        await tx.insert(noticeRecipientsTable).values(targetUserIds.map((uid) => ({
+          noticeId: created.id, userId: uid, groupId: null as string | null, status: "PENDING" as const,
+        })));
+      }
+      await writeHistoryEvent({
+        category: "NOTICE", action: "created", title: "Aviso criado",
+        narrative: `Aviso criado: ${created.title ?? "sem título"}.`, entityType: "notice", entityId: created.id,
+        actorId: userId, actorType: "HUMAN", operationId, orgId: req.user!.organizationId,
+        beforeState: null, afterState: created, metadata: { reason: normalizeReason(req.body?.reason) },
+      }, tx as any);
+      return [created] as const;
+    });
 
     const detail = await buildNoticeDetail(notice.id);
     res.status(201).json(detail);
@@ -271,6 +292,12 @@ router.get("/notices/:noticeId", requireAuth, async (req, res): Promise<void> =>
   const log = requestLogger(LOG_DOMAIN.AVISOS, req.requestId, req.correlationId);
   const noticeId = String(req.params.noticeId);
   try {
+    const scope = await loadNoticeScope(noticeId);
+    if (!scope || scope.organizationId !== req.user!.organizationId) { res.status(404).json({ error: "Aviso não encontrado" }); return; }
+    if (!req.user!.operationIds.includes(scope.operationId) && req.user!.role !== "ADMIN") {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
     const detail = await buildNoticeDetail(noticeId);
     if (!detail) { res.status(404).json({ error: "Aviso não encontrado" }); return; }
     res.json(detail);
@@ -288,12 +315,10 @@ router.patch("/notices/:noticeId", requireAuth, async (req, res): Promise<void> 
   const { title, content, urgency, type, requiresConfirmation, expiresAt, changeBefore, changeAfter } = req.body;
 
   try {
-    const [existing] = await db
-      .select({ status: noticesTable.status })
-      .from(noticesTable)
-      .where(eq(noticesTable.id, noticeId));
+    const existing = await loadNoticeScope(noticeId);
 
     if (!existing) { res.status(404).json({ error: "Aviso não encontrado" }); return; }
+    if (!(await canManageNotice(req, existing))) { res.status(403).json({ error: "Forbidden" }); return; }
     if (existing.status !== "DRAFT") {
       res.status(400).json({ error: "Apenas avisos em rascunho podem ser editados" });
       return;
@@ -312,10 +337,18 @@ router.patch("/notices/:noticeId", requireAuth, async (req, res): Promise<void> 
         : null;
     }
 
-    await db
-      .update(noticesTable)
-      .set(updates as any)
-      .where(eq(noticesTable.id, noticeId));
+    const [updated] = await db.transaction(async (tx) => {
+      const [row] = await tx.update(noticesTable).set(updates as any)
+        .where(eq(noticesTable.id, noticeId)).returning();
+      if (!row) throw new Error("Aviso não encontrado");
+      await writeHistoryEvent({
+        category: "NOTICE", action: "updated", title: "Aviso atualizado",
+        narrative: "Aviso em rascunho atualizado.", entityType: "notice", entityId: noticeId,
+        actorId: req.user!.sub, actorType: "HUMAN", orgId: req.user!.organizationId, operationId: existing.operationId,
+        beforeState: existing, afterState: row, metadata: { reason: normalizeReason(req.body?.reason) },
+      }, tx as any);
+      return [row] as const;
+    });
 
     const detail = await buildNoticeDetail(noticeId);
     res.json(detail);
@@ -334,12 +367,10 @@ router.post("/notices/:noticeId/publish", requireAuth, async (req, res): Promise
   const userRole = (req.user as any).role as string;
 
   try {
-    const [existing] = await db
-      .select({ status: noticesTable.status, operationId: noticesTable.operationId })
-      .from(noticesTable)
-      .where(eq(noticesTable.id, noticeId));
+    const existing = await loadNoticeScope(noticeId);
 
     if (!existing) { res.status(404).json({ error: "Aviso não encontrado" }); return; }
+    if (!(await canManageNotice(req, existing))) { res.status(403).json({ error: "Forbidden" }); return; }
     if (existing.status !== "DRAFT") {
       res.status(400).json({ error: "Apenas rascunhos podem ser publicados" });
       return;
@@ -354,29 +385,24 @@ router.post("/notices/:noticeId/publish", requireAuth, async (req, res): Promise
     }
 
     const now = new Date();
-    await db
-      .update(noticesTable)
-      .set({ status: "PUBLISHED", publishedAt: now })
-      .where(eq(noticesTable.id, noticeId));
-
-    await db
-      .update(noticeRecipientsTable)
-      .set({ status: "SENT", sentAt: now })
-      .where(
-        and(
-          eq(noticeRecipientsTable.noticeId, noticeId),
-          eq(noticeRecipientsTable.status, "PENDING")
-        )
-      );
+    const updated = await db.transaction(async (tx) => {
+      const [row] = await tx.update(noticesTable).set({ status: "PUBLISHED", publishedAt: now })
+        .where(eq(noticesTable.id, noticeId)).returning();
+      if (!row) throw new Error("Aviso não encontrado");
+      await tx.update(noticeRecipientsTable).set({ status: "SENT", sentAt: now }).where(and(
+        eq(noticeRecipientsTable.noticeId, noticeId), eq(noticeRecipientsTable.status, "PENDING")
+      ));
+      await writeHistoryEvent({
+        category: "NOTICE", action: "published", title: "Aviso publicado",
+        narrative: "Aviso publicado e enviado aos destinatários.", entityType: "notice", entityId: noticeId,
+        actorId: req.user!.sub, actorType: "HUMAN", operationId: existing.operationId,
+        orgId: req.user!.organizationId, beforeState: existing, afterState: row,
+        metadata: { reason: normalizeReason(req.body?.reason) },
+      }, tx as any);
+      return row;
+    });
 
     const detail = await buildNoticeDetail(noticeId);
-    writeHistoryEvent({
-      category: "NOTICE", action: "published",
-      title: `Aviso publicado${(detail as any).title ? ": " + (detail as any).title : ""}`,
-      narrative: `Aviso publicado e enviado para ${(detail as any).recipients?.length ?? 0} destinatário(s).`,
-      entityType: "notice", entityId: noticeId,
-      actorId: req.user!.sub, actorType: "HUMAN",
-    }).catch(() => {});
     // notify recipients
     (async () => {
       const recipients = await db
@@ -391,6 +417,7 @@ router.post("/notices/:noticeId/publish", requireAuth, async (req, res): Promise
         : "NORMAL" as const;
       await notifyMany(userIds, {
         type: "notice.published",
+        webPushType: (detail as any).requiresConfirmation ? "notice.requires_ack" : undefined,
         title: "Novo aviso",
         message: noticeTitle,
         priority,
@@ -414,17 +441,29 @@ router.post("/notices/:noticeId/cancel", requireAuth, async (req, res): Promise<
   const noticeId = String(req.params.noticeId);
 
   try {
-    const [existing] = await db
-      .select({ status: noticesTable.status })
-      .from(noticesTable)
-      .where(eq(noticesTable.id, noticeId));
+    const existing = await loadNoticeScope(noticeId);
 
     if (!existing) { res.status(404).json({ error: "Aviso não encontrado" }); return; }
+    if (!(await canManageNotice(req, existing))) { res.status(403).json({ error: "Forbidden" }); return; }
 
-    await db
-      .update(noticesTable)
-      .set({ status: "CANCELLED", cancelledAt: new Date() })
-      .where(eq(noticesTable.id, noticeId));
+    const cancellationReason = existing.status === "PUBLISHED"
+      ? requireReason(res, req.body?.reason, "cancelar aviso publicado")
+      : normalizeReason(req.body?.reason);
+    if (existing.status === "PUBLISHED" && !cancellationReason) return;
+
+    await db.transaction(async (tx) => {
+      const [updated] = await tx.update(noticesTable)
+        .set({ status: "CANCELLED", cancelledAt: new Date(), cancellationReason })
+        .where(eq(noticesTable.id, noticeId)).returning();
+      if (!updated) throw new Error("Aviso não encontrado");
+      await writeHistoryEvent({
+        category: "OPERATIONAL_CHANGE", action: "notice.cancelled", title: "Aviso cancelado",
+        narrative: "Aviso cancelado", entityType: "notice", entityId: noticeId,
+        actorId: req.user!.sub, operationId: existing.operationId, orgId: req.user!.organizationId,
+        beforeState: existing, afterState: updated,
+        metadata: { reason: cancellationReason, fromStatus: existing.status, toStatus: "CANCELLED" },
+      }, tx as any);
+    });
 
     const detail = await buildNoticeDetail(noticeId);
     res.json(detail);
@@ -443,12 +482,10 @@ router.post("/notices/:noticeId/escalate", requireAuth, async (req, res): Promis
   const { reason } = req.body as { reason?: string };
 
   try {
-    const [existing] = await db
-      .select({ status: noticesTable.status, requiresConfirmation: noticesTable.requiresConfirmation })
-      .from(noticesTable)
-      .where(eq(noticesTable.id, noticeId));
+    const existing = await loadNoticeScope(noticeId);
 
     if (!existing) { res.status(404).json({ error: "Aviso não encontrado" }); return; }
+    if (!(await canManageNotice(req, existing))) { res.status(403).json({ error: "Forbidden" }); return; }
     if (existing.status !== "PUBLISHED") {
       res.status(400).json({ error: "Apenas avisos publicados podem ser escalados" });
       return;
@@ -456,54 +493,25 @@ router.post("/notices/:noticeId/escalate", requireAuth, async (req, res): Promis
 
     const now = new Date();
 
-    // Mark notice type as ESCALATED
-    await db
-      .update(noticesTable)
-      .set({ type: "ESCALATED" })
-      .where(eq(noticesTable.id, noticeId));
-
-    // Find unconfirmed recipients
-    const unconfirmedRecipients = await db
-      .select({ id: noticeRecipientsTable.id, userId: noticeRecipientsTable.userId })
-      .from(noticeRecipientsTable)
-      .where(
-        and(
-          eq(noticeRecipientsTable.noticeId, noticeId),
-          not(eq(noticeRecipientsTable.status, "CONFIRMED"))
-        )
-      );
-
-    if (unconfirmedRecipients.length > 0) {
-      // Update recipient statuses to ESCALATED
-      await db
-        .update(noticeRecipientsTable)
-        .set({ status: "ESCALATED", escalatedAt: now })
-        .where(
-          and(
-            eq(noticeRecipientsTable.noticeId, noticeId),
-            not(eq(noticeRecipientsTable.status, "CONFIRMED"))
-          )
-        );
-
-      // Insert escalation records for each unconfirmed recipient
-      await db.insert(noticeEscalationsTable).values(
-        unconfirmedRecipients.map((r) => ({
-          noticeId,
-          recipientId: r.userId,
-          escalatedBy,
-          reason: reason ?? null,
-        }))
-      );
-    }
-
-    writeHistoryEvent({
-      category: "NOTICE", action: "escalated",
-      title: "Aviso escalado",
-      narrative: `Aviso escalado. ${unconfirmedRecipients.length} destinatário(s) ainda não confirmaram.`,
-      entityType: "notice", entityId: noticeId,
-      actorId: escalatedBy, actorType: "HUMAN",
-      metadata: { reason: reason ?? null },
-    }).catch(() => {});
+    const unconfirmedRecipients = await db.transaction(async (tx) => {
+      const [updated] = await tx.update(noticesTable).set({ type: "ESCALATED" })
+        .where(eq(noticesTable.id, noticeId)).returning();
+      if (!updated) throw new Error("Aviso não encontrado");
+      const pending = await tx.select({ id: noticeRecipientsTable.id, userId: noticeRecipientsTable.userId })
+        .from(noticeRecipientsTable).where(and(eq(noticeRecipientsTable.noticeId, noticeId), not(eq(noticeRecipientsTable.status, "CONFIRMED"))));
+      if (pending.length > 0) {
+        await tx.update(noticeRecipientsTable).set({ status: "ESCALATED", escalatedAt: now })
+          .where(and(eq(noticeRecipientsTable.noticeId, noticeId), not(eq(noticeRecipientsTable.status, "CONFIRMED"))));
+        await tx.insert(noticeEscalationsTable).values(pending.map((r) => ({ noticeId, recipientId: r.userId, escalatedBy, reason: reason ?? null })));
+      }
+      await writeHistoryEvent({
+        category: "NOTICE", action: "escalated", title: "Aviso escalado",
+        narrative: `Aviso escalado. ${pending.length} destinatário(s) ainda não confirmaram.`, entityType: "notice", entityId: noticeId,
+        actorId: escalatedBy, actorType: "HUMAN", operationId: existing.operationId, orgId: req.user!.organizationId,
+        beforeState: existing, afterState: updated, metadata: { reason: reason ?? null },
+      }, tx as any);
+      return pending;
+    });
     log.info({ noticeId, escalatedBy, count: unconfirmedRecipients.length }, "aviso escalado");
     res.status(204).send();
   } catch (err) {
@@ -540,11 +548,13 @@ router.get("/my-notices", requireAuth, async (req, res): Promise<void> => {
       })
       .from(noticeRecipientsTable)
       .innerJoin(noticesTable, eq(noticeRecipientsTable.noticeId, noticesTable.id))
+      .innerJoin(operationsTable, eq(noticesTable.operationId, operationsTable.id))
       .leftJoin(usersTable, eq(noticesTable.authorId, usersTable.id))
       .where(
         and(
           eq(noticeRecipientsTable.userId, userId),
-          eq(noticesTable.status, "PUBLISHED")
+          eq(noticesTable.status, "PUBLISHED"),
+          eq(operationsTable.organizationId, req.user!.organizationId)
         )
       )
       .orderBy(desc(noticesTable.publishedAt));
@@ -568,6 +578,8 @@ router.post("/notices/:noticeId/view", requireAuth, async (req, res): Promise<vo
   const userId = req.user!.sub;
 
   try {
+    const scope = await loadNoticeScope(noticeId);
+    if (!scope || scope.organizationId !== req.user!.organizationId) { res.status(404).json({ error: "Aviso não encontrado" }); return; }
     await db
       .update(noticeRecipientsTable)
       .set({ status: "VIEWED", viewedAt: new Date() })
@@ -593,22 +605,21 @@ router.post("/notices/:noticeId/confirm", requireAuth, async (req, res): Promise
   const userId = req.user!.sub;
 
   try {
-    await db
-      .update(noticeRecipientsTable)
-      .set({ status: "CONFIRMED", confirmedAt: new Date() })
-      .where(
-        and(
-          eq(noticeRecipientsTable.noticeId, noticeId),
-          eq(noticeRecipientsTable.userId, userId)
-        )
-      );
-    writeHistoryEvent({
-      category: "NOTICE", action: "confirmed",
-      title: "Aviso confirmado",
-      narrative: "Membro confirmou a leitura do aviso.",
-      entityType: "notice", entityId: noticeId,
-      actorId: userId, actorType: "HUMAN",
-    }).catch(() => {});
+    const scope = await loadNoticeScope(noticeId);
+    if (!scope || scope.organizationId !== req.user!.organizationId) { res.status(404).json({ error: "Aviso não encontrado" }); return; }
+    await db.transaction(async (tx) => {
+      const [updated] = await tx.update(noticeRecipientsTable)
+        .set({ status: "CONFIRMED", confirmedAt: new Date() })
+        .where(and(eq(noticeRecipientsTable.noticeId, noticeId), eq(noticeRecipientsTable.userId, userId)))
+        .returning();
+      if (!updated) throw new Error("Destinatário não encontrado");
+      await writeHistoryEvent({
+        category: "NOTICE", action: "confirmed", title: "Aviso confirmado",
+        narrative: "Membro confirmou a leitura do aviso.", entityType: "notice", entityId: noticeId,
+        actorId: userId, actorType: "HUMAN", operationId: scope.operationId, orgId: scope.organizationId,
+        beforeState: null, afterState: updated,
+      }, tx as any);
+    });
     res.status(204).send();
   } catch (err) {
     log.error({ err }, "erro ao confirmar aviso");

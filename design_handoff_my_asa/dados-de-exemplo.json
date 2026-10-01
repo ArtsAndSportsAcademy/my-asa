@@ -1,0 +1,1316 @@
+{
+  "_leia": "Dado de exemplo OFICIAL do My ASA. Use este arquivo em vez de escrever amostra à mão. Nomes de pessoa, personagem, show e bloco são reais: não invente, não troque modo de personagem, não funda personagens parecidos. Se precisar de um caso que este arquivo não cobre, pergunte antes de inventar.",
+  "_versao": "2026-09-19",
+  "locais": [
+    {
+      "id": "snowland",
+      "nome": "Snowland",
+      "operacao": "diaria"
+    },
+    {
+      "id": "acquamotion",
+      "nome": "Acquamotion",
+      "operacao": "diaria"
+    },
+    {
+      "id": "hotelaria",
+      "nome": "Hotelaria",
+      "operacao": "shows especificos",
+      "nota": "não se passa o dia inteiro lá"
+    }
+  ],
+  "areas": [
+    {
+      "id": "patinadores",
+      "nome": "Patinadores"
+    },
+    {
+      "id": "bailarinos",
+      "nome": "Bailarinos"
+    },
+    {
+      "id": "producao",
+      "nome": "Produção"
+    }
+  ],
+  "_nota_area_local": "Bailarinos tem supervisor DIFERENTE por local: Victor Oliveira em Snowland, Stephani em Acquamotion. É o caso que a matriz de permissão do Bloco 6 cobre.",
+  "supervisao_por_area_local": [
+    {
+      "area": "patinadores",
+      "local": "snowland",
+      "supervisor": "Deborah"
+    },
+    {
+      "area": "bailarinos",
+      "local": "snowland",
+      "supervisor": "Victor Oliveira"
+    },
+    {
+      "area": "bailarinos",
+      "local": "acquamotion",
+      "supervisor": "Stephani"
+    },
+    {
+      "area": "producao",
+      "local": null,
+      "supervisor": "Rodrigo"
+    }
+  ],
+  "_nota_nomes": "nome_completo é o cadastro da Administração; nome_de_exibicao é como a pessoa quer ser chamada e é o que aparece na tela. A busca acha pelos dois.",
+  "pessoas": [
+    {
+      "nome_completo": "Cris Garcia",
+      "nome_de_exibicao": "Cris",
+      "perfil": "DIR",
+      "area": null,
+      "local": null
+    },
+    {
+      "nome_completo": "Barbara Sorroche",
+      "nome_de_exibicao": "Barbara",
+      "perfil": "ADM",
+      "area": null,
+      "local": null
+    },
+    {
+      "nome_completo": "Deborah",
+      "nome_de_exibicao": "Deborah",
+      "perfil": "SUP",
+      "area": "patinadores",
+      "local": "snowland"
+    },
+    {
+      "nome_completo": "Victor Oliveira",
+      "nome_de_exibicao": "Victor Oliveira",
+      "perfil": "SUP",
+      "area": "bailarinos",
+      "local": "snowland"
+    },
+    {
+      "nome_completo": "Stephani",
+      "nome_de_exibicao": "Stephani",
+      "perfil": "SUP",
+      "area": "bailarinos",
+      "local": "acquamotion"
+    },
+    {
+      "nome_completo": "Rodrigo",
+      "nome_de_exibicao": "Rodrigo",
+      "perfil": "SUP",
+      "area": "producao",
+      "local": null
+    },
+    {
+      "nome_completo": "Carolina",
+      "nome_de_exibicao": "Carol",
+      "perfil": "MEM",
+      "area": "patinadores",
+      "local": "snowland"
+    },
+    {
+      "nome_completo": "Daniele",
+      "nome_de_exibicao": "Dani",
+      "perfil": "MEM",
+      "area": "patinadores",
+      "local": "snowland"
+    },
+    {
+      "nome_completo": "Amanda",
+      "nome_de_exibicao": "Amanda",
+      "perfil": "MEM",
+      "area": "patinadores",
+      "local": "snowland"
+    },
+    {
+      "nome_completo": "Daiane",
+      "nome_de_exibicao": "Daia",
+      "perfil": "MEM",
+      "area": "patinadores",
+      "local": "snowland"
+    },
+    {
+      "nome_completo": "Izabel",
+      "nome_de_exibicao": "Izabel",
+      "perfil": "MEM",
+      "area": "patinadores",
+      "local": "snowland"
+    },
+    {
+      "nome_completo": "Sofia",
+      "nome_de_exibicao": "Sofia",
+      "perfil": "MEM",
+      "area": "patinadores",
+      "local": "snowland"
+    },
+    {
+      "nome_completo": "Julia",
+      "nome_de_exibicao": "Julia",
+      "perfil": "MEM",
+      "area": "patinadores",
+      "local": "snowland"
+    },
+    {
+      "nome_completo": "Diogo",
+      "nome_de_exibicao": "Diogo",
+      "perfil": "MEM",
+      "area": "patinadores",
+      "local": "snowland"
+    },
+    {
+      "nome_completo": "Arthur",
+      "nome_de_exibicao": "Arthur",
+      "perfil": "MEM",
+      "area": "patinadores",
+      "local": "snowland"
+    },
+    {
+      "nome_completo": "Jefferson",
+      "nome_de_exibicao": "Jefferson",
+      "perfil": "MEM",
+      "area": "patinadores",
+      "local": "snowland"
+    },
+    {
+      "nome_completo": "Junior",
+      "nome_de_exibicao": "Junior",
+      "perfil": "MEM",
+      "area": "patinadores",
+      "local": "snowland"
+    },
+    {
+      "nome_completo": "Simon",
+      "nome_de_exibicao": "Simon",
+      "perfil": "MEM",
+      "area": "patinadores",
+      "local": "snowland"
+    },
+    {
+      "nome_completo": "Kauã",
+      "nome_de_exibicao": "Kauã",
+      "perfil": "MEM",
+      "area": "patinadores",
+      "local": "snowland"
+    },
+    {
+      "nome_completo": "Caleb",
+      "nome_de_exibicao": "Caleb",
+      "perfil": "MEM",
+      "area": "patinadores",
+      "local": "snowland"
+    },
+    {
+      "nome_completo": "Louis",
+      "nome_de_exibicao": "Louis",
+      "perfil": "MEM",
+      "area": "bailarinos",
+      "local": "snowland"
+    },
+    {
+      "nome_completo": "Cássia",
+      "nome_de_exibicao": "Cássia",
+      "perfil": "MEM",
+      "area": "bailarinos",
+      "local": "snowland"
+    },
+    {
+      "nome_completo": "Isadora",
+      "nome_de_exibicao": "Isadora",
+      "perfil": "MEM",
+      "area": "bailarinos",
+      "local": "snowland"
+    },
+    {
+      "nome_completo": "Vinicius",
+      "nome_de_exibicao": "Vinicius",
+      "perfil": "MEM",
+      "area": "bailarinos",
+      "local": "snowland"
+    },
+    {
+      "nome_completo": "Antônio",
+      "nome_de_exibicao": "Antônio",
+      "perfil": "MEM",
+      "area": "bailarinos",
+      "local": "snowland"
+    },
+    {
+      "nome_completo": "Sthefany",
+      "nome_de_exibicao": "Sthefany",
+      "perfil": "MEM",
+      "area": "bailarinos",
+      "local": "acquamotion"
+    },
+    {
+      "nome_completo": "Mariela",
+      "nome_de_exibicao": "Mariela",
+      "perfil": "MEM",
+      "area": "bailarinos",
+      "local": "acquamotion"
+    },
+    {
+      "nome_completo": "Louize",
+      "nome_de_exibicao": "Luize",
+      "perfil": "MEM",
+      "area": "bailarinos",
+      "local": "acquamotion"
+    },
+    {
+      "nome_completo": "Victor Massalai",
+      "nome_de_exibicao": "Victor M.",
+      "perfil": "MEM",
+      "area": "bailarinos",
+      "local": "acquamotion"
+    },
+    {
+      "nome_completo": "Geovanni",
+      "nome_de_exibicao": "Geovani",
+      "perfil": "MEM",
+      "area": "bailarinos",
+      "local": "acquamotion"
+    },
+    {
+      "nome_completo": "Miguel",
+      "nome_de_exibicao": "Miguel",
+      "perfil": "MEM",
+      "area": "bailarinos",
+      "local": "acquamotion"
+    },
+    {
+      "nome_completo": "Daniel",
+      "nome_de_exibicao": "Daniel",
+      "perfil": "MEM",
+      "area": "bailarinos",
+      "local": "acquamotion"
+    },
+    {
+      "nome_completo": "Matheus",
+      "nome_de_exibicao": "Matheus",
+      "perfil": "MEM",
+      "area": "bailarinos",
+      "local": "acquamotion"
+    },
+    {
+      "nome_completo": "Sarah",
+      "nome_de_exibicao": "Sarah",
+      "perfil": "MEM",
+      "area": "bailarinos",
+      "local": "acquamotion"
+    },
+    {
+      "nome_completo": "Maico",
+      "nome_de_exibicao": "Maico",
+      "perfil": "MEM",
+      "area": "producao",
+      "local": "snowland"
+    },
+    {
+      "nome_completo": "Lucas",
+      "nome_de_exibicao": "Lucas",
+      "perfil": "MEM",
+      "area": "producao",
+      "local": "snowland"
+    },
+    {
+      "nome_completo": "Gabriel",
+      "nome_de_exibicao": "Gabriel",
+      "perfil": "MEM",
+      "area": "producao",
+      "local": "snowland"
+    },
+    {
+      "nome_completo": "Mariza",
+      "nome_de_exibicao": "Mariza",
+      "perfil": "MEM",
+      "area": "producao",
+      "local": "snowland"
+    }
+  ],
+  "_nota_palco": "formato_palco é a forma do palco daquele show, conforme telas/mapa-palco.js: L (pista de patinação em L), RET (retângulo), QUAD (quadrado) e NONE (sem palco — shows do tipo só personagens não têm mapa). Nunca desenhe o palco à mão: use as funções de mapa-palco.js.",
+  "_nota_sessao": "A HORA NUNCA faz parte do nome do show. 'Yeti' é um show com três sessões. A escala fala 'YETI 16:00' para distinguir uma sessão da outra — isso é vocabulário de escala, não nome de entidade. inicio e fim são obrigatórios e fim > inicio.",
+  "shows": [
+    {
+      "nome": "Musical do Natal",
+      "local": "snowland",
+      "tipo": "mix",
+      "usa_personagens": true,
+      "formato_palco": "L",
+      "descricao": "O musical da temporada de Natal. Cenas com posições, e dentro delas os personagens do show.",
+      "responsavel": "Deborah",
+      "sessoes": [
+        {
+          "inicio": "12:30",
+          "fim": "13:10",
+          "chamada": "11:45"
+        }
+      ],
+      "cenas": [
+        {
+          "nome": "Bandeiras",
+          "personagens": [
+            {
+              "slot": "*",
+              "personagem": "Rainha",
+              "pessoa_hoje": "Carol"
+            },
+            {
+              "slot": "Y",
+              "personagem": "Yeti",
+              "pessoa_hoje": "Simon"
+            },
+            {
+              "slot": "M",
+              "personagem": "Mensageiro",
+              "pessoa_hoje": "Caleb"
+            }
+          ],
+          "slots_bl": [
+            "Arthur",
+            "Amanda",
+            "Junior",
+            "Diogo"
+          ],
+          "slots_br": [
+            "Jefferson",
+            "Izabel",
+            "Dani",
+            "Daia"
+          ],
+          "quadros": [
+            {
+              "nome": "Posição inicial",
+              "tipo": "inicial",
+              "momento": "antes dos tambores"
+            },
+            {
+              "nome": "Locação — tambores",
+              "tipo": "locacao",
+              "momento": "na virada da percussão"
+            }
+          ]
+        },
+        {
+          "nome": "Vilarejo",
+          "personagens": [
+            {
+              "slot": "*",
+              "personagem": "Astrid",
+              "pessoa_hoje": "Julia"
+            }
+          ],
+          "slots_bl": [
+            "Jefferson",
+            "Daia",
+            "Junior",
+            "Kauã",
+            "Simon",
+            "Carol"
+          ],
+          "slots_br": [
+            "Louis",
+            "Amanda",
+            "Arthur",
+            "Dani",
+            "Izabel",
+            "Diogo"
+          ],
+          "quadros": [
+            {
+              "nome": "Posição inicial",
+              "tipo": "inicial",
+              "momento": "entrada do vilarejo"
+            },
+            {
+              "nome": "Splice",
+              "tipo": "splice",
+              "momento": "sempre pela frente"
+            },
+            {
+              "nome": "Saída",
+              "tipo": "saida",
+              "momento": "corta para Astrid"
+            }
+          ],
+          "troca_desde_anterior": "20 s"
+        },
+        {
+          "nome": "Vilarejo Astrid",
+          "personagens": [
+            {
+              "slot": "*",
+              "personagem": "Astrid",
+              "pessoa_hoje": "Julia"
+            },
+            {
+              "slot": "Y",
+              "personagem": "Yeti",
+              "pessoa_hoje": "Simon"
+            },
+            {
+              "slot": "M",
+              "personagem": "Mensageiro",
+              "pessoa_hoje": "Caleb"
+            }
+          ],
+          "slots_bl": [
+            "Junior",
+            "Arthur",
+            "Jefferson",
+            "Louis",
+            "Cássia",
+            "Kauã"
+          ],
+          "slots_br": [
+            "Izabel",
+            "Carol",
+            "Daia",
+            "Amanda",
+            "Dani",
+            "Diogo"
+          ],
+          "quadros": [
+            {
+              "nome": "Posição inicial",
+              "tipo": "inicial",
+              "momento": "logo após o vilarejo"
+            },
+            {
+              "nome": "Splice consecutivo",
+              "tipo": "splice",
+              "momento": "sempre pela frente"
+            },
+            {
+              "nome": "Locação — troca de lado",
+              "tipo": "locacao",
+              "momento": "no “o que há?”"
+            },
+            {
+              "nome": "Saída",
+              "tipo": "saida",
+              "momento": "fica só Astrid"
+            }
+          ],
+          "troca_desde_anterior": "35 s"
+        },
+        {
+          "nome": "Pássaros",
+          "personagens": [
+            {
+              "slot": "*",
+              "personagem": "Astrid",
+              "pessoa_hoje": "Julia"
+            }
+          ],
+          "slots_bl": [
+            "Louis",
+            "Izabel",
+            "Kauã"
+          ],
+          "slots_br": [
+            "Carol",
+            "Diogo",
+            "Vinicius"
+          ],
+          "quadros": [
+            {
+              "nome": "Posição inicial",
+              "tipo": "inicial",
+              "momento": "solo de Julia"
+            },
+            {
+              "nome": "Lift",
+              "tipo": "locacao",
+              "momento": "lift no meio da quadra"
+            }
+          ],
+          "troca_desde_anterior": "20 s"
+        },
+        {
+          "nome": "Molduras",
+          "personagens": [
+            {
+              "slot": "*",
+              "personagem": "Astrid",
+              "pessoa_hoje": "Julia"
+            }
+          ],
+          "slots_bl": [
+            "Vinicius",
+            "Daia",
+            "Louis",
+            "Carol",
+            "Diogo",
+            "Amanda"
+          ],
+          "slots_br": [
+            "Kauã",
+            "Isadora",
+            "Jefferson",
+            "Cássia",
+            "Dani",
+            "Junior"
+          ],
+          "quadros": [
+            {
+              "nome": "Posição inicial",
+              "tipo": "inicial",
+              "momento": "molduras left, right e meio"
+            },
+            {
+              "nome": "Splice",
+              "tipo": "splice",
+              "momento": "entrada aérea"
+            },
+            {
+              "nome": "Saída — leva moldura",
+              "tipo": "saida",
+              "momento": "quem leva a moldura sai"
+            }
+          ],
+          "troca_desde_anterior": "20 s"
+        },
+        {
+          "nome": "Borboletas",
+          "personagens": [
+            {
+              "slot": "*",
+              "personagem": "Astrid",
+              "pessoa_hoje": "Julia"
+            },
+            {
+              "slot": "R",
+              "personagem": "Rainha",
+              "pessoa_hoje": "Carol"
+            }
+          ],
+          "slots_bl": [],
+          "slots_br": [
+            "Amanda",
+            "Dani",
+            "Jefferson"
+          ],
+          "quadros": [
+            {
+              "nome": "Posição inicial",
+              "tipo": "inicial",
+              "momento": "entra só pelo BR"
+            }
+          ],
+          "troca_desde_anterior": "20 s"
+        },
+        {
+          "nome": "Imaginar",
+          "personagens": [
+            {
+              "slot": "*",
+              "personagem": "Astrid",
+              "pessoa_hoje": "Julia"
+            },
+            {
+              "slot": "R",
+              "personagem": "Rainha",
+              "pessoa_hoje": "Carol"
+            },
+            {
+              "slot": "Y",
+              "personagem": "Yeti",
+              "pessoa_hoje": "Simon"
+            }
+          ],
+          "slots_bl": [
+            "Junior",
+            "Arthur",
+            "Daia",
+            "Antônio"
+          ],
+          "slots_br": [
+            "Jefferson",
+            "Cássia",
+            "Diogo",
+            "Kauã",
+            "Izabel"
+          ],
+          "quadros": [
+            {
+              "nome": "Posição inicial",
+              "tipo": "inicial",
+              "momento": "3 condados e sereia"
+            },
+            {
+              "nome": "Locação — chiffon",
+              "tipo": "locacao",
+              "momento": "saída dos chiffons"
+            }
+          ],
+          "troca_desde_anterior": "35 s"
+        },
+        {
+          "nome": "Finale",
+          "personagens": [
+            {
+              "slot": "*",
+              "personagem": "Astrid",
+              "pessoa_hoje": "Julia"
+            },
+            {
+              "slot": "R",
+              "personagem": "Rainha",
+              "pessoa_hoje": "Carol"
+            },
+            {
+              "slot": "Y",
+              "personagem": "Yeti",
+              "pessoa_hoje": "Simon"
+            },
+            {
+              "slot": "M",
+              "personagem": "Mensageiro",
+              "pessoa_hoje": "Caleb"
+            }
+          ],
+          "slots_bl": [
+            "Arthur",
+            "Louis",
+            "Junior",
+            "Vinicius",
+            "Diogo",
+            "Antônio"
+          ],
+          "slots_br": [
+            "Daia",
+            "Jefferson",
+            "Isadora",
+            "Amanda",
+            "Kauã",
+            "Cássia"
+          ],
+          "quadros": [
+            {
+              "nome": "Posição inicial",
+              "tipo": "inicial",
+              "momento": "desfile de personagens"
+            },
+            {
+              "nome": "Trick section",
+              "tipo": "splice",
+              "momento": "todos, meio com Arthur"
+            }
+          ],
+          "troca_desde_anterior": "20 s"
+        }
+      ],
+      "troca_entre_cenas": "20 s"
+    },
+    {
+      "nome": "Show Patinação",
+      "local": "snowland",
+      "tipo": "form",
+      "usa_personagens": false,
+      "formato_palco": "L",
+      "descricao": "Patinação livre: o elenco entra por posição, sem personagem nomeado.",
+      "responsavel": "Deborah",
+      "sessoes": [
+        {
+          "inicio": "14:00",
+          "fim": "14:40",
+          "chamada": "13:20"
+        }
+      ]
+    },
+    {
+      "nome": "Yeti",
+      "local": "snowland",
+      "tipo": "pers",
+      "usa_personagens": true,
+      "formato_palco": "NONE",
+      "descricao": "Aparição de personagem. Sem cena e sem mapa — o livro é a lista de quem faz.",
+      "responsavel": "Deborah",
+      "sessoes": [
+        {
+          "inicio": "10:00",
+          "fim": "10:20",
+          "chamada": "09:40"
+        },
+        {
+          "inicio": "16:00",
+          "fim": "16:20",
+          "chamada": "15:40"
+        },
+        {
+          "inicio": "16:40",
+          "fim": "17:00",
+          "chamada": "16:20"
+        }
+      ]
+    },
+    {
+      "nome": "Nanook",
+      "local": "snowland",
+      "tipo": "pers",
+      "usa_personagens": true,
+      "formato_palco": "NONE",
+      "descricao": "Aparição de personagem.",
+      "responsavel": "Deborah",
+      "sessoes": [
+        {
+          "inicio": "11:00",
+          "fim": "11:20",
+          "chamada": "10:40"
+        }
+      ]
+    },
+    {
+      "nome": "Flashmob",
+      "local": "snowland",
+      "tipo": "form",
+      "usa_personagens": false,
+      "formato_palco": "RET",
+      "descricao": "Entrada coletiva no fim da tarde.",
+      "responsavel": "Victor Oliveira",
+      "sessoes": [
+        {
+          "inicio": "15:15",
+          "fim": "15:30",
+          "chamada": "15:00"
+        }
+      ]
+    },
+    {
+      "nome": "Os Guardiões e o Globo do Tempo",
+      "local": "acquamotion",
+      "tipo": "mix",
+      "usa_personagens": true,
+      "formato_palco": "QUAD",
+      "descricao": "Musical dos Guardiões.",
+      "responsavel": "Stephani",
+      "sessoes": [
+        {
+          "inicio": "13:00",
+          "fim": "13:50",
+          "chamada": "12:20"
+        }
+      ]
+    },
+    {
+      "nome": "Passeio dos Guardiões",
+      "local": "acquamotion",
+      "tipo": "pers",
+      "usa_personagens": true,
+      "formato_palco": "NONE",
+      "descricao": "Passeio dos personagens pelo parque.",
+      "responsavel": "Stephani",
+      "sessoes": [
+        {
+          "inicio": "13:10",
+          "fim": "13:30",
+          "chamada": "12:50"
+        }
+      ]
+    },
+    {
+      "nome": "Acquashow Duo",
+      "local": "acquamotion",
+      "tipo": "form",
+      "usa_personagens": true,
+      "formato_palco": "RET",
+      "descricao": "Número de piscina em dupla.",
+      "responsavel": "Stephani",
+      "sessoes": [
+        {
+          "inicio": "15:00",
+          "fim": "15:20",
+          "chamada": "14:00"
+        }
+      ]
+    },
+    {
+      "nome": "Acquashow Trio",
+      "local": "acquamotion",
+      "tipo": "form",
+      "usa_personagens": true,
+      "formato_palco": "RET",
+      "descricao": "Número de piscina em trio.",
+      "responsavel": "Stephani",
+      "sessoes": [
+        {
+          "inicio": "15:00",
+          "fim": "15:20",
+          "chamada": "14:00"
+        }
+      ]
+    },
+    {
+      "nome": "Opening",
+      "local": "acquamotion",
+      "tipo": "form",
+      "usa_personagens": false,
+      "formato_palco": "RET",
+      "descricao": "Abertura do dia.",
+      "responsavel": "Stephani",
+      "sessoes": [
+        {
+          "inicio": "09:55",
+          "fim": "10:15",
+          "chamada": "09:30"
+        }
+      ]
+    },
+    {
+      "nome": "Goodbye",
+      "local": "acquamotion",
+      "tipo": "form",
+      "usa_personagens": false,
+      "formato_palco": "RET",
+      "descricao": "Despedida do dia.",
+      "responsavel": "Stephani",
+      "sessoes": [
+        {
+          "inicio": "15:45",
+          "fim": "16:00",
+          "chamada": "15:30"
+        }
+      ]
+    },
+    {
+      "nome": "Antonella",
+      "local": "hotelaria",
+      "tipo": "pers",
+      "usa_personagens": true,
+      "formato_palco": "NONE",
+      "descricao": "Show de hotelaria.",
+      "responsavel": "Barbara",
+      "sessoes": [
+        {
+          "inicio": "20:00",
+          "fim": "20:40",
+          "chamada": "19:00"
+        }
+      ]
+    },
+    {
+      "nome": "Nonna e Frida",
+      "local": "hotelaria",
+      "tipo": "pers",
+      "usa_personagens": true,
+      "formato_palco": "NONE",
+      "descricao": "Show de hotelaria com dois personagens.",
+      "responsavel": "Barbara",
+      "sessoes": [
+        {
+          "inicio": "19:30",
+          "fim": "20:10",
+          "chamada": "18:30"
+        }
+      ]
+    },
+    {
+      "nome": "Cuca",
+      "local": "hotelaria",
+      "tipo": "pers",
+      "usa_personagens": true,
+      "formato_palco": "NONE",
+      "descricao": "Show de hotelaria.",
+      "responsavel": "Barbara",
+      "sessoes": [
+        {
+          "inicio": "18:00",
+          "fim": "18:30",
+          "chamada": "17:15"
+        }
+      ]
+    },
+    {
+      "nome": "Palhacinhos",
+      "local": "hotelaria",
+      "tipo": "form",
+      "usa_personagens": false,
+      "formato_palco": "QUAD",
+      "descricao": "Show de hotelaria.",
+      "responsavel": "Barbara",
+      "sessoes": [
+        {
+          "inicio": "17:00",
+          "fim": "17:30",
+          "chamada": "16:15"
+        }
+      ]
+    },
+    {
+      "nome": "Noite Alemã",
+      "local": "hotelaria",
+      "tipo": "form",
+      "usa_personagens": false,
+      "formato_palco": "QUAD",
+      "descricao": "Show de hotelaria.",
+      "responsavel": "Barbara",
+      "sessoes": [
+        {
+          "inicio": "20:30",
+          "fim": "21:15",
+          "chamada": "19:30"
+        }
+      ]
+    }
+  ],
+  "_nota_personagem": "Personagem pertence ao LOCAL, não a um show — Astrid aparece em dois shows do Snowland e é a mesma fila. A fila é ORDENADA: no modo titular o primeiro é o titular e os demais são substitutos na ordem; no modo rodízio entra quem tem o menor 'vezes', e empate desempata pela ordem. 'Guardião' (Snowland) e 'Guardião do Tempo' (Acquamotion) são personagens DIFERENTES — não funda os dois. Personagem só pode aparecer em show cujo tipo use personagens (completo ou só personagens). Show do tipo 'só formação' não tem personagem nenhum.",
+  "personagens": [
+    {
+      "nome": "Astrid",
+      "local": "snowland",
+      "modo": "titular",
+      "shows": [
+        "Musical do Natal"
+      ],
+      "fila": [
+        {
+          "pessoa": "Julia"
+        },
+        {
+          "pessoa": "Carol"
+        },
+        {
+          "pessoa": "Amanda"
+        }
+      ]
+    },
+    {
+      "nome": "Guardião",
+      "local": "snowland",
+      "modo": "rodizio",
+      "shows": [
+        "Musical do Natal"
+      ],
+      "fila": [
+        {
+          "pessoa": "Arthur",
+          "vezes": 8
+        },
+        {
+          "pessoa": "Diogo",
+          "vezes": 6
+        },
+        {
+          "pessoa": "Jefferson",
+          "vezes": 5
+        }
+      ]
+    },
+    {
+      "nome": "Chocolato",
+      "local": "snowland",
+      "modo": "titular",
+      "shows": [
+        "Musical do Natal"
+      ],
+      "fila": [
+        {
+          "pessoa": "Simon"
+        },
+        {
+          "pessoa": "Kauã"
+        }
+      ]
+    },
+    {
+      "nome": "Igno",
+      "local": "snowland",
+      "modo": "rodizio",
+      "shows": [
+        "Musical do Natal"
+      ],
+      "fila": [
+        {
+          "pessoa": "Dani",
+          "vezes": 7
+        },
+        {
+          "pessoa": "Daia",
+          "vezes": 7
+        },
+        {
+          "pessoa": "Izabel",
+          "vezes": 4
+        },
+        {
+          "pessoa": "Sofia",
+          "vezes": 9
+        }
+      ]
+    },
+    {
+      "nome": "Mensageira",
+      "local": "snowland",
+      "modo": "titular",
+      "shows": [
+        "Musical do Natal"
+      ],
+      "fila": [
+        {
+          "pessoa": "Sofia"
+        },
+        {
+          "pessoa": "Julia"
+        }
+      ]
+    },
+    {
+      "nome": "Mensageiro",
+      "local": "snowland",
+      "modo": "titular",
+      "shows": [
+        "Musical do Natal"
+      ],
+      "fila": [
+        {
+          "pessoa": "Caleb"
+        },
+        {
+          "pessoa": "Junior"
+        }
+      ]
+    },
+    {
+      "nome": "Rainha",
+      "local": "snowland",
+      "modo": "titular",
+      "shows": [
+        "Musical do Natal"
+      ],
+      "fila": [
+        {
+          "pessoa": "Carol"
+        },
+        {
+          "pessoa": "Dani"
+        }
+      ]
+    },
+    {
+      "nome": "Yeti",
+      "local": "snowland",
+      "modo": "rodizio",
+      "shows": [
+        "Yeti"
+      ],
+      "fila": [
+        {
+          "pessoa": "Junior",
+          "vezes": 11
+        },
+        {
+          "pessoa": "Simon",
+          "vezes": 9
+        },
+        {
+          "pessoa": "Caleb",
+          "vezes": 12
+        }
+      ]
+    },
+    {
+      "nome": "Nanook",
+      "local": "snowland",
+      "modo": "rodizio",
+      "shows": [
+        "Nanook"
+      ],
+      "fila": [
+        {
+          "pessoa": "Kauã",
+          "vezes": 6
+        },
+        {
+          "pessoa": "Diogo",
+          "vezes": 9
+        }
+      ]
+    },
+    {
+      "nome": "Guardião do Tempo",
+      "local": "acquamotion",
+      "modo": "titular",
+      "shows": [
+        "Os Guardiões e o Globo do Tempo",
+        "Passeio dos Guardiões"
+      ],
+      "fila": [
+        {
+          "pessoa": "Victor M."
+        },
+        {
+          "pessoa": "Miguel"
+        }
+      ]
+    },
+    {
+      "nome": "Sereia",
+      "local": "acquamotion",
+      "modo": "rodizio",
+      "shows": [
+        "Acquashow Duo",
+        "Acquashow Trio"
+      ],
+      "fila": [
+        {
+          "pessoa": "Sthefany",
+          "vezes": 9
+        },
+        {
+          "pessoa": "Mariela",
+          "vezes": 6
+        },
+        {
+          "pessoa": "Luize",
+          "vezes": 8
+        },
+        {
+          "pessoa": "Sarah",
+          "vezes": 6
+        }
+      ]
+    },
+    {
+      "nome": "Tritão",
+      "local": "acquamotion",
+      "modo": "titular",
+      "shows": [
+        "Acquashow Trio"
+      ],
+      "_caso": "fila de uma pessoa só — é o caso que dispara o aviso amarelo de fila curta",
+      "fila": [
+        {
+          "pessoa": "Daniel"
+        }
+      ]
+    },
+    {
+      "nome": "Antonella",
+      "local": "hotelaria",
+      "modo": "titular",
+      "shows": [
+        "Antonella"
+      ],
+      "fila": [
+        {
+          "pessoa": "Isadora"
+        },
+        {
+          "pessoa": "Cássia"
+        }
+      ]
+    },
+    {
+      "nome": "Nonna",
+      "local": "hotelaria",
+      "modo": "titular",
+      "shows": [
+        "Nonna e Frida"
+      ],
+      "fila": [
+        {
+          "pessoa": "Cássia"
+        },
+        {
+          "pessoa": "Isadora"
+        }
+      ]
+    },
+    {
+      "nome": "Frida",
+      "local": "hotelaria",
+      "modo": "titular",
+      "shows": [
+        "Nonna e Frida"
+      ],
+      "fila": [
+        {
+          "pessoa": "Louis"
+        },
+        {
+          "pessoa": "Vinicius"
+        }
+      ]
+    },
+    {
+      "nome": "Cuca",
+      "local": "hotelaria",
+      "modo": "rodizio",
+      "shows": [
+        "Cuca"
+      ],
+      "fila": [
+        {
+          "pessoa": "Antônio",
+          "vezes": 4
+        },
+        {
+          "pessoa": "Louis",
+          "vezes": 5
+        }
+      ]
+    }
+  ],
+  "_nota_blocos": "Vocabulário de escala, separado POR LOCAL. Bloco de um local nunca aparece no outro — 'Mariela · Acquamotion · TREINO GELO' não existe.",
+  "blocos_por_local": {
+    "snowland": [
+      "RECESSO",
+      "NO SHOW",
+      "TREINO GELO",
+      "ENSAIO",
+      "BOAS-VINDAS",
+      "YETI",
+      "ACOMP. YETI",
+      "NANOOK",
+      "ACOMP. NANOOK",
+      "ALMOÇO",
+      "PRE TEATRO",
+      "TEATRO",
+      "PREPARAÇÃO MUSICAL",
+      "MUSICAL",
+      "PASSAGEM DO SHOW",
+      "SHOW PATINAÇÃO",
+      "FLASHMOB",
+      "FISIOTERAPIA",
+      "5S CAMARIM",
+      "5S GE",
+      "5S CHARACTER",
+      "PROPS NATAL",
+      "ADM",
+      "FIGURINOS",
+      "ENSAIO MUSICAL"
+    ],
+    "acquamotion": [
+      "RECESSO",
+      "NO SHOW",
+      "SNOW",
+      "ENSAIO SUL EM DANÇA",
+      "ENSAIO ACQUASHOW DUO",
+      "ENSAIO ACQUASHOW TRIO",
+      "MAQUIAGEM PERSONAGEM",
+      "HOTÉIS",
+      "OPENING",
+      "BOAS VINDAS",
+      "ACOMPANHAR BOAS VINDAS",
+      "ENSAIO PORTAGENS LADO DO CAMARIM",
+      "ENSAIO ADM",
+      "ADM",
+      "CRIAÇÃO",
+      "ALMOÇO",
+      "PASSEIO DOS GUARDIÕES",
+      "OS GUARDIÕES E O GLOBO DO TEMPO",
+      "PREPARAÇÃO ACQUASHOW",
+      "ACQUASHOW DUO",
+      "ACQUASHOW TRIO",
+      "GOODBYE",
+      "LIMPEZA CAMARIM",
+      "FISIO",
+      "ATIVIDADE EXCLUSIVA",
+      "ACROBACIA",
+      "ENSAIO SHOW COMPLETO",
+      "REUNIÃO MÍDIAS ONLINE"
+    ]
+  },
+  "_nota_producao": "A coluna da Produção mostra 'PRODUÇÃO' em vez do bloco artístico.",
+  "_nota_formacoes": "A biblioteca de formações mora no LIVRO DO DIA, não em Shows. Navegação: show → cena → quantidade. Formação é variante de uma cena, não item de lista geral. Aplicar faz uma CÓPIA: editar a cena depois não muda a formação guardada.",
+  "_nota_cena": "Uma cena tem SLOTS, não pessoas: o rótulo do slot (1, 4, &, M) vive na cena e aparece em todos os quadros — trocar quem faz não redesenha nenhum quadro. slots_bl e slots_br são os lados do palco (backstage left/right) e a ORDEM importa: é ela que numera os marcadores. 'personagens' são os papéis nomeados da cena; pessoa_hoje é só quem está fazendo agora, vem da fila e não pertence à cena.",
+  "_nota_quadro": "Quadros-chave, não frames: cada quadro existe por um motivo — inicial, splice, locacao, saida. Uma cena tem de 2 a 4, não 15. O quadro do tipo 'inicial' de cada cena é o que alimenta o Livro do Dia."
+}

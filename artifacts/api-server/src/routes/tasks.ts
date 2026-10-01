@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, inArray, desc } from "drizzle-orm";
+import { eq, and, inArray, desc, or } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
@@ -8,20 +8,21 @@ import {
   taskCommentsTable,
   usersTable,
   operationsTable,
+  responsibilitiesTable,
 } from "@workspace/db";
 import {
   requireAuth,
   requireOrganization,
 } from "../middlewares/auth.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
-import { hasActiveResponsibility } from "../lib/delegation-check.js";
 import { requestLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
+import { canManageTasks, listTaskManagementAreaIds, resolveTaskAreaId } from "../services/task-access.js";
 
 const router: IRouter = Router();
 
-type RoleValue = "MEMBER" | "SUPERVISOR_A" | "SUPERVISOR_B" | "ADMIN";
-const MANAGER_ROLES: RoleValue[] = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
+type RoleValue = "MEMBER" | "SUPERVISOR_A" | "SUPERVISOR_B" | "ADMIN" | "DIR";
+const MANAGER_ROLES: RoleValue[] = ["ADMIN", "DIR", "SUPERVISOR_A", "SUPERVISOR_B"];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -32,15 +33,6 @@ async function getActorName(userId: string): Promise<string> {
     .where(eq(usersTable.id, userId))
     .limit(1);
   return row?.name ?? userId;
-}
-
-async function canManageTasks(
-  userId: string,
-  role: RoleValue,
-  operationId: string
-): Promise<boolean> {
-  if (MANAGER_ROLES.includes(role)) return true;
-  return hasActiveResponsibility(userId, operationId, "TASK_APPROVALS");
 }
 
 // ─── GET /tasks/my — tarefas atribuídas ao usuário atual ─────────────────────
@@ -72,6 +64,8 @@ router.get("/tasks/my", requireAuth, requireOrganization, async (req, res) => {
         dueDate: tasksTable.dueDate,
         requiresApproval: tasksTable.requiresApproval,
         origin: tasksTable.origin,
+        responsibilityId: tasksTable.responsibilityId,
+        responsibilityTitle: responsibilitiesTable.title,
         operationId: tasksTable.operationId,
         operationName: operationsTable.name,
         assigneeId: tasksTable.assigneeId,
@@ -85,6 +79,7 @@ router.get("/tasks/my", requireAuth, requireOrganization, async (req, res) => {
       .from(tasksTable)
       .innerJoin(operationsTable, eq(tasksTable.operationId, operationsTable.id))
       .innerJoin(usersTable, eq(tasksTable.assigneeId, usersTable.id))
+      .leftJoin(responsibilitiesTable, eq(tasksTable.responsibilityId, responsibilitiesTable.id))
       .where(and(...conditions))
       .orderBy(desc(tasksTable.dueDate));
 
@@ -105,15 +100,22 @@ router.get("/tasks", requireAuth, requireOrganization, async (req, res) => {
   try {
     const conditions: SQL<unknown>[] = [];
 
-    if (user.role === "ADMIN") {
+    if (user.role === "ADMIN" || user.role === "DIR") {
       conditions.push(eq(tasksTable.organizationId, user.organizationId));
       if (operationId) conditions.push(eq(tasksTable.operationId, operationId));
     } else if (MANAGER_ROLES.includes(user.role as RoleValue)) {
-      if (!operationId) {
+      if ((user.role === "SUPERVISOR_A" || user.role === "SUPERVISOR_B") && !operationId) {
         res.status(400).json({ error: "Bad Request", message: "operationId é obrigatório para supervisores" });
         return;
       }
-      conditions.push(eq(tasksTable.operationId, operationId));
+      conditions.push(eq(tasksTable.organizationId, user.organizationId));
+      if (operationId) conditions.push(eq(tasksTable.operationId, operationId));
+      if (user.role === "SUPERVISOR_A" || user.role === "SUPERVISOR_B") {
+        const areaIds = await listTaskManagementAreaIds(user.sub, operationId!, user.organizationId);
+        if (areaIds === null) { res.status(403).json({ error: "Forbidden", message: "Operação fora do seu escopo" }); return; }
+        if (areaIds.length === 0) { res.json({ tasks: [] }); return; }
+        conditions.push(or(inArray(usersTable.areaId, areaIds), inArray(responsibilitiesTable.areaId, areaIds))!);
+      }
     } else {
       res.status(403).json({ error: "Forbidden", message: "Use GET /tasks/my para suas tarefas" });
       return;
@@ -137,6 +139,9 @@ router.get("/tasks", requireAuth, requireOrganization, async (req, res) => {
         dueDate: tasksTable.dueDate,
         requiresApproval: tasksTable.requiresApproval,
         origin: tasksTable.origin,
+        responsibilityId: tasksTable.responsibilityId,
+        responsibilityTitle: responsibilitiesTable.title,
+        areaId: responsibilitiesTable.areaId,
         operationId: tasksTable.operationId,
         operationName: operationsTable.name,
         assigneeId: tasksTable.assigneeId,
@@ -151,6 +156,7 @@ router.get("/tasks", requireAuth, requireOrganization, async (req, res) => {
       .from(tasksTable)
       .innerJoin(operationsTable, eq(tasksTable.operationId, operationsTable.id))
       .innerJoin(usersTable, eq(tasksTable.assigneeId, usersTable.id))
+      .leftJoin(responsibilitiesTable, eq(tasksTable.responsibilityId, responsibilitiesTable.id))
       .where(and(...conditions))
       .orderBy(desc(tasksTable.createdAt));
 
@@ -172,7 +178,7 @@ router.get("/tasks/:id", requireAuth, requireOrganization, async (req, res) => {
     const [task] = await db
       .select()
       .from(tasksTable)
-      .where(eq(tasksTable.id, id))
+      .where(and(eq(tasksTable.id, id), eq(tasksTable.organizationId, user.organizationId)))
       .limit(1);
 
     if (!task) {
@@ -180,12 +186,14 @@ router.get("/tasks/:id", requireAuth, requireOrganization, async (req, res) => {
       return;
     }
 
+    const areaId = await resolveTaskAreaId(task.responsibilityId ?? undefined, task.assigneeId, user.organizationId);
     const isInvolved =
       task.creatorId === user.sub ||
       task.assigneeId === user.sub ||
       task.approverId === user.sub ||
       user.role === "ADMIN" ||
-      MANAGER_ROLES.includes(user.role as RoleValue);
+      user.role === "DIR" ||
+      await canManageTasks(user.sub, user.role as RoleValue, task.operationId, user.organizationId, areaId);
 
     if (!isInvolved) {
       res.status(403).json({ error: "Forbidden" });
@@ -205,7 +213,7 @@ router.get("/tasks/:id", requireAuth, requireOrganization, async (req, res) => {
     const evidences = await db
       .select()
       .from(taskEvidencesTable)
-      .where(eq(taskEvidencesTable.taskId, id))
+      .where(and(eq(taskEvidencesTable.taskId, id), eq(taskEvidencesTable.active, true)))
       .orderBy(taskEvidencesTable.createdAt);
 
     res.json({
@@ -243,6 +251,7 @@ router.post("/tasks", requireAuth, requireOrganization, async (req, res) => {
       mandatoryEvidences = [],
       origin = "MANUAL",
       libraryDocumentId,
+      responsibilityId,
     } = req.body as {
       title?: string;
       description?: string;
@@ -256,24 +265,32 @@ router.post("/tasks", requireAuth, requireOrganization, async (req, res) => {
       mandatoryEvidences?: { id: string; type: string; description: string }[];
       origin?: string;
       libraryDocumentId?: string;
+      responsibilityId?: string;
     };
-
-    const allowed = await canManageTasks(user.sub, user.role as RoleValue, operationId ?? "");
-    if (!allowed) {
-      res.status(403).json({ error: "Forbidden", message: "Apenas gestores podem criar tarefas" });
-      return;
-    }
 
     if (!title || !operationId || !assigneeId || !dueDate) {
       res.status(400).json({ error: "Bad Request", message: "title, operationId, assigneeId e dueDate são obrigatórios" });
       return;
     }
 
+    const [operation] = await db.select({ id: operationsTable.id }).from(operationsTable)
+      .where(and(eq(operationsTable.id, operationId), eq(operationsTable.organizationId, user.organizationId)))
+      .limit(1);
+    const [assignee] = await db.select({ id: usersTable.id }).from(usersTable)
+      .where(and(eq(usersTable.id, assigneeId), eq(usersTable.organizationId, user.organizationId)))
+      .limit(1);
+    if (!operation || !assignee) { res.status(400).json({ error: "Operação ou responsável inválido" }); return; }
+
+    const areaId = await resolveTaskAreaId(responsibilityId, assigneeId, user.organizationId);
+    const allowed = await canManageTasks(user.sub, user.role as RoleValue, operationId, user.organizationId, areaId);
+    if (!allowed) { res.status(403).json({ error: "Forbidden", message: "A tarefa está fora da sua área" }); return; }
+
     const [task] = await db
       .insert(tasksTable)
       .values({
         organizationId: user.organizationId,
         operationId,
+        responsibilityId: responsibilityId ?? null,
         title,
         description,
         creatorId: user.sub,
@@ -312,6 +329,89 @@ router.post("/tasks", requireAuth, requireOrganization, async (req, res) => {
   }
 });
 
+router.post("/tasks/batch", requireAuth, requireOrganization, async (req, res) => {
+  const user = req.user!;
+  const { operationId, responsibilityId, tasks } = req.body as {
+    operationId?: string;
+    responsibilityId?: string;
+    tasks?: { title: string; assigneeId: string; dueDate: string; description?: string }[];
+  };
+  if (!operationId || !Array.isArray(tasks) || tasks.length === 0 || tasks.length > 50) {
+    res.status(400).json({ error: "Informe a operação e de 1 a 50 tarefas para confirmar o lote" });
+    return;
+  }
+  if (tasks.some((task) => !task.title?.trim() || !task.assigneeId || !/^\d{4}-\d{2}-\d{2}$/.test(task.dueDate))) {
+    res.status(400).json({ error: "Cada tarefa precisa de título, responsável e prazo válido" });
+    return;
+  }
+
+  try {
+    const [operation] = await db.select({ id: operationsTable.id }).from(operationsTable)
+      .where(and(eq(operationsTable.id, operationId), eq(operationsTable.organizationId, user.organizationId)))
+      .limit(1);
+    if (!operation) { res.status(404).json({ error: "Operação não encontrada" }); return; }
+
+    const [responsibility] = responsibilityId
+      ? await db.select({ id: responsibilitiesTable.id, areaId: responsibilitiesTable.areaId, title: responsibilitiesTable.title })
+        .from(responsibilitiesTable)
+        .where(and(eq(responsibilitiesTable.id, responsibilityId), eq(responsibilitiesTable.orgId, user.organizationId), eq(responsibilitiesTable.active, true)))
+        .limit(1)
+      : [];
+    if (responsibilityId && !responsibility) { res.status(404).json({ error: "Responsabilidade não encontrada" }); return; }
+
+    const assigneeIds = [...new Set(tasks.map((task) => task.assigneeId))];
+    const assignees = await db.select({ id: usersTable.id, name: usersTable.name, areaId: usersTable.areaId })
+      .from(usersTable)
+      .where(and(eq(usersTable.organizationId, user.organizationId), inArray(usersTable.id, assigneeIds)));
+    if (assignees.length !== assigneeIds.length) { res.status(400).json({ error: "Há responsáveis fora da organização" }); return; }
+
+    if (user.role === "SUPERVISOR_A" || user.role === "SUPERVISOR_B") {
+      const areaId = responsibility?.areaId ?? assignees[0]?.areaId ?? null;
+      const allowed = await canManageTasks(user.sub, user.role as RoleValue, operationId, user.organizationId, areaId);
+      if (!allowed || tasks.some((task) => (assignees.find((person) => person.id === task.assigneeId)?.areaId ?? null) !== areaId)) {
+        res.status(403).json({ error: "O lote precisa pertencer à sua área e aos responsáveis dela" }); return;
+      }
+    } else if (user.role !== "ADMIN" && user.role !== "DIR") {
+      res.status(403).json({ error: "Sem permissão para confirmar lotes" }); return;
+    }
+
+    const actorName = await getActorName(user.sub);
+    const created = await db.transaction(async (tx) => {
+      const rows = [];
+      for (const draft of tasks) {
+        const [task] = await tx.insert(tasksTable).values({
+          organizationId: user.organizationId,
+          operationId,
+          responsibilityId: responsibility?.id ?? null,
+          title: draft.title.trim(),
+          description: draft.description?.trim() || null,
+          creatorId: user.sub,
+          assigneeId: draft.assigneeId,
+          requiresApproval: false,
+          priority: "MEDIUM",
+          status: "CREATED",
+          dueDate: draft.dueDate,
+          origin: "PERSON",
+        }).returning();
+        if (!task) throw new Error("Tarefa do lote não foi criada");
+        await writeHistoryEvent({
+          category: "TASK", action: "task.created", title: `Tarefa criada: ${task.title}`,
+          narrative: `${actorName} confirmou o lote${responsibility ? ` de ${responsibility.title}` : ""} e atribuiu a tarefa a ${assignees.find((person) => person.id === draft.assigneeId)?.name ?? "uma pessoa"}.`,
+          entityType: "task", entityId: task.id, actorId: user.sub, actorName,
+          operationId, orgId: user.organizationId,
+          beforeState: null, afterState: task, metadata: { batch: true, responsibilityId: responsibility?.id ?? null },
+        }, tx as any);
+        rows.push(task);
+      }
+      return rows;
+    });
+    res.status(201).json({ tasks: created });
+  } catch (err) {
+    requestLogger(LOG_DOMAIN.TASKS, req.requestId, req.correlationId).error({ err }, "Erro ao confirmar lote de tarefas");
+    res.status(500).json({ error: "Não foi possível confirmar o lote" });
+  }
+});
+
 // ─── PATCH /tasks/:id — editar tarefa ────────────────────────────────────────
 
 router.patch("/tasks/:id", requireAuth, requireOrganization, async (req, res) => {
@@ -320,10 +420,12 @@ router.patch("/tasks/:id", requireAuth, requireOrganization, async (req, res) =>
   const { id } = req.params as { id: string };
 
   try {
-    const [task] = await db.select().from(tasksTable).where(eq(tasksTable.id, id)).limit(1);
+    const [task] = await db.select().from(tasksTable).where(and(eq(tasksTable.id, id), eq(tasksTable.organizationId, user.organizationId))).limit(1);
     if (!task) { res.status(404).json({ error: "Not Found" }); return; }
 
-    const allowed = await canManageTasks(user.sub, user.role as RoleValue, task.operationId);
+    const responsibilityId = typeof req.body?.responsibilityId === "string" ? req.body.responsibilityId : task.responsibilityId ?? undefined;
+    const areaId = await resolveTaskAreaId(responsibilityId, task.assigneeId, user.organizationId);
+    const allowed = await canManageTasks(user.sub, user.role as RoleValue, task.operationId, user.organizationId, areaId);
     const isAssignee = task.assigneeId === user.sub;
 
     if (!allowed && !isAssignee) { res.status(403).json({ error: "Forbidden" }); return; }
@@ -338,11 +440,21 @@ router.patch("/tasks/:id", requireAuth, requireOrganization, async (req, res) =>
     // Assignee without management rights can only update operationalChecklist
     if (isAssignee && !allowed) {
       if (body.operationalChecklist === undefined) { res.status(403).json({ error: "Forbidden" }); return; }
-      const [updated] = await db
-        .update(tasksTable)
-        .set({ operationalChecklist: body.operationalChecklist, updatedAt: new Date() })
-        .where(eq(tasksTable.id, id))
-        .returning();
+      const actorName = await getActorName(user.sub);
+      const [updated] = await db.transaction(async (tx) => {
+        const [row] = await tx.update(tasksTable)
+          .set({ operationalChecklist: body.operationalChecklist, updatedAt: new Date() })
+          .where(eq(tasksTable.id, id)).returning();
+        if (!row) throw new Error("Tarefa não encontrada");
+        await writeHistoryEvent({
+          category: "TASK", action: "task.updated", title: `Tarefa atualizada: ${task.title}`,
+          narrative: `${actorName} atualizou a checklist operacional da tarefa "${task.title}".`,
+          entityType: "task", entityId: id, actorId: user.sub, actorName,
+          operationId: task.operationId, orgId: task.organizationId,
+          beforeState: task, afterState: row, metadata: { reason: req.body?.reason ?? null },
+        }, tx as any);
+        return [row] as const;
+      });
       res.json({ task: updated });
       return;
     }
@@ -351,6 +463,7 @@ router.patch("/tasks/:id", requireAuth, requireOrganization, async (req, res) =>
     if (body.title !== undefined) updates.title = body.title;
     if (body.description !== undefined) updates.description = body.description;
     if (body.assigneeId !== undefined) updates.assigneeId = body.assigneeId;
+    if (body.responsibilityId !== undefined) updates.responsibilityId = body.responsibilityId || null;
     if (body.approverId !== undefined) updates.approverId = body.approverId;
     if (body.requiresApproval !== undefined) updates.requiresApproval = body.requiresApproval;
     if (body.priority !== undefined) updates.priority = body.priority;
@@ -359,11 +472,21 @@ router.patch("/tasks/:id", requireAuth, requireOrganization, async (req, res) =>
     if (body.mandatoryEvidences !== undefined) updates.mandatoryEvidences = body.mandatoryEvidences;
     if (body.operationalChecklist !== undefined) updates.operationalChecklist = body.operationalChecklist;
 
-    const [updated] = await db
-      .update(tasksTable)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(eq(tasksTable.id, id))
-      .returning();
+    const actorName = await getActorName(user.sub);
+    const [updated] = await db.transaction(async (tx) => {
+      const [row] = await tx.update(tasksTable)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(eq(tasksTable.id, id)).returning();
+      if (!row) throw new Error("Tarefa não encontrada");
+      await writeHistoryEvent({
+        category: "TASK", action: "task.updated", title: `Tarefa atualizada: ${task.title}`,
+        narrative: `${actorName} atualizou a tarefa "${task.title}".`,
+        entityType: "task", entityId: id, actorId: user.sub, actorName,
+        operationId: task.operationId, orgId: task.organizationId,
+        beforeState: task, afterState: row, metadata: { reason: req.body?.reason ?? null },
+      }, tx as any);
+      return [row] as const;
+    });
 
     res.json({ task: updated });
   } catch (err) {
@@ -383,7 +506,9 @@ router.post("/tasks/:id/start", requireAuth, requireOrganization, async (req, re
     const [task] = await db.select().from(tasksTable).where(eq(tasksTable.id, id)).limit(1);
     if (!task) { res.status(404).json({ error: "Not Found" }); return; }
 
-    if (task.assigneeId !== user.sub && !MANAGER_ROLES.includes(user.role as RoleValue)) {
+    const taskAreaId = await resolveTaskAreaId(task.responsibilityId ?? undefined, task.assigneeId, user.organizationId);
+    const canManage = await canManageTasks(user.sub, user.role as RoleValue, task.operationId, user.organizationId, taskAreaId);
+    if (task.assigneeId !== user.sub && !canManage) {
       res.status(403).json({ error: "Forbidden" }); return;
     }
     if (task.status !== "CREATED" && task.status !== "CHANGES_REQUESTED") {
@@ -462,7 +587,8 @@ router.post(
           .where(
             and(
               eq(taskEvidencesTable.taskId, id),
-              eq(taskEvidencesTable.isRequired, true)
+              eq(taskEvidencesTable.isRequired, true),
+              eq(taskEvidencesTable.active, true)
             )
           );
         const uploadedRefs = new Set(uploaded.map((u) => u.mandatoryEvidenceRefId));
@@ -651,7 +777,8 @@ router.post("/tasks/:id/cancel", requireAuth, requireOrganization, async (req, r
     const [task] = await db.select().from(tasksTable).where(eq(tasksTable.id, id)).limit(1);
     if (!task) { res.status(404).json({ error: "Not Found" }); return; }
 
-    const allowed = await canManageTasks(user.sub, user.role as RoleValue, task.operationId);
+    const areaId = await resolveTaskAreaId(task.responsibilityId ?? undefined, task.assigneeId, user.organizationId);
+    const allowed = await canManageTasks(user.sub, user.role as RoleValue, task.operationId, user.organizationId, areaId);
     if (!allowed) {
       res.status(403).json({ error: "Forbidden", message: "Apenas gestores podem cancelar tarefas" });
       return;
@@ -772,10 +899,17 @@ router.delete(
     const { id, evidenceId } = req.params as { id: string; evidenceId: string };
 
     try {
+      const [task] = await db
+        .select()
+        .from(tasksTable)
+        .where(and(eq(tasksTable.id, id), eq(tasksTable.organizationId, user.organizationId)))
+        .limit(1);
+      if (!task) { res.status(404).json({ error: "Not Found" }); return; }
+
       const [evidence] = await db
         .select()
         .from(taskEvidencesTable)
-        .where(and(eq(taskEvidencesTable.id, evidenceId), eq(taskEvidencesTable.taskId, id)))
+        .where(and(eq(taskEvidencesTable.id, evidenceId), eq(taskEvidencesTable.taskId, id), eq(taskEvidencesTable.active, true)))
         .limit(1);
 
       if (!evidence) { res.status(404).json({ error: "Not Found" }); return; }
@@ -783,7 +917,21 @@ router.delete(
       const canDelete = evidence.uploaderId === user.sub || MANAGER_ROLES.includes(user.role as RoleValue);
       if (!canDelete) { res.status(403).json({ error: "Forbidden" }); return; }
 
-      await db.delete(taskEvidencesTable).where(eq(taskEvidencesTable.id, evidenceId));
+      const actorName = await getActorName(user.sub);
+      await db.transaction(async (tx) => {
+        const [updated] = await tx.update(taskEvidencesTable)
+          .set({ active: false })
+          .where(and(eq(taskEvidencesTable.id, evidenceId), eq(taskEvidencesTable.active, true)))
+          .returning();
+        if (!updated) throw new Error("Evidência não encontrada");
+        await writeHistoryEvent({
+          category: "TASK", action: "task.evidence_deactivated",
+          title: `Evidência desativada: ${evidence.description ?? evidence.type}`,
+          narrative: `${actorName} desativou uma evidência da tarefa.`, entityType: "task_evidence",
+          entityId: evidenceId, actorId: user.sub, actorName, orgId: task.organizationId,
+          beforeState: evidence, afterState: updated, metadata: { reason: req.body?.reason ?? null },
+        }, tx as any);
+      });
       res.status(204).send();
     } catch (err) {
       log.error({ err }, "Erro ao remover evidência");

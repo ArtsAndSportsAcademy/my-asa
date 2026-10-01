@@ -18,6 +18,7 @@ export const asaMemoryStatusEnum = pgEnum("asa_memory_status", [
   "PENDING",
   "APPROVED",
   "REJECTED",
+  "DISABLED",
 ]);
 
 export const asaUserModeEnum = pgEnum("asa_user_mode", [

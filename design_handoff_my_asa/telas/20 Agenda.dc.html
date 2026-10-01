@@ -1,0 +1,1777 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  aside a { text-decoration: none; }
+  body { margin: 0; background: #f4f2fa; font-family: Manrope, system-ui, sans-serif; color: #1b1630; }
+  a { color: #6C2BF2; text-decoration: none; }
+  a:hover { color: #4a17b8; text-decoration: underline; }
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 3px solid #6C2BF2; outline-offset: 2px; border-radius: 8px; }
+</style>
+</helmet>
+
+<div style="max-width:1720px;margin:0 auto;padding:44px 28px 88px;display:flex;flex-direction:column;gap:32px">
+
+  <header style="display:flex;flex-direction:column;gap:22px">
+    <div style="display:flex;align-items:flex-start;gap:18px">
+      <img src="assets/asa-wing.png" alt="My ASA" style="width:52px;height:52px;object-fit:contain;flex:none;margin-top:4px" />
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#6b6482">20 · o dia</div>
+        <h1 style="font-family:Outfit,sans-serif;font-size:38px;line-height:1.05;font-weight:700;margin:0;letter-spacing:-0.02em">Agenda</h1>
+        <p style="margin:0;max-width:84ch;font-size:15px;line-height:1.55;color:#5b5473;text-wrap:pretty">Cada um tem a sua agenda — escala, folga, ensaio e reunião no mesmo lugar — e é dali que se marca com os outros. <strong>Nada se marca fora da jornada</strong>: se a escala diz 9h–18h, só existe compromisso dentro disso, e folga não tem janela nenhuma. <strong>Ensaio convoca</strong> (entra na escala e não se recusa); <strong>reunião convida</strong> (a pessoa aceita, recusa ou propõe outro horário). O que o Elenco cria nasce como <strong>proposta</strong>: quem coordena libera ou nega com motivo e alternativa, e o compromisso passa a existir quando a escala é publicada. O que repete por meses não é um monte de eventos — vira <strong>molde na Programação</strong>, com vigência.</p>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:13px 16px;background:#fff;border:1px solid #e6e1f2;border-radius:16px">
+      <span style="font-size:13px;font-weight:600;color:#5b5473;margin-right:4px">Ver como</span>
+      <sc-for list="{{ profileTabs }}" as="tab" hint-placeholder-count="4">
+        <button type="button" onClick="{{ tab.onClick }}" style="{{ tab.style }}">
+          <span style="width:8px;height:8px;border-radius:50%;background:{{ tab.dot }};display:inline-block"></span>
+          <span>{{ tab.name }}</span>
+        </button>
+      </sc-for>
+      <span style="flex:1"></span>
+      <span style="font-size:13px;color:#6b6482">{{ profileHint }}</span>
+    </div>
+  </header>
+
+  <div style="display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start">
+
+    <div style="flex:none;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482;white-space:nowrap">Web · 1920 × 1080</span>
+        <span style="font-size:11.5px;color:#6b6482;white-space:nowrap">exibido a 70%</span>
+      </div>
+      <div style="width:1344px;height:756px;border:1px solid #ddd6ee;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="width:1920px;height:1080px;transform:scale(0.7);transform-origin:top left;display:flex">
+
+          <aside style="width:222px;flex:none;background:linear-gradient(180deg,#1c1440 0%,#241a52 100%);display:flex;flex-direction:column;color:#fff">
+            <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 12px">
+              <img src="assets/asa-wing.png" alt="" style="width:26px;height:26px;object-fit:contain" />
+              <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">My ASA</span>
+            </div>
+            <div style="padding:0 12px 10px">
+              <a href="27%20Assistente%20ASA.dc.html" style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border-radius:10px;padding:8px 10px;font-size:11.5px;color:#b9b0da;text-decoration:none;cursor:pointer">
+                <span style="width:11px;height:11px;border:1.5px solid #b9b0da;border-radius:50%"></span>
+                <span>Buscar ou perguntar à ASA</span>
+              </a>
+            </div>
+            <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:12px;padding:2px 10px 10px">
+              <sc-for list="{{ shellNav }}" as="g" hint-placeholder-count="4">
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#7d72a8;padding:0 8px 4px">{{ g.title }}</div>
+                  <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+                    <a href="{{ it.href }}" style="{{ it.style }}">{{ it.label }}</a>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+            <div style="border-top:1px solid rgba(255,255,255,.1);padding:12px;display:flex;align-items:center;gap:10px">
+              <span style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+              <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                <span style="font-size:12.5px;font-weight:600">{{ personName }}</span>
+                <span style="{{ personChipStyle }}">{{ profileName }}</span>
+              </div>
+            </div>
+          </aside>
+
+          <div style="position:relative;flex:1;display:flex;flex-direction:column;background:#faf9fe;min-width:0">
+
+            <header style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid #ebe6f6;background:#fff">
+              <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">Agenda</span>
+              <span style="flex:1"></span>
+              <span style="font-size:12.5px;color:#6b6482">{{ scopeLabel }}</span>
+              <button type="button" onClick="{{ onMarcar }}" style="{{ marcarStyle }}">{{ marcarLabel }}</button>
+              <button type="button" onClick="{{ toggleAsa }}" style="{{ asaBtnStyle }}">
+                <img src="assets/asa/oi.png" alt="ASA" style="width:26px;height:26px;object-fit:contain" />
+                <span>ASA</span>
+              </button>
+            </header>
+
+            <div style="display:flex;align-items:center;gap:6px;padding:0 20px;background:#fff;border-bottom:1px solid #ebe6f6">
+              <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+                <button type="button" onClick="{{ t.onClick }}" style="{{ t.style }}">
+                  <span>{{ t.label }}</span>
+                  <span style="{{ t.badgeStyle }}">{{ t.badge }}</span>
+                </button>
+              </sc-for>
+            </div>
+
+            <sc-if value="{{ isSemana }}" hint-placeholder-val="{{ true }}">
+              <div style="flex:1;min-height:0;overflow:auto;padding:16px 20px 24px;display:flex;flex-direction:column;gap:13px">
+                <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
+                  <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:300px">
+                    <span style="font-family:Outfit,sans-serif;font-size:18px;font-weight:600">{{ semana.title }}</span>
+                    <span style="font-size:12.5px;line-height:1.5;color:#5b5473;max-width:94ch;text-wrap:pretty">{{ semana.about }}</span>
+                  </div>
+                  <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+                    <sc-for list="{{ legend }}" as="l" hint-placeholder-count="4">
+                      <span style="{{ l.style }}">{{ l.label }}</span>
+                    </sc-for>
+                  </div>
+                </div>
+
+                <div style="display:flex;border:1px solid #e6e1f2;border-radius:14px;background:#fff;overflow:hidden">
+                  <div style="width:52px;flex:none;border-right:1px solid #f0ecf9;background:#fcfbfe">
+                    <div style="height:44px;border-bottom:1px solid #f0ecf9"></div>
+                    <sc-for list="{{ hours }}" as="h" hint-placeholder-count="14">
+                      <div style="height:51px;display:flex;align-items:flex-start;justify-content:flex-end;padding:1px 7px 0 0;font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#6b6482">{{ h }}</div>
+                    </sc-for>
+                  </div>
+                  <sc-for list="{{ week }}" as="d" hint-placeholder-count="7">
+                    <div style="{{ d.colStyle }}">
+                      <div style="{{ d.headStyle }}">
+                        <span style="{{ d.labelStyle }}">{{ d.label }}</span>
+                        <span style="{{ d.noteStyle }}">{{ d.note }}</span>
+                      </div>
+                      <div onMouseDown="{{ d.onDown }}" onMouseMove="{{ d.onMove }}" onMouseUp="{{ d.onUp }}" onMouseLeave="{{ d.onUp }}" style="{{ d.bodyStyle }}">
+                        <sc-if value="{{ d.band }}" hint-placeholder-val="{{ false }}">
+                          <div style="{{ d.band }}"></div>
+                        </sc-if>
+                        <sc-if value="{{ d.dragBand }}" hint-placeholder-val="{{ false }}">
+                          <div style="{{ d.dragBand }}">{{ d.dragLabel }}</div>
+                        </sc-if>
+                        <sc-if value="{{ d.folga }}" hint-placeholder-val="{{ false }}">
+                          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#b9789a">{{ d.folga }}</div>
+                        </sc-if>
+                        <sc-for list="{{ d.blocks }}" as="b" hint-placeholder-count="2">
+                          <div onClick="{{ b.onClick }}" title="{{ b.title }}" style="{{ b.style }}">
+                            <span style="{{ b.nameStyle }}">{{ b.name }}</span>
+                            <span style="{{ b.metaStyle }}">{{ b.meta }}</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+
+                <span style="font-size:11.5px;line-height:1.5;color:#6b6482;max-width:100ch">{{ semana.foot }}</span>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <span style="width:9px;height:9px;border-radius:3px;flex:none;background:#0E8F8626;border:1px solid #0E8F8655"></span>
+                  <span style="font-size:11.5px;color:#5b5473">{{ jorWho }}</span>
+                  <a href="{{ jorHref }}" style="font-size:11.5px;font-weight:700;color:#6C2BF2">abrir Pessoas</a>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isMes }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1;min-height:0;overflow:auto;padding:16px 20px 24px;display:flex;flex-direction:column;gap:13px">
+                <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
+                  <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:300px">
+                    <span style="font-family:Outfit,sans-serif;font-size:18px;font-weight:600">{{ mes.title }}</span>
+                    <span style="font-size:12.5px;line-height:1.5;color:#5b5473;max-width:94ch;text-wrap:pretty">{{ mes.about }}</span>
+                  </div>
+                  <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+                    <sc-for list="{{ legend }}" as="l" hint-placeholder-count="4">
+                      <span style="{{ l.style }}">{{ l.label }}</span>
+                    </sc-for>
+                  </div>
+                </div>
+
+                <div style="border:1px solid #e6e1f2;border-radius:14px;background:#fff;overflow:hidden">
+                  <div style="display:flex">
+                    <sc-for list="{{ mes.heads }}" as="h" hint-placeholder-count="7">
+                      <div style="{{ h.style }}">{{ h.label }}</div>
+                    </sc-for>
+                  </div>
+                  <sc-for list="{{ mes.rows }}" as="r" hint-placeholder-count="5">
+                    <div style="display:flex">
+                      <sc-for list="{{ r.cells }}" as="c" hint-placeholder-count="7">
+                        <button type="button" onClick="{{ c.onClick }}" style="{{ c.style }}">
+                          <div style="display:flex;align-items:center;justify-content:space-between;gap:4px">
+                            <span style="{{ c.numStyle }}">{{ c.num }}</span>
+                            <span style="{{ c.tagStyle }}">{{ c.tag }}</span>
+                          </div>
+                          <sc-for list="{{ c.chips }}" as="ch" hint-placeholder-count="2">
+                            <span title="{{ ch.title }}" style="{{ ch.style }}">{{ ch.label }}</span>
+                          </sc-for>
+                          <span style="font-size:9px;font-weight:700;color:#6b6482">{{ c.more }}</span>
+                        </button>
+                      </sc-for>
+                    </div>
+                  </sc-for>
+                </div>
+
+                <span style="font-size:11.5px;line-height:1.5;color:#6b6482;max-width:100ch">{{ mes.foot }}</span>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isCasa }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1;min-height:0;overflow:auto;padding:16px 20px 24px;display:flex;flex-direction:column;gap:13px">
+                <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
+                  <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:300px">
+                    <span style="font-family:Outfit,sans-serif;font-size:18px;font-weight:600">Ocupação dos espaços</span>
+                    <span style="font-size:12.5px;line-height:1.5;color:#5b5473;max-width:94ch;text-wrap:pretty">{{ casa.about }}</span>
+                  </div>
+                  <div style="display:flex;gap:5px;flex-wrap:wrap">
+                    <sc-for list="{{ casa.days }}" as="d" hint-placeholder-count="7">
+                      <button type="button" onClick="{{ d.onClick }}" style="{{ d.style }}">{{ d.label }}</button>
+                    </sc-for>
+                  </div>
+                </div>
+
+                <div style="border:1px solid #e6e1f2;border-radius:14px;background:#fff;overflow:hidden">
+                  <div style="display:flex;padding:8px 14px;background:#f7f5fd;border-bottom:1px solid #e6e1f2">
+                    <span style="width:172px;flex:none;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:#6b6482">Espaço</span>
+                    <div style="flex:1;display:flex">
+                      <sc-for list="{{ casa.heads }}" as="h" hint-placeholder-count="8">
+                        <span style="{{ h.style }}">{{ h.label }}</span>
+                      </sc-for>
+                    </div>
+                  </div>
+                  <sc-for list="{{ casa.groups }}" as="g" hint-placeholder-count="3">
+                    <div>
+                      <div style="display:flex;align-items:center;gap:8px;padding:7px 14px;background:#fcfbfe;border-bottom:1px solid #f2eefa">
+                        <span style="{{ g.dot }}"></span>
+                        <span style="font-size:11.5px;font-weight:700;color:#5b5473">{{ g.local }}</span>
+                        <span style="font-size:10.5px;color:#6b6482">{{ g.note }}</span>
+                      </div>
+                      <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="3">
+                        <div style="display:flex;align-items:center;padding:0 14px;border-bottom:1px solid #f5f2fb">
+                          <div style="width:172px;flex:none;display:flex;flex-direction:column;gap:1px;padding:7px 0">
+                            <span style="font-size:12px;font-weight:600">{{ r.name }}</span>
+                            <span style="{{ r.tagStyle }}">{{ r.tag }}</span>
+                          </div>
+                          <div style="{{ r.trackStyle }}">
+                            <sc-for list="{{ r.bars }}" as="b" hint-placeholder-count="2">
+                              <div title="{{ b.title }}" style="{{ b.style }}">{{ b.label }}</div>
+                            </sc-for>
+                          </div>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </sc-for>
+                </div>
+
+                <sc-if value="{{ casa.clash }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;gap:9px;padding:11px 12px;border-radius:12px;border:1px solid #f0d9a8;background:#fdf7e8;color:#5c4310;font-size:12px;line-height:1.5">
+                    <span style="opacity:.6">!</span>
+                    <span>{{ casa.clash }}</span>
+                  </div>
+                </sc-if>
+                <span style="font-size:11.5px;line-height:1.5;color:#6b6482;max-width:100ch">{{ casa.foot }}</span>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isProp }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1;min-height:0;overflow:auto;padding:16px 20px 24px;display:flex;flex-direction:column;gap:13px">
+                <div style="display:flex;flex-direction:column;gap:4px">
+                  <span style="font-family:Outfit,sans-serif;font-size:18px;font-weight:600">{{ prop.title }}</span>
+                  <span style="font-size:12.5px;line-height:1.5;color:#5b5473;max-width:96ch;text-wrap:pretty">{{ prop.about }}</span>
+                </div>
+
+                <sc-for list="{{ prop.cards }}" as="c" hint-placeholder-count="3">
+                  <div style="{{ c.style }}">
+                    <div style="display:flex;align-items:flex-start;gap:11px;flex-wrap:wrap">
+                      <span style="{{ c.dot }}"></span>
+                      <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:260px">
+                        <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600;line-height:1.25">{{ c.name }}</span>
+                        <span style="font-size:11.5px;color:#6b6482">{{ c.meta }}</span>
+                      </div>
+                      <span style="{{ c.stateStyle }}">{{ c.state }}</span>
+                    </div>
+
+                    <div style="display:flex;flex-wrap:wrap;gap:6px">
+                      <sc-for list="{{ c.people }}" as="p" hint-placeholder-count="3">
+                        <div style="{{ p.style }}">
+                          <span style="{{ p.avatarStyle }}">{{ p.initials }}</span>
+                          <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                            <span style="font-size:11.5px;font-weight:700">{{ p.name }}</span>
+                            <span style="{{ p.noteStyle }}">{{ p.note }}</span>
+                          </div>
+                        </div>
+                      </sc-for>
+                    </div>
+
+                    <sc-if value="{{ c.asa }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;gap:9px;align-items:flex-start;padding:10px 11px;border-radius:11px;background:#f7f3ff;border:1px solid #e5d8fb">
+                        <img src="assets/asa/oi.png" alt="" style="width:20px;height:20px;object-fit:contain;flex:none" />
+                        <span style="font-size:11.5px;line-height:1.5;color:#3c3559">{{ c.asa }}</span>
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{ c.denial }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;flex-direction:column;gap:5px;padding:10px 11px;border-radius:11px;background:#fdf5f5;border:1px solid #f0bcbc">
+                        <span style="font-size:11.5px;font-weight:700;color:#7d2626">{{ c.denial.title }}</span>
+                        <span style="font-size:11.5px;line-height:1.45;color:#7d2626">{{ c.denial.why }}</span>
+                        <span style="font-size:11.5px;line-height:1.45;color:#7d2626">{{ c.denial.alt }}</span>
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{ c.form }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;flex-direction:column;gap:8px;padding:11px 12px;border-radius:12px;border:1px solid #f0d9a8;background:#fdf7e8">
+                        <span style="font-size:11.5px;font-weight:700;color:#5c4310">{{ c.form.title }}</span>
+                        <textarea value="{{ c.form.why }}" onChange="{{ c.form.onWhy }}" placeholder="Por que não dá? A pessoa lê isto." style="min-height:46px;resize:vertical;padding:8px 10px;border:1px solid #eddcb6;border-radius:10px;background:#fff;font-size:12px;line-height:1.45;color:#3c3559;font-family:Manrope,sans-serif"></textarea>
+                        <span style="font-size:10.5px;color:#5c4310">{{ c.form.altLabel }}</span>
+                        <div style="display:flex;gap:5px;flex-wrap:wrap">
+                          <sc-for list="{{ c.form.alts }}" as="a" hint-placeholder-count="3">
+                            <button type="button" onClick="{{ a.onClick }}" style="{{ a.style }}">{{ a.label }}</button>
+                          </sc-for>
+                          <sc-if value="{{ c.form.noAlt }}" hint-placeholder-val="{{ false }}">
+                            <span style="font-size:11px;color:#a12c2c">{{ c.form.noAlt }}</span>
+                          </sc-if>
+                        </div>
+                      </div>
+                    </sc-if>
+
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:1px">
+                      <span style="font-size:11px;color:#6b6482;flex:1;min-width:180px;line-height:1.4">{{ c.foot }}</span>
+                      <sc-for list="{{ c.actions }}" as="a" hint-placeholder-count="2">
+                        <button type="button" onClick="{{ a.onClick }}" style="{{ a.style }}">{{ a.label }}</button>
+                      </sc-for>
+                    </div>
+                  </div>
+                </sc-for>
+
+                <sc-if value="{{ prop.empty }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;flex-direction:column;align-items:center;gap:9px;padding:60px 20px;background:#fff;border:1px dashed #ddd6ee;border-radius:14px">
+                    <img src="assets/asa-wing.png" alt="" style="width:44px;height:44px;object-fit:contain" />
+                    <span style="font-size:13.5px;font-weight:600">{{ prop.empty.title }}</span>
+                    <span style="font-size:12px;color:#6b6482;text-align:center;line-height:1.5;max-width:52ch">{{ prop.empty.body }}</span>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ marcar }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;inset:0;background:rgba(28,20,64,.32);display:flex;justify-content:flex-end;z-index:8">
+                <div style="width:560px;max-width:94%;background:#fff;display:flex;flex-direction:column;box-shadow:-24px 0 54px -30px rgba(40,20,90,.5)">
+                  <div style="display:flex;align-items:center;gap:11px;padding:14px 17px;border-bottom:1px solid #f0ecf9">
+                    <img src="assets/asa/estudando.png" alt="" style="width:30px;height:30px;object-fit:contain;flex:none" />
+                    <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0">
+                      <span style="font-family:Outfit,sans-serif;font-size:17px;font-weight:600">{{ marcar.title }}</span>
+                      <span style="font-size:11.5px;color:#6b6482">{{ marcar.sub }}</span>
+                    </div>
+                    <button type="button" onClick="{{ marcar.onClose }}" style="width:28px;height:28px;flex:none;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:14px;cursor:pointer">×</button>
+                  </div>
+
+                  <div style="flex:1;overflow:auto;padding:16px 17px 20px;display:flex;flex-direction:column;gap:16px">
+                    <div style="display:flex;flex-direction:column;gap:9px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">O que é</span>
+                      <div style="display:flex;gap:6px;flex-wrap:wrap">
+                        <sc-for list="{{ marcar.kinds }}" as="k" hint-placeholder-count="3">
+                          <button type="button" onClick="{{ k.onClick }}" style="{{ k.style }}">
+                            <span>{{ k.label }}</span>
+                            <span style="{{ k.noteStyle }}">{{ k.note }}</span>
+                          </button>
+                        </sc-for>
+                      </div>
+                      <span style="font-size:11.5px;line-height:1.45;color:#5b5473">{{ marcar.kindNote }}</span>
+                    </div>
+
+                    <div style="display:flex;flex-direction:column;gap:7px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Assunto</span>
+                      <input value="{{ marcar.nameValue }}" onChange="{{ marcar.onName }}" placeholder="Ex: alinhar o figurino do Camp" style="height:38px;padding:0 11px;border:1px solid #e6e1f2;border-radius:11px;background:#faf9fe;font-family:Manrope,sans-serif;font-size:13.5px;color:#3c3559;outline:none" />
+                      <span style="font-size:11px;line-height:1.45;color:#6b6482">{{ marcar.nameNote }}</span>
+                    </div>
+
+                    <div style="display:flex;flex-direction:column;gap:9px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Quem</span>
+                      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                        <input value="{{ marcar.peopleQ }}" onChange="{{ marcar.onPeopleQ }}" placeholder="Buscar pessoa" style="height:32px;flex:1;min-width:150px;padding:0 11px;border:1px solid #e6e1f2;border-radius:10px;background:#faf9fe;font-family:Manrope,sans-serif;font-size:12.5px;color:#3c3559;outline:none" />
+                        <sc-for list="{{ marcar.areaFilters }}" as="a" hint-placeholder-count="4">
+                          <button type="button" onClick="{{ a.onClick }}" style="{{ a.style }}">{{ a.label }}</button>
+                        </sc-for>
+                      </div>
+                      <div style="display:flex;gap:5px;flex-wrap:wrap">
+                        <sc-for list="{{ marcar.people }}" as="p" hint-placeholder-count="8">
+                          <button type="button" onClick="{{ p.onClick }}" style="{{ p.style }}">
+                            <span>{{ p.name }}</span>
+                            <span style="{{ p.areaStyle }}">{{ p.area }}</span>
+                          </button>
+                        </sc-for>
+                      </div>
+                      <sc-if value="{{ marcar.chosen }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex;flex-direction:column;gap:5px;padding:10px 11px;border-radius:12px;background:#faf9fe;border:1px solid #eee9f8">
+                          <span style="font-size:10.5px;color:#6b6482">{{ marcar.essLabel }}</span>
+                          <sc-for list="{{ marcar.chosen }}" as="c" hint-placeholder-count="2">
+                            <div style="display:flex;align-items:center;gap:8px">
+                              <span style="font-size:11.5px;font-weight:600;flex:1;min-width:0">{{ c.name }}</span>
+                              <span style="{{ c.supStyle }}">{{ c.sup }}</span>
+                              <button type="button" onClick="{{ c.onEss }}" style="{{ c.essStyle }}">{{ c.essLabel }}</button>
+                            </div>
+                          </sc-for>
+                        </div>
+                      </sc-if>
+                    </div>
+
+                    <div style="display:flex;flex-direction:column;gap:9px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Onde</span>
+                      <div style="display:flex;gap:5px;flex-wrap:wrap">
+                        <sc-for list="{{ marcar.espacos }}" as="e" hint-placeholder-count="6">
+                          <button type="button" onClick="{{ e.onClick }}" style="{{ e.style }}">
+                            <span>{{ e.label }}</span>
+                            <span style="{{ e.noteStyle }}">{{ e.note }}</span>
+                          </button>
+                        </sc-for>
+                      </div>
+                      <sc-if value="{{ marcar.linkBox }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex;flex-direction:column;gap:6px">
+                          <input value="{{ marcar.linkValue }}" onChange="{{ marcar.onLink }}" placeholder="Cole o link — ou deixe vazio e coloque depois" style="height:34px;padding:0 11px;border:1px solid #e6e1f2;border-radius:10px;background:#faf9fe;font-family:Manrope,sans-serif;font-size:12.5px;color:#3c3559;outline:none" />
+                          <span style="font-size:11px;line-height:1.45;color:#5b5473">{{ marcar.linkNote }}</span>
+                        </div>
+                      </sc-if>
+                      <sc-if value="{{ marcar.espWarn }}" hint-placeholder-val="{{ false }}">
+                        <span style="font-size:11.5px;line-height:1.45;padding:8px 10px;border-radius:10px;border:1px solid #f0d9a8;background:#fdf7e8;color:#5c4310">{{ marcar.espWarn }}</span>
+                      </sc-if>
+                    </div>
+
+                    <div style="display:flex;flex-direction:column;gap:9px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Quanto tempo e com que frequência</span>
+                      <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
+                        <sc-for list="{{ marcar.durs }}" as="d" hint-placeholder-count="3">
+                          <button type="button" onClick="{{ d.onClick }}" style="{{ d.style }}">{{ d.label }}</button>
+                        </sc-for>
+                        <span style="width:9px"></span>
+                        <sc-for list="{{ marcar.reps }}" as="r" hint-placeholder-count="2">
+                          <button type="button" onClick="{{ r.onClick }}" style="{{ r.style }}">{{ r.label }}</button>
+                        </sc-for>
+                      </div>
+                      <sc-if value="{{ marcar.repBox }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex;flex-direction:column;gap:6px;padding:10px 11px;border-radius:12px;border:1px solid #e5d8fb;background:#f7f3ff">
+                          <div style="display:flex;align-items:center;gap:8px">
+                            <span style="font-size:11.5px;color:#3c3559;flex:none">repete até</span>
+                            <input value="{{ marcar.untilValue }}" onChange="{{ marcar.onUntil }}" placeholder="19 dez" style="height:32px;flex:1;min-width:0;padding:0 10px;border:1px solid #e0d0fb;border-radius:9px;background:#fff;font-family:Manrope,sans-serif;font-size:12px;color:#3c3559;outline:none" />
+                          </div>
+                          <span style="font-size:11.5px;line-height:1.45;color:#4a2a9c">{{ marcar.repNote }}</span>
+                        </div>
+                      </sc-if>
+                    </div>
+
+                    <div style="display:flex;flex-direction:column;gap:9px">
+                      <div style="display:flex;align-items:baseline;gap:9px">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Quando cabe para todos</span>
+                        <span style="flex:1"></span>
+                        <span style="font-size:11px;color:#6b6482">{{ marcar.slotsHint }}</span>
+                      </div>
+                      <sc-for list="{{ marcar.slots }}" as="s" hint-placeholder-count="4">
+                        <button type="button" onClick="{{ s.onClick }}" style="{{ s.style }}">
+                          <span style="display:flex;flex-direction:column;gap:2px;align-items:flex-start;flex:1;min-width:0">
+                            <span style="font-size:12.5px;font-weight:700">{{ s.when }}</span>
+                            <span style="{{ s.noteStyle }}">{{ s.note }}</span>
+                          </span>
+                          <span style="{{ s.srcStyle }}">{{ s.src }}</span>
+                        </button>
+                      </sc-for>
+                      <sc-if value="{{ marcar.noSlots }}" hint-placeholder-val="{{ false }}">
+                        <span style="font-size:11.5px;line-height:1.5;padding:10px 11px;border-radius:11px;border:1px solid #f0bcbc;background:#fdf5f5;color:#7d2626">{{ marcar.noSlots }}</span>
+                      </sc-if>
+                      <div style="display:flex;flex-direction:column;gap:7px;padding:11px 12px;border-radius:12px;border:1px dashed #ddd3fa;background:#fbf9ff">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6C2BF2">Ou digite o horário</span>
+                        <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
+                          <sc-for list="{{ marcar.manualDayOpts }}" as="m" hint-placeholder-count="7">
+                            <button type="button" onClick="{{ m.onClick }}" style="{{ m.style }}">{{ m.label }}</button>
+                          </sc-for>
+                        </div>
+                        <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+                          <input value="{{ marcar.manualH1 }}" onChange="{{ marcar.onManualH1 }}" placeholder="8:30" style="height:32px;width:84px;flex:none;padding:0 10px;border:1px solid #e0d0fb;border-radius:9px;background:#fff;font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:700;color:#3c3559;outline:none;text-align:center" />
+                          <span style="font-size:12px;color:#6b6482">até</span>
+                          <input value="{{ marcar.manualH2 }}" onChange="{{ marcar.onManualH2 }}" placeholder="10:15" style="height:32px;width:84px;flex:none;padding:0 10px;border:1px solid #e0d0fb;border-radius:9px;background:#fff;font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:700;color:#3c3559;outline:none;text-align:center" />
+                          <button type="button" onClick="{{ marcar.onManualApply }}" style="height:32px;padding:0 13px;border-radius:9px;border:none;background:#6C2BF2;color:#fff;font-family:Manrope,sans-serif;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">Usar este horário</button>
+                        </div>
+                        <span style="font-size:11px;line-height:1.45;color:#5b5473">{{ marcar.manualNote }}</span>
+                      </div>
+                    </div>
+
+                    <sc-if value="{{ marcar.reflex }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;flex-direction:column;gap:8px;padding:12px 13px;border-radius:12px;border:1px solid #f0d9a8;background:#fdf7e8;color:#5c4310">
+                        <span style="font-size:12.5px;font-weight:700">{{ marcar.reflex.title }}</span>
+                        <div style="display:flex;flex-direction:column;gap:4px">
+                          <sc-for list="{{ marcar.reflex.lines }}" as="ln" hint-placeholder-count="3">
+                            <div style="display:flex;gap:8px;font-size:12px;line-height:1.45">
+                              <span style="opacity:.5">·</span>
+                              <span>{{ ln }}</span>
+                            </div>
+                          </sc-for>
+                        </div>
+                      </div>
+                    </sc-if>
+                  </div>
+
+                  <div style="display:flex;align-items:center;gap:9px;padding:13px 17px;border-top:1px solid #f0ecf9;background:#fff">
+                    <span style="font-size:11.5px;color:#6b6482;flex:1;line-height:1.4">{{ marcar.footNote }}</span>
+                    <button type="button" onClick="{{ marcar.onClose }}" style="height:34px;padding:0 13px;border-radius:11px;border:1px solid #e6e1f2;background:#fff;color:#5b5473;font-size:12.5px;font-weight:600;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap">Cancelar</button>
+                    <button type="button" onClick="{{ marcar.onSave }}" style="{{ marcar.saveStyle }}">{{ marcar.saveLabel }}</button>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isCat }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1;min-height:0;overflow:auto;padding:16px 20px 24px;display:flex;flex-direction:column;gap:13px">
+                <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
+                  <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:300px">
+                    <span style="font-family:Outfit,sans-serif;font-size:18px;font-weight:600">Categorias de compromisso</span>
+                    <span style="font-size:12.5px;line-height:1.5;color:#5b5473;max-width:94ch;text-wrap:pretty">{{ cat.about }}</span>
+                  </div>
+                  <button type="button" onClick="{{ cat.onNew }}" style="{{ cat.newStyle }}">Nova categoria</button>
+                </div>
+
+                <sc-if value="{{ cat.newOpen }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;flex-direction:column;gap:10px;padding:14px 15px;border-radius:14px;border:1px dashed #ddd0fa;background:#fbf9ff">
+                    <input value="{{ cat.nameValue }}" onChange="{{ cat.onName }}" placeholder="Nome da categoria (ex.: Fisioterapia)" style="height:34px;padding:0 12px;border:1px solid #e0d0fb;border-radius:10px;background:#fff;font-family:Manrope,sans-serif;font-size:13px;color:#3c3559;outline:none" />
+                    <div style="display:flex;flex-direction:column;gap:5px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Como funciona</span>
+                      <div style="display:flex;gap:6px;flex-wrap:wrap">
+                        <sc-for list="{{ cat.modeOpts }}" as="m" hint-placeholder-count="2">
+                          <button type="button" onClick="{{ m.onClick }}" style="{{ m.style }}">{{ m.label }}</button>
+                        </sc-for>
+                      </div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:5px">
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">Quem pode criar</span>
+                      <div style="display:flex;gap:6px;flex-wrap:wrap">
+                        <sc-for list="{{ cat.quemOpts }}" as="q" hint-placeholder-count="4">
+                          <button type="button" onClick="{{ q.onClick }}" style="{{ q.style }}">{{ q.label }}</button>
+                        </sc-for>
+                      </div>
+                    </div>
+                    <span style="font-size:11.5px;line-height:1.45;color:#5b5473">{{ cat.note }}</span>
+                    <div style="display:flex;gap:8px;align-items:center">
+                      <button type="button" onClick="{{ cat.onSave }}" style="{{ cat.saveStyle }}">Criar categoria</button>
+                      <button type="button" onClick="{{ cat.onCancel }}" style="height:32px;padding:0 13px;border-radius:10px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;cursor:pointer">Cancelar</button>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <div style="display:flex;flex-direction:column;gap:9px">
+                  <sc-for list="{{ cat.list }}" as="c" hint-placeholder-count="4">
+                    <div style="display:flex;flex-direction:column;gap:9px;padding:13px 14px;border:1px solid #e6e1f2;border-radius:14px;background:#fff">
+                      <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+                        <span style="{{ c.dot }}"></span>
+                        <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">{{ c.name }}</span>
+                        <span style="{{ c.modeStyle }}">{{ c.mode }}</span>
+                        <span style="font-size:10.5px;color:#c9c2da">{{ c.fixa }}</span>
+                        <span style="flex:1"></span>
+                        <button type="button" onClick="{{ c.onToggleMode }}" style="{{ c.toggleStyle }}">Trocar modo</button>
+                        <button type="button" onClick="{{ c.onDel }}" style="{{ c.delStyle }}">Apagar</button>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:#6b6482">Pode criar</span>
+                        <sc-for list="{{ c.roleToggles }}" as="r" hint-placeholder-count="4">
+                          <button type="button" onClick="{{ r.onClick }}" style="{{ r.style }}">{{ r.label }}</button>
+                        </sc-for>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+                <span style="font-size:11.5px;line-height:1.5;color:#6b6482;max-width:100ch">{{ cat.foot }}</span>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ asaOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;right:0;top:0;bottom:0;width:352px;background:#fff;border-left:1px solid #e6e1f2;box-shadow:-24px 0 48px -34px rgba(40,20,90,.4);display:flex;flex-direction:column;z-index:9">
+                <div style="display:flex;align-items:center;gap:10px;padding:13px 15px;border-bottom:1px solid #f0ecf9">
+                  <img src="assets/asa/estudando.png" alt="" style="width:30px;height:30px;object-fit:contain" />
+                  <div style="display:flex;flex-direction:column;gap:1px;flex:1">
+                    <span style="font-family:Outfit,sans-serif;font-size:15px;font-weight:600">ASA · agenda</span>
+                    <span style="font-size:11px;color:#6b6482">{{ asaHint }}</span>
+                  </div>
+                  <button type="button" onClick="{{ toggleAsa }}" style="width:26px;height:26px;border-radius:8px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:13px;cursor:pointer">×</button>
+                </div>
+                <div style="flex:1;overflow:auto;padding:14px 15px;display:flex;flex-direction:column;gap:12px">
+                  <div style="padding:12px 13px;background:#f7f3ff;border:1px solid #e5d8fb;border-radius:13px">
+                    <span style="font-size:12.5px;line-height:1.5;color:#3c3559">{{ asaIntro }}</span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:7px;padding:12px 13px;border:1px dashed #ddd0fa;border-radius:13px;background:#fbf9ff">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6C2BF2">Peça por escrito</span>
+                    <input value="{{ asaAsk }}" onChange="{{ onAsaAsk }}" placeholder="ensaio de 1h com a Julia na quinta" style="height:32px;padding:0 11px;border:1px solid #e0d0fb;border-radius:10px;background:#fff;font-family:Manrope,sans-serif;font-size:12.5px;color:#3c3559;outline:none" />
+                    <span style="font-size:11px;line-height:1.45;color:#5b5473">{{ asaAskNote }}</span>
+                    <button type="button" onClick="{{ onAsaBuild }}" style="{{ asaBuildStyle }}">Montar o compromisso</button>
+                  </div>
+                  <sc-for list="{{ asaCards }}" as="c" hint-placeholder-count="3">
+                    <div style="border:1px solid #e6e1f2;border-radius:13px;padding:12px 13px;display:flex;flex-direction:column;gap:8px;background:#fff">
+                      <div style="display:flex;align-items:center;gap:8px">
+                        <span style="{{ c.tagStyle }}">{{ c.tag }}</span>
+                        <span style="flex:1"></span>
+                        <span style="font-size:10.5px;color:#6b6482;font-family:'JetBrains Mono',monospace">{{ c.conf }}</span>
+                      </div>
+                      <span style="font-size:13px;font-weight:600;line-height:1.4">{{ c.title }}</span>
+                      <span style="font-size:12px;line-height:1.5;color:#5b5473">{{ c.why }}</span>
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;line-height:1.5;color:#6C2BF2">{{ c.nums }}</span>
+                      <sc-if value="{{ c.open }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex;flex-direction:column;gap:4px;padding:9px 10px;background:#faf9fe;border:1px solid #eee9f8;border-radius:10px">
+                          <sc-for list="{{ c.lines }}" as="ln" hint-placeholder-count="3">
+                            <div style="display:flex;gap:7px;font-size:11.5px;line-height:1.45;color:#3c3559">
+                              <span style="color:#6b6482">·</span>
+                              <span>{{ ln }}</span>
+                            </div>
+                          </sc-for>
+                        </div>
+                      </sc-if>
+                      <div style="display:flex;gap:7px;padding-top:2px">
+                        <button type="button" onClick="{{ c.onReflex }}" style="height:29px;padding:0 11px;border-radius:9px;border:1px solid #ddd0fb;background:#fff;color:#6C2BF2;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap">{{ c.reflexLabel }}</button>
+                        <button type="button" onClick="{{ c.onApply }}" style="height:29px;padding:0 12px;border-radius:9px;border:none;background:#1b1630;color:#fff;font-size:11.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap">{{ c.cta }}</button>
+                        <span style="flex:1"></span>
+                        <button type="button" onClick="{{ c.onDismiss }}" style="height:29px;padding:0 11px;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:11.5px;font-weight:600;font-family:Manrope,sans-serif;cursor:pointer">Depois</button>
+                      </div>
+                    </div>
+                  </sc-for>
+                  <sc-if value="{{ asaEmpty }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:30px 14px;background:#faf9fe;border:1px dashed #ddd6ee;border-radius:13px">
+                      <img src="assets/asa-wing.png" alt="" style="width:38px;height:38px;object-fit:contain" />
+                      <span style="font-size:12.5px;font-weight:600">Nada pendente aqui</span>
+                      <span style="font-size:11.5px;color:#6b6482;text-align:center;line-height:1.5">{{ asaEmpty }}</span>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-if>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:0 0 390px;min-width:390px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482">Mobile · segue o Ver como</div>
+      <div style="width:390px;border:1px solid #ddd6ee;border-radius:38px;overflow:hidden;background:#1c1440;padding:9px;box-shadow:0 20px 44px -30px rgba(40,20,90,.5)">
+        <div style="position:relative;background:#faf9fe;border-radius:30px;overflow:hidden;display:flex;flex-direction:column;height:826px">
+          <sc-if value="{{ moreOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:0;right:0;top:0;bottom:0;z-index:9;background:rgba(28,20,64,.42);display:flex;align-items:flex-end">
+              <div style="width:100%;max-height:88%;overflow-y:auto;background:#faf9fe;border-radius:22px 22px 30px 30px;padding:14px 14px 18px;display:flex;flex-direction:column;gap:12px">
+                <div style="display:flex;align-items:flex-start;gap:10px">
+                  <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0">
+                    <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">{{ moreTitle }}</span>
+                    <span style="font-size:11px;color:#6b6482">{{ moreSub }}</span>
+                  </div>
+                  <button type="button" onClick="{{ onCloseMore }}" style="width:28px;height:28px;flex:none;border-radius:9px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:14px;cursor:pointer">×</button>
+                </div>
+                <a href="{{ moreAsa }}" style="display:flex;align-items:center;gap:11px;padding:12px;border-radius:14px;background:#f4edfe;border:1px solid #ddcbfa;text-decoration:none">
+                  <img src="assets/asa/oi.png" alt="" style="width:36px;height:36px;object-fit:contain;flex:none" />
+                  <span style="display:flex;flex-direction:column;gap:1px;min-width:0;flex:1">
+                    <span style="font-size:13px;font-weight:700;color:#5B23C9">Perguntar à ASA</span>
+                    <span style="font-size:11px;color:#5f4b8a">ela resolve sem você procurar a tela</span>
+                  </span>
+                </a>
+                <sc-for list="{{ moreGroups }}" as="g" hint-placeholder-count="4">
+                  <div style="display:flex;flex-direction:column;gap:6px">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482;padding:0 2px">{{ g.title }}</span>
+                    <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+                      <a href="{{ it.href }}" style="{{ it.style }}">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6b6482;flex:none;min-width:17px">{{ it.num }}</span>
+                        <span style="font-size:13px;font-weight:600;flex:1;min-width:0">{{ it.label }}</span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6b6482;flex:none">›</span>
+                      </a>
+                    </sc-for>
+                  </div>
+                </sc-for>
+                <a href="{{ morePerfil }}" style="display:flex;align-items:center;gap:10px;padding:12px;border-radius:14px;background:#fff;border:1px solid #eee9f6;text-decoration:none;color:#1b1630">
+                  <span style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);flex:none"></span>
+                  <span style="font-size:13px;font-weight:600;flex:1">Perfil e configurações</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6b6482">›</span>
+                </a>
+              </div>
+            </div>
+          </sc-if>
+          <div style="position:absolute;left:0;right:0;bottom:0;z-index:5;display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid #ebe6f6;background:#fff;padding:9px 4px 12px">
+            <sc-for list="{{ mobileTabs }}" as="t" hint-placeholder-count="5">
+              <a href="{{ t.href }}" onClick="{{ t.onClick }}" style="{{ t.style }}">
+                <span style="display:block;width:19px;height:19px;border-radius:6px;border:1.7px solid currentColor;opacity:.75"></span>
+                <span style="font-size:9.5px;font-weight:600;text-align:center">{{ t.label }}</span>
+              </a>
+            </sc-for>
+          </div>
+          <div style="padding:12px 14px 10px;background:#fff;border-bottom:1px solid #ebe6f6;display:flex;flex-direction:column;gap:2px">
+            <span style="font-family:Outfit,sans-serif;font-size:16px;font-weight:600">Agenda</span>
+            <span style="font-size:11.5px;color:#6b6482">{{ mob.sub }}</span>
+          </div>
+          <div style="flex:1;overflow:auto;padding:12px 14px 76px;display:flex;flex-direction:column;gap:11px">
+            <button type="button" onClick="{{ onMarcar }}" style="{{ mob.ctaStyle }}">{{ mob.cta }}</button>
+            <sc-for list="{{ mob.days }}" as="d" hint-placeholder-count="4">
+              <div style="display:flex;flex-direction:column;gap:7px">
+                <div style="display:flex;align-items:baseline;gap:8px">
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482">{{ d.label }}</span>
+                  <span style="{{ d.jorStyle }}">{{ d.jor }}</span>
+                </div>
+                <sc-for list="{{ d.items }}" as="i" hint-placeholder-count="2">
+                  <div style="{{ i.style }}">
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <span style="{{ i.hourStyle }}">{{ i.hour }}</span>
+                      <span style="font-size:12.5px;font-weight:700;flex:1;min-width:0">{{ i.name }}</span>
+                      <span style="{{ i.chipStyle }}">{{ i.chip }}</span>
+                    </div>
+                    <span style="font-size:11px;color:#6b6482;line-height:1.45">{{ i.meta }}</span>
+                  </div>
+                </sc-for>
+                <sc-if value="{{ d.empty }}" hint-placeholder-val="{{ false }}">
+                  <span style="font-size:11px;color:#6b6482;padding:6px 10px;background:#fff;border:1px dashed #e6e1f2;border-radius:11px">{{ d.empty }}</span>
+                </sc-if>
+              </div>
+            </sc-for>
+            <span style="font-size:11px;line-height:1.45;color:#4a2a9c;background:#f7f3ff;border:1px solid #e5d8fb;border-radius:11px;padding:9px 10px">{{ mob.foot }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1720},&quot;perfilInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ADM&quot;,&quot;DIR&quot;,&quot;SUP&quot;,&quot;MEM&quot;],&quot;default&quot;:&quot;ADM&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Demonstração&quot;},&quot;horizonte&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:2,&quot;min&quot;:0,&quot;max&quot;:6,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Demonstração&quot;,&quot;unit&quot;:&quot;º dia da semana&quot;}}">
+const PROFILES = [
+  { key: "ADM", name: "Administração", person: "Barbara Sorroche", dot: "#6C2BF2", scope: "Toda a empresa", hint: "Convoca, convida e decide em qualquer área." },
+  { key: "DIR", name: "Direção", person: "Cris Garcia", dot: "#2E63D6", scope: "Toda a empresa", hint: "Como a Administração: convoca, convida e decide." },
+  { key: "SUP", name: "Supervisão", person: "Deborah", dot: "#0E8F86", scope: "Patinadores", hint: "Convoca a área dela e decide as propostas que caem nela." },
+  { key: "MEM", name: "Elenco", person: "Julia", dot: "#C2508F", scope: "Minha agenda", hint: "Só convida, e o que marca nasce como proposta." }
+];
+
+const NAV = [
+  { title: "Porta de entrada", items: [
+    ["17", "Início / Meu Dia", ["ADM","DIR","SUP","MEM"], "Meu Dia"]
+  ] },
+  { title: "O dia", items: [
+    ["20", "Agenda", ["ADM","DIR","SUP","MEM"], "Minha agenda"],
+    ["15", "Escalas", ["ADM","DIR","SUP","MEM"], "Minha escala"],
+    ["13", "Shows", ["ADM","DIR","SUP","MEM"], "Shows"],
+    ["14", "Livro do Dia", ["ADM","DIR","SUP","MEM"], "Meus shows"],
+    ["19", "Check-in e ocorrências", ["ADM","DIR","SUP","MEM"], "Check-in"],
+    ["10", "Responsabilidades e tarefas", ["ADM","DIR","SUP","MEM"], "Minhas tarefas"],
+    ["18", "Folgas", ["ADM","DIR","SUP","MEM"], "Minhas folgas"]
+  ] },
+  { title: "Gestão", items: [
+    ["16", "Painel", ["ADM","DIR","SUP"], null],
+    ["06", "Locais", ["ADM","DIR","SUP"], null],
+    ["07", "Pessoas", ["ADM","DIR","SUP"], null],
+    ["08", "Áreas", ["ADM","DIR","SUP","MEM"], "Meu grupo"],
+    ["25", "Reconhecimentos", ["ADM","DIR","SUP"], null]
+  ] },
+  { title: "Comunicação", items: [
+    ["22", "Avisos e Mural", ["ADM","DIR","SUP","MEM"], "Mural"],
+    ["23", "Mensagens", ["ADM","DIR","SUP","MEM"], "Conversas"],
+    ["24", "Biblioteca", ["ADM","DIR","SUP","MEM"], "Biblioteca"]
+  ] }
+];
+
+
+const MOBILE_TABS = {
+  ADM: [["17","Meu Dia"],["16","Painel"],["15","Escalas"],["22","Mural"],["mais","Mais"]],
+  DIR: [["17","Meu Dia"],["16","Painel"],["20","Agenda"],["22","Mural"],["mais","Mais"]],
+  SUP: [["17","Meu Dia"],["15","Escalas"],["07","Equipe"],["22","Mural"],["mais","Mais"]],
+  MEM: [["17","Meu Dia"],["15","Escala"],["22","Mural"],["23","Conversas"],["mais","Mais"]]
+};
+
+const NAV_HREF = {
+  "10": "10%20Responsabilidades%20e%20Tarefas.dc.html",
+  "13": "13%20Shows.dc.html",
+  "14": "14%20Livro%20do%20Dia.dc.html",
+  "15": "15%20Escalas.dc.html",
+  "16": "16%20Painel%20e%20indicadores.dc.html",
+  "17": "17%20Meu%20Dia.dc.html",
+  "18": "18%20Folgas.dc.html",
+  "19": "19%20Check-in%20e%20ocorr%C3%AAncias.dc.html",
+  "20": "20%20Agenda.dc.html",
+  "22": "22%20Avisos%20e%20Mural.dc.html",
+  "23": "23%20Mensagens.dc.html",
+  "24": "24%20Biblioteca.dc.html", "25": "25%20Reconhecimentos.dc.html",
+  "27": "27%20Assistente%20ASA.dc.html",
+  "28": "28%20Perfil%20e%20configura%C3%A7%C3%B5es.dc.html",
+  "06": "06%20Locais.dc.html",
+  "07": "07%20Pessoas.dc.html",
+  "08": "08%20%C3%81reas.dc.html"
+};
+
+const DAYS = ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"];
+const DAYFULL = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"];
+const TODAY = 1;
+const H0 = 8, H1 = 22, ROW = 51;
+
+// jor: jornada padrão por dia da semana, cadastrada por pessoa em 07 Pessoas.
+// null = folga, vinda do módulo 18 Folgas (não tem janela nenhuma).
+const PEOPLE = [
+  { name: "Barbara Sorroche", area: "Gestão", role: "ADM", jor: [[9,18],[9,18],[9,18],[9,18],[9,18],null,null] },
+  { name: "Cris Garcia", area: "Direção", role: "DIR", jor: [[9,17],[9,17],[9,17],[9,17],[9,17],null,null] },
+  { name: "Deborah", area: "Patinadores", role: "SUP", jor: [null,[13,21],[13,21],[13,21],[13,21],[13,21],[13,21]] },
+  { name: "Victor Oliveira", area: "Bailarinos", role: "SUP", jor: [null,[10,19],[10,19],[10,19],[10,19],[10,19],null] },
+  { name: "Stephani", area: "Bailarinos", role: "SUP", jor: [[9,18],[9,18],[9,18],[9,18],null,null,null] },
+  { name: "Rodrigo", area: "Produção", role: "SUP", jor: [null,[8,17],[8,17],[8,17],[8,17],[8,17],null] },
+  { name: "Julia", area: "Patinadores", role: "MEM", jor: [null,[14,22],[14,22],[14,22],[14,22],[14,22],[14,22]] },
+  { name: "Carol", area: "Patinadores", role: "MEM", jor: [null,null,[14,22],[14,22],[14,22],[14,22],[14,22]] },
+  { name: "Izabel", area: "Patinadores", role: "MEM", jor: [null,[13,21],[13,21],[13,21],[13,21],[13,21],null] },
+  { name: "Sofia", area: "Patinadores", role: "MEM", jor: [null,[13,21],[13,21],[13,21],[13,21],null,null] },
+  { name: "Diogo", area: "Patinadores", role: "MEM", jor: [null,[13,21],[13,21],[13,21],[13,21],[13,21],null] },
+  { name: "Isadora", area: "Bailarinos", role: "MEM", jor: [null,[10,19],[10,19],[10,19],[10,19],[10,19],null] },
+  { name: "Sthefany", area: "Bailarinos", role: "MEM", jor: [null,[9,18],[9,18],[9,18],[9,18],[9,18],null] },
+  { name: "Mariela", area: "Bailarinos", role: "MEM", jor: [null,[9,18],[9,18],[9,18],[9,18],[9,18],null] },
+  { name: "Maico", area: "Produção", role: "MEM", jor: [null,[8,17],[8,17],[8,17],[8,17],[8,17],null] },
+  { name: "Mariza", area: "Produção", role: "MEM", jor: [null,[10,19],[10,19],[10,19],[10,19],[10,19],null] }
+];
+
+const SUP_OF = { "Patinadores": "Deborah", "Bailarinos": "Victor Oliveira", "Produção": "Rodrigo", "Gestão": "Barbara Sorroche", "Direção": "Barbara Sorroche" };
+
+// Espaços vêm de 06 Locais. book = disputado: um compromisso por horário.
+const ESPACOS = [
+  { id: 1, local: "Snowland", name: "Palco A", cap: 40, book: true },
+  { id: 2, local: "Snowland", name: "Palco B", cap: 30, book: true },
+  { id: 3, local: "Snowland", name: "Sala de figurino", cap: 12, book: true },
+  { id: 4, local: "Snowland", name: "Sala de reunião", cap: 8, book: true },
+  { id: 5, local: "Snowland", name: "Camarim", cap: 20, book: false },
+  { id: 6, local: "Acquamotion", name: "Palco Aquático", cap: 35, book: true },
+  { id: 7, local: "Acquamotion", name: "Sala de ensaio", cap: 16, book: true },
+  { id: 8, local: "Hotelaria", name: "Sala de reunião", cap: 10, book: true },
+  { id: 9, local: "Hotelaria", name: "Sala multiuso", cap: 24, book: true }
+];
+
+const KIND0 = {
+  Show: { dot: "#C2508F", mode: "convoca", quem: ["ADM", "DIR"], fixa: true },
+  Ensaio: { dot: "#0E8F86", mode: "convoca", quem: ["ADM", "DIR", "SUP"] },
+  Reunião: { dot: "#2E63D6", mode: "convida", quem: ["ADM", "DIR", "SUP", "MEM"] },
+  Manutenção: { dot: "#B06E00", mode: "convoca", quem: ["ADM", "DIR"] }
+};
+const CAT_DOTS = ["#6C2BF2", "#0E8F86", "#2E63D6", "#B06E00", "#C2508F", "#B4560B"];
+
+const P = (n, ess) => ({ n: n, ess: ess !== false });
+
+const ITEMS0 = [
+  { id: 1, kind: "Show", title: "Show Patinação", day: 1, h1: 19, h2: 21, esp: 1, state: "pub", by: "Barbara Sorroche", people: [P("Julia"), P("Carol"), P("Deborah")] },
+  { id: 2, kind: "Show", title: "Show Patinação", day: 2, h1: 19, h2: 21, esp: 1, state: "pub", by: "Barbara Sorroche", people: [P("Julia"), P("Carol"), P("Deborah")] },
+  { id: 3, kind: "Show", title: "Show Patinação", day: 3, h1: 19, h2: 21, esp: 1, state: "pub", by: "Barbara Sorroche", people: [P("Julia"), P("Carol"), P("Deborah")] },
+  { id: 4, kind: "Show", title: "Show Patinação", day: 4, h1: 19, h2: 21, esp: 1, state: "pub", by: "Barbara Sorroche", people: [P("Julia"), P("Carol"), P("Deborah")] },
+  { id: 5, kind: "Ensaio", title: "Ensaio de reposição", day: 2, h1: 15, h2: 17, esp: 2, state: "pub", by: "Deborah", people: [P("Deborah"), P("Julia")] },
+  { id: 6, kind: "Reunião", title: "Reunião de produção", day: 1, h1: 11, h2: 12, esp: 8, state: "pub", by: "Barbara Sorroche", people: [P("Barbara Sorroche"), P("Rodrigo"), P("Stephani", false)] },
+  { id: 7, kind: "Manutenção", title: "Manutenção do palco aquático", day: 4, h1: 9, h2: 11, esp: 6, state: "pub", by: "Barbara Sorroche", people: [P("Maico")] },
+  { id: 8, kind: "Reunião", title: "Gravar o figurino novo", day: 3, h1: 15, h2: 16, esp: 3, state: "prop", by: "Julia",
+    people: [P("Julia"), P("Mariza")], dec: { "Rodrigo": "ok" } },
+  { id: 9, kind: "Reunião", title: "Alinhar o Grupo Camp", day: 4, h1: 14, h2: 15, esp: 0, online: true, link: "", state: "prop", by: "Stephani",
+    people: [P("Stephani"), P("Deborah"), P("Barbara Sorroche", false)],
+    dec: { "Deborah": "no" }, why: "Ensaio de reposição no mesmo horário — não dá para sair do palco.", alt: { day: 5, h1: 15 } },
+  { id: 10, kind: "Ensaio", title: "Ensaio geral do show", day: 3, h1: 19, h2: 21, esp: 1, state: "prop", by: "Deborah",
+    people: [P("Julia"), P("Carol")], dec: {} },
+  { id: 11, kind: "Ensaio", title: "Ensaio do Grupo Camp", day: 2, h1: 16, h2: 18, esp: 7, state: "prop", by: "Stephani",
+    people: [P("Izabel"), P("Carol", false)], dec: {}, rep: "19 dez" }
+];
+
+const findP = n => PEOPLE.find(p => p.name === n) || { name: n, area: "", role: "MEM", jor: [null,null,null,null,null,null,null] };
+const espOf = id => ESPACOS.find(e => e.id === id) || null;
+const supOf = n => { const p = findP(n); return p.role === "MEM" ? (SUP_OF[p.area] || "Barbara Sorroche") : p.name; };
+const initialsOf = n => (n || "?").split(" ").map(x => x[0]).join("").slice(0, 2).toUpperCase();
+const first = n => (n || "").split(" ")[0];
+const plural = (n, s, p) => {
+  const r = Math.round(n * 60), hh = Math.floor(r / 60), mm = r % 60;
+  if (s === "hora" && mm) return hh ? hh + "h" + String(mm).padStart(2, "0") : mm + " min";
+  return n + " " + (n === 1 ? s : p);
+};
+const clock = h => { const r = Math.round(h * 60); return Math.floor(r / 60) + ":" + String(r % 60).padStart(2, "0"); };
+const hourText = h => (Math.abs(h - Math.round(h)) < 1e-9) ? Math.round(h) + "h" : clock(h);
+const spanText = it => hourText(it.h1) + "–" + hourText(it.h2);
+const whenText = (d, h) => DAYFULL[d] + " " + hourText(h);
+const placeText = it => it.online ? "online" : (espOf(it.esp) ? espOf(it.esp).local + " · " + espOf(it.esp).name : "sem espaço");
+const btn = (on, dot) => "display:flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:11px;white-space:nowrap;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;border:1px solid " + (on ? dot : "#e6e1f2") + ";background:" + (on ? dot + "14" : "#fff") + ";color:" + (on ? dot : "#5b5473");
+const chip = on => "height:30px;padding:0 12px;border-radius:10px;white-space:nowrap;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;cursor:pointer;border:1px solid " + (on ? "#6C2BF2" : "#e6e1f2") + ";background:" + (on ? "#f2ecfe" : "#fff") + ";color:" + (on ? "#6C2BF2" : "#6b6482");
+const smallChip = on => "height:27px;padding:0 10px;border-radius:9px;white-space:nowrap;font-family:Manrope,sans-serif;font-size:11px;font-weight:700;cursor:pointer;border:1px solid " + (on ? "#6C2BF2" : "#e6e1f2") + ";background:" + (on ? "#f2ecfe" : "#fff") + ";color:" + (on ? "#6C2BF2" : "#6b6482");
+const avatar = (size, tone) => "width:" + size + "px;height:" + size + "px;flex:none;border-radius:" + Math.round(size / 3) + "px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;background:" + tone + "1f;color:" + tone;
+
+class Component extends DCLogic {
+  state = {
+    profile: "ADM", tab: "semana", casaDay: TODAY,
+    items: JSON.parse(JSON.stringify(ITEMS0)),
+    nextId: 40,
+    marcar: false, draft: null, why: {}, formFor: null,
+    drag: null,
+    cats: JSON.parse(JSON.stringify(KIND0)),
+    catDraft: null,
+    asa: false, asaCard: null, asaAsk: "", dismissed: {}
+  };
+
+  componentDidMount() {
+    const p = this.props.perfilInicial;
+    if (p && p !== this.state.profile) this.setState({ profile: p });
+  }
+
+  // Até este dia a escala está publicada; depois, a disponibilidade vem do molde.
+  horizonte() { const h = this.props.horizonte; return (h === 0 || h) ? h : 2; }
+  jorOf(n, d) { return findP(n).jor[d] || null; }
+  // Janela comum: interseção das jornadas. Sem jornada, não há o que negociar.
+  janela(names, d) {
+    let a = H0, b = H1;
+    for (let i = 0; i < names.length; i++) {
+      const j = this.jorOf(names[i], d);
+      if (!j) return null;
+      a = Math.max(a, j[0]); b = Math.min(b, j[1]);
+    }
+    return (b - a) >= 1 ? [a, b] : null;
+  }
+  ocupado(n, d) {
+    return this.state.items.filter(it => it.day === d && it.state === "pub" && it.people.some(p => p.n === n)).map(it => [it.h1, it.h2]);
+  }
+  espOcupado(eid, d) {
+    return this.state.items.filter(it => it.day === d && it.esp === eid && it.state === "pub").map(it => [it.h1, it.h2]);
+  }
+  vagas(names, d, dur, eid) {
+    const w = this.janela(names, d);
+    if (!w) return [];
+    const out = [];
+    for (let h = w[0]; h + dur <= w[1]; h++) {
+      const gente = names.some(n => this.ocupado(n, d).some(r => h < r[1] && (h + dur) > r[0]));
+      const esp = eid ? this.espOcupado(eid, d).some(r => h < r[1] && (h + dur) > r[0]) : false;
+      if (!gente && !esp) out.push(h);
+    }
+    return out;
+  }
+  // Quem decide cada participante: o supervisor dele; supervisão e gestão decidem por si.
+  decisores(it) {
+    const out = [];
+    it.people.forEach(p => { const s = supOf(p.n); if (out.indexOf(s) < 0) out.push(s); });
+    return out;
+  }
+  pendentes(it) { return this.decisores(it).filter(s => !(it.dec || {})[s]); }
+  negados(it) { return it.people.filter(p => (it.dec || {})[supOf(p.n)] === "no"); }
+
+  renderVals() {
+    const self0 = this;
+    const selfIdConst = "20";
+    const st = this.state;
+    const KIND = st.cats;
+    const active = st.profile;
+    const meta = PROFILES.find(p => p.key === active) || PROFILES[0];
+    const me = meta.person;
+    const isMem = active === "MEM";
+    const manda = active === "ADM" || active === "DIR";
+    const canConvoke = !isMem;
+    const items = st.items;
+
+    const profileTabs = PROFILES.map(p => ({
+      name: p.name, dot: p.dot,
+      onClick: () => this.setState({ profile: p.key, tab: "semana", marcar: false, draft: null, formFor: null, asa: false, asaCard: null }),
+      style: btn(p.key === active, p.dot)
+    }));
+
+    const shellNav = NAV.map(g => ({
+      title: g.title,
+      items: g.items.filter(it => it[2].indexOf(active) >= 0).map(it => ({
+        href: NAV_HREF[it[0]],
+        label: (isMem && it[3] ? it[3] : it[1]),
+        style: "font-size:12px;padding:6px 9px;border-radius:9px;color:" + (it[0] === "20" ? "#fff" : "#c8c0e4") + ";background:" + (it[0] === "20" ? "rgba(255,255,255,.13)" : "transparent") + ";font-weight:" + (it[0] === "20" ? 700 : 500)
+      }))
+    }));
+
+    // Propostas que este perfil vê: as que ele decide, ou as que ele pediu.
+    const decideMine = it => this.decisores(it).indexOf(me) >= 0 || manda;
+    const props = items.filter(it => it.state === "prop" && (it.by === me || decideMine(it)));
+    const toDecide = props.filter(it => this.pendentes(it).indexOf(manda ? this.pendentes(it)[0] : me) >= 0 && this.pendentes(it).length > 0);
+
+    const tabDefs = [["semana", "Minha semana"], ["mes", "Meu mês"], ["casa", "Espaços"], ["prop", isMem ? "Minhas propostas" : "Propostas"]];
+    if (active === "ADM") tabDefs.push(["cat", "Categorias"]);
+    const tabs = tabDefs.map(t => ({
+      label: t[1],
+      badge: (t[0] === "prop" && props.length) ? String(props.length) : "",
+      badgeStyle: (t[0] === "prop" && props.length)
+        ? "font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:999px;background:#fdf1dc;color:#8a6413"
+        : "display:none",
+      onClick: () => this.setState({ tab: t[0], formFor: null }),
+      style: "display:flex;align-items:center;gap:7px;border:none;background:transparent;font-family:Manrope,sans-serif;font-size:13px;font-weight:" + (st.tab === t[0] ? 700 : 500) + ";color:" + (st.tab === t[0] ? "#6C2BF2" : "#6b6482") + ";padding:11px 4px;margin-right:14px;cursor:pointer;border-bottom:2px solid " + (st.tab === t[0] ? "#6C2BF2" : "transparent")
+    }));
+
+    /* ---------- minha semana ---------- */
+    const mine = items.filter(it => it.people.some(p => p.n === me) || it.by === me);
+    const week = DAYS.map((lb, d) => {
+      const j = this.jorOf(me, d);
+      const dayItems = mine.filter(it => it.day === d).sort((a, b) => a.h1 - b.h1);
+      const blocks = dayItems.map(it => {
+        const k = KIND[it.kind], prop = it.state === "prop";
+        const neg = prop && this.negados(it).length > 0;
+        const tone = neg ? "#a12c2c" : prop ? "#6C2BF2" : k.dot;
+        return {
+          name: it.title,
+          title: it.title + " · " + spanText(it) + " · " + placeText(it),
+          nameStyle: "font-size:10.5px;font-weight:700;line-height:1.2;color:" + tone + ";overflow:hidden;text-overflow:ellipsis;white-space:nowrap",
+          meta: prop ? (neg ? "negada" : "proposta") : placeText(it),
+          metaStyle: "font-size:9px;line-height:1.2;color:" + tone + "b3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap",
+          onClick: () => this.setState({ tab: prop ? "prop" : st.tab }),
+          style: "position:absolute;left:3px;right:3px;top:" + ((it.h1 - H0) * ROW + 1) + "px;height:" + ((it.h2 - it.h1) * ROW - 3) + "px;display:flex;flex-direction:column;gap:1px;padding:4px 5px;border-radius:8px;overflow:hidden;cursor:" + (prop ? "pointer" : "default") + ";background:" + (prop ? "#fff" : tone + "1a") + ";border:" + (prop ? "1px dashed " + tone : "1px solid " + tone + "40")
+        };
+      });
+      const dg = st.drag;
+      const snap = (e2, el) => {
+        const r = el.getBoundingClientRect();
+        const h = H0 + (e2.clientY - r.top) / ROW;
+        return Math.max(H0, Math.min(H1, Math.round(h * 4) / 4));
+      };
+      const dragOn = dg && dg.day === d;
+      const dA = dragOn ? Math.min(dg.a, dg.b) : 0;
+      const dB = dragOn ? Math.max(dg.a, dg.b) : 0;
+      return {
+        label: lb,
+        labelStyle: "font-size:11.5px;font-weight:700;color:" + (d === TODAY ? "#6C2BF2" : "#3c3559"),
+        note: j ? hourText(j[0]) + "–" + hourText(j[1]) : "folga",
+        noteStyle: "font-family:'JetBrains Mono',monospace;font-size:9px;color:" + (j ? "#6b6482" : "#b9789a"),
+        headStyle: "height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border-bottom:1px solid #f0ecf9;background:" + (d === TODAY ? "#f7f3ff" : "#fcfbfe"),
+        bodyStyle: "position:relative;height:" + ((H1 - H0) * ROW) + "px;background:" + (j ? "#fff" : "#fdf7fa") + ";background-image:repeating-linear-gradient(to bottom,#f5f2fb 0,#f5f2fb 1px,transparent 1px,transparent " + ROW + "px)",
+        band: j ? "position:absolute;left:0;right:0;top:" + ((j[0] - H0) * ROW) + "px;height:" + ((j[1] - j[0]) * ROW) + "px;background:#0E8F8610;border-top:1px solid #0E8F8633;border-bottom:1px solid #0E8F8633" : false,
+        folga: j ? false : "folga",
+        blocks: blocks,
+        onDown: j ? (e2 => { const h = snap(e2, e2.currentTarget); this.setState({ drag: { day: d, a: h, b: h } }); }) : undefined,
+        onMove: j ? (e2 => { if (!st.drag || st.drag.day !== d) return; const h = snap(e2, e2.currentTarget); this.setState({ drag: { day: d, a: st.drag.a, b: h } }); }) : undefined,
+        onUp: j ? (() => {
+          if (!dragOn) return;
+          const a = Math.max(dA, j[0]), b = Math.min(dB, j[1]);
+          if (b - a < 0.25) { this.setState({ drag: null }); return; }
+          this.setState({
+            drag: null, marcar: true,
+            draft: { kind: "Reunião", title: "", who: [], ess: [], esp: 2, online: false, link: "", dur: b - a, slot: { day: d, h1: a }, rep: false, until: "", q: "", areaF: "", mDay: d, mH1: clock(a), mH2: clock(b) }
+          });
+        }) : undefined,
+        dragBand: (dragOn && dB - dA >= 0.25) ? "position:absolute;left:2px;right:2px;top:" + ((dA - H0) * ROW) + "px;height:" + ((dB - dA) * ROW) + "px;border-radius:8px;background:#6C2BF21f;border:1px dashed #6C2BF2;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:#5B23C9;pointer-events:none" : false,
+        dragLabel: (dragOn && dB - dA >= 0.25) ? hourText(dA) + "–" + hourText(dB) : "",
+        colStyle: "flex:1;min-width:0;border-right:1px solid #f0ecf9"
+      };
+    });
+
+    const legend = [
+      ["jornada", "#0E8F86"], ["show", "#C2508F"], ["ensaio", "#0E8F86"], ["reunião", "#2E63D6"], ["proposta", "#6C2BF2"]
+    ].map(l => ({
+      label: l[0],
+      style: "display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;padding:4px 9px;border-radius:999px;border:1px solid " + l[1] + "40;background:" + l[1] + "10;color:" + l[1]
+    }));
+
+    const hours = [];
+    for (let h = H0; h < H1; h++) hours.push(hourText(h));
+
+    const minhaFolga = DAYS.map((x, d) => this.jorOf(me, d) ? -1 : d).filter(d => d >= 0);
+    const semana = {
+      title: "A semana de " + first(me),
+      about: "A faixa verde é a jornada da pessoa, cadastrada em Pessoas pelo Admin: é dentro dela que dá para marcar. Os dias de folga vêm do módulo Folgas — neles não existe janela, e a ASA não oferece horário ali.",
+      foot: "Bloco tracejado é proposta: ainda não é compromisso de ninguém. Arraste na coluna de um dia para marcar direto no horário que quiser. " + (minhaFolga.length ? "Folga em " + minhaFolga.map(d => DAYFULL[d]).join(" e ") + ": ninguém marca nada nesses dias." : "Nenhuma folga nesta semana.")
+    };
+
+    /* ---------- meu mês ----------
+       O mês não mostra hora: mostra a forma. Onde cai folga, quais semanas
+       estão cheias, e até onde a escala está publicada — depois disso é molde. */
+    const MES_NOME = "setembro de 2026";
+    const MES_DIAS = 30;
+    const PUB_ATE = this.horizonte() + 1; // dia do mês até onde a escala está publicada
+    const HOJE_DIA = TODAY;               // ter, 1 de setembro
+    const wdOf = n => ((n % 7) + 7) % 7;  // 0 = seg
+    const mesCells = [];
+    for (let n = -0; n < 35; n++) {
+      const dia = n - 0; // n=0 → 31/ago
+      const num = dia === 0 ? 31 : dia - 0;
+      const real = dia >= 1 && dia <= MES_DIAS;
+      const d = wdOf(dia === 0 ? 0 : dia);
+      const j = this.jorOf(me, d);
+      const pub = real && dia <= PUB_ATE;
+      const hoje = dia === HOJE_DIA;
+      const daySrc = real ? mine.filter(it => it.day === d) : [];
+      // Proposta é de uma data só: não se projeta nas semanas seguintes.
+      const dayItems = daySrc.filter(it => it.state === "pub" || dia <= 7).sort((a, b) => a.h1 - b.h1);
+      const chips = dayItems.slice(0, 3).map(it => {
+        const k = KIND[it.kind], prop = it.state === "prop";
+        const neg = prop && this.negados(it).length > 0;
+        const tone = neg ? "#a12c2c" : prop ? "#6C2BF2" : k.dot;
+        return {
+          label: hourText(it.h1) + " " + it.title,
+          title: it.title + " · " + spanText(it) + " · " + placeText(it) + (prop ? " · proposta" : ""),
+          style: "display:block;font-size:9.5px;line-height:1.35;font-weight:700;padding:2px 5px;border-radius:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:" + tone + ";background:" + (prop ? "#fff" : tone + "16") + ";border:" + (prop ? "1px dashed " + tone : "1px solid " + tone + "33")
+        };
+      });
+      const restante = dayItems.length - chips.length;
+      mesCells.push({
+        num: real ? String(num) : (dia === 0 ? "31" : String(dia - MES_DIAS)),
+        numStyle: "font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:" + (!real ? "#6b6482" : hoje ? "#fff" : j ? "#3c3559" : "#b9789a") + (hoje ? ";background:#6C2BF2;border-radius:999px;padding:1px 6px" : ""),
+        tag: !real ? "" : j ? (pub ? "" : "molde") : "folga",
+        tagStyle: "font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:" + (j ? "#6b6482" : "#b9789a"),
+        chips: chips,
+        more: restante > 0 ? "+" + restante : "",
+        onClick: () => this.setState({ tab: "semana" }),
+        style: "flex:1;min-width:0;min-height:92px;display:flex;flex-direction:column;gap:3px;padding:6px;border-right:1px solid #f0ecf9;border-bottom:1px solid #f0ecf9;text-align:left;cursor:" + (real ? "pointer" : "default") + ";background:" + (!real ? "#fbfafd" : !j ? "#fdf7fa" : pub ? "#fff" : "#fdfcff") + (real && j && !pub ? ";background-image:repeating-linear-gradient(135deg,#f4f0fd 0,#f4f0fd 1px,transparent 1px,transparent 7px)" : "") + ";border-left:none;border-top:none;font-family:Manrope,sans-serif"
+      });
+    }
+    const mesRows = [];
+    for (let r = 0; r < 5; r++) mesRows.push({ cells: mesCells.slice(r * 7, r * 7 + 7) });
+    const mes = {
+      title: MES_NOME,
+      about: "O mês não tem hora — tem forma. Serve para ver onde cai a folga, que semana está cheia e até onde a escala está publicada. Marcar continua sendo na semana: é lá que existe janela.",
+      heads: DAYS.map(lb => ({ label: lb, style: "flex:1;min-width:0;padding:8px 6px;font-size:10.5px;font-weight:700;color:#6b6482;border-right:1px solid #f0ecf9;border-bottom:1px solid #ebe6f6;background:#fcfbfe" })),
+      rows: mesRows,
+      foot: "Dia riscado é molde da Programação: previsão, não compromisso — muda até a escala daquele dia ser publicada. Publicado até " + PUB_ATE + "/09. Clique num dia para abrir a semana dele."
+    };
+
+    /* ---------- espaços ---------- */
+    const cd = st.casaDay;
+    const casaHeads = [];
+    for (let h = H0; h < H1; h += 2) casaHeads.push({
+      label: hourText(h),
+      style: "flex:1;min-width:0;font-family:'JetBrains Mono',monospace;font-size:9px;color:#6b6482;text-align:left"
+    });
+    const locais = [];
+    ESPACOS.forEach(e => { if (locais.indexOf(e.local) < 0) locais.push(e.local); });
+    let clashText = false;
+    const casaGroups = locais.map((lc, li) => {
+      const dot = ["#0E8F86", "#2E63D6", "#C2508F"][li % 3];
+      const rows = ESPACOS.filter(e => e.local === lc).map(e => {
+        const on = items.filter(it => it.day === cd && it.esp === e.id);
+        const pub = on.filter(it => it.state === "pub");
+        if (e.book) {
+          on.forEach(a => on.forEach(b => {
+            if (a.id < b.id && a.h1 < b.h2 && b.h1 < a.h2 && !clashText) {
+              clashText = e.local + " · " + e.name + ": “" + a.title + "” e “" + b.title + "” pedem o mesmo espaço " + spanText(a) + ". Espaço disputado aceita um por horário — um dos dois muda de horário ou de espaço.";
+            }
+          }));
+        }
+        return {
+          name: e.name,
+          tag: (e.book ? "disputado" : "uso livre") + " · " + e.cap,
+          tagStyle: "font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:" + (e.book ? "#5a25c9" : "#6b6482"),
+          trackStyle: "position:relative;flex:1;height:30px;margin:6px 0;border-radius:8px;background:#faf9fe;background-image:repeating-linear-gradient(to right,#f0ecf9 0,#f0ecf9 1px,transparent 1px,transparent " + (100 / (H1 - H0) * 2) + "%)",
+          bars: on.map(it => {
+            const k = KIND[it.kind], prop = it.state === "prop";
+            const tone = prop ? "#6C2BF2" : k.dot;
+            return {
+              label: it.title,
+              title: it.title + " · " + spanText(it) + (prop ? " · proposta" : ""),
+              style: "position:absolute;top:3px;bottom:3px;left:" + ((it.h1 - H0) / (H1 - H0) * 100) + "%;width:" + ((it.h2 - it.h1) / (H1 - H0) * 100) + "%;display:flex;align-items:center;padding:0 7px;border-radius:7px;font-size:10px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:" + tone + ";background:" + (prop ? "#fff" : tone + "1f") + ";border:" + (prop ? "1px dashed " + tone : "1px solid " + tone + "45")
+            };
+          }),
+          livre: pub.length === 0
+        };
+      });
+      return {
+        local: lc, dot: "width:9px;height:9px;flex:none;border-radius:3px;background:" + dot,
+        note: plural(rows.length, "espaço", "espaços"),
+        rows: rows
+      };
+    });
+    const casa = {
+      about: "É o espaço que se reserva, não o local: dois compromissos podem estar no mesmo local, nunca no mesmo espaço disputado e no mesmo horário. Espaço de uso livre não disputa nada.",
+      days: DAYS.map((lb, d) => ({
+        label: lb + (d === TODAY ? " · hoje" : ""),
+        onClick: () => this.setState({ casaDay: d }),
+        style: smallChip(cd === d)
+      })),
+      heads: casaHeads,
+      groups: casaGroups,
+      clash: clashText,
+      foot: "Barra tracejada é proposta: ela reserva o espaço só quando for liberada e a escala publicada."
+    };
+
+    /* ---------- propostas ---------- */
+    const propCards = props.map(it => {
+      const k = KIND[it.kind];
+      const pend = this.pendentes(it);
+      const neg = this.negados(it);
+      const negEss = neg.filter(p => p.ess);
+      const euDecido = pend.indexOf(me) >= 0 || (manda && pend.length > 0);
+      const euPedi = it.by === me;
+      const decKey = pend.indexOf(me) >= 0 ? me : pend[0];
+      const names = it.people.map(p => p.n);
+      const win = this.janela(names, it.day);
+      const doMolde = it.day > this.horizonte();
+      const altOk = it.alt ? this.janela(names, it.alt.day) : null;
+      const altLivre = it.alt ? this.vagas(names, it.alt.day, it.h2 - it.h1, it.esp).indexOf(it.alt.h1) >= 0 : false;
+
+      const state = negEss.length ? "travada" : neg.length ? "sai quem foi negado" : pend.length ? plural(pend.length, "decisão pendente", "decisões pendentes") : "liberada";
+      const asaLines = [];
+      if (it.rep) asaLines.push("Isto repete até " + it.rep + ": não vira " + " uma pilha de eventos — vira molde na Programação, com vigência, e gera escala sozinho.");
+      if (doMolde) asaLines.push("Esta faixa vem do molde da Programação, não da escala publicada: pode mudar até o dia ser publicado.");
+      if (!win) asaLines.push("Não existe faixa comum nesse dia: alguém está de folga ou a jornada não se cruza.");
+      if (it.online && !it.link) asaLines.push("Reunião online sem link. Dá para liberar assim e colocar o link depois — eu cobro antes da hora.");
+      if (it.alt && !altLivre) asaLines.push("A alternativa " + whenText(it.alt.day, it.alt.h1) + " não serve para todos" + (altOk ? ": alguém já tem compromisso nessa hora." : ": alguém não tem jornada nesse dia."));
+      if (it.alt && altLivre) asaLines.push("A alternativa " + whenText(it.alt.day, it.alt.h1) + " serve para todos os " + it.people.length + ".");
+      const esp = espOf(it.esp);
+      if (esp && esp.cap < it.people.length) asaLines.push(esp.name + " comporta " + esp.cap + " pessoas e o grupo tem " + it.people.length + ".");
+
+      const alts = [];
+      const dur = it.h2 - it.h1;
+      for (let d = TODAY; d < 7 && alts.length < 3; d++) {
+        const v = this.vagas(names, d, dur, it.esp).filter(h => !(d === it.day && h === it.h1));
+        if (v.length) alts.push({ day: d, h1: v[0] });
+      }
+
+      const actions = [];
+      if (euDecido) {
+        actions.push({
+          label: "Liberar " + (manda ? "" : "a minha parte"), onClick: () => {
+            const dec = Object.assign({}, it.dec || {}); dec[decKey] = "ok";
+            this.setState({ items: items.map(x => x.id === it.id ? Object.assign({}, x, { dec: dec }) : x), formFor: null });
+          },
+          style: "height:32px;padding:0 13px;border-radius:10px;border:none;background:#6C2BF2;color:#fff;font-size:12px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap"
+        });
+        actions.push({
+          label: st.formFor === it.id ? "Fechar" : "Negar com motivo",
+          onClick: () => this.setState({ formFor: st.formFor === it.id ? null : it.id }),
+          style: "height:32px;padding:0 13px;border-radius:10px;border:1px solid #f0bcbc;background:#fff;color:#a12c2c;font-size:12px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap"
+        });
+      }
+      if (euPedi && negEss.length && it.alt) {
+        actions.push({
+          label: "Mover para " + whenText(it.alt.day, it.alt.h1),
+          onClick: () => this.setState({ items: items.map(x => x.id === it.id ? Object.assign({}, x, { day: it.alt.day, h1: it.alt.h1, h2: it.alt.h1 + dur, dec: {}, alt: null, why: "" }) : x) }),
+          style: "height:32px;padding:0 13px;border-radius:10px;border:none;background:#1b1630;color:#fff;font-size:12px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap"
+        });
+      }
+      if (euPedi && neg.length && !negEss.length) {
+        actions.push({
+          label: "Fazer sem " + first(neg[0].n),
+          onClick: () => this.setState({ items: items.map(x => x.id === it.id ? Object.assign({}, x, { people: x.people.filter(p => p.n !== neg[0].n) }) : x) }),
+          style: "height:32px;padding:0 13px;border-radius:10px;border:1px solid #ddd0fb;background:#fff;color:#6C2BF2;font-size:12px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap"
+        });
+      }
+      if (euPedi) {
+        actions.push({
+          label: "Desistir",
+          onClick: () => this.setState({ items: items.filter(x => x.id !== it.id) }),
+          style: "height:32px;padding:0 12px;border-radius:10px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:12px;font-weight:600;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap"
+        });
+      }
+      if (!pend.length && !neg.length && manda) {
+        actions.push({
+          label: "Publicar na escala",
+          onClick: () => this.setState({ items: items.map(x => x.id === it.id ? Object.assign({}, x, { state: "pub" }) : x) }),
+          style: "height:32px;padding:0 13px;border-radius:10px;border:none;background:#0b6b64;color:#fff;font-size:12px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap"
+        });
+      }
+
+      return {
+        name: it.title,
+        meta: DAYFULL[it.day] + " " + spanText(it) + " · " + placeText(it) + " · pedida por " + it.by + (it.rep ? " · repete até " + it.rep : ""),
+        dot: "width:12px;height:12px;flex:none;border-radius:4px;margin-top:5px;background:" + k.dot,
+        state: state,
+        stateStyle: "font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;padding:4px 9px;border-radius:999px;background:" + (negEss.length ? "#fdf5f5" : pend.length ? "#fdf1dc" : "#e2f4f2") + ";color:" + (negEss.length ? "#a12c2c" : pend.length ? "#8a6413" : "#0b6b64"),
+        people: it.people.map(p => {
+          const s = supOf(p.n);
+          const dc = (it.dec || {})[s];
+          const tone = dc === "ok" ? "#0b6b64" : dc === "no" ? "#a12c2c" : "#6b6482";
+          return {
+            initials: initialsOf(p.n), name: p.n,
+            avatarStyle: avatar(26, tone),
+            note: (p.ess ? "essencial" : "pode faltar") + " · " + (dc === "ok" ? "liberado por " + first(s) : dc === "no" ? "negado por " + first(s) : "espera " + first(s)),
+            noteStyle: "font-size:10px;color:" + tone,
+            style: "display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:11px;border:1px solid " + tone + "33;background:" + tone + "0d"
+          };
+        }),
+        asa: asaLines.length ? asaLines.join(" ") : false,
+        denial: neg.length ? {
+          title: neg.map(p => first(p.n)).join(", ") + (neg.length === 1 ? " foi negado" : " foram negados") + " por " + neg.map(p => first(supOf(p.n))).join(", "),
+          why: it.why || "Sem motivo escrito.",
+          alt: it.alt ? "Alternativa oferecida: " + whenText(it.alt.day, it.alt.h1) + "." : "Nenhuma alternativa oferecida."
+        } : false,
+        form: (euDecido && st.formFor === it.id) ? {
+          title: "Negar a participação de quem é seu",
+          why: st.why[it.id] || "",
+          onWhy: e => this.setState({ why: Object.assign({}, st.why, { [it.id]: e.target.value }) }),
+          altLabel: "Ofereça uma alternativa — a ASA já checou se ela serve para todos:",
+          alts: alts.map(a => ({
+            label: whenText(a.day, a.h1),
+            onClick: () => {
+              const dec = Object.assign({}, it.dec || {}); dec[decKey] = "no";
+              this.setState({
+                items: items.map(x => x.id === it.id ? Object.assign({}, x, { dec: dec, why: st.why[it.id] || "Sem motivo escrito.", alt: { day: a.day, h1: a.h1 } }) : x),
+                formFor: null
+              });
+            },
+            style: smallChip(false)
+          })),
+          noAlt: alts.length ? false : "Não achei outra faixa que sirva para todos nesta semana."
+        } : false,
+        foot: euDecido
+          ? "Você responde só por quem é da sua área. " + (pend.length > 1 ? "Ainda falta " + pend.filter(s => s !== decKey).map(first).join(", ") + "." : "É a última decisão pendente.")
+          : euPedi
+            ? (negEss.length ? "Quem é essencial foi negado: mover, ou desistir. Fazer sem essa pessoa não é opção — foi você que a marcou como essencial." : pend.length ? "Esperando " + pend.map(first).join(", ") + "." : "Liberada. Vira compromisso quando a escala do dia for publicada.")
+            : "Leitura.",
+        actions: actions,
+        style: "display:flex;flex-direction:column;gap:11px;padding:15px 16px;border-radius:16px;border:1px solid " + (negEss.length ? "#f0bcbc" : "#e6e1f2") + ";background:#fff"
+      };
+    });
+
+    const prop = {
+      title: isMem ? "Minhas propostas" : "Propostas a decidir",
+      about: isMem
+        ? "O que você marca nasce como proposta. Quem coordena vê isto ao gerar a escala do dia e libera ou nega com motivo e alternativa — e você decide o que fazer com a resposta."
+        : "Cada supervisor responde só pela sua gente. Negar quem pode faltar: acontece sem ela. Negar quem é essencial: volta para quem pediu escolher. Publicar a escala do dia exige responder cada uma — nem que seja negar.",
+      cards: propCards,
+      empty: propCards.length ? false : {
+        title: isMem ? "Nenhuma proposta sua em aberto" : "Nada esperando decisão",
+        body: isMem ? "Marque algo na sua semana: dentro da sua jornada, com quem você precisa." : "Nenhuma proposta pendente na sua área. Quando alguém pedir, aparece aqui antes de você publicar a escala."
+      }
+    };
+
+    /* ---------- marcar ---------- */
+    let marcar = false;
+    if (st.marcar && st.draft) {
+      const d = st.draft;
+      const setD = patch => this.setState({ draft: Object.assign({}, d, patch) });
+      const names = [me].concat(d.who);
+      const esp = espOf(d.esp);
+      const modo = KIND[d.kind].mode;
+      const convoca = modo === "convoca" && canConvoke;
+
+      const slots = [];
+      for (let dd = TODAY; dd < 7 && slots.length < 5; dd++) {
+        const v = this.vagas(names, dd, d.dur, d.esp);
+        v.slice(0, 2).forEach(h => { if (slots.length < 5) slots.push({ day: dd, h1: h }); });
+      }
+      const semJanela = DAYS.map((x, dd) => this.janela(names, dd) ? -1 : dd).filter(x => x >= 0);
+
+      const lines = [];
+      if (convoca) lines.push("Convocação entra direto na escala de quem você marcou: não se recusa, e quem não puder abre ocorrência no 19.");
+      else lines.push("Convite: cada um aceita ou recusa, e vira bloco na escala só quando aceita." + (isMem ? " Como você é do elenco, isto nasce como proposta — quem decide é " + names.filter(n => n !== me).map(n => first(supOf(n))).filter((v, i, a) => a.indexOf(v) === i).join(", ") + "." : ""));
+      if (d.rep) lines.push("Repetindo até " + (d.until || "sem data") + ", isto não é um evento: é molde na Programação, com vigência, gerando escala sozinho até lá.");
+      if (d.online) lines.push(d.link ? "Online com link — ninguém ocupa espaço físico." : "Online sem link: pode marcar assim e colar o link depois; eu cobro antes da hora.");
+      if (esp && esp.cap < names.length) lines.push(esp.name + " comporta " + esp.cap + " e o grupo tem " + names.length + ": ou troca de espaço, ou tira alguém.");
+      if (semJanela.length) lines.push("Em " + semJanela.map(x => DAYFULL[x]).join(", ") + " não existe janela comum: alguém está de folga ou as jornadas não se cruzam.");
+
+      marcar = {
+        title: convoca ? "Convocar" : "Marcar com outras pessoas",
+        sub: (d.slot ? whenText(d.slot.day, d.slot.h1) + " · " + plural(d.dur, "hora", "horas") : "escolha uma faixa que caiba para todos") + " · " + plural(names.length, "pessoa", "pessoas"),
+        onClose: () => this.setState({ marcar: false, draft: null }),
+        kinds: Object.keys(KIND).filter(k => k !== "Show").filter(k => (KIND[k].quem || ["ADM","DIR","SUP","MEM"]).indexOf(active) >= 0).map(k => ({
+          label: k,
+          note: KIND[k].mode === "convoca" ? (canConvoke ? "convoca" : "só quem coordena") : "convida",
+          noteStyle: "font-size:9px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:" + (d.kind === k ? "#6C2BF2" : "#6b6482"),
+          onClick: () => setD({ kind: k }),
+          style: "display:flex;flex-direction:column;gap:1px;align-items:flex-start;padding:7px 12px;border-radius:11px;font-family:Manrope,sans-serif;font-size:12px;font-weight:700;cursor:pointer;border:1px solid " + (d.kind === k ? "#6C2BF2" : "#e6e1f2") + ";background:" + (d.kind === k ? "#f2ecfe" : "#fff") + ";color:" + (d.kind === k ? "#6C2BF2" : "#6b6482")
+        })),
+        kindNote: convoca
+          ? "Ensaio e manutenção convocam: entram na escala e não se recusam."
+          : isMem
+            ? "Reunião convida. Como elenco você só convida — e o que você marca vira proposta até quem coordena liberar."
+            : "Reunião convida: cada um aceita, recusa ou propõe outro horário.",
+        nameValue: d.title, onName: e => setD({ title: e.target.value }),
+        nameNote: "Quem está dentro lê o assunto. Para o resto da casa aparece só “reunião · ocupado”.",
+        peopleQ: d.q || "",
+        onPeopleQ: e => setD({ q: e.target.value }),
+        areaFilters: ["Todas"].concat(PEOPLE.reduce((acc, p) => { if (p.area && acc.indexOf(p.area) < 0) acc.push(p.area); return acc; }, [])).map(a => ({
+          label: a,
+          onClick: () => setD({ areaF: a === "Todas" ? "" : a }),
+          style: smallChip((d.areaF || "") === (a === "Todas" ? "" : a))
+        })),
+        people: PEOPLE.filter(p => p.name !== me)
+          .filter(p => !d.areaF || p.area === d.areaF)
+          .filter(p => !d.q || p.name.toLowerCase().indexOf(d.q.toLowerCase()) >= 0)
+          .map(p => ({
+          name: p.name, area: p.area,
+          areaStyle: "font-size:9.5px;font-weight:600;color:" + (d.who.indexOf(p.name) >= 0 ? "#8b6bd8" : "#6b6482"),
+          onClick: () => setD({
+            who: d.who.indexOf(p.name) >= 0 ? d.who.filter(x => x !== p.name) : d.who.concat([p.name]),
+            ess: d.ess.filter(x => x !== p.name),
+            slot: null
+          }),
+          style: "display:flex;flex-direction:column;gap:1px;align-items:flex-start;padding:6px 10px;border-radius:10px;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;cursor:pointer;border:1px solid " + (d.who.indexOf(p.name) >= 0 ? "#6C2BF2" : "#e6e1f2") + ";background:" + (d.who.indexOf(p.name) >= 0 ? "#f2ecfe" : "#fff") + ";color:" + (d.who.indexOf(p.name) >= 0 ? "#6C2BF2" : "#6b6482")
+        })),
+        essLabel: "Quem é essencial? Se um essencial for negado, a coisa não acontece — e a decisão volta para você.",
+        chosen: d.who.length ? d.who.map(n => {
+          const isEss = d.ess.indexOf(n) >= 0;
+          return {
+            name: n,
+            sup: "decide " + first(supOf(n)),
+            supStyle: "font-size:10px;color:#6b6482;white-space:nowrap",
+            essLabel: isEss ? "essencial" : "pode faltar",
+            onEss: () => setD({ ess: isEss ? d.ess.filter(x => x !== n) : d.ess.concat([n]) }),
+            essStyle: "height:26px;padding:0 10px;flex:none;border-radius:9px;white-space:nowrap;font-family:Manrope,sans-serif;font-size:10.5px;font-weight:700;cursor:pointer;border:1px solid " + (isEss ? "#a884f0" : "#e6e1f2") + ";background:" + (isEss ? "#f3ebff" : "#fff") + ";color:" + (isEss ? "#5a25c9" : "#6b6482")
+          };
+        }) : false,
+        espacos: ESPACOS.filter(e => e.book).map(e => ({
+          label: e.name,
+          note: e.local + " · " + e.cap,
+          noteStyle: "font-size:9px;font-weight:600;color:" + (d.esp === e.id ? "#8b6bd8" : "#6b6482"),
+          onClick: () => setD({ esp: e.id, online: false, slot: null }),
+          style: "display:flex;flex-direction:column;gap:1px;align-items:flex-start;padding:6px 10px;border-radius:10px;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;cursor:pointer;border:1px solid " + (d.esp === e.id && !d.online ? "#6C2BF2" : "#e6e1f2") + ";background:" + (d.esp === e.id && !d.online ? "#f2ecfe" : "#fff") + ";color:" + (d.esp === e.id && !d.online ? "#6C2BF2" : "#6b6482")
+        })).concat([{
+          label: "Online",
+          note: "sem espaço",
+          noteStyle: "font-size:9px;font-weight:600;color:" + (d.online ? "#8b6bd8" : "#6b6482"),
+          onClick: () => setD({ online: true, esp: 0, slot: null }),
+          style: "display:flex;flex-direction:column;gap:1px;align-items:flex-start;padding:6px 10px;border-radius:10px;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;cursor:pointer;border:1px solid " + (d.online ? "#6C2BF2" : "#e6e1f2") + ";background:" + (d.online ? "#f2ecfe" : "#fff") + ";color:" + (d.online ? "#6C2BF2" : "#6b6482")
+        }]),
+        linkBox: d.online,
+        linkValue: d.link, onLink: e => setD({ link: e.target.value }),
+        linkNote: d.link ? "Link salvo com o compromisso." : "Pode ficar vazio agora: eu lembro você antes da hora.",
+        espWarn: (esp && esp.cap < names.length) ? esp.name + " comporta " + esp.cap + " pessoas e vocês são " + names.length + "." : false,
+        durs: [1, 2, 3].map(x => ({
+          label: plural(x, "hora", "horas"),
+          onClick: () => setD({ dur: x, slot: null }),
+          style: smallChip(d.dur === x)
+        })),
+        reps: [["uma vez", false], ["repete", true]].map(r => ({
+          label: r[0],
+          onClick: () => setD({ rep: r[1] }),
+          style: smallChip(d.rep === r[1])
+        })),
+        repBox: d.rep,
+        untilValue: d.until, onUntil: e => setD({ until: e.target.value }),
+        repNote: "Isto não vira uma pilha de eventos: entra como molde na Programação, com vigência" + (d.until ? " até " + d.until : "") + ", e gera escala sozinho. Quando a vigência acaba, acaba junto.",
+        slotsHint: d.who.length ? plural(slots.length, "faixa serve", "faixas servem") + " para todos" : "escolha as pessoas primeiro",
+        manualDayOpts: DAYS.map((lb, i) => ({
+          label: lb,
+          onClick: () => setD({ mDay: i }),
+          style: smallChip((d.mDay === undefined ? -1 : d.mDay) === i)
+        })),
+        manualH1: d.mH1 === undefined ? "" : d.mH1,
+        onManualH1: e => setD({ mH1: e.target.value }),
+        manualH2: d.mH2 === undefined ? "" : d.mH2,
+        onManualH2: e => setD({ mH2: e.target.value }),
+        onManualApply: () => {
+          const p = s => { const m = String(s).match(/^(\d{1,2})(?::(\d{2}))?$/); return m ? parseInt(m[1], 10) + (m[2] ? parseInt(m[2], 10) / 60 : 0) : null; };
+          const a = p(d.mH1), b = p(d.mH2);
+          if (d.mDay === undefined || a === null || b === null || b <= a) return;
+          const w = this.janela(names, d.mDay);
+          if (!w || a < w[0] || b > w[1]) return;
+          setD({ slot: { day: d.mDay, h1: a }, dur: b - a });
+        },
+        manualNote: (() => {
+          const p = s => { const m = String(s).match(/^(\d{1,2})(?::(\d{2}))?$/); return m ? parseInt(m[1], 10) + (m[2] ? parseInt(m[2], 10) / 60 : 0) : null; };
+          const a = p(d.mH1), b = p(d.mH2);
+          if (d.mDay === undefined) return "Escolha o dia e digite o horário — qualquer hora, não só de hora em hora.";
+          if (a === null || b === null) return "Digite assim: 8:30 e 10:15.";
+          if (b <= a) return "O fim precisa ser depois do início.";
+          const w = this.janela(names, d.mDay);
+          if (!w) return "Nesse dia não existe janela comum: alguém está de folga. Não dá para marcar.";
+          if (a < w[0] || b > w[1]) return "Fora da jornada comum (" + hourText(w[0]) + "–" + hourText(w[1]) + "). Escolha um horário dentro dela.";
+          return "Cabe na jornada de todos.";
+        })(),
+        slots: slots.map(s => {
+          const molde = s.day > this.horizonte();
+          const on = d.slot && d.slot.day === s.day && d.slot.h1 === s.h1;
+          return {
+            when: DAYFULL[s.day] + " · " + hourText(s.h1) + "–" + hourText(s.h1 + d.dur),
+            note: names.map(n => first(n) + " " + (this.jorOf(n, s.day) ? hourText(this.jorOf(n, s.day)[0]) + "–" + hourText(this.jorOf(n, s.day)[1]) : "folga")).join(" · "),
+            noteStyle: "font-size:10px;color:#6b6482;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:330px",
+            src: molde ? "vem do molde" : "escala publicada",
+            srcStyle: "flex:none;font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;padding:4px 8px;border-radius:999px;background:" + (molde ? "#fdf1dc" : "#e2f4f2") + ";color:" + (molde ? "#8a6413" : "#0b6b64"),
+            onClick: () => setD({ slot: { day: s.day, h1: s.h1 } }),
+            style: "display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:12px;cursor:pointer;font-family:Manrope,sans-serif;text-align:left;border:1px solid " + (on ? "#6C2BF2" : "#e6e1f2") + ";background:" + (on ? "#f7f3ff" : "#fff") + ";color:#1b1630"
+          };
+        }),
+        noSlots: (d.who.length && !slots.length)
+          ? "Nenhuma faixa serve para todos nesta semana: " + (semJanela.length ? "em " + semJanela.map(x => DAYFULL[x]).join(", ") + " alguém está de folga, e nos outros dias a agenda já está cheia." : "as jornadas se cruzam, mas todas as horas comuns já estão ocupadas.") + " Tire quem pode faltar, ou olhe a semana seguinte."
+          : false,
+        reflex: lines.length ? { title: d.slot ? "O que acontece quando você marcar" : "O que este tipo de compromisso faz", lines: lines } : false,
+        footNote: !d.title.trim() ? "Falta o assunto."
+          : !d.who.length ? "Escolha com quem."
+          : !d.slot ? "Escolha a faixa."
+          : convoca ? "Entra na escala de todos na publicação do dia." : "Nasce como proposta e espera decisão.",
+        saveLabel: convoca ? "Convocar" : "Enviar proposta",
+        saveStyle: (() => {
+          const ok = d.title.trim() && d.who.length && d.slot;
+          return "height:34px;padding:0 15px;border-radius:11px;border:none;color:#fff;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;white-space:nowrap;background:" + (ok ? "#6C2BF2" : "#cec5e6") + ";cursor:" + (ok ? "pointer" : "not-allowed");
+        })(),
+        onSave: () => {
+          if (!d.title.trim() || !d.who.length || !d.slot) return;
+          const item = {
+            id: st.nextId, kind: d.kind, title: d.title.trim(), day: d.slot.day, h1: d.slot.h1, h2: d.slot.h1 + d.dur,
+            esp: d.online ? 0 : d.esp, online: d.online, link: d.link,
+            state: convoca ? "pub" : "prop", by: me,
+            people: [{ n: me, ess: true }].concat(d.who.map(n => ({ n: n, ess: d.ess.indexOf(n) >= 0 }))),
+            dec: {}, rep: d.rep ? (d.until || "sem data") : null
+          };
+          this.setState({ items: items.concat([item]), nextId: st.nextId + 1, marcar: false, draft: null, tab: convoca ? "semana" : "prop" });
+        }
+      };
+    }
+
+    /* ---------- ASA ---------- */
+    const pendMine = props.filter(it => this.pendentes(it).length && (manda || this.pendentes(it).indexOf(me) >= 0));
+    const clashes = [];
+    ESPACOS.filter(e => e.book).forEach(e => {
+      DAYS.forEach((x, dd) => {
+        const on = items.filter(it => it.day === dd && it.esp === e.id);
+        on.forEach(a => on.forEach(b => { if (a.id < b.id && a.h1 < b.h2 && b.h1 < a.h2) clashes.push({ e: e, a: a, b: b, d: dd }); }));
+      });
+    });
+    const semLink = items.filter(it => it.online && !it.link);
+    const series = items.filter(it => it.rep);
+    const semJanelaProp = props.filter(it => !this.janela(it.people.map(p => p.n), it.day));
+    const publicados = props.filter(it => it.day <= this.horizonte());
+
+    const asaRaw = [];
+    if (pendMine.length) asaRaw.push({
+      key: "g1", tag: "Proposta sem resposta", conf: "regra",
+      title: pendMine.length === 1 ? "“" + pendMine[0].title + "” espera a sua decisão" : pendMine.length + " propostas esperando decisão",
+      why: "Publicar a escala do dia exige responder cada proposta — nem que seja negar. Silêncio não é resposta: a pessoa fica achando que vai acontecer.",
+      nums: pendMine.map(it => it.title + " · " + DAYFULL[it.day] + " " + spanText(it) + " · pedida por " + first(it.by)).join(" · "),
+      lines: ["Liberar ou negar leva um clique; negar pede motivo e uma alternativa.", "Eu já checo se a alternativa que você oferece serve para todos.", "Eu não decido por você — quem responde pela pessoa é o supervisor dela."],
+      cta: "Abrir as propostas"
+    });
+    if (clashes.length) asaRaw.push({
+      key: "g2", tag: "Mesmo espaço, mesma hora", conf: "cruzamento",
+      title: clashes.length === 1
+        ? clashes[0].e.name + " tem dois compromissos " + spanText(clashes[0].a)
+        : clashes.length + " choques de espaço nesta semana",
+      why: "Espaço disputado aceita um compromisso por horário. Dois no mesmo palco não é agenda cheia — é um dos dois não acontecendo.",
+      nums: clashes.map(c => DAYS[c.d] + " · " + c.e.name + " · " + c.a.title + " × " + c.b.title).join(" · "),
+      lines: ["Um dos dois muda de horário ou de espaço — a ASA mostra as faixas livres.", "Se um deles é proposta, negar já resolve o choque.", "Eu não remarco nada por conta própria."],
+      cta: "Ver os espaços"
+    });
+    if (semJanelaProp.length) asaRaw.push({
+      key: "g3", tag: "Sem faixa comum", conf: "jornada",
+      title: semJanelaProp.length === 1 ? "“" + semJanelaProp[0].title + "” está fora da jornada de alguém" : semJanelaProp.length + " propostas fora da jornada de alguém",
+      why: "Folga é folga: quem não está escalado não tem janela nenhuma naquele dia. Isso não é um aviso a ignorar — é um dia que não existe para essa pessoa.",
+      nums: semJanelaProp.map(it => it.title + " · " + DAYFULL[it.day]).join(" · "),
+      lines: ["Eu mostro o dia mais próximo em que existe faixa para todos.", "Se a pessoa precisa mesmo estar, o caminho é mudar a escala em 15 — não a agenda.", "Eu não escalo ninguém."],
+      cta: "Abrir as propostas"
+    });
+    if (series.length) asaRaw.push({
+      key: "g4", tag: "Isto é molde", conf: "regra",
+      title: series.length === 1 ? "“" + series[0].title + "” repete até " + series[0].rep : series.length + " séries longas na agenda",
+      why: "O que repete por meses não deveria viver como um monte de eventos soltos: como molde na Programação, com vigência, gera escala sozinho e acaba junto com a temporada.",
+      nums: series.map(it => it.title + " · " + DAYFULL[it.day] + " " + spanText(it) + " · até " + it.rep).join(" · "),
+      lines: ["Vira uma linha na Programação, e a Escala passa a montar aquele dia sozinha.", "Mudar a vigência muda todos os dias seguintes de uma vez.", "Eu não crio molde por você — mas aponto quando é hora."],
+      cta: "Abrir as propostas"
+    });
+    if (semLink.length) asaRaw.push({
+      key: "g5", tag: "Online sem link", conf: "dado",
+      title: semLink.length === 1 ? "“" + semLink[0].title + "” é online e não tem link" : semLink.length + " compromissos online sem link",
+      why: "Marcar sem link está certo — quase nunca se tem o link na hora. Só não pode chegar a hora sem ele.",
+      nums: semLink.map(it => it.title + " · " + DAYFULL[it.day] + " " + spanText(it)).join(" · "),
+      lines: ["O campo do link aceita edição depois, sem remarcar nada.", "Eu aviso quem participa quando o link entrar.", "Eu não crio sala nem link."],
+      cta: "Abrir as propostas"
+    });
+    if (publicados.length) asaRaw.push({
+      key: "g6", tag: "Escala já publicada", conf: "regra",
+      title: publicados.length === 1 ? "“" + publicados[0].title + "” cai num dia já publicado" : publicados.length + " propostas em dias já publicados",
+      why: "Com a escala do dia publicada, só entra o que for urgente: cada entrada nova mexe no dia de quem já se organizou.",
+      nums: publicados.map(it => it.title + " · " + DAYFULL[it.day] + " · escala publicada").join(" · "),
+      lines: ["Se for urgente, quem coordena aceita e republica o dia — e quem foi afetado é avisado.", "Se não for, a alternativa é o primeiro dia ainda não publicado.", "Eu não republico escala."],
+      cta: "Abrir as propostas"
+    });
+
+    const lembrar = items.filter(it => it.state === "pub" && it.day === TODAY && KIND[it.kind] && KIND[it.kind].mode === "convida" && it.people.some(p => p.n !== it.by));
+    const emFolga = items.filter(it => it.people.some(p => this.jorOf(p.n, it.day) === null));
+    if (lembrar.length) asaRaw.push({
+      key: "g7", tag: "Começa hoje", conf: "agenda",
+      title: lembrar.length === 1 ? "“" + lembrar[0].title + "” é hoje e ninguém foi lembrado" : lembrar.length + " compromissos de hoje sem lembrete",
+      why: "Convite não entra na escala: quem aceitou pode simplesmente esquecer. Um toque antes da hora resolve.",
+      nums: lembrar.slice(0, 3).map(it => it.title + " · " + hourText(it.h1) + " · " + plural(it.people.length, "convidado", "convidados")).join(" · "),
+      lines: lembrar.slice(0, 3).map(it => it.title + ": aviso 1h antes para " + it.people.map(p => first(p.n)).join(", ") + "."),
+      cta: "Lembrar os convidados"
+    });
+    if (emFolga.length) asaRaw.push({
+      key: "g8", tag: "Entrou de folga", conf: "cruzamento",
+      title: emFolga.length === 1 ? "“" + emFolga[0].title + "” tem gente de folga no dia" : emFolga.length + " compromissos com gente de folga",
+      why: "A folga vem do módulo Folgas e vale mais que o compromisso. Ou remarca, ou sai quem está de folga.",
+      nums: emFolga.slice(0, 3).map(it => it.title + " · " + it.people.filter(p => this.jorOf(p.n, it.day) === null).map(p => first(p.n)).join(", ") + " de folga").join(" · "),
+      lines: emFolga.slice(0, 3).map(it => {
+        const nomes = it.people.map(p => p.n);
+        let alt = null;
+        for (let d2 = 0; d2 < 7 && !alt; d2++) {
+          if (d2 === it.day) continue;
+          const w = this.janela(nomes, d2);
+          if (w && w[1] - w[0] >= it.h2 - it.h1) alt = whenText(d2, w[0]);
+        }
+        return it.title + ": " + (alt ? "cabe em " + alt + " para todos." : "não achei outro dia que sirva para todos esta semana.");
+      }),
+      cta: "Ver a semana"
+    });
+    const asaCards = asaRaw.filter(c => !st.dismissed[c.key]).map(c => ({
+      tag: c.tag, conf: c.conf, title: c.title, why: c.why, nums: c.nums, lines: c.lines,
+      open: st.asaCard === c.key,
+      tagStyle: "font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:3px 8px;border-radius:999px;background:#f2ecfe;color:#6C2BF2",
+      reflexLabel: st.asaCard === c.key ? "Esconder reflexo" : "Ver reflexo",
+      onReflex: () => this.setState({ asaCard: st.asaCard === c.key ? null : c.key }),
+      cta: c.cta,
+      onApply: () => this.setState({ tab: c.key === "g2" ? "casa" : "prop", asa: false, asaCard: null }),
+      onDismiss: () => this.setState({ dismissed: Object.assign({}, st.dismissed, { [c.key]: true }), asaCard: null })
+    }));
+
+    /* ---------- mobile ---------- */
+    const mobDays = [];
+    for (let k = 0; k < 4; k++) {
+      const d = (TODAY + k) % 7;
+      const j = this.jorOf(me, d);
+      const list = mine.filter(it => it.day === d).sort((a, b) => a.h1 - b.h1);
+      mobDays.push({
+        label: DAYFULL[d] + (k === 0 ? " · hoje" : ""),
+        jor: j ? hourText(j[0]) + "–" + hourText(j[1]) : "folga",
+        jorStyle: "font-family:'JetBrains Mono',monospace;font-size:9.5px;padding:2px 7px;border-radius:999px;background:" + (j ? "#e2f4f2" : "#fdf5f5") + ";color:" + (j ? "#0b6b64" : "#a12c2c"),
+        items: list.map(it => {
+          const k2 = KIND[it.kind], prop = it.state === "prop";
+          const neg = prop && this.negados(it).length > 0;
+          const tone = neg ? "#a12c2c" : prop ? "#6C2BF2" : k2.dot;
+          return {
+            name: it.title,
+            hour: hourText(it.h1),
+            hourStyle: "font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;flex:none;color:" + tone,
+            chip: prop ? (neg ? "negada" : "proposta") : it.kind.toLowerCase(),
+            chipStyle: "font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;padding:3px 7px;border-radius:999px;background:" + tone + "14;color:" + tone,
+            meta: spanText(it) + " · " + placeText(it) + (prop ? " · espera " + this.pendentes(it).map(first).join(", ") : ""),
+            style: "display:flex;flex-direction:column;gap:5px;padding:10px 11px;background:#fff;border-radius:13px;border:" + (prop ? "1px dashed " + tone : "1px solid #e6e1f2")
+          };
+        }),
+        empty: (j && !list.length) ? "nada marcado" : (!j ? "folga · ninguém marca nada" : false)
+      });
+    }
+    const mob = {
+      sub: isMem ? "a sua semana · só dentro da jornada" : "a sua semana · " + plural(props.length, "proposta", "propostas"),
+      cta: isMem ? "Propor um horário" : "Marcar",
+      ctaStyle: "height:40px;border-radius:12px;border:none;background:#6C2BF2;color:#fff;font-size:13px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer",
+      days: mobDays,
+      foot: isMem
+        ? "O que você marca nasce como proposta: quem coordena libera ou nega com motivo, e o compromisso existe quando a escala é publicada."
+        : "Convocação entra na escala; convite espera aceite. Nos dois casos, só dentro da jornada de quem participa."
+    };
+
+    return {
+      profileTabs: profileTabs, profileHint: meta.hint, profileName: meta.name, personName: me,
+      mobileTabs: (function (selfId) {
+        const set = MOBILE_TABS[active];
+        const inBar = set.some(t => t[0] === selfId);
+        return set.map(t => {
+          const on = inBar ? t[0] === selfId : t[0] === "mais";
+          return {
+            href: t[0] === "mais" ? "#mais" : NAV_HREF[t[0]],
+            label: t[1],
+            onClick: t[0] === "mais"
+              ? ((e) => { if (e && e.preventDefault) e.preventDefault(); self0.setState({ more: true }); })
+              : (() => {}),
+            style: "display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 2px;text-decoration:none;"
+              + (on ? "color:" + meta.dot + ";font-weight:700;" : "color:#6b6482;")
+          };
+        });
+      })("20"),
+      moreOpen: !!st.more,
+      onCloseMore: () => this.setState({ more: false }),
+      moreTitle: "Tudo no My ASA",
+      moreSub: meta.name + " · " + (isMem ? "o que é seu" : "o que você acessa"),
+      moreGroups: NAV.map(g => ({
+        title: g.title,
+        items: g.items.filter(it => it[2].indexOf(active) >= 0).map(it => ({
+          href: NAV_HREF[it[0]],
+          num: it[0],
+          label: (isMem && it[3]) ? it[3] : it[1],
+          style: "display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:12px;text-decoration:none;color:#1b1630;"
+            + (it[0] === selfIdConst ? "background:" + meta.dot + "14;border:1px solid " + meta.dot + "40;" : "background:#fff;border:1px solid #eee9f6;")
+        }))
+      })).filter(g => g.items.length),
+      morePerfil: NAV_HREF["28"],
+      moreAsa: NAV_HREF["27"],
+      shellNav: shellNav, tabs: tabs, scopeLabel: meta.scope,
+      personChipStyle: "font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:" + meta.dot + ";background:" + meta.dot + "26;padding:2px 7px;border-radius:999px;width:fit-content",
+      marcarLabel: isMem ? "Propor" : "Marcar",
+      marcarStyle: "height:34px;padding:0 14px;border-radius:11px;border:none;background:#6C2BF2;color:#fff;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap",
+      onMarcar: () => this.setState({
+        marcar: true,
+        draft: { kind: "Reunião", title: "", who: [], ess: [], esp: 8, online: false, link: "", dur: 1, rep: false, until: "", slot: null }
+      }),
+      toggleAsa: () => this.setState({ asa: !st.asa }),
+      asaOpen: st.asa,
+      asaHint: "jornada, espaço, decisões pendentes",
+      asaIntro: isMem
+        ? "Eu não marco nada por você nem aprovo nada. Cruzo a jornada de quem você quer chamar e mostro onde cabe — e onde não cabe, digo por quê."
+        : "Eu cruzo jornada, folga e espaço, e cobro as propostas antes de você publicar a escala. Convocar, liberar e negar é de vocês.",
+      asaCards: asaCards,
+      asaEmpty: asaCards.length ? false : "Nenhuma proposta pendente, nenhum espaço em choque e nenhuma série virando pilha de eventos.",
+      asaAsk: st.asaAsk || "",
+      onAsaAsk: e => this.setState({ asaAsk: e.target.value }),
+      asaAskNote: (() => {
+        const q = (st.asaAsk || "").trim();
+        if (!q) return "Ex.: “ensaio de 1h com a Julia e a Carol na quinta de manhã” — eu monto e você confere.";
+        const achados = PEOPLE.filter(p => p.name !== me && q.toLowerCase().indexOf(first(p.name).toLowerCase()) >= 0);
+        const cat = Object.keys(KIND).find(k => q.toLowerCase().indexOf(k.toLowerCase()) >= 0);
+        const dia = DAYFULL.findIndex(d => q.toLowerCase().indexOf(d.toLowerCase()) >= 0);
+        const bits = [];
+        bits.push(cat ? cat : "Reunião (padrão)");
+        bits.push(achados.length ? "com " + achados.map(p => first(p.name)).join(", ") : "sem ninguém reconhecido — escolha depois");
+        if (dia >= 0) bits.push("na " + DAYFULL[dia]);
+        return "Entendi: " + bits.join(", ") + ".";
+      })(),
+      onAsaBuild: (st.asaAsk || "").trim() ? () => {
+        const q = st.asaAsk.trim();
+        const achados = PEOPLE.filter(p => p.name !== me && q.toLowerCase().indexOf(first(p.name).toLowerCase()) >= 0).map(p => p.name);
+        const catKeys = Object.keys(KIND).filter(k => k !== "Show" && (KIND[k].quem || []).indexOf(active) >= 0);
+        const cat = catKeys.find(k => q.toLowerCase().indexOf(k.toLowerCase()) >= 0) || (catKeys.indexOf("Reunião") >= 0 ? "Reunião" : catKeys[0]);
+        const dia = DAYFULL.findIndex(d => q.toLowerCase().indexOf(d.toLowerCase()) >= 0);
+        const titulo = q.charAt(0).toUpperCase() + q.slice(1);
+        this.setState({
+          asa: false, asaAsk: "", marcar: true,
+          draft: { kind: cat, title: titulo.slice(0, 60), who: achados, ess: [], esp: 2, online: false, link: "", dur: 1, slot: null, rep: false, until: "", q: "", areaF: "", mDay: dia >= 0 ? dia : undefined, mH1: "", mH2: "" }
+        });
+      } : undefined,
+      asaBuildStyle: (() => {
+        const ok = (st.asaAsk || "").trim();
+        return "height:30px;padding:0 13px;border-radius:9px;border:none;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;cursor:" + (ok ? "pointer" : "default") + ";background:" + (ok ? "#6C2BF2" : "#efecf7") + ";color:" + (ok ? "#fff" : "#b3adc4");
+      })(),
+      jorWho: active === "ADM" ? "Você define a jornada de cada um em Pessoas." : "Quem define a jornada é a Administração, em Pessoas.",
+      jorHref: "07%20Pessoas.dc.html",
+      asaBtnStyle: "display:flex;align-items:center;gap:7px;border:none;cursor:pointer;background:linear-gradient(135deg,#6C2BF2,#2E3BD6);color:#fff;border-radius:999px;padding:5px 13px 5px 5px;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;flex:none;white-space:nowrap",
+      isSemana: st.tab === "semana", isMes: st.tab === "mes", isCasa: st.tab === "casa", isProp: st.tab === "prop",
+      isCat: st.tab === "cat",
+      cat: (() => {
+        const cd = st.catDraft;
+        const setC = o => this.setState({ catDraft: Object.assign({}, cd, o) });
+        return {
+          about: "Você cria as categorias que a empresa usa para marcar. Para cada uma decide se ela convoca (entra na escala e não se recusa) ou convida (cada um aceita), e quem pode criar compromissos nela.",
+          list: Object.keys(KIND).map(k => {
+            const c = KIND[k];
+            return {
+              name: k, dot: "width:9px;height:9px;border-radius:50%;flex:none;background:" + c.dot,
+              mode: c.mode === "convoca" ? "Convoca" : "Convida",
+              modeStyle: "font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:999px;" + (c.mode === "convoca" ? "background:#e9e0fd;color:#5B23C9" : "background:#e3f4f1;color:#0b6b64"),
+              quem: (c.quem || []).map(q => (PROFILES.find(p => p.key === q) || {}).name || q).join(" · "),
+              fixa: c.fixa ? "do sistema" : "",
+              onToggleMode: c.fixa ? undefined : () => {
+                const next = JSON.parse(JSON.stringify(st.cats));
+                next[k].mode = next[k].mode === "convoca" ? "convida" : "convoca";
+                this.setState({ cats: next });
+              },
+              toggleStyle: "height:28px;padding:0 11px;border-radius:9px;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;border:1px solid " + (c.fixa ? "#eee9f7" : "#ddd0fa") + ";background:#fff;color:" + (c.fixa ? "#c9c2da" : "#5B23C9") + ";cursor:" + (c.fixa ? "default" : "pointer"),
+              roleToggles: PROFILES.map(p => ({
+                label: p.name,
+                onClick: c.fixa ? undefined : () => {
+                  const next = JSON.parse(JSON.stringify(st.cats));
+                  const arr = next[k].quem || [];
+                  const i = arr.indexOf(p.key);
+                  if (i >= 0) arr.splice(i, 1); else arr.push(p.key);
+                  next[k].quem = arr;
+                  this.setState({ cats: next });
+                },
+                style: "height:25px;padding:0 9px;border-radius:8px;font-family:Manrope,sans-serif;font-size:10.5px;font-weight:700;cursor:" + (c.fixa ? "default" : "pointer") + ";border:1px solid " + ((c.quem || []).indexOf(p.key) >= 0 ? p.dot : "#e6e1f2") + ";background:" + ((c.quem || []).indexOf(p.key) >= 0 ? p.dot + "14" : "#fff") + ";color:" + ((c.quem || []).indexOf(p.key) >= 0 ? p.dot : "#6b6482")
+              })),
+              onDel: c.fixa || Object.keys(KIND).length <= 2 ? undefined : () => {
+                const next = JSON.parse(JSON.stringify(st.cats));
+                delete next[k];
+                this.setState({ cats: next });
+              },
+              delStyle: "height:28px;padding:0 10px;border-radius:9px;border:1px solid " + (c.fixa ? "#eee9f7" : "#f0d3d3") + ";background:#fff;color:" + (c.fixa ? "#c9c2da" : "#a12c2c") + ";font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;cursor:" + (c.fixa ? "default" : "pointer")
+            };
+          }),
+          newOpen: !!cd,
+          onNew: () => this.setState({ catDraft: { name: "", mode: "convida", quem: ["ADM", "DIR"] } }),
+          newStyle: "height:32px;padding:0 14px;border-radius:10px;border:none;background:#6C2BF2;color:#fff;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;cursor:pointer",
+          nameValue: cd ? cd.name : "",
+          onName: e => setC({ name: e.target.value }),
+          modeOpts: [["convoca", "Convoca — entra na escala"], ["convida", "Convida — cada um aceita"]].map(m => ({
+            label: m[1], onClick: () => setC({ mode: m[0] }),
+            style: "height:30px;padding:0 12px;border-radius:9px;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;cursor:pointer;border:1px solid " + (cd && cd.mode === m[0] ? "#6C2BF2" : "#e6e1f2") + ";background:" + (cd && cd.mode === m[0] ? "#f4edfe" : "#fff") + ";color:" + (cd && cd.mode === m[0] ? "#5B23C9" : "#6b6482")
+          })),
+          quemOpts: PROFILES.map(p => ({
+            label: p.name,
+            onClick: () => {
+              const arr = (cd.quem || []).slice();
+              const i = arr.indexOf(p.key);
+              if (i >= 0) arr.splice(i, 1); else arr.push(p.key);
+              setC({ quem: arr });
+            },
+            style: "height:28px;padding:0 11px;border-radius:9px;font-family:Manrope,sans-serif;font-size:11.5px;font-weight:700;cursor:pointer;border:1px solid " + (cd && (cd.quem || []).indexOf(p.key) >= 0 ? p.dot : "#e6e1f2") + ";background:" + (cd && (cd.quem || []).indexOf(p.key) >= 0 ? p.dot + "14" : "#fff") + ";color:" + (cd && (cd.quem || []).indexOf(p.key) >= 0 ? p.dot : "#6b6482")
+          })),
+          note: !cd ? "" : !cd.name.trim() ? "Dê um nome à categoria." : !(cd.quem || []).length ? "Escolha ao menos um perfil que possa criar." : KIND[cd.name.trim()] ? "Já existe uma categoria com esse nome." : cd.mode === "convoca" ? "Quem for marcado entra na escala e não recusa — quem não puder abre ocorrência." : "Cada convidado aceita ou recusa.",
+          onSave: (cd && cd.name.trim() && (cd.quem || []).length && !KIND[cd.name.trim()]) ? () => {
+            const next = JSON.parse(JSON.stringify(st.cats));
+            next[cd.name.trim()] = { dot: CAT_DOTS[Object.keys(next).length % CAT_DOTS.length], mode: cd.mode, quem: cd.quem };
+            this.setState({ cats: next, catDraft: null });
+          } : undefined,
+          saveStyle: (() => {
+            const ok = cd && cd.name.trim() && (cd.quem || []).length && !KIND[cd.name.trim()];
+            return "height:32px;padding:0 15px;border-radius:10px;border:none;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;cursor:" + (ok ? "pointer" : "default") + ";background:" + (ok ? "#6C2BF2" : "#efecf7") + ";color:" + (ok ? "#fff" : "#b3adc4");
+          })(),
+          onCancel: () => this.setState({ catDraft: null }),
+          foot: "Categoria do sistema não se apaga nem muda de modo: Show nasce da Programação, não daqui."
+        };
+      })(),
+      hours: hours, week: week, legend: legend, semana: semana, mes: mes,
+      casa: casa, prop: prop, marcar: marcar, mob: mob
+    };
+  }
+}
+</script>
+</body>
+</html>
