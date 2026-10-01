@@ -245,7 +245,7 @@ async function run() {
       && !unassignedResponsibilities.body.includes(`${tag}_responsibility_inactive`),
     "Unassigned responsibility query includes no-current-assignee and expired-assignment records without crossing operation, organization, area, or active-status boundaries");
     const memberTeamResponsibilities = await ask(mine, "Mostre as responsabilidades da equipe");
-    check(memberTeamResponsibilities.body.includes("somente Administração, Direção e Supervisão")
+    check(memberTeamResponsibilities.body.includes("Administração, Direção e Supervisão")
       && !memberTeamResponsibilities.body.includes(`${tag}_responsibility_visible`),
     "Members cannot query team responsibility assignments");
     const memberShowBookDetail = await ask(mine, `Mostre a estrutura do Livro do Show "${showBookLegacy!.title}"`);
