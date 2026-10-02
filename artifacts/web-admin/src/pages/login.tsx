@@ -128,8 +128,11 @@ export default function Login() {
                     className="w-full h-11 text-base font-medium" 
                     disabled={loginMutation.isPending}
                   >
-                    {loginMutation.isPending ? "Autenticando..." : "Entrar"}
+                    {loginMutation.isPending ? "Entrando…" : "Entrar"}
                   </Button>
+                  <p className="text-center text-sm text-muted-foreground">
+                    Esqueceu a senha ou o login? Peça à Administração — ela gera uma senha provisória para você.
+                  </p>
                 </form>
               </Form>
             </CardContent>

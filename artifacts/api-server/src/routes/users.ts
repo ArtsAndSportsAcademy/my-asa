@@ -39,6 +39,13 @@ import { canSupervisorAccessPerson } from "../services/area-local-scope.js";
 
 const router: IRouter = Router();
 
+/** Perfil de acesso na tela Pessoas ↔ papel gravado em user_roles (um vínculo por operação ativa). */
+type Perfil = "ADM" | "DIR" | "SUP" | "MEM";
+const PAPEL_DO_PERFIL: Record<Perfil, "ADMIN" | "DIR" | "SUPERVISOR_A" | "MEMBER"> = { ADM: "ADMIN", DIR: "DIR", SUP: "SUPERVISOR_A", MEM: "MEMBER" };
+const PERFIL_DO_PAPEL: Record<string, Perfil | undefined> = { ADMIN: "ADM", DIR: "DIR", DIRECTOR: "DIR", SUPERVISOR_A: "SUP", SUPERVISOR_B: "SUP", MEMBER: "MEM", TRAINER: "MEM" };
+const NOME_PERFIL: Record<Perfil, string> = { ADM: "Administração", DIR: "Direção", SUP: "Supervisão", MEM: "Elenco" };
+const ehPerfil = (v: unknown): v is Perfil => v === "ADM" || v === "DIR" || v === "SUP" || v === "MEM";
+
 /**
  * Anexa a cada usuário a lista de operações (operationIds) onde tem papel ATIVO.
  * Permite ao frontend escopar listagens por operação (ex.: montar a escala de uma
@@ -77,6 +84,9 @@ async function attachOperationIds(
   const supByUser = new Map<string, Set<string>>();
   const adminUsers = new Set<string>();
   const characterEligibleUsers = new Set<string>();
+  // Perfil exibido em Pessoas: o mais alto entre os vínculos ativos (null = sem perfil, não entra no app).
+  const perfilByUser = new Map<string, Perfil>();
+  const ordemPerfil: Perfil[] = ["MEM", "SUP", "DIR", "ADM"];
   const teamOpsByUser = new Map<string, Set<string>>();
   const organizationOperationIds = new Set(operations.map((operation) => operation.id));
   const areaNames = new Map(areas.map((area) => [area.id, area.name]));
@@ -84,6 +94,8 @@ async function attachOperationIds(
     if (!organizationOperationIds.has(r.operationId)) continue;
     if (r.role === "ADMIN") adminUsers.add(r.userId);
     if (r.role === "MEMBER") characterEligibleUsers.add(r.userId);
+    const p = PERFIL_DO_PAPEL[r.role];
+    if (p) { const atual = perfilByUser.get(r.userId); if (!atual || ordemPerfil.indexOf(p) > ordemPerfil.indexOf(atual)) perfilByUser.set(r.userId, p); }
     if (!r.operationId) continue;
     const set = opsByUser.get(r.userId) ?? new Set<string>();
     set.add(r.operationId);
@@ -115,6 +127,7 @@ async function attachOperationIds(
     supervisorOperationIds: [...(supByUser.get(u.id) ?? [])],
     areaName: u.areaId ? areaNames.get(u.areaId) ?? null : null,
     isAdmin: adminUsers.has(u.id),
+    profile: perfilByUser.get(u.id) ?? null,
     // O seletor de personagem começa pelo elenco: direção, administração e
     // supervisão não entram como candidatos de personagem por acidente.
     isCharacterEligible: characterEligibleUsers.has(u.id),
@@ -281,8 +294,25 @@ router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), as
   const log = requestLogger("teams", req.requestId, req.correlationId);
   const {
     fullName, name: legacyName, email, phone, password, specialization, birthDate, visitUntil,
-    entryDate, professionalProfile, primaryFunction, adminNotes, personStatus,
+    entryDate, professionalProfile, primaryFunction, adminNotes, personStatus, perfil, areaId,
   } = req.body;
+  // Tela Pessoas (01/10): perfil e área vêm junto com o cadastro, e sem senha digitada o app gera uma
+  // provisória — devolvida uma vez, junto com o login, para a Administração passar à pessoa.
+  if (perfil !== undefined && !ehPerfil(perfil)) {
+    res.status(400).json({ error: "BAD_REQUEST", message: "Escolha o perfil: Elenco, Supervisão, Direção ou Administração." });
+    return;
+  }
+  if ((perfil === "SUP" || perfil === "MEM") && (typeof areaId !== "string" || !areaId)) {
+    res.status(400).json({ error: "BAD_REQUEST", message: "Elenco e Supervisão precisam de uma área." });
+    return;
+  }
+  if (areaId !== undefined && areaId !== null && areaId !== "") {
+    const [area] = typeof areaId === "string" ? await db.select({ id: areasTable.id }).from(areasTable)
+      .where(and(eq(areasTable.id, areaId), eq(areasTable.organizationId, req.user!.organizationId), eq(areasTable.active, true))).limit(1) : [];
+    if (!area) { res.status(400).json({ error: "BAD_REQUEST", message: "Área inválida." }); return; }
+  }
+  const senhaGerada = ehPerfil(perfil) && !password ? senhaProvisoria() : null;
+  const senha: string | undefined = (password as string | undefined) || senhaGerada || undefined;
 
   const formalName = typeof fullName === "string" && fullName.trim()
     ? fullName.trim()
@@ -314,7 +344,7 @@ router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), as
 
     let username: string | null = null;
     let passwordHash: string | null = null;
-    if (password) {
+    if (senha) {
       const usernameBase = normalizeUsernameBase(formalName);
       const conflicting = await db.query.usersTable.findMany({
         columns: { username: true },
@@ -322,7 +352,7 @@ router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), as
       });
       const taken = new Set(conflicting.map((u) => u.username).filter((u): u is string => !!u));
       username = resolveUniqueUsername(usernameBase, taken);
-      passwordHash = await bcrypt.hash(password as string, 12);
+      passwordHash = await bcrypt.hash(senha, 12);
     }
     const [newUser] = await db.transaction(async (tx) => {
       const [created] = await tx.insert(usersTable).values({
@@ -333,8 +363,9 @@ router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), as
         phone: typeof phone === "string" && phone.trim() ? phone.trim() : null,
         username,
         passwordHash,
-        mustChangePassword: !!password,
-        status: password ? "ACTIVE" : "INACTIVE",
+        mustChangePassword: !!senha,
+        status: senha ? "ACTIVE" : "INACTIVE",
+        areaId: typeof areaId === "string" && areaId ? areaId : null,
         personStatus: ["ACTIVE", "ON_LEAVE", "LEFT", "ARCHIVED"].includes(personStatus) ? personStatus : "ACTIVE",
         professionalProfile: typeof professionalProfile === "string" && professionalProfile.trim() ? professionalProfile.trim() : null,
         primaryFunction: typeof primaryFunction === "string" && primaryFunction.trim() ? primaryFunction.trim() : null,
@@ -345,20 +376,88 @@ router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), as
         adminNotes: typeof adminNotes === "string" && adminNotes.trim() ? adminNotes.trim() : null,
       }).returning();
       if (!created) throw new Error("Não foi possível criar a pessoa");
+      if (ehPerfil(perfil)) await gravarPerfil(tx, created.id, req.user!.organizationId, perfil);
       await writeHistoryEvent({
         category: "OPERATIONAL_CHANGE", action: "user.created", title: "Pessoa criada",
-        narrative: `A pessoa ${created.fullName} foi criada no cadastro.`, entityType: "user", entityId: created.id,
-        actorId: req.user!.sub, orgId: created.organizationId, beforeState: null, afterState: created,
+        narrative: `A pessoa ${created.fullName} foi criada no cadastro${ehPerfil(perfil) ? `, com perfil ${NOME_PERFIL[perfil]}` : ""}.`, entityType: "user", entityId: created.id,
+        actorId: req.user!.sub, orgId: created.organizationId, beforeState: null, afterState: { ...created, perfil: ehPerfil(perfil) ? perfil : null },
         metadata: { reason: normalizeReason(req.body?.reason) },
       }, tx as any);
       return [created] as const;
     });
 
     log.info({ userId: newUser!.id }, "User created");
-    res.status(201).json({ user: adminPerson(newUser!) });
+    res.status(201).json({ user: { ...adminPerson(newUser!), profile: ehPerfil(perfil) ? perfil : null }, username, ...(senhaGerada ? { senhaProvisoria: senhaGerada } : {}) });
   } catch (err) {
+    if (err instanceof ErroPerfil) { res.status(err.status).json({ error: "CONFLICT", message: err.message }); return; }
     log.error({ err }, "Error creating user");
     res.status(500).json({ error: "INTERNAL_ERROR" });
+  }
+});
+
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+/**
+ * Grava o perfil como um vínculo em cada operação ativa da organização (hoje, uma só) e desativa os
+ * vínculos de outro perfil — nada é apagado. Devolve o perfil anterior (null = não tinha).
+ */
+async function gravarPerfil(tx: Tx, userId: string, organizationId: string, perfil: Perfil) {
+  const ops = await tx.select({ id: operationsTable.id }).from(operationsTable)
+    .where(and(eq(operationsTable.organizationId, organizationId), eq(operationsTable.status, "ACTIVE")));
+  if (!ops.length) throw new ErroPerfil(409, "A organização não tem operação ativa para receber o perfil.");
+  const opIds = ops.map((o) => o.id);
+  const papel = PAPEL_DO_PERFIL[perfil];
+  const ativos = await tx.select().from(userRolesTable)
+    .where(and(eq(userRolesTable.userId, userId), eq(userRolesTable.active, true), inArray(userRolesTable.operationId, opIds)));
+  const anterior = ativos.map((r) => PERFIL_DO_PAPEL[r.role]).filter((p): p is Perfil => Boolean(p))
+    .sort((a, b) => ["MEM", "SUP", "DIR", "ADM"].indexOf(b) - ["MEM", "SUP", "DIR", "ADM"].indexOf(a))[0] ?? null;
+  const sair = ativos.filter((r) => r.role !== papel || r.groupId);
+  if (sair.length) await tx.update(userRolesTable).set({ active: false }).where(inArray(userRolesTable.id, sair.map((r) => r.id)));
+  for (const opId of opIds) {
+    if (!ativos.some((r) => r.operationId === opId && r.role === papel && !r.groupId)) {
+      await tx.insert(userRolesTable).values({ userId, operationId: opId, role: papel, active: true });
+    }
+  }
+  return anterior;
+}
+class ErroPerfil extends Error { constructor(public status: number, message: string) { super(message); } }
+
+/** Administração troca o perfil de alguém (motivo obrigatório quando já havia perfil). */
+router.put("/users/:id/perfil", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
+  const id = req.params.id as string;
+  const perfil = req.body?.perfil;
+  if (!ehPerfil(perfil)) { res.status(400).json({ error: "BAD_REQUEST", message: "Escolha o perfil: Elenco, Supervisão, Direção ou Administração." }); return; }
+  if (id === req.user!.sub) { res.status(403).json({ error: "FORBIDDEN", message: "O seu próprio perfil é trocado por outra pessoa da Administração." }); return; }
+  try {
+    const resultado = await db.transaction(async (tx) => {
+      const [pessoa] = await tx.select().from(usersTable).where(and(eq(usersTable.id, id), eq(usersTable.organizationId, req.user!.organizationId))).for("update").limit(1);
+      if (!pessoa) throw new ErroPerfil(404, "Pessoa não encontrada.");
+      if (pessoa.status !== "ACTIVE") throw new ErroPerfil(409, "Esta pessoa não está ativa.");
+      if (perfil === "MEM" && !pessoa.areaId) throw new ErroPerfil(400, "Defina a área antes de dar o perfil Elenco.");
+      // Não deixar a organização sem Administração.
+      if (perfil !== "ADM") {
+        const admins = await tx.select({ userId: userRolesTable.userId }).from(userRolesTable)
+          .innerJoin(usersTable, eq(userRolesTable.userId, usersTable.id))
+          .where(and(eq(usersTable.organizationId, req.user!.organizationId), eq(usersTable.status, "ACTIVE"), eq(userRolesTable.role, "ADMIN"), eq(userRolesTable.active, true)));
+        const outros = new Set(admins.map((a) => a.userId).filter((u) => u !== id));
+        if (admins.some((a) => a.userId === id) && outros.size === 0) throw new ErroPerfil(409, "Esta é a única pessoa da Administração. Dê o perfil a outra pessoa antes.");
+      }
+      const anterior = await gravarPerfil(tx, id, req.user!.organizationId, perfil);
+      if (anterior === perfil) return { anterior, pessoa, motivo: null as string | null };
+      const motivo = normalizeReason(req.body?.reason);
+      if (anterior && !motivo) throw new ErroPerfil(400, "Trocar o perfil de alguém exige motivo.");
+      await writeHistoryEvent({
+        category: "OPERATIONAL_CHANGE", action: "user.perfil_changed", title: anterior ? "Perfil de acesso trocado" : "Perfil de acesso definido",
+        narrative: anterior ? `${pessoa.fullName ?? pessoa.name}: perfil trocado de ${NOME_PERFIL[anterior]} para ${NOME_PERFIL[perfil]}. Motivo: ${motivo}` : `${pessoa.fullName ?? pessoa.name} recebeu o perfil ${NOME_PERFIL[perfil]}.`,
+        entityType: "user", entityId: pessoa.id, actorId: req.user!.sub, orgId: pessoa.organizationId,
+        beforeState: { perfil: anterior }, afterState: { perfil }, metadata: motivo ? { reason: motivo } : undefined,
+      }, tx as any);
+      return { anterior, pessoa, motivo };
+    });
+    if (resultado.anterior !== perfil) await recordAudit({ actorId: req.user!.sub, action: "USER_UPDATED", targetResource: `user:${id}`, metadata: { change: "perfil", de: resultado.anterior, para: perfil } });
+    res.json({ perfil, anterior: resultado.anterior });
+  } catch (err) {
+    if (err instanceof ErroPerfil) { res.status(err.status).json({ error: err.status === 404 ? "NOT_FOUND" : err.status === 409 ? "CONFLICT" : err.status === 403 ? "FORBIDDEN" : "BAD_REQUEST", message: err.message }); return; }
+    throw err;
   }
 });
 

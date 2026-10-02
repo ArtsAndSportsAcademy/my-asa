@@ -145,7 +145,7 @@ export default function MeuDiaPage({ role }: { role: Role }) {
               const rowStyle = "display:flex;align-items:center;gap:10px;padding:8px 8px;border-radius:10px;text-decoration:none;color:inherit;" + (t.tone === "mine" ? "background:#fdf4f9;" : "");
               return t.href ? <Link key={i} href={t.href} className="md-row" style={css(rowStyle)}>{row}</Link> : <div key={i} style={css(rowStyle)}>{row}</div>;
             })}
-            {!dia.linhaDoTempo.itens.length && <span style={css("font-size:13px;color:#6b6482;padding:8px")}>{dia.linhaDoTempo.dica}</span>}
+            {!dia.linhaDoTempo.itens.length && <span style={css("font-size:13px;color:#6b6482;padding:8px")}>{dia.perfil === "mem" ? "Nada na sua escala de hoje." : "Nada pedindo atenção aqui agora."}</span>}
           </div>
         </div>
       </div>

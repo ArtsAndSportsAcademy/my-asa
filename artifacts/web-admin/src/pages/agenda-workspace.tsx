@@ -61,7 +61,7 @@ export default function AgendaWorkspacePage({ role }: { role: Role }) {
         customFetch<{ events: Entry[] }>("/api/agenda/journey?from=" + weekStart + "&to=" + weekEnd + suffix),
       ]);
       setEvents(eventData.events ?? []); setEntries(journeyData.events ?? []);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Não consegui carregar a Agenda."); }
+    } catch { setError("Não consegui carregar a Agenda agora. Confira a conexão e tente de novo."); }
     finally { setLoading(false); }
   }, [personId, weekEnd, weekStart]);
   useEffect(() => { void reload(); }, [reload]);

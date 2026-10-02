@@ -3,3 +3,7 @@
 /* D6: tentar de novo e carregando em Mensagens */
 .comm-retry{margin-left:12px;min-height:36px;padding:6px 12px;border-radius:999px;border:1px solid currentColor;background:#fff;color:inherit;font-weight:700;cursor:pointer}
 .comm-carregando{padding:14px;color:#6b6482;font-size:13px}
+/* 01/10: rodapé do documento sem espremer (versão em cima; ações embaixo, no celular) */
+.comm-document footer{flex-wrap:wrap}
+.comm-document footer .comm-pending-url{flex:0 1 auto;white-space:nowrap}
+@media(max-width:720px){.comm-document footer>span:first-child{flex-basis:100%}.comm-document footer .comm-doc-confirm{margin-left:auto}}

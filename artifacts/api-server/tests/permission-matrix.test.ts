@@ -26,6 +26,7 @@ import {
   requestsTable,
   libraryDocumentsTable,
   libraryDocumentVersionsTable,
+  operationLocationsTable,
 } from "@workspace/db";
 import app from "../src/application.js";
 import { signAccessToken } from "../src/lib/jwt.service.js";
@@ -335,6 +336,8 @@ async function run() {
     if (patinadores) await db.delete(operationalGroupsTable).where(eq(operationalGroupsTable.id, patinadores.id));
     if (lifecycleAreaId) await db.delete(areasTable).where(eq(areasTable.id, lifecycleAreaId));
     if (bailarinosArea) await db.delete(areasTable).where(eq(areasTable.id, bailarinosArea.id));
+    // Desde 01/10 o local criado pela rota já nasce ligado às operações ativas.
+    if (lifecycleLocationId) await db.delete(operationLocationsTable).where(eq(operationLocationsTable.locationId, lifecycleLocationId));
     if (lifecycleLocationId) await db.delete(locationsTable).where(eq(locationsTable.id, lifecycleLocationId));
     if (snowland && acquamotion) await db.delete(locationsTable).where(inArray(locationsTable.id, [snowland.id, acquamotion.id]));
     if (operation) await db.delete(operationsTable).where(eq(operationsTable.id, operation.id));

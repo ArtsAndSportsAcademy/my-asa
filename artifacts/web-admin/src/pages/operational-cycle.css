@@ -2,3 +2,17 @@
 
 /* D6: tentar de novo no estado de erro */
 .cycle-retry{margin-left:auto;min-height:40px;padding:8px 14px;border-radius:999px;border:1px solid currentColor;background:#fff;color:inherit;font-weight:700;cursor:pointer}
+
+/* 01/10: texto do bloco em linhas separadas (não grudar nome e origem) */
+.cycle-turn>div:nth-child(2)>strong,.cycle-turn>div:nth-child(2)>small{display:block}
+/* Check-in do Elenco: só os próprios turnos, botão grande */
+.cycle-meu-checkin header{align-items:center}
+.cycle-meu-mascote{width:56px;height:56px;object-fit:contain}
+.cycle-meu-turno{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px 0;border-top:1px solid #f0ecf8}
+.cycle-meu-info{display:grid;gap:3px;justify-items:start}
+.cycle-meu-info strong{font-size:15px}
+.cycle-meu-info small{font-size:12px;color:#6b6482}
+.cycle-meu-turno .cycle-primary,.cycle-meu-turno .cycle-secondary{min-height:48px;padding:10px 18px;font-size:13px;justify-content:center}
+.cycle-feedback-inline{margin:0;border-radius:10px;background:#fff0f2;color:#b42340;padding:9px 12px;font-size:13px;line-height:1.4}
+.cycle-feedback .cycle-inline-link{margin-left:6px}
+@media(max-width:720px){.cycle-meu-turno{grid-template-columns:56px minmax(0,1fr)}.cycle-meu-turno>button{grid-column:1/-1;width:100%}}

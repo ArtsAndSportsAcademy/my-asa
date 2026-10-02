@@ -6,3 +6,7 @@
 /* D6: aviso de sem conexão, em qualquer tela */
 .asa-sem-conexao{position:sticky;top:0;z-index:30;display:flex;align-items:flex-start;gap:10px;margin:0;padding:10px 16px;background:#fff4e4;border-bottom:1px solid #f0d8b0;color:#6b4a12;font-size:13px;line-height:1.45}
 .asa-sem-conexao svg{flex:none;margin-top:1px}
+
+/* 01/10 (Claude): no celular o nome da tela já está na barra de cima; não repetir no cabeçalho. */
+@media(max-width:720px){.asa-header>div:first-child{display:none}.asa-header:not(:has(>:nth-child(2))){display:none}.asa-header{min-height:0}}
+@media(max-width:720px){.asa-header.ldd-shell-header:not(:has(>div:nth-child(2)>:not(.ldd-hide-sm))){display:none}}

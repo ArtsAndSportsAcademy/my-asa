@@ -6,3 +6,18 @@
 .cad-temp-password{display:block;margin:12px 0;padding:14px;border-radius:12px;background:#f1ebfe;color:#3a2278;font:700 26px 'JetBrains Mono',monospace;letter-spacing:.08em;text-align:center;user-select:all}
 .cad-reset-note{font-size:12px;color:#6b6482}
 .cad-form-footer{display:flex;justify-content:flex-end;margin-top:4px}
+
+/* 01/10: login e senha da pessoa recém-criada, perfil e supervisão por local */
+.cad-login{display:grid;gap:4px;margin:8px 0}
+.cad-login dt{font-size:12px;font-weight:700;color:#6b6482;margin-top:6px}
+.cad-login dd{margin:0}
+.cad-login output:not(.cad-temp-password){display:block;padding:10px 14px;border-radius:12px;background:#f5f2fa;font:700 18px 'JetBrains Mono',monospace;color:#1b1630;user-select:all}
+.cad-form-note{margin:0;font-size:12px;line-height:1.5;color:#6b6482}
+.cad-form small{font-size:12px;font-weight:400;color:#6b6482}
+.cad-sem-perfil{color:#b42340;font-weight:700}
+.cad-sup-list{display:grid;gap:12px;margin:8px 0}
+.cad-sup-list label{display:grid;gap:6px;font-size:13px;font-weight:700;color:#1b1630}
+.cad-sup-list select{min-height:44px;border:1px solid #e6e1f2;border-radius:10px;padding:8px;font:13px Manrope,sans-serif}
+/* 01/10: sem botão de criar (quem só lê), a faixa do topo encolhe; cartão sem rodapé não sobra espaço vazio. */
+.cad-toolbar:not(:has(button)){min-height:0;padding-top:4px;padding-bottom:10px}
+.cad-card:not(:has(footer)){min-height:0}

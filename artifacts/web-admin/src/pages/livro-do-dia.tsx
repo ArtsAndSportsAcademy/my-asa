@@ -450,12 +450,13 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
   };
 
   /* ---------- cabeçalho do shell: escopo e escala, como no quadro ---------- */
-  const scopeLabel = isMem ? "Meus shows" : role === "sup"
+  // Elenco: o título já diz "Meus shows" — o cabeçalho não repete.
+  const scopeLabel = isMem ? "" : role === "sup"
     ? (review ? (() => { const p = exampleData.pessoas.find((x) => x.nome_de_exibicao === me); return [p?.local ? sampleLocalName(p.local) : "", exampleData.areas.find((a) => a.id === p?.area)?.nome ?? ""].filter(Boolean).join(" · "); })() : [...new Set(books.map((b) => b.operationName).filter(Boolean))].join(" · "))
     : "Todos os locais";
   useEffect(() => {
     onHeader?.(<div style={css("display:flex;align-items:center;gap:12px")}>
-      <span style={css("font-size:12.5px;color:#6b6482")}>{scopeLabel}</span>
+      {scopeLabel && <span style={css("font-size:12.5px;color:#6b6482")}>{scopeLabel}</span>}
       <span className="ldd-hide-sm" style={css("font-size:11.5px;color:#6b6482;background:transparent;border:none;font-family:Manrope,sans-serif;padding:0;cursor:default;white-space:nowrap")}>{isMem ? "a mesma escalação está na sua escala" : "a mesma escalação está na Escala do dia"}</span>
     </div>);
     return () => onHeader?.(null);
@@ -590,9 +591,15 @@ function HojeTab(props: {
         { n: String(persRod), label: persRod === 1 ? "entrou por rodízio" : "entraram por rodízio", tone: persRod ? "#0E8F86" : "#6b6482" },
         { n: String(persVazio), label: "sem ninguém definido", tone: persVazio ? "#B06E00" : "#6b6482" },
       ]
-    : [
+    : isMem
+      // Elenco: o que interessa a quem está no show — sem contagem de gestão.
+      ? [
+          { n: String(nConv), label: nConv === 1 ? "pessoa no show hoje" : "pessoas no show hoje", tone: "#6C2BF2" },
+          { n: String(liveScenes.length), label: liveScenes.length === 1 ? "cena hoje" : "cenas hoje", tone: "#1b1630" },
+        ]
+      : [
         { n: String(nConv), label: nConv === 1 ? "convocado hoje" : "convocados hoje", tone: "#6C2BF2" },
-        { n: `${liveScenes.length}/${scenes.length}`, label: "cenas em pé", tone: "#1b1630" },
+        { n: `${liveScenes.length}/${scenes.length}`, label: liveScenes.length === scenes.length ? "cenas mantidas" : "cenas mantidas (há cena tirada hoje)", tone: "#1b1630" },
         { n: String(nSubs), label: nSubs === 1 ? "entrou no lugar de alguém" : "entraram no lugar de alguém", tone: nSubs ? "#0E8F86" : "#6b6482" },
         { n: String(nVagas), label: nVagas === 1 ? "posição em aberto" : "posições em aberto", tone: nVagas ? "#B06E00" : "#6b6482" },
         { n: String(nRem), label: nRem === 1 ? "removido, reversível" : "removidos, reversíveis", tone: nRem ? "#a12c2c" : "#6b6482" },
@@ -606,7 +613,7 @@ function HojeTab(props: {
   const execLabel = e === "pub" ? "Marcar como executado" : e === "rasc" ? "Marcar que não ocorreu" : "Reabrir como rascunho";
   const showExec = canManage && (e === "pub" || isAdm);
   const actionHint = isMem
-    ? "Você vê este livro porque foi convocada. Seu nome está destacado nas cenas."
+    ? "Você está na convocação deste show. Seu nome aparece destacado nas cenas."
     : isDir
       ? "Direção lê. Ajustar e publicar é de quem opera o show."
       : locked
@@ -632,7 +639,7 @@ function HojeTab(props: {
             <span style={css(estadoChip(e))}>{EST[e].label}</span>
           </div>
           <span style={css("font-size:13px;color:#5b5473")}>{[longDate(book.eventDate ?? date).toLocaleLowerCase("pt-BR"), firstSession ? time(firstSession.startTime) : "", book.operationName].filter(Boolean).join(" · ")}</span>
-          <span style={css("font-size:11.5px;color:#6b6482;font-family:'JetBrains Mono',monospace")}>{`nasce do Livro do Show${source ? ` v${source.version}` : ""}${book.eventTitle && book.eventTitle !== book.showTitle ? ` · evento de agenda ${book.eventTitle}` : ""}`}</span>
+          {!isMem && <span style={css("font-size:11.5px;color:#6b6482;font-family:'JetBrains Mono',monospace")}>{`feito a partir do Livro do Show${source ? ` (versão ${source.version})` : ""}${book.eventTitle && book.eventTitle !== book.showTitle ? ` · evento de agenda ${book.eventTitle}` : ""}`}</span>}
         </div>
         <div className="ldd-actions" style={css("display:flex;flex-direction:column;gap:7px;align-items:flex-end")}>
           <div style={css("display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end")}>
@@ -1092,7 +1099,7 @@ function ListaTab({ isMem, books, me, review, filter, onFilter, onOpen }: { isMe
     <div style={css("display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap")}>
       <div className="ldd-shrink" style={css("display:flex;flex-direction:column;gap:4px;flex:1;min-width:300px")}>
         <span style={css("font-family:Outfit,sans-serif;font-size:18px;font-weight:600")}>{isMem ? "Meus shows" : "Livros do dia"}</span>
-        <span style={css("font-size:12.5px;line-height:1.5;color:#5b5473;max-width:96ch;text-wrap:pretty")}>{isMem ? "Só os dias em que você foi convocada. Show da casa em que você não entra não aparece aqui — nem publicado." : "Cada linha é uma data de um show. O estado diz o que se pode fazer: rascunho se ajusta, publicado se republica, executado e não ocorreu só se leem — e quem marca que não ocorreu é a Administração."}</span>
+        <span style={css("font-size:12.5px;line-height:1.5;color:#5b5473;max-width:96ch;text-wrap:pretty")}>{isMem ? "Só os dias em que você está na convocação. Show da casa em que você não entra não aparece aqui — nem publicado." : "Cada linha é uma data de um show. O estado diz o que se pode fazer: rascunho se ajusta, publicado se republica, executado e não ocorreu só se leem — e quem marca que não ocorreu é a Administração."}</span>
       </div>
       <div style={css("display:flex;gap:6px;flex-wrap:wrap")}>
         {filtros.map(([key, label]) => <button key={key} type="button" className="ldd-hit" aria-pressed={filter === key} onClick={() => onFilter(key)}

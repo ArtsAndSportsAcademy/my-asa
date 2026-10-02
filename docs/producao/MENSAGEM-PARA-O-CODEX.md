@@ -1,72 +1,48 @@
-Codex, preciso que você envie a branch `codex/myasa-novo` para o GitHub, para a Vercel montar a
-versão de teste. Contexto e cuidados:
+Codex, há uma nova rodada do Claude pronta (correções da auditoria de 01/10) para subir na mesma
+branch `codex/myasa-novo`. A suíte completa foi rodada no banco de teste antes deste recado.
 
-1. **O que mudou desde o último commit (fe69f3b)**
-   - O seu trabalho: ASA, kit do mascote, Biblioteca (`0052_library_page_citations`) e o resto.
-   - O trabalho do Claude: Fases B, C e D, preparação de produção, tolerância de 30 s na renovação
-     da sessão (`0050`) e a tela nova **Solicitações** (`0051`).
-   - Relatórios do Claude:
-     - `docs/FASE-B-ENTREGA-2026-09-30.md`
-     - `docs/FASE-C-ENTREGA-2026-09-30.md`
-     - `docs/FASE-D-ENTREGA-2026-09-30.md`
-     - `docs/SOLICITACOES-ENTREGA-2026-10-01.md`
-     - a pasta `docs/producao/`
+1. **O que entra (detalhes em `docs/AUDITORIA-2026-10-01.md`, seção "Atualização")**
+   - **Cadastro:**
+     - "Nova pessoa" com perfil e área;
+     - login e senha provisória gerados e mostrados uma vez;
+     - troca de perfil com motivo (`PUT /api/users/:id/perfil`);
+     - supervisão por área e local na tela Áreas;
+     - local novo já ligado à operação.
+     - Arquivos: `routes/users.ts`, `routes/areas-locations.ts`, `pages/cadastros.tsx` e `.css`.
+   - **Check-in do Elenco** simplificado: `pages/operational-cycle.tsx` e `.css`.
+   - **Textos:**
+     - Mensagens sem "online agora" e Biblioteca com tipos em português (`pages/communication.tsx`
+       e `.css`);
+     - mensagem de erro da Agenda (`pages/agenda-workspace.tsx`);
+     - aviso de "esqueci a senha" (`pages/login.tsx`);
+     - textos neutros e Meus shows do Elenco (`pages/livro-do-dia.tsx`);
+     - Meu Dia vazio (`pages/meu-dia.tsx`, `services/meu-dia.ts`).
+   - **Acabamento:**
+     - título sem repetir no celular (`shell-foundation.css`, 2 regras no fim);
+     - estrela de favorito com nome (`pages/shows.tsx`).
+   - **Testes:**
+     - `tests/fase-e-cadastro.test.ts` (novo);
+     - `tests/run-tests.mjs`;
+     - `tests/permission-matrix.test.ts`: limpeza do local criado, que agora nasce ligado à
+       operação.
+   - **Docs:** `docs/AUDITORIA-2026-10-01.md`, `docs/SOLICITACOES-ENTREGA-2026-10-01.md` e
+     `docs/producao/`.
+   - **Sem migração nova.** O banco de produção não precisa de nada.
 
-2. **Antes do commit**
-   - Termine o kit do mascote da ASA em tamanho menor. Hoje `artifacts/brand/asa-mascot-kit` tem
-     ~103 MB; não suba arquivos grandes assim.
-   - `artifacts/api-server/scripts/qa-e2e-accounts.ts` tem uma senha fixa no código
-     (`const password = "..."`). Troque por variável de ambiente antes de subir.
-   - Confira com `git status` que nada destes vai junto (o `.gitignore` já cobre todos):
-     - `.env.*` (`.env.producao`, `.env.piloto`, `.env.test`)
-     - `.tmp*`
-     - `*.log`
-     - `.audit-tmp/`
-   - A pasta `output/` (PDFs gerados) e a remoção de `lib/integrations-anthropic-ai` são suas:
-     decida se vão.
-   - Rode `node node_modules/typescript/bin/tsc -b lib/db` antes do typecheck da API. Sem isso, o
-     `libraryDocumentPageCitationsTable` da sua `0052` aparece como inexistente.
+2. **Pendente seu: `asa-actions-http`.** Continua falhando uma verificação: "Members cannot query
+   team responsibility assignments".
+   - O Elenco recebe a frase da **linha ~1015** de `asa-command-engine.ts` ("…somente **para**
+     Administração, Direção e Supervisão…"), e não a da linha ~1144 que você alterou.
+   - Sugestão: desfaça a mudança da linha 1144, voltando a "somente **para** …", e, no teste
+     (linha ~248), procure só "Administração, Direção e Supervisão".
+   - A limpeza do teste já funciona, e o 403 de sessão não apareceu aqui.
 
-3. **Commit e push**
-   - Pode ser mais de um commit: o seu trabalho, e "fases B–D + produção + Solicitações" para o do
-     Claude.
-   - Depois: `git push -u origin codex/myasa-novo`.
-   - **Não junte na `main` ainda.** Primeiro testamos na versão de teste (preview) da Vercel.
+3. **Antes do commit**, como sempre:
+   - `git status` sem `.env.*`, `.tmp*`, `*.log`, `.audit-tmp/`;
+   - kit do mascote (`artifacts/brand/`) e `output/` fora;
+   - typechecks da API e da web.
 
-4. **Produção (decidida em 01/10)**
-   - **Infraestrutura:**
-     - Supabase em São Paulo + Vercel (`docs/producao/GUIA-SUPABASE-VERCEL.md`).
-     - O `artifacts/api-server/vercel.json` usa a região `gru1` (São Paulo).
-     - As variáveis de ambiente do projeto `my-asa` na Vercel já estão preenchidas (Production e
-       Preview).
-     - Rotas novas `POST /api/internal/ciclo` e `POST /api/internal/tarefas-do-dia`, chamadas pelo
-       agendador do Supabase.
-   - **Banco de São Paulo:**
-     - Tem as migrações de 0000 a 0051 e a primeira Administração.
-     - A sua `0052_library_page_citations` **não** foi aplicada lá. Ela vai quando a dona do
-       produto autorizar.
-     - **Não aplique migração no banco de produção.**
-   - **Banco de teste:** agora é o MYASA-piloto (Oregon); o `myasa-test` foi apagado. Para rodar a
-     suíte, use o `.env.test` atual.
+4. **Commit e push** em `codex/myasa-novo`. **Não junte na `main`.** Não aplique migração em produção.
 
-5. **Solicitações (Claude, 01/10): para você não estranhar**
-   - **Arquivos novos:**
-     - `routes/solicitacoes.ts`
-     - `services/solicitacoes.ts`
-     - `pages/solicitacoes.tsx` e `.css`
-     - o teste `fase-e-solicitacoes`
-   - **Arquivos alterados:**
-     - `shell-foundation.tsx`: item "Solicitações" no menu, depois de Folgas.
-     - `escala-dia.ts`: horário aprovado vira bloco com `origem: "solicitacao"`.
-     - `meu-dia.ts`: pedidos pendentes aparecem no Meu Dia.
-     - `app-routes.ts`: aviso `request.*` abre `/solicitacoes`.
-     - Botão "Pedir troca ou horário" na Minha escala.
-   - **A rota antiga `/api/requests`, que a ASA usa, não mudou.** A tabela `requests` só ganhou
-     colunas e valores novos (`ESCALA_SLOT`, `WAITING_PEER`, `CANCELLED`).
-   - Se a ASA for criar ou ler pedidos do Elenco, o caminho novo é `/api/solicitacoes`. As regras
-     de quem decide estão lá.
-
-6. **Pendente seu na D4:** o teste `asa-actions-http` ainda falha (texto da ASA para "alterar o
-   prazo" de tarefa). A suíte roda até o fim e mostra o resumo de todos os arquivos.
-
-Quando o push terminar, me diga o nome da branch no GitHub e se a Vercel começou a montar o preview.
+Quando terminar, me diga o hash do commit. A dona do produto promove o deploy novo na Vercel e eu
+confiro em produção.

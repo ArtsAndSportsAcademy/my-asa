@@ -139,6 +139,9 @@ router.post("/locations", requireAuth, requireOrganization, requireRole("ADMIN")
     const location = await db.transaction(async (tx) => {
       const [created] = await tx.insert(locationsTable).values({ organizationId: req.user!.organizationId, name, type, closed: false }).returning();
       if (!created) throw new Error("Local não criado");
+      // Local novo já entra nas operações ativas: a Escala do local precisa da operação dona.
+      const ativas = await tx.select({ id: operationsTable.id }).from(operationsTable).where(and(eq(operationsTable.organizationId, req.user!.organizationId), eq(operationsTable.status, "ACTIVE")));
+      if (ativas.length) await tx.insert(operationLocationsTable).values(ativas.map((op) => ({ operationId: op.id, locationId: created.id, active: true })));
       await writeEntityHistory(req, { category: "OPERATIONAL_CHANGE", action: "location.created", title: "Local criado", narrative: "Local operacional criado.", entityType: "location", entityId: created.id, actorId: req.user!.sub, orgId: req.user!.organizationId, beforeState: null, afterState: created }, tx as any);
       return created;
     });

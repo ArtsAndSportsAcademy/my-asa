@@ -3,6 +3,31 @@
 Decidido em 01/10/2026 pela dona do produto: **banco no Supabase em São Paulo; site e servidor na
 Vercel, servidor também em São Paulo (região `gru1`).**
 
+## Estado em 01/10/2026 (fim da tarde)
+
+- **No ar:**
+  - **Site:** `https://my-asa-web.vercel.app`
+  - **Servidor:** `https://my-asa.vercel.app`
+  - Os dois saíram do commit `c596881` da branch `codex/myasa-novo` (a `main` não foi mexida). A
+    dona do produto promoveu os dois para produção pela Vercel.
+- **Conferido no endereço de produção:**
+  - o servidor responde e alcança o banco de São Paulo (~0,1 s);
+  - as rotas novas recusam quem não tem sessão;
+  - `/api/internal/ciclo` recusa sem a chave;
+  - o site encaminha `/api` para o servidor novo.
+- **Despertador ligado** no banco de São Paulo (Passo 4):
+  - `myasa-ciclo` roda a cada minuto e `myasa-tarefas-do-dia` às 8h;
+  - endereço e chave ficam no cofre do Supabase;
+  - as primeiras chamadas responderam 200 `{"ok":true}`.
+- **Voltar atrás, se precisar:** na Vercel, em Deployments, use o "Instant Rollback" do projeto.
+  Para parar o despertador:
+  `select cron.unschedule('myasa-ciclo'); select cron.unschedule('myasa-tarefas-do-dia');`
+- **Falta:**
+  - primeiro login da Barbara (troca de senha obrigatória);
+  - teste de ponta a ponta com aviso no celular e check-in;
+  - planos pagos (A1): Vercel Pro (o Hobby não permite uso comercial) e Supabase Pro (o Free pausa
+    o projeto sem uso).
+
 O que cada parte faz:
 
 | Parte | Onde | O que é |
