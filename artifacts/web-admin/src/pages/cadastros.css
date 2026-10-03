@@ -21,3 +21,4 @@
 /* 01/10: sem botão de criar (quem só lê), a faixa do topo encolhe; cartão sem rodapé não sobra espaço vazio. */
 .cad-toolbar:not(:has(button)){min-height:0;padding-top:4px;padding-bottom:10px}
 .cad-card:not(:has(footer)){min-height:0}
+.cad-status-filters{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}.cad-status-filters button{border:1px solid #e6e1f2;background:#fff;color:#6b6482;border-radius:999px;padding:7px 12px;font:700 11px Manrope,sans-serif;cursor:pointer}.cad-status-filters button.active{background:#f3ebff;border-color:#cbb8f7;color:#6c2bf2}
