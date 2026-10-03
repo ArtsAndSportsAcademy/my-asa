@@ -17,8 +17,10 @@ import { hasActiveResponsibility } from "../lib/delegation-check.js";
 import { normalizeReason, requireReason } from "../lib/reason.js";
 import { operationalDate } from "../lib/operational-date.js";
 import { canManageCheckInsForOperation } from "../services/checkin-access.js";
+import { protectShiftCheckIns } from "../middlewares/shift-checkin-legacy.js";
 
 const router: IRouter = Router();
+router.use("/check-ins", requireAuth, requireOrganization, protectShiftCheckIns);
 
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
 const LATE_THRESHOLD_MINUTES_DEFAULT = 15;
@@ -347,6 +349,7 @@ router.post("/check-ins/my", requireAuth, requireOrganization, async (req, res) 
           registeredBy: userId,
         })
         .onConflictDoUpdate({
+          targetWhere: sql`${operationalCheckInsTable.shiftId} is null`,
           target: [
             operationalCheckInsTable.userId,
             operationalCheckInsTable.operationId,
@@ -468,6 +471,7 @@ router.patch("/check-ins/:id", requireAuth, requireOrganization, async (req, res
             excuseReason: absenceReason,
           })
           .onConflictDoUpdate({
+            targetWhere: sql`${operationalCheckInsTable.shiftId} is null`,
             target: [
               operationalCheckInsTable.userId,
               operationalCheckInsTable.operationId,

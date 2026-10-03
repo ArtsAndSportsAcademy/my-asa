@@ -11,6 +11,7 @@ import {
 import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
 import { operationalDate, OPERATIONAL_TIME_ZONE } from "../lib/operational-date.js";
 import { montarEscalaDoDia } from "./escala-dia.js";
+import { shiftsForDate, reconcileShiftCheckIns } from "./shift-checkins.js";
 
 function clockMinutes(now: Date): number {
   const fields = new Intl.DateTimeFormat("en-GB", { timeZone: OPERATIONAL_TIME_ZONE, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(now);
@@ -31,12 +32,14 @@ async function markAssignmentsAtRisk(tx: Pick<typeof db, "select" | "insert" | "
 
 /** Pode ser chamado pelo scheduler e é idempotente por (escala, bloco, pessoa). */
 export async function reconcileDueCheckIns(now = new Date(), organizationId?: string) {
+  const shifts = await reconcileShiftCheckIns(now, organizationId);
   const date = operationalDate(now);
   const nowMinutes = clockMinutes(now);
   const locations = await db.select({ id: locationsTable.id, organizationId: locationsTable.organizationId }).from(locationsTable)
     .where(and(eq(locationsTable.closed, false), organizationId ? eq(locationsTable.organizationId, organizationId) : undefined));
   let marked = 0;
   for (const location of locations) {
+    if ((await shiftsForDate(location.organizationId, date)).length) continue;
     const day = await montarEscalaDoDia(location.organizationId, location.id, date);
     if (!day?.escala) continue;
     for (const block of day.blocos.filter((item) => item.dailyBookId)) {
@@ -55,5 +58,5 @@ export async function reconcileDueCheckIns(now = new Date(), organizationId?: st
       }
     }
   }
-  return { marked, date };
+  return { marked, date, shiftsClosed: shifts.closed };
 }

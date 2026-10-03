@@ -1,5 +1,5 @@
 import { and, eq, inArray, lte, ne, sql } from "drizzle-orm";
-import { db, scalesTable, scaleAllocationsTable, allocationExceptionsTable, operationsTable, agendaEventsTable, dayCheckInsTable, locationsTable } from "@workspace/db";
+import { db, scalesTable, scaleAllocationsTable, allocationExceptionsTable, operationsTable, agendaEventsTable, dayCheckInsTable, locationsTable, operationalCheckInsTable } from "@workspace/db";
 import { APP_ROUTES } from "../lib/app-routes.js";
 import { escalaPublicada, montarEscalaDoDia } from "./escala-dia.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
@@ -10,6 +10,7 @@ import { eventBus } from "../lib/event-bus.js";
 import { publishedDay } from "./published-day.js";
 import { reconcileDueCheckIns } from "./checkin-reconcile.js";
 import { regrasDaOrganizacao } from "./regras-casa.js";
+import { shiftPlans, shiftsForDate } from "./shift-checkins.js";
 
 /** A timing conflict is an alert, never a publication blocker. Empty seats / missing coverage are pending. */
 export async function autoPublishScales(organizationId?: string) {
@@ -40,7 +41,10 @@ export async function enqueueShiftReminders(now = new Date(), organizationId?: s
   const date = operationalDate(now);
   const clock = new Intl.DateTimeFormat("en-GB", { timeZone: OPERATIONAL_TIME_ZONE, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(now);
   const rows = new Map<string, Awaited<ReturnType<typeof publishedDay>>[number]["entries"][number]>();
-  for (const scope of await publishedDay(date, organizationId)) for (const entry of scope.entries) rows.set(entry.id, entry);
+  for (const scope of await publishedDay(date, organizationId)) {
+    if ((await shiftsForDate(scope.organizationId, date)).length) continue;
+    for (const entry of scope.entries) rows.set(entry.id, entry);
+  }
   let enqueued = 0;
   for (const entry of rows.values()) {
     const start = entry.startTime?.slice(0, 5);
@@ -74,6 +78,7 @@ export async function enqueueEscalaReminders(now = new Date(), organizationId?: 
   let enqueued = 0;
   const antecedencia = new Map<string, number>();
   for (const location of locations) {
+    if ((await shiftsForDate(location.organizationId, date)).length) continue;
     // A Administração define a antecedência do lembrete nas regras da casa (15, 30 ou 60 min).
     if (!antecedencia.has(location.organizationId)) antecedencia.set(location.organizationId, (await regrasDaOrganizacao(location.organizationId)).lembreteCheckinMin);
     const antes = antecedencia.get(location.organizationId)!;
@@ -92,6 +97,22 @@ export async function enqueueEscalaReminders(now = new Date(), organizationId?: 
         message: `Seu dia em ${day.location.name} começa às ${bloco.inicio} (${bloco.rotulo}). Registre o check-in no My ASA.`,
         entityType: "scale", entityId: day.escala!.id, actionUrl: APP_ROUTES.checkIn,
       }, now, { deduplicationKey: `escala-checkin:${day.escala!.id}:${date}:${pessoa}` }));
+      enqueued++;
+    }
+  }
+  for (const orgId of new Set(locations.map(location => location.organizationId))) {
+    if (!(await shiftsForDate(orgId, date)).length) continue;
+    const before = (await regrasDaOrganizacao(orgId)).lembreteCheckinMin;
+    const plans = await shiftPlans(orgId, date);
+    const answered = await db.select({ userId: operationalCheckInsTable.userId, shiftId: operationalCheckInsTable.shiftId }).from(operationalCheckInsTable)
+      .where(and(eq(operationalCheckInsTable.orgId, orgId), eq(operationalCheckInsTable.date, date)));
+    for (const plan of plans) {
+      if (now.getTime() < plan.firstActivityAt.getTime() - before * 60_000 || now.getTime() > plan.firstActivityAt.getTime() + 15 * 60_000 || answered.some(row => row.userId === plan.userId && row.shiftId === plan.shiftId)) continue;
+      await db.transaction(tx => enqueueNotification(tx, {
+        userId: plan.userId, type: "checkin.shift_reminder", category: "schedule", title: `Check-in do turno ${plan.shiftName}`,
+        message: `Sua primeira atividade começa às ${new Intl.DateTimeFormat("pt-BR", { timeZone: OPERATIONAL_TIME_ZONE, hour: "2-digit", minute: "2-digit" }).format(plan.firstActivityAt)}. Registre o check-in do turno no My ASA.`,
+        entityType: "shift", entityId: plan.shiftId, actionUrl: APP_ROUTES.checkIn,
+      }, now, { deduplicationKey: `turno-checkin:${plan.shiftId}:${date}:${plan.userId}` }));
       enqueued++;
     }
   }

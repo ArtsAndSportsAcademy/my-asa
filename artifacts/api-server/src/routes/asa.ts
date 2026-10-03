@@ -95,6 +95,7 @@ import { announcementConfirmationVersion, confirmAnnouncementRead } from "../ser
 import { listCommunicationPeople } from "../services/communication-directory.js";
 import { listReadableLocations } from "../services/location-directory.js";
 import { checkInPeriodDates, summarizeCheckIns, type CheckInInsightPeriod } from "../services/checkin-insights.js";
+import { displayedShiftState, shiftPlans, shiftsForDate, visibleShiftPlans } from "../services/shift-checkins.js";
 import { summarizeTasks, taskPeriodDates, type TaskInsightPeriod } from "../services/task-insights.js";
 import { resolveAsaSummaryTeamOperation } from "../services/asa-summary-policy.js";
 type JsonFetchResponse = {
@@ -1280,6 +1281,16 @@ export async function executeTool(
         .limit(1);
       if (!operation) return JSON.stringify({ error: "Operação não encontrada ou inativa." });
 
+      if ((await shiftsForDate(ctx.organizationId, date)).length) {
+        const plans = (await shiftPlans(ctx.organizationId, date)).filter(plan => plan.userId === ctx.userId && plan.operationId === ctx.operationId);
+        if (!plans.length) return JSON.stringify({ date, message: `Você não tem atividade publicada com check-in previsto em ${date}.`, turnos: [] });
+        const records = await db.select().from(operationalCheckInsTable).where(and(eq(operationalCheckInsTable.orgId, ctx.organizationId), eq(operationalCheckInsTable.userId, ctx.userId), eq(operationalCheckInsTable.date, date), isNotNull(operationalCheckInsTable.shiftId)));
+        return JSON.stringify({ date, turnos: plans.map(plan => {
+          const row = records.find(record => record.shiftId === plan.shiftId);
+          return { turno: plan.shiftName, estado: displayedShiftState(row, plan.closesAt, new Date()), chegada: row?.checkedInAt ?? null, atividades: plan.activities.map(activity => activity.label) };
+        }), actionUrl: "/check-in" });
+      }
+
       const [allocation] = await db.select({ operationId: scalesTable.operationId })
         .from(scaleAllocationsTable)
         .innerJoin(scalesTable, eq(scaleAllocationsTable.scaleId, scalesTable.id))
@@ -1318,6 +1329,14 @@ export async function executeTool(
       }, ctx.operationId);
       if (!authorized) return JSON.stringify({ error: "Operação fora do escopo de check-ins." });
       const date = typeof input.date === "string" ? input.date : operationalDate();
+      if ((await shiftsForDate(ctx.organizationId, date)).length) {
+        const plans = (await visibleShiftPlans({ sub: ctx.userId, organizationId: ctx.organizationId, role: ctx.userRole }, await shiftPlans(ctx.organizationId, date))).filter(plan => plan.operationId === ctx.operationId);
+        const records = await db.select().from(operationalCheckInsTable).where(and(eq(operationalCheckInsTable.orgId, ctx.organizationId), eq(operationalCheckInsTable.operationId, ctx.operationId), eq(operationalCheckInsTable.date, date), isNotNull(operationalCheckInsTable.shiftId)));
+        return JSON.stringify({ date, checkIns: plans.map(plan => {
+          const row = records.find(record => record.userId === plan.userId && record.shiftId === plan.shiftId);
+          return { userName: plan.userName, turno: plan.shiftName, status: displayedShiftState(row, plan.closesAt, new Date()), checkedInAt: row?.checkedInAt ?? null };
+        }), actionUrl: "/check-in" });
+      }
       const expectedUsers = await db.selectDistinct({
         userId: scaleAllocationsTable.userId,
         userName: usersTable.name,

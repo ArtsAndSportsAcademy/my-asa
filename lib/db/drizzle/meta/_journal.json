@@ -289,6 +289,7 @@
     {"idx":50,"version":"7","when":1790726400000,"tag":"0050_refresh_token_tolerancia","breakpoints":true},
     {"idx":51,"version":"7","when":1790812800000,"tag":"0051_solicitacoes","breakpoints":true},
     {"idx":52,"version":"7","when":1790816400000,"tag":"0052_library_page_citations","breakpoints":true},
-    {"idx":53,"version":"7","when":1790906400000,"tag":"0053_mural_pessoas","breakpoints":true}
+    {"idx":53,"version":"7","when":1790906400000,"tag":"0053_mural_pessoas","breakpoints":true},
+    {"idx":54,"version":"7","when":1790992800000,"tag":"0054_checkin_turnos","breakpoints":true}
   ]
 }

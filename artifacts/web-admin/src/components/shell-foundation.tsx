@@ -14,7 +14,7 @@ const AniversariosFaixa = lazy(() => import("@/pages/aniversarios-faixa"));
 const LivroDoDiaPage = lazy(() => import("@/pages/livro-do-dia"));
 const EscalasPage = lazy(() => import("@/pages/escalas"));
 const CadastrosPage = lazy(() => import("@/pages/cadastros"));
-const CheckInPage = lazy(() => import("@/pages/operational-cycle").then(module => ({ default: module.CheckInPage })));
+const CheckInPage = lazy(() => import("@/pages/checkin-shifts").then(module => ({ default: module.CheckInPage })));
 const FolgasPage = lazy(() => import("@/pages/operational-cycle").then(module => ({ default: module.FolgasPage })));
 const SolicitacoesPage = lazy(() => import("@/pages/solicitacoes"));
 const PanelPage = lazy(() => import("@/pages/operational-cycle").then(module => ({ default: module.PanelPage })));

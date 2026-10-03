@@ -74,12 +74,12 @@ const hhmm = (value: string | null | undefined) => value ? value.slice(0, 5) : n
 const weekdayOf = (date: string) => new Date(`${date}T12:00:00Z`).getUTCDay();
 
 /** A Escala do dia de um local (a mais recente que cobre a data, fora arquivadas). */
-export async function findEscalaDoDia(locationId: string, date: string, executor: Exec = db) {
+export async function findEscalaDoDia(locationId: string, date: string, executor: Exec = db, publishedOnly = false) {
   const [scale] = await executor.select().from(scalesTable).where(and(
     eq(scalesTable.locationId, locationId),
     lte(scalesTable.periodStart, date),
     gte(scalesTable.periodEnd, date),
-    ne(scalesTable.status, "ARCHIVED"),
+    publishedOnly ? inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"]) : ne(scalesTable.status, "ARCHIVED"),
   )).orderBy(desc(scalesTable.createdAt)).limit(1);
   return scale ?? null;
 }
@@ -155,13 +155,13 @@ async function elencoDoLivro(dailyBookId: string, executor: Exec = db) {
   return [...new Set(rows.map((r) => r.userId).filter((id): id is string => Boolean(id)))];
 }
 
-export async function montarEscalaDoDia(organizationId: string, locationId: string, date: string): Promise<EscalaDia | null> {
+export async function montarEscalaDoDia(organizationId: string, locationId: string, date: string, options: { publishedOnly?: boolean } = {}): Promise<EscalaDia | null> {
   const [location] = await db.select({ id: locationsTable.id, name: locationsTable.name }).from(locationsTable)
     .where(and(eq(locationsTable.id, locationId), eq(locationsTable.organizationId, organizationId))).limit(1);
   if (!location) return null;
 
   const [scale, people, supervisors] = await Promise.all([
-    findEscalaDoDia(locationId, date),
+    findEscalaDoDia(locationId, date, db, options.publishedOnly),
     db.select({ id: usersTable.id, name: usersTable.name, areaId: usersTable.areaId }).from(usersTable).where(and(
       eq(usersTable.organizationId, organizationId), isNotNull(usersTable.areaId),
       eq(usersTable.status, "ACTIVE"), eq(usersTable.personStatus, "ACTIVE"),

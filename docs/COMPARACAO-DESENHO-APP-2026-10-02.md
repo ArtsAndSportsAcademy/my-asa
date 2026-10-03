@@ -37,7 +37,7 @@ Data: 02/10/2026.
 | 08 | Áreas | /areas | **~50%** | 🟠 modelo diferente (DECIDIR) |
 | 30 | Busca global | barra lateral | **~50%** | 🟠 parcial |
 | Shell | Menu, cabeçalho e abas do celular | todas | **~80%** | 🟡 menu/abas conferidos; faltam contexto e acabamentos |
-| 19 | Check-in e ocorrências | /check-in | **~40%** | 🔴 conceito diferente |
+| 19 | Check-in e ocorrências | /check-in | **~85%** | 🟡 turnos e estados implementados na etapa 2; homologação real pendente |
 | 24 | Biblioteca | /biblioteca | **~40%** | 🔴 falta o leitor |
 | 01 | Entrada (login etc.) | /login | **~75%** | 🟡 login/recuperação conferidos; primeiro acesso visual pendente |
 | 16 | Painel | /painel | **~35%** | 🔴 outra proposta |
@@ -207,7 +207,20 @@ Só detalhes de espaçamento. **FICA COMO ESTÁ.**
 | Tarefas agrupadas, com "como fecha" visível | Não deu para conferir com dados no modo amostra (a tela pede a API). Revisar com dado real. |
 | Formulários "Nova responsabilidade" (7 campos) e "Tarefa avulsa" (4 campos) do desenho 03 | Conferir campo a campo com dado real (P). |
 
-### 19 · Check-in e ocorrências: ~40% 🔴
+### 19 · Check-in e ocorrências: ~85% 🟡 (etapa 2, 03/10)
+
+**Atualização da etapa 2:** check-in por turno global (1–3 configuráveis),
+convocação pela escala publicada, três ações do elenco, confirmação de chegada
+após atraso, janela e fechamento, histórico mensal, indicadores de 30 dias,
+supervisão por pessoa/área+local, aviso de falta e ocorrência separada. A
+Direção vê totais, sem nomes ou motivos. Amostras dos quatro perfis foram
+comparadas com o desenho em desktop e 375 px. Diferenças visuais restantes:
+o desenho usa uma composição mais editorial para o histórico e a faixa de
+recomendação da ASA; esta última não foi criada sem regra de produto aprovada.
+O percentual é de aproximação visual/funcional, **não** comprova homologação
+com login real nem implantação da migração 0054 em produção.
+
+**Diagnóstico original (02/10, antes da etapa 2):**
 
 O desenho pensa o check-in **por turno**:
 

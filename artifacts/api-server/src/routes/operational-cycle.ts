@@ -10,8 +10,10 @@ import { canSupervisorAccessPerson, listAreaLocalScopes } from "../services/area
 import { montarEscalaDoDia } from "../services/escala-dia.js";
 import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
 import { operationalDate } from "../lib/operational-date.js";
+import { protectShiftCheckIns } from "../middlewares/shift-checkin-legacy.js";
 
 const router: IRouter = Router();
+router.use("/day-checkins", requireAuth, requireOrganization, protectShiftCheckIns);
 const isAdmin = (role: string) => role === "ADMIN";
 const isDirector = (role: string) => role === "DIR" || role === "DIRECTOR";
 const isSupervisor = (role: string) => role === "SUPERVISOR_A" || role === "SUPERVISOR_B" || role === "SUP";

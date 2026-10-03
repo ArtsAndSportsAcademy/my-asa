@@ -21,6 +21,7 @@ import {
   usersTable,
 } from "@workspace/db";
 import { operationalDate, OPERATIONAL_TIME_ZONE, shiftOperationalDate } from "../lib/operational-date.js";
+import { shiftPlans, shiftsForDate } from "./shift-checkins.js";
 import { APP_ROUTES } from "../lib/app-routes.js";
 import { escalaPublicada, montarEscalaDoDia, type BlocoDia, type EscalaDia } from "./escala-dia.js";
 import { listAreaLocalScopes } from "./area-local-scope.js";
@@ -141,6 +142,11 @@ async function elenco(actor: { sub: string; organizationId: string; role: string
   else if (jaChegou) saudacao = { titulo: "Tudo certo por aqui!", texto: `Check-in feito${jaChegou.at ? ` às ${new Intl.DateTimeFormat("pt-BR", { timeZone: OPERATIONAL_TIME_ZONE, hour: "2-digit", minute: "2-digit" }).format(jaChegou.at)}` : ""}${jaChegou.status === "LATE" ? ", com atraso avisado" : ""} — bom trabalho hoje!`, mascote: "tarefa-concluida", acao: { label: "Ver minha escala", href: APP_ROUTES.escalas } };
   else if (alvo) saudacao = { titulo: saudar(agora, nome), texto: `Você entra às ${meus[0]!.inicio} em ${texto(meus[0]!)}. Faz o check-in por aqui mesmo — leva um toque.`, mascote: "bom-dia", acao: { label: "Fazer check-in", checkIn: { scaleId: pub!.escala!.id, sourceKey: alvo.key, date: hoje } } };
   else saudacao = { titulo: saudar(agora, nome), texto: "Seus blocos de hoje já terminaram.", mascote: "tarefa-concluida", acao: { label: "Ver minha escala", href: APP_ROUTES.escalas } };
+
+  // Uma saudação por bloco seria enganosa quando há dois turnos no mesmo dia.
+  if ((await shiftsForDate(actor.organizationId, hoje)).length && (await shiftPlans(actor.organizationId, hoje)).some(plan => plan.userId === actor.sub)) {
+    saudacao = { titulo: saudar(agora, nome), texto: "Seu check-in vale para as atividades de cada turno. Confira se há outro turno esperando sua resposta.", mascote: "bom-dia", acao: { label: "Abrir check-in do turno", href: APP_ROUTES.checkIn } };
+  }
 
   const prox = alvo;
   const proximo: Parte["proximo"] = prox
