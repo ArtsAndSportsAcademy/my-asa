@@ -10,3 +10,29 @@
 /* 01/10 (Claude): no celular o nome da tela já está na barra de cima; não repetir no cabeçalho. */
 @media(max-width:720px){.asa-header>div:first-child{display:none}.asa-header:not(:has(>:nth-child(2))){display:none}.asa-header{min-height:0}}
 @media(max-width:720px){.asa-header.ldd-shell-header:not(:has(>div:nth-child(2)>:not(.ldd-hide-sm))){display:none}}
+
+/* 02/10 (Claude): sino do cabeçalho, data e abas de Folgas e solicitações (desenho 01 e Estrutura). */
+.asa-header-date{text-transform:none}
+.asa-header-date::first-letter{text-transform:uppercase}
+.asa-bell{position:relative;flex:none}
+.asa-header>div:first-child{margin-right:auto}
+.asa-bell-button{position:relative;width:44px;height:44px;border:1px solid var(--asa-border);border-radius:12px;background:#fff;color:var(--asa-ink);display:grid;place-items:center;cursor:pointer}
+.asa-mobile-head .asa-bell-button{border:0;background:transparent}
+.asa-bell-count{position:absolute;top:4px;right:3px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--asa-bad);color:#fff;font:700 10px/18px 'JetBrains Mono';text-align:center}
+.asa-bell-panel{position:absolute;right:0;top:calc(100% + 8px);z-index:60;width:min(360px,calc(100vw - 32px));max-height:min(480px,70vh);overflow:auto;background:#fff;border:1px solid var(--asa-border);border-radius:14px;box-shadow:0 18px 40px rgba(28,20,64,.16)}
+.asa-bell-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid var(--asa-border)}
+.asa-bell-head strong{font:600 15px Outfit}
+.asa-bell-head button{border:0;background:transparent;color:var(--asa-purple);font:600 12px Manrope;cursor:pointer;min-height:44px}
+.asa-bell-panel ul{list-style:none;margin:0;padding:4px}
+.asa-bell-panel li button{width:100%;text-align:left;border:0;background:transparent;border-radius:10px;padding:10px;display:grid;gap:2px;cursor:pointer;color:var(--asa-ink)}
+.asa-bell-panel li button:hover{background:var(--asa-bg)}
+.asa-bell-panel li button.unread{background:#f3eefe}
+.asa-bell-panel li b{font:600 13px Manrope}
+.asa-bell-panel li span{font-size:12.5px;color:var(--asa-muted);line-height:1.4}
+.asa-bell-panel li small{font:500 10.5px 'JetBrains Mono';color:var(--asa-muted)}
+.asa-bell-empty{margin:0;padding:16px 14px;color:var(--asa-muted);font-size:13px;line-height:1.5}
+.asa-mobile-head .asa-bell{margin-left:auto}
+.asa-page-tabs{display:flex;gap:4px;padding:0 20px;background:#fff;border-bottom:1px solid var(--asa-border)}
+.asa-page-tabs a{min-height:44px;display:flex;align-items:center;padding:0 12px;color:var(--asa-muted);text-decoration:none;font:600 13px Manrope;border-bottom:2px solid transparent}
+.asa-page-tabs a.active{color:var(--asa-ink);border-bottom-color:var(--asa-purple)}
+@media(max-width:720px){.asa-page-tabs{padding:0 12px}}

@@ -66,7 +66,7 @@ const saudar = (agora: number, nome: string) => `${agora < 12 * 60 ? "Bom dia" :
 async function mural(actor: { sub: string; organizationId: string; role: string }): Promise<MeuDia["mural"]> {
   const rows = await db.select({
     id: announcementsTable.id, type: announcementsTable.type, scope: announcementsTable.scope, title: announcementsTable.title, body: announcementsTable.body,
-    areaId: announcementsTable.areaId, locationId: announcementsTable.locationId, recipientId: announcementsTable.recipientId, authorName: usersTable.name,
+    areaId: announcementsTable.areaId, locationId: announcementsTable.locationId, recipientId: announcementsTable.recipientId, authorId: announcementsTable.authorId, authorName: usersTable.name,
   }).from(announcementsTable).innerJoin(usersTable, eq(announcementsTable.authorId, usersTable.id))
     .where(and(eq(announcementsTable.orgId, actor.organizationId), eq(announcementsTable.active, true), isNull(announcementsTable.cancelledAt)))
     .orderBy(desc(announcementsTable.publishedAt)).limit(20);

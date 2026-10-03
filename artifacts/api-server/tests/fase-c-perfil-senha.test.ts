@@ -10,6 +10,7 @@ import {
   pool,
   refreshTokensTable,
   securityAuditLogTable,
+  userNotificationsTable,
   userRolesTable,
   usersTable,
 } from "@workspace/db";
@@ -69,6 +70,8 @@ async function run() {
     assert((await call("POST", "/users/me/password", asJulia, { currentPassword: "errada", newPassword: "nova1234", refreshToken: juliaAqui })).status === 401, "senha atual errada é recusada");
     assert((await call("POST", "/users/me/password", asJulia, { currentPassword: "velha123", newPassword: "velha123", refreshToken: juliaAqui })).status === 400, "nova senha igual à atual é recusada");
     assert((await call("POST", "/users/me/password", asJulia, { currentPassword: "velha123", newPassword: "abc", refreshToken: juliaAqui })).status === 400, "nova senha curta demais é recusada");
+    assert((await call("POST", "/users/me/password", asJulia, { currentPassword: "velha123", newPassword: "abcdefgh", refreshToken: juliaAqui })).status === 400, "nova senha sem número é recusada (8 caracteres, letra e número)");
+    assert((await call("POST", "/users/me/password", asJulia, { currentPassword: "velha123", newPassword: "12345678", refreshToken: juliaAqui })).status === 400, "nova senha sem letra é recusada (8 caracteres, letra e número)");
     assert((await registro(julia.id, "user.password_changed")).length === 0, "tentativas recusadas não entram no Registro");
     const troca = await call("POST", "/users/me/password", asJulia, { currentPassword: "velha123", newPassword: "nova1234", refreshToken: juliaAqui });
     assert(troca.status === 200 && troca.body.sessoesEncerradas === 1, "troca de senha responde 200 e encerra 1 sessão (a do outro aparelho)");
@@ -125,11 +128,25 @@ async function run() {
     const definitiva = await call("POST", "/users/me/password", provisorio.body.accessToken as string, { currentPassword: provisoria, newPassword: "minha5678", refreshToken: provisorio.body.refreshToken });
     assert(definitiva.status === 200 && (await call("GET", "/meu-dia", provisorio.body.accessToken as string)).status === 200, "depois de trocar a provisória, o app libera");
     assert((await db.select({ m: usersTable.mustChangePassword }).from(usersTable).where(eq(usersTable.id, julia.id)))[0]?.m === false, "a obrigação de troca some do cadastro");
+
+    // ---------- Esqueci minha senha (desenho 01): avisa a Administração, sem e-mail ----------
+    const avisosDeSenha = () => db.select().from(userNotificationsTable).where(and(eq(userNotificationsTable.entityId, deborah.id), eq(userNotificationsTable.type, "user.password_reset_requested")));
+    const pedidos = await Promise.all(Array.from({ length: 4 }, () => call("POST", "/auth/esqueci-senha", null, { username: deborah.username })));
+    const pedido = pedidos[0]!;
+    assert(pedidos.every(item => item.status === 200 && item.body.message === pedido.body.message), "pedidos simultâneos recebem a mesma resposta sem duplicar avisos");
+    const inexistente = await call("POST", "/auth/esqueci-senha", null, { username: `${tag}_ninguem` });
+    assert(pedido.status === 200 && inexistente.status === 200 && pedido.body.message === inexistente.body.message, "esqueci a senha responde igual para usuário que existe e que não existe");
+    const avisos = await avisosDeSenha();
+    assert(avisos.length === 1 && avisos[0]!.userId === barbara.id && avisos[0]!.actionUrl === "/pessoas", "só a Administração da organização recebe o aviso, com o caminho para Pessoas e acessos");
+    await call("POST", "/auth/esqueci-senha", null, { username: deborah.username!.toUpperCase() });
+    assert((await avisosDeSenha()).length === 1, "pedir de novo em seguida não repete o aviso");
+    assert((await registro(deborah.id, "user.password_reset_requested")).length === 1, "o pedido entra no Registro uma vez");
   } finally {
     if (server) { server.closeAllConnections?.(); await new Promise<void>((resolve, reject) => server!.close((error) => error ? reject(error) : resolve())); }
     await db.delete(historyEventsTable).where(or(inArray(historyEventsTable.orgId, [org!.id, outraOrg!.id]), inArray(historyEventsTable.actorId, everyone)));
     await db.delete(securityAuditLogTable).where(inArray(securityAuditLogTable.actorId, everyone));
     await db.delete(refreshTokensTable).where(inArray(refreshTokensTable.userId, everyone));
+    await db.delete(userNotificationsTable).where(inArray(userNotificationsTable.userId, everyone));
     await db.delete(userRolesTable).where(inArray(userRolesTable.userId, everyone));
     await db.delete(usersTable).where(inArray(usersTable.id, everyone));
     await db.delete(operationsTable).where(inArray(operationsTable.id, [operation!.id, outraOp!.id]));

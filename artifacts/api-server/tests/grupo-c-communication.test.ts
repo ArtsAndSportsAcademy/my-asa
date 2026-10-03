@@ -1,7 +1,7 @@
 /** Grupo C — Mural, Mensagens e Biblioteca contra Postgres real de teste. */
 import http from "node:http";
 import { and, eq, inArray, or } from "drizzle-orm";
-import { aiMessages, agendaEventsTable, announcementCommentsTable, announcementReadsTable, announcementsTable, areaLocalSupervisorsTable, areasTable, conversations, dailyBookAssignmentsTable, dailyBookBlocksTable, dailyBookPositionsTable, dailyBookScenesTable, dailyBooksTable, db, delegationsTable, deliveriesTable, deliveryAssignmentsTable, folgasTable, historyEventsTable, libraryDocumentFilesTable, libraryDocumentVersionsTable, libraryDocumentsTable, libraryViewsTable, locationsTable, messageThreadParticipantsTable, messageThreadsTable, messagesTable, operationalCheckInsTable, operationLocationsTable, operationsTable, organizationsTable, pool, scaleAllocationsTable, scalesTable, userNotificationsTable, userRolesTable, usersTable } from "@workspace/db";
+import { aiMessages, agendaEventsTable, announcementCommentsTable, announcementReadsTable, announcementRecipientsTable, announcementsTable, areaLocalSupervisorsTable, areasTable, conversations, dailyBookAssignmentsTable, dailyBookBlocksTable, dailyBookPositionsTable, dailyBookScenesTable, dailyBooksTable, db, delegationsTable, deliveriesTable, deliveryAssignmentsTable, folgasTable, historyEventsTable, libraryDocumentFilesTable, libraryDocumentVersionsTable, libraryDocumentsTable, libraryViewsTable, locationsTable, messageThreadParticipantsTable, messageThreadsTable, messagesTable, operationalCheckInsTable, operationLocationsTable, operationsTable, organizationsTable, pool, scaleAllocationsTable, scalesTable, userNotificationsTable, userRolesTable, usersTable } from "@workspace/db";
 import app from "../src/application.js";
 import { signAccessToken } from "../src/lib/jwt.service.js";
 import { operationalDate } from "../src/lib/operational-date.js";
@@ -256,15 +256,62 @@ async function run() {
         assert(freshProposal?.content === changedCase.changes.body && freshConfirmation.status === 200, "Nova prévia do texto atualizado permite confirmação explícita");
       }
     }
-    assert((await post(supApi, "/communication/mural", { type: "NOTICE", scope: "HOUSE", body: "fora do escopo" })).status === 403, "Supervisão não publica aviso para a casa toda");
+    // Decisão de 02/10: Supervisão publica aviso como a Administração — toda a casa, qualquer área ou qualquer local.
+    assert((await post(supApi, "/communication/mural", { type: "NOTICE", scope: "HOUSE", body: "Aviso da supervisão para a casa" })).status === 201, "Supervisão publica aviso para a casa toda");
+    assert((await post(supApi, "/communication/mural", { type: "NOTICE", scope: "AREA", areaId: otherArea!.id, body: "Aviso para outra área" })).status === 201, "Supervisão publica aviso para outra área");
+    assert((await post(supApi, "/communication/mural", { type: "NOTICE", scope: "LOCATION", locationId: unassignedLocation!.id, body: "Aviso para outro local" })).status === 201, "Supervisão publica aviso para um local que não supervisiona");
+    assert((await post(memApi, "/communication/mural", { type: "NOTICE", scope: "HOUSE", body: "Elenco tentando avisar" })).status === 403, "Elenco não publica aviso");
+    assert((await post(adminApi, "/communication/mural", { type: "NOTICE", scope: "AREA", areaId: "00000000-0000-4000-8000-000000000000", body: "Área inexistente" })).status === 404, "Aviso para área de fora da organização é recusado");
+    const destinations = await supApi("/communication/destinations");
+    const destinationsBody = await destinations.json() as { areas: { id: string }[]; locations: { id: string }[] };
+    assert(destinations.status === 200 && [area!.id, otherArea!.id].every(id => destinationsBody.areas.some(item => item.id === id)) && [location!.id, unassignedLocation!.id].every(id => destinationsBody.locations.some(item => item.id === id)), "Supervisão recebe todas as áreas e locais como destino de aviso");
+    assert((await memApi("/communication/destinations")).status === 403, "Elenco não recebe a lista de destinos de aviso");
     const areaNotice = await post(supApi, "/communication/mural", { type: "NOTICE", scope: "AREA", areaId: area!.id, body: "Somente patinadores" }); assert(areaNotice.status === 201, "Supervisão publica para sua própria área");
     const outsiderFeed = await outsideApi("/communication/mural"); const outsiderPosts = await outsiderFeed.json() as { posts: { id: string }[] }; const areaNoticeId = ((await areaNotice.clone().json()) as { post: { id: string } }).post.id; assert(!outsiderPosts.posts.some(post => post.id === areaNoticeId), "Mural não vaza aviso de outra área");
+    const feedOf = async (api: typeof adminApi) => ((await (await api("/communication/mural")).json()) as { posts: Array<{ id: string; canCancel?: boolean; authorId?: string }> }).posts;
+    const supPosts = await feedOf(supApi), memPosts = await feedOf(memApi), adminPosts = await feedOf(adminApi);
+    assert(supPosts.find(item => item.id === areaNoticeId)?.canCancel === true && adminPosts.find(item => item.id === areaNoticeId)?.canCancel === true && memPosts.find(item => item.id === areaNoticeId)?.canCancel === false, "Mural diz a cada perfil se pode cancelar o aviso: Supervisão da área e Administração sim, Elenco não");
+    assert(memPosts.length > 0 && memPosts.every(item => item.authorId === undefined), "Feed do Mural não expõe o id de quem publicou");
+    // Aviso para pessoas escolhidas (0053, decisão de 02/10).
+    const peopleNotice = await post(supApi, "/communication/mural", { type: "NOTICE", scope: "PEOPLE", recipientIds: [member.id], title: `${tag}_pessoas_escolhidas`, body: `${tag}_so_para_mem`, requiresConfirmation: true });
+    const peopleNoticeId = ((await peopleNotice.json()) as { post: { id: string } }).post?.id;
+    assert(peopleNotice.status === 201 && Boolean(peopleNoticeId), "Supervisão manda aviso para pessoas escolhidas");
+    const memWithPeople = await feedOf(memApi), outsiderWithPeople = await feedOf(outsideApi), supWithPeople = await feedOf(supApi);
+    assert(memWithPeople.some(item => item.id === peopleNoticeId), "Pessoa escolhida recebe o aviso");
+    assert(!outsiderWithPeople.some(item => item.id === peopleNoticeId), "Quem não foi escolhido não vê o aviso, mesmo sendo da mesma operação");
+    assert(supWithPeople.some(item => item.id === peopleNoticeId), "Quem publicou vê o próprio aviso");
+    assert(((memWithPeople.find(item => item.id === peopleNoticeId) as { recipientNames?: string[] } | undefined)?.recipientNames ?? []).includes(`${tag}_mem`), "Aviso mostra para quem foi");
+    assert((await post(outsideApi, `/communication/mural/${peopleNoticeId}/ack`)).status === 404, "Quem não foi escolhido não dá ciente");
+    const peopleAck = await askAsa(memApi, `dê ciente do aviso "${tag}_pessoas_escolhidas"`);
+    const authorAck = await askAsa(supApi, `dê ciente do aviso "${tag}_pessoas_escolhidas"`);
+    const excludedAck = await askAsa(outsideApi, `dê ciente do aviso "${tag}_pessoas_escolhidas"`);
+    const peopleProposal = proposalFrom(peopleAck.body);
+    assert(Boolean(peopleProposal?.id) && peopleAck.body.includes(`${tag}_so_para_mem`), "ASA permite prévia de ciente PEOPLE para quem recebe");
+    assert(Boolean(proposalFrom(authorAck.body)?.id), "ASA permite prévia de ciente PEOPLE para quem publicou sem ser destinatário");
+    assert(!proposalFrom(excludedAck.body) && !excludedAck.body.includes(`${tag}_so_para_mem`), "ASA não revela conteúdo nem oferece ciente PEOPLE para quem não recebe");
+    assert((await post(memApi, `/asa/actions/${peopleProposal?.id}/confirm`)).status === 200, "ASA confirma ciente PEOPLE pela política oficial");
+    // A prévia não concede acesso permanente: revogar o destino invalida a confirmação.
+    const revokedPeopleNotice = await post(supApi, "/communication/mural", { type: "NOTICE", scope: "PEOPLE", recipientIds: [member.id], title: `${tag}_destino_revogado`, body: "Destino alterado após a prévia", requiresConfirmation: true });
+    const revokedPeopleId = ((await revokedPeopleNotice.json()) as { post: { id: string } }).post.id;
+    const revokedPeoplePreview = proposalFrom((await askAsa(memApi, `dê ciente do aviso "${tag}_destino_revogado"`)).body);
+    await db.delete(announcementRecipientsTable).where(eq(announcementRecipientsTable.announcementId, revokedPeopleId));
+    const revokedPeopleConfirm = await post(memApi, `/asa/actions/${revokedPeoplePreview?.id}/confirm`);
+    const revokedPeopleReads = await db.select().from(announcementReadsTable).where(eq(announcementReadsTable.announcementId, revokedPeopleId));
+    assert(Boolean(revokedPeoplePreview?.id) && revokedPeopleConfirm.status === 409 && revokedPeopleReads.length === 0, "ASA revalida destinatário PEOPLE na confirmação sem gravar ciente após revogação");
+    assert((await post(memApi, `/communication/mural/${peopleNoticeId}/ack`)).status === 200, "Pessoa escolhida dá ciente");
+    assert((await post(adminApi, "/communication/mural", { type: "NOTICE", scope: "PEOPLE", recipientIds: [], body: "ninguém" })).status === 400, "Aviso para pessoas sem ninguém marcado é recusado");
+    assert((await post(adminApi, "/communication/mural", { type: "NOTICE", scope: "PEOPLE", recipientIds: [member.id, "00000000-0000-4000-8000-000000000000"], body: "com estranho" })).status === 404, "Aviso com pessoa que não é da organização é recusado");
+    assert((await post(memApi, "/communication/mural", { type: "RECOGNITION", scope: "PEOPLE", recipientIds: [admin.id], recipientId: admin.id, reason: "Cuidado", body: "Obrigada" })).status === 400, "Reconhecimento não vai para pessoas escolhidas");
+    const [peopleEvent] = await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, peopleNoticeId!), eq(historyEventsTable.action, "mural.notice_created")));
+    assert(JSON.stringify((peopleEvent?.metadata as { recipientIds?: string[] } | null)?.recipientIds ?? []) === JSON.stringify([member.id]), "A lista de quem recebe entra no Registro");
     const locationNotice = await post(adminApi, "/communication/mural", { type: "NOTICE", scope: "LOCATION", locationId: location!.id, body: "Orientação exclusiva do Snowland" });
     assert(locationNotice.status === 201, "Administração publica para um local específico");
     const memberMural = await askAsa(memApi, "Mostra o Mural");
     const searchedMural = await askAsa(memApi, "Busque no Mural por ‘Somente patinadores’");
     const outsiderMural = await askAsa(outsideApi, "Mostra o Mural");
     const supervisorMural = await askAsa(supApi, "Mostra o Mural");
+    assert(memberMural.body.includes(`${tag}_so_para_mem`) && supervisorMural.body.includes(`${tag}_so_para_mem`), "Consulta do Mural pela ASA inclui PEOPLE para destinatário e autoria");
+    assert(!outsiderMural.body.includes(`${tag}_so_para_mem`), "Consulta do Mural pela ASA não revela PEOPLE para outra pessoa");
     assert(memberMural.status === 200 && memberMural.body.includes("Somente patinadores") && memberMural.body.includes("Orientação exclusiva do Snowland"), "ASA mostra Mural da própria área e local de escala publicada");
     assert(outsiderMural.status === 200 && !outsiderMural.body.includes("Somente patinadores") && !outsiderMural.body.includes("Orientação exclusiva do Snowland"), "ASA não mostra publicações de outra área ou local sem vínculo");
     assert(supervisorMural.status === 200 && supervisorMural.body.includes("Somente patinadores") && supervisorMural.body.includes("Orientação exclusiva do Snowland"), "ASA respeita área própria e designação de supervisor para local");
@@ -332,6 +379,7 @@ async function run() {
     await db.delete(historyEventsTable).where(or(eq(historyEventsTable.orgId, org!.id), inArray(historyEventsTable.actorId, all.map(user => user.id))));
     await db.delete(announcementCommentsTable).where(inArray(announcementCommentsTable.authorId, all.map(user => user.id)));
     await db.delete(announcementReadsTable).where(inArray(announcementReadsTable.userId, all.map(user => user.id)));
+    await db.delete(announcementRecipientsTable).where(inArray(announcementRecipientsTable.userId, all.map(user => user.id)));
     await db.delete(announcementsTable).where(eq(announcementsTable.orgId, org!.id));
     await db.delete(libraryViewsTable).where(eq(libraryViewsTable.orgId, org!.id));
     const libraryIds = (await db.select({ id: libraryDocumentsTable.id }).from(libraryDocumentsTable).where(eq(libraryDocumentsTable.orgId, org!.id))).map(row => row.id);

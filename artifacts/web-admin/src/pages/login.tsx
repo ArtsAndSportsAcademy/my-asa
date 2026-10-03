@@ -1,144 +1,125 @@
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 import { useLocation } from "wouter";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useLogin } from "@workspace/api-client-react";
+import { ApiError, customFetch, useLogin } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { lembrarSenhaDaEntrada } from "@/lib/senha-da-entrada";
+import "./login.css";
 
-const loginSchema = z.object({
-  username: z.string().min(1, "O nome de usuário é obrigatório"),
-  password: z.string().min(1, "A senha é obrigatória"),
-});
+// Desenho 01 · Entrada: usuário e senha, sem e-mail. Quem redefine a senha é a Administração.
+type Tela = "entrar" | "esqueci" | "desativada";
 
-type LoginFormValues = z.infer<typeof loginSchema>;
+const MENSAGEM_DE_ERRO: Record<string, string> = {
+  ACCOUNT_UNCONFIGURED: "Sua conta ainda não tem perfil de acesso. Peça à Administração para definir.",
+  GUEST_ACCESS_EXPIRED: "Seu acesso de convidado terminou. Se precisa continuar, fale com a Administração.",
+};
+
+function Marca() {
+  return <div className="lg-marca">
+    <img src="/asa-wing.png" alt="" />
+    <div><b>My ASA</b><span>Arts and Sports Academy</span></div>
+  </div>;
+}
 
 export default function Login() {
   const [, setLocation] = useLocation();
   const { login: authenticate } = useAuth();
-  const [error, setError] = useState<string | null>(null);
-
   const loginMutation = useLogin();
+  const [tela, setTela] = useState<Tela>("entrar");
+  const [usuario, setUsuario] = useState("");
+  const [senha, setSenha] = useState("");
+  const [mostrar, setMostrar] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [pedido, setPedido] = useState<{ enviando: boolean; resposta: string | null; erro: string | null }>({ enviando: false, resposta: null, erro: null });
 
-  const form = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      username: "",
-      password: "",
-    },
-  });
-
-  const onSubmit = (data: LoginFormValues) => {
-    setError(null);
+  const entrar = (event: FormEvent) => {
+    event.preventDefault();
+    setErro(null);
+    if (!usuario.trim() || !senha) { setErro("Preencha o usuário e a senha."); return; }
     loginMutation.mutate(
-      { data: { username: data.username.trim().toLowerCase(), password: data.password } },
+      { data: { username: usuario.trim().toLowerCase(), password: senha } },
       {
         onSuccess: (result) => {
+          if ((result.user as { mustChangePassword?: boolean }).mustChangePassword) lembrarSenhaDaEntrada(senha);
           authenticate(result.accessToken, result.refreshToken, result.user, result.roles, (result as any).capabilities ?? []);
           setLocation("/meu-dia");
         },
-        onError: () => {
-          setError("Nome de usuário ou senha inválidos");
+        onError: (err) => {
+          const codigo = err instanceof ApiError ? (err.data as { error?: string } | null)?.error : undefined;
+          if (codigo === "USER_INACTIVE") { setTela("desativada"); return; }
+          if (codigo && MENSAGEM_DE_ERRO[codigo]) { setErro(MENSAGEM_DE_ERRO[codigo]); return; }
+          if (!(err instanceof ApiError)) { setErro("Sem conexão. Tente de novo quando a internet voltar."); return; }
+          setErro("Usuário ou senha não conferem.");
         },
-      }
+      },
     );
   };
 
-  return (
-    <div className="min-h-screen flex bg-muted/30">
-      {/* Left side - Brand */}
-      <div className="hidden lg:flex w-1/2 bg-myasa-gradient items-center justify-center p-12 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507676184212-d0330a151522?auto=format&fit=crop&q=80')] mix-blend-overlay opacity-10 bg-cover bg-center" />
-        <div className="relative z-10 text-primary-foreground max-w-sm flex flex-col items-center text-center">
-          <img
-            src="/asa-wing.png"
-            alt="Asinha MyASA"
-            className="w-36 h-40 mb-8"
-            style={{ filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.4))" }}
-          />
-          <h1 className="text-5xl font-serif font-bold tracking-tight mb-4">MyASA</h1>
-          <p className="text-xl text-primary-foreground/90 font-medium font-sans">
-            Tudo da ASA em um só lugar
-          </p>
-        </div>
-      </div>
+  const avisarAdministracao = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!usuario.trim()) { setPedido({ enviando: false, resposta: null, erro: "Escreva o seu usuário para a Administração saber quem é." }); return; }
+    setPedido({ enviando: true, resposta: null, erro: null });
+    try {
+      const r = await customFetch<{ message: string }>("/api/auth/esqueci-senha", { method: "POST", body: JSON.stringify({ username: usuario.trim().toLowerCase() }) });
+      setPedido({ enviando: false, resposta: r.message, erro: null });
+    } catch {
+      setPedido({ enviando: false, resposta: null, erro: "Não consegui avisar agora. Tente de novo em alguns segundos." });
+    }
+  };
 
-      {/* Right side - Login Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
-        <div className="w-full max-w-md space-y-8">
-          <div className="lg:hidden flex flex-col items-center gap-3 mb-8">
-            <img
-              src="/asa-wing.png"
-              alt="Asinha MyASA"
-              className="w-16 h-18"
-            />
-            <h1 className="text-2xl font-bold text-foreground">MyASA</h1>
-            <p className="text-sm text-muted-foreground">Tudo da ASA em um só lugar</p>
-          </div>
+  const voltar = () => { setTela("entrar"); setPedido({ enviando: false, resposta: null, erro: null }); setErro(null); };
 
-          <Card className="border-none shadow-xl bg-card">
-            <CardHeader className="space-y-3 pb-6">
-              <CardTitle className="text-3xl font-serif">Bem-vindo ao MyASA</CardTitle>
-              <CardDescription className="text-base">
-                Entre com suas credenciais para continuar.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-                  {error && (
-                    <Alert variant="destructive" className="border-destructive/50 bg-destructive/10">
-                      <AlertDescription>{error}</AlertDescription>
-                    </Alert>
-                  )}
-                  
-                  <FormField
-                    control={form.control}
-                    name="username"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nome de usuário</FormLabel>
-                        <FormControl>
-                          <Input placeholder="nome.sobrenome" autoCapitalize="none" autoComplete="username" {...field} className="h-11" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Senha</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="••••••••" {...field} className="h-11" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button 
-                    type="submit" 
-                    className="w-full h-11 text-base font-medium" 
-                    disabled={loginMutation.isPending}
-                  >
-                    {loginMutation.isPending ? "Entrando…" : "Entrar"}
-                  </Button>
-                  <p className="text-center text-sm text-muted-foreground">
-                    Esqueceu a senha ou o login? Peça à Administração — ela gera uma senha provisória para você.
-                  </p>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
-  );
+  return <div className="lg-tela">
+    <aside className="lg-lado">
+      <Marca />
+      <p className="lg-lema">A escala, o livro do dia e as folgas da Arts and Sports Academy em um lugar só.</p>
+    </aside>
+
+    <main className="lg-miolo">
+      <div className="lg-topo-celular"><Marca /></div>
+      <section className="lg-cartao">
+        {tela === "entrar" && <form onSubmit={entrar} noValidate>
+          <h1>Entrar</h1>
+          {erro && <p className="lg-erro" role="alert">{erro}</p>}
+          <label className="lg-campo">
+            <span>Usuário</span>
+            <input value={usuario} onChange={(e) => setUsuario(e.target.value)} placeholder="seu.usuario" autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="username" />
+          </label>
+          <label className="lg-campo">
+            <span>Senha</span>
+            <span className="lg-senha">
+              <input type={mostrar ? "text" : "password"} value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="••••••••" autoComplete="current-password" />
+              <button type="button" onClick={() => setMostrar((v) => !v)} aria-pressed={mostrar} aria-label={mostrar ? "Esconder a senha" : "Mostrar a senha"}>{mostrar ? "esconder" : "mostrar"}</button>
+            </span>
+          </label>
+          <button type="submit" className="lg-principal" disabled={loginMutation.isPending}>{loginMutation.isPending ? "Entrando…" : "Entrar"}</button>
+          <button type="button" className="lg-link" onClick={() => { setTela("esqueci"); setErro(null); }}>Esqueci minha senha</button>
+        </form>}
+
+        {tela === "esqueci" && <form onSubmit={avisarAdministracao} noValidate>
+          <h1>Esqueci minha senha</h1>
+          <h2>Quem redefine é a Administração</h2>
+          <p>O My ASA não usa e-mail. A Administração define uma senha provisória e te passa. Você entra com ela e cria a sua na hora — ninguém da ASA vê a senha que você escolher.</p>
+          {pedido.resposta ? <p className="lg-ok" role="status">{pedido.resposta}</p> : <>
+            <label className="lg-campo">
+              <span>Seu usuário</span>
+              <input value={usuario} onChange={(e) => setUsuario(e.target.value)} placeholder="seu.usuario" autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="username" />
+            </label>
+            {pedido.erro && <p className="lg-erro" role="alert">{pedido.erro}</p>}
+            <button type="submit" className="lg-principal" disabled={pedido.enviando}>{pedido.enviando ? "Avisando…" : "Avisar a Administração"}</button>
+          </>}
+          <button type="button" className="lg-link" onClick={voltar}>Voltar para entrar</button>
+        </form>}
+
+        {tela === "desativada" && <div>
+          <h1>Sua conta está desativada</h1>
+          <p>Costuma acontecer no fim de um contrato ou de uma temporada.</p>
+          <h2>Seus dados continuam guardados</h2>
+          <p>Escala, folgas e reconhecimentos ficam no histórico da ASA. Se você voltar, a Administração reativa a mesma conta — nada se perde e você não recomeça do zero.</p>
+          <p className="lg-nota">Para voltar ou pedir uma cópia dos seus dados, fale com a Administração.</p>
+          <button type="button" className="lg-link" onClick={voltar}>Voltar para entrar</button>
+        </div>}
+      </section>
+      <p className="lg-ajuda">Precisa de ajuda? Fale com a Administração da ASA.</p>
+    </main>
+  </div>;
 }

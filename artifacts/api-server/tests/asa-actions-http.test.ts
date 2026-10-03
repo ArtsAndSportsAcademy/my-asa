@@ -21,7 +21,10 @@ async function run() {
   let passed = 0;
   const failures: string[] = [];
   const check = (condition: unknown, label: string) => {
-    if (condition) passed++;
+    if (condition) {
+      passed++;
+      if (passed % 50 === 0) console.log(`ASA actions HTTP: ${passed} verificações passaram; execução em andamento.`);
+    }
     else { failures.push(label); console.error(`FAIL: ${label}`); }
   };
   try {
@@ -620,12 +623,27 @@ async function run() {
     check(!otherOperationActivitiesQuery.body.includes(`${tag}_other_operation_activity`)
       && !otherOperationActivitiesQuery.body.includes("Atividades recorrentes ativas em"),
     "Recurring activity query refuses an operation outside the authenticated operation list");
+    const beforeRevocation = await sup("/asa/conversations", { title: tag });
+    assert.equal(beforeRevocation.status, 201);
+    const existingConversation = await beforeRevocation.json() as { id: number };
+    conversationIds.push(existingConversation.id);
     await db.update(userRolesTable).set({ active: false }).where(eq(userRolesTable.id, supervisor.membershipId));
-    const revokedSupervisorActivitiesQuery = await ask(sup, "atividades recorrentes");
-    await db.update(userRolesTable).set({ active: true }).where(eq(userRolesTable.id, supervisor.membershipId));
-    check(revokedSupervisorActivitiesQuery.body.includes("Seu acesso de gestão a esta operação não está ativo")
-      && !revokedSupervisorActivitiesQuery.body.includes(`${tag}_visible_activity`),
-    "Recurring activity query revalidates supervisor membership before returning data");
+    try {
+      const revokedConversation = await sup("/asa/conversations", { title: tag });
+      check(revokedConversation.status === 403
+        && (await revokedConversation.json()).error === "ACCOUNT_UNCONFIGURED",
+      "Revoked membership blocks new ASA conversations even with an existing access token");
+      const revokedMessage = await sup(`/asa/chat/${existingConversation.id}/messages`, {
+        content: "atividades recorrentes", context: { operationId: operation!.id },
+      });
+      const revokedBody = await revokedMessage.text();
+      check(revokedMessage.status === 403
+        && JSON.parse(revokedBody).error === "ACCOUNT_UNCONFIGURED"
+        && !revokedBody.includes(`${tag}_visible_activity`),
+      "Revoked membership blocks messages in existing ASA conversations without disclosing activities");
+    } finally {
+      await db.update(userRolesTable).set({ active: true }).where(eq(userRolesTable.id, supervisor.membershipId));
+    }
     const dueSoonInquiry = await ask(mine, "Quais tarefas tenho com prazo nos próximos 3 dias?");
     check(dueSoonInquiry.body.includes(`${tag}_soon_self`)
       && !dueSoonInquiry.body.includes(`${tag}_soon_other`)
@@ -917,7 +935,7 @@ async function run() {
       status: "CONFIRMED", createdBy: admin.id,
     }).returning();
     const confirmedMeetingAsk = await ask(manager, renameMeeting(confirmedMeeting!.title, "Não alterar confirmado"));
-    check(!confirmedMeetingAsk.proposal && confirmedMeetingAsk.body.includes("não encontrei")
+    check(!confirmedMeetingAsk.proposal && confirmedMeetingAsk.body.toLocaleLowerCase("pt-BR").includes("não encontrei")
       && (await db.select().from(agendaEventsTable).where(eq(agendaEventsTable.id, confirmedMeeting!.id)))[0]?.title === confirmedMeeting!.title,
     "Confirmed Agenda events are excluded from the draft rename action");
 
@@ -930,7 +948,7 @@ async function run() {
       content: "Aviso publicado", status: "PUBLISHED", publishedAt: new Date(), urgency: "IMPORTANT", type: "INFORMATIVE",
     }).returning();
     const publishedEdit = await ask(manager, editNoticeDraft(publishedNotice!.title!, `${tag}_wrong_edit`, "Texto"));
-    check(!publishedEdit.proposal && publishedEdit.body.includes("não encontrei")
+    check(!publishedEdit.proposal && publishedEdit.body.toLocaleLowerCase("pt-BR").includes("não encontrei")
       && (await db.select().from(noticesTable).where(eq(noticesTable.id, publishedNotice!.id)))[0]?.content === "Aviso publicado",
     "ASA refuses editing published notices through the draft-update command");
     const memberEdit = await ask(mine, editNoticeDraft(draftToEdit!.title!, "Alteração sem permissão", "Texto"));
@@ -997,10 +1015,14 @@ async function run() {
       title: newResponsibilityTitle, category: "OPERAÇÃO", active: true,
     }).returning();
     const foreignResponsibilityChange = await ask(manager, `Altere a responsabilidade da tarefa "${checklistTitle}" para "${otherOperationResponsibilityTitle}"`);
-    check(!foreignResponsibilityChange.proposal && foreignResponsibilityChange.body.includes("Não encontrei uma responsabilidade ativa")
+    check(!foreignResponsibilityChange.proposal && foreignResponsibilityChange.body.includes("Não encontrei a responsabilidade ativa")
       && ((await targets("TASK_CREATE", checklistTitle))[0] as typeof tasksTable.$inferSelect | undefined)?.responsibilityId === taskResponsibility!.id,
     "Task responsibility update cannot target a responsibility from another operation");
-    const cancelledResponsibility = await ask(manager, `Altere a responsabilidade da tarefa "${checklistTitle}" para "${responsibilityTitle}"`);
+    const unchangedResponsibility = await ask(manager, `Altere a responsabilidade da tarefa "${checklistTitle}" para "${responsibilityTitle}"`);
+    check(!unchangedResponsibility.proposal && unchangedResponsibility.body.includes("já está vinculada")
+      && ((await targets("TASK_CREATE", checklistTitle))[0] as typeof tasksTable.$inferSelect).responsibilityId === taskResponsibility!.id,
+    "Task responsibility update to the current link is a no-op without a proposal");
+    const cancelledResponsibility = await ask(manager, `Altere a responsabilidade da tarefa "${checklistTitle}" para "${newResponsibilityTitle}"`);
     assert.equal(cancelledResponsibility.proposal?.actionType, "TASK_UPDATE_RESPONSIBILITY", cancelledResponsibility.body);
     const responsibilityCancellation = await manager(`/asa/actions/${cancelledResponsibility.proposal!.id}/cancel`, {});
     check(responsibilityCancellation.status === 200
@@ -1412,7 +1434,7 @@ async function run() {
     check(memberCommentPreview.body.includes(commentContent) && commentPreviewRows.length === 0,
       "Task-comment preview shows the literal message without inserting a comment");
     const outsiderComment = await ask(outside, commentTaskText(editableTitle, "Detalhe privado do comentário."));
-    check(!outsiderComment.proposal && outsiderComment.body.includes("dentro do seu escopo")
+    check(!outsiderComment.proposal && outsiderComment.body.includes("tenha acesso para comentar")
       && !outsiderComment.body.includes("Detalhe privado do comentário"),
     "Person outside task scope cannot prepare a comment or learn task details");
     const memberCommentCancelled = await mine(`/asa/actions/${memberCommentPreview.proposal!.id}/cancel`, {});
@@ -2018,7 +2040,11 @@ async function run() {
     const boundedResponse = await manager(`/asa/actions/${boundedAudience.id}/confirm`, {});
     const boundedTarget = (await targets("NOTICE_DRAFT_CREATE", `${tag}_bounded_audience`))[0];
     const boundedRecipients = boundedTarget ? await db.select().from(noticeRecipientsTable).where(eq(noticeRecipientsTable.noticeId, boundedTarget.id)) : [];
-    check(boundedResponse.status === 200 && boundedAudience.recipientCount === 4 && boundedRecipients.length === 4 && !boundedRecipients.some(row => [outsider.id, foreign.id].includes(row.userId)), "Notice audience excludes inactive people and stale foreign memberships");
+    const expectedAudience = [admin.id, director.id, supervisor.id, member.id, mixedRoleMember.id].sort();
+    check(boundedResponse.status === 200 && boundedAudience.recipientCount === expectedAudience.length
+      && boundedRecipients.map(row => row.userId).sort().join(",") === expectedAudience.join(",")
+      && !boundedRecipients.some(row => [outsider.id, foreign.id].includes(row.userId)),
+    "Notice audience includes exactly the active organization members, without duplicates or stale foreign memberships");
   } finally {
     delete process.env.MYASA_TEST_FAIL_HISTORY;
     if (server) { server.closeAllConnections(); await new Promise<void>((resolve, reject) => server!.close(error => error ? reject(error) : resolve())); }

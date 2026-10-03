@@ -33,7 +33,7 @@ import { eventBus } from "../lib/event-bus.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { buildShowBookTree, collectUserIdsFromConfig, resolveShowBookCast } from "../services/line-resolver.js";
 import { detectShowBookResolveConflicts } from "../services/schedule-conflicts.js";
-import { canManageShowBook, canViewShowBook, isOperationManager } from "../lib/show-responsibility.js";
+import { canManageShowBook, canOperateDailyBook, canViewShowBook, isOperationManager } from "../lib/show-responsibility.js";
 
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"] as const;
 
@@ -262,7 +262,14 @@ router.get("/show-books", requireAuth, requireOrganization, async (req, res) => 
     const visible = await Promise.all(
       all.map((b) => canViewShowBook(actor, { id: b.id, responsibleId: b.responsibleId }, b.operationId)),
     );
-    const books = all.filter((_, i) => visible[i]);
+    // Elenco lê a estante de shows: rascunho é trabalho da gestão e não aparece para ele,
+    // exceto o show delegado a ele (capitão), que ele opera.
+    const readable = await Promise.all(all.map((b, i) =>
+      !visible[i] ? false
+        : actor.role !== "MEMBER" || b.status === "PUBLISHED" ? true
+        : canOperateDailyBook(actor, b.operationId, { id: b.id, responsibleId: b.responsibleId }),
+    ));
+    const books = all.filter((_, i) => readable[i]);
     res.json({ showBooks: books });
   } catch (err) {
     res.status(500).json({ error: "Erro interno ao listar livros" });

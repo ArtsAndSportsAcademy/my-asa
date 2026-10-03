@@ -1,133 +1,79 @@
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
+import { Check } from "lucide-react";
 import { useChangeMyPassword } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { esquecerSenhaDaEntrada, regrasDaSenha, senhaDaEntrada } from "@/lib/senha-da-entrada";
+import "./login.css";
 
+// Desenho 01 · Primeiro acesso: só a senha nova e a repetição, com as regras se marcando enquanto digita.
+// A senha provisória já foi digitada na entrada; se a página recarregou, ela é pedida de novo.
 export default function ForcePasswordChange() {
-  const { markPasswordChanged, logout } = useAuth();
+  const { user, markPasswordChanged, logout } = useAuth();
   const changeMutation = useChangeMyPassword();
+  const lembrada = senhaDaEntrada();
+  const [provisoria, setProvisoria] = useState("");
+  const [nova, setNova] = useState("");
+  const [repetida, setRepetida] = useState("");
+  const [mostrar, setMostrar] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const regras = regrasDaSenha(nova, repetida);
+  const nome = (user as { displayName?: string | null } | null)?.displayName ?? user?.name?.split(" ")[0] ?? "";
 
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    if (!currentPassword || !newPassword) {
-      setError("Preencha todos os campos.");
-      return;
-    }
-    if (newPassword.length < 6) {
-      setError("A nova senha deve ter pelo menos 6 caracteres.");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setError("A nova senha e a confirmação não coincidem.");
-      return;
-    }
-    if (newPassword === currentPassword) {
-      setError("A nova senha deve ser diferente da senha provisória.");
-      return;
-    }
-
+  const enviar = (event: FormEvent) => {
+    event.preventDefault();
+    setErro(null);
+    const atual = lembrada ?? provisoria;
+    if (!atual) { setErro("Escreva a senha provisória que a Administração te passou."); return; }
+    if (!regras.every((regra) => regra.ok)) { setErro("A senha nova ainda não cumpre as três regras."); return; }
+    if (nova === atual) { setErro("A senha nova precisa ser diferente da provisória."); return; }
     changeMutation.mutate(
       // A sessão deste aparelho continua; as outras são encerradas pelo servidor.
-      { data: { currentPassword, newPassword, refreshToken: localStorage.getItem("myasa_refresh_token") ?? undefined } as { currentPassword: string; newPassword: string } },
+      { data: { currentPassword: atual, newPassword: nova, refreshToken: localStorage.getItem("myasa_refresh_token") ?? undefined } as { currentPassword: string; newPassword: string } },
       {
-        onSuccess: () => {
-          markPasswordChanged();
-        },
+        onSuccess: () => { esquecerSenhaDaEntrada(); markPasswordChanged(); },
         onError: (err: any) => {
-          const msg = err?.response?.data?.message ?? "Não foi possível alterar a senha. Verifique a senha provisória.";
-          setError(msg);
+          const status = err?.status ?? err?.response?.status;
+          setErro(status === 401 ? "A senha provisória não confere. Confira com a Administração." : err?.data?.message ?? "Não consegui criar a senha agora. Tente de novo.");
         },
-      }
+      },
     );
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 p-8">
-      <div className="w-full max-w-md space-y-6">
-        <div className="flex flex-col items-center gap-3">
-          <img src="/asa-wing.png" alt="Asa My ASA" className="w-16 h-18 object-contain" />
-          <h1 className="text-2xl font-bold text-foreground">MyASA</h1>
-        </div>
-
-        <Card className="border-none shadow-xl bg-card">
-          <CardHeader className="space-y-3 pb-6">
-            <CardTitle className="text-2xl font-serif">Crie sua senha</CardTitle>
-            <CardDescription className="text-base">
-              Por segurança, você precisa trocar a senha provisória por uma senha sua antes de continuar.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={onSubmit} className="space-y-5">
-              {error && (
-                <Alert variant="destructive" className="border-destructive/50 bg-destructive/10">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-
-              <div className="space-y-2">
-                <Label>Senha provisória (atual)</Label>
-                <Input
-                  type="password"
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="h-11"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Nova senha</Label>
-                <Input
-                  type="password"
-                  placeholder="Mínimo 6 caracteres"
-                  autoComplete="new-password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="h-11"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Confirmar nova senha</Label>
-                <Input
-                  type="password"
-                  placeholder="Repita a nova senha"
-                  autoComplete="new-password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="h-11"
-                />
-              </div>
-
-              <Button type="submit" className="w-full h-11 text-base font-medium" disabled={changeMutation.isPending}>
-                {changeMutation.isPending ? "Salvando..." : "Salvar nova senha"}
-              </Button>
-
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full"
-                onClick={logout}
-                disabled={changeMutation.isPending}
-              >
-                Sair
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
+  return <div className="lg-tela">
+    <aside className="lg-lado">
+      <div className="lg-marca"><img src="/asa-wing.png" alt="" /><div><b>My ASA</b><span>Arts and Sports Academy</span></div></div>
+      <p className="lg-lema">Boas-vindas{nome ? `, ${nome}` : ""}. A senha que você recebeu vale só desta vez.</p>
+    </aside>
+    <main className="lg-miolo">
+      <div className="lg-topo-celular"><div className="lg-marca"><img src="/asa-wing.png" alt="" /><div><b>My ASA</b><span>Primeiro acesso</span></div></div></div>
+      <section className="lg-cartao">
+        <form onSubmit={enviar} noValidate>
+          <h1>{nome ? `Oi, ${nome}` : "Crie a sua senha"}</h1>
+          <p>Antes de entrar, crie a sua senha. A que a Administração te passou vale só desta vez.</p>
+          {erro && <p className="lg-erro" role="alert">{erro}</p>}
+          {!lembrada && <label className="lg-campo">
+            <span>Senha provisória</span>
+            <input type="password" value={provisoria} onChange={(e) => setProvisoria(e.target.value)} autoComplete="current-password" placeholder="a que a Administração te passou" />
+          </label>}
+          <label className="lg-campo">
+            <span>Nova senha</span>
+            <span className="lg-senha">
+              <input type={mostrar ? "text" : "password"} value={nova} onChange={(e) => setNova(e.target.value)} autoComplete="new-password" placeholder="••••••••" />
+              <button type="button" onClick={() => setMostrar((v) => !v)} aria-pressed={mostrar} aria-label={mostrar ? "Esconder a senha" : "Mostrar a senha"}>{mostrar ? "esconder" : "mostrar"}</button>
+            </span>
+          </label>
+          <label className="lg-campo">
+            <span>Repetir a senha</span>
+            <input type={mostrar ? "text" : "password"} value={repetida} onChange={(e) => setRepetida(e.target.value)} autoComplete="new-password" placeholder="repita" />
+          </label>
+          <ul className="lg-regras" aria-label="Regras da senha">
+            {regras.map((regra) => <li key={regra.texto} className={regra.ok ? "ok" : ""}><Check size={14} aria-hidden="true" />{regra.texto}<span className="sr-only">{regra.ok ? " — cumprida" : " — falta"}</span></li>)}
+          </ul>
+          <button type="submit" className="lg-principal" disabled={changeMutation.isPending}>{changeMutation.isPending ? "Criando…" : "Criar senha e entrar"}</button>
+          <p className="lg-nota">Ninguém da ASA vê a sua senha, nem a Administração.</p>
+          <button type="button" className="lg-link" onClick={() => { esquecerSenhaDaEntrada(); logout(); }} disabled={changeMutation.isPending}>Sair</button>
+        </form>
+      </section>
+    </main>
+  </div>;
 }

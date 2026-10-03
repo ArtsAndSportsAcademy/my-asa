@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { AlertTriangle, Check, CirclePlus, ClipboardList, RotateCw, Trash2, X } from "lucide-react";
 import { ApiError, customFetch } from "@workspace/api-client-react";
+import { useAuth } from "@/hooks/useAuth";
 
 type ShellRole = "adm" | "dir" | "sup" | "mem";
 type Area = { id: string; name: string };
@@ -23,6 +24,7 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
   const canDistribute = canDefine || role === "sup";
   const [tab, setTab] = useState<"tasks" | "responsibilities">("tasks");
   const [filter, setFilter] = useState("today");
+  const myId = useAuth().user?.id ?? null;
   const [responsibilities, setResponsibilities] = useState<Responsibility[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
@@ -90,8 +92,9 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
     if (filter === "open") return !closed;
     if (filter === "late") return !closed && task.dueDate < today();
     if (filter === "done") return ["APPROVED", "COMPLETED"].includes(task.status);
+    if (filter === "mine") return task.assigneeId === myId;
     return true;
-  }).sort((a, b) => a.dueDate.localeCompare(b.dueDate)), [filter, tasks]);
+  }).sort((a, b) => a.dueDate.localeCompare(b.dueDate)), [filter, tasks, myId]);
 
   const scopedPeople = useMemo(() => {
     const selected = responsibilities.find((item) => item.id === selectedResponsibility);
@@ -185,7 +188,7 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
     {notice && <div className="rt-notice" role="status">{notice}<button aria-label="Dispensar aviso" onClick={() => setNotice("")}><X size={16}/></button></div>}
     {error && <div className="rt-error" role="alert"><AlertTriangle size={17}/>{error}<button onClick={() => void reload()}>Tentar novamente</button></div>}
     {loading ? <div className="rt-loading" aria-busy="true"><i/><i/><i/></div> : tab === "tasks" ? <>
-      <div className="rt-toolbar"><div className="rt-filters" role="group" aria-label="Filtrar tarefas">{[["today", "Hoje"], ["open", "Abertas"], ["late", "Atrasadas"], ["done", "Concluídas"], ["all", "Todas"]].map(([value, label]) => <button key={value} className={filter === value ? "selected" : ""} onClick={() => setFilter(value)}>{label}</button>)}</div>{canDistribute && <button className="rt-primary" onClick={() => { setSelectedResponsibility(""); setLotDialog(true); }}><CirclePlus size={16}/>Preparar lote</button>}</div>
+      <div className="rt-toolbar"><div className="rt-filters" role="group" aria-label="Filtrar tarefas">{([["today", "Hoje"], ["open", "Em aberto"], ["late", "Vencidas"], ["done", "Feitas"], ...(role === "mem" ? [] : [["mine", "Minhas"]]), ["all", "Todas"]] as [string, string][]).map(([value, label]) => <button key={value} className={filter === value ? "selected" : ""} onClick={() => setFilter(value)}>{label}</button>)}</div>{canDistribute && <button className="rt-primary" onClick={() => { setSelectedResponsibility(""); setLotDialog(true); }}><CirclePlus size={16}/>Preparar lote</button>}</div>
       <p className="rt-explainer">Uma tarefa só entra na lista quando o lote é confirmado.</p>
       {visibleTasks.length ? <div className="rt-task-list">{visibleTasks.map((task) => {
         const closed = ["APPROVED", "COMPLETED", "CANCELLED", "EXPIRED"].includes(task.status);

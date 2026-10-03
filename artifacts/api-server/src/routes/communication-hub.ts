@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
-import { db, announcementCommentsTable, announcementReadsTable, announcementsTable, areaLocalSupervisorsTable, areasTable, locationsTable, scaleAllocationsTable, scalesTable, usersTable } from "@workspace/db";
+import { db, announcementCommentsTable, announcementReadsTable, announcementRecipientsTable, announcementsTable, areaLocalSupervisorsTable, areasTable, locationsTable, scaleAllocationsTable, scalesTable, usersTable } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { normalizeReason, requireReason } from "../lib/reason.js";
@@ -9,7 +9,8 @@ import { confirmAnnouncementRead } from "../services/announcement-confirmation.j
 import { listCommunicationPeople } from "../services/communication-directory.js";
 
 const router: IRouter = Router();
-type Scope = "HOUSE" | "AREA" | "LOCATION";
+type Scope = "HOUSE" | "AREA" | "LOCATION" | "PEOPLE";
+const MAX_RECIPIENTS = 300;
 type Kind = "NOTICE" | "RECOGNITION";
 
 function role(req: any) { return String(req.user?.role ?? "MEMBER").toUpperCase(); }
@@ -27,7 +28,7 @@ router.get("/communication/mural", requireAuth, requireOrganization, async (req,
     const rows = await db.select({
       id: announcementsTable.id, type: announcementsTable.type, scope: announcementsTable.scope, title: announcementsTable.title, body: announcementsTable.body,
       reason: announcementsTable.reason, requiresConfirmation: announcementsTable.requiresConfirmation, recipientId: announcementsTable.recipientId, publishedAt: announcementsTable.publishedAt,
-      areaId: announcementsTable.areaId, locationId: announcementsTable.locationId, authorName: usersTable.name, areaName: areasTable.name, locationName: locationsTable.name,
+      areaId: announcementsTable.areaId, locationId: announcementsTable.locationId, authorId: announcementsTable.authorId, authorName: usersTable.name, areaName: areasTable.name, locationName: locationsTable.name,
     }).from(announcementsTable).innerJoin(usersTable, eq(announcementsTable.authorId, usersTable.id))
       .leftJoin(areasTable, eq(announcementsTable.areaId, areasTable.id)).leftJoin(locationsTable, eq(announcementsTable.locationId, locationsTable.id))
       .where(and(eq(announcementsTable.orgId, req.user!.organizationId), eq(announcementsTable.active, true), isNull(announcementsTable.cancelledAt))).orderBy(desc(announcementsTable.publishedAt));
@@ -38,7 +39,18 @@ router.get("/communication/mural", requireAuth, requireOrganization, async (req,
     const reads = new Map(mine.map(read => [read.announcementId, read]));
     const comments = ids.length ? await db.select({ announcementId: announcementCommentsTable.announcementId, count: sql<number>`count(*)::int` }).from(announcementCommentsTable).where(and(inArray(announcementCommentsTable.announcementId, ids), eq(announcementCommentsTable.active, true))).groupBy(announcementCommentsTable.announcementId) : [];
     const commentCounts = new Map(comments.map(comment => [comment.announcementId, comment.count]));
-    res.json({ posts: visible.map(post => ({ ...post, mine: reads.get(post.id) ?? null, commentCount: commentCounts.get(post.id) ?? 0 })) });
+    // Mesma regra da rota de cancelar: a tela só oferece "cancelar aviso" a quem o servidor deixaria cancelar.
+    const myArea = isSupervisor(req) ? await ownArea(req.user!.sub) : null;
+    const canCancel = (post: typeof rows[number]) => post.type === "NOTICE" && (isAdmin(req) || isDirection(req) || post.authorId === req.user!.sub || (isSupervisor(req) && myArea !== null && post.areaId === myArea));
+    // Aviso para pessoas escolhidas mostra para quem foi (nomes de uso, sem contato).
+    const peopleIds = visible.filter(post => post.scope === "PEOPLE").map(post => post.id);
+    const recipientRows = peopleIds.length ? await db.select({ announcementId: announcementRecipientsTable.announcementId, name: usersTable.name }).from(announcementRecipientsTable).innerJoin(usersTable, eq(announcementRecipientsTable.userId, usersTable.id)).where(inArray(announcementRecipientsTable.announcementId, peopleIds)).orderBy(usersTable.name) : [];
+    const recipientNames = new Map<string, string[]>();
+    for (const row of recipientRows) recipientNames.set(row.announcementId, [...(recipientNames.get(row.announcementId) ?? []), row.name]);
+    res.json({ posts: visible.map(post => {
+      const { authorId: _authorId, ...rest } = post;
+      return { ...rest, ...(post.scope === "PEOPLE" ? { recipientNames: recipientNames.get(post.id) ?? [] } : {}), canCancel: canCancel(post), mine: reads.get(post.id) ?? null, commentCount: commentCounts.get(post.id) ?? 0 };
+    }) });
   } catch (error) { console.error("[communication] GET mural", error); res.status(500).json({ error: "Não consegui carregar o Mural" }); }
 });
 
@@ -52,23 +64,48 @@ router.get("/communication/people", requireAuth, requireOrganization, async (req
   } catch { res.status(500).json({ error: "Não consegui listar as pessoas" }); }
 });
 
+// Destinos possíveis de um aviso (só nome): toda área ativa e todo local aberto da organização.
+// Quem publica aviso escolhe qualquer um deles — inclusive a Supervisão (decisão de 02/10).
+router.get("/communication/destinations", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  if (!isAdmin(req) && !isDirection(req) && !isSupervisor(req)) { res.status(403).json({ error: "Sem permissão para publicar aviso" }); return; }
+  try {
+    const orgId = req.user!.organizationId;
+    const [areas, locations] = await Promise.all([
+      db.select({ id: areasTable.id, name: areasTable.name }).from(areasTable).where(and(eq(areasTable.organizationId, orgId), eq(areasTable.active, true))).orderBy(areasTable.name),
+      db.select({ id: locationsTable.id, name: locationsTable.name }).from(locationsTable).where(and(eq(locationsTable.organizationId, orgId), eq(locationsTable.closed, false))).orderBy(locationsTable.name),
+    ]);
+    res.json({ areas, locations });
+  } catch { res.status(500).json({ error: "Não consegui listar os destinos" }); }
+});
+
 router.post("/communication/mural", requireAuth, requireOrganization, async (req, res): Promise<void> => {
   try {
-    const { type = "NOTICE", scope = "HOUSE", areaId = null, locationId = null, recipientId = null, title = null, body, reason = null, requiresConfirmation = false } = req.body as { type?: Kind; scope?: Scope; areaId?: string | null; locationId?: string | null; recipientId?: string | null; title?: string | null; body?: string; reason?: string | null; requiresConfirmation?: boolean };
+    const { type = "NOTICE", scope = "HOUSE", areaId = null, locationId = null, recipientId = null, recipientIds: rawRecipientIds = [], title = null, body, reason = null, requiresConfirmation = false } = req.body as { type?: Kind; scope?: Scope; areaId?: string | null; locationId?: string | null; recipientId?: string | null; recipientIds?: unknown; title?: string | null; body?: string; reason?: string | null; requiresConfirmation?: boolean };
     if (!body?.trim()) { res.status(400).json({ error: "Escreva a publicação" }); return; }
-    if (!["NOTICE", "RECOGNITION"].includes(type) || !["HOUSE", "AREA", "LOCATION"].includes(scope)) { res.status(400).json({ error: "Publicação inválida" }); return; }
+    if (!["NOTICE", "RECOGNITION"].includes(type) || !["HOUSE", "AREA", "LOCATION", "PEOPLE"].includes(scope)) { res.status(400).json({ error: "Publicação inválida" }); return; }
+    if (scope === "PEOPLE" && type !== "NOTICE") { res.status(400).json({ error: "Só aviso vai para pessoas escolhidas" }); return; }
     if (scope === "AREA" && !areaId || scope === "LOCATION" && !locationId) { res.status(400).json({ error: "Complete o destino da publicação" }); return; }
+    // Aviso para pessoas escolhidas (02/10): todas precisam ser desta organização e estar ativas.
+    const recipientIds = scope === "PEOPLE" ? [...new Set(Array.isArray(rawRecipientIds) ? rawRecipientIds.filter((id): id is string => typeof id === "string" && id.length > 0) : [])] : [];
+    if (scope === "PEOPLE") {
+      if (!recipientIds.length) { res.status(400).json({ error: "Escolha pelo menos uma pessoa" }); return; }
+      if (recipientIds.length > MAX_RECIPIENTS) { res.status(400).json({ error: `Escolha no máximo ${MAX_RECIPIENTS} pessoas. Para mais gente, mande para uma área ou para toda a casa.` }); return; }
+      const found = await db.select({ id: usersTable.id }).from(usersTable).where(and(inArray(usersTable.id, recipientIds), eq(usersTable.organizationId, req.user!.organizationId), eq(usersTable.status, "ACTIVE")));
+      if (found.length !== recipientIds.length) { res.status(404).json({ error: "Alguma pessoa escolhida não foi encontrada ou não está ativa" }); return; }
+    }
+    // O destino precisa ser desta organização.
+    if (scope === "AREA") { const [found] = await db.select({ id: areasTable.id }).from(areasTable).where(and(eq(areasTable.id, areaId!), eq(areasTable.organizationId, req.user!.organizationId))).limit(1); if (!found) { res.status(404).json({ error: "Área não encontrada" }); return; } }
+    if (scope === "LOCATION") { const [found] = await db.select({ id: locationsTable.id }).from(locationsTable).where(and(eq(locationsTable.id, locationId!), eq(locationsTable.organizationId, req.user!.organizationId))).limit(1); if (!found) { res.status(404).json({ error: "Local não encontrado" }); return; } }
     if (type === "RECOGNITION") {
       const required = requireReason(res, reason, "publicar um reconhecimento"); if (!required) return;
       const [recipient] = await db.select({ id: usersTable.id }).from(usersTable).where(and(eq(usersTable.id, recipientId!), eq(usersTable.organizationId, req.user!.organizationId))).limit(1);
       if (!recipient) { res.status(404).json({ error: "Pessoa não encontrada" }); return; }
-    } else if (isSupervisor(req)) {
-      const area = await ownArea(req.user!.sub);
-      if (scope !== "AREA" || area !== areaId) { res.status(403).json({ error: "Supervisão publica aviso apenas para a própria área" }); return; }
-    } else if (!isAdmin(req) && !isDirection(req)) { res.status(403).json({ error: "Sem permissão para publicar aviso" }); return; }
+    // Decisão de 02/10: Supervisão publica aviso como a Administração — para toda a casa, uma área ou um local.
+    } else if (!isAdmin(req) && !isDirection(req) && !isSupervisor(req)) { res.status(403).json({ error: "Sem permissão para publicar aviso" }); return; }
     const [post] = await db.transaction(async tx => {
-      const [created] = await tx.insert(announcementsTable).values({ orgId: req.user!.organizationId, authorId: req.user!.sub, type, scope, areaId, locationId, recipientId, title: title?.trim() || null, body: body.trim(), reason: type === "RECOGNITION" ? normalizeReason(reason) : null, requiresConfirmation: type === "NOTICE" && Boolean(requiresConfirmation) }).returning();
-      await writeHistoryEvent({ category: "NOTICE", action: type === "RECOGNITION" ? "mural.recognition_created" : "mural.notice_created", title: type === "RECOGNITION" ? "Reconhecimento publicado" : "Aviso publicado", narrative: created!.title ?? created!.body.slice(0, 120), entityType: "announcement", entityId: created!.id, actorId: req.user!.sub, orgId: req.user!.organizationId, afterState: created, metadata: { reason: created!.reason } }, tx as any);
+      const [created] = await tx.insert(announcementsTable).values({ orgId: req.user!.organizationId, authorId: req.user!.sub, type, scope, areaId: scope === "AREA" ? areaId : null, locationId: scope === "LOCATION" ? locationId : null, recipientId, title: title?.trim() || null, body: body.trim(), reason: type === "RECOGNITION" ? normalizeReason(reason) : null, requiresConfirmation: type === "NOTICE" && Boolean(requiresConfirmation) }).returning();
+      if (recipientIds.length) await tx.insert(announcementRecipientsTable).values(recipientIds.map(userId => ({ announcementId: created!.id, userId })));
+      await writeHistoryEvent({ category: "NOTICE", action: type === "RECOGNITION" ? "mural.recognition_created" : "mural.notice_created", title: type === "RECOGNITION" ? "Reconhecimento publicado" : "Aviso publicado", narrative: created!.title ?? created!.body.slice(0, 120), entityType: "announcement", entityId: created!.id, actorId: req.user!.sub, orgId: req.user!.organizationId, afterState: created, metadata: { reason: created!.reason, ...(recipientIds.length ? { recipientIds } : {}) } }, tx as any);
       return [created] as const;
     });
     res.status(201).json({ post });

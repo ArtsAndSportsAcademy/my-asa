@@ -288,6 +288,7 @@
     {"idx":49,"version":"7","when":1790640000000,"tag":"0049_perfil_privacidade_silencio","breakpoints":true},
     {"idx":50,"version":"7","when":1790726400000,"tag":"0050_refresh_token_tolerancia","breakpoints":true},
     {"idx":51,"version":"7","when":1790812800000,"tag":"0051_solicitacoes","breakpoints":true},
-    {"idx":52,"version":"7","when":1790816400000,"tag":"0052_library_page_citations","breakpoints":true}
+    {"idx":52,"version":"7","when":1790816400000,"tag":"0052_library_page_citations","breakpoints":true},
+    {"idx":53,"version":"7","when":1790906400000,"tag":"0053_mural_pessoas","breakpoints":true}
   ]
 }

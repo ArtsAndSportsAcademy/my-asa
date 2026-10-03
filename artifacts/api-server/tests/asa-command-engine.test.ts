@@ -48,6 +48,13 @@ assert.deepEqual(parseAsaPreferenceCommand("Altere o horário da saudação da n
 assert.deepEqual(parseAsaPreferenceCommand("Mude o modo da ASA para proativo"), { kind: "request", patch: { mode: "PROACTIVE" } });
 assert.equal(parseAsaPreferenceCommand("Altere o horário da saudação da noite para 25:30").kind, "incomplete");
 assert.equal(parseAsaPreferenceCommand("não desative meus lembretes da ASA").kind, "not_action");
+for (const command of [
+  'Altere a responsabilidade da tarefa "Inventário" para "Fechamento"',
+  'Mude o prazo da tarefa "Preferências da ASA" para 03/10/2026',
+  'Altere o título do aviso "Saudação da manhã" para "Boas-vindas"',
+  'Defina o responsável da tarefa "Notificações da ASA" para "Ana"',
+]) assert.equal(parseAsaPreferenceCommand(command).kind, "not_action", command);
+assert.equal(parseAsaPreferenceCommand("Mude a frequência da ASA").kind, "incomplete");
 assert.equal(formatAsaPreferenceValue("goodNightTime", null), "Não definido");
 assert.deepEqual(parseAsaPreferenceCommand("Ative a saudação da manhã"), { kind: "request", patch: { morningGreeting: true } });
 assert.deepEqual(parseAsaPreferenceCommand("Desative a saudação da noite"), { kind: "request", patch: { eveningGreeting: false } });
@@ -227,6 +234,10 @@ assert.deepEqual(parseAsaTaskDueDateUpdate('altere o prazo da tarefa "Separar fi
 });
 assert.equal(parseAsaTaskDueDateUpdate('mude a tarefa "Separar figurinos" para 31/02/2026').kind, "incomplete");
 assert.equal(parseAsaTaskDueDateUpdate('altere a tarefa "Separar figurinos"').kind, "incomplete");
+for (const subject of ["responsabilidade", "requisitos", "título", "nome"]) {
+  assert.equal(parseAsaTaskDueDateUpdate(`Altere ${subject} da tarefa "Inventário" para "Novo valor"`).kind, "not_action");
+}
+assert.equal(parseAsaTaskDueDateUpdate('Altere o prazo da tarefa "Responsabilidade e requisitos" para 03/10/2026').kind, "request");
 assert.equal(parseAsaTaskDraftRequest('altere o prazo da tarefa "Separar figurinos" para 03/10/2026').kind, "not_action");
 assert.deepEqual(parseAsaTaskAssigneeUpdate('altere o responsável da tarefa "Separar figurinos" para "Ana Souza"'), {
   kind: "request", title: "Separar figurinos", assigneeName: "Ana Souza",

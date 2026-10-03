@@ -168,3 +168,6 @@
 
 /* D6 */
 .shows-carregando{padding:18px;color:#6b6482;font-size:13px}
+
+/* 02/10 (Claude): descrição curta no cartão do show (desenho 13). */
+.show-card-desc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--asa-muted);font-size:12px;line-height:1.4;font-style:normal}

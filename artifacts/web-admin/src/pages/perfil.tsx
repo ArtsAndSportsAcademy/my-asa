@@ -42,7 +42,7 @@ function MudarSenha({ onDone }: { onDone: (msg: string) => void }) {
   const [erro, setErro] = useState(""), [salvando, setSalvando] = useState(false);
   const enviar = async (event: React.FormEvent) => {
     event.preventDefault(); setErro("");
-    if (nova.length < 6) { setErro("A nova senha precisa ter pelo menos 6 caracteres."); return; }
+    if (nova.length < 8 || !/\p{L}/u.test(nova) || !/\d/.test(nova)) { setErro("A nova senha precisa ter pelo menos 8 caracteres, com uma letra e um número."); return; }
     if (nova !== confirma) { setErro("A confirmação não bate com a nova senha."); return; }
     if (nova === atual) { setErro("A nova senha precisa ser diferente da atual."); return; }
     setSalvando(true);
@@ -57,7 +57,7 @@ function MudarSenha({ onDone }: { onDone: (msg: string) => void }) {
     <div style={css("display:flex;align-items:baseline;gap:10px;flex-wrap:wrap")}><span style={css(H2)}>Mudar senha</span><span style={css("flex:1")}/><span style={css(NOTE)}>os outros aparelhos saem da conta; este continua</span></div>
     <div className="pf-fields">
       <label style={css("display:flex;flex-direction:column;gap:5px")}><span style={css(MONO)}>Senha atual</span><input aria-label="Senha atual" type="password" autoComplete="current-password" value={atual} onChange={(e) => setAtual(e.target.value)} style={css(INPUT)} required /></label>
-      <label style={css("display:flex;flex-direction:column;gap:5px")}><span style={css(MONO)}>Nova senha</span><input aria-label="Nova senha" type="password" autoComplete="new-password" value={nova} onChange={(e) => setNova(e.target.value)} style={css(INPUT)} placeholder="mínimo 6 caracteres" required /></label>
+      <label style={css("display:flex;flex-direction:column;gap:5px")}><span style={css(MONO)}>Nova senha</span><input aria-label="Nova senha" type="password" autoComplete="new-password" value={nova} onChange={(e) => setNova(e.target.value)} style={css(INPUT)} placeholder="8 caracteres, letra e número" required /></label>
       <label style={css("display:flex;flex-direction:column;gap:5px")}><span style={css(MONO)}>Repita a nova senha</span><input aria-label="Repita a nova senha" type="password" autoComplete="new-password" value={confirma} onChange={(e) => setConfirma(e.target.value)} style={css(INPUT)} required /></label>
     </div>
     {erro && <p role="alert" style={css("margin:0;font-size:12.5px;color:#B4302F")}>{erro}</p>}

@@ -7,3 +7,21 @@
 .comm-document footer{flex-wrap:wrap}
 .comm-document footer .comm-pending-url{flex:0 1 auto;white-space:nowrap}
 @media(max-width:720px){.comm-document footer>span:first-child{flex-basis:100%}.comm-document footer .comm-doc-confirm{margin-left:auto}}
+
+/* 02/10 (Claude): destino do aviso, erro dentro da janela e cancelar aviso com motivo (desenho 22). */
+.comm-note{margin:0;color:#6b6482;font-size:13px;line-height:1.5}
+.comm-form-error{margin:0;padding:9px 11px;border-radius:9px;background:#fdeceb;color:#a3283f;font-size:13px;line-height:1.45}
+.comm-danger{border:0;background:#c2334d;color:#fff}
+.comm-danger:disabled,.comm-primary:disabled{opacity:.6}
+.comm-post footer .comm-cancel{color:#a3283f;background:transparent}
+
+/* 02/10 (Claude): aviso para pessoas escolhidas. */
+.comm-people{border:1px solid #e6e1f2;border-radius:12px;padding:10px 12px;margin:0;display:grid;gap:8px;min-width:0}
+.comm-people legend{padding:0 4px;font-size:13px;color:#6b6482}
+.comm-people legend b{color:#1b1630}
+.comm-people input[type=search]{min-height:44px;border:1px solid #d8d1ea;border-radius:10px;padding:0 12px;font:inherit}
+.comm-people-chosen{display:flex;flex-wrap:wrap;gap:6px}
+.comm-people-chosen button{display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0 10px;border:0;border-radius:999px;background:#f0eafe;color:#5b23c9;font:600 12.5px Manrope,sans-serif;cursor:pointer}
+.comm-people-list{max-height:220px;overflow:auto;display:grid;gap:2px}
+.comm-people-list .comm-check{min-height:40px;display:flex;align-items:center;gap:8px}
+.comm-people-list small{color:#6b6482}

@@ -485,8 +485,9 @@ router.post("/users/me/password", requireAuth, async (req, res) => {
     res.status(400).json({ error: "BAD_REQUEST", message: "currentPassword e newPassword são obrigatórios" });
     return;
   }
-  if ((newPassword as string).length < 6) {
-    res.status(400).json({ error: "BAD_REQUEST", message: "A nova senha deve ter ao menos 6 caracteres" });
+  // Regra do desenho 01: pelo menos 8 caracteres, com uma letra e um número.
+  if (typeof newPassword !== "string" || newPassword.length < 8 || !/\p{L}/u.test(newPassword) || !/\d/.test(newPassword)) {
+    res.status(400).json({ error: "BAD_REQUEST", message: "A nova senha precisa ter pelo menos 8 caracteres, com uma letra e um número" });
     return;
   }
   if (newPassword === currentPassword) {

@@ -41,7 +41,8 @@ export const messageContextTypeEnum = pgEnum("message_context_type", [
 // entidade paralela: é um tipo de publicação, para que a casa tenha uma única
 // linha do tempo e uma única regra de escopo.
 export const announcementTypeEnum = pgEnum("announcement_type", ["NOTICE", "RECOGNITION", "BIRTHDAY", "TENURE"]);
-export const announcementScopeEnum = pgEnum("announcement_scope", ["HOUSE", "AREA", "LOCATION"]);
+// PEOPLE (0053): aviso para pessoas escolhidas, listadas em announcement_recipients.
+export const announcementScopeEnum = pgEnum("announcement_scope", ["HOUSE", "AREA", "LOCATION", "PEOPLE"]);
 
 export const announcementsTable = pgTable("announcements", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -65,6 +66,16 @@ export const announcementsTable = pgTable("announcements", {
 }, (table) => [
   index("announcements_org_published_idx").on(table.orgId, table.publishedAt),
   index("announcements_recipient_idx").on(table.recipientId),
+]);
+
+export const announcementRecipientsTable = pgTable("announcement_recipients", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  announcementId: uuid("announcement_id").notNull().references(() => announcementsTable.id),
+  userId: uuid("user_id").notNull().references(() => usersTable.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  unique("announcement_recipients_announcement_user_uq").on(table.announcementId, table.userId),
+  index("announcement_recipients_user_idx").on(table.userId),
 ]);
 
 export const announcementReadsTable = pgTable("announcement_reads", {

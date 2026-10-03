@@ -1,5 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 import {
+  announcementRecipientsTable,
   areaLocalSupervisorsTable,
   areasTable,
   db,
@@ -9,7 +10,8 @@ import {
 } from "@workspace/db";
 
 export type AnnouncementActor = { userId: string; organizationId: string; role: string };
-export type AnnouncementScopeRecord = { scope: "HOUSE" | "AREA" | "LOCATION"; areaId: string | null; locationId: string | null };
+// id e authorId são opcionais para quem chama sem eles; sem id, um aviso PEOPLE é negado (falha fechada).
+export type AnnouncementScopeRecord = { scope: "HOUSE" | "AREA" | "LOCATION" | "PEOPLE"; areaId: string | null; locationId: string | null; id?: string; authorId?: string };
 
 function isAdmin(role: string) { return ["ADMIN", "ADM"].includes(role.toUpperCase()); }
 function isDirection(role: string) { return ["DIRECTOR", "DIR", "DIRECTION"].includes(role.toUpperCase()); }
@@ -20,6 +22,18 @@ function isSupervisor(role: string) { const normalized = role.toUpperCase(); ret
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function canReadAnnouncement(actor: AnnouncementActor, post: AnnouncementScopeRecord, executor: any = db): Promise<boolean> {
   if (isAdmin(actor.role) || isDirection(actor.role) || post.scope === "HOUSE") return true;
+  // Quem publicou sempre vê o próprio aviso (a Supervisão publica para qualquer destino desde 02/10).
+  if (post.authorId && post.authorId === actor.userId) return true;
+
+  if (post.scope === "PEOPLE") {
+    if (!post.id) return false;
+    const [recipient] = await executor.select({ id: announcementRecipientsTable.id })
+      .from(announcementRecipientsTable)
+      .where(and(eq(announcementRecipientsTable.announcementId, post.id), eq(announcementRecipientsTable.userId, actor.userId)))
+      .for("share")
+      .limit(1);
+    return Boolean(recipient);
+  }
 
   if (post.scope === "AREA") {
     if (!post.areaId) return false;

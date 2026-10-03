@@ -110,8 +110,16 @@ export function parseAsaPreferenceCommand(input: string): AsaPreferenceCommand {
       ? { goodMorningTime: timeRequest[2]! }
       : { goodNightTime: timeRequest[2]! } };
   }
-  if (/^(ative|desative)\b/.test(normalized)
-    || /^(mude|altere|defina)\b/.test(normalized)) return { kind: "incomplete" };
+  // Um verbo de alteração sozinho não identifica preferências: tarefas,
+  // avisos e agenda também usam esses verbos. Considere apenas o assunto
+  // antes dos valores entre aspas para não capturar títulos de outros módulos.
+  const subject = input.split(/["“”‘’]/, 1)[0]!.normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").trim();
+  if (/^(ative|desative|mude|altere|defina)\b/.test(normalized)
+    && (/^(ative|desative|mude|altere|defina)$/.test(normalized)
+      || /^(?:ative|desative|mude|altere|defina)\s+(?:(?:a|o|as|os|meus|minhas)\s+)?(?:saudacao|lembretes|alertas|notificacoes|frequencia|proatividade|modo|preferencias|horario da saudacao)\b/.test(subject))) {
+    return { kind: "incomplete" };
+  }
   return { kind: "not_action" };
 }
 

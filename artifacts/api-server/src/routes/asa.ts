@@ -106,6 +106,10 @@ const router = Router();
 
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
 const TASK_MANAGER_ROLES = [...MANAGER_ROLES, "DIR"];
+const TASK_EVIDENCE_LABELS: Record<string, string> = {
+  PHOTO: "FOTO", VIDEO: "VÍDEO", DOCUMENT: "DOCUMENTO", PDF: "PDF",
+  LINK: "LINK", AUDIO: "ÁUDIO", PRESENTATION: "APRESENTAÇÃO",
+};
 const ASA_PROPOSAL_ACTION_TYPES = new Set([
   "NOTICE_DRAFT_CREATE", "NOTICE_DRAFT_UPDATE", "TASK_CREATE", "TASK_CANCEL", "TASK_START", "TASK_READY_FOR_APPROVAL",
   "TASK_COMPLETE", "TASK_COMMENT_CREATE", "TASK_EVIDENCE_LINK_ADD", "TASK_CHECKLIST_UPDATE", "AGENDA_MEETING_CREATE", "AGENDA_DRAFT_RENAME", "AGENDA_DRAFT_SCHEDULE_UPDATE", "AGENDA_DRAFT_NOTES_UPDATE",
@@ -1693,6 +1697,7 @@ export async function executeTool(
       const escapedQuery = query.replace(/[\\%_]/g, "\\$&");
       const candidates = await db.select({
         id: announcementsTable.id,
+        authorId: announcementsTable.authorId,
         type: announcementsTable.type,
         scope: announcementsTable.scope,
         areaId: announcementsTable.areaId,
@@ -1724,7 +1729,7 @@ export async function executeTool(
         .from(announcementReadsTable)
         .where(and(eq(announcementReadsTable.userId, ctx.userId), inArray(announcementReadsTable.announcementId, limited.map((post) => post.id)))) : [];
       const readById = new Map(reads.map((read) => [read.announcementId, read]));
-      return JSON.stringify({ posts: limited.map((post) => ({ ...post, confirmedAt: readById.get(post.id)?.confirmedAt ?? null })) });
+      return JSON.stringify({ posts: limited.map(({ authorId: _authorId, ...post }) => ({ ...post, confirmedAt: readById.get(post.id)?.confirmedAt ?? null })) });
     }
 
     if (name === "consultar_pessoas") {
@@ -5656,7 +5661,7 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
             areaLabel = scopeResolution.scope.areaName;
             locationLabel = scopeResolution.scope.locationName;
           }
-        } else {
+        } else if (!agendaOrgManager) {
           if (agendaMeeting.areaName || agendaMeeting.locationName) {
             scopeError = "Elenco pode propor reunião somente na própria área e sem escolher um local em nome da operação. Nada foi criado.";
           } else {
@@ -5705,6 +5710,7 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
     } else if (muralAck.kind === "request") {
       const candidates = await db.select({
         id: announcementsTable.id,
+        authorId: announcementsTable.authorId,
         title: announcementsTable.title,
         body: announcementsTable.body,
         scope: announcementsTable.scope,
@@ -6368,7 +6374,7 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
                 ? `\nChecklist obrigatória:\n${taskDraft.checklistLabels.map((label) => `• ${label}`).join("\n")}`
                 : "";
               const evidencePreview = taskDraft.mandatoryEvidences.length
-                ? `\nEvidências obrigatórias:\n${taskDraft.mandatoryEvidences.map((item) => `• ${item.type}: ${item.description}`).join("\n")}`
+                ? `\nEvidências obrigatórias:\n${taskDraft.mandatoryEvidences.map((item) => `• ${TASK_EVIDENCE_LABELS[item.type] ?? item.type}: ${item.description}`).join("\n")}`
                 : "";
               const descriptionPreview = taskDraft.description ? `\nDescrição: ${taskDraft.description}` : "";
               const responsibilityPreview = linkedResponsibility ? `\nResponsabilidade: ${linkedResponsibility.title}` : "";
@@ -7348,7 +7354,7 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
       let operationId: string | null = null;
       const supervisorTaskQuery = command.tool === "consultar_tarefas_equipe" && (user.role === "SUPERVISOR_A" || user.role === "SUPERVISOR_B");
       const supervisorResponsibilitiesQuery = command.tool === "consultar_responsabilidades_equipe" && (user.role === "SUPERVISOR_A" || user.role === "SUPERVISOR_B");
-      if (command.tool === "consultar_agenda" || command.tool === "consultar_livro_do_dia" || command.tool === "consultar_livros_do_show" || command.tool === "consultar_escalas" || command.tool === "consultar_meu_dia" || command.tool === "consultar_meu_checkin" || command.tool === "consultar_checkins_equipe" || command.tool === "consultar_ausencias_do_dia" || command.tool === "consultar_tempo_livre" || command.tool === "consultar_atividades" || command.tool === "consultar_tarefa_requisitos" || supervisorTaskQuery || supervisorResponsibilitiesQuery || (command.tool === "consultar_entregas" && command.input.scope === "team")) {
+      if (command.tool === "consultar_agenda" || command.tool === "consultar_minhas_propostas_agenda" || command.tool === "consultar_livro_do_dia" || command.tool === "consultar_livros_do_show" || command.tool === "consultar_escalas" || command.tool === "consultar_meu_dia" || command.tool === "consultar_meu_checkin" || command.tool === "consultar_checkins_equipe" || command.tool === "consultar_ausencias_do_dia" || command.tool === "consultar_tempo_livre" || command.tool === "consultar_atividades" || command.tool === "consultar_tarefa_requisitos" || supervisorTaskQuery || supervisorResponsibilitiesQuery || (command.tool === "consultar_entregas" && command.input.scope === "team")) {
         let selection = resolveAsaOperationSelection(interpretationText, accessibleOperations, context?.operationId);
         const delegatedResponsibility = command.tool === "consultar_checkins_equipe" ? "CHECK_INS"
           : command.tool === "consultar_tempo_livre" ? "SCALES" : null;

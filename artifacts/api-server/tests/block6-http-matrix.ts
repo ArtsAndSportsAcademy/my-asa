@@ -70,6 +70,9 @@ export async function verifyBlock6HttpRoutes(c: Input) {
 
     // Leitura chega ao handler e comprova projeções de próprio/escopo/leitura.
     for (const profile of Object.keys(c.tokens)) {
+      const shelf = await call("GET", "/show-books", profile, 200);
+      if (profile === "MEMBER") c.assert(!shelf.showBooks.some((book: any) => book.id === c.showId) && shelf.showBooks.every((book: any) => book.status === "PUBLISHED"), "estante do elenco não mostra show em rascunho");
+      if (profile === "ADMIN") c.assert(shelf.showBooks.some((book: any) => book.id === c.showId), "Administração vê o show em rascunho");
       await call("GET", "/characters", profile, 200);
       await call("GET", `/characters/${characterId}/cast`, profile, profile === "SUPERVISOR_B" ? 403 : 200);
       await call("GET", `/characters/${characterId}/resolve?operationId=${c.operationId}&date=${c.date}`, profile, profile === "SUPERVISOR_B" ? 403 : 200);

@@ -743,8 +743,9 @@ export function parseAsaTaskDraftRequest(value: string): AsaTaskDraftParse {
 
 export function parseAsaTaskDueDateUpdate(value: string): AsaTaskDueDateUpdateParse {
   const normalized = normalizeAsaText(value);
+  const subject = normalizeAsaText(value.split(/["“‘]/, 1)[0]!);
   if (!/^(altere|alterar|mude|mudar|atualize|atualizar|troque|trocar)\b/.test(normalized)
-    || !/\btarefa\b/.test(normalized) || /\b(responsavel|prioridade|descricao|detalhes)\b/.test(normalized)) return { kind: "not_action" };
+    || !/\btarefa\b/.test(subject) || /\b(responsavel|responsabilidade|requisitos?|titulo|nome|prioridade|descricao|detalhes)\b/.test(subject)) return { kind: "not_action" };
   const [title] = quotedPhrases(value);
   const dateMatch = normalized.match(/\b(?:para|ate|prazo)\s+(\d{1,2}\/\d{1,2}\/\d{4})\b/);
   if (!title || title.length > 160 || !dateMatch) return { kind: "incomplete" };

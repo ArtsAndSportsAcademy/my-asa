@@ -4,7 +4,8 @@ export type AnnouncementConfirmationSnapshot = {
   id: string;
   title: string | null;
   body: string;
-  scope: "HOUSE" | "AREA" | "LOCATION";
+  // PEOPLE (0053): a lista de pessoas não muda depois de publicado, então não entra na versão.
+  scope: "HOUSE" | "AREA" | "LOCATION" | "PEOPLE";
   areaId: string | null;
   locationId: string | null;
   updatedAt: Date;
