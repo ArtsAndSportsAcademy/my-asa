@@ -649,6 +649,40 @@ router.post("/folgas/grid/bulk", requireAuth, requireOrganization, async (req, r
   }
 });
 
+// ─── POST /folgas/grid/repeat — copiar a configuração do mês anterior ───────
+router.post("/folgas/grid/repeat", requireAuth, requireOrganization, async (req, res) => {
+  const log = requestLogger(LOG_DOMAIN.FOLGAS, req.requestId, req.correlationId);
+  const user = req.user!;
+  if (!MANAGER_ROLES.includes(user.role)) { res.status(403).json({ error: "Forbidden" }); return; }
+  const { operationId, year, month } = req.body as { operationId?: string; year?: number; month?: number };
+  if (!operationId || !year || !month || month < 1 || month > 12) { res.status(400).json({ error: "Bad Request", message: "operationId, year e month são obrigatórios" }); return; }
+  const scopeErr = await validateManagerScope(user, operationId);
+  if (scopeErr) { res.status(403).json({ error: "Forbidden", message: scopeErr }); return; }
+  try {
+    const first = `${year}-${String(month).padStart(2, "0")}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const previous = new Date(year, month - 2, 1);
+    const previousYear = previous.getFullYear(), previousMonth = previous.getMonth() + 1;
+    const previousLast = new Date(previousYear, previousMonth, 0).getDate();
+    const sourceFirst = `${previousYear}-${String(previousMonth).padStart(2, "0")}-01`;
+    const sourceLast = `${previousYear}-${String(previousMonth).padStart(2, "0")}-${String(previousLast).padStart(2, "0")}`;
+    const source = await db.select({ userId: folgasTable.userId, type: folgasTable.type, startDate: folgasTable.startDate, endDate: folgasTable.endDate })
+      .from(folgasTable).where(and(eq(folgasTable.operationId, operationId), eq(folgasTable.status, "ACTIVE"), lte(folgasTable.startDate, sourceLast), gte(folgasTable.endDate, sourceFirst)));
+    const daysToCopy = Math.min(previousLast, lastDay);
+    await db.transaction(async (tx) => {
+      for (const row of source) {
+        const start = Math.max(1, Number(row.startDate.slice(8, 10)));
+        const end = Math.min(daysToCopy, Number(row.endDate.slice(8, 10)));
+        if (start > end) continue;
+        for (let day = start; day <= end; day++) await tx.insert(folgasTable).values({ userId: row.userId, operationId, type: row.type, startDate: `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`, endDate: `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`, status: "ACTIVE", origem: "MANUAL", createdBy: user.sub });
+      }
+      await writeHistoryEvent({ category: "ABSENCE", action: "FOLGA_GRID_REPEAT", title: `Configuração repetida — ${month}/${year}`, narrative: `Gestor repetiu a configuração do mês anterior na operação.`, entityType: "folga", entityId: operationId, actorId: user.sub, operationId, orgId: user.organizationId, metadata: { year, month, sourceYear: previousYear, sourceMonth: previousMonth, copied: source.length } }, tx as any);
+    });
+    log.info({ operationId, year, month, copied: source.length }, "configuração mensal repetida");
+    res.json({ ok: true, copied: source.length });
+  } catch (err) { log.error({ err }, "erro ao repetir configuração mensal"); res.status(500).json({ error: "Internal Server Error" }); }
+});
+
 // ─── DELETE /folgas/grid/reset — resetar mês inteiro ─────────────────────────
 
 router.delete("/folgas/grid/reset", requireAuth, requireOrganization, async (req, res) => {
