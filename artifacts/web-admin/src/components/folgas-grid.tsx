@@ -11,10 +11,11 @@ import {
 
 // ─── Types & constants ────────────────────────────────────────────────────────
 
-export type GridType = "DAY_OFF" | "RECESSO" | "OUTRO";
+export type GridType = "DAY_OFF" | "RECESSO" | "AFASTAMENTO" | "OUTRO";
 export const GRID_TYPES: { value: GridType; label: string; abbr: string; bg: string; text: string }[] = [
   { value: "DAY_OFF", label: "Folga",   abbr: "F",  bg: "bg-blue-100", text: "text-blue-800" },
   { value: "RECESSO", label: "Recesso", abbr: "R",  bg: "bg-orange-100", text: "text-orange-800" },
+  { value: "AFASTAMENTO", label: "Afastamento", abbr: "A", bg: "bg-purple-100", text: "text-purple-800" },
   { value: "OUTRO",   label: "Outro",   abbr: "O",  bg: "bg-gray-200",  text: "text-gray-700" },
 ];
 

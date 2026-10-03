@@ -5,6 +5,7 @@
 
 /* 01/10: texto do bloco em linhas separadas (não grudar nome e origem) */
 .cycle-turn>div:nth-child(2)>strong,.cycle-turn>div:nth-child(2)>small{display:block}
+.cycle-tabs{display:flex;gap:6px;border-bottom:1px solid #e6e1f2;margin-bottom:14px;overflow-x:auto}.cycle-tabs button{border:0;background:transparent;color:#6b6482;padding:9px 12px;font:inherit;white-space:nowrap;cursor:pointer}.cycle-tabs button.active{color:#1b1630;border-bottom:2px solid #6c2bf2;font-weight:700}.cycle-filter{display:grid;gap:4px;color:#6b6482;font-size:11px}.cycle-filter input{border:1px solid #e6e1f2;border-radius:8px;padding:7px 9px;min-width:150px;background:#fff;color:#1b1630}.cycle-legend .away{background:#c4b5fd}
 /* Check-in do Elenco: só os próprios turnos, botão grande */
 .cycle-meu-checkin header{align-items:center}
 .cycle-meu-mascote{width:56px;height:56px;object-fit:contain}
