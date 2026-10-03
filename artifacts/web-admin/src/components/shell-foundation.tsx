@@ -22,6 +22,8 @@ const LibraryPage = lazy(() => import("@/pages/communication").then(module => ({
 const MessagesPage = lazy(() => import("@/pages/communication").then(module => ({ default: module.MessagesPage })));
 const MuralPage = lazy(() => import("@/pages/communication").then(module => ({ default: module.MuralPage })));
 const ResponsibilitiesTasksPage = lazy(() => import("@/pages/responsibilities-tasks"));
+const AdminGroupsPage = lazy(() => import("@/pages/admin/groups"));
+const SupervisorGroupsPage = lazy(() => import("@/pages/supervisor/grupos"));
 // D5: a ASA carrega no próprio pacote, depois que a tela já abriu.
 const GlobalAsaAssistant = lazy(() => import("@/components/global-asa-assistant"));
 import "@/pages/responsibilities-tasks.css";
@@ -53,6 +55,7 @@ const groups: { label: string; items: NavItem[] }[] = [
     { label: "Locais", href: "/locais", icon: MapPin, kind: "list", roles: ["adm", "dir", "sup"] },
     { label: "Pessoas e acessos", memberLabel: "Meu grupo", href: "/pessoas", icon: Users, kind: "list", roles: ["adm", "dir", "sup", "mem"] },
     { label: "Áreas", href: "/areas", icon: Users, kind: "list", roles: ["adm", "dir", "sup"] },
+    { label: "Grupos", href: "/grupos", icon: Users, kind: "list", roles: ["adm", "sup"] },
     { label: "Registro", href: "/registro", icon: Clock3, kind: "list", roles: ["adm", "dir"] },
   ] },
   { label: "Comunicação", items: [
@@ -228,6 +231,7 @@ export default function ShellFoundation() {
           : active.href === "/biblioteca" ? <LibraryPage role={role}/>
           : active.href === "/pessoas" ? <CadastrosPage screen="people" role={role}/>
           : active.href === "/areas" ? <CadastrosPage screen="areas" role={role}/>
+          : active.href === "/grupos" ? (role === "adm" ? <AdminGroupsPage/> : <SupervisorGroupsPage/>)
           : active.href === "/locais" ? <CadastrosPage screen="locations" role={role}/>
           : active.href === "/responsabilidades" ? <ResponsibilitiesTasksPage role={role}/>
           : active.href === "/agenda" ? <AgendaWorkspacePage role={role}/>

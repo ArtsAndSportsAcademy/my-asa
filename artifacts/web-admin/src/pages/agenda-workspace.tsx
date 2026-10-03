@@ -39,7 +39,8 @@ export default function AgendaWorkspacePage({ role }: { role: Role }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [tab, setTab] = useState<"journey" | "requests">("journey");
+  const [tab, setTab] = useState<"journey" | "month" | "requests">("journey");
+  const [monthCursor, setMonthCursor] = useState(() => today().slice(0, 7));
   const [formOpen, setFormOpen] = useState(false);
   const [decision, setDecision] = useState<AgendaEvent | null>(null);
   const [saving, setSaving] = useState(false);
@@ -47,6 +48,8 @@ export default function AgendaWorkspacePage({ role }: { role: Role }) {
   const [form, setForm] = useState({ title: "", type: "MEETING", operationId: "", areaId: currentUser?.areaId ?? "", locationId: "", location: "", date: today(), startTime: "", endTime: "", notes: "", participantIds: [] as string[] });
   const [reply, setReply] = useState({ reason: "", alternativeDetails: "", alternativeDate: "", alternativeStartTime: "", alternativeEndTime: "" });
   const weekEnd = useMemo(() => addDays(weekStart, 6), [weekStart]);
+  const monthRange = useMemo(() => { const [year, month] = monthCursor.split("-").map(Number); const start = `${monthCursor}-01`; const last = new Date(year, month, 0).getDate(); return { start, end: `${monthCursor}-${String(last).padStart(2, "0")}` }; }, [monthCursor]);
+  const monthDays = useMemo(() => Array.from({ length: Number(monthRange.end.slice(8, 10)) }, (_, i) => `${monthCursor}-${String(i + 1).padStart(2, "0")}`), [monthCursor, monthRange.end]);
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
   const dayEntries = useMemo(() => entries.filter((item) => item.date === day || Boolean(item.endDate && item.date <= day && item.endDate >= day)), [entries, day]);
   const pending = useMemo(() => manager ? events.filter((item) => item.status === "DRAFT" || item.status === "PROPOSED") : events.filter((item) => item.status === "PROPOSED" || item.status === "REJECTED" || item.myResponse === "PENDING"), [events, manager]);
@@ -57,13 +60,13 @@ export default function AgendaWorkspacePage({ role }: { role: Role }) {
     try {
       const suffix = personId ? "&personId=" + encodeURIComponent(personId) : "";
       const [eventData, journeyData] = await Promise.all([
-        customFetch<{ events: AgendaEvent[] }>("/api/agenda/events?from=" + weekStart + "&to=" + weekEnd),
-        customFetch<{ events: Entry[] }>("/api/agenda/journey?from=" + weekStart + "&to=" + weekEnd + suffix),
+        customFetch<{ events: AgendaEvent[] }>("/api/agenda/events?from=" + (tab === "month" ? monthRange.start : weekStart) + "&to=" + (tab === "month" ? monthRange.end : weekEnd)),
+        customFetch<{ events: Entry[] }>("/api/agenda/journey?from=" + (tab === "month" ? monthRange.start : weekStart) + "&to=" + (tab === "month" ? monthRange.end : weekEnd) + suffix),
       ]);
       setEvents(eventData.events ?? []); setEntries(journeyData.events ?? []);
     } catch { setError("Não consegui carregar a Agenda agora. Confira a conexão e tente de novo."); }
     finally { setLoading(false); }
-  }, [personId, weekEnd, weekStart]);
+  }, [monthRange.end, monthRange.start, personId, tab, weekEnd, weekStart]);
   useEffect(() => { void reload(); }, [reload]);
 
   useEffect(() => {
@@ -139,10 +142,10 @@ export default function AgendaWorkspacePage({ role }: { role: Role }) {
     </div></div>
     <div className="ag-week-nav"><button className="ag-icon-button" onClick={() => moveWeek(-1)} aria-label="Semana anterior"><ChevronLeft size={18}/></button><strong>{labelDate(weekStart, { day: "2-digit", month: "long" })} – {labelDate(weekEnd, { day: "2-digit", month: "long", year: "numeric" })}</strong><button className="ag-icon-button" onClick={() => moveWeek(1)} aria-label="Próxima semana"><ChevronRight size={18}/></button><button className="ag-today" onClick={() => { setWeekStart(monday(today())); setDay(today()); }}>Hoje</button></div>
     <div className="ag-day-strip" role="tablist" aria-label="Dias da semana">{days.map((d) => <button key={d} role="tab" aria-selected={day === d} className={day === d ? "selected" : ""} onClick={() => setDay(d)}><span>{labelDate(d, { weekday: "short" })}</span><strong>{labelDate(d, { day: "2-digit" })}</strong><i>{entries.some((item) => item.date === d || Boolean(item.endDate && item.date <= d && item.endDate >= d)) ? "•" : ""}</i></button>)}</div>
-    <div className="ag-tabs" role="tablist"><button role="tab" aria-selected={tab === "journey"} onClick={() => setTab("journey")}>Jornada <span>{entries.length}</span></button><button role="tab" aria-selected={tab === "requests"} onClick={() => setTab("requests")}>{manager ? "Propostas" : "Convites e propostas"}<span>{pending.length}</span></button></div>
+    <div className="ag-tabs" role="tablist"><button role="tab" aria-selected={tab === "journey"} onClick={() => setTab("journey")}>Minha semana <span>{entries.length}</span></button><button role="tab" aria-selected={tab === "month"} onClick={() => setTab("month")}>Meu mês</button><button role="tab" aria-selected={tab === "requests"} onClick={() => setTab("requests")}>{manager ? "Propostas" : "Convites e propostas"}<span>{pending.length}</span></button></div>
     {notice && <div className="ag-notice" role="status">{notice}<button aria-label="Dispensar aviso" onClick={() => setNotice("")}><X size={16}/></button></div>}
     {error && <div className="ag-error" role="alert"><CircleAlert size={18}/><span>{error}</span><button onClick={() => void reload()}>Tentar de novo</button></div>}
-    {tab === "journey" ? <>
+    {tab === "month" ? <section className="ag-month-grid" aria-label="Agenda do mês">{monthDays.map((date) => { const items = entries.filter((item) => item.date === date || Boolean(item.endDate && item.date <= date && item.endDate >= date)); return <article key={date} className={items.length ? "has-items" : ""}><header><strong>{labelDate(date, { day: "2-digit" })}</strong><span>{labelDate(date, { weekday: "short" })}</span></header>{items.length ? items.slice(0, 4).map((item) => <button type="button" key={item.id} onClick={() => { setDay(date); setTab("journey"); }}><b>{item.title}</b><small>{item.source === "LEAVE" ? "Dia todo" : timeRange(item.startTime, item.endTime)}</small></button>) : <span className="ag-month-empty">—</span>}</article>; })}</section> : tab === "journey" ? <>
       <div className="ag-day-heading"><div><span>{labelDate(day, { weekday: "long", day: "numeric", month: "long" })}</span><h2>{personId ? nameOf(people.find((p) => p.id === personId) ?? user ?? undefined) : "Minha jornada"}</h2></div><span className="ag-count">{dayEntries.length} {dayEntries.length === 1 ? "compromisso" : "compromissos"}</span></div>
       {loading ? <div className="ag-loading" aria-busy="true"><i/><i/><i/></div> : dayEntries.length === 0 ? <div className="ag-empty"><CalendarDays size={25}/><strong>Sem compromissos neste dia</strong><span>Escala, folgas, Livro do Dia e convites confirmados aparecem juntos aqui.</span></div> : <div className="ag-timeline">{dayEntries.map((item) => <article className={"ag-entry ag-" + item.source.toLowerCase()} key={item.id}><time>{item.source === "LEAVE" ? "Dia todo" : timeRange(item.startTime, item.endTime)}</time><span className="ag-entry-rail"/><div className="ag-entry-body"><div className="ag-entry-top"><span className="ag-source">{sourceLabels[item.source] ?? item.source}</span>{item.status && <span className="ag-status">{statuses[item.status] ?? item.status}</span>}</div><strong>{item.title}</strong><p>{[item.operationName, item.detail, item.location].filter(Boolean).join(" · ") || (item.source === "LEAVE" ? labelDate(item.date, { day: "2-digit", month: "short" }) : eventTypes[item.type ?? ""] ?? "")}</p>{item.reason && <p>{item.reason}{item.alternativeDetails ? " · Alternativa: " + item.alternativeDetails : ""}</p>}</div></article>)}</div>}
     </> : <div className="ag-proposals">{loading ? <div className="ag-loading"><i/><i/></div> : pending.length === 0 ? <div className="ag-empty"><CalendarDays size={25}/><strong>{manager ? "Nada aguardando revisão" : "Nenhum convite ou proposta pendente"}</strong><span>{manager ? "Rascunhos e propostas da sua área aparecem aqui." : "Convites e respostas da Supervisão ficam reunidos aqui."}</span></div> : pending.map((item) => <article className="ag-proposal" key={item.id}><div className="ag-proposal-main"><span className="ag-kicker">{eventTypes[item.type] ?? item.type} · {statuses[item.status]}</span><h3>{item.title}</h3><p><Clock3 size={15}/>{labelDate(item.date, { weekday: "long", day: "2-digit", month: "long" })} · {timeRange(item.startTime, item.endTime)}</p>{item.location && <p><MapPin size={15}/>{item.location}</p>}{item.status === "REJECTED" && <div className="ag-alternative"><strong>{item.reason}</strong><span>Alternativa: {item.alternativeDetails}{item.alternativeDate ? " · " + labelDate(item.alternativeDate) : ""}{item.alternativeStartTime ? " · " + timeRange(item.alternativeStartTime, item.alternativeEndTime) : ""}</span></div>}{item.participants?.length ? <div className="ag-participants">{item.participants.map((p) => <span key={p.id}>{p.name} · {p.response === "CALLED" ? "convocada" : p.response === "ACCEPTED" ? "aceitou" : p.response === "DECLINED" ? "recusou" : "aguardando"}</span>)}</div> : null}</div>
