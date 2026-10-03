@@ -25,3 +25,4 @@
 .comm-people-list{max-height:220px;overflow:auto;display:grid;gap:2px}
 .comm-people-list .comm-check{min-height:40px;display:flex;align-items:center;gap:8px}
 .comm-people-list small{color:#6b6482}
+.comm-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 14px}.comm-metrics article{display:flex;align-items:baseline;gap:9px;background:#fff;border:1px solid #e6e1f2;border-radius:12px;padding:11px 13px}.comm-metrics b{font:700 22px Outfit,sans-serif;color:#6c2bf2}.comm-metrics span{font-size:11px;color:#6b6482}@media(max-width:600px){.comm-metrics{grid-template-columns:1fr}.comm-metrics article{justify-content:space-between}}
