@@ -5,6 +5,8 @@ Vercel, servidor também em São Paulo (região `gru1`).**
 
 ## Estado em 01/10/2026 (fim da tarde)
 
+**Atualização de banco em 03/10/2026:** após autorização explícita, o Codex aplicou 0052 e 0053 em São Paulo. O banco está na 0053 (54 migrações), com `PEOPLE` e RLS/permissões das duas tabelas novas conferidas. O código está em `5490a6f1289485453925d1fb3f833a3fb4f8984a`; a promoção do site e da API continua pendente da dona do produto. Ver [registro de validação](VALIDACAO-ETAPA-1-CODEX-2026-10-02.md). O estado abaixo é histórico de 01/10.
+
 - **No ar:**
   - **Site:** `https://my-asa-web.vercel.app`
   - **Servidor:** `https://my-asa.vercel.app`

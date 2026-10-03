@@ -12,7 +12,7 @@ Branch: `codex/myasa-novo`. Este registro complementa o handoff do Claude; não 
 - Suíte completa no banco de teste: 41/42 arquivos passaram na execução integral. O único arquivo com falha foi `asa-actions-http`, por duas expectativas antigas ainda presentes no bundle daquela execução.
 - Reexecução integral de `asa-actions-http` após as correções das expectativas: **314 verificações passaram, zero falhas**. Assim, os 42 arquivos têm resultado aprovado considerando a execução completa e a reexecução corretiva; não se trata de uma única execução integral com 42/42.
 - Entrega autorizada: commit e push somente em `codex/myasa-novo`; hash informado na conversa. Sem merge na `main`.
-- Produção: nenhuma migração, promoção ou alteração feita. 0052 e 0053 dependem de autorização explícita e devem entrar nessa ordem, antes da promoção da API.
+- Produção: 0052 e 0053 aplicadas em 03/10/2026, nessa ordem, após autorização explícita na conversa. Promoção Vercel não realizada pelo Codex; permanece com a dona do produto.
 
 ## Ajustes sobre o handoff
 
@@ -48,6 +48,17 @@ Nenhuma dessas verificações de amostra equivale a validação em produção. N
 
 Logs ficam em `output/`, fora do commit. Principal: `qa-etapa1-suite-completa-20261002.log`. Reexecuções isoladas da ASA ficam em arquivos `qa-etapa1-asa-http-*` e `qa-etapa1-asa-confirmacao-final-20261002.log`; resultados intermediários com falhas não são aprovação final. O teste HTTP da ASA agora informa progresso a cada 50 verificações bem-sucedidas.
 
-## Próximo ponto de autorização
+## Produção — autorização e aplicação em 03/10/2026
 
-Após testes e push, pedir autorização para 0052 e 0053 em São Paulo. A promoção dos dois projetos Vercel continua com a dona do produto. A etapa 2 seguinte é Check-in por turno; não foi implementada nesta rodada.
+Código entregue no commit `5490a6f1289485453925d1fb3f833a3fb4f8984a`, com push confirmado em `codex/myasa-novo`.
+
+- Autorização explícita recebida: "sim autorizo", em resposta à pergunta sobre 0052 e 0053 em São Paulo.
+- Destino conferido pela conexão de `.env.piloto`: projeto com prefixo `jzzwka`, região `sa-east-1`. Nenhuma credencial registrada neste documento.
+- Antes: 52 migrações, última `0051_solicitacoes`; somente `0052_library_page_citations` e `0053_mural_pessoas` pendentes.
+- Aplicação pelo `lib/db/src/migrate.ts`, sem pular arquivos, concluída com saída 0.
+- Depois: 54 migrações, última `0053_mural_pessoas`, nenhuma pendente. Hashes de 0051, 0052 e 0053 conferem com os arquivos versionados.
+- Enum `announcement_scope` contém `PEOPLE`.
+- `library_document_page_citations` e `announcement_recipients` existem, com RLS habilitada e sem acesso para `anon`, `authenticated` ou `PUBLIC`.
+- Nenhum rollback, merge na `main` ou promoção Vercel foi realizado.
+
+A promoção dos dois projetos Vercel (`my-asa-web` e `my-asa`) continua com a dona do produto. A conferência funcional do deploy novo em produção depende dessa promoção e de sessão autenticada. A etapa 2 seguinte é Check-in por turno; etapas 2–7 não foram implementadas nesta rodada.
