@@ -40,8 +40,8 @@ Data: 02/10/2026.
 | 19 | Check-in e ocorrências | /check-in | **~85%** | 🟡 turnos e estados implementados na etapa 2; homologação real pendente |
 | 24 | Biblioteca | /biblioteca | **~40%** | 🔴 falta o leitor |
 | 01 | Entrada (login etc.) | /login | **~75%** | 🟡 login/recuperação conferidos; primeiro acesso visual pendente |
-| 16 | Painel | /painel | **~35%** | 🔴 outra proposta |
-| 06 | Locais | /locais | **~35%** | 🔴 faltam dias e espaços |
+| 16 | Painel | /painel | **~65%** | 🟡 reorganizado nas quatro perguntas; tendências históricas ainda ficam para acompanhamento |
+| 06 | Locais | /locais | **~65%** | 🟡 funcionamento, abre hoje, shows programados e abas Semana/Registros |
 | 18 | Folgas | /folgas | **~25%** | 🔴 o desenho é uma planilha do mês |
 | 25 | Reconhecimentos | — | **0%** | DECIDIR |
 | 27 | Assistente ASA (página) | botão flutuante | — | área do Codex |
