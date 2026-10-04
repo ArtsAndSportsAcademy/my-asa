@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, boolean, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, boolean, unique, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { organizationsTable } from "./organization.js";
@@ -9,6 +9,9 @@ export const locationsTable = pgTable("locations", {
   organizationId: uuid("organization_id").notNull().references(() => organizationsTable.id),
   name: text("name").notNull(),
   type: text("type").notNull().default("parque"),
+  operatingDays: jsonb("operating_days").$type<number[]>().notNull().default([1, 2, 3, 4, 5, 6, 0]),
+  openTime: text("open_time").notNull().default("08:00"),
+  closeTime: text("close_time").notNull().default("22:00"),
   closed: boolean("closed").notNull().default(false),
   closedReason: text("closed_reason"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

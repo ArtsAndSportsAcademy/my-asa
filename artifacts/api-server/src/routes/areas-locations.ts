@@ -134,10 +134,13 @@ router.get("/locations", requireAuth, requireOrganization, async (req, res) => {
 router.post("/locations", requireAuth, requireOrganization, requireRole("ADMIN"), async (req, res) => {
   const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
   const type = typeof req.body?.type === "string" && req.body.type.trim() ? req.body.type.trim() : "parque";
+  const operatingDays = Array.isArray(req.body?.operatingDays) ? req.body.operatingDays.filter((day: unknown) => Number.isInteger(day) && Number(day) >= 0 && Number(day) <= 6) : [1, 2, 3, 4, 5, 6, 0];
+  const openTime = typeof req.body?.openTime === "string" && /^\d{2}:\d{2}$/.test(req.body.openTime) ? req.body.openTime : "08:00";
+  const closeTime = typeof req.body?.closeTime === "string" && /^\d{2}:\d{2}$/.test(req.body.closeTime) ? req.body.closeTime : "22:00";
   if (!name) { res.status(400).json({ error: "name é obrigatório" }); return; }
   try {
     const location = await db.transaction(async (tx) => {
-      const [created] = await tx.insert(locationsTable).values({ organizationId: req.user!.organizationId, name, type, closed: false }).returning();
+      const [created] = await tx.insert(locationsTable).values({ organizationId: req.user!.organizationId, name, type, operatingDays, openTime, closeTime, closed: false }).returning();
       if (!created) throw new Error("Local não criado");
       // Local novo já entra nas operações ativas: a Escala do local precisa da operação dona.
       const ativas = await tx.select({ id: operationsTable.id }).from(operationsTable).where(and(eq(operationsTable.organizationId, req.user!.organizationId), eq(operationsTable.status, "ACTIVE")));
@@ -157,9 +160,12 @@ router.patch("/locations/:id", requireAuth, requireOrganization, requireRole("AD
   if (reopening && !reason) return;
   const name = typeof req.body?.name === "string" ? req.body.name.trim() : before.name;
   if (!name) { res.status(400).json({ error: "name não pode ser vazio" }); return; }
+  const operatingDays = Array.isArray(req.body?.operatingDays) ? req.body.operatingDays.filter((day: unknown) => Number.isInteger(day) && Number(day) >= 0 && Number(day) <= 6) : before.operatingDays;
+  const openTime = typeof req.body?.openTime === "string" && /^\d{2}:\d{2}$/.test(req.body.openTime) ? req.body.openTime : before.openTime;
+  const closeTime = typeof req.body?.closeTime === "string" && /^\d{2}:\d{2}$/.test(req.body.closeTime) ? req.body.closeTime : before.closeTime;
   try {
     const location = await db.transaction(async (tx) => {
-      const [next] = await tx.update(locationsTable).set({ name, type: typeof req.body?.type === "string" && req.body.type.trim() ? req.body.type.trim() : before.type, closed: typeof req.body?.closed === "boolean" ? req.body.closed : before.closed, closedReason: reopening ? null : (typeof req.body?.closedReason === "string" ? req.body.closedReason.trim() || null : before.closedReason), updatedAt: new Date() }).where(eq(locationsTable.id, before.id)).returning();
+      const [next] = await tx.update(locationsTable).set({ name, type: typeof req.body?.type === "string" && req.body.type.trim() ? req.body.type.trim() : before.type, operatingDays, openTime, closeTime, closed: typeof req.body?.closed === "boolean" ? req.body.closed : before.closed, closedReason: reopening ? null : (typeof req.body?.closedReason === "string" ? req.body.closedReason.trim() || null : before.closedReason), updatedAt: new Date() }).where(eq(locationsTable.id, before.id)).returning();
       if (!next) throw new Error("Local não encontrado");
       await writeEntityHistory(req, { category: "OPERATIONAL_CHANGE", action: reopening ? "location.reopened" : "location.updated", title: reopening ? "Local reaberto" : "Local alterado", narrative: reopening ? "Local reaberto com motivo." : "Local operacional alterado.", entityType: "location", entityId: next.id, actorId: req.user!.sub, orgId: req.user!.organizationId, beforeState: before, afterState: next, metadata: reason ? { reason } : {} }, tx as any);
       return next;
