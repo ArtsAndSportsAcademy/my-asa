@@ -176,6 +176,7 @@ export const messageThreadsTable = pgTable("message_threads", {
   status: messageThreadStatusEnum("status").notNull().default("OPEN"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   closedAt: timestamp("closed_at", { withTimezone: true }),
+  groupId: uuid("group_id").references(() => operationalGroupsTable.id),
 });
 
 // ─── Message Thread Participants ──────────────────────────────────────────────
@@ -188,6 +189,15 @@ export const messageThreadParticipantsTable = pgTable("message_thread_participan
   lastReadAt: timestamp("last_read_at", { withTimezone: true }),
   joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [unique("uniq_thread_user").on(t.threadId, t.userId)]);
+
+export const messageThreadPreferencesTable = pgTable("message_thread_preferences", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  threadId: uuid("thread_id").notNull().references(() => messageThreadsTable.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  pinned: boolean("pinned").notNull().default(false),
+  muted: boolean("muted").notNull().default(false),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [unique("uniq_thread_preference_user").on(t.threadId, t.userId)]);
 
 // ─── Messages ─────────────────────────────────────────────────────────────────
 // Individual messages within a thread. Immutable — no edit, no delete (MSG-D04).
@@ -203,6 +213,7 @@ export const messagesTable = pgTable("messages", {
   contextId: uuid("context_id"),
   content: text("content").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  quotedMessageId: uuid("quoted_message_id"),
 });
 
 // ─── Zod schemas ───────────────────────────────────────────────────────────────

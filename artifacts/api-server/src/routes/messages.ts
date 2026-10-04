@@ -8,6 +8,7 @@ import {
   usersTable,
   userRolesTable,
   delegationsTable,
+  messageThreadPreferencesTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
@@ -265,12 +266,20 @@ router.get(
             .innerJoin(usersTable, eq(messageThreadParticipantsTable.userId, usersTable.id))
             .where(eq(messageThreadParticipantsTable.threadId, t.id));
 
+          const [preference] = await db
+            .select({ pinned: messageThreadPreferencesTable.pinned, muted: messageThreadPreferencesTable.muted })
+            .from(messageThreadPreferencesTable)
+            .where(and(eq(messageThreadPreferencesTable.threadId, t.id), eq(messageThreadPreferencesTable.userId, userId)))
+            .limit(1);
+
           return {
             ...t,
             myRole: roleMap.get(t.id),
             lastMessage: lastMsg ?? null,
             participants: others,
             unreadCount: unreadMap.get(t.id) ?? 0,
+            pinned: preference?.pinned ?? false,
+            muted: preference?.muted ?? false,
           };
         })
       );
@@ -319,6 +328,7 @@ router.get(
           senderId: messagesTable.senderId,
           senderName: messagesTable.senderName,
           createdAt: messagesTable.createdAt,
+          quotedMessageId: messagesTable.quotedMessageId,
         })
         .from(messagesTable)
         .where(eq(messagesTable.threadId, threadId))
@@ -362,7 +372,7 @@ router.post(
     try {
       const userId = req.user!.sub;
       const threadId = String(req.params.threadId);
-      const { content } = req.body as { content: string };
+      const { content, quotedMessageId } = req.body as { content: string; quotedMessageId?: string | null };
 
       if (!content?.trim()) { res.status(400).json({ error: "content é obrigatório" }); return; }
 
@@ -391,11 +401,25 @@ router.post(
           senderId: userId,
           senderName: senderName ?? null,
           content: content.trim(),
+          quotedMessageId: quotedMessageId ?? null,
         })
         .returning();
         await writeHistoryEvent({ category: "MESSAGE", action: "message_sent", title: "Mensagem enviada", narrative: content.trim().slice(0, 120), entityType: "message", entityId: created!.id, actorId: userId, actorName: senderName, orgId: req.user!.organizationId, afterState: created }, tx as any);
         return { status: "created" as const, message: created! };
       });
+
+// Preferências privadas do participante: fixar e silenciar não alteram a conversa dos demais.
+router.patch("/messages/threads/:threadId/preferences", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  try {
+    const userId = req.user!.sub, threadId = String(req.params.threadId);
+    const [participant] = await db.select({ id: messageThreadParticipantsTable.id }).from(messageThreadParticipantsTable).where(and(eq(messageThreadParticipantsTable.threadId, threadId), eq(messageThreadParticipantsTable.userId, userId)));
+    if (!participant) { res.status(403).json({ error: "Sem acesso a esta conversa" }); return; }
+    const pinned = req.body.pinned === undefined ? undefined : Boolean(req.body.pinned);
+    const muted = req.body.muted === undefined ? undefined : Boolean(req.body.muted);
+    const [preference] = await db.insert(messageThreadPreferencesTable).values({ threadId, userId, pinned: pinned ?? false, muted: muted ?? false }).onConflictDoUpdate({ target: [messageThreadPreferencesTable.threadId, messageThreadPreferencesTable.userId], set: { ...(pinned === undefined ? {} : { pinned }), ...(muted === undefined ? {} : { muted }), updatedAt: new Date() } }).returning();
+    res.json({ preference });
+  } catch { res.status(500).json({ error: "Erro ao atualizar preferências da conversa" }); }
+});
 
       if (result.status === "not_found") { res.status(404).json({ error: "Conversa não encontrada" }); return; }
       if (result.status === "closed") { res.status(400).json({ error: "Esta conversa está encerrada" }); return; }
