@@ -64,6 +64,14 @@ async function run() {
     assert(login.status === 200 && Array.isArray(login.body.roles) && login.body.roles.some((r: { role: string }) => r.role === "MEMBER"), "a pessoa entra no app com o login e a senha gerados");
     const [registroCriacao] = await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, julia.body.user.id), eq(historyEventsTable.action, "user.created")));
     assert(Boolean(registroCriacao) && registroCriacao!.narrative.includes("Elenco") && !JSON.stringify(registroCriacao).includes(julia.body.senhaProvisoria), "o cadastro entra no Registro com o perfil, sem a senha");
+    // Cadastro inicial (06/10): login e nome de uso que a casa já usa.
+    const loginCasa = `simon.${Date.now()}`;
+    const simon = await call("POST", "/users", asBarbara, { fullName: `Claudio Simon Teste ${tag}`, perfil: "MEM", areaId: pat!.id, login: loginCasa, nomeDeUso: "Simon" });
+    assert(simon.status === 201 && simon.body.username === loginCasa, "a Administração pode trazer o login que a casa já usa");
+    if (simon.body.user?.id) criados.push(simon.body.user.id);
+    const [linhaSimon] = simon.body.user?.id ? await db.select().from(usersTable).where(eq(usersTable.id, simon.body.user.id)) : [];
+    assert(linhaSimon?.name === "Simon", "e o nome de uso inicial (depois a pessoa muda no Perfil)");
+    assert((await call("POST", "/users", asBarbara, { fullName: `Outro ${tag}`, perfil: "MEM", areaId: pat!.id, login: loginCasa })).status === 409, "login repetido é recusado");
     const dir = await call("POST", "/users", asBarbara, { fullName: `Cris Teste ${tag}`, perfil: "DIR" });
     assert(dir.status === 201 && dir.body.user?.profile === "DIR", "Direção pode nascer sem área");
     criados.push(dir.body.user.id);

@@ -294,8 +294,19 @@ router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), as
   const log = requestLogger("teams", req.requestId, req.correlationId);
   const {
     fullName, name: legacyName, email, phone, password, specialization, birthDate, visitUntil,
-    entryDate, professionalProfile, primaryFunction, adminNotes, personStatus, perfil, areaId,
+    entryDate, professionalProfile, primaryFunction, adminNotes, personStatus, perfil, areaId, login, nomeDeUso,
   } = req.body;
+  // Cadastro inicial (06/10): a Administração pode trazer o login e o nome de uso que a casa já usa.
+  // Depois, o nome de uso continua sendo escolha da própria pessoa no Perfil.
+  let loginEscolhido: string | null = null;
+  if (login !== undefined && login !== null && login !== "") {
+    const result = validateAndNormalizeUsername(String(login));
+    if (!result.ok) { res.status(400).json({ error: "BAD_REQUEST", message: result.message }); return; }
+    const existing = await db.query.usersTable.findFirst({ where: eq(usersTable.username, result.username) });
+    if (existing) { res.status(409).json({ error: "CONFLICT", message: "Este login já está em uso." }); return; }
+    loginEscolhido = result.username;
+  }
+  const nomeDeUsoInicial = typeof nomeDeUso === "string" && nomeDeUso.trim() ? nomeDeUso.trim().slice(0, 60) : null;
   // Tela Pessoas (01/10): perfil e área vêm junto com o cadastro, e sem senha digitada o app gera uma
   // provisória — devolvida uma vez, junto com o login, para a Administração passar à pessoa.
   if (perfil !== undefined && !ehPerfil(perfil)) {
@@ -351,14 +362,14 @@ router.post("/users", requireAuth, requireOrganization, requireRole("ADMIN"), as
         where: like(usersTable.username, `${usernameBase}%`),
       });
       const taken = new Set(conflicting.map((u) => u.username).filter((u): u is string => !!u));
-      username = resolveUniqueUsername(usernameBase, taken);
+      username = loginEscolhido ?? resolveUniqueUsername(usernameBase, taken);
       passwordHash = await bcrypt.hash(senha, 12);
     }
     const [newUser] = await db.transaction(async (tx) => {
       const [created] = await tx.insert(usersTable).values({
         organizationId: req.user!.organizationId,
         fullName: formalName,
-        name: formalName.split(/\s+/)[0]!,
+        name: nomeDeUsoInicial ?? formalName.split(/\s+/)[0]!,
         email: normalizedEmail,
         phone: typeof phone === "string" && phone.trim() ? phone.trim() : null,
         username,
