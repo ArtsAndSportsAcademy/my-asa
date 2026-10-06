@@ -302,6 +302,12 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
         <span style={css("font-size:12.5px;color:#a12c2c;line-height:1.45;flex:1")}>{error}</span>
         <button type="button" className="esc-hit" onClick={() => { setError(""); setRefresh((n) => n + 1); }} style={css(btn("ghost"))}>Tentar de novo</button>
       </div>}
+      {/* Desenho 29: vazio de primeiro uso ensina e oferece a primeira ação. */}
+      {!isMem && !review && locaisProntos && !error && locais.length === 0 && tab !== "minha" && <div role="status" style={css("display:flex;align-items:center;gap:12px;background:#fff;border:1px dashed #ddd6ee;border-radius:12px;padding:14px 16px;margin-bottom:12px")}>
+        <img src="/asa/oi.webp" alt="" style={css("width:40px;height:40px;object-fit:contain;flex:none")}/>
+        <span style={css("font-size:13px;color:#3d3559;line-height:1.5;flex:1")}>{isAdm ? "Ainda não há locais cadastrados. A escala é montada por local — cadastre os locais primeiro." : "Você ainda não tem local para montar escala. A Administração cadastra os locais e define quem supervisiona cada um."}</span>
+        {isAdm && <Link href="/locais" className="esc-hit" style={css(btn("primary") + ";text-decoration:none")}>Cadastrar os locais</Link>}
+      </div>}
       {carregandoTela && !error && !dia && !minha && <div aria-busy="true" style={css("padding:16px;text-align:center;font-size:12.5px;color:#6b6482;background:#fff;border:1px dashed #ddd6ee;border-radius:12px")}>Montando a escala…</div>}
       {showMinha && minha && <MinhaEscala minha={minha} date={date} onHoje={() => setDate(todayISO())} onConfirm={confirmarEscala} saving={saving}/>}
       {!isMem && tab === "escala" && dia && <EscalaGrid dia={dia} canEdit={isAdm || areasMinhas.length > 0} editableAreaIds={isAdm ? null : areasMinhas} onAdjust={ajustarCelula}/>} 
