@@ -615,7 +615,7 @@ As migrações **0055** (Mensagens: fixar, silenciar, citar) e **0056** (Locais:
   - a 0055 ganhou a proteção RLS da tabela nova (`message_thread_preferences`), que faltava;
   - as duas ganharam arquivos de rollback;
   - foram aplicadas no banco de teste.
-- **Produção (São Paulo), consultada só para leitura em 06/10:** está na **0054**. Faltam 0055, 0056 e 0057. Se o código das etapas 6 e 7 for publicado sem elas, Mensagens e Locais dão erro.
+- **Produção (São Paulo):** a dona do produto aplicou 0055, 0056 e 0057 em 06/10, depois de promover o commit `1416844`. O Claude conferiu só para leitura: as três estão lá. A API responde (`/api/healthz` ok; rotas novas pedem login), e o site no ar é a versão nova.
 
 ### O que faltava do desenho e foi feito agora
 
