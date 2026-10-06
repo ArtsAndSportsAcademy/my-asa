@@ -17,3 +17,7 @@
 .cycle-feedback-inline{margin:0;border-radius:10px;background:#fff0f2;color:#b42340;padding:9px 12px;font-size:13px;line-height:1.4}
 .cycle-feedback .cycle-inline-link{margin-left:6px}
 @media(max-width:720px){.cycle-meu-turno{grid-template-columns:56px minmax(0,1fr)}.cycle-meu-turno>button{grid-column:1/-1;width:100%}}
+
+/* Desenho 18 (Claude, 06/10): publicar mês e fila de pedidos sob o mapa. */
+.cycle-publish-msg{font-size:12.5px;color:#0a6f68;align-self:center}
+.cycle-manager-queue{max-width:520px;margin-top:16px}

@@ -27,3 +27,24 @@
 .comm-people-list small{color:#6b6482}
 .comm-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 14px}.comm-metrics article{display:flex;align-items:baseline;gap:9px;background:#fff;border:1px solid #e6e1f2;border-radius:12px;padding:11px 13px}.comm-metrics b{font:700 22px Outfit,sans-serif;color:#6c2bf2}.comm-metrics span{font-size:11px;color:#6b6482}@media(max-width:600px){.comm-metrics{grid-template-columns:1fr}.comm-metrics article{justify-content:space-between}}
 .comm-thread-filters{display:flex;gap:5px;padding:7px 0;overflow:auto}.comm-thread-filters button{border:1px solid #e6e1f2;background:#fff;color:#6b6482;border-radius:999px;padding:5px 8px;font-size:10px;white-space:nowrap;cursor:pointer}.comm-thread-filters button.active{background:#f3ebff;border-color:#cbb8f7;color:#6c2bf2;font-weight:700}
+
+/* Desenho 22 (Claude, 06/10): progresso do ciente e quem falta. */
+.comm-ack-progress{display:grid;gap:6px;margin:10px 0 2px;font-size:13px;color:#5b5473}
+.comm-ack-progress>div{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.comm-ack-progress b{color:#1b1630}
+.comm-ack-progress button{min-height:36px;padding:0 10px;border:1px solid #d8cef6;border-radius:999px;background:#fff;color:#5b23c9;font:600 12.5px Manrope,sans-serif;cursor:pointer}
+.comm-ack-progress>span{display:block;height:6px;border-radius:999px;background:#efecf6;overflow:hidden}
+.comm-ack-progress>span i{display:block;height:100%;background:#0a6f68;border-radius:inherit}
+.comm-missing{display:grid;gap:10px;padding:4px 0}
+.comm-missing h3{margin:4px 0 0;font:600 14px Outfit,Manrope,sans-serif}
+.comm-missing ul{margin:0;padding:0;list-style:none;display:grid;gap:4px;max-height:280px;overflow:auto}
+.comm-missing li{padding:8px 10px;border-radius:9px;background:#faf8ff;font-size:13.5px}
+.comm-modal-footer{display:flex;justify-content:flex-end;padding-top:10px}
+.comm-modal-footer button{min-height:44px;padding:0 16px;border:1px solid #d8cef6;border-radius:10px;background:#fff;cursor:pointer;font:600 13px Manrope,sans-serif}
+.comm-birthday{background:linear-gradient(120deg,#fbeaf3,#f3ebff);border-color:#f0d5e6}
+.comm-birthday-head{display:flex;align-items:center;gap:12px}
+.comm-birthday-head img{width:48px;height:48px;object-fit:contain;flex:none}
+.comm-birthday-head strong{display:block;font:600 17px Outfit,Manrope,sans-serif;color:#6b2d55}
+.comm-birthday-head small{color:#6b4a66;font-size:12.5px}
+.comm-library-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.comm-event-date{display:inline-flex;align-items:center;gap:6px;width:fit-content;margin:6px 0 0;padding:4px 10px;border-radius:999px;background:#f0eafe;color:#5b23c9;font:700 11.5px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.04em}

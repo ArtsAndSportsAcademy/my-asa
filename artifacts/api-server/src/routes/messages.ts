@@ -13,6 +13,7 @@ import {
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { notifyMany } from "../services/notificationService.js";
+import { syncAreaGroupsFor } from "../services/area-groups.js";
 
 type RoleValue = "MEMBER" | "SUPERVISOR_A" | "SUPERVISOR_B" | "ADMIN" | "DIRECTOR" | "DIR";
 
@@ -194,6 +195,8 @@ router.get(
   async (req, res): Promise<void> => {
     try {
       const userId = req.user!.sub;
+      // Grupos automáticos da área (desenho 23). Se falhar, as conversas abrem do mesmo jeito.
+      await syncAreaGroupsFor(userId, req.user!.organizationId).catch((error) => console.error("[messages] grupo da área", error));
 
       const participations = await db
         .select({
@@ -408,19 +411,6 @@ router.post(
         return { status: "created" as const, message: created! };
       });
 
-// Preferências privadas do participante: fixar e silenciar não alteram a conversa dos demais.
-router.patch("/messages/threads/:threadId/preferences", requireAuth, requireOrganization, async (req, res): Promise<void> => {
-  try {
-    const userId = req.user!.sub, threadId = String(req.params.threadId);
-    const [participant] = await db.select({ id: messageThreadParticipantsTable.id }).from(messageThreadParticipantsTable).where(and(eq(messageThreadParticipantsTable.threadId, threadId), eq(messageThreadParticipantsTable.userId, userId)));
-    if (!participant) { res.status(403).json({ error: "Sem acesso a esta conversa" }); return; }
-    const pinned = req.body.pinned === undefined ? undefined : Boolean(req.body.pinned);
-    const muted = req.body.muted === undefined ? undefined : Boolean(req.body.muted);
-    const [preference] = await db.insert(messageThreadPreferencesTable).values({ threadId, userId, pinned: pinned ?? false, muted: muted ?? false }).onConflictDoUpdate({ target: [messageThreadPreferencesTable.threadId, messageThreadPreferencesTable.userId], set: { ...(pinned === undefined ? {} : { pinned }), ...(muted === undefined ? {} : { muted }), updatedAt: new Date() } }).returning();
-    res.json({ preference });
-  } catch { res.status(500).json({ error: "Erro ao atualizar preferências da conversa" }); }
-});
-
       if (result.status === "not_found") { res.status(404).json({ error: "Conversa não encontrada" }); return; }
       if (result.status === "closed") { res.status(400).json({ error: "Esta conversa está encerrada" }); return; }
       const message = result.message;
@@ -441,9 +431,12 @@ router.patch("/messages/threads/:threadId/preferences", requireAuth, requireOrga
           .select({ userId: messageThreadParticipantsTable.userId })
           .from(messageThreadParticipantsTable)
           .where(eq(messageThreadParticipantsTable.threadId, threadId));
+        // Quem silenciou a conversa não recebe aviso de mensagem nova (desenho 23).
+        const muted = new Set((await db.select({ userId: messageThreadPreferencesTable.userId }).from(messageThreadPreferencesTable)
+          .where(and(eq(messageThreadPreferencesTable.threadId, threadId), eq(messageThreadPreferencesTable.muted, true)))).map((row) => row.userId));
         const otherUserIds = participants
           .map((p) => p.userId)
-          .filter((uid) => uid !== userId);
+          .filter((uid) => uid !== userId && !muted.has(uid));
         await notifyMany(otherUserIds, {
           type: "message.new",
           title: "Nova mensagem",
@@ -462,6 +455,21 @@ router.patch("/messages/threads/:threadId/preferences", requireAuth, requireOrga
     }
   }
 );
+
+// ─── PATCH /messages/threads/:threadId/preferences ───────────────────────────
+// Preferências privadas do participante: fixar e silenciar não alteram a conversa dos demais.
+// (Claude, 06/10: a rota estava colada dentro do POST de mensagem e só existia depois de um envio.)
+router.patch("/messages/threads/:threadId/preferences", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  try {
+    const userId = req.user!.sub, threadId = String(req.params.threadId);
+    const [participant] = await db.select({ id: messageThreadParticipantsTable.id }).from(messageThreadParticipantsTable).where(and(eq(messageThreadParticipantsTable.threadId, threadId), eq(messageThreadParticipantsTable.userId, userId)));
+    if (!participant) { res.status(403).json({ error: "Sem acesso a esta conversa" }); return; }
+    const pinned = req.body.pinned === undefined ? undefined : Boolean(req.body.pinned);
+    const muted = req.body.muted === undefined ? undefined : Boolean(req.body.muted);
+    const [preference] = await db.insert(messageThreadPreferencesTable).values({ threadId, userId, pinned: pinned ?? false, muted: muted ?? false }).onConflictDoUpdate({ target: [messageThreadPreferencesTable.threadId, messageThreadPreferencesTable.userId], set: { ...(pinned === undefined ? {} : { pinned }), ...(muted === undefined ? {} : { muted }), updatedAt: new Date() } }).returning();
+    res.json({ preference });
+  } catch { res.status(500).json({ error: "Erro ao atualizar preferências da conversa" }); }
+});
 
 // ─── PATCH /messages/threads/:threadId/read ───────────────────────────────────
 

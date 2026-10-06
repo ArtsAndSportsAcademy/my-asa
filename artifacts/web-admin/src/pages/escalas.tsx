@@ -100,7 +100,9 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
   const review = import.meta.env.DEV && (sampleRequested || window.sessionStorage.getItem("myasa-review-sample") === "1");
   const isMem = role === "mem", isDir = role === "dir", isAdm = role === "adm";
   const me = REVIEW_PERSON[role];
-  const [tab, setTab] = useState<"escala" | "prog">("escala");
+  // "minha" (desenho 15): quem gerencia e também trabalha escalado vê a própria escala, como o elenco.
+  const [tab, setTab] = useState<"escala" | "prog" | "minha">("escala");
+  const showMinha = isMem || tab === "minha";
   const [date, setDate] = useState(addDays(todayISO(), 1));
   const [cal, setCal] = useState(false);
   const [locais, setLocais] = useState<Local[]>([]);
@@ -133,7 +135,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
     setLoading(true); setError("");
     (async () => {
       try {
-        if (isMem) {
+        if (showMinha) {
           if (review) {
             const person = samplePessoas("snowland").find((p) => p.id === me);
             const localSample = person ? "snowland" : "";
@@ -159,7 +161,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       finally { if (!cancelled) setLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [review, localId, date, isMem, refresh]);
+  }, [review, localId, date, isMem, showMinha, refresh]);
 
   const local = locais.find((l) => l.id === localId);
   const meusBlocos = minha?.escalas?.flatMap((escala) => escala.blocos) ?? minha?.blocos ?? [];
@@ -290,7 +292,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
   return <section className="esc-root" style={css("position:relative;flex:1;display:flex;flex-direction:column;background:#faf9fe;min-width:0;min-height:calc(100vh - 48px)")}>
     {dateBar}
     {!isMem && <div className="esc-tabs esc-pad" role="tablist" style={css("display:flex;align-items:center;padding:0 20px;border-bottom:1px solid #ebe6f6;background:#fff;")}>
-      {([["escala", "Escala do dia"], ["prog", "Programação"]] as const).map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={tab === key} className="esc-hit" onClick={() => setTab(key)}
+      {([["escala", "Escala do dia"], ["prog", "Programação"], ["minha", "Minha escala"]] as const).map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={tab === key} className="esc-hit" onClick={() => setTab(key)}
         style={css("border:none;background:none;cursor:pointer;font-family:Manrope,sans-serif;font-size:13px;padding:11px 2px 10px;margin-right:22px;white-space:nowrap;" + (tab === key ? "font-weight:700;color:#2b2545;box-shadow:inset 0 -2px 0 0 #6C2BF2;" : "font-weight:600;color:#6b6482;"))}>{label}</button>)}
     </div>}
 
@@ -301,12 +303,12 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
         <button type="button" className="esc-hit" onClick={() => { setError(""); setRefresh((n) => n + 1); }} style={css(btn("ghost"))}>Tentar de novo</button>
       </div>}
       {carregandoTela && !error && !dia && !minha && <div aria-busy="true" style={css("padding:16px;text-align:center;font-size:12.5px;color:#6b6482;background:#fff;border:1px dashed #ddd6ee;border-radius:12px")}>Montando a escala…</div>}
-      {isMem && minha && <MinhaEscala minha={minha} date={date} onHoje={() => setDate(todayISO())} onConfirm={confirmarEscala} saving={saving}/>}
+      {showMinha && minha && <MinhaEscala minha={minha} date={date} onHoje={() => setDate(todayISO())} onConfirm={confirmarEscala} saving={saving}/>}
       {!isMem && tab === "escala" && dia && <EscalaGrid dia={dia} canEdit={isAdm || areasMinhas.length > 0} editableAreaIds={isAdm ? null : areasMinhas} onAdjust={ajustarCelula}/>} 
       {!isMem && tab === "prog" && localId && <ProgramacaoTab review={review} localId={localId} localName={operationLabel} date={date} dia={dia} canEdit={Boolean(local?.podeEditar)} onChanged={() => setRefresh((n) => n + 1)}/>}
     </div>
 
-    <Rodape role={role} tab={tab} dia={dia} minha={minha} areasMinhas={areasMinhas} saving={saving} onGerar={gerarDia} onPronta={marcarPronta} onPublicar={publicar}/>
+    <Rodape role={role} tab={tab} onMinha={tab === "minha"} dia={dia} minha={minha} areasMinhas={areasMinhas} saving={saving} onGerar={gerarDia} onPronta={marcarPronta} onPublicar={publicar}/>
   </section>;
 }
 
@@ -582,10 +584,12 @@ function AjusteCelulaDialog({ bloco, pessoas, editableAreaIds, onClose, onAdjust
 }
 
 /* ---------- rodapé: áreas prontas e publicação ---------- */
-function Rodape({ role, tab, dia, minha, areasMinhas, saving, onGerar, onPronta, onPublicar }: { role: Role; tab: string; dia: Dia | null; minha: Minha | null; areasMinhas: string[]; saving: boolean; onGerar: () => void; onPronta: (areaId: string, pronta: boolean) => void; onPublicar: (republicar: boolean) => void }) {
-  const isMem = role === "mem", isDir = role === "dir", isAdm = role === "adm";
+function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, onGerar, onPronta, onPublicar }: { role: Role; tab: string; onMinha?: boolean; dia: Dia | null; minha: Minha | null; areasMinhas: string[]; saving: boolean; onGerar: () => void; onPronta: (areaId: string, pronta: boolean) => void; onPublicar: (republicar: boolean) => void }) {
+  const isMem = role === "mem" || onMinha, isDir = role === "dir", isAdm = role === "adm";
   let note = "";
   const actions: ReactNode[] = [];
+  // Atalhos do desenho 15: folga e troca moram em Folgas e solicitações; aqui só levam até lá.
+  if (!isMem && !isDir && tab === "escala") actions.push(<Link key="folga" href="/folgas" className="esc-hit" style={css(btn("ghost") + ";text-decoration:none")}>Folga</Link>, <Link key="troca" href="/solicitacoes" className="esc-hit" style={css(btn("ghost") + ";text-decoration:none")}>Registrar troca</Link>);
   if (isMem) {
     const minhas = minha?.escalas?.length ? minha.escalas : minha?.escalaId ? [{ confirmada: minha.confirmada, confirmedAt: minha.confirmedAt }] : [];
     const pendente = minhas.some((e) => !e.confirmada);

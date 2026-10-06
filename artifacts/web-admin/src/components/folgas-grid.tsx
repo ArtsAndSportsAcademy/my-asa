@@ -223,11 +223,14 @@ interface FolgasGridProps {
   month: number;
   memberFilter?: string;
   groupBy?: boolean;
+  /** "Publicar mês" (desenho 18): a tela mostra se o mês foi publicado e se mudou depois. */
+  onPublicacao?: (publicacao: FolgasPublicacao) => void;
 }
+export type FolgasPublicacao = { publishedAt: string | null; publishedBy: string | null; changedSince: boolean };
 
 const NO_GROUP_LABEL = "Sem grupo";
 
-export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = false }: FolgasGridProps) {
+export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = false, onPublicacao }: FolgasGridProps) {
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -241,6 +244,8 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
     { query: { enabled: !!operationId } } as any,
   );
 
+  const publicacao = (data as { publicacao?: FolgasPublicacao } | undefined)?.publicacao;
+  useEffect(() => { if (publicacao) onPublicacao?.(publicacao); }, [publicacao?.publishedAt, publicacao?.changedSince]);
   const filteredMembers = (data?.members ?? []).filter((m) => {
     if (!memberFilter) return true;
     return m.name.toLowerCase().includes(memberFilter.toLowerCase());

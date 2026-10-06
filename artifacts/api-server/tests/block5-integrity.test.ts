@@ -23,6 +23,7 @@ import {
   deliveriesTable,
   deliveryAssignmentsTable,
   folgasTable,
+  userNotificationsTable,
 } from "@workspace/db";
 import app from "../src/application.js";
 import { signAccessToken } from "../src/lib/jwt.service.js";
@@ -115,6 +116,23 @@ async function run() {
     ));
     assert(failedFolgaGrid.status === 500 && folgaRollbackRows.length === 0, "falha no Registro na grade de folgas desfaz a alteração da célula");
 
+    // "Publicar mês" (desenho 18, 06/10): avisa a equipe, fica no Registro e o mapa diz se mudou depois.
+    const gridMonth = () => request(`/folgas/grid?operationId=${operation!.id}&year=2026&month=9`).then(r => r.json() as Promise<{ publicacao?: { publishedAt: string | null; changedSince: boolean } }>);
+    assert((await gridMonth()).publicacao?.publishedAt === null, "mapa de mês nunca publicado diz que não foi publicado");
+    await request("/folgas/grid/toggle", { method: "POST", body: JSON.stringify({ userId: person!.id, operationId: operation!.id, date: "2026-09-23", type: "DAY_OFF" }) });
+    const published = await request("/folgas/grid/publicar", { method: "POST", body: JSON.stringify({ operationId: operation!.id, year: 2026, month: 9 }) });
+    const publishedBody = await published.json() as { avisados: number; publicacao: { publishedAt: string | null; changedSince: boolean } };
+    assert(published.status === 200 && publishedBody.avisados === 1 && Boolean(publishedBody.publicacao.publishedAt) && !publishedBody.publicacao.changedSince, "publicar o mês avisa a equipe (sem avisar quem publicou)");
+    const [publishedNotice] = await db.select().from(userNotificationsTable).where(and(eq(userNotificationsTable.userId, person!.id), eq(userNotificationsTable.type, "folga.month_published")));
+    assert(Boolean(publishedNotice) && publishedNotice!.actionUrl === "/folgas", "a pessoa recebe o aviso com o caminho para Folgas");
+    assert((await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.orgId, org!.id), eq(historyEventsTable.action, "FOLGA_MONTH_PUBLISHED")))).length === 1, "publicar o mês entra no Registro");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    await request("/folgas/grid/toggle", { method: "POST", body: JSON.stringify({ userId: person!.id, operationId: operation!.id, date: "2026-09-24", type: "RECESSO" }) });
+    assert((await gridMonth()).publicacao?.changedSince === true, "mexer no mapa depois de publicar aparece como \"mudou depois de publicar\"");
+    const memberToken = signAccessToken({ sub: person!.id, jti: `${tag}_member`, organizationId: org!.id, role: "MEMBER", operationIds: [operation!.id] });
+    const memberPublish = await fetch(`${base}/folgas/grid/publicar`, { method: "POST", headers: { authorization: `Bearer ${memberToken}`, "content-type": "application/json" }, body: JSON.stringify({ operationId: operation!.id, year: 2026, month: 9 }) });
+    assert(memberPublish.status === 403, "Elenco não publica o mês de folgas");
+
     const deactivateUser = await request(`/users/${person!.id}`, { method: "DELETE", body: JSON.stringify({ reason: "encerramento de vínculo" }) });
     const [userAfter] = await db.select().from(usersTable).where(eq(usersTable.id, person!.id));
     assert(deactivateUser.status === 200 && Boolean(userAfter) && userAfter!.status === "INACTIVE" && userAfter!.personStatus === "ARCHIVED", "DELETE de pessoa vira desativação e preserva a linha");
@@ -167,6 +185,7 @@ async function run() {
     await pool.query("DELETE FROM delivery_assignments WHERE delivery_id IN (SELECT id FROM deliveries WHERE operation_id = $1)", [operation!.id]);
     await pool.query("DELETE FROM deliveries WHERE operation_id = $1", [operation!.id]);
     await pool.query("DELETE FROM folgas WHERE operation_id = $1", [operation!.id]);
+    await pool.query("DELETE FROM user_notifications WHERE user_id = ANY($1::uuid[])", [[admin!.id, person!.id]]);
     await pool.query("DELETE FROM task_evidences WHERE id = $1", [evidence!.id]);
     await pool.query("DELETE FROM tasks WHERE id = $1", [task!.id]);
     await pool.query("DELETE FROM library_categories WHERE id = $1", [category!.id]);

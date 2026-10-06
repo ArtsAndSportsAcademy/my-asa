@@ -1,67 +1,54 @@
-Codex, há uma nova rodada do Claude pronta para subir na mesma branch `codex/myasa-novo`. É a **etapa 1 do plano para aproximar o app do desenho** (acabamentos). O plano e as decisões da dona do produto estão em `docs/COMPARACAO-DESENHO-APP-2026-10-02.md`, seção "Etapa 1".
+Codex, o Claude revisou as etapas 2 a 7 (06/10), achou problemas e completou o que faltava do desenho. Tudo está no disco, **sem commit**, na branch `codex/myasa-novo`. Detalhes em `docs/COMPARACAO-DESENHO-APP-2026-10-02.md`, seção "Revisão das etapas 2 a 7 pelo Claude (06/10)".
 
-**Continuação do Codex (02/10):** resultados atuais, correções e limites da conferência estão em [VALIDACAO-ETAPA-1-CODEX-2026-10-02.md](VALIDACAO-ETAPA-1-CODEX-2026-10-02.md). Os números abaixo preservam o resultado original do handoff, não substituem a nova validação.
+1. **Grave — migrações fora da lista.**
+   - `0055_messages_stage6` e `0056_locais_funcionamento` **não estavam em `lib/db/drizzle/meta/_journal.json`**. Por isso nunca foram aplicadas, nem no banco de teste. Toda criação de local quebrava ("coluna operating_days não existe"), e 15 dos 44 arquivos de teste caíam por isso.
+   - Corrigido:
+     - 0055 e 0056 entraram na lista;
+     - a 0055 ganhou `ENABLE ROW LEVEL SECURITY` + `REVOKE` na tabela nova `message_thread_preferences`;
+     - as duas ganharam `--> statement-breakpoint` e rollback (`drizzle/rollback/0055…`, `0056…`).
+   - **Sempre que criar uma migração, coloque-a no `_journal.json` e rode o `migrate.ts` no banco de teste antes de dizer que está pronto.**
+   - **Produção (São Paulo) está na 0054** (consulta só de leitura em 06/10). Faltam 0055, 0056 e 0057.
 
-1. **O que entra**
-   - **Menu e cabeçalho** (`components/shell-foundation.tsx` e `shell-foundation.css`, no fim do arquivo). Arquivo compartilhado; o que mudou:
-     - grupos e nomes do menu iguais ao desenho;
-     - nomes do Elenco;
-     - "Folgas e solicitações" num item só, com duas abas (campo `alsoHref` no item de menu);
-     - data embaixo do título;
-     - sino com não lidas e lista (`NotificationBell`, usa `/api/notifications`);
-     - nomes curtos na barra de baixo (`tabLabel`);
-     - o Elenco vê Shows no menu (`onlyPublished`).
-     - **Não mexi na ASA.**
-   - **Shows:**
-     - cartão com responsável, descrição e data;
-     - correção do favorito, que nunca adicionava;
-     - Elenco só com shows publicados.
-     - Arquivos: `pages/shows.tsx` e `.css`, `routes/show-book.ts` (GET `/show-books`: para MEMBER, rascunho só se for o show delegado ao capitão).
-   - **Responsabilidades:** filtros com os nomes do desenho e "Minhas" (`pages/responsibilities-tasks.tsx`).
-   - **Mural:**
-     - "cancelar aviso" com motivo;
-     - destino do aviso com área ou local;
-     - erro dentro da janela.
-     - Arquivos: `pages/communication.tsx` e `.css`, `routes/communication-hub.ts`. O GET devolve `canCancel` e não expõe `authorId`.
-     - **Regra nova (decisão da dona do produto, 02/10):** a Supervisão publica aviso igual à Administração (toda a casa, qualquer área ou qualquer local). Rota nova `GET /communication/destinations` (só nomes; Administração, Direção e Supervisão). O POST recusa área ou local de outra organização.
-     - **Se a ASA publica ou rascunha aviso** em `asa-*`, aplique a mesma regra lá. Eu não mexi nesses arquivos.
-   - **Aviso para pessoas escolhidas (novo):**
-     - destino `PEOPLE` com `recipientIds` (até 300, todos da organização e ativos);
-     - só as pessoas escolhidas e quem publicou leem e dão ciente;
-     - o GET devolve `recipientNames`;
-     - a lista entra no Registro.
-     - Arquivos: `routes/communication-hub.ts`, `services/announcement-access.ts` (`canReadAnnouncement` aceita `id` e `authorId` opcionais; quem publicou sempre lê), `services/announcement-version.ts` (tipo), `services/meu-dia.ts` (passa `authorId`), `lib/db/src/schema/communication.ts`, `pages/communication.tsx` e `.css`.
-     - **Atenção, ASA:** em `routes/asa.ts`, as listagens do Mural chamam `canReadAnnouncement`. Se o `select` não traz `id` e `authorId`, um aviso `PEOPLE` fica negado para quem não é Administração ou Direção. É uma falha fechada, mas a pessoa escolhida não verá o aviso pela ASA. Inclua `id` e `authorId` nesses `select`.
-   - **Migração nova `0053_mural_pessoas`** (com o rollback em `drizzle/rollback/`).
-     - Está aplicada só no banco de teste.
-     - **Não aplique em produção:** quem aplica é o Claude, depois de a dona do produto autorizar, **antes** de promover a API.
-     - Sem ela, o Mural em produção quebra com o código novo.
-   - **Entrada:**
-     - login novo com "mostrar senha", "Esqueci minha senha" e "Conta desativada" (`pages/login.tsx`, `pages/login.css`);
-     - primeiro acesso só com senha nova e repetir (`pages/force-password-change.tsx`, `lib/senha-da-entrada.ts`, novo);
-     - rota pública nova `POST /api/auth/esqueci-senha` (`routes/auth.ts`). Ela sempre responde igual, avisa a Administração no máximo uma vez a cada 30 min por pessoa e grava no Registro.
-   - **Regra da senha:** 8 caracteres, com letra e número (`routes/users.ts` em `/users/me/password`, `pages/perfil.tsx`).
-   - **Testes:**
-     - `tests/block6-http-matrix.ts`: estante do Elenco sem rascunho;
-     - `tests/grupo-c-communication.test.ts`: `canCancel`, área implícita da Supervisão, `authorId` fora;
-     - `tests/fase-c-perfil-senha.test.ts`: regra da senha e esqueci a senha;
-     - `tests/permission-matrix.test.ts`: `/auth/esqueci-senha` marcada como pública.
-   - **Docs:** `docs/COMPARACAO-DESENHO-APP-2026-10-02.md` e este recado.
-   - **Uma migração nova: 0053** (ver acima). A produção precisa dela antes da API nova.
+2. **Defeitos corrigidos em `routes/messages.ts`:**
+   - a rota `PATCH /messages/threads/:threadId/preferences` estava colada **dentro** do handler do POST de mensagem; foi movida para fora;
+   - quem silenciou a conversa deixou de receber aviso de mensagem nova.
 
-2. **Testes rodados no banco de teste** (por arquivo):
-   - `block6-integrity`: 238;
-   - `grupo-c-communication`: 117;
-   - `fase-c-perfil-senha`: 41.
-   - **Suíte completa: 41 de 42.** Só falha `asa-actions-http` (linha 624, 403 em vez de 200), que é a pendência antiga sua.
+3. **O que entrou do desenho:**
+   - **Mural (22)** — `routes/communication-hub.ts`, `services/announcement-audience.ts` (novo), `pages/communication.tsx` e `.css`, `pages/aniversarios-faixa.tsx`:
+     - "X de Y deram ciente" (`ackSummary` no feed, só para quem gerencia) e `GET /communication/mural/:id/cientes` (quem falta);
+     - data do evento (`eventDate`, migração nova **0057_mural_data_evento**);
+     - aniversário como cartão BIRTHDAY no feed, com "Dar parabéns" (reação) e `reactionCount`; criado no dia, uma vez por pessoa, com Registro.
+   - **Escalas (15)** — `pages/escalas.tsx`:
+     - aba "Minha escala" para Administração, Direção e Supervisão;
+     - atalhos "Folga" e "Registrar troca" no rodapé.
+   - **Mensagens (23)** — `services/area-groups.ts` (novo), chamado no `GET /messages/threads`:
+     - grupo automático por área (`context_type = AREA_GROUP`), com a área e quem a supervisiona;
+     - entra quem chegou e sai quem mudou de área, com Registro;
+     - aparece em "Meus grupos".
+   - **Biblioteca (24):** "Pedir um material", que vira Solicitação "Outro assunto".
+   - **Testes:** `tests/grupo-c-communication.test.ts` ganhou verificações de tudo isso (143 passam).
 
-3. **Pendente seu:** a expectativa do `asa-actions-http` (linha ~624: conversa criada depois do papel revogado deve ser recusada).
+4. **Testes (banco de teste, 06/10):**
+   - suíte completa: 43 de 44;
+   - a única falha (`permission-matrix`, por causa da rota de preferências) passou depois da correção (23);
+   - `asa-actions-http` passou.
 
-4. **Antes do commit**, como sempre:
-   - `git status` sem `.env.*`, `.tmp*`, `*.log`, `.audit-tmp/`, `tests/.dist/`;
-   - kit do mascote (`artifacts/brand/`) e `output/` fora;
-   - typechecks da API e da web.
+5. **Folgas (feito pelo Claude):**
+   - "Publicar mês": `POST /folgas/grid/publicar`, e `publicacao` no `GET /folgas/grid`. Avisa a operação, entra no Registro e mostra "mudou depois de publicar";
+   - para quem gerencia, o calendário repetido saiu de baixo do mapa;
+   - arquivos: `routes/folgas.ts`, `components/folgas-grid.tsx`, `pages/operational-cycle.tsx` e `.css`;
+   - teste: `tests/block5-integrity.test.ts` (20).
+   - **O commit desta rodada foi feito pelo Claude**, a pedido da dona do produto.
 
-5. **Commit e push** em `codex/myasa-novo`. **Não junte na `main`.** Não aplique migração em produção.
+6. **Antes do commit:**
+   - `git status` limpo de `.env.*`, `.tmp*`, `*.log`, `.audit-tmp/`, `tests/.dist/`, `artifacts/brand/`, `output/`, `.pnpm-store/`, `my-asa-main.zip`, `Nuevo Documento de texto.txt`;
+   - typechecks verdes. O único erro da web é o `components/ui/spinner.tsx` (tipos duplicados do React), que só aparece com `node-linker=isolated`; o Claude reinstalou assim para conseguir testar.
 
-Quando terminar, me diga o hash do commit. A dona do produto promove o deploy novo na Vercel (site **e** API, projeto `my-asa`) e eu confiro em produção.
+7. **Commit e push** em `codex/myasa-novo`. **Não junte na `main`.**
+
+8. **Produção:**
+   - **não aplique 0055, 0056 e 0057 sem a dona do produto autorizar**;
+   - com a autorização, aplique as três (em ordem) **antes** de ela promover o site e a API na Vercel;
+   - se o código das etapas 6 e 7 já estiver publicado, Mensagens e Locais estão quebrados em produção até essas migrações entrarem.
+
+Quando terminar, me diga o hash do commit.

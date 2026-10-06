@@ -601,6 +601,62 @@ No Mural, além de toda a casa, uma área ou um local, o aviso pode ir para **pe
 - Rodapé padrão (versão, ajuda, privacidade).
 - 3 telas de boas-vindas.
 
+## Revisão das etapas 2 a 7 pelo Claude (06/10)
+
+O Codex fechou as etapas 2 a 7 entre 03 e 05/10 (commits `5f12550` a `bb668d8`). Conferi tela por tela contra o desenho, no código e no modo amostra.
+
+### Problema grave encontrado: migrações fora da lista
+
+As migrações **0055** (Mensagens: fixar, silenciar, citar) e **0056** (Locais: dias e horário de funcionamento) foram criadas, mas **não entraram na lista oficial** (`drizzle/meta/_journal.json`). Por isso nunca foram aplicadas, nem no banco de teste.
+
+- **Efeito:** qualquer tela que cria ou lê local quebrava ("coluna operating_days não existe"). Isso derrubava 15 dos 44 arquivos de teste. Mensagens também quebrava.
+- **Corrigido:**
+  - 0055 e 0056 entraram na lista;
+  - a 0055 ganhou a proteção RLS da tabela nova (`message_thread_preferences`), que faltava;
+  - as duas ganharam arquivos de rollback;
+  - foram aplicadas no banco de teste.
+- **Produção (São Paulo), consultada só para leitura em 06/10:** está na **0054**. Faltam 0055, 0056 e 0057. Se o código das etapas 6 e 7 for publicado sem elas, Mensagens e Locais dão erro.
+
+### O que faltava do desenho e foi feito agora
+
+| Tela | O que entrou | Conferido |
+|---|---|---|
+| 22 Mural | "**X de Y deram ciente**", com barra, e o botão "**quem falta**" (lista quem não deu ciente). Só para quem gerencia o aviso; o público é calculado pelo destino: casa, área, escalados no local ou pessoas escolhidas. | tela + teste |
+| 22 Mural | **Data do evento** no aviso: campo opcional no formulário e etiqueta "SEX., 9 DE OUT." no cartão. Migração **0057**. | tela + teste |
+| 22 Mural | **Aniversário como cartão no feed**, com "Dar parabéns" e "N parabéns até agora". Respeita a escolha "mural no meu dia"; um cartão por pessoa por dia; entra no Registro. A faixa do topo ficou só com "Aniversários nesta semana". | tela + teste |
+| 15 Escalas | Aba **"Minha escala"** para Administração, Direção e Supervisão (quem também trabalha escalado). Atalhos **"Folga"** e **"Registrar troca"** no rodapé, levando a Folgas e solicitações. | tela |
+| 23 Mensagens | **Grupo automático de cada área** ("Patinadores · grupo da área"): quem é da área e quem a supervisiona. Entra quem chegou e sai quem mudou de área quando a pessoa abre Mensagens. Aparece em "Meus grupos". Grupos por local ficaram de fora: o local é só onde se trabalha (decisão 3). | teste |
+| 24 Biblioteca | **"Pedir um material"**: vira uma Solicitação "Outro assunto", decidida pela supervisão no fluxo de sempre. A Direção não pede (só acompanha). | tela |
+
+### Já estava bem feito pelo Codex
+
+- Check-in por turno: turnos, lista por pessoa, alerta "não vem neste turno → Resolver na Escala", números de 30 dias.
+- Mensagens: "Meus grupos", fixar, silenciar, integrantes, responder citando, não lidas.
+- Biblioteca: "Esperando você", "Mudou esta semana", índice e anterior/próxima.
+- Painel nas 4 perguntas e Locais com funcionamento (dependem da 0056).
+
+### Outros defeitos do Codex corrigidos
+
+- **Mensagens:** a rota de fixar e silenciar conversa estava colada **dentro** da rota de enviar mensagem. Só passava a existir depois do primeiro envio e era registrada de novo a cada envio; antes disso, fixar e silenciar davam 404. Foi movida para o lugar certo.
+- **Silenciar não silenciava:** o aviso de mensagem nova ia para todos. Agora quem silenciou a conversa não recebe.
+
+### Conferido com login real (banco de teste)
+
+**Folgas:** o mapa do mês existe e funciona com sessão de verdade. No modo amostra aparece só o calendário antigo. Tem pessoas × dias, F/R/A/O, grupos, totais, "Repetir mês anterior" e as abas Mapa do mês / Registros / Regras e grupos. Duas diferenças do desenho:
+- não havia "Publicar mês";
+- o calendário antigo continuava aparecendo embaixo do mapa, repetindo as folgas.
+
+**Resolvido em 06/10:**
+- **"Publicar mês"**: cada célula continua valendo na hora. O botão avisa todo mundo da operação que o mês está pronto e entra no Registro. A barra mostra "mês não publicado", "publicado em 6 de out., 10:32" ou "mudou depois de publicar"; neste último caso, o botão vira "Publicar de novo".
+- Para quem gerencia, o calendário repetido saiu e ficou só a fila de pedidos embaixo do mapa.
+- Conferido com login no banco de teste e com teste automático (block5: 20 verificações).
+
+### Testes (06/10, banco de teste)
+
+- **Suíte completa:** 43 de 44.
+- A falha era a rota de fixar e silenciar, corrigida depois que a suíte já tinha começado. Rodados de novo, `permission-matrix` (23) e `grupo-c-communication` (143) passaram.
+- O `asa-actions-http`, que falhava desde 01/10, passou.
+
 ## O que precisava da sua DECISÃO (respondido acima)
 
 1. **Abas do celular:** manter as do app (Meu Dia / Minha escala / Check-in / Mural / Mais)? O desenho tem 4 versões diferentes.

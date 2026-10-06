@@ -272,6 +272,32 @@ async function run() {
     const supPosts = await feedOf(supApi), memPosts = await feedOf(memApi), adminPosts = await feedOf(adminApi);
     assert(supPosts.find(item => item.id === areaNoticeId)?.canCancel === true && adminPosts.find(item => item.id === areaNoticeId)?.canCancel === true && memPosts.find(item => item.id === areaNoticeId)?.canCancel === false, "Mural diz a cada perfil se pode cancelar o aviso: Supervisão da área e Administração sim, Elenco não");
     assert(memPosts.length > 0 && memPosts.every(item => item.authorId === undefined), "Feed do Mural não expõe o id de quem publicou");
+    // Desenho 22 (06/10): "X de Y deram ciente", quem falta, data do evento e aniversário com Parabéns.
+    const ackNotice = await post(adminApi, "/communication/mural", { type: "NOTICE", scope: "AREA", areaId: area!.id, body: `${tag}_ciente_area`, requiresConfirmation: true, eventDate: "2026-12-24" });
+    const ackNoticeId = ((await ackNotice.json()) as { post: { id: string; eventDate?: string } }).post.id;
+    assert(ackNotice.status === 201, "Aviso com data do evento é publicado");
+    assert((await post(adminApi, "/communication/mural", { type: "NOTICE", scope: "HOUSE", body: "data ruim", eventDate: "24/12/2026" })).status === 400, "Data do evento em formato errado é recusada");
+    await post(memApi, `/communication/mural/${ackNoticeId}/ack`);
+    const adminAck = ((await (await adminApi("/communication/mural")).json()) as { posts: Array<{ id: string; ackSummary?: { total: number; confirmados: number }; eventDate?: string }> }).posts.find(item => item.id === ackNoticeId);
+    assert(adminAck?.eventDate === "2026-12-24", "O feed devolve a data do evento");
+    assert(adminAck?.ackSummary?.total === 2 && adminAck.ackSummary.confirmados === 1, `Administração vê "1 de 2 deram ciente" no aviso da área (sup e mem): ${JSON.stringify(adminAck?.ackSummary)}`);
+    const memAck = ((await (await memApi("/communication/mural")).json()) as { posts: Array<{ id: string; ackSummary?: unknown }> }).posts.find(item => item.id === ackNoticeId);
+    assert(Boolean(memAck) && memAck!.ackSummary === undefined, "Elenco não vê a contagem de cientes");
+    const cientes = await adminApi(`/communication/mural/${ackNoticeId}/cientes`);
+    const cientesBody = await cientes.json() as { total: number; confirmados: number; faltam: { id: string }[] };
+    assert(cientes.status === 200 && cientesBody.faltam.length === 1 && cientesBody.faltam[0]!.id === sup.id, "Quem falta lista só quem ainda não deu ciente");
+    assert((await memApi(`/communication/mural/${ackNoticeId}/cientes`)).status === 403, "Elenco não vê quem falta");
+    const todaySp = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+    await db.update(usersTable).set({ birthDate: `1995-${todaySp.slice(5)}` }).where(eq(usersTable.id, outsider.id));
+    const withBirthday = ((await (await memApi("/communication/mural")).json()) as { posts: Array<{ id: string; type: string; recipientId?: string; reactionCount?: number }> }).posts;
+    const birthday = withBirthday.filter(item => item.type === "BIRTHDAY" && item.recipientId === outsider.id);
+    assert(birthday.length === 1, "No dia, o aniversário vira um cartão no feed");
+    await adminApi("/communication/mural");
+    assert(((await (await adminApi("/communication/mural")).json()) as { posts: Array<{ type: string; recipientId?: string }> }).posts.filter(item => item.type === "BIRTHDAY" && item.recipientId === outsider.id).length === 1, "Abrir o Mural de novo não repete o cartão de aniversário");
+    assert((await post(memApi, `/communication/mural/${birthday[0]!.id}/react`, { reaction: "🎂" })).status === 200, "Dar parabéns usa a reação");
+    const afterCongrats = ((await (await adminApi("/communication/mural")).json()) as { posts: Array<{ id: string; reactionCount?: number }> }).posts.find(item => item.id === birthday[0]!.id);
+    assert(afterCongrats?.reactionCount === 1, "O cartão conta os parabéns");
+    assert((await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, birthday[0]!.id), eq(historyEventsTable.action, "mural.birthday_created")))).length === 1, "O cartão de aniversário entra no Registro");
     // Aviso para pessoas escolhidas (0053, decisão de 02/10).
     const peopleNotice = await post(supApi, "/communication/mural", { type: "NOTICE", scope: "PEOPLE", recipientIds: [member.id], title: `${tag}_pessoas_escolhidas`, body: `${tag}_so_para_mem`, requiresConfirmation: true });
     const peopleNoticeId = ((await peopleNotice.json()) as { post: { id: string } }).post?.id;
@@ -327,6 +353,26 @@ async function run() {
     const eventRows = await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.orgId, org!.id), eq(historyEventsTable.entityType, "announcement"))); assert(eventRows.length >= 2, "Aviso e reconhecimento gravam Registro");
 
     const recipients = await memApi("/messages/recipients"); const recipientBody = await recipients.json() as { recipients: { id: string }[] }; assert(recipients.status === 200 && recipientBody.recipients.some(person => person.id === director.id), "Elenco pode iniciar conversa com Direção");
+    // Desenho 23 (06/10): grupo automático da área nas Mensagens.
+    const memThreads = await memApi("/messages/threads");
+    const memThreadsBody = await memThreads.json() as { threads: Array<{ id: string; contextType?: string; contextId?: string; participants: { userId: string }[] }> };
+    const areaGroup = memThreadsBody.threads.find(thread => thread.contextType === "AREA_GROUP" && thread.contextId === area!.id);
+    assert(memThreads.status === 200 && Boolean(areaGroup), "Quem é da área ganha o grupo da área nas Mensagens");
+    const groupMembers = new Set(areaGroup?.participants.map(item => item.userId) ?? []);
+    assert(groupMembers.has(member.id) && groupMembers.has(sup.id) && !groupMembers.has(outsider.id), "O grupo da área tem a área e quem a supervisiona, e não tem gente de outra área");
+    await memApi("/messages/threads");
+    assert((await db.select().from(messageThreadsTable).where(and(eq(messageThreadsTable.orgId, org!.id), eq(messageThreadsTable.contextType, "AREA_GROUP"), eq(messageThreadsTable.contextId, area!.id)))).length === 1, "Abrir Mensagens de novo não cria outro grupo da área");
+    const prefs = await memApi(`/messages/threads/${areaGroup!.id}/preferences`, { method: "PATCH", body: JSON.stringify({ muted: true, pinned: true }) });
+    assert(prefs.status === 200, "Fixar e silenciar funcionam antes de qualquer mensagem na conversa");
+    assert((await post(supApi, `/messages/threads/${areaGroup!.id}/messages`, { content: `${tag}_no_grupo` })).status === 201, "Supervisão escreve no grupo da área");
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    const mutedNotices = await db.select().from(userNotificationsTable).where(and(eq(userNotificationsTable.userId, member.id), eq(userNotificationsTable.entityId, areaGroup!.id)));
+    assert(mutedNotices.length === 0, "Quem silenciou a conversa não recebe aviso de mensagem nova");
+    await db.update(usersTable).set({ areaId: otherArea!.id }).where(eq(usersTable.id, member.id));
+    await memApi("/messages/threads");
+    const afterMove = await db.select().from(messageThreadParticipantsTable).where(and(eq(messageThreadParticipantsTable.threadId, areaGroup!.id), eq(messageThreadParticipantsTable.userId, member.id)));
+    assert(afterMove.length === 0, "Quem muda de área sai do grupo da área antiga");
+    await db.update(usersTable).set({ areaId: area!.id }).where(eq(usersTable.id, member.id));
     const threadResponse = await post(memApi, "/messages/threads", { title: "Direção", participantIds: [director.id] }); const threadBody = await threadResponse.json() as { thread: { id: string } }; assert(threadResponse.status === 201, "Elenco cria conversa direta");
     const messageResponse = await post(memApi, `/messages/threads/${threadBody.thread.id}/messages`, { content: "Posso tirar uma dúvida?" }); assert(messageResponse.status === 201, "Elenco envia mensagem direta");
     const senderMessage = await post(directorApi, `/messages/threads/${threadBody.thread.id}/messages`, { content: `${tag}_trecho_restrito` });

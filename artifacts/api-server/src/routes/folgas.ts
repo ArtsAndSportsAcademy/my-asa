@@ -1,9 +1,10 @@
 import { Router, type IRouter } from "express";
-import { eq, and, gte, lte, desc, inArray, isNotNull } from "drizzle-orm";
+import { eq, and, gt, gte, lte, desc, inArray, isNotNull } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   folgasTable,
+  historyEventsTable,
   usersTable,
   operationsTable,
   userRolesTable,
@@ -14,7 +15,7 @@ import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { groupCoveredOperationIds } from "./groups.js";
 import { requestLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
-import { sendNotification } from "../services/notificationService.js";
+import { notifyMany, sendNotification } from "../services/notificationService.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { operationalDate } from "../lib/operational-date.js";
 
@@ -453,11 +454,59 @@ router.get("/folgas/grid", requireAuth, requireOrganization, async (req, res) =>
     });
 
     log.info({ operationId, yr, mo, members: result.length }, "grade de folgas gerada");
-    res.json({ members: result, daysInMonth });
+    res.json({ members: result, daysInMonth, publicacao: await monthPublication(operationId, yr, mo) });
   } catch (err) {
     log.error({ err }, "erro ao gerar grade de folgas");
     res.status(500).json({ error: "Internal Server Error" });
   }
+});
+
+// ─── Publicar mês (desenho 18) ────────────────────────────────────────────────
+// Cada célula do mapa já vale na hora. "Publicar mês" avisa a equipe da operação que o mês está
+// pronto e fica no Registro; se o mapa mudar depois, a tela mostra "mudou depois de publicar".
+const monthKey = (operationId: string, yr: number, mo: number) => `${operationId}:${yr}-${String(mo).padStart(2, "0")}`;
+
+async function monthPublication(operationId: string, yr: number, mo: number) {
+  const [event] = await db.select({ occurredAt: historyEventsTable.occurredAt, actorName: historyEventsTable.actorName }).from(historyEventsTable)
+    .where(and(eq(historyEventsTable.action, "FOLGA_MONTH_PUBLISHED"), eq(historyEventsTable.entityId, monthKey(operationId, yr, mo))))
+    .orderBy(desc(historyEventsTable.occurredAt)).limit(1);
+  if (!event) return { publishedAt: null, publishedBy: null, changedSince: false };
+  const first = `${yr}-${String(mo).padStart(2, "0")}-01`, last = `${yr}-${String(mo).padStart(2, "0")}-${String(new Date(yr, mo, 0).getDate()).padStart(2, "0")}`;
+  const [changed] = await db.select({ id: folgasTable.id }).from(folgasTable)
+    .where(and(eq(folgasTable.operationId, operationId), lte(folgasTable.startDate, last), gte(folgasTable.endDate, first), gt(folgasTable.updatedAt, event.occurredAt))).limit(1);
+  return { publishedAt: event.occurredAt.toISOString(), publishedBy: event.actorName ?? null, changedSince: Boolean(changed) };
+}
+
+router.post("/folgas/grid/publicar", requireAuth, requireOrganization, async (req, res) => {
+  const log = requestLogger(LOG_DOMAIN.FOLGAS, req.requestId, req.correlationId);
+  const user = req.user!;
+  if (!MANAGER_ROLES.includes(user.role)) { res.status(403).json({ error: "Forbidden" }); return; }
+  const { operationId, year, month } = req.body as { operationId?: string; year?: number; month?: number };
+  if (!operationId || !year || !month || month < 1 || month > 12) { res.status(400).json({ error: "Bad Request", message: "operationId, year e month são obrigatórios" }); return; }
+  const scopeErr = await validateManagerScope(user, operationId);
+  if (scopeErr) { res.status(403).json({ error: "Forbidden", message: scopeErr }); return; }
+  try {
+    const nomeMes = new Date(year, month - 1, 1).toLocaleDateString("pt-BR", { month: "long" });
+    const membros = await db.selectDistinct({ id: userRolesTable.userId }).from(userRolesTable)
+      .innerJoin(usersTable, eq(userRolesTable.userId, usersTable.id))
+      .where(and(eq(userRolesTable.operationId, operationId), eq(userRolesTable.active, true), eq(usersTable.status, "ACTIVE")));
+    const destinatarios = membros.map((m) => m.id).filter((id) => id !== user.sub);
+    const republicacao = (await monthPublication(operationId, year, month)).publishedAt !== null;
+    await writeHistoryEvent({
+      category: "ABSENCE", action: "FOLGA_MONTH_PUBLISHED",
+      title: `Folgas de ${nomeMes} ${republicacao ? "republicadas" : "publicadas"}`,
+      narrative: `${destinatarios.length} pessoa(s) da operação avisada(s).`,
+      entityType: "folga_mes", entityId: monthKey(operationId, year, month), actorId: user.sub, operationId, orgId: user.organizationId,
+      metadata: { year, month, avisados: destinatarios.length, republicacao },
+    });
+    await notifyMany(destinatarios, {
+      type: "folga.month_published", title: republicacao ? `Folgas de ${nomeMes} mudaram` : `Folgas de ${nomeMes} publicadas`,
+      message: republicacao ? `O mapa de folgas de ${nomeMes} foi atualizado. Confira as suas.` : `O mapa de folgas de ${nomeMes} está pronto. Confira as suas.`,
+      category: "absence", entityType: "folga_mes", entityId: monthKey(operationId, year, month), actionUrl: "/folgas",
+    });
+    log.info({ operationId, year, month, avisados: destinatarios.length }, "mês de folgas publicado");
+    res.json({ ok: true, avisados: destinatarios.length, publicacao: await monthPublication(operationId, year, month) });
+  } catch (err) { log.error({ err }, "erro ao publicar mês de folgas"); res.status(500).json({ error: "Internal Server Error" }); }
 });
 
 // ─── POST /folgas/grid/toggle — alternar célula ───────────────────────────────

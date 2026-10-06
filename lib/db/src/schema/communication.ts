@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, boolean, jsonb, pgEnum, unique, index } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, boolean, jsonb, pgEnum, unique, index, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./identity.js";
@@ -57,6 +57,8 @@ export const announcementsTable = pgTable("announcements", {
   body: text("body").notNull(),
   reason: text("reason"),
   requiresConfirmation: boolean("requires_confirmation").notNull().default(false),
+  /** Data do evento de que o aviso fala (0057, desenho 22), além da data de publicação. */
+  eventDate: date("event_date", { mode: "string" }),
   publishedAt: timestamp("published_at", { withTimezone: true }).notNull().defaultNow(),
   cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
   cancellationReason: text("cancellation_reason"),
