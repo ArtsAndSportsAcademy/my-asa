@@ -20,6 +20,7 @@ import {
   type ScheduleConflict,
 } from "@workspace/db";
 import { normalizeReason } from "../lib/reason.js";
+import { sessionRunsOn } from "./session-blocks.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 
 export type ScheduleSourceType = "sessao" | "agenda" | "escala" | "atividade";
@@ -207,6 +208,7 @@ export async function collectScheduleCommitments(personId: string, date: string)
         eq(sessionsTable.active, true),
         sql`(sessions.valid_from IS NULL OR sessions.valid_from <= ${date})`,
         sql`(sessions.valid_to IS NULL OR sessions.valid_to >= ${date})`,
+        sessionRunsOn(date),
         ne(dailyBookAssignmentsTable.status, "REMOVED"),
         ne(dailyBooksTable.status, "CANCELLED"),
       )),
@@ -428,6 +430,7 @@ export async function detectShowBookResolveConflicts(input: {
       eq(sessionsTable.active, true),
       sql`(sessions.valid_from IS NULL OR sessions.valid_from <= ${input.date})`,
       sql`(sessions.valid_to IS NULL OR sessions.valid_to >= ${input.date})`,
+      sessionRunsOn(input.date),
     )),
   ]);
   const sourceShow = show[0];

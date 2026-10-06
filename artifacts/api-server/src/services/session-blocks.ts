@@ -32,8 +32,15 @@ const slotKey = (start: string | null | undefined, end: string | null | undefine
 const blockName = (session: { startTime: string; endTime: string }) => `${SESSION_BLOCK_PREFIX}${hhmm(session.startTime)}–${hhmm(session.endTime)}`;
 
 /**
- * Sessões do show que valem na data: ativa e dentro da vigência. Mesmo critério de
- * `schedule-conflicts.ts`. Ordenadas por horário.
+ * Condição SQL: a sessão vale no dia da semana da data (0058). Sem dias definidos, vale todos os dias.
+ * Usada aqui e em `schedule-conflicts.ts`, para os dois lados enxergarem os mesmos horários.
+ */
+export const sessionRunsOn = (date: string) =>
+  sql`(sessions.weekdays IS NULL OR sessions.weekdays @> to_jsonb(extract(dow from ${date}::date)::int))`;
+
+/**
+ * Sessões do show que valem na data: ativa, dentro da vigência e no dia da semana. Mesmo
+ * critério de `schedule-conflicts.ts`. Ordenadas por horário.
  */
 export async function eligibleSessions(showBookId: string, date: string, dbLike: DbLike = db) {
   return dbLike
@@ -44,6 +51,7 @@ export async function eligibleSessions(showBookId: string, date: string, dbLike:
       eq(sessionsTable.active, true),
       sql`(sessions.valid_from IS NULL OR sessions.valid_from <= ${date})`,
       sql`(sessions.valid_to IS NULL OR sessions.valid_to >= ${date})`,
+      sessionRunsOn(date),
     ))
     .orderBy(asc(sessionsTable.startTime), asc(sessionsTable.endTime));
 }

@@ -15,6 +15,8 @@ export const sessionsTable = pgTable("sessions", {
   // porque ficou fora de vigência por alguns meses.
   validFrom: date("valid_from", { mode: "string" }),
   validTo: date("valid_to", { mode: "string" }),
+  // 0058: dias da semana em que este horário vale (0 = domingo … 6 = sábado). Nulo = todos os dias.
+  weekdays: jsonb("weekdays").$type<number[] | null>(),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

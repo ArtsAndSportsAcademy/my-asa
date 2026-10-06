@@ -309,15 +309,29 @@ router.get("/show-books/:showId/sessions", requireAuth, requireOrganization, asy
   res.json({ sessions });
 });
 
+/**
+ * Dias da semana de um horário (0058): lista de 0 (domingo) a 6 (sábado), sem repetir.
+ * `null` ou lista com os 7 dias = todos os dias. `undefined` = não mexer.
+ */
+function parseWeekdays(raw: unknown): { ok: true; value: number[] | null | undefined } | { ok: false } {
+  if (raw === undefined) return { ok: true, value: undefined };
+  if (raw === null) return { ok: true, value: null };
+  if (!Array.isArray(raw) || !raw.length || !raw.every((d) => Number.isInteger(d) && d >= 0 && d <= 6)) return { ok: false };
+  const days = [...new Set(raw as number[])].sort((a, b) => a - b);
+  return { ok: true, value: days.length === 7 ? null : days };
+}
+
 router.post("/show-books/:showId/sessions", requireAuth, requireOrganization, async (req, res) => {
   const show = await showInOrg(req.params.showId as string, req.user!.organizationId);
-  const { startTime, endTime, callTime = null, validFrom = null, validTo = null } = req.body ?? {};
+  const { startTime, endTime, callTime = null, validFrom = null, validTo = null, weekdays: rawWeekdays } = req.body ?? {};
   if (!show) { res.status(403).json({ error: "Forbidden", message: "Recurso fora do escopo" }); return; }
   if (!(await canManageShowBook(req.user!, show, show.operationId))) { res.status(403).json({ error: "Forbidden" }); return; }
   if (!startTime || !endTime) { res.status(400).json({ error: "startTime e endTime são obrigatórios" }); return; }
+  const weekdays = parseWeekdays(rawWeekdays);
+  if (!weekdays.ok) { res.status(400).json({ error: "Dias da semana inválidos: escolha pelo menos um dia (0 = domingo, 6 = sábado)" }); return; }
   try {
     const session = await db.transaction(async (tx) => {
-      const [created] = await tx.insert(sessionsTable).values({ showId: show.id, startTime, endTime, callTime, validFrom, validTo, active: true } as any).returning();
+      const [created] = await tx.insert(sessionsTable).values({ showId: show.id, startTime, endTime, callTime, validFrom, validTo, weekdays: weekdays.value ?? null, active: true } as any).returning();
       if (!created) throw new Error("Sessão não criada");
       await writeEntityHistory(req, { category: "OPERATIONAL_CHANGE", action: "session.created", title: "Sessão criada", narrative: "Sessão do show criada.", entityType: "session", entityId: created.id, actorId: req.user!.sub, orgId: req.user!.organizationId, operationId: show.operationId, beforeState: null, afterState: created }, tx as any);
       return created;
@@ -332,7 +346,9 @@ router.patch("/show-books/:showId/sessions/:sessionId", requireAuth, requireOrga
   if (!(await canManageShowBook(req.user!, show, show.operationId))) { res.status(403).json({ error: "Forbidden" }); return; }
   const [before] = await db.select().from(sessionsTable).where(and(eq(sessionsTable.id, req.params.sessionId as string), eq(sessionsTable.showId, show.id))).limit(1);
   if (!before) { res.status(404).json({ error: "Sessão não encontrada" }); return; }
-  const update = { startTime: req.body?.startTime ?? before.startTime, endTime: req.body?.endTime ?? before.endTime, callTime: req.body?.callTime === undefined ? before.callTime : req.body.callTime, validFrom: req.body?.validFrom === undefined ? (before as any).validFrom : req.body.validFrom || null, validTo: req.body?.validTo === undefined ? (before as any).validTo : req.body.validTo || null, active: typeof req.body?.active === "boolean" ? req.body.active : before.active, updatedAt: new Date() };
+  const weekdays = parseWeekdays(req.body?.weekdays);
+  if (!weekdays.ok) { res.status(400).json({ error: "Dias da semana inválidos: escolha pelo menos um dia (0 = domingo, 6 = sábado)" }); return; }
+  const update = { ...(weekdays.value !== undefined ? { weekdays: weekdays.value } : {}), startTime: req.body?.startTime ?? before.startTime, endTime: req.body?.endTime ?? before.endTime, callTime: req.body?.callTime === undefined ? before.callTime : req.body.callTime, validFrom: req.body?.validFrom === undefined ? (before as any).validFrom : req.body.validFrom || null, validTo: req.body?.validTo === undefined ? (before as any).validTo : req.body.validTo || null, active: typeof req.body?.active === "boolean" ? req.body.active : before.active, updatedAt: new Date() };
   try {
     const session = await db.transaction(async (tx) => {
       const [next] = await tx.update(sessionsTable).set(update as any).where(eq(sessionsTable.id, before.id)).returning();

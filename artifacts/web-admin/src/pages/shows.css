@@ -171,3 +171,11 @@
 
 /* 02/10 (Claude): descrição curta no cartão do show (desenho 13). */
 .show-card-desc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--asa-muted);font-size:12px;line-height:1.4;font-style:normal}
+
+/* 0058 (Claude, 06/10): dias da semana do horário. */
+.shows-weekdays{border:1px solid var(--asa-border,#e6e1f2);border-radius:12px;padding:10px 12px;margin:0;display:grid;gap:8px}
+.shows-weekdays legend{padding:0 4px;font-weight:700;font-size:13px}
+.shows-weekdays p{margin:0;color:#6b6482;font-size:12.5px;line-height:1.45}
+.shows-weekdays div{display:flex;flex-wrap:wrap;gap:6px}
+.shows-weekdays div label{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 12px;border:1px solid #ddd6ee;border-radius:999px;font-size:13px;cursor:pointer}
+.shows-weekdays div label:has(input:checked){background:#f0eafe;border-color:#c9b8f6;color:#5b23c9;font-weight:600}

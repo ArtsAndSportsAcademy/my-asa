@@ -26,6 +26,7 @@ import {
 } from "@workspace/db";
 import app from "../src/application.js";
 import { signAccessToken } from "../src/lib/jwt.service.js";
+import { eligibleSessions } from "../src/services/session-blocks.js";
 
 let passed = 0;
 const failures: string[] = [];
@@ -198,6 +199,20 @@ async function run() {
     delete process.env.MYASA_TEST_FAIL_HISTORY;
     const booksAfter = (await db.select({ id: dailyBooksTable.id }).from(dailyBooksTable).where(eq(dailyBooksTable.showBookId, showBook!.id))).length;
     assert(failing.status === 500 && booksAfter === booksBefore, "Registro falhando desfaz a geração: nenhum Livro nem bloco de sessão sobra");
+
+    // 0058 · horário por dia da semana (Goodbye: 15:30 em uns dias, 15:45 em outros). 2026-09-24 é quinta (4).
+    const quinta = await request(`/show-books/${emptyShow!.id}/sessions`, { method: "POST", body: JSON.stringify({ startTime: "15:30", endTime: "15:45", weekdays: [1, 2, 3, 4] }) });
+    const sexta = await request(`/show-books/${emptyShow!.id}/sessions`, { method: "POST", body: JSON.stringify({ startTime: "15:45", endTime: "16:00", weekdays: [5, 6] }) });
+    const todos = await request(`/show-books/${emptyShow!.id}/sessions`, { method: "POST", body: JSON.stringify({ startTime: "09:00", endTime: "09:10", weekdays: [0, 1, 2, 3, 4, 5, 6] }) });
+    const quintaBody = await quinta.json() as { session?: { weekdays?: number[] | null } };
+    const todosBody = await todos.json() as { session?: { weekdays?: number[] | null } };
+    assert(quinta.status === 201 && sexta.status === 201 && JSON.stringify(quintaBody.session?.weekdays) === "[1,2,3,4]", "horário guarda os dias da semana em que vale");
+    assert(todos.status === 201 && todosBody.session?.weekdays === null, "os 7 dias marcados valem como \"todos os dias\"");
+    assert((await request(`/show-books/${emptyShow!.id}/sessions`, { method: "POST", body: JSON.stringify({ startTime: "17:00", endTime: "17:10", weekdays: [] }) })).status === 400, "horário sem nenhum dia é recusado");
+    assert((await request(`/show-books/${emptyShow!.id}/sessions`, { method: "POST", body: JSON.stringify({ startTime: "17:00", endTime: "17:10", weekdays: [9] }) })).status === 400, "dia da semana fora de 0-6 é recusado");
+    const naQuinta = (await eligibleSessions(emptyShow!.id, date)).map((s) => s.startTime.slice(0, 5));
+    const noSabado = (await eligibleSessions(emptyShow!.id, "2026-09-26")).map((s) => s.startTime.slice(0, 5));
+    assert(JSON.stringify(naQuinta) === JSON.stringify(["09:00", "15:30"]) && JSON.stringify(noSabado) === JSON.stringify(["09:00", "15:45"]), `a Escala e o Livro do Dia só veem o horário do dia da semana certo (quinta ${naQuinta.join(",")}; sábado ${noSabado.join(",")})`);
   } finally {
     delete process.env.MYASA_TEST_FAIL_HISTORY;
     if (server) { server.closeAllConnections?.(); await new Promise<void>((resolve, reject) => server!.close((error) => error ? reject(error) : resolve())); }
