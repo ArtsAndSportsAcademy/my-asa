@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, integer, pgEnum, unique, check, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, integer, pgEnum, unique, uniqueIndex, check, boolean } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -12,11 +12,17 @@ export const charactersTable = pgTable("characters", {
   name: text("name").notNull(),
   locationId: uuid("location_id").notNull().references(() => locationsTable.id),
   mode: characterModeEnum("mode").notNull(),
+  // 0059: vaga que só existe neste show (P1, Boas vindas 1…). Nulo = compartilhado entre shows do
+  // local (aba Personagens). A FK para show_books está na migração; aqui fica sem `.references`
+  // porque showbook.ts já importa este arquivo e a referência criaria um ciclo de módulos.
+  showBookId: uuid("show_book_id"),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
-  unique("characters_name_location_uq").on(table.name, table.locationId),
+  uniqueIndex("characters_name_location_show_uq")
+    .on(table.locationId, table.name, sql`COALESCE(${table.showBookId}, '00000000-0000-0000-0000-000000000000'::uuid)`)
+    .where(sql`${table.active}`),
 ]);
 
 export const characterCastTable = pgTable("character_cast", {

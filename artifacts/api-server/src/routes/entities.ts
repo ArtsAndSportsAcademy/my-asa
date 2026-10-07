@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import {
   characterCastTable,
   charactersTable,
@@ -7,6 +7,8 @@ import {
   locationsTable,
   operationsTable,
   sessionsTable,
+  showBookLinesTable,
+  showBookRolesTable,
   showBooksTable,
   usersTable,
 } from "@workspace/db";
@@ -58,6 +60,51 @@ async function showInOrg(showId: string, organizationId: string) {
   return show?.show ?? null;
 }
 
+type CharacterShow = { id: string; title: string; sessions: { startTime: string; endTime: string; weekdays: number[] | null }[] };
+
+/**
+ * Em quais shows cada personagem entra: a vaga exclusiva pertence ao próprio show; o compartilhado
+ * aparece em todo show que tem uma posição ativa ligada a ele (cena de personagens ou cena do mapa).
+ */
+async function showsForCharacters(characters: { id: string; showBookId: string | null }[]) {
+  const result = new Map<string, CharacterShow[]>();
+  if (!characters.length) return result;
+  const ids = characters.map((character) => character.id);
+  const linked = await db.selectDistinct({ characterId: showBookLinesTable.characterId, showId: showBooksTable.id })
+    .from(showBookLinesTable)
+    .innerJoin(showBookRolesTable, eq(showBookLinesTable.positionId, showBookRolesTable.id))
+    .innerJoin(showBooksTable, eq(showBookRolesTable.showBookId, showBooksTable.id))
+    .where(and(
+      inArray(showBookLinesTable.characterId, ids), eq(showBookLinesTable.active, true),
+      eq(showBookRolesTable.active, true), ne(showBooksTable.status, "ARCHIVED"),
+    ));
+  const pairs = [
+    ...linked.filter((row): row is { characterId: string; showId: string } => Boolean(row.characterId)),
+    ...characters.filter((character) => character.showBookId).map((character) => ({ characterId: character.id, showId: character.showBookId! })),
+  ];
+  const showIds = Array.from(new Set(pairs.map((pair) => pair.showId)));
+  if (!showIds.length) return result;
+  const [books, sessions] = await Promise.all([
+    db.select({ id: showBooksTable.id, title: showBooksTable.title }).from(showBooksTable)
+      .where(and(inArray(showBooksTable.id, showIds), ne(showBooksTable.status, "ARCHIVED"))),
+    db.select({ showId: sessionsTable.showId, startTime: sessionsTable.startTime, endTime: sessionsTable.endTime, weekdays: sessionsTable.weekdays })
+      .from(sessionsTable).where(and(inArray(sessionsTable.showId, showIds), eq(sessionsTable.active, true)))
+      .orderBy(sessionsTable.startTime),
+  ]);
+  const byShow = new Map(books.map((book) => [book.id, {
+    id: book.id, title: book.title,
+    sessions: sessions.filter((session) => session.showId === book.id).map(({ showId: _showId, ...session }) => session),
+  }]));
+  for (const pair of pairs) {
+    const show = byShow.get(pair.showId);
+    if (!show) continue;
+    const list = result.get(pair.characterId) ?? [];
+    if (!list.some((item) => item.id === show.id)) list.push(show);
+    result.set(pair.characterId, list);
+  }
+  return result;
+}
+
 router.get("/characters", requireAuth, requireOrganization, async (req, res) => {
   const locationId = req.query.locationId as string | undefined;
   const includeInactive = req.query.includeInactive === "true";
@@ -72,7 +119,8 @@ router.get("/characters", requireAuth, requireOrganization, async (req, res) => 
   for (const row of characters) {
     if (await canAccessCharacter(req.user!, row.character)) visible.push({ ...row.character, locationName: row.locationName });
   }
-  res.json({ characters: visible });
+  const shows = await showsForCharacters(visible);
+  res.json({ characters: visible.map((character) => ({ ...character, shows: shows.get(character.id) ?? [] })) });
 });
 
 router.post("/characters", requireAuth, requireOrganization, async (req, res) => {
@@ -102,6 +150,9 @@ router.patch("/characters/:id", requireAuth, requireOrganization, async (req, re
   if (typeof req.body?.name === "string" && req.body.name.trim()) update.name = req.body.name.trim();
   if (req.body?.mode && ["titular", "rodizio"].includes(req.body.mode)) update.mode = req.body.mode;
   if (typeof req.body?.active === "boolean") update.active = req.body.active;
+  if (req.body?.locationId && before.showBookId && req.body.locationId !== before.locationId) {
+    res.status(400).json({ error: "A vaga de um show fica no local do show" }); return;
+  }
   if (req.body?.locationId) {
     if (!(await canWriteAtLocation(req.user!, req.body.locationId))) { res.status(403).json({ error: "Forbidden" }); return; }
     if (!(await locationInOrg(req.body.locationId, req.user!.organizationId))) { res.status(403).json({ error: "Forbidden", message: "Recurso fora do escopo" }); return; }

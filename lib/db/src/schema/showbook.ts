@@ -52,6 +52,8 @@ export const showBookScenesTable = pgTable("show_book_scenes", {
   name: text("name").notNull(),
   order: integer("order").notNull(),
   isOptional: boolean("is_optional").notNull().default(false),
+  // 0059: cena reservada com as vagas de personagem do show inteiro (no máximo uma ativa por show).
+  isCastRoster: boolean("is_cast_roster").notNull().default(false),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

@@ -133,6 +133,18 @@ async function run() {
     const memberPublish = await fetch(`${base}/folgas/grid/publicar`, { method: "POST", headers: { authorization: `Bearer ${memberToken}`, "content-type": "application/json" }, body: JSON.stringify({ operationId: operation!.id, year: 2026, month: 9 }) });
     assert(memberPublish.status === 403, "Elenco não publica o mês de folgas");
 
+    // Show criado e troca de responsável entram no Registro (06/10).
+    const novoShow = await request("/show-books", { method: "POST", body: JSON.stringify({ operationId: operation!.id, title: `${tag}_show_registro`, type: "CHARACTERS_ONLY", usesCharacters: true }) });
+    const novoShowId = ((await novoShow.json()) as { showBook?: { id: string } }).showBook?.id ?? "";
+    const criadoNoRegistro = novoShowId ? await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, novoShowId), eq(historyEventsTable.action, "show_book.created"))) : [];
+    assert(novoShow.status === 201 && criadoNoRegistro.length === 1, "criar show entra no Registro");
+    const semResponsavel = await request(`/show-books/${novoShowId}/responsible`, { method: "PATCH", body: JSON.stringify({ responsibleId: null }) });
+    const trocaNoRegistro = novoShowId ? await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, novoShowId), eq(historyEventsTable.action, "show_book.responsible_changed"))) : [];
+    assert(semResponsavel.status === 200 && trocaNoRegistro.length === 1, "trocar o responsável do show entra no Registro");
+    const responsavelElenco = await request(`/show-books/${novoShowId}/responsible`, { method: "PATCH", body: JSON.stringify({ responsibleId: person!.id }) });
+    const depoisDaRecusa = novoShowId ? await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, novoShowId), eq(historyEventsTable.action, "show_book.responsible_changed"))) : [];
+    assert(responsavelElenco.status === 400 && depoisDaRecusa.length === 1, "responsável do Elenco é recusado e a recusa não entra no Registro");
+
     const deactivateUser = await request(`/users/${person!.id}`, { method: "DELETE", body: JSON.stringify({ reason: "encerramento de vínculo" }) });
     const [userAfter] = await db.select().from(usersTable).where(eq(usersTable.id, person!.id));
     assert(deactivateUser.status === 200 && Boolean(userAfter) && userAfter!.status === "INACTIVE" && userAfter!.personStatus === "ARCHIVED", "DELETE de pessoa vira desativação e preserva a linha");
@@ -200,6 +212,7 @@ async function run() {
     await pool.query("DELETE FROM show_book_blocks WHERE id = $1", [block!.id]);
     await pool.query("DELETE FROM show_book_scenes WHERE id = $1", [scene!.id]);
     await pool.query("DELETE FROM show_books WHERE id = $1", [showBook!.id]);
+    await pool.query("DELETE FROM show_books WHERE operation_id = $1 AND title = $2", [operation!.id, `${tag}_show_registro`]);
     await pool.query("DELETE FROM user_roles WHERE operation_id = $1", [operation!.id]);
     await pool.query("DELETE FROM users WHERE id = ANY($1::uuid[])", [[admin!.id, person!.id]]);
     await pool.query("DELETE FROM operations WHERE id = $1", [operation!.id]);

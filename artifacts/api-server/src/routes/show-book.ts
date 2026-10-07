@@ -24,6 +24,7 @@ import {
   dailyBooksTable,
   operationsTable,
   charactersTable,
+  characterCastTable,
   locationsTable,
   operationLocationsTable,
 } from "@workspace/db";
@@ -304,10 +305,18 @@ router.post("/show-books", requireAuth, requireOrganization, async (req, res) =>
       if (legacyOperation.status !== "ACTIVE") {
         res.status(409).json({ error: "OPERATION_NOT_ACTIVE", message: "Ative a operação antes de criar Livros do Show." }); return;
       }
-      const [book] = await db.insert(showBooksTable).values({
-        operationId: legacyOperationId, locationId: null, title: title.trim(), description: description ?? null,
-        type: type ?? "COMPLETE", usesCharacters: usesCharacters === true, version: 1, status: "DRAFT", createdBy: userId,
-      }).returning();
+      const book = await db.transaction(async (tx) => {
+        const [created] = await tx.insert(showBooksTable).values({
+          operationId: legacyOperationId, locationId: null, title: title.trim(), description: description ?? null,
+          type: type ?? "COMPLETE", usesCharacters: usesCharacters === true, version: 1, status: "DRAFT", createdBy: userId,
+        }).returning();
+        await writeHistoryEvent({
+          category: "OPERATIONAL_CHANGE", action: "show_book.created", title: "Show criado",
+          narrative: `Show ${created!.title} criado como rascunho.`, entityType: "show_book", entityId: created!.id,
+          actorId: userId, operationId: legacyOperationId, orgId: req.user!.organizationId, beforeState: null, afterState: created,
+        }, tx as any);
+        return created;
+      });
       eventBus.emit("showbook.created", { showBookId: book!.id, operationId: legacyOperationId });
       res.status(201).json({ showBook: book });
       return;
@@ -342,20 +351,29 @@ router.post("/show-books", requireAuth, requireOrganization, async (req, res) =>
       });
       return;
     }
-    const [book] = await db
-      .insert(showBooksTable)
-      .values({
-        operationId,
-        locationId,
-        title: title.trim(),
-        description: description ?? null,
-        type: type ?? "COMPLETE",
-        usesCharacters: usesCharacters === true,
-        version: 1,
-        status: "DRAFT",
-        createdBy: userId,
-      })
-      .returning();
+    // Criar o show entra no Registro na mesma transação (06/10: antes não ficava registrado).
+    const book = await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(showBooksTable)
+        .values({
+          operationId,
+          locationId,
+          title: title.trim(),
+          description: description ?? null,
+          type: type ?? "COMPLETE",
+          usesCharacters: usesCharacters === true,
+          version: 1,
+          status: "DRAFT",
+          createdBy: userId,
+        })
+        .returning();
+      await writeHistoryEvent({
+        category: "OPERATIONAL_CHANGE", action: "show_book.created", title: "Show criado",
+        narrative: `Show ${created!.title} criado como rascunho.`, entityType: "show_book", entityId: created!.id,
+        actorId: userId, operationId, orgId: req.user!.organizationId, beforeState: null, afterState: created,
+      }, tx as any);
+      return created;
+    });
     eventBus.emit("showbook.created", { showBookId: book!.id, operationId });
     res.status(201).json({ showBook: book });
   } catch (err) {
@@ -519,11 +537,25 @@ router.patch("/show-books/:id/responsible", requireAuth, requireOrganization, re
         return;
       }
     }
-    const [updated] = await db
-      .update(showBooksTable)
-      .set({ responsibleId: responsibleId ?? null, updatedAt: new Date() })
-      .where(eq(showBooksTable.id, id))
-      .returning();
+    // Trocar o responsável entra no Registro na mesma transação (06/10: antes não ficava registrado).
+    const nomeDe = async (userId: string | null | undefined) => userId
+      ? (await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, userId)).limit(1))[0]?.name ?? null
+      : null;
+    const [antes, depois] = await Promise.all([nomeDe(book.responsibleId), nomeDe(responsibleId)]);
+    const updated = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .update(showBooksTable)
+        .set({ responsibleId: responsibleId ?? null, updatedAt: new Date() })
+        .where(eq(showBooksTable.id, id))
+        .returning();
+      await writeHistoryEvent({
+        category: "OPERATIONAL_CHANGE", action: "show_book.responsible_changed", title: "Responsável do show alterado",
+        narrative: `${book.title}: responsável ${antes ?? "nenhum"} → ${depois ?? "nenhum"}.`, entityType: "show_book", entityId: id,
+        actorId: req.user!.sub, operationId: book.operationId, orgId: req.user!.organizationId,
+        beforeState: { responsibleId: book.responsibleId ?? null }, afterState: { responsibleId: responsibleId ?? null },
+      }, tx as any);
+      return row;
+    });
     const log = requestLogger("show_book", req.requestId ?? "", req.correlationId ?? "");
     log.info({ showBookId: id, responsibleId: responsibleId ?? null }, "Responsável do show atualizado");
     res.json({ showBook: updated });
@@ -783,6 +815,8 @@ router.post("/show-books/:id/scenes", requireAuth, requireOrganization, async (r
   try {
     const guard = await requireShowManage(req, res);
     if (!guard) return;
+    // Show "só personagens" não tem cena nem mapa: os personagens ficam no quadro de vagas.
+    if (guard.type === "CHARACTERS_ONLY") { res.status(400).json({ error: "Show só de personagens não tem cenas nem mapa" }); return; }
     const scene = await db.transaction(async (tx) => {
       const [created] = await tx
         .insert(showBookScenesTable)
@@ -1182,6 +1216,189 @@ router.put("/show-books/:id/positions/:positionId/cast", requireAuth, requireOrg
     });
     res.json({ line: result });
   } catch (err) { requestLogger("show_book", req.requestId ?? "", req.correlationId ?? "").error({ err, showBookId, positionId }, "Erro ao atualizar elenco do slot"); res.status(500).json({ error: "Erro ao atualizar elenco do slot" }); }
+});
+
+// ─── Personagens e vagas do show (0059) ─────────────────────────────────────
+// Cada vaga é uma posição na cena reservada do show, ligada a um personagem por uma linha
+// CHARACTER. A vaga exclusiva (P1, Boas vindas 1…) é um personagem com showBookId; o
+// compartilhado (Astrid, Rainha) é um personagem do local reaproveitado por vários shows.
+// Assim a fila, o titular × rodízio e a contagem ficam num lugar só: o personagem.
+const CAST_ROSTER_SCENE_NAME = "Personagens do show";
+
+class VagaConflict extends Error {}
+
+async function ensureCastRoster(tx: Tx, showBookId: string) {
+  const [scene] = await tx.select().from(showBookScenesTable).where(and(
+    eq(showBookScenesTable.showBookId, showBookId), eq(showBookScenesTable.isCastRoster, true), eq(showBookScenesTable.active, true),
+  )).limit(1);
+  const roster = scene ?? (await tx.insert(showBookScenesTable).values({
+    showBookId, name: CAST_ROSTER_SCENE_NAME, order: 0, isCastRoster: true,
+  }).returning())[0]!;
+  const [block] = await tx.select().from(showBookBlocksTable).where(and(
+    eq(showBookBlocksTable.sceneId, roster.id), eq(showBookBlocksTable.active, true),
+  )).orderBy(showBookBlocksTable.order).limit(1);
+  return block ?? (await tx.insert(showBookBlocksTable).values({
+    showBookId, sceneId: roster.id, name: "Personagens", order: 0, zone: "CENTRO", prefix: "PER",
+  }).returning())[0]!;
+}
+
+function isUniqueViolation(err: unknown) {
+  const error = err as { code?: string; cause?: { code?: string } } | null;
+  return error?.code === "23505" || error?.cause?.code === "23505";
+}
+
+router.post("/show-books/:id/vagas", requireAuth, requireOrganization, async (req, res) => {
+  const { characterId, name, mode, memberIds } = (req.body ?? {}) as { characterId?: unknown; name?: unknown; mode?: unknown; memberIds?: unknown };
+  try {
+    const book = await requireShowManage(req, res); if (!book) return;
+    if (book.type === "SIMPLE") { res.status(400).json({ error: "Show de formação não tem personagens" }); return; }
+    if (!book.locationId) { res.status(400).json({ error: "Defina o local do show antes de cadastrar personagens" }); return; }
+    let shared: typeof charactersTable.$inferSelect | null = null;
+    let queue: string[] = [];
+    let vagaName = "";
+    let vagaMode: "titular" | "rodizio" = "rodizio";
+    if (characterId !== undefined) {
+      if (typeof characterId !== "string") { res.status(400).json({ error: "characterId inválido" }); return; }
+      const [character] = await db.select().from(charactersTable)
+        .where(and(eq(charactersTable.id, characterId), eq(charactersTable.active, true))).limit(1);
+      if (!character || character.locationId !== book.locationId) { res.status(404).json({ error: "Personagem não encontrado neste local" }); return; }
+      if (character.showBookId && character.showBookId !== book.id) { res.status(409).json({ error: "Este personagem é uma vaga de outro show" }); return; }
+      shared = character;
+    } else {
+      vagaName = typeof name === "string" ? name.trim() : "";
+      if (!vagaName || vagaName.length > 80) { res.status(400).json({ error: "Nome da vaga é obrigatório (até 80 caracteres)" }); return; }
+      if (mode !== "titular" && mode !== "rodizio") { res.status(400).json({ error: "Tipo deve ser titular ou rodízio" }); return; }
+      vagaMode = mode;
+      if (!Array.isArray(memberIds) || !memberIds.length || memberIds.some((id) => typeof id !== "string") || new Set(memberIds).size !== memberIds.length) {
+        res.status(400).json({ error: "A fila precisa de pessoas, sem repetir" }); return;
+      }
+      queue = memberIds as string[];
+      const people = await db.select({ id: usersTable.id }).from(usersTable)
+        .where(and(inArray(usersTable.id, queue), eq(usersTable.organizationId, req.user!.organizationId)));
+      if (people.length !== queue.length) { res.status(400).json({ error: "Há pessoa fora do cadastro na fila" }); return; }
+    }
+    const result = await db.transaction(async (tx) => {
+      const block = await ensureCastRoster(tx, book.id);
+      const current = await tx.select({ id: showBookRolesTable.id, order: showBookRolesTable.order, characterId: showBookLinesTable.characterId })
+        .from(showBookRolesTable)
+        .leftJoin(showBookLinesTable, and(eq(showBookLinesTable.positionId, showBookRolesTable.id), eq(showBookLinesTable.active, true)))
+        .where(and(eq(showBookRolesTable.blockId, block.id), eq(showBookRolesTable.active, true)));
+      let character = shared;
+      if (character && current.some((row) => row.characterId === character!.id)) throw new VagaConflict("Este personagem já está neste show");
+      if (!character) {
+        const [created] = await tx.insert(charactersTable).values({
+          name: vagaName, locationId: book.locationId!, mode: vagaMode, showBookId: book.id, active: true,
+        }).returning();
+        await tx.insert(characterCastTable).values(queue.map((personId, order) => ({
+          characterId: created!.id, personId, order, timesDone: 0, active: true,
+        })));
+        character = created!;
+      }
+      const [position] = await tx.insert(showBookRolesTable).values({
+        // Entra no fim da lista, mesmo depois de reordenar ou tirar vagas.
+        showBookId: book.id, blockId: block.id, name: character.name, order: Math.max(-1, ...current.map((row) => row.order)) + 1,
+      }).returning();
+      await tx.insert(showBookLinesTable).values({ positionId: position!.id, characterId: character.id, type: "CHARACTER", config: {}, order: 0 });
+      await writeHistoryEvent({
+        category: "OPERATIONAL_CHANGE", action: shared ? "show_book.vaga.linked" : "show_book.vaga.created",
+        title: shared ? "Personagem ligado ao show" : "Vaga criada no show",
+        narrative: `${book.title}: ${character.name} (${character.mode === "titular" ? "titular" : "rodízio"}) ${shared ? "passa a entrar no show" : "criada no show"}.`,
+        entityType: "show_book_position", entityId: position!.id, actorId: req.user!.sub,
+        operationId: book.operationId, orgId: req.user!.organizationId,
+        beforeState: null, afterState: { position, character, fila: shared ? undefined : queue },
+      }, tx as any);
+      await bumpVersion(book.id, "STRUCTURAL", "Vaga de personagem acrescentada", req.user!.sub, req.requestId, req.correlationId, tx as any);
+      return { position, character };
+    });
+    res.status(201).json(result);
+  } catch (err) {
+    if (err instanceof VagaConflict) { res.status(409).json({ error: err.message }); return; }
+    if (isUniqueViolation(err)) { res.status(409).json({ error: "Já existe uma vaga com esse nome neste show" }); return; }
+    requestLogger("show_book", req.requestId ?? "", req.correlationId ?? "").error({ err, showBookId: req.params.id }, "Erro ao criar vaga");
+    res.status(500).json({ error: "Erro ao criar vaga" });
+  }
+});
+
+// A ordem das vagas é a ordem em que o Livro do Dia escala (depois das titulares): quem vem
+// depois não repete quem já foi escalado. A lista enviada tem de ser exatamente a atual.
+router.put("/show-books/:id/vagas/order", requireAuth, requireOrganization, async (req, res) => {
+  const positionIds = (req.body ?? {}).positionIds as unknown;
+  if (!Array.isArray(positionIds) || positionIds.some((id) => typeof id !== "string") || new Set(positionIds).size !== positionIds.length) {
+    res.status(400).json({ error: "positionIds deve ser uma lista sem repetições" }); return;
+  }
+  try {
+    const book = await requireShowManage(req, res); if (!book) return;
+    const current = await db.select({ id: showBookRolesTable.id, name: showBookRolesTable.name, order: showBookRolesTable.order })
+      .from(showBookRolesTable)
+      .innerJoin(showBookBlocksTable, eq(showBookRolesTable.blockId, showBookBlocksTable.id))
+      .innerJoin(showBookScenesTable, eq(showBookBlocksTable.sceneId, showBookScenesTable.id))
+      .where(and(
+        eq(showBookRolesTable.showBookId, book.id), eq(showBookRolesTable.active, true),
+        eq(showBookScenesTable.isCastRoster, true), eq(showBookScenesTable.active, true),
+      ))
+      .orderBy(showBookRolesTable.order, showBookRolesTable.id);
+    if (current.length !== positionIds.length || current.some((row) => !positionIds.includes(row.id))) {
+      res.status(400).json({ error: "A lista precisa conter exatamente as vagas atuais do show" }); return;
+    }
+    if (current.every((row, index) => row.id === positionIds[index])) { res.json({ unchanged: true }); return; }
+    await db.transaction(async (tx) => {
+      for (const [order, id] of (positionIds as string[]).entries()) {
+        await tx.update(showBookRolesTable).set({ order, updatedAt: new Date() }).where(eq(showBookRolesTable.id, id));
+      }
+      const nameOf = new Map(current.map((row) => [row.id, row.name]));
+      await writeHistoryEvent({
+        category: "OPERATIONAL_CHANGE", action: "show_book.vaga.reordered", title: "Ordem das vagas alterada",
+        narrative: `${book.title}: nova ordem — ${(positionIds as string[]).map((id) => nameOf.get(id)).join(", ")}.`,
+        entityType: "show_book", entityId: book.id, actorId: req.user!.sub,
+        operationId: book.operationId, orgId: req.user!.organizationId,
+        beforeState: { ordem: current.map((row) => row.name) }, afterState: { ordem: (positionIds as string[]).map((id) => nameOf.get(id)) },
+      }, tx as any);
+      await bumpVersion(book.id, "CONFIG", "Ordem das vagas de personagem", req.user!.sub, req.requestId, req.correlationId, tx as any);
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    requestLogger("show_book", req.requestId ?? "", req.correlationId ?? "").error({ err, showBookId: req.params.id }, "Erro ao reordenar vagas");
+    res.status(500).json({ error: "Erro ao reordenar vagas" });
+  }
+});
+
+router.delete("/show-books/:id/vagas/:positionId", requireAuth, requireOrganization, async (req, res) => {
+  const positionId = req.params.positionId as string;
+  try {
+    const book = await requireShowManage(req, res); if (!book) return;
+    const [row] = await db.select({ position: showBookRolesTable })
+      .from(showBookRolesTable)
+      .innerJoin(showBookBlocksTable, eq(showBookRolesTable.blockId, showBookBlocksTable.id))
+      .innerJoin(showBookScenesTable, eq(showBookBlocksTable.sceneId, showBookScenesTable.id))
+      .where(and(
+        eq(showBookRolesTable.id, positionId), eq(showBookRolesTable.showBookId, book.id), eq(showBookRolesTable.active, true),
+        eq(showBookScenesTable.isCastRoster, true),
+      )).limit(1);
+    if (!row) { res.status(404).json({ error: "Vaga não encontrada" }); return; }
+    const [line] = await db.select({ characterId: showBookLinesTable.characterId }).from(showBookLinesTable)
+      .where(and(eq(showBookLinesTable.positionId, positionId), eq(showBookLinesTable.active, true))).limit(1);
+    const [character] = line?.characterId
+      ? await db.select().from(charactersTable).where(eq(charactersTable.id, line.characterId)).limit(1)
+      : [];
+    await db.transaction(async (tx) => {
+      await purgePositions(tx, [positionId]);
+      // A vaga exclusiva some junto com o show; o compartilhado continua no local para os outros shows.
+      const exclusive = character?.showBookId === book.id;
+      if (exclusive) await tx.update(charactersTable).set({ active: false, updatedAt: new Date() }).where(eq(charactersTable.id, character!.id));
+      await writeHistoryEvent({
+        category: "OPERATIONAL_CHANGE", action: "show_book.vaga.removed", title: "Vaga retirada do show",
+        narrative: `${book.title}: ${character?.name ?? row.position.name} ${exclusive ? "removida (histórico preservado)" : "deixa de entrar no show"}.`,
+        entityType: "show_book_position", entityId: positionId, actorId: req.user!.sub,
+        operationId: book.operationId, orgId: req.user!.organizationId,
+        beforeState: { position: row.position, character: character ?? null }, afterState: null,
+      }, tx as any);
+      await bumpVersion(book.id, "STRUCTURAL", "Vaga de personagem retirada", req.user!.sub, req.requestId, req.correlationId, tx as any);
+    });
+    res.status(204).send();
+  } catch (err) {
+    requestLogger("show_book", req.requestId ?? "", req.correlationId ?? "").error({ err, showBookId: req.params.id, positionId }, "Erro ao retirar vaga");
+    res.status(500).json({ error: "Erro ao retirar vaga" });
+  }
 });
 
 // ─── Grupos de slots (blocos de cena) ──────────────────────────────────────

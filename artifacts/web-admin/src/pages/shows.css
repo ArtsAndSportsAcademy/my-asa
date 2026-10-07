@@ -179,3 +179,12 @@
 .shows-weekdays div{display:flex;flex-wrap:wrap;gap:6px}
 .shows-weekdays div label{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 12px;border:1px solid #ddd6ee;border-radius:999px;font-size:13px;cursor:pointer}
 .shows-weekdays div label:has(input:checked){background:#f0eafe;border-color:#c9b8f6;color:#5b23c9;font-weight:600}
+
+/* 0059: vagas de personagem dentro do show */
+.vaga-row>div:first-child{flex:1;min-width:0}
+.character-summary-row .vaga-queue{margin-top:4px;color:var(--asa-ink,#1c1440);font-size:12px;line-height:1.35;overflow-wrap:anywhere}
+.vaga-actions{display:flex;gap:4px;flex-shrink:0}
+.vaga-add{display:flex;flex-wrap:wrap;gap:8px;padding:12px 14px;border-top:1px solid #f5f2fa}
+.vaga-add .shows-secondary{display:inline-flex;align-items:center;gap:6px}
+.character-summary-row>span.vaga-actions{background:none;padding:0;border-radius:0}
+.character-summary-row>span.vaga-order{display:flex;flex-direction:column;gap:2px;flex-shrink:0;background:none;padding:0;border-radius:0}

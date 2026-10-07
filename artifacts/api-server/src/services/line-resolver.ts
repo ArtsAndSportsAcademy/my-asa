@@ -227,6 +227,7 @@ function resolveLine(
   excluded: Set<string> = new Set(),
   rotationCounts: ReadonlyMap<string, number> = new Map(),
   memberIdsOverride?: readonly string[],
+  characterMode?: "titular" | "rodizio",
 ): ResolvedLine {
   const cfg = (line.config && typeof line.config === "object" ? line.config : {}) as Record<string, unknown>;
   const person = (id: string): ResolvedPerson => ({ userId: id, name: nameOf(id) });
@@ -324,6 +325,29 @@ function resolveLine(
       return { lineId: line.id, type: line.type, status: "INACTIVE", people: [], note: label || "Função" };
     }
     case "CHARACTER": {
+      // Vaga de personagem cadastrado: quem faz vem da fila do personagem. Titular escolhe o
+      // primeiro disponível na ordem da fila; rodízio escolhe quem fez menos (desempate pela ordem).
+      if (line.characterId && memberIdsOverride) {
+        if (memberIdsOverride.length === 0) {
+          return { lineId: line.id, type: line.type, status: "UNCOVERED", people: [], note: "Fila do personagem vazia" };
+        }
+        if (characterMode === "titular") {
+          const chosen = memberIdsOverride.find((id) => !blocked(id));
+          if (!chosen) return { lineId: line.id, type: line.type, status: "UNCOVERED", people: [], note: "Titular e substitutos indisponíveis" };
+          const titularId = memberIdsOverride[0]!;
+          const note = chosen === titularId ? undefined : `Titular ${blockReason(titularId)} — usando ${nameOf(chosen)}`;
+          return { lineId: line.id, type: line.type, status: "COVERED", people: [person(chosen)], note };
+        }
+        const available = memberIdsOverride
+          .map((id, idx) => ({ id, idx, count: rotationCounts.get(rotationCountKey(line.characterId!, id)) ?? 0 }))
+          .filter((m) => !blocked(m.id))
+          .sort((a, b) => (a.count - b.count) || (a.idx - b.idx));
+        if (available.length === 0) {
+          return { lineId: line.id, type: line.type, status: "UNCOVERED", people: [], note: "Todos da fila indisponíveis" };
+        }
+        const chosen = available[0]!.id;
+        return { lineId: line.id, type: line.type, status: "COVERED", people: [person(chosen)], rotationAdvanceUserId: chosen };
+      }
       const label = typeof cfg.characterName === "string" ? cfg.characterName.trim() : "";
       return { lineId: line.id, type: line.type, status: "INACTIVE", people: [], note: label || "Personagem" };
     }
@@ -362,7 +386,17 @@ export async function resolveShowBookCast(
   }
   const castMembers = new Map<string, string[]>();
   const castCounts = new Map<string, number>();
+  const characterModes = new Map<string, "titular" | "rodizio">();
   if (characterIds.size > 0) {
+    // Personagem sem ninguém na fila ainda precisa do modo e de uma fila vazia (vaga descoberta).
+    const characterRows = await db
+      .select({ id: charactersTable.id, mode: charactersTable.mode })
+      .from(charactersTable)
+      .where(and(inArray(charactersTable.id, Array.from(characterIds)), eq(charactersTable.active, true)));
+    for (const row of characterRows) {
+      characterModes.set(row.id, row.mode);
+      castMembers.set(row.id, []);
+    }
     const castRows = await db
       .select({
         characterId: characterCastTable.characterId,
@@ -424,7 +458,7 @@ export async function resolveShowBookCast(
     for (const block of scene.blocks) {
       for (const pos of block.positions) {
         for (const line of pos.lines) {
-          if (line.type === "ROTATION") rotationKeys.add(rotationCharacterKey(line));
+          if (line.type === "ROTATION" || (line.type === "CHARACTER" && line.characterId)) rotationKeys.add(rotationCharacterKey(line));
         }
       }
     }
@@ -453,6 +487,24 @@ export async function resolveShowBookCast(
     // ficar "excluída" das posições seguintes da MESMA cena, forçando a escolha a
     // saltar para o próximo substituto/membro do rodízio (até não haver ninguém).
     const excluded = opts.dedupPerScene ? new Set<string>() : undefined;
+    // Personagem titular tem prioridade: dentro da cena, as linhas de titular são resolvidas
+    // antes das demais (na ordem das posições), para que um rodízio cadastrado antes não tome
+    // a pessoa titular. A saída mantém a ordem original das posições.
+    const isTitular = (line: { characterId?: string | null }) =>
+      Boolean(line.characterId && characterModes.get(line.characterId) === "titular");
+    const entries = scene.blocks.flatMap((block) => block.positions.flatMap((pos) => pos.lines.map((line) => ({ line }))));
+    const resolvedByLine = new Map<string, ResolvedLine>();
+    for (const { line } of [...entries.filter((e) => isTitular(e.line)), ...entries.filter((e) => !isTitular(e.line))]) {
+      const memberIdsOverride = line.characterId
+        ? castMembers.get(line.characterId) ?? []
+        : undefined;
+      const resolved = resolveLine(line, weekday, unavailable, nameOf, excluded, rotationCounts, memberIdsOverride, line.characterId ? characterModes.get(line.characterId) : undefined);
+      if (resolved.status === "UNCOVERED") uncoveredCount += 1;
+      if (excluded) {
+        for (const p of resolved.people) excluded.add(p.userId);
+      }
+      resolvedByLine.set(line.id, resolved);
+    }
     return {
       sceneId: scene.id,
       name: scene.name,
@@ -463,17 +515,7 @@ export async function resolveShowBookCast(
           positionId: pos.id,
           name: pos.name,
           minimumCoverage: pos.minimumCoverage ?? 1,
-          lines: pos.lines.map((line) => {
-            const memberIdsOverride = line.characterId
-              ? castMembers.get(line.characterId) ?? []
-              : undefined;
-            const resolved = resolveLine(line, weekday, unavailable, nameOf, excluded, rotationCounts, memberIdsOverride);
-            if (resolved.status === "UNCOVERED") uncoveredCount += 1;
-            if (excluded) {
-              for (const p of resolved.people) excluded.add(p.userId);
-            }
-            return resolved;
-          }),
+          lines: pos.lines.map((line) => resolvedByLine.get(line.id)!),
         })),
       })),
     };

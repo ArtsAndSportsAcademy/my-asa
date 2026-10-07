@@ -930,6 +930,12 @@ async function runIntegrationE() {
     await db.delete(showBooksTable).where(eq(showBooksTable.id, showBId));
     await db.delete(userRolesTable).where(eq(userRolesTable.userId, supX));
     await db.delete(userRolesTable).where(eq(userRolesTable.userId, other));
+    // criar Livro do Show agora grava no Registro com o ator → limpar antes dos usuários
+    await pool.query(
+      `delete from history_events where actor_id = any($1::uuid[]) or mo_id in (select id from operational_changes where actor_id = any($1::uuid[]))`,
+      [[supX, other]],
+    );
+    await pool.query(`delete from operational_changes where actor_id = any($1::uuid[])`, [[supX, other]]);
     for (const id of [supX, other]) {
       await db.delete(usersTable).where(eq(usersTable.id, id));
     }
