@@ -2,8 +2,12 @@
 import http from "node:http";
 import { and, eq, inArray } from "drizzle-orm";
 import {
+  agendaEventsTable,
   characterCastTable,
   charactersTable,
+  dailyBookAssignmentsTable,
+  dailyBookPositionsTable,
+  dailyBooksTable,
   db,
   historyEventsTable,
   locationsTable,
@@ -51,6 +55,8 @@ async function run() {
   const userIds = users.map((user) => user!.id);
   let server: http.Server | null = null;
   const showIds: string[] = [];
+  const eventIds: string[] = [];
+  const dailyIds: string[] = [];
   try {
     await db.insert(userRolesTable).values([
       { userId: admin!.id, operationId: operation!.id, role: "ADMIN", active: true },
@@ -183,6 +189,45 @@ async function run() {
     assert(afterOrder.find((p) => p.name === "Anterior")?.lines[0]?.people[0]?.userId === m2!.id && afterOrder.find((p) => p.name === "Astrid")?.lines[0]?.people[0]?.userId === m4!.id, "com Anterior primeiro, ela fica com m2 e a Astrid usa o substituto m4");
     assert((await put([byName("Anterior"), byName("P1"), byName("P2"), byName("Astrid")])).status === 200 && reordered.length === (await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, teatro!.id), eq(historyEventsTable.action, "show_book.vaga.reordered")))).length, "mesma ordem não grava nada");
 
+    // 5c · Equilíbrio: menos shows no dia, depois semana, depois mês; supervisor por último.
+    const extra = await db.insert(usersTable).values(["m5", "m6", "sup", "dir"].map((key) => ({
+      organizationId: org!.id, name: `${tag}_${key}`, username: `${tag}${key}`,
+    }))).returning();
+    const [m5, m6, sup, dir] = extra;
+    await db.insert(userRolesTable).values({ userId: dir!.id, operationId: operation!.id, role: "DIR", active: true });
+    userIds.push(...extra.map((user) => user!.id));
+    await db.insert(userRolesTable).values([
+      { userId: m5!.id, operationId: operation!.id, role: "MEMBER", active: true },
+      { userId: m6!.id, operationId: operation!.id, role: "MEMBER", active: true },
+      { userId: sup!.id, operationId: operation!.id, role: "SUPERVISOR_A", active: true },
+    ]);
+    const [flash] = await db.insert(showBooksTable).values({ operationId: operation!.id, locationId: snow!.id, title: `${tag}_Flash`, type: "CHARACTERS_ONLY", createdBy: admin!.id }).returning();
+    showIds.push(flash!.id);
+    // Trabalho já marcado: m1 tem outro show hoje; m5 outro dia da mesma semana; m6 na semana anterior;
+    // m3 está no Livro do próprio Flash hoje (regenerar não pode contar a si mesmo).
+    const marcar = async (showBookId: string, day: string, userId: string) => {
+      const [event] = await db.insert(agendaEventsTable).values({ operationId: operation!.id, showBookId, type: "SHOW", title: `${tag}_evento`, date: day, createdBy: admin!.id }).returning();
+      const [book] = await db.insert(dailyBooksTable).values({ agendaEventId: event!.id, showBookId, status: "PUBLISHED" }).returning();
+      const [position] = await db.insert(dailyBookPositionsTable).values({ dailyBookId: book!.id, name: "vaga" }).returning();
+      await db.insert(dailyBookAssignmentsTable).values({ dailyBookId: book!.id, positionId: position!.id, userId, status: "ASSIGNED" });
+      eventIds.push(event!.id); dailyIds.push(book!.id);
+    };
+    await marcar(musical!.id, date, m1!.id);
+    await marcar(musical!.id, "2026-10-07", m5!.id);
+    await marcar(musical!.id, "2026-10-01", m6!.id);
+    await marcar(flash!.id, date, m3!.id);
+    for (const [name, fila] of [["F1", [m1, m3]], ["F2", [sup, m4]], ["F3", [m5, m6]], ["F4", [sup]], ["F5", [dir, m2]]] as const) {
+      assert((await post(`/show-books/${flash!.id}/vagas`, { name, mode: "rodizio", memberIds: fila.map((user) => user!.id) })).status === 201, `cria vaga ${name} do Flash`);
+    }
+    const flashWho = (await (await request(`/show-books/${flash!.id}/resolve?date=${date}`)).json() as { resolution: Resolution })
+      .resolution.scenes.flatMap((scene) => scene.blocks).flatMap((block) => block.positions);
+    const pick = (name: string) => flashWho.find((position) => position.name === name)?.lines[0]?.people[0]?.userId;
+    assert(pick("F1") === m3!.id, "quem já tem outro show hoje (m1) passa a vez; o Livro do próprio show não conta (m3)");
+    assert(pick("F2") === m4!.id, "supervisor fica por último: m4 entra antes dele, mesmo depois na fila");
+    assert(pick("F3") === m6!.id, "menos shows na semana vem antes do mês (m6 só tem na semana anterior)");
+    assert(pick("F4") === sup!.id, "sem mais ninguém, o supervisor entra");
+    assert(pick("F5") === m2!.id, "Direção não entra em show: pula para o próximo da fila");
+
     // 6 · Tirar do show: exclusiva é desativada; compartilhado continua no outro show.
     const removeP2 = await request(`/show-books/${teatro!.id}/vagas/${p2Body.position!.id}`, { method: "DELETE" });
     const p2Character = (await db.select({ characterId: showBookLinesTable.characterId }).from(showBookLinesTable).where(eq(showBookLinesTable.positionId, p2Body.position!.id)))[0]!.characterId!;
@@ -201,6 +246,8 @@ async function run() {
     if (server) await new Promise<void>((resolve) => server!.close(() => resolve()));
     await pool.query(`delete from history_events where actor_id = any($1::uuid[]) or mo_id in (select id from operational_changes where actor_id = any($1::uuid[]))`, [userIds]);
     await pool.query(`delete from operational_changes where actor_id = any($1::uuid[])`, [userIds]);
+    if (dailyIds.length) await db.delete(dailyBooksTable).where(inArray(dailyBooksTable.id, dailyIds));
+    if (eventIds.length) await db.delete(agendaEventsTable).where(inArray(agendaEventsTable.id, eventIds));
     if (showIds.length) {
       const roles = await db.select({ id: showBookRolesTable.id }).from(showBookRolesTable).where(inArray(showBookRolesTable.showBookId, showIds));
       if (roles.length) await db.delete(showBookLinesTable).where(inArray(showBookLinesTable.positionId, roles.map((role) => role.id)));

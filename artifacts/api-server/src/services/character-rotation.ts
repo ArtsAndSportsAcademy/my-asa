@@ -42,7 +42,7 @@ export async function resolveCharacterForDate(input: {
     getUnavailableUserIds(input.operationId, input.date),
     ids.length > 0
       ? db.select({ userId: userRolesTable.userId }).from(userRolesTable).where(and(
-        inArray(userRolesTable.userId, ids), eq(userRolesTable.role, "ADMIN"), eq(userRolesTable.active, true),
+        inArray(userRolesTable.userId, ids), inArray(userRolesTable.role, ["ADMIN", "DIR"]), eq(userRolesTable.active, true),
       ))
       : Promise.resolve([] as { userId: string }[]),
     ids.length > 0

@@ -219,6 +219,22 @@ function rotationCountKey(characterId: string, userId: string): string {
   return `${characterId}::${userId}`;
 }
 
+/** Compara chaves numéricas em ordem (menor primeiro). */
+function compareKeys(left: readonly number[], right: readonly number[]): number {
+  for (let index = 0; index < Math.max(left.length, right.length); index += 1) {
+    const diff = (left[index] ?? 0) - (right[index] ?? 0);
+    if (diff) return diff;
+  }
+  return 0;
+}
+
+/**
+ * Equilíbrio do rodízio (07/10): antes da contagem do próprio personagem, vale quem está com
+ * menos trabalho — supervisor por último, depois menos shows no dia, na semana e no mês.
+ */
+export type BalanceKey = (userId: string) => readonly number[];
+const NO_BALANCE: BalanceKey = () => [];
+
 function resolveLine(
   line: { id: string; type: string; config: unknown; characterId?: string | null },
   weekday: number,
@@ -228,7 +244,10 @@ function resolveLine(
   rotationCounts: ReadonlyMap<string, number> = new Map(),
   memberIdsOverride?: readonly string[],
   characterMode?: "titular" | "rodizio",
+  balance: BalanceKey = NO_BALANCE,
 ): ResolvedLine {
+  const byBalance = (a: { id: string; idx: number; count: number }, b: { id: string; idx: number; count: number }) =>
+    compareKeys([...balance(a.id), a.count, a.idx], [...balance(b.id), b.count, b.idx]);
   const cfg = (line.config && typeof line.config === "object" ? line.config : {}) as Record<string, unknown>;
   const person = (id: string): ResolvedPerson => ({ userId: id, name: nameOf(id) });
   // "Bloqueado" = de folga/restrição (unavailable) OU já escalado noutra posição da mesma
@@ -286,7 +305,7 @@ function resolveLine(
           ),
         }))
         .filter((m) => !blocked(m.id))
-        .sort((a, b) => (a.count - b.count) || (a.idx - b.idx));
+        .sort(byBalance);
       if (available.length === 0) {
         return { lineId: line.id, type: line.type, status: "UNCOVERED", people: [], note: "Todos do rodízio indisponíveis" };
       }
@@ -341,7 +360,7 @@ function resolveLine(
         const available = memberIdsOverride
           .map((id, idx) => ({ id, idx, count: rotationCounts.get(rotationCountKey(line.characterId!, id)) ?? 0 }))
           .filter((m) => !blocked(m.id))
-          .sort((a, b) => (a.count - b.count) || (a.idx - b.idx));
+          .sort(byBalance);
         if (available.length === 0) {
           return { lineId: line.id, type: line.type, status: "UNCOVERED", people: [], note: "Todos da fila indisponíveis" };
         }
@@ -354,6 +373,55 @@ function resolveLine(
     default:
       return { lineId: line.id, type: line.type, status: "INACTIVE", people: [], note: "Linha sem resolução automática" };
   }
+}
+
+/** Segunda-feira e domingo da semana da data, e primeiro e último dia do mês (YYYY-MM-DD). */
+export function workloadWindows(dateISO: string) {
+  const day = new Date(`${dateISO}T00:00:00Z`);
+  const iso = (value: Date) => value.toISOString().slice(0, 10);
+  const shift = (days: number) => new Date(day.getTime() + days * 86_400_000);
+  const sinceMonday = (day.getUTCDay() + 6) % 7;
+  const monthStart = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), 1));
+  const monthEnd = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth() + 1, 0));
+  return { weekStart: iso(shift(-sinceMonday)), weekEnd: iso(shift(6 - sinceMonday)), monthStart: iso(monthStart), monthEnd: iso(monthEnd) };
+}
+
+/**
+ * Quanto trabalho cada pessoa já tem: em quantos Livros do Dia (shows) da operação ela está
+ * escalada no dia, na semana e no mês — sem contar Livros cancelados nem o próprio show nesta
+ * data (regenerar não pode contar a si mesmo). Supervisor vai para o fim da fila do rodízio.
+ */
+async function workloadBalance(userIds: string[], operationId: string, dateISO: string, showBookId: string): Promise<BalanceKey> {
+  if (userIds.length === 0) return NO_BALANCE;
+  const { weekStart, weekEnd, monthStart, monthEnd } = workloadWindows(dateISO);
+  const from = weekStart < monthStart ? weekStart : monthStart;
+  const to = weekEnd > monthEnd ? weekEnd : monthEnd;
+  const ids = sql.join(userIds.map((id) => sql`${id}::uuid`), sql`, `);
+  const [loads, supervisors] = await Promise.all([
+    db.execute(sql`
+      select a.user_id as "userId",
+        count(distinct b.id) filter (where e.date = ${dateISO}) as "day",
+        count(distinct b.id) filter (where e.date between ${weekStart} and ${weekEnd}) as "week",
+        count(distinct b.id) filter (where e.date between ${monthStart} and ${monthEnd}) as "month"
+      from daily_book_assignments a
+      join daily_books b on b.id = a.daily_book_id
+      join agenda_events e on e.id = b.agenda_event_id
+      where a.user_id in (${ids})
+        and a.superseded_at is null and a.status in ('ASSIGNED', 'AT_RISK')
+        and b.status <> 'CANCELLED'
+        and e.operation_id = ${operationId}
+        and e.date between ${from} and ${to}
+        and not (b.show_book_id is not distinct from ${showBookId}::uuid and e.date = ${dateISO})
+      group by a.user_id`),
+    db.select({ userId: userRolesTable.userId }).from(userRolesTable).where(and(
+      inArray(userRolesTable.userId, userIds), eq(userRolesTable.operationId, operationId),
+      inArray(userRolesTable.role, ["SUPERVISOR_A", "SUPERVISOR_B"]), eq(userRolesTable.active, true),
+    )),
+  ]);
+  const rows = (Array.isArray(loads) ? loads : (loads as { rows?: unknown[] }).rows ?? []) as { userId: string; day: number | string; week: number | string; month: number | string }[];
+  const byUser = new Map(rows.map((row) => [row.userId, [Number(row.day), Number(row.week), Number(row.month)]]));
+  const supervisorIds = new Set(supervisors.map((row) => row.userId));
+  return (userId) => [supervisorIds.has(userId) ? 1 : 0, ...(byUser.get(userId) ?? [0, 0, 0])];
 }
 
 /**
@@ -437,7 +505,8 @@ export async function resolveShowBookCast(
       .from(userRolesTable)
       .where(and(
         inArray(userRolesTable.userId, ids),
-        eq(userRolesTable.role, "ADMIN"),
+        // 08/10: Direção também não entra em show (Produção entra, ex.: Lucas no Yeti).
+        inArray(userRolesTable.role, ["ADMIN", "DIR"]),
         eq(userRolesTable.active, true),
       ));
     const adminSet = new Set(adminRows.map((r) => r.userId));
@@ -452,6 +521,7 @@ export async function resolveShowBookCast(
 
   const unavailable = await getUnavailableUserIds(operationId, dateISO);
   for (const id of nonSchedulable) unavailable.add(id);
+  const balance = await workloadBalance(Array.from(userIds), operationId, dateISO, showBookId);
 
   const rotationKeys = new Set<string>();
   for (const scene of tree) {
@@ -498,7 +568,7 @@ export async function resolveShowBookCast(
       const memberIdsOverride = line.characterId
         ? castMembers.get(line.characterId) ?? []
         : undefined;
-      const resolved = resolveLine(line, weekday, unavailable, nameOf, excluded, rotationCounts, memberIdsOverride, line.characterId ? characterModes.get(line.characterId) : undefined);
+      const resolved = resolveLine(line, weekday, unavailable, nameOf, excluded, rotationCounts, memberIdsOverride, line.characterId ? characterModes.get(line.characterId) : undefined, balance);
       if (resolved.status === "UNCOVERED") uncoveredCount += 1;
       if (excluded) {
         for (const p of resolved.people) excluded.add(p.userId);
