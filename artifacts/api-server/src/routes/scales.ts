@@ -961,10 +961,14 @@ router.post("/scales/:id/entries", requireAuth, requireOrganization, async (req,
   const user = req.user!;
   const userId = user.sub;
   let expectedVersion: number | null = null;
-  const { memberId, date, label, startTime, endTime, notes } = req.body;
+  const { memberId, memberIds, date, label, startTime, endTime, notes } = req.body;
+  // Uma atividade pode valer para várias pessoas de uma vez (`memberIds`); `memberId` continua
+  // valendo para uma só, e as duas formas gravam uma entrada por pessoa na mesma versão da Escala.
+  const quem: string[] = [...new Set([...(Array.isArray(memberIds) ? memberIds : []), ...(memberId ? [memberId] : [])]
+    .filter((v): v is string => typeof v === "string" && v.length > 0))];
 
-  if (!memberId || !date || !label) {
-    res.status(400).json({ error: "memberId, date e label são obrigatórios" });
+  if (!quem.length || !date || !label) {
+    res.status(400).json({ error: "memberId (ou memberIds), date e label são obrigatórios" });
     return;
   }
 
@@ -987,14 +991,14 @@ router.post("/scales/:id/entries", requireAuth, requireOrganization, async (req,
     if (expectedVersion === null) return;
     const beforeSnapshot = await buildScaleVersionSnapshot(id);
 
-    const entry = await mutateScale(id, expectedVersion, async (tx) => {
-      const [nextEntry] = await tx
+    const entries = await mutateScale(id, expectedVersion, async (tx) => {
+      return tx
         .insert(scaleAllocationsTable)
-        .values({
+        .values(quem.map((pessoa) => ({
           scaleId: id,
           agendaEventId: null,
-          userId: memberId,
-          status: "MANUAL_OVERRIDE",
+          userId: pessoa,
+          status: "MANUAL_OVERRIDE" as const,
           manualDate: date,
           manualLabel: label,
           startTime: startTime ?? null,
@@ -1002,24 +1006,24 @@ router.post("/scales/:id/entries", requireAuth, requireOrganization, async (req,
           notes: notes ?? null,
           overriddenBy: userId,
           overrideReason: "Entrada manual",
-        })
+        })))
         .returning();
-      return nextEntry!;
-    }, async (tx, _claimedScale, nextEntry) => {
+    }, async (tx, _claimedScale, nextEntries) => {
       await writeHistoryEvent({
         category: "SCALE", action: "manual_entry_added",
-        title: "Entrada manual adicionada à Escala",
-        narrative: "Entrada manual adicionada à Escala.",
+        title: nextEntries.length === 1 ? "Entrada manual adicionada à Escala" : `${nextEntries.length} entradas manuais adicionadas à Escala`,
+        narrative: `${label} em ${date} para ${nextEntries.length === 1 ? "1 pessoa" : `${nextEntries.length} pessoas`}.`,
         entityType: "scale", entityId: id,
         actorId: userId, actorType: "HUMAN", operationId: scale.operationId,
         orgId: req.user!.organizationId, beforeState: beforeSnapshot,
-        afterState: { entry: nextEntry, snapshot: await buildScaleVersionSnapshot(id, tx) },
+        afterState: { entries: nextEntries, snapshot: await buildScaleVersionSnapshot(id, tx) },
       }, tx as any);
     });
 
-    const conflicts = await detectScaleConflicts([{ userId: memberId, date }]);
+    const conflicts = await detectScaleConflicts(quem.map((pessoa) => ({ userId: pessoa, date })));
     res.status(201).json({
-      entry,
+      entry: entries[0],
+      entries,
       version: expectedVersion + 1,
       conflicts,
       alerts: conflicts.filter((conflict) => conflict.state === "aberto"),
@@ -1059,11 +1063,16 @@ router.delete("/scales/:id/entries/:entryId", requireAuth, requireOrganization, 
     if (expectedVersion === null) return;
     const beforeSnapshot = await buildScaleVersionSnapshot(id);
 
+    // A mesma atividade manual pode ter sido criada para várias pessoas: `entryIds` tira todas
+    // de uma vez, na mesma versão da Escala, como a grade as mostra (um bloco só).
+    const corpoIds = Array.isArray((req.body as { entryIds?: unknown })?.entryIds) ? (req.body as { entryIds: unknown[] }).entryIds : [];
+    const alvos = [...new Set([entryId, ...corpoIds.filter((v): v is string => typeof v === "string" && v.length > 0)])];
+
     await mutateScale(id, expectedVersion, async (tx) => {
       await tx
         .update(scaleAllocationsTable)
         .set({ active: false, updatedAt: new Date() })
-        .where(and(eq(scaleAllocationsTable.id, entryId), eq(scaleAllocationsTable.scaleId, id), eq(scaleAllocationsTable.active, true)));
+        .where(and(inArray(scaleAllocationsTable.id, alvos), eq(scaleAllocationsTable.scaleId, id), eq(scaleAllocationsTable.active, true)));
       const afterSnapshot = await buildScaleVersionSnapshot(id, tx as any);
       await writeHistoryEvent({
         category: "SCALE",

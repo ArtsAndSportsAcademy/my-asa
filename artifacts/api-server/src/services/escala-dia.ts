@@ -59,6 +59,8 @@ export type BlocoDia = {
   dailyBookStatus: string | null;
   blocoId: string | null;
   allocationId: string | null;
+  /** Quando a mesma atividade manual vale para várias pessoas, todas as entradas do bloco. */
+  allocationIds?: string[];
 };
 
 export type EscalaDia = {
@@ -277,12 +279,23 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
     const manuais = await db.select().from(scaleAllocationsTable).where(and(
       eq(scaleAllocationsTable.scaleId, scale.id), eq(scaleAllocationsTable.active, true), eq(scaleAllocationsTable.manualDate, date),
     ));
+    // A mesma atividade criada para várias pessoas é um bloco só na grade: agrupa por
+    // rótulo e horário, na ordem em que foi criada.
+    const grupos = new Map<string, { label: string; inicio: string; fim: string | null; ids: string[]; pessoaIds: string[] }>();
     for (const m of manuais) {
       if (!m.manualLabel || !m.startTime) continue;
-      const pessoaIds = m.userId && present.has(m.userId) ? [m.userId] : [];
+      const inicio = hhmm(m.startTime)!, fim = hhmm(m.endTime);
+      const chave = `${m.manualLabel}|${inicio}|${fim ?? ""}`;
+      const grupo = grupos.get(chave) ?? { label: m.manualLabel, inicio, fim, ids: [], pessoaIds: [] };
+      grupo.ids.push(m.id);
+      if (m.userId && present.has(m.userId) && !grupo.pessoaIds.includes(m.userId)) grupo.pessoaIds.push(m.userId);
+      grupos.set(chave, grupo);
+    }
+    for (const g of grupos.values()) {
       blocos.push({
-        ...base, key: `m:${m.id}`, rotulo: m.manualLabel, inicio: hhmm(m.startTime)!, fim: hhmm(m.endTime), origem: "manual", regra: "pessoas",
-        pessoaIds, vazio: pessoaIds.length === 0, sinal: pessoaIds.length ? null : "Entrada manual sem ninguém", allocationId: m.id,
+        ...base, key: `m:${g.ids[0]}`, rotulo: g.label, inicio: g.inicio, fim: g.fim, origem: "manual", regra: "pessoas",
+        pessoaIds: g.pessoaIds, vazio: g.pessoaIds.length === 0, sinal: g.pessoaIds.length ? null : "Entrada manual sem ninguém",
+        allocationId: g.ids[0]!, allocationIds: g.ids,
       });
     }
   }

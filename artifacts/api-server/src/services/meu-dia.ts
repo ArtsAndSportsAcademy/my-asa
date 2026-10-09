@@ -294,14 +294,21 @@ async function gestao(actor: { sub: string; organizationId: string; role: string
   const dias = await Promise.all(locais.map((l) => diasDoLocal(actor.organizationId, l.id, hoje, amanha)));
   const org = (await db.select({ id: usersTable.id }).from(usersTable).where(and(eq(usersTable.organizationId, actor.organizationId), eq(usersTable.status, "ACTIVE")))).map((u) => u.id);
 
+  // Escala publicada que mudou depois (troca, Livro, bloco novo): quem faz só recebe quando a Administração republica.
+  const precisaRepublicar = async (d: EscalaDia | null) => {
+    if (!d?.escala || !escalaPublicada(d.escala.status)) return false;
+    if (d.escala.alteradaDesde) return true;
+    return (await comoPublicada(d)).mudouDesdeAPublicacao;
+  };
   const porLocal = await Promise.all(dias.map(async (d) => {
     const h = d.hoje, pub = h?.escala && escalaPublicada(h.escala.status);
+    const republicar = { hoje: await precisaRepublicar(d.hoje), amanha: await precisaRepublicar(d.amanha) };
     const feitos = pub ? await feitosNaEscala(h!.escala!.id) : new Map();
     const escalados = new Set((pub ? h!.blocos : []).flatMap((b) => b.pessoaIds));
     const faltas = pub ? faltandoCheckIn(h!, feitos, agora, null) : [];
     const esperados = pub ? faltandoCheckIn(h!, new Map(), agora, null).length : 0;
     const shows = (h?.blocos ?? []).filter((b) => b.dailyBookId);
-    return { dia: h, amanha: d.amanha, pub, escalados, faltas, esperados, shows };
+    return { dia: h, amanha: d.amanha, pub, escalados, faltas, esperados, shows, republicar };
   }));
   const [ocorr, folgasPend, folgasHoje, tarefasAtrasadas, respSemDono] = await Promise.all([
     org.length ? db.select({ n: sql<number>`count(*)::int` }).from(occurrencesTable).where(and(eq(occurrencesTable.active, true), inArray(occurrencesTable.state, ["aberta", "em_analise"]), inArray(occurrencesTable.personId, org))) : Promise.resolve([{ n: 0 }]),
@@ -344,6 +351,12 @@ async function gestao(actor: { sub: string; organizationId: string; role: string
   }
 
   const pend: Pendencia[] = [];
+  // Primeiro da lista: o que já foi publicado e mudou — enquanto não republicar, quem faz continua com a versão antiga.
+  const republicar = porLocal.flatMap((l) => [
+    ...(l.republicar.hoje && l.dia ? [{ quando: "hoje", local: l.dia.location.name }] : []),
+    ...(l.republicar.amanha && l.amanha ? [{ quando: "amanhã", local: l.amanha.location.name }] : []),
+  ]);
+  for (const r of republicar) pend.push({ count: 1, title: `Republicar a escala de ${r.quando} · ${r.local}`, sub: "mudou depois de publicada — quem faz só recebe quando você republicar", tone: "warn", href: APP_ROUTES.escalas });
   for (const l of amanhaPendente) { const faltam = l.amanha!.areas.filter((a) => !a.pronta).map((a) => a.name); pend.push({ count: 1, title: `Escala de amanhã · ${l.amanha!.location.name}`, sub: faltam.length ? `falta ${faltam.join(", ")} marcar pronta` : "todas as áreas prontas · só falta publicar", tone: faltam.length ? "mute" : "warn", href: APP_ROUTES.escalas }); }
   if (respSemDono.length) pend.push({ count: respSemDono.length, title: respSemDono.length === 1 ? "Responsabilidade sem dono" : "Responsabilidades sem dono", sub: respSemDono.slice(0, 2).map((r) => r.title).join(" · "), tone: "warn", href: APP_ROUTES.responsabilidades });
   if (nFolgas) pend.push({ count: nFolgas, title: nFolgas === 1 ? "Folga a decidir" : "Folgas a decidir", sub: "na organização", tone: "warn", href: APP_ROUTES.folgas });
@@ -352,17 +365,18 @@ async function gestao(actor: { sub: string; organizationId: string; role: string
   if (nOcorr) pend.push({ count: nOcorr, title: nOcorr === 1 ? "Ocorrência aberta" : "Ocorrências abertas", sub: "com a supervisão de cada área", tone: "warn", href: APP_ROUTES.checkIn });
   if (faltasTotal) pend.push({ count: faltasTotal, title: faltasTotal === 1 ? "Check-in em falta" : "Check-ins em falta", sub: "blocos que já começaram", tone: "warn", href: APP_ROUTES.checkIn });
 
-  const suas = amanhaPendente.filter((l) => l.amanha!.areas.every((a) => a.pronta)).length + respSemDono.length;
+  const suas = amanhaPendente.filter((l) => l.amanha!.areas.every((a) => a.pronta)).length + respSemDono.length + republicar.length;
   const itens: LinhaDoDia[] = [];
   for (const l of porLocal) {
     if (!l.dia) continue;
     if (!l.dia.escala) { itens.push({ time: "—", title: l.dia.location.name, sub: "sem escala para hoje", tag: "sem escala", tone: "mute", href: APP_ROUTES.escalas }); continue; }
     if (!l.pub) itens.push({ time: "—", title: l.dia.location.name, sub: "escala de hoje ainda não publicada", tag: "escala em rascunho", tone: "warn", href: APP_ROUTES.escalas });
+    else if (l.republicar.hoje) itens.push({ time: "—", title: l.dia.location.name, sub: "a escala de hoje mudou depois de publicada", tag: "falta republicar", tone: "warn", href: APP_ROUTES.escalas });
     for (const b of l.shows) itens.push({ time: b.inicio, title: texto(b), sub: l.dia.location.name, tag: b.dailyBookStatus === "DRAFT" ? "livro em rascunho" : "publicado", tone: b.dailyBookStatus === "DRAFT" ? "warn" : "ok", href: APP_ROUTES.livroDoDia });
   }
   itens.sort((a, b) => a.time.localeCompare(b.time));
   return {
-    saudacao: { titulo: saudar(agora, nome), texto: `${comEscala.length ? plural(comEscala.length, "local com escala publicada hoje", "locais com escala publicada hoje") : locais.length ? "Nenhum local com escala publicada hoje" : "Ainda não há locais cadastrados — comece por Locais, Áreas e Pessoas"}.${suas ? ` ${suas === 1 ? "Uma coisa só você resolve" : `${suas} coisas só você resolve`}: ${[amanhaPendente.some((l) => l.amanha!.areas.every((a) => a.pronta)) ? "publicar a escala de amanhã" : "", respSemDono.length ? "dar dono a uma responsabilidade" : ""].filter(Boolean).join(" e ")}.` : pend.length ? " Nada que só você resolve — o resto da lista está com a supervisão de cada área." : " Nada esperando por você."}`, mascote: suas ? "estudando" : "bom-dia", acao: !locais.length ? { label: "Cadastrar os locais", href: "/locais" } : amanhaPendente.length ? { label: "Revisar a escala de amanhã", href: APP_ROUTES.escalas } : { label: "Abrir o Painel", href: APP_ROUTES.painel } },
+    saudacao: { titulo: saudar(agora, nome), texto: `${comEscala.length ? plural(comEscala.length, "local com escala publicada hoje", "locais com escala publicada hoje") : locais.length ? "Nenhum local com escala publicada hoje" : "Ainda não há locais cadastrados — comece por Locais, Áreas e Pessoas"}.${suas ? ` ${suas === 1 ? "Uma coisa só você resolve" : `${suas} coisas só você resolve`}: ${[republicar.length ? `republicar a escala de ${republicar[0]!.quando}` : "", amanhaPendente.some((l) => l.amanha!.areas.every((a) => a.pronta)) ? "publicar a escala de amanhã" : "", respSemDono.length ? "dar dono a uma responsabilidade" : ""].filter(Boolean).join(" e ")}.` : pend.length ? " Nada que só você resolve — o resto da lista está com a supervisão de cada área." : " Nada esperando por você."}`, mascote: suas ? "estudando" : "bom-dia", acao: !locais.length ? { label: "Cadastrar os locais", href: "/locais" } : republicar.length ? { label: "Republicar a escala", href: APP_ROUTES.escalas } : amanhaPendente.length ? { label: "Revisar a escala de amanhã", href: APP_ROUTES.escalas } : { label: "Abrir o Painel", href: APP_ROUTES.painel } },
     proximo,
     linhaDoTempo: { rotulo: "Hoje, nos locais", dica: "só o que pede atenção da administração", itens: itens.slice(0, 8) },
     pendencias: { titulo: "Depende da administração", mascote: "estudando", itens: pend },
