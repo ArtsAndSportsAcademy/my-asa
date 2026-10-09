@@ -29,7 +29,7 @@ import {
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
 import { operationalDate } from "../lib/operational-date.js";
-import { comoPublicada, convocacaoPorPessoa, escalaPublicada, findEscalaDoDia, montarEscalaDoDia, operationForLocation, pessoasAfetadas } from "../services/escala-dia.js";
+import { avisarRepublicacaoPendente, comoPublicada, convocacaoPorPessoa, escalaPublicada, findEscalaDoDia, montarEscalaDoDia, operationForLocation, pessoasAfetadas } from "../services/escala-dia.js";
 import { enqueueNotification } from "../services/undo.js";
 import { APP_ROUTES } from "../lib/app-routes.js";
 
@@ -250,6 +250,10 @@ router.post("/escalas/dia/ajustes", requireAuth, requireOrganization, async (req
         narrative: `${action === "ADICIONAR" ? "Adicionou" : "Removeu"} ${pessoa.name} no bloco ${bloco.rotulo} de ${date}.`, entityType: "scale", entityId: scale.id, actorId: actor.sub, operationId, orgId: actor.organizationId,
         beforeState: { sourceKey, pessoaId: userId, ajuste: anterior?.action ?? null }, afterState: { ajuste, noLivroDoDia: viaLivro ? bloco.dailyBookId : null },
       }, tx as unknown as HistoryExecutor);
+      if (escalaPublicada(scale.status)) {
+        await avisarRepublicacaoPendente(tx as unknown as Parameters<typeof avisarRepublicacaoPendente>[0], scale,
+          `${pessoa.name} ${action === "ADICIONAR" ? "entrou em" : "saiu de"} ${bloco.rotulo}`, { areaIds: [pessoa.areaId] });
+      }
     });
     res.json({ dia: await montarEscalaDoDia(actor.organizationId, locationId, date) });
   } catch (err) { console.error(err); res.status(500).json({ error: "Erro ao ajustar a Escala" }); }

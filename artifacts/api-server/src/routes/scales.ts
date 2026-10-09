@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lte, desc, isNotNull, inArray, or, isNull, ne } from "drizzle-orm";
+import { avisarRepublicacaoPendente, escalaPublicada } from "../services/escala-dia.js";
 import { db } from "@workspace/db";
 import {
   scalesTable,
@@ -1020,6 +1021,11 @@ router.post("/scales/:id/entries", requireAuth, requireOrganization, async (req,
       }, tx as any);
     });
 
+    // Atividade acrescentada a um dia já publicado: a Administração precisa republicar para quem faz receber.
+    if (escalaPublicada(scale.status) && scale.periodStart <= date && scale.periodEnd >= date) {
+      const areas = await db.select({ areaId: usersTable.areaId }).from(usersTable).where(inArray(usersTable.id, quem));
+      await avisarRepublicacaoPendente(db, scale, `${label} entrou no dia`, { areaIds: areas.map((a) => a.areaId) });
+    }
     const conflicts = await detectScaleConflicts(quem.map((pessoa) => ({ userId: pessoa, date })));
     res.status(201).json({
       entry: entries[0],
@@ -1090,6 +1096,7 @@ router.delete("/scales/:id/entries/:entryId", requireAuth, requireOrganization, 
       return true;
     });
 
+    if (escalaPublicada(scale.status)) await avisarRepublicacaoPendente(db, scale, "uma atividade saiu do dia");
     res.json({ ok: true, version: expectedVersion + 1 });
   } catch (err) {
     if (expectedVersion !== null && await respondScaleMutationError(err, req, res, id, expectedVersion)) return;

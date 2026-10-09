@@ -36,11 +36,15 @@ import {
   scalesTable,
   showBooksTable,
   teamMembershipsTable,
+  userRolesTable,
   usersTable,
   type RegraBloco,
 } from "@workspace/db";
 import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
 import { isNotSessionBlock, listSessionBlocks } from "./session-blocks.js";
+import { enqueueNotification } from "./undo.js";
+import { operationalDate } from "../lib/operational-date.js";
+import { APP_ROUTES } from "../lib/app-routes.js";
 
 type Exec = typeof db;
 
@@ -124,6 +128,56 @@ export const escalaPublicada = (status: string | null | undefined) => status ===
  * Escala do dia já está publicada, ela fica marcada como alterada e pede republicação — na mesma
  * transação da mudança do Livro, com Registro.
  */
+const MESES_LONGOS = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+const porExtenso = (iso: string) => { const [, m, d] = iso.split("-").map(Number); return `${d} de ${MESES_LONGOS[m! - 1]}`; };
+
+/**
+ * Avisa no sino quando uma Escala já publicada muda (troca na grade, Livro do Dia, atividade só de
+ * hoje). A Administração recebe o chamado para republicar, porque é quem republica; a supervisão da
+ * área mexida recebe só o aviso de que a mudança ainda não chegou a quem faz. Um aviso por
+ * publicação para cada pessoa: a chave de repetição usa a hora da última publicação, então mudanças
+ * seguidas não viram fila de avisos, e depois de republicar volta a avisar.
+ */
+export async function avisarRepublicacaoPendente(
+  executor: Exec,
+  scale: { id: string; operationId: string; locationId: string | null; periodStart: string; publishedAt: Date | null; republishedAt: Date | null },
+  motivo: string,
+  options: { areaIds?: (string | null)[]; now?: Date } = {},
+) {
+  const now = options.now ?? new Date();
+  const admins = await executor.selectDistinct({ id: usersTable.id }).from(usersTable)
+    .innerJoin(userRolesTable, eq(userRolesTable.userId, usersTable.id))
+    .where(and(eq(userRolesTable.operationId, scale.operationId), eq(userRolesTable.role, "ADMIN"), eq(userRolesTable.active, true), eq(usersTable.status, "ACTIVE")));
+  // Supervisão da área mexida naquele local; sem área conhecida, quem responde pelo local.
+  const areas = [...new Set((options.areaIds ?? []).filter((id): id is string => Boolean(id)))];
+  const supervisores = scale.locationId
+    ? await executor.selectDistinct({ id: usersTable.id }).from(areaLocalSupervisorsTable)
+      .innerJoin(usersTable, eq(usersTable.id, areaLocalSupervisorsTable.supervisorId))
+      .where(and(eq(areaLocalSupervisorsTable.locationId, scale.locationId), eq(areaLocalSupervisorsTable.active, true), eq(usersTable.status, "ACTIVE"),
+        ...(areas.length ? [inArray(areaLocalSupervisorsTable.areaId, areas)] : [])))
+    : [];
+  if (!admins.length && !supervisores.length) return;
+  const [local] = scale.locationId
+    ? await executor.select({ name: locationsTable.name }).from(locationsTable).where(eq(locationsTable.id, scale.locationId)).limit(1)
+    : [];
+  const publicacao = (scale.republishedAt ?? scale.publishedAt)?.getTime() ?? 0;
+  const hoje = scale.periodStart === operationalDate(now);
+  const quando = porExtenso(scale.periodStart);
+  const onde = local?.name ?? "Escala do dia";
+  const avisar = async (userId: string, paraAdministracao: boolean) => {
+    await enqueueNotification(executor as unknown as Parameters<typeof enqueueNotification>[0], {
+      userId, type: "scale.needs_republish", category: "schedule",
+      priority: paraAdministracao ? (hoje ? "CRITICAL" : "IMPORTANT") : "NORMAL",
+      title: `A escala de ${quando} mudou depois de publicada`,
+      message: `${onde} · ${motivo}. ${paraAdministracao ? "Quem faz só recebe a mudança quando você republicar." : "Quem faz só recebe quando a Administração republicar."}`,
+      entityType: "scale", entityId: scale.id, actionUrl: APP_ROUTES.escalas,
+    }, now, { deduplicationKey: `escala-republicar:${scale.id}:${publicacao}:${userId}` });
+  };
+  const jaAvisados = new Set<string>();
+  for (const admin of admins) { jaAvisados.add(admin.id); await avisar(admin.id, true); }
+  for (const sup of supervisores) if (!jaAvisados.has(sup.id)) await avisar(sup.id, false);
+}
+
 export async function marcarEscalaAlteradaPeloLivro(executor: Exec, dailyBookId: string, actorId: string, motivo: string) {
   const { scale } = await escalaDoDiaDoLivro(dailyBookId, executor);
   if (!scale || !escalaPublicada(scale.status)) return null;
@@ -137,6 +191,7 @@ export async function marcarEscalaAlteradaPeloLivro(executor: Exec, dailyBookId:
     entityType: "scale", entityId: scale.id, actorId, operationId: scale.operationId,
     beforeState: { alteradaDesde: scale.alteradaDesde }, afterState: { alteradaDesde: updated?.alteradaDesde ?? now, dailyBookId, motivo },
   }, executor as unknown as HistoryExecutor);
+  await avisarRepublicacaoPendente(executor, updated ?? scale, `o Livro do Dia mudou o elenco (${motivo})`, { now });
   return updated ?? null;
 }
 
