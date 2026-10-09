@@ -1,7 +1,7 @@
 import { Fragment, useRef, useState, useCallback, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Lock } from "lucide-react";
 import {
   useGetFolgasGrid,
   useToggleFolgaCell,
@@ -263,6 +263,8 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
       })
     : filteredMembers;
   const daysInMonth = data?.daysInMonth ?? 30;
+  // 08/10: a Supervisão vê todo mundo, mas só altera a própria equipe (a API manda `editable`).
+  const editable = (userId: string) => (members.find((m) => m.userId === userId) as { editable?: boolean } | undefined)?.editable !== false;
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [dragStart, setDragStart] = useState<{ userId: string; day: number } | null>(null);
@@ -298,6 +300,7 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
   }
 
   function handleCellMouseDown(e: React.MouseEvent, userId: string, day: number) {
+    if (!editable(userId)) return;
     if (e.shiftKey) {
       const key = cellKey(userId, day);
       setSelected((prev) => {
@@ -328,7 +331,7 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
     const newSelected = new Set<string>();
     for (let r = minRow; r <= maxRow; r++) {
       const m = members[r];
-      if (!m) continue;
+      if (!m || !editable(m.userId)) continue;
       for (let d = minDay; d <= maxDay; d++) {
         newSelected.add(cellKey(m.userId, d));
       }
@@ -516,10 +519,10 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
                 </tr>
               )}
               <tr className={rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
-                <td className={`sticky left-0 z-10 border-r border-b border-border px-3 py-1.5 font-medium truncate max-w-[200px] ${
+                <td title={editable(m.userId) ? undefined : "Só a Administração altera a folga desta pessoa"} className={`sticky left-0 z-10 border-r border-b border-border px-3 py-1.5 font-medium truncate max-w-[200px] ${
                   rowIdx % 2 === 0 ? "bg-white" : "bg-slate-50"
                 }`}>
-                  {m.name}
+                  {!editable(m.userId) && <Lock className="inline w-3 h-3 mr-1 text-muted-foreground" aria-label="Só a Administração altera" />}{m.name}
                 </td>
                 {days.map((d) => {
                   const type = m.days[String(d)];
@@ -532,7 +535,7 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
                   return (
                     <td
                       key={d}
-                      className={`border-b border-r border-border text-center cursor-pointer transition-colors h-8 ${
+                      className={`border-b border-r border-border text-center ${editable(m.userId) ? "cursor-pointer" : "cursor-not-allowed opacity-70"} transition-colors h-8 ${
                         weekend && !type ? "bg-slate-50/80" : ""
                       } ${isToday && !type ? "bg-blue-50/50" : ""} ${
                         isSelected ? "ring-2 ring-inset ring-primary bg-primary/10" : ""
@@ -564,13 +567,13 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
                   )}
                 </td>
                 <td className="border-b border-l border-border px-2 py-1">
-                  <button
+                  {editable(m.userId) && <button
                     className="text-[10px] text-muted-foreground hover:text-foreground whitespace-nowrap px-1.5 py-0.5 rounded hover:bg-muted transition-colors"
                     onClick={(e) => handleFillWeekClick(e, m.userId)}
                     title="Preencher semana visível"
                   >
                     + semana
-                  </button>
+                  </button>}
                 </td>
               </tr>
               </Fragment>
