@@ -128,6 +128,25 @@ async function run() {
     const progEvents = await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, prog.id), inArray(historyEventsTable.action, ["programacao.criada", "programacao.bloco_criado"])));
     assert(progEvents.length === 1 + blocos.length, "cada escrita da Programação grava Registro");
 
+    // Bloco que repete em vários dias da semana, e bloco tirado do molde que pode voltar.
+    const varios = await post(asAdmin, `/programacoes/${prog.id}/blocos`, { weekdays: [3, 4, 5], inicio: "08:30", fim: "09:00", rotulo: "AQUECIMENTO", regra: "todos" });
+    const variosBody = (await varios.json()) as { blocos: { id: string; weekday: number }[] };
+    assert(varios.status === 201 && variosBody.blocos.length === 3 && variosBody.blocos.map((b) => b.weekday).join(",") === "3,4,5", "um bloco criado em três dias da semana de uma vez");
+    const tirado = variosBody.blocos[0]!;
+    const desativar = await asAdmin(`/programacoes/${prog.id}/blocos/${tirado.id}`, { method: "PATCH", body: JSON.stringify({ active: false }) });
+    const listaProg = async () => ((await (await asAdmin(`/programacoes?locationId=${local!.id}`)).json()) as { programacoes: { id: string; blocos: { id: string; active: boolean }[] }[] }).programacoes.flatMap((p) => p.blocos);
+    const depoisDeTirar = (await listaProg()).find((b) => b.id === tirado.id);
+    assert(desativar.status === 200 && Boolean(depoisDeTirar) && depoisDeTirar!.active === false, "bloco tirado do molde continua na lista, inativo, para poder voltar");
+    await asAdmin(`/programacoes/${prog.id}/blocos/${tirado.id}`, { method: "PATCH", body: JSON.stringify({ active: true }) });
+    assert((await listaProg()).find((b) => b.id === tirado.id)?.active === true, "bloco devolvido ao molde volta a valer");
+    for (const b of variosBody.blocos) await asAdmin(`/programacoes/${prog.id}/blocos/${b.id}`, { method: "PATCH", body: JSON.stringify({ active: false }) });
+
+    // Temporada nova a partir do molde atual.
+    const copia = await post(asAdmin, "/programacoes", { locationId: local!.id, nome: "Natal (cópia)", vigenciaInicio: "2026-12-01", vigenciaFim: "2026-12-31", copiarDeId: prog.id });
+    const copiaBody = (await copia.json()) as { programacao: { id: string; blocos: unknown[] } };
+    assert(copia.status === 201 && copiaBody.programacao.blocos.length === blocos.length, "duplicar o molde traz os blocos ativos para a nova vigência");
+    await asAdmin(`/programacoes/${copiaBody.programacao.id}`, { method: "PATCH", body: JSON.stringify({ active: false }) });
+
     // ---------- Escala do dia montada pelas regras ----------
     assert((await asJulia(`/escalas/dia?locationId=${local!.id}&date=${date}`)).status === 403, "Elenco não abre a grade do local");
     assert((await asDir(`/escalas/dia?locationId=${local!.id}&date=${date}`)).status === 200, "Direção lê a Escala do dia");
@@ -211,6 +230,18 @@ async function run() {
     const addedBack = await post(asPat, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: treinoKey, userId: pat1.id, action: "ADICIONAR" });
     assert(addedBack.status === 200 && (bloco(await dia(), "TREINO GELO")?.pessoaIds ?? []).includes(pat1.id), "Supervisão põe a pessoa de volta no bloco sem alterar a Programação");
     assert((await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, scaleId), inArray(historyEventsTable.action, ["escala.pessoa_adicionada", "escala.pessoa_removida"])))) .length === 2, "cada ajuste de célula grava Registro");
+
+    // Várias pessoas num pedido só: a supervisão tira uma e põe outra na mesma chamada.
+    const lote = await post(asPat, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: treinoKey, mudancas: [
+      { userId: pat1.id, action: "REMOVER" }, { userId: supPat.id, action: "REMOVER" },
+    ] });
+    const depoisDoLote = bloco(await dia(), "TREINO GELO")?.pessoaIds ?? [];
+    assert(lote.status === 200 && !depoisDoLote.includes(pat1.id) && !depoisDoLote.includes(supPat.id), "um pedido só tira duas pessoas do bloco");
+    const loteErrado = await post(asPat, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: treinoKey, mudancas: [
+      { userId: pat1.id, action: "ADICIONAR" }, { userId: bai1.id, action: "ADICIONAR" },
+    ] });
+    assert(loteErrado.status === 403 && (bloco(await dia(), "TREINO GELO")?.pessoaIds ?? []).includes(pat1.id), "no lote, pessoa de outra área é recusada — o que já passou antes dela vale");
+    await post(asPat, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: treinoKey, mudancas: [{ userId: supPat.id, action: "ADICIONAR" }] });
 
     const confirm = await post(asJulia, `/escalas/${scaleId}/confirmar`, {});
     const minhaConfirmada = (await (await asJulia(`/escalas/minha?date=${date}`)).json()) as { confirmada?: boolean };

@@ -34,6 +34,7 @@ import { enqueueNotification } from "../services/undo.js";
 import { APP_ROUTES } from "../lib/app-routes.js";
 
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+const DIAS_DA_SEMANA = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
 const dataPorExtenso = (iso: string) => { const [, m, d] = iso.split("-").map(Number); return `${d} de ${MESES[m! - 1]}`; };
 import { ajustarPessoaNoLivro, generateDailyBookDraftForScale } from "./daily-book.js";
 
@@ -198,31 +199,55 @@ router.post("/escalas/dia/gerar", requireAuth, requireOrganization, async (req, 
   }
 });
 
-/** Ajusta uma célula só neste dia; não muda a Programação nem o Livro do Dia. */
+/**
+ * Ajusta uma célula só neste dia; não muda a Programação. Aceita uma pessoa (`userId` + `action`)
+ * ou várias de uma vez (`mudancas: [{ userId, action }]`), para a tela aplicar tudo num pedido só.
+ */
 router.post("/escalas/dia/ajustes", requireAuth, requireOrganization, async (req, res) => {
   const actor = req.user! as Actor;
-  const { locationId, date, sourceKey, userId, action } = req.body ?? {};
-  if (typeof locationId !== "string" || typeof date !== "string" || !DATE.test(date) || typeof sourceKey !== "string" || !sourceKey || typeof userId !== "string" || !["ADICIONAR", "REMOVER"].includes(action)) {
-    res.status(400).json({ error: "locationId, date, sourceKey, userId e action são obrigatórios" }); return;
+  const { locationId, date, sourceKey, userId, action, mudancas } = req.body ?? {};
+  const lote: { userId: string; action: "ADICIONAR" | "REMOVER" }[] = Array.isArray(mudancas)
+    ? mudancas.filter((m): m is { userId: string; action: "ADICIONAR" | "REMOVER" } =>
+      Boolean(m) && typeof (m as { userId?: unknown }).userId === "string" && ["ADICIONAR", "REMOVER"].includes((m as { action?: string }).action ?? ""))
+    : [];
+  if (typeof locationId !== "string" || typeof date !== "string" || !DATE.test(date) || typeof sourceKey !== "string" || !sourceKey
+    || (!lote.length && (typeof userId !== "string" || !["ADICIONAR", "REMOVER"].includes(action)))) {
+    res.status(400).json({ error: "locationId, date, sourceKey e userId+action (ou mudancas) são obrigatórios" }); return;
   }
+  try {
+    // Várias pessoas: aplica uma a uma, parando no primeiro erro, e devolve a grade uma vez só.
+    for (const m of lote.length ? lote : [{ userId: userId as string, action: action as "ADICIONAR" | "REMOVER" }]) {
+      const r = await ajustarUmaPessoa(actor, { locationId, date, sourceKey, userId: m.userId, action: m.action });
+      if (!r.ok) { res.status(r.status).json(r.body); return; }
+    }
+    res.json({ dia: await montarEscalaDoDia(actor.organizationId, locationId, date) });
+  } catch (err) { console.error(err); res.status(500).json({ error: "Erro ao ajustar a Escala" }); }
+});
+
+type AjusteErro = { ok: false; status: number; body: Record<string, unknown> };
+/** Uma pessoa entra ou sai de um bloco neste dia; devolve o erro em vez de responder, para o lote reaproveitar. */
+async function ajustarUmaPessoa(
+  actor: Actor,
+  { locationId, date, sourceKey, userId, action }: { locationId: string; date: string; sourceKey: string; userId: string; action: "ADICIONAR" | "REMOVER" },
+): Promise<{ ok: true } | AjusteErro> {
   const location = await locationInOrg(locationId, actor.organizationId);
-  if (!location) { res.status(404).json({ error: "Local não encontrado" }); return; }
-  if (!(await canManageLocal(actor, locationId))) { res.status(403).json({ error: "Forbidden", message: "Você não ajusta a Escala deste local" }); return; }
+  if (!location) return { ok: false, status: 404, body: { error: "Local não encontrado" } };
+  if (!(await canManageLocal(actor, locationId))) return { ok: false, status: 403, body: { error: "Forbidden", message: "Você não ajusta a Escala deste local" } };
   const diaAntes = await montarEscalaDoDia(actor.organizationId, locationId, date);
   const bloco = diaAntes?.blocos.find((b) => b.key === sourceKey);
-  if (!bloco) { res.status(404).json({ error: "Bloco não encontrado nesta Escala" }); return; }
+  if (!bloco) return { ok: false, status: 404, body: { error: "Bloco não encontrado nesta Escala" } };
   const [pessoa] = await db.select({ id: usersTable.id, areaId: usersTable.areaId, name: usersTable.name }).from(usersTable).where(and(
     eq(usersTable.id, userId), eq(usersTable.organizationId, actor.organizationId),
   )).limit(1);
-  if (!pessoa) { res.status(404).json({ error: "Pessoa não encontrada neste local" }); return; }
+  if (!pessoa) return { ok: false, status: 404, body: { error: "Pessoa não encontrada neste local" } };
   const minhasAreas = await supervisedAreas(actor, locationId);
   if (actor.role !== "ADMIN" && (!pessoa.areaId || !minhasAreas.includes(pessoa.areaId))) {
-    res.status(403).json({ error: "Forbidden", message: "Supervisão ajusta somente pessoas da própria área" }); return;
+    return { ok: false, status: 403, body: { error: "Forbidden", message: "Supervisão ajusta somente pessoas da própria área" } };
   }
-  try {
+  {
     let scale = await findEscalaDoDia(locationId, date);
     const operationId = scale?.operationId ?? await operationForLocation(locationId);
-    if (!operationId) { res.status(409).json({ error: "LOCAL_SEM_OPERACAO", message: "Este local ainda não está ligado a uma operação." }); return; }
+    if (!operationId) return { ok: false, status: 409, body: { error: "LOCAL_SEM_OPERACAO", message: "Este local ainda não está ligado a uma operação." } };
     // 09/10: bloco que vem de Livro do Dia muda o próprio Livro (vaga aberta / preenchida), para a
     // Escala e o Livro dizerem a mesma coisa. Sem vaga a mexer, o ajuste fica só na Escala.
     const viaLivro = bloco.dailyBookId ? await ajustarPessoaNoLivro({ dailyBookId: bloco.dailyBookId, userId, action, actorId: actor.sub }) : false;
@@ -255,9 +280,9 @@ router.post("/escalas/dia/ajustes", requireAuth, requireOrganization, async (req
           `${pessoa.name} ${action === "ADICIONAR" ? "entrou em" : "saiu de"} ${bloco.rotulo}`, { areaIds: [pessoa.areaId] });
       }
     });
-    res.json({ dia: await montarEscalaDoDia(actor.organizationId, locationId, date) });
-  } catch (err) { console.error(err); res.status(500).json({ error: "Erro ao ajustar a Escala" }); }
-});
+    return { ok: true };
+  }
+}
 
 /** Elenco confirma que leu a versão publicada que está vendo. */
 router.post("/escalas/:id/confirmar", requireAuth, requireOrganization, async (req, res) => {
@@ -442,7 +467,8 @@ router.get("/programacoes", requireAuth, requireOrganization, async (req, res) =
   if (!locationId || !(await locationInOrg(locationId, actor.organizationId))) { res.status(404).json({ error: "Local não encontrado" }); return; }
   if (!(await canReadLocal(actor, locationId))) { res.status(403).json({ error: "Forbidden" }); return; }
   const programacoes = await db.select().from(programacoesTable).where(and(eq(programacoesTable.locationId, locationId), eq(programacoesTable.active, true))).orderBy(asc(programacoesTable.vigenciaInicio));
-  const blocos = programacoes.length ? await db.select().from(programacaoBlocosTable).where(and(inArray(programacaoBlocosTable.programacaoId, programacoes.map((p) => p.id)), eq(programacaoBlocosTable.active, true)))
+  // Blocos tirados do molde continuam na resposta (active: false) para a tela poder devolvê-los.
+  const blocos = programacoes.length ? await db.select().from(programacaoBlocosTable).where(inArray(programacaoBlocosTable.programacaoId, programacoes.map((p) => p.id)))
     .orderBy(asc(programacaoBlocosTable.weekday), asc(programacaoBlocosTable.inicio), asc(programacaoBlocosTable.order)) : [];
   res.json({ programacoes: programacoes.map((p) => ({ ...p, blocos: blocos.filter((b) => b.programacaoId === p.id) })), podeEditar: await canManageLocal(actor, locationId) });
 });
@@ -455,12 +481,23 @@ router.post("/programacoes", requireAuth, requireOrganization, async (req, res) 
   }
   if (!(await locationInOrg(locationId, actor.organizationId))) { res.status(404).json({ error: "Local não encontrado" }); return; }
   if (!(await canManageLocal(actor, locationId))) { res.status(403).json({ error: "Forbidden", message: "Programação é da Administração e da Supervisão do local" }); return; }
+  // Temporada nova costuma repetir o molde da anterior: `copiarDeId` traz os blocos junto.
+  const copiarDeId = typeof (req.body as { copiarDeId?: unknown })?.copiarDeId === "string" ? (req.body as { copiarDeId: string }).copiarDeId : null;
+  const origem = copiarDeId ? await programacaoInOrg(copiarDeId, actor.organizationId) : null;
+  if (copiarDeId && (!origem || origem.locationId !== locationId)) { res.status(404).json({ error: "Molde de origem não encontrado neste local" }); return; }
   const created = await db.transaction(async (tx) => {
     const [row] = await tx.insert(programacoesTable).values({ organizationId: actor.organizationId, locationId, nome: nome.trim(), vigenciaInicio, vigenciaFim, createdBy: actor.sub }).returning();
-    await writeHistoryEvent({ category: "SCALE", action: "programacao.criada", title: "Programação criada", narrative: `Programação ${row!.nome} criada.`, entityType: "programacao", entityId: row!.id, actorId: actor.sub, orgId: actor.organizationId, afterState: { programacao: row } }, tx as unknown as HistoryExecutor);
-    return row!;
+    let copiados: (typeof programacaoBlocosTable.$inferSelect)[] = [];
+    if (origem) {
+      const blocos = await tx.select().from(programacaoBlocosTable).where(and(eq(programacaoBlocosTable.programacaoId, origem.id), eq(programacaoBlocosTable.active, true)));
+      if (blocos.length) {
+        copiados = await tx.insert(programacaoBlocosTable).values(blocos.map(({ id: _id, programacaoId: _p, createdAt: _c, updatedAt: _u, ...bloco }) => ({ ...bloco, programacaoId: row!.id }))).returning();
+      }
+    }
+    await writeHistoryEvent({ category: "SCALE", action: "programacao.criada", title: "Programação criada", narrative: origem ? `Programação ${row!.nome} criada a partir de ${origem.nome}, com ${copiados.length} blocos.` : `Programação ${row!.nome} criada.`, entityType: "programacao", entityId: row!.id, actorId: actor.sub, orgId: actor.organizationId, afterState: { programacao: row, copiadaDe: origem?.id ?? null, blocos: copiados.length } }, tx as unknown as HistoryExecutor);
+    return { row: row!, copiados };
   });
-  res.status(201).json({ programacao: { ...created, blocos: [] } });
+  res.status(201).json({ programacao: { ...created.row, blocos: created.copiados } });
 });
 
 router.patch("/programacoes/:id", requireAuth, requireOrganization, async (req, res) => {
@@ -489,18 +526,29 @@ router.post("/programacoes/:id/blocos", requireAuth, requireOrganization, async 
   const programacao = await programacaoInOrg(req.params.id as string, actor.organizationId);
   if (!programacao) { res.status(404).json({ error: "Programação não encontrada" }); return; }
   if (!(await canManageLocal(actor, programacao.locationId))) { res.status(403).json({ error: "Forbidden" }); return; }
-  const parsed = parseBloco(req.body ?? {}, false);
+  // A mesma atividade costuma repetir em vários dias da semana (treino de segunda a sexta):
+  // `weekdays` cria um bloco por dia de uma vez; `weekday` sozinho continua valendo.
+  const dias = Array.isArray((req.body as { weekdays?: unknown })?.weekdays)
+    ? [...new Set(((req.body as { weekdays: unknown[] }).weekdays).map(Number))]
+    : [];
+  if (dias.some((w) => !Number.isInteger(w) || w < 0 || w > 6)) { res.status(400).json({ error: "weekdays: dias de 0 (domingo) a 6 (sábado)" }); return; }
+  const parsed = parseBloco({ ...(req.body ?? {}), weekday: dias.length ? dias[0] : (req.body as BlocoInput)?.weekday }, false);
   if (!parsed.ok) { res.status(400).json({ error: parsed.error }); return; }
   if (typeof parsed.value.showBookId === "string") {
     const [show] = await db.select({ id: showBooksTable.id }).from(showBooksTable).where(eq(showBooksTable.id, parsed.value.showBookId)).limit(1);
     if (!show) { res.status(404).json({ error: "Show não encontrado" }); return; }
   }
+  const alvos = dias.length ? dias.sort((a, b) => a - b) : [parsed.value.weekday as number];
   const created = await db.transaction(async (tx) => {
-    const [row] = await tx.insert(programacaoBlocosTable).values({ programacaoId: programacao.id, ...(parsed.value as { weekday: number; inicio: string; rotulo: string; regra: RegraBloco }) }).returning();
-    await writeHistoryEvent({ category: "SCALE", action: "programacao.bloco_criado", title: "Bloco da Programação criado", narrative: `Bloco ${row!.rotulo} ${row!.inicio.slice(0, 5)} na programação ${programacao.nome}.`, entityType: "programacao", entityId: programacao.id, actorId: actor.sub, orgId: actor.organizationId, afterState: { bloco: row } }, tx as unknown as HistoryExecutor);
-    return row!;
+    const rows = await tx.insert(programacaoBlocosTable).values(alvos.map((weekday) => ({
+      programacaoId: programacao.id, ...(parsed.value as { weekday: number; inicio: string; rotulo: string; regra: RegraBloco }), weekday,
+    }))).returning();
+    for (const row of rows) {
+      await writeHistoryEvent({ category: "SCALE", action: "programacao.bloco_criado", title: "Bloco da Programação criado", narrative: `Bloco ${row.rotulo} ${row.inicio.slice(0, 5)} em ${DIAS_DA_SEMANA[row.weekday]} na programação ${programacao.nome}.`, entityType: "programacao", entityId: programacao.id, actorId: actor.sub, orgId: actor.organizationId, afterState: { bloco: row } }, tx as unknown as HistoryExecutor);
+    }
+    return rows;
   });
-  res.status(201).json({ bloco: created });
+  res.status(201).json({ bloco: created[0], blocos: created });
 });
 
 router.patch("/programacoes/:id/blocos/:blocoId", requireAuth, requireOrganization, async (req, res) => {

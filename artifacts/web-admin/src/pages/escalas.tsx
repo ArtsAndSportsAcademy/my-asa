@@ -108,7 +108,8 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
   const [locais, setLocais] = useState<Local[]>([]);
   const [localId, setLocalId] = useState("");
   const [opMenu, setOpMenu] = useState(false);
-  const [manual, setManual] = useState(false);
+  // null = fechado; { bloco: null } = nova atividade; { bloco } = corrigir a atividade daquele bloco.
+  const [manual, setManual] = useState<{ bloco: Bloco | null } | null>(null);
   const [dia, setDia] = useState<Dia | null>(null);
   const [minha, setMinha] = useState<Minha | null>(null);
   const [areasMinhas, setAreasMinhas] = useState<string[]>([]);
@@ -190,17 +191,17 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
 
   /* ---------- escrita ---------- */
   const errMsg = (err: unknown, fallback: string) => err instanceof ApiError && err.data && typeof err.data === "object" && typeof (err.data as { message?: unknown }).message === "string" ? (err.data as { message: string }).message : fallback;
-  const marcarPronta = async (areaId: string, pronta: boolean) => {
-    if (!dia) return;
-    setSaving(true); setBusy(`pronta:${areaId}`); setError("");
+  const marcarPronta = async (areaIds: string[], pronta: boolean) => {
+    if (!dia || !areaIds.length) return;
+    setSaving(true); setBusy(areaIds.length > 1 ? "pronta:todas" : `pronta:${areaIds[0]}`); setError("");
     try {
       if (review) {
         const cur: SampleEscalaState = loadSampleEscala(localId, date) ?? { status: "DRAFT", version: 1, prontas: {}, publishedAt: null, alteradaDesde: null };
         const prontas = { ...cur.prontas };
-        if (pronta) prontas[areaId] = { por: me, em: new Date().toISOString() }; else delete prontas[areaId];
+        for (const areaId of areaIds) { if (pronta) prontas[areaId] = { por: me, em: new Date().toISOString() }; else delete prontas[areaId]; }
         saveSampleEscala(localId, date, { ...cur, prontas });
       } else {
-        await customFetch("/api/escalas/dia/pronta", { method: "POST", body: JSON.stringify({ locationId: localId, date, areaId, pronta }) });
+        for (const areaId of areaIds) await customFetch("/api/escalas/dia/pronta", { method: "POST", body: JSON.stringify({ locationId: localId, date, areaId, pronta }) });
       }
       setRefresh((n) => n + 1);
     } catch (err) { setError(errMsg(err, "Não consegui marcar a área.")); } finally { setSaving(false); setBusy(""); }
@@ -237,6 +238,20 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       setRefresh((n) => n + 1);
     } catch (err) { setError(errMsg(err, "Não consegui publicar a escala.")); } finally { setSaving(false); setBusy(""); }
   };
+  const ajustarCelulaEmLote = async (bloco: Bloco, mudancas: { userId: string; action: "ADICIONAR" | "REMOVER" }[]) => {
+    if (!dia || !localId || !mudancas.length) return;
+    setSaving(true); setBusy("ajuste"); setError("");
+    try {
+      if (review) {
+        const cur: SampleEscalaState = loadSampleEscala(localId, date) ?? { status: "DRAFT", version: 1, prontas: {}, publishedAt: null, alteradaDesde: null };
+        const ajustes = { ...(cur.ajustes ?? {}), [bloco.key]: { ...(cur.ajustes?.[bloco.key] ?? {}), ...Object.fromEntries(mudancas.map((m) => [m.userId, m.action])) } };
+        saveSampleEscala(localId, date, { ...cur, ajustes, alteradaDesde: cur.status === "DRAFT" ? cur.alteradaDesde : (cur.alteradaDesde ?? new Date().toISOString()), version: cur.status === "DRAFT" ? cur.version : cur.version + 1 });
+      } else {
+        await customFetch("/api/escalas/dia/ajustes", { method: "POST", body: JSON.stringify({ locationId: localId, date, sourceKey: bloco.key, mudancas }) });
+      }
+      setRefresh((n) => n + 1);
+    } catch (err) { setError(errMsg(err, "Não consegui ajustar esta célula.")); } finally { setSaving(false); setBusy(""); }
+  };
   const ajustarCelula = async (bloco: Bloco, pessoaId: string, action: "ADICIONAR" | "REMOVER") => {
     if (!dia || !localId) return;
     setSaving(true); setError("");
@@ -260,8 +275,19 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
         await customFetch(`/api/scales/${dia.escala.id}/entries`, { method: "POST", headers: { "if-match": String(dia.escala.version) },
           body: JSON.stringify({ memberIds: v.pessoaIds, date, label: v.rotulo, startTime: v.inicio, endTime: v.fim || null }) });
       }
-      setManual(false); setRefresh((n) => n + 1);
+      setManual(null); setRefresh((n) => n + 1);
     } catch (err) { setError(errMsg(err, "Não consegui criar a atividade de hoje.")); } finally { setSaving(false); setBusy(""); }
+  };
+  const editarEntradaManual = async (allocationIds: string[], v: { rotulo: string; inicio: string; fim: string }) => {
+    if (!dia?.escala || !allocationIds.length) return;
+    setSaving(true); setBusy("manual"); setError("");
+    try {
+      if (!review) {
+        await customFetch(`/api/scales/${dia.escala.id}/entries/${allocationIds[0]}`, { method: "PATCH", headers: { "if-match": String(dia.escala.version) },
+          body: JSON.stringify({ entryIds: allocationIds, label: v.rotulo, startTime: v.inicio, endTime: v.fim || null }) });
+      }
+      setManual(null); setRefresh((n) => n + 1);
+    } catch (err) { setError(errMsg(err, "Não consegui mudar a atividade.")); } finally { setSaving(false); setBusy(""); }
   };
   const removerEntradaManual = async (allocationIds: string[]) => {
     if (!dia?.escala || !allocationIds.length) return;
@@ -337,13 +363,14 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       </div>}
       {carregandoTela && !error && !dia && !minha && <div aria-busy="true" style={css("padding:16px;text-align:center;font-size:12.5px;color:#6b6482;background:#fff;border:1px dashed #ddd6ee;border-radius:12px")}>Montando a escala…</div>}
       {showMinha && minha && <MinhaEscala minha={minha} date={date} onHoje={() => setDate(todayISO())} onConfirm={confirmarEscala} saving={saving}/>}
-      {!isMem && tab === "escala" && dia && <EscalaGrid dia={dia} canEdit={isAdm || areasMinhas.length > 0} editableAreaIds={isAdm ? null : areasMinhas} onAdjust={ajustarCelula} onRemoveManual={isAdm ? removerEntradaManual : undefined}/>} 
+      {!isMem && tab === "escala" && dia && <EscalaGrid dia={dia} canEdit={isAdm || areasMinhas.length > 0} editableAreaIds={isAdm ? null : areasMinhas} onAdjust={ajustarCelulaEmLote} onRemoveManual={isAdm ? removerEntradaManual : undefined} onEditManual={isAdm ? ((b) => setManual({ bloco: b })) : undefined}/>} 
       {!isMem && tab === "prog" && localId && <ProgramacaoTab review={review} localId={localId} localName={operationLabel} date={date} dia={dia} canEdit={Boolean(local?.podeEditar)} onChanged={() => setRefresh((n) => n + 1)}/>}
     </div>
 
-    {manual && dia && <AtividadeDeHojeDialog pessoas={dia.pessoas} saving={busy === "manual"} onClose={() => setManual(false)} onSubmit={criarEntradaManual}/>}
+    {manual && dia && <AtividadeDeHojeDialog pessoas={dia.pessoas} bloco={manual.bloco} saving={busy === "manual"} onClose={() => setManual(null)}
+      onSubmit={async (v) => { const alvo = manual.bloco; if (alvo) await editarEntradaManual(alvo.allocationIds?.length ? alvo.allocationIds : [alvo.allocationId!], v); else await criarEntradaManual(v); }}/>}
 
-    <Rodape role={role} tab={tab} onMinha={tab === "minha"} dia={dia} minha={minha} areasMinhas={areasMinhas} saving={saving} busy={busy} onGerar={gerarDia} onPronta={marcarPronta} onPublicar={publicar} onManual={() => setManual(true)}/>
+    <Rodape role={role} tab={tab} onMinha={tab === "minha"} dia={dia} minha={minha} areasMinhas={areasMinhas} saving={saving} busy={busy} onGerar={gerarDia} onPronta={marcarPronta} onPublicar={publicar} onManual={() => setManual({ bloco: null })}/>
   </section>;
 }
 
@@ -377,7 +404,7 @@ function Calendario({ date, onPick }: { date: string; onPick: (d: string) => voi
 }
 
 /* ---------- aba Escala: grade pessoas × horários ---------- */
-function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onRemoveManual }: { dia: Dia; canEdit: boolean; editableAreaIds: string[] | null; onAdjust: (bloco: Bloco, pessoaId: string, action: "ADICIONAR" | "REMOVER") => Promise<void>; onRemoveManual?: (allocationIds: string[]) => Promise<void> }) {
+function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onRemoveManual, onEditManual }: { dia: Dia; canEdit: boolean; editableAreaIds: string[] | null; onAdjust: (bloco: Bloco, mudancas: { userId: string; action: "ADICIONAR" | "REMOVER" }[]) => Promise<void>; onRemoveManual?: (allocationIds: string[]) => Promise<void>; onEditManual?: (bloco: Bloco) => void }) {
   const [view, setView] = useState<"pessoa" | "atividade">("pessoa");
   const [team, setTeam] = useState("todos");
   const [zoom, setZoom] = useState(100);
@@ -484,7 +511,7 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onRemoveManual }:
               const pode = canEdit && (editableAreaIds === null || (c.areaId !== null && editableAreaIds.includes(c.areaId)));
               return <span key={c.pessoaId} style={css("display:inline-flex;align-items:center;gap:6px;border:1px solid #efe3e1;background:#fff;border-radius:999px;padding:3px 4px 3px 10px;font-size:12px;font-weight:700;color:#2b2545")}>
                 {c.pessoa}
-                {pode && tiraveis.map((bloco) => <button key={bloco.key} type="button" className="esc-cell-adjust esc-hit" aria-label={`Tirar ${c.pessoa} de ${textoDoBloco(bloco)}`} disabled={tirando === `${c.pessoaId}|${bloco.key}`} onClick={async () => { setTirando(`${c.pessoaId}|${bloco.key}`); try { await onAdjust(bloco, c.pessoaId, "REMOVER"); } finally { setTirando(""); } }}>
+                {pode && tiraveis.map((bloco) => <button key={bloco.key} type="button" className="esc-cell-adjust esc-hit" aria-label={`Tirar ${c.pessoa} de ${textoDoBloco(bloco)}`} disabled={tirando === `${c.pessoaId}|${bloco.key}`} onClick={async () => { setTirando(`${c.pessoaId}|${bloco.key}`); try { await onAdjust(bloco, [{ userId: c.pessoaId, action: "REMOVER" }]); } finally { setTirando(""); } }}>
                   {tirando === `${c.pessoaId}|${bloco.key}` ? "Tirando…" : `Tirar de ${textoDoBloco(bloco)}`}
                 </button>)}
               </span>;
@@ -567,7 +594,8 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onRemoveManual }:
                     {b.regra !== "ninguem" && (b.vazio ? <span style={css("display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:700;background:#fff4e4;color:#B06E00;border:1px dashed #f0d8b0;")}>sem ninguém · defina quem entra</span>
                       : <span style={css("font-size:10.5px;color:#6b6482;margin-left:2px")}>{plural(who.length, "pessoa", "pessoas")}</span>)}
                     {canEdit && b.regra !== "ninguem" && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setAjustando(b)}>Ajustar</button>}
-                    {onRemoveManual && b.origem === "manual" && b.allocationId && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => void onRemoveManual(b.allocationIds?.length ? b.allocationIds : [b.allocationId!])}>Tirar do dia</button>}
+                    {onEditManual && b.origem === "manual" && b.allocationId && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => onEditManual(b)}>Mudar horário</button>}
+                    {onRemoveManual && b.origem === "manual" && b.allocationId && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => { if (window.confirm(`Tirar "${b.rotulo}" das ${b.inicio} do dia de hoje? Sai para ${plural(b.pessoaIds.length, "1 pessoa", `${b.pessoaIds.length} pessoas`)}.`)) void onRemoveManual(b.allocationIds?.length ? b.allocationIds : [b.allocationId!]); }}>Tirar do dia</button>}
                   </div>
                 </td>
               </tr>;
@@ -577,45 +605,43 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onRemoveManual }:
       </div>}
     </div>
     <div style={css("height:16px")}/>
-    {ajustando && <AjusteCelulaDialog bloco={ajustando} pessoas={dia.pessoas} editableAreaIds={editableAreaIds} onClose={() => setAjustando(null)} onAdjust={async (pessoaId, action) => {
-      await onAdjust(ajustando, pessoaId, action);
-      // A grade recarrega em segundo plano, mas o diálogo continua aberto.
-      // Espelha a alteração localmente para não oferecer uma ação desatualizada.
-      setAjustando((current) => current ? {
-        ...current,
-        pessoaIds: action === "ADICIONAR"
-          ? [...new Set([...current.pessoaIds, pessoaId])]
-          : current.pessoaIds.filter((id) => id !== pessoaId),
-      } : current);
-    }}/>} 
+    {ajustando && <AjusteCelulaDialog bloco={ajustando} pessoas={dia.pessoas} editableAreaIds={editableAreaIds} onClose={() => setAjustando(null)} onAdjust={async (mudancas) => {
+      await onAdjust(ajustando, mudancas);
+      // Aplicado: fecha o diálogo e a grade mostra o resultado, sem versão intermediária na tela.
+      setAjustando(null);
+    }}/>}
   </div>;
 }
 
-function AjusteCelulaDialog({ bloco, pessoas, editableAreaIds, onClose, onAdjust }: { bloco: Bloco; pessoas: Pessoa[]; editableAreaIds: string[] | null; onClose: () => void; onAdjust: (pessoaId: string, action: "ADICIONAR" | "REMOVER") => Promise<void> }) {
+function AjusteCelulaDialog({ bloco, pessoas, editableAreaIds, onClose, onAdjust }: { bloco: Bloco; pessoas: Pessoa[]; editableAreaIds: string[] | null; onClose: () => void; onAdjust: (mudancas: { userId: string; action: "ADICIONAR" | "REMOVER" }[]) => Promise<void> }) {
   const [busca, setBusca] = useState("");
-  const [saving, setSaving] = useState("");
+  const [saving, setSaving] = useState(false);
+  // Marca quem entra e quem sai; vai tudo num pedido só, em vez de esperar uma pessoa de cada vez.
+  const [mexidas, setMexidas] = useState<Record<string, boolean>>({});
+  const entraAgora = (id: string) => mexidas[id] ?? bloco.pessoaIds.includes(id);
+  const mudancas = Object.entries(mexidas).filter(([id, entra]) => entra !== bloco.pessoaIds.includes(id)).map(([userId, entra]) => ({ userId, action: entra ? "ADICIONAR" as const : "REMOVER" as const }));
+  const aplicar = async () => { setSaving(true); try { await onAdjust(mudancas); } finally { setSaving(false); } };
   const elegiveis = pessoas.filter((p) => !p.folga && (editableAreaIds === null || (p.areaId !== null && editableAreaIds.includes(p.areaId))) && `${p.name} ${p.areaName ?? ""}`.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR")));
-  const executar = async (pessoa: Pessoa, action: "ADICIONAR" | "REMOVER") => {
-    setSaving(`${pessoa.id}:${action}`);
-    try { await onAdjust(pessoa.id, action); } finally { setSaving(""); }
-  };
   return <div className="shows-dialog-backdrop" role="presentation"><div className="shows-dialog" role="dialog" aria-modal="true" aria-label={`Ajustar ${textoDoBloco(bloco)}`}>
     <header className="shows-dialog-header"><div><h2>Ajustar bloco</h2><p>{`${textoDoBloco(bloco)} · ${faixa(bloco)}`}</p></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18}/></button></header>
     <div className="shows-dialog-content" style={css("display:flex;flex-direction:column;gap:12px")}>
       <p style={css("margin:0;font-size:12.5px;line-height:1.5;color:#5b5473")}>Este ajuste vale só para este dia; a Programação não muda. Em show com Livro do Dia, a vaga muda no Livro também.</p>
       <input autoFocus value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar pessoa ou área" aria-label="Buscar pessoa para ajustar" style={css("width:100%;box-sizing:border-box;border:1px solid #ddd6ee;border-radius:10px;padding:10px 12px;font:600 12.5px Manrope,sans-serif;color:#2b2545;background:#fff;")}/>
       <div style={css("display:flex;flex-direction:column;gap:7px")}>{elegiveis.map((p) => {
-        const entra = bloco.pessoaIds.includes(p.id);
-        const action = entra ? "REMOVER" : "ADICIONAR";
-        return <div key={p.id} style={css("display:flex;align-items:center;gap:10px;border:1px solid #ebe6f6;border-radius:11px;padding:10px 12px")}> 
+        const entra = entraAgora(p.id);
+        const mudou = entra !== bloco.pessoaIds.includes(p.id);
+        return <div key={p.id} style={css("display:flex;align-items:center;gap:10px;border:1px solid " + (mudou ? "#c9b2fa" : "#ebe6f6") + ";background:" + (mudou ? "#faf7ff" : "#fff") + ";border-radius:11px;padding:10px 12px")}>
           <span style={css("width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#8b5cf6,#3b45d9);color:#fff;font:700 10px 'JetBrains Mono',monospace")}>{initials(p.name)}</span>
-          <span style={css("display:flex;flex-direction:column;gap:1px;min-width:0;flex:1")}><strong style={css("font-size:12.5px;color:#2b2545")}>{p.name}</strong><span style={css("font-size:11.5px;color:#6b6482")}>{p.areaName ?? "Sem área"}</span></span>
-          <button type="button" className="esc-hit" disabled={Boolean(saving)} onClick={() => void executar(p, action)} style={css(action === "REMOVER" ? btn("ghost") + "padding:7px 12px" : btn("primary") + "padding:7px 12px")}>{saving === `${p.id}:${action}` ? "Salvando…" : action === "REMOVER" ? "Tirar" : "Colocar"}</button>
+          <span style={css("display:flex;flex-direction:column;gap:1px;min-width:0;flex:1")}><strong style={css("font-size:12.5px;color:#2b2545")}>{p.name}</strong><span style={css("font-size:11.5px;color:" + (mudou ? "#6C2BF2" : "#6b6482"))}>{mudou ? (entra ? "vai entrar" : "vai sair") : p.areaName ?? "Sem área"}</span></span>
+          <button type="button" className="esc-hit" disabled={saving} onClick={() => setMexidas((m) => ({ ...m, [p.id]: !entra }))} style={css(entra ? btn("ghost") + "padding:7px 12px" : btn("primary") + "padding:7px 12px")}>{entra ? "Tirar" : "Colocar"}</button>
         </div>;
       })}</div>
       {!elegiveis.length && <span style={css("font-size:12px;color:#6b6482;padding:8px 0")}>Nenhuma pessoa disponível neste filtro.</span>}
     </div>
-    <footer className="shows-dialog-footer"><button type="button" onClick={onClose} className="shows-secondary">Concluído</button></footer>
+    <footer className="shows-dialog-footer">
+      <button type="button" onClick={onClose} className="shows-secondary">{mudancas.length ? "Cancelar" : "Fechar"}</button>
+      <button type="button" className="shows-primary" disabled={!mudancas.length || saving} onClick={() => void aplicar()}>{saving ? "Salvando…" : mudancas.length > 1 ? `Aplicar ${mudancas.length} mudanças` : "Aplicar"}</button>
+    </footer>
   </div></div>;
 }
 
@@ -628,7 +654,7 @@ function lembrarLocal(list: { id: string }[]): string | undefined {
 }
 function guardarLocal(id: string) { try { localStorage.setItem(LOCAL_KEY, id); } catch { /* sem armazenamento */ } }
 
-function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, busy = "", onGerar, onPronta, onPublicar, onManual }: { role: Role; tab: string; onMinha?: boolean; dia: Dia | null; minha: Minha | null; areasMinhas: string[]; saving: boolean; busy?: string; onManual?: () => void; onGerar: () => void; onPronta: (areaId: string, pronta: boolean) => void; onPublicar: (republicar: boolean) => void }) {
+function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, busy = "", onGerar, onPronta, onPublicar, onManual }: { role: Role; tab: string; onMinha?: boolean; dia: Dia | null; minha: Minha | null; areasMinhas: string[]; saving: boolean; busy?: string; onManual?: () => void; onGerar: () => void; onPronta: (areaIds: string[], pronta: boolean) => void; onPublicar: (republicar: boolean) => void }) {
   const isMem = role === "mem" || onMinha, isDir = role === "dir", isAdm = role === "adm";
   let note = "";
   const actions: ReactNode[] = [];
@@ -649,13 +675,19 @@ function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, b
     else if (published) note = `Publicada${dia.escala.publishedAt ? ` às ${hhmm(dia.escala.publishedAt)}` : ""} · ${dia.areas.length} ${dia.areas.length === 1 ? "área" : "áreas"} · a mesma escalação está no Livro do Dia`;
     else note = `Rascunho · ${prontas.length} de ${dia.areas.length} áreas prontas${faltam.length ? ` · falta ${faltam.map((a) => a.name).join(", ")}` : ""} · publica a Administração`;
     if (tab === "escala" && isAdm && !dia.escala) actions.push(<button key="generate" type="button" className="esc-hit" disabled={saving} onClick={onGerar} style={css(btn("primary"))}>{busy === "gerar" ? "Gerando Escala e Livros…" : "Gerar Escala e Livros"}</button>);
+    // Show que entrou na Programação depois da geração fica sem Livro: dá para gerar o que falta.
+    const semLivro = dia.escala ? dia.blocos.filter((b) => b.regra === "livro" && !b.dailyBookId).length : 0;
+    if (tab === "escala" && isAdm && semLivro > 0) actions.push(<button key="gerar-faltam" type="button" className="esc-hit" disabled={saving} onClick={onGerar} style={css(btn("primary"))}>{busy === "gerar" ? "Gerando…" : `Gerar ${semLivro === 1 ? "o Livro que falta" : `os ${semLivro} Livros que faltam`}`}</button>);
     // Atividade que só existe hoje (prova de figurino, reunião de última hora): não mexe no molde da Programação.
     if (tab === "escala" && isAdm && dia.escala && onManual) actions.push(<button key="manual" type="button" className="esc-hit" disabled={saving} onClick={onManual} style={css(btn("ghost"))}>Atividade só de hoje</button>);
     if (tab === "escala" && !isDir && !published) {
+      // Quem cuida de mais de uma área marca todas de uma vez.
+      const minhasPendentes = areasMinhas.map((id) => dia.areas.find((a) => a.id === id)).filter((a): a is Area => Boolean(a) && !a!.pronta);
+      if (minhasPendentes.length > 1) actions.push(<button key="todas" type="button" className="esc-hit" disabled={saving} onClick={() => onPronta(minhasPendentes.map((a) => a.id), true)} style={css(btn("primary"))}>{busy === "pronta:todas" ? "Salvando…" : `Marcar minhas ${minhasPendentes.length} áreas como prontas`}</button>);
       for (const areaId of areasMinhas) {
         const area = dia.areas.find((a) => a.id === areaId);
         if (!area) continue;
-        actions.push(<button key={areaId} type="button" className="esc-hit" disabled={saving} onClick={() => onPronta(areaId, !area.pronta)} style={css(btn(area.pronta ? "ghost" : "primary"))}>{busy === `pronta:${areaId}` ? "Salvando…" : area.pronta ? `Desmarcar ${area.name}` : `Marcar ${area.name} como pronta`}</button>);
+        actions.push(<button key={areaId} type="button" className="esc-hit" disabled={saving} onClick={() => onPronta([areaId], !area.pronta)} style={css(btn(area.pronta ? "ghost" : "primary"))}>{busy === `pronta:${areaId}` ? "Salvando…" : area.pronta ? `Desmarcar ${area.name}` : `Marcar ${area.name} como pronta`}</button>);
       }
       if (isAdm && dia.escala) actions.push(<button key="pub" type="button" className="esc-hit" disabled={saving || faltam.length > 0} title={faltam.length ? `Faltam: ${faltam.map((a) => a.name).join(", ")}` : undefined} onClick={() => onPublicar(false)}
         style={css(faltam.length ? "border-radius:999px;padding:9px 17px;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;border:none;background:#e6e1f2;color:#6b6482;cursor:default" : btn("primary"))}>{faltam.length ? `Publicar conjunto · faltam ${faltam.length}` : busy === "publicar" ? "Publicando…" : "Publicar Escala e Livros"}</button>);
@@ -670,7 +702,7 @@ function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, b
         const label = `${a.name} · ${a.pronta ? `pronta${a.pronta.por ? ` (${a.pronta.por})` : ""}` : "falta"}`;
         // Administração pode marcar qualquer área (ex.: Produção, cuja supervisão não fica num local só).
         return isAdm && dia && (!dia.escala || dia.escala.status === "DRAFT")
-          ? <button key={a.id} type="button" className="esc-hit" disabled={saving} aria-pressed={Boolean(a.pronta)} title={a.pronta ? "Desmarcar" : "Marcar como pronta"} onClick={() => onPronta(a.id, !a.pronta)} style={css(chip + ";border:none;cursor:pointer;font-family:Manrope,sans-serif")}>{label}</button>
+          ? <button key={a.id} type="button" className="esc-hit" disabled={saving} aria-pressed={Boolean(a.pronta)} title={a.pronta ? "Desmarcar" : "Marcar como pronta"} onClick={() => onPronta([a.id], !a.pronta)} style={css(chip + ";border:none;cursor:pointer;font-family:Manrope,sans-serif")}>{label}</button>
           : <span key={a.id} style={css(chip)}>{label}</span>;
       })}
     </div>}
@@ -739,7 +771,7 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
   const [wd, setWd] = useState(weekdayOf(date));
   const [sel, setSel] = useState("");
   const [shows, setShows] = useState<{ id: string; title: string }[]>([]);
-  const [dialog, setDialog] = useState<"molde" | "bloco" | null>(null);
+  const [dialog, setDialog] = useState<"molde" | "bloco" | "duplicar" | "vigencia" | null>(null);
   const [error, setError] = useState("");
   const [tick, setTick] = useState(0);
   const pessoas = dia?.pessoas ?? (review ? samplePessoas(localId) : []);
@@ -757,6 +789,8 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
   const prog = list.find((p) => p.id === progId) ?? list.find((p) => estadoDe(p) === "vigente") ?? list[0];
   const blocosDia = (prog?.blocos ?? []).filter((b) => b.weekday === wd && b.active).sort((a, b) => a.inicio.localeCompare(b.inicio) || a.order - b.order);
   const bloco = blocosDia.find((b) => b.id === sel) ?? blocosDia[0];
+  // Tirar do molde não apaga: o bloco fica guardado e pode voltar.
+  const tiradosDoDia = (prog?.blocos ?? []).filter((b) => b.weekday === wd && !b.active).sort((a, b) => a.inicio.localeCompare(b.inicio));
   const areaName = (id: string) => areas.find((a) => a.id === id)?.name ?? id;
   const personName = (id: string) => pessoas.find((p) => p.id === id)?.name ?? id;
   const resumo = (b: ProgBloco) => b.regra === "todos" ? "todo mundo do local" : b.regra === "ninguem" ? "sem participantes" : b.regra === "livro" ? "Livro do show" : b.regra === "area" ? (b.areaIds.map((a) => `área ${areaName(a)}`).join(" + ") || "sem área escolhida") : b.regra === "grupo" ? (b.grupoIds.length ? plural(b.grupoIds.length, "grupo", "grupos") : "sem grupo escolhido") : (b.pessoaIds.map(personName).join(" + ") || "sem regra de quem entra");
@@ -782,6 +816,24 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
       onChanged();
     } catch (err) { setError(err instanceof ApiError && err.data && typeof (err.data as { error?: unknown }).error === "string" ? (err.data as { error: string }).error : "Não consegui salvar o bloco."); }
   };
+  const mudarMolde = async (nome: string, inicio: string, fim: string) => {
+    if (!prog) return;
+    if (review) {
+      const next = list.map((p) => p.id === prog.id ? { ...p, nome, vigenciaInicio: inicio, vigenciaFim: fim } : p);
+      saveSampleProgramacoes(localId, next as SampleProgramacao[]); setList(next); return;
+    }
+    await customFetch(`/api/programacoes/${prog.id}`, { method: "PATCH", body: JSON.stringify({ nome, vigenciaInicio: inicio, vigenciaFim: fim }) });
+    setTick((n) => n + 1); onChanged();
+  };
+  const duplicarMolde = async (nome: string, inicio: string, fim: string) => {
+    if (!prog) return;
+    if (review) {
+      const copia: Programacao = { ...prog, id: `sample-prog-${Date.now()}`, nome, vigenciaInicio: inicio, vigenciaFim: fim, blocos: prog.blocos.filter((b) => b.active).map((b, i) => ({ ...b, id: `${Date.now()}-${i}` })) };
+      const next = [...list, copia]; saveSampleProgramacoes(localId, next as SampleProgramacao[]); setList(next); setProgId(copia.id); return;
+    }
+    const r = await customFetch<{ programacao: Programacao }>("/api/programacoes", { method: "POST", body: JSON.stringify({ locationId: localId, nome, vigenciaInicio: inicio, vigenciaFim: fim, copiarDeId: prog.id }) });
+    setProgId(r.programacao.id); setTick((n) => n + 1); onChanged();
+  };
   const criarMolde = async (nome: string, inicio: string, fim: string) => {
     if (review) {
       const created: Programacao = { id: `sample-prog-${Date.now()}`, locationId: localId, nome, vigenciaInicio: inicio, vigenciaFim: fim, blocos: [] };
@@ -790,13 +842,14 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
     const r = await customFetch<{ programacao: Programacao }>("/api/programacoes", { method: "POST", body: JSON.stringify({ locationId: localId, nome, vigenciaInicio: inicio, vigenciaFim: fim }) });
     setProgId(r.programacao.id); setTick((n) => n + 1);
   };
-  const criarBloco = async (value: Omit<ProgBloco, "id" | "programacaoId" | "order" | "active" | "grupoIds">) => {
+  const criarBloco = async (value: Omit<ProgBloco, "id" | "programacaoId" | "order" | "active" | "grupoIds"> & { weekdays?: number[] }) => {
     if (!prog) return;
+    const dias = value.weekdays?.length ? value.weekdays : [value.weekday];
     if (review) {
-      const created: ProgBloco = { ...value, id: `${prog.id}-new-${Date.now()}`, programacaoId: prog.id, order: prog.blocos.length, active: true, grupoIds: [] };
-      const next = list.map((p) => p.id === prog.id ? { ...p, blocos: [...p.blocos, created] } : p); saveSampleProgramacoes(localId, next as SampleProgramacao[]); setList(next); setSel(created.id); onChanged(); return;
+      const criados: ProgBloco[] = dias.map((weekday, i) => ({ ...value, weekday, id: `${prog.id}-new-${Date.now()}-${i}`, programacaoId: prog.id, order: prog.blocos.length + i, active: true, grupoIds: [] }));
+      const next = list.map((p) => p.id === prog.id ? { ...p, blocos: [...p.blocos, ...criados] } : p); saveSampleProgramacoes(localId, next as SampleProgramacao[]); setList(next); setSel(criados[0]!.id); onChanged(); return;
     }
-    const r = await customFetch<{ bloco: ProgBloco }>(`/api/programacoes/${prog.id}/blocos`, { method: "POST", body: JSON.stringify(value) });
+    const r = await customFetch<{ bloco: ProgBloco }>(`/api/programacoes/${prog.id}/blocos`, { method: "POST", body: JSON.stringify({ ...value, weekdays: dias }) });
     setSel(r.bloco.id); setTick((n) => n + 1); onChanged();
   };
 
@@ -827,6 +880,10 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
         </div>
         <span style={css("flex:none;font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;padding:3px 9px;border-radius:999px;background:" + (estado === "vigente" ? "#e2f4f2" : estado === "agendado" ? "#f1eafe" : "#f4f2fa") + ";color:" + (estado === "vigente" ? "#0b6b64" : estado === "agendado" ? "#6C2BF2" : "#6b6482"))}>{estado}</span>
         <span style={css("flex:1;min-width:20px")}/>
+        {canEdit && <div style={css("display:flex;flex-wrap:wrap;gap:7px")}>
+          <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setDialog("vigencia")}>Mudar nome ou vigência</button>
+          <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setDialog("duplicar")}>Duplicar molde</button>
+        </div>}
         <span style={css("font-size:11.5px;color:#6b6482;max-width:38ch;line-height:1.4;text-wrap:pretty")}>{estado === "agendado" ? "Este molde ainda não entrou em vigor: dá para montá-lo agora sem afetar a escala que está rodando." : estado === "encerrado" ? "Vigência já passou. Fica de histórico e pode ser duplicado para a próxima temporada." : "Molde em vigor: é ele que a Escala usa para abrir as necessidades deste local."}</span>
       </div>
 
@@ -867,6 +924,17 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
         </table>
       </div>
 
+      {tiradosDoDia.length > 0 && <details style={css("background:#fff;border:1px dashed #ddd6ee;border-radius:12px;padding:9px 13px;max-width:900px")}>
+        <summary style={css("cursor:pointer;list-style:none;font-size:11.5px;font-weight:700;color:#6b6482")}>{`${plural(tiradosDoDia.length, "bloco tirado do molde", "blocos tirados do molde")} em ${WEEKDAY_LONG[wd]}s · ver`}</summary>
+        <ul style={css("margin:9px 0 2px;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px")}>
+          {tiradosDoDia.map((b) => <li key={b.id} style={css("display:flex;align-items:center;gap:10px;font-size:12px;color:#5b5473")}>
+            <span style={css("font-family:\x27JetBrains Mono\x27,monospace;font-weight:700;width:96px;flex:none")}>{faixa(b)}</span>
+            <span style={css("flex:1;min-width:0")}>{textoDoBloco(b)}</span>
+            {canEdit && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => void salvarBloco(b, { active: true })}>Devolver ao molde</button>}
+          </li>)}
+        </ul>
+      </details>}
+
       {bloco && <div style={css("display:flex;flex-direction:column;gap:13px;background:#fff;border:1px solid #ddd6ee;border-radius:14px;padding:15px 17px;max-width:900px;")}>
         <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:10px")}>
           <span style={css("font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#3d3559")}>{faixa(bloco)}</span>
@@ -875,6 +943,21 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
           <span style={css("flex:1;min-width:16px")}/>
           <span style={css("font-size:11.5px;color:#6b6482;max-width:42ch;line-height:1.45;text-wrap:pretty")}>{isShow ? "Quem entra vem do livro deste show, no dia. Aqui não se edita: mude o livro e a escala acompanha." : "A escala guarda a regra, não a lista. Quem entra na área depois passa a aparecer sozinho."}</span>
         </div>
+        {canEdit && <div style={css("display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;border-top:1px solid #f0ecf9;padding-top:12px")}>
+          <label style={css("display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:700;color:#6b6482")}>Atividade
+            <input defaultValue={bloco.rotulo} key={`r-${bloco.id}`} onBlur={(e) => { const v = e.target.value.toLocaleUpperCase("pt-BR").trim(); if (v && v !== bloco.rotulo) void salvarBloco(bloco, { rotulo: v }); }}
+              style={css("border:1px solid #ddd6ee;border-radius:9px;padding:6px 9px;font:600 12.5px Manrope,sans-serif;color:#2b2545;min-width:190px")}/>
+          </label>
+          <label style={css("display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:700;color:#6b6482")}>Início
+            <input type="time" defaultValue={bloco.inicio} key={`i-${bloco.id}`} onBlur={(e) => { if (e.target.value && e.target.value !== bloco.inicio) void salvarBloco(bloco, { inicio: e.target.value }); }}
+              style={css("border:1px solid #ddd6ee;border-radius:9px;padding:6px 9px;font:600 12.5px Manrope,sans-serif;color:#2b2545")}/>
+          </label>
+          <label style={css("display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:700;color:#6b6482")}>Fim (opcional)
+            <input type="time" defaultValue={bloco.fim ?? ""} key={`f-${bloco.id}`} onBlur={(e) => { const v = e.target.value || null; if (v !== bloco.fim) void salvarBloco(bloco, { fim: v }); }}
+              style={css("border:1px solid #ddd6ee;border-radius:9px;padding:6px 9px;font:600 12.5px Manrope,sans-serif;color:#2b2545")}/>
+          </label>
+          <span style={css("font-size:11px;color:#6b6482;flex:1;min-width:140px")}>Muda só os dias que ainda não foram publicados.</span>
+        </div>}
         {!isShow && <div style={css("display:flex;flex-direction:column;gap:11px;border-top:1px solid #f0ecf9;padding-top:12px")}>
           <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:7px")}>
             {(["ninguem", "todos", "area", "pessoas"] as Regra[]).map((r) => <button key={r} type="button" className="esc-hit" disabled={!canEdit} aria-pressed={bloco.regra === r} onClick={() => void salvarBloco(bloco, { regra: r as ProgBloco["regra"] })}
@@ -904,24 +987,30 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
           {!quem.length && <span style={css("font-size:11.5px;color:#6b6482;font-style:italic")}>{isShow ? "O Livro do Dia deste show ainda não tem ninguém para este dia." : "Nenhuma pessoa nesta regra — o bloco existe na programação, mas ninguém é convocado. Na escala ele aparece vazio e sinalizado."}</span>}
         </div>
         {canEdit && <div style={css("display:flex;justify-content:flex-end")}>
-          <button type="button" className="esc-hit" onClick={() => void salvarBloco(bloco, { active: false })} style={css("border:1px solid #e6e1f2;background:#fff;color:#6b6482;border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:Manrope,sans-serif;flex:none;")}>tirar do molde</button>
+          <button type="button" className="esc-hit" onClick={() => { if (window.confirm(`Tirar "${textoDoBloco(bloco)}" de ${WEEKDAY_LONG[bloco.weekday]}? Ele sai do molde e dos dias que ainda não foram publicados; você pode devolver depois.`)) void salvarBloco(bloco, { active: false }); }} style={css("border:1px solid #e6e1f2;background:#fff;color:#6b6482;border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:Manrope,sans-serif;flex:none;")}>tirar do molde</button>
         </div>}
       </div>}
     </>}
 
     {dialog === "molde" && <FormDialog title="Novo molde" onClose={() => setDialog(null)} onSubmit={async (f) => { await criarMolde(f.nome, f.inicio, f.fim); setDialog(null); }}
       fields={[{ name: "nome", label: "Nome (Natal, Normal, Baixa…)", type: "text" }, { name: "inicio", label: "Vigência — início", type: "date" }, { name: "fim", label: "Vigência — fim", type: "date" }]}/>}
-    {dialog === "bloco" && <BlocoDialog weekday={wd} vocabulario={vocabularioDoLocal(review ? localId : localName.toLocaleLowerCase("pt-BR"))} areas={areas} shows={shows} onClose={() => setDialog(null)} onSubmit={async (v) => { await criarBloco(v); setDialog(null); }}/>}
+    {dialog === "duplicar" && prog && <FormDialog title="Duplicar molde" onClose={() => setDialog(null)} onSubmit={async (f) => { await duplicarMolde(f.nome, f.inicio, f.fim); setDialog(null); }}
+      inicial={{ nome: `${prog.nome} (cópia)`, inicio: prog.vigenciaFim, fim: prog.vigenciaFim }} nota={`Copia os ${prog.blocos.filter((b) => b.active).length} blocos deste molde para a nova vigência. O molde atual não muda.`}/>}
+    {dialog === "vigencia" && prog && <FormDialog title="Nome e vigência do molde" onClose={() => setDialog(null)} onSubmit={async (f) => { await mudarMolde(f.nome, f.inicio, f.fim); setDialog(null); }}
+      inicial={{ nome: prog.nome, inicio: prog.vigenciaInicio, fim: prog.vigenciaFim }} nota="Vale para os dias que ainda não foram publicados."/>}
+    {dialog === "bloco" && <BlocoDialog weekday={wd} vocabulario={vocabularioDoLocal(review ? localId : localName.toLocaleLowerCase("pt-BR"))} areas={areas} shows={shows} onClose={() => setDialog(null)} onSubmit={async (v) => { await criarBloco(v); setDialog(null); }} pessoas={pessoas}/>}
   </div>;
 }
 
-function FormDialog({ title, fields, onClose, onSubmit }: { title: string; fields: { name: string; label: string; type: string }[]; onClose: () => void; onSubmit: (values: Record<string, string>) => Promise<void> }) {
-  const [values, setValues] = useState<Record<string, string>>({});
+const CAMPOS_MOLDE = [{ name: "nome", label: "Nome (Natal, Normal, Baixa…)", type: "text" }, { name: "inicio", label: "Vigência — início", type: "date" }, { name: "fim", label: "Vigência — fim", type: "date" }];
+function FormDialog({ title, fields = CAMPOS_MOLDE, inicial, nota, onClose, onSubmit }: { title: string; fields?: { name: string; label: string; type: string }[]; inicial?: Record<string, string>; nota?: string; onClose: () => void; onSubmit: (values: Record<string, string>) => Promise<void> }) {
+  const [values, setValues] = useState<Record<string, string>>(inicial ?? {});
   const [error, setError] = useState("");
   const submit = async (event: FormEvent) => { event.preventDefault(); try { await onSubmit(values); } catch (err) { setError(err instanceof ApiError && err.data && typeof (err.data as { error?: unknown }).error === "string" ? (err.data as { error: string }).error : "Não consegui salvar."); } };
   return <div className="shows-dialog-backdrop"><div className="shows-dialog" role="dialog" aria-modal="true" aria-label={title}>
     <header className="shows-dialog-header"><h2>{title}</h2><button onClick={onClose} aria-label="Fechar"><X size={18}/></button></header>
     <div className="shows-dialog-content"><form id="esc-form" onSubmit={submit} className="shows-form">
+      {nota && <p style={css("margin:0 0 2px;font-size:12px;line-height:1.5;color:#5b5473")}>{nota}</p>}
       {fields.map((f) => <label key={f.name}>{f.label}<input required type={f.type} value={values[f.name] ?? ""} onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}/></label>)}
       {error && <p role="alert" style={css("font-size:12px;color:#a12c2c")}>{error}</p>}
     </form></div>
@@ -929,22 +1018,33 @@ function FormDialog({ title, fields, onClose, onSubmit }: { title: string; field
   </div></div>;
 }
 
-function BlocoDialog({ weekday, vocabulario, areas, shows, onClose, onSubmit }: { weekday: number; vocabulario: string[]; areas: Area[]; shows: { id: string; title: string }[]; onClose: () => void; onSubmit: (v: Omit<ProgBloco, "id" | "programacaoId" | "order" | "active" | "grupoIds">) => Promise<void> }) {
+function BlocoDialog({ weekday, vocabulario, areas, shows, pessoas, onClose, onSubmit }: { weekday: number; vocabulario: string[]; areas: Area[]; shows: { id: string; title: string }[]; pessoas: Pessoa[]; onClose: () => void; onSubmit: (v: Omit<ProgBloco, "id" | "programacaoId" | "order" | "active" | "grupoIds"> & { weekdays?: number[] }) => Promise<void> }) {
   const [rotulo, setRotulo] = useState("");
   const [inicio, setInicio] = useState("");
   const [fim, setFim] = useState("");
   const [regra, setRegra] = useState<Regra>("pessoas");
   const [showBookId, setShowBookId] = useState("");
   const [areaIds, setAreaIds] = useState<string[]>([]);
+  const [pessoaIds, setPessoaIds] = useState<string[]>([]);
+  // A mesma atividade costuma repetir em vários dias; começa no dia aberto e você marca os outros.
+  const [dias, setDias] = useState<number[]>([weekday]);
   const [error, setError] = useState("");
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    try { await onSubmit({ weekday, rotulo: rotulo.trim(), inicio, fim: fim || null, regra: regra as ProgBloco["regra"], showBookId: regra === "livro" ? showBookId || null : null, areaIds: regra === "area" ? areaIds : [], pessoaIds: [] }); }
+    if (!dias.length) { setError("Escolha pelo menos um dia da semana."); return; }
+    try { await onSubmit({ weekday: dias[0]!, weekdays: dias, rotulo: rotulo.trim(), inicio, fim: fim || null, regra: regra as ProgBloco["regra"], showBookId: regra === "livro" ? showBookId || null : null, areaIds: regra === "area" ? areaIds : [], pessoaIds: regra === "pessoas" ? pessoaIds : [] }); }
     catch (err) { setError(err instanceof ApiError && err.data && typeof (err.data as { error?: unknown }).error === "string" ? (err.data as { error: string }).error : "Não consegui criar o bloco."); }
   };
   return <div className="shows-dialog-backdrop"><div className="shows-dialog" role="dialog" aria-modal="true" aria-label="Novo bloco">
-    <header className="shows-dialog-header"><h2>{`Novo bloco · ${WEEKDAY_LONG[weekday]}`}</h2><button onClick={onClose} aria-label="Fechar"><X size={18}/></button></header>
+    <header className="shows-dialog-header"><h2>Novo bloco</h2><button onClick={onClose} aria-label="Fechar"><X size={18}/></button></header>
     <div className="shows-dialog-content"><form id="esc-bloco" onSubmit={submit} className="shows-form">
+      <fieldset style={css("border:none;padding:0;margin:0;display:flex;flex-direction:column;gap:5px")}>
+        <legend style={css("padding:0;font-size:11px;font-weight:700;color:#6b6482")}>Em quais dias</legend>
+        <div style={css("display:flex;flex-wrap:wrap;gap:6px")}>
+          {[1, 2, 3, 4, 5, 6, 0].map((d) => { const on = dias.includes(d); return <button key={d} type="button" aria-pressed={on} onClick={() => setDias(on ? dias.filter((x) => x !== d) : [...dias, d])} style={css(on ? chipOn : chipOff)}>{WEEKDAY_LONG[d]!.slice(0, 3)}</button>; })}
+        </div>
+        <span style={css("font-size:11px;color:#6b6482")}>{dias.length > 1 ? `Cria o mesmo bloco em ${dias.length} dias da semana.` : "Marque mais dias para repetir o bloco neles."}</span>
+      </fieldset>
       <label>Atividade (vocabulário da escala)<input required list="esc-vocab" value={rotulo} onChange={(e) => setRotulo(e.target.value.toLocaleUpperCase("pt-BR"))}/></label>
       <datalist id="esc-vocab">{vocabulario.map((v) => <option key={v} value={v}/>)}</datalist>
       <label>Início<input required type="time" value={inicio} onChange={(e) => setInicio(e.target.value)}/></label>
@@ -952,31 +1052,36 @@ function BlocoDialog({ weekday, vocabulario, areas, shows, onClose, onSubmit }: 
       <label>Quem entra<select value={regra} onChange={(e) => setRegra(e.target.value as Regra)}>{(["livro", "area", "todos", "pessoas", "ninguem"] as Regra[]).map((r) => <option key={r} value={r}>{REGRA_LABEL[r]}</option>)}</select></label>
       {regra === "livro" && <label>Show<select required value={showBookId} onChange={(e) => setShowBookId(e.target.value)}><option value="">Escolha o show</option>{shows.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}</select></label>}
       {regra === "area" && <fieldset style={css("border:none;padding:0;display:flex;flex-wrap:wrap;gap:7px")}>{areas.map((a) => { const on = areaIds.includes(a.id); return <button key={a.id} type="button" onClick={() => setAreaIds(on ? areaIds.filter((x) => x !== a.id) : [...areaIds, a.id])} style={css(on ? chipOn : chipOff)}>{a.name}</button>; })}</fieldset>}
+      {regra === "pessoas" && <fieldset style={css("border:none;padding:0;display:flex;flex-wrap:wrap;gap:7px;max-height:150px;overflow:auto")}>{pessoas.map((p) => { const on = pessoaIds.includes(p.id); return <button key={p.id} type="button" onClick={() => setPessoaIds(on ? pessoaIds.filter((x) => x !== p.id) : [...pessoaIds, p.id])} style={css(on ? chipOn : chipOff)}>{p.name}</button>; })}</fieldset>}
       {error && <p role="alert" style={css("font-size:12px;color:#a12c2c")}>{error}</p>}
     </form></div>
-    <footer className="shows-dialog-footer"><button form="esc-bloco" className="shows-primary">Criar bloco</button></footer>
+    <footer className="shows-dialog-footer"><button form="esc-bloco" className="shows-primary">{dias.length > 1 ? `Criar em ${dias.length} dias` : "Criar bloco"}</button></footer>
   </div></div>;
 }
 
 /* ---------- atividade só de hoje (entrada manual da Escala) ---------- */
-function AtividadeDeHojeDialog({ pessoas, saving, onClose, onSubmit }: { pessoas: Pessoa[]; saving: boolean; onClose: () => void; onSubmit: (v: { pessoaIds: string[]; rotulo: string; inicio: string; fim: string }) => Promise<void> }) {
-  const [escolhidas, setEscolhidas] = useState<string[]>([]);
+function AtividadeDeHojeDialog({ pessoas, bloco, saving, onClose, onSubmit }: { pessoas: Pessoa[]; bloco: Bloco | null; saving: boolean; onClose: () => void; onSubmit: (v: { pessoaIds: string[]; rotulo: string; inicio: string; fim: string }) => Promise<void> }) {
+  // Com `bloco`, o diálogo corrige a atividade que já existe: só o horário e o nome mudam.
+  const corrigindo = Boolean(bloco);
+  const [escolhidas, setEscolhidas] = useState<string[]>(bloco?.pessoaIds ?? []);
   const [busca, setBusca] = useState("");
-  const [rotulo, setRotulo] = useState("");
-  const [inicio, setInicio] = useState("");
-  const [fim, setFim] = useState("");
+  const [rotulo, setRotulo] = useState(bloco?.rotulo ?? "");
+  const [inicio, setInicio] = useState(bloco?.inicio ?? "");
+  const [fim, setFim] = useState(bloco?.fim ?? "");
   const disponiveis = pessoas.filter((p) => !p.folga);
   const filtradas = disponiveis.filter((p) => `${p.name} ${p.areaName ?? ""}`.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR")));
   const marcar = (id: string) => setEscolhidas((atual) => atual.includes(id) ? atual.filter((v) => v !== id) : [...atual, id]);
   const pronto = Boolean(escolhidas.length && rotulo.trim() && /^([01]\d|2[0-3]):[0-5]\d$/.test(inicio));
   const submit = (e: React.FormEvent) => { e.preventDefault(); if (pronto) void onSubmit({ pessoaIds: escolhidas, rotulo: rotulo.trim(), inicio, fim }); };
   return <div className="shows-dialog-backdrop"><div className="shows-dialog" role="dialog" aria-modal="true" aria-label="Atividade só de hoje">
-    <header className="shows-dialog-header"><div><h2>Atividade só de hoje</h2><p>Vale apenas neste dia — a Programação não muda.</p></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18}/></button></header>
+    <header className="shows-dialog-header"><div><h2>{corrigindo ? "Mudar a atividade de hoje" : "Atividade só de hoje"}</h2><p>{corrigindo ? "Corrige o horário ou o nome para quem já está nela." : "Vale apenas neste dia — a Programação não muda."}</p></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18}/></button></header>
     <div className="shows-dialog-content"><form id="esc-manual" onSubmit={submit} className="shows-form">
-      <label>Quem faz
-        <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar pessoa ou área" aria-label="Buscar pessoa"/>
-      </label>
-      <div role="group" aria-label="Quem faz esta atividade" style={css("display:flex;flex-direction:column;gap:5px;max-height:208px;overflow:auto;border:1px solid #ebe6f6;border-radius:11px;padding:7px")}>
+      {corrigindo
+        ? <p style={css("margin:0;font-size:12px;color:#5b5473")}>{`Quem faz: ${(bloco?.pessoaIds ?? []).map((id) => pessoas.find((p) => p.id === id)?.name ?? "—").join(", ") || "ninguém"} · para mudar quem faz, tire do dia e ponha de novo.`}</p>
+        : <label>Quem faz
+          <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar pessoa ou área" aria-label="Buscar pessoa"/>
+        </label>}
+      {!corrigindo && <div role="group" aria-label="Quem faz esta atividade" style={css("display:flex;flex-direction:column;gap:5px;max-height:208px;overflow:auto;border:1px solid #ebe6f6;border-radius:11px;padding:7px")}>
         {filtradas.map((p) => {
           const marcada = escolhidas.includes(p.id);
           return <button key={p.id} type="button" className="esc-hit" onClick={() => marcar(p.id)} aria-pressed={marcada}
@@ -989,15 +1094,15 @@ function AtividadeDeHojeDialog({ pessoas, saving, onClose, onSubmit }: { pessoas
           </button>;
         })}
         {!filtradas.length && <span style={css("font-size:12px;color:#6b6482;padding:6px 4px")}>Ninguém com esse nome hoje.</span>}
-      </div>
-      <span style={css("font-size:11.5px;color:#6b6482;margin-top:-4px")}>{escolhidas.length ? `${escolhidas.length === 1 ? "1 pessoa escolhida" : `${escolhidas.length} pessoas escolhidas`} · quem está de folga não aparece` : "Escolha uma ou mais pessoas · quem está de folga não aparece"}</span>
+      </div>}
+      {!corrigindo && <span style={css("font-size:11.5px;color:#6b6482;margin-top:-4px")}>{escolhidas.length ? `${escolhidas.length === 1 ? "1 pessoa escolhida" : `${escolhidas.length} pessoas escolhidas`} · quem está de folga não aparece` : "Escolha uma ou mais pessoas · quem está de folga não aparece"}</span>}
       <label>O que é<input value={rotulo} onChange={(e) => setRotulo(e.target.value)} placeholder="Prova de figurino" maxLength={60} required/></label>
       <label>Começa às<input type="time" value={inicio} onChange={(e) => setInicio(e.target.value)} required/></label>
       <label>Termina às (opcional)<input type="time" value={fim} onChange={(e) => setFim(e.target.value)}/></label>
     </form></div>
     <footer className="shows-dialog-footer">
       <button type="button" onClick={onClose} className="shows-secondary">Cancelar</button>
-      <button form="esc-manual" className="shows-primary" disabled={!pronto || saving}>{saving ? "Salvando…" : escolhidas.length > 1 ? `Pôr no dia · ${escolhidas.length} pessoas` : "Pôr no dia"}</button>
+      <button form="esc-manual" className="shows-primary" disabled={!pronto || saving}>{saving ? "Salvando…" : corrigindo ? "Salvar mudança" : escolhidas.length > 1 ? `Pôr no dia · ${escolhidas.length} pessoas` : "Pôr no dia"}</button>
     </footer>
   </div></div>;
 }

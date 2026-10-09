@@ -1105,6 +1105,61 @@ router.delete("/scales/:id/entries/:entryId", requireAuth, requireOrganization, 
   }
 });
 
+// PATCH /api/scales/:id/entries/:entryId — corrigir horário ou nome da atividade só de hoje
+router.patch("/scales/:id/entries/:entryId", requireAuth, requireOrganization, async (req, res) => {
+  const log = requestLogger("scale", req.requestId, req.correlationId);
+  const id = req.params["id"] as string;
+  const user = req.user!;
+  const { label, startTime, endTime, entryIds } = req.body ?? {};
+  // Uma atividade pode ter uma entrada por pessoa: a correção vale para todas as do grupo.
+  const alvos = [...new Set([req.params["entryId"] as string, ...(Array.isArray(entryIds) ? entryIds.filter((v): v is string => typeof v === "string" && Boolean(v)) : [])])];
+  const hora = (v: unknown) => typeof v === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
+  if ((label !== undefined && (typeof label !== "string" || !label.trim())) || (startTime !== undefined && !hora(startTime)) || (endTime !== undefined && endTime !== null && !hora(endTime))) {
+    res.status(400).json({ error: "label, startTime (HH:MM) e endTime (HH:MM ou nulo) opcionais, mas válidos" });
+    return;
+  }
+  if (label === undefined && startTime === undefined && endTime === undefined) { res.status(400).json({ error: "nada para mudar" }); return; }
+  let expectedVersion: number | null = null;
+  try {
+    const scale = await getScaleOrFail(id, user.organizationId, res);
+    if (!scale) return;
+    if (scale.status === "ARCHIVED") { res.status(409).json({ error: "Escala arquivada não pode ser modificada" }); return; }
+    if (!MANAGER_ROLES.includes(user.role) && !(await hasScaleAuthority(user.sub, scale.operationId, scale.groupId, scale.areaId, scale.locationId))) {
+      res.status(403).json({ error: "Forbidden" }); return;
+    }
+    expectedVersion = requireExpectedVersion(req, res, "a Escala");
+    if (expectedVersion === null) return;
+    const beforeSnapshot = await buildScaleVersionSnapshot(id);
+    const patch = {
+      ...(label !== undefined ? { manualLabel: (label as string).trim() } : {}),
+      ...(startTime !== undefined ? { startTime: startTime as string } : {}),
+      ...(endTime !== undefined ? { endTime: (endTime as string | null) } : {}),
+      updatedAt: new Date(),
+    };
+    const entries = await mutateScale(id, expectedVersion, async (tx) => {
+      const rows = await tx.update(scaleAllocationsTable).set(patch)
+        .where(and(inArray(scaleAllocationsTable.id, alvos), eq(scaleAllocationsTable.scaleId, id), eq(scaleAllocationsTable.active, true)))
+        .returning();
+      if (!rows.length) throw new VersionedResourceNotFoundError("Entrada manual");
+      return rows;
+    }, async (tx, _claimed, rows) => {
+      await writeHistoryEvent({
+        category: "SCALE", action: "manual_entry_updated", title: "Entrada manual corrigida na Escala",
+        narrative: `${rows[0]!.manualLabel} em ${rows[0]!.manualDate} corrigida para ${rows.length === 1 ? "1 pessoa" : `${rows.length} pessoas`}.`,
+        entityType: "scale", entityId: id, actorId: user.sub, actorType: "HUMAN", operationId: scale.operationId,
+        orgId: user.organizationId, beforeState: beforeSnapshot,
+        afterState: { entries: rows, snapshot: await buildScaleVersionSnapshot(id, tx as any) },
+      }, tx as any);
+    });
+    if (escalaPublicada(scale.status)) await avisarRepublicacaoPendente(db, scale, `${entries[0]!.manualLabel} mudou de horário ou nome`);
+    res.json({ entries, version: expectedVersion + 1 });
+  } catch (err) {
+    if (expectedVersion !== null && await respondScaleMutationError(err, req, res, id, expectedVersion)) return;
+    log.error({ err }, "erro ao corrigir entrada manual");
+    res.status(500).json({ error: "Erro ao corrigir entrada" });
+  }
+});
+
 // PATCH /api/scales/:id/allocations/:allocationId — manual override
 router.patch("/scales/:id/allocations/:allocationId", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger("scale", req.requestId, req.correlationId);

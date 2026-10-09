@@ -407,7 +407,8 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
   };
   const publish = () => mutate("/publish", "POST", {}, "Não consegui publicar o Livro do Dia.");
   const republish = () => mutate("/republish", "POST", {}, "Não consegui republicar o Livro do Dia.");
-  const execute = () => mutate("/execute", "POST", {}, "Não consegui marcar como executado.");
+  // Executado é o fim da linha: depois disso o Livro vira registro e não se edita mais.
+  const execute = () => { if (window.confirm("Marcar este Livro do Dia como executado? Depois disso ele vira registro do que aconteceu e não dá mais para editar — só a Administração consegue reabrir.")) void mutate("/execute", "POST", {}, "Não consegui marcar como executado."); };
   const cancel = () => setPrompt({ title: "Marcar que não ocorreu", label: "Motivo", onSubmit: (reason) => { setPrompt(null); void mutate("/cancel", "POST", { reason }, "Não consegui marcar que o show não ocorreu."); } });
   const reopen = () => setPrompt({ title: "Reabrir como rascunho", label: "Motivo", onSubmit: (reason) => { setPrompt(null); void mutate("/reopen", "POST", { reason }, "Não consegui reabrir o Livro do Dia."); } });
   const toggleScene = (scene: DScene) => mutate(`/scenes/${scene.id}${scene.isRemoved ? "/restore" : ""}`, scene.isRemoved ? "PATCH" : "DELETE", {}, "Não consegui ajustar esta cena.");
