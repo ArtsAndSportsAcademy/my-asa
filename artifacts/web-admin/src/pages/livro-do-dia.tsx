@@ -20,7 +20,7 @@ type DPosition = { id: string; name: string; minimumCoverage: number; sourceRole
 type DBlock = { id: string; name: string; order: number; sceneId: string | null; sourceBlockId: string | null; isRemoved: boolean; positions: DPosition[] };
 type DScene = { id: string; name: string; order: number; sourceSceneId: string | null; isRemoved: boolean; blocks: DBlock[] };
 type SessionBlockView = { id: string; name: string; startTime: string; endTime: string; order: number; isRemoved: boolean; stale: boolean; staleReason: string | null };
-type DailyBook = { id: string; agendaEventId: string; scaleId: string | null; showBookId: string | null; status: DailyBookStatus; version: number; operationId?: string; operationName?: string; eventTitle?: string; eventDate?: string; showTitle?: string | null; scenes?: DScene[]; sessionBlocks?: SessionBlockView[] };
+type DailyBook = { id: string; agendaEventId: string; scaleId: string | null; showBookId: string | null; status: DailyBookStatus; version: number; operationId?: string; operationName?: string; eventTitle?: string; eventDate?: string; eventStartTime?: string | null; locationName?: string | null; showTitle?: string | null; scenes?: DScene[]; sessionBlocks?: SessionBlockView[] };
 type PatternDiffRow = { where: string; padrao: string; hoje: string; why: string };
 type Formation = { id: string; name: string; peopleCount: number; positions: Record<string, unknown>[]; showId: string | null; sceneId: string | null; sceneName?: string | null; active: boolean; timesUsed: number; lastUsedAt?: string | null; approximate?: boolean };
 type CharacterToday = { characterId: string; name: string; selectedName: string | null; why: string };
@@ -257,7 +257,8 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
   const isMem = role === "mem", isDir = role === "dir";
   const me = review ? REVIEW_PERSON[role] : ((user as { displayName?: string } | null)?.displayName ?? user?.name ?? "");
   const [tab, setTab] = useState<Tab>("hoje");
-  const [date] = useState(todayISO());
+  // Quem prepara o dia seguinte precisa abrir o livro de amanhã, como já faz na Escala.
+  const [date, setDate] = useState(todayISO());
   const [books, setBooks] = useState<DailyBook[]>([]);
   const [loading, setLoading] = useState(true);
   const [allBooks, setAllBooks] = useState<DailyBook[]>([]);
@@ -297,7 +298,7 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
       setBooks(detailed);
     } catch { setError("Não consegui carregar os Livros do Dia de hoje."); } finally { setLoading(false); }
   };
-  useEffect(() => { void load(); }, [review]);
+  useEffect(() => { void load(); }, [review, date]);
 
   // A troca de perfil só existe na prévia local, mas ela não pode manter uma
   // aba que aquele perfil não possui (por exemplo, Formações para o Elenco).
@@ -512,7 +513,7 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
       {conflict && <ConflictBanner conflict={conflict} onReload={() => { setConflict(null); void refreshOpen(); }}/>}
 
       {tab === "hoje" && <HojeTab
-        role={role} review={review} me={me} date={date} loading={loading} todayBooks={todayBooks} book={book} source={source}
+        role={role} review={review} me={me} date={date} onDate={setDate} loading={loading} todayBooks={todayBooks} book={book} source={source}
         diffs={diffs} hasLiveChanges={hasLiveChanges} charactersToday={charactersToday} characterNames={characterNames} formations={formations}
         canManage={canManage} saving={saving} openSceneId={openSceneId} setOpenSceneId={setOpenSceneId}
         formSel={formSel} setFormSel={setFormSel} framesOn={framesOn} setFramesOn={setFramesOn} sceneNote={sceneNote} supLocal={supLocal}
@@ -540,7 +541,7 @@ function HojeTab(props: {
   canManage: boolean; saving: boolean; openSceneId: string; setOpenSceneId: (id: string) => void;
   formSel: Record<string, string>; setFormSel: (fn: (prev: Record<string, string>) => Record<string, string>) => void;
   framesOn: Record<string, string[]>; setFramesOn: (fn: (prev: Record<string, string[]>) => Record<string, string[]>) => void;
-  sceneNote: { sceneId: string; text: string } | null; supLocal: string | null;
+  sceneNote: { sceneId: string; text: string } | null; supLocal: string | null; onDate: (iso: string) => void;
   onPick: (id: string) => void; onPublish: () => void; onRepublish: () => void; onExecute: () => void; onCancel: () => void; onReopen: () => void;
   onToggleScene: (scene: DScene) => void; onTogglePosition: (position: DPosition) => void; onSaveFormation: (scene: DScene, slots: SlotView[]) => void; onApplyToday: (formation: Formation) => void;
 }) {
@@ -552,17 +553,23 @@ function HojeTab(props: {
   const dia = {
     title: isMem ? longDate(date) : `${longDate(date)} — shows da casa`,
     sub: isMem
-      ? (todayBooks.length === 1 ? "1 show em que você entra hoje" : `${todayBooks.length} shows em que você entra hoje`)
-      : (todayBooks.length === 1 ? "1 show na agenda de hoje" : `${todayBooks.length} shows na agenda de hoje, cada um com o seu livro`) + (props.supLocal ? ` · só ${sampleLocalName(props.supLocal)}, o seu escopo` : ""),
+      ? (todayBooks.length === 1 ? `1 show em que você entra ${date === todayISO() ? "hoje" : "neste dia"}` : `${todayBooks.length} shows em que você entra ${date === todayISO() ? "hoje" : "neste dia"}`)
+      : (todayBooks.length === 1 ? `1 show na agenda ${date === todayISO() ? "de hoje" : "deste dia"}` : `${todayBooks.length} shows na agenda ${date === todayISO() ? "de hoje" : "deste dia"}, cada um com o seu livro`) + (props.supLocal ? ` · só ${sampleLocalName(props.supLocal)}, o seu escopo` : ""),
     rel: isMem
       ? "Sua escala diz que você trabalha, em que horário e onde. O livro diz o que você faz dentro do show: em que cena entra e em que posição. É a mesma convocação, vista de dois jeitos — não são duas listas para conferir."
       : "Quem entra em cada show sai do Livro do Show (titular primeiro, depois o rodízio), sem quem está de folga. A Escala mostra isso por pessoa e horário; o livro, por personagem e posição. Trocar alguém na Escala troca a vaga aqui também. O livro é publicado junto com a Escala do dia.",
   };
 
+  const amanhaISO = (() => { const [y, m, d] = todayISO().split("-").map(Number); const n = new Date(Date.UTC(y!, m! - 1, d! + 1)); return n.toISOString().slice(0, 10); })();
   const header = <div style={css("flex:none;display:flex;flex-direction:column;gap:8px")}>
     <div style={css("display:flex;align-items:baseline;gap:10px;flex-wrap:wrap")}>
       <span style={css("font-family:Outfit,sans-serif;font-size:17px;font-weight:600")}>{dia.title}</span>
-      <span style={css("font-size:12px;color:#6b6482")}>{loading ? "carregando os shows de hoje…" : dia.sub}</span>
+      <span style={css("font-size:12px;color:#6b6482")}>{loading ? "carregando os shows do dia…" : dia.sub}</span>
+      <span style={css("flex:1")}/>
+      <div style={css("display:flex;gap:6px;flex:none")}>
+        {([[todayISO(), "Hoje"], [amanhaISO, "Amanhã"]] as const).map(([valor, rotulo]) => <button key={valor} type="button" className="ldd-hit" aria-pressed={date === valor} onClick={() => props.onDate(valor)}
+          style={css(`padding:5px 12px;border-radius:999px;border:1px solid ${date === valor ? "#6C2BF2" : "#e2ddf0"};background:${date === valor ? "#f3ecff" : "#fff"};color:${date === valor ? "#6C2BF2" : "#5b5473"};font-family:Manrope,sans-serif;font-size:12px;font-weight:${date === valor ? 700 : 500};cursor:pointer`)}>{rotulo}</button>)}
+      </div>
     </div>
     {!loading && todayBooks.length > 0 && <div style={css("display:flex;gap:9px;flex-wrap:wrap")}>
       {todayBooks.map((b) => {
@@ -1138,11 +1145,12 @@ function ListaTab({ isMem, books, me, review, filter, onFilter, onOpen }: { isMe
         return <button key={b.id} type="button" onClick={() => onOpen(b.id)} style={css("display:flex;align-items:center;gap:14px;padding:13px 15px;border:1px solid #e6e1f2;border-radius:13px;background:#fff;cursor:pointer;font-family:Manrope,sans-serif;text-align:left;flex-wrap:wrap")}>
           <div style={css("display:flex;flex-direction:column;gap:2px;flex:0 0 92px;text-align:left")}>
             <span style={css("font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#6C2BF2")}>{shortDate(b.eventDate)}</span>
-            <span style={css("font-family:'JetBrains Mono',monospace;font-size:11px;color:#6b6482")}>{time(b.sessionBlocks?.find((s) => !s.isRemoved)?.startTime)}</span>
+            <span style={css("font-family:'JetBrains Mono',monospace;font-size:11px;color:#6b6482")}>{time(b.sessionBlocks?.find((s) => !s.isRemoved)?.startTime) !== "—" ? time(b.sessionBlocks?.find((s) => !s.isRemoved)?.startTime) : time(b.eventStartTime)}</span>
           </div>
           <div style={css("display:flex;flex-direction:column;gap:3px;flex:1;min-width:0;text-align:left")}>
             <span style={css("font-size:14px;font-weight:700")}>{b.showTitle ?? b.eventTitle}</span>
-            <span style={css("font-size:12px;color:#5b5473")}>{b.operationName}{n ? ` · ${plural(n, "convocado", "convocados")}` : ""}</span>
+            {/* O local separa os dois "Musical" do mesmo dia; a operação sozinha não dizia nada. */}
+            <span style={css("font-size:12px;color:#5b5473")}>{[b.locationName ?? b.operationName, n ? plural(n, "convocado", "convocados") : ""].filter(Boolean).join(" · ")}</span>
           </div>
           {meIn && <span style={css("font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#C2508F;background:#C2508F1c;padding:3px 8px;border-radius:999px;flex:none")}>você entra</span>}
           <span style={css(estadoChip(e, ";flex:none;min-width:78px;text-align:center"))}>{EST[e].label}</span>

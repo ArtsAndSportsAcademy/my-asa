@@ -15,6 +15,7 @@ import {
   showBookRolesTable,
   showBookKeyframesTable,
   agendaEventsTable,
+  locationsTable,
   operationsTable,
   operationalChangesTable,
   historyEventsTable,
@@ -1575,6 +1576,10 @@ router.get("/daily-book", requireAuth, requireOrganization, async (req, res) => 
         operationName: operationsTable.name,
         eventTitle: agendaEventsTable.title,
         eventDate: agendaEventsTable.date,
+        // Hora e local na lista: sem eles, dez livros do mesmo dia viram dez linhas iguais
+        // (dois "Musical", um de cada local).
+        eventStartTime: agendaEventsTable.startTime,
+        locationName: locationsTable.name,
         showTitle: showBooksTable.title,
         showResponsibleId: showBooksTable.responsibleId,
       })
@@ -1582,6 +1587,7 @@ router.get("/daily-book", requireAuth, requireOrganization, async (req, res) => 
       .innerJoin(agendaEventsTable, eq(dailyBooksTable.agendaEventId, agendaEventsTable.id))
       .innerJoin(operationsTable, eq(agendaEventsTable.operationId, operationsTable.id))
       .leftJoin(showBooksTable, eq(dailyBooksTable.showBookId, showBooksTable.id))
+      .leftJoin(locationsTable, eq(locationsTable.id, sql`coalesce(${showBooksTable.locationId}, ${agendaEventsTable.locationId})`))
       .where(and(...conditions));
 
     // Filtro de visibilidade por papel/operação (escopo por operação).
