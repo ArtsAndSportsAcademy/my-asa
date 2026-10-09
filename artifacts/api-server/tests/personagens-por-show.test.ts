@@ -15,6 +15,7 @@ import {
   operationsTable,
   organizationsTable,
   pool,
+  scalesTable,
   showBookBlocksTable,
   showBookLinesTable,
   showBookRolesTable,
@@ -26,6 +27,7 @@ import {
 } from "@workspace/db";
 import app from "../src/application.js";
 import { signAccessToken } from "../src/lib/jwt.service.js";
+import { generateDailyBookDraftForScale } from "../src/routes/daily-book.js";
 
 let passed = 0;
 const failures: string[] = [];
@@ -57,6 +59,7 @@ async function run() {
   const showIds: string[] = [];
   const eventIds: string[] = [];
   const dailyIds: string[] = [];
+  const scaleIds: string[] = [];
   try {
     await db.insert(userRolesTable).values([
       { userId: admin!.id, operationId: operation!.id, role: "ADMIN", active: true },
@@ -240,14 +243,39 @@ async function run() {
     const removed = await db.select().from(historyEventsTable).where(and(inArray(historyEventsTable.entityId, [p2Body.position!.id, astridPosition]), eq(historyEventsTable.action, "show_book.vaga.removed")));
     assert(removed.length === 2, "tirar vaga entra no Registro");
     assert((await request(`/show-books/${teatro!.id}/vagas/${astridPosition}`, { method: "DELETE" })).status === 404, "tirar de novo a mesma vaga dá 404");
+    // Livro do Dia gerado depois de tirar vagas não traz a vaga tirada (antes copiava posições inativas).
+    const gerado = await post(`/daily-book/generate`, { showBookId: teatro!.id, date: "2026-10-09" });
+    const geradoId = (await gerado.json() as { dailyBook?: { id: string } }).dailyBook?.id;
+    if (geradoId) dailyIds.push(geradoId);
+    const nomes = geradoId ? (await db.select({ name: dailyBookPositionsTable.name }).from(dailyBookPositionsTable).where(eq(dailyBookPositionsTable.dailyBookId, geradoId))).map((row) => row.name) : [];
+    assert(gerado.status === 201 && nomes.includes("P1") && !nomes.includes("Astrid") && nomes.filter((name) => name === "P2").length === 0, "Livro do Dia só copia as vagas ativas do show");
+    // Dia apagado pode ser gerado de novo: o Livro cancelado não trava a nova Escala.
+    const dia = "2026-10-10";
+    const novaEscala = async () => (await db.insert(scalesTable).values({ operationId: operation!.id, locationId: snow!.id, title: `${tag}_escala`, periodStart: dia, periodEnd: dia, createdBy: admin!.id }).returning())[0]!;
+    const escala1 = await novaEscala(); scaleIds.push(escala1.id);
+    const primeiro = await generateDailyBookDraftForScale({ showBookId: teatro!.id, date: dia, scaleId: escala1.id, actorId: admin!.id, organizationId: org!.id });
+    dailyIds.push(primeiro.dailyBook.id);
+    await db.update(dailyBooksTable).set({ status: "CANCELLED", cancelledAt: new Date() }).where(eq(dailyBooksTable.id, primeiro.dailyBook.id));
+    await db.update(scalesTable).set({ status: "ARCHIVED" }).where(eq(scalesTable.id, escala1.id));
+    const escala2 = await novaEscala(); scaleIds.push(escala2.id);
+    let segundo: Awaited<ReturnType<typeof generateDailyBookDraftForScale>> | null = null;
+    try { segundo = await generateDailyBookDraftForScale({ showBookId: teatro!.id, date: dia, scaleId: escala2.id, actorId: admin!.id, organizationId: org!.id }); } catch { segundo = null; }
+    if (segundo) dailyIds.push(segundo.dailyBook.id);
+    assert(Boolean(segundo?.generated) && segundo!.dailyBook.id !== primeiro.dailyBook.id && segundo!.dailyBook.status === "DRAFT", "depois de apagar o Livro do Dia, o dia pode ser gerado de novo");
     const recreate = await post(`/show-books/${teatro!.id}/vagas`, { name: "P2", mode: "rodizio", memberIds: [m1!.id] });
     assert(recreate.status === 201, "depois de tirada, a vaga pode ser criada de novo com o mesmo nome");
   } finally {
     if (server) await new Promise<void>((resolve) => server!.close(() => resolve()));
     await pool.query(`delete from history_events where actor_id = any($1::uuid[]) or mo_id in (select id from operational_changes where actor_id = any($1::uuid[]))`, [userIds]);
     await pool.query(`delete from operational_changes where actor_id = any($1::uuid[])`, [userIds]);
+    if (showIds.length) {
+      await pool.query(`delete from schedule_conflicts where daily_book_id in (select id from daily_books where show_book_id = any($1::uuid[]))`, [showIds]).catch(() => undefined);
+      await db.delete(dailyBooksTable).where(inArray(dailyBooksTable.showBookId, showIds));
+      await db.delete(agendaEventsTable).where(inArray(agendaEventsTable.showBookId, showIds));
+    }
     if (dailyIds.length) await db.delete(dailyBooksTable).where(inArray(dailyBooksTable.id, dailyIds));
     if (eventIds.length) await db.delete(agendaEventsTable).where(inArray(agendaEventsTable.id, eventIds));
+    if (scaleIds.length) await db.delete(scalesTable).where(inArray(scalesTable.id, scaleIds));
     if (showIds.length) {
       const roles = await db.select({ id: showBookRolesTable.id }).from(showBookRolesTable).where(inArray(showBookRolesTable.showBookId, showIds));
       if (roles.length) await db.delete(showBookLinesTable).where(inArray(showBookLinesTable.positionId, roles.map((role) => role.id)));

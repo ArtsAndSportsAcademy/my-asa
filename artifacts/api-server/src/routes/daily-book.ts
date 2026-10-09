@@ -633,9 +633,11 @@ export async function generateDailyBookDraftForScale(input: {
   }
   if (!event) throw new Error("Não foi possível preparar o evento interno do Livro do Dia");
 
+  // Livro cancelado (apagado) fica no histórico, mas não impede gerar o dia de novo.
   const [existing] = await db.select().from(dailyBooksTable).where(and(
     eq(dailyBooksTable.agendaEventId, event.id),
     eq(dailyBooksTable.showBookId, showBookId),
+    ne(dailyBooksTable.status, "CANCELLED"),
   )).limit(1);
   if (existing) {
     if (existing.scaleId && existing.scaleId !== scaleId) {
@@ -648,9 +650,9 @@ export async function generateDailyBookDraftForScale(input: {
   }
 
   const [scenes, blocks, roles, initialKeyframes] = await Promise.all([
-    db.select().from(showBookScenesTable).where(eq(showBookScenesTable.showBookId, showBookId)).orderBy(showBookScenesTable.order),
-    db.select().from(showBookBlocksTable).where(eq(showBookBlocksTable.showBookId, showBookId)).orderBy(showBookBlocksTable.order),
-    db.select().from(showBookRolesTable).where(eq(showBookRolesTable.showBookId, showBookId)).orderBy(showBookRolesTable.order, showBookRolesTable.id),
+    db.select().from(showBookScenesTable).where(and(eq(showBookScenesTable.showBookId, showBookId), eq(showBookScenesTable.active, true))).orderBy(showBookScenesTable.order),
+    db.select().from(showBookBlocksTable).where(and(eq(showBookBlocksTable.showBookId, showBookId), eq(showBookBlocksTable.active, true))).orderBy(showBookBlocksTable.order),
+    db.select().from(showBookRolesTable).where(and(eq(showBookRolesTable.showBookId, showBookId), eq(showBookRolesTable.active, true))).orderBy(showBookRolesTable.order, showBookRolesTable.id),
     db.select({ id: showBookKeyframesTable.id, sceneId: showBookKeyframesTable.sceneId, markerPositions: showBookKeyframesTable.markerPositions })
       .from(showBookKeyframesTable).where(and(eq(showBookKeyframesTable.type, "inicial"), eq(showBookKeyframesTable.active, true))),
   ]);
@@ -823,13 +825,13 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
     const scenes = await db
       .select()
       .from(showBookScenesTable)
-      .where(eq(showBookScenesTable.showBookId, showBookId))
+      .where(and(eq(showBookScenesTable.showBookId, showBookId), eq(showBookScenesTable.active, true)))
       .orderBy(showBookScenesTable.order);
 
     const blocks = await db
       .select()
       .from(showBookBlocksTable)
-      .where(eq(showBookBlocksTable.showBookId, showBookId))
+      .where(and(eq(showBookBlocksTable.showBookId, showBookId), eq(showBookBlocksTable.active, true)))
       .orderBy(showBookBlocksTable.order);
 
     const initialKeyframes = await db
@@ -841,7 +843,7 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
     const roles = await db
       .select()
       .from(showBookRolesTable)
-      .where(eq(showBookRolesTable.showBookId, showBookId))
+      .where(and(eq(showBookRolesTable.showBookId, showBookId), eq(showBookRolesTable.active, true)))
       .orderBy(showBookRolesTable.order, showBookRolesTable.id);
 
     let allocations: { positionId: string | null; userId: string | null }[] = [];
@@ -1016,14 +1018,14 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
     if (!event || !event.showBookId) { res.status(400).json({ error: "Evento ou Show Book não encontrado" }); return; }
 
     const showBookId = event.showBookId;
-    const scenes = await db.select().from(showBookScenesTable).where(eq(showBookScenesTable.showBookId, showBookId)).orderBy(showBookScenesTable.order);
-    const blocks = await db.select().from(showBookBlocksTable).where(eq(showBookBlocksTable.showBookId, showBookId)).orderBy(showBookBlocksTable.order);
+    const scenes = await db.select().from(showBookScenesTable).where(and(eq(showBookScenesTable.showBookId, showBookId), eq(showBookScenesTable.active, true))).orderBy(showBookScenesTable.order);
+    const blocks = await db.select().from(showBookBlocksTable).where(and(eq(showBookBlocksTable.showBookId, showBookId), eq(showBookBlocksTable.active, true))).orderBy(showBookBlocksTable.order);
     const initialKeyframes = await db
       .select({ id: showBookKeyframesTable.id, sceneId: showBookKeyframesTable.sceneId, markerPositions: showBookKeyframesTable.markerPositions })
       .from(showBookKeyframesTable)
       .where(and(eq(showBookKeyframesTable.type, "inicial"), eq(showBookKeyframesTable.active, true)));
     const initialKeyframeByScene = new Map(initialKeyframes.map((frame) => [frame.sceneId, frame]));
-    const roles = await db.select().from(showBookRolesTable).where(eq(showBookRolesTable.showBookId, showBookId)).orderBy(showBookRolesTable.order, showBookRolesTable.id);
+    const roles = await db.select().from(showBookRolesTable).where(and(eq(showBookRolesTable.showBookId, showBookId), eq(showBookRolesTable.active, true))).orderBy(showBookRolesTable.order, showBookRolesTable.id);
 
     let allocations: { positionId: string | null; userId: string | null }[] = [];
     if (book.scaleId) {
