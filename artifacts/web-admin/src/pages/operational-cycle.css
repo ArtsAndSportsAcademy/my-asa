@@ -21,3 +21,11 @@
 /* Desenho 18 (Claude, 06/10): publicar mês e fila de pedidos sob o mapa. */
 .cycle-publish-msg{font-size:12.5px;color:#0a6f68;align-self:center}
 .cycle-manager-queue{max-width:520px;margin-top:16px}
+
+/* 08/10: o mapa de folgas ocupa a largura toda; regime e "como editar" ficam no botão de informação. */
+.cycle-leave-layout.cycle-leave-full{grid-template-columns:minmax(0,1fr)}
+.cycle-title-info{display:flex;align-items:center;gap:8px}
+.cycle-info-button{display:inline-grid;place-items:center;width:30px;height:30px;border:1px solid #e4def2;border-radius:50%;background:#fff;color:var(--asa-purple,#6C2BF2);cursor:pointer}
+.cycle-info-button[aria-expanded="true"]{background:#f3eefe}
+.cycle-info-pop{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:10px;padding:12px 14px;border:1px solid #ece6f8;border-radius:12px;background:#faf8ff}
+.cycle-info-pop p{margin:4px 0 0;font-size:13px;line-height:1.45}
