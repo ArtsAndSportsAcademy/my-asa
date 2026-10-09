@@ -54,6 +54,7 @@ const chipBase = "border-radius:999px;padding:5px 11px;font-size:11.5px;cursor:p
 const chipOn = chipBase + "border:1px solid #cbb8f7;background:#f6f0ff;color:#6C2BF2;font-weight:700;";
 const chipOff = chipBase + "border:1px dashed #ddd6ee;background:#fff;color:#9a93b0;font-weight:600;";
 import { REVIEW_PERSON } from "@/lib/amostra";
+import { useFecharComEsc } from "@/lib/fechar-com-esc";
 
 /* ---------- datas ---------- */
 const WEEKDAY_LONG = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
@@ -631,6 +632,7 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onRemoveManual, o
 }
 
 function AjusteCelulaDialog({ bloco, pessoas, editableAreaIds, onClose, onAdjust }: { bloco: Bloco; pessoas: Pessoa[]; editableAreaIds: string[] | null; onClose: () => void; onAdjust: (mudancas: { userId: string; action: "ADICIONAR" | "REMOVER" }[], motivo?: string) => Promise<void> }) {
+  useFecharComEsc(onClose);
   const [busca, setBusca] = useState("");
   const [saving, setSaving] = useState(false);
   // Marca quem entra e quem sai; vai tudo num pedido só, em vez de esperar uma pessoa de cada vez.
@@ -1080,6 +1082,7 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
 
 const CAMPOS_MOLDE = [{ name: "nome", label: "Nome (Natal, Normal, Baixa…)", type: "text" }, { name: "inicio", label: "Vigência — início", type: "date" }, { name: "fim", label: "Vigência — fim", type: "date" }];
 function FormDialog({ title, fields = CAMPOS_MOLDE, inicial, nota, onClose, onSubmit }: { title: string; fields?: { name: string; label: string; type: string }[]; inicial?: Record<string, string>; nota?: string; onClose: () => void; onSubmit: (values: Record<string, string>) => Promise<void> }) {
+  useFecharComEsc(onClose);
   const [values, setValues] = useState<Record<string, string>>(inicial ?? {});
   const [error, setError] = useState("");
   const submit = async (event: FormEvent) => { event.preventDefault(); try { await onSubmit(values); } catch (err) { setError(err instanceof ApiError && err.data && typeof (err.data as { error?: unknown }).error === "string" ? (err.data as { error: string }).error : "Não consegui salvar."); } };
@@ -1095,6 +1098,7 @@ function FormDialog({ title, fields = CAMPOS_MOLDE, inicial, nota, onClose, onSu
 }
 
 function BlocoDialog({ weekday, vocabulario, areas, shows, pessoas, onClose, onSubmit }: { weekday: number; vocabulario: string[]; areas: Area[]; shows: { id: string; title: string }[]; pessoas: Pessoa[]; onClose: () => void; onSubmit: (v: Omit<ProgBloco, "id" | "programacaoId" | "order" | "active" | "grupoIds"> & { weekdays?: number[] }) => Promise<void> }) {
+  useFecharComEsc(onClose);
   const [rotulo, setRotulo] = useState("");
   const [inicio, setInicio] = useState("");
   const [fim, setFim] = useState("");
@@ -1137,6 +1141,7 @@ function BlocoDialog({ weekday, vocabulario, areas, shows, pessoas, onClose, onS
 
 /* ---------- atividade só de hoje (entrada manual da Escala) ---------- */
 function AtividadeDeHojeDialog({ pessoas, bloco, saving, onClose, onSubmit }: { pessoas: Pessoa[]; bloco: Bloco | null; saving: boolean; onClose: () => void; onSubmit: (v: { pessoaIds: string[]; rotulo: string; inicio: string; fim: string }) => Promise<void> }) {
+  useFecharComEsc(onClose);
   // Com `bloco`, o diálogo corrige a atividade que já existe: só o horário e o nome mudam.
   const corrigindo = Boolean(bloco);
   const [escolhidas, setEscolhidas] = useState<string[]>(bloco?.pessoaIds ?? []);
@@ -1184,6 +1189,7 @@ function AtividadeDeHojeDialog({ pessoas, bloco, saving, onClose, onSubmit }: { 
 }
 /* ---------- confirmação (as do navegador não combinam com o resto do app) ---------- */
 function ConfirmDialog({ titulo, texto, acao, onClose, onSim }: { titulo: string; texto: string; acao: string; onClose: () => void; onSim: () => void }) {
+  useFecharComEsc(onClose);
   return <div className="shows-dialog-backdrop"><div className="shows-dialog" role="dialog" aria-modal="true" aria-label={titulo}>
     <header className="shows-dialog-header"><h2>{titulo}</h2><button type="button" onClick={onClose} aria-label="Fechar"><X size={18}/></button></header>
     <div className="shows-dialog-content"><p style={css("margin:0;font-size:12.5px;line-height:1.6;color:#5b5473;text-wrap:pretty")}>{texto}</p></div>

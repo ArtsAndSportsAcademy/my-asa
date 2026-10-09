@@ -2,6 +2,7 @@ import { type CSSProperties, type FormEvent, type ReactNode, useEffect, useMemo,
 import { X } from "lucide-react";
 import { ApiError, customFetch } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useFecharComEsc } from "@/lib/fechar-com-esc";
 import { StageMap, layoutFrame, stageMapApi, type StageDefinition, type StageFormat, type StageSide } from "@/components/stage-map";
 import exampleData from "../../../../design_handoff_my_asa/dados-de-exemplo.json";
 import { css } from "@/lib/dc-style";
@@ -1164,6 +1165,7 @@ function ConflictBanner({ conflict, onReload }: { conflict: ConflictInfo; onRelo
 }
 
 function PromptDialog({ title, label, initial, onClose, onSubmit }: { title: string; label: string; initial?: string; onClose: () => void; onSubmit: (value: string) => void }) {
+  useFecharComEsc(onClose);
   const [value, setValue] = useState(initial ?? "");
   const submit = (event: FormEvent) => { event.preventDefault(); if (value.trim()) onSubmit(value.trim()); };
   return <div className="shows-dialog-backdrop"><div className="shows-dialog" role="dialog" aria-modal="true" aria-label={title}>

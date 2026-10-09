@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { Check, Clock3, Phone, WifiOff, X, Plus } from "lucide-react";
 import { customFetch } from "@workspace/api-client-react";
 import { REVIEW_PERSON } from "@/lib/amostra";
+import { useFecharComEsc } from "@/lib/fechar-com-esc";
 import "./checkin-shifts.css";
 
 type Role = "adm" | "dir" | "sup" | "mem";
@@ -23,6 +24,7 @@ const shortDate = (value: string) => value.split("-").reverse().join("/");
 const message = (error: unknown) => error instanceof Error ? error.message : "Não foi possível guardar. Seus dados continuam aqui; tente novamente.";
 
 function Dialog({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+  useFecharComEsc(onClose);
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => { ref.current?.showModal(); return () => ref.current?.close(); }, []);
   return <dialog className="shift-dialog" ref={ref} onCancel={onClose} aria-label={title}><header><h2>{title}</h2><button type="button" onClick={onClose} aria-label="Fechar"><X size={20}/></button></header>{children}</dialog>;
