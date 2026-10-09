@@ -377,7 +377,14 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
   useEffect(() => {
     if (loading) return;
     if (!todayBooks.length) { setBook(null); setBookId(""); return; }
-    if (!todayBooks.some((b) => b.id === bookId)) void open(todayBooks[0].id);
+    // Abre o show que ainda não terminou (o de agora, ou o próximo). Às 18h não faz sentido
+    // abrir o das 10h já executado; se o dia todo acabou, fica no último.
+    if (!todayBooks.some((b) => b.id === bookId)) {
+      const agora = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date());
+      const fimDe = (b: DailyBook) => { const viva = (b.sessionBlocks ?? []).filter((s: SessionBlockView) => !s.isRemoved); return time(viva[viva.length - 1]?.endTime) || time(viva[viva.length - 1]?.startTime) || "23:59"; };
+      const emAberto = todayBooks.find((b) => fimDe(b) >= agora);
+      void open((emAberto ?? todayBooks[todayBooks.length - 1]!).id);
+    }
   }, [loading, todayBooks]);
 
   const refreshOpen = async () => { if (book) { await open(book.id); if (!review) void load(); } };

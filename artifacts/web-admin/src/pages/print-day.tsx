@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Redirect } from "wouter";
 import { customFetch } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/useAuth";
+import { sampleDia, sampleLocais } from "@/lib/review-escala";
 
 /**
  * Folha do camarim (doc 12: "a escala do dia precisa existir fora do app"). Lê a mesma Escala do dia da
@@ -24,6 +25,8 @@ const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Pa
 export default function PrintDayPage() {
   const { isAuthenticated, isLoading } = useAuth();
   const params = new URLSearchParams(window.location.search);
+  // A folha do camarim também se revisa em amostra, como as outras telas.
+  const review = import.meta.env.DEV && (params.get("amostra") === "1" || window.sessionStorage.getItem("myasa-review-sample") === "1");
   const [date, setDate] = useState(params.get("data") ?? today());
   const [locationId, setLocationId] = useState(params.get("local") ?? "");
   const [locais, setLocais] = useState<{ id: string; name: string }[]>([]);
@@ -32,6 +35,7 @@ export default function PrintDayPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (review) { setLocais(sampleLocais); setLocationId((atual) => atual || sampleLocais[0]?.id || ""); return; }
     if (!isAuthenticated) return;
     customFetch<{ locais: { id: string; name: string }[] }>("/api/escalas/locais").then((r) => {
       setLocais(r.locais);
@@ -43,14 +47,15 @@ export default function PrintDayPage() {
   useEffect(() => {
     if (!locationId) return;
     setLoading(true); setError("");
+    if (review) { setDia(sampleDia(locationId, date) as unknown as Dia); setLoading(false); return; }
     customFetch<{ dia: Dia }>(`/api/escalas/dia?locationId=${locationId}&date=${date}`)
       .then((r) => setDia(r.dia))
       .catch(() => setError("Não consegui carregar a escala. Não imprima uma versão antiga."))
       .finally(() => setLoading(false));
-  }, [locationId, date]);
+  }, [locationId, date, review]);
 
   if (isLoading) return null;
-  if (!isAuthenticated) return <Redirect to="/login"/>;
+  if (!isAuthenticated && !review) return <Redirect to="/login"/>;
 
   const publicada = dia?.escala && dia.escala.status !== "DRAFT";
   const porPessoa = (dia?.pessoas ?? []).filter((p) => !p.folga).map((p) => ({ ...p, blocos: (dia?.blocos ?? []).filter((b) => b.pessoaIds.includes(p.id)).sort((a, b) => a.inicio.localeCompare(b.inicio)) }))

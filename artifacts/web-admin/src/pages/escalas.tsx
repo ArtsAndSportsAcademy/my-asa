@@ -798,14 +798,18 @@ function MinhaEscalaLocal({ minha, date, onHoje, onConfirm, saving }: { minha: M
           <span style={css("font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#3d3559")}>{b.inicio}</span>
           <span style={css("font-size:10.5px;color:#6b6482")}>{durLabel(b.inicio, b.fim)}</span>
         </div>
-        <div style={css("display:flex;flex-direction:column;gap:3px;min-width:0;flex:1")}>
+        {/* No telefone a coluna do meio não pode encolher até sobrar uma palavra por linha. */}
+        <div style={css("display:flex;flex-direction:column;gap:3px;flex:1 1 150px;min-width:150px")}>
           <span style={css("font-size:14px;font-weight:600")}>{textoDoBloco(b)}</span>
-          <span style={css("font-size:12px;color:#6b6482")}>{`${minha.location?.name ?? ""}${b.regra === "livro" ? " · Livro do Dia" + (b.dailyBookStatus === "DRAFT" ? " em preparação" : " publicado") : ""}`}</span>
+          <span style={css("font-size:12px;color:#6b6482;text-wrap:pretty")}>{`${minha.location?.name ?? ""}${b.regra === "livro" ? " · Livro do Dia" + (b.dailyBookStatus === "DRAFT" ? " em preparação" : " publicado") : ""}`}</span>
         </div>
-        {livro && <span style={css("flex:none;font-size:11px;font-weight:700;color:#6C2BF2;")}>abrir Livro do Dia →</span>}
-        {b.regra === "livro" && <span style={css("flex:none;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;border-radius:6px;background:" + tone.bg + ";color:" + tone.fg + ";")}>show</span>}
+        {/* No telefone estes dois ficam juntos na direita, sem espremer o nome do bloco. */}
+        <span style={css("display:flex;align-items:center;gap:8px;flex:none;white-space:nowrap")}>
+          {livro && <span style={css("flex:none;font-size:11px;font-weight:700;color:#6C2BF2;white-space:nowrap")}>abrir Livro do Dia →</span>}
+          {b.regra === "livro" && <span style={css("flex:none;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;border-radius:6px;background:" + tone.bg + ";color:" + tone.fg + ";")}>show</span>}
+        </span>
       </>;
-      const rowStyle = "display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #e6e1f2;border-radius:13px;padding:13px 16px;text-decoration:none;color:inherit;" + (livro ? "cursor:pointer;" : "");
+      const rowStyle = "display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;background:#fff;border:1px solid #e6e1f2;border-radius:13px;padding:13px 16px;text-decoration:none;color:inherit;" + (livro ? "cursor:pointer;" : "");
       return livro ? <Link key={b.key} href="/livro-do-dia" style={css(rowStyle)}>{row}</Link> : <div key={b.key} style={css(rowStyle)}>{row}</div>;
     })}
   </div>;
