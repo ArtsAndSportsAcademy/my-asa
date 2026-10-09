@@ -2,7 +2,7 @@ import { and, asc, eq, gte, inArray, isNotNull, isNull, lte, or } from "drizzle-
 import { db, shiftsTable, organizationsTable, operationsTable, scalesTable, locationsTable, usersTable, operationalCheckInsTable, dayCheckInsTable, dailyBookAssignmentsTable, dailyBookCheckInVacanciesTable, areaLocalSupervisorsTable, dailyBooksTable, showBooksTable, type ShiftActivitySnapshot } from "@workspace/db";
 import { operationalDate, shiftOperationalDate, OPERATIONAL_TIME_ZONE } from "../lib/operational-date.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
-import { montarEscalaDoDia, escalaPublicada } from "./escala-dia.js";
+import { comoPublicada, montarEscalaDoDia, escalaPublicada } from "./escala-dia.js";
 import { listAreaLocalScopes } from "./area-local-scope.js";
 import { enqueueNotification } from "./undo.js";
 import { assignActivityToShift, shiftCheckInWindow, validateShiftSchedule, type ShiftScheduleInput } from "./checkin-shift-schedule.js";
@@ -66,9 +66,12 @@ export async function shiftPlans(orgId: string, date: string): Promise<ShiftPlan
       .innerJoin(locationsTable, eq(scalesTable.locationId, locationsTable.id))
       .where(and(eq(locationsTable.organizationId, orgId), eq(locationsTable.closed, false), inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"]), lte(scalesTable.periodStart, activityDate), gte(scalesTable.periodEnd, activityDate)));
     for (const place of places) {
-      const day = await montarEscalaDoDia(orgId, place.id, activityDate, { publishedOnly: true });
-      if (!day?.escala || !escalaPublicada(day.escala.status)) continue;
-      const [scale] = await db.select({ operationId: scalesTable.operationId, threshold: operationsTable.lateThresholdMinutes }).from(scalesTable).innerJoin(operationsTable, eq(scalesTable.operationId, operationsTable.id)).where(and(eq(scalesTable.id, day.escala.id), eq(operationsTable.organizationId, orgId)));
+      const aoVivo = await montarEscalaDoDia(orgId, place.id, activityDate, { publishedOnly: true });
+      if (!aoVivo?.escala || !escalaPublicada(aoVivo.escala.status)) continue;
+      // Quem faz check-in é quem está na versão publicada: troca feita depois só vale quando a Administração republica.
+      const day = await comoPublicada(aoVivo);
+      const escalaId = aoVivo.escala.id;
+      const [scale] = await db.select({ operationId: scalesTable.operationId, threshold: operationsTable.lateThresholdMinutes }).from(scalesTable).innerJoin(operationsTable, eq(scalesTable.operationId, operationsTable.id)).where(and(eq(scalesTable.id, escalaId), eq(operationsTable.organizationId, orgId)));
       if (!scale) continue;
       for (const block of day.blocos) {
         const assignment = assignActivityToShift(shifts, block.inicio.slice(0, 5));
@@ -84,7 +87,7 @@ export async function shiftPlans(orgId: string, date: string): Promise<ShiftPlan
             plan = { shiftId: shift.id, shiftName: shift.name, startTime: shift.startTime, endTime: shift.endTime, date, userId, userName: person.name, areaId: person.areaId, operationId: scale.operationId, lateThresholdMinutes: scale.threshold, activities: [] };
             plans.set(key, plan);
           }
-          plan.activities.push({ key: block.key, scaleId: day.escala.id, locationId: place.id, locationName: day.location.name, label: block.rotulo, date: activityDate, startTime: block.inicio.slice(0, 5), endTime: block.fim?.slice(0, 5) ?? null, dailyBookId: block.dailyBookId });
+          plan.activities.push({ key: block.key, scaleId: escalaId, locationId: place.id, locationName: day.location.name, label: block.rotulo, date: activityDate, startTime: block.inicio.slice(0, 5), endTime: block.fim?.slice(0, 5) ?? null, dailyBookId: block.dailyBookId });
         }
       }
     }

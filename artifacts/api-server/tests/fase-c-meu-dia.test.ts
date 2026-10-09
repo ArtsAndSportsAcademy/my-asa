@@ -43,15 +43,16 @@ async function run() {
   const [local] = await db.insert(locationsTable).values({ organizationId: org!.id, name: `${tag}_Snowland` }).returning();
   await db.insert(operationLocationsTable).values({ operationId: operation!.id, locationId: local!.id });
   const [area] = await db.insert(areasTable).values({ organizationId: org!.id, name: `${tag}_Patinadores` }).returning();
-  const mk = async (name: string, role: "ADMIN" | "DIR" | "SUPERVISOR_A" | "MEMBER", located = true) => {
-    const [u] = await db.insert(usersTable).values({ organizationId: org!.id, name, username: `${tag}_${name}`.toLowerCase(), areaId: located ? area!.id : null, defaultLocationId: located ? local!.id : null }).returning();
+  const mk = async (name: string, role: "ADMIN" | "DIR" | "SUPERVISOR_A" | "MEMBER", located = true, semLocalPadrao = false) => {
+    const [u] = await db.insert(usersTable).values({ organizationId: org!.id, name, username: `${tag}_${name}`.toLowerCase(), areaId: located ? area!.id : null, defaultLocationId: located && !semLocalPadrao ? local!.id : null }).returning();
     await db.insert(userRolesTable).values({ userId: u!.id, operationId: operation!.id, role, active: true });
     return u!;
   };
   const barbara = await mk("Barbara", "ADMIN", false);
   const cris = await mk("Cris", "DIR", false);
   const deborah = await mk("Deborah", "SUPERVISOR_A");
-  const julia = await mk("Julia", "MEMBER");
+  // Julia não tem local padrão (como hoje em produção): o Meu Dia acha o local pela escala publicada.
+  const julia = await mk("Julia", "MEMBER", true, true);
   const carol = await mk("Carolzinha", "MEMBER");
   const dani = await mk("Dani", "MEMBER");
   const everyone = [barbara, cris, deborah, julia, carol, dani].map((u) => u.id);
@@ -99,6 +100,7 @@ async function run() {
     assert(Boolean(folga) && folga!.sub.includes("Carolzinha") && folga!.href === "/folgas", "Supervisão: a folga a decidir aparece e leva para Folgas");
     assert(Boolean(faltas) && faltas!.count === 2, "Supervisão: check-ins em falta = quem já devia ter chegado (Carol e a própria Deborah), sem Julia e sem quem está de folga");
     assert(Boolean(amanha) && amanha!.sub.includes("Patinadores"), "Supervisão: lembra de marcar a área dela pronta na escala de amanhã");
+    assert(!s1.pendencias.itens.some((p) => p.title.startsWith("Escala de hoje")) && !s1.saudacao.texto.includes("espera você"), "Supervisão: escala de hoje já publicada não vira pendência nem cobrança na saudação");
     assert(s1.saudacao.acao !== null && "href" in s1.saudacao.acao! && s1.saudacao.texto.includes("decis"), "Supervisão: a saudação aponta as decisões");
     assert(s1.linhaDoTempo.itens.some((i) => i.title === "TREINO GELO" && i.tag.includes("sem check-in")), "Supervisão: o bloco em curso mostra quantos faltam fazer check-in");
 

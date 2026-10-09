@@ -1816,6 +1816,50 @@ router.patch("/daily-book/:id/assignments/:assignmentId", requireAuth, requireOr
   }
 });
 
+/**
+ * 09/10: ajuste na Escala de um bloco que vem de um Livro do Dia troca a pessoa no próprio Livro,
+ * para Escala e Livro dizerem sempre a mesma coisa. Tirar abre a vaga da pessoa; colocar preenche a
+ * primeira vaga aberta. Devolve false quando não há o que mudar no Livro (ex.: colocar alguém sem
+ * vaga aberta, ou tirar quem só estava na Escala) — aí o ajuste fica só na Escala, como antes.
+ */
+export async function ajustarPessoaNoLivro(input: { dailyBookId: string; userId: string; action: "ADICIONAR" | "REMOVER"; actorId: string }): Promise<boolean> {
+  const [book] = await db.select().from(dailyBooksTable).where(eq(dailyBooksTable.id, input.dailyBookId)).limit(1);
+  if (!book || book.status === "EXECUTED" || book.status === "CANCELLED") return false;
+  const vivas = and(
+    eq(dailyBookAssignmentsTable.dailyBookId, book.id), isNull(dailyBookAssignmentsTable.supersededAt),
+    ne(dailyBookAssignmentsTable.status, "REMOVED"), eq(dailyBookPositionsTable.isRemoved, false), isNull(dailyBookPositionsTable.supersededAt),
+  );
+  const daPessoa = await db.select({ id: dailyBookAssignmentsTable.id }).from(dailyBookAssignmentsTable)
+    .innerJoin(dailyBookPositionsTable, eq(dailyBookAssignmentsTable.positionId, dailyBookPositionsTable.id))
+    .where(and(vivas, eq(dailyBookAssignmentsTable.userId, input.userId)));
+  let alvo: { id: string }[];
+  if (input.action === "REMOVER") alvo = daPessoa;
+  else {
+    if (daPessoa.length) return true; // já está no Livro: nada a mudar
+    alvo = await db.select({ id: dailyBookAssignmentsTable.id }).from(dailyBookAssignmentsTable)
+      .innerJoin(dailyBookPositionsTable, eq(dailyBookAssignmentsTable.positionId, dailyBookPositionsTable.id))
+      .where(and(vivas, isNull(dailyBookAssignmentsTable.userId)))
+      .orderBy(dailyBookPositionsTable.createdAt, dailyBookPositionsTable.id).limit(1);
+  }
+  if (!alvo.length) return false;
+  const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(book.id) };
+  await mutateDailyBook(book.id, book.version, async (tx) => {
+    for (const a of alvo) {
+      await tx.update(dailyBookAssignmentsTable)
+        .set(input.action === "REMOVER" ? { userId: null, status: "OPEN", updatedAt: new Date() } : { userId: input.userId, status: "ASSIGNED", updatedAt: new Date() })
+        .where(eq(dailyBookAssignmentsTable.id, a.id));
+    }
+    return alvo;
+  }, async (tx) => {
+    const afterSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(book.id, tx) };
+    await writeDailyBookAudit(book.id, input.actorId, "assignment_swap",
+      { version: book.version, snapshot: beforeSnapshot, userId: input.userId, origem: "ajuste na Escala" },
+      { version: book.version + 1, snapshot: afterSnapshot, userId: input.userId, action: input.action, assignmentIds: alvo.map((a) => a.id) }, tx);
+  });
+  eventBus.emit("daily-book.updated", { dailyBookId: book.id, changeType: "assignment_swap", changedBy: input.actorId });
+  return true;
+}
+
 router.delete("/daily-book/:id/positions/:positionId", requireAuth, requireOrganization, requireRole("ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"), async (req, res) => {
   const id = req.params.id as string;
   const positionId = req.params.positionId as string;

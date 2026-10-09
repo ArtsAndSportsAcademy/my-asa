@@ -15,7 +15,7 @@ import "./escalas.css";
 
 type Role = "adm" | "dir" | "sup" | "mem";
 type Regra = "todos" | "ninguem" | "area" | "grupo" | "pessoas" | "livro";
-type Bloco = { key: string; rotulo: string; inicio: string; fim: string | null; origem: "programacao" | "livro" | "manual" | "solicitacao"; regra: Regra | null; pessoaIds: string[]; vazio: boolean; sinal: string | null; showBookId: string | null; dailyBookId: string | null; dailyBookStatus: string | null; blocoId: string | null };
+type Bloco = { key: string; rotulo: string; inicio: string; fim: string | null; origem: "programacao" | "livro" | "manual" | "solicitacao"; regra: Regra | null; pessoaIds: string[]; vazio: boolean; sinal: string | null; showBookId: string | null; dailyBookId: string | null; dailyBookStatus: string | null; blocoId: string | null; allocationId?: string | null };
 type Pessoa = { id: string; name: string; areaId: string | null; areaName: string | null; folga: string | null };
 type Area = { id: string; name: string; supervisores: { id: string; name: string }[]; pronta: { por: string | null; em: string } | null };
 type Dia = { date: string; location: { id: string; name: string }; escala: { id: string; status: string; version: number; publishedAt: string | null; alteradaDesde: string | null } | null; programacao: { id: string; nome: string; vigenciaInicio: string; vigenciaFim: string } | null; areas: Area[]; pessoas: Pessoa[]; blocos: Bloco[] };
@@ -108,6 +108,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
   const [locais, setLocais] = useState<Local[]>([]);
   const [localId, setLocalId] = useState("");
   const [opMenu, setOpMenu] = useState(false);
+  const [manual, setManual] = useState(false);
   const [dia, setDia] = useState<Dia | null>(null);
   const [minha, setMinha] = useState<Minha | null>(null);
   const [areasMinhas, setAreasMinhas] = useState<string[]>([]);
@@ -116,6 +117,8 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
   const [locaisProntos, setLocaisProntos] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  // Qual ação está em andamento, para o botão dizer "Gerando…"/"Publicando…" enquanto o servidor responde.
+  const [busy, setBusy] = useState("");
   const [refresh, setRefresh] = useState(0);
 
   // Locais visíveis: amostra = locais do JSON; real = /escalas/locais (escopo checado no servidor).
@@ -124,10 +127,10 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
     if (review) {
       const list = sampleLocais.map((l) => ({ ...l, podeEditar: isAdm || (role === "sup" && sampleAreasSupervisionadas(me, l.id).length > 0), areasSupervisionadas: role === "sup" ? sampleAreasSupervisionadas(me, l.id) : [] }))
         .filter((l) => role !== "sup" || l.podeEditar);
-      setLocais(list); setLocalId((prev) => prev || list[0]?.id || "");
+      setLocais(list); setLocalId((prev) => prev || lembrarLocal(list) || "");
       return;
     }
-    customFetch<{ locais: Local[] }>("/api/escalas/locais").then((r) => { setLocais(r.locais); setLocalId((prev) => prev || r.locais[0]?.id || ""); }).catch(() => setError("Não consegui carregar os locais.")).finally(() => setLocaisProntos(true));
+    customFetch<{ locais: Local[] }>("/api/escalas/locais").then((r) => { setLocais(r.locais); setLocalId((prev) => prev || lembrarLocal(r.locais) || ""); }).catch(() => setError("Não consegui carregar os locais.")).finally(() => setLocaisProntos(true));
   }, [review, role]);
 
   useEffect(() => {
@@ -178,7 +181,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
         {!isMem && locais.length > 1 && <span style={css("flex:none;color:#6b6482;font-weight:500")}>▾</span>}
       </button>
       {opMenu && <div role="menu" style={css("position:absolute;right:0;top:44px;z-index:30;width:206px;background:#fff;border:1px solid #ddd6ee;border-radius:12px;padding:6px;box-shadow:0 22px 40px -20px rgba(40,20,90,.45);display:flex;flex-direction:column;gap:2px;")}>
-        {locais.map((l) => <button key={l.id} type="button" role="menuitem" onClick={() => { setLocalId(l.id); setOpMenu(false); }}
+        {locais.map((l) => <button key={l.id} type="button" role="menuitem" onClick={() => { setLocalId(l.id); guardarLocal(l.id); setOpMenu(false); }}
           style={css("text-align:left;border:none;background:" + (localId === l.id ? "#f3ebff" : "none") + ";color:" + (localId === l.id ? "#6C2BF2" : "#3d3559") + ";border-radius:8px;padding:8px 10px;font-size:12px;font-weight:" + (localId === l.id ? "700" : "600") + ";cursor:pointer;font-family:Manrope,sans-serif;min-height:44px")}>{l.name}</button>)}
       </div>}
     </div>);
@@ -189,7 +192,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
   const errMsg = (err: unknown, fallback: string) => err instanceof ApiError && err.data && typeof err.data === "object" && typeof (err.data as { message?: unknown }).message === "string" ? (err.data as { message: string }).message : fallback;
   const marcarPronta = async (areaId: string, pronta: boolean) => {
     if (!dia) return;
-    setSaving(true); setError("");
+    setSaving(true); setBusy(`pronta:${areaId}`); setError("");
     try {
       if (review) {
         const cur: SampleEscalaState = loadSampleEscala(localId, date) ?? { status: "DRAFT", version: 1, prontas: {}, publishedAt: null, alteradaDesde: null };
@@ -200,11 +203,11 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
         await customFetch("/api/escalas/dia/pronta", { method: "POST", body: JSON.stringify({ locationId: localId, date, areaId, pronta }) });
       }
       setRefresh((n) => n + 1);
-    } catch (err) { setError(errMsg(err, "Não consegui marcar a área.")); } finally { setSaving(false); }
+    } catch (err) { setError(errMsg(err, "Não consegui marcar a área.")); } finally { setSaving(false); setBusy(""); }
   };
   const gerarDia = async () => {
     if (!localId) return;
-    setSaving(true); setError("");
+    setSaving(true); setBusy("gerar"); setError("");
     try {
       if (review) {
         const cur: SampleEscalaState = loadSampleEscala(localId, date) ?? { status: "DRAFT", version: 1, prontas: {}, publishedAt: null, alteradaDesde: null };
@@ -213,11 +216,11 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
         await customFetch("/api/escalas/dia/gerar", { method: "POST", body: JSON.stringify({ locationId: localId, date }) });
       }
       setRefresh((n) => n + 1);
-    } catch (err) { setError(errMsg(err, "Não consegui gerar a Escala e os Livros do Dia.")); } finally { setSaving(false); }
+    } catch (err) { setError(errMsg(err, "Não consegui gerar a Escala e os Livros do Dia.")); } finally { setSaving(false); setBusy(""); }
   };
   const publicar = async (republicar: boolean) => {
     if (!dia?.escala) return;
-    setSaving(true); setError("");
+    setSaving(true); setBusy("publicar"); setError("");
     try {
       if (review) {
         const cur = loadSampleEscala(localId, date)!;
@@ -226,9 +229,13 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
         saveSampleEscala(localId, date, { ...cur, status: republicar ? "REPUBLISHED" : "PUBLISHED", version: cur.version + 1, publishedAt: new Date().toISOString(), alteradaDesde: null });
       } else {
         await customFetch(`/api/escalas/${dia.escala.id}/${republicar ? "republicar" : "publicar"}`, { method: "POST", body: JSON.stringify({ expectedVersion: dia.escala.version }) });
+        // Relê o dia antes de liberar o botão: assim a tela não fica mostrando "Rascunho" depois de publicar.
+        const r = await customFetch<{ dia: Dia; areasSupervisionadas: string[] }>(`/api/escalas/dia?locationId=${localId}&date=${date}`);
+        setDia(r.dia); setAreasMinhas(r.areasSupervisionadas);
+        return;
       }
       setRefresh((n) => n + 1);
-    } catch (err) { setError(errMsg(err, "Não consegui publicar a escala.")); } finally { setSaving(false); }
+    } catch (err) { setError(errMsg(err, "Não consegui publicar a escala.")); } finally { setSaving(false); setBusy(""); }
   };
   const ajustarCelula = async (bloco: Bloco, pessoaId: string, action: "ADICIONAR" | "REMOVER") => {
     if (!dia || !localId) return;
@@ -243,6 +250,26 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       }
       setRefresh((n) => n + 1);
     } catch (err) { setError(errMsg(err, "Não consegui ajustar esta célula.")); } finally { setSaving(false); }
+  };
+  /** Atividade só deste dia, fora da Programação: entra como entrada manual da própria Escala. */
+  const criarEntradaManual = async (v: { pessoaId: string; rotulo: string; inicio: string; fim: string }) => {
+    if (!dia?.escala) return;
+    setSaving(true); setBusy("manual"); setError("");
+    try {
+      if (!review) {
+        await customFetch(`/api/scales/${dia.escala.id}/entries`, { method: "POST", headers: { "if-match": String(dia.escala.version) },
+          body: JSON.stringify({ memberId: v.pessoaId, date, label: v.rotulo, startTime: v.inicio, endTime: v.fim || null }) });
+      }
+      setManual(false); setRefresh((n) => n + 1);
+    } catch (err) { setError(errMsg(err, "Não consegui criar a atividade de hoje.")); } finally { setSaving(false); setBusy(""); }
+  };
+  const removerEntradaManual = async (allocationId: string) => {
+    if (!dia?.escala) return;
+    setSaving(true); setBusy(`manual:${allocationId}`); setError("");
+    try {
+      if (!review) await customFetch(`/api/scales/${dia.escala.id}/entries/${allocationId}`, { method: "DELETE", headers: { "if-match": String(dia.escala.version) } });
+      setRefresh((n) => n + 1);
+    } catch (err) { setError(errMsg(err, "Não consegui tirar a atividade de hoje.")); } finally { setSaving(false); setBusy(""); }
   };
   const confirmarEscala = async (escala: MinhaLocal) => {
     setSaving(true); setError("");
@@ -310,11 +337,13 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
       </div>}
       {carregandoTela && !error && !dia && !minha && <div aria-busy="true" style={css("padding:16px;text-align:center;font-size:12.5px;color:#6b6482;background:#fff;border:1px dashed #ddd6ee;border-radius:12px")}>Montando a escala…</div>}
       {showMinha && minha && <MinhaEscala minha={minha} date={date} onHoje={() => setDate(todayISO())} onConfirm={confirmarEscala} saving={saving}/>}
-      {!isMem && tab === "escala" && dia && <EscalaGrid dia={dia} canEdit={isAdm || areasMinhas.length > 0} editableAreaIds={isAdm ? null : areasMinhas} onAdjust={ajustarCelula}/>} 
+      {!isMem && tab === "escala" && dia && <EscalaGrid dia={dia} canEdit={isAdm || areasMinhas.length > 0} editableAreaIds={isAdm ? null : areasMinhas} onAdjust={ajustarCelula} onRemoveManual={isAdm ? removerEntradaManual : undefined}/>} 
       {!isMem && tab === "prog" && localId && <ProgramacaoTab review={review} localId={localId} localName={operationLabel} date={date} dia={dia} canEdit={Boolean(local?.podeEditar)} onChanged={() => setRefresh((n) => n + 1)}/>}
     </div>
 
-    <Rodape role={role} tab={tab} onMinha={tab === "minha"} dia={dia} minha={minha} areasMinhas={areasMinhas} saving={saving} onGerar={gerarDia} onPronta={marcarPronta} onPublicar={publicar}/>
+    {manual && dia && <AtividadeDeHojeDialog pessoas={dia.pessoas} saving={busy === "manual"} onClose={() => setManual(false)} onSubmit={criarEntradaManual}/>}
+
+    <Rodape role={role} tab={tab} onMinha={tab === "minha"} dia={dia} minha={minha} areasMinhas={areasMinhas} saving={saving} busy={busy} onGerar={gerarDia} onPronta={marcarPronta} onPublicar={publicar} onManual={() => setManual(true)}/>
   </section>;
 }
 
@@ -348,7 +377,7 @@ function Calendario({ date, onPick }: { date: string; onPick: (d: string) => voi
 }
 
 /* ---------- aba Escala: grade pessoas × horários ---------- */
-function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust }: { dia: Dia; canEdit: boolean; editableAreaIds: string[] | null; onAdjust: (bloco: Bloco, pessoaId: string, action: "ADICIONAR" | "REMOVER") => Promise<void> }) {
+function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onRemoveManual }: { dia: Dia; canEdit: boolean; editableAreaIds: string[] | null; onAdjust: (bloco: Bloco, pessoaId: string, action: "ADICIONAR" | "REMOVER") => Promise<void>; onRemoveManual?: (allocationId: string) => Promise<void> }) {
   const [view, setView] = useState<"pessoa" | "atividade">("pessoa");
   const [team, setTeam] = useState("todos");
   const [zoom, setZoom] = useState(100);
@@ -538,6 +567,7 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust }: { dia: Dia; can
                     {b.regra !== "ninguem" && (b.vazio ? <span style={css("display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:700;background:#fff4e4;color:#B06E00;border:1px dashed #f0d8b0;")}>sem ninguém · defina quem entra</span>
                       : <span style={css("font-size:10.5px;color:#6b6482;margin-left:2px")}>{plural(who.length, "pessoa", "pessoas")}</span>)}
                     {canEdit && b.regra !== "ninguem" && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => setAjustando(b)}>Ajustar</button>}
+                    {onRemoveManual && b.origem === "manual" && b.allocationId && <button type="button" className="esc-cell-adjust esc-hit" onClick={() => void onRemoveManual(b.allocationId!)}>Tirar do dia</button>}
                   </div>
                 </td>
               </tr>;
@@ -572,7 +602,7 @@ function AjusteCelulaDialog({ bloco, pessoas, editableAreaIds, onClose, onAdjust
   return <div className="shows-dialog-backdrop" role="presentation"><div className="shows-dialog" role="dialog" aria-modal="true" aria-label={`Ajustar ${textoDoBloco(bloco)}`}>
     <header className="shows-dialog-header"><div><h2>Ajustar bloco</h2><p>{`${textoDoBloco(bloco)} · ${faixa(bloco)}`}</p></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18}/></button></header>
     <div className="shows-dialog-content" style={css("display:flex;flex-direction:column;gap:12px")}>
-      <p style={css("margin:0;font-size:12.5px;line-height:1.5;color:#5b5473")}>Este ajuste vale só para este dia. A Programação e o Livro do Dia não mudam.</p>
+      <p style={css("margin:0;font-size:12.5px;line-height:1.5;color:#5b5473")}>Este ajuste vale só para este dia; a Programação não muda. Em show com Livro do Dia, a vaga muda no Livro também.</p>
       <input autoFocus value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar pessoa ou área" aria-label="Buscar pessoa para ajustar" style={css("width:100%;box-sizing:border-box;border:1px solid #ddd6ee;border-radius:10px;padding:10px 12px;font:600 12.5px Manrope,sans-serif;color:#2b2545;background:#fff;")}/>
       <div style={css("display:flex;flex-direction:column;gap:7px")}>{elegiveis.map((p) => {
         const entra = bloco.pessoaIds.includes(p.id);
@@ -590,7 +620,15 @@ function AjusteCelulaDialog({ bloco, pessoas, editableAreaIds, onClose, onAdjust
 }
 
 /* ---------- rodapé: áreas prontas e publicação ---------- */
-function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, onGerar, onPronta, onPublicar }: { role: Role; tab: string; onMinha?: boolean; dia: Dia | null; minha: Minha | null; areasMinhas: string[]; saving: boolean; onGerar: () => void; onPronta: (areaId: string, pronta: boolean) => void; onPublicar: (republicar: boolean) => void }) {
+// O último local escolhido fica guardado neste aparelho; se ele sumir da lista, volta ao primeiro.
+const LOCAL_KEY = "myasa-escalas-local";
+function lembrarLocal(list: { id: string }[]): string | undefined {
+  try { const id = localStorage.getItem(LOCAL_KEY); if (id && list.some((l) => l.id === id)) return id; } catch { /* sem armazenamento */ }
+  return list[0]?.id;
+}
+function guardarLocal(id: string) { try { localStorage.setItem(LOCAL_KEY, id); } catch { /* sem armazenamento */ } }
+
+function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, busy = "", onGerar, onPronta, onPublicar, onManual }: { role: Role; tab: string; onMinha?: boolean; dia: Dia | null; minha: Minha | null; areasMinhas: string[]; saving: boolean; busy?: string; onManual?: () => void; onGerar: () => void; onPronta: (areaId: string, pronta: boolean) => void; onPublicar: (republicar: boolean) => void }) {
   const isMem = role === "mem" || onMinha, isDir = role === "dir", isAdm = role === "adm";
   let note = "";
   const actions: ReactNode[] = [];
@@ -610,17 +648,19 @@ function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, o
     else if (dia.escala.alteradaDesde) note = "Versão publicada preservada · ao republicar, quem foi afetado recebe a escala e o livro atualizados";
     else if (published) note = `Publicada${dia.escala.publishedAt ? ` às ${hhmm(dia.escala.publishedAt)}` : ""} · ${dia.areas.length} ${dia.areas.length === 1 ? "área" : "áreas"} · a mesma escalação está no Livro do Dia`;
     else note = `Rascunho · ${prontas.length} de ${dia.areas.length} áreas prontas${faltam.length ? ` · falta ${faltam.map((a) => a.name).join(", ")}` : ""} · publica a Administração`;
-    if (tab === "escala" && isAdm && !dia.escala) actions.push(<button key="generate" type="button" className="esc-hit" disabled={saving} onClick={onGerar} style={css(btn("primary"))}>Gerar Escala e Livros</button>);
+    if (tab === "escala" && isAdm && !dia.escala) actions.push(<button key="generate" type="button" className="esc-hit" disabled={saving} onClick={onGerar} style={css(btn("primary"))}>{busy === "gerar" ? "Gerando Escala e Livros…" : "Gerar Escala e Livros"}</button>);
+    // Atividade que só existe hoje (prova de figurino, reunião de última hora): não mexe no molde da Programação.
+    if (tab === "escala" && isAdm && dia.escala && onManual) actions.push(<button key="manual" type="button" className="esc-hit" disabled={saving} onClick={onManual} style={css(btn("ghost"))}>Atividade só de hoje</button>);
     if (tab === "escala" && !isDir && !published) {
       for (const areaId of areasMinhas) {
         const area = dia.areas.find((a) => a.id === areaId);
         if (!area) continue;
-        actions.push(<button key={areaId} type="button" className="esc-hit" disabled={saving} onClick={() => onPronta(areaId, !area.pronta)} style={css(btn(area.pronta ? "ghost" : "primary"))}>{area.pronta ? `Desmarcar ${area.name}` : `Marcar ${area.name} como pronta`}</button>);
+        actions.push(<button key={areaId} type="button" className="esc-hit" disabled={saving} onClick={() => onPronta(areaId, !area.pronta)} style={css(btn(area.pronta ? "ghost" : "primary"))}>{busy === `pronta:${areaId}` ? "Salvando…" : area.pronta ? `Desmarcar ${area.name}` : `Marcar ${area.name} como pronta`}</button>);
       }
       if (isAdm && dia.escala) actions.push(<button key="pub" type="button" className="esc-hit" disabled={saving || faltam.length > 0} title={faltam.length ? `Faltam: ${faltam.map((a) => a.name).join(", ")}` : undefined} onClick={() => onPublicar(false)}
-        style={css(faltam.length ? "border-radius:999px;padding:9px 17px;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;border:none;background:#e6e1f2;color:#6b6482;cursor:default" : btn("primary"))}>{faltam.length ? `Publicar conjunto · faltam ${faltam.length}` : "Publicar Escala e Livros"}</button>);
+        style={css(faltam.length ? "border-radius:999px;padding:9px 17px;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;border:none;background:#e6e1f2;color:#6b6482;cursor:default" : btn("primary"))}>{faltam.length ? `Publicar conjunto · faltam ${faltam.length}` : busy === "publicar" ? "Publicando…" : "Publicar Escala e Livros"}</button>);
     }
-    if (tab === "escala" && isAdm && dia.escala?.alteradaDesde) actions.push(<button key="repub" type="button" className="esc-hit" disabled={saving} onClick={() => onPublicar(true)} style={css(btn("primary"))}>Republicar conjunto</button>);
+    if (tab === "escala" && isAdm && dia.escala?.alteradaDesde) actions.push(<button key="repub" type="button" className="esc-hit" disabled={saving} onClick={() => onPublicar(true)} style={css(btn("primary"))}>{busy === "publicar" ? "Republicando…" : "Republicar conjunto"}</button>);
   }
   const areas = !isMem && tab === "escala" && dia ? dia.areas : [];
   return <footer className="esc-pad" style={css("display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 20px;border-top:1px solid #ebe6f6;background:#fff")}>
@@ -915,5 +955,33 @@ function BlocoDialog({ weekday, vocabulario, areas, shows, onClose, onSubmit }: 
       {error && <p role="alert" style={css("font-size:12px;color:#a12c2c")}>{error}</p>}
     </form></div>
     <footer className="shows-dialog-footer"><button form="esc-bloco" className="shows-primary">Criar bloco</button></footer>
+  </div></div>;
+}
+
+/* ---------- atividade só de hoje (entrada manual da Escala) ---------- */
+function AtividadeDeHojeDialog({ pessoas, saving, onClose, onSubmit }: { pessoas: Pessoa[]; saving: boolean; onClose: () => void; onSubmit: (v: { pessoaId: string; rotulo: string; inicio: string; fim: string }) => Promise<void> }) {
+  const [pessoaId, setPessoaId] = useState("");
+  const [rotulo, setRotulo] = useState("");
+  const [inicio, setInicio] = useState("");
+  const [fim, setFim] = useState("");
+  const pronto = Boolean(pessoaId && rotulo.trim() && /^([01]\d|2[0-3]):[0-5]\d$/.test(inicio));
+  const submit = (e: React.FormEvent) => { e.preventDefault(); if (pronto) void onSubmit({ pessoaId, rotulo: rotulo.trim(), inicio, fim }); };
+  return <div className="shows-dialog-backdrop"><div className="shows-dialog" role="dialog" aria-modal="true" aria-label="Atividade só de hoje">
+    <header className="shows-dialog-header"><div><h2>Atividade só de hoje</h2><p>Vale apenas neste dia — a Programação não muda.</p></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18}/></button></header>
+    <div className="shows-dialog-content"><form id="esc-manual" onSubmit={submit} className="shows-form">
+      <label>Quem faz
+        <select value={pessoaId} onChange={(e) => setPessoaId(e.target.value)} required>
+          <option value="">Escolha a pessoa</option>
+          {pessoas.filter((p) => !p.folga).map((p) => <option key={p.id} value={p.id}>{p.areaName ? `${p.name} · ${p.areaName}` : p.name}</option>)}
+        </select>
+      </label>
+      <label>O que é<input value={rotulo} onChange={(e) => setRotulo(e.target.value)} placeholder="Prova de figurino" maxLength={60} required/></label>
+      <label>Começa às<input type="time" value={inicio} onChange={(e) => setInicio(e.target.value)} required/></label>
+      <label>Termina às (opcional)<input type="time" value={fim} onChange={(e) => setFim(e.target.value)}/></label>
+    </form></div>
+    <footer className="shows-dialog-footer">
+      <button type="button" onClick={onClose} className="shows-secondary">Cancelar</button>
+      <button form="esc-manual" className="shows-primary" disabled={!pronto || saving}>{saving ? "Salvando…" : "Pôr no dia"}</button>
+    </footer>
   </div></div>;
 }

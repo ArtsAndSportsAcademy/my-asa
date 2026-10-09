@@ -46,9 +46,9 @@ const EST = {
 type Est = keyof typeof EST;
 const estOf = (status: DailyBookStatus): Est => status === "DRAFT" ? "rasc" : status === "EXECUTED" ? "exec" : status === "CANCELLED" ? "canc" : "pub";
 const TIPO_META: Record<ShowKind, [string, string, string, string]> = {
-  form: ["só formação", "#0E8F86", "Cenas com mapa de posições, sem personagem nomeado.", "Patinação livre e flashmob são assim: o elenco entra por posição."],
-  mix: ["formação + personagens", "#6C2BF2", "Cenas com mapa, e dentro delas os personagens do show.", "É o caso do Musical: a cena tem posições e alguns lugares são de personagem."],
-  pers: ["só personagens", "#C97A17", "Sem cena e sem mapa — o livro é a lista de quem faz cada personagem.", "Yeti, Nanook, Antonella e Cuca são assim."],
+  form: ["só formação", "#0E8F86", "Cenas com mapa de posições, sem personagem nomeado.", "O elenco entra por posição."],
+  mix: ["formação + personagens", "#6C2BF2", "Cenas com mapa, e dentro delas os personagens do show.", "A cena tem posições, e alguns lugares são de personagem."],
+  pers: ["só personagens", "#C97A17", "Sem cena e sem mapa — o livro é a lista de quem faz cada personagem.", "Para trocar quem faz, use Ajustar na Escala do dia."],
 };
 const MONO_LABEL = "font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482";
 const CARD = "flex:none;border:1px solid #e6e1f2;border-radius:16px;background:#fff;overflow:hidden";
@@ -353,12 +353,22 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
       const callTimes: Record<string, string> = {};
       sessionsResult.sessions.forEach((s) => { if (s.callTime) callTimes[time(s.startTime)] = time(s.callTime); });
       setSource(showResult ? sourceFromShowBook(showResult.showBook, callTimes) : null);
-      const characterIds = [...new Set((showResult?.showBook.scenes ?? []).flatMap((s) => s.blocks.flatMap((b) => b.positions.flatMap((p) => (p.lines ?? []).filter((l) => l.type === "CHARACTER" && l.characterId).map((l) => l.characterId!)))))];
-      const resolved = await Promise.all(characterIds.map((characterId) =>
-        customFetch<{ character: { name: string; mode: string }; selected: { name: string; order: number; currentCount: number } | null }>(`/api/characters/${characterId}/resolve?operationId=${opened.operationId}&date=${opened.eventDate}`)
-          .then((r) => ({ characterId, name: r.character.name, selectedName: r.selected?.name ?? null, why: !r.selected ? "sem ninguém disponível" : r.character.mode === "titular" ? (r.selected.order === 0 ? "titular" : "titular indisponível · próximo da fila") : `rodízio · fez ${r.selected.currentCount}×, o menor da fila` }))
-          .catch(() => null)));
-      setCharactersToday(resolved.filter((c): c is CharacterToday => Boolean(c)));
+      // 09/10: quem faz hoje é quem está escalado neste Livro do Dia (vaga a vaga, já com equilíbrio,
+      // folgas e ajustes da Escala) — não um novo cálculo por personagem, que repetia a mesma pessoa.
+      const escaladosPorVaga = new Map<string, string[]>();
+      for (const scene of opened.scenes ?? []) for (const block of scene.blocks) for (const p of block.positions) {
+        if (p.sourceRoleId && !p.isRemoved) escaladosPorVaga.set(p.sourceRoleId, [...(escaladosPorVaga.get(p.sourceRoleId) ?? []), ...namesOf(p)]);
+      }
+      const vagas = (showResult?.showBook.scenes ?? []).flatMap((s) => s.blocks.flatMap((b) => b.positions.flatMap((p) => (p.lines ?? []).filter((l) => l.type === "CHARACTER" && l.characterId).map((l) => ({ positionId: p.id, characterId: l.characterId! })))));
+      const modos = new Map<string, { name: string; mode: string }>();
+      await Promise.all([...new Set(vagas.map((v) => v.characterId))].map((characterId) =>
+        customFetch<{ character: { name: string; mode: string } }>(`/api/characters/${characterId}/resolve?operationId=${opened.operationId}&date=${opened.eventDate}`)
+          .then((r) => { modos.set(characterId, r.character); }).catch(() => undefined)));
+      setCharactersToday(vagas.filter((v) => modos.has(v.characterId)).map((v) => {
+        const quem = escaladosPorVaga.get(v.positionId) ?? [];
+        const modo = modos.get(v.characterId)!;
+        return { characterId: `${v.positionId}`, name: modo.name, selectedName: quem.join(", ") || null, why: !quem.length ? "sem ninguém escalado hoje" : modo.mode === "titular" ? "titular" : "rodízio" };
+      }));
       await customFetch<{ formations: Formation[] }>(`/api/formations/by-show/${opened.showBookId}`).then((r) => setFormations(r.formations)).catch(() => setFormations([]));
     } catch { setError("Não consegui abrir este Livro do Dia."); }
   };
@@ -468,7 +478,7 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
     : isDir
       ? "Direção lê qualquer livro de qualquer local, com o estado de cada um — e não edita nenhum. Quem ajusta é quem responde pelo show."
       : role === "sup"
-        ? "Você ajusta os livros dos shows sob sua responsabilidade — vindo de 10 Responsabilidades, não de um campo escondido no cadastro do show."
+        ? "Você ajusta os livros dos shows sob sua responsabilidade."
         : "Administração faz tudo em qualquer local, inclusive reabrir dia fechado. Tudo o que remove fica recuperável e registrado em auditoria.";
 
   return <section className="ldd-root" style={css("position:relative;flex:1;display:flex;flex-direction:column;background:#faf9fe;min-width:0;min-height:calc(100vh - 48px)")}>
@@ -532,7 +542,7 @@ function HojeTab(props: {
       : (todayBooks.length === 1 ? "1 show na agenda de hoje" : `${todayBooks.length} shows na agenda de hoje, cada um com o seu livro`) + (props.supLocal ? ` · só ${sampleLocalName(props.supLocal)}, o seu escopo` : ""),
     rel: isMem
       ? "Sua escala diz que você trabalha, em que horário e onde. O livro diz o que você faz dentro do show: em que cena entra e em que posição. É a mesma convocação, vista de dois jeitos — não são duas listas para conferir."
-      : "Quem entra em cada show foi resolvido uma vez: rodízio do Livro do Show, menos quem está de folga. A Escala mostra isso por pessoa e hora; o livro mostra o mesmo por cena e posição. Tirar alguém aqui derruba o bloco dele na escala, e trocar na escala troca a posição aqui. Show que ainda não está na agenda não se cria nesta tela — marca-se em Agenda, e o livro nasce junto. E a ordem importa: o livro só publica depois da escala do dia publicada, porque é a escala que convoca — se a escala for republicada com outro elenco, o livro pede republicação também.",
+      : "Quem entra em cada show sai do Livro do Show (titular primeiro, depois o rodízio), sem quem está de folga. A Escala mostra isso por pessoa e horário; o livro, por personagem e posição. Trocar alguém na Escala troca a vaga aqui também. O livro é publicado junto com a Escala do dia.",
   };
 
   const header = <div style={css("flex:none;display:flex;flex-direction:column;gap:8px")}>
@@ -702,7 +712,7 @@ function HojeTab(props: {
               </span>
             </div>;
           })}
-          {charactersToday.length > 0 && <span style={css("font-size:11px;line-height:1.5;color:#6b6482;text-wrap:pretty")}>Resolvido uma vez por dia — a mesma pessoa cobre todas as sessões e todos os shows de hoje que usam este personagem.</span>}
+          {charactersToday.length > 0 && <span style={css("font-size:11px;line-height:1.5;color:#6b6482;text-wrap:pretty")}>É quem está escalado neste Livro do Dia e cobre todas as sessões deste show hoje. Para trocar, use Ajustar na Escala.</span>}
         </div>
       </div>
     </div>

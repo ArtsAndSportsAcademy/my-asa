@@ -25,6 +25,7 @@ import {
   escalaAreasProntasTable,
   escalaBlocoAjustesTable,
   folgasTable,
+  historyEventsTable,
   leaveRequestsTable,
   locationsTable,
   operationLocationsTable,
@@ -343,4 +344,29 @@ export function pessoasAfetadas(antes: Record<string, string[]> | null, depois: 
   if (!antes) return Object.keys(depois);
   const todas = new Set([...Object.keys(antes), ...Object.keys(depois)]);
   return [...todas].filter((pessoa) => (antes[pessoa] ?? []).join("\n") !== (depois[pessoa] ?? []).join("\n"));
+}
+
+/** Convocação guardada na última publicação/republicação desta Escala (null se nunca publicou). */
+export async function convocacaoPublicada(scaleId: string): Promise<Record<string, string[]> | null> {
+  const [ultima] = await db.select({ afterState: historyEventsTable.afterState }).from(historyEventsTable)
+    .where(and(eq(historyEventsTable.entityId, scaleId), inArray(historyEventsTable.action, ["escala.publicada", "escala.republicada"])))
+    .orderBy(desc(historyEventsTable.createdAt)).limit(1);
+  return (ultima?.afterState as { convocacao?: Record<string, string[]> } | null | undefined)?.convocacao ?? null;
+}
+
+/**
+ * Versão publicada preservada: o que mudou depois de publicar (troca, Livro, bloco novo na Programação)
+ * só chega ao Elenco quando a Administração republica. Cada pessoa vê os blocos em que foi convocada na
+ * última publicação; `mudouDesdeAPublicacao` diz à Administração que há diferença a republicar.
+ */
+export async function comoPublicada(dia: EscalaDia): Promise<EscalaDia & { mudouDesdeAPublicacao: boolean }> {
+  if (!dia.escala || dia.escala.status === "DRAFT") return { ...dia, mudouDesdeAPublicacao: false };
+  const antes = await convocacaoPublicada(dia.escala.id);
+  if (!antes) return { ...dia, mudouDesdeAPublicacao: false };
+  const mudou = pessoasAfetadas(antes, convocacaoPorPessoa(dia)).length > 0;
+  const blocos = dia.blocos.map((bloco) => {
+    const assinatura = `${bloco.inicio}|${bloco.fim ?? ""}|${bloco.rotulo}`;
+    return { ...bloco, pessoaIds: Object.keys(antes).filter((pessoa) => antes[pessoa]!.includes(assinatura)) };
+  });
+  return { ...dia, blocos, mudouDesdeAPublicacao: mudou };
 }

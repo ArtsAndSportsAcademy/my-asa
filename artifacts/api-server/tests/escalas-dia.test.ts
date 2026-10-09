@@ -12,6 +12,7 @@ import {
   dailyBooksTable,
   db,
   escalaAreasProntasTable,
+  escalaBlocoAjustesTable,
   folgasTable,
   historyEventsTable,
   locationsTable,
@@ -225,9 +226,31 @@ async function run() {
     assert(d2.escala?.alteradaDesde != null, "Escala publicada fica marcada como alterada pelo Livro (pede republicação)");
     assert((await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, scaleId), eq(historyEventsTable.action, "escala.alterada_pelo_livro")))).length === 1, "a alteração pelo Livro grava Registro na Escala");
     const minha2 = (await (await asJulia(`/escalas/minha?date=${date}`)).json()) as { blocos: { rotulo: string }[] };
-    assert(!minha2.blocos.some((b) => b.rotulo === "SHOW PATINAÇÃO"), "Minha escala da Julia perde o bloco do show");
+    assert(minha2.blocos.some((b) => b.rotulo === "SHOW PATINAÇÃO"), "versão publicada preservada: Julia continua vendo o show até a Administração republicar");
     const restored = await asAdmin(`/daily-book/${bookId}/positions/${position!.id}/restore`, { method: "PATCH", body: JSON.stringify({ expectedVersion: (await readBook()).version }) });
     assert(restored.status === 200 && (bloco(await dia(), "SHOW PATINAÇÃO")?.pessoaIds ?? []).includes(pat1.id), "restaurar a posição no Livro devolve o bloco à Escala");
+
+    // ---------- Ligação 3: trocar alguém na Escala troca a vaga no Livro ----------
+    const showKey = bloco(await dia(), "SHOW PATINAÇÃO")!.key;
+    const vivas = async () => (await db.select().from(dailyBookAssignmentsTable).where(eq(dailyBookAssignmentsTable.dailyBookId, bookId))).filter((a) => !a.supersededAt && a.status !== "REMOVED");
+    const ajustesDoShow = async () => (await db.select().from(escalaBlocoAjustesTable).where(and(eq(escalaBlocoAjustesTable.scaleId, scaleId), eq(escalaBlocoAjustesTable.sourceKey, showKey))));
+    const tiraJulia = await post(asPat, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: showKey, userId: pat1.id, action: "REMOVER" });
+    const vagaAberta = await vivas();
+    assert(tiraJulia.status === 200 && !(bloco(await dia(), "SHOW PATINAÇÃO")?.pessoaIds ?? []).includes(pat1.id), "tirar Julia do show na Escala tira ela do bloco");
+    assert(vagaAberta.length === 1 && vagaAberta[0]!.userId === null && vagaAberta[0]!.status === "OPEN", "a vaga dela no Livro do Dia fica aberta");
+    assert((await ajustesDoShow()).length === 0, "a troca vai para o Livro, sem ajuste paralelo só na Escala");
+    const poeDeborah = await post(asPat, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: showKey, userId: supPat.id, action: "ADICIONAR" });
+    const preenchida = await vivas();
+    assert(poeDeborah.status === 200 && JSON.stringify(bloco(await dia(), "SHOW PATINAÇÃO")?.pessoaIds) === JSON.stringify([supPat.id]), "pôr Deborah no show na Escala põe ela no bloco");
+    assert(preenchida.length === 1 && preenchida[0]!.userId === supPat.id && preenchida[0]!.status === "ASSIGNED", "Deborah ocupa a vaga aberta no Livro do Dia");
+    const extra = await post(asAdmin, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: showKey, userId: bai1.id, action: "ADICIONAR" });
+    assert(extra.status === 200 && (bloco(await dia(), "SHOW PATINAÇÃO")?.pessoaIds ?? []).includes(bai1.id), "sem vaga aberta, a pessoa entra como extra no bloco da Escala");
+    assert(!(await vivas()).some((a) => a.userId === bai1.id) && (await ajustesDoShow()).some((a) => a.active && a.userId === bai1.id), "o extra fica só na Escala e não inventa vaga no Livro");
+    assert((await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, bookId), eq(historyEventsTable.action, "assignment_swap")))).length === 2, "cada troca no Livro pela Escala grava Registro no Livro");
+    await post(asAdmin, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: showKey, userId: bai1.id, action: "REMOVER" });
+    await post(asPat, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: showKey, userId: supPat.id, action: "REMOVER" });
+    await post(asPat, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: showKey, userId: pat1.id, action: "ADICIONAR" });
+    assert(JSON.stringify(bloco(await dia(), "SHOW PATINAÇÃO")?.pessoaIds) === JSON.stringify([pat1.id]), "desfazer as trocas devolve Julia ao show");
 
     // Republicar limpa a marca.
     const v = (await db.select().from(scalesTable).where(eq(scalesTable.id, scaleId)))[0]!.version;
@@ -237,6 +260,17 @@ async function run() {
     assert(rep.status === 200 && afterRep?.status === "REPUBLISHED" && afterRep.alteradaDesde === null, "Administração republica e a marca de alterada some");
     assert((await readBook()).status === "REPUBLISHED", "republicação da Escala republica junto o Livro do Dia vinculado");
     assert((await post(asPat, "/escalas/dia/pronta", { locationId: local!.id, date, areaId: patinadores!.id, pronta: false })).status === 409, "depois de publicada, marcar/desmarcar área é recusado");
+
+    // ---------- Bloco novo na Programação depois de publicar ----------
+    await post(asAdmin, `/programacoes/${prog.id}/blocos`, { weekday: 1, inicio: "18:00", fim: "18:30", rotulo: "REUNIÃO EXTRA", regra: "todos" });
+    const d3 = await dia();
+    const minha3 = (await (await asJulia(`/escalas/minha?date=${date}`)).json()) as { blocos: { rotulo: string }[] };
+    assert(Boolean(bloco(d3, "REUNIÃO EXTRA")) && d3.escala?.alteradaDesde != null, "bloco novo na Programação aparece na grade e a Escala publicada pede republicação");
+    assert(!minha3.blocos.some((b) => b.rotulo === "REUNIÃO EXTRA"), "o Elenco só vê o bloco novo depois da republicação");
+    const v2 = (await db.select().from(scalesTable).where(eq(scalesTable.id, scaleId)))[0]!.version;
+    await post(asAdmin, `/escalas/${scaleId}/republicar`, { expectedVersion: v2 });
+    const minha4 = (await (await asJulia(`/escalas/minha?date=${date}`)).json()) as { blocos: { rotulo: string }[] };
+    assert(minha4.blocos.some((b) => b.rotulo === "REUNIÃO EXTRA") && (await dia()).escala?.alteradaDesde == null, "republicada, Julia recebe o bloco novo e a marca de alterada some");
   } finally {
     if (server) { server.closeAllConnections?.(); await new Promise<void>((resolve, reject) => server!.close((error) => error ? reject(error) : resolve())); }
     const ids = everyone.map((u) => u.id);
@@ -250,6 +284,7 @@ async function run() {
     const scales = await db.select({ id: scalesTable.id }).from(scalesTable).where(eq(scalesTable.operationId, operation!.id));
     if (scales.length) {
       await db.delete(escalaAreasProntasTable).where(inArray(escalaAreasProntasTable.scaleId, scales.map((s) => s.id)));
+      await db.delete(escalaBlocoAjustesTable).where(inArray(escalaBlocoAjustesTable.scaleId, scales.map((s) => s.id)));
       await db.delete(scaleAllocationsTable).where(inArray(scaleAllocationsTable.scaleId, scales.map((s) => s.id)));
     }
     const books = await db.select({ id: dailyBooksTable.id }).from(dailyBooksTable).where(eq(dailyBooksTable.showBookId, show!.id));

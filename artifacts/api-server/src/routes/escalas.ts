@@ -29,13 +29,13 @@ import {
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
 import { operationalDate } from "../lib/operational-date.js";
-import { convocacaoPorPessoa, escalaPublicada, findEscalaDoDia, montarEscalaDoDia, operationForLocation, pessoasAfetadas } from "../services/escala-dia.js";
+import { comoPublicada, convocacaoPorPessoa, escalaPublicada, findEscalaDoDia, montarEscalaDoDia, operationForLocation, pessoasAfetadas } from "../services/escala-dia.js";
 import { enqueueNotification } from "../services/undo.js";
 import { APP_ROUTES } from "../lib/app-routes.js";
 
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const dataPorExtenso = (iso: string) => { const [, m, d] = iso.split("-").map(Number); return `${d} de ${MESES[m! - 1]}`; };
-import { generateDailyBookDraftForScale } from "./daily-book.js";
+import { ajustarPessoaNoLivro, generateDailyBookDraftForScale } from "./daily-book.js";
 
 const router: IRouter = Router();
 const SUPERVISOR = ["SUPERVISOR_A", "SUPERVISOR_B"];
@@ -86,6 +86,10 @@ router.get("/escalas/dia", requireAuth, requireOrganization, async (req, res) =>
   if (!(await canReadLocal(actor, locationId))) { res.status(403).json({ error: "Forbidden", message: "A escala deste local não está no seu acesso" }); return; }
   try {
     const dia = await montarEscalaDoDia(actor.organizationId, locationId, date);
+    // Mudança que não passou por ajuste nem pelo Livro (ex.: bloco novo na Programação) também pede republicação.
+    if (dia?.escala && escalaPublicada(dia.escala.status) && !dia.escala.alteradaDesde && (await comoPublicada(dia)).mudouDesdeAPublicacao) {
+      dia.escala = { ...dia.escala, alteradaDesde: dia.escala.publishedAt ?? new Date() };
+    }
     res.json({ dia, areasSupervisionadas: await supervisedAreas(actor, locationId), podePublicar: actor.role === "ADMIN" });
   } catch (err) {
     console.error(err);
@@ -103,8 +107,10 @@ router.get("/escalas/minha", requireAuth, requireOrganization, async (req, res) 
     ));
     const escalas = [];
     for (const location of locations) {
-      const dia = await montarEscalaDoDia(actor.organizationId, location.id, date);
-      if (!dia || !escalaPublicada(dia.escala?.status)) continue;
+      const aoVivo = await montarEscalaDoDia(actor.organizationId, location.id, date);
+      if (!aoVivo || !escalaPublicada(aoVivo.escala?.status)) continue;
+      // O Elenco vê a versão publicada; o que mudou depois só chega com a republicação.
+      const dia = await comoPublicada(aoVivo);
       const blocos = dia.blocos.filter((b) => b.pessoaIds.includes(actor.sub)).map(({ pessoaIds: _p, ...b }) => b);
       const me = dia.pessoas.find((p) => p.id === actor.sub) ?? null;
       if (!blocos.length && !me?.folga) continue;
@@ -217,6 +223,9 @@ router.post("/escalas/dia/ajustes", requireAuth, requireOrganization, async (req
     let scale = await findEscalaDoDia(locationId, date);
     const operationId = scale?.operationId ?? await operationForLocation(locationId);
     if (!operationId) { res.status(409).json({ error: "LOCAL_SEM_OPERACAO", message: "Este local ainda não está ligado a uma operação." }); return; }
+    // 09/10: bloco que vem de Livro do Dia muda o próprio Livro (vaga aberta / preenchida), para a
+    // Escala e o Livro dizerem a mesma coisa. Sem vaga a mexer, o ajuste fica só na Escala.
+    const viaLivro = bloco.dailyBookId ? await ajustarPessoaNoLivro({ dailyBookId: bloco.dailyBookId, userId, action, actorId: actor.sub }) : false;
     await db.transaction(async (tx) => {
       if (!scale) {
         const [created] = await tx.insert(scalesTable).values({
@@ -229,9 +238,9 @@ router.post("/escalas/dia/ajustes", requireAuth, requireOrganization, async (req
       const [anterior] = await tx.select().from(escalaBlocoAjustesTable).where(and(
         eq(escalaBlocoAjustesTable.scaleId, scale.id), eq(escalaBlocoAjustesTable.sourceKey, sourceKey), eq(escalaBlocoAjustesTable.userId, userId), eq(escalaBlocoAjustesTable.active, true),
       )).limit(1);
-      if (anterior?.action === action) return;
+      if (!viaLivro && anterior?.action === action) return;
       if (anterior) await tx.update(escalaBlocoAjustesTable).set({ active: false, endedBy: actor.sub, endedAt: new Date() }).where(eq(escalaBlocoAjustesTable.id, anterior.id));
-      const [ajuste] = await tx.insert(escalaBlocoAjustesTable).values({ scaleId: scale.id, sourceKey, userId, action, createdBy: actor.sub }).returning();
+      const [ajuste] = viaLivro ? [null] : await tx.insert(escalaBlocoAjustesTable).values({ scaleId: scale.id, sourceKey, userId, action, createdBy: actor.sub }).returning();
       const nextScale = escalaPublicada(scale.status)
         ? (await tx.update(scalesTable).set({ alteradaDesde: scale.alteradaDesde ?? new Date(), updatedAt: new Date(), version: scale.version + 1 }).where(eq(scalesTable.id, scale.id)).returning())[0]!
         : scale;
@@ -239,7 +248,7 @@ router.post("/escalas/dia/ajustes", requireAuth, requireOrganization, async (req
       await writeHistoryEvent({
         category: "SCALE", action: action === "ADICIONAR" ? "escala.pessoa_adicionada" : "escala.pessoa_removida", title: action === "ADICIONAR" ? "Pessoa adicionada à Escala" : "Pessoa removida da Escala",
         narrative: `${action === "ADICIONAR" ? "Adicionou" : "Removeu"} ${pessoa.name} no bloco ${bloco.rotulo} de ${date}.`, entityType: "scale", entityId: scale.id, actorId: actor.sub, operationId, orgId: actor.organizationId,
-        beforeState: { sourceKey, pessoaId: userId, ajuste: anterior?.action ?? null }, afterState: { ajuste },
+        beforeState: { sourceKey, pessoaId: userId, ajuste: anterior?.action ?? null }, afterState: { ajuste, noLivroDoDia: viaLivro ? bloco.dailyBookId : null },
       }, tx as unknown as HistoryExecutor);
     });
     res.json({ dia: await montarEscalaDoDia(actor.organizationId, locationId, date) });

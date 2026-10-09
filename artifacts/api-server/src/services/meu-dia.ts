@@ -15,6 +15,8 @@ import {
   leaveRequestsTable,
   locationsTable,
   occurrencesTable,
+  operationalCheckInsTable,
+  scalesTable,
   responsibilitiesTable,
   responsibilityAssignmentsTable,
   tasksTable,
@@ -23,7 +25,7 @@ import {
 import { operationalDate, OPERATIONAL_TIME_ZONE, shiftOperationalDate } from "../lib/operational-date.js";
 import { shiftPlans, shiftsForDate } from "./shift-checkins.js";
 import { APP_ROUTES } from "../lib/app-routes.js";
-import { escalaPublicada, montarEscalaDoDia, type BlocoDia, type EscalaDia } from "./escala-dia.js";
+import { comoPublicada, escalaPublicada, montarEscalaDoDia, type BlocoDia, type EscalaDia } from "./escala-dia.js";
 import { listAreaLocalScopes } from "./area-local-scope.js";
 import { canReadAnnouncement } from "./announcement-access.js";
 import { aniversariosDaCasa } from "./aniversarios.js";
@@ -95,6 +97,29 @@ async function diasDoLocal(orgId: string, locationId: string, hoje: string, aman
   const [a, b] = await Promise.all([montarEscalaDoDia(orgId, locationId, hoje), montarEscalaDoDia(orgId, locationId, amanha)]);
   return { hoje: a, amanha: b };
 }
+
+/**
+ * 09/10: a pessoa não tem local fixo (o local é só onde ela trabalha naquele dia). O Meu Dia do
+ * elenco procura, entre os locais com escala publicada hoje ou amanhã, o primeiro em que a pessoa
+ * está escalada — hoje antes de amanhã. Sem escala em lugar nenhum, cai no local de costume.
+ */
+async function diasDaPessoa(orgId: string, userId: string, localDeCostume: string | null, hoje: string, amanha: string): Promise<Dias> {
+  const comEscala = await db.selectDistinct({ id: scalesTable.locationId }).from(scalesTable)
+    .innerJoin(locationsTable, eq(scalesTable.locationId, locationsTable.id))
+    .where(and(eq(locationsTable.organizationId, orgId), eq(locationsTable.closed, false),
+      inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"]), lte(scalesTable.periodStart, amanha), gte(scalesTable.periodEnd, hoje)));
+  const locais = [...new Set([...comEscala.map((row) => row.id).filter((id): id is string => Boolean(id)), ...(localDeCostume ? [localDeCostume] : [])])];
+  // O Elenco vê a versão publicada: troca feita depois só aparece quando a Administração republica.
+  const publicada = async (dia: EscalaDia | null) => dia ? await comoPublicada(dia) : null;
+  const dias = await Promise.all(locais.map(async (id) => {
+    const d = await diasDoLocal(orgId, id, hoje, amanha);
+    return { ...d, hoje: await publicada(d.hoje), amanha: await publicada(d.amanha) };
+  }));
+  const escalado = (dia: EscalaDia | null) => Boolean(dia && escalaPublicada(dia.escala?.status) && dia.blocos.some((b) => b.pessoaIds.includes(userId)));
+  return dias.find((d) => escalado(d.hoje)) ?? dias.find((d) => escalado(d.amanha))
+    // Sem bloco em lugar nenhum, qualquer escala do dia ainda diz se a pessoa está de folga.
+    ?? dias.find((_, i) => locais[i] === localDeCostume) ?? dias[0] ?? { hoje: null, amanha: null };
+}
 async function feitosNaEscala(scaleId: string | undefined) {
   if (!scaleId) return new Map<string, { status: string; at: Date | null }[]>();
   const rows = await db.select({ userId: dayCheckInsTable.userId, status: dayCheckInsTable.status, sourceKey: dayCheckInsTable.sourceKey, at: dayCheckInsTable.checkedInAt }).from(dayCheckInsTable).where(eq(dayCheckInsTable.scaleId, scaleId));
@@ -126,7 +151,7 @@ export async function montarMeuDia(actor: { sub: string; organizationId: string;
 type Parte = Omit<MeuDia, "perfil" | "nome" | "data" | "hora" | "mural">;
 
 async function elenco(actor: { sub: string; organizationId: string; role: string }, nome: string, locationId: string | null, hoje: string, amanha: string, agora: number): Promise<Parte> {
-  const dias = locationId ? await diasDoLocal(actor.organizationId, locationId, hoje, amanha) : { hoje: null, amanha: null };
+  const dias = await diasDaPessoa(actor.organizationId, actor.sub, locationId, hoje, amanha);
   const pub = dias.hoje && escalaPublicada(dias.hoje.escala?.status) ? dias.hoje : null;
   const meus = (pub?.blocos ?? []).filter((b) => b.pessoaIds.includes(actor.sub)).sort((a, b) => a.inicio.localeCompare(b.inicio));
   const amanhaPub = dias.amanha && escalaPublicada(dias.amanha.escala?.status) ? dias.amanha.blocos.filter((b) => b.pessoaIds.includes(actor.sub)).sort((a, b) => a.inicio.localeCompare(b.inicio)) : [];
@@ -144,8 +169,18 @@ async function elenco(actor: { sub: string; organizationId: string; role: string
   else saudacao = { titulo: saudar(agora, nome), texto: "Seus blocos de hoje já terminaram.", mascote: "tarefa-concluida", acao: { label: "Ver minha escala", href: APP_ROUTES.escalas } };
 
   // Uma saudação por bloco seria enganosa quando há dois turnos no mesmo dia.
-  if ((await shiftsForDate(actor.organizationId, hoje)).length && (await shiftPlans(actor.organizationId, hoje)).some(plan => plan.userId === actor.sub)) {
-    saudacao = { titulo: saudar(agora, nome), texto: "Seu check-in vale para as atividades de cada turno. Confira se há outro turno esperando sua resposta.", mascote: "bom-dia", acao: { label: "Abrir check-in do turno", href: APP_ROUTES.checkIn } };
+  const meusTurnos = !folga && (await shiftsForDate(actor.organizationId, hoje)).length
+    ? (await shiftPlans(actor.organizationId, hoje)).filter((plan) => plan.userId === actor.sub).sort((a, b) => a.opensAt.getTime() - b.opensAt.getTime()) : [];
+  if (meusTurnos.length) {
+    const respostas = await db.select({ shiftId: operationalCheckInsTable.shiftId, shiftState: operationalCheckInsTable.shiftState }).from(operationalCheckInsTable)
+      .where(and(eq(operationalCheckInsTable.userId, actor.sub), eq(operationalCheckInsTable.date, hoje), inArray(operationalCheckInsTable.shiftId, meusTurnos.map((p) => p.shiftId))));
+    const respondido = (shiftId: string) => respostas.some((r) => r.shiftId === shiftId && r.shiftState && r.shiftState !== "EXPECTED");
+    const agoraData = new Date();
+    const hora = (d: Date) => new Intl.DateTimeFormat("pt-BR", { timeZone: OPERATIONAL_TIME_ZONE, hour: "2-digit", minute: "2-digit" }).format(d);
+    const pendente = meusTurnos.find((p) => !respondido(p.shiftId) && p.closesAt > agoraData);
+    if (pendente && pendente.opensAt <= agoraData) saudacao = { titulo: saudar(agora, nome), texto: `Você entra às ${hora(pendente.firstActivityAt)} (${pendente.shiftName}). Quando já estiver no local, faça o check-in do turno.`, mascote: "bom-dia", acao: { label: "Fazer check-in", href: APP_ROUTES.checkIn } };
+    else if (pendente) saudacao = { titulo: saudar(agora, nome), texto: `Você entra às ${hora(pendente.firstActivityAt)} (${pendente.shiftName}). O check-in do turno abre às ${hora(pendente.opensAt)}.`, mascote: "bom-dia", acao: { label: "Ver minha escala", href: APP_ROUTES.escalas } };
+    else if (meusTurnos.every((p) => respondido(p.shiftId))) saudacao = { titulo: "Tudo certo por aqui!", texto: "Check-in do turno feito — bom trabalho hoje!", mascote: "tarefa-concluida", acao: { label: "Ver minha escala", href: APP_ROUTES.escalas } };
   }
 
   const prox = alvo;
@@ -198,11 +233,14 @@ async function supervisao(actor: { sub: string; organizationId: string; role: st
       .where(and(eq(occurrencesTable.active, true), inArray(occurrencesTable.state, ["aberta", "em_analise"]), inArray(occurrencesTable.personId, pessoasDaArea))).orderBy(desc(occurrencesTable.createdAt)) : Promise.resolve([]),
     pedidosEsperando(actor),
   ]);
-  const escalaAmanha = dias.map((d) => d.amanha).filter((d): d is EscalaDia => Boolean(d)).map((d) => {
+  const pendenteDe = (lista: (EscalaDia | null)[]) => lista.filter((d): d is EscalaDia => Boolean(d)).map((d) => {
     const minhas = d.areas.filter((a) => areas.has(a.id));
     const faltaMinha = minhas.filter((a) => !a.pronta);
-    return { local: d.location.name, publicada: escalaPublicada(d.escala?.status), faltaMinha, temBlocos: d.blocos.length > 0 };
+    return { local: d.location.name, publicada: escalaPublicada(d.escala?.status), existe: Boolean(d.escala), faltaMinha, temBlocos: d.blocos.length > 0 };
   }).filter((e) => e.temBlocos && !e.publicada);
+  // 09/10: a escala de hoje em rascunho também espera a supervisão (antes só a de amanhã aparecia).
+  const escalaHoje = pendenteDe(dias.map((d) => d.hoje)).filter((e) => e.existe);
+  const escalaAmanha = pendenteDe(dias.map((d) => d.amanha));
 
   const pend: Pendencia[] = [];
   if (ocorrencias.length) pend.push({ count: ocorrencias.length, title: ocorrencias.length === 1 ? "Ocorrência aberta" : "Ocorrências abertas", sub: ocorrencias.slice(0, 2).map((o) => `${o.name} — ${o.type}`).join(" · "), tone: "warn", href: APP_ROUTES.checkIn });
@@ -210,7 +248,10 @@ async function supervisao(actor: { sub: string; organizationId: string; role: st
   if (pedidos.paraDecidir) pend.push({ count: pedidos.paraDecidir, title: pedidos.paraDecidir === 1 ? "Pedido a decidir" : "Pedidos a decidir", sub: "horário, troca, restrição… em Solicitações", tone: "warn", href: APP_ROUTES.solicitacoes });
   if (pedidos.colegaEspera) pend.push({ count: pedidos.colegaEspera, title: "Troca esperando você", sub: "uma colega pediu para trocar", tone: "warn", href: APP_ROUTES.solicitacoes });
   if (faltas.length) pend.push({ count: faltas.length, title: faltas.length === 1 ? "Check-in em falta" : "Check-ins em falta", sub: [...new Set(faltas.map((f) => `${texto(f.bloco)} ${f.bloco.inicio}`))].slice(0, 2).join(" · "), tone: "warn", href: APP_ROUTES.checkIn });
-  for (const e of escalaAmanha) pend.push({ count: 1, title: `Escala de amanhã · ${e.local}`, sub: e.faltaMinha.length ? `falta marcar ${e.faltaMinha.map((a) => a.name).join(", ")} como pronta` : "sua área está pronta · aguardando a Administração", tone: e.faltaMinha.length ? "warn" : "mute", href: APP_ROUTES.escalas });
+  for (const [quando, lista] of [["hoje", escalaHoje], ["amanhã", escalaAmanha]] as const) {
+    for (const e of lista) pend.push({ count: 1, title: `Escala de ${quando} · ${e.local}`, sub: e.faltaMinha.length ? `falta marcar ${e.faltaMinha.map((a) => a.name).join(", ")} como pronta` : "sua área está pronta · aguardando a Administração", tone: e.faltaMinha.length ? "warn" : "mute", href: APP_ROUTES.escalas });
+  }
+  const prontaPendente = [...escalaHoje.map((e) => ({ ...e, quando: "hoje" })), ...escalaAmanha.map((e) => ({ ...e, quando: "amanhã" }))].find((e) => e.faltaMinha.length);
 
   const decisoes = ocorrencias.length + folgas.length + pedidos.paraDecidir;
   const principal = dias.find((d) => d.hoje?.escala && escalaPublicada(d.hoje.escala.status))?.hoje ?? dias[0]?.hoje ?? null;
@@ -224,6 +265,7 @@ async function supervisao(actor: { sub: string; organizationId: string; role: st
   const saudacao: Parte["saudacao"] = decisoes
     ? { titulo: saudar(agora, nome), texto: `${decisoes === 1 ? "Uma decisão espera" : `${decisoes} decisões esperam`} por você${prox ? ` antes de ${texto(prox)} às ${prox.inicio}` : ""}: ${partes.join(" e ")}.`, mascote: "aviso-importante", acao: { label: "Abrir as decisões", href: ocorrencias.length ? APP_ROUTES.checkIn : folgas.length ? APP_ROUTES.folgas : APP_ROUTES.solicitacoes } }
     : faltas.length ? { titulo: saudar(agora, nome), texto: `${plural(faltas.length, "pessoa da sua área ainda não fez", "pessoas da sua área ainda não fizeram")} check-in.`, mascote: "aviso-importante", acao: { label: "Abrir o check-in", href: APP_ROUTES.checkIn } }
+      : prontaPendente ? { titulo: saudar(agora, nome), texto: `A escala de ${prontaPendente.quando} em ${prontaPendente.local} espera você: falta marcar ${prontaPendente.faltaMinha.map((a) => a.name).join(", ")} como pronta.`, mascote: "aviso-importante", acao: { label: "Abrir a escala", href: APP_ROUTES.escalas } }
       : { titulo: saudar(agora, nome), texto: principal?.escala && escalaPublicada(principal.escala.status) ? "Nada esperando decisão sua agora. A escala de hoje está publicada." : "Nada esperando decisão sua agora.", mascote: "bom-dia", acao: { label: "Ver a escala de hoje", href: APP_ROUTES.escalas } };
 
   const proximo: Parte["proximo"] = prox ? {
