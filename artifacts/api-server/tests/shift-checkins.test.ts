@@ -117,6 +117,11 @@ async function run() {
     delete process.env.MYASA_TEST_FAIL_HISTORY;
     if (server) { server.closeAllConnections(); await new Promise<void>(resolve => server!.close(() => resolve())); }
     await db.delete(notificationOutboxTable).where(inArray(notificationOutboxTable.userId, people.map(p => p.id)));
+    // A fila vira aviso assim que alguém processa a caixa (um servidor de desenvolvimento apontado
+    // para este banco, por exemplo); sem apagar o aviso, a pessoa não pode ser removida no fim.
+    const ids = people.map(p => p.id);
+    await pool.query(`delete from user_notifications where user_id = any($1::uuid[])`, [ids]);
+    await pool.query(`delete from notifications where user_id = any($1::uuid[])`, [ids]);
     await db.delete(historyEventsTable).where(or(eq(historyEventsTable.orgId, org!.id), inArray(historyEventsTable.actorId, people.map(p => p.id))));
     await db.delete(dayCheckInsTable).where(inArray(dayCheckInsTable.userId, people.map(p => p.id)));
     await db.delete(operationalCheckInsTable).where(eq(operationalCheckInsTable.orgId, org!.id));
