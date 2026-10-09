@@ -73,7 +73,7 @@ export type EscalaDia = {
   escala: { id: string; status: string; version: number; publishedAt: Date | null; alteradaDesde: Date | null } | null;
   programacao: { id: string; nome: string; vigenciaInicio: string; vigenciaFim: string } | null;
   areas: { id: string; name: string; supervisores: { id: string; name: string }[]; pronta: { por: string | null; em: Date } | null }[];
-  pessoas: { id: string; name: string; areaId: string | null; areaName: string | null; folga: string | null }[];
+  pessoas: { id: string; name: string; areaId: string | null; areaName: string | null; folga: string | null; chamadaNaFolga?: { motivo: string | null; decidida: boolean } }[];
   blocos: BlocoDia[];
 };
 
@@ -355,6 +355,9 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
     }
   }
 
+  // Quem foi chamado mesmo estando de folga: a grade mostra a marca e o motivo, e a decisão
+  // sobre a folga perdida (remarcar ou deixar) fica pendente até alguém resolver.
+  const chamadasNaFolga = new Map<string, { motivo: string | null; decidida: boolean }>();
   // Ajustes são exceções da Escala deste dia, nunca alteração do molde da Programação nem do
   // Livro do Dia. A chave do bloco é estável dentro do dia; a pessoa continua sujeita à folga.
   if (scale) {
@@ -368,7 +371,9 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
       if (!ajustesDoBloco.length) continue;
       const pessoas = new Set(bloco.pessoaIds);
       for (const ajuste of ajustesDoBloco) {
-        if (!present.has(ajuste.userId)) continue;
+        // Folga vence, menos quando a pessoa foi chamada de propósito, com motivo escrito.
+        if (!present.has(ajuste.userId) && !(ajuste.action === "ADICIONAR" && ajuste.mesmoDeFolga)) continue;
+        if (ajuste.mesmoDeFolga && folgaOf.has(ajuste.userId)) chamadasNaFolga.set(ajuste.userId, { motivo: ajuste.motivo, decidida: Boolean(ajuste.folgaDecididaEm) });
         if (ajuste.action === "ADICIONAR") pessoas.add(ajuste.userId);
         else pessoas.delete(ajuste.userId);
       }
@@ -388,7 +393,14 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
       const pronta = prontas.find((p) => p.areaId === a.id);
       return { id: a.id, name: a.name, supervisores: supervisors.filter((s) => s.areaId === a.id).map((s) => ({ id: s.id, name: s.name })), pronta: pronta ? { por: pronta.markedBy, em: pronta.markedAt } : null };
     }),
-    pessoas: people.map((p) => ({ id: p.id, name: p.name, areaId: p.areaId, areaName: p.areaId ? areaName.get(p.areaId) ?? null : null, folga: folgaOf.get(p.id) ?? null })),
+    pessoas: people.map((p) => {
+      const chamada = chamadasNaFolga.get(p.id);
+      return {
+        id: p.id, name: p.name, areaId: p.areaId, areaName: p.areaId ? areaName.get(p.areaId) ?? null : null,
+        folga: folgaOf.get(p.id) ?? null,
+        ...(chamada ? { chamadaNaFolga: chamada } : {}),
+      };
+    }),
     blocos,
   };
 }

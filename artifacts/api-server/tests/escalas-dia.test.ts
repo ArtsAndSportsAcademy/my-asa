@@ -243,6 +243,23 @@ async function run() {
     assert(loteErrado.status === 403 && (bloco(await dia(), "TREINO GELO")?.pessoaIds ?? []).includes(pat1.id), "no lote, pessoa de outra área é recusada — o que já passou antes dela vale");
     await post(asPat, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: treinoKey, mudancas: [{ userId: supPat.id, action: "ADICIONAR" }] });
 
+    // ---------- Chamar alguém na folga: exceção com motivo, e a folga fica para decidir ----------
+    const semMotivo = await post(asPat, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: treinoKey, userId: pat2.id, action: "ADICIONAR" });
+    assert(semMotivo.status === 409 && ((await semMotivo.json()) as { error: string }).error === "PESSOA_DE_FOLGA" && !(bloco(await dia(), "TREINO GELO")?.pessoaIds ?? []).includes(pat2.id), "chamar quem está de folga sem motivo é recusado e a pessoa continua fora");
+    const comMotivo = await post(asPat, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: treinoKey, userId: pat2.id, action: "ADICIONAR", motivo: "Faltou gente no treino" });
+    const diaFolga = await dia();
+    const chamada = diaFolga.pessoas.find((p) => p.id === pat2.id)?.chamadaNaFolga;
+    assert(comMotivo.status === 200 && (bloco(diaFolga, "TREINO GELO")?.pessoaIds ?? []).includes(pat2.id), "com motivo escrito, a pessoa de folga entra no bloco");
+    assert(chamada?.motivo === "Faltou gente no treino" && chamada.decidida === false, "a grade mostra o motivo e a folga fica pendente de decisão");
+    assert((await db.select().from(escalaBlocoAjustesTable).where(and(eq(escalaBlocoAjustesTable.scaleId, scaleId), eq(escalaBlocoAjustesTable.userId, pat2.id), eq(escalaBlocoAjustesTable.active, true)))).some((a) => a.mesmoDeFolga && a.motivo === "Faltou gente no treino"), "o ajuste guarda a marca de chamada na folga e o motivo");
+    assert((await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, scaleId), eq(historyEventsTable.action, "escala.pessoa_adicionada")))).some((e) => (e.narrative ?? "").includes("chamada mesmo assim")), "o Registro conta que ela estava de folga e por que foi chamada");
+    const resolvePorFora = await post(asJulia, "/escalas/dia/folga-resolvida", { locationId: local!.id, date, userId: pat2.id });
+    assert(resolvePorFora.status === 403, "Elenco não resolve a folga de ninguém");
+    const resolve = await post(asPat, "/escalas/dia/folga-resolvida", { locationId: local!.id, date, userId: pat2.id });
+    assert(resolve.status === 200 && (await dia()).pessoas.find((p) => p.id === pat2.id)?.chamadaNaFolga?.decidida === true, "Supervisão marca a folga como resolvida e a pendência some");
+    await post(asPat, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: treinoKey, userId: pat2.id, action: "REMOVER" });
+    assert(!(bloco(await dia(), "TREINO GELO")?.pessoaIds ?? []).includes(pat2.id), "tirada do bloco, ela volta a ficar de folga");
+
     const confirm = await post(asJulia, `/escalas/${scaleId}/confirmar`, {});
     const minhaConfirmada = (await (await asJulia(`/escalas/minha?date=${date}`)).json()) as { confirmada?: boolean };
     assert(confirm.status === 200 && minhaConfirmada.confirmada === true, "Elenco confirma a própria Escala publicada");

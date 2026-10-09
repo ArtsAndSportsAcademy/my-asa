@@ -1384,9 +1384,11 @@ router.post("/daily-book/:id/execute", requireAuth, requireOrganization, require
       return next!;
     }, async (tx, _claimedBook, next) => {
       const afterSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id, tx) };
+      // A nota de como o show correu é opcional, mas quando existe fica guardada no Registro.
+      const nota = typeof req.body?.nota === "string" && req.body.nota.trim() ? req.body.nota.trim() : null;
       await writeDailyBookAudit(id, userId, "execute",
         { version: book.version, snapshot: beforeSnapshot, status: book.status },
-        { version: next.version, snapshot: afterSnapshot, status: "EXECUTED" }, tx);
+        { version: next.version, snapshot: afterSnapshot, status: "EXECUTED", ...(nota ? { nota } : {}) }, tx);
     });
     eventBus.emit("daily-book.executed", { dailyBookId: id, version: updated!.version, executedBy: userId });
     res.json({ dailyBook: updated });

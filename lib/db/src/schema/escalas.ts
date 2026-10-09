@@ -88,6 +88,12 @@ export const escalaBlocoAjustesTable = pgTable("escala_bloco_ajustes", {
   sourceKey: text("source_key").notNull(),
   userId: uuid("user_id").notNull().references(() => usersTable.id),
   action: text("action").$type<"ADICIONAR" | "REMOVER">().notNull(),
+  /** Por que a exceção foi feita. Obrigatório quando a pessoa está de folga naquele dia. */
+  motivo: text("motivo"),
+  /** Chamada mesmo de folga: sem isto, folga continua vencendo e a pessoa não entra na grade. */
+  mesmoDeFolga: boolean("mesmo_de_folga").notNull().default(false),
+  /** Quando a Administração ou a Supervisão decidiu o que fazer com a folga perdida. */
+  folgaDecididaEm: timestamp("folga_decidida_em", { withTimezone: true }),
   active: boolean("active").notNull().default(true),
   createdBy: uuid("created_by").notNull().references(() => usersTable.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

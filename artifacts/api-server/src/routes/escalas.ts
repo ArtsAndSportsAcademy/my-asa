@@ -205,7 +205,7 @@ router.post("/escalas/dia/gerar", requireAuth, requireOrganization, async (req, 
  */
 router.post("/escalas/dia/ajustes", requireAuth, requireOrganization, async (req, res) => {
   const actor = req.user! as Actor;
-  const { locationId, date, sourceKey, userId, action, mudancas } = req.body ?? {};
+  const { locationId, date, sourceKey, userId, action, mudancas, motivo } = req.body ?? {};
   const lote: { userId: string; action: "ADICIONAR" | "REMOVER" }[] = Array.isArray(mudancas)
     ? mudancas.filter((m): m is { userId: string; action: "ADICIONAR" | "REMOVER" } =>
       Boolean(m) && typeof (m as { userId?: unknown }).userId === "string" && ["ADICIONAR", "REMOVER"].includes((m as { action?: string }).action ?? ""))
@@ -217,7 +217,7 @@ router.post("/escalas/dia/ajustes", requireAuth, requireOrganization, async (req
   try {
     // Várias pessoas: aplica uma a uma, parando no primeiro erro, e devolve a grade uma vez só.
     for (const m of lote.length ? lote : [{ userId: userId as string, action: action as "ADICIONAR" | "REMOVER" }]) {
-      const r = await ajustarUmaPessoa(actor, { locationId, date, sourceKey, userId: m.userId, action: m.action });
+      const r = await ajustarUmaPessoa(actor, { locationId, date, sourceKey, userId: m.userId, action: m.action, motivo: typeof motivo === "string" ? motivo.trim() : null });
       if (!r.ok) { res.status(r.status).json(r.body); return; }
     }
     res.json({ dia: await montarEscalaDoDia(actor.organizationId, locationId, date) });
@@ -228,7 +228,7 @@ type AjusteErro = { ok: false; status: number; body: Record<string, unknown> };
 /** Uma pessoa entra ou sai de um bloco neste dia; devolve o erro em vez de responder, para o lote reaproveitar. */
 async function ajustarUmaPessoa(
   actor: Actor,
-  { locationId, date, sourceKey, userId, action }: { locationId: string; date: string; sourceKey: string; userId: string; action: "ADICIONAR" | "REMOVER" },
+  { locationId, date, sourceKey, userId, action, motivo }: { locationId: string; date: string; sourceKey: string; userId: string; action: "ADICIONAR" | "REMOVER"; motivo?: string | null },
 ): Promise<{ ok: true } | AjusteErro> {
   const location = await locationInOrg(locationId, actor.organizationId);
   if (!location) return { ok: false, status: 404, body: { error: "Local não encontrado" } };
@@ -243,6 +243,12 @@ async function ajustarUmaPessoa(
   const minhasAreas = await supervisedAreas(actor, locationId);
   if (actor.role !== "ADMIN" && (!pessoa.areaId || !minhasAreas.includes(pessoa.areaId))) {
     return { ok: false, status: 403, body: { error: "Forbidden", message: "Supervisão ajusta somente pessoas da própria área" } };
+  }
+  // Folga vence por padrão. Chamar alguém na folga é exceção: pede motivo escrito, e a folga
+  // perdida fica pendente de decisão (remarcar para outro dia ou deixar como está).
+  const deFolga = (diaAntes?.pessoas.find((p) => p.id === userId)?.folga ?? null) !== null;
+  if (deFolga && action === "ADICIONAR" && !(motivo && motivo.trim().length >= 3)) {
+    return { ok: false, status: 409, body: { error: "PESSOA_DE_FOLGA", message: `${pessoa.name} está de folga neste dia. Para chamar mesmo assim, escreva o motivo.`, pessoa: pessoa.name } };
   }
   {
     let scale = await findEscalaDoDia(locationId, date);
@@ -265,16 +271,29 @@ async function ajustarUmaPessoa(
       )).limit(1);
       if (!viaLivro && anterior?.action === action) return;
       if (anterior) await tx.update(escalaBlocoAjustesTable).set({ active: false, endedBy: actor.sub, endedAt: new Date() }).where(eq(escalaBlocoAjustesTable.id, anterior.id));
-      const [ajuste] = viaLivro ? [null] : await tx.insert(escalaBlocoAjustesTable).values({ scaleId: scale.id, sourceKey, userId, action, createdBy: actor.sub }).returning();
+      const [ajuste] = viaLivro ? [null] : await tx.insert(escalaBlocoAjustesTable).values({
+        scaleId: scale.id, sourceKey, userId, action, createdBy: actor.sub,
+        motivo: motivo?.trim() || null, mesmoDeFolga: deFolga && action === "ADICIONAR",
+      }).returning();
       const nextScale = escalaPublicada(scale.status)
         ? (await tx.update(scalesTable).set({ alteradaDesde: scale.alteradaDesde ?? new Date(), updatedAt: new Date(), version: scale.version + 1 }).where(eq(scalesTable.id, scale.id)).returning())[0]!
         : scale;
       scale = nextScale;
       await writeHistoryEvent({
         category: "SCALE", action: action === "ADICIONAR" ? "escala.pessoa_adicionada" : "escala.pessoa_removida", title: action === "ADICIONAR" ? "Pessoa adicionada à Escala" : "Pessoa removida da Escala",
-        narrative: `${action === "ADICIONAR" ? "Adicionou" : "Removeu"} ${pessoa.name} no bloco ${bloco.rotulo} de ${date}.`, entityType: "scale", entityId: scale.id, actorId: actor.sub, operationId, orgId: actor.organizationId,
+        narrative: `${action === "ADICIONAR" ? "Adicionou" : "Removeu"} ${pessoa.name} no bloco ${bloco.rotulo} de ${date}.${deFolga && action === "ADICIONAR" ? ` Estava de folga; chamada mesmo assim: ${motivo?.trim()}` : ""}`, entityType: "scale", entityId: scale.id, actorId: actor.sub, operationId, orgId: actor.organizationId,
         beforeState: { sourceKey, pessoaId: userId, ajuste: anterior?.action ?? null }, afterState: { ajuste, noLivroDoDia: viaLivro ? bloco.dailyBookId : null },
       }, tx as unknown as HistoryExecutor);
+      // Quem é chamado na folga precisa saber na hora: o aviso sai junto com o ajuste.
+      if (deFolga && action === "ADICIONAR") {
+        await enqueueNotification(tx as never, {
+          userId, type: "escala.chamada_na_folga", category: "schedule",
+          priority: date === operationalDate() ? "CRITICAL" : "IMPORTANT",
+          title: `Você foi chamada na sua folga de ${dataPorExtenso(date)}`,
+          message: `${location.name} · ${bloco.rotulo} às ${bloco.inicio}. Motivo: ${motivo?.trim()}. Fale com a supervisão se não puder.`,
+          entityType: "scale", entityId: scale.id, actionUrl: APP_ROUTES.escalas,
+        }, new Date(), { deduplicationKey: `folga-chamada:${scale.id}:${sourceKey}:${userId}` });
+      }
       if (escalaPublicada(scale.status)) {
         await avisarRepublicacaoPendente(tx as unknown as Parameters<typeof avisarRepublicacaoPendente>[0], scale,
           `${pessoa.name} ${action === "ADICIONAR" ? "entrou em" : "saiu de"} ${bloco.rotulo}`, { areaIds: [pessoa.areaId] });
@@ -283,6 +302,42 @@ async function ajustarUmaPessoa(
     return { ok: true };
   }
 }
+
+/**
+ * A folga perdida foi resolvida (remarcada em Folgas, ou a pessoa preferiu deixar como está).
+ * Só tira a pendência: a remarcação em si é feita na tela de Folgas, que é quem manda nelas.
+ */
+router.post("/escalas/dia/folga-resolvida", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user! as Actor;
+  const { locationId, date, userId } = req.body ?? {};
+  if (typeof locationId !== "string" || typeof date !== "string" || !DATE.test(date) || typeof userId !== "string") {
+    res.status(400).json({ error: "locationId, date e userId são obrigatórios" }); return;
+  }
+  if (!(await locationInOrg(locationId, actor.organizationId))) { res.status(404).json({ error: "Local não encontrado" }); return; }
+  if (!(await canManageLocal(actor, locationId))) { res.status(403).json({ error: "Forbidden", message: "Você não decide folgas deste local" }); return; }
+  const scale = await findEscalaDoDia(locationId, date);
+  if (!scale) { res.status(404).json({ error: "Escala do dia não encontrada" }); return; }
+  try {
+    const resolvidos = await db.transaction(async (tx) => {
+      const rows = await tx.update(escalaBlocoAjustesTable).set({ folgaDecididaEm: new Date() }).where(and(
+        eq(escalaBlocoAjustesTable.scaleId, scale.id), eq(escalaBlocoAjustesTable.userId, userId),
+        eq(escalaBlocoAjustesTable.active, true), eq(escalaBlocoAjustesTable.mesmoDeFolga, true),
+      )).returning();
+      if (rows.length) {
+        const [pessoa] = await tx.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+        await writeHistoryEvent({
+          category: "SCALE", action: "escala.folga_resolvida", title: "Folga chamada no dia resolvida",
+          narrative: `A folga de ${pessoa?.name ?? "alguém"} em ${date} foi resolvida (remarcada ou mantida).`,
+          entityType: "scale", entityId: scale.id, actorId: actor.sub, operationId: scale.operationId, orgId: actor.organizationId,
+          afterState: { userId, ajustes: rows.length },
+        }, tx as unknown as HistoryExecutor);
+      }
+      return rows.length;
+    });
+    if (!resolvidos) { res.status(404).json({ error: "Esta pessoa não foi chamada na folga neste dia" }); return; }
+    res.json({ dia: await montarEscalaDoDia(actor.organizationId, locationId, date) });
+  } catch (err) { console.error(err); res.status(500).json({ error: "Erro ao resolver a folga" }); }
+});
 
 /** Elenco confirma que leu a versão publicada que está vendo. */
 router.post("/escalas/:id/confirmar", requireAuth, requireOrganization, async (req, res) => {
@@ -466,7 +521,8 @@ router.get("/programacoes", requireAuth, requireOrganization, async (req, res) =
   const locationId = typeof req.query.locationId === "string" ? req.query.locationId : "";
   if (!locationId || !(await locationInOrg(locationId, actor.organizationId))) { res.status(404).json({ error: "Local não encontrado" }); return; }
   if (!(await canReadLocal(actor, locationId))) { res.status(403).json({ error: "Forbidden" }); return; }
-  const programacoes = await db.select().from(programacoesTable).where(and(eq(programacoesTable.locationId, locationId), eq(programacoesTable.active, true))).orderBy(asc(programacoesTable.vigenciaInicio));
+  // Molde arquivado continua na resposta (active: false) para poder ser reativado ou consultado.
+  const programacoes = await db.select().from(programacoesTable).where(eq(programacoesTable.locationId, locationId)).orderBy(asc(programacoesTable.vigenciaInicio));
   // Blocos tirados do molde continuam na resposta (active: false) para a tela poder devolvê-los.
   const blocos = programacoes.length ? await db.select().from(programacaoBlocosTable).where(inArray(programacaoBlocosTable.programacaoId, programacoes.map((p) => p.id)))
     .orderBy(asc(programacaoBlocosTable.weekday), asc(programacaoBlocosTable.inicio), asc(programacaoBlocosTable.order)) : [];
