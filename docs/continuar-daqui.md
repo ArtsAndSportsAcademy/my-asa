@@ -84,9 +84,14 @@ republicação; depois viu a folga. Um dia gerado e publicado com dois Livros mo
 Escala e nenhum bloco para a pessoa. O pedido novo apareceu para Administração e Supervisão da área;
 a pessoa o retirou antes da decisão, e a tentativa posterior de aprovação foi recusada. Os avisos
 entraram na fila durável e apareceram no sino quando o agendador local processou a fila. A conferência
-da interface em `?amostra=1` e 375 px permanece a validação visual desta fase. Em produção, a
-Administração precisará publicar os meses antigos de novo para criar o primeiro retrato; as
-publicações antigas apenas avisavam e não guardavam o mapa.
+da interface em `?amostra=1` e 375 px permanece a validação visual desta fase.
+
+Consulta somente de leitura em produção em 10/10: **não há evento de publicação mensal de Folgas**.
+Outubro tem 212 registros ativos de folga para 30 pessoas em uma operação; os meses de novembro a
+fevereiro não têm registros ativos no momento da consulta. Por isso, a passagem exige a **primeira
+publicação de outubro**, não uma republicação de meses antigos. Com o código novo, antes desse clique
+o Elenco verá o mês sem essas folgas. Não promover sem combinar a publicação inicial de outubro na
+mesma janela, ou sem ajustar a regra de transição para preservar a leitura anterior.
 
 ## 5. Perguntas que ainda estão com a Babi
 
