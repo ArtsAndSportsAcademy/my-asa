@@ -78,9 +78,15 @@ Validação em 10/10: `folgas-equipe.test.ts` passou com 29 verificações; o te
 passou com 20. Builds da API e do site passaram. As telas Folgas e Solicitações foram abertas e
 clicadas em `?amostra=1`, inclusive em 375 px. O `tsc` completo continua com erros em dependências
 e componentes anteriores, fora dessas telas; não há erro de tipo apontado nos arquivos alterados.
-Antes da promoção, conferir no banco de teste com uma sessão real de Elenco o aviso de publicação
-e a Minha Escala após republicar. Em produção, a Administração precisará publicar os meses antigos
-de novo para criar o primeiro retrato; as publicações antigas apenas avisavam e não guardavam o mapa.
+Conferência adicional em 10/10, com contas autenticadas da empresa de teste: a Administração publicou
+o mês, alterou uma folga e republicou. O Elenco continuou vendo o primeiro retrato até a
+republicação; depois viu a folga. Um dia gerado e publicado com dois Livros mostrou a folga na Minha
+Escala e nenhum bloco para a pessoa. O pedido novo apareceu para Administração e Supervisão da área;
+a pessoa o retirou antes da decisão, e a tentativa posterior de aprovação foi recusada. Os avisos
+entraram na fila durável e apareceram no sino quando o agendador local processou a fila. A conferência
+da interface em `?amostra=1` e 375 px permanece a validação visual desta fase. Em produção, a
+Administração precisará publicar os meses antigos de novo para criar o primeiro retrato; as
+publicações antigas apenas avisavam e não guardavam o mapa.
 
 ## 5. Perguntas que ainda estão com a Babi
 
