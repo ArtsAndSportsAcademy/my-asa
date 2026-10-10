@@ -66,7 +66,17 @@ Acquamotion) já é uma das duas folgas.
 
 ## 6. Ambiente de teste
 
-Existe uma empresa de teste no banco de teste (organização com a marca `testemv09gz7j`), criada
-para andar pelas telas sem tocar em dado real. Os scripts que a criam e a apagam ficam fora do
-repositório, na pasta temporária da sessão, porque carregam senhas de teste. Para recriar algo
-parecido, o caminho é um script que use `.env.test` e nunca `.env.producao`.
+Para andar pelas telas sem tocar em dado real, monte uma empresa de teste (precisa da API rodando
+em `localhost:3001`):
+
+```powershell
+cd artifacts/api-server
+node ./scripts/empresa-de-teste.cjs criar     # organização, locais, áreas, pessoas dos 4 perfis,
+                                              # dois shows com vagas, Programação, turnos e uma folga
+node ./scripts/empresa-de-teste.cjs apagar    # remove tudo o que ela criou
+```
+
+As senhas são **sorteadas em cada execução** e ficam em `scripts/empresa-de-teste.local.json`, que o
+Git ignora. Nunca copie senha de teste para commit, para documento do repositório ou para a conversa
+com o assistente: é o hábito que protege as senhas de verdade. O script recusa qualquer banco que não
+seja o de teste.
