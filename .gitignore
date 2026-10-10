@@ -61,3 +61,5 @@ Thumbs.db
 *.log
 *.err
 
+# Credenciais da empresa de teste: sorteadas em cada execução, nunca versionadas.
+*.local.json
