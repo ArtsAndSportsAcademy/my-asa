@@ -80,6 +80,7 @@ export default function SolicitacoesPage({ role, meuId }: { role: Role; meuId: s
   const [carregando, setCarregando] = useState(true), [erro, setErro] = useState(""), [aviso, setAviso] = useState(""), [tentativa, setTentativa] = useState(0);
   const gestor = role === "adm" || role === "sup";
   const [aba, setAba] = useState<"decidir" | "abertos" | "encerrados">(gestor ? "decidir" : "abertos");
+  useEffect(() => setAba(gestor ? "decidir" : "abertos"), [gestor]);
   const [novo, setNovo] = useState<Tipo | "escolher" | null>(null);
   const [decidindo, setDecidindo] = useState<{ pedido: Pedido; decisao: "APPROVED" | "DENIED" } | null>(null);
   const [respondendo, setRespondendo] = useState<{ pedido: Pedido; aceita: boolean } | null>(null);
@@ -87,6 +88,15 @@ export default function SolicitacoesPage({ role, meuId }: { role: Role; meuId: s
   // Erro de uma janela aberta aparece dentro dela (o aviso da página fica atrás da janela).
   const [erroJanela, setErroJanela] = useState("");
   useEffect(() => setErroJanela(""), [novo, decidindo, respondendo]);
+  useEffect(() => {
+    if (!novo && !decidindo && !respondendo) return;
+    const fecharComEsc = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setNovo(null); setDecidindo(null); setRespondendo(null);
+    };
+    window.addEventListener("keydown", fecharComEsc);
+    return () => window.removeEventListener("keydown", fecharComEsc);
+  }, [novo, decidindo, respondendo]);
 
   useEffect(() => {
     setCarregando(true); setErro("");
@@ -94,7 +104,7 @@ export default function SolicitacoesPage({ role, meuId }: { role: Role; meuId: s
     const hoje = todayISO();
     Promise.all([
       customFetch<{ pedidos: Pedido[] }>("/api/solicitacoes"),
-      customFetch<{ requests: Folga[] }>(`/api/leave-requests?from=${shift(hoje, -120)}&to=${shift(hoje, 365)}`).catch(() => ({ requests: [] as Folga[] })),
+      customFetch<{ requests: Folga[] }>(`/api/leave-requests?from=${shift(hoje, -120)}&to=${shift(hoje, 365)}`),
     ]).then(([s, f]) => {
       const folgas = f.requests.map((x) => daFolga(x, role, meuId));
       setPedidos([...s.pedidos, ...folgas].sort((a, b) => String(b.criadoEm).localeCompare(String(a.criadoEm))));

@@ -19,8 +19,10 @@ Não há migração pendente para estes: a 0060 já foi aplicada em produção.
 
 ## 2. Vagas de personagem de Buona e Bella
 
-A planilha (aba **Personagens**) já tem as filas desses dois locais; os shows existem em produção,
-mas **sem nenhuma vaga**, então os Livros do Dia deles nascem vazios.
+**Concluído no banco de produção em 10/10, com autorização específica da dona do produto.** Os seis
+shows agora têm as 11 vagas abaixo, nas filas indicadas; a Noite Alemã guarda suas regras como texto.
+O cadastro foi ensaiado no banco de teste, verificado na tela e conferido por leitura depois da
+gravação. Não houve migração. O código de preparação está nos commits `d2a2725` e `345a92b`.
 
 Quantidades confirmadas pela Babi em 10/10:
 
@@ -54,6 +56,15 @@ Revisar tela a tela com o crivo do `AGENTS.md`, como foi feito com o dia de trab
 mexer em qualquer validação, ler `docs/regras-de-folgas.md`: a conta é **mensal**, a segunda folga
 é condicionada à jornada completa, e o dia de parque fechado (quarta em Snowland, segunda em
 Acquamotion) já é uma das duas folgas.
+
+Revisão iniciada em 10/10: o calendário do Elenco precisa ler as folgas ativas do mapa, além dos
+pedidos pendentes; a leitura da API deve incluir períodos que atravessam a virada do mês. A antiga
+tela de “regime”, com corte semanal, contradizia a contagem mensal e foi substituída por uma
+explicação da regra. Em Solicitações, a troca de perfil deixava uma aba invisível selecionada; e a
+falha ao carregar pedidos de folga era escondida. Essas correções estão no branch, ainda sem
+promoção. O teste de integração de Folgas não terminou porque a conexão com o banco de teste caiu;
+reexecutar antes da promoção. Falta decidir como o Elenco vê a versão publicada das folgas quando
+o mapa é alterado depois de publicar: hoje a publicação só avisa, e o mapa já vale ao editar.
 
 ## 5. Perguntas que ainda estão com a Babi
 

@@ -56,7 +56,7 @@ async function run() {
     if (!address || typeof address === "string") throw new Error("servidor de teste não iniciou");
     const base = `http://127.0.0.1:${address.port}/api`;
     const token = (user: { id: string }, role: string) => signAccessToken({ sub: user.id, jti: `${tag}_${user.id}`, organizationId: org!.id, role, operationIds: [op!.id] });
-    const asDeb = token(deb, "SUPERVISOR_A"), asAdmin = token(admin, "ADMIN");
+    const asDeb = token(deb, "SUPERVISOR_A"), asAdmin = token(admin, "ADMIN"), asJu = token(ju, "MEMBER");
     const call = async (method: string, path: string, auth: string, body?: unknown) => {
       const r = await fetch(`${base}${path}`, { method, signal: AbortSignal.timeout(60_000), headers: { authorization: `Bearer ${auth}`, "content-type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
       const text = await r.text();
@@ -86,6 +86,12 @@ async function run() {
     assert(flag(lela.id) === false && flag(louis.id) === false && flag(patAcqua.id) === false && flag(deb.id) === false, "a grade trava quem não é da equipe e a própria linha");
     const gridAdmin = await call("GET", `/folgas/grid?operationId=${op!.id}&year=2026&month=10`, asAdmin);
     assert((gridAdmin.body.members as { editable: boolean }[]).every((m) => m.editable), "Administração edita todas as linhas");
+
+    const [folgaEntreMeses] = await db.insert(folgasTable).values({ userId: ju.id, operationId: op!.id, type: "NO_SHOW", startDate: "2026-09-29", endDate: "2026-10-02", createdBy: admin.id }).returning();
+    const minhasFolgas = await call("GET", "/folgas?status=ACTIVE&dateFrom=2026-10-01&dateTo=2026-10-31", asJu);
+    assert(minhasFolgas.status === 200 && (minhasFolgas.body.folgas as { id: string }[]).some((folga) => folga.id === folgaEntreMeses!.id), "Elenco vê a própria folga que começou no mês anterior");
+    const folgasDeOutraPessoa = await call("GET", `/folgas?status=ACTIVE&dateFrom=2026-10-01&dateTo=2026-10-31&userId=${lela.id}`, asJu);
+    assert((folgasDeOutraPessoa.body.folgas as { userId: string }[]).every((folga) => folga.userId === ju.id), "Elenco não consulta folgas de outra pessoa pelo filtro");
 
     for (const [method, path, body] of [["POST", "/folgas/grid/publicar", { operationId: op!.id, year: 2026, month: 10 }], ["POST", "/folgas/grid/repeat", { operationId: op!.id, year: 2026, month: 11 }], ["DELETE", `/folgas/grid/reset?operationId=${op!.id}&year=2026&month=10`, { operationId: op!.id, year: 2026, month: 10 }]] as const) {
       assert((await call(method, path, asDeb, body)).status === 403, `${path.split("?")[0]} no mês inteiro é só da Administração`);

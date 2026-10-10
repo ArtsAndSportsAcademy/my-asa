@@ -272,8 +272,10 @@ router.get("/folgas", requireAuth, requireOrganization, async (req, res) => {
 
     if (type) conditions.push(eq(folgasTable.type, type as any));
     if (status) conditions.push(eq(folgasTable.status, status as any));
-    if (dateFrom) conditions.push(gte(folgasTable.startDate, dateFrom));
-    if (dateTo) conditions.push(lte(folgasTable.endDate, dateTo));
+    // Incluir também uma folga que começou antes e termina dentro do período,
+    // ou que atravessa o mês inteiro.
+    if (dateFrom) conditions.push(gte(folgasTable.endDate, dateFrom));
+    if (dateTo) conditions.push(lte(folgasTable.startDate, dateTo));
 
     const rows = await db
       .select({

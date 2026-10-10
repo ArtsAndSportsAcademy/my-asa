@@ -208,11 +208,11 @@ export default function ShellFoundation() {
         {isAuthenticated && <button type="button" className="asa-signout" onClick={() => void signOut()}><LogOut size={15}/> Sair</button>}
       </div>
     </aside>
-    <div className="asa-mobile-head"><button onClick={() => setDrawerOpen(true)} aria-label="Abrir menu" aria-expanded={drawerOpen}><Menu/></button><b>{itemLabel(active, role)}</b>{mobile && <NotificationBell enabled={isAuthenticated}/>}</div>
+    <div className="asa-mobile-head"><button onClick={() => setDrawerOpen(true)} aria-label="Abrir menu" aria-expanded={drawerOpen}><Menu/></button><b>{location === "/solicitacoes" ? "Solicitações" : itemLabel(active, role)}</b>{mobile && <NotificationBell enabled={isAuthenticated}/>}</div>
     <main>
       <AvisoSemConexao/>
       <header className={`asa-header${active.href === "/livro-do-dia" || active.href === "/escalas" ? " ldd-shell-header" : ""}`}>
-        <div><h1>{itemLabel(active, role)}</h1><p className="asa-header-date">{todayLabel()}{active.href === "/shows" && " · Livro do Show, origem do Livro do Dia"}</p></div>
+        <div><h1>{location === "/solicitacoes" ? "Solicitações" : itemLabel(active, role)}</h1><p className="asa-header-date">{todayLabel()}{active.href === "/shows" && " · Livro do Show, origem do Livro do Dia"}</p></div>
         {active.href === "/livro-do-dia" || active.href === "/escalas" ? headerExtra : null}
         {!mobile && <NotificationBell enabled={isAuthenticated}/>}
       </header>
