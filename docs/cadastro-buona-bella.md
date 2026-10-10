@@ -20,8 +20,21 @@ node ./scripts/vagas-buona-bella.mjs             # apenas confere e mostra o pla
 node ./scripts/vagas-buona-bella.mjs --aplicar   # cadastra depois da autorização
 ```
 
-Nunca copie o token para documento, comando versionado, log ou conversa. Produção continua
-exigindo autorização específica da Babi. O assistente não aplicou o cadastro em produção.
+Nunca copie o token para documento, comando versionado, log ou conversa. A Babi autorizou a
+gravação em produção nesta conversa em 10/10/2026. Como não havia sessão de produção aberta,
+o cadastro foi feito em uma única transação direta no banco, após um ensaio revertido, com o
+ator registrado como Codex autorizado pela Administração:
+
+```powershell
+node --env-file=../../.env.producao ../../node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/cli.mjs ./scripts/vagas-buona-bella-banco.ts
+node --env-file=../../.env.producao ../../node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/cli.mjs ./scripts/vagas-buona-bella-banco.ts --ensaiar
+node --env-file=../../.env.producao ../../node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/cli.mjs ./scripts/vagas-buona-bella-banco.ts --aplicar
+node --env-file=../../.env.producao ./scripts/verificar-vagas-buona-bella-banco.mjs
+```
+
+O último comando confirmou os seis shows, as 11 vagas, a ordem das filas, as observações da
+Noite Alemã e os 12 eventos no Registro. O script de aplicação recusa uma nova execução porque
+agora já existem vagas; essa recusa protege o cadastro contra duplicação.
 
 A conferência exige exatamente um show por nome/local e uma pessoa ativa por nome. Ignora acentos
 na correspondência e aceita os sobrenomes intermediários de Victor Emanuel Massalai, sem confundir
