@@ -352,7 +352,9 @@ router.get("/folgas/publicadas", requireAuth, requireOrganization, async (req, r
   const snapshots = await Promise.all(operations.map((operation) => ultimoRetratoFolgas(operation.id, year, month)));
   const folgas = new Map<string, FolgaPublicada>();
   for (const snapshot of snapshots) for (const folga of snapshot?.folgas ?? []) if (folga.userId === actor.sub) folgas.set(folga.id, folga);
-  res.json({ folgas: [...folgas.values()], publicada: snapshots.some((snapshot) => snapshot?.folgas !== null && snapshot !== null), precisaRepublicar: snapshots.some((snapshot) => snapshot !== null && snapshot.folgas === null) });
+  res.json({ folgas: [...folgas.values()], publicada: snapshots.some((snapshot) => snapshot?.publishedAt !== null && snapshot?.publishedAt !== undefined),
+    retratoInicial: snapshots.some((snapshot) => snapshot?.retratoInicial === true),
+    precisaRepublicar: snapshots.some((snapshot) => Boolean(snapshot?.publishedAt) && snapshot?.folgas === null) });
 });
 
 // ─── GET /folgas/grid — grade mensal ──────────────────────────────────────────

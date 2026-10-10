@@ -87,11 +87,24 @@ entraram na fila durável e apareceram no sino quando o agendador local processo
 da interface em `?amostra=1` e 375 px permanece a validação visual desta fase.
 
 Consulta somente de leitura em produção em 10/10: **não há evento de publicação mensal de Folgas**.
-Outubro tem 212 registros ativos de folga para 30 pessoas em uma operação; os meses de novembro a
-fevereiro não têm registros ativos no momento da consulta. Por isso, a passagem exige a **primeira
-publicação de outubro**, não uma republicação de meses antigos. Com o código novo, antes desse clique
-o Elenco verá o mês sem essas folgas. Não promover sem combinar a publicação inicial de outubro na
-mesma janela, ou sem ajustar a regra de transição para preservar a leitura anterior.
+Outubro tinha 212 registros ativos de folga para 30 pessoas em uma operação; novembro a fevereiro
+não tinham registros ativos naquele momento. Esses números podem mudar até a promoção.
+
+**Transição preparada, ainda sem promoção:** a migração `0061_folgas_retrato_inicial` fotografa,
+no Registro, as folgas ativas já visíveis de cada mês da operação. Esse retrato conserva a leitura
+anterior do Elenco, mas não se apresenta como publicação. A Administração ainda vê “Publicar mês”.
+Uma edição após a foto não chega ao Elenco até esse primeiro clique; então a publicação substitui
+o retrato inicial. A migração tem rollback que desativa apenas os retratos que ela criou, sem apagar
+folgas. Foi aplicada **somente no banco de teste**. Nele, uma folga de novembro permaneceu visível,
+uma alteração posterior ficou escondida e a primeira publicação mostrou a alteração. O teste de
+integração passou com 35 verificações; os builds da API e do site passaram. A tela de amostra foi
+conferida em 375 px. O `tsc` completo ainda falha por erros anteriores de tipos do Express e de
+dependências geradas, sem erro novo apontado no componente de Folgas.
+
+Para produção, **a Babi roda a migração 0061 primeiro e promove o código depois**, em uma janela
+sem edição de folgas entre esses dois passos. A foto é tirada quando a migração roda; uma mudança
+feita no app antigo depois dela não entraria na foto. A primeira publicação de outubro continua
+sob decisão da Administração, sem necessidade de acontecer no mesmo minuto da promoção.
 
 ## 5. Perguntas que ainda estão com a Babi
 

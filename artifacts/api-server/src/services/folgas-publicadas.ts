@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { db, historyEventsTable, userRolesTable, usersTable } from "@workspace/db";
 import { enqueueNotification } from "./undo.js";
 
@@ -16,16 +16,17 @@ export type FolgaPublicada = {
 export const chaveMesFolgas = (operationId: string, year: number, month: number) =>
   `${operationId}:${year}-${String(month).padStart(2, "0")}`;
 
-/** O retrato é a última publicação, não o mapa que a gestão está editando agora. */
+/** O retrato é a última publicação ou a foto inicial da migração, nunca o mapa em edição. */
 export async function ultimoRetratoFolgas(operationId: string, year: number, month: number) {
-  const [event] = await db.select({ afterState: historyEventsTable.afterState, occurredAt: historyEventsTable.occurredAt })
+  const [event] = await db.select({ action: historyEventsTable.action, afterState: historyEventsTable.afterState, occurredAt: historyEventsTable.occurredAt })
     .from(historyEventsTable)
-    .where(and(eq(historyEventsTable.action, "FOLGA_MONTH_PUBLISHED"), eq(historyEventsTable.entityId, chaveMesFolgas(operationId, year, month))))
+    .where(and(inArray(historyEventsTable.action, ["FOLGA_MONTH_PUBLISHED", "FOLGA_MONTH_BASELINE"]), eq(historyEventsTable.status, "ACTIVE"), eq(historyEventsTable.entityId, chaveMesFolgas(operationId, year, month))))
     .orderBy(desc(historyEventsTable.occurredAt), desc(historyEventsTable.createdAt)).limit(1);
   if (!event) return null;
   const state = event.afterState as { folgas?: FolgaPublicada[] } | null;
   // Uma publicação antiga sem retrato não pode ser apresentada como se fosse a versão atual.
-  return { publishedAt: event.occurredAt.toISOString(), folgas: Array.isArray(state?.folgas) ? state.folgas : null };
+  return { publishedAt: event.action === "FOLGA_MONTH_PUBLISHED" ? event.occurredAt.toISOString() : null,
+    retratoInicial: event.action === "FOLGA_MONTH_BASELINE", folgas: Array.isArray(state?.folgas) ? state.folgas : null };
 }
 
 /** Depois de mudar um mês publicado, a Administração recebe um aviso por alteração. */

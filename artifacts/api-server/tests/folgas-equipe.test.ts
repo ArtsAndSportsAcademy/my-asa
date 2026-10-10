@@ -1,11 +1,12 @@
 /** Folgas por equipe (08/10): Supervisão vê todo mundo, altera só a própria equipe e nunca a própria folga. */
 import http from "node:http";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import {
   areaLocalSupervisorsTable,
   areasTable,
   db,
   folgasTable,
+  historyEventsTable,
   locationsTable,
   operationsTable,
   organizationsTable,
@@ -109,6 +110,25 @@ async function run() {
     assert((await publish()).status === 200, "Administração republica o mês alterado");
     const newSnapshot = await call("GET", publishedPath, asJu);
     assert(newSnapshot.body.folgas.some((folga: { startDate: string }) => folga.startDate === "2026-10-24"), "republicação entrega a folga nova ao Elenco");
+
+    assert((await toggle(asAdmin, ju.id, "2026-11-05")).status === 200, "gestão prepara folga antes da primeira publicação de novembro");
+    const [folgaNovembro] = await db.select().from(folgasTable).where(and(eq(folgasTable.operationId, op!.id), eq(folgasTable.startDate, "2026-11-05")));
+    if (!folgaNovembro) throw new Error("folga de teste não encontrada");
+    await db.insert(historyEventsTable).values({
+      orgId: org!.id, category: "ABSENCE", title: "Retrato inicial de teste", narrative: "Preserva a folga anterior à primeira publicação.",
+      entityType: "folga_mes", entityId: `${op!.id}:2026-11`, actorId: admin.id, operationId: op!.id,
+      action: "FOLGA_MONTH_BASELINE", afterState: { folgas: [{ id: folgaNovembro.id, userId: ju.id, userName: ju.name,
+        operationId: op!.id, type: folgaNovembro.type, startDate: folgaNovembro.startDate, endDate: folgaNovembro.endDate, status: "ACTIVE" }] },
+    });
+    const novembro = "/folgas/publicadas?year=2026&month=11";
+    const retratoInicial = await call("GET", novembro, asJu);
+    assert(retratoInicial.body.publicada === false && retratoInicial.body.retratoInicial === true && retratoInicial.body.folgas.some((folga: { id: string }) => folga.id === folgaNovembro.id), "retrato inicial mantém a folga visível sem dizer que o mês foi publicado");
+    assert((await toggle(asAdmin, ju.id, "2026-11-06")).status === 200, "gestão altera o mapa ainda sem primeira publicação");
+    const antesDaPrimeiraPublicacao = await call("GET", novembro, asJu);
+    assert(!antesDaPrimeiraPublicacao.body.folgas.some((folga: { startDate: string }) => folga.startDate === "2026-11-06"), "edição após o retrato inicial espera a primeira publicação");
+    assert((await call("POST", "/folgas/grid/publicar", asAdmin, { operationId: op!.id, year: 2026, month: 11 })).status === 200, "Administração faz a primeira publicação após o retrato inicial");
+    const novembroPublicado = await call("GET", novembro, asJu);
+    assert(novembroPublicado.body.publicada === true && novembroPublicado.body.retratoInicial === false && novembroPublicado.body.folgas.some((folga: { startDate: string }) => folga.startDate === "2026-11-06"), "primeira publicação substitui o retrato inicial pelo mapa novo");
 
     for (const [method, path, body] of [["POST", "/folgas/grid/publicar", { operationId: op!.id, year: 2026, month: 10 }], ["POST", "/folgas/grid/repeat", { operationId: op!.id, year: 2026, month: 11 }], ["DELETE", `/folgas/grid/reset?operationId=${op!.id}&year=2026&month=10`, { operationId: op!.id, year: 2026, month: 10 }]] as const) {
       assert((await call(method, path, asDeb, body)).status === 403, `${path.split("?")[0]} no mês inteiro é só da Administração`);
