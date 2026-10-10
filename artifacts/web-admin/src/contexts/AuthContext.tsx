@@ -1,5 +1,6 @@
 import { useState, useEffect, ReactNode } from "react";
 import {
+  ApiError,
   setAuthTokenGetter,
   setAuthRefreshHandler,
   getMe,
@@ -48,7 +49,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("myasa_access_token", tokens.accessToken);
       localStorage.setItem("myasa_refresh_token", tokens.refreshToken);
       return tokens.accessToken;
-    } catch {
+    } catch (err) {
+      // Só derruba a sessão quando o servidor diz que a credencial não vale mais. Queda de
+      // internet, deploy no ar ou erro 500 fazem a renovação falhar com o token ainda bom —
+      // apagar tudo aí joga a pessoa para o login no meio do trabalho, sem motivo.
+      const credencialRecusada = err instanceof ApiError && (err.status === 401 || err.status === 400 || err.status === 403);
+      if (!credencialRecusada) return null;
       clearStorage();
       setState({ user: null, roles: [], capabilities: [], isAuthenticated: false, isLoading: false });
       return null;

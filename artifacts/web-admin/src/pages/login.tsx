@@ -48,6 +48,9 @@ export default function Login() {
           if (codigo === "USER_INACTIVE") { setTela("desativada"); return; }
           if (codigo && MENSAGEM_DE_ERRO[codigo]) { setErro(MENSAGEM_DE_ERRO[codigo]); return; }
           if (!(err instanceof ApiError)) { setErro("Sem conexão. Tente de novo quando a internet voltar."); return; }
+          // Só 401 é senha errada. Dizer "senha não confere" quando o servidor falhou faz a
+          // pessoa revisar a senha dez vezes atrás de um problema que não é dela.
+          if (err.status !== 401) { setErro(`O servidor não respondeu direito agora (erro ${err.status}). Não é a sua senha — tente de novo em um minuto.`); return; }
           setErro("Usuário ou senha não conferem.");
         },
       },
