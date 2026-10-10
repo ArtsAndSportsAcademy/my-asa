@@ -22,15 +22,75 @@ aqui não é um teste vermelho: é alguém que não aparece no show, ou que trab
 Ao mexer ou revisar qualquer tela, passe cada ação por três perguntas. Foi assim que apareceram os
 problemas que mais incomodavam no uso real:
 
-1. **Serve para várias pessoas de uma vez?** Uma atividade manual que só aceitava uma pessoa, um
-   bloco da Programação que só valia para um dia da semana, um ajuste por vez numa conexão lenta.
-2. **Quem precisa ficar sabendo?** Mudança depois de publicada que ninguém avisa; pessoa chamada na
-   folga sem receber aviso; administração que só descobre se abrir a tela.
-3. **Dá para desfazer?** Tirar sem perguntar, sem restaurar e sem registro. Tudo o que remove deve
-   ser recuperável e aparecer no Registro.
+Cada pergunta abaixo nasceu de um defeito real encontrado no uso, e está anotada com ele. Não é
+formulário: é a lista do que já escapou antes.
+
+### Quem usa
+
+1. **Serve para várias pessoas (ou vários dias) de uma vez?**
+   *Pegou:* a atividade manual da Escala só aceitava uma pessoa por vez; o bloco novo da Programação
+   valia para um único dia da semana, obrigando a repetir a mesma digitação cinco vezes; o ajuste de
+   célula ia de uma pessoa por vez, cada uma com sua ida ao servidor.
+2. **Quem pode fazer isso — e quem não pode recebe um "não" que explica?**
+   *Pegou:* supervisão ajustando pessoa de outra área; Direção que só lê; Elenco que não resolve
+   folga de ninguém. Recusa sem frase clara vira "o app está quebrado".
+3. **Funciona no telefone?**
+   *Pegou:* na Minha escala, "Livro do Dia publicado" quebrava uma palavra por linha. O Elenco usa o
+   app no celular, não no computador — toda tela que o Elenco vê se confere a 375px de largura.
+
+### Quem precisa ficar sabendo
+
+4. **Quem precisa saber disso, e como fica sabendo?**
+   *Pegou:* mudança depois de publicada que não avisava ninguém; pessoa chamada na própria folga sem
+   receber aviso; Administração que só descobria se abrisse a tela. Aviso no sino, e um por
+   acontecimento — não um por clique.
+5. **Entrou no Registro, com o porquê?**
+   Toda escrita grava `writeHistoryEvent` na mesma transação. Quando a ação é exceção (chamar na
+   folga, reabrir dia fechado, tirar do molde), o motivo escrito vai junto.
+6. **Depois de publicado, o que muda sozinho e o que espera republicação?**
+   *Pegou:* o Elenco via a troca antes de a Administração republicar. A versão publicada é o que vale
+   para quem faz; a mudança espera a republicação, e a Administração é avisada de que há o que
+   republicar.
+
+### Quando dá errado
+
+7. **Dá para desfazer?**
+   *Pegou:* "tirar do molde" sumia com o bloco sem perguntar e sem jeito de trazer de volta. Remoção
+   é lógica, restaurável e visível — e o que é irreversível (marcar executado) pergunta antes.
+8. **Se der errado, a mensagem diz a verdade?**
+   *Pegou:* a tela de entrada dizia "usuário ou senha não conferem" quando o servidor falhava, e a
+   pessoa revisava a própria senha dez vezes atrás de um problema que não era dela.
+9. **Falha de rede ou servidor derruba o trabalho?**
+   *Pegou:* a renovação do acesso apagava a sessão em qualquer erro — a pessoa ia parar no login no
+   meio do trabalho, com a credencial ainda válida. Só a recusa do servidor encerra a sessão.
+10. **O que aparece quando está vazio, ou é a primeira vez?**
+    *Pegou:* show sem vagas gera Livro do Dia vazio — a tela precisa dizer que falta o cadastro, não
+    só mostrar nada. Vazio explicado não é defeito; vazio mudo é.
+
+### O caminho até ali
+
+11. **Dá para chegar? Em que dia e em que local a tela abre?**
+    *Pegou:* o Livro do Dia só mostrava hoje, então quem prepara o dia seguinte não alcançava; abria
+    no show das 10h já executado às 18h; a Escala abria sempre no primeiro local da lista.
+12. **Dá para diferenciar uma linha da outra?**
+    *Pegou:* dez Livros do mesmo dia em linhas quase idênticas — sem hora, e com a operação no lugar
+    do local, o "Musical" de Snowland e o de Acquamotion ficavam iguais.
+13. **O texto acompanha o contexto?**
+    *Pegou:* "shows na agenda de hoje" continuava escrito enquanto a tela mostrava amanhã.
+
+### Enquanto acontece
+
+14. **O que a pessoa vê enquanto espera, e quando termina?**
+    *Pegou:* publicar respondia certo e a tela seguia dizendo "Rascunho"; o botão "Gerar" ficava mudo
+    por vinte segundos. Em banco lento, silêncio vira clique repetido.
+15. **Dá para sair sem salvar?**
+    *Pegou:* os diálogos não fechavam com Esc, só no ×. No telefone, com o teclado aberto, o × fica
+    escondido.
 
 Erro aparece no teste; isso aqui só aparece se alguém perguntar. Traga as duas coisas juntas no
-relato, separando o que já foi corrigido do que depende de decisão dela.
+relato, separando o que já foi corrigido do que depende de decisão dela. Quando uma pergunta nova
+pegar um defeito, acrescente-a aqui com o caso — a lista cresce pelo que acontece, não pelo que se
+imagina.
 
 ## Regras que não se quebram
 
