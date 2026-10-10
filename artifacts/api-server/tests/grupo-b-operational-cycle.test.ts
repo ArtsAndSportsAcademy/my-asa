@@ -4,7 +4,7 @@ import { and, eq, inArray, or } from "drizzle-orm";
 import {
   agendaEventsTable, areaLocalSupervisorsTable, areasTable, dailyBookAssignmentsTable,
   dailyBookCheckInVacanciesTable, dailyBookPositionsTable, dailyBooksTable, dayCheckInsTable,
-  db, folgasTable, historyEventsTable, leaveRegimesTable, leaveRequestsTable, locationsTable,
+  db, folgasTable, historyEventsTable, leaveRegimesTable, leaveRequestsTable, locationsTable, notificationOutboxTable,
   operationLocationsTable, operationsTable, organizationsTable, pool, programacaoBlocosTable,
   programacoesTable, scalesTable, showBooksTable, userRolesTable, usersTable,
 } from "@workspace/db";
@@ -77,7 +77,13 @@ async function run() {
     assert(historyLeave.length === 1, "decisão de folga grava Registro");
     const direct = await post(supApi, "/leave-calendar", { userId: worker.id, startDate: "2026-10-06", endDate: "2026-10-06", reason: "Rodízio de grupo" });
     assert(direct.status === 201, "Supervisão define folga diretamente no calendário da própria área");
+    const many = await post(supApi, "/leave-calendar", { userIds: [worker.id, memberOnLeave.id], startDate: "2026-10-07", endDate: "2026-10-07", reason: "Mesmo dia combinado" });
+    assert(many.status === 201 && ((await many.json()) as { requests: unknown[] }).requests.length === 2, "Supervisão define a folga de duas pessoas numa ação");
     assert((await post(supApi, "/leave-calendar", { userId: outsider.id, startDate: date, endDate: date, reason: "tentativa" })).status === 403, "Supervisão não define folga para outra área");
+    const pending = await post(memberApi, "/leave-requests", { startDate: "2026-10-08", endDate: "2026-10-08", reason: "Compromisso" });
+    const pendingId = ((await pending.json()) as { request: { id: string } }).request.id;
+    assert((await post(memberApi, `/leave-requests/${pendingId}/cancelar`, {})).status === 200, "Elenco retira o próprio pedido pendente");
+    assert((await supApi(`/leave-requests/${pendingId}`, { method: "PATCH", body: JSON.stringify({ status: "APPROVED", decisionReason: "Tarde demais" }) })).status === 409, "pedido retirado não pode ser aprovado depois");
 
     const day = await montarEscalaDoDia(org!.id, location!.id, date);
     const block = day!.blocos.find((item) => item.dailyBookId === book!.id)!;
@@ -109,6 +115,7 @@ async function run() {
     await db.delete(programacoesTable).where(eq(programacoesTable.organizationId, org!.id));
     await db.delete(leaveRequestsTable).where(eq(leaveRequestsTable.organizationId, org!.id));
     await db.delete(leaveRegimesTable).where(eq(leaveRegimesTable.organizationId, org!.id));
+    await db.delete(notificationOutboxTable).where(inArray(notificationOutboxTable.userId, [admin.id, sup.id, memberOnLeave.id, worker.id, outsider.id]));
     await db.delete(folgasTable).where(inArray(folgasTable.userId, [admin.id, sup.id, memberOnLeave.id, worker.id, outsider.id]));
     await db.delete(scalesTable).where(eq(scalesTable.operationId, operation!.id));
     await db.delete(agendaEventsTable).where(eq(agendaEventsTable.operationId, operation!.id));

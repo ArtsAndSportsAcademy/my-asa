@@ -26,7 +26,6 @@ import {
   escalaBlocoAjustesTable,
   folgasTable,
   historyEventsTable,
-  leaveRequestsTable,
   locationsTable,
   operationLocationsTable,
   programacaoBlocosTable,
@@ -231,7 +230,7 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
 
   const areaIds = [...new Set([...people.map((p) => p.areaId), ...supervisors.map((s) => s.areaId)].filter((id): id is string => Boolean(id)))];
   const personIds = people.map((p) => p.id);
-  const [areas, prontas, folgas, pedidosAprovados] = await Promise.all([
+  const [areas, prontas, folgas] = await Promise.all([
     areaIds.length ? db.select({ id: areasTable.id, name: areasTable.name }).from(areasTable).where(and(inArray(areasTable.id, areaIds), eq(areasTable.active, true))).orderBy(asc(areasTable.name)) : Promise.resolve([]),
     scale ? db.select({ areaId: escalaAreasProntasTable.areaId, markedBy: usersTable.name, markedAt: escalaAreasProntasTable.markedAt }).from(escalaAreasProntasTable)
       .leftJoin(usersTable, eq(escalaAreasProntasTable.markedBy, usersTable.id))
@@ -239,16 +238,11 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
     personIds.length ? db.select({ userId: folgasTable.userId, type: folgasTable.type }).from(folgasTable).where(and(
       inArray(folgasTable.userId, personIds), eq(folgasTable.status, "ACTIVE"), lte(folgasTable.startDate, date), gte(folgasTable.endDate, date),
     )) : Promise.resolve([]),
-    personIds.length ? db.select({ userId: leaveRequestsTable.userId }).from(leaveRequestsTable).where(and(
-      inArray(leaveRequestsTable.userId, personIds), eq(leaveRequestsTable.status, "APPROVED"),
-      lte(leaveRequestsTable.startDate, date), gte(leaveRequestsTable.endDate, date),
-    )) : Promise.resolve([]),
   ]);
   const areaName = new Map(areas.map((a) => [a.id, a.name]));
-  // Pedido aprovado já materializa a Folga legada para compatibilidade, mas também entra
-  // diretamente aqui: a regra de geração lê a fonte nova e não depende de um efeito lateral.
+  // A folga ativa é a fonte da escala: retirar a marca no mapa não pode deixar
+  // um pedido aprovado antigo impedindo a pessoa de trabalhar para sempre.
   const folgaOf = new Map(folgas.map((f) => [f.userId, f.type]));
-  for (const pedido of pedidosAprovados) if (!folgaOf.has(pedido.userId)) folgaOf.set(pedido.userId, "DAY_OFF");
   const present = new Set(people.filter((p) => !folgaOf.has(p.id)).map((p) => p.id));
 
   // Programação vigente: a de vigência mais curta que cobre a data (a "Especial" vence a "Natal").

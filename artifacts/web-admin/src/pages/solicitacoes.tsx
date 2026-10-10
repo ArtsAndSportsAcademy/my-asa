@@ -54,7 +54,7 @@ function daFolga(f: Folga, role: Role, meuId: string | null): Pedido {
     id: `folga:${f.id}`, tipo: "LEAVE", estado: f.status, pessoa: { id: f.userId, nome: f.userName ?? "" }, area: f.areaName ?? null, local: null, colega: null,
     data: f.startDate, ate: f.endDate, inicio: null, fim: null, assunto: null, motivo: f.reason, oculto: false,
     decisao: f.status !== "PENDING" && f.decisionReason ? { por: null, em: "", motivo: f.decisionReason } : null, criadoEm: f.createdAt ?? f.startDate,
-    pode: { cancelar: false, responderColega: false, decidir: f.status === "PENDING" && !minha && (role === "adm" || role === "sup") },
+    pode: { cancelar: minha && f.status === "PENDING", responderColega: false, decidir: f.status === "PENDING" && !minha && (role === "adm" || role === "sup") },
   };
 }
 
@@ -132,7 +132,10 @@ export default function SolicitacoesPage({ role, meuId }: { role: Role; meuId: s
     try {
       if (novo === "LEAVE") {
         const body = { startDate: v("data"), endDate: v("ate") || v("data"), reason: v("motivo") };
-        if (!review) await customFetch("/api/leave-requests", { method: "POST", body: JSON.stringify(body) });
+        if (review) {
+          const eu = REVIEW_PERSON[role];
+          setPedidos((rows) => [{ id: `folga:amostra-${Date.now()}`, tipo: "LEAVE", estado: "PENDING", pessoa: { id: eu, nome: eu }, area: "Patinadores", local: null, colega: null, data: body.startDate, ate: body.endDate, inicio: null, fim: null, assunto: null, motivo: body.reason, oculto: false, decisao: null, criadoEm: todayISO(), pode: { cancelar: true, responderColega: false, decidir: false } }, ...rows]);
+        } else await customFetch("/api/leave-requests", { method: "POST", body: JSON.stringify(body) });
         setAviso("Pedido de folga enviado. Ele também aparece na tela Folgas.");
       } else {
         const tipo = novo === "HEALTH_RESTRICTION" && v("restricao") === "PHYSICAL" ? "PHYSICAL_RESTRICTION" : novo;
@@ -186,7 +189,7 @@ export default function SolicitacoesPage({ role, meuId }: { role: Role; meuId: s
     setAviso("");
     try {
       if (review) trocarLocal(pedido.id, { ...pedido, estado: "CANCELLED", pode: { cancelar: false, responderColega: false, decidir: false } });
-      else { await customFetch(`/api/solicitacoes/${pedido.id}/cancelar`, { method: "POST" }); recarregar(); }
+      else { await customFetch(pedido.tipo === "LEAVE" ? `/api/leave-requests/${pedido.id.replace("folga:", "")}/cancelar` : `/api/solicitacoes/${pedido.id}/cancelar`, { method: "POST" }); recarregar(); }
       setAviso("Pedido cancelado.");
     } catch (e) { setAviso(mensagemDe(e, "Não consegui cancelar.")); }
   }

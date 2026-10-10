@@ -15,8 +15,9 @@ import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { groupCoveredOperationIds } from "./groups.js";
 import { requestLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
-import { notifyMany, sendNotification } from "../services/notificationService.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
+import { enqueueNotification } from "../services/undo.js";
+import { avisarRepublicacaoFolgas, chaveMesFolgas, ultimoRetratoFolgas, type FolgaPublicada } from "../services/folgas-publicadas.js";
 import { operationalDate } from "../lib/operational-date.js";
 import { listAreaLocalScopes } from "../services/area-local-scope.js";
 
@@ -251,6 +252,29 @@ router.get("/folgas", requireAuth, requireOrganization, async (req, res) => {
   const { userId, type, status, dateFrom, dateTo } = raw;
 
   try {
+    if (!MANAGER_ROLES.includes(user.role)) {
+      const today = operationalDate();
+      const from = dateFrom ?? `${today.slice(0, 7)}-01`;
+      const to = dateTo ?? `${today.slice(0, 7)}-31`;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || to < from) {
+        res.status(400).json({ message: "Informe um período válido." }); return;
+      }
+      const operations = await db.selectDistinct({ id: userRolesTable.operationId }).from(userRolesTable)
+        .innerJoin(operationsTable, eq(userRolesTable.operationId, operationsTable.id))
+        .where(and(eq(userRolesTable.userId, user.sub), eq(userRolesTable.active, true), eq(operationsTable.organizationId, user.organizationId)));
+      const found = new Map<string, FolgaPublicada>();
+      let year = Number(from.slice(0, 4)), month = Number(from.slice(5, 7));
+      const last = Number(to.slice(0, 4)) * 12 + Number(to.slice(5, 7));
+      if (last - (year * 12 + month) > 23) { res.status(400).json({ message: "Consulte até 24 meses por vez." }); return; }
+      while (year * 12 + month <= last) {
+        for (const operation of operations) {
+          const snapshot = await ultimoRetratoFolgas(operation.id, year, month);
+          for (const folga of snapshot?.folgas ?? []) if (folga.userId === user.sub && folga.startDate <= to && folga.endDate >= from && (!type || folga.type === type) && (!status || status === "ACTIVE")) found.set(folga.id, folga);
+        }
+        month++; if (month === 13) { year++; month = 1; }
+      }
+      res.json({ folgas: [...found.values()] }); return;
+    }
     const conditions: SQL<unknown>[] = [];
 
     if (user.role === "ADMIN") {
@@ -266,8 +290,6 @@ router.get("/folgas", requireAuth, requireOrganization, async (req, res) => {
       if (scopeErr) { res.status(403).json({ error: "Forbidden", message: scopeErr }); return; }
       conditions.push(eq(folgasTable.operationId, operationId));
       if (userId) conditions.push(eq(folgasTable.userId, userId));
-    } else {
-      conditions.push(eq(folgasTable.userId, user.sub));
     }
 
     if (type) conditions.push(eq(folgasTable.type, type as any));
@@ -315,6 +337,22 @@ router.get("/folgas", requireAuth, requireOrganization, async (req, res) => {
     log.error({ err }, "erro ao listar folgas");
     res.status(500).json({ error: "Internal Server Error" });
   }
+});
+
+/** O Elenco lê somente o último retrato publicado de cada operação em que participa. */
+router.get("/folgas/publicadas", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user!;
+  const year = Number(req.query.year), month = Number(req.query.month);
+  if (!Number.isInteger(year) || year < 2020 || year > 2100 || !Number.isInteger(month) || month < 1 || month > 12) {
+    res.status(400).json({ message: "Informe um mês e um ano válidos." }); return;
+  }
+  const operations = await db.selectDistinct({ id: userRolesTable.operationId }).from(userRolesTable)
+    .innerJoin(operationsTable, eq(userRolesTable.operationId, operationsTable.id))
+    .where(and(eq(userRolesTable.userId, actor.sub), eq(userRolesTable.active, true), eq(operationsTable.organizationId, actor.organizationId)));
+  const snapshots = await Promise.all(operations.map((operation) => ultimoRetratoFolgas(operation.id, year, month)));
+  const folgas = new Map<string, FolgaPublicada>();
+  for (const snapshot of snapshots) for (const folga of snapshot?.folgas ?? []) if (folga.userId === actor.sub) folgas.set(folga.id, folga);
+  res.json({ folgas: [...folgas.values()], publicada: snapshots.some((snapshot) => snapshot?.folgas !== null && snapshot !== null), precisaRepublicar: snapshots.some((snapshot) => snapshot !== null && snapshot.folgas === null) });
 });
 
 // ─── GET /folgas/grid — grade mensal ──────────────────────────────────────────
@@ -490,19 +528,19 @@ router.get("/folgas/grid", requireAuth, requireOrganization, async (req, res) =>
 });
 
 // ─── Publicar mês (desenho 18) ────────────────────────────────────────────────
-// Cada célula do mapa já vale na hora. "Publicar mês" avisa a equipe da operação que o mês está
-// pronto e fica no Registro; se o mapa mudar depois, a tela mostra "mudou depois de publicar".
-const monthKey = (operationId: string, yr: number, mo: number) => `${operationId}:${yr}-${String(mo).padStart(2, "0")}`;
+// A gestão edita o mapa ao vivo. O Elenco só recebe o retrato desta publicação.
+const monthKey = chaveMesFolgas;
 
 async function monthPublication(operationId: string, yr: number, mo: number) {
-  const [event] = await db.select({ occurredAt: historyEventsTable.occurredAt, actorName: historyEventsTable.actorName }).from(historyEventsTable)
+  const [event] = await db.select({ occurredAt: historyEventsTable.occurredAt, actorName: historyEventsTable.actorName, afterState: historyEventsTable.afterState }).from(historyEventsTable)
     .where(and(eq(historyEventsTable.action, "FOLGA_MONTH_PUBLISHED"), eq(historyEventsTable.entityId, monthKey(operationId, yr, mo))))
     .orderBy(desc(historyEventsTable.occurredAt)).limit(1);
   if (!event) return { publishedAt: null, publishedBy: null, changedSince: false };
   const first = `${yr}-${String(mo).padStart(2, "0")}-01`, last = `${yr}-${String(mo).padStart(2, "0")}-${String(new Date(yr, mo, 0).getDate()).padStart(2, "0")}`;
   const [changed] = await db.select({ id: folgasTable.id }).from(folgasTable)
     .where(and(eq(folgasTable.operationId, operationId), lte(folgasTable.startDate, last), gte(folgasTable.endDate, first), gt(folgasTable.updatedAt, event.occurredAt))).limit(1);
-  return { publishedAt: event.occurredAt.toISOString(), publishedBy: event.actorName ?? null, changedSince: Boolean(changed) };
+  const state = event.afterState as { folgas?: unknown[] } | null;
+  return { publishedAt: event.occurredAt.toISOString(), publishedBy: event.actorName ?? null, changedSince: !Array.isArray(state?.folgas) || Boolean(changed) };
 }
 
 router.post("/folgas/grid/publicar", requireAuth, requireOrganization, async (req, res) => {
@@ -516,22 +554,34 @@ router.post("/folgas/grid/publicar", requireAuth, requireOrganization, async (re
   if (user.role !== "ADMIN") { res.status(403).json({ error: "Forbidden", message: "Só a Administração faz isso no mês inteiro" }); return; }
   try {
     const nomeMes = new Date(year, month - 1, 1).toLocaleDateString("pt-BR", { month: "long" });
-    const membros = await db.selectDistinct({ id: userRolesTable.userId }).from(userRolesTable)
-      .innerJoin(usersTable, eq(userRolesTable.userId, usersTable.id))
-      .where(and(eq(userRolesTable.operationId, operationId), eq(userRolesTable.active, true), eq(usersTable.status, "ACTIVE")));
-    const destinatarios = membros.map((m) => m.id).filter((id) => id !== user.sub);
+    const first = `${year}-${String(month).padStart(2, "0")}-01`;
+    const last = `${year}-${String(month).padStart(2, "0")}-${String(new Date(year, month, 0).getDate()).padStart(2, "0")}`;
     const republicacao = (await monthPublication(operationId, year, month)).publishedAt !== null;
-    await writeHistoryEvent({
-      category: "ABSENCE", action: "FOLGA_MONTH_PUBLISHED",
-      title: `Folgas de ${nomeMes} ${republicacao ? "republicadas" : "publicadas"}`,
-      narrative: `${destinatarios.length} pessoa(s) da operação avisada(s).`,
-      entityType: "folga_mes", entityId: monthKey(operationId, year, month), actorId: user.sub, operationId, orgId: user.organizationId,
-      metadata: { year, month, avisados: destinatarios.length, republicacao },
-    });
-    await notifyMany(destinatarios, {
-      type: "folga.month_published", title: republicacao ? `Folgas de ${nomeMes} mudaram` : `Folgas de ${nomeMes} publicadas`,
-      message: republicacao ? `O mapa de folgas de ${nomeMes} foi atualizado. Confira as suas.` : `O mapa de folgas de ${nomeMes} está pronto. Confira as suas.`,
-      category: "absence", entityType: "folga_mes", entityId: monthKey(operationId, year, month), actionUrl: "/folgas",
+    const destinatarios = await db.transaction(async (tx) => {
+      const membros = await tx.selectDistinct({ id: userRolesTable.userId }).from(userRolesTable)
+        .innerJoin(usersTable, eq(userRolesTable.userId, usersTable.id))
+        .where(and(eq(userRolesTable.operationId, operationId), eq(userRolesTable.active, true), eq(usersTable.status, "ACTIVE")));
+      const ids = membros.map((m) => m.id).filter((id) => id !== user.sub);
+      const linhas = await tx.select({
+        id: folgasTable.id, userId: folgasTable.userId, userName: usersTable.name,
+        operationId: folgasTable.operationId, type: folgasTable.type,
+        startDate: folgasTable.startDate, endDate: folgasTable.endDate, status: folgasTable.status,
+      }).from(folgasTable).innerJoin(usersTable, eq(folgasTable.userId, usersTable.id))
+        .where(and(eq(folgasTable.operationId, operationId), eq(folgasTable.status, "ACTIVE"), lte(folgasTable.startDate, last), gte(folgasTable.endDate, first)));
+      const folgas: FolgaPublicada[] = linhas.map((linha) => ({ ...linha, status: "ACTIVE" }));
+      const eventId = await writeHistoryEvent({
+        category: "ABSENCE", action: "FOLGA_MONTH_PUBLISHED",
+        title: `Folgas de ${nomeMes} ${republicacao ? "republicadas" : "publicadas"}`,
+        narrative: `${ids.length} pessoa(s) da operação avisada(s).`,
+        entityType: "folga_mes", entityId: monthKey(operationId, year, month), actorId: user.sub, operationId, orgId: user.organizationId,
+        metadata: { year, month, avisados: ids.length, republicacao }, afterState: { folgas },
+      }, tx as any);
+      for (const id of ids) await enqueueNotification(tx as never, {
+        userId: id, type: "folga.month_published", title: republicacao ? `Folgas de ${nomeMes} mudaram` : `Folgas de ${nomeMes} publicadas`,
+        message: republicacao ? `O mapa de folgas de ${nomeMes} foi atualizado. Confira as suas.` : `O mapa de folgas de ${nomeMes} está pronto. Confira as suas.`,
+        category: "absence", entityType: "folga_mes", entityId: monthKey(operationId, year, month), actionUrl: "/folgas",
+      }, new Date(), { deduplicationKey: `folga:publicacao:${eventId}:${id}` });
+      return ids;
     });
     log.info({ operationId, year, month, avisados: destinatarios.length }, "mês de folgas publicado");
     res.json({ ok: true, avisados: destinatarios.length, publicacao: await monthPublication(operationId, year, month) });
@@ -587,6 +637,7 @@ router.post("/folgas/grid/toggle", requireAuth, requireOrganization, async (req,
         await cancelAndSplit(f, date, user.sub, tx as any);
       }
 
+      let eventId: string | null = null;
       if (type) {
         const [created] = await tx.insert(folgasTable).values({
           userId,
@@ -599,7 +650,7 @@ router.post("/folgas/grid/toggle", requireAuth, requireOrganization, async (req,
           createdBy: user.sub,
         }).returning();
 
-        await writeHistoryEvent({
+        eventId = await writeHistoryEvent({
           category: "ABSENCE",
           action: "FOLGA_GRID_SET",
           title: `Folga ${type} registrada em ${date}`,
@@ -613,7 +664,7 @@ router.post("/folgas/grid/toggle", requireAuth, requireOrganization, async (req,
           afterState: created ?? null,
         }, tx as any);
       } else if (existing.length > 0) {
-        await writeHistoryEvent({
+        eventId = await writeHistoryEvent({
           category: "ABSENCE",
           action: "FOLGA_GRID_CLEAR",
           title: `Folga removida em ${date}`,
@@ -627,6 +678,7 @@ router.post("/folgas/grid/toggle", requireAuth, requireOrganization, async (req,
           afterState: null,
         }, tx as any);
       }
+      if (eventId) await avisarRepublicacaoFolgas(tx, user.organizationId, operationId, date, date, eventId);
     });
 
     log.info({ userId, date, type: type ?? "clear" }, "célula da grade alterada");
@@ -705,7 +757,7 @@ router.post("/folgas/grid/bulk", requireAuth, requireOrganization, async (req, r
         }
       }
 
-      await writeHistoryEvent({
+      const eventId = await writeHistoryEvent({
         category: "ABSENCE",
         action: "FOLGA_GRID_BULK",
         title: `Bulk de folgas: ${dates.length} dia(s) ${type ?? "limpos"}`,
@@ -719,6 +771,7 @@ router.post("/folgas/grid/bulk", requireAuth, requireOrganization, async (req, r
         beforeState: { dates: beforeState },
         afterState: { dates: sortedDates, type: type ?? null },
       }, tx as any);
+      await avisarRepublicacaoFolgas(tx, user.organizationId, operationId, sortedDates[0]!, sortedDates[sortedDates.length - 1]!, eventId);
     });
 
     log.info({ userId, count: dates.length, type: type ?? "clear" }, "bulk de folgas aplicado");
@@ -757,7 +810,8 @@ router.post("/folgas/grid/repeat", requireAuth, requireOrganization, async (req,
         if (start > end) continue;
         for (let day = start; day <= end; day++) await tx.insert(folgasTable).values({ userId: row.userId, operationId, type: row.type, startDate: `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`, endDate: `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`, status: "ACTIVE", origem: "MANUAL", createdBy: user.sub });
       }
-      await writeHistoryEvent({ category: "ABSENCE", action: "FOLGA_GRID_REPEAT", title: `Configuração repetida — ${month}/${year}`, narrative: `Gestor repetiu a configuração do mês anterior na operação.`, entityType: "folga", entityId: operationId, actorId: user.sub, operationId, orgId: user.organizationId, metadata: { year, month, sourceYear: previousYear, sourceMonth: previousMonth, copied: source.length } }, tx as any);
+      const eventId = await writeHistoryEvent({ category: "ABSENCE", action: "FOLGA_GRID_REPEAT", title: `Configuração repetida — ${month}/${year}`, narrative: `Gestor repetiu a configuração do mês anterior na operação.`, entityType: "folga", entityId: operationId, actorId: user.sub, operationId, orgId: user.organizationId, metadata: { year, month, sourceYear: previousYear, sourceMonth: previousMonth, copied: source.length } }, tx as any);
+      if (source.length) await avisarRepublicacaoFolgas(tx, user.organizationId, operationId, `${year}-${String(month).padStart(2, "0")}-01`, `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`, eventId);
     });
     log.info({ operationId, year, month, copied: source.length }, "configuração mensal repetida");
     res.json({ ok: true, copied: source.length });
@@ -821,7 +875,7 @@ router.delete("/folgas/grid/reset", requireAuth, requireOrganization, async (req
         await cancelAndSplitRange(f, firstDay, lastDay, user.sub, tx as any);
       }
 
-      await writeHistoryEvent({
+      const eventId = await writeHistoryEvent({
         category: "ABSENCE",
         action: "FOLGA_GRID_RESET",
         title: `Grade de folgas resetada — ${mo}/${yr}`,
@@ -835,6 +889,7 @@ router.delete("/folgas/grid/reset", requireAuth, requireOrganization, async (req
         beforeState: { activeFolgas },
         afterState: { resetRange: { firstDay, lastDay } },
       }, tx as any);
+      if (activeFolgas.length) await avisarRepublicacaoFolgas(tx, user.organizationId, operationId, firstDay, lastDay, eventId);
       return activeFolgas;
     });
 
@@ -877,24 +932,15 @@ router.post("/folgas", requireAuth, requireOrganization, async (req, res) => {
         origem: "MANUAL", createdBy: user.sub, notes: notes ?? null,
       }).returning();
       if (!row) throw new Error("Não foi possível criar folga");
-      await writeHistoryEvent({
+      const eventId = await writeHistoryEvent({
         category: "ABSENCE", action: "FOLGA_CREATED", title: `Folga ${type} registrada`,
         narrative: `Gestor registrou folga manual do tipo ${type} de ${startDate} a ${endDate}.`,
         entityType: "folga", entityId: row.id, actorId: user.sub, operationId,
         orgId: user.organizationId, beforeState: null, afterState: row,
         metadata: { reason: req.body?.reason ?? null },
       }, tx as any);
+      await avisarRepublicacaoFolgas(tx, user.organizationId, operationId, startDate, endDate, eventId);
       return [row] as const;
-    });
-
-    await sendNotification({
-      userId,
-      type: "folga.created",
-      title: "Nova folga registrada",
-      message: `Uma folga foi registrada para você de ${startDate} a ${endDate}.`,
-      category: "absence",
-      entityType: "folga",
-      entityId: folga!.id,
     });
 
     log.info({ folgaId: folga!.id, userId, type }, "folga criada");
@@ -943,12 +989,13 @@ router.patch("/folgas/:id", requireAuth, requireOrganization, async (req, res) =
     const [updated] = await db.transaction(async (tx) => {
       const [row] = await tx.update(folgasTable).set(updates).where(eq(folgasTable.id, id)).returning();
       if (!row) throw new Error("Folga não encontrada");
-      await writeHistoryEvent({
+      const eventId = await writeHistoryEvent({
         category: "ABSENCE", action: "FOLGA_UPDATED", title: "Folga atualizada",
         narrative: `Gestor atualizou a folga de ${existing.startDate} a ${existing.endDate}.`, entityType: "folga", entityId: id,
         actorId: user.sub, operationId: row.operationId, orgId: user.organizationId,
         beforeState: existing, afterState: row, metadata: { reason: req.body?.reason ?? null },
       }, tx as any);
+      await avisarRepublicacaoFolgas(tx, user.organizationId, row.operationId, existing.startDate < row.startDate ? existing.startDate : row.startDate, existing.endDate > row.endDate ? existing.endDate : row.endDate, eventId);
       return [row] as const;
     });
     log.info({ folgaId: id }, "folga atualizada");
@@ -983,23 +1030,14 @@ router.post("/folgas/:id/cancelar", requireAuth, requireOrganization, async (req
         .set({ status: "CANCELLED", updatedAt: new Date() })
         .where(eq(folgasTable.id, id)).returning();
       if (!row) throw new Error("Folga não encontrada");
-      await writeHistoryEvent({
+      const eventId = await writeHistoryEvent({
         category: "ABSENCE", action: "FOLGA_CANCELLED", title: "Folga cancelada",
         narrative: `Gestor cancelou folga de ${existing.startDate} a ${existing.endDate}.`, entityType: "folga", entityId: id,
         actorId: user.sub, operationId: existing.operationId, orgId: user.organizationId,
         beforeState: existing, afterState: row, metadata: { reason: req.body?.reason ?? null },
       }, tx as any);
+      await avisarRepublicacaoFolgas(tx, user.organizationId, existing.operationId, existing.startDate, existing.endDate, eventId);
       return [row] as const;
-    });
-
-    await sendNotification({
-      userId: existing.userId,
-      type: "folga.cancelled",
-      title: "Folga cancelada",
-      message: `Sua folga de ${existing.startDate} a ${existing.endDate} foi cancelada.`,
-      category: "absence",
-      entityType: "folga",
-      entityId: id,
     });
 
     log.info({ folgaId: id }, "folga cancelada");

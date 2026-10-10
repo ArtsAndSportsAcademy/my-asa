@@ -1,14 +1,16 @@
 import { Router, type IRouter } from "express";
 import { and, asc, desc, eq, gte, inArray, isNull, lte, ne, or } from "drizzle-orm";
 import {
-  areasTable, dailyBookAssignmentsTable, dailyBookCheckInVacanciesTable,
+  areaLocalSupervisorsTable, areasTable, dailyBookAssignmentsTable, dailyBookCheckInVacanciesTable,
   dailyBooksTable, dayCheckInsTable, db, folgasTable, leaveRegimesTable, leaveRequestsTable,
-  locationsTable, operationsTable, scalesTable, usersTable,
+  locationsTable, operationsTable, scalesTable, userRolesTable, usersTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { canSupervisorAccessPerson, listAreaLocalScopes } from "../services/area-local-scope.js";
-import { montarEscalaDoDia } from "../services/escala-dia.js";
+import { comoPublicada, montarEscalaDoDia, operationForLocation } from "../services/escala-dia.js";
 import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
+import { enqueueNotification } from "../services/undo.js";
+import { avisarRepublicacaoFolgas, ultimoRetratoFolgas } from "../services/folgas-publicadas.js";
 import { operationalDate } from "../lib/operational-date.js";
 import { protectShiftCheckIns } from "../middlewares/shift-checkin-legacy.js";
 
@@ -39,6 +41,20 @@ async function currentRegime(organizationId: string, date: string) {
   return regime ?? null;
 }
 async function record(input: Parameters<typeof writeHistoryEvent>[0], tx: unknown) { await writeHistoryEvent(input, tx as HistoryExecutor); }
+
+/** Um pedido de folga chega à Supervisão da área e à Administração, sem duplicar destinatários. */
+async function avisarGestaoDaFolga(tx: Parameters<Parameters<typeof db.transaction>[0]>[0], organizationId: string, areaId: string | null, requesterId: string, requestId: string, title: string, message: string, event: string) {
+  const admins = await tx.selectDistinct({ id: userRolesTable.userId }).from(userRolesTable)
+    .innerJoin(usersTable, eq(userRolesTable.userId, usersTable.id))
+    .where(and(eq(usersTable.organizationId, organizationId), eq(usersTable.status, "ACTIVE"), eq(userRolesTable.active, true), eq(userRolesTable.role, "ADMIN")));
+  const supervisores = areaId ? await tx.selectDistinct({ id: areaLocalSupervisorsTable.supervisorId }).from(areaLocalSupervisorsTable)
+    .innerJoin(usersTable, eq(areaLocalSupervisorsTable.supervisorId, usersTable.id))
+    .where(and(eq(areaLocalSupervisorsTable.areaId, areaId), eq(areaLocalSupervisorsTable.active, true), eq(usersTable.status, "ACTIVE"))) : [];
+  const destinatarios = [...new Set([...admins, ...supervisores].map((row) => row.id))].filter((id) => id !== requesterId);
+  for (const id of destinatarios) await enqueueNotification(tx as never, {
+    userId: id, type: event, title, message, category: "absence", entityType: "leave_request", entityId: requestId, actionUrl: "/solicitacoes",
+  }, new Date(), { deduplicationKey: `folga:${requestId}:${event}:${id}` });
+}
 
 // Regime versionado: uma regra futura nunca muda a leitura de um dia já publicado.
 router.get("/leave-regimes/current", requireAuth, requireOrganization, async (req, res) => {
@@ -84,36 +100,51 @@ router.post("/leave-requests", requireAuth, requireOrganization, async (req, res
   if (!startDate || !endDate || endDate < startDate || !reason) { res.status(400).json({ error: "Bad Request", message: "Informe período e motivo do pedido." }); return; }
   const [person] = await db.select({ id: usersTable.id, areaId: usersTable.areaId }).from(usersTable).where(and(eq(usersTable.id, userId), eq(usersTable.organizationId, actor.organizationId))).limit(1);
   if (!person) { res.status(404).json({ error: "Not Found" }); return; }
-  const request = await db.transaction(async (tx) => { const [created] = await tx.insert(leaveRequestsTable).values({ organizationId: actor.organizationId, userId, areaId: person.areaId, startDate, endDate, reason }).returning(); await record({ category: "ABSENCE", action: "leave.requested", title: "Folga solicitada", narrative: `Pedido de folga de ${startDate} a ${endDate}.`, entityType: "leave_request", entityId: created.id, actorId: actor.sub, beforeState: null, afterState: created }, tx); return created; });
+  const request = await db.transaction(async (tx) => {
+    const [created] = await tx.insert(leaveRequestsTable).values({ organizationId: actor.organizationId, userId, areaId: person.areaId, startDate, endDate, reason }).returning();
+    await record({ category: "ABSENCE", action: "leave.requested", title: "Folga solicitada", narrative: `Pedido de folga de ${startDate} a ${endDate}.`, entityType: "leave_request", entityId: created!.id, actorId: actor.sub, orgId: actor.organizationId, beforeState: null, afterState: created }, tx);
+    await avisarGestaoDaFolga(tx, actor.organizationId, person.areaId, userId, created!.id, "Pedido de folga", `Há um pedido de folga de ${startDate} a ${endDate} para decidir.`, "leave.requested");
+    return created!;
+  });
   res.status(201).json({ request });
 });
 
 /** Calendário de grupo: gestão registra uma folga já decidida, sem simular um pedido do Elenco. */
 router.post("/leave-calendar", requireAuth, requireOrganization, async (req, res) => {
   const actor = req.user!, body = req.body as Record<string, unknown>;
-  const userId = typeof body.userId === "string" ? body.userId : "";
+  const userIds = [...new Set(Array.isArray(body.userIds) ? body.userIds.filter((id): id is string => typeof id === "string" && id.length > 0) : typeof body.userId === "string" ? [body.userId] : [])];
+  const targetOperationId = typeof body.operationId === "string" ? body.operationId : null;
   const startDate = typeof body.startDate === "string" ? body.startDate : "";
   const endDate = typeof body.endDate === "string" ? body.endDate : "";
   const reason = typeof body.reason === "string" ? body.reason.trim() : "";
   if (!canReadManagement(actor.role) || isDirector(actor.role)) { res.status(403).json({ error: "Forbidden" }); return; }
-  if (!userId || !startDate || !endDate || endDate < startDate || !reason) { res.status(400).json({ error: "Bad Request", message: "Informe pessoa, período e motivo." }); return; }
-  if (!(await ownsPerson(actor, userId))) { res.status(403).json({ error: "Forbidden" }); return; }
-  const [person] = await db.select({ id: usersTable.id, areaId: usersTable.areaId }).from(usersTable)
-    .where(and(eq(usersTable.id, userId), eq(usersTable.organizationId, actor.organizationId))).limit(1);
-  if (!person) { res.status(404).json({ error: "Not Found" }); return; }
-  const request = await db.transaction(async (tx) => {
-    const [operation] = await tx.select({ id: operationsTable.id }).from(operationsTable)
-      .where(eq(operationsTable.organizationId, actor.organizationId)).orderBy(asc(operationsTable.createdAt)).limit(1);
-    if (!operation) throw new Error("A organização não possui operação para registrar a folga.");
-    const [created] = await tx.insert(leaveRequestsTable).values({
-      organizationId: actor.organizationId, userId, areaId: person.areaId, startDate, endDate, reason,
-      status: "APPROVED", decidedBy: actor.sub, decisionReason: reason, decidedAt: new Date(),
-    }).returning();
-    await tx.insert(folgasTable).values({ userId, operationId: operation.id, type: "DAY_OFF", startDate, endDate, status: "ACTIVE", origem: "MANUAL", createdBy: actor.sub, notes: `Calendário ${created.id}` });
-    await record({ category: "ABSENCE", action: "leave.calendar_set", title: "Folga colocada no calendário", narrative: reason, entityType: "leave_request", entityId: created.id, actorId: actor.sub, beforeState: null, afterState: created, metadata: { reason } }, tx);
-    return created;
+  if (!userIds.length || !startDate || !endDate || endDate < startDate || !reason) { res.status(400).json({ error: "Bad Request", message: "Informe pessoas, período e motivo." }); return; }
+  for (const userId of userIds) if (!(await ownsPerson(actor, userId))) { res.status(403).json({ message: "Você não pode definir folga para uma das pessoas escolhidas." }); return; }
+  const people = await db.select({ id: usersTable.id, areaId: usersTable.areaId }).from(usersTable)
+    .where(and(inArray(usersTable.id, userIds), eq(usersTable.organizationId, actor.organizationId)));
+  if (people.length !== userIds.length) { res.status(404).json({ message: "Uma das pessoas escolhidas não foi encontrada." }); return; }
+  const roles = await db.select({ userId: userRolesTable.userId, operationId: userRolesTable.operationId }).from(userRolesTable)
+    .innerJoin(operationsTable, eq(userRolesTable.operationId, operationsTable.id))
+    .where(and(inArray(userRolesTable.userId, userIds), eq(userRolesTable.active, true), eq(operationsTable.organizationId, actor.organizationId), ...(targetOperationId ? [eq(userRolesTable.operationId, targetOperationId)] : [])));
+  if (people.some((person) => !roles.some((role) => role.userId === person.id))) { res.status(400).json({ message: "Uma das pessoas não tem operação ativa para registrar a folga." }); return; }
+  const requests = await db.transaction(async (tx) => {
+    const createdRequests = [];
+    const operationsToNotify = new Map<string, string>();
+    for (const person of people) {
+      const operationId = roles.find((role) => role.userId === person.id)!.operationId;
+      const [created] = await tx.insert(leaveRequestsTable).values({
+        organizationId: actor.organizationId, userId: person.id, areaId: person.areaId, startDate, endDate, reason,
+        status: "APPROVED", decidedBy: actor.sub, decisionReason: reason, decidedAt: new Date(),
+      }).returning();
+      await tx.insert(folgasTable).values({ userId: person.id, operationId, type: "DAY_OFF", startDate, endDate, status: "ACTIVE", origem: "MANUAL", createdBy: actor.sub, notes: `Calendário ${created!.id}` });
+      const eventId = await writeHistoryEvent({ category: "ABSENCE", action: "leave.calendar_set", title: "Folga colocada no calendário", narrative: reason, entityType: "leave_request", entityId: created!.id, actorId: actor.sub, orgId: actor.organizationId, operationId, beforeState: null, afterState: created, metadata: { reason, totalPessoas: people.length } }, tx as HistoryExecutor);
+      if (!operationsToNotify.has(operationId)) operationsToNotify.set(operationId, eventId);
+      createdRequests.push(created!);
+    }
+    for (const [operationId, eventId] of operationsToNotify) await avisarRepublicacaoFolgas(tx, actor.organizationId, operationId, startDate, endDate, eventId);
+    return createdRequests;
   });
-  res.status(201).json({ request });
+  res.status(201).json({ request: requests[0], requests });
 });
 router.patch("/leave-requests/:id", requireAuth, requireOrganization, async (req, res) => {
   const actor = req.user!, body = req.body as Record<string, unknown>;
@@ -125,11 +156,40 @@ router.patch("/leave-requests/:id", requireAuth, requireOrganization, async (req
   if (!isAdmin(actor.role) && (!isSupervisor(actor.role) || !(await canSupervisorAccessPerson({ supervisorId: actor.sub, organizationId: actor.organizationId, personId: request.userId })))) { res.status(403).json({ error: "Forbidden" }); return; }
   if (request.status !== "PENDING") { res.status(409).json({ error: "Conflict", message: "Este pedido já foi decidido." }); return; }
   const updated = await db.transaction(async (tx) => {
-    const [saved] = await tx.update(leaveRequestsTable).set({ status, decidedBy: actor.sub, decisionReason, decidedAt: new Date(), updatedAt: new Date() }).where(eq(leaveRequestsTable.id, request.id)).returning();
-    if (status === "APPROVED") { const [operation] = await tx.select({ id: operationsTable.id }).from(operationsTable).where(eq(operationsTable.organizationId, actor.organizationId)).orderBy(asc(operationsTable.createdAt)).limit(1); if (!operation) throw new Error("A organização não possui operação para materializar a folga."); await tx.insert(folgasTable).values({ userId: request.userId, operationId: operation.id, type: "DAY_OFF", startDate: request.startDate, endDate: request.endDate, status: "ACTIVE", origem: "SOLICITACAO", createdBy: actor.sub, notes: `Pedido ${request.id}` }); }
-    await record({ category: "ABSENCE", action: status === "APPROVED" ? "leave.approved" : "leave.denied", title: status === "APPROVED" ? "Folga aprovada" : "Folga negada", narrative: decisionReason, entityType: "leave_request", entityId: request.id, actorId: actor.sub, beforeState: request, afterState: saved, metadata: { reason: decisionReason } }, tx); return saved;
+    const [saved] = await tx.update(leaveRequestsTable).set({ status, decidedBy: actor.sub, decisionReason, decidedAt: new Date(), updatedAt: new Date() }).where(and(eq(leaveRequestsTable.id, request.id), eq(leaveRequestsTable.status, "PENDING"))).returning();
+    if (!saved) return null;
+    let operationId: string | undefined;
+    if (status === "APPROVED") { const [operation] = await tx.select({ id: userRolesTable.operationId }).from(userRolesTable).innerJoin(operationsTable, eq(userRolesTable.operationId, operationsTable.id)).where(and(eq(userRolesTable.userId, request.userId), eq(userRolesTable.active, true), eq(operationsTable.organizationId, actor.organizationId))).limit(1); if (!operation) throw new Error("A pessoa não possui operação ativa para registrar a folga."); operationId = operation.id; await tx.insert(folgasTable).values({ userId: request.userId, operationId, type: "DAY_OFF", startDate: request.startDate, endDate: request.endDate, status: "ACTIVE", origem: "SOLICITACAO", createdBy: actor.sub, notes: `Pedido ${request.id}` }); }
+    const eventId = await writeHistoryEvent({ category: "ABSENCE", action: status === "APPROVED" ? "leave.approved" : "leave.denied", title: status === "APPROVED" ? "Folga aprovada" : "Folga negada", narrative: decisionReason, entityType: "leave_request", entityId: request.id, actorId: actor.sub, orgId: actor.organizationId, operationId, beforeState: request, afterState: saved, metadata: { reason: decisionReason } }, tx as HistoryExecutor);
+    if (operationId) await avisarRepublicacaoFolgas(tx, actor.organizationId, operationId, request.startDate, request.endDate, eventId);
+    if (request.userId !== actor.sub) await enqueueNotification(tx as never, {
+      userId: request.userId, type: status === "APPROVED" ? "leave.approved" : "leave.denied",
+      title: status === "APPROVED" ? "Folga aprovada" : "Folga recusada",
+      message: `Seu pedido de ${request.startDate} a ${request.endDate} foi ${status === "APPROVED" ? "aprovado" : "recusado"}: ${decisionReason}${status === "APPROVED" ? ". A folga aparece no calendário quando a Administração publicar o mês." : ""}`,
+      category: "absence", entityType: "leave_request", entityId: request.id, actionUrl: "/solicitacoes",
+    }, new Date(), { deduplicationKey: `folga:${request.id}:decisao` });
+    return saved;
   });
+  if (!updated) { res.status(409).json({ message: "Este pedido já foi decidido ou retirado." }); return; }
   res.json({ request: updated });
+});
+
+/** A pessoa pode retirar o próprio pedido enquanto ninguém decidiu. O Registro guarda a retirada. */
+router.post("/leave-requests/:id/cancelar", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user!;
+  const requestId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const result = await db.transaction(async (tx) => {
+    const [before] = await tx.select().from(leaveRequestsTable).where(and(eq(leaveRequestsTable.id, requestId), eq(leaveRequestsTable.organizationId, actor.organizationId))).for("update").limit(1);
+    if (!before) return { status: 404, message: "Pedido não encontrado." };
+    if (before.userId !== actor.sub) return { status: 403, message: "Só quem pediu pode retirar a solicitação." };
+    if (before.status !== "PENDING") return { status: 409, message: "Este pedido já foi decidido e não pode ser retirado aqui." };
+    const [after] = await tx.update(leaveRequestsTable).set({ status: "CANCELLED", updatedAt: new Date() }).where(eq(leaveRequestsTable.id, requestId)).returning();
+    await record({ category: "ABSENCE", action: "leave.cancelled", title: "Pedido de folga retirado", narrative: "A pessoa retirou o pedido antes da decisão.", entityType: "leave_request", entityId: requestId, actorId: actor.sub, orgId: actor.organizationId, beforeState: before, afterState: after }, tx);
+    await avisarGestaoDaFolga(tx, actor.organizationId, before.areaId, actor.sub, requestId, "Pedido de folga retirado", `O pedido de ${before.startDate} a ${before.endDate} foi retirado antes da decisão.`, "leave.cancelled");
+    return { status: 200, request: after };
+  });
+  if (result.status !== 200) { res.status(result.status).json({ message: result.message }); return; }
+  res.json({ request: result.request });
 });
 
 // ─── Check-in por bloco e posição em risco no Livro do Dia ───────────────────
@@ -142,9 +202,14 @@ router.get("/day-checkins/mine", requireAuth, requireOrganization, async (req, r
   const checkIns: unknown[] = [];
   for (const row of scales) {
     if (!row.scale.locationId) continue;
-    const dia = await montarEscalaDoDia(actor.organizationId, row.scale.locationId, date);
-    if (!dia?.escala) continue;
-    for (const block of dia.blocos.filter((item) => item.pessoaIds.includes(actor.sub))) blocks.push({ location: dia.location, scaleId: dia.escala.id, block });
+    const aoVivo = await montarEscalaDoDia(actor.organizationId, row.scale.locationId, date);
+    if (!aoVivo?.escala) continue;
+    const dia = await comoPublicada(aoVivo);
+    const operationId = await operationForLocation(row.scale.locationId);
+    const retrato = operationId ? await ultimoRetratoFolgas(operationId, Number(date.slice(0, 4)), Number(date.slice(5, 7))) : null;
+    const deFolga = retrato?.folgas?.some((item) => item.userId === actor.sub && item.startDate <= date && item.endDate >= date) ?? false;
+    const chamada = dia.pessoas.find((person) => person.id === actor.sub)?.chamadaNaFolga?.motivo;
+    for (const block of dia.blocos.filter((item) => item.pessoaIds.includes(actor.sub) && (!deFolga || chamada))) blocks.push({ location: dia.location, scaleId: dia.escala.id, block });
     checkIns.push(...await db.select().from(dayCheckInsTable).where(and(eq(dayCheckInsTable.scaleId, dia.escala.id), eq(dayCheckInsTable.userId, actor.sub))));
   }
   res.json({ date, blocks, checkIns });

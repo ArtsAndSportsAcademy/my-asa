@@ -30,6 +30,7 @@ import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
 import { operationalDate } from "../lib/operational-date.js";
 import { avisarRepublicacaoPendente, comoPublicada, convocacaoPorPessoa, escalaPublicada, findEscalaDoDia, montarEscalaDoDia, operationForLocation, pessoasAfetadas } from "../services/escala-dia.js";
+import { ultimoRetratoFolgas } from "../services/folgas-publicadas.js";
 import { enqueueNotification } from "../services/undo.js";
 import { APP_ROUTES } from "../lib/app-routes.js";
 
@@ -112,14 +113,17 @@ router.get("/escalas/minha", requireAuth, requireOrganization, async (req, res) 
       if (!aoVivo || !escalaPublicada(aoVivo.escala?.status)) continue;
       // O Elenco vê a versão publicada; o que mudou depois só chega com a republicação.
       const dia = await comoPublicada(aoVivo);
-      const blocos = dia.blocos.filter((b) => b.pessoaIds.includes(actor.sub)).map(({ pessoaIds: _p, ...b }) => b);
       const me = dia.pessoas.find((p) => p.id === actor.sub) ?? null;
-      if (!blocos.length && !me?.folga) continue;
+      const operationId = await operationForLocation(location.id);
+      const retrato = operationId ? await ultimoRetratoFolgas(operationId, Number(date.slice(0, 4)), Number(date.slice(5, 7))) : null;
+      const folga = retrato?.folgas?.find((item) => item.userId === actor.sub && item.startDate <= date && item.endDate >= date)?.type ?? null;
+      const blocos = dia.blocos.filter((b) => b.pessoaIds.includes(actor.sub) && (!folga || me?.chamadaNaFolga?.motivo)).map(({ pessoaIds: _p, ...b }) => b);
+      if (!blocos.length && !folga) continue;
       const [confirmacao] = await db.select().from(escalaConfirmacoesTable).where(and(
         eq(escalaConfirmacoesTable.scaleId, dia.escala!.id), eq(escalaConfirmacoesTable.userId, actor.sub),
       )).limit(1);
       escalas.push({
-        location: dia.location, publishedAt: dia.escala!.publishedAt ?? null, folga: me?.folga ?? null,
+        location: dia.location, publishedAt: dia.escala!.publishedAt ?? null, folga,
         escalaId: dia.escala!.id, escalaVersion: dia.escala!.version,
         confirmada: confirmacao?.version === dia.escala!.version, confirmedAt: confirmacao?.confirmedAt ?? null, blocos,
       });

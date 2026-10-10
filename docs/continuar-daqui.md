@@ -57,14 +57,30 @@ mexer em qualquer validação, ler `docs/regras-de-folgas.md`: a conta é **mens
 é condicionada à jornada completa, e o dia de parque fechado (quarta em Snowland, segunda em
 Acquamotion) já é uma das duas folgas.
 
-Revisão iniciada em 10/10: o calendário do Elenco precisa ler as folgas ativas do mapa, além dos
-pedidos pendentes; a leitura da API deve incluir períodos que atravessam a virada do mês. A antiga
-tela de “regime”, com corte semanal, contradizia a contagem mensal e foi substituída por uma
-explicação da regra. Em Solicitações, a troca de perfil deixava uma aba invisível selecionada; e a
-falha ao carregar pedidos de folga era escondida. Essas correções estão no branch, ainda sem
-promoção. O teste de integração de Folgas não terminou porque a conexão com o banco de teste caiu;
-reexecutar antes da promoção. Falta decidir como o Elenco vê a versão publicada das folgas quando
-o mapa é alterado depois de publicar: hoje a publicação só avisa, e o mapa já vale ao editar.
+Revisão iniciada em 10/10: a antiga tela de “regime”, com corte semanal, contradizia a contagem
+mensal e foi substituída por uma explicação da regra. Em Solicitações, a troca de perfil deixava
+uma aba invisível selecionada e a falha ao carregar pedidos de folga era escondida. Essas correções
+estão no branch, ainda sem promoção.
+
+Decisões da Babi para a continuação: **o Elenco espera a republicação** para ver o mapa alterado;
+quem pediu folga pode retirar o pedido enquanto está pendente; **Supervisão da área e Administração**
+recebem o aviso de pedido novo; a gestão pode definir folga para **várias pessoas numa ação**.
+
+Implementado no branch, ainda sem promoção: “Publicar mês” guarda o retrato das folgas no Registro,
+e o calendário do Elenco, a Minha Escala e a consulta antiga de folgas usam esse retrato. A edição
+posterior avisa a Administração para republicar; só então o Elenco recebe o mapa novo. Pedidos
+pendentes podem ser retirados nas duas telas, com registro e aviso à gestão. A definição direta de
+folga aceita várias pessoas, valida o alcance da Supervisão e grava cada pessoa no Registro dentro
+da mesma transação. A amostra de Solicitações também passou a mostrar o pedido criado, para que a
+retirada possa ser testada. Não foi criada migração: o retrato usa o campo JSON do Registro.
+
+Validação em 10/10: `folgas-equipe.test.ts` passou com 29 verificações; o teste do ciclo operacional
+passou com 20. Builds da API e do site passaram. As telas Folgas e Solicitações foram abertas e
+clicadas em `?amostra=1`, inclusive em 375 px. O `tsc` completo continua com erros em dependências
+e componentes anteriores, fora dessas telas; não há erro de tipo apontado nos arquivos alterados.
+Antes da promoção, conferir no banco de teste com uma sessão real de Elenco o aviso de publicação
+e a Minha Escala após republicar. Em produção, a Administração precisará publicar os meses antigos
+de novo para criar o primeiro retrato; as publicações antigas apenas avisavam e não guardavam o mapa.
 
 ## 5. Perguntas que ainda estão com a Babi
 

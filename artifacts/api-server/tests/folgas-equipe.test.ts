@@ -89,9 +89,26 @@ async function run() {
 
     const [folgaEntreMeses] = await db.insert(folgasTable).values({ userId: ju.id, operationId: op!.id, type: "NO_SHOW", startDate: "2026-09-29", endDate: "2026-10-02", createdBy: admin.id }).returning();
     const minhasFolgas = await call("GET", "/folgas?status=ACTIVE&dateFrom=2026-10-01&dateTo=2026-10-31", asJu);
-    assert(minhasFolgas.status === 200 && (minhasFolgas.body.folgas as { id: string }[]).some((folga) => folga.id === folgaEntreMeses!.id), "Elenco vê a própria folga que começou no mês anterior");
+    assert(minhasFolgas.status === 200 && (minhasFolgas.body.folgas as unknown[]).length === 0, "consulta antiga não revela folga ainda não publicada");
     const folgasDeOutraPessoa = await call("GET", `/folgas?status=ACTIVE&dateFrom=2026-10-01&dateTo=2026-10-31&userId=${lela.id}`, asJu);
     assert((folgasDeOutraPessoa.body.folgas as { userId: string }[]).every((folga) => folga.userId === ju.id), "Elenco não consulta folgas de outra pessoa pelo filtro");
+
+    const publishedPath = "/folgas/publicadas?year=2026&month=10";
+    const beforePublication = await call("GET", publishedPath, asJu);
+    assert(beforePublication.status === 200 && beforePublication.body.publicada === false && beforePublication.body.folgas.length === 0, "Elenco não vê o mapa antes da publicação");
+    const publish = () => call("POST", "/folgas/grid/publicar", asAdmin, { operationId: op!.id, year: 2026, month: 10 });
+    assert((await publish()).status === 200, "Administração publica o mês com retrato das folgas");
+    const firstSnapshot = await call("GET", publishedPath, asJu);
+    assert(firstSnapshot.body.publicada === true && firstSnapshot.body.folgas.some((folga: { id: string }) => folga.id === folgaEntreMeses!.id), "Elenco lê a folga do retrato publicado, inclusive a que começou no mês anterior");
+    const antigasPublicadas = await call("GET", "/folgas?status=ACTIVE&dateFrom=2026-10-01&dateTo=2026-10-31", asJu);
+    assert(antigasPublicadas.body.folgas.some((folga: { id: string }) => folga.id === folgaEntreMeses!.id), "consulta antiga também respeita a publicação e a virada do mês");
+    assert(firstSnapshot.body.folgas.every((folga: { userId: string }) => folga.userId === ju.id), "Retrato publicado não revela folgas de outras pessoas");
+    assert((await toggle(asAdmin, ju.id, "2026-10-24")).status === 200, "gestão altera o mapa depois de publicar");
+    const oldSnapshot = await call("GET", publishedPath, asJu);
+    assert(!oldSnapshot.body.folgas.some((folga: { startDate: string }) => folga.startDate === "2026-10-24"), "edição não aparece ao Elenco antes da republicação");
+    assert((await publish()).status === 200, "Administração republica o mês alterado");
+    const newSnapshot = await call("GET", publishedPath, asJu);
+    assert(newSnapshot.body.folgas.some((folga: { startDate: string }) => folga.startDate === "2026-10-24"), "republicação entrega a folga nova ao Elenco");
 
     for (const [method, path, body] of [["POST", "/folgas/grid/publicar", { operationId: op!.id, year: 2026, month: 10 }], ["POST", "/folgas/grid/repeat", { operationId: op!.id, year: 2026, month: 11 }], ["DELETE", `/folgas/grid/reset?operationId=${op!.id}&year=2026&month=10`, { operationId: op!.id, year: 2026, month: 10 }]] as const) {
       assert((await call(method, path, asDeb, body)).status === 403, `${path.split("?")[0]} no mês inteiro é só da Administração`);
@@ -101,6 +118,7 @@ async function run() {
     await pool.query(`delete from history_events where actor_id = any($1::uuid[]) or mo_id in (select id from operational_changes where actor_id = any($1::uuid[]))`, [ids]);
     await pool.query(`delete from operational_changes where actor_id = any($1::uuid[])`, [ids]);
     await pool.query(`delete from user_notifications where user_id = any($1::uuid[])`, [ids]).catch(() => undefined);
+    await pool.query(`delete from notification_outbox where user_id = any($1::uuid[])`, [ids]);
     await db.delete(folgasTable).where(eq(folgasTable.operationId, op!.id));
     await db.delete(areaLocalSupervisorsTable).where(eq(areaLocalSupervisorsTable.supervisorId, deb.id));
     await db.delete(userRolesTable).where(inArray(userRolesTable.userId, ids));

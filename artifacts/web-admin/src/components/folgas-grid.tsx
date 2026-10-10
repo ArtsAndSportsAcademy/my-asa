@@ -225,12 +225,13 @@ interface FolgasGridProps {
   groupBy?: boolean;
   /** "Publicar mês" (desenho 18): a tela mostra se o mês foi publicado e se mudou depois. */
   onPublicacao?: (publicacao: FolgasPublicacao) => void;
+  refreshKey?: number;
 }
 export type FolgasPublicacao = { publishedAt: string | null; publishedBy: string | null; changedSince: boolean };
 
 const NO_GROUP_LABEL = "Sem grupo";
 
-export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = false, onPublicacao }: FolgasGridProps) {
+export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = false, onPublicacao, refreshKey = 0 }: FolgasGridProps) {
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -278,6 +279,7 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
   const invalidate = useCallback(() => {
     qc.invalidateQueries({ queryKey: getGetFolgasGridQueryKey({ operationId, year, month }) });
   }, [qc, operationId, year, month]);
+  useEffect(() => { if (refreshKey) invalidate(); }, [refreshKey, invalidate]);
 
   const { mutate: toggleCell } = useToggleFolgaCell({
     mutation: {

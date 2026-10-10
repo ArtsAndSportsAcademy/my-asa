@@ -29,3 +29,4 @@
 .cycle-info-button[aria-expanded="true"]{background:#f3eefe}
 .cycle-info-pop{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:10px;padding:12px 14px;border:1px solid #ece6f8;border-radius:12px;background:#faf8ff}
 .cycle-info-pop p{margin:4px 0 0;font-size:13px;line-height:1.45}
+.cycle-modal fieldset{max-height:220px;overflow:auto;border:1px solid #e6e1f2;border-radius:10px;padding:9px;display:grid;gap:4px}.cycle-modal fieldset legend{font-size:12px;font-weight:700;padding:0 4px}.cycle-modal fieldset label{display:flex;align-items:center;gap:8px;min-height:38px;font-weight:500}.cycle-modal fieldset input[type=checkbox]{min-height:auto;width:18px;height:18px;flex:none;accent-color:#5b23c9}
