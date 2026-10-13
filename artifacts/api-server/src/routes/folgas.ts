@@ -715,82 +715,96 @@ router.post("/folgas/grid/bulk", requireAuth, requireOrganization, async (req, r
     return;
   }
 
-  const { userId, operationId, dates, type } = req.body as {
-    userId: string; operationId: string; dates: string[]; type?: string | null;
+  const { userId, userIds, operationId, dates, type } = req.body as {
+    userId?: string; userIds?: string[]; operationId: string; dates: string[]; type?: string | null;
   };
+  // Marcar uma pessoa de cada vez vira trabalho braçal: `userIds` aplica as mesmas datas a um grupo
+  // inteiro. `userId` sozinho continua valendo, que é como a grade chama hoje.
+  const pessoas = [...new Set([...(Array.isArray(userIds) ? userIds : []), ...(userId ? [userId] : [])]
+    .filter((id): id is string => typeof id === "string" && id.length > 0))];
 
-  if (!userId || !operationId || !Array.isArray(dates) || dates.length === 0) {
-    res.status(400).json({ error: "Bad Request", message: "userId, operationId e dates[] são obrigatórios" });
+  if (!pessoas.length || !operationId || !Array.isArray(dates) || dates.length === 0) {
+    res.status(400).json({ error: "Bad Request", message: "userId (ou userIds), operationId e dates[] são obrigatórios" });
     return;
   }
 
-  const scopeErr = await validateManagerScope(user, operationId, userId);
-  if (scopeErr) { res.status(403).json({ error: "Forbidden", message: scopeErr }); return; }
-  { const block = await folgaEditBlock(user, userId); if (block) { res.status(403).json({ error: "Forbidden", message: block }); return; } }
+  // Confere o acesso a todas antes de escrever qualquer coisa: ou o lote inteiro vale, ou nada
+  // acontece. Meio lote aplicado seria pior do que recusar.
+  for (const pessoa of pessoas) {
+    const scopeErr = await validateManagerScope(user, operationId, pessoa);
+    if (scopeErr) { res.status(403).json({ error: "Forbidden", message: scopeErr }); return; }
+    const block = await folgaEditBlock(user, pessoa);
+    if (block) { res.status(403).json({ error: "Forbidden", message: block }); return; }
+  }
 
   try {
     const sortedDates = [...dates].sort();
 
     await db.transaction(async (tx) => {
       const beforeState: Record<string, unknown>[] = [];
-      for (const date of sortedDates) {
-        const existing = await tx
-          .select({
-            id: folgasTable.id,
-            startDate: folgasTable.startDate,
-            endDate: folgasTable.endDate,
-            type: folgasTable.type,
-            userId: folgasTable.userId,
-            operationId: folgasTable.operationId,
-            notes: folgasTable.notes,
-          })
-          .from(folgasTable)
-          .where(and(
-            eq(folgasTable.userId, userId),
-            eq(folgasTable.operationId, operationId),
-            eq(folgasTable.status, "ACTIVE"),
-            lte(folgasTable.startDate, date),
-            gte(folgasTable.endDate, date),
-          ));
-        beforeState.push({ date, activeFolgas: existing });
+      for (const pessoa of pessoas) {
+        for (const date of sortedDates) {
+          const existing = await tx
+            .select({
+              id: folgasTable.id,
+              startDate: folgasTable.startDate,
+              endDate: folgasTable.endDate,
+              type: folgasTable.type,
+              userId: folgasTable.userId,
+              operationId: folgasTable.operationId,
+              notes: folgasTable.notes,
+            })
+            .from(folgasTable)
+            .where(and(
+              eq(folgasTable.userId, pessoa),
+              eq(folgasTable.operationId, operationId),
+              eq(folgasTable.status, "ACTIVE"),
+              lte(folgasTable.startDate, date),
+              gte(folgasTable.endDate, date),
+            ));
+          beforeState.push({ userId: pessoa, date, activeFolgas: existing });
 
-        for (const f of existing) {
-          await cancelAndSplit(f, date, user.sub, tx as any);
-        }
+          for (const f of existing) {
+            await cancelAndSplit(f, date, user.sub, tx as any);
+          }
 
-        if (type) {
-          await tx.insert(folgasTable).values({
-            userId,
-            operationId,
-            type: type as any,
-            startDate: date,
-            endDate: date,
-            status: "ACTIVE",
-            origem: "MANUAL",
-            createdBy: user.sub,
-          });
+          if (type) {
+            await tx.insert(folgasTable).values({
+              userId: pessoa,
+              operationId,
+              type: type as any,
+              startDate: date,
+              endDate: date,
+              status: "ACTIVE",
+              origem: "MANUAL",
+              createdBy: user.sub,
+            });
+          }
         }
       }
 
+      // Um Registro por lote, não um por dia: quem for ler o histórico precisa ver a marcação que
+      // a pessoa fez, não trinta linhas soltas.
+      const quantas = pessoas.length === 1 ? "1 pessoa" : `${pessoas.length} pessoas`;
       const eventId = await writeHistoryEvent({
         category: "ABSENCE",
         action: "FOLGA_GRID_BULK",
-        title: `Bulk de folgas: ${dates.length} dia(s) ${type ?? "limpos"}`,
-        narrative: `Gestor aplicou ${type ?? "limpeza"} em ${dates.length} dia(s) para o membro.`,
+        title: `Folgas em lote: ${dates.length} dia(s) ${type ?? "limpos"} · ${quantas}`,
+        narrative: `A gestão aplicou ${type ?? "limpeza"} em ${dates.length} dia(s) para ${quantas}.`,
         entityType: "folga",
-        entityId: userId,
+        entityId: pessoas[0]!,
         actorId: user.sub,
         operationId,
         orgId: user.organizationId,
-        metadata: { dates, type: type ?? null },
+        metadata: { dates, type: type ?? null, userIds: pessoas, motivo: typeof (req.body as { motivo?: unknown }).motivo === "string" ? (req.body as { motivo: string }).motivo.trim() || null : null },
         beforeState: { dates: beforeState },
-        afterState: { dates: sortedDates, type: type ?? null },
+        afterState: { dates: sortedDates, type: type ?? null, userIds: pessoas },
       }, tx as any);
       await avisarRepublicacaoFolgas(tx, user.organizationId, operationId, sortedDates[0]!, sortedDates[sortedDates.length - 1]!, eventId);
     });
 
-    log.info({ userId, count: dates.length, type: type ?? "clear" }, "bulk de folgas aplicado");
-    res.json({ ok: true, processed: dates.length });
+    log.info({ pessoas: pessoas.length, count: dates.length, type: type ?? "clear" }, "bulk de folgas aplicado");
+    res.json({ ok: true, processed: dates.length * pessoas.length, dias: dates.length, pessoas: pessoas.length });
   } catch (err) {
     log.error({ err }, "erro ao aplicar bulk de folgas");
     res.status(500).json({ error: "Internal Server Error" });

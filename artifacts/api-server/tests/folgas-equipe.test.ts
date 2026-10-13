@@ -76,6 +76,16 @@ async function run() {
     assert((await call("POST", "/folgas/grid/bulk", asDeb, { userId: lela.id, operationId: op!.id, dates: ["2026-10-21"], type: "DAY_OFF" })).status === 403, "lote para quem não é da equipe: recusado");
     assert((await call("POST", "/folgas/grid/bulk", asDeb, { userId: ju.id, operationId: op!.id, dates: ["2026-10-22"], type: "DAY_OFF" })).status === 200, "lote para a própria equipe: ok");
 
+    // Lote de várias pessoas de uma vez: ou vale para todas, ou não escreve nada para ninguém.
+    const loteMisto = await call("POST", "/folgas/grid/bulk", asDeb, { userIds: [ju.id, lela.id], operationId: op!.id, dates: ["2026-10-27"], type: "DAY_OFF" });
+    assert(loteMisto.status === 403, "lote com alguém de fora da equipe: recusado inteiro");
+    const sobrouAlgo = await db.select().from(folgasTable).where(and(eq(folgasTable.userId, ju.id), eq(folgasTable.startDate, "2026-10-27")));
+    assert(sobrouAlgo.length === 0, "lote recusado não deixa folga escrita para quem era da equipe");
+    const loteVarias = await call("POST", "/folgas/grid/bulk", asDeb, { userIds: [ju.id, semLocal.id], operationId: op!.id, dates: ["2026-10-27", "2026-10-28"], type: "DAY_OFF", motivo: "ensaio do lote" });
+    assert(loteVarias.status === 200 && loteVarias.body.pessoas === 2 && loteVarias.body.dias === 2 && loteVarias.body.processed === 4, "lote de 2 pessoas × 2 dias grava as 4 marcações");
+    const marcadas = await db.select().from(folgasTable).where(and(eq(folgasTable.operationId, op!.id), eq(folgasTable.startDate, "2026-10-28")));
+    assert(marcadas.length === 2, "as duas pessoas ficaram com folga no dia 28");
+
     const [folgaLela] = await db.insert(folgasTable).values({ userId: lela.id, operationId: op!.id, type: "DAY_OFF", startDate: "2026-10-23", endDate: "2026-10-23", createdBy: admin.id }).returning();
     assert((await call("PATCH", `/folgas/${folgaLela!.id}`, asDeb, { notes: "x" })).status === 403, "editar folga de quem não é da equipe: recusado");
     assert((await call("POST", `/folgas/${folgaLela!.id}/cancelar`, asDeb, { reason: "x" })).status === 403, "cancelar folga de quem não é da equipe: recusado");

@@ -56,10 +56,22 @@ dia. É a base das etapas 3 e 4.
 hora, então uma folga marcada depois já aparece sozinha nos dias em rascunho. Não há desatualização
 a sincronizar.
 
-**O que não é automático:** o **Livro do Dia congela** quem faz cada vaga quando é gerado. Se uma
-folga cair depois num dia cujo livro já existe em rascunho, aquele livro fica com alguém que não
-trabalha. Precisa de uma das duas: refazer sozinho o livro em rascunho afetado, ou marcar o dia como
-"precisa revisar". **Dia publicado não se mexe sozinho** — continua pedindo republicação, como já é.
+**O Livro do Dia passa a ser vivo também** (decidido em 13/10). Hoje ele **congela** quem faz cada
+vaga no momento em que é gerado, e por isso uma folga marcada depois deixa o livro com alguém que
+não trabalha mais naquele dia. A decisão é que o livro funcione como a Escala: **ele se completa
+sozinho na leitura**, e a gerência só confere e mexe no que quiser.
+
+O caminho já existe e está provado na Escala:
+
+- **Quem faz cada vaga é resolvido na hora**, pela mesma fila (titular, depois rodízio), sem quem
+  está de folga.
+- **O que a gerência mexer à mão fica guardado como exceção daquele dia** — igual aos ajustes da
+  Escala, que sobrevivem à remontagem. Trocar alguém continua valendo; o resto acompanha.
+- **Dia publicado continua preservado**: quem faz vê a versão publicada até a republicação, e dia
+  executado vira registro do que aconteceu e não se remonta nunca mais.
+
+É a mudança mais estrutural do plano, e a que mais trabalho dá — mas é ela que faz o mês em rascunho
+valer a pena, porque sem isso cada folga nova estragaria os livros já gerados.
 
 **Cuidados reais:**
 
@@ -67,8 +79,8 @@ trabalha. Precisa de uma das duas: refazer sozinho o livro em rascunho afetado, 
   com andamento visível, e poder ser interrompido sem deixar meio mês montado.
 - **Ordem do rodízio.** O rodízio escolhe quem fez menos vezes. Gerar o mês tem de resolver **dia a
   dia, em ordem**, senão todos os dias enxergam a mesma contagem e a distribuição sai errada.
-- **Publicação.** Continua dia a dia, ou passa a ter "publicar a semana / o mês"? É uma decisão sua
-  (ver abaixo) — gerar não é publicar, e ninguém é avisado enquanto está em rascunho.
+- **Publicação continua dia a dia** (decidido em 13/10). Gerar o mês não publica nada: ninguém é
+  avisado enquanto está em rascunho, e a Administração continua assinando dia por dia.
 
 ## Etapa 3 — Pedido de folga analisado pela ASA
 
@@ -118,13 +130,17 @@ depois, se fizer falta.
 3. **Pedido como troca, com a análise da ASA** — o que mais muda o dia a dia da gerência.
 4. **Experimentar grupos** — quando os três primeiros estiverem rodando.
 
+## Decisões já tomadas (13/10/2026)
+
+- **Publicar continua dia a dia.** Gerar o mês é só rascunho.
+- **O Livro do Dia passa a ser vivo**, como a Escala: completa-se sozinho e a gerência confere e
+  mexe no que quiser; o que ela mexer fica guardado como exceção do dia.
+- **A Direção entra no mapa de folgas** normalmente.
+
 ## Decisões que ainda são suas
 
-1. **Publicar continua dia a dia**, ou passa a existir publicar a semana/o mês de uma vez?
-2. **Folga a mais existe?** Quando não dá para trocar, a pessoa pode ganhar um dia a mais — e aí a
+1. **Folga a mais existe?** Quando não dá para trocar, a pessoa pode ganhar um dia a mais — e aí a
    conta do mês fica diferente para ela — ou o pedido simplesmente é negado?
-3. **Os grupos de folga** são definidos por quem, e valem por mês ou por temporada?
-4. Quando a ASA diz *"dá, trocando com a Carol"*: **a Carol precisa aceitar antes** de o pedido ir
+2. **Os grupos de folga** são definidos por quem, e valem por mês ou por temporada?
+3. Quando a ASA diz *"dá, trocando com a Carol"*: **a Carol precisa aceitar antes** de o pedido ir
    para a gerência, ou a gerência decide e a Carol é avisada?
-5. O que fazer com **livro em rascunho afetado por uma folga nova**: refazer sozinho ou marcar o dia
-   para revisão?
