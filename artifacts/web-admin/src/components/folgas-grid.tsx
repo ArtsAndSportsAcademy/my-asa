@@ -28,6 +28,19 @@ const ALL_TYPE_INFO: Record<string, { abbr: string; bg: string; text: string }> 
   RESTRICAO:   { abbr: "Rs", bg: "bg-yellow-100",  text: "text-yellow-800" },
 };
 
+/** Totais do mês agrupados pela letra que aparece na grade (F soma folga e no show). */
+function totalPorLetra(totals: Record<string, number>) {
+  const porLetra = new Map<string, { abbr: string; n: number; text: string }>();
+  for (const [tipo, n] of Object.entries(totals)) {
+    if (!n) continue;
+    const info = ALL_TYPE_INFO[tipo];
+    if (!info) continue;
+    const atual = porLetra.get(info.abbr);
+    porLetra.set(info.abbr, { abbr: info.abbr, n: (atual?.n ?? 0) + n, text: info.text });
+  }
+  return [...porLetra.values()];
+}
+
 const DAY_ABBR = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const MONTH_NAMES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
@@ -555,15 +568,14 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
                   );
                 })}
                 <td className="border-b border-l border-border px-3 py-1.5 whitespace-nowrap text-muted-foreground">
-                  {GRID_TYPES.map((t) => {
-                    const n = m.totals[t.value] ?? 0;
-                    if (n === 0) return null;
-                    return (
-                      <span key={t.value} className={`inline-flex items-center gap-0.5 mr-1.5 ${t.text}`}>
-                        <span className="font-bold">{t.abbr}:</span>{n}
-                      </span>
-                    );
-                  })}
+                  {/* Soma por letra, não por tipo: folga e no show aparecem os dois como "F" na
+                      grade, então contá-los em separado daria um total menor do que o que está
+                      desenhado ali — e a conta do mês é justamente o que a Administração confere. */}
+                  {totalPorLetra(m.totals).map(({ abbr, n, text }) => (
+                    <span key={abbr} className={`inline-flex items-center gap-0.5 mr-1.5 ${text}`}>
+                      <span className="font-bold">{abbr}:</span>{n}
+                    </span>
+                  ))}
                   {Object.values(m.totals).every((v) => v === 0) && (
                     <span className="text-xs opacity-40">—</span>
                   )}

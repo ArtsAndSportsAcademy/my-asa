@@ -8,7 +8,7 @@ import http from "node:http";
 import { and, eq, inArray, like, or } from "drizzle-orm";
 import {
   areaLocalSupervisorsTable, areasTable, db, historyEventsTable, leaveRequestsTable, locationsTable,
-  notificationOutboxTable, operationLocationsTable, operationsTable, organizationsTable, pool,
+  folgasTable, notificationOutboxTable, operationLocationsTable, operationsTable, organizationsTable, pool,
   requestDecisionsTable, requestsTable, restrictionsTable, userNotificationsTable, userRolesTable, usersTable,
 } from "@workspace/db";
 import app from "../src/application.js";
@@ -123,7 +123,9 @@ async function run() {
     const outro = (await call("POST", "/solicitacoes", asJulia, { tipo: "ESCALA_SLOT", data: dia2, inicio: "10:00", fim: "10:30", assunto: "Vídeo do Dia das Mães" })).body.pedido.id as string;
     await call("POST", `/solicitacoes/${outro}/decisao`, asDeborah, { decisao: "APPROVED" });
     assert(Boolean((await montarEscalaDoDia(org!.id, snow!.id, dia2))?.blocos.some((b) => b.key === `s:${outro}`)), "segundo horário (vídeo) aprovado, na escala");
-    await db.insert(leaveRequestsTable).values({ organizationId: org!.id, userId: julia.id, areaId: pat!.id, startDate: dia2, endDate: dia2, reason: `${tag} folga`, status: "APPROVED", decidedBy: deborah.id, decidedAt: new Date(), decisionReason: "ok" });
+    // A folga entra pelo caminho do app (calendário da gestão), que grava pedido e folga na mesma
+    // transação. Inserir só o pedido aprovado testaria um estado que o app nunca produz.
+    assert((await call("POST", "/leave-calendar", asBarbara, { operationId: op!.id, userIds: [julia.id], startDate: dia2, endDate: dia2, reason: `${tag} folga` })).status < 300, "gestão põe a folga da Julia no calendário");
     assert(!(await montarEscalaDoDia(org!.id, snow!.id, dia2))?.blocos.some((b) => b.key === `s:${outro}`), "com folga aprovada no dia, o horário não aparece (folga vence)");
 
     // ── Troca com colega ──
@@ -181,6 +183,8 @@ async function run() {
     await db.delete(restrictionsTable).where(inArray(restrictionsTable.userId, everyone));
     await db.delete(requestsTable).where(inArray(requestsTable.requesterId, everyone));
     await db.delete(leaveRequestsTable).where(eq(leaveRequestsTable.organizationId, org!.id));
+    // A folga criada pelo calendário aponta para quem a criou; sem apagá-la, as pessoas não saem.
+    await db.delete(folgasTable).where(inArray(folgasTable.userId, everyone));
     await db.delete(historyEventsTable).where(or(inArray(historyEventsTable.orgId, [org!.id, outraOrg!.id]), inArray(historyEventsTable.actorId, everyone)));
     await db.delete(areaLocalSupervisorsTable).where(eq(areaLocalSupervisorsTable.locationId, snow!.id));
     await db.delete(userRolesTable).where(inArray(userRolesTable.userId, everyone));

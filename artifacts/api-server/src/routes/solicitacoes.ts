@@ -142,7 +142,12 @@ router.get("/solicitacoes/colegas", requireAuth, requireOrganization, async (req
     .leftJoin(areasTable, eq(usersTable.areaId, areasTable.id))
     .where(and(eq(usersTable.organizationId, ator.organizationId), eq(usersTable.status, "ACTIVE"), eq(usersTable.personStatus, "ACTIVE")))
     .orderBy(usersTable.name);
-  res.json({ colegas: rows.filter((r) => r.id !== ator.sub) });
+  // Trocar turno ou show é com quem entra em escala. Administração e Direção não entram, então
+  // oferecê-las na lista só leva a um pedido que ninguém consegue cumprir.
+  const naoEscalaveis = await db.selectDistinct({ id: userRolesTable.userId }).from(userRolesTable)
+    .where(and(inArray(userRolesTable.role, ["ADMIN", "DIR"]), eq(userRolesTable.active, true)));
+  const fora = new Set(naoEscalaveis.map((r) => r.id));
+  res.json({ colegas: rows.filter((r) => r.id !== ator.sub && !fora.has(r.id)) });
 });
 
 // ─── Novo pedido ──────────────────────────────────────────────────────────────
