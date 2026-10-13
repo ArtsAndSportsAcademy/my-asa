@@ -587,7 +587,9 @@ function HojeTab(props: {
         </button>;
       })}
     </div>}
-    {!loading && !todayBooks.length && <div style={css(DASHED_NOTE)}>{isMem ? "A escala de hoje ainda não foi publicada — nada foi convocado, então não há livro seu para abrir." : "Nenhum show da casa hoje no seu escopo."}</div>}
+    {!loading && !todayBooks.length && <div style={css(DASHED_NOTE)}>{isMem
+      ? (date === todayISO() ? "A escala de hoje ainda não foi publicada — nada foi convocado, então não há livro seu para abrir." : "A escala deste dia ainda não foi publicada — nada foi convocado, então não há livro seu para abrir.")
+      : (date === todayISO() ? "Nenhum show da casa hoje no seu escopo." : "Nenhum show da casa neste dia no seu escopo.")}</div>}
     <div style={css("display:flex;flex-direction:column;gap:4px;padding:12px 14px;border:1px dashed #d8cff0;border-radius:13px;background:#fbfaff;margin-top:2px")}>
       <span style={css(MONO_LABEL)}>Isto e a Escala são a mesma escalação</span>
       <span style={css("font-size:12.5px;line-height:1.55;color:#5b5473;max-width:98ch;text-wrap:pretty")}>{dia.rel}</span>
