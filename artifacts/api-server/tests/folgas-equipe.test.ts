@@ -111,6 +111,17 @@ async function run() {
     const newSnapshot = await call("GET", publishedPath, asJu);
     assert(newSnapshot.body.folgas.some((folga: { startDate: string }) => folga.startDate === "2026-10-24"), "republicação entrega a folga nova ao Elenco");
 
+    // Quem é avisado: a primeira publicação é do mês inteiro, a republicação é de quem foi mexido.
+    const avisos = async (tipo: string) => (await pool.query(
+      `select user_id, payload->>'message' as mensagem from notification_outbox
+        where user_id = any($1::uuid[]) and payload->>'type' = $2`, [ids, tipo])).rows;
+    const avisosPublicacao = await avisos("folga.month_published");
+    const naPrimeira = avisosPublicacao.filter((a) => /está pronto/.test(a.mensagem));
+    const naRepublicacao = avisosPublicacao.filter((a) => !/está pronto/.test(a.mensagem));
+    assert(naPrimeira.length === ids.length - 1 && !naPrimeira.some((a) => a.user_id === admin.id), "a primeira publicação do mês avisa a operação inteira, menos quem publicou");
+    assert(naRepublicacao.length === 1 && naRepublicacao[0]!.user_id === ju.id, "a republicação avisa só quem teve a própria folga mexida");
+    assert(/24\/10/.test(naRepublicacao[0]!.mensagem) && /entrou/.test(naRepublicacao[0]!.mensagem), "o aviso diz o que mudou para ela, não só que o mapa mudou");
+
     assert((await toggle(asAdmin, ju.id, "2026-11-05")).status === 200, "gestão prepara folga antes da primeira publicação de novembro");
     const [folgaNovembro] = await db.select().from(folgasTable).where(and(eq(folgasTable.operationId, op!.id), eq(folgasTable.startDate, "2026-11-05")));
     if (!folgaNovembro) throw new Error("folga de teste não encontrada");

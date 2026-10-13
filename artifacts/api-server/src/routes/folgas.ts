@@ -17,7 +17,7 @@ import { requestLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { enqueueNotification } from "../services/undo.js";
-import { avisarRepublicacaoFolgas, chaveMesFolgas, ultimoRetratoFolgas, type FolgaPublicada } from "../services/folgas-publicadas.js";
+import { avisarRepublicacaoFolgas, chaveMesFolgas, pessoasComFolgaAlterada, ultimoRetratoFolgas, type FolgaPublicada } from "../services/folgas-publicadas.js";
 import { operationalDate } from "../lib/operational-date.js";
 import { listAreaLocalScopes } from "../services/area-local-scope.js";
 
@@ -558,7 +558,9 @@ router.post("/folgas/grid/publicar", requireAuth, requireOrganization, async (re
     const nomeMes = new Date(year, month - 1, 1).toLocaleDateString("pt-BR", { month: "long" });
     const first = `${year}-${String(month).padStart(2, "0")}-01`;
     const last = `${year}-${String(month).padStart(2, "0")}-${String(new Date(year, month, 0).getDate()).padStart(2, "0")}`;
+    const anterior = await ultimoRetratoFolgas(operationId, year, month);
     const republicacao = (await monthPublication(operationId, year, month)).publishedAt !== null;
+    const retratoAnterior = anterior?.folgas ?? null;
     const destinatarios = await db.transaction(async (tx) => {
       const membros = await tx.selectDistinct({ id: userRolesTable.userId }).from(userRolesTable)
         .innerJoin(usersTable, eq(userRolesTable.userId, usersTable.id))
@@ -571,19 +573,30 @@ router.post("/folgas/grid/publicar", requireAuth, requireOrganization, async (re
       }).from(folgasTable).innerJoin(usersTable, eq(folgasTable.userId, usersTable.id))
         .where(and(eq(folgasTable.operationId, operationId), eq(folgasTable.status, "ACTIVE"), lte(folgasTable.startDate, last), gte(folgasTable.endDate, first)));
       const folgas: FolgaPublicada[] = linhas.map((linha) => ({ ...linha, status: "ACTIVE" }));
+      // Primeira publicação do mês: todo mundo precisa saber que o mapa saiu. Republicação: só
+      // quem teve a própria folga mexida, e o aviso diz o que mudou para ela.
+      const alteradas = republicacao ? pessoasComFolgaAlterada(retratoAnterior, folgas) : null;
+      const avisar = alteradas ? ids.filter((id) => alteradas.has(id)) : ids;
       const eventId = await writeHistoryEvent({
         category: "ABSENCE", action: "FOLGA_MONTH_PUBLISHED",
         title: `Folgas de ${nomeMes} ${republicacao ? "republicadas" : "publicadas"}`,
-        narrative: `${ids.length} pessoa(s) da operação avisada(s).`,
+        narrative: republicacao
+          ? `${avisar.length} pessoa(s) com a própria folga alterada avisada(s).`
+          : `${avisar.length} pessoa(s) da operação avisada(s).`,
         entityType: "folga_mes", entityId: monthKey(operationId, year, month), actorId: user.sub, operationId, orgId: user.organizationId,
-        metadata: { year, month, avisados: ids.length, republicacao }, afterState: { folgas },
+        metadata: { year, month, avisados: avisar.length, republicacao, mudancas: alteradas ? Object.fromEntries(alteradas) : null }, afterState: { folgas },
       }, tx as any);
-      for (const id of ids) await enqueueNotification(tx as never, {
-        userId: id, type: "folga.month_published", title: republicacao ? `Folgas de ${nomeMes} mudaram` : `Folgas de ${nomeMes} publicadas`,
-        message: republicacao ? `O mapa de folgas de ${nomeMes} foi atualizado. Confira as suas.` : `O mapa de folgas de ${nomeMes} está pronto. Confira as suas.`,
+      for (const id of avisar) await enqueueNotification(tx as never, {
+        userId: id, type: "folga.month_published",
+        title: republicacao ? `Sua folga de ${nomeMes} mudou` : `Folgas de ${nomeMes} publicadas`,
+        message: republicacao
+          ? `${alteradas?.get(id) ?? "o seu mês mudou"}. Confira o mapa de ${nomeMes}.`
+          : `O mapa de folgas de ${nomeMes} está pronto. Confira as suas.`,
+        // Mudança na própria folga do mês corrente é coisa de reorganizar a vida; não espera a manhã.
+        priority: republicacao ? "IMPORTANT" : "NORMAL",
         category: "absence", entityType: "folga_mes", entityId: monthKey(operationId, year, month), actionUrl: "/folgas",
       }, new Date(), { deduplicationKey: `folga:publicacao:${eventId}:${id}` });
-      return ids;
+      return avisar;
     });
     log.info({ operationId, year, month, avisados: destinatarios.length }, "mês de folgas publicado");
     res.json({ ok: true, avisados: destinatarios.length, publicacao: await monthPublication(operationId, year, month) });

@@ -29,6 +29,47 @@ export async function ultimoRetratoFolgas(operationId: string, year: number, mon
     retratoInicial: event.action === "FOLGA_MONTH_BASELINE", folgas: Array.isArray(state?.folgas) ? state.folgas : null };
 }
 
+const DIA = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+const TIPO: Record<string, string> = { DAY_OFF: "folga", NO_SHOW: "no show", RECESSO: "recesso", AFASTAMENTO: "afastamento", RESTRICAO: "restrição", OUTRO: "ausência" };
+const descrever = (f: FolgaPublicada) => `${TIPO[f.type] ?? "folga"} de ${f.startDate === f.endDate ? DIA(f.startDate) : `${DIA(f.startDate)} a ${DIA(f.endDate)}`}`;
+/** Duas folgas são a mesma coisa quando o tipo e as datas batem; só isso muda o dia de alguém. */
+const assinatura = (f: FolgaPublicada) => `${f.type}|${f.startDate}|${f.endDate}`;
+
+/**
+ * Quem teve a própria folga mexida entre uma publicação e a seguinte, com a frase do que mudou.
+ * Republicação avisa só estas pessoas: mandar "o mapa mudou" para a operação inteira ensina o
+ * Elenco a ignorar o aviso, que é justamente o contrário do que ele serve.
+ */
+export function pessoasComFolgaAlterada(antes: FolgaPublicada[] | null, depois: FolgaPublicada[]): Map<string, string> {
+  const porPessoa = (lista: FolgaPublicada[]) => {
+    const mapa = new Map<string, Map<string, FolgaPublicada>>();
+    for (const f of lista) {
+      const dela = mapa.get(f.userId) ?? new Map<string, FolgaPublicada>();
+      dela.set(assinatura(f), f);
+      mapa.set(f.userId, dela);
+    }
+    return mapa;
+  };
+  // Sem retrato anterior não dá para dizer quem mudou: trata-se como tudo novo, e quem decide o
+  // que fazer com isso é quem chama.
+  const anteriores = porPessoa(antes ?? []);
+  const atuais = porPessoa(depois);
+  const mudancas = new Map<string, string>();
+  for (const pessoa of new Set([...anteriores.keys(), ...atuais.keys()])) {
+    const antesDela = anteriores.get(pessoa) ?? new Map();
+    const depoisDela = atuais.get(pessoa) ?? new Map();
+    const entraram = [...depoisDela.values()].filter((f) => !antesDela.has(assinatura(f)));
+    const sairam = [...antesDela.values()].filter((f) => !depoisDela.has(assinatura(f)));
+    if (!entraram.length && !sairam.length) continue;
+    const frases = [
+      entraram.length ? `entrou ${entraram.map(descrever).join(", ")}` : "",
+      sairam.length ? `saiu ${sairam.map(descrever).join(", ")}` : "",
+    ].filter(Boolean);
+    mudancas.set(pessoa, frases.join("; "));
+  }
+  return mudancas;
+}
+
 /** Depois de mudar um mês publicado, a Administração recebe um aviso por alteração. */
 export async function avisarRepublicacaoFolgas(tx: Parameters<Parameters<typeof db.transaction>[0]>[0], organizationId: string, operationId: string, startDate: string, endDate: string, eventId: string) {
   const months: { year: number; month: number }[] = [];
