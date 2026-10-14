@@ -130,6 +130,91 @@ depois, se fizer falta.
 3. **Pedido como troca, com a análise da ASA** — o que mais muda o dia a dia da gerência.
 4. **Experimentar grupos** — quando os três primeiros estiverem rodando.
 
+## Etapa 2, parte 2 — plano detalhado: gerar o mês em rascunho (14/10/2026)
+
+### O que já existe e vamos reaproveitar
+
+- **Gerar um dia já existe** (`POST /escalas/dia/gerar`, só Administração): cria a Escala em rascunho
+  do local naquela data e um Livro do Dia em rascunho para cada show que a Programação pede. É
+  **idempotente** — rodar de novo não duplica, não apaga ajuste, e recusa dia já publicado. O mês
+  inteiro é esse mesmo passo repetido dia a dia; **não existe regra nova de geração**.
+- **Como o Livro agora é vivo**, o mês gerado não envelhece: folga marcada depois já aparece sozinha
+  nos dias em rascunho, sem regenerar nada.
+- **Dias de funcionamento do local** já estão cadastrados (`operating_days`, e `closed`). Parque
+  fechado na quarta (Snowland, a partir de novembro) simplesmente não entra no mês.
+- **Limite do servidor**: cada chamada na Vercel vive no máximo 60 s (`maxDuration` do `my-asa`).
+  Gerar o mês numa chamada só **não cabe**.
+
+### Como vai funcionar para quem usa
+
+Na Escala, um botão **"Gerar o mês"** (só Administração). O diálogo pergunta o local e o mês e já
+diz o tamanho: *"Snowland, novembro: 26 dias abertos, 4 já gerados, 0 publicados. Vai gerar 22
+dias."* A pessoa confirma e vê **andamento de verdade** ("dia 9 de 22 · 41 Livros"), com botão
+**Parar** que deixa tudo consistente (o que já foi gerado fica, o resto espera).
+
+- **Quem dirige o trabalho é a própria tela**, chamando o servidor **um bloco de dias por vez** (cada
+  chamada com orçamento de ~40 s e devolvendo "gerei estes dias, faltam estes"). Não precisa de fila
+  nem de processo novo, **retoma sozinho** de onde parou se a aba fechar (os dias gerados já existem
+  e são pulados), e mostra andamento real.
+- **Em ordem, dia a dia** (do dia 1 ao 31), nunca em paralelo: o rodízio e o equilíbrio por carga
+  dependem do que os dias anteriores já escalaram.
+- **Pula, com o motivo à vista**: dia fechado, dia já publicado, dia com Escala já em rascunho (só
+  completa os Livros que faltam). No fim: *"22 gerados · 4 já existiam · 3 fechados · 1 falhou
+  (Acquamotion 17/11: show sem vagas)"* — a falha de um dia **não derruba os outros**.
+- **Nada é publicado e ninguém é avisado.** Rascunho é rascunho (regra de sempre).
+- **Registro**: cada bloco grava um evento com os dias gerados e quem pediu (um por bloco, não um por
+  dia).
+
+### Dá para desfazer? (pergunta 7 do crivo)
+
+**"Descartar rascunhos do mês"**: arquiva as Escalas e cancela os Livros **que ainda estão em
+rascunho**, de forma lógica e restaurável, com motivo escrito. Dia com publicação nunca é tocado.
+Dia em que a gerência **mexeu à mão** (ajuste na Escala, vaga `manual`, atividade manual) é listado
+antes e só entra se ela confirmar, para ninguém perder trabalho sem querer.
+
+### Trabalho, em ordem (cada passo se promove sozinho)
+
+1. **Sondagem do rodízio (antes de construir).** O contador do rodízio só avança na publicação, e o
+   equilíbrio por carga conta as vagas guardadas dos outros dias. Com o mês todo gerado, preciso
+   **medir** se a leitura ao vivo de um dia mantém a mesma pessoa ou vai trocando conforme os outros
+   dias aparecem (ver "Risco" abaixo). É um script de medida, sem tela, que decide o desenho do passo 2.
+2. **Servidor**: extrair o "gerar um dia" numa função reaproveitável; `POST /escalas/mes/gerar`
+   (bloco de dias com orçamento de tempo, devolve andamento) e `GET /escalas/mes/resumo` (o que o
+   diálogo mostra antes de confirmar). Testes contra o banco de teste.
+3. **Tela**: botão e diálogo "Gerar o mês", andamento, parar, resultado com motivos; texto que
+   acompanha o contexto (mês, local); conferido a 375 px.
+4. **Descartar rascunhos do mês** (servidor + tela), com a lista do que seria perdido.
+5. **Visão do mês** (opcional, se couber): uma grade pessoa × dia mostrando quem trabalha em quê e
+   quem está de folga, para **ver o mês montado**. É o que a Etapa 3 (pedido como troca) vai precisar.
+
+### Risco principal — e a decisão que preciso de você
+
+Hoje o motor escolhe, entre os disponíveis, **quem tem menos shows no mês** (somando as vagas já
+guardadas dos outros dias) e só depois o contador do rodízio. Com o mês todo em rascunho, cada dia
+passa a "enxergar" os outros. Dois cuidados:
+
+- **Estabilidade**: ler o dia 5 hoje e amanhã pode dar pessoas diferentes só porque outros dias foram
+  gerados, sem folga nenhuma. Isso seria confuso ("o rascunho mexe sozinho"). A sondagem do passo 1
+  mede isso. Se for um problema, a saída é **fixar a escolha de cada dia ao gerar o mês** (a pessoa
+  fica gravada, como era antes do Livro vivo) e só **reabrir a escolha** quando houver folga ou troca
+  que a invalide — o que é fácil de explicar: *"o mês nasce montado em ordem; mudou a folga, só o que
+  mudou se refaz"*.
+- **Justiça**: gerar em ordem faz o equilíbrio por carga distribuir bem pelo mês (quem já tem mais
+  shows passa a vez). Quem decide o que "justo" significa para o rodízio é a Babi.
+
+### Decisões que são suas
+
+1. **Quem pode gerar o mês?** Só a Administração (como o dia hoje) — ou a Supervisão também, para o
+   próprio local? *(Recomendo só Administração, como já é; a Supervisão vê o resultado.)*
+2. **Meses à frente**: pode gerar qualquer mês futuro, ou só o corrente e o próximo? Mês distante
+   demais (ex.: janeiro em outubro) depende de Programação, folgas e personagens que ainda não estão
+   fechados. *(Recomendo permitir até 3 meses à frente, com aviso se a Programação do mês não existir.)*
+3. **Mês sem Programação** (ou parte dele): gerar só as Escalas vazias, ou recusar e dizer o que
+   falta? *(Recomendo recusar o dia e listar "sem Programação nestes dias".)*
+4. **Descartar rascunhos**: precisa existir já na primeira entrega, ou pode vir logo depois? *(Recomendo
+   junto — sem desfazer, ninguém gera um mês com tranquilidade.)*
+5. **Visão do mês (passo 5)**: entra agora ou fica para a Etapa 3, que é quando mais vai precisar?
+
 ## Etapa 2, parte 1 — decisões técnicas do "Livro do Dia vivo" (14/10/2026)
 
 O motor que decide quem faz cada vaga (`resolveAssignmentsByRole`, em `services/line-resolver.ts`)
