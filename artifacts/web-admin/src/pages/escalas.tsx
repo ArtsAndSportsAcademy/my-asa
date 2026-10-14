@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { X } from "lucide-react";
 import { ApiError, customFetch } from "@workspace/api-client-react";
 import { css } from "@/lib/dc-style";
+import { GerarMesDialog } from "@/components/gerar-mes-dialog";
 import {
   addDays, loadSampleEscala, loadSampleProgramacoes, sampleAreasSupervisionadas, sampleDia, sampleLocais, samplePessoas,
   sampleShowsDoLocal, saveSampleEscala, saveSampleProgramacoes, todayISO, vocabularioDoLocal, type SampleEscalaState, type SampleProgramacao,
@@ -111,6 +112,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
   const [opMenu, setOpMenu] = useState(false);
   // null = fechado; { bloco: null } = nova atividade; { bloco } = corrigir a atividade daquele bloco.
   const [manual, setManual] = useState<{ bloco: Bloco | null } | null>(null);
+  const [gerarMesAberto, setGerarMesAberto] = useState(false);
   const [dia, setDia] = useState<Dia | null>(null);
   const [minha, setMinha] = useState<Minha | null>(null);
   const [areasMinhas, setAreasMinhas] = useState<string[]>([]);
@@ -379,7 +381,8 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
     {manual && dia && <AtividadeDeHojeDialog pessoas={dia.pessoas} bloco={manual.bloco} saving={busy === "manual"} onClose={() => setManual(null)}
       onSubmit={async (v) => { const alvo = manual.bloco; if (alvo) await editarEntradaManual(alvo.allocationIds?.length ? alvo.allocationIds : [alvo.allocationId!], v); else await criarEntradaManual(v); }}/>}
 
-    <Rodape role={role} tab={tab} onMinha={tab === "minha"} dia={dia} minha={minha} areasMinhas={areasMinhas} saving={saving} busy={busy} onGerar={gerarDia} onPronta={marcarPronta} onPublicar={publicar} onManual={() => setManual({ bloco: null })}/>
+    {gerarMesAberto && isAdm && <GerarMesDialog locais={locais} localInicial={localId} review={review} onClose={() => setGerarMesAberto(false)} onGerou={() => setRefresh((n) => n + 1)}/>}
+    <Rodape role={role} tab={tab} onMinha={tab === "minha"} dia={dia} minha={minha} areasMinhas={areasMinhas} saving={saving} busy={busy} onGerar={gerarDia} onGerarMes={() => setGerarMesAberto(true)} onPronta={marcarPronta} onPublicar={publicar} onManual={() => setManual({ bloco: null })}/>
   </section>;
 }
 
@@ -704,7 +707,7 @@ function lembrarLocal(list: { id: string }[]): string | undefined {
 }
 function guardarLocal(id: string) { try { localStorage.setItem(LOCAL_KEY, id); } catch { /* sem armazenamento */ } }
 
-function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, busy = "", onGerar, onPronta, onPublicar, onManual }: { role: Role; tab: string; onMinha?: boolean; dia: Dia | null; minha: Minha | null; areasMinhas: string[]; saving: boolean; busy?: string; onManual?: () => void; onGerar: () => void; onPronta: (areaIds: string[], pronta: boolean) => void; onPublicar: (republicar: boolean) => void }) {
+function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, busy = "", onGerar, onGerarMes, onPronta, onPublicar, onManual }: { role: Role; tab: string; onMinha?: boolean; dia: Dia | null; minha: Minha | null; areasMinhas: string[]; saving: boolean; busy?: string; onManual?: () => void; onGerar: () => void; onGerarMes?: () => void; onPronta: (areaIds: string[], pronta: boolean) => void; onPublicar: (republicar: boolean) => void }) {
   const isMem = role === "mem" || onMinha, isDir = role === "dir", isAdm = role === "adm";
   let note = "";
   const actions: ReactNode[] = [];
@@ -724,6 +727,8 @@ function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, b
     else if (dia.escala.alteradaDesde) note = "Mudou depois de publicada · quem faz só recebe a mudança quando você republicar";
     else if (published) note = `Publicada${dia.escala.publishedAt ? ` às ${hhmm(dia.escala.publishedAt)}` : ""} · ${dia.areas.length} ${dia.areas.length === 1 ? "área" : "áreas"} · a mesma escalação está no Livro do Dia`;
     else note = `Rascunho · ${prontas.length} de ${dia.areas.length} áreas prontas${faltam.length ? ` · falta ${faltam.map((a) => a.name).join(", ")}` : ""} · publica a Administração`;
+    // O mês inteiro de uma vez, em rascunho: a Administração confere depois e publica dia a dia.
+    if (tab === "escala" && isAdm && onGerarMes) actions.push(<button key="gerar-mes" type="button" className="esc-hit" disabled={saving} onClick={onGerarMes} style={css(btn("ghost"))}>Gerar o mês</button>);
     if (tab === "escala" && isAdm && !dia.escala) actions.push(<button key="generate" type="button" className="esc-hit" disabled={saving} onClick={onGerar} style={css(btn("primary"))}>{busy === "gerar" ? "Gerando Escala e Livros…" : "Gerar Escala e Livros"}</button>);
     // Show que entrou na Programação depois da geração fica sem Livro: dá para gerar o que falta.
     const semLivro = dia.escala ? dia.blocos.filter((b) => b.regra === "livro" && !b.dailyBookId).length : 0;

@@ -31,6 +31,7 @@ import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.j
 import { operationalDate } from "../lib/operational-date.js";
 import { avisarRepublicacaoPendente, comoPublicada, convocacaoPorPessoa, escalaPublicada, findEscalaDoDia, montarEscalaDoDia, operationForLocation, pessoasAfetadas } from "../services/escala-dia.js";
 import { ultimoRetratoFolgas } from "../services/folgas-publicadas.js";
+import { descartarMes, descartaveisDoMes, gerarDiaDoLocal, gerarMes, restaurarDescarte, resumoDoMes, validarMes } from "../services/escala-mes.js";
 import { enqueueNotification } from "../services/undo.js";
 import { APP_ROUTES } from "../lib/app-routes.js";
 
@@ -161,45 +162,110 @@ router.post("/escalas/dia/gerar", requireAuth, requireOrganization, async (req, 
   const location = await locationInOrg(locationId, actor.organizationId);
   if (!location) { res.status(404).json({ error: "Local não encontrado" }); return; }
   try {
-    let scale = await findEscalaDoDia(locationId, date);
-    if (scale && scale.status !== "DRAFT") { res.status(409).json({ error: "ESCALA_JA_PUBLICADA", message: "O dia já foi publicado; use republicação para uma alteração posterior." }); return; }
-    const operationId = scale?.operationId ?? await operationForLocation(locationId);
-    if (!operationId) { res.status(409).json({ error: "LOCAL_SEM_OPERACAO", message: "Este local ainda não está ligado a uma operação." }); return; }
-    if (!scale) {
-      scale = await db.transaction(async (tx) => {
-        const [created] = await tx.insert(scalesTable).values({
-          operationId, locationId, title: `Escala do dia · ${location.name} · ${date}`, periodStart: date, periodEnd: date,
-          status: "DRAFT", generatedAt: new Date(), generatedBy: actor.sub, createdBy: actor.sub,
-        }).returning();
-        await writeHistoryEvent({
-          category: "SCALE", action: "escala.gerada", title: "Escala do dia gerada",
-          narrative: `Escala em rascunho de ${location.name} para ${date} gerada a partir da Programação.`,
-          entityType: "scale", entityId: created!.id, actorId: actor.sub, operationId, orgId: actor.organizationId,
-          beforeState: null, afterState: { scale: created },
-        }, tx as unknown as HistoryExecutor);
-        return created!;
-      });
-    }
-    const [programacao] = await db.select().from(programacoesTable).where(and(
-      eq(programacoesTable.locationId, locationId), eq(programacoesTable.active, true),
-      eq(programacoesTable.organizationId, actor.organizationId),
-      lte(programacoesTable.vigenciaInicio, date), gte(programacoesTable.vigenciaFim, date),
-    )).orderBy(asc(programacoesTable.vigenciaFim), asc(programacoesTable.createdAt)).limit(1);
-    const blocos = programacao ? await db.select().from(programacaoBlocosTable).where(and(
-      eq(programacaoBlocosTable.programacaoId, programacao.id), eq(programacaoBlocosTable.weekday, weekdayOf(date)),
-      eq(programacaoBlocosTable.regra, "livro"), eq(programacaoBlocosTable.active, true),
-    )) : [];
-    const showIds = [...new Set(blocos.map((b) => b.showBookId).filter((id): id is string => Boolean(id)))];
-    const validShows = showIds.length ? await db.select({ id: showBooksTable.id }).from(showBooksTable).where(and(
-      inArray(showBooksTable.id, showIds), eq(showBooksTable.locationId, locationId), eq(showBooksTable.operationId, operationId),
-    )) : [];
-    if (validShows.length !== showIds.length) { res.status(409).json({ error: "SHOW_FORA_DO_LOCAL", message: "A Programação referencia um Show que não pertence a este local." }); return; }
-    const books = [];
-    for (const show of validShows) books.push(await generateDailyBookDraftForScale({ showBookId: show.id, date, scaleId: scale.id, actorId: actor.sub, organizationId: actor.organizationId, reason: "Geração da Escala do dia" }));
-    res.status(201).json({ escala: scale, livros: books.map((book) => ({ id: book.dailyBook.id, showBookId: book.dailyBook.showBookId, generated: book.generated, conflicts: book.conflicts })), dia: await montarEscalaDoDia(actor.organizationId, locationId, date) });
+    const r = await gerarDiaDoLocal(actor, location, date);
+    if (!r.ok) { res.status(r.status).json({ error: r.error, message: r.message }); return; }
+    res.status(201).json({ escala: r.scale, livros: r.livros.map((book) => ({ id: book.dailyBook.id, showBookId: book.dailyBook.showBookId, generated: book.generated, conflicts: book.conflicts })), dia: await montarEscalaDoDia(actor.organizationId, locationId, date) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Erro ao gerar a Escala e os Livros do Dia" });
+  }
+});
+
+/**
+ * O mês de um local, dia a dia, só leitura: o que já está gerado, o que falta e o que não entra (e
+ * por quê). É o que a tela mostra antes de a Administração confirmar "Gerar o mês".
+ */
+router.get("/escalas/mes/resumo", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user! as Actor;
+  if (actor.role !== "ADMIN") { res.status(403).json({ error: "Forbidden", message: "A Administração gera o mês." }); return; }
+  const locationId = typeof req.query.locationId === "string" ? req.query.locationId : "";
+  const mes = validarMes(req.query.year, req.query.month);
+  if (!locationId) { res.status(400).json({ error: "locationId é obrigatório" }); return; }
+  if ("erro" in mes) { res.status(400).json({ error: "MES_INVALIDO", message: mes.erro }); return; }
+  try {
+    const resumo = await resumoDoMes(actor.organizationId, locationId, mes.year, mes.month);
+    if (!resumo) { res.status(404).json({ error: "Local não encontrado" }); return; }
+    const conta = (...estados: string[]) => resumo.dias.filter((d) => estados.includes(d.estado)).length;
+    res.json({ ...resumo, year: mes.year, month: mes.month, totais: { aGerar: conta("a_gerar", "faltam_livros"), completos: conta("completo"), publicados: conta("publicado"), naoEntram: conta("passou", "fechado", "sem_programacao", "sem_atividades") } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro ao montar o resumo do mês" });
+  }
+});
+
+/**
+ * Gera o mês em rascunho, em ordem, até acabar o orçamento de tempo da chamada (a Vercel mata a
+ * função em 60 s). Devolve o que gerou, o que falhou e de onde continuar (`proximoDia`); a tela
+ * chama de novo com `desde`. Dia já gerado é pulado, então refazer a chamada retoma sem repetir.
+ */
+router.post("/escalas/mes/gerar", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user! as Actor;
+  if (actor.role !== "ADMIN") { res.status(403).json({ error: "Forbidden", message: "A Administração gera o mês." }); return; }
+  const { locationId, year, month, desde } = req.body ?? {};
+  const mes = validarMes(year, month);
+  if (typeof locationId !== "string" || !locationId) { res.status(400).json({ error: "locationId é obrigatório" }); return; }
+  if ("erro" in mes) { res.status(400).json({ error: "MES_INVALIDO", message: mes.erro }); return; }
+  try {
+    const r = await gerarMes(actor, locationId, mes.year, mes.month, { desde: typeof desde === "string" && DATE.test(desde) ? desde : null });
+    if (!r) { res.status(404).json({ error: "Local não encontrado" }); return; }
+    res.json(r);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro ao gerar o mês" });
+  }
+});
+
+/** O que o "Descartar rascunhos do mês" levaria, dia a dia, e o que a gerência mexeu à mão em cada um. */
+router.get("/escalas/mes/descartaveis", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user! as Actor;
+  if (actor.role !== "ADMIN") { res.status(403).json({ error: "Forbidden", message: "A Administração descarta rascunhos do mês." }); return; }
+  const locationId = typeof req.query.locationId === "string" ? req.query.locationId : "";
+  const mes = validarMes(req.query.year, req.query.month);
+  if (!locationId) { res.status(400).json({ error: "locationId é obrigatório" }); return; }
+  if ("erro" in mes) { res.status(400).json({ error: "MES_INVALIDO", message: mes.erro }); return; }
+  try {
+    const r = await descartaveisDoMes(actor.organizationId, locationId, mes.year, mes.month);
+    if (!r) { res.status(404).json({ error: "Local não encontrado" }); return; }
+    res.json({ ...r, year: mes.year, month: mes.month });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro ao ver o que seria descartado" });
+  }
+});
+
+/** Descarta (de forma lógica e restaurável) os rascunhos do mês. Motivo obrigatório; nunca toca em dia publicado. */
+router.post("/escalas/mes/descartar", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user! as Actor;
+  if (actor.role !== "ADMIN") { res.status(403).json({ error: "Forbidden", message: "A Administração descarta rascunhos do mês." }); return; }
+  const { locationId, year, month, motivo, incluirComAjustes } = req.body ?? {};
+  const mes = validarMes(year, month);
+  if (typeof locationId !== "string" || !locationId) { res.status(400).json({ error: "locationId é obrigatório" }); return; }
+  if ("erro" in mes) { res.status(400).json({ error: "MES_INVALIDO", message: mes.erro }); return; }
+  const porque = typeof motivo === "string" ? motivo.trim() : "";
+  if (porque.length < 3) { res.status(400).json({ error: "MOTIVO_OBRIGATORIO", message: "Escreva o motivo do descarte." }); return; }
+  try {
+    const r = await descartarMes(actor, locationId, mes.year, mes.month, porque, incluirComAjustes === true);
+    if (!r) { res.status(404).json({ error: "Local não encontrado" }); return; }
+    res.json(r);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro ao descartar os rascunhos do mês" });
+  }
+});
+
+/** Desfaz um descarte (pelo evento do Registro que ele gerou). */
+router.post("/escalas/mes/restaurar", requireAuth, requireOrganization, async (req, res) => {
+  const actor = req.user! as Actor;
+  if (actor.role !== "ADMIN") { res.status(403).json({ error: "Forbidden", message: "A Administração restaura rascunhos do mês." }); return; }
+  const { eventoId } = req.body ?? {};
+  if (typeof eventoId !== "string" || !eventoId) { res.status(400).json({ error: "eventoId é obrigatório" }); return; }
+  try {
+    const r = await restaurarDescarte(actor, eventoId);
+    if (!r) { res.status(404).json({ error: "Descarte não encontrado" }); return; }
+    res.json(r);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro ao restaurar os rascunhos do mês" });
   }
 });
 

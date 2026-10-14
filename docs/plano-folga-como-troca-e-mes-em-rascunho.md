@@ -202,7 +202,45 @@ passa a "enxergar" os outros. Dois cuidados:
 - **Justiça**: gerar em ordem faz o equilíbrio por carga distribuir bem pelo mês (quem já tem mais
   shows passa a vez). Quem decide o que "justo" significa para o rodízio é a Babi.
 
-### Decisões que são suas
+### Resultado da sondagem do rodízio (14/10/2026)
+
+Medido no banco de teste com `tests/sondagem-mes-rodizio.test.ts` (14 dias × 2 shows, 6 pessoas, 2
+personagens em rodízio compartilhados entre os shows, gerado em ordem):
+
+- **Estabilidade**: 4 de 56 vagas (7%) mostram, na leitura ao vivo, uma pessoa diferente da gravada na
+  geração, sem folga nenhuma — é o equilíbrio do mês inteiro entrando na conta (a geração em ordem só
+  via os dias anteriores).
+- **Reação a uma folga**: uma folga no dia 8 mudou **1 vaga em 1 dia** (o próprio dia 8). Sem efeito
+  cascata sobre os outros dias.
+- **Distribuição**: cada pessoa ficou com 9 vagas no mês (uma com 11). O equilíbrio por carga distribui
+  bem.
+
+**Decisão: não fixar a escolha ao gerar o mês.** O rascunho é sempre lido ao vivo, então a pessoa nunca
+chega a "mudar sozinha" diante de quem olha: o que a tela mostra é sempre o resultado atual, e uma folga
+só mexe no dia da folga. Fixar traria o problema contrário (rascunho velho depois de folga). O tempo de
+gerar um Livro foi ~13 s (média) no banco de teste, que é muito mais lento que o real; mesmo assim o
+bloco de dias com orçamento de tempo é o desenho certo.
+
+### Decisões tomadas (14/10/2026)
+
+1. Só a **Administração** gera o mês.
+2. Pode gerar o mês corrente e **até 2 meses à frente** (não 3), com aviso se a Programação do mês
+   não existir.
+3. Dia **sem Programação**: o dia é recusado e listado ("sem Programação nestes dias").
+4. **Descartar rascunhos** entra junto, na primeira entrega.
+5. A **visão em calendário** fica para a Etapa 3 (ver o desenho abaixo).
+
+### Visão do mês (Etapa 3) — desenho
+
+Duas visões, porque respondem perguntas diferentes:
+
+- **Calendário do local**: cada dia é uma célula com o estado (fechado, sem Escala, rascunho,
+  publicado, "mudou depois de publicar") e sinais de atenção (vaga descoberta, gente chamada na
+  folga). Clicar no dia abre a Escala dele. É a que se usa logo depois de "Gerar o mês".
+- **Grade pessoa × dia**: quem trabalha em quê e quem está de folga, no mês inteiro. É a base do
+  pedido de folga como troca (a ASA precisa olhar a pessoa e o dia ao mesmo tempo).
+
+### Decisões (versão original das perguntas, para registro)
 
 1. **Quem pode gerar o mês?** Só a Administração (como o dia hoje) — ou a Supervisão também, para o
    próprio local? *(Recomendo só Administração, como já é; a Supervisão vê o resultado.)*
