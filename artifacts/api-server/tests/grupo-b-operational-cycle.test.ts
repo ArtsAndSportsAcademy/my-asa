@@ -85,6 +85,19 @@ async function run() {
     assert((await post(memberApi, `/leave-requests/${pendingId}/cancelar`, {})).status === 200, "Elenco retira o próprio pedido pendente");
     assert((await supApi(`/leave-requests/${pendingId}`, { method: "PATCH", body: JSON.stringify({ status: "APPROVED", decisionReason: "Tarde demais" }) })).status === 409, "pedido retirado não pode ser aprovado depois");
 
+    // Aprovar não exige recado; recusar exige — a pessoa precisa saber por quê. E o intervalo ao contrário diz o que está errado.
+    const semRecado = await post(memberApi, "/leave-requests", { startDate: "2026-10-09", endDate: "2026-10-09", reason: "Compromisso" });
+    const semRecadoId = ((await semRecado.json()) as { request: { id: string } }).request.id;
+    const recusaMuda = await supApi(`/leave-requests/${semRecadoId}`, { method: "PATCH", body: JSON.stringify({ status: "DENIED" }) });
+    assert(recusaMuda.status === 400 && ((await recusaMuda.json()) as { message: string }).message === "Recusar exige motivo.", "recusar sem motivo é barrado com a frase certa");
+    const aprovaMuda = await supApi(`/leave-requests/${semRecadoId}`, { method: "PATCH", body: JSON.stringify({ status: "APPROVED" }) });
+    const [aprovado] = await db.select().from(leaveRequestsTable).where(eq(leaveRequestsTable.id, semRecadoId));
+    assert(aprovaMuda.status === 200 && aprovado?.status === "APPROVED" && aprovado.decisionReason === "Aprovada sem observação.", "aprovar sem recado vale, e o Registro diz que foi sem observação");
+    const registroSemRecado = await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, semRecadoId), eq(historyEventsTable.action, "leave.approved")));
+    assert(registroSemRecado.length === 1, "aprovação sem recado também entra no Registro");
+    const invertido = await post(memberApi, "/leave-requests", { startDate: "2026-10-12", endDate: "2026-10-10", reason: "Compromisso" });
+    assert(invertido.status === 400 && ((await invertido.json()) as { message: string }).message.includes("último dia"), "período ao contrário diz o que está errado");
+
     const day = await montarEscalaDoDia(org!.id, location!.id, date);
     const block = day!.blocos.find((item) => item.dailyBookId === book!.id)!;
     assert(Boolean(block) && block.pessoaIds.includes(worker.id), "Livro publicado entra como bloco da Escala para o check-in");

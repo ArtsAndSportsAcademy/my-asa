@@ -11,9 +11,9 @@
  * transação, e os avisos vão pela fila durável (outbox).
  */
 import { Router, type IRouter } from "express";
-import { aliasedTable, and, desc, eq, gte, inArray, or, sql } from "drizzle-orm";
+import { aliasedTable, and, desc, eq, gte, inArray, lte, or, sql } from "drizzle-orm";
 import {
-  areaLocalSupervisorsTable, areasTable, db, locationsTable, operationsTable, requestDecisionsTable,
+  areaLocalSupervisorsTable, areasTable, db, folgasTable, locationsTable, operationsTable, requestDecisionsTable,
   requestsTable, restrictionsTable, userRolesTable, usersTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
@@ -222,11 +222,11 @@ async function travar(tx: Tx, id: string, organizationId: string) {
   return r ?? null;
 }
 class Recusa extends Error { constructor(public status: number, message: string) { super(message); } }
-async function responder(res: import("express").Response, ator: Ator, id: string, fn: (tx: Tx) => Promise<void>) {
+async function responder(res: import("express").Response, ator: Ator, id: string, fn: (tx: Tx) => Promise<{ aviso?: string } | void>) {
   try {
-    await db.transaction(fn);
+    const extra = await db.transaction(fn);
     const [linha] = await selecao().where(eq(requestsTable.id, id));
-    res.json({ pedido: await projetar(ator, linha!) });
+    res.json({ pedido: await projetar(ator, linha!), ...(extra && extra.aviso ? { aviso: extra.aviso } : {}) });
   } catch (e) {
     if (e instanceof Recusa) { res.status(e.status).json({ error: e.status === 409 ? "Conflict" : e.status === 403 ? "Forbidden" : e.status === 404 ? "Not Found" : "Bad Request", message: e.message }); return; }
     throw e;
@@ -298,11 +298,23 @@ router.post("/solicitacoes/:id/decisao", requireAuth, requireOrganization, async
       metadata: motivo ? { reason: motivo } : undefined,
     });
     const dia = r.targetDates[0] ? ` de ${curta(r.targetDates[0])}` : "";
+    // Folga vence a escala: horário aprovado num dia em que a pessoa está de folga não aparece. A
+    // decisão segue valendo, mas quem decide e quem pediu precisam saber, em vez de ouvir "já está
+    // na sua escala" sobre um horário que não está.
+    let naFolga = false;
+    if (decisao === "APPROVED" && r.type === "ESCALA_SLOT" && r.targetDates[0]) {
+      const [folga] = await tx.select({ id: folgasTable.id }).from(folgasTable).where(and(
+        eq(folgasTable.userId, r.requesterId), eq(folgasTable.status, "ACTIVE"),
+        lte(folgasTable.startDate, r.targetDates[0]), gte(folgasTable.endDate, r.targetDates[0]),
+      )).limit(1);
+      naFolga = Boolean(folga);
+    }
     const msg = decisao === "APPROVED"
-      ? `Seu pedido de ${tipo}${dia} foi aprovado${mudouHorario ? `, das ${inicio} às ${fim}` : ""}.${r.type === "ESCALA_SLOT" ? " Já está na sua escala." : ""}`
+      ? `Seu pedido de ${tipo}${dia} foi aprovado${mudouHorario ? `, das ${inicio} às ${fim}` : ""}.${r.type === "ESCALA_SLOT" ? (naFolga ? " Mas você está de folga nesse dia: o horário só entra na escala se a folga sair." : " Já está na sua escala.") : ""}`
       : `Seu pedido de ${tipo}${dia} foi recusado: ${motivo}`;
     await avisar(tx, { userId: r.requesterId, type: decisao === "APPROVED" ? "request.approved" : "request.denied", title: decisao === "APPROVED" ? "Pedido aprovado" : "Pedido recusado", message: msg, priority: decisao === "APPROVED" ? "NORMAL" : "IMPORTANT", entityType: "request", entityId: r.id }, `sol:${r.id}:decisao`);
     if (r.type === "SWAP" && r.peerId) await avisar(tx, { userId: r.peerId, type: decisao === "APPROVED" ? "request.approved" : "request.denied", title: decisao === "APPROVED" ? "Troca aprovada" : "Troca recusada", message: decisao === "APPROVED" ? `A troca${dia} foi aprovada.` : `A troca${dia} foi recusada: ${motivo}`, priority: "NORMAL", entityType: "request", entityId: r.id }, `sol:${r.id}:decisao-colega`);
+    return naFolga ? { aviso: "Aprovado, mas a pessoa está de folga nesse dia: o horário só entra na escala se a folga sair. Ela foi avisada." } : undefined;
   });
 });
 

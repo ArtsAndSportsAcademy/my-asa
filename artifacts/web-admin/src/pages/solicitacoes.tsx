@@ -11,6 +11,8 @@ import { ArrowLeftRight, CalendarClock, CalendarDays, Clock3, HeartPulse, Messag
 import { customFetch } from "@workspace/api-client-react";
 import { REVIEW_PERSON } from "@/lib/amostra";
 import { todayISO } from "@/lib/review-escala";
+import { mensagemDoErro } from "@/lib/mensagem-do-erro";
+import { PeriodoDeDatas } from "@/components/periodo-de-datas";
 import "./operational-cycle.css";
 import "./solicitacoes.css";
 
@@ -149,7 +151,7 @@ export default function SolicitacoesPage({ role, meuId }: { role: Role; meuId: s
       setNovo(null); setAba("abertos");
       if (!review) recarregar();
     } catch (e) {
-      setErroJanela(mensagemDe(e, "Não consegui enviar o pedido."));
+      setErroJanela(mensagemDoErro(e, "Não consegui enviar o pedido."));
     } finally { setEnviando(false); }
   }
 
@@ -160,13 +162,15 @@ export default function SolicitacoesPage({ role, meuId }: { role: Role; meuId: s
     const { pedido, decisao } = decidindo;
     setEnviando(true); setAviso("");
     try {
+      let doServidor = "";
       if (review) trocarLocal(pedido.id, { ...pedido, estado: decisao, inicio: inicio || pedido.inicio, fim: fim || pedido.fim, decisao: { por: REVIEW_PERSON[role], em: todayISO(), motivo: motivo || null }, pode: { cancelar: false, responderColega: false, decidir: false } });
       else if (pedido.tipo === "LEAVE") await customFetch(`/api/leave-requests/${pedido.id.replace("folga:", "")}`, { method: "PATCH", body: JSON.stringify({ status: decisao, decisionReason: motivo }) });
-      else await customFetch(`/api/solicitacoes/${pedido.id}/decisao`, { method: "POST", body: JSON.stringify({ decisao, motivo, inicio: inicio || undefined, fim: fim || undefined }) });
+      else { const r = await customFetch<{ aviso?: string }>(`/api/solicitacoes/${pedido.id}/decisao`, { method: "POST", body: JSON.stringify({ decisao, motivo, inicio: inicio || undefined, fim: fim || undefined }) }); doServidor = r?.aviso ?? ""; }
       setDecidindo(null);
-      setAviso(decisao === "APPROVED" ? (pedido.tipo === "ESCALA_SLOT" ? "Aprovado. O horário já entrou na escala do dia." : pedido.tipo === "SWAP" ? "Troca aprovada. Faça o ajuste na Escala do dia." : "Aprovado. A pessoa recebe o aviso.") : "Recusado. A pessoa recebe o aviso com o motivo.");
+      // Se o servidor tem algo a dizer (ex.: a pessoa está de folga naquele dia), vale a frase dele: ela é a verdadeira.
+      setAviso(doServidor || (decisao === "APPROVED" ? (pedido.tipo === "ESCALA_SLOT" ? "Aprovado. O horário já entrou na escala do dia." : pedido.tipo === "SWAP" ? "Troca aprovada. Faça o ajuste na Escala do dia." : pedido.tipo === "LEAVE" ? "Aprovado. A pessoa recebe o aviso; a folga aparece no calendário quando a Administração publicar o mês." : "Aprovado. A pessoa recebe o aviso.") : "Recusado. A pessoa recebe o aviso com o motivo."));
       if (!review) recarregar();
-    } catch (e) { setErroJanela(mensagemDe(e, "Não consegui registrar a decisão.")); } finally { setEnviando(false); }
+    } catch (e) { setErroJanela(mensagemDoErro(e, "Não consegui registrar a decisão.")); } finally { setEnviando(false); }
   }
 
   async function enviarResposta(event: FormEvent<HTMLFormElement>) {
@@ -181,7 +185,7 @@ export default function SolicitacoesPage({ role, meuId }: { role: Role; meuId: s
       setRespondendo(null);
       setAviso(aceita ? "Você aceitou a troca. Agora ela vai para a supervisão." : "Você não aceitou a troca. A colega recebe o aviso.");
       if (!review) recarregar();
-    } catch (e) { setErroJanela(mensagemDe(e, "Não consegui registrar a resposta.")); } finally { setEnviando(false); }
+    } catch (e) { setErroJanela(mensagemDoErro(e, "Não consegui registrar a resposta.")); } finally { setEnviando(false); }
   }
 
   async function cancelar(pedido: Pedido) {
@@ -191,7 +195,7 @@ export default function SolicitacoesPage({ role, meuId }: { role: Role; meuId: s
       if (review) trocarLocal(pedido.id, { ...pedido, estado: "CANCELLED", pode: { cancelar: false, responderColega: false, decidir: false } });
       else { await customFetch(pedido.tipo === "LEAVE" ? `/api/leave-requests/${pedido.id.replace("folga:", "")}/cancelar` : `/api/solicitacoes/${pedido.id}/cancelar`, { method: "POST" }); recarregar(); }
       setAviso("Pedido cancelado.");
-    } catch (e) { setAviso(mensagemDe(e, "Não consegui cancelar.")); }
+    } catch (e) { setAviso(mensagemDoErro(e, "Não consegui cancelar.")); }
   }
 
   const abas: { id: typeof aba; rotulo: string; n: number }[] = [
@@ -218,7 +222,7 @@ export default function SolicitacoesPage({ role, meuId }: { role: Role; meuId: s
           <article className="cycle-card"><span className="cycle-kicker">como funciona</span>
             <p>{role === "mem" ? "Você pede, a supervisão da sua área decide e você recebe o aviso. Horário aprovado entra sozinho na sua escala. Na troca, a colega aceita primeiro." : role === "sup" ? "Aqui chegam os pedidos da sua área. Recusar sempre pede motivo. No horário na escala, você pode aprovar em outro horário." : role === "adm" ? "Você vê os pedidos de todas as áreas. Normalmente a supervisão de cada área decide; você também pode." : "A Direção acompanha os pedidos. Detalhes de saúde ficam com a supervisão."}</p>
           </article>
-          <article className="cycle-card"><span className="cycle-kicker">folgas</span><p>Folga também pode ser pedida aqui; ela entra na mesma fila da tela Folgas, com o calendário do grupo.</p><Link className="cycle-inline-link" href="/folgas">Abrir Folgas</Link></article>
+          <article className="cycle-card"><span className="cycle-kicker">folgas</span><p>{role === "dir" ? "Os pedidos de folga ficam na tela Folgas, junto com o calendário de cada grupo." : "Folga também pode ser pedida aqui; ela entra na mesma fila da tela Folgas, com o calendário do grupo."}</p><Link className="cycle-inline-link" href="/folgas">Abrir Folgas</Link></article>
         </aside>
       </div>}
 
@@ -236,7 +240,7 @@ export default function SolicitacoesPage({ role, meuId }: { role: Role; meuId: s
       <header><h2>{decidindo.decisao === "APPROVED" ? "Aprovar" : "Recusar"}</h2><button type="button" aria-label="Fechar" onClick={() => setDecidindo(null)}>×</button></header>
       <p className="sol-resumo"><b>{decidindo.pedido.pessoa.nome}</b> · {NOME[decidindo.pedido.tipo]}{decidindo.pedido.assunto ? ` · ${decidindo.pedido.assunto}` : ""}<br/>{quando(decidindo.pedido)}</p>
       {decidindo.decisao === "APPROVED" && decidindo.pedido.tipo === "ESCALA_SLOT" && <fieldset className="sol-horario"><legend>Horário (mude se for aprovar em outro)</legend><label>De<input name="inicio" type="time" defaultValue={decidindo.pedido.inicio ?? ""} required/></label><label>Até<input name="fim" type="time" defaultValue={decidindo.pedido.fim ?? ""} required/></label></fieldset>}
-      <label>{decidindo.decisao === "DENIED" || decidindo.pedido.tipo === "LEAVE" ? "Motivo (a pessoa vai ler)" : "Motivo (obrigatório se mudar o horário)"}<textarea name="motivo" required={decidindo.decisao === "DENIED" || decidindo.pedido.tipo === "LEAVE"} minLength={2}/></label>
+      <label>{decidindo.decisao === "DENIED" ? "Motivo (a pessoa vai ler)" : decidindo.pedido.tipo === "ESCALA_SLOT" ? "Motivo (obrigatório se mudar o horário)" : "Recado para a pessoa (opcional)"}<textarea name="motivo" required={decidindo.decisao === "DENIED"} minLength={2}/></label>
       {decidindo.decisao === "APPROVED" && decidindo.pedido.tipo === "SWAP" && <p className="sol-nota">Depois de aprovar, faça a troca na Escala do dia.</p>}
       {erroJanela && <p className="sol-erro" role="alert">{erroJanela}</p>}
       <footer><button className="cycle-primary" disabled={enviando}>{enviando ? "Salvando…" : "Confirmar"}</button></footer>
@@ -250,11 +254,6 @@ export default function SolicitacoesPage({ role, meuId }: { role: Role; meuId: s
       <footer><button className="cycle-primary" disabled={enviando}>{enviando ? "Salvando…" : "Confirmar"}</button></footer>
     </form></div>}
   </section>;
-}
-
-function mensagemDe(e: unknown, padrao: string) {
-  const data = (e as { data?: { message?: string } } | null)?.data;
-  return typeof data?.message === "string" ? data.message : padrao;
 }
 
 function Linha({ p, role, meuId, review, onDecidir, onResponder, onCancelar }: { p: Pedido; role: Role; meuId: string | null; review: boolean; onDecidir: (d: "APPROVED" | "DENIED") => void; onResponder: (aceita: boolean) => void; onCancelar: () => void }) {
@@ -306,12 +305,12 @@ function CamposNovo({ tipo, colegas, locais }: { tipo: Tipo; colegas: Colega[]; 
   </>;
   if (tipo === "HEALTH_RESTRICTION") return <>
     <label>Tipo<select name="restricao" defaultValue="HEALTH"><option value="HEALTH">Saúde</option><option value="PHYSICAL">Físico (lesão, movimento)</option></select></label>
-    <div className="sol-duas"><label>De<input name="data" type="date" min={hoje} defaultValue={hoje} required/></label><label>Até<input name="ate" type="date" min={hoje} defaultValue={shift(hoje, 7)} required/></label></div>
+<PeriodoDeDatas rotuloDe="De" rotuloAte="Até" de={hoje} ate={shift(hoje, 7)} />
     <label>O que você não pode fazer?<textarea name="motivo" required minLength={2} maxLength={600}/></label>
     <p className="sol-nota">Só você, a supervisão da sua área e a Administração leem o detalhe.</p>
   </>;
   if (tipo === "LEAVE") return <>
-    <div className="sol-duas"><label>Começa<input name="data" type="date" min={hoje} defaultValue={shift(hoje, 1)} required/></label><label>Termina<input name="ate" type="date" min={hoje} defaultValue={shift(hoje, 1)} required/></label></div>
+<PeriodoDeDatas rotuloDe="Começa" rotuloAte="Termina" de={shift(hoje, 1)} ate={shift(hoje, 1)} />
     <label>Conte o necessário<textarea name="motivo" required minLength={2} maxLength={600}/></label>
     <p className="sol-nota">Vai para a mesma fila da tela Folgas.</p>
   </>;

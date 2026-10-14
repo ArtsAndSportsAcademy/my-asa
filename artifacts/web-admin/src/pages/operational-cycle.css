@@ -68,3 +68,12 @@
 .cycle-grupo-botoes button:hover{border-color:#cbb8f7;background:#faf8ff}
 .cycle-grupo-botoes button.cycle-secondary{color:#3d3559}
 .cycle-grupo-botoes button:disabled{opacity:.5;cursor:default}
+
+/* Janelas de pedido e decisão de folga: período em duas colunas e erro dentro da janela. */
+.cycle-duas{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cycle-erro-janela{margin:0;border-radius:10px;background:#fff0f2;color:#b42340;padding:9px 12px;font-size:13px;line-height:1.4}
+.cycle-request-acoes{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.cycle-request .cycle-sim,.cycle-request .cycle-nao{min-height:40px;border-radius:999px;padding:6px 14px;white-space:nowrap}
+.cycle-request .cycle-sim{background:#1c1440;color:#fff}
+.cycle-request .cycle-nao{border:1px solid #e6e1f2;background:#fff;color:#3d3559}
+@media (max-width:560px){.cycle-request{flex-wrap:wrap}.cycle-request-acoes{width:100%}.cycle-request-acoes button{flex:1}}

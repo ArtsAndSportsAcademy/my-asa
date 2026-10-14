@@ -127,6 +127,14 @@ async function run() {
     // transação. Inserir só o pedido aprovado testaria um estado que o app nunca produz.
     assert((await call("POST", "/leave-calendar", asBarbara, { operationId: op!.id, userIds: [julia.id], startDate: dia2, endDate: dia2, reason: `${tag} folga` })).status < 300, "gestão põe a folga da Julia no calendário");
     assert(!(await montarEscalaDoDia(org!.id, snow!.id, dia2))?.blocos.some((b) => b.key === `s:${outro}`), "com folga aprovada no dia, o horário não aparece (folga vence)");
+    // Aprovar um horário num dia em que a pessoa já está de folga vale, mas a verdade precisa chegar
+    // a quem decide e a quem pediu: não dá para dizer "já está na sua escala" de algo que não está.
+    const tarde = (await call("POST", "/solicitacoes", asJulia, { tipo: "ESCALA_SLOT", data: dia2, inicio: "16:00", fim: "16:30", assunto: "Prova de figurino" })).body.pedido.id as string;
+    const naFolga = await call("POST", `/solicitacoes/${tarde}/decisao`, asDeborah, { decisao: "APPROVED" });
+    assert(naFolga.status === 200 && typeof naFolga.body.aviso === "string" && naFolga.body.aviso.includes("de folga"), "aprovar horário em dia de folga: a Supervisão é avisada de que ele não entra na escala");
+    const [avisoJulia] = await avisosPara(julia.id, tarde);
+    const textoJulia = String((avisoJulia?.payload as { message?: string } | undefined)?.message ?? "");
+    assert(textoJulia.includes("de folga nesse dia") && !textoJulia.includes("Já está na sua escala"), "a Julia não ouve que está na escala quando está de folga");
 
     // ── Troca com colega ──
     const troca = await call("POST", "/solicitacoes", asJulia, { tipo: "SWAP", data: dia, colegaId: carol.id, motivo: "eu faço o show das 16h dela, ela faz o meu das 19h" });
