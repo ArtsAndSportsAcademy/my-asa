@@ -29,20 +29,32 @@ function chaveValida(req: Request, res: Response) {
 router.post("/internal/ciclo", async (req, res) => {
   if (!chaveValida(req, res)) return;
   const client = await pool.connect();
+  let aberta = false;
   try {
-    const [{ ok }] = (await client.query<{ ok: boolean }>("select pg_try_advisory_lock($1) as ok", [TRAVA_CICLO])).rows;
-    if (!ok) { res.json({ ok: true, pulado: "outro ciclo ainda rodando" }); return; }
-    try {
-      const inicio = Date.now();
-      const resultado = await rodarCicloOperacional(new Date());
-      res.json({ ok: true, ms: Date.now() - inicio, ...resultado });
-    } finally {
-      await client.query("select pg_advisory_unlock($1)", [TRAVA_CICLO]);
+    // Trava de TRANSAÇÃO, não de sessão: vale enquanto esta transação estiver aberta e se solta
+    // sozinha no commit/rollback. A trava de sessão (pg_try_advisory_lock + unlock em consultas
+    // separadas) deixa de ser confiável atrás do pooler em modo transação (porta 6543), onde cada
+    // consulta pode cair numa conexão diferente — a trava ficaria presa ou nunca seria solta.
+    await client.query("begin");
+    aberta = true;
+    const [{ ok }] = (await client.query<{ ok: boolean }>("select pg_try_advisory_xact_lock($1) as ok", [TRAVA_CICLO])).rows;
+    if (!ok) {
+      await client.query("rollback");
+      aberta = false;
+      res.json({ ok: true, pulado: "outro ciclo ainda rodando" });
+      return;
     }
+    const inicio = Date.now();
+    const resultado = await rodarCicloOperacional(new Date());
+    await client.query("commit");
+    aberta = false;
+    res.json({ ok: true, ms: Date.now() - inicio, ...resultado });
   } catch (err) {
     log.error({ err }, "ciclo operacional falhou");
     res.status(500).json({ error: "CICLO_FALHOU" });
   } finally {
+    // Falha no meio: o rollback solta a trava; sem ele a conexão voltaria ao pool com a transação aberta.
+    if (aberta) await client.query("rollback").catch(() => undefined);
     client.release();
   }
 });

@@ -218,6 +218,10 @@ async function run() {
     const minha = (await (await asJulia(`/escalas/minha?date=${date}`)).json()) as { publicada: boolean; confirmada?: boolean; blocos: { rotulo: string }[] };
     assert(minha.publicada && minha.blocos.some((b) => b.rotulo === "TREINO GELO") && minha.blocos.some((b) => b.rotulo === "SHOW PATINAÇÃO"), "Minha escala: Julia vê só os blocos dela (treino e show)");
     assert(!minha.blocos.some((b) => b.rotulo === "ENSAIO"), "Minha escala não mostra bloco de outra área");
+    // O Elenco só vê folga PUBLICADA: a Administração publica o mês de folgas (a folga da Carol foi
+    // lançada direto no mapa, sem publicar).
+    const pubFolgas = await post(asAdmin, "/folgas/grid/publicar", { operationId: operation!.id, year: Number(date.slice(0, 4)), month: Number(date.slice(5, 7)) });
+    assert(pubFolgas.status === 200, "Administração publica o mês de folgas");
     const carol = (await (await asCarol(`/escalas/minha?date=${date}`)).json()) as { folga: string | null; blocos: unknown[] };
     assert(carol.folga === "DAY_OFF" && carol.blocos.length === 0, "quem está de folga vê a folga e nenhum bloco");
 
