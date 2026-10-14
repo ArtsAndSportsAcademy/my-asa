@@ -6,6 +6,7 @@ import {
   areasTable,
   db,
   folgasTable,
+  folgaGruposTable,
   historyEventsTable,
   locationsTable,
   operationsTable,
@@ -90,6 +91,39 @@ async function run() {
     assert((await call("PATCH", `/folgas/${folgaLela!.id}`, asDeb, { notes: "x" })).status === 403, "editar folga de quem não é da equipe: recusado");
     assert((await call("POST", `/folgas/${folgaLela!.id}/cancelar`, asDeb, { reason: "x" })).status === 403, "cancelar folga de quem não é da equipe: recusado");
 
+    // Grupos de folga: padrão (pessoas + dois dias), por equipe, restaurável.
+    const grupoFora = await call("POST", "/folgas/grupos", asDeb, { operationId: op!.id, nome: "G com estranho", diasFolga: [1, 2], pessoaIds: [ju.id, lela.id] });
+    assert(grupoFora.status === 403, "grupo com alguém de fora da equipe: recusado");
+    const semGrupoFora = await db.select().from(folgaGruposTable).where(eq(folgaGruposTable.nome, "G com estranho"));
+    assert(semGrupoFora.length === 0, "grupo recusado não deixa nada gravado");
+    const grupoBad = await call("POST", "/folgas/grupos", asDeb, { operationId: op!.id, nome: "G", diasFolga: [7], pessoaIds: [ju.id] });
+    assert(grupoBad.status === 400, "dia da semana fora de 0..6: recusado");
+    const grupoOk = await call("POST", "/folgas/grupos", asDeb, { operationId: op!.id, nome: "Grupo 1 seg/ter", diasFolga: [1, 2], pessoaIds: [ju.id, semLocal.id] });
+    assert(grupoOk.status === 201 && typeof grupoOk.body.id === "string", "grupo da própria equipe: criado");
+    const grupoId = grupoOk.body.id as string;
+
+    const listaDeb = await call("GET", `/folgas/grupos?operationId=${op!.id}`, asDeb);
+    const g = (listaDeb.body.grupos as { id: string; diasFolga: number[]; pessoas: { id: string; name: string }[]; editavel: boolean }[]).find((x) => x.id === grupoId);
+    assert(listaDeb.status === 200 && g !== undefined, "o grupo criado aparece na lista");
+    assert(g!.diasFolga.join(",") === "1,2" && g!.pessoas.length === 2 && g!.pessoas.every((p) => p.name && p.name !== "—"), "lista traz os dois dias e as pessoas com nome");
+    assert(g!.editavel === true, "a Supervisão pode editar o grupo da sua equipe");
+
+    const edit = await call("PATCH", `/folgas/grupos/${grupoId}`, asDeb, { nome: "Grupo 1 — seg e ter", pessoaIds: [ju.id, semLocal.id, lela.id] });
+    assert(edit.status === 403, "editar incluindo alguém de fora: recusado");
+    const editOk = await call("PATCH", `/folgas/grupos/${grupoId}`, asDeb, { nome: "Grupo 1 — seg e ter", diasFolga: [1, 2] });
+    assert(editOk.status === 200, "editar dentro da equipe: ok");
+
+    const arquivar = await call("DELETE", `/folgas/grupos/${grupoId}`, asDeb);
+    assert(arquivar.status === 200, "arquivar o grupo: ok");
+    const listaSemArquivados = await call("GET", `/folgas/grupos?operationId=${op!.id}`, asDeb);
+    assert((listaSemArquivados.body.grupos as { id: string }[]).every((x) => x.id !== grupoId), "arquivado some da lista normal");
+    const listaComArquivados = await call("GET", `/folgas/grupos?operationId=${op!.id}&incluirArquivados=1`, asDeb);
+    assert((listaComArquivados.body.grupos as { id: string; active: boolean }[]).some((x) => x.id === grupoId && x.active === false), "arquivado aparece quando se pede os arquivados");
+    const restaurar = await call("POST", `/folgas/grupos/${grupoId}/restaurar`, asDeb);
+    assert(restaurar.status === 200, "restaurar o grupo: ok");
+    const [grupoRestaurado] = await db.select().from(folgaGruposTable).where(eq(folgaGruposTable.id, grupoId));
+    assert(grupoRestaurado?.active === true, "o grupo voltou a ficar ativo");
+
     const grid = await call("GET", `/folgas/grid?operationId=${op!.id}&year=2026&month=10`, asDeb);
     const flag = (userId: string) => (grid.body.members as { userId: string; editable: boolean }[]).find((m) => m.userId === userId)?.editable;
     assert(grid.status === 200 && (grid.body.members as unknown[]).length >= 6, "Supervisão vê o mapa de todo mundo");
@@ -160,6 +194,7 @@ async function run() {
     await pool.query(`delete from operational_changes where actor_id = any($1::uuid[])`, [ids]);
     await pool.query(`delete from user_notifications where user_id = any($1::uuid[])`, [ids]).catch(() => undefined);
     await pool.query(`delete from notification_outbox where user_id = any($1::uuid[])`, [ids]);
+    await db.delete(folgaGruposTable).where(eq(folgaGruposTable.operationId, op!.id));
     await db.delete(folgasTable).where(eq(folgasTable.operationId, op!.id));
     await db.delete(areaLocalSupervisorsTable).where(eq(areaLocalSupervisorsTable.supervisorId, deb.id));
     await db.delete(userRolesTable).where(inArray(userRolesTable.userId, ids));

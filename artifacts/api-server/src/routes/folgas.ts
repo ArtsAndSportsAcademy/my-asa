@@ -4,6 +4,7 @@ import type { SQL } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   folgasTable,
+  folgaGruposTable,
   historyEventsTable,
   usersTable,
   operationsTable,
@@ -809,6 +810,186 @@ router.post("/folgas/grid/bulk", requireAuth, requireOrganization, async (req, r
     log.error({ err }, "erro ao aplicar bulk de folgas");
     res.status(500).json({ error: "Internal Server Error" });
   }
+});
+
+// ─── Grupos de folga ────────────────────────────────────────────────────────
+// Guardam o padrão (pessoas + os dois dias de folga), não um período: os grupos mudam a cada ano.
+// Aplicar um grupo é chamar /folgas/grid/bulk com as datas do padrão — não há rota de "aplicar".
+
+/** Normaliza e valida a lista de dias da semana (0=domingo … 6=sábado). */
+function diasDaSemana(entrada: unknown): number[] | null {
+  if (!Array.isArray(entrada)) return null;
+  const dias = [...new Set(entrada.map(Number))];
+  if (!dias.length || dias.some((d) => !Number.isInteger(d) || d < 0 || d > 6)) return null;
+  return dias.sort((a, b) => a - b);
+}
+
+/** Recusa (string) se o usuário não pode mexer no grupo com estas pessoas; null se pode. */
+async function grupoEscopoBloqueio(user: { role: string; organizationId: string; sub: string }, operationId: string, pessoaIds: string[]): Promise<string | null> {
+  const scopeErr = await validateManagerScope(user, operationId);
+  if (scopeErr) return scopeErr;
+  for (const pessoa of pessoaIds) {
+    const block = await folgaEditBlock(user, pessoa);
+    if (block) return block;
+  }
+  return null;
+}
+
+// GET /folgas/grupos — lista os grupos de uma operação, com as pessoas resolvidas e um aviso de
+// quais o usuário pode editar (a Supervisão só mexe nos grupos da própria equipe).
+router.get("/folgas/grupos", requireAuth, requireOrganization, async (req, res) => {
+  const user = req.user!;
+  if (!MANAGER_ROLES.includes(user.role)) { res.status(403).json({ error: "Forbidden" }); return; }
+  const operationId = typeof req.query.operationId === "string" ? req.query.operationId : "";
+  if (!operationId) { res.status(400).json({ error: "Bad Request", message: "operationId é obrigatório" }); return; }
+  const scopeErr = await validateManagerScope(user, operationId);
+  if (scopeErr) { res.status(403).json({ error: "Forbidden", message: scopeErr }); return; }
+  const incluirArquivados = req.query.incluirArquivados === "1";
+
+  const where = incluirArquivados
+    ? eq(folgaGruposTable.operationId, operationId)
+    : and(eq(folgaGruposTable.operationId, operationId), eq(folgaGruposTable.active, true));
+  const grupos = await db.select().from(folgaGruposTable).where(where).orderBy(desc(folgaGruposTable.active), folgaGruposTable.nome);
+
+  const todasPessoas = [...new Set(grupos.flatMap((g) => g.pessoaIds))];
+  const nomes = new Map<string, string>();
+  if (todasPessoas.length) {
+    const linhas = await db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(inArray(usersTable.id, todasPessoas));
+    for (const l of linhas) nomes.set(l.id, l.name);
+  }
+
+  const saida = [];
+  for (const g of grupos) {
+    const editavel = (await grupoEscopoBloqueio(user, operationId, g.pessoaIds)) === null;
+    saida.push({
+      id: g.id, nome: g.nome, diasFolga: g.diasFolga, tipo: g.tipo, active: g.active, editavel,
+      pessoas: g.pessoaIds.map((id) => ({ id, name: nomes.get(id) ?? "—" })),
+    });
+  }
+  res.json({ grupos: saida });
+});
+
+// POST /folgas/grupos — cria um grupo. Confere o escopo de todas as pessoas antes de gravar.
+router.post("/folgas/grupos", requireAuth, requireOrganization, async (req, res) => {
+  const log = requestLogger(LOG_DOMAIN.FOLGAS, req.requestId, req.correlationId);
+  const user = req.user!;
+  if (!MANAGER_ROLES.includes(user.role)) { res.status(403).json({ error: "Forbidden" }); return; }
+  const { operationId, nome, pessoaIds, tipo } = req.body as { operationId?: string; nome?: string; pessoaIds?: string[]; tipo?: string };
+  const dias = diasDaSemana((req.body as { diasFolga?: unknown }).diasFolga);
+  const nomeTrim = typeof nome === "string" ? nome.trim() : "";
+  const pessoas = [...new Set((Array.isArray(pessoaIds) ? pessoaIds : []).filter((id): id is string => typeof id === "string" && id.length > 0))];
+  if (!operationId || !nomeTrim || nomeTrim.length > 80 || !dias || !pessoas.length) {
+    res.status(400).json({ error: "Bad Request", message: "operationId, nome, diasFolga[] e pessoaIds[] são obrigatórios" });
+    return;
+  }
+  const bloqueio = await grupoEscopoBloqueio(user, operationId, pessoas);
+  if (bloqueio) { res.status(403).json({ error: "Forbidden", message: bloqueio }); return; }
+  try {
+    const grupo = await db.transaction(async (tx) => {
+      const [criado] = await tx.insert(folgaGruposTable).values({
+        operationId, nome: nomeTrim, diasFolga: dias, pessoaIds: pessoas,
+        tipo: (tipo as any) ?? "DAY_OFF", createdBy: user.sub,
+      }).returning();
+      await writeHistoryEvent({
+        category: "ABSENCE", action: "FOLGA_GRUPO_CRIADO",
+        title: `Grupo de folga criado: ${nomeTrim}`,
+        narrative: `A gestão criou o grupo de folga "${nomeTrim}" com ${pessoas.length} pessoa(s), folga em ${dias.length} dia(s) da semana.`,
+        entityType: "folga_grupo", entityId: criado!.id, actorId: user.sub, operationId, orgId: user.organizationId,
+        metadata: { diasFolga: dias, pessoaIds: pessoas, tipo: (tipo as any) ?? "DAY_OFF" },
+        afterState: { nome: nomeTrim, diasFolga: dias, pessoaIds: pessoas },
+      }, tx as any);
+      return criado!;
+    });
+    log.info({ grupoId: grupo.id, pessoas: pessoas.length }, "grupo de folga criado");
+    res.status(201).json({ ok: true, id: grupo.id });
+  } catch (err) { log.error({ err }, "erro ao criar grupo de folga"); res.status(500).json({ error: "Internal Server Error" }); }
+});
+
+// PATCH /folgas/grupos/:id — edita nome, dias ou pessoas. Revalida o escopo (antigas e novas).
+router.patch("/folgas/grupos/:id", requireAuth, requireOrganization, async (req, res) => {
+  const log = requestLogger(LOG_DOMAIN.FOLGAS, req.requestId, req.correlationId);
+  const user = req.user!;
+  if (!MANAGER_ROLES.includes(user.role)) { res.status(403).json({ error: "Forbidden" }); return; }
+  const [grupo] = await db.select().from(folgaGruposTable).where(eq(folgaGruposTable.id, String(req.params.id))).limit(1);
+  if (!grupo) { res.status(404).json({ error: "Not Found" }); return; }
+
+  const body = req.body as { nome?: string; diasFolga?: unknown; pessoaIds?: string[]; tipo?: string };
+  const nomeTrim = typeof body.nome === "string" ? body.nome.trim() : grupo.nome;
+  const dias = body.diasFolga !== undefined ? diasDaSemana(body.diasFolga) : grupo.diasFolga;
+  const pessoas = Array.isArray(body.pessoaIds)
+    ? [...new Set(body.pessoaIds.filter((id): id is string => typeof id === "string" && id.length > 0))]
+    : grupo.pessoaIds;
+  const tipo = typeof body.tipo === "string" ? body.tipo : grupo.tipo;
+  if (!nomeTrim || nomeTrim.length > 80 || !dias || !pessoas.length) {
+    res.status(400).json({ error: "Bad Request", message: "nome, diasFolga[] e pessoaIds[] precisam ser válidos" });
+    return;
+  }
+  // Precisa poder mexer tanto em quem sai quanto em quem entra: confere os dois conjuntos.
+  const bloqueio = await grupoEscopoBloqueio(user, grupo.operationId, [...new Set([...grupo.pessoaIds, ...pessoas])]);
+  if (bloqueio) { res.status(403).json({ error: "Forbidden", message: bloqueio }); return; }
+  try {
+    await db.transaction(async (tx) => {
+      await tx.update(folgaGruposTable).set({ nome: nomeTrim, diasFolga: dias, pessoaIds: pessoas, tipo: tipo as any, updatedAt: new Date() }).where(eq(folgaGruposTable.id, grupo.id));
+      await writeHistoryEvent({
+        category: "ABSENCE", action: "FOLGA_GRUPO_EDITADO",
+        title: `Grupo de folga alterado: ${nomeTrim}`,
+        narrative: `A gestão alterou o grupo de folga "${nomeTrim}".`,
+        entityType: "folga_grupo", entityId: grupo.id, actorId: user.sub, operationId: grupo.operationId, orgId: user.organizationId,
+        beforeState: { nome: grupo.nome, diasFolga: grupo.diasFolga, pessoaIds: grupo.pessoaIds, tipo: grupo.tipo },
+        afterState: { nome: nomeTrim, diasFolga: dias, pessoaIds: pessoas, tipo },
+      }, tx as any);
+    });
+    log.info({ grupoId: grupo.id }, "grupo de folga editado");
+    res.json({ ok: true });
+  } catch (err) { log.error({ err }, "erro ao editar grupo de folga"); res.status(500).json({ error: "Internal Server Error" }); }
+});
+
+// DELETE /folgas/grupos/:id — arquiva (remoção lógica, restaurável). As folgas já aplicadas ficam.
+router.delete("/folgas/grupos/:id", requireAuth, requireOrganization, async (req, res) => {
+  const log = requestLogger(LOG_DOMAIN.FOLGAS, req.requestId, req.correlationId);
+  const user = req.user!;
+  if (!MANAGER_ROLES.includes(user.role)) { res.status(403).json({ error: "Forbidden" }); return; }
+  const [grupo] = await db.select().from(folgaGruposTable).where(eq(folgaGruposTable.id, String(req.params.id))).limit(1);
+  if (!grupo) { res.status(404).json({ error: "Not Found" }); return; }
+  const bloqueio = await grupoEscopoBloqueio(user, grupo.operationId, grupo.pessoaIds);
+  if (bloqueio) { res.status(403).json({ error: "Forbidden", message: bloqueio }); return; }
+  try {
+    await db.transaction(async (tx) => {
+      await tx.update(folgaGruposTable).set({ active: false, updatedAt: new Date() }).where(eq(folgaGruposTable.id, grupo.id));
+      await writeHistoryEvent({
+        category: "ABSENCE", action: "FOLGA_GRUPO_ARQUIVADO",
+        title: `Grupo de folga arquivado: ${grupo.nome}`,
+        narrative: `A gestão arquivou o grupo de folga "${grupo.nome}". As folgas já aplicadas continuam; o grupo pode ser restaurado.`,
+        entityType: "folga_grupo", entityId: grupo.id, actorId: user.sub, operationId: grupo.operationId, orgId: user.organizationId,
+      }, tx as any);
+    });
+    log.info({ grupoId: grupo.id }, "grupo de folga arquivado");
+    res.json({ ok: true });
+  } catch (err) { log.error({ err }, "erro ao arquivar grupo de folga"); res.status(500).json({ error: "Internal Server Error" }); }
+});
+
+// POST /folgas/grupos/:id/restaurar — traz de volta um grupo arquivado.
+router.post("/folgas/grupos/:id/restaurar", requireAuth, requireOrganization, async (req, res) => {
+  const log = requestLogger(LOG_DOMAIN.FOLGAS, req.requestId, req.correlationId);
+  const user = req.user!;
+  if (!MANAGER_ROLES.includes(user.role)) { res.status(403).json({ error: "Forbidden" }); return; }
+  const [grupo] = await db.select().from(folgaGruposTable).where(eq(folgaGruposTable.id, String(req.params.id))).limit(1);
+  if (!grupo) { res.status(404).json({ error: "Not Found" }); return; }
+  const bloqueio = await grupoEscopoBloqueio(user, grupo.operationId, grupo.pessoaIds);
+  if (bloqueio) { res.status(403).json({ error: "Forbidden", message: bloqueio }); return; }
+  try {
+    await db.transaction(async (tx) => {
+      await tx.update(folgaGruposTable).set({ active: true, updatedAt: new Date() }).where(eq(folgaGruposTable.id, grupo.id));
+      await writeHistoryEvent({
+        category: "ABSENCE", action: "FOLGA_GRUPO_RESTAURADO",
+        title: `Grupo de folga restaurado: ${grupo.nome}`,
+        narrative: `A gestão restaurou o grupo de folga "${grupo.nome}".`,
+        entityType: "folga_grupo", entityId: grupo.id, actorId: user.sub, operationId: grupo.operationId, orgId: user.organizationId,
+      }, tx as any);
+    });
+    log.info({ grupoId: grupo.id }, "grupo de folga restaurado");
+    res.json({ ok: true });
+  } catch (err) { log.error({ err }, "erro ao restaurar grupo de folga"); res.status(500).json({ error: "Internal Server Error" }); }
 });
 
 // ─── POST /folgas/grid/repeat — copiar a configuração do mês anterior ───────

@@ -12,6 +12,7 @@ import "./operational-cycle.css";
 type Role = "adm" | "dir" | "sup" | "mem";
 type LeaveRequest = { id: string; userId: string; userName?: string; areaName?: string | null; startDate: string; endDate: string; reason: string; status: "PENDING" | "APPROVED" | "DENIED" | "CANCELLED"; decisionReason?: string | null };
 type FolgaAtiva = { id: string; userId: string; userName: string; startDate: string; endDate: string; type: string; status: "ACTIVE" };
+type FolgaGrupo = { id: string; nome: string; diasFolga: number[]; tipo: string; active: boolean; editavel: boolean; pessoas: { id: string; name: string }[] };
 type DayBlock = { key: string; rotulo: string; inicio: string; fim: string | null; pessoaIds: string[]; dailyBookId: string | null; vazio: boolean; sinal: string | null; scaleId?: string; locationName?: string };
 type CheckIn = { id: string; sourceKey: string; userId: string; status: string; reason?: string | null; etaMinutes?: number | null };
 type Occurrence = { id: string; personId: string; personName: string; date: string; type: string; description: string; state: "aberta" | "em_analise" | "resolvida" };
@@ -96,8 +97,11 @@ export function FolgasPage({ role }: { role: Role }) {
   const from = iso(new Date(month.getFullYear(), month.getMonth(), 1)), to = iso(new Date(month.getFullYear(), month.getMonth() + 1, 0));
   const { user, roles } = useAuth();
   const operationId = roles[0]?.operationId ?? "";
-  const [groupBy, setGroupBy] = useState(true), [mapInfoOpen, setMapInfoOpen] = useState(false), [memberFilter, setMemberFilter] = useState(""), [managerTab, setManagerTab] = useState<"map" | "records">("map"), [repeating, setRepeating] = useState(false);
+  const [groupBy, setGroupBy] = useState(true), [mapInfoOpen, setMapInfoOpen] = useState(false), [memberFilter, setMemberFilter] = useState(""), [managerTab, setManagerTab] = useState<"map" | "grupos" | "records">("map"), [repeating, setRepeating] = useState(false);
   const [gridRevision, setGridRevision] = useState(0);
+  // Grupos de folga: padrão (pessoas + os dois dias) por equipe. Guardam só o padrão; o período é
+  // escolhido na hora de aplicar, porque os grupos mudam a cada ano.
+  const [grupos, setGrupos] = useState<FolgaGrupo[]>([]), [grupoEdit, setGrupoEdit] = useState<FolgaGrupo | "novo" | null>(null), [grupoAplicar, setGrupoAplicar] = useState<FolgaGrupo | null>(null), [grupoErro, setGrupoErro] = useState(""), [verArquivados, setVerArquivados] = useState(false), [gruposRevision, setGruposRevision] = useState(0);
   // A publicação guarda a versão que o Elenco vê; edições posteriores esperam republicação.
   const [publicacao, setPublicacao] = useState<FolgasPublicacao | null>(null), [publishing, setPublishing] = useState(false), [publishMsg, setPublishMsg] = useState("");
   useEffect(() => { setPublicacao(null); setPublishMsg(""); }, [month]);
@@ -141,6 +145,52 @@ export function FolgasPage({ role }: { role: Role }) {
       setCalendarOpen(false); setGridRevision((value) => value + 1); reload();
     } catch { setCalendarError("Não consegui marcar as folgas. Nada foi alterado; tente de novo."); }
   };
+  // Carrega os grupos salvos (gestão). Na amostra, grupos de exemplo para dar o que revisar.
+  useEffect(() => {
+    if (!roleCanWrite(role)) return;
+    if (review) {
+      const nome = (n: number) => visiblePeople.slice(n, n + 3).map((p) => ({ id: p.id, name: p.name }));
+      setGrupos([
+        { id: "amostra-g1", nome: "Grupo 1 — seg e ter", diasFolga: [1, 2], tipo: "DAY_OFF", active: true, editavel: true, pessoas: nome(0) },
+        { id: "amostra-g2", nome: "Grupo 2 — qua e qui", diasFolga: [3, 4], tipo: "DAY_OFF", active: true, editavel: role !== "sup", pessoas: nome(3) },
+      ]);
+      return;
+    }
+    if (!operationId) { setGrupos([]); return; }
+    customFetch<{ grupos: FolgaGrupo[] }>(`/api/folgas/grupos?operationId=${operationId}${verArquivados ? "&incluirArquivados=1" : ""}`)
+      .then((r) => setGrupos(r.grupos)).catch(() => setGrupoErro("Não consegui carregar os grupos de folga."));
+  }, [review, role, operationId, verArquivados, gruposRevision, visiblePeople]);
+  const salvarGrupo = async (v: { id?: string; nome: string; diasFolga: number[]; pessoaIds: string[]; tipo: string }) => {
+    if (review) { setGrupoEdit(null); return; }
+    if (!operationId) { setGrupoErro("Sem operação associada ao seu perfil."); return; }
+    try {
+      if (v.id) await customFetch(`/api/folgas/grupos/${v.id}`, { method: "PATCH", body: JSON.stringify({ nome: v.nome, diasFolga: v.diasFolga, pessoaIds: v.pessoaIds, tipo: v.tipo }) });
+      else await customFetch("/api/folgas/grupos", { method: "POST", body: JSON.stringify({ operationId, nome: v.nome, diasFolga: v.diasFolga, pessoaIds: v.pessoaIds, tipo: v.tipo }) });
+      setGrupoEdit(null); setGruposRevision((n) => n + 1);
+    } catch { setGrupoErro("Não consegui salvar o grupo. Nada foi alterado; tente de novo."); }
+  };
+  const arquivarGrupo = async (grupo: FolgaGrupo) => {
+    if (!window.confirm(`Arquivar o grupo "${grupo.nome}"? As folgas já aplicadas continuam; dá para restaurar depois.`)) return;
+    if (review) { setGrupos((gs) => gs.filter((g) => g.id !== grupo.id)); return; }
+    try { await customFetch(`/api/folgas/grupos/${grupo.id}`, { method: "DELETE" }); setGruposRevision((n) => n + 1); }
+    catch { setGrupoErro("Não consegui arquivar o grupo. Ele continua; tente de novo."); }
+  };
+  const restaurarGrupo = async (grupo: FolgaGrupo) => {
+    if (review) { setGrupos((gs) => gs.map((g) => g.id === grupo.id ? { ...g, active: true } : g)); return; }
+    try { await customFetch(`/api/folgas/grupos/${grupo.id}/restaurar`, { method: "POST" }); setGruposRevision((n) => n + 1); }
+    catch { setGrupoErro("Não consegui restaurar o grupo; tente de novo."); }
+  };
+  /** Aplicar um grupo é marcar a folga dos dois dias no período escolhido — reusa o lote. */
+  const aplicarGrupo = async (grupo: FolgaGrupo, de: string, ate: string) => {
+    const datas = datasDoPadrao(de, ate, grupo.diasFolga);
+    if (!datas.length) { setGrupoErro("O período escolhido não tem nenhum desses dias da semana."); return; }
+    if (review) { setGrupoAplicar(null); return; }
+    if (!operationId) { setGrupoErro("Sem operação associada ao seu perfil."); return; }
+    try {
+      await customFetch("/api/folgas/grid/bulk", { method: "POST", body: JSON.stringify({ operationId, userIds: grupo.pessoas.map((p) => p.id), dates: datas, type: grupo.tipo, motivo: `Grupo de folga: ${grupo.nome}` }) });
+      setGrupoAplicar(null); setGridRevision((n) => n + 1); reload();
+    } catch { setGrupoErro("Não consegui aplicar o grupo. Nada foi alterado; tente de novo."); }
+  };
   const publishMonth = async () => {
     if (!operationId || publishing) return;
     setPublishing(true); setPublishMsg("");
@@ -151,15 +201,18 @@ export function FolgasPage({ role }: { role: Role }) {
     finally { setPublishing(false); }
   };
   const repeatPrevious = async () => { if (!operationId || repeating) return; setRepeating(true); try { await customFetch("/api/folgas/grid/repeat", { method: "POST", body: JSON.stringify({ operationId, year: month.getFullYear(), month: month.getMonth() + 1 }) }); window.location.reload(); } catch { setError("Não consegui repetir a configuração do mês anterior."); setRepeating(false); } };
-  const managerMap = roleCanWrite(role) && !review ? <><div className="cycle-toolbar"><div><button onClick={() => setMonth((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))} aria-label="Mês anterior"><ChevronLeft/></button><strong>{MONTHS[month.getMonth()]} {month.getFullYear()}</strong><button onClick={() => setMonth((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))} aria-label="Próximo mês"><ChevronRight/></button></div><div><span className={`cycle-tag ${publicacao?.publishedAt && !publicacao.changedSince ? "" : "warn"}`} title={publicacao?.publishedBy ? `por ${publicacao.publishedBy}` : undefined}>{!publicacao ? "…" : !publicacao.publishedAt ? "mês não publicado" : publicacao.changedSince ? "mudou depois de publicar" : `publicado em ${new Date(publicacao.publishedAt).toLocaleDateString("pt-BR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`}</span>{publishMsg && <span className="cycle-publish-msg" role="status">{publishMsg}</span>}{role === "adm" && <button className="cycle-secondary" type="button" onClick={() => void repeatPrevious()} disabled={repeating}>{repeating ? "Repetindo…" : "Repetir mês anterior"}</button>}{role === "adm" && <button className="cycle-secondary" onClick={() => setRegimeOpen(true)}><Settings2/> Como contar folgas</button>}<button className="cycle-secondary" onClick={() => { setCalendarError(""); setCalendarOpen(true); }}><Plus/> Definir folga</button><button className="cycle-secondary" onClick={() => setAskOpen(true)}><Plus/> Pedir folga</button>{role === "adm" && <button className="cycle-primary" type="button" disabled={publishing || !operationId || Boolean(publicacao?.publishedAt && !publicacao.changedSince)} onClick={() => void publishMonth()}>{publishing ? "Publicando…" : publicacao?.publishedAt ? "Publicar de novo" : "Publicar mês"}</button>}</div></div><div className="cycle-tabs" role="tablist" aria-label="Folgas"><button className={managerTab === "map" ? "active" : ""} type="button" onClick={() => setManagerTab("map")}>Mapa do mês</button><button className={managerTab === "records" ? "active" : ""} type="button" onClick={() => setManagerTab("records")}>Registros</button><button type="button" onClick={() => setRegimeOpen(true)}>Como contar folgas</button></div>{managerTab === "map" ? <div className="cycle-leave-layout cycle-leave-full"><article className="cycle-card cycle-calendar-card"><header><div><span className="cycle-kicker">mapa mensal · edição por célula</span><h2 className="cycle-title-info">Folgas da equipe<button type="button" className="cycle-info-button" aria-expanded={mapInfoOpen} aria-label="Como contar folgas e editar" title="Como contar folgas e editar" onClick={() => setMapInfoOpen((value) => !value)}><Info size={16}/></button></h2>{mapInfoOpen && <div className="cycle-info-pop" role="note"><div><span className="cycle-kicker">como contar folgas</span><p>A conta fecha no mês, sem corte fixo da semana. A segunda folga depende da jornada completa.</p></div><div><span className="cycle-kicker">como editar</span><p>Toque ou arraste as células. Use F para folga, R para recesso, A para afastamento e O para outro. A alteração fica registrada no histórico.</p></div></div>}</div><label className="cycle-filter">Buscar pessoa<input value={memberFilter} onChange={(event) => setMemberFilter(event.target.value)} placeholder="Nome"/></label></header>{operationId ? <FolgasGrid operationId={operationId} year={month.getFullYear()} month={month.getMonth() + 1} memberFilter={memberFilter} groupBy={groupBy} onPublicacao={setPublicacao} refreshKey={gridRevision}/> : <p>Sem operação associada ao seu perfil.</p>}<footer><button className="cycle-secondary" type="button" onClick={() => setGroupBy((value) => !value)}>{groupBy ? "Mostrar sem agrupar" : "Agrupar por turma"}</button><span className="cycle-legend"><i className="approved"/> F folga <i className="pending"/> R recesso <i className="away"/> A afastamento</span></footer></article></div> : <article className="cycle-card" id="folgas-registros"><span className="cycle-kicker">registros no período</span><h2>Pedidos e decisões</h2>{visibleRequests.length ? visibleRequests.map((request) => <div className="cycle-request" key={request.id}><div><strong>{request.userName ?? request.userId}</strong><small>{porExtenso(request.startDate, request.endDate)} · {request.reason}</small></div><span className={`cycle-tag ${request.status === "PENDING" ? "warn" : ""}`}>{request.status === "PENDING" ? "pendente" : request.status === "APPROVED" ? "aprovada" : request.status.toLowerCase()}</span></div>) : <p>Nenhum registro neste mês.</p>}</article>}</> : null;
+  const managerMap = roleCanWrite(role) && !review ? <><div className="cycle-toolbar"><div><button onClick={() => setMonth((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))} aria-label="Mês anterior"><ChevronLeft/></button><strong>{MONTHS[month.getMonth()]} {month.getFullYear()}</strong><button onClick={() => setMonth((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))} aria-label="Próximo mês"><ChevronRight/></button></div><div><span className={`cycle-tag ${publicacao?.publishedAt && !publicacao.changedSince ? "" : "warn"}`} title={publicacao?.publishedBy ? `por ${publicacao.publishedBy}` : undefined}>{!publicacao ? "…" : !publicacao.publishedAt ? "mês não publicado" : publicacao.changedSince ? "mudou depois de publicar" : `publicado em ${new Date(publicacao.publishedAt).toLocaleDateString("pt-BR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`}</span>{publishMsg && <span className="cycle-publish-msg" role="status">{publishMsg}</span>}{role === "adm" && <button className="cycle-secondary" type="button" onClick={() => void repeatPrevious()} disabled={repeating}>{repeating ? "Repetindo…" : "Repetir mês anterior"}</button>}{role === "adm" && <button className="cycle-secondary" onClick={() => setRegimeOpen(true)}><Settings2/> Como contar folgas</button>}<button className="cycle-secondary" onClick={() => { setCalendarError(""); setCalendarOpen(true); }}><Plus/> Definir folga</button><button className="cycle-secondary" onClick={() => setAskOpen(true)}><Plus/> Pedir folga</button>{role === "adm" && <button className="cycle-primary" type="button" disabled={publishing || !operationId || Boolean(publicacao?.publishedAt && !publicacao.changedSince)} onClick={() => void publishMonth()}>{publishing ? "Publicando…" : publicacao?.publishedAt ? "Publicar de novo" : "Publicar mês"}</button>}</div></div><div className="cycle-tabs" role="tablist" aria-label="Folgas"><button className={managerTab === "map" ? "active" : ""} type="button" onClick={() => setManagerTab("map")}>Mapa do mês</button><button className={managerTab === "grupos" ? "active" : ""} type="button" onClick={() => setManagerTab("grupos")}>Grupos</button><button className={managerTab === "records" ? "active" : ""} type="button" onClick={() => setManagerTab("records")}>Registros</button><button type="button" onClick={() => setRegimeOpen(true)}>Como contar folgas</button></div>{managerTab === "map" ? <div className="cycle-leave-layout cycle-leave-full"><article className="cycle-card cycle-calendar-card"><header><div><span className="cycle-kicker">mapa mensal · edição por célula</span><h2 className="cycle-title-info">Folgas da equipe<button type="button" className="cycle-info-button" aria-expanded={mapInfoOpen} aria-label="Como contar folgas e editar" title="Como contar folgas e editar" onClick={() => setMapInfoOpen((value) => !value)}><Info size={16}/></button></h2>{mapInfoOpen && <div className="cycle-info-pop" role="note"><div><span className="cycle-kicker">como contar folgas</span><p>A conta fecha no mês, sem corte fixo da semana. A segunda folga depende da jornada completa.</p></div><div><span className="cycle-kicker">como editar</span><p>Toque ou arraste as células. Use F para folga, R para recesso, A para afastamento e O para outro. A alteração fica registrada no histórico.</p></div></div>}</div><label className="cycle-filter">Buscar pessoa<input value={memberFilter} onChange={(event) => setMemberFilter(event.target.value)} placeholder="Nome"/></label></header>{operationId ? <FolgasGrid operationId={operationId} year={month.getFullYear()} month={month.getMonth() + 1} memberFilter={memberFilter} groupBy={groupBy} onPublicacao={setPublicacao} refreshKey={gridRevision}/> : <p>Sem operação associada ao seu perfil.</p>}<footer><button className="cycle-secondary" type="button" onClick={() => setGroupBy((value) => !value)}>{groupBy ? "Mostrar sem agrupar" : "Agrupar por turma"}</button><span className="cycle-legend"><i className="approved"/> F folga <i className="pending"/> R recesso <i className="away"/> A afastamento</span></footer></article></div> : managerTab === "grupos" ? <GruposPanel grupos={grupos} verArquivados={verArquivados} erro={grupoErro} podeCriar={roleCanWrite(role)} onVerArquivados={setVerArquivados} onNovo={() => { setGrupoErro(""); setGrupoEdit("novo"); }} onEditar={(g) => { setGrupoErro(""); setGrupoEdit(g); }} onAplicar={(g) => { setGrupoErro(""); setGrupoAplicar(g); }} onArquivar={(g) => void arquivarGrupo(g)} onRestaurar={(g) => void restaurarGrupo(g)}/> : <article className="cycle-card" id="folgas-registros"><span className="cycle-kicker">registros no período</span><h2>Pedidos e decisões</h2>{visibleRequests.length ? visibleRequests.map((request) => <div className="cycle-request" key={request.id}><div><strong>{request.userName ?? request.userId}</strong><small>{porExtenso(request.startDate, request.endDate)} · {request.reason}</small></div><span className={`cycle-tag ${request.status === "PENDING" ? "warn" : ""}`}>{request.status === "PENDING" ? "pendente" : request.status === "APPROVED" ? "aprovada" : request.status.toLowerCase()}</span></div>) : <p>Nenhum registro neste mês.</p>}</article>}</> : null;
   // Fila de pedidos: aparece com o mapa do mês (gestão) e no calendário (elenco/amostra).
   const filaCard = <article className="cycle-card"><span className="cycle-kicker">{role === "mem" ? "seus pedidos" : "fila de pedidos"}</span>{visibleRequests.filter((request) => request.status === "PENDING").length ? visibleRequests.filter((request) => request.status === "PENDING").map((request) => <div className="cycle-request" key={request.id}><div>{role === "mem" ? <strong>{porExtenso(request.startDate, request.endDate)}</strong> : <><strong>{request.userName}</strong><small>{request.areaName} · {porExtenso(request.startDate, request.endDate)}</small></>}{role === "mem" && request.reason ? <small>{request.reason}</small> : null}</div>{roleCanWrite(role) ? <div><button onClick={() => setDecision({ request, status: "APPROVED" })}>Aprovar</button><button onClick={() => setDecision({ request, status: "DENIED" })}>Negar</button></div> : role === "mem" ? <button type="button" onClick={() => void withdrawRequest(request)}>Retirar pedido</button> : <span className="cycle-tag warn">pendente</span>}</div>) : <p>{role === "mem" ? "Você não tem pedido esperando resposta." : "Nenhum pedido esperando decisão."}</p>}</article>;
   return <section className="cycle-page">{managerMap}
     {(!roleCanWrite(role) || review) && <div className="cycle-toolbar"><div><button onClick={() => setMonth((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))} aria-label="Mês anterior"><ChevronLeft/></button><strong>{MONTHS[month.getMonth()]} {month.getFullYear()}</strong><button onClick={() => setMonth((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))} aria-label="Próximo mês"><ChevronRight/></button></div><div>{role === "adm" && <button className="cycle-secondary" onClick={() => setRegimeOpen(true)}><Settings2/> Como contar folgas</button>}{roleCanWrite(role) && <button className="cycle-secondary" onClick={() => { setCalendarError(""); setCalendarOpen(true); }}><Plus/> Definir folga</button>}{role !== "dir" && <button className="cycle-primary" onClick={() => setAskOpen(true)}><Plus/> Pedir folga</button>}</div></div>}
     {managerMap ? <State loading={loading} error={error} empty={false} onRetry={reload}><div className="cycle-manager-queue">{filaCard}</div></State> : <State loading={loading} error={error} empty={false} onRetry={reload}><div className="cycle-leave-layout"><article className="cycle-card cycle-calendar-card"><header><div><span className="cycle-kicker">{role === "mem" ? "suas folgas" : "calendário do grupo"}</span><h2>{role === "mem" ? "Seu mês" : role === "sup" ? scopeTitle : "Folgas da equipe"}</h2></div><span className="cycle-legend"><i className="approved"/> aprovada <i className="pending"/> pendente</span></header>{role === "mem" && !review && (!folgasPublicadas || precisaRepublicar) && <p role="status">{precisaRepublicar ? "A Administração precisa publicar este mês de novo para mostrar suas folgas aqui." : retratoInicial ? "Suas folgas anteriores continuam aqui. A Administração ainda precisa publicar este mês para confirmar o mapa." : "A Administração ainda não publicou as folgas deste mês. Seus pedidos pendentes continuam visíveis."}</p>}<MonthGrid selected={month} requests={calendarEntries} people={visiblePeople}/><footer>{visiblePeople.slice(0, 5).map((person) => <span className="cycle-person-key" key={person.id}><b>{initials(person.name)}</b>{person.name}<small>{person.area}</small></span>)}</footer></article><aside className="cycle-stack"><article className="cycle-card"><span className="cycle-kicker">como contar folgas</span><p>A conta fecha no mês, sem corte fixo da semana. A segunda folga depende da jornada completa.</p></article>{filaCard}</aside></div></State>}
+    {roleCanWrite(role) && review && <GruposPanel grupos={grupos} verArquivados={verArquivados} erro={grupoErro} podeCriar onVerArquivados={setVerArquivados} onNovo={() => { setGrupoErro(""); setGrupoEdit("novo"); }} onEditar={(g) => { setGrupoErro(""); setGrupoEdit(g); }} onAplicar={(g) => { setGrupoErro(""); setGrupoAplicar(g); }} onArquivar={(g) => void arquivarGrupo(g)} onRestaurar={(g) => void restaurarGrupo(g)}/>}
     {askOpen && <div className="cycle-modal"><form onSubmit={requestLeave}><header><h2>Pedir folga</h2><button type="button" onClick={() => setAskOpen(false)}>×</button></header><label>Começa<input name="startDate" type="date" defaultValue={from} required/></label><label>Termina<input name="endDate" type="date" defaultValue={from} required/></label><label>Conte o necessário<textarea name="reason" required minLength={2}/></label><footer><button className="cycle-primary">Enviar pedido</button></footer></form></div>}
     {regimeOpen && <div className="cycle-modal"><div className="cycle-card" role="dialog" aria-modal="true" aria-label="Como contar folgas"><header><h2>Como contar folgas</h2><button type="button" onClick={() => setRegimeOpen(false)} aria-label="Fechar">×</button></header><p>A conta fecha no mês; não existe dia fixo para começar a semana. Uma semana com menos folgas pode ser compensada em outra.</p><p>Snowland fecha às quartas e Acquamotion às segundas. A segunda folga depende de jornada completa. Nos meses em que o parque abre todos os dias, os grupos fixos são definidos pela Supervisão.</p><p>A tabela automática e o recesso de 2027 ainda precisam de revisão com a Babi antes de virarem regra no app.</p><footer><button type="button" className="cycle-primary" onClick={() => setRegimeOpen(false)}>Entendi</button></footer></div></div>}
     {calendarOpen && <DefinirFolgaDialog pessoas={visiblePeople} mes={month} erro={calendarError} onClose={() => setCalendarOpen(false)} onSubmit={marcarFolgas}/>}
+    {grupoEdit && <GrupoDialog grupo={grupoEdit === "novo" ? null : grupoEdit} pessoas={visiblePeople} erro={grupoErro} onClose={() => setGrupoEdit(null)} onSubmit={salvarGrupo}/>}
+    {grupoAplicar && <AplicarGrupoDialog grupo={grupoAplicar} mes={month} erro={grupoErro} onClose={() => setGrupoAplicar(null)} onSubmit={(de, ate) => aplicarGrupo(grupoAplicar, de, ate)}/>}
     {decision && <div className="cycle-modal"><form onSubmit={decide}><header><h2>{decision.status === "APPROVED" ? "Aprovar folga" : "Negar folga"}</h2><button type="button" onClick={() => setDecision(null)}>×</button></header><p>{decision.request.userName} · {porExtenso(decision.request.startDate, decision.request.endDate)}{decision.request.reason ? ` · ${decision.request.reason}` : ""}</p><label>Motivo da decisão<textarea name="reason" required minLength={2}/></label><footer><button className="cycle-primary">Confirmar</button></footer></form></div>}
   </section>;
 }
@@ -176,7 +229,23 @@ export function PanelPage({ role }: { role: Role }) {
 
 /* ---------- definir folga: pessoas em lote, datas de três jeitos ---------- */
 const DIAS_CURTOS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+const DIAS_LONGOS = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
 const diaISO = (ano: number, mes: number, dia: number) => `${ano}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+/** "segunda e terça"; três ou mais junta com vírgula e "e" no último. */
+const diasPorExtenso = (dias: number[]) => {
+  const nomes = [...dias].sort((a, b) => a - b).map((d) => DIAS_LONGOS[d]);
+  if (nomes.length <= 1) return nomes.join("");
+  return `${nomes.slice(0, -1).join(", ")} e ${nomes[nomes.length - 1]}`;
+};
+/** Todas as datas de [de, ate] cujo dia da semana está em `dias` (0=domingo … 6=sábado). */
+const datasDoPadrao = (de: string, ate: string, dias: number[]) => {
+  const lista: string[] = [];
+  if (!de || !ate || de > ate) return lista;
+  for (let t = new Date(`${de}T12:00:00`); t <= new Date(`${ate}T12:00:00`); t.setDate(t.getDate() + 1)) {
+    if (dias.includes(t.getDay())) lista.push(diaISO(t.getFullYear(), t.getMonth() + 1, t.getDate()));
+  }
+  return lista;
+};
 
 function DefinirFolgaDialog({ pessoas, mes, erro, onClose, onSubmit }: {
   pessoas: { id: string; name: string; area?: string | null }[];
@@ -288,6 +357,152 @@ function DefinirFolgaDialog({ pessoas, mes, erro, onClose, onSubmit }: {
     <footer>
       <button type="button" className="cycle-secondary" onClick={onClose}>Cancelar</button>
       <button className="cycle-primary" disabled={!pronto || salvando}>{salvando ? "Guardando…" : "Guardar no mapa"}</button>
+    </footer>
+  </form></div>;
+}
+
+/* ---------- grupos de folga: padrão (pessoas + dois dias) por equipe ---------- */
+const TIPO_ROTULO: Record<string, string> = { DAY_OFF: "Folga", RECESSO: "Recesso", AFASTAMENTO: "Afastamento", OUTRO: "Outro" };
+
+function GruposPanel({ grupos, verArquivados, erro, podeCriar, onVerArquivados, onNovo, onEditar, onAplicar, onArquivar, onRestaurar }: {
+  grupos: FolgaGrupo[]; verArquivados: boolean; erro: string; podeCriar: boolean;
+  onVerArquivados: (v: boolean) => void; onNovo: () => void; onEditar: (g: FolgaGrupo) => void;
+  onAplicar: (g: FolgaGrupo) => void; onArquivar: (g: FolgaGrupo) => void; onRestaurar: (g: FolgaGrupo) => void;
+}) {
+  return <article className="cycle-card" id="folgas-grupos">
+    <header>
+      <div><span className="cycle-kicker">grupos de folga · por equipe</span><h2>Grupos de folga</h2></div>
+      <div className="cycle-grupos-acoes">
+        <label className="cycle-grupos-switch"><input type="checkbox" checked={verArquivados} onChange={(e) => onVerArquivados(e.target.checked)}/> ver arquivados</label>
+        {podeCriar && <button type="button" className="cycle-secondary" onClick={onNovo}><Plus/> Novo grupo</button>}
+      </div>
+    </header>
+    <p>Um grupo guarda o padrão — as pessoas e os dois dias de folga. O período você escolhe na hora de aplicar, porque os grupos mudam a cada ano. Aplicar marca a folga desses dias no período, e o Elenco só vê depois da publicação do mês.</p>
+    {erro && <p role="alert">{erro}</p>}
+    {!grupos.length ? <div className="cycle-feedback"><img src="/asa/oi.webp" alt=""/> Nenhum grupo ainda. Crie um para repetir as folgas fixas sem reescolher as pessoas todo mês.</div>
+      : <div className="cycle-grupos-lista">{grupos.map((g) => <div className={`cycle-grupo${g.active ? "" : " arquivado"}`} key={g.id}>
+          <div className="cycle-grupo-info">
+            <strong>{g.nome}{!g.active && <span className="cycle-tag"> arquivado</span>}</strong>
+            <small>folga {diasPorExtenso(g.diasFolga)}{g.tipo !== "DAY_OFF" ? ` · ${TIPO_ROTULO[g.tipo] ?? g.tipo}` : ""} · {g.pessoas.length === 1 ? "1 pessoa" : `${g.pessoas.length} pessoas`}</small>
+            <small className="cycle-grupo-pessoas">{g.pessoas.map((p) => p.name).join(", ")}</small>
+          </div>
+          <div className="cycle-grupo-botoes">
+            {g.active && <button type="button" className="cycle-secondary" onClick={() => onAplicar(g)} disabled={!g.editavel}>Aplicar</button>}
+            {g.active
+              ? <>{g.editavel && <button type="button" onClick={() => onEditar(g)}>Editar</button>}{g.editavel && <button type="button" onClick={() => onArquivar(g)}>Arquivar</button>}</>
+              : g.editavel && <button type="button" onClick={() => onRestaurar(g)}>Restaurar</button>}
+          </div>
+        </div>)}</div>}
+  </article>;
+}
+
+function GrupoDialog({ grupo, pessoas, erro, onClose, onSubmit }: {
+  grupo: FolgaGrupo | null;
+  pessoas: { id: string; name: string; area?: string | null }[];
+  erro: string;
+  onClose: () => void;
+  onSubmit: (v: { id?: string; nome: string; diasFolga: number[]; pessoaIds: string[]; tipo: string }) => Promise<void>;
+}) {
+  useFecharComEsc(onClose);
+  const [nome, setNome] = useState(grupo?.nome ?? "");
+  const [dias, setDias] = useState<number[]>(grupo?.diasFolga ?? []);
+  const [quem, setQuem] = useState<string[]>(grupo?.pessoas.map((p) => p.id) ?? []);
+  const [tipo, setTipo] = useState(grupo?.tipo ?? "DAY_OFF");
+  const [busca, setBusca] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const alterna = <T,>(lista: T[], valor: T): T[] => lista.includes(valor) ? lista.filter((x) => x !== valor) : [...lista, valor];
+  const chip = (ligado: boolean) => `cycle-chip${ligado ? " on" : ""}`;
+  const filtradas = pessoas.filter((p) => `${p.name} ${p.area ?? ""}`.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR")));
+  const areas = [...new Set(pessoas.map((p) => p.area).filter((a): a is string => Boolean(a)))];
+  const pronto = nome.trim().length > 0 && dias.length > 0 && quem.length > 0;
+  const enviar = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!pronto || salvando) return;
+    setSalvando(true);
+    try { await onSubmit({ id: grupo?.id, nome: nome.trim(), diasFolga: dias, pessoaIds: quem, tipo }); } finally { setSalvando(false); }
+  };
+  return <div className="cycle-modal"><form onSubmit={enviar} className="cycle-folga-form">
+    <header><h2>{grupo ? "Editar grupo" : "Novo grupo de folga"}</h2><button type="button" onClick={onClose} aria-label="Fechar">×</button></header>
+    <p>As pessoas e os dois dias de folga fixos. Salvar só guarda o grupo — não marca nada no mapa; isso é no "Aplicar".</p>
+    {erro && <p role="alert">{erro}</p>}
+
+    <label>Nome do grupo<input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Grupo 1 — seg e ter" maxLength={80}/></label>
+
+    <fieldset>
+      <legend>Dias de folga da semana</legend>
+      <div className="cycle-folga-atalhos">
+        {DIAS_CURTOS.map((rotulo, i) => <button key={rotulo} type="button" aria-pressed={dias.includes(i)} className={chip(dias.includes(i))} onClick={() => setDias((atual) => alterna(atual, i))}>{rotulo}</button>)}
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Quem</legend>
+      <div className="cycle-folga-atalhos">
+        <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar pessoa" aria-label="Buscar pessoa"/>
+        <button type="button" className={chip(false)} onClick={() => setQuem(filtradas.map((p) => p.id))}>Todas da lista</button>
+        {areas.map((a) => <button key={a} type="button" className={chip(false)} onClick={() => setQuem((atual) => [...new Set([...atual, ...pessoas.filter((p) => p.area === a).map((p) => p.id)])])}>{a}</button>)}
+        {quem.length > 0 && <button type="button" className={chip(false)} onClick={() => setQuem([])}>Limpar</button>}
+      </div>
+      <div className="cycle-folga-pessoas">
+        {filtradas.map((p) => <button key={p.id} type="button" aria-pressed={quem.includes(p.id)} className={chip(quem.includes(p.id))} onClick={() => setQuem((atual) => alterna(atual, p.id))}>{p.name}</button>)}
+        {!filtradas.length && <span>Ninguém com esse nome.</span>}
+      </div>
+    </fieldset>
+
+    <label>O que marcar ao aplicar
+      <select value={tipo} onChange={(e) => setTipo(e.target.value)}>
+        <option value="DAY_OFF">Folga</option>
+        <option value="RECESSO">Recesso</option>
+        <option value="AFASTAMENTO">Afastamento</option>
+        <option value="OUTRO">Outro</option>
+      </select>
+    </label>
+
+    <p className="cycle-folga-previa" role="status">{pronto
+      ? `Folga ${diasPorExtenso(dias)}, ${quem.length === 1 ? "1 pessoa" : `${quem.length} pessoas`}.`
+      : "Dê um nome, escolha os dias e as pessoas."}</p>
+    <footer>
+      <button type="button" className="cycle-secondary" onClick={onClose}>Cancelar</button>
+      <button className="cycle-primary" disabled={!pronto || salvando}>{salvando ? "Guardando…" : "Guardar grupo"}</button>
+    </footer>
+  </form></div>;
+}
+
+function AplicarGrupoDialog({ grupo, mes, erro, onClose, onSubmit }: {
+  grupo: FolgaGrupo;
+  mes: Date;
+  erro: string;
+  onClose: () => void;
+  onSubmit: (de: string, ate: string) => Promise<void>;
+}) {
+  useFecharComEsc(onClose);
+  const ano = mes.getFullYear(), mesNum = mes.getMonth() + 1;
+  const [de, setDe] = useState(diaISO(ano, mesNum, 1));
+  const [ate, setAte] = useState(diaISO(ano, mesNum, new Date(ano, mesNum, 0).getDate()));
+  const [salvando, setSalvando] = useState(false);
+  const datas = datasDoPadrao(de, ate, grupo.diasFolga);
+  const marcacoes = datas.length * grupo.pessoas.length;
+  const pronto = de <= ate && datas.length > 0;
+  const enviar = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!pronto || salvando) return;
+    setSalvando(true);
+    try { await onSubmit(de, ate); } finally { setSalvando(false); }
+  };
+  return <div className="cycle-modal"><form onSubmit={enviar} className="cycle-folga-form">
+    <header><h2>Aplicar “{grupo.nome}”</h2><button type="button" onClick={onClose} aria-label="Fechar">×</button></header>
+    <p>Marca a folga de {diasPorExtenso(grupo.diasFolga)} para {grupo.pessoas.length === 1 ? "esta pessoa" : `estas ${grupo.pessoas.length} pessoas`}, em todo o período. O que já existir nesses dias é substituído. O Elenco só vê depois da publicação do mês.</p>
+    {erro && <p role="alert">{erro}</p>}
+    <div className="cycle-folga-periodo">
+      <label>De<input type="date" value={de} onChange={(e) => setDe(e.target.value)}/></label>
+      <label>Até<input type="date" value={ate} onChange={(e) => setAte(e.target.value)}/></label>
+    </div>
+    <p className="cycle-folga-previa" role="status">{!pronto
+      ? (de > ate ? "A data final é antes da inicial." : `O período não tem nenhum dia de ${diasPorExtenso(grupo.diasFolga)}.`)
+      : `${datas.length === 1 ? "1 dia" : `${datas.length} dias`} × ${grupo.pessoas.length === 1 ? "1 pessoa" : `${grupo.pessoas.length} pessoas`} = ${marcacoes === 1 ? "1 marcação" : `${marcacoes} marcações`}.`}</p>
+    <footer>
+      <button type="button" className="cycle-secondary" onClick={onClose}>Cancelar</button>
+      <button className="cycle-primary" disabled={!pronto || salvando}>{salvando ? "Aplicando…" : "Aplicar ao período"}</button>
     </footer>
   </form></div>;
 }

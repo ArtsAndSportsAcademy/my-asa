@@ -51,3 +51,20 @@
 .cycle-folga-previa{margin:0;padding:10px 12px;border-radius:10px;background:#f6f3fd;color:#3d3559;font-size:12px;line-height:1.45}
 .cycle-folga-form footer{gap:8px}
 @media(max-width:720px){.cycle-folga-dias{grid-template-columns:repeat(5,minmax(0,1fr))}.cycle-folga-periodo{grid-template-columns:1fr}}
+
+/* 13/10: grupos de folga */
+.cycle-grupos-acoes{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cycle-grupos-switch{display:flex;align-items:center;gap:6px;font-size:12px;color:#6b6482;font-weight:600}
+.cycle-grupos-switch input{width:16px;height:16px;accent-color:#5b23c9}
+.cycle-grupos-lista{display:grid;gap:10px}
+.cycle-grupo{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid #e6e1f2;border-radius:13px;background:#fff;flex-wrap:wrap}
+.cycle-grupo.arquivado{background:#faf8ff;opacity:.75}
+.cycle-grupo-info{display:grid;gap:3px;min-width:200px;flex:1}
+.cycle-grupo-info strong{font:700 14px Manrope,sans-serif;display:flex;align-items:center;gap:6px}
+.cycle-grupo-info small{font-size:12px;color:#6b6482}
+.cycle-grupo-pessoas{color:#8b85a0!important}
+.cycle-grupo-botoes{display:flex;gap:7px;flex-wrap:wrap}
+.cycle-grupo-botoes button{min-height:40px;border-radius:999px;padding:7px 13px;font:700 12px Manrope,sans-serif;cursor:pointer;border:1px solid #e6e1f2;background:#fff;color:#5b5473}
+.cycle-grupo-botoes button:hover{border-color:#cbb8f7;background:#faf8ff}
+.cycle-grupo-botoes button.cycle-secondary{color:#3d3559}
+.cycle-grupo-botoes button:disabled{opacity:.5;cursor:default}
