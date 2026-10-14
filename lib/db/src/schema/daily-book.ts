@@ -87,6 +87,10 @@ export const dailyBookAssignmentsTable = pgTable("daily_book_assignments", {
   sceneId: uuid("scene_id"),
   userId: uuid("user_id").references(() => usersTable.id),
   status: dailyBookAssignmentStatusEnum("status").notNull().default("OPEN"),
+  // 14/10: o Livro do Dia vivo. `manual` = a gerência trocou esta vaga à mão (hoje, pela Escala) —
+  // vaga assim não é recalculada sozinha na leitura; o resto continua se completando com a mesma
+  // fila (titular, depois rodízio, sem quem está de folga) usada para gerar o livro.
+  manual: boolean("manual").notNull().default(false),
   supersededAt: timestamp("superseded_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

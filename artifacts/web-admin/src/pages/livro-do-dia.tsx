@@ -15,7 +15,7 @@ type Role = "adm" | "dir" | "sup" | "mem";
 type Tab = "hoje" | "diff" | "forma" | "lista";
 type DailyBookStatus = "DRAFT" | "PUBLISHED" | "REPUBLISHED" | "EXECUTED" | "CANCELLED";
 type AssignmentStatus = "ASSIGNED" | "AT_RISK" | "OPEN" | "REMOVED";
-type Assignment = { id: string; positionId: string; sceneId: string | null; userId: string | null; userName: string | null; status: AssignmentStatus };
+type Assignment = { id: string; positionId: string; sceneId: string | null; userId: string | null; userName: string | null; status: AssignmentStatus; manual?: boolean; alerta?: string | null };
 type DPosition = { id: string; name: string; minimumCoverage: number; sourceRoleId: string | null; isRemoved: boolean; assignments: Assignment[] };
 type DBlock = { id: string; name: string; order: number; sceneId: string | null; sourceBlockId: string | null; isRemoved: boolean; positions: DPosition[] };
 type DScene = { id: string; name: string; order: number; sourceSceneId: string | null; isRemoved: boolean; blocks: DBlock[] };
@@ -84,6 +84,12 @@ const samePerson = (a: string | null | undefined, b: string | null | undefined) 
 const editableStatus = (status: DailyBookStatus) => status === "DRAFT" || status === "PUBLISHED" || status === "REPUBLISHED";
 const liveAssignments = (position: DPosition) => position.assignments.filter((a) => a.status !== "REMOVED");
 const namesOf = (position: DPosition) => liveAssignments(position).map((a) => a.userName).filter((n): n is string => Boolean(n));
+/** A vaga mexida à mão não se auto-completa mais; o aviso aparece quando, mesmo assim, a pessoa
+ *  está de folga hoje — a troca continua valendo, só avisa (não desfaz sozinho). */
+const manualInfo = (position: DPosition) => {
+  const live = liveAssignments(position);
+  return { manual: live.some((a) => a.manual), alerta: live.find((a) => a.alerta)?.alerta ?? null };
+};
 const sceneBlocks = (scene: DScene) => scene.blocks.filter((b) => !b.name.startsWith("Sessão "));
 function convocadosOf(book: DailyBook) {
   return new Set((book.scenes ?? []).filter((s) => !s.isRemoved).flatMap((s) => sceneBlocks(s).filter((b) => !b.isRemoved).flatMap((b) => b.positions.filter((p) => !p.isRemoved).flatMap(namesOf))));
@@ -890,13 +896,17 @@ function ScenePanel(props: Parameters<typeof HojeTab>[0] & { scene: DScene; slot
   const slotBox = (s: SlotView) => {
     const mine = isMine(s);
     const vago = !s.who;
+    const { manual, alerta } = manualInfo(s.position);
     const tone = s.out ? "#a12c2c" : mine ? "#C2508F" : vago ? "#B06E00" : s.sub ? "#0E8F86" : "#6C2BF2";
-    const note = s.out ? "fora do dia" : s.sub ? `no lugar de ${s.sub}` : s.papel ? s.papel : mine ? "você" : "";
-    return <div key={s.position.id} style={css(`display:flex;align-items:center;gap:9px;padding:8px 10px;border:1px solid ${s.out ? "#f0dede" : mine ? "#f2d9e6" : "#e6e1f2"};border-radius:11px;background:${s.out ? "#fdf8f8" : mine ? "#fdf6fa" : "#fff"};min-width:172px;max-width:214px`)}>
+    const note = alerta ?? (s.out ? "fora do dia" : s.sub ? `no lugar de ${s.sub}` : s.papel ? s.papel : mine ? "você" : "");
+    return <div key={s.position.id} style={css(`display:flex;align-items:center;gap:9px;padding:8px 10px;border:1px solid ${alerta ? "#f3dca8" : s.out ? "#f0dede" : mine ? "#f2d9e6" : "#e6e1f2"};border-radius:11px;background:${alerta ? "#fffaf0" : s.out ? "#fdf8f8" : mine ? "#fdf6fa" : "#fff"};min-width:172px;max-width:214px`)}>
       <span style={css(`font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;color:${tone};background:${tone}18;min-width:24px;text-align:center;padding:3px 5px;border-radius:7px;flex:none;white-space:nowrap`)}>{s.label}</span>
       <div style={css("display:flex;flex-direction:column;gap:2px;min-width:0;flex:1")}>
-        <span style={css(`font-size:12.5px;font-weight:${mine ? 700 : 600};color:${vago ? "#B06E00" : mine ? "#C2508F" : "#1b1630"};white-space:nowrap;overflow:hidden;text-overflow:ellipsis${s.out ? ";text-decoration:line-through" : ""}`)}>{s.who ?? "sem titular"}</span>
-        {note && <span style={css(`font-size:10.5px;color:${s.out ? "#a12c2c" : s.sub ? "#0E8F86" : mine ? "#C2508F" : "#6b6482"}`)}>{note}</span>}
+        <span style={css("display:flex;align-items:center;gap:5px;min-width:0")}>
+          <span style={css(`font-size:12.5px;font-weight:${mine ? 700 : 600};color:${vago ? "#B06E00" : mine ? "#C2508F" : "#1b1630"};white-space:nowrap;overflow:hidden;text-overflow:ellipsis${s.out ? ";text-decoration:line-through" : ""}`)}>{s.who ?? "sem titular"}</span>
+          {manual && !s.out && <span title="Trocado à mão — não se completa mais sozinho" style={css("flex:none;font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6b6482;background:#f0ecf9;padding:1px 5px;border-radius:999px")}>fixo</span>}
+        </span>
+        {note && <span style={css(`font-size:10.5px;color:${alerta ? "#8f5409" : s.out ? "#a12c2c" : s.sub ? "#0E8F86" : mine ? "#C2508F" : "#6b6482"}`)}>{note}</span>}
       </div>
       {canEdit && !out && <button type="button" className="ldd-hit" disabled={saving} onClick={() => props.onTogglePosition(s.position)} title={s.out ? "restaurar esta posição no dia" : "tirar esta posição do dia"} aria-label={`${s.out ? "Restaurar" : "Tirar"} ${s.label} do dia`}
         style={css("border:none;background:transparent;color:#6b6482;font-size:14px;line-height:1;cursor:pointer;padding:2px 4px;flex:none")}>{s.out ? "↺" : "×"}</button>}

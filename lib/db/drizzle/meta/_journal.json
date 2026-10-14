@@ -299,6 +299,7 @@
     {"idx":60,"version":"7","when":1791511200000,"tag":"0060_ajuste_motivo_folga","breakpoints":true},
     {"idx":61,"version":"7","when":1791597600000,"tag":"0061_folgas_retrato_inicial","breakpoints":true},
     {"idx":62,"version":"7","when":1791684000000,"tag":"0062_grupos_de_folga","breakpoints":true},
-    {"idx":63,"version":"7","when":1791687600000,"tag":"0063_grupo_folga_periodo","breakpoints":true}
+    {"idx":63,"version":"7","when":1791687600000,"tag":"0063_grupo_folga_periodo","breakpoints":true},
+    {"idx":64,"version":"7","when":1791770400000,"tag":"0064_livro_do_dia_vivo","breakpoints":true}
   ]
 }

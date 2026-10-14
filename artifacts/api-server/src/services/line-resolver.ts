@@ -1,4 +1,4 @@
-import { eq, and, inArray, lte, gte, count, sql } from "drizzle-orm";
+import { eq, and, inArray, lte, gte, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   showBookScenesTable,
@@ -245,6 +245,9 @@ function resolveLine(
   memberIdsOverride?: readonly string[],
   characterMode?: "titular" | "rodizio",
   balance: BalanceKey = NO_BALANCE,
+  /** Chaves (rotationCountKey) que já avançaram HOJE — descontadas de config.executionCounts, que
+   *  é vitalício e sem data (ver nota mais abaixo, no uso). */
+  advancedToday: ReadonlySet<string> = new Set(),
 ): ResolvedLine {
   const byBalance = (a: { id: string; idx: number; count: number }, b: { id: string; idx: number; count: number }) =>
     compareKeys([...balance(a.id), a.count, a.idx], [...balance(b.id), b.count, b.idx]);
@@ -296,14 +299,15 @@ function resolveLine(
       }
       const characterKey = rotationCharacterKey(line);
       const available = memberIds
-        .map((id, idx) => ({
-          id,
-          idx,
-          count: Math.max(
-            asNum(legacyCounts[id]),
-            rotationCounts.get(rotationCountKey(characterKey, id)) ?? 0,
-          ),
-        }))
+        .map((id, idx) => {
+          const key = rotationCountKey(characterKey, id);
+          // config.executionCounts é vitalício e sem data — o avanço de HOJE (publicação já
+          // rodou) já está somado nele, igual ao que acontecia com characterCastTable.timesDone.
+          // Desconta aqui pela mesma razão: senão o Livro do Dia vivo trocaria o rodízio sozinho
+          // logo depois de publicar, sem folga nem mexida nenhuma.
+          const legacy = Math.max(0, asNum(legacyCounts[id]) - (advancedToday.has(key) ? 1 : 0));
+          return { id, idx, count: Math.max(legacy, rotationCounts.get(key) ?? 0) };
+        })
         .filter((m) => !blocked(m.id))
         .sort(byBalance);
       if (available.length === 0) {
@@ -535,20 +539,25 @@ export async function resolveShowBookCast(
   }
   const rotationCounts = new Map<string, number>();
   for (const [key, value] of castCounts) rotationCounts.set(key, value);
+  // Chaves (characterKey+userId) que avançaram HOJE — o Livro do Dia vivo re-resolve a mesma data
+  // depois de publicada (folga marcada depois, leitura da gestão), inclusive logo após a própria
+  // publicação, que já avançou o contador do vencedor de hoje. Sem descontar aqui, quem acabou de
+  // "fazer" hoje pesaria contra si mesmo nessa releitura, e o rodízio trocaria sozinho sem folga
+  // nem mexida nenhuma. Equilíbrio por carga de trabalho já faz a mesma exclusão do próprio dia.
+  const advancedToday = new Set<string>();
   if (rotationKeys.size > 0) {
     const rows = await db
-      .select({
-        characterId: rotationDailyAdvancesTable.characterId,
-        userId: rotationDailyAdvancesTable.userId,
-        total: count(),
-      })
+      .select({ characterId: rotationDailyAdvancesTable.characterId, userId: rotationDailyAdvancesTable.userId, date: rotationDailyAdvancesTable.date })
       .from(rotationDailyAdvancesTable)
-      .where(inArray(rotationDailyAdvancesTable.characterId, Array.from(rotationKeys)))
-      .groupBy(rotationDailyAdvancesTable.characterId, rotationDailyAdvancesTable.userId);
+      .where(inArray(rotationDailyAdvancesTable.characterId, Array.from(rotationKeys)));
+    const historicalTotal = new Map<string, number>();
     for (const row of rows) {
       const key = rotationCountKey(row.characterId, row.userId);
-      rotationCounts.set(key, Math.max(rotationCounts.get(key) ?? 0, Number(row.total)));
+      if (row.date === dateISO) { advancedToday.add(key); continue; }
+      historicalTotal.set(key, (historicalTotal.get(key) ?? 0) + 1);
     }
+    for (const [key, total] of historicalTotal) rotationCounts.set(key, Math.max(rotationCounts.get(key) ?? 0, total));
+    for (const key of advancedToday) rotationCounts.set(key, Math.max(0, (rotationCounts.get(key) ?? 0) - 1));
   }
 
   let uncoveredCount = 0;
@@ -568,7 +577,7 @@ export async function resolveShowBookCast(
       const memberIdsOverride = line.characterId
         ? castMembers.get(line.characterId) ?? []
         : undefined;
-      const resolved = resolveLine(line, weekday, unavailable, nameOf, excluded, rotationCounts, memberIdsOverride, line.characterId ? characterModes.get(line.characterId) : undefined, balance);
+      const resolved = resolveLine(line, weekday, unavailable, nameOf, excluded, rotationCounts, memberIdsOverride, line.characterId ? characterModes.get(line.characterId) : undefined, balance, advancedToday);
       if (resolved.status === "UNCOVERED") uncoveredCount += 1;
       if (excluded) {
         for (const p of resolved.people) excluded.add(p.userId);

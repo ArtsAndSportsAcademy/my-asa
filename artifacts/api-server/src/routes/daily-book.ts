@@ -41,6 +41,7 @@ import {
   advanceRotationCounts,
   advanceRotationCountsFromWinners,
   collectRotationWinners,
+  getUnavailableUserIds,
   type RoleResolution,
   type RotationWinners,
 } from "../services/line-resolver.js";
@@ -83,6 +84,8 @@ async function resolveDailyBookReadContext(
   book: { agendaEventId: string; showBookId: string | null; status: string },
 ): Promise<{
   ok: boolean;
+  /** Vê a versão AO VIVO (gestão, capitão delegado, Direção) em vez da preservada da publicação. */
+  seesLive: boolean;
   operationId: string;
   operationName: string;
   eventTitle: string;
@@ -115,17 +118,17 @@ async function resolveDailyBookReadContext(
     showResponsibleId = sb?.responsibleId ?? null;
   }
 
+  const show = book.showBookId ? { id: book.showBookId, responsibleId: showResponsibleId } : null;
   const ok =
     ev.organizationId === (actor.organizationId as string) &&
-    (await canViewDailyBook(
-      actor as any,
-      ev.operationId,
-      book.status,
-      book.showBookId ? { id: book.showBookId, responsibleId: showResponsibleId } : null,
-    ));
+    (await canViewDailyBook(actor as any, ev.operationId, book.status, show));
+  // Direção lê tudo mas não opera — ainda assim vê a versão ao vivo, como a gestão, para
+  // acompanhar o que está de fato acontecendo (não só o que foi anunciado ao Elenco).
+  const seesLive = actor.role === "DIR" || (await canOperateDailyBook(actor as any, ev.operationId, show));
 
   return {
     ok,
+    seesLive,
     operationId: ev.operationId,
     operationName: ev.operationName,
     eventTitle: ev.eventTitle,
@@ -214,7 +217,10 @@ async function buildDailyBookTree(dailyBookId: string, dbLike: typeof db = db) {
             inArray(dailyBookAssignmentsTable.positionId, positions.map((p) => p.id)),
             isNull(dailyBookAssignmentsTable.supersededAt),
           )
-        )).map(liveRow)
+        )
+        // Ordem estável (criação): a resolução ao vivo casa cada vaga guardada com a mesma posição
+        // na lista que o motor resolve agora — sem ORDER BY o Postgres não garante a ordem.
+        .orderBy(dailyBookAssignmentsTable.createdAt, dailyBookAssignmentsTable.id)).map(liveRow)
     : [];
 
   const assignedUserIds = [
@@ -335,6 +341,16 @@ async function respondDailyBookMutationError(
     return true;
   }
   return false;
+}
+
+/** Todo userId convocado (não REMOVED) num snapshot `{ scenes: [...] }` — usado para avisar quem
+ *  está na foto que acabou de ser publicada/republicada, em vez de reconsultar o banco. */
+function userIdsInSnapshot(snapshotJson: unknown): string[] {
+  const scenes = (snapshotJson as { scenes?: any[] } | null | undefined)?.scenes ?? [];
+  const ids = new Set<string>();
+  for (const scene of scenes) for (const block of scene.blocks ?? []) for (const position of block.positions ?? [])
+    for (const a of position.assignments ?? []) if (a.status !== "REMOVED" && a.userId) ids.add(a.userId);
+  return [...ids];
 }
 
 function computeDelta(
@@ -592,6 +608,157 @@ async function createAssignmentsForRole(
       userId: a.userId,
       status: a.status,
     });
+  }
+}
+
+// ─── Livro do Dia vivo (14/10) ─────────────────────────────────────────────────
+// A vaga sem `manual=true` é recalculada na leitura, com o mesmo motor usado para gerar/
+// regenerar (titular, depois rodízio, sem quem está de folga). `manual=true` é a exceção do dia
+// — a gerência trocou esta vaga à mão (hoje, pela Escala) — e para de ser recalculada sozinha.
+
+type LiveResolutionContext = {
+  operationId: string;
+  date: string;
+  byRole: Map<string, RoleResolution>;
+  allocationMap: Record<string, string | null>;
+  unavailable: Set<string>;
+};
+
+/** Reúne o que é preciso para resolver o livro ao vivo. `null` quando não há Show Book para
+ *  resolver contra (papel legado/manual continua exatamente como está guardado). */
+async function liveResolutionContext(
+  book: { agendaEventId: string; showBookId: string | null; scaleId: string | null },
+  dbLike: typeof db = db,
+): Promise<LiveResolutionContext | null> {
+  if (!book.showBookId) return null;
+  const [event] = await dbLike.select({ operationId: agendaEventsTable.operationId, date: agendaEventsTable.date })
+    .from(agendaEventsTable).where(eq(agendaEventsTable.id, book.agendaEventId)).limit(1);
+  if (!event) return null;
+  const allocations = book.scaleId
+    ? await dbLike.select({ positionId: scaleAllocationsTable.positionId, userId: scaleAllocationsTable.userId })
+        .from(scaleAllocationsTable)
+        .where(and(eq(scaleAllocationsTable.scaleId, book.scaleId), eq(scaleAllocationsTable.agendaEventId, book.agendaEventId), eq(scaleAllocationsTable.active, true)))
+    : [];
+  const allocationMap: Record<string, string | null> = {};
+  allocations.forEach((a) => { if (a.positionId) allocationMap[a.positionId] = a.userId ?? null; });
+  const [{ byRole }, unavailable] = await Promise.all([
+    resolveAssignmentsByRole(book.showBookId, event.operationId, event.date, { dedupPerScene: true }),
+    getUnavailableUserIds(event.operationId, event.date),
+  ]);
+  return { operationId: event.operationId, date: event.date, byRole, allocationMap, unavailable };
+}
+
+type LiveSlotRow = { id: string; userId: string | null; status: string; manual: boolean };
+
+/** Dado o que está guardado numa posição, devolve só o que precisa mudar para bater com o motor
+ *  agora — pulando toda vaga `manual`. Pura: não lê nem escreve no banco. */
+function reconcileLiveSlots(
+  rows: LiveSlotRow[],
+  rr: RoleResolution | undefined,
+  roleId: string,
+  allocationMap: Record<string, string | null>,
+  minimumCoverage: number,
+): { id: string; userId: string | null; status: "ASSIGNED" | "OPEN" }[] {
+  if (!rows.length || rows.every((row) => row.manual)) return [];
+  const planned = planRoleAssignments(rr, roleId, allocationMap, minimumCoverage);
+  const out: { id: string; userId: string | null; status: "ASSIGNED" | "OPEN" }[] = [];
+  rows.forEach((row, index) => {
+    if (row.manual) return;
+    const next = planned[index] ?? { userId: null, status: "OPEN" as const };
+    out.push({ id: row.id, userId: next.userId, status: next.status });
+  });
+  return out;
+}
+
+/**
+ * Árvore do Livro do Dia como ela está AGORA: vaga sem `manual` mostra quem o motor escalaria
+ * neste instante; vaga `manual` mostra exatamente o que está guardado (com um aviso se a pessoa
+ * está de folga hoje — não desfaz a troca sozinho). Não escreve nada no banco. Livro
+ * executado/cancelado volta sem recalcular: é o registro do que aconteceu.
+ */
+async function resolveLiveTree(
+  book: { id: string; status: string; agendaEventId: string; showBookId: string | null; scaleId: string | null },
+  dbLike: typeof db = db,
+) {
+  const tree = await buildDailyBookTree(book.id, dbLike);
+  if (book.status === "EXECUTED" || book.status === "CANCELLED") return tree;
+  const ctx = await liveResolutionContext(book, dbLike);
+  if (!ctx) return tree;
+
+  const nameOf = new Map<string, string | null>();
+  for (const scene of tree) for (const block of scene.blocks) for (const position of block.positions)
+    for (const a of position.assignments) if (a.userId && a.userName) nameOf.set(a.userId, a.userName);
+  const missing = new Set<string>();
+
+  const liveTree = tree.map((scene) => ({
+    ...scene,
+    blocks: scene.blocks.map((block) => ({
+      ...block,
+      positions: block.positions.map((position) => {
+        if (position.isRemoved || !position.sourceRoleId) return position;
+        const liveRows = position.assignments.filter((a) => a.status !== "REMOVED");
+        const rr = ctx.byRole.get(position.sourceRoleId);
+        const updates = new Map(reconcileLiveSlots(
+          liveRows.map((row) => ({ id: row.id, userId: row.userId, status: row.status, manual: row.manual })),
+          rr, position.sourceRoleId, ctx.allocationMap, position.minimumCoverage,
+        ).map((u) => [u.id, u]));
+        const assignments = position.assignments.map((a) => {
+          const update = updates.get(a.id);
+          if (update) {
+            const userName = update.userId ? nameOf.get(update.userId) ?? null : null;
+            if (update.userId && userName === null) missing.add(update.userId);
+            return { ...a, userId: update.userId, status: update.status, userName };
+          }
+          if (a.manual && a.userId && ctx.unavailable.has(a.userId)) {
+            return { ...a, alerta: "Esta pessoa está de folga hoje. A troca continua valendo — confira se ainda faz sentido." };
+          }
+          return a;
+        });
+        return { ...position, assignments };
+      }),
+    })),
+  }));
+
+  if (missing.size) {
+    const rows = await dbLike.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(inArray(usersTable.id, [...missing]));
+    const byId = new Map(rows.map((r) => [r.id, r.name]));
+    for (const scene of liveTree) for (const block of scene.blocks) for (const position of block.positions)
+      for (const a of position.assignments) if (a.userId && missing.has(a.userId) && !a.userName) a.userName = byId.get(a.userId) ?? null;
+  }
+  return liveTree;
+}
+
+/**
+ * Escreve nas vagas de verdade o que estava ao vivo no instante de executar ou cancelar — só nas
+ * que não são `manual`. É o único momento em que a resolução ao vivo é GRAVADA: a leitura normal
+ * (`resolveLiveTree`) só mostra. Depois disso o livro é histórico e nunca mais recalcula.
+ */
+async function bakeLiveAssignments(
+  book: { id: string; status: string; agendaEventId: string; showBookId: string | null; scaleId: string | null },
+  tx: typeof db,
+) {
+  const ctx = await liveResolutionContext(book, tx);
+  if (!ctx) return;
+  const positions = await tx.select().from(dailyBookPositionsTable).where(and(
+    eq(dailyBookPositionsTable.dailyBookId, book.id), eq(dailyBookPositionsTable.isRemoved, false), isNull(dailyBookPositionsTable.supersededAt),
+  ));
+  if (!positions.length) return;
+  const assignments = await tx.select().from(dailyBookAssignmentsTable).where(and(
+    eq(dailyBookAssignmentsTable.dailyBookId, book.id), inArray(dailyBookAssignmentsTable.positionId, positions.map((p) => p.id)),
+    isNull(dailyBookAssignmentsTable.supersededAt), ne(dailyBookAssignmentsTable.status, "REMOVED"),
+  )).orderBy(dailyBookAssignmentsTable.createdAt, dailyBookAssignmentsTable.id);
+  const byPosition = new Map<string, typeof assignments>();
+  for (const a of assignments) { const list = byPosition.get(a.positionId) ?? []; list.push(a); byPosition.set(a.positionId, list); }
+  for (const position of positions) {
+    if (!position.sourceRoleId) continue;
+    const rows = byPosition.get(position.id) ?? [];
+    const rr = ctx.byRole.get(position.sourceRoleId);
+    const updates = reconcileLiveSlots(rows, rr, position.sourceRoleId, ctx.allocationMap, position.minimumCoverage);
+    for (const update of updates) {
+      const current = rows.find((r) => r.id === update.id);
+      if (current && current.userId === update.userId && current.status === update.status) continue;
+      await tx.update(dailyBookAssignmentsTable).set({ userId: update.userId, status: update.status, updatedAt: new Date() }).where(eq(dailyBookAssignmentsTable.id, update.id));
+    }
   }
 }
 
@@ -1167,9 +1334,17 @@ router.post("/daily-book/:id/publish", requireAuth, requireOrganization, async (
     if (expectedVersion === null) return;
     const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id) };
     const updated = await mutateDailyBook(id, expectedVersion, async (tx) => {
+      // A foto que o Elenco vê até a próxima republicação é a árvore AO VIVO neste instante — não
+      // a de quando o livro foi gerado (uma folga marcada entre gerar e publicar já entra aqui).
+      // Os vencedores do rodízio continuam os da geração (o contador avança por eles, não por isto).
+      const liveTree = await resolveLiveTree(book, tx);
+      const existingSnapshot = (book.snapshotJson as { rotationWinners?: RotationWinners } | null) ?? null;
       const [next] = await tx
         .update(dailyBooksTable)
-        .set({ status: "PUBLISHED", publishComment, publishedAt: new Date(), publishedBy: userId })
+        .set({
+          status: "PUBLISHED", publishComment, publishedAt: new Date(), publishedBy: userId,
+          snapshotJson: { scenes: liveTree, rotationWinners: existingSnapshot?.rotationWinners ?? {} } as any,
+        })
         .where(eq(dailyBooksTable.id, id))
         .returning();
       return next!;
@@ -1229,24 +1404,18 @@ router.post("/daily-book/:id/publish", requireAuth, requireOrganization, async (
     }
 
     eventBus.emit("daily-book.published", { dailyBookId: id, version: updated!.version, publishedBy: userId });
-    // notify assigned users
-    db.select({ userId: dailyBookAssignmentsTable.userId })
-      .from(dailyBookAssignmentsTable)
-      .where(and(eq(dailyBookAssignmentsTable.dailyBookId, id), isNull(dailyBookAssignmentsTable.supersededAt)))
-      .then((rows) => {
-        const userIds = [...new Set(rows.map((r) => r.userId).filter(Boolean))] as string[];
-        notifyMany(userIds, {
-          type: "book.published",
-          title: "Livro do Dia publicado",
-          message: `O Livro do Dia (v${updated!.version}) foi publicado com suas atribuições.`,
-          priority: "NORMAL",
-          category: "book",
-          entityType: "daily_book",
-          entityId: id,
-          actionUrl: `/(tabs)/daily-book`,
-        });
-      })
-      .catch(() => {});
+    // Avisa quem foi convocado NA FOTO que acabou de ser publicada (ao vivo neste instante) — não
+    // quem estava guardado antes de publicar, que pode já ter mudado por folga.
+    notifyMany(userIdsInSnapshot(updated!.snapshotJson), {
+      type: "book.published",
+      title: "Livro do Dia publicado",
+      message: `O Livro do Dia (v${updated!.version}) foi publicado com suas atribuições.`,
+      priority: "NORMAL",
+      category: "book",
+      entityType: "daily_book",
+      entityId: id,
+      actionUrl: `/(tabs)/daily-book`,
+    });
     res.json({ dailyBook: updated });
   } catch (err) {
     if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
@@ -1284,7 +1453,9 @@ router.post("/daily-book/:id/republish", requireAuth, requireOrganization, async
       return;
     }
 
-    const currentTree = await buildDailyBookTree(id);
+    // Ao vivo: o que mudou desde a última publicação inclui folga marcada depois, não só troca
+    // manual — é exatamente o que a republicação deve avisar.
+    const currentTree = await resolveLiveTree(book);
     const currentSnapshot = { scenes: currentTree };
     const prevSnapshot = (book.snapshotJson as Record<string, unknown>) ?? {};
     const delta = computeDelta(prevSnapshot, currentSnapshot);
@@ -1335,24 +1506,17 @@ router.post("/daily-book/:id/republish", requireAuth, requireOrganization, async
     });
 
     eventBus.emit("daily-book.republished", { dailyBookId: id, previousVersion, newVersion, delta, republishedBy: userId });
-    // notify assigned users of changes
-    db.select({ userId: dailyBookAssignmentsTable.userId })
-      .from(dailyBookAssignmentsTable)
-      .where(and(eq(dailyBookAssignmentsTable.dailyBookId, id), isNull(dailyBookAssignmentsTable.supersededAt)))
-      .then((rows) => {
-        const userIds = [...new Set(rows.map((r) => r.userId).filter(Boolean))] as string[];
-        notifyMany(userIds, {
-          type: "book.republished",
-          title: "Livro do Dia atualizado",
-          message: `O Livro do Dia foi republicado (v${previousVersion} → v${newVersion}). Verifique as alterações.`,
-          priority: "IMPORTANT",
-          category: "book",
-          entityType: "daily_book",
-          entityId: id,
-          actionUrl: `/(tabs)/daily-book`,
-        });
-      })
-      .catch(() => {});
+    // Avisa quem está na foto que acabou de ser republicada (ao vivo neste instante).
+    notifyMany(userIdsInSnapshot(updated!.snapshotJson), {
+      type: "book.republished",
+      title: "Livro do Dia atualizado",
+      message: `O Livro do Dia foi republicado (v${previousVersion} → v${newVersion}). Verifique as alterações.`,
+      priority: "IMPORTANT",
+      category: "book",
+      entityType: "daily_book",
+      entityId: id,
+      actionUrl: `/(tabs)/daily-book`,
+    });
     res.json({ dailyBook: updated, delta });
   } catch (err) {
     if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
@@ -1377,9 +1541,17 @@ router.post("/daily-book/:id/execute", requireAuth, requireOrganization, require
     if (expectedVersion === null) return;
     const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id) };
     const updated = await mutateDailyBook(id, expectedVersion, async (tx) => {
+      // Executar é o fim da janela ao vivo: grava de vez nas vagas de verdade o que estava ao
+      // vivo neste instante, para o registro do que aconteceu não depender de recalcular depois.
+      await bakeLiveAssignments(book, tx);
+      const finalTree = await buildDailyBookTree(id, tx);
+      const existingSnapshot = (book.snapshotJson as { rotationWinners?: RotationWinners } | null) ?? null;
       const [next] = await tx
         .update(dailyBooksTable)
-        .set({ status: "EXECUTED", executedAt: new Date(), executedBy: userId })
+        .set({
+          status: "EXECUTED", executedAt: new Date(), executedBy: userId,
+          snapshotJson: { scenes: finalTree, rotationWinners: existingSnapshot?.rotationWinners ?? {} } as any,
+        })
         .where(eq(dailyBooksTable.id, id))
         .returning();
       return next!;
@@ -1417,9 +1589,17 @@ router.post("/daily-book/:id/cancel", requireAuth, requireOrganization, requireR
     const cancelReason = reason?.trim() || DEFAULT_DAY_REASON;
     const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id) };
     const updated = await mutateDailyBook(id, expectedVersion, async (tx) => {
+      // Cancelar também fecha a janela ao vivo: grava de vez o que estava ao vivo, pela mesma
+      // razão de executar — o registro não pode depender de recalcular depois de virar histórico.
+      await bakeLiveAssignments(book, tx);
+      const finalTree = await buildDailyBookTree(id, tx);
+      const existingSnapshot = (book.snapshotJson as { rotationWinners?: RotationWinners } | null) ?? null;
       const [next] = await tx
         .update(dailyBooksTable)
-        .set({ status: "CANCELLED", cancelledAt: new Date(), cancelledBy: userId })
+        .set({
+          status: "CANCELLED", cancelledAt: new Date(), cancelledBy: userId,
+          snapshotJson: { scenes: finalTree, rotationWinners: existingSnapshot?.rotationWinners ?? {} } as any,
+        })
         .where(eq(dailyBooksTable.id, id))
         .returning();
       return next!;
@@ -1636,8 +1816,16 @@ router.get("/daily-book/:id", requireAuth, requireOrganization, async (req, res)
       return;
     }
 
-    const tree = await buildDailyBookTree(id);
-    const currentSnapshot: VersionedSnapshot = { scenes: tree };
+    const liveTree = await resolveLiveTree(book);
+    // Publicado continua preservado: quem não opera o livro (Elenco) vê a foto da última
+    // publicação/republicação, não o que mudou depois — igual à Escala. Quem publica sempre vê
+    // ao vivo, para decidir se há o que republicar.
+    const published = book.status === "PUBLISHED" || book.status === "REPUBLISHED";
+    const snapshotScenes = (book.snapshotJson as { scenes?: unknown[] } | null)?.scenes;
+    const tree = (published && !ctx.seesLive && Array.isArray(snapshotScenes))
+      ? (snapshotScenes as typeof liveTree)
+      : liveTree;
+    const currentSnapshot: VersionedSnapshot = { scenes: liveTree };
     res.json({
       dailyBook: {
         ...book,
@@ -1673,7 +1861,9 @@ router.get("/daily-book/:id/delta", requireAuth, requireOrganization, async (req
       return;
     }
 
-    const currentTree = await buildDailyBookTree(id);
+    // Ao vivo: o delta compara contra o último publicado/republicado, então uma folga marcada
+    // depois (sem ninguém mexer à mão) também aparece como "há o que republicar" — não só troca manual.
+    const currentTree = await resolveLiveTree(book);
     const currentSnapshot = { scenes: currentTree };
     const prevSnapshot = (book.snapshotJson as Record<string, unknown> | null) ?? null;
     const liveDelta = computeDelta(prevSnapshot, currentSnapshot);
@@ -1710,9 +1900,12 @@ router.get("/daily-book/:id/delta", requireAuth, requireOrganization, async (req
  * com a mesma lógica de generate/regenerate, sem persistir nada, e compara contra a árvore
  * viva: cena/bloco/posição removidos hoje, e substituições/vagas por papel.
  */
-async function buildPatternDiffRows(dailyBookId: string, showBookId: string, operationId: string, dateISO: string) {
+async function buildPatternDiffRows(
+  book: { id: string; status: string; agendaEventId: string; showBookId: string | null; scaleId: string | null },
+  showBookId: string, operationId: string, dateISO: string,
+) {
   const [currentTree, resolved] = await Promise.all([
-    buildDailyBookTree(dailyBookId),
+    resolveLiveTree(book),
     resolveAssignmentsByRole(showBookId, operationId, dateISO, { dedupPerScene: true }),
   ]);
   const { byRole, result } = resolved;
@@ -1770,7 +1963,7 @@ router.get("/daily-book/:id/pattern-diff", requireAuth, requireOrganization, asy
     if (!ctx) { res.status(404).json({ error: "Evento do Livro do Dia não encontrado" }); return; }
     if (!ctx.ok) { res.status(403).json({ error: "FORBIDDEN", message: "Livro do Dia fora do seu escopo" }); return; }
     if (!book.showBookId) { res.json({ diffs: [] }); return; }
-    const diffs = await buildPatternDiffRows(id, book.showBookId, ctx.operationId, ctx.eventDate);
+    const diffs = await buildPatternDiffRows(book, book.showBookId, ctx.operationId, ctx.eventDate);
     res.json({ diffs, version: book.version, status: book.status });
   } catch (err) {
     console.error(err);
@@ -1804,7 +1997,9 @@ router.patch("/daily-book/:id/assignments/:assignmentId", requireAuth, requireOr
     const updated = await mutateDailyBook(id, expectedVersion, async (tx) => {
       const [next] = await tx
         .update(dailyBookAssignmentsTable)
-        .set({ userId: userId ?? null, status: userId ? "ASSIGNED" : "OPEN", updatedAt: new Date() })
+        // Troca direta também é mexida à mão: vira exceção do dia (manual=true), mesmo
+        // esvaziando a vaga de propósito — deixar vago assim também não se recalcula sozinho.
+        .set({ userId: userId ?? null, status: userId ? "ASSIGNED" : "OPEN", manual: true, updatedAt: new Date() })
         .where(and(eq(dailyBookAssignmentsTable.id, assignmentId), eq(dailyBookAssignmentsTable.dailyBookId, id), isNull(dailyBookAssignmentsTable.supersededAt)))
         .returning();
       if (!next) throw new VersionedResourceNotFoundError("Alocação");
@@ -1853,8 +2048,10 @@ export async function ajustarPessoaNoLivro(input: { dailyBookId: string; userId:
   const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(book.id) };
   await mutateDailyBook(book.id, book.version, async (tx) => {
     for (const a of alvo) {
+      // Ajuste pela Escala é mexida à mão: a vaga vira exceção do dia e para de ser recalculada
+      // sozinha (o Livro do Dia vivo só recalcula o que a gerência não tocou).
       await tx.update(dailyBookAssignmentsTable)
-        .set(input.action === "REMOVER" ? { userId: null, status: "OPEN", updatedAt: new Date() } : { userId: input.userId, status: "ASSIGNED", updatedAt: new Date() })
+        .set(input.action === "REMOVER" ? { userId: null, status: "OPEN", manual: true, updatedAt: new Date() } : { userId: input.userId, status: "ASSIGNED", manual: true, updatedAt: new Date() })
         .where(eq(dailyBookAssignmentsTable.id, a.id));
     }
     return alvo;

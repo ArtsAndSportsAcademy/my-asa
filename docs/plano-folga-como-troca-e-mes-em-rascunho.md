@@ -130,6 +130,42 @@ depois, se fizer falta.
 3. **Pedido como troca, com a análise da ASA** — o que mais muda o dia a dia da gerência.
 4. **Experimentar grupos** — quando os três primeiros estiverem rodando.
 
+## Etapa 2, parte 1 — decisões técnicas do "Livro do Dia vivo" (14/10/2026)
+
+O motor que decide quem faz cada vaga (`resolveAssignmentsByRole`, em `services/line-resolver.ts`)
+já existe e já é usado para gerar e para regenerar — a mesma fila (titular, depois rodízio, sem
+quem está de folga) que a Escala usa. A mudança é **chamar esse motor também na leitura**, não só
+na geração, e guardar como exceção só o que a gerência mexeu à mão — exatamente como
+`escalaBlocoAjustesTable` faz pela Escala.
+
+- **Uma coluna nova** (`manual`, booleana) na vaga do Livro do Dia. Marca quando a gerência trocou
+  aquela vaga à mão (pela Escala, que já é o caminho real — "Trocar alguém na Escala troca a vaga
+  aqui também"). Vaga marcada `manual` não é mais recalculada sozinha; o resto continua.
+- **Leitura ao vivo**: para livro em rascunho, publicado ou republicado, a vaga sem `manual` é
+  recalculada na hora com o mesmo motor da geração — titular, rodízio, sem quem está de folga. Livro
+  executado ou cancelado nunca mais recalcula: é o registro do que aconteceu.
+- **Publicado continua preservado**: quem faz vê a foto da última publicação/republicação
+  (`snapshotJson`, que já existe) até a Administração publicar de novo — igual à Escala. Quem
+  publica (Administração/Supervisão/capitão delegado) sempre vê a versão ao vivo, para decidir se
+  republica.
+- **Executar e cancelar gravam de vez**: no instante de executar ou cancelar, o que estava ao vivo
+  é escrito nas vagas de verdade (não só mostrado) — para o registro do "o que aconteceu" não voltar
+  a depender de recálculo depois que o livro virou histórico.
+- **O contador do rodízio não muda de quando avança.** Continua avançando na publicação, para o
+  vencedor que foi gerado — mesmo que a disponibilidade mude entre gerar e publicar. Isso já é
+  testado e intencional (ver `daily-book-fill.test.ts`, teste "(c)"); mexer nisso é risco separado,
+  não faz parte desta etapa.
+- **Achado durante o teste — o rodízio não pode pesar o próprio dia.** Publicar avança o contador do
+  vencedor (em `characterCastTable.timesDone` e em `config.executionCounts`, os dois vitalícios e
+  sem data). Com a leitura ao vivo, a primeira releitura depois de publicar já via "fulano fez hoje"
+  e trocava o rodízio sozinho, sem folga nem mexida. O motor (`line-resolver.ts`) agora desconta o
+  avanço de hoje dos dois contadores, igual ao equilíbrio por carga já fazia. Os testes antigos do
+  rodízio seguem passando.
+- **Vaga mantida manualmente que acabou de folga**: por enquanto só avisa (um sinal visível na
+  tela), não bloqueia nem desfaz sozinha. O fluxo completo de "chamar na folga com motivo" já existe
+  pela Escala (`PESSOA_DE_FOLGA`); estender isso à troca direta no Livro do Dia fica para quando essa
+  troca direta ganhar tela própria — hoje a troca de pessoa só acontece pela Escala.
+
 ## Decisões já tomadas (13/10/2026)
 
 - **Publicar continua dia a dia.** Gerar o mês é só rascunho.
