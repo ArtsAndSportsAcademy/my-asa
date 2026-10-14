@@ -397,7 +397,7 @@ function GruposPanel({ grupos, verArquivados, erro, podeCriar, onVerArquivados, 
         {podeCriar && <button type="button" className="cycle-secondary" onClick={onNovo}><Plus/> Novo grupo</button>}
       </div>
     </header>
-    <p>Um grupo guarda o padrão — as pessoas e os dois dias de folga. O período você escolhe na hora de aplicar, porque os grupos mudam a cada ano. Aplicar marca a folga desses dias no período, e o Elenco só vê depois da publicação do mês.</p>
+    <p>Um grupo guarda o padrão — as pessoas e o quando: os dois dias de folga da semana, ou um período corrido como o recesso. Guardar o grupo evita reescolher as pessoas todo mês; os grupos mudam a cada ano. Aplicar marca a folga, e o Elenco só vê depois da publicação do mês.</p>
     {erro && <p role="alert">{erro}</p>}
     {!grupos.length ? <div className="cycle-feedback"><img src="/asa/oi.webp" alt=""/> Nenhum grupo ainda. Crie um para repetir as folgas fixas sem reescolher as pessoas todo mês.</div>
       : <div className="cycle-grupos-lista">{grupos.map((g) => <div className={`cycle-grupo${g.active ? "" : " arquivado"}`} key={g.id}>
