@@ -77,3 +77,4 @@
 .cycle-request .cycle-sim{background:#1c1440;color:#fff}
 .cycle-request .cycle-nao{border:1px solid #e6e1f2;background:#fff;color:#3d3559}
 @media (max-width:560px){.cycle-request{flex-wrap:wrap}.cycle-request-acoes{width:100%}.cycle-request-acoes button{flex:1}}
+.cycle-ja-folga{color:#9a5b00;font-weight:600}

@@ -11,6 +11,7 @@ import {
 import app from "../src/application.js";
 import { signAccessToken } from "../src/lib/jwt.service.js";
 import { montarEscalaDoDia } from "../src/services/escala-dia.js";
+import { operationalDate, shiftOperationalDate } from "../src/lib/operational-date.js";
 
 let passed = 0;
 const failures: string[] = [];
@@ -65,9 +66,16 @@ async function run() {
     assert(current.status === 200 && ((await current.json()) as { regime: { weeklyDays: number } }).regime.weeklyDays === 1, "Supervisão lê o regime vigente");
     assert((await memberApi(`/leave-regimes/current?date=${date}`)).status === 403, "Elenco não acessa configuração de regime");
 
-    const ask = await post(memberApi, "/leave-requests", { startDate: date, endDate: date, reason: "Compromisso" });
-    const request = (await ask.json()) as { request: { id: string } };
-    assert(ask.status === 201, "Elenco solicita folga");
+    // Folga que já passou não se pede: o servidor recusa. O pedido do dia 05 (já passado) entra direto no banco,
+    // porque o que este teste quer exercitar é a decisão e o efeito dela na Escala daquele dia.
+    const futuro = shiftOperationalDate(operationalDate(), 20);
+    const passado = await post(memberApi, "/leave-requests", { startDate: date, endDate: date, reason: "Compromisso" });
+    assert(passado.status === 400 && ((await passado.json()) as { message: string }).message.includes("já passou"), "pedir folga de dia que já passou é recusado, com a frase certa");
+    const ask = await post(memberApi, "/leave-requests", { startDate: futuro, endDate: futuro, reason: "Compromisso" });
+    assert(ask.status === 201, "Elenco solicita folga para uma data futura");
+    assert((await post(memberApi, `/leave-requests/${((await ask.json()) as { request: { id: string } }).request.id}/cancelar`, {})).status === 200, "e pode retirá-lo");
+    const [request0] = await db.insert(leaveRequestsTable).values({ organizationId: org!.id, userId: memberOnLeave.id, areaId: area!.id, startDate: date, endDate: date, reason: "Compromisso" }).returning();
+    const request = { request: { id: request0!.id } };
     const approve = await supApi(`/leave-requests/${request.request.id}`, { method: "PATCH", body: JSON.stringify({ status: "APPROVED", decisionReason: "Cobertura conferida" }) });
     assert(approve.status === 200, "Supervisão aprova pedido da própria área com motivo");
     const dayAfterLeave = await montarEscalaDoDia(org!.id, location!.id, date);
@@ -80,13 +88,13 @@ async function run() {
     const many = await post(supApi, "/leave-calendar", { userIds: [worker.id, memberOnLeave.id], startDate: "2026-10-07", endDate: "2026-10-07", reason: "Mesmo dia combinado" });
     assert(many.status === 201 && ((await many.json()) as { requests: unknown[] }).requests.length === 2, "Supervisão define a folga de duas pessoas numa ação");
     assert((await post(supApi, "/leave-calendar", { userId: outsider.id, startDate: date, endDate: date, reason: "tentativa" })).status === 403, "Supervisão não define folga para outra área");
-    const pending = await post(memberApi, "/leave-requests", { startDate: "2026-10-08", endDate: "2026-10-08", reason: "Compromisso" });
+    const pending = await post(memberApi, "/leave-requests", { startDate: shiftOperationalDate(operationalDate(), 21), endDate: shiftOperationalDate(operationalDate(), 21), reason: "Compromisso" });
     const pendingId = ((await pending.json()) as { request: { id: string } }).request.id;
     assert((await post(memberApi, `/leave-requests/${pendingId}/cancelar`, {})).status === 200, "Elenco retira o próprio pedido pendente");
     assert((await supApi(`/leave-requests/${pendingId}`, { method: "PATCH", body: JSON.stringify({ status: "APPROVED", decisionReason: "Tarde demais" }) })).status === 409, "pedido retirado não pode ser aprovado depois");
 
     // Aprovar não exige recado; recusar exige — a pessoa precisa saber por quê. E o intervalo ao contrário diz o que está errado.
-    const semRecado = await post(memberApi, "/leave-requests", { startDate: "2026-10-09", endDate: "2026-10-09", reason: "Compromisso" });
+    const semRecado = await post(memberApi, "/leave-requests", { startDate: shiftOperationalDate(operationalDate(), 22), endDate: shiftOperationalDate(operationalDate(), 22), reason: "Compromisso" });
     const semRecadoId = ((await semRecado.json()) as { request: { id: string } }).request.id;
     const recusaMuda = await supApi(`/leave-requests/${semRecadoId}`, { method: "PATCH", body: JSON.stringify({ status: "DENIED" }) });
     assert(recusaMuda.status === 400 && ((await recusaMuda.json()) as { message: string }).message === "Recusar exige motivo.", "recusar sem motivo é barrado com a frase certa");
@@ -95,6 +103,18 @@ async function run() {
     assert(aprovaMuda.status === 200 && aprovado?.status === "APPROVED" && aprovado.decisionReason === "Aprovada sem observação.", "aprovar sem recado vale, e o Registro diz que foi sem observação");
     const registroSemRecado = await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, semRecadoId), eq(historyEventsTable.action, "leave.approved")));
     assert(registroSemRecado.length === 1, "aprovação sem recado também entra no Registro");
+    // Aprovar sobre dias que já têm folga marcada avisa e não empilha uma segunda folga por cima.
+    const diaJa = shiftOperationalDate(operationalDate(), 23);
+    await post(supApi, "/leave-calendar", { userId: memberOnLeave.id, startDate: diaJa, endDate: diaJa, reason: "Grupo de folga" });
+    const emCima = await post(memberApi, "/leave-requests", { startDate: diaJa, endDate: diaJa, reason: "Compromisso" });
+    const emCimaId = ((await emCima.json()) as { request: { id: string } }).request.id;
+    const fila = (await (await supApi(`/leave-requests?from=${diaJa}&to=${diaJa}`)).json()) as { requests: { id: string; jaTemFolga?: boolean }[] };
+    assert(fila.requests.find((r) => r.id === emCimaId)?.jaTemFolga === true, "a fila avisa, antes de decidir, que a pessoa já tem folga marcada nesses dias");
+    const aprovaEmCima = await supApi(`/leave-requests/${emCimaId}`, { method: "PATCH", body: JSON.stringify({ status: "APPROVED" }) });
+    const aprovaEmCimaCorpo = (await aprovaEmCima.json()) as { aviso?: string };
+    assert(aprovaEmCima.status === 200 && Boolean(aprovaEmCimaCorpo.aviso?.includes("já tinham folga")), "aprovar sobre folga já marcada devolve o aviso");
+    const folgasDoDia = await db.select().from(folgasTable).where(and(eq(folgasTable.userId, memberOnLeave.id), eq(folgasTable.startDate, diaJa)));
+    assert(folgasDoDia.length === 1, "e não duplica a folga naquele dia");
     const invertido = await post(memberApi, "/leave-requests", { startDate: "2026-10-12", endDate: "2026-10-10", reason: "Compromisso" });
     assert(invertido.status === 400 && ((await invertido.json()) as { message: string }).message.includes("último dia"), "período ao contrário diz o que está errado");
 

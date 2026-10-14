@@ -91,7 +91,18 @@ router.get("/leave-requests", requireAuth, requireOrganization, async (req, res)
   const rows = await db.select({ request: leaveRequestsTable, userName: usersTable.name, fullName: usersTable.fullName, areaName: areasTable.name }).from(leaveRequestsTable).innerJoin(usersTable, eq(leaveRequestsTable.userId, usersTable.id)).leftJoin(areasTable, eq(leaveRequestsTable.areaId, areasTable.id)).where(and(eq(leaveRequestsTable.organizationId, actor.organizationId), lte(leaveRequestsTable.startDate, to), gte(leaveRequestsTable.endDate, from))).orderBy(desc(leaveRequestsTable.createdAt));
   const visible = [] as typeof rows;
   for (const row of rows) if (await ownsPerson(actor, row.request.userId)) visible.push(row);
-  res.json({ requests: visible.map((row) => ({ ...row.request, userName: row.userName ?? row.fullName, areaName: row.areaName })) });
+  // Quem decide precisa saber, antes de aprovar, se a pessoa já tem folga marcada naqueles dias.
+  const pendentes = visible.filter((row) => row.request.status === "PENDING");
+  const jaMarcada = new Set<string>();
+  if ((isAdmin(actor.role) || isSupervisor(actor.role)) && pendentes.length) {
+    const folgas = await db.select({ userId: folgasTable.userId, startDate: folgasTable.startDate, endDate: folgasTable.endDate }).from(folgasTable).where(and(
+      inArray(folgasTable.userId, [...new Set(pendentes.map((row) => row.request.userId))]), eq(folgasTable.status, "ACTIVE"),
+      lte(folgasTable.startDate, pendentes.reduce((max, row) => (row.request.endDate > max ? row.request.endDate : max), "0000-00-00")),
+      gte(folgasTable.endDate, pendentes.reduce((min, row) => (row.request.startDate < min ? row.request.startDate : min), "9999-99-99")),
+    ));
+    for (const row of pendentes) if (folgas.some((f) => f.userId === row.request.userId && f.startDate <= row.request.endDate && f.endDate >= row.request.startDate)) jaMarcada.add(row.request.id);
+  }
+  res.json({ requests: visible.map((row) => ({ ...row.request, userName: row.userName ?? row.fullName, areaName: row.areaName, ...(jaMarcada.has(row.request.id) ? { jaTemFolga: true } : {}) })) });
 });
 router.post("/leave-requests", requireAuth, requireOrganization, async (req, res) => {
   const actor = req.user!, body = req.body as Record<string, unknown>;
@@ -99,6 +110,7 @@ router.post("/leave-requests", requireAuth, requireOrganization, async (req, res
   const startDate = typeof body.startDate === "string" ? body.startDate : "", endDate = typeof body.endDate === "string" ? body.endDate : "", reason = typeof body.reason === "string" ? body.reason.trim() : "";
   if (startDate && endDate && endDate < startDate) { res.status(400).json({ error: "Bad Request", message: "O último dia da folga não pode vir antes do primeiro." }); return; }
   if (!startDate || !endDate || !reason) { res.status(400).json({ error: "Bad Request", message: "Informe período e motivo do pedido." }); return; }
+  if (startDate < operationalDate()) { res.status(400).json({ error: "Bad Request", message: "Escolha hoje ou uma data futura: folga que já passou não se pede." }); return; }
   const [person] = await db.select({ id: usersTable.id, areaId: usersTable.areaId }).from(usersTable).where(and(eq(usersTable.id, userId), eq(usersTable.organizationId, actor.organizationId))).limit(1);
   if (!person) { res.status(404).json({ error: "Not Found" }); return; }
   const request = await db.transaction(async (tx) => {
@@ -159,12 +171,30 @@ router.patch("/leave-requests/:id", requireAuth, requireOrganization, async (req
   if (!request) { res.status(404).json({ error: "Not Found" }); return; }
   if (!isAdmin(actor.role) && (!isSupervisor(actor.role) || !(await canSupervisorAccessPerson({ supervisorId: actor.sub, organizationId: actor.organizationId, personId: request.userId })))) { res.status(403).json({ error: "Forbidden" }); return; }
   if (request.status !== "PENDING") { res.status(409).json({ error: "Conflict", message: "Este pedido já foi decidido." }); return; }
+  let aviso = "";
   const updated = await db.transaction(async (tx) => {
     const [saved] = await tx.update(leaveRequestsTable).set({ status, decidedBy: actor.sub, decisionReason: decisionReason || SEM_RECADO, decidedAt: new Date(), updatedAt: new Date() }).where(and(eq(leaveRequestsTable.id, request.id), eq(leaveRequestsTable.status, "PENDING"))).returning();
     if (!saved) return null;
     let operationId: string | undefined;
-    if (status === "APPROVED") { const [operation] = await tx.select({ id: userRolesTable.operationId }).from(userRolesTable).innerJoin(operationsTable, eq(userRolesTable.operationId, operationsTable.id)).where(and(eq(userRolesTable.userId, request.userId), eq(userRolesTable.active, true), eq(operationsTable.organizationId, actor.organizationId))).limit(1); if (!operation) throw new Error("A pessoa não possui operação ativa para registrar a folga."); operationId = operation.id; await tx.insert(folgasTable).values({ userId: request.userId, operationId, type: "DAY_OFF", startDate: request.startDate, endDate: request.endDate, status: "ACTIVE", origem: "SOLICITACAO", createdBy: actor.sub, notes: `Pedido ${request.id}` }); }
-    const eventId = await writeHistoryEvent({ category: "ABSENCE", action: status === "APPROVED" ? "leave.approved" : "leave.denied", title: status === "APPROVED" ? "Folga aprovada" : "Folga negada", narrative: decisionReason || SEM_RECADO,entityType: "leave_request", entityId: request.id, actorId: actor.sub, orgId: actor.organizationId, operationId, beforeState: request, afterState: saved, metadata: decisionReason ? { reason: decisionReason } : undefined }, tx as HistoryExecutor);
+    if (status === "APPROVED") { const [operation] = await tx.select({ id: userRolesTable.operationId }).from(userRolesTable).innerJoin(operationsTable, eq(userRolesTable.operationId, operationsTable.id)).where(and(eq(userRolesTable.userId, request.userId), eq(userRolesTable.active, true), eq(operationsTable.organizationId, actor.organizationId))).limit(1); if (!operation) throw new Error("A pessoa não possui operação ativa para registrar a folga."); operationId = operation.id;
+      // Folga já marcada nos mesmos dias (grupo, mapa, calendário): aprovar vale, mas não empilha uma
+      // segunda folga por cima — o mapa contaria dois dias de folga onde há um. Quem aprovou fica sabendo.
+      const existentes = await tx.select({ startDate: folgasTable.startDate, endDate: folgasTable.endDate }).from(folgasTable).where(and(
+        eq(folgasTable.userId, request.userId), eq(folgasTable.status, "ACTIVE"), lte(folgasTable.startDate, request.endDate), gte(folgasTable.endDate, request.startDate),
+      ));
+      const dias: string[] = [];
+      for (let t = new Date(`${request.startDate}T12:00:00Z`); t <= new Date(`${request.endDate}T12:00:00Z`) && dias.length < 400; t.setUTCDate(t.getUTCDate() + 1)) dias.push(t.toISOString().slice(0, 10));
+      const semFolga = dias.filter((d) => !existentes.some((f) => f.startDate <= d && f.endDate >= d));
+      if (existentes.length) aviso = semFolga.length ? `Aprovada. Parte desses dias já tinha folga marcada (${dias.length - semFolga.length} de ${dias.length}).` : "Aprovada. Esses dias já tinham folga marcada; nada foi duplicado.";
+      // Só os dias que ainda não tinham folga, em trechos seguidos.
+      const trechos: { de: string; ate: string }[] = [];
+      for (const d of semFolga) {
+        const ultimo = trechos[trechos.length - 1];
+        if (ultimo && dias[dias.indexOf(ultimo.ate) + 1] === d) ultimo.ate = d; else trechos.push({ de: d, ate: d });
+      }
+      for (const trecho of trechos) await tx.insert(folgasTable).values({ userId: request.userId, operationId, type: "DAY_OFF", startDate: trecho.de, endDate: trecho.ate, status: "ACTIVE", origem: "SOLICITACAO", createdBy: actor.sub, notes: `Pedido ${request.id}` });
+    }
+    const eventId = await writeHistoryEvent({ category: "ABSENCE", action: status === "APPROVED" ? "leave.approved" : "leave.denied", title: status === "APPROVED" ? "Folga aprovada" : "Folga negada", narrative: decisionReason || SEM_RECADO, entityType: "leave_request", entityId: request.id, actorId: actor.sub, orgId: actor.organizationId, operationId, beforeState: request, afterState: saved, metadata: decisionReason ? { reason: decisionReason } : undefined }, tx as HistoryExecutor);
     if (operationId) await avisarRepublicacaoFolgas(tx, actor.organizationId, operationId, request.startDate, request.endDate, eventId);
     if (request.userId !== actor.sub) await enqueueNotification(tx as never, {
       userId: request.userId, type: status === "APPROVED" ? "leave.approved" : "leave.denied",
@@ -175,7 +205,7 @@ router.patch("/leave-requests/:id", requireAuth, requireOrganization, async (req
     return saved;
   });
   if (!updated) { res.status(409).json({ message: "Este pedido já foi decidido ou retirado." }); return; }
-  res.json({ request: updated });
+  res.json({ request: updated, ...(aviso ? { aviso } : {}) });
 });
 
 /** A pessoa pode retirar o próprio pedido enquanto ninguém decidiu. O Registro guarda a retirada. */

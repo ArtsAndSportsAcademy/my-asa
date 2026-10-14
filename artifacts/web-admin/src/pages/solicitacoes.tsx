@@ -24,9 +24,9 @@ type Pedido = {
   colega: { id: string; nome: string | null } | null; data: string | null; ate: string | null; inicio: string | null; fim: string | null;
   assunto: string | null; motivo: string | null; oculto: boolean;
   decisao: { por: string | null; em: string; motivo: string | null } | null; criadoEm: string;
-  pode: { cancelar: boolean; responderColega: boolean; decidir: boolean };
+  pode: { cancelar: boolean; responderColega: boolean; decidir: boolean }; jaTemFolga?: boolean;
 };
-type Folga = { id: string; userId: string; userName?: string; areaName?: string | null; startDate: string; endDate: string; reason: string; status: "PENDING" | "APPROVED" | "DENIED" | "CANCELLED"; decisionReason?: string | null; createdAt?: string };
+type Folga = { id: string; userId: string; userName?: string; areaName?: string | null; startDate: string; endDate: string; reason: string; status: "PENDING" | "APPROVED" | "DENIED" | "CANCELLED"; decisionReason?: string | null; createdAt?: string; jaTemFolga?: boolean };
 type Colega = { id: string; nome: string; area: string | null };
 
 const TIPOS: { tipo: Tipo; nome: string; dica: string; Icon: typeof Clock3 }[] = [
@@ -55,7 +55,7 @@ function daFolga(f: Folga, role: Role, meuId: string | null): Pedido {
   return {
     id: `folga:${f.id}`, tipo: "LEAVE", estado: f.status, pessoa: { id: f.userId, nome: f.userName ?? "" }, area: f.areaName ?? null, local: null, colega: null,
     data: f.startDate, ate: f.endDate, inicio: null, fim: null, assunto: null, motivo: f.reason, oculto: false,
-    decisao: f.status !== "PENDING" && f.decisionReason ? { por: null, em: "", motivo: f.decisionReason } : null, criadoEm: f.createdAt ?? f.startDate,
+    decisao: f.status !== "PENDING" && f.decisionReason ? { por: null, em: "", motivo: f.decisionReason } : null, criadoEm: f.createdAt ?? f.startDate, jaTemFolga: f.jaTemFolga,
     pode: { cancelar: minha && f.status === "PENDING", responderColega: false, decidir: f.status === "PENDING" && !minha && (role === "adm" || role === "sup") },
   };
 }
@@ -164,7 +164,7 @@ export default function SolicitacoesPage({ role, meuId }: { role: Role; meuId: s
     try {
       let doServidor = "";
       if (review) trocarLocal(pedido.id, { ...pedido, estado: decisao, inicio: inicio || pedido.inicio, fim: fim || pedido.fim, decisao: { por: REVIEW_PERSON[role], em: todayISO(), motivo: motivo || null }, pode: { cancelar: false, responderColega: false, decidir: false } });
-      else if (pedido.tipo === "LEAVE") await customFetch(`/api/leave-requests/${pedido.id.replace("folga:", "")}`, { method: "PATCH", body: JSON.stringify({ status: decisao, decisionReason: motivo }) });
+      else if (pedido.tipo === "LEAVE") { const r = await customFetch<{ aviso?: string }>(`/api/leave-requests/${pedido.id.replace("folga:", "")}`, { method: "PATCH", body: JSON.stringify({ status: decisao, decisionReason: motivo }) }); doServidor = r?.aviso ?? ""; }
       else { const r = await customFetch<{ aviso?: string }>(`/api/solicitacoes/${pedido.id}/decisao`, { method: "POST", body: JSON.stringify({ decisao, motivo, inicio: inicio || undefined, fim: fim || undefined }) }); doServidor = r?.aviso ?? ""; }
       setDecidindo(null);
       // Se o servidor tem algo a dizer (ex.: a pessoa está de folga naquele dia), vale a frase dele: ela é a verdadeira.
@@ -239,6 +239,7 @@ export default function SolicitacoesPage({ role, meuId }: { role: Role; meuId: s
     {decidindo && <div className="cycle-modal"><form onSubmit={enviarDecisao}>
       <header><h2>{decidindo.decisao === "APPROVED" ? "Aprovar" : "Recusar"}</h2><button type="button" aria-label="Fechar" onClick={() => setDecidindo(null)}>×</button></header>
       <p className="sol-resumo"><b>{decidindo.pedido.pessoa.nome}</b> · {NOME[decidindo.pedido.tipo]}{decidindo.pedido.assunto ? ` · ${decidindo.pedido.assunto}` : ""}<br/>{quando(decidindo.pedido)}</p>
+      {decidindo.pedido.jaTemFolga && decidindo.decisao === "APPROVED" && <p className="sol-nota">Atenção: {decidindo.pedido.pessoa.nome} já tem folga marcada nesses dias. Aprovar não cria uma segunda por cima.</p>}
       {decidindo.decisao === "APPROVED" && decidindo.pedido.tipo === "ESCALA_SLOT" && <fieldset className="sol-horario"><legend>Horário (mude se for aprovar em outro)</legend><label>De<input name="inicio" type="time" defaultValue={decidindo.pedido.inicio ?? ""} required/></label><label>Até<input name="fim" type="time" defaultValue={decidindo.pedido.fim ?? ""} required/></label></fieldset>}
       <label>{decidindo.decisao === "DENIED" ? "Motivo (a pessoa vai ler)" : decidindo.pedido.tipo === "ESCALA_SLOT" ? "Motivo (obrigatório se mudar o horário)" : "Recado para a pessoa (opcional)"}<textarea name="motivo" required={decidindo.decisao === "DENIED"} minLength={2}/></label>
       {decidindo.decisao === "APPROVED" && decidindo.pedido.tipo === "SWAP" && <p className="sol-nota">Depois de aprovar, faça a troca na Escala do dia.</p>}
@@ -266,6 +267,7 @@ function Linha({ p, role, meuId, review, onDecidir, onResponder, onCancelar }: {
     <div className="sol-corpo">
       <div className="sol-titulo"><strong>{p.assunto ?? NOME[p.tipo]}</strong>{p.assunto && <small>{NOME[p.tipo]}</small>}<span className={`sol-estado ${est.tom}`}>{est.rotulo}</span></div>
       <small className="sol-meta">{[minha ? "Você" : p.pessoa.nome, p.area, quando(p), p.local].filter(Boolean).join(" · ")}</small>
+      {p.jaTemFolga && p.estado === "PENDING" && <small className="sol-meta" style={{ color: "#9a5b00", fontWeight: 600 }}>Já tem folga marcada nesses dias</small>}
       {p.colega && <small className="sol-meta">Troca com {p.colega.id === meuId || p.colega.nome === eu ? "você" : p.colega.nome}</small>}
       {p.oculto ? <p className="sol-texto mute">Detalhe de saúde com a supervisão da área.</p> : p.motivo && <p className="sol-texto">{p.motivo}</p>}
       {p.decisao?.motivo && <p className={`sol-decisao ${p.estado === "DENIED" ? "bad" : ""}`}><b>{p.decisao.por ?? "Decisão"}:</b> {p.decisao.motivo}</p>}
