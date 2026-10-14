@@ -124,6 +124,15 @@ async function run() {
     const [grupoRestaurado] = await db.select().from(folgaGruposTable).where(eq(folgaGruposTable.id, grupoId));
     assert(grupoRestaurado?.active === true, "o grupo voltou a ficar ativo");
 
+    // Grupo por período corrido (recesso): guarda o intervalo, não os dias da semana.
+    const recesso = await call("POST", "/folgas/grupos", asDeb, { operationId: op!.id, nome: "Recesso", dataInicio: "2026-12-24", dataFim: "2026-12-26", pessoaIds: [ju.id], tipo: "RECESSO" });
+    assert(recesso.status === 201, "grupo por período: criado");
+    const recessoRuim = await call("POST", "/folgas/grupos", asDeb, { operationId: op!.id, nome: "Recesso ruim", dataInicio: "2026-12-26", dataFim: "2026-12-24", pessoaIds: [ju.id], tipo: "RECESSO" });
+    assert(recessoRuim.status === 400, "período com fim antes do início: recusado");
+    const listaRec = await call("GET", `/folgas/grupos?operationId=${op!.id}`, asDeb);
+    const gr = (listaRec.body.grupos as { id: string; nome: string; dataInicio: string | null; dataFim: string | null; diasFolga: number[]; tipo: string }[]).find((x) => x.id === (recesso.body.id as string));
+    assert(gr !== undefined && gr!.dataInicio === "2026-12-24" && gr!.dataFim === "2026-12-26" && gr!.diasFolga.length === 0 && gr!.tipo === "RECESSO", "o grupo por período guarda o intervalo e não os dias da semana");
+
     const grid = await call("GET", `/folgas/grid?operationId=${op!.id}&year=2026&month=10`, asDeb);
     const flag = (userId: string) => (grid.body.members as { userId: string; editable: boolean }[]).find((m) => m.userId === userId)?.editable;
     assert(grid.status === 200 && (grid.body.members as unknown[]).length >= 6, "Supervisão vê o mapa de todo mundo");

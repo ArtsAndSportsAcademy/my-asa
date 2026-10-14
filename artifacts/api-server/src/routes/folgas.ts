@@ -824,6 +824,22 @@ function diasDaSemana(entrada: unknown): number[] | null {
   return dias.sort((a, b) => a - b);
 }
 
+type QuandoGrupo = { diasFolga: number[]; dataInicio: string | null; dataFim: string | null };
+/**
+ * O "quando" de um grupo: por período corrido (recesso, dataInicio/dataFim) ou por dia da semana
+ * (diasFolga). Exatamente um dos dois. Devolve null se nenhum é válido.
+ */
+function quandoDoGrupo(body: { diasFolga?: unknown; dataInicio?: unknown; dataFim?: unknown }): QuandoGrupo | null {
+  const ehData = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
+  if (ehData(body.dataInicio) && ehData(body.dataFim)) {
+    if (body.dataFim < body.dataInicio) return null;
+    return { diasFolga: [], dataInicio: body.dataInicio, dataFim: body.dataFim };
+  }
+  const dias = diasDaSemana(body.diasFolga);
+  if (!dias) return null;
+  return { diasFolga: dias, dataInicio: null, dataFim: null };
+}
+
 /** Recusa (string) se o usuário não pode mexer no grupo com estas pessoas; null se pode. */
 async function grupoEscopoBloqueio(user: { role: string; organizationId: string; sub: string }, operationId: string, pessoaIds: string[]): Promise<string | null> {
   const scopeErr = await validateManagerScope(user, operationId);
@@ -862,7 +878,8 @@ router.get("/folgas/grupos", requireAuth, requireOrganization, async (req, res) 
   for (const g of grupos) {
     const editavel = (await grupoEscopoBloqueio(user, operationId, g.pessoaIds)) === null;
     saida.push({
-      id: g.id, nome: g.nome, diasFolga: g.diasFolga, tipo: g.tipo, active: g.active, editavel,
+      id: g.id, nome: g.nome, diasFolga: g.diasFolga, dataInicio: g.dataInicio, dataFim: g.dataFim,
+      tipo: g.tipo, active: g.active, editavel,
       pessoas: g.pessoaIds.map((id) => ({ id, name: nomes.get(id) ?? "—" })),
     });
   }
@@ -875,11 +892,11 @@ router.post("/folgas/grupos", requireAuth, requireOrganization, async (req, res)
   const user = req.user!;
   if (!MANAGER_ROLES.includes(user.role)) { res.status(403).json({ error: "Forbidden" }); return; }
   const { operationId, nome, pessoaIds, tipo } = req.body as { operationId?: string; nome?: string; pessoaIds?: string[]; tipo?: string };
-  const dias = diasDaSemana((req.body as { diasFolga?: unknown }).diasFolga);
+  const quando = quandoDoGrupo(req.body as Record<string, unknown>);
   const nomeTrim = typeof nome === "string" ? nome.trim() : "";
   const pessoas = [...new Set((Array.isArray(pessoaIds) ? pessoaIds : []).filter((id): id is string => typeof id === "string" && id.length > 0))];
-  if (!operationId || !nomeTrim || nomeTrim.length > 80 || !dias || !pessoas.length) {
-    res.status(400).json({ error: "Bad Request", message: "operationId, nome, diasFolga[] e pessoaIds[] são obrigatórios" });
+  if (!operationId || !nomeTrim || nomeTrim.length > 80 || !quando || !pessoas.length) {
+    res.status(400).json({ error: "Bad Request", message: "operationId, nome, pessoaIds[] e o quando (diasFolga[] ou dataInicio+dataFim) são obrigatórios" });
     return;
   }
   const bloqueio = await grupoEscopoBloqueio(user, operationId, pessoas);
@@ -887,16 +904,17 @@ router.post("/folgas/grupos", requireAuth, requireOrganization, async (req, res)
   try {
     const grupo = await db.transaction(async (tx) => {
       const [criado] = await tx.insert(folgaGruposTable).values({
-        operationId, nome: nomeTrim, diasFolga: dias, pessoaIds: pessoas,
+        operationId, nome: nomeTrim, diasFolga: quando.diasFolga, dataInicio: quando.dataInicio, dataFim: quando.dataFim, pessoaIds: pessoas,
         tipo: (tipo as any) ?? "DAY_OFF", createdBy: user.sub,
       }).returning();
+      const comoQuando = quando.dataInicio ? `período de ${quando.dataInicio} a ${quando.dataFim}` : `${quando.diasFolga.length} dia(s) da semana`;
       await writeHistoryEvent({
         category: "ABSENCE", action: "FOLGA_GRUPO_CRIADO",
         title: `Grupo de folga criado: ${nomeTrim}`,
-        narrative: `A gestão criou o grupo de folga "${nomeTrim}" com ${pessoas.length} pessoa(s), folga em ${dias.length} dia(s) da semana.`,
+        narrative: `A gestão criou o grupo de folga "${nomeTrim}" com ${pessoas.length} pessoa(s), ${comoQuando}.`,
         entityType: "folga_grupo", entityId: criado!.id, actorId: user.sub, operationId, orgId: user.organizationId,
-        metadata: { diasFolga: dias, pessoaIds: pessoas, tipo: (tipo as any) ?? "DAY_OFF" },
-        afterState: { nome: nomeTrim, diasFolga: dias, pessoaIds: pessoas },
+        metadata: { diasFolga: quando.diasFolga, dataInicio: quando.dataInicio, dataFim: quando.dataFim, pessoaIds: pessoas, tipo: (tipo as any) ?? "DAY_OFF" },
+        afterState: { nome: nomeTrim, diasFolga: quando.diasFolga, dataInicio: quando.dataInicio, dataFim: quando.dataFim, pessoaIds: pessoas },
       }, tx as any);
       return criado!;
     });
@@ -913,15 +931,19 @@ router.patch("/folgas/grupos/:id", requireAuth, requireOrganization, async (req,
   const [grupo] = await db.select().from(folgaGruposTable).where(eq(folgaGruposTable.id, String(req.params.id))).limit(1);
   if (!grupo) { res.status(404).json({ error: "Not Found" }); return; }
 
-  const body = req.body as { nome?: string; diasFolga?: unknown; pessoaIds?: string[]; tipo?: string };
+  const body = req.body as { nome?: string; diasFolga?: unknown; dataInicio?: unknown; dataFim?: unknown; pessoaIds?: string[]; tipo?: string };
   const nomeTrim = typeof body.nome === "string" ? body.nome.trim() : grupo.nome;
-  const dias = body.diasFolga !== undefined ? diasDaSemana(body.diasFolga) : grupo.diasFolga;
+  // Se o cliente mandou qualquer campo de "quando", reinterpreta o modo inteiro; senão mantém o atual.
+  const mexeuNoQuando = body.diasFolga !== undefined || body.dataInicio !== undefined || body.dataFim !== undefined;
+  const quando: QuandoGrupo | null = mexeuNoQuando
+    ? quandoDoGrupo(body)
+    : { diasFolga: grupo.diasFolga, dataInicio: grupo.dataInicio, dataFim: grupo.dataFim };
   const pessoas = Array.isArray(body.pessoaIds)
     ? [...new Set(body.pessoaIds.filter((id): id is string => typeof id === "string" && id.length > 0))]
     : grupo.pessoaIds;
   const tipo = typeof body.tipo === "string" ? body.tipo : grupo.tipo;
-  if (!nomeTrim || nomeTrim.length > 80 || !dias || !pessoas.length) {
-    res.status(400).json({ error: "Bad Request", message: "nome, diasFolga[] e pessoaIds[] precisam ser válidos" });
+  if (!nomeTrim || nomeTrim.length > 80 || !quando || !pessoas.length) {
+    res.status(400).json({ error: "Bad Request", message: "nome, pessoaIds[] e o quando (diasFolga[] ou dataInicio+dataFim) precisam ser válidos" });
     return;
   }
   // Precisa poder mexer tanto em quem sai quanto em quem entra: confere os dois conjuntos.
@@ -929,14 +951,14 @@ router.patch("/folgas/grupos/:id", requireAuth, requireOrganization, async (req,
   if (bloqueio) { res.status(403).json({ error: "Forbidden", message: bloqueio }); return; }
   try {
     await db.transaction(async (tx) => {
-      await tx.update(folgaGruposTable).set({ nome: nomeTrim, diasFolga: dias, pessoaIds: pessoas, tipo: tipo as any, updatedAt: new Date() }).where(eq(folgaGruposTable.id, grupo.id));
+      await tx.update(folgaGruposTable).set({ nome: nomeTrim, diasFolga: quando.diasFolga, dataInicio: quando.dataInicio, dataFim: quando.dataFim, pessoaIds: pessoas, tipo: tipo as any, updatedAt: new Date() }).where(eq(folgaGruposTable.id, grupo.id));
       await writeHistoryEvent({
         category: "ABSENCE", action: "FOLGA_GRUPO_EDITADO",
         title: `Grupo de folga alterado: ${nomeTrim}`,
         narrative: `A gestão alterou o grupo de folga "${nomeTrim}".`,
         entityType: "folga_grupo", entityId: grupo.id, actorId: user.sub, operationId: grupo.operationId, orgId: user.organizationId,
-        beforeState: { nome: grupo.nome, diasFolga: grupo.diasFolga, pessoaIds: grupo.pessoaIds, tipo: grupo.tipo },
-        afterState: { nome: nomeTrim, diasFolga: dias, pessoaIds: pessoas, tipo },
+        beforeState: { nome: grupo.nome, diasFolga: grupo.diasFolga, dataInicio: grupo.dataInicio, dataFim: grupo.dataFim, pessoaIds: grupo.pessoaIds, tipo: grupo.tipo },
+        afterState: { nome: nomeTrim, diasFolga: quando.diasFolga, dataInicio: quando.dataInicio, dataFim: quando.dataFim, pessoaIds: pessoas, tipo },
       }, tx as any);
     });
     log.info({ grupoId: grupo.id }, "grupo de folga editado");

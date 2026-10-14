@@ -12,7 +12,7 @@ import "./operational-cycle.css";
 type Role = "adm" | "dir" | "sup" | "mem";
 type LeaveRequest = { id: string; userId: string; userName?: string; areaName?: string | null; startDate: string; endDate: string; reason: string; status: "PENDING" | "APPROVED" | "DENIED" | "CANCELLED"; decisionReason?: string | null };
 type FolgaAtiva = { id: string; userId: string; userName: string; startDate: string; endDate: string; type: string; status: "ACTIVE" };
-type FolgaGrupo = { id: string; nome: string; diasFolga: number[]; tipo: string; active: boolean; editavel: boolean; pessoas: { id: string; name: string }[] };
+type FolgaGrupo = { id: string; nome: string; diasFolga: number[]; dataInicio: string | null; dataFim: string | null; tipo: string; active: boolean; editavel: boolean; pessoas: { id: string; name: string }[] };
 type DayBlock = { key: string; rotulo: string; inicio: string; fim: string | null; pessoaIds: string[]; dailyBookId: string | null; vazio: boolean; sinal: string | null; scaleId?: string; locationName?: string };
 type CheckIn = { id: string; sourceKey: string; userId: string; status: string; reason?: string | null; etaMinutes?: number | null };
 type Occurrence = { id: string; personId: string; personName: string; date: string; type: string; description: string; state: "aberta" | "em_analise" | "resolvida" };
@@ -150,22 +150,25 @@ export function FolgasPage({ role }: { role: Role }) {
     if (!roleCanWrite(role)) return;
     if (review) {
       const nome = (n: number) => visiblePeople.slice(n, n + 3).map((p) => ({ id: p.id, name: p.name }));
+      const ano = month.getFullYear();
       setGrupos([
-        { id: "amostra-g1", nome: "Grupo 1 — seg e ter", diasFolga: [1, 2], tipo: "DAY_OFF", active: true, editavel: true, pessoas: nome(0) },
-        { id: "amostra-g2", nome: "Grupo 2 — qua e qui", diasFolga: [3, 4], tipo: "DAY_OFF", active: true, editavel: role !== "sup", pessoas: nome(3) },
+        { id: "amostra-g1", nome: "Grupo 1 — seg e ter", diasFolga: [1, 2], dataInicio: null, dataFim: null, tipo: "DAY_OFF", active: true, editavel: true, pessoas: nome(0) },
+        { id: "amostra-g2", nome: "Grupo 2 — qua e qui", diasFolga: [3, 4], dataInicio: null, dataFim: null, tipo: "DAY_OFF", active: true, editavel: role !== "sup", pessoas: nome(3) },
+        { id: "amostra-g3", nome: "Recesso de fim de ano", diasFolga: [], dataInicio: `${ano}-12-24`, dataFim: `${ano}-12-26`, tipo: "RECESSO", active: true, editavel: true, pessoas: nome(0) },
       ]);
       return;
     }
     if (!operationId) { setGrupos([]); return; }
     customFetch<{ grupos: FolgaGrupo[] }>(`/api/folgas/grupos?operationId=${operationId}${verArquivados ? "&incluirArquivados=1" : ""}`)
       .then((r) => setGrupos(r.grupos)).catch(() => setGrupoErro("Não consegui carregar os grupos de folga."));
-  }, [review, role, operationId, verArquivados, gruposRevision, visiblePeople]);
-  const salvarGrupo = async (v: { id?: string; nome: string; diasFolga: number[]; pessoaIds: string[]; tipo: string }) => {
+  }, [review, role, operationId, verArquivados, gruposRevision, visiblePeople, month]);
+  const salvarGrupo = async (v: { id?: string; nome: string; diasFolga: number[]; dataInicio: string | null; dataFim: string | null; pessoaIds: string[]; tipo: string }) => {
     if (review) { setGrupoEdit(null); return; }
     if (!operationId) { setGrupoErro("Sem operação associada ao seu perfil."); return; }
+    const corpo = { nome: v.nome, diasFolga: v.diasFolga, dataInicio: v.dataInicio, dataFim: v.dataFim, pessoaIds: v.pessoaIds, tipo: v.tipo };
     try {
-      if (v.id) await customFetch(`/api/folgas/grupos/${v.id}`, { method: "PATCH", body: JSON.stringify({ nome: v.nome, diasFolga: v.diasFolga, pessoaIds: v.pessoaIds, tipo: v.tipo }) });
-      else await customFetch("/api/folgas/grupos", { method: "POST", body: JSON.stringify({ operationId, nome: v.nome, diasFolga: v.diasFolga, pessoaIds: v.pessoaIds, tipo: v.tipo }) });
+      if (v.id) await customFetch(`/api/folgas/grupos/${v.id}`, { method: "PATCH", body: JSON.stringify(corpo) });
+      else await customFetch("/api/folgas/grupos", { method: "POST", body: JSON.stringify({ operationId, ...corpo }) });
       setGrupoEdit(null); setGruposRevision((n) => n + 1);
     } catch { setGrupoErro("Não consegui salvar o grupo. Nada foi alterado; tente de novo."); }
   };
@@ -182,8 +185,8 @@ export function FolgasPage({ role }: { role: Role }) {
   };
   /** Aplicar um grupo é marcar a folga dos dois dias no período escolhido — reusa o lote. */
   const aplicarGrupo = async (grupo: FolgaGrupo, de: string, ate: string) => {
-    const datas = datasDoPadrao(de, ate, grupo.diasFolga);
-    if (!datas.length) { setGrupoErro("O período escolhido não tem nenhum desses dias da semana."); return; }
+    const datas = datasDoGrupo(grupo, de, ate);
+    if (!datas.length) { setGrupoErro("O período escolhido não tem nenhum dia para marcar."); return; }
     if (review) { setGrupoAplicar(null); return; }
     if (!operationId) { setGrupoErro("Sem operação associada ao seu perfil."); return; }
     try {
@@ -246,6 +249,18 @@ const datasDoPadrao = (de: string, ate: string, dias: number[]) => {
   }
   return lista;
 };
+/** Todos os dias corridos de [de, ate] (para o recesso, que vai de tal a tal data). */
+const datasConsecutivas = (de: string, ate: string) => {
+  const lista: string[] = [];
+  if (!de || !ate || de > ate) return lista;
+  for (let t = new Date(`${de}T12:00:00`); t <= new Date(`${ate}T12:00:00`); t.setDate(t.getDate() + 1)) {
+    lista.push(diaISO(t.getFullYear(), t.getMonth() + 1, t.getDate()));
+  }
+  return lista;
+};
+/** As datas que um grupo marca ao ser aplicado, conforme o seu modo (dia da semana ou período). */
+const datasDoGrupo = (grupo: Pick<FolgaGrupo, "diasFolga" | "dataInicio" | "dataFim">, de: string, ate: string) =>
+  grupo.dataInicio && grupo.dataFim ? datasConsecutivas(grupo.dataInicio, grupo.dataFim) : datasDoPadrao(de, ate, grupo.diasFolga);
 
 function DefinirFolgaDialog({ pessoas, mes, erro, onClose, onSubmit }: {
   pessoas: { id: string; name: string; area?: string | null }[];
@@ -361,8 +376,13 @@ function DefinirFolgaDialog({ pessoas, mes, erro, onClose, onSubmit }: {
   </form></div>;
 }
 
-/* ---------- grupos de folga: padrão (pessoas + dois dias) por equipe ---------- */
+/* ---------- grupos de folga: padrão (pessoas + quando) por equipe ---------- */
 const TIPO_ROTULO: Record<string, string> = { DAY_OFF: "Folga", RECESSO: "Recesso", AFASTAMENTO: "Afastamento", OUTRO: "Outro" };
+/** "folga segunda e terça" (por dia da semana) ou "recesso de 24 a 26 de dezembro" (por período). */
+const quandoDoGrupoTexto = (g: Pick<FolgaGrupo, "diasFolga" | "dataInicio" | "dataFim" | "tipo">) => {
+  const rotulo = (TIPO_ROTULO[g.tipo] ?? g.tipo).toLocaleLowerCase("pt-BR");
+  return g.dataInicio && g.dataFim ? `${rotulo} de ${porExtenso(g.dataInicio, g.dataFim)}` : `${rotulo} ${diasPorExtenso(g.diasFolga)}`;
+};
 
 function GruposPanel({ grupos, verArquivados, erro, podeCriar, onVerArquivados, onNovo, onEditar, onAplicar, onArquivar, onRestaurar }: {
   grupos: FolgaGrupo[]; verArquivados: boolean; erro: string; podeCriar: boolean;
@@ -383,7 +403,7 @@ function GruposPanel({ grupos, verArquivados, erro, podeCriar, onVerArquivados, 
       : <div className="cycle-grupos-lista">{grupos.map((g) => <div className={`cycle-grupo${g.active ? "" : " arquivado"}`} key={g.id}>
           <div className="cycle-grupo-info">
             <strong>{g.nome}{!g.active && <span className="cycle-tag"> arquivado</span>}</strong>
-            <small>folga {diasPorExtenso(g.diasFolga)}{g.tipo !== "DAY_OFF" ? ` · ${TIPO_ROTULO[g.tipo] ?? g.tipo}` : ""} · {g.pessoas.length === 1 ? "1 pessoa" : `${g.pessoas.length} pessoas`}</small>
+            <small>{quandoDoGrupoTexto(g)} · {g.pessoas.length === 1 ? "1 pessoa" : `${g.pessoas.length} pessoas`}</small>
             <small className="cycle-grupo-pessoas">{g.pessoas.map((p) => p.name).join(", ")}</small>
           </div>
           <div className="cycle-grupo-botoes">
@@ -401,11 +421,15 @@ function GrupoDialog({ grupo, pessoas, erro, onClose, onSubmit }: {
   pessoas: { id: string; name: string; area?: string | null }[];
   erro: string;
   onClose: () => void;
-  onSubmit: (v: { id?: string; nome: string; diasFolga: number[]; pessoaIds: string[]; tipo: string }) => Promise<void>;
+  onSubmit: (v: { id?: string; nome: string; diasFolga: number[]; dataInicio: string | null; dataFim: string | null; pessoaIds: string[]; tipo: string }) => Promise<void>;
 }) {
   useFecharComEsc(onClose);
   const [nome, setNome] = useState(grupo?.nome ?? "");
+  // Dois jeitos de dizer "quando": por dia da semana (folgas fixas) ou um período corrido (recesso).
+  const [modo, setModo] = useState<"semana" | "periodo">(grupo?.dataInicio ? "periodo" : "semana");
   const [dias, setDias] = useState<number[]>(grupo?.diasFolga ?? []);
+  const [de, setDe] = useState(grupo?.dataInicio ?? "");
+  const [ate, setAte] = useState(grupo?.dataFim ?? "");
   const [quem, setQuem] = useState<string[]>(grupo?.pessoas.map((p) => p.id) ?? []);
   const [tipo, setTipo] = useState(grupo?.tipo ?? "DAY_OFF");
   const [busca, setBusca] = useState("");
@@ -414,25 +438,36 @@ function GrupoDialog({ grupo, pessoas, erro, onClose, onSubmit }: {
   const chip = (ligado: boolean) => `cycle-chip${ligado ? " on" : ""}`;
   const filtradas = pessoas.filter((p) => `${p.name} ${p.area ?? ""}`.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR")));
   const areas = [...new Set(pessoas.map((p) => p.area).filter((a): a is string => Boolean(a)))];
-  const pronto = nome.trim().length > 0 && dias.length > 0 && quem.length > 0;
+  const quandoOk = modo === "semana" ? dias.length > 0 : Boolean(de && ate && de <= ate);
+  const pronto = nome.trim().length > 0 && quandoOk && quem.length > 0;
   const enviar = async (e: FormEvent) => {
     e.preventDefault();
     if (!pronto || salvando) return;
     setSalvando(true);
-    try { await onSubmit({ id: grupo?.id, nome: nome.trim(), diasFolga: dias, pessoaIds: quem, tipo }); } finally { setSalvando(false); }
+    const quando = modo === "semana" ? { diasFolga: dias, dataInicio: null, dataFim: null } : { diasFolga: [], dataInicio: de, dataFim: ate };
+    try { await onSubmit({ id: grupo?.id, nome: nome.trim(), ...quando, pessoaIds: quem, tipo }); } finally { setSalvando(false); }
   };
   return <div className="cycle-modal"><form onSubmit={enviar} className="cycle-folga-form">
     <header><h2>{grupo ? "Editar grupo" : "Novo grupo de folga"}</h2><button type="button" onClick={onClose} aria-label="Fechar">×</button></header>
-    <p>As pessoas e os dois dias de folga fixos. Salvar só guarda o grupo — não marca nada no mapa; isso é no "Aplicar".</p>
+    <p>As pessoas e o quando. Salvar só guarda o grupo — não marca nada no mapa; isso é no "Aplicar".</p>
     {erro && <p role="alert">{erro}</p>}
 
     <label>Nome do grupo<input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Grupo 1 — seg e ter" maxLength={80}/></label>
 
     <fieldset>
-      <legend>Dias de folga da semana</legend>
-      <div className="cycle-folga-atalhos">
-        {DIAS_CURTOS.map((rotulo, i) => <button key={rotulo} type="button" aria-pressed={dias.includes(i)} className={chip(dias.includes(i))} onClick={() => setDias((atual) => alterna(atual, i))}>{rotulo}</button>)}
+      <legend>Quando</legend>
+      <div className="cycle-folga-atalhos" role="tablist">
+        {([["semana", "Por dia da semana"], ["periodo", "Período corrido"]] as const).map(([valor, rotulo]) =>
+          <button key={valor} type="button" role="tab" aria-selected={modo === valor} className={chip(modo === valor)} onClick={() => setModo(valor)}>{rotulo}</button>)}
       </div>
+      {modo === "semana"
+        ? <div className="cycle-folga-atalhos">
+            {DIAS_CURTOS.map((rotulo, i) => <button key={rotulo} type="button" aria-pressed={dias.includes(i)} className={chip(dias.includes(i))} onClick={() => setDias((atual) => alterna(atual, i))}>{rotulo}</button>)}
+          </div>
+        : <div className="cycle-folga-periodo">
+            <label>De<input type="date" value={de} onChange={(e) => setDe(e.target.value)}/></label>
+            <label>Até<input type="date" value={ate} onChange={(e) => setAte(e.target.value)}/></label>
+          </div>}
     </fieldset>
 
     <fieldset>
@@ -459,8 +494,8 @@ function GrupoDialog({ grupo, pessoas, erro, onClose, onSubmit }: {
     </label>
 
     <p className="cycle-folga-previa" role="status">{pronto
-      ? `Folga ${diasPorExtenso(dias)}, ${quem.length === 1 ? "1 pessoa" : `${quem.length} pessoas`}.`
-      : "Dê um nome, escolha os dias e as pessoas."}</p>
+      ? `${quandoDoGrupoTexto({ diasFolga: dias, dataInicio: modo === "periodo" ? de : null, dataFim: modo === "periodo" ? ate : null, tipo })}, ${quem.length === 1 ? "1 pessoa" : `${quem.length} pessoas`}.`
+      : modo === "semana" ? "Dê um nome, escolha os dias e as pessoas." : "Dê um nome, escolha o período e as pessoas."}</p>
     <footer>
       <button type="button" className="cycle-secondary" onClick={onClose}>Cancelar</button>
       <button className="cycle-primary" disabled={!pronto || salvando}>{salvando ? "Guardando…" : "Guardar grupo"}</button>
@@ -476,13 +511,16 @@ function AplicarGrupoDialog({ grupo, mes, erro, onClose, onSubmit }: {
   onSubmit: (de: string, ate: string) => Promise<void>;
 }) {
   useFecharComEsc(onClose);
+  const porPeriodo = Boolean(grupo.dataInicio && grupo.dataFim);
   const ano = mes.getFullYear(), mesNum = mes.getMonth() + 1;
-  const [de, setDe] = useState(diaISO(ano, mesNum, 1));
-  const [ate, setAte] = useState(diaISO(ano, mesNum, new Date(ano, mesNum, 0).getDate()));
+  // Grupo por dia da semana: escolhe-se o período. Grupo por período: o intervalo já é o do grupo.
+  const [de, setDe] = useState(porPeriodo ? grupo.dataInicio! : diaISO(ano, mesNum, 1));
+  const [ate, setAte] = useState(porPeriodo ? grupo.dataFim! : diaISO(ano, mesNum, new Date(ano, mesNum, 0).getDate()));
   const [salvando, setSalvando] = useState(false);
-  const datas = datasDoPadrao(de, ate, grupo.diasFolga);
+  const datas = datasDoGrupo(grupo, de, ate);
   const marcacoes = datas.length * grupo.pessoas.length;
   const pronto = de <= ate && datas.length > 0;
+  const rotuloTipo = (TIPO_ROTULO[grupo.tipo] ?? grupo.tipo).toLocaleLowerCase("pt-BR");
   const enviar = async (e: FormEvent) => {
     e.preventDefault();
     if (!pronto || salvando) return;
@@ -491,18 +529,20 @@ function AplicarGrupoDialog({ grupo, mes, erro, onClose, onSubmit }: {
   };
   return <div className="cycle-modal"><form onSubmit={enviar} className="cycle-folga-form">
     <header><h2>Aplicar “{grupo.nome}”</h2><button type="button" onClick={onClose} aria-label="Fechar">×</button></header>
-    <p>Marca a folga de {diasPorExtenso(grupo.diasFolga)} para {grupo.pessoas.length === 1 ? "esta pessoa" : `estas ${grupo.pessoas.length} pessoas`}, em todo o período. O que já existir nesses dias é substituído. O Elenco só vê depois da publicação do mês.</p>
+    <p>Marca {rotuloTipo} de {porPeriodo ? porExtenso(grupo.dataInicio!, grupo.dataFim!) : diasPorExtenso(grupo.diasFolga)} para {grupo.pessoas.length === 1 ? "esta pessoa" : `estas ${grupo.pessoas.length} pessoas`}{porPeriodo ? "" : ", em todo o período"}. O que já existir nesses dias é substituído. O Elenco só vê depois da publicação do mês.</p>
     {erro && <p role="alert">{erro}</p>}
-    <div className="cycle-folga-periodo">
-      <label>De<input type="date" value={de} onChange={(e) => setDe(e.target.value)}/></label>
-      <label>Até<input type="date" value={ate} onChange={(e) => setAte(e.target.value)}/></label>
-    </div>
+    {porPeriodo
+      ? <p className="cycle-folga-previa">Período do grupo: {porExtenso(grupo.dataInicio!, grupo.dataFim!)}.</p>
+      : <div className="cycle-folga-periodo">
+          <label>De<input type="date" value={de} onChange={(e) => setDe(e.target.value)}/></label>
+          <label>Até<input type="date" value={ate} onChange={(e) => setAte(e.target.value)}/></label>
+        </div>}
     <p className="cycle-folga-previa" role="status">{!pronto
-      ? (de > ate ? "A data final é antes da inicial." : `O período não tem nenhum dia de ${diasPorExtenso(grupo.diasFolga)}.`)
+      ? (de > ate ? "A data final é antes da inicial." : `O período não tem nenhum dia para marcar.`)
       : `${datas.length === 1 ? "1 dia" : `${datas.length} dias`} × ${grupo.pessoas.length === 1 ? "1 pessoa" : `${grupo.pessoas.length} pessoas`} = ${marcacoes === 1 ? "1 marcação" : `${marcacoes} marcações`}.`}</p>
     <footer>
       <button type="button" className="cycle-secondary" onClick={onClose}>Cancelar</button>
-      <button className="cycle-primary" disabled={!pronto || salvando}>{salvando ? "Aplicando…" : "Aplicar ao período"}</button>
+      <button className="cycle-primary" disabled={!pronto || salvando}>{salvando ? "Aplicando…" : porPeriodo ? "Aplicar" : "Aplicar ao período"}</button>
     </footer>
   </form></div>;
 }
