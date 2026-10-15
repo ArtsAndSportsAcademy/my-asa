@@ -164,18 +164,25 @@ só isso; não conclua que quebrou antes de esperar.
 - `lib/db` — schema, migrações e rollbacks.
 - `docs/` — decisões e desenho das telas.
 
-## Estado em 16/10/2026
+## Estado em 15/10/2026 (depois da revisão das telas)
 
 Pronto e em produção: Escala do dia, Programação (com rascunho e rodapé), Livro do Dia, check-in por turno,
 Meu Dia, Folgas em lote e grupos de folga, Gerar o mês, **Mural aberto** (o Elenco publica, edita, remove e
 desfaz, reações, datas especiais) e **Mensagens com grupos** (privadas: a Administração não lê conversa),
 com o elenco de Snowland carregado e gerando o dia de verdade. O último handoff é
-`docs/handoff-2026-10-16.md`: leia antes de continuar.
+`docs/handoff-2026-10-15-sessao-2.md` (revisão das telas, decisões da Babi e empresa de teste; os de 16 e 14/10 seguem valendo): leia antes de continuar.
+
+Feito em 15/10 (**ainda local: nada enviado ao GitHub nem promovido**, sem migração): a revisão com o crivo em
+Agenda, Tarefas, Cadastros, Painel e Biblioteca, as decisões da Babi (Direção na Agenda e nas Tarefas, cancelar e
+remarcar, ensaio na folga com motivo, avisos e "quem já leu" na Biblioteca, lotes, push web de mensagem) e a
+**empresa de teste** (`docs/empresa-de-teste.md`): use-a para conferir telas com servidor de verdade.
 
 Pendente:
-- **A próxima revisão tela a tela**, com as 16 perguntas do crivo: Agenda, Tarefas, Cadastros, Painel,
-  Biblioteca; depois Folgas e Solicitações. A regra real de folgas está em `docs/regras-de-folgas.md` —
-  leia antes de mexer.
+- **A próxima revisão tela a tela**, com as 16 perguntas do crivo: Folgas e Solicitações, Mapa do mês e
+  Grupos de folga. A regra real de folgas está em `docs/regras-de-folgas.md` — leia antes de mexer.
+- **A Babi** confere no telefone o Perfil e o PDF da Biblioteca, e roda em produção
+  `lib/db/scripts/limpar-texto-de-mensagens-no-registro.sql`. Só depois do "pode enviar" dela: GitHub e
+  promoção (API primeiro, site depois).
 - **Acquamotion** não tem as vagas de personagem dos shows (a planilha ainda está "a definir"), por
   isso os Livros do Dia de lá nascem vazios. Não é defeito.
 - **Buona e Bella** têm as filas definidas e as vagas a criar.
