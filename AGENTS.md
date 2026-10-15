@@ -131,6 +131,10 @@ node ./build.mjs
 # build do site (artifacts/web-admin) — PORT e BASE_PATH são obrigatórios
 $env:PORT="3000"; $env:BASE_PATH="/"; node ../../node_modules/.pnpm/vite@<versão>/node_modules/vite/bin/vite.js build --config vite.config.ts
 
+# o Vercel roda ISTO logo depois do build e reprova se achar nome de pessoa do elenco no pacote (regra D1).
+# Rode sempre que mexer em tela com dados de exemplo; só o build passar não basta.
+node scripts/verificar-nomes-build.mjs
+
 # testes da API, contra o banco de TESTE (artifacts/api-server)
 $env:MYASA_TEST_RUNNER="1"; $env:TEST_FILE="escalas-dia.test.ts"
 node --env-file=../../.env.test ./tests/run-tests.mjs
@@ -138,6 +142,10 @@ node --env-file=../../.env.test ./tests/run-tests.mjs
 # migração no banco de teste (lib/db)
 node --env-file=../../.env.test ../../node_modules/.pnpm/tsx@<versão>/node_modules/tsx/dist/cli.mjs src/migrate.ts
 ```
+
+Dados de exemplo com nomes de gente **só podem ser criados dentro de `import.meta.env.DEV`** (ou de uma
+constante que o build resolve, como `sample`). Passar `sample` como parâmetro de componente não basta: o
+bundler não descarta o que está atrás dele, e os nomes vão para o navegador de todo mundo.
 
 Depois de mexer no schema (`lib/db/src/schema`), compile o pacote do banco antes de checar os tipos
 da API — ela lê os `.d.ts` gerados: `node ../../node_modules/.pnpm/typescript@5.9.3/.../tsc -p tsconfig.json`
