@@ -16,7 +16,8 @@ import {
 export type AudiencePost = { id: string; orgId: string; authorId: string; scope: "HOUSE" | "AREA" | "LOCATION" | "PEOPLE"; areaId: string | null; locationId: string | null };
 export type AudienceSummary = { total: number; confirmados: number; faltam: { id: string; name: string }[] };
 
-async function audienceIds(post: AudiencePost): Promise<string[]> {
+/** Quem recebe o aviso (sem quem publicou). Também é a lista de quem o sino avisa. */
+export async function announcementAudienceIds(post: AudiencePost): Promise<string[]> {
   const active = and(eq(usersTable.organizationId, post.orgId), eq(usersTable.status, "ACTIVE"), ne(usersTable.id, post.authorId));
   if (post.scope === "HOUSE") return (await db.select({ id: usersTable.id }).from(usersTable).where(active)).map((row) => row.id);
   if (post.scope === "AREA") {
@@ -43,7 +44,7 @@ async function audienceIds(post: AudiencePost): Promise<string[]> {
 }
 
 export async function announcementAudience(post: AudiencePost): Promise<AudienceSummary> {
-  const ids = await audienceIds(post);
+  const ids = await announcementAudienceIds(post);
   if (!ids.length) return { total: 0, confirmados: 0, faltam: [] };
   const [people, confirmed] = await Promise.all([
     db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(inArray(usersTable.id, ids)).orderBy(usersTable.name),

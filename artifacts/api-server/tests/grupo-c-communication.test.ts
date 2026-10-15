@@ -1,7 +1,7 @@
 /** Grupo C — Mural, Mensagens e Biblioteca contra Postgres real de teste. */
 import http from "node:http";
 import { and, eq, inArray, or } from "drizzle-orm";
-import { aiMessages, agendaEventsTable, announcementCommentsTable, announcementReadsTable, announcementRecipientsTable, announcementsTable, areaLocalSupervisorsTable, areasTable, conversations, dailyBookAssignmentsTable, dailyBookBlocksTable, dailyBookPositionsTable, dailyBookScenesTable, dailyBooksTable, db, delegationsTable, deliveriesTable, deliveryAssignmentsTable, folgasTable, historyEventsTable, libraryDocumentFilesTable, libraryDocumentVersionsTable, libraryDocumentsTable, libraryViewsTable, locationsTable, messageThreadParticipantsTable, messageThreadsTable, messagesTable, operationalCheckInsTable, operationLocationsTable, operationsTable, organizationsTable, pool, scaleAllocationsTable, scalesTable, userNotificationsTable, userRolesTable, usersTable } from "@workspace/db";
+import { aiMessages, agendaEventsTable, announcementCommentsTable, announcementReadsTable, announcementRecipientsTable, announcementsTable, areaLocalSupervisorsTable, areasTable, conversations, dailyBookAssignmentsTable, dailyBookBlocksTable, dailyBookPositionsTable, dailyBookScenesTable, dailyBooksTable, db, delegationsTable, deliveriesTable, deliveryAssignmentsTable, folgasTable, historyEventsTable, libraryDocumentFilesTable, libraryDocumentVersionsTable, libraryDocumentsTable, libraryViewsTable, locationsTable, messageThreadParticipantsTable, messageThreadsTable, messagesTable, notificationOutboxTable, operationalCheckInsTable, operationLocationsTable, operationsTable, organizationsTable, pool, scaleAllocationsTable, scalesTable, userNotificationsTable, userRolesTable, usersTable } from "@workspace/db";
 import app from "../src/application.js";
 import { signAccessToken } from "../src/lib/jwt.service.js";
 import { operationalDate } from "../src/lib/operational-date.js";
@@ -434,6 +434,8 @@ async function run() {
     await db.delete(messagesTable).where(inArray(messagesTable.senderId, all.map(user => user.id)));
     await db.delete(messageThreadParticipantsTable).where(inArray(messageThreadParticipantsTable.userId, all.map(user => user.id)));
     await db.delete(messageThreadsTable).where(eq(messageThreadsTable.orgId, org!.id));
+    // Publicar aviso agora enfileira o aviso no sino (outbox): sai antes dos usuários, por causa da chave estrangeira.
+    await db.delete(notificationOutboxTable).where(inArray(notificationOutboxTable.userId, all.map(user => user.id)));
     await db.delete(userNotificationsTable).where(inArray(userNotificationsTable.userId, all.map(user => user.id)));
     await db.delete(delegationsTable).where(eq(delegationsTable.operationId, operation!.id));
     await db.delete(operationalCheckInsTable).where(eq(operationalCheckInsTable.orgId, org!.id));

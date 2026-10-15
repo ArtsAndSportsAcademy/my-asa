@@ -1,14 +1,15 @@
 import { Router, type IRouter } from "express";
 import { and, desc, eq, gte, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
-import { db, announcementCommentsTable, announcementReadsTable, announcementRecipientsTable, announcementsTable, areaLocalSupervisorsTable, areasTable, locationsTable, scaleAllocationsTable, scalesTable, usersTable } from "@workspace/db";
+import { db, announcementCommentsTable, announcementReadsTable, announcementRecipientsTable, announcementsTable, areaLocalSupervisorsTable, areasTable, locationsTable, notificationOutboxTable, scaleAllocationsTable, scalesTable, usersTable } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { normalizeReason, requireReason } from "../lib/reason.js";
 import { canReadAnnouncement } from "../services/announcement-access.js";
 import { confirmAnnouncementRead } from "../services/announcement-confirmation.js";
 import { listCommunicationPeople } from "../services/communication-directory.js";
-import { announcementAudience } from "../services/announcement-audience.js";
+import { announcementAudience, announcementAudienceIds } from "../services/announcement-audience.js";
 import { aniversariosDaCasa } from "../services/aniversarios.js";
+import type { CreateNotificationInput } from "../services/notificationService.js";
 
 const router: IRouter = Router();
 type Scope = "HOUSE" | "AREA" | "LOCATION" | "PEOPLE";
@@ -24,6 +25,32 @@ async function ownArea(userId: string) {
   const [row] = await db.select({ areaId: usersTable.areaId }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   return row?.areaId ?? null;
 }
+
+/**
+ * Quem gerencia o aviso (cancelar, ver quem falta): Administração, Direção, quem publicou e a Supervisão
+ * da área do aviso. Aviso da casa, de um local ou de pessoas escolhidas não pertence a nenhuma área —
+ * quem não tem área (`myArea` nulo) nunca pode ser tratado como "da mesma área" que ele.
+ */
+function managesPost(req: any, post: { authorId: string; areaId: string | null }, myArea: string | null) {
+  return isAdmin(req) || isDirection(req) || post.authorId === req.user.sub
+    || (isSupervisor(req) && myArea !== null && post.areaId !== null && post.areaId === myArea);
+}
+
+/**
+ * Um aviso no sino por pessoa e por acontecimento. Entra na mesma transação de quem publica (se a
+ * publicação falhar, ninguém é avisado de nada) e a chave impede repetir se o pedido for refeito.
+ */
+async function avisarNoSino(tx: any, userIds: string[], chave: string, build: (userId: string) => CreateNotificationInput) {
+  const unicos = [...new Set(userIds)];
+  const agora = new Date();
+  for (let i = 0; i < unicos.length; i += 500) {
+    await tx.insert(notificationOutboxTable)
+      .values(unicos.slice(i, i + 500).map(userId => ({ userId, payload: build(userId), dueAt: agora, deduplicationKey: `${chave}:${userId}` })))
+      .onConflictDoNothing();
+  }
+}
+
+const resumo = (texto: string, limite = 100) => texto.length > limite ? `${texto.slice(0, limite - 1).trimEnd()}…` : texto;
 
 /** Início do dia de hoje em São Paulo (UTC−3, sem horário de verão). */
 function startOfTodaySaoPaulo(now = new Date()) {
@@ -74,7 +101,7 @@ router.get("/communication/mural", requireAuth, requireOrganization, async (req,
     const reactionCounts = new Map(reactions.map(row => [row.announcementId, row.count]));
     // Mesma regra da rota de cancelar: a tela só oferece "cancelar aviso" a quem o servidor deixaria cancelar.
     const myArea = isSupervisor(req) ? await ownArea(req.user!.sub) : null;
-    const canCancel = (post: typeof rows[number]) => post.type === "NOTICE" && (isAdmin(req) || isDirection(req) || post.authorId === req.user!.sub || (isSupervisor(req) && myArea !== null && post.areaId === myArea));
+    const canCancel = (post: typeof rows[number]) => post.type === "NOTICE" && managesPost(req, post, myArea);
     // Aviso para pessoas escolhidas mostra para quem foi (nomes de uso, sem contato).
     const peopleIds = visible.filter(post => post.scope === "PEOPLE").map(post => post.id);
     const recipientRows = peopleIds.length ? await db.select({ announcementId: announcementRecipientsTable.announcementId, name: usersTable.name }).from(announcementRecipientsTable).innerJoin(usersTable, eq(announcementRecipientsTable.userId, usersTable.id)).where(inArray(announcementRecipientsTable.announcementId, peopleIds)).orderBy(usersTable.name) : [];
@@ -98,7 +125,7 @@ router.get("/communication/mural/:id/cientes", requireAuth, requireOrganization,
   try {
     const [post] = await db.select().from(announcementsTable).where(and(eq(announcementsTable.id, String(req.params.id)), eq(announcementsTable.orgId, req.user!.organizationId), eq(announcementsTable.active, true), isNull(announcementsTable.cancelledAt))).limit(1);
     if (!post || post.type !== "NOTICE" || !post.requiresConfirmation) { res.status(404).json({ error: "Aviso com ciente não encontrado" }); return; }
-    const manages = isAdmin(req) || isDirection(req) || post.authorId === req.user!.sub || (isSupervisor(req) && post.areaId !== null && post.areaId === await ownArea(req.user!.sub));
+    const manages = managesPost(req, post, isSupervisor(req) ? await ownArea(req.user!.sub) : null);
     if (!manages) { res.status(403).json({ error: "Só quem gerencia o aviso vê quem falta" }); return; }
     res.json(await announcementAudience(post));
   } catch (error) { console.error("[communication] GET cientes", error); res.status(500).json({ error: "Não consegui contar os cientes" }); }
@@ -155,10 +182,25 @@ router.post("/communication/mural", requireAuth, requireOrganization, async (req
       if (!recipient) { res.status(404).json({ error: "Pessoa não encontrada" }); return; }
     // Decisão de 02/10: Supervisão publica aviso como a Administração — para toda a casa, uma área ou um local.
     } else if (!isAdmin(req) && !isDirection(req) && !isSupervisor(req)) { res.status(403).json({ error: "Sem permissão para publicar aviso" }); return; }
+    // Quem precisa ficar sabendo (sem quem publicou). Aviso: o público dele, pela mesma regra que decide quem lê.
+    // Reconhecimento: a pessoa reconhecida. Pessoas escolhidas já vêm validadas (ativas, da organização) acima.
+    const orgId = req.user!.organizationId!, authorId = req.user!.sub;
+    const quemSabe = type === "NOTICE"
+      ? (scope === "PEOPLE" ? recipientIds.filter(id => id !== authorId)
+        : await announcementAudienceIds({ id: "", orgId, authorId, scope, areaId: scope === "AREA" ? areaId : null, locationId: scope === "LOCATION" ? locationId : null }))
+      : (recipientId && recipientId !== authorId ? [recipientId] : []);
+    const [author] = type === "RECOGNITION" && quemSabe.length ? await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, authorId)).limit(1) : [];
     const [post] = await db.transaction(async tx => {
-      const [created] = await tx.insert(announcementsTable).values({ orgId: req.user!.organizationId, authorId: req.user!.sub, type, scope, areaId: scope === "AREA" ? areaId : null, locationId: scope === "LOCATION" ? locationId : null, recipientId, title: title?.trim() || null, body: body.trim(), reason: type === "RECOGNITION" ? normalizeReason(reason) : null, requiresConfirmation: type === "NOTICE" && Boolean(requiresConfirmation), eventDate }).returning();
+      const [created] = await tx.insert(announcementsTable).values({ orgId, authorId, type, scope, areaId: scope === "AREA" ? areaId : null, locationId: scope === "LOCATION" ? locationId : null, recipientId, title: title?.trim() || null, body: body.trim(), reason: type === "RECOGNITION" ? normalizeReason(reason) : null, requiresConfirmation: type === "NOTICE" && Boolean(requiresConfirmation), eventDate }).returning();
       if (recipientIds.length) await tx.insert(announcementRecipientsTable).values(recipientIds.map(userId => ({ announcementId: created!.id, userId })));
-      await writeHistoryEvent({ category: "NOTICE", action: type === "RECOGNITION" ? "mural.recognition_created" : "mural.notice_created", title: type === "RECOGNITION" ? "Reconhecimento publicado" : "Aviso publicado", narrative: created!.title ?? created!.body.slice(0, 120), entityType: "announcement", entityId: created!.id, actorId: req.user!.sub, orgId: req.user!.organizationId, afterState: created, metadata: { reason: created!.reason, ...(recipientIds.length ? { recipientIds } : {}) } }, tx as any);
+      await writeHistoryEvent({ category: "NOTICE", action: type === "RECOGNITION" ? "mural.recognition_created" : "mural.notice_created", title: type === "RECOGNITION" ? "Reconhecimento publicado" : "Aviso publicado", narrative: created!.title ?? created!.body.slice(0, 120), entityType: "announcement", entityId: created!.id, actorId: authorId, orgId, afterState: created, metadata: { reason: created!.reason, avisados: quemSabe.length, ...(recipientIds.length ? { recipientIds } : {}) } }, tx as any);
+      const assunto = resumo(created!.title ?? created!.body);
+      await avisarNoSino(tx, quemSabe, `mural:${created!.id}:publicado`, userId => type === "RECOGNITION"
+        ? { userId, type: "notice.recognition", title: "Reconhecimento no Mural", message: `${author?.name ?? "Alguém"} publicou um reconhecimento para você: ${resumo(created!.reason ?? created!.body)}`, priority: "NORMAL", category: "notice", entityType: "announcement", entityId: created!.id, actionUrl: "/mural" }
+        : created!.requiresConfirmation
+          // "notice.requires_ack" é o tipo que também sai como push; o aviso que pede ciente não pode passar batido.
+          ? { userId, type: "notice.requires_ack", title: "Aviso que pede ciente", message: assunto, priority: "IMPORTANT", category: "notice", entityType: "announcement", entityId: created!.id, actionUrl: "/mural" }
+          : { userId, type: "notice.published", title: "Novo aviso no Mural", message: assunto, priority: "NORMAL", category: "notice", entityType: "announcement", entityId: created!.id, actionUrl: "/mural" });
       return [created] as const;
     });
     res.status(201).json({ post });
@@ -228,12 +270,13 @@ router.post("/communication/mural/:id/comments", requireAuth, requireOrganizatio
         announcementId: post.id, authorId: req.user!.sub, body,
       }).returning();
       if (!comment) throw new Error("Não foi possível publicar o comentário");
+      const [author] = await tx.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, req.user!.sub)).limit(1);
       await writeHistoryEvent({
         category: "NOTICE", action: "mural.comment_created", title: "Comentário no Mural",
         narrative: body.slice(0, 120), entityType: "announcement_comment", entityId: comment.id,
         actorId: req.user!.sub, orgId: req.user!.organizationId, afterState: comment,
       }, tx as any);
-      return { status: "created" as const, comment };
+      return { status: "created" as const, comment: { ...comment, authorName: author?.name ?? "" } };
     });
     if (result.status === "unavailable") { res.status(404).json({ error: "Publicação não encontrada" }); return; }
     res.status(201).json({ comment: result.comment });
@@ -266,13 +309,21 @@ router.post("/communication/mural/:id/cancel", requireAuth, requireOrganization,
     const [post] = await db.select().from(announcementsTable)
       .where(and(eq(announcementsTable.id, id), eq(announcementsTable.orgId, req.user!.organizationId), eq(announcementsTable.active, true), isNull(announcementsTable.cancelledAt))).limit(1);
     if (!post || post.type !== "NOTICE") { res.status(404).json({ error: "Aviso não encontrado" }); return; }
-    const allowed = isAdmin(req) || isDirection(req) || post.authorId === req.user!.sub || (isSupervisor(req) && post.areaId === await ownArea(req.user!.sub));
-    if (!allowed) { res.status(403).json({ error: "Sem permissão para cancelar este aviso" }); return; }
+    const allowed = managesPost(req, post, isSupervisor(req) ? await ownArea(req.user!.sub) : null);
+    if (!allowed) { res.status(403).json({ error: "Só a Administração, a Direção, quem publicou o aviso ou a Supervisão da área dele pode cancelar" }); return; }
+    // Quem já recebeu o aviso precisa saber que ele não vale mais — e quem o publicou, quando foi outra pessoa que cancelou.
+    const orgId = req.user!.organizationId!, quem = req.user!.sub;
+    const quemSabe = [...await announcementAudienceIds({ ...post, orgId }), post.authorId].filter(userId => userId !== quem);
     const [cancelled] = await db.transaction(async tx => {
       const [updated] = await tx.update(announcementsTable).set({ cancelledAt: new Date(), cancellationReason: normalizeReason(reason), updatedAt: new Date() })
         .where(and(eq(announcementsTable.id, id), isNull(announcementsTable.cancelledAt))).returning();
       if (!updated) throw new Error("Aviso já foi cancelado");
-      await writeHistoryEvent({ category: "NOTICE", action: "mural.notice_cancelled", title: "Aviso cancelado", narrative: updated.title ?? updated.body.slice(0, 120), entityType: "announcement", entityId: id, actorId: req.user!.sub, orgId: req.user!.organizationId, beforeState: post, afterState: updated, metadata: { reason: normalizeReason(reason) } }, tx as any);
+      await writeHistoryEvent({ category: "NOTICE", action: "mural.notice_cancelled", title: "Aviso cancelado", narrative: updated.title ?? updated.body.slice(0, 120), entityType: "announcement", entityId: id, actorId: quem, orgId, beforeState: post, afterState: updated, metadata: { reason: normalizeReason(reason), avisados: new Set(quemSabe).size } }, tx as any);
+      await avisarNoSino(tx, quemSabe, `mural:${id}:cancelado`, userId => ({
+        userId, type: "notice.cancelled", title: "Aviso cancelado",
+        message: `“${resumo(updated.title ?? updated.body, 70)}” foi cancelado. Motivo: ${resumo(normalizeReason(reason) ?? "", 120)}`,
+        priority: updated.requiresConfirmation ? "IMPORTANT" : "NORMAL", category: "notice", entityType: "announcement", entityId: id, actionUrl: "/mural",
+      }));
       return [updated] as const;
     });
     res.json({ post: cancelled });
