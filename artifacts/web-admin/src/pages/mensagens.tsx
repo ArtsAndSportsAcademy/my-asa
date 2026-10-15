@@ -89,7 +89,8 @@ export function MessagesPage({ role }: { role: Role }) {
   const [texto, setTexto] = useState(""), [rascunhos, setRascunhos] = useState<Record<string, string>>({}), [citando, setCitando] = useState<Msg | null>(null);
   const [figurinhasAbertas, setFigurinhasAbertas] = useState(false), [reagindoEm, setReagindoEm] = useState<string | null>(null), [selecionada, setSelecionada] = useState<string | null>(null);
   const [novaAberta, setNovaAberta] = useState(false), [integrantesAberto, setIntegrantesAberto] = useState(false), [gruposAberto, setGruposAberto] = useState(false), [vistoPorDe, setVistoPorDe] = useState<Msg | null>(null);
-  const amostra = useRef(amostraDeConversas(eu || "Julia"));
+  // Os dados de exemplo (com nomes do elenco) só existem na revisão local: em produção `sample` é falso, a função nunca roda e o build a descarta (regra D1).
+  const amostra = useRef(sample ? amostraDeConversas(eu || REVIEW_PERSON.mem) : null);
   const rolagem = useRef<HTMLDivElement>(null), colada = useRef(true);
 
   const ativa = conversas.find(conversa => conversa.id === ativaId) ?? null;
@@ -98,7 +99,7 @@ export function MessagesPage({ role }: { role: Role }) {
   // ─ Lista ─
   const carregarLista = useCallback((silencioso = false) => {
     if (sample) {
-      setConversas(amostra.current.conversas); setPessoas(samplePeople); setAreas(sampleAreas); setCarregouLista(true); return;
+      setConversas(amostra.current!.conversas); setPessoas(samplePeople); setAreas(sampleAreas); setCarregouLista(true); return;
     }
     if (!silencioso) setErroLista("");
     Promise.all([customFetch<{ threads: Conversa[] }>("/api/messages/threads"), customFetch<{ people: Person[] }>("/api/communication/people")])
@@ -120,7 +121,7 @@ export function MessagesPage({ role }: { role: Role }) {
   const abrir = useCallback(async (id: string) => {
     setAtivaId(id); setErroConversa(""); setCitando(null); setFigurinhasAbertas(false); setReagindoEm(null); colada.current = true;
     setConversas(rows => rows.map(row => row.id === id ? { ...row, unreadCount: 0 } : row));
-    if (sample) { aplicarConversa(amostra.current.mensagens[id] ?? [], amostra.current.conversas.find(row => row.id === id)?.participants ?? []); return; }
+    if (sample) { aplicarConversa(amostra.current!.mensagens[id] ?? [], amostra.current!.conversas.find(row => row.id === id)?.participants ?? []); return; }
     setCarregandoConversa(true);
     try {
       // Abrir marca como visto; as atualizações automáticas (abaixo) usam ?semLer=1 e não marcam.
@@ -158,7 +159,7 @@ export function MessagesPage({ role }: { role: Role }) {
   }, [sample, ativaId, meuId]);
 
   // Na amostra, o que se escreve e reage fica guardado enquanto a página está aberta (para revisar sem servidor).
-  useEffect(() => { if (sample && ativaId) amostra.current.mensagens[ativaId] = mensagens; }, [sample, ativaId, mensagens]);
+  useEffect(() => { if (sample && ativaId && amostra.current) amostra.current.mensagens[ativaId] = mensagens; }, [sample, ativaId, mensagens]);
 
   // Rola para o fim quando chega mensagem, a menos que a pessoa tenha subido para ler o que veio antes.
   useEffect(() => { const el = rolagem.current; if (el && colada.current) el.scrollTop = el.scrollHeight; }, [mensagens, ativaId]);
@@ -329,7 +330,7 @@ function EscolherPessoas({ pessoas, escolhidas, onChange, rotulo }: { pessoas: P
 
 // ─── Nova conversa ou grupo ───────────────────────────────────────────────────
 
-function NovaConversa({ pessoas, sample, amostra, eu, onClose, onCriada }: { pessoas: Person[]; sample: boolean; amostra: ReturnType<typeof amostraDeConversas>; eu: string; onClose: () => void; onCriada: (id: string, lista?: Conversa[]) => Promise<void> }) {
+function NovaConversa({ pessoas, sample, amostra, eu, onClose, onCriada }: { pessoas: Person[]; sample: boolean; amostra: ReturnType<typeof amostraDeConversas> | null; eu: string; onClose: () => void; onCriada: (id: string, lista?: Conversa[]) => Promise<void> }) {
   const [modo, setModo] = useState<"conversa" | "grupo">("conversa");
   const [escolhidas, setEscolhidas] = useState<Set<string>>(() => new Set()), [erro, setErro] = useState(""), [criando, setCriando] = useState(false);
   const criar = async (event: FormEvent<HTMLFormElement>) => {
@@ -344,8 +345,8 @@ function NovaConversa({ pessoas, sample, amostra, eu, onClose, onCriada }: { pes
         const escolhidasPessoas = pessoas.filter(p => escolhidas.has(p.id));
         const id = `amostra-${Date.now()}`;
         const nova: Conversa = { id, title: modo === "conversa" ? escolhidasPessoas[0]!.name : nome, contextType: modo === "conversa" ? "DIRECT" : "GROUP", participants: [{ userId: "me", name: eu, role: "INITIATOR" }, ...escolhidasPessoas.map(p => ({ userId: p.id, name: p.name }))], lastMessage: null, myRole: "INITIATOR", podeGerir: modo === "grupo", createdAt: now() };
-        amostra.conversas.unshift(nova); amostra.mensagens[id] = [];
-        await onCriada(id, [...amostra.conversas]); return;
+        amostra!.conversas.unshift(nova); amostra!.mensagens[id] = [];
+        await onCriada(id, [...amostra!.conversas]); return;
       }
       const resposta = await customFetch<{ thread: { id: string } }>("/api/messages/threads", { method: "POST", body: JSON.stringify({ participantIds: [...escolhidas], ...(modo === "grupo" ? { title: nome, grupo: true } : {}) }) });
       await onCriada(resposta.thread.id);
@@ -406,12 +407,15 @@ function Integrantes({ conversa, participantes, pessoas, meuId, gestao, sample, 
 
 // ─── Grupos da casa (Administração e Direção) ─────────────────────────────────
 
+/** Exemplo da revisão local, com nomes do elenco. `import.meta.env.DEV` é resolvido na compilação: em produção isto vira lista vazia e os nomes não entram no pacote (regra D1). */
+const amostraDeGrupos = (): GrupoAdmin[] => !import.meta.env.DEV ? [] : [
+  { id: "g1", title: "Meninas", tipo: "HOUSE_GROUP", status: "OPEN", criadoPor: "Barbara", integrantes: [{ userId: "a", name: "Carol" }, { userId: "b", name: "Sofia" }], total: 2, ultimaMensagemEm: new Date().toISOString() },
+  { id: "g2", title: "Mídias do Natal", tipo: "GROUP", status: "OPEN", criadoPor: "Louis", integrantes: [{ userId: "c", name: "Louis" }, { userId: "d", name: "Sofia" }, { userId: "e", name: "Julia" }], total: 3, ultimaMensagemEm: new Date().toISOString() },
+  { id: "g3", title: "Patinadores · grupo da área", tipo: "AREA_GROUP", status: "OPEN", criadoPor: null, integrantes: [{ userId: "f", name: "Carol" }], total: 12, ultimaMensagemEm: null },
+];
+
 function GruposDaCasa({ pessoas, areas, sample, onClose, onMudou }: { pessoas: Person[]; areas: Option[]; sample: boolean; onClose: () => void; onMudou: () => void }) {
-  const [grupos, setGrupos] = useState<GrupoAdmin[] | null>(sample ? [
-    { id: "g1", title: "Meninas", tipo: "HOUSE_GROUP", status: "OPEN", criadoPor: "Barbara", integrantes: [{ userId: "a", name: "Carol" }, { userId: "b", name: "Sofia" }], total: 2, ultimaMensagemEm: new Date().toISOString() },
-    { id: "g2", title: "Mídias do Natal", tipo: "GROUP", status: "OPEN", criadoPor: "Louis", integrantes: [{ userId: "c", name: "Louis" }, { userId: "d", name: "Sofia" }, { userId: "e", name: "Julia" }], total: 3, ultimaMensagemEm: new Date().toISOString() },
-    { id: "g3", title: "Patinadores · grupo da área", tipo: "AREA_GROUP", status: "OPEN", criadoPor: null, integrantes: [{ userId: "f", name: "Carol" }], total: 12, ultimaMensagemEm: null },
-  ] : null);
+  const [grupos, setGrupos] = useState<GrupoAdmin[] | null>(sample ? amostraDeGrupos() : null);
   const [erro, setErro] = useState(""), [criando, setCriando] = useState(false), [aberto, setAberto] = useState<string | null>(null), [ocupado, setOcupado] = useState(false);
   const [escolhidas, setEscolhidas] = useState<Set<string>>(() => new Set()), [areasEscolhidas, setAreasEscolhidas] = useState<Set<string>>(() => new Set());
   const carregar = () => customFetch<{ grupos: GrupoAdmin[] }>("/api/messages/grupos").then(r => setGrupos(r.grupos)).catch(err => setErro(serverError(err, "Não consegui listar os grupos.")));
