@@ -7,7 +7,7 @@
  * Dado sensível (doc 12): ocorrência só aparece com nome para a própria pessoa, a supervisão dela e a
  * Administração. A Direção vê número, nunca nome.
  */
-import { and, desc, eq, gte, inArray, isNull, lte, notInArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lte, ne, notInArray, or, sql } from "drizzle-orm";
 import {
   announcementsTable,
   dayCheckInsTable,
@@ -28,6 +28,7 @@ import { APP_ROUTES } from "../lib/app-routes.js";
 import { comoPublicada, escalaPublicada, montarEscalaDoDia, type BlocoDia, type EscalaDia } from "./escala-dia.js";
 import { listAreaLocalScopes } from "./area-local-scope.js";
 import { canReadAnnouncement } from "./announcement-access.js";
+import { janelaDoMural } from "./mural-janela.js";
 import { aniversariosDaCasa } from "./aniversarios.js";
 import { pedidosEsperando } from "./solicitacoes.js";
 
@@ -71,7 +72,9 @@ async function mural(actor: { sub: string; organizationId: string; role: string 
     id: announcementsTable.id, type: announcementsTable.type, scope: announcementsTable.scope, title: announcementsTable.title, body: announcementsTable.body,
     areaId: announcementsTable.areaId, locationId: announcementsTable.locationId, recipientId: announcementsTable.recipientId, authorId: announcementsTable.authorId, authorName: usersTable.name,
   }).from(announcementsTable).innerJoin(usersTable, eq(announcementsTable.authorId, usersTable.id))
-    .where(and(eq(announcementsTable.orgId, actor.organizationId), eq(announcementsTable.active, true), isNull(announcementsTable.cancelledAt)))
+    // Mesma janela do Mural (mês atual e o seguinte). Publicação casual para a casa inteira fica só no Mural:
+    // as três linhas do Meu Dia são para aviso, reconhecimento e o que foi dirigido à pessoa.
+    .where(and(eq(announcementsTable.orgId, actor.organizationId), eq(announcementsTable.active, true), isNull(announcementsTable.cancelledAt), gte(announcementsTable.publishedAt, janelaDoMural().inicio), or(ne(announcementsTable.type, "POST"), ne(announcementsTable.scope, "HOUSE"))))
     .orderBy(desc(announcementsTable.publishedAt)).limit(20);
   const out: MeuDia["mural"] = [];
   // Aniversário de hoje sobe para o alto (só quem escolheu "mural no meu dia"; dia e mês, nunca o ano).

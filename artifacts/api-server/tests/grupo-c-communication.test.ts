@@ -4,6 +4,7 @@ import { and, eq, inArray, or } from "drizzle-orm";
 import { aiMessages, agendaEventsTable, announcementCommentsTable, announcementReadsTable, announcementRecipientsTable, announcementsTable, areaLocalSupervisorsTable, areasTable, conversations, dailyBookAssignmentsTable, dailyBookBlocksTable, dailyBookPositionsTable, dailyBookScenesTable, dailyBooksTable, db, delegationsTable, deliveriesTable, deliveryAssignmentsTable, folgasTable, historyEventsTable, libraryDocumentFilesTable, libraryDocumentVersionsTable, libraryDocumentsTable, libraryViewsTable, locationsTable, messageThreadParticipantsTable, messageThreadsTable, messagesTable, notificationOutboxTable, operationalCheckInsTable, operationLocationsTable, operationsTable, organizationsTable, pool, scaleAllocationsTable, scalesTable, userNotificationsTable, userRolesTable, usersTable } from "@workspace/db";
 import app from "../src/application.js";
 import { signAccessToken } from "../src/lib/jwt.service.js";
+import { janelaDoMural } from "../src/services/mural-janela.js";
 import { operationalDate } from "../src/lib/operational-date.js";
 import { tasksTable } from "@workspace/db";
 
@@ -265,7 +266,8 @@ async function run() {
     const destinations = await supApi("/communication/destinations");
     const destinationsBody = await destinations.json() as { areas: { id: string }[]; locations: { id: string }[] };
     assert(destinations.status === 200 && [area!.id, otherArea!.id].every(id => destinationsBody.areas.some(item => item.id === id)) && [location!.id, unassignedLocation!.id].every(id => destinationsBody.locations.some(item => item.id === id)), "Supervisão recebe todas as áreas e locais como destino de aviso");
-    assert((await memApi("/communication/destinations")).status === 403, "Elenco não recebe a lista de destinos de aviso");
+    // Decisão de 14/10/2026: o Elenco também publica no Mural (publicação para a casa, uma área, um local ou pessoas).
+    assert((await memApi("/communication/destinations")).status === 200, "Elenco recebe a lista de destinos para publicar");
     const areaNotice = await post(supApi, "/communication/mural", { type: "NOTICE", scope: "AREA", areaId: area!.id, body: "Somente patinadores" }); assert(areaNotice.status === 201, "Supervisão publica para sua própria área");
     const outsiderFeed = await outsideApi("/communication/mural"); const outsiderPosts = await outsiderFeed.json() as { posts: { id: string }[] }; const areaNoticeId = ((await areaNotice.clone().json()) as { post: { id: string } }).post.id; assert(!outsiderPosts.posts.some(post => post.id === areaNoticeId), "Mural não vaza aviso de outra área");
     const feedOf = async (api: typeof adminApi) => ((await (await api("/communication/mural")).json()) as { posts: Array<{ id: string; canCancel?: boolean; authorId?: string }> }).posts;
@@ -273,13 +275,16 @@ async function run() {
     assert(supPosts.find(item => item.id === areaNoticeId)?.canCancel === true && adminPosts.find(item => item.id === areaNoticeId)?.canCancel === true && memPosts.find(item => item.id === areaNoticeId)?.canCancel === false, "Mural diz a cada perfil se pode cancelar o aviso: Supervisão da área e Administração sim, Elenco não");
     assert(memPosts.length > 0 && memPosts.every(item => item.authorId === undefined), "Feed do Mural não expõe o id de quem publicou");
     // Desenho 22 (06/10): "X de Y deram ciente", quem falta, data do evento e aniversário com Parabéns.
-    const ackNotice = await post(adminApi, "/communication/mural", { type: "NOTICE", scope: "AREA", areaId: area!.id, body: `${tag}_ciente_area`, requiresConfirmation: true, eventDate: "2026-12-24" });
+    // O Mural só mostra o mês atual e o seguinte: a data do evento é o dia 15 do mês que vem (não uma data fixa, que envelhece).
+    const [anoFimJanela, mesFimJanela] = janelaDoMural().fimYmd.split("-").map(Number) as [number, number];
+    const dataDoEvento = new Date(Date.UTC(anoFimJanela, mesFimJanela - 2, 15)).toISOString().slice(0, 10);
+    const ackNotice = await post(adminApi, "/communication/mural", { type: "NOTICE", scope: "AREA", areaId: area!.id, body: `${tag}_ciente_area`, requiresConfirmation: true, eventDate: dataDoEvento });
     const ackNoticeId = ((await ackNotice.json()) as { post: { id: string; eventDate?: string } }).post.id;
     assert(ackNotice.status === 201, "Aviso com data do evento é publicado");
     assert((await post(adminApi, "/communication/mural", { type: "NOTICE", scope: "HOUSE", body: "data ruim", eventDate: "24/12/2026" })).status === 400, "Data do evento em formato errado é recusada");
     await post(memApi, `/communication/mural/${ackNoticeId}/ack`);
     const adminAck = ((await (await adminApi("/communication/mural")).json()) as { posts: Array<{ id: string; ackSummary?: { total: number; confirmados: number }; eventDate?: string }> }).posts.find(item => item.id === ackNoticeId);
-    assert(adminAck?.eventDate === "2026-12-24", "O feed devolve a data do evento");
+    assert(adminAck?.eventDate === dataDoEvento, "O feed devolve a data do evento");
     assert(adminAck?.ackSummary?.total === 2 && adminAck.ackSummary.confirmados === 1, `Administração vê "1 de 2 deram ciente" no aviso da área (sup e mem): ${JSON.stringify(adminAck?.ackSummary)}`);
     const memAck = ((await (await memApi("/communication/mural")).json()) as { posts: Array<{ id: string; ackSummary?: unknown }> }).posts.find(item => item.id === ackNoticeId);
     assert(Boolean(memAck) && memAck!.ackSummary === undefined, "Elenco não vê a contagem de cientes");

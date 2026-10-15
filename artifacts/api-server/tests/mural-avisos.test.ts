@@ -85,7 +85,7 @@ async function run() {
     // ── Quem pode cancelar: Supervisão sem área não cancela aviso da casa ──
     const semAreaCancela = await post(supSemAreaApi, `/communication/mural/${casaId}/cancel`, { reason: "Tentando cancelar o que não é meu" });
     const semAreaErro = await semAreaCancela.json() as { error?: string };
-    assert(semAreaCancela.status === 403 && /pode cancelar/.test(semAreaErro.error ?? ""), `Supervisão sem área não cancela aviso da casa, e a recusa explica quem pode (${semAreaCancela.status}: ${semAreaErro.error})`);
+    assert(semAreaCancela.status === 403 && /pode remover/.test(semAreaErro.error ?? ""), `Supervisão sem área não cancela aviso da casa, e a recusa explica quem pode (${semAreaCancela.status}: ${semAreaErro.error})`);
     const semAreaCientes = await supSemAreaApi(`/communication/mural/${casaId}/cientes`);
     assert(semAreaCientes.status === 403, "Supervisão sem área também não vê quem falta no aviso da casa");
     const feedSemArea = ((await (await supSemAreaApi("/communication/mural")).json()) as { posts: { id: string; canCancel: boolean }[] }).posts;

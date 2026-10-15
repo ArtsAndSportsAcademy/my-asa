@@ -1,170 +1,22 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useLocation, useSearch } from "wouter";
-import { BookOpen, CalendarDays, Check, ChevronRight, FileText, Heart, MessageCircle, Plus, Search, Send, Sparkles, X } from "lucide-react";
-import { ApiError, customFetch } from "@workspace/api-client-react";
+import { BookOpen, CalendarDays, Check, ChevronRight, FileText, MessageCircle, Plus, Search, Send, X } from "lucide-react";
+import { customFetch } from "@workspace/api-client-react";
 import exampleData from "../../../../design_handoff_my_asa/dados-de-exemplo.json";
+import { REVIEW_PERSON } from "@/lib/amostra";
+import { useAuth } from "@/hooks/useAuth";
+import { Modal, State, displayDate, initials, now, serverError, type Person, type Role } from "@/components/comm-ui";
 import "./communication.css";
 
-type Role = "adm" | "dir" | "sup" | "mem";
-type Person = { id: string; name: string; areaName?: string | null };
-type Post = { id: string; type: "NOTICE" | "RECOGNITION" | "BIRTHDAY" | "TENURE"; scope: "HOUSE" | "AREA" | "LOCATION" | "PEOPLE"; recipientNames?: string[]; title?: string | null; body: string; reason?: string | null; recipientId?: string | null; authorName: string; areaName?: string | null; locationName?: string | null; requiresConfirmation: boolean; publishedAt?: string; mine?: { confirmedAt?: string | null; reaction?: string | null } | null; commentCount?: number; canCancel?: boolean; reactionCount?: number; eventDate?: string | null; ackSummary?: { total: number; confirmados: number } };
-type Missing = { post: Post; total?: number; confirmados?: number; faltam?: { id: string; name: string }[]; error?: string };
-type Option = { id: string; name: string };
-/** Texto do servidor quando ele explica o porquê; senão, o texto da tela. */
-const serverError = (err: unknown, fallback: string) => {
-  if (err instanceof ApiError) { const data = err.data as { error?: string; message?: string } | null; return data?.error ?? data?.message ?? fallback; }
-  return fallback;
-};
+// O Mural mora em pages/mural.tsx; aqui ficam as Mensagens e a Biblioteca.
 type Thread = { id: string; title: string; groupId?: string | null; contextType?: string | null; participants: { userId: string; name: string }[]; lastMessage?: { content: string; senderName: string; createdAt: string } | null; unreadCount?: number; pinned?: boolean; muted?: boolean };
 type Message = { id: string; content: string; senderId: string; senderName: string; createdAt: string; quotedMessageId?: string | null };
 type LibraryCitation = { pageNumber: number; excerpt: string };
 type LibraryDoc = { id: string; title: string; type: string; body?: string | null; summary?: string | null; version: number; status: string; categoryId?: string | null; responsibleName?: string | null; publishedAt?: string | null; fileUrl?: string | null; fileName?: string | null; tags?: string[]; requiresConfirmation?: boolean; scopeType?: "HOUSE" | "AREA" | "LOCATION" };
 
-import { REVIEW_PERSON } from "@/lib/amostra";
-import { useAuth } from "@/hooks/useAuth";
 const samplePeople: Person[] = exampleData.pessoas.map((person, index) => ({ id: `sample-person-${index}`, name: person.nome_de_exibicao, areaName: exampleData.areas.find(area => area.id === person.area)?.nome ?? null }));
-const now = () => new Date().toISOString();
-const displayDate = (value?: string) => value ? new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(value)) : "agora";
-const peopleText = (names: string[] = []) => !names.length ? "pessoas escolhidas" : names.length <= 3 ? (names.length === 1 ? names[0]! : `${names.slice(0, -1).join(", ")} e ${names.at(-1)}`) : `${names.slice(0, 2).join(", ")} e mais ${names.length - 2}`;
-const scopeText = (post: Pick<Post, "scope" | "areaName" | "locationName" | "recipientNames">) => post.scope === "HOUSE" ? "toda a casa" : post.scope === "AREA" ? post.areaName ?? "uma área" : post.scope === "PEOPLE" ? peopleText(post.recipientNames) : post.locationName ?? "um local";
-const initials = (name: string) => name.split(/\s+/).map(part => part[0]).join("").slice(0, 2).toUpperCase();
 const TIPO_DOC: Record<string, string> = { OPERATIONAL_PROCEDURE: "Procedimento operacional", RULES_AND_POLICIES: "Regras e políticas", CHARACTER_REFERENCE: "Referência de personagens", COSTUME_REFERENCE: "Referência de figurinos", ONBOARDING_MATERIAL: "Material de integração", SAFETY_PROCEDURE: "Procedimento de segurança" };
 const tipoDoc = (type: string) => TIPO_DOC[type] ?? "Documento";
-const samplePosts = (): Post[] => [
-  { id: "sample-birthday", type: "BIRTHDAY", scope: "HOUSE", body: "Hoje é aniversário de Carol!", recipientId: samplePeople.find(person => person.name === "Carol")?.id ?? null, authorName: "Carol", requiresConfirmation: false, publishedAt: now(), commentCount: 3, reactionCount: 12 },
-  { id: "sample-notice", type: "NOTICE", scope: "HOUSE", title: "Mudança no encontro de quinta", body: "A chamada de quinta começa às 9:30. Confirme a leitura para este aviso sair do topo.", eventDate: new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10), authorName: "Barbara", requiresConfirmation: true, publishedAt: now(), commentCount: 0 },
-  { id: "sample-recognition", type: "RECOGNITION", scope: "HOUSE", body: "Obrigada por segurar a troca de cena com calma e atenção hoje.", reason: "Cuidado com a equipe", recipientId: samplePeople.find(person => person.name === "Carol")?.id ?? null, authorName: "Deborah", requiresConfirmation: false, publishedAt: now(), commentCount: 2 },
-];
-
-function State({ loading, error, empty, emptyHint, onRetry, children }: { loading: boolean; error: string; empty: boolean; emptyHint?: string; onRetry: () => void; children: React.ReactNode }) {
-  if (loading) return <div className="comm-state comm-skeleton" aria-busy="true"><i/><i/><i/></div>;
-  if (error) return <div className="comm-state comm-error"><img src="/asa/duvida.webp" alt=""/><strong>{error}</strong><button onClick={onRetry}>Tentar de novo</button></div>;
-  if (empty) return <div className="comm-state"><img src="/asa/oi.webp" alt=""/><strong>Ainda não há nada aqui</strong><span>{emptyHint ?? "Quando houver algo no seu acesso, aparece no mural."}</span></div>;
-  return <>{children}</>;
-}
-
-export function MuralPage({ role }: { role: Role }) {
-  const sample = import.meta.env.DEV && new URLSearchParams(window.location.search).get("amostra") === "1";
-  const [posts, setPosts] = useState<Post[]>([]), [people, setPeople] = useState<Person[]>([]), [loading, setLoading] = useState(true), [error, setError] = useState(""), [composer, setComposer] = useState<"NOTICE" | "RECOGNITION" | null>(null), [search, setSearch] = useState(""), [commentFor, setCommentFor] = useState<string | null>(null), [comments, setComments] = useState<{ id: string; body: string; authorName: string; createdAt: string }[]>([]);
-  const canNotice = role === "adm" || role === "dir" || role === "sup";
-  // Falha de uma ação (ciente, reação, comentário) não derruba o Mural: vira um aviso em cima do feed, que continua lá.
-  const [aviso, setAviso] = useState(""), [ocupados, setOcupados] = useState<Set<string>>(() => new Set());
-  const [commentError, setCommentError] = useState(""), [loadingComments, setLoadingComments] = useState(false), [sendingComment, setSendingComment] = useState(false);
-  const tentar = async (chave: string, falha: string, acao: () => Promise<void>) => {
-    if (ocupados.has(chave)) return;
-    setOcupados(atual => new Set(atual).add(chave)); setAviso("");
-    try { await acao(); }
-    catch (err) { setAviso(serverError(err, falha)); }
-    finally { setOcupados(atual => { const proximo = new Set(atual); proximo.delete(chave); return proximo; }); }
-  };
-  // Destino do aviso: Administração, Direção e Supervisão escolhem — toda a casa, uma área ou um local (decisão de 02/10).
-  const [noticeScope, setNoticeScope] = useState<Post["scope"]>("HOUSE"), [areas, setAreas] = useState<Option[]>([]), [locations, setLocations] = useState<Option[]>([]), [composerError, setComposerError] = useState(""), [publishing, setPublishing] = useState(false);
-  // Desenho 22: "X de Y deram ciente" e quem falta, para quem gerencia o aviso.
-  const [missing, setMissing] = useState<Missing | null>(null);
-  const openMissing = async (post: Post) => {
-    setMissing({ post });
-    if (sample) { setMissing({ post, total: samplePeople.length, confirmados: samplePeople.length - 5, faltam: samplePeople.slice(0, 5) }); return; }
-    try { const data = await customFetch<{ total: number; confirmados: number; faltam: { id: string; name: string }[] }>(`/api/communication/mural/${post.id}/cientes`); setMissing({ post, ...data }); }
-    catch (err) { setMissing({ post, error: serverError(err, "Não consegui ver quem falta agora. Tente de novo.") }); }
-  };
-  const [cancelFor, setCancelFor] = useState<Post | null>(null), [cancelError, setCancelError] = useState(""), [cancelling, setCancelling] = useState(false);
-  // Aviso para pessoas escolhidas (02/10): marca quantas quiser, de qualquer área.
-  const [chosen, setChosen] = useState<Set<string>>(() => new Set()), [peopleSearch, setPeopleSearch] = useState("");
-  const toggleChosen = (id: string) => setChosen(current => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; });
-  const openComposer = (kind: "NOTICE" | "RECOGNITION") => {
-    setComposer(kind); setComposerError(""); setNoticeScope("HOUSE"); setChosen(new Set()); setPeopleSearch("");
-    if (kind !== "NOTICE" || areas.length) return;
-    if (sample) { setAreas(exampleData.areas.map(area => ({ id: area.id, name: area.nome }))); setLocations(exampleData.locais.map(location => ({ id: location.id, name: location.nome }))); return; }
-    customFetch<{ areas: Option[]; locations: Option[] }>("/api/communication/destinations")
-      .then((data) => { setAreas(data.areas); setLocations(data.locations); })
-      .catch(() => setComposerError("Não consegui carregar as áreas e os locais. Você ainda pode avisar toda a casa."));
-  };
-  const cancelNotice = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault(); if (!cancelFor) return;
-    const reason = String(new FormData(event.currentTarget).get("reason") ?? "").trim();
-    if (!reason) { setCancelError("Escreva o motivo do cancelamento."); return; }
-    if (sample) { setPosts(rows => rows.filter(post => post.id !== cancelFor.id)); setCancelFor(null); return; }
-    setCancelling(true); setCancelError("");
-    try { await customFetch(`/api/communication/mural/${cancelFor.id}/cancel`, { method: "POST", body: JSON.stringify({ reason }) }); setPosts(rows => rows.filter(post => post.id !== cancelFor.id)); setCancelFor(null); }
-    catch (err) { setCancelError(serverError(err, "Não consegui cancelar agora. O aviso continua publicado.")); }
-    finally { setCancelling(false); }
-  };
-  // `silencioso`: depois de ciente ou reação a tela já mudou na hora; a releitura só confere, sem piscar nem perder o lugar na rolagem.
-  const reload = (silencioso = false) => { if (!silencioso) setLoading(true); setError(""); if (sample) { setPosts(samplePosts().map(post => ({ ...post, canCancel: post.type === "NOTICE" && role !== "mem", ...(post.type === "NOTICE" && post.requiresConfirmation && role !== "mem" ? { ackSummary: { total: samplePeople.length, confirmados: Math.max(0, samplePeople.length - 5) } } : {}) }))); setPeople(samplePeople); setLoading(false); return; } Promise.all([customFetch<{ posts: Post[] }>("/api/communication/mural"), customFetch<{ people: Person[] }>("/api/communication/people")]).then(([feed, directory]) => { setPosts(feed.posts); setPeople(directory.people); }).catch(() => { if (!silencioso) setError("Não consegui carregar o Mural agora."); }).finally(() => setLoading(false)); };
-  useEffect(() => { reload(); }, [sample, role]);
-  const visible = useMemo(() => posts.filter(post => `${post.title ?? ""} ${post.body} ${post.authorName}`.toLocaleLowerCase("pt-BR").includes(search.toLocaleLowerCase("pt-BR"))), [posts, search]);
-  // A tela só muda depois que o servidor confirma; se ele recusar, o motivo aparece em cima do feed e o botão continua ali.
-  const acknowledge = (id: string) => tentar(`ciente:${id}`, "Não consegui registrar o ciente. Tente de novo.", async () => {
-    if (!sample) await customFetch(`/api/communication/mural/${id}/ack`, { method: "POST" });
-    setPosts(rows => rows.map(post => post.id === id ? { ...post, mine: { ...(post.mine ?? {}), confirmedAt: now() } } : post));
-    if (!sample) reload(true);
-  });
-  const react = (id: string) => tentar(`reagir:${id}`, "Não consegui reagir agora. Tente de novo.", async () => {
-    if (!sample) await customFetch(`/api/communication/mural/${id}/react`, { method: "POST", body: JSON.stringify({ reaction: "♥" }) });
-    setPosts(rows => rows.map(post => post.id === id ? { ...post, reactionCount: (post.reactionCount ?? 0) + (post.mine?.reaction ? 0 : 1), mine: { ...(post.mine ?? {}), reaction: "♥" } } : post));
-    if (!sample) reload(true);
-  });
-  const publish = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); const form = new FormData(event.currentTarget); const type = String(form.get("type")) as "NOTICE" | "RECOGNITION"; const body = String(form.get("body") ?? "").trim(); const recipientId = String(form.get("recipientId") ?? "") || null; const reason = String(form.get("reason") ?? "").trim() || null; const scope = type === "NOTICE" ? noticeScope : "HOUSE"; const areaId = scope === "AREA" ? String(form.get("areaId") ?? "") || null : null; const locationId = scope === "LOCATION" ? String(form.get("locationId") ?? "") || null : null; const recipientIds = scope === "PEOPLE" ? [...chosen] : []; if (scope === "PEOPLE" && !recipientIds.length) { setComposerError("Marque pelo menos uma pessoa."); return; } const eventDate = type === "NOTICE" ? String(form.get("eventDate") ?? "") || null : null; const payload = { type, body, eventDate, title: String(form.get("title") ?? "").trim() || null, recipientId, recipientIds, reason, scope, areaId, locationId, requiresConfirmation: Boolean(form.get("requiresConfirmation")) };
-    if (sample) { const recipient = people.find(person => person.id === recipientId); setPosts(rows => [{ id: `sample-post-${Date.now()}`, ...payload, areaName: areas.find(area => area.id === areaId)?.name ?? (scope === "AREA" ? "sua área" : null), locationName: locations.find(location => location.id === locationId)?.name ?? null, authorName: REVIEW_PERSON[role], recipientId: recipient?.id ?? null, requiresConfirmation: Boolean(payload.requiresConfirmation), publishedAt: now(), commentCount: 0, canCancel: type === "NOTICE", recipientNames: scope === "PEOPLE" ? people.filter(person => chosen.has(person.id)).map(person => person.name) : undefined }, ...rows]); setComposer(null); return; }
-    setPublishing(true); setComposerError("");
-    try { await customFetch("/api/communication/mural", { method: "POST", body: JSON.stringify(payload) }); setComposer(null); reload(); } catch (err) { setComposerError(serverError(err, "Não consegui publicar agora. O que você escreveu continua aqui; confira os campos e tente de novo.")); } finally { setPublishing(false); } };
-  const openComments = async (id: string) => {
-    setCommentFor(id); setComments([]); setCommentError("");
-    if (sample) return;
-    setLoadingComments(true);
-    try { const result = await customFetch<{ comments: { id: string; body: string; authorName: string; createdAt: string }[] }>(`/api/communication/mural/${id}/comments`); setComments(result.comments); }
-    catch (err) { setCommentError(serverError(err, "Não consegui carregar os comentários. Feche e abra de novo.")); }
-    finally { setLoadingComments(false); }
-  };
-  const sendComment = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    // O React zera `event.currentTarget` assim que o clique termina; depois de um `await` ele já é nulo.
-    const form = event.currentTarget;
-    if (!commentFor || sendingComment) return;
-    const body = String(new FormData(form).get("body") ?? "").trim(); if (!body) return;
-    if (sample) { setPosts(rows => rows.map(post => post.id === commentFor ? { ...post, commentCount: (post.commentCount ?? 0) + 1 } : post)); setComments(rows => [...rows, { id: `sample-comment-${Date.now()}`, body, authorName: REVIEW_PERSON[role], createdAt: now() }]); form.reset(); return; }
-    setSendingComment(true); setCommentError("");
-    try {
-      const result = await customFetch<{ comment: { id: string; body: string; authorName: string; createdAt: string } }>(`/api/communication/mural/${commentFor}/comments`, { method: "POST", body: JSON.stringify({ body }) });
-      setComments(rows => [...rows, result.comment]);
-      setPosts(rows => rows.map(post => post.id === commentFor ? { ...post, commentCount: (post.commentCount ?? 0) + 1 } : post));
-      form.reset();
-    } catch (err) { setCommentError(serverError(err, "Não consegui comentar agora. O que você escreveu continua aqui; tente de novo.")); }
-    finally { setSendingComment(false); }
-  };
-  const pinned = visible.filter(post => post.type === "NOTICE" && post.requiresConfirmation && !post.mine?.confirmedAt), feed = visible.filter(post => !pinned.some(item => item.id === post.id));
-  const noticeCount = visible.filter(post => post.type === "NOTICE").length, recognitionCount = visible.filter(post => post.type === "RECOGNITION").length;
-  return <section className="comm-page"><div className="comm-toolbar"><div className="comm-search"><Search size={17}/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar no mural"/></div><div>{canNotice && <button className="comm-secondary" onClick={() => openComposer("NOTICE")}><Plus size={17}/> Aviso</button>}<button className="comm-primary" onClick={() => openComposer("RECOGNITION")}><Sparkles size={17}/> Reconhecer</button></div></div><div className="comm-metrics" aria-label="Resumo do Mural"><article><b>{pinned.length}</b><span>aguardando seu ciente</span></article><article><b>{noticeCount}</b><span>{noticeCount === 1 ? "aviso" : "avisos"}</span></article><article><b>{recognitionCount}</b><span>{recognitionCount === 1 ? "reconhecimento" : "reconhecimentos"}</span></article></div>{aviso && <div className="comm-inline-error" role="alert">{aviso}<button type="button" className="comm-retry" onClick={() => setAviso("")}>Fechar</button></div>}<State loading={loading} error={error} empty={!posts.length} emptyHint={canNotice ? "Use “Aviso” para publicar o primeiro, ou “Reconhecer” para elogiar alguém da equipe." : "Quando houver aviso ou reconhecimento para você, aparece aqui. Você também pode reconhecer um colega."} onRetry={() => reload()}>{!visible.length && posts.length > 0 && <div className="comm-state" role="status"><strong>Nada encontrado</strong><span>Nenhum aviso ou reconhecimento tem “{search.trim()}”.</span><button type="button" onClick={() => setSearch("")}>Limpar a busca</button></div>}{pinned.length > 0 &&<section className="comm-pinned"><header><span>fica aqui até você dar ciente</span><i/></header>{pinned.map(post => <PostCard key={post.id} post={post} people={people} pinned ocupados={ocupados} onAck={acknowledge} onReact={react} onComment={() => void openComments(post.id)} onCancel={() => { setCancelError(""); setCancelFor(post); }} onMissing={() => void openMissing(post)}/>)}</section>}{feed.length > 0 && <header className="comm-feed-title"><span>o mural</span><i/></header>}<div className="comm-feed">{feed.map(post => <PostCard key={post.id} post={post} people={people} ocupados={ocupados} onAck={acknowledge} onReact={react} onComment={() => void openComments(post.id)} onCancel={() => { setCancelError(""); setCancelFor(post); }} onMissing={() => void openMissing(post)}/>)}</div></State>{composer && <Modal title={composer === "NOTICE" ? "Novo aviso" : "Reconhecer alguém"} onClose={() => setComposer(null)}><form className="comm-form" onSubmit={publish}><input type="hidden" name="type" value={composer}/>{composer === "NOTICE" ? <><label>Título<input name="title" placeholder="O que a casa precisa saber"/></label>{<><label>Para<select value={noticeScope} onChange={event => setNoticeScope(event.target.value as Post["scope"])}><option value="HOUSE">Toda a casa</option><option value="AREA">Uma área</option><option value="LOCATION">Um local</option><option value="PEOPLE">Pessoas escolhidas</option></select></label>{noticeScope === "PEOPLE" && <fieldset className="comm-people"><legend>Quem recebe <b>{chosen.size ? `${chosen.size} ${chosen.size === 1 ? "pessoa" : "pessoas"}` : "ninguém marcado ainda"}</b></legend>{chosen.size > 0 && <div className="comm-people-chosen">{people.filter(person => chosen.has(person.id)).map(person => <button type="button" key={person.id} onClick={() => toggleChosen(person.id)} aria-label={`Tirar ${person.name}`}>{person.name} <X size={13}/></button>)}</div>}<input type="search" value={peopleSearch} onChange={event => setPeopleSearch(event.target.value)} placeholder="Buscar pelo nome ou pela área" aria-label="Buscar pessoa"/><div className="comm-people-list" role="group" aria-label="Pessoas">{people.filter(person => `${person.name} ${person.areaName ?? ""}`.toLocaleLowerCase("pt-BR").includes(peopleSearch.trim().toLocaleLowerCase("pt-BR"))).map(person => <label key={person.id} className="comm-check"><input type="checkbox" checked={chosen.has(person.id)} onChange={() => toggleChosen(person.id)}/> {person.name}{person.areaName && <small> · {person.areaName}</small>}</label>)}</div></fieldset>}{noticeScope === "AREA" &&<label>Qual área<select name="areaId" required defaultValue=""><option value="" disabled>Escolha a área</option>{areas.map(area => <option key={area.id} value={area.id}>{area.name}</option>)}</select></label>}{noticeScope === "LOCATION" && <label>Qual local<select name="locationId" required defaultValue=""><option value="" disabled>Escolha o local</option>{locations.map(location => <option key={location.id} value={location.id}>{location.name}</option>)}</select></label>}</>}<label>Data do evento <small>(opcional)</small><input type="date" name="eventDate"/></label><label className="comm-check"><input type="checkbox" name="requiresConfirmation"/> Pede ciente</label><p className="comm-note">Quem recebe é avisado no sino. Com ciente, o aviso chega como alerta e fica no topo do Mural de cada pessoa até ela confirmar que leu.</p></> : <><label>Quem<select name="recipientId" required><option value="">Escolha uma pessoa</option>{people.map(person => <option value={person.id} key={person.id}>{person.name}{person.areaName ? ` · ${person.areaName}` : ""}</option>)}</select></label><label>Por quê<textarea name="reason" required placeholder="Motivo do reconhecimento"/></label></>}<label>{composer === "NOTICE" ? "Aviso" : "Reconhecimento"}<textarea name="body" required placeholder={composer === "NOTICE" ? "Escreva o aviso" : "Conte o que essa pessoa fez"}/></label>{composerError && <p className="comm-form-error" role="alert">{composerError}</p>}<footer><button type="button" onClick={() => setComposer(null)}>Cancelar</button><button className="comm-primary" disabled={publishing}>{publishing ? "Publicando…" : "Publicar"}</button></footer></form></Modal>}{cancelFor && <Modal title="Cancelar aviso" onClose={() => setCancelFor(null)}><form className="comm-form" onSubmit={cancelNotice}><p className="comm-note">“{cancelFor.title ?? cancelFor.body.slice(0, 80)}” sai do mural de todo mundo. O motivo fica no Registro.</p><label>Motivo<textarea name="reason" required autoFocus placeholder="Por que este aviso não vale mais"/></label>{cancelError && <p className="comm-form-error" role="alert">{cancelError}</p>}<footer><button type="button" onClick={() => setCancelFor(null)}>Voltar</button><button className="comm-danger" disabled={cancelling}>{cancelling ? "Cancelando…" : "Cancelar aviso"}</button></footer></form></Modal>}{missing && <Modal title="Quem já deu ciente" onClose={() => setMissing(null)}><div className="comm-missing">{missing.error ? <p className="comm-form-error" role="alert">{missing.error}</p> : missing.total === undefined ? <p className="comm-note">Contando…</p> : <><p className="comm-note"><b>{missing.confirmados} de {missing.total}</b> deram ciente em “{missing.post.title ?? missing.post.body.slice(0, 60)}”.</p>{missing.faltam && missing.faltam.length ? <><h3>Faltam {missing.faltam.length}</h3><ul>{missing.faltam.map(person => <li key={person.id}>{person.name}</li>)}</ul></> : <p className="comm-note">Todo mundo já deu ciente.</p>}</>}</div><footer className="comm-modal-footer"><button type="button" onClick={() => setMissing(null)}>Fechar</button></footer></Modal>}{commentFor && <Modal title="Comentários" onClose={() => setCommentFor(null)}><div className="comm-comments" aria-busy={loadingComments}>{loadingComments ? <p>Carregando os comentários…</p> : comments.length ? comments.map(comment => <article key={comment.id}><strong>{comment.authorName}</strong><p>{comment.body}</p><small>{displayDate(comment.createdAt)}</small></article>) : commentError ? null : <p>Ainda não há comentários.</p>}</div><form className="comm-form" onSubmit={sendComment}><label>Comentário<textarea name="body" required autoFocus/></label>{commentError && <p className="comm-form-error" role="alert">{commentError}</p>}<footer><button type="button" onClick={() => setCommentFor(null)}>Fechar</button><button className="comm-primary" disabled={sendingComment}>{sendingComment ? "Enviando…" : "Enviar"}</button></footer></form></Modal>}</section>;
-}
-
-function PostCard({ post, people, pinned, ocupados, onAck, onReact, onComment, onCancel, onMissing }: { post: Post; people: Person[]; pinned?: boolean; ocupados: Set<string>; onAck: (id: string) => void; onReact: (id: string) => void; onComment: () => void; onCancel: () => void; onMissing: () => void }) {
-  const registrandoCiente = ocupados.has(`ciente:${post.id}`), reagindo = ocupados.has(`reagir:${post.id}`);
-  // Aniversário no feed (desenho 22): o nome, quantos deram parabéns e o botão.
-  if (post.type === "BIRTHDAY") {
-    const who = people.find(person => person.id === post.recipientId)?.name ?? post.authorName;
-    return <article className="comm-post comm-birthday"><div className="comm-birthday-head"><img src="/asa/olhos-de-estrela.webp" alt=""/><div><strong>Hoje é aniversário de {who}! 🎂</strong><small>{post.reactionCount ?? 0} parabéns até agora</small></div></div><footer><button className={post.mine?.reaction ? "active" : ""} onClick={() => onReact(post.id)} disabled={Boolean(post.mine?.reaction) || reagindo}><Heart size={16}/> {post.mine?.reaction ? "você deu parabéns" : reagindo ? "Enviando…" : "Dar parabéns"}</button><span/><button onClick={onComment}><MessageCircle size={16}/> {post.commentCount ?? 0}</button></footer></article>;
-  }
-  const ack = post.ackSummary; const ackPercent = ack && ack.total ? Math.round((ack.confirmados / ack.total) * 100) : 0;
-  const recipient = people.find(person => person.id === post.recipientId);
-  const acknowledgement = post.requiresConfirmation && !post.mine?.confirmedAt;
-  return <article className={`comm-post ${pinned ? "pinned" : ""} ${post.type.toLocaleLowerCase("pt-BR")}`}><header><span className="comm-post-badge">{post.type === "NOTICE" ? "Aviso" : post.type === "RECOGNITION" ? "Reconhecimento" : post.type}</span><b>{post.authorName}</b><small>· {displayDate(post.publishedAt)} · para {scopeText(post)}</small></header>{post.type === "RECOGNITION" && recipient && <div className="comm-recipient"><span className="comm-avatar">{initials(recipient.name)}</span><div><strong>{recipient.name}</strong><small>{recipient.areaName}</small></div></div>}{post.eventDate && <span className="comm-event-date"><CalendarDays size={14}/> {new Date(`${post.eventDate}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" })}</span>}{post.title && <h2>{post.title}</h2>}<p>{post.body}</p>{post.type === "RECOGNITION" && post.reason && <small className="comm-reason">por {post.reason}</small>}{ack && <div className="comm-ack-progress"><div><b>{ack.confirmados} de {ack.total}</b> deram ciente{ack.total > ack.confirmados && <button type="button" onClick={onMissing}>quem falta</button>}</div><span role="progressbar" aria-label="Ciente" aria-valuemin={0} aria-valuemax={100} aria-valuenow={ackPercent}><i style={{ width: `${ackPercent}%` }}/></span></div>}<footer>{acknowledgement ? <button className="comm-ack" onClick={() => onAck(post.id)} disabled={registrandoCiente}><Check size={16}/> {registrandoCiente ? "Registrando…" : "Li e entendi"}</button> : post.requiresConfirmation ? <span className="comm-confirmed"><Check size={15}/> ciente</span> : null}<span/><button className={post.mine?.reaction ? "active" : ""} onClick={() => onReact(post.id)} disabled={reagindo}><Heart size={16}/> {post.mine?.reaction ? "você reagiu" : reagindo ? "enviando…" : "reagir"}</button><button onClick={onComment}><MessageCircle size={16}/> {post.commentCount ?? 0}</button>{post.canCancel && <button className="comm-cancel" onClick={onCancel}>cancelar aviso</button>}</footer></article>;
-}
-
-function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
-  const janela = useRef<HTMLElement>(null);
-  // Esc sai da janela, como o ×: no telefone, com o teclado aberto, o × some da tela.
-  useEffect(() => {
-    const aoTeclar = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
-    document.addEventListener("keydown", aoTeclar);
-    return () => document.removeEventListener("keydown", aoTeclar);
-  }, [onClose]);
-  // Um toque fora também fecha, mas não quando já há texto escrito: no telefone é fácil encostar fora sem querer e perder um aviso inteiro.
-  const tocouFora = () => {
-    const campos = Array.from(janela.current?.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("textarea, input:not([type=checkbox]):not([type=hidden]):not([type=search])") ?? []);
-    if (!campos.some(campo => campo.value.trim())) onClose();
-  };
-  return <div className="comm-backdrop" onMouseDown={tocouFora}><section ref={janela} className="comm-modal" role="dialog" aria-modal="true" aria-label={title} onMouseDown={event => event.stopPropagation()}><header><h2>{title}</h2><button onClick={onClose} aria-label="Fechar"><X/></button></header>{children}</section></div>;
-}
 
 export function MessagesPage({ role }: { role: Role }) {
   const sample = import.meta.env.DEV && new URLSearchParams(window.location.search).get("amostra") === "1"; const [people, setPeople] = useState<Person[]>([]), [threads, setThreads] = useState<Thread[]>([]), [active, setActive] = useState<Thread | null>(null), [messages, setMessages] = useState<Message[]>([]), [newOpen, setNewOpen] = useState(false), [error, setError] = useState(""), [threadSearch, setThreadSearch] = useState(""), [threadFilter, setThreadFilter] = useState<"all" | "unread" | "groups">("all"), [quoted, setQuoted] = useState<Message | null>(null);

@@ -20,7 +20,7 @@ const SolicitacoesPage = lazy(() => import("@/pages/solicitacoes"));
 const PanelPage = lazy(() => import("@/pages/operational-cycle").then(module => ({ default: module.PanelPage })));
 const LibraryPage = lazy(() => import("@/pages/communication").then(module => ({ default: module.LibraryPage })));
 const MessagesPage = lazy(() => import("@/pages/communication").then(module => ({ default: module.MessagesPage })));
-const MuralPage = lazy(() => import("@/pages/communication").then(module => ({ default: module.MuralPage })));
+const MuralPage = lazy(() => import("@/pages/mural").then(module => ({ default: module.MuralPage })));
 const ResponsibilitiesTasksPage = lazy(() => import("@/pages/responsibilities-tasks"));
 const AdminGroupsPage = lazy(() => import("@/pages/admin/groups"));
 const SupervisorGroupsPage = lazy(() => import("@/pages/supervisor/grupos"));

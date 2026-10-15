@@ -49,3 +49,46 @@
 .comm-birthday-head small{color:#6b4a66;font-size:12.5px}
 .comm-library-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .comm-event-date{display:inline-flex;align-items:center;gap:6px;width:fit-content;margin:6px 0 0;padding:4px 10px;border-radius:999px;background:#f0eafe;color:#5b23c9;font:700 11.5px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.04em}
+
+/* 14/10 (Mural aberto): publicação do Elenco, datas especiais, reações com emoji, "Para quem" misturável e desfazer. */
+.comm-links{display:flex;gap:6px;flex-wrap:wrap;margin:-6px 0 0}
+.comm-links button{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 10px;border:0;border-radius:999px;background:transparent;color:#6b6482;font:600 12.5px Manrope,sans-serif;cursor:pointer}
+.comm-links button:hover{background:#f3ebff;color:#5b23c9}
+.comm-datas{display:grid;gap:8px}
+.comm-datas article{display:flex;align-items:center;gap:12px;padding:12px 16px;border:1px solid #f0d5e6;border-radius:16px;background:linear-gradient(120deg,#fbeaf3,#f3ebff)}
+.comm-datas article.hoje{border-color:#e7b3d3;box-shadow:0 8px 20px -16px rgba(194,80,143,.7)}
+.comm-datas img{width:40px;height:40px;object-fit:contain;flex:none}
+.comm-datas article>div{display:grid;gap:2px;min-width:0}
+.comm-datas small{color:#6b4a66;font:700 11px 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase}
+.comm-datas strong{font:600 16px Outfit,Manrope,sans-serif;color:#6b2d55}
+.comm-datas p{margin:2px 0 0;color:#6b4a66;font-size:13px;line-height:1.45}
+.comm-undo{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 14px;border-radius:12px;background:#1b1630;color:#fff;font-size:13.5px}
+.comm-undo span{flex:1;min-width:160px}
+.comm-undo button{display:inline-flex;align-items:center;gap:5px;min-height:40px;padding:0 12px;border:0;border-radius:9px;background:transparent;color:#d9c9ff;font:700 13px Manrope,sans-serif;cursor:pointer}
+.comm-reacoes{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.comm-post .comm-reacoes button{display:inline-flex;align-items:center;gap:4px;min-height:36px;padding:0 10px;border:1px solid #e6e1f2;border-radius:999px;background:#fff;color:#5b5473;font:600 13px Manrope,sans-serif}
+.comm-post .comm-reacoes button.active{border-color:#c2508f;background:#fdeef6;color:#9c2f6b}
+.comm-post .comm-reacoes .comm-reagir{border-style:dashed}
+.comm-post .comm-reacoes .comm-link{border:0;background:transparent;color:#6b6482;text-decoration:underline;padding:0 6px;font-weight:600;font-size:12px}
+.comm-picker{display:inline-flex;gap:2px;padding:3px;border:1px solid #e6e1f2;border-radius:999px;background:#fff;box-shadow:0 10px 24px -14px rgba(34,20,80,.55)}
+.comm-post .comm-picker button{min-height:40px;min-width:40px;padding:0;border:0;font-size:19px;background:transparent}
+.comm-post .comm-picker button.active{background:#fdeef6}
+.comm-chips{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.comm-chips>span{color:#6b6482;font-size:12px;font-weight:700;width:100%}
+.comm-form .comm-chips button{min-height:36px;padding:0 12px;border:1px solid #d8d1ea;border-radius:999px;background:#fff;color:#5b5473;font:600 12.5px Manrope,sans-serif}
+.comm-form .comm-chips button.on{border-color:#6c2bf2;background:#f0eafe;color:#4a1eb0}
+.comm-paraquem .comm-check{min-height:40px}
+.comm-removidas{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+.comm-removidas li{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:11px 12px;border:1px solid #eee9f6;border-radius:12px;background:#faf9fe}
+.comm-removidas li.removida{opacity:.7}
+.comm-removidas li>div:first-child{display:grid;gap:3px;min-width:0;flex:1 1 220px}
+.comm-removidas small{color:#6b6482;font-size:12px;line-height:1.45}
+.comm-removidas strong{font:600 14px Outfit,Manrope,sans-serif}
+.comm-removidas .comm-post-badge{width:fit-content}
+.comm-removidas .comm-secondary{min-height:40px}
+.comm-datas-acoes{display:flex;gap:6px}
+.comm-form .comm-datas-acoes button{min-height:40px;border:1px solid #d8cef6;background:#fff;color:#5b23c9;border-radius:9px;padding:0 12px}
+.comm-datas-form{padding:0}
+.comm-datas-dia{display:grid;grid-template-columns:90px 1fr;gap:10px}
+@media(max-width:420px){.comm-datas-dia{grid-template-columns:80px 1fr}}
+.comm-datas-breve{margin:0;padding:0 4px;color:#6b4a66;font-size:12.5px;line-height:1.5}.comm-datas-breve b{color:#6b2d55}

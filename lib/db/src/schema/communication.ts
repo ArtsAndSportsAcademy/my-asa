@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, boolean, jsonb, pgEnum, unique, index, date } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, boolean, integer, jsonb, pgEnum, unique, index, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./identity.js";
@@ -40,7 +40,9 @@ export const messageContextTypeEnum = pgEnum("message_context_type", [
 // Avisos e reconhecimentos compartilham o mesmo feed. Reconhecimento não é uma
 // entidade paralela: é um tipo de publicação, para que a casa tenha uma única
 // linha do tempo e uma única regra de escopo.
-export const announcementTypeEnum = pgEnum("announcement_type", ["NOTICE", "RECOGNITION", "BIRTHDAY", "TENURE"]);
+// POST (0065): publicação do Elenco. NOTICE é o aviso oficial da gestão (pede ciente, toca o sino);
+// POST não pede ciente e só avisa quem foi marcado ou o público de destino.
+export const announcementTypeEnum = pgEnum("announcement_type", ["NOTICE", "RECOGNITION", "BIRTHDAY", "TENURE", "POST"]);
 // PEOPLE (0053): aviso para pessoas escolhidas, listadas em announcement_recipients.
 export const announcementScopeEnum = pgEnum("announcement_scope", ["HOUSE", "AREA", "LOCATION", "PEOPLE"]);
 
@@ -62,6 +64,12 @@ export const announcementsTable = pgTable("announcements", {
   publishedAt: timestamp("published_at", { withTimezone: true }).notNull().defaultNow(),
   cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
   cancellationReason: text("cancellation_reason"),
+  /** Quando o texto mudou depois de publicado (0065): o cartão mostra "editado". */
+  editedAt: timestamp("edited_at", { withTimezone: true }),
+  /** Quem derrubou (0065). O autor desfaz a própria remoção; Administração e Direção desfazem qualquer uma. */
+  removedBy: uuid("removed_by").references(() => usersTable.id),
+  /** Destino misto (0065): as pessoas vão em announcement_recipients e este texto diz para quem foi. */
+  destinationLabel: text("destination_label"),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -99,6 +107,21 @@ export const announcementCommentsTable = pgTable("announcement_comments", {
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [index("announcement_comments_post_idx").on(table.announcementId, table.createdAt)]);
+
+// Datas que se repetem todo ano (0065): Dia do Teatro, Dia da Dança… A Administração e a Direção
+// cadastram; o Mural mostra na semana e no dia, sem criar publicação.
+export const muralDatasEspeciaisTable = pgTable("mural_datas_especiais", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull(),
+  nome: text("nome").notNull(),
+  mensagem: text("mensagem"),
+  mes: integer("mes").notNull(),
+  dia: integer("dia").notNull(),
+  active: boolean("active").notNull().default(true),
+  createdBy: uuid("created_by").notNull().references(() => usersTable.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}).enableRLS();
 
 // ─── Notices ───────────────────────────────────────────────────────────────────
 
