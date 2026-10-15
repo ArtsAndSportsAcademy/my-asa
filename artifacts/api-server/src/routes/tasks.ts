@@ -15,6 +15,7 @@ import {
   requireOrganization,
 } from "../middlewares/auth.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
+import { sendNotification } from "../services/notificationService.js";
 import { requestLogger } from "../lib/logger.js";
 import { LOG_DOMAIN } from "@workspace/shared";
 import { canManageTasks, listTaskManagementAreaIds, resolveTaskAreaId } from "../services/task-access.js";
@@ -405,6 +406,28 @@ router.post("/tasks/batch", requireAuth, requireOrganization, async (req, res) =
       }
       return rows;
     });
+    // Quem recebe tarefa precisa ficar sabendo sem abrir a tela: um aviso por pessoa e por lote
+    // (e não um por tarefa), e nunca para quem confirmou o lote atribuindo a si mesma.
+    const porPessoa = new Map<string, typeof created>();
+    for (const task of created) porPessoa.set(task.assigneeId, [...(porPessoa.get(task.assigneeId) ?? []), task]);
+    for (const [assigneeId, minhas] of porPessoa) {
+      if (assigneeId === user.sub) continue;
+      const prazo = (iso: string) => iso.split("-").reverse().slice(0, 2).join("/");
+      const primeira = minhas[0]!;
+      void sendNotification({
+        userId: assigneeId,
+        type: "task.assigned",
+        title: minhas.length === 1 ? "Nova tarefa para você" : `${minhas.length} novas tarefas para você`,
+        message: minhas.length === 1
+          ? `${primeira.title} — até ${prazo(primeira.dueDate)}.`
+          : `${primeira.title} — até ${prazo(primeira.dueDate)} — e mais ${minhas.length - 1}. Veja em Tarefas.`,
+        priority: "NORMAL",
+        category: "responsibility",
+        entityType: "task",
+        entityId: primeira.id,
+        actionUrl: "/responsabilidades",
+      }).catch((err) => requestLogger(LOG_DOMAIN.TASKS, req.requestId, req.correlationId).warn({ err }, "Falha ao avisar quem recebeu tarefas do lote"));
+    }
     res.status(201).json({ tasks: created });
   } catch (err) {
     requestLogger(LOG_DOMAIN.TASKS, req.requestId, req.correlationId).error({ err }, "Erro ao confirmar lote de tarefas");

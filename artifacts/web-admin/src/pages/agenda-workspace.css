@@ -41,3 +41,10 @@
 /* 16/10 (crivo 16): rodapé da janela sempre à vista. */
 .ag-form footer{position:sticky;bottom:0;z-index:2;margin:6px -19px -19px;padding:12px 19px;background:#fff;border-top:1px solid #eee9f6}
 @media(max-width:720px){.ag-form footer{margin:6px -15px -15px;padding:12px 15px}}
+
+/* 16/10 (crivo): aviso do porquê o botão está cinza, navegação do mês e primeiro dia no dia da semana certo. */
+.ag-hint-aviso{color:#67420d}.ag-hint-erro{color:#99253c;font-weight:700}
+.ag-month-title{text-transform:capitalize}
+.ag-person-tools{display:flex;gap:8px;margin:0 0 6px}.ag-person-tools button{min-height:40px;padding:0 12px;border:1px solid var(--asa-border);border-radius:6px;background:#fff;color:var(--asa-ink);font-size:12px;font-weight:700;cursor:pointer}
+.ag-month-grid article:first-child{grid-column-start:var(--ag-offset,1)}
+@media(max-width:720px){.ag-month-grid article:first-child{grid-column-start:auto}}

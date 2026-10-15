@@ -126,6 +126,9 @@ async function run() {
     const [risk] = await db.select().from(dailyBookAssignmentsTable).where(eq(dailyBookAssignmentsTable.dailyBookId, book!.id));
     const [vacancy] = await db.select().from(dailyBookCheckInVacanciesTable).where(and(eq(dailyBookCheckInVacanciesTable.dailyBookId, book!.id), eq(dailyBookCheckInVacanciesTable.active, true)));
     assert(risk?.status === "AT_RISK" && Boolean(vacancy), "falta abre vaga no mesmo slot do Livro, sem apagar a convocação");
+    const painelDoDia = (await (await supApi(`/panel-indicators?date=${date}`)).json()) as { vacancies: { open: number } };
+    const painelOutroDia = (await (await supApi(`/panel-indicators?date=${shiftOperationalDate(date, 1)}`)).json()) as { vacancies: { open: number } };
+    assert(painelDoDia.vacancies.open === 1 && painelOutroDia.vacancies.open === 0, "o Painel conta só as vagas do dia consultado, não as de outros dias");
     const arrived = await post(supApi, "/day-checkins", { scaleId: scale!.id, sourceKey: block.key, userId: worker.id, status: "CHECKED_IN", date });
     const [resolved] = await db.select().from(dailyBookCheckInVacanciesTable).where(eq(dailyBookCheckInVacanciesTable.id, vacancy!.id));
     const [assignedAgain] = await db.select().from(dailyBookAssignmentsTable).where(eq(dailyBookAssignmentsTable.id, risk!.id));

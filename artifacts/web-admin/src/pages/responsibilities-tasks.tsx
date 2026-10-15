@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import { AlertTriangle, Check, CirclePlus, ClipboardList, RotateCw, Trash2, X } from "lucide-react";
 import { ApiError, customFetch } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useFecharComEsc } from "@/lib/fechar-com-esc";
 
 type ShellRole = "adm" | "dir" | "sup" | "mem";
 type Area = { id: string; name: string };
@@ -9,7 +10,10 @@ type Person = { id: string; name?: string; displayName?: string; areaId?: string
 type Operation = { id: string; name: string };
 type Responsibility = { id: string; title: string; description?: string | null; areaId: string | null; areaName?: string | null; ownerId?: string | null; ownerName?: string | null; operationId?: string | null; active: boolean; assignments: { id: string; memberId: string; memberName: string; role: string; active: boolean }[] };
 type Task = { id: string; title: string; description?: string | null; responsibilityId?: string | null; responsibilityTitle?: string | null; areaId?: string | null; assigneeId: string; assigneeName: string; dueDate: string; status: string; origin: string; operationId: string; operationName?: string };
-type Draft = { key: number; title: string; assigneeId: string; dueDate: string };
+// Uma linha do lote vale para quantas pessoas forem marcadas: vira uma tarefa para cada uma.
+type Draft = { key: number; title: string; assigneeIds: string[]; dueDate: string };
+const novoRascunho = (key: number): Draft => ({ key, title: "", assigneeIds: [], dueDate: today() });
+const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
 
 const displayName = (person?: Person) => person?.displayName ?? person?.name ?? "Pessoa";
 const today = () => {
@@ -41,19 +45,31 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
   const [responsibilityForm, setResponsibilityForm] = useState({ title: "", areaId: "", description: "" });
   const [selectedResponsibility, setSelectedResponsibility] = useState("");
   const [selectedOperation, setSelectedOperation] = useState("");
-  const [drafts, setDrafts] = useState<Draft[]>([{ key: 0, title: "", assigneeId: "", dueDate: today() }]);
+  const [drafts, setDrafts] = useState<Draft[]>([novoRascunho(0)]);
   const [nextKey, setNextKey] = useState(1);
+  const [refsFailed, setRefsFailed] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
+  const lotDirty = drafts.some((draft) => draft.title.trim() || draft.assigneeIds.length);
+  const lotCount = drafts.reduce((total, draft) => total + (draft.title.trim() && draft.dueDate ? draft.assigneeIds.length : 0), 0);
+  // Fechar o lote com coisa digitada pergunta antes: Esc, × e Descartar valem o mesmo, e o clique fora não fecha.
+  const closeLot = () => { if (saving) return; if (lotDirty && !discarding) { setDiscarding(true); return; } setLotDialog(false); setDiscarding(false); };
+  useFecharComEsc(() => setResponsibilityDialog(false), responsibilityDialog && !saving);
+  useFecharComEsc(() => setAssignmentResponsibility(""), Boolean(assignmentResponsibility) && !saving);
+  useFecharComEsc(closeLot, lotDialog);
 
   const reload = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
+      // Se alguma lista de apoio falhar, a tela abre mesmo assim, mas o lote avisa em vez de dizer "nenhuma operação".
+      let falhou = false;
       const [responsibilityData, operationData, userData, areaData] = await Promise.all([
         customFetch<{ responsibilities: Responsibility[] }>("/api/responsibilities"),
-        customFetch<{ operations?: Operation[] }>("/api/operations").catch(() => ({ operations: [] })),
-        customFetch<{ users?: Person[] }>("/api/users").catch(() => ({ users: [] })),
-        customFetch<{ areas?: Area[] }>("/api/areas").catch(() => ({ areas: [] })),
+        customFetch<{ operations?: Operation[] }>("/api/operations").catch(() => { falhou = true; return { operations: [] as Operation[] }; }),
+        customFetch<{ users?: Person[] }>("/api/users").catch(() => { falhou = true; return { users: [] as Person[] }; }),
+        customFetch<{ areas?: Area[] }>("/api/areas").catch(() => { falhou = true; return { areas: [] as Area[] }; }),
       ]);
+      setRefsFailed(falhou);
       const nextOperations = operationData.operations ?? [];
       let taskData: { tasks: Task[] };
       if (role === "mem") taskData = await customFetch<{ tasks: Task[] }>("/api/tasks/my");
@@ -118,8 +134,10 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
 
   const confirmLot = async (event: FormEvent) => {
     event.preventDefault();
-    const validDrafts = drafts.filter((draft) => draft.title.trim() && draft.assigneeId && draft.dueDate);
+    const validDrafts = drafts.filter((draft) => draft.title.trim() && draft.assigneeIds.length && draft.dueDate);
     if (!selectedOperation || !validDrafts.length) return;
+    const tasksToSend = validDrafts.flatMap(({ title, assigneeIds, dueDate }) => assigneeIds.map((assigneeId) => ({ title: title.trim(), assigneeId, dueDate })));
+    if (tasksToSend.length > 50) { setNotice(`Um lote aceita até 50 tarefas e este tem ${tasksToSend.length}. Divida em dois lotes.`); return; }
     setSaving(true);
     try {
       const result = await customFetch<{ tasks: Task[] }>("/api/tasks/batch", {
@@ -128,13 +146,17 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
         body: JSON.stringify({
           operationId: selectedOperation,
           responsibilityId: selectedResponsibility || undefined,
-          tasks: validDrafts.map(({ title, assigneeId, dueDate }) => ({ title: title.trim(), assigneeId, dueDate })),
+          tasks: tasksToSend,
         }),
       });
       setTasks((current) => [...(result.tasks ?? []), ...current]);
-      setLotDialog(false);
-      setDrafts([{ key: 0, title: "", assigneeId: "", dueDate: today() }]);
-      setNotice(`${result.tasks?.length ?? validDrafts.length} tarefa(s) confirmada(s) no lote.`);
+      setLotDialog(false); setDiscarding(false);
+      setDrafts([novoRascunho(0)]);
+      // O filtro "Hoje" esconderia tarefa com prazo adiante: a pessoa confirma e não vê nada. Em aberto mostra as novas.
+      setTab("tasks"); setFilter("open");
+      const total = result.tasks?.length ?? tasksToSend.length;
+      const pessoas = new Set(tasksToSend.map((task) => task.assigneeId)).size;
+      setNotice(`${plural(total, "tarefa confirmada", "tarefas confirmadas")} para ${plural(pessoas, "pessoa", "pessoas")}. Cada uma recebe um aviso no sino.`);
     } catch (cause) {
       setNotice(cause instanceof Error ? cause.message : "Não consegui confirmar o lote.");
     } finally { setSaving(false); }
@@ -156,7 +178,7 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
   };
 
   const addDraft = () => {
-    setDrafts((current) => [...current, { key: nextKey, title: "", assigneeId: "", dueDate: today() }]);
+    setDrafts((current) => [...current, novoRascunho(nextKey)]);
     setNextKey((current) => current + 1);
   };
 
@@ -222,16 +244,19 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
       <form onSubmit={addParticipant} className="rt-form"><label>Pessoa<select required value={assignmentForm.memberId} onChange={(event) => setAssignmentForm({ ...assignmentForm, memberId: event.target.value })}><option value="">Escolha uma pessoa</option>{people.map((person) => <option key={person.id} value={person.id}>{displayName(person)}{person.areaName ? ` · ${person.areaName}` : ""}</option>)}</select></label><label>Participação<select value={assignmentForm.role} onChange={(event) => setAssignmentForm({ ...assignmentForm, role: event.target.value })}><option value="SECONDARY">Participante</option><option value="PRIMARY">Principal</option><option value="VIEWER">Somente leitura</option></select></label><footer><button type="button" className="rt-secondary" onClick={() => setAssignmentResponsibility("")}>Cancelar</button><button className="rt-primary" disabled={saving || !assignmentForm.memberId}>{saving ? "Salvando…" : "Adicionar pessoa"}</button></footer></form>
     </section></div>}
 
-    {lotDialog && <div className="rt-backdrop" role="presentation" onMouseDown={() => !saving && setLotDialog(false)}><section className="rt-dialog rt-lot-dialog" role="dialog" aria-modal="true" aria-labelledby="rt-lot-title" onMouseDown={(event) => event.stopPropagation()}>
-      <header><h2 id="rt-lot-title">Preparar lote</h2><button className="rt-icon-button" aria-label="Fechar" onClick={() => setLotDialog(false)}><X size={18}/></button></header>
+    {lotDialog && <div className="rt-backdrop" role="presentation" onMouseDown={() => { if (!saving && !lotDirty) closeLot(); }}><section className="rt-dialog rt-lot-dialog" role="dialog" aria-modal="true" aria-labelledby="rt-lot-title" onMouseDown={(event) => event.stopPropagation()}>
+      <header><h2 id="rt-lot-title">Preparar lote</h2><button className="rt-icon-button" aria-label="Fechar" onClick={closeLot}><X size={18}/></button></header>
       <p>Revise títulos, responsáveis e prazos. Nada entra na lista antes da confirmação.</p>
       <form onSubmit={confirmLot} className="rt-form">
         <label>Responsabilidade<select value={selectedResponsibility} onChange={(event) => setSelectedResponsibility(event.target.value)}><option value="">Tarefas avulsas</option>{responsibilities.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>
         {operations.length > 1 && <label>Operação<select required value={selectedOperation} onChange={(event) => setSelectedOperation(event.target.value)}>{operations.map((operation) => <option key={operation.id} value={operation.id}>{operation.name}</option>)}</select></label>}
-        {!operations.length && <p className="rt-form-error">Nenhuma operação disponível para distribuir tarefas.</p>}
-        <div className="rt-drafts">{drafts.map((draft, index) => <fieldset key={draft.key}><legend>Tarefa {index + 1}</legend><label>Título<input required value={draft.title} onChange={(event) => setDrafts((current) => current.map((item) => item.key === draft.key ? { ...item, title: event.target.value } : item))} placeholder="Ação a realizar"/></label><div className="rt-draft-pair"><label>Responsável<select required value={draft.assigneeId} onChange={(event) => setDrafts((current) => current.map((item) => item.key === draft.key ? { ...item, assigneeId: event.target.value } : item))}><option value="">Escolha uma pessoa</option>{scopedPeople.map((person) => <option key={person.id} value={person.id}>{displayName(person)}</option>)}</select></label><label>Prazo<input type="date" required value={draft.dueDate} onChange={(event) => setDrafts((current) => current.map((item) => item.key === draft.key ? { ...item, dueDate: event.target.value } : item))}/></label></div>{drafts.length > 1 && <button type="button" className="rt-remove" aria-label={`Remover tarefa ${index + 1}`} onClick={() => setDrafts((current) => current.filter((item) => item.key !== draft.key))}><Trash2 size={15}/>Remover</button>}</fieldset>)}</div>
+        {refsFailed && <p className="rt-form-error" role="alert">Não consegui carregar parte das listas (operações, pessoas ou áreas), então o que aparece aqui pode estar incompleto. Feche, toque em Atualizar e tente de novo.</p>}
+        {!refsFailed && !operations.length && <p className="rt-form-error">Nenhuma operação disponível para distribuir tarefas.</p>}
+        <div className="rt-drafts">{drafts.map((draft, index) => <fieldset key={draft.key}><legend>Tarefa {index + 1}</legend><label>Título<input required value={draft.title} onChange={(event) => setDrafts((current) => current.map((item) => item.key === draft.key ? { ...item, title: event.target.value } : item))} placeholder="Ação a realizar"/></label><label>Prazo<input type="date" required value={draft.dueDate} onChange={(event) => setDrafts((current) => current.map((item) => item.key === draft.key ? { ...item, dueDate: event.target.value } : item))}/></label><div className="rt-assignees" role="group" aria-label={`Responsáveis da tarefa ${index + 1}`}><div className="rt-assignees-head"><span>Responsáveis{draft.assigneeIds.length ? ` · ${draft.assigneeIds.length}` : ""} <small>(uma tarefa para cada pessoa marcada)</small></span>{scopedPeople.length > 1 && <span className="rt-assignees-tools"><button type="button" onClick={() => setDrafts((current) => current.map((item) => item.key === draft.key ? { ...item, assigneeIds: scopedPeople.map((person) => person.id) } : item))}>Marcar todas</button><button type="button" onClick={() => setDrafts((current) => current.map((item) => item.key === draft.key ? { ...item, assigneeIds: [] } : item))}>Limpar</button></span>}</div><div className="rt-assignee-list">{scopedPeople.map((person) => <label key={person.id}><input type="checkbox" checked={draft.assigneeIds.includes(person.id)} onChange={() => setDrafts((current) => current.map((item) => item.key === draft.key ? { ...item, assigneeIds: item.assigneeIds.includes(person.id) ? item.assigneeIds.filter((id) => id !== person.id) : [...item.assigneeIds, person.id] } : item))}/><span>{displayName(person)}{person.areaName ? ` · ${person.areaName}` : ""}</span></label>)}{!scopedPeople.length && <p className="rt-form-error">Nenhuma pessoa disponível para receber tarefa.</p>}</div></div>{drafts.length > 1 && <button type="button" className="rt-remove" aria-label={`Remover tarefa ${index + 1}`} onClick={() => setDrafts((current) => current.filter((item) => item.key !== draft.key))}><Trash2 size={15}/>Remover</button>}</fieldset>)}</div>
         <button type="button" className="rt-secondary rt-add" onClick={addDraft}><CirclePlus size={16}/>Adicionar tarefa</button>
-        <footer><button type="button" className="rt-secondary" onClick={() => setLotDialog(false)}>Descartar</button><button className="rt-primary" disabled={saving || drafts.every((draft) => !draft.title.trim() || !draft.assigneeId || !draft.dueDate)}>{saving ? "Confirmando…" : `Confirmar lote · ${drafts.length}`}</button></footer>
+        {!lotCount && <p className="rt-explainer">Para confirmar, cada tarefa precisa de título, prazo e ao menos uma pessoa marcada.</p>}
+        {discarding && <div className="rt-discard" role="alertdialog" aria-label="Descartar o lote"><span>Descartar o que você digitou? As tarefas deste lote não foram criadas.</span><div><button type="button" className="rt-secondary" onClick={() => setDiscarding(false)}>Continuar editando</button><button type="button" className="rt-secondary rt-danger" onClick={() => { setLotDialog(false); setDiscarding(false); setDrafts([novoRascunho(0)]); }}>Descartar</button></div></div>}
+        <footer><button type="button" className="rt-secondary" onClick={closeLot}>{lotDirty ? "Descartar" : "Cancelar"}</button><button className="rt-primary" disabled={saving || lotCount === 0}>{saving ? "Confirmando…" : lotCount ? `Confirmar ${plural(lotCount, "tarefa", "tarefas")}` : "Confirmar lote"}</button></footer>
       </form>
     </section></div>}
   </section>;

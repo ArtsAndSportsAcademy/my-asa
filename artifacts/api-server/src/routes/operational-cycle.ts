@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { and, asc, desc, eq, gte, inArray, isNull, lte, ne, or } from "drizzle-orm";
 import {
-  areaLocalSupervisorsTable, areasTable, dailyBookAssignmentsTable, dailyBookCheckInVacanciesTable,
+  agendaEventsTable, areaLocalSupervisorsTable, areasTable, dailyBookAssignmentsTable, dailyBookCheckInVacanciesTable,
   dailyBooksTable, dayCheckInsTable, db, folgasTable, leaveRegimesTable, leaveRequestsTable,
   locationsTable, operationsTable, scalesTable, userRolesTable, usersTable,
 } from "@workspace/db";
@@ -356,9 +356,12 @@ router.get("/panel-indicators", requireAuth, requireOrganization, async (req, re
   // Vagas não podem escapar do recorte: o Livro aponta para a Escala do local,
   // e a designação aponta para a área da pessoa. O Painel só devolve a contagem.
   const locationIds = allowedLocations.map((location) => location.id);
+  // Só os Livros do dia consultado (a data do Livro é a do show na Agenda) e que não foram cancelados:
+  // sem isso, vaga aberta de um dia que já passou continuava aparecendo como "posição em risco" para sempre.
   const booksInScope = locationIds.length ? await db.select({ id: dailyBooksTable.id }).from(dailyBooksTable)
     .innerJoin(scalesTable, eq(dailyBooksTable.scaleId, scalesTable.id))
-    .where(inArray(scalesTable.locationId, locationIds)) : [];
+    .innerJoin(agendaEventsTable, eq(dailyBooksTable.agendaEventId, agendaEventsTable.id))
+    .where(and(inArray(scalesTable.locationId, locationIds), eq(agendaEventsTable.date, date), ne(dailyBooksTable.status, "CANCELLED"))) : [];
   const bookIds = booksInScope.map((book) => book.id);
   if (bookIds.length) {
     const rows = await db.select({ id: dailyBookCheckInVacanciesTable.id, areaId: usersTable.areaId }).from(dailyBookCheckInVacanciesTable)
