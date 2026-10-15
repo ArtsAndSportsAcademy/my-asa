@@ -86,6 +86,12 @@ formulário: é a lista do que já escapou antes.
 15. **Dá para sair sem salvar?**
     *Pegou:* os diálogos não fechavam com Esc, só no ×. No telefone, com o teclado aberto, o × fica
     escondido.
+16. **Toda janela e todo formulário tem rodapé com a ação de confirmar (e a de cancelar)?**
+    *Pegou:* em Escalas → Programação, o "ajustar" no horário do bloco "Boas-vindas" abria sem
+    rodapé: dava para mexer no horário, mas não havia botão para salvar nem para desistir. Confira
+    **toda** janela, painel e formulário: se a pessoa altera algo, tem que existir o botão que confirma
+    e o que cancela, visíveis também a 375 px (no telefone o rodapé não pode ficar escondido atrás do
+    teclado nem da barra de baixo). Janela sem rodapé é defeito mesmo quando "funciona".
 
 Erro aparece no teste; isso aqui só aparece se alguém perguntar. Traga as duas coisas juntas no
 relato, separando o que já foi corrigido do que depende de decisão dela. Quando uma pergunta nova
