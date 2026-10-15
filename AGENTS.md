@@ -105,8 +105,11 @@ imagina.
 - **Teste a tela antes de dizer que está pronta.** Abrir, clicar, conferir o resultado — não basta o
   `tsc` passar. Em produção, só leitura; escrever lá exige pedir antes.
 - **Branch `codex/myasa-novo`.** Nunca faça merge na `main` por conta própria.
-- Perfis: Administração publica o dia; Supervisão cuida da própria área; Direção só lê; Elenco vê o
-  que é dele. Folga vence a escala — só entra quem foi chamado de propósito, com motivo escrito.
+- Perfis: Administração publica o dia; Supervisão cuida da própria área; Direção só lê a operação
+  (escala, livro, folgas), **mas interage no Mural e nas Mensagens como a Administração** (publica,
+  edita e cancela aviso, reconhece, conversa) — decisão de 14/10/2026; Elenco vê o que é dele. Quando
+  uma tela nova tiver exceção para a Direção, anote aqui. Folga vence a escala — só entra quem foi
+  chamado de propósito, com motivo escrito.
 
 ## Comandos que funcionam nesta máquina (Windows, PowerShell, pnpm)
 
