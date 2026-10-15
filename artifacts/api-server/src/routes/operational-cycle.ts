@@ -371,9 +371,15 @@ router.get("/panel-indicators", requireAuth, requireOrganization, async (req, re
     const allowedAreaIds = isSupervisor(actor.role) ? new Set(scopes.map((scope) => scope.areaId)) : null;
     vacant = rows.filter((row) => !allowedAreaIds || (row.areaId && allowedAreaIds.has(row.areaId))).length;
   }
-  const leaveRows = await db.select({ id: leaveRequestsTable.id, areaId: leaveRequestsTable.areaId }).from(leaveRequestsTable)
+  // Quem está de folga no dia: as folgas marcadas (mapa do mês, grupos, "Definir folga") e os pedidos aprovados, sem contar a
+  // mesma pessoa duas vezes. Antes só entravam os pedidos aprovados, e o Painel dizia "0" com gente de folga marcada.
+  const leaveRows = await db.select({ userId: leaveRequestsTable.userId, areaId: leaveRequestsTable.areaId }).from(leaveRequestsTable)
     .where(and(eq(leaveRequestsTable.organizationId, actor.organizationId), eq(leaveRequestsTable.status, "APPROVED"), lte(leaveRequestsTable.startDate, date), gte(leaveRequestsTable.endDate, date)));
-  const scopedLeaves = isSupervisor(actor.role) ? leaveRows.filter((row) => row.areaId && scopes.some((scope) => scope.areaId === row.areaId)) : leaveRows;
+  const folgaRows = await db.select({ userId: folgasTable.userId, areaId: usersTable.areaId }).from(folgasTable)
+    .innerJoin(usersTable, eq(folgasTable.userId, usersTable.id))
+    .where(and(eq(usersTable.organizationId, actor.organizationId), eq(folgasTable.status, "ACTIVE"), lte(folgasTable.startDate, date), gte(folgasTable.endDate, date)));
+  const deFolga = [...leaveRows, ...folgaRows].filter((row) => !isSupervisor(actor.role) || (row.areaId && scopes.some((scope) => scope.areaId === row.areaId)));
+  const scopedLeaves = [...new Set(deFolga.map((row) => row.userId))];
   res.json({
     date,
     scope: isSupervisor(actor.role) ? "area" : "organization",

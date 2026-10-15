@@ -369,8 +369,11 @@ router.post("/tasks/batch", requireAuth, requireOrganization, async (req, res) =
     if (user.role === "SUPERVISOR_A" || user.role === "SUPERVISOR_B") {
       const areaId = responsibility?.areaId ?? assignees[0]?.areaId ?? null;
       const allowed = await canManageTasks(user.sub, user.role as RoleValue, operationId, user.organizationId, areaId);
-      if (!allowed || tasks.some((task) => (assignees.find((person) => person.id === task.assigneeId)?.areaId ?? null) !== areaId)) {
-        res.status(403).json({ error: "O lote precisa pertencer à sua área e aos responsáveis dela" }); return;
+      if (!allowed) {
+        res.status(403).json({ error: "Forbidden", message: "Para distribuir tarefas, a Administração precisa te dar a responsabilidade “Aprovação de tarefas” da sua área." }); return;
+      }
+      if (tasks.some((task) => (assignees.find((person) => person.id === task.assigneeId)?.areaId ?? null) !== areaId)) {
+        res.status(403).json({ error: "Forbidden", message: "O lote só pode ter pessoas da sua área." }); return;
       }
     } else if (user.role !== "ADMIN" && user.role !== "DIR") {
       res.status(403).json({ error: "Sem permissão para confirmar lotes" }); return;

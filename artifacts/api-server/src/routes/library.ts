@@ -237,6 +237,7 @@ router.get("/library/documents", requireAuth, requireOrganization, async (req, r
         archivedAt: libraryDocumentsTable.archivedAt,
         updatedAt: libraryDocumentsTable.updatedAt,
         createdAt: libraryDocumentsTable.createdAt,
+        createdBy: libraryDocumentsTable.createdBy,
         responsibleName: usersTable.name,
         fileName: libraryDocumentFilesTable.fileName,
       })
@@ -259,7 +260,8 @@ router.get("/library/documents", requireAuth, requireOrganization, async (req, r
     const lidos = await leituraPorDocumento(rows, null, userId);
     res.json({ documents: rows.map((doc) => {
       const confirmou = Boolean(lidos.get(doc.id)?.get(userId)?.confirmouEm);
-      return { ...doc, myConfirmed: confirmou, waitingMe: doc.requiresConfirmation && !confirmou && (doc.status === "PUBLISHED" || doc.status === "UPDATED") };
+      // Quem publicou o documento não precisa confirmar a leitura dele.
+      return { ...doc, myConfirmed: confirmou, waitingMe: doc.requiresConfirmation && !confirmou && doc.createdBy !== userId && (doc.status === "PUBLISHED" || doc.status === "UPDATED") };
     }) });
   } catch (err) {
     console.error("[library] GET /library/documents", err);
@@ -389,7 +391,7 @@ router.get("/library/documents/:id", requireAuth, requireOrganization, async (re
 
     // canManage: quem pode editar, trocar o PDF, publicar versão nova e ver quem leu (Administração, ou Supervisão no documento da própria área).
     const canManage = doc.status !== "ARCHIVED" && await canManageDocumentScope(role, userId, doc);
-    res.json({ document: { ...doc, myConfirmed, waitingMe: doc.requiresConfirmation && !myConfirmed && (doc.status === "PUBLISHED" || doc.status === "UPDATED") }, versions, citations, canManageCitations, canManage, canArchive: role === "ADMIN" && doc.status !== "ARCHIVED", canSeeReaders: canManage || role === "DIR" || role === "DIRECTOR" });
+    res.json({ document: { ...doc, myConfirmed, waitingMe: doc.requiresConfirmation && !myConfirmed && doc.createdBy !== userId && (doc.status === "PUBLISHED" || doc.status === "UPDATED") }, versions, citations, canManageCitations, canManage, canArchive: role === "ADMIN" && doc.status !== "ARCHIVED", canSeeReaders: canManage || role === "DIR" || role === "DIRECTOR" });
   } catch (err) {
     console.error("[library] GET /library/documents/:id", err);
     res.status(500).json({ error: "Erro interno" });
@@ -748,7 +750,8 @@ router.get("/library/documents/:id/leituras", requireAuth, requireOrganization, 
     if (!doc) { res.status(404).json({ error: "Documento não encontrado" }); return; }
     const podeVer = role === "DIR" || role === "DIRECTOR" || await canManageDocumentScope(role, userId, doc);
     if (!podeVer) { res.status(403).json({ error: "Só a Administração, a Direção e a Supervisão da área do documento veem quem já leu." }); return; }
-    const publico = await publicoDoDocumento(doc, orgId);
+    // Quem publicou o documento não conta entre quem precisa ler.
+    const publico = (await publicoDoDocumento(doc, orgId)).filter((person) => person.id !== doc.createdBy);
     const lidos = (await leituraPorDocumento([{ id: doc.id, version: doc.version }], publico.map((person) => person.id))).get(doc.id) ?? new Map();
     const pessoas = publico.map((person) => { const leitura = lidos.get(person.id); return { id: person.id, name: person.name, areaName: person.areaName, abriu: Boolean(leitura?.abriuEm), confirmou: Boolean(leitura?.confirmouEm), confirmouEm: leitura?.confirmouEm ?? null }; });
     res.json({ version: doc.version, requiresConfirmation: doc.requiresConfirmation, scopeType: doc.scopeType, total: pessoas.length, abriram: pessoas.filter((p) => p.abriu).length, confirmaram: pessoas.filter((p) => p.confirmou).length, pessoas });

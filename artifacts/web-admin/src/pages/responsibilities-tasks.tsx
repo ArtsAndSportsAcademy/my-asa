@@ -6,7 +6,7 @@ import { useFecharComEsc } from "@/lib/fechar-com-esc";
 
 type ShellRole = "adm" | "dir" | "sup" | "mem";
 type Area = { id: string; name: string };
-type Person = { id: string; name?: string; displayName?: string; areaId?: string | null; areaName?: string | null };
+type Person = { id: string; name?: string; displayName?: string; areaId?: string | null; areaName?: string | null; status?: string; operationIds?: string[] };
 type Operation = { id: string; name: string };
 type Responsibility = { id: string; title: string; description?: string | null; areaId: string | null; areaName?: string | null; ownerId?: string | null; ownerName?: string | null; operationId?: string | null; active: boolean; assignments: { id: string; memberId: string; memberName: string; role: string; active: boolean }[] };
 type Task = { id: string; title: string; description?: string | null; responsibilityId?: string | null; responsibilityTitle?: string | null; areaId?: string | null; assigneeId: string; assigneeName: string; dueDate: string; status: string; origin: string; operationId: string; operationName?: string };
@@ -25,7 +25,9 @@ const statusLabel: Record<string, string> = { CREATED: "A fazer", IN_PROGRESS: "
 
 export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole }) {
   const canDefine = role === "adm" || role === "dir";
-  const canDistribute = canDefine || role === "sup";
+  // Supervisão sem a responsabilidade "Aprovação de tarefas" não distribui: o botão nem aparece (o servidor recusaria só no fim).
+  const [semAcessoEquipe, setSemAcessoEquipe] = useState(false), [lotError, setLotError] = useState("");
+  const canDistribute = canDefine || (role === "sup" && !semAcessoEquipe);
   const [tab, setTab] = useState<"tasks" | "responsibilities">("tasks");
   const [filter, setFilter] = useState("today");
   const myId = useAuth().user?.id ?? null;
@@ -59,6 +61,7 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
   useFecharComEsc(() => setResponsibilityDialog(false), responsibilityDialog && !saving);
   useFecharComEsc(() => setAssignmentResponsibility(""), Boolean(assignmentResponsibility) && !saving);
   useFecharComEsc(closeLot, lotDialog);
+  useEffect(() => { if (!lotDialog) setLotError(""); }, [lotDialog]);
   useFecharComEsc(() => setCancelTask(null), Boolean(cancelTask) && !saving);
 
   const reload = useCallback(async () => {
@@ -89,6 +92,7 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
         const byId = new Map<string, Task>();
         for (const task of [...team.flatMap((response) => response.tasks ?? []), ...(own.tasks ?? [])]) byId.set(task.id, task);
         taskData = { tasks: [...byId.values()] };
+        setSemAcessoEquipe(Boolean(withoutTeamAccess && withoutTeamAccess === nextOperations.length));
         if (withoutTeamAccess && withoutTeamAccess === nextOperations.length) setNotice("Você vê só as suas tarefas. Para acompanhar as tarefas da equipe, a Administração precisa te dar a responsabilidade “Aprovação de tarefas”.");
       } else taskData = await customFetch<{ tasks: Task[] }>("/api/tasks");
       setResponsibilities(responsibilityData.responsibilities ?? []);
@@ -118,8 +122,16 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
 
   const scopedPeople = useMemo(() => {
     const selected = responsibilities.find((item) => item.id === selectedResponsibility);
-    return role === "sup" && selected?.areaId ? people.filter((person) => person.areaId === selected.areaId) : people;
-  }, [people, responsibilities, role, selectedResponsibility]);
+    // Só quem pode receber tarefa: pessoa ativa e da operação escolhida (desligada e gente de outra operação não entram).
+    const elegiveis = people.filter((person) => (!person.status || person.status === "ACTIVE") && (!selectedOperation || !person.operationIds?.length || person.operationIds.includes(selectedOperation)));
+    return role === "sup" && selected?.areaId ? elegiveis.filter((person) => person.areaId === selected.areaId) : elegiveis;
+  }, [people, responsibilities, role, selectedResponsibility, selectedOperation]);
+
+  // Trocar a operação tira da seleção quem não é dela, para não confirmar tarefa para quem a lista já não mostra.
+  useEffect(() => {
+    const permitidas = new Set(scopedPeople.map((person) => person.id));
+    setDrafts((atuais) => atuais.some((draft) => draft.assigneeIds.some((id) => !permitidas.has(id))) ? atuais.map((draft) => ({ ...draft, assigneeIds: draft.assigneeIds.filter((id) => permitidas.has(id)) })) : atuais);
+  }, [scopedPeople]);
 
   const saveResponsibility = async (event: FormEvent) => {
     event.preventDefault();
@@ -153,7 +165,8 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
           tasks: tasksToSend,
         }),
       });
-      setTasks((current) => [...(result.tasks ?? []), ...current]);
+      // A resposta da criação não traz o nome do responsável nem da operação: recarrega a lista, em vez de inserir linhas incompletas.
+      await reload();
       setLotDialog(false); setDiscarding(false);
       setDrafts([novoRascunho(0)]);
       // O filtro "Hoje" esconderia tarefa com prazo adiante: a pessoa confirma e não vê nada. Em aberto mostra as novas.
@@ -162,7 +175,8 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
       const pessoas = new Set(tasksToSend.map((task) => task.assigneeId)).size;
       setNotice(`${plural(total, "tarefa confirmada", "tarefas confirmadas")} para ${plural(pessoas, "pessoa", "pessoas")}. Cada uma recebe um aviso no sino.`);
     } catch (cause) {
-      setNotice(cause instanceof Error ? cause.message : "Não consegui confirmar o lote.");
+      // Dentro da janela (o aviso da página fica atrás dela) e com a frase do servidor, sem o "HTTP 403 Forbidden:" na frente.
+      setLotError(frase(cause, "Não consegui confirmar o lote agora. Nada foi criado; confira a conexão e tente de novo."));
     } finally { setSaving(false); }
   };
 
@@ -263,7 +277,7 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
       <p>{responsibilities.find((item) => item.id === assignmentResponsibility)?.title}</p>
       <form onSubmit={addParticipant} className="rt-form">{(() => {
           const jaSao = new Set(responsibilities.find((item) => item.id === assignmentResponsibility)?.assignments.filter((assignment) => assignment.active).map((assignment) => assignment.memberId) ?? []);
-          const candidatas = people.filter((person) => !jaSao.has(person.id));
+          const candidatas = people.filter((person) => !jaSao.has(person.id) && (!person.status || person.status === "ACTIVE"));
           return <div className="rt-assignees" role="group" aria-label="Pessoas a adicionar"><div className="rt-assignees-head"><span>Pessoas{assignmentForm.memberIds.length ? ` · ${assignmentForm.memberIds.length}` : ""} <small>(marque quantas quiser)</small></span>{candidatas.length > 1 && <span className="rt-assignees-tools"><button type="button" onClick={() => setAssignmentForm((atual) => ({ ...atual, memberIds: candidatas.map((person) => person.id) }))}>Marcar todas</button><button type="button" onClick={() => setAssignmentForm((atual) => ({ ...atual, memberIds: [] }))}>Limpar</button></span>}</div><div className="rt-assignee-list">{candidatas.map((person) => <label key={person.id}><input type="checkbox" checked={assignmentForm.memberIds.includes(person.id)} onChange={() => setAssignmentForm((atual) => ({ ...atual, memberIds: atual.memberIds.includes(person.id) ? atual.memberIds.filter((id) => id !== person.id) : [...atual.memberIds, person.id] }))}/><span>{displayName(person)}{person.areaName ? ` · ${person.areaName}` : ""}</span></label>)}{!candidatas.length && <p className="rt-form-error">Todas as pessoas já participam desta responsabilidade.</p>}</div></div>;
         })()}<label>Participação<select value={assignmentForm.role} onChange={(event) => setAssignmentForm({ ...assignmentForm, role: event.target.value })}><option value="SECONDARY">Participante</option><option value="PRIMARY">Principal</option><option value="VIEWER">Somente leitura</option></select></label>{assignmentError && <p className="rt-form-error" role="alert">{assignmentError}</p>}<footer><button type="button" className="rt-secondary" onClick={() => setAssignmentResponsibility("")}>Cancelar</button><button className="rt-primary" disabled={saving || !assignmentForm.memberIds.length}>{saving ? "Adicionando…" : assignmentForm.memberIds.length > 1 ? `Adicionar ${assignmentForm.memberIds.length} pessoas` : "Adicionar pessoa"}</button></footer></form>
     </section></div>}
@@ -285,6 +299,7 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
         <div className="rt-drafts">{drafts.map((draft, index) => <fieldset key={draft.key}><legend>Tarefa {index + 1}</legend><label>Título<input required value={draft.title} onChange={(event) => setDrafts((current) => current.map((item) => item.key === draft.key ? { ...item, title: event.target.value } : item))} placeholder="Ação a realizar"/></label><label>Prazo<input type="date" required value={draft.dueDate} onChange={(event) => setDrafts((current) => current.map((item) => item.key === draft.key ? { ...item, dueDate: event.target.value } : item))}/></label><div className="rt-assignees" role="group" aria-label={`Responsáveis da tarefa ${index + 1}`}><div className="rt-assignees-head"><span>Responsáveis{draft.assigneeIds.length ? ` · ${draft.assigneeIds.length}` : ""} <small>(uma tarefa para cada pessoa marcada)</small></span>{scopedPeople.length > 1 && <span className="rt-assignees-tools"><button type="button" onClick={() => setDrafts((current) => current.map((item) => item.key === draft.key ? { ...item, assigneeIds: scopedPeople.map((person) => person.id) } : item))}>Marcar todas</button><button type="button" onClick={() => setDrafts((current) => current.map((item) => item.key === draft.key ? { ...item, assigneeIds: [] } : item))}>Limpar</button></span>}</div><div className="rt-assignee-list">{scopedPeople.map((person) => <label key={person.id}><input type="checkbox" checked={draft.assigneeIds.includes(person.id)} onChange={() => setDrafts((current) => current.map((item) => item.key === draft.key ? { ...item, assigneeIds: item.assigneeIds.includes(person.id) ? item.assigneeIds.filter((id) => id !== person.id) : [...item.assigneeIds, person.id] } : item))}/><span>{displayName(person)}{person.areaName ? ` · ${person.areaName}` : ""}</span></label>)}{!scopedPeople.length && <p className="rt-form-error">Nenhuma pessoa disponível para receber tarefa.</p>}</div></div>{drafts.length > 1 && <button type="button" className="rt-remove" aria-label={`Remover tarefa ${index + 1}`} onClick={() => setDrafts((current) => current.filter((item) => item.key !== draft.key))}><Trash2 size={15}/>Remover</button>}</fieldset>)}</div>
         <button type="button" className="rt-secondary rt-add" onClick={addDraft}><CirclePlus size={16}/>Adicionar tarefa</button>
         {!lotCount && <p className="rt-explainer">Para confirmar, cada tarefa precisa de título, prazo e ao menos uma pessoa marcada.</p>}
+        {lotError && <p className="rt-form-error" role="alert">{lotError}</p>}
         {discarding && <div className="rt-discard" role="alertdialog" aria-label="Descartar o lote"><span>Descartar o que você digitou? As tarefas deste lote não foram criadas.</span><div><button type="button" className="rt-secondary" onClick={() => setDiscarding(false)}>Continuar editando</button><button type="button" className="rt-secondary rt-danger" onClick={() => { setLotDialog(false); setDiscarding(false); setDrafts([novoRascunho(0)]); }}>Descartar</button></div></div>}
         <footer><button type="button" className="rt-secondary" onClick={closeLot}>{lotDirty ? "Descartar" : "Cancelar"}</button><button className="rt-primary" disabled={saving || lotCount === 0}>{saving ? "Confirmando…" : lotCount ? `Confirmar ${plural(lotCount, "tarefa", "tarefas")}` : "Confirmar lote"}</button></footer>
       </form>

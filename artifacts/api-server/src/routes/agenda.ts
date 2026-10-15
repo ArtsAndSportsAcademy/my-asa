@@ -76,6 +76,9 @@ async function getParticipantDetails(eventId: string) {
     .where(eq(agendaEventParticipantsTable.eventId, eventId)).orderBy(asc(usersTable.name));
 }
 
+// O banco devolve "09:00:00"; o aviso para a pessoa diz "09:00".
+const hhmm = (hora: string | null | undefined) => hora ? String(hora).slice(0, 5) : "?";
+
 // Folga vence a escala: chamar para um ensaio quem está de folga naquele dia é exceção e exige motivo escrito.
 async function pessoasEmFolga(userIds: string[], date: string): Promise<{ id: string; name: string }[]> {
   if (!userIds.length) return [];
@@ -407,7 +410,7 @@ router.post("/agenda/events/:id/decision", requireAuth, requireOrganization, asy
       type: decision === "ACCEPT" ? "agenda.meeting.confirmed" : "agenda.meeting.rejected",
       title: decision === "ACCEPT" ? `Reunião confirmada: ${updated.title}` : `Proposta respondida: ${updated.title}`,
       message: decision === "ACCEPT"
-        ? `A reunião foi confirmada para ${updated.date}, das ${updated.startTime} às ${updated.endTime}.`
+        ? `A reunião foi confirmada para ${updated.date}, das ${hhmm(updated.startTime)} às ${hhmm(updated.endTime)}.`
         : `A proposta não foi aprovada. Motivo: ${reason}. Alternativa: ${alternativeDetails}.`,
       priority: "NORMAL", category: "approval", entityType: "agenda_event", entityId: updated.id, actionUrl: "/agenda",
     }).catch((err) => requestLogger("agenda", req.requestId, req.correlationId).warn({ err }, "Falha ao notificar decisão de proposta"));
@@ -544,8 +547,9 @@ router.post("/agenda/events", requireAuth, requireOrganization, async (req, res)
   try {
     const event = await db.transaction(async (tx) => {
       const [created] = await tx.insert(agendaEventsTable).values({
-        operationId, showBookId: showBookId ?? null, groupId: groupId ?? null,
-        areaId: areaId ?? null, locationId: locationId ?? null, type, title, date,
+        // O formulário manda "" quando o campo fica em "Sem local definido"; texto vazio não é identificador.
+        operationId, showBookId: showBookId || null, groupId: groupId || null,
+        areaId: areaId || null, locationId: locationId || null, type, title, date,
         endDate: endDate ?? null, startTime: startTime ?? null, endTime: endTime ?? null,
         location: location ?? null, notes: notes ?? null, status: isMemberProposal ? "PROPOSED" : "DRAFT",
         visibility: (visibility === "MANAGEMENT" ? "MANAGEMENT" : "OPERATION") as any, createdBy: userId,
@@ -582,7 +586,7 @@ router.post("/agenda/events", requireAuth, requireOrganization, async (req, res)
       }
       if (supervisorIds.length) void notifyMany(supervisorIds, {
         type: "agenda.meeting.proposed", title: `Nova proposta de reunião: ${event!.title}`,
-        message: `Uma pessoa do elenco propôs ${event!.date} das ${event!.startTime} às ${event!.endTime}. Revise a proposta na Agenda.${semSupervisao ? " A área dela não tem supervisão cadastrada, por isso o aviso veio para a Administração." : ""}`,
+        message: `Uma pessoa do elenco propôs ${event!.date} das ${hhmm(event!.startTime)} às ${hhmm(event!.endTime)}. Revise a proposta na Agenda.${semSupervisao ? " A área dela não tem supervisão cadastrada, por isso o aviso veio para a Administração." : ""}`,
         priority: "NORMAL", category: "approval", entityType: "agenda_event", entityId: event!.id,
         actionUrl: "/agenda",
       }).catch((err) => requestLogger("agenda", req.requestId, req.correlationId).warn({ err }, "Falha ao notificar proposta"));
@@ -592,6 +596,7 @@ router.post("/agenda/events", requireAuth, requireOrganization, async (req, res)
     const persistedParticipantIds = await getParticipantIds(event.id);
     res.status(201).json({ event: { ...event, participantIds: persistedParticipantIds } });
   } catch (err) {
+    requestLogger("agenda", req.requestId, req.correlationId).error({ err }, "Falha ao criar compromisso da Agenda");
     res.status(500).json({ error: "Erro ao criar evento" });
   }
 });
@@ -700,7 +705,7 @@ router.patch("/agenda/events/:id", requireAuth, requireOrganization, async (req,
           await notifyMany(await quemSabiaDoEvento(event, req.user!.sub), {
             type: ensaio ? "agenda.rehearsal.changed" : "agenda.meeting.changed",
             title: `${ensaio ? "Ensaio remarcado" : "Reunião remarcada"}: ${updated.title}`,
-            message: `Agora: ${updated.date}, das ${updated.startTime ?? "?"} às ${updated.endTime ?? "?"}${updated.location ? `, em ${updated.location}` : ""}.${motivoDaMudanca ? ` Motivo: ${motivoDaMudanca}` : ""}`,
+            message: `Agora: ${updated.date}, das ${hhmm(updated.startTime)} às ${hhmm(updated.endTime)}${updated.location ? `, em ${updated.location}` : ""}.${motivoDaMudanca ? ` Motivo: ${motivoDaMudanca}` : ""}`,
             priority: "IMPORTANT",
             category: ensaio ? "rehearsal" : "approval",
             entityType: "agenda_event",
@@ -764,7 +769,7 @@ router.post("/agenda/events/:id/confirm", requireAuth, requireOrganization, asyn
             userId: recipientId,
             type: updated.type === "REHEARSAL" ? "agenda.rehearsal.confirmed" : "agenda.meeting.confirmed",
             title: `${updated.type === "REHEARSAL" ? "Ensaio" : "Reunião"} confirmado: ${updated.title}`,
-            message: `${updated.type === "REHEARSAL" ? "O ensaio foi confirmado" : "A reunião foi confirmada"} para ${updated.date}, das ${updated.startTime} às ${updated.endTime}.${deFolga.has(recipientId) ? " Você está de folga nesse dia e foi chamada de propósito." : ""}`,
+            message: `${updated.type === "REHEARSAL" ? "O ensaio foi confirmado" : "A reunião foi confirmada"} para ${updated.date}, das ${hhmm(updated.startTime)} às ${hhmm(updated.endTime)}.${deFolga.has(recipientId) ? " Você está de folga nesse dia e foi chamada de propósito." : ""}`,
             priority: "NORMAL",
             category: updated.type === "REHEARSAL" ? "rehearsal" : "approval",
             entityType: "agenda_event",

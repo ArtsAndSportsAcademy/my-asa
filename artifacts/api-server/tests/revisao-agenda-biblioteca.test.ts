@@ -105,6 +105,8 @@ async function run() {
       assert(recebidos.length === 1 && /pede a sua leitura/.test(recebidos[0]?.message ?? ""), `${pessoa.name.replace(`${tag}_`, "")} recebe um aviso de documento novo, dizendo que pede leitura`);
     }
     assert((await avisos(admin.id, "library.published")).length === 0, "Quem publicou não é avisada do próprio documento");
+    const listaDaAutora = (await (await adminApi("/library/documents")).json()) as { documents: { id: string; waitingMe: boolean }[] };
+    assert(listaDaAutora.documents.find(doc => doc.id === docId)?.waitingMe === false, "Quem publicou o documento não fica 'esperando você' nele");
     const lista1 = (await (await anaApi("/library/documents")).json()) as { documents: { id: string; waitingMe: boolean; myConfirmed: boolean }[] };
     assert(lista1.documents.find(doc => doc.id === docId)?.waitingMe === true, "Antes de ler, o documento está esperando a pessoa");
     const confirma1 = await post(anaApi, `/library/documents/${docId}/confirm`);
@@ -115,7 +117,7 @@ async function run() {
     const confirmadas = await db.select().from(libraryViewsTable).where(and(eq(libraryViewsTable.documentId, docId), eq(libraryViewsTable.userId, ana.id)));
     assert(confirma2.status === 200 && confirmadas.filter(view => view.confirmedAt).length === 1, "Confirmar de novo não cria outra confirmação");
     const leituras1 = (await (await adminApi(`/library/documents/${docId}/leituras`)).json()) as { total: number; confirmaram: number; pessoas: { name: string; confirmou: boolean }[] };
-    assert(leituras1.total === 5 && leituras1.confirmaram === 1 && leituras1.pessoas.find(p => p.name === `${tag}_ana`)?.confirmou === true, `A Administração vê quem já leu (${leituras1.confirmaram} de ${leituras1.total})`);
+    assert(leituras1.total === 4 && leituras1.confirmaram === 1 && leituras1.pessoas.find(p => p.name === `${tag}_ana`)?.confirmou === true, `A Administração vê quem já leu (${leituras1.confirmaram} de ${leituras1.total})`);
     assert((await anaApi(`/library/documents/${docId}/leituras`)).status === 403, "Elenco não vê quem leu");
 
     await espera(1200);

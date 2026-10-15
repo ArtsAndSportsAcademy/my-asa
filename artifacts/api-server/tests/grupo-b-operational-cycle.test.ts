@@ -4,7 +4,7 @@ import { and, eq, inArray, or } from "drizzle-orm";
 import {
   agendaEventsTable, areaLocalSupervisorsTable, areasTable, dailyBookAssignmentsTable,
   dailyBookCheckInVacanciesTable, dailyBookPositionsTable, dailyBooksTable, dayCheckInsTable,
-  db, folgasTable, historyEventsTable, leaveRegimesTable, leaveRequestsTable, locationsTable, notificationOutboxTable,
+  db, folgasTable, historyEventsTable, leaveRegimesTable, leaveRequestsTable, locationsTable, notificationOutboxTable, userNotificationsTable,
   operationLocationsTable, operationsTable, organizationsTable, pool, programacaoBlocosTable,
   programacoesTable, scalesTable, showBooksTable, userRolesTable, usersTable,
 } from "@workspace/db";
@@ -152,6 +152,8 @@ async function run() {
     await db.delete(leaveRequestsTable).where(eq(leaveRequestsTable.organizationId, org!.id));
     await db.delete(leaveRegimesTable).where(eq(leaveRegimesTable.organizationId, org!.id));
     await db.delete(notificationOutboxTable).where(inArray(notificationOutboxTable.userId, [admin.id, sup.id, memberOnLeave.id, worker.id, outsider.id]));
+    // A fila entrega avisos ao sino durante o teste: eles saem antes das pessoas (chave estrangeira).
+    await db.delete(userNotificationsTable).where(inArray(userNotificationsTable.userId, [admin.id, sup.id, memberOnLeave.id, worker.id, outsider.id]));
     await db.delete(folgasTable).where(inArray(folgasTable.userId, [admin.id, sup.id, memberOnLeave.id, worker.id, outsider.id]));
     await db.delete(scalesTable).where(eq(scalesTable.operationId, operation!.id));
     await db.delete(agendaEventsTable).where(eq(agendaEventsTable.operationId, operation!.id));
