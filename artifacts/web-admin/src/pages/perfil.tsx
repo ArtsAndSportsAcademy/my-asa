@@ -171,7 +171,9 @@ export default function PerfilPage({ role }: { role: ShellRole }) {
     } catch (err) { setAviso(erroDe(err, "Não consegui salvar a escolha. Tente de novo.")); }
   };
   const salvarJanela = (de: string, ate: string) => {
-    if (!/^\d{2}:\d{2}$/.test(de) || !/^\d{2}:\d{2}$/.test(ate) || de === ate || !janela) return;
+    if (!janela) return;
+    if (!/^\d{2}:\d{2}$/.test(de) || !/^\d{2}:\d{2}$/.test(ate)) { setAviso("Escolha a hora em que o silêncio começa e a hora em que termina."); return; }
+    if (de === ate) { setAviso("O silêncio precisa começar e terminar em horas diferentes."); return; }
     if (de === janela.de && ate === janela.ate) return;
     void preferencias({ silencio: { on: janela.on, de, ate } });
   };
@@ -283,15 +285,21 @@ export default function PerfilPage({ role }: { role: ShellRole }) {
         {janela && <Linha label="Silêncio noturno" tag={<span style={css("font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#0E8F86;background:#e3f4f1;padding:3px 7px;border-radius:5px")}>A única coisa sua aqui</span>}
           note={!janela.on ? "Desligado: tudo chega na hora que acontece, de madrugada inclusive." : `${semSilencioProprio ? "Você segue o horário da casa. " : ""}Nesse intervalo o push espera a manhã — aviso marcado como urgente e troca de última hora atravessam de qualquer forma.`}>
           <div style={css("display:flex;align-items:center;gap:7px;flex:none")}>
-            <input aria-label="Silêncio começa" type="time" value={silDe} disabled={!janela.on} onChange={(e) => setSilDe(e.target.value)} onBlur={() => salvarJanela(silDe, silAte)} style={css("width:96px;border:1px solid #e6e1f2;border-radius:9px;padding:8px 8px;font:700 12.5px 'JetBrains Mono',monospace;color:#3d3559;background:#fff;min-height:40px")}/>
+            <input aria-label="Silêncio começa" type="time" value={silDe} disabled={!janela.on} onChange={(e) => setSilDe(e.target.value)} style={css("width:96px;border:1px solid #e6e1f2;border-radius:9px;padding:8px 8px;font:700 12.5px 'JetBrains Mono',monospace;color:#3d3559;background:#fff;min-height:40px")}/>
             <span style={css("font-size:11.5px;color:#6b6482")}>às</span>
-            <input aria-label="Silêncio termina" type="time" value={silAte} disabled={!janela.on} onChange={(e) => setSilAte(e.target.value)} onBlur={() => salvarJanela(silDe, silAte)} style={css("width:96px;border:1px solid #e6e1f2;border-radius:9px;padding:8px 8px;font:700 12.5px 'JetBrains Mono',monospace;color:#3d3559;background:#fff;min-height:40px")}/>
+            <input aria-label="Silêncio termina" type="time" value={silAte} disabled={!janela.on} onChange={(e) => setSilAte(e.target.value)} style={css("width:96px;border:1px solid #e6e1f2;border-radius:9px;padding:8px 8px;font:700 12.5px 'JetBrains Mono',monospace;color:#3d3559;background:#fff;min-height:40px")}/>
             <button type="button" role="switch" aria-checked={janela.on} aria-label="Silêncio noturno ligado" onClick={() => void preferencias({ silencio: { ...janela, on: !janela.on } })}
               style={css("cursor:pointer;flex:none;width:46px;height:27px;border-radius:999px;border:none;padding:3px;display:flex;align-items:center;" + (janela.on ? "background:#0E8F86;justify-content:flex-end;" : "background:#e0dbec;justify-content:flex-start;"))}>
               <span style={css("display:block;width:21px;height:21px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(40,20,90,.35)")}/>
             </button>
           </div>
         </Linha>}
+        {/* O horário do silêncio só vale depois de confirmar: antes gravava sozinho ao sair do campo, sem como desistir. */}
+        {janela && (silDe !== janela.de || silAte !== janela.ate) && <div role="group" aria-label="Salvar o horário do silêncio" style={css("display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:10px 12px;border:1px solid #e6e1f2;border-radius:12px;background:#faf9fe")}>
+          <span style={css("flex:1 1 200px;font-size:12px;line-height:1.4;color:#6b6482")}>{`Você mudou o silêncio para ${silDe}–${silAte}. Ainda não vale.`}</span>
+          <button type="button" className="pf-hit" onClick={() => { setSilDe(janela.de); setSilAte(janela.ate); }} style={css("min-height:44px;padding:0 16px;border:1px solid #d8cef6;border-radius:10px;background:#fff;color:#5b23c9;font:700 13px Manrope,sans-serif;cursor:pointer")}>Descartar</button>
+          <button type="button" className="pf-hit" onClick={() => salvarJanela(silDe, silAte)} style={css("min-height:44px;padding:0 16px;border:0;border-radius:10px;background:#6c2bf2;color:#fff;font:700 13px Manrope,sans-serif;cursor:pointer")}>Salvar horário</button>
+        </div>}
         {!semSilencioProprio && regras && <button type="button" className="pf-hit" onClick={() => void preferencias({ silencio: null })} style={css(LINK + ";align-self:flex-start")}>voltar ao horário da casa ({regras.silencio.on ? `${regras.silencio.de}–${regras.silencio.ate}` : "sem silêncio"})</button>}
         <div style={css("display:flex;flex-direction:column")}>
           {avisos.map((n, i) => <div key={n.label} style={css("display:flex;align-items:center;gap:11px;padding:11px 2px;" + (i ? "border-top:1px solid #f5f2fa;" : ""))}>

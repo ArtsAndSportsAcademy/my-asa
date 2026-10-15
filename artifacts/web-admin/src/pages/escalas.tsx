@@ -823,6 +823,9 @@ function MinhaEscalaLocal({ minha, date, onHoje, onConfirm, saving }: { minha: M
 }
 
 /* ---------- aba Programação: o molde ---------- */
+
+/** Nome, para a pessoa, de cada campo do bloco que ela mudou (aparece no rodapé). */
+const ROTULO_DO_CAMPO: Record<string, string> = { rotulo: "a atividade", inicio: "o início", fim: "o fim", regra: "quem entra", areaIds: "as áreas", pessoaIds: "as pessoas" };
 const REGRA_LABEL: Record<Regra, string> = { todos: "Todo mundo do local", ninguem: "Sem participantes", area: "Por área", grupo: "Por grupo", pessoas: "Pessoas específicas", livro: "Show → Livro do Dia" };
 function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChanged }: { review: boolean; localId: string; localName: string; date: string; dia: Dia | null; canEdit: boolean; onChanged: () => void }) {
   const [list, setList] = useState<Programacao[]>([]);
@@ -834,6 +837,9 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
   const [confirmar, setConfirmar] = useState<{ titulo: string; texto: string; acao: string; onSim: () => void } | null>(null);
   const [error, setError] = useState("");
   const [tick, setTick] = useState(0);
+  const [rascunho, setRascunho] = useState<{ blocoId: string; campos: Partial<ProgBloco> } | null>(null);
+  const [salvando, setSalvando] = useState(false), [erroBloco, setErroBloco] = useState("");
+  const [salvoAntes, setSalvoAntes] = useState<{ bloco: ProgBloco; antes: Partial<ProgBloco> } | null>(null);
   const pessoas = dia?.pessoas ?? (review ? samplePessoas(localId) : []);
   const areas = dia?.areas ?? [];
 
@@ -866,7 +872,8 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
     return [];
   };
 
-  const salvarBloco = async (b: ProgBloco, patch: Partial<ProgBloco>) => {
+  /** Devolve se salvou: quem chama decide o que mostrar (o rodapé do bloco só limpa o rascunho se deu certo). */
+  const salvarBloco = async (b: ProgBloco, patch: Partial<ProgBloco>): Promise<boolean> => {
     setError("");
     try {
       if (review) {
@@ -877,8 +884,45 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
         setTick((n) => n + 1);
       }
       onChanged();
-    } catch (err) { setError(err instanceof ApiError && err.data && typeof (err.data as { error?: unknown }).error === "string" ? (err.data as { error: string }).error : "Não consegui salvar o bloco."); }
+      return true;
+    } catch (err) { setError(err instanceof ApiError && err.data && typeof (err.data as { error?: unknown }).error === "string" ? (err.data as { error: string }).error : "Não consegui salvar o bloco."); return false; }
   };
+
+  // Rascunho do bloco aberto: nada vai para o molde enquanto a pessoa não confirmar no rodapé.
+  const camposDoRascunho = rascunho && bloco && rascunho.blocoId === bloco.id ? rascunho.campos : {};
+  const valorDe = <K extends keyof ProgBloco>(campo: K): ProgBloco[K] => (bloco && campo in camposDoRascunho ? (camposDoRascunho as ProgBloco)[campo] : (bloco as ProgBloco)[campo]);
+  const mudancas: Partial<ProgBloco> = bloco ? Object.fromEntries(Object.entries(camposDoRascunho).filter(([campo, valor]) => JSON.stringify(valor) !== JSON.stringify((bloco as unknown as Record<string, unknown>)[campo]))) : {};
+  const sujo = Object.keys(mudancas).length > 0;
+  const mudarCampo = <K extends keyof ProgBloco>(campo: K, valor: ProgBloco[K]) => { if (!bloco) return; setErroBloco(""); setSalvoAntes(null); setRascunho((atual) => ({ blocoId: bloco.id, campos: { ...(atual && atual.blocoId === bloco.id ? atual.campos : {}), [campo]: valor } })); };
+  const descartarRascunho = () => { setRascunho(null); setErroBloco(""); };
+  // Trocar de bloco, de dia ou de molde com alteração sem salvar pergunta antes: nada se perde calado.
+  const semPerder = (seguir: () => void) => {
+    if (!sujo) { seguir(); return; }
+    setConfirmar({ titulo: "Alterações sem salvar", texto: "Você mudou este bloco e ainda não salvou. Se continuar, as alterações se perdem.", acao: "Descartar e continuar", onSim: () => { descartarRascunho(); seguir(); } });
+  };
+  const salvarRascunho = async () => {
+    if (!bloco || !sujo) return;
+    const patch: Partial<ProgBloco> = { ...mudancas };
+    if (typeof patch.rotulo === "string") patch.rotulo = patch.rotulo.toLocaleUpperCase("pt-BR").trim();
+    if ("rotulo" in patch && !patch.rotulo) { setErroBloco("Dê um nome à atividade."); return; }
+    if ("inicio" in patch && !patch.inicio) { setErroBloco("Escolha a hora de início."); return; }
+    const inicio = String(patch.inicio ?? bloco.inicio), fim = "fim" in patch ? (patch.fim ?? null) : bloco.fim;
+    if (fim && fim <= inicio) { setErroBloco("O fim precisa ser depois do início."); return; }
+    setErroBloco(""); setSalvando(true);
+    const antes = Object.fromEntries(Object.keys(patch).map((campo) => [campo, (bloco as unknown as Record<string, unknown>)[campo]])) as Partial<ProgBloco>;
+    const deuCerto = await salvarBloco(bloco, patch);
+    setSalvando(false);
+    if (deuCerto) { setRascunho(null); setSalvoAntes({ bloco, antes }); } else setErroBloco("Não consegui salvar. O que você mudou continua aqui; tente de novo.");
+  };
+  const desfazerUltimo = async () => {
+    if (!salvoAntes) return;
+    setSalvando(true);
+    const deuCerto = await salvarBloco(salvoAntes.bloco, salvoAntes.antes);
+    setSalvando(false);
+    if (deuCerto) setSalvoAntes(null); else setErroBloco("Não consegui desfazer agora. A alteração continua salva.");
+  };
+  // O "Desfazer" some sozinho depois de um tempo; o histórico de alterações continua no Registro.
+  useEffect(() => { if (!salvoAntes) return; const id = window.setTimeout(() => setSalvoAntes(null), 20_000); return () => window.clearTimeout(id); }, [salvoAntes]);
   const mudarMolde = async (nome: string, inicio: string, fim: string) => {
     if (!prog) return;
     if (review) {
@@ -932,7 +976,7 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
     {error && <div role="alert" style={css("padding:11px 13px;border-radius:12px;font-size:12px;line-height:1.5;background:#fdeceb;border:1px solid #f0bcbc;color:#a12c2c")}>{error}</div>}
     <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:8px")}>
       <span style={css("font-size:11.5px;font-weight:700;color:#6b6482;margin-right:2px")}>Molde</span>
-      {vivos.map((p) => <button key={p.id} type="button" className="esc-hit" aria-pressed={p.id === prog?.id} onClick={() => setProgId(p.id)}
+      {vivos.map((p) => <button key={p.id} type="button" className="esc-hit" aria-pressed={p.id === prog?.id} onClick={() => { if (p.id !== prog?.id) semPerder(() => setProgId(p.id)); }}
         style={css("border-radius:999px;padding:6px 13px;font-size:12px;cursor:pointer;font-family:Manrope,sans-serif;white-space:nowrap;" + (p.id === prog?.id ? "border:1px solid #6C2BF2;background:#f3ebff;color:#6C2BF2;font-weight:700;" : estadoDe(p) === "encerrado" ? "border:1px solid #ece7f8;background:#fff;color:#6b6482;font-weight:600;" : "border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-weight:600;"))}>
         {`${p.nome} · ${shortDate(p.vigenciaInicio)}–${shortDate(p.vigenciaFim)}${estadoDe(p) === "vigente" ? " ✓" : ""}`}
         {p.id.startsWith("sample-prog-") && <span style={css("margin-left:7px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:5px;background:#fdf3e4;color:#8a5a00")}>dado de exemplo</span>}
@@ -970,7 +1014,7 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
       </div>
 
       <div style={css("display:flex;align-items:center;gap:6px;flex-wrap:wrap")}>
-        {WEEKDAYS.map(([w, label]) => <button key={w} type="button" className="esc-hit" aria-pressed={wd === w} onClick={() => { setWd(w); setSel(""); }}
+        {WEEKDAYS.map(([w, label]) => <button key={w} type="button" className="esc-hit" aria-pressed={wd === w} onClick={() => { if (w !== wd) semPerder(() => { setWd(w); setSel(""); }); }}
           style={css("border-radius:9px;padding:7px 15px;font-size:12px;cursor:pointer;font-family:Manrope,sans-serif;" + (wd === w ? "border:1px solid #2b2545;background:#2b2545;color:#fff;font-weight:700;" : "border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-weight:600;"))}>{label}</button>)}
       </div>
 
@@ -986,7 +1030,7 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
               const t = toneOf(b), selected = b.id === bloco?.id;
               const tone = b.regra === "livro" ? "livro" : (b.regra === "ninguem" || (b.regra === "pessoas" && !b.pessoaIds.length)) ? "vazio" : "regra";
               const n = resolved(b).length;
-              return <tr key={b.id} onClick={() => setSel(b.id)} style={{ cursor: "pointer" }}>
+              return <tr key={b.id} onClick={() => { if (b.id !== bloco?.id) semPerder(() => setSel(b.id)); }} style={{ cursor: "pointer" }}>
                 <td style={css("border-right:1px solid #ddd6ee;border-bottom:1px solid #eee9f7;padding:8px 12px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#3d3559;background:" + (selected ? "#f3ecff" : "#fbfaff") + ";")}>{faixa(b)}</td>
                 <td style={css("border-bottom:1px solid #eee9f7;border-right:1px solid #eee9f7;padding:5px 8px;background:" + (selected ? "#faf6ff" : "transparent") + ";")}>
                   <span style={css("display:inline-block;border-radius:7px;padding:6px 10px;font-size:12px;font-weight:600;background:" + t.bg + ";color:" + t.fg + ";border:1px solid " + t.bd + ";")}>{textoDoBloco(b)}</span>
@@ -1027,31 +1071,31 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
         </div>
         {canEdit && <div style={css("display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;border-top:1px solid #f0ecf9;padding-top:12px")}>
           <label style={css("display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:700;color:#6b6482")}>Atividade
-            <input defaultValue={bloco.rotulo} key={`r-${bloco.id}`} onBlur={(e) => { const v = e.target.value.toLocaleUpperCase("pt-BR").trim(); if (v && v !== bloco.rotulo) void salvarBloco(bloco, { rotulo: v }); }}
+            <input value={valorDe("rotulo")} onChange={(e) => mudarCampo("rotulo", e.target.value)} maxLength={80}
               style={css("border:1px solid #ddd6ee;border-radius:9px;padding:6px 9px;font:600 12.5px Manrope,sans-serif;color:#2b2545;min-width:190px")}/>
           </label>
           <label style={css("display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:700;color:#6b6482")}>Início
-            <input type="time" defaultValue={bloco.inicio} key={`i-${bloco.id}`} onBlur={(e) => { if (e.target.value && e.target.value !== bloco.inicio) void salvarBloco(bloco, { inicio: e.target.value }); }}
+            <input type="time" value={valorDe("inicio")} onChange={(e) => mudarCampo("inicio", e.target.value)}
               style={css("border:1px solid #ddd6ee;border-radius:9px;padding:6px 9px;font:600 12.5px Manrope,sans-serif;color:#2b2545")}/>
           </label>
           <label style={css("display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:700;color:#6b6482")}>Fim (opcional)
-            <input type="time" defaultValue={bloco.fim ?? ""} key={`f-${bloco.id}`} onBlur={(e) => { const v = e.target.value || null; if (v !== bloco.fim) void salvarBloco(bloco, { fim: v }); }}
+            <input type="time" value={valorDe("fim") ?? ""} onChange={(e) => mudarCampo("fim", e.target.value || null)}
               style={css("border:1px solid #ddd6ee;border-radius:9px;padding:6px 9px;font:600 12.5px Manrope,sans-serif;color:#2b2545")}/>
           </label>
-          <span style={css("font-size:11px;color:#6b6482;flex:1;min-width:140px")}>Muda só os dias que ainda não foram publicados.</span>
+          <span style={css("font-size:11px;color:#6b6482;flex:1;min-width:140px")}>Só vale depois de “Salvar alterações”, e muda apenas os dias que ainda não foram publicados.</span>
         </div>}
         {!isShow && <div style={css("display:flex;flex-direction:column;gap:11px;border-top:1px solid #f0ecf9;padding-top:12px")}>
           <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:7px")}>
-            {(["ninguem", "todos", "area", "pessoas"] as Regra[]).map((r) => <button key={r} type="button" className="esc-hit" disabled={!canEdit} aria-pressed={bloco.regra === r} onClick={() => void salvarBloco(bloco, { regra: r as ProgBloco["regra"] })}
-              style={css("border-radius:9px;padding:6px 12px;font-size:11.5px;font-family:Manrope,sans-serif;" + (canEdit ? "cursor:pointer;" : "cursor:default;") + (bloco.regra === r ? "border:1px solid #2b2545;background:#2b2545;color:#fff;font-weight:700;" : "border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-weight:600;"))}>{REGRA_LABEL[r]}</button>)}
+            {(["ninguem", "todos", "area", "pessoas"] as Regra[]).map((r) => <button key={r} type="button" className="esc-hit" disabled={!canEdit} aria-pressed={valorDe("regra") === r} onClick={() => mudarCampo("regra", r as ProgBloco["regra"])}
+              style={css("border-radius:9px;padding:6px 12px;font-size:11.5px;font-family:Manrope,sans-serif;" + (canEdit ? "cursor:pointer;" : "cursor:default;") + (valorDe("regra") === r ?"border:1px solid #2b2545;background:#2b2545;color:#fff;font-weight:700;" : "border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-weight:600;"))}>{REGRA_LABEL[r]}</button>)}
           </div>
-          {bloco.regra === "area" && <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:7px")}>
+          {valorDe("regra") === "area" && <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:7px")}>
             <span style={css("font-size:11px;font-weight:700;color:#6b6482;width:132px;flex:none")}>Áreas</span>
-            {areas.map((a) => { const on = bloco.areaIds.includes(a.id); return <button key={a.id} type="button" className="esc-hit" disabled={!canEdit} aria-pressed={on} onClick={() => void salvarBloco(bloco, { areaIds: on ? bloco.areaIds.filter((x) => x !== a.id) : [...bloco.areaIds, a.id] })} style={css(on ? chipOn : chipOff)}>{a.name}</button>; })}
+            {areas.map((a) => { const marcadas = valorDe("areaIds"); const on = marcadas.includes(a.id); return <button key={a.id} type="button" className="esc-hit" disabled={!canEdit} aria-pressed={on} onClick={() => mudarCampo("areaIds", on ? marcadas.filter((x) => x !== a.id) : [...marcadas, a.id])} style={css(on ? chipOn : chipOff)}>{a.name}</button>; })}
           </div>}
-          {bloco.regra === "pessoas" && <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:7px")}>
+          {valorDe("regra") === "pessoas" && <div style={css("display:flex;flex-wrap:wrap;align-items:center;gap:7px")}>
             <span style={css("font-size:11px;font-weight:700;color:#6b6482;width:132px;flex:none")}>Pessoas específicas</span>
-            {pessoas.map((p) => { const on = bloco.pessoaIds.includes(p.id); return <button key={p.id} type="button" className="esc-hit" disabled={!canEdit} aria-pressed={on} onClick={() => void salvarBloco(bloco, { pessoaIds: on ? bloco.pessoaIds.filter((x) => x !== p.id) : [...bloco.pessoaIds, p.id] })} style={css(on ? chipOn : chipOff)}>{p.name}</button>; })}
+            {pessoas.map((p) => { const marcadas = valorDe("pessoaIds"); const on = marcadas.includes(p.id); return <button key={p.id} type="button" className="esc-hit" disabled={!canEdit} aria-pressed={on} onClick={() => mudarCampo("pessoaIds", on ? marcadas.filter((x) => x !== p.id) : [...marcadas, p.id])} style={css(on ? chipOn : chipOff)}>{p.name}</button>; })}
           </div>}
         </div>}
         <div style={css("display:flex;flex-direction:column;gap:8px;border-top:1px solid #f0ecf9;padding-top:12px")}>
@@ -1070,6 +1114,13 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
         </div>
         {canEdit && <div style={css("display:flex;justify-content:flex-end")}>
           <button type="button" className="esc-hit" onClick={() => setConfirmar({ titulo: "Tirar do molde", texto: `"${textoDoBloco(bloco)}" sai de ${WEEKDAY_LONG[bloco.weekday]} e dos dias que ainda não foram publicados. Ele fica guardado e você pode devolver depois.`, acao: "Tirar do molde", onSim: () => void salvarBloco(bloco, { active: false }) })} style={css("border:1px solid #e6e1f2;background:#fff;color:#6b6482;border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:Manrope,sans-serif;flex:none;")}>tirar do molde</button>
+        </div>}
+        {/* Rodapé do bloco: sempre à vista enquanto se edita. Nada vale no molde até "Salvar alterações". */}
+        {canEdit && <div className="esc-rodape" role="group" aria-label="Salvar as alterações do bloco">
+          <span className="esc-rodape-texto" role="status">{erroBloco ? <b className="esc-rodape-erro">{erroBloco}</b> : sujo ? `Você mudou: ${Object.keys(mudancas).map((campo) => ROTULO_DO_CAMPO[campo] ?? campo).join(", ")}. Nada vale até salvar.` : salvoAntes ? "Bloco salvo. Vale para os dias que ainda não foram publicados." : "Nenhuma alteração ainda."}</span>
+          {salvoAntes && !sujo && <button type="button" className="esc-hit esc-rodape-sec" disabled={salvando} onClick={() => void desfazerUltimo()}>Desfazer</button>}
+          <button type="button" className="esc-hit esc-rodape-sec" disabled={!sujo || salvando} onClick={descartarRascunho}>Descartar</button>
+          <button type="button" className="esc-hit esc-rodape-pri" disabled={!sujo || salvando} onClick={() => void salvarRascunho()}>{salvando ? "Salvando…" : "Salvar alterações"}</button>
         </div>}
       </div>}
     </>}

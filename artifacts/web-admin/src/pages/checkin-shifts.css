@@ -14,3 +14,7 @@
 .shift-role-mem .shift-person .shift-actions .shift-absent{background:#ffffff17;color:white;border:1px solid #ffffff35}
 .shift-role-mem .shift-person details{background:#fff;color:#1b1630;border-radius:13px;padding:0 16px;margin-top:16px}
 .shift-role-mem .shift-person summary{border-top:0}.shift-role-mem .shift-person .shift-extension{color:#5b5473}
+
+/* 16/10 (crivo 16): rodapé com Cancelar e Confirmar, colado embaixo da janela. */
+.shift-footer{position:sticky;bottom:0;z-index:2;display:flex;gap:10px;justify-content:flex-end;margin-top:6px;padding:12px 0 2px;background:#fff;border-top:1px solid #eee9f6}
+@media(max-width:560px){.shift-footer button{flex:1}}

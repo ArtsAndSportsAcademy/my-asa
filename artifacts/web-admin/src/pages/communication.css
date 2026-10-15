@@ -92,3 +92,6 @@
 .comm-datas-dia{display:grid;grid-template-columns:90px 1fr;gap:10px}
 @media(max-width:420px){.comm-datas-dia{grid-template-columns:80px 1fr}}
 .comm-datas-breve{margin:0;padding:0 4px;color:#6b4a66;font-size:12.5px;line-height:1.5}.comm-datas-breve b{color:#6b2d55}
+
+/* 16/10 (crivo 16): rodapé das janelas do Mural, das Mensagens e da Biblioteca sempre à vista. */
+.comm-modal .comm-form footer,.comm-modal .comm-modal-footer{position:sticky;bottom:0;z-index:2;margin-top:6px;padding:12px 0 4px;background:#fff;border-top:1px solid #eee9f6}
