@@ -164,14 +164,18 @@ só isso; não conclua que quebrou antes de esperar.
 - `lib/db` — schema, migrações e rollbacks.
 - `docs/` — decisões e desenho das telas.
 
-## Estado em 10/10/2026
+## Estado em 16/10/2026
 
-Pronto e em produção: Escala do dia, Programação, Livro do Dia, check-in por turno, Meu Dia, com o
-elenco de Snowland carregado e gerando o dia de verdade.
+Pronto e em produção: Escala do dia, Programação (com rascunho e rodapé), Livro do Dia, check-in por turno,
+Meu Dia, Folgas em lote e grupos de folga, Gerar o mês, **Mural aberto** (o Elenco publica, edita, remove e
+desfaz, reações, datas especiais) e **Mensagens com grupos** (privadas: a Administração não lê conversa),
+com o elenco de Snowland carregado e gerando o dia de verdade. O último handoff é
+`docs/handoff-2026-10-16.md`: leia antes de continuar.
 
 Pendente:
-- **Folgas e Solicitações** é o próximo módulo a ser revisado tela a tela, com o crivo acima. A regra
-  real de folgas está em `docs/regras-de-folgas.md` — leia antes de mexer.
+- **A próxima revisão tela a tela**, com as 16 perguntas do crivo: Agenda, Tarefas, Cadastros, Painel,
+  Biblioteca; depois Folgas e Solicitações. A regra real de folgas está em `docs/regras-de-folgas.md` —
+  leia antes de mexer.
 - **Acquamotion** não tem as vagas de personagem dos shows (a planilha ainda está "a definir"), por
   isso os Livros do Dia de lá nascem vazios. Não é defeito.
 - **Buona e Bella** têm as filas definidas e as vagas a criar.
