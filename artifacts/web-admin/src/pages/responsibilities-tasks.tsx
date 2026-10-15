@@ -40,7 +40,10 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
   const [saving, setSaving] = useState(false);
   const [responsibilityDialog, setResponsibilityDialog] = useState(false);
   const [assignmentResponsibility, setAssignmentResponsibility] = useState("");
-  const [assignmentForm, setAssignmentForm] = useState({ memberId: "", role: "SECONDARY" });
+  const [assignmentForm, setAssignmentForm] = useState<{ memberIds: string[]; role: string }>({ memberIds: [], role: "SECONDARY" });
+  const [assignmentError, setAssignmentError] = useState("");
+  // Cancelar tarefa: o motivo é opcional e quem tinha a tarefa recebe o aviso.
+  const [cancelTask, setCancelTask] = useState<Task | null>(null), [cancelMotivo, setCancelMotivo] = useState(""), [cancelError, setCancelError] = useState("");
   const [lotDialog, setLotDialog] = useState(false);
   const [responsibilityForm, setResponsibilityForm] = useState({ title: "", areaId: "", description: "" });
   const [selectedResponsibility, setSelectedResponsibility] = useState("");
@@ -56,6 +59,7 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
   useFecharComEsc(() => setResponsibilityDialog(false), responsibilityDialog && !saving);
   useFecharComEsc(() => setAssignmentResponsibility(""), Boolean(assignmentResponsibility) && !saving);
   useFecharComEsc(closeLot, lotDialog);
+  useFecharComEsc(() => setCancelTask(null), Boolean(cancelTask) && !saving);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -182,21 +186,37 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
     setNextKey((current) => current + 1);
   };
 
+  // A frase que o servidor mandou, ou o texto da tela quando foi rede ou servidor fora do ar.
+  const frase = (cause: unknown, padrao: string) => { const data = (cause as { data?: { message?: string; error?: string } } | null)?.data; return data?.message || data?.error || padrao; };
+  // Várias pessoas de uma vez: uma chamada por pessoa, e o resumo diz quem entrou e quem não entrou (e por quê).
   const addParticipant = async (event: FormEvent) => {
     event.preventDefault();
-    if (!assignmentResponsibility || !assignmentForm.memberId) return;
-    setSaving(true);
+    if (!assignmentResponsibility || !assignmentForm.memberIds.length || saving) return;
+    if (assignmentForm.role === "PRIMARY" && assignmentForm.memberIds.length > 1) { setAssignmentError("Só uma pessoa pode ser a principal. Escolha só uma, ou mude para Participante."); return; }
+    setSaving(true); setAssignmentError("");
+    const entraram: string[] = [], falhas: string[] = [], falhaIds: string[] = [];
+    for (const memberId of assignmentForm.memberIds) {
+      const nome = displayName(people.find((person) => person.id === memberId));
+      try {
+        await customFetch(`/api/responsibilities/${assignmentResponsibility}/assignments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ memberId, role: assignmentForm.role }) });
+        entraram.push(nome);
+      } catch (cause) { falhas.push(`${nome} (${frase(cause, "não consegui")})`); falhaIds.push(memberId); }
+    }
+    setSaving(false);
+    if (entraram.length) await reload();
+    if (falhas.length) { setAssignmentForm((atual) => ({ ...atual, memberIds: falhaIds })); setAssignmentError(`${entraram.length ? `Entraram ${entraram.length}. ` : ""}Não entrou: ${falhas.join("; ")}.`); if (entraram.length) setNotice(`${entraram.length} ${entraram.length === 1 ? "pessoa adicionada" : "pessoas adicionadas"}; veja no aviso da janela quem faltou.`); return; }
+    setAssignmentResponsibility(""); setAssignmentForm({ memberIds: [], role: "SECONDARY" });
+    setNotice(`${entraram.length} ${entraram.length === 1 ? "pessoa adicionada" : "pessoas adicionadas"}. Cada uma recebe um aviso no sino.`);
+  };
+  const confirmCancelTask = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!cancelTask || saving) return;
+    setSaving(true); setCancelError("");
     try {
-      await customFetch(`/api/responsibilities/${assignmentResponsibility}/assignments`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(assignmentForm),
-      });
-      setAssignmentResponsibility("");
-      setAssignmentForm({ memberId: "", role: "SECONDARY" });
-      setNotice("Participante adicionado.");
-      await reload();
-    } catch (cause) {
-      setNotice(cause instanceof Error ? cause.message : "Não consegui adicionar o participante.");
-    } finally { setSaving(false); }
+      await customFetch(`/api/tasks/${cancelTask.id}/cancel`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: cancelMotivo.trim() || undefined }) });
+      setNotice(`Tarefa cancelada. ${cancelTask.assigneeName} recebe o aviso.`); setCancelTask(null); setCancelMotivo(""); await reload();
+    } catch (cause) { setCancelError(frase(cause, "Não consegui cancelar agora. Nada foi alterado; tente de novo.")); }
+    finally { setSaving(false); }
   };
 
   return <section className="asa-page rt-page">
@@ -218,7 +238,7 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
         return <article className={`rt-task ${overdue ? "is-late" : ""}`} key={task.id}>
           {role === "mem" && !closed ? <button className="rt-check" aria-label={`Concluir ${task.title}`} title="Marcar como feita" disabled={saving} onClick={() => void finishTask(task)}><Check size={17}/></button> : <span className={`rt-task-mark ${closed ? "done" : ""}`}>{closed ? <Check size={15}/> : <ClipboardList size={15}/>}</span>}
           <div className="rt-task-main"><strong>{task.title}</strong><div><span>{task.responsibilityTitle ?? "Tarefa avulsa"}</span><span>{task.assigneeName}</span><span>Origem: {task.origin === "ASA" || task.origin === "AI" ? "ASA" : "Pessoa"}</span></div></div>
-          <div className="rt-task-end"><time dateTime={task.dueDate} className={overdue ? "late" : ""}>{overdue ? "Atrasada · " : "Até "}{dateLabel(task.dueDate)}</time><span className={`rt-state ${closed ? "closed" : overdue ? "late" : ""}`}>{statusLabel[task.status] ?? task.status}</span></div>
+          <div className="rt-task-end"><time dateTime={task.dueDate} className={overdue ? "late" : ""}>{overdue ? "Atrasada · " : "Até "}{dateLabel(task.dueDate)}</time><span className={`rt-state ${closed ? "closed" : overdue ? "late" : ""}`}>{statusLabel[task.status] ?? task.status}</span>{canDistribute && !closed && <button type="button" className="rt-task-cancel" onClick={() => { setCancelError(""); setCancelMotivo(""); setCancelTask(task); }}>Cancelar tarefa</button>}</div>
         </article>;
       })}</div> : <div className="rt-empty"><ClipboardList size={24}/><strong>{filter === "today" ? "Nada vence hoje" : "Nenhuma tarefa neste filtro"}</strong><span>Quando uma tarefa for distribuída para você, ela aparece aqui.</span></div>}
     </> : <>
@@ -227,7 +247,7 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
         <div className="rt-resp-line"><span className="rt-resp-symbol" aria-hidden="true"><ClipboardList size={17}/></span><div className="rt-resp-main"><strong>{responsibility.title}</strong><span>{responsibility.areaName ?? areas.find((area) => area.id === responsibility.areaId)?.name ?? "Área não informada"}</span></div><span className="rt-active">Ativa</span></div>
         {responsibility.description && <p className="rt-resp-description">{responsibility.description}</p>}
         <div className="rt-resp-meta"><span>Responsável pela definição</span><strong>{responsibility.ownerName ?? "Não informado"}</strong><span>Participantes</span><strong>{responsibility.assignments.filter((assignment) => assignment.active).map((assignment) => assignment.memberName).join(", ") || "Ainda sem participantes"}</strong></div>
-        {canDefine && <button className="rt-link-button" onClick={() => setAssignmentResponsibility(responsibility.id)}><CirclePlus size={14}/>Adicionar participante</button>}
+        {canDefine && <button className="rt-link-button" onClick={() => { setAssignmentError(""); setAssignmentForm({ memberIds: [], role: "SECONDARY" }); setAssignmentResponsibility(responsibility.id); }}><CirclePlus size={14}/>Adicionar participante</button>}
         {canDistribute && <button className="rt-link-button" onClick={() => { setSelectedResponsibility(responsibility.id); setLotDialog(true); }}>Preparar lote desta responsabilidade</button>}
       </article>)}</div> : <div className="rt-empty"><ClipboardList size={24}/><strong>Não há responsabilidades no seu acesso</strong><span>As definições permanentes das áreas aparecem nesta lista.</span></div>}
     </>}
@@ -241,7 +261,17 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
     {assignmentResponsibility && <div className="rt-backdrop" role="presentation" onMouseDown={() => !saving && setAssignmentResponsibility("")}><section className="rt-dialog" role="dialog" aria-modal="true" aria-labelledby="rt-participant-title" onMouseDown={(event) => event.stopPropagation()}>
       <header><h2 id="rt-participant-title">Adicionar participante</h2><button className="rt-icon-button" aria-label="Fechar" onClick={() => setAssignmentResponsibility("")}><X size={18}/></button></header>
       <p>{responsibilities.find((item) => item.id === assignmentResponsibility)?.title}</p>
-      <form onSubmit={addParticipant} className="rt-form"><label>Pessoa<select required value={assignmentForm.memberId} onChange={(event) => setAssignmentForm({ ...assignmentForm, memberId: event.target.value })}><option value="">Escolha uma pessoa</option>{people.map((person) => <option key={person.id} value={person.id}>{displayName(person)}{person.areaName ? ` · ${person.areaName}` : ""}</option>)}</select></label><label>Participação<select value={assignmentForm.role} onChange={(event) => setAssignmentForm({ ...assignmentForm, role: event.target.value })}><option value="SECONDARY">Participante</option><option value="PRIMARY">Principal</option><option value="VIEWER">Somente leitura</option></select></label><footer><button type="button" className="rt-secondary" onClick={() => setAssignmentResponsibility("")}>Cancelar</button><button className="rt-primary" disabled={saving || !assignmentForm.memberId}>{saving ? "Salvando…" : "Adicionar pessoa"}</button></footer></form>
+      <form onSubmit={addParticipant} className="rt-form">{(() => {
+          const jaSao = new Set(responsibilities.find((item) => item.id === assignmentResponsibility)?.assignments.filter((assignment) => assignment.active).map((assignment) => assignment.memberId) ?? []);
+          const candidatas = people.filter((person) => !jaSao.has(person.id));
+          return <div className="rt-assignees" role="group" aria-label="Pessoas a adicionar"><div className="rt-assignees-head"><span>Pessoas{assignmentForm.memberIds.length ? ` · ${assignmentForm.memberIds.length}` : ""} <small>(marque quantas quiser)</small></span>{candidatas.length > 1 && <span className="rt-assignees-tools"><button type="button" onClick={() => setAssignmentForm((atual) => ({ ...atual, memberIds: candidatas.map((person) => person.id) }))}>Marcar todas</button><button type="button" onClick={() => setAssignmentForm((atual) => ({ ...atual, memberIds: [] }))}>Limpar</button></span>}</div><div className="rt-assignee-list">{candidatas.map((person) => <label key={person.id}><input type="checkbox" checked={assignmentForm.memberIds.includes(person.id)} onChange={() => setAssignmentForm((atual) => ({ ...atual, memberIds: atual.memberIds.includes(person.id) ? atual.memberIds.filter((id) => id !== person.id) : [...atual.memberIds, person.id] }))}/><span>{displayName(person)}{person.areaName ? ` · ${person.areaName}` : ""}</span></label>)}{!candidatas.length && <p className="rt-form-error">Todas as pessoas já participam desta responsabilidade.</p>}</div></div>;
+        })()}<label>Participação<select value={assignmentForm.role} onChange={(event) => setAssignmentForm({ ...assignmentForm, role: event.target.value })}><option value="SECONDARY">Participante</option><option value="PRIMARY">Principal</option><option value="VIEWER">Somente leitura</option></select></label>{assignmentError && <p className="rt-form-error" role="alert">{assignmentError}</p>}<footer><button type="button" className="rt-secondary" onClick={() => setAssignmentResponsibility("")}>Cancelar</button><button className="rt-primary" disabled={saving || !assignmentForm.memberIds.length}>{saving ? "Adicionando…" : assignmentForm.memberIds.length > 1 ? `Adicionar ${assignmentForm.memberIds.length} pessoas` : "Adicionar pessoa"}</button></footer></form>
+    </section></div>}
+
+    {cancelTask && <div className="rt-backdrop" role="presentation" onMouseDown={() => !saving && setCancelTask(null)}><section className="rt-dialog" role="dialog" aria-modal="true" aria-labelledby="rt-cancel-title" onMouseDown={(event) => event.stopPropagation()}>
+      <header><h2 id="rt-cancel-title">Cancelar tarefa</h2><button className="rt-icon-button" aria-label="Fechar" onClick={() => setCancelTask(null)}><X size={18}/></button></header>
+      <p>{cancelTask.title} · {cancelTask.assigneeName} · até {dateLabel(cancelTask.dueDate)} — {cancelTask.assigneeName} recebe o aviso de que a tarefa não vale mais. Não dá para desfazer; para voltar, é preciso criar a tarefa de novo.</p>
+      <form onSubmit={confirmCancelTask} className="rt-form"><label>Motivo (opcional)<textarea value={cancelMotivo} onChange={(event) => setCancelMotivo(event.target.value)} rows={3} placeholder="Quem tinha a tarefa lê este motivo"/></label>{cancelError && <p className="rt-form-error" role="alert">{cancelError}</p>}<footer><button type="button" className="rt-secondary" onClick={() => setCancelTask(null)}>Voltar</button><button className="rt-primary rt-danger-solid" disabled={saving}>{saving ? "Cancelando…" : "Cancelar tarefa"}</button></footer></form>
     </section></div>}
 
     {lotDialog && <div className="rt-backdrop" role="presentation" onMouseDown={() => { if (!saving && !lotDirty) closeLot(); }}><section className="rt-dialog rt-lot-dialog" role="dialog" aria-modal="true" aria-labelledby="rt-lot-title" onMouseDown={(event) => event.stopPropagation()}>

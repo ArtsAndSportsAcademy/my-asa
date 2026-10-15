@@ -828,7 +828,7 @@ router.post("/tasks/:id/cancel", requireAuth, requireOrganization, async (req, r
       category: "TASK",
       action: "task.cancelled",
       title: `Tarefa cancelada: ${task.title}`,
-      narrative: `${actorName} cancelou a tarefa "${task.title}". Motivo: ${reason ?? "não informado"}.`,
+      narrative: `${actorName} cancelou a tarefa "${task.title}". ${typeof reason === "string" && reason.trim() ? `Motivo: ${reason.trim()}.` : "Sem motivo informado."}`,
       entityType: "task",
       entityId: id,
       actorId: user.sub,
@@ -836,6 +836,14 @@ router.post("/tasks/:id/cancel", requireAuth, requireOrganization, async (req, r
       operationId: task.operationId,
       orgId: task.organizationId,
     });
+
+    // Quem tinha a tarefa precisa saber que ela não vale mais (senão continua tentando fazê-la).
+    const motivo = typeof reason === "string" && reason.trim() ? reason.trim() : null;
+    if (task.assigneeId !== user.sub) void sendNotification({
+      userId: task.assigneeId, type: "task.cancelled", title: "Tarefa cancelada",
+      message: `${task.title} foi cancelada.${motivo ? ` Motivo: ${motivo}` : ""}`,
+      priority: "NORMAL", category: "responsibility", entityType: "task", entityId: id, actionUrl: "/responsabilidades",
+    }).catch((err) => log.warn({ err }, "Falha ao avisar o cancelamento da tarefa"));
 
     res.json({ task: updated });
   } catch (err) {

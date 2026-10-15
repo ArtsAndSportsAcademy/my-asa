@@ -11,6 +11,7 @@
 .rt-assignee-list{max-height:170px;overflow:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 8px;padding:4px;border:1px solid var(--asa-border);border-radius:7px}
 .rt-form .rt-assignee-list label{min-height:40px;display:flex;align-items:center;gap:8px;padding:3px 5px;border-radius:5px;font-weight:500;cursor:pointer}.rt-form .rt-assignee-list input{width:18px;min-height:18px;flex:none;accent-color:#08796f}.rt-assignee-list span{min-width:0;overflow-wrap:anywhere}
 .rt-discard{display:grid;gap:8px;padding:10px 12px;border-left:3px solid #bd7a13;background:#fdf3e4;color:#67420d;font-size:12px;line-height:1.5}.rt-discard>div{display:flex;gap:8px;flex-wrap:wrap}
-.rt-danger{border-color:#e3b3bd;color:#a32740}
+.rt-danger{border-color:#e3b3bd;color:#a32740}.rt-danger-solid{border-color:#a32740;background:#a32740}
+.rt-task-cancel{min-height:40px;padding:0 4px;border:0;background:transparent;color:#a32740;font-size:12px;font-weight:700;cursor:pointer;justify-self:end}
 .rt-form-error{margin:0;color:#99253c;font-size:12px;line-height:1.5}
 @media(max-width:720px){.rt-assignee-list{grid-template-columns:1fr}.rt-discard>div button{flex:1}}

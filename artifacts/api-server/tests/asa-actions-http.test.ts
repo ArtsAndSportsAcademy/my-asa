@@ -6,7 +6,7 @@ import {
   delegationsTable, historyEventsTable, locationsTable, noticeRecipientsTable, noticesTable, showBooksTable, showBookScenesTable, showBookBlocksTable, showBookRolesTable, taskEvidencesTable,
   messageThreadsTable, messageThreadParticipantsTable, messagesTable, taskCommentsTable,
   libraryCategoriesTable, libraryDocumentsTable, libraryDocumentPageCitationsTable, libraryViewsTable,
-  operationLocationsTable, operationsTable, organizationsTable, pool, recurringActivitiesTable, recurringActivityAssigneesTable, responsibilitiesTable, responsibilityAssignmentsTable,
+  notificationOutboxTable, operationLocationsTable, operationsTable, organizationsTable, pool, recurringActivitiesTable, recurringActivityAssigneesTable, responsibilitiesTable, responsibilityAssignmentsTable,
   recurringActivitySchedulesTable, tasksTable, userNotificationsTable, userRolesTable, usersTable,
 } from "@workspace/db";
 import app from "../src/application.js";
@@ -2089,6 +2089,8 @@ async function run() {
       }
       await db.delete(responsibilitiesTable).where(inArray(responsibilitiesTable.orgId, orgIds));
       if (userIds.length) {
+        // A fila de avisos (mensagem nova, publicação...) guarda a pessoa por chave estrangeira: sai antes das pessoas.
+        await db.delete(notificationOutboxTable).where(inArray(notificationOutboxTable.userId, userIds));
         await db.delete(userNotificationsTable).where(inArray(userNotificationsTable.userId, userIds));
         await db.delete(areaLocalSupervisorsTable).where(inArray(areaLocalSupervisorsTable.supervisorId, userIds));
         await db.delete(userRolesTable).where(inArray(userRolesTable.userId, userIds));

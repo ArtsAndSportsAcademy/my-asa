@@ -49,11 +49,15 @@ ficam como texto com o nome da figurinha. **Ordem:** migração primeiro (produ�
 - Site: `pages/mensagens.tsx` e `pages/mensagens.css` (lista → conversa em tela cheia no telefone).
 - Testes: `mensagens-grupos.test.ts`.
 
-## Pergunta que ficou aberta
+## Decisão de 15/10/2026: a mensagem toca o celular pelo site
 
-- **A mensagem deve tocar o celular pelo site (push web)?** Hoje o push web é restrito, por teste antigo
-  (`block7-integrity`), a escala e aviso com ciente — "sem chat". Mensagem avisa no sino e no push do app
-  mobile. Ligar o push web para mensagens muda essa decisão; o texto do push seguiria genérico.
+- Respondida pela Babi: **sim**. `message.new` entrou em `WEB_PUSH_TYPES` (`services/web-push.ts`) e o
+  `block7-integrity` agora fixa isso (6 tipos). O push web é **sempre genérico**: "Você tem uma mensagem nova —
+  abra o My ASA", sem texto da conversa e sem o nome de quem escreveu. Quem está de folga continua sem push
+  (`semPush`), e o silêncio noturno da pessoa segue valendo (o push espera o fim da janela).
+- O texto de uma mensagem também deixou de entrar no Registro pelo ASA (antes `asa.ts` gravava o começo da
+  mensagem ao enviar uma proposta confirmada). Linhas antigas: `lib/db/scripts/limpar-texto-de-mensagens-no-registro.sql`,
+  que a Babi roda em produção (não é migração).
 
 ## Ainda não feito
 

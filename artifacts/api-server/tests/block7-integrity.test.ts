@@ -131,7 +131,12 @@ async function run() {
     const push = await deliverWebPush({ userId: member!.id, type: "scale.changed", title: "atestado", message: "atestado privado", category: "schedule" }, transport);
     assert(push.delivered === 1 && transportCount === 1, "Integração do remetente entrega ao transporte inscrito (não é recibo de navegador real)");
     await deliverWebPush({ userId: member!.id, type: "request.denied", title: "Folga", message: "Recusada", category: "approval" }, transport);
-    assert(transportCount === 1 && WEB_PUSH_TYPES.size === 5, "Web Push restringe-se às três categorias, sem folga/ocorrência/chat");
+    assert(transportCount === 1 && WEB_PUSH_TYPES.size === 6 && WEB_PUSH_TYPES.has("message.new"), "Web Push restringe-se às categorias combinadas (escala, check-in, aviso que pede ciente e mensagem nova), sem folga/ocorrência");
+    // Decisão de 15/10/2026: a mensagem toca o celular pelo site, mas o texto da conversa e o nome de quem escreveu nunca vão no push.
+    let corpoDaMensagem = "";
+    const transporteDaMensagem: typeof webpush.sendNotification = async (_alvo, payload) => { corpoDaMensagem = String(payload); return { statusCode: 201, body: "", headers: {} }; };
+    const pushMensagem = await deliverWebPush({ userId: member!.id, type: "message.new", title: "Conversa com Fulana", message: "texto secreto da conversa", category: "message" }, transporteDaMensagem);
+    assert(pushMensagem.delivered === 1 && corpoDaMensagem.includes("mensagem nova") && !corpoDaMensagem.includes("secreto") && !corpoDaMensagem.includes("Fulana"), "Push de mensagem avisa só que há mensagem nova, sem texto nem nome");
     assert(!validPushEndpoint("https://127.0.0.1/private") && !validPushEndpoint("https://fcm.googleapis.com.evil.test/push"), "Inscrição não permite SSRF ou host que imita provedor");
     assert((await request(`/web-push/subscriptions/${subscriptionBody.subscription.id}`, auth, "DELETE")).status === 403, "Outra conta não pode remover inscrição do navegador");
     const publicTables = await pool.query(`

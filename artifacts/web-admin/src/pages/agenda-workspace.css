@@ -45,6 +45,14 @@
 /* 16/10 (crivo): aviso do porquê o botão está cinza, navegação do mês e primeiro dia no dia da semana certo. */
 .ag-hint-aviso{color:#67420d}.ag-hint-erro{color:#99253c;font-weight:700}
 .ag-month-title{text-transform:capitalize}
+.ag-day-events{margin-top:16px;display:grid;gap:8px}.ag-day-events h3{margin:0;font:600 14px Outfit,sans-serif}
+.ag-day-event{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid var(--asa-border);border-radius:8px;background:#fff}.ag-day-event>div:first-child{min-width:0;display:grid;gap:3px}.ag-day-event strong{overflow-wrap:anywhere}.ag-day-event span{color:var(--asa-muted);font-size:12px}.ag-day-event-actions{display:flex;gap:6px;flex-wrap:wrap}
+.ag-danger{border-color:#e3b3bd;color:#a32740}.ag-danger-solid{border-color:#a32740;background:#a32740}
+.ag-bulk{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 12px;border:1px solid #cfe8e4;border-radius:8px;background:#e3f4f1;color:#075d57;font-size:12px;font-weight:700}
+.ag-folga-motivo small{color:var(--asa-muted);font-weight:500}
+.ag-lista-rascunhos{margin:0 0 12px;padding-left:18px;max-height:220px;overflow:auto;font-size:13px;line-height:1.6}
+.ag-dialog>.ag-form-footer{display:flex;justify-content:flex-end;gap:8px;position:sticky;bottom:0;margin:6px -19px -19px;padding:12px 19px;background:#fff;border-top:1px solid #eee9f6}
+@media(max-width:720px){.ag-day-event{flex-direction:column;align-items:flex-start}.ag-day-event-actions{width:100%}.ag-day-event-actions button{flex:1}.ag-dialog>.ag-form-footer{margin:6px -15px -15px;padding:12px 15px}.ag-dialog>.ag-form-footer button{flex:1}}
 .ag-person-tools{display:flex;gap:8px;margin:0 0 6px}.ag-person-tools button{min-height:40px;padding:0 12px;border:1px solid var(--asa-border);border-radius:6px;background:#fff;color:var(--asa-ink);font-size:12px;font-weight:700;cursor:pointer}
 .ag-month-grid article:first-child{grid-column-start:var(--ag-offset,1)}
 @media(max-width:720px){.ag-month-grid article:first-child{grid-column-start:auto}}

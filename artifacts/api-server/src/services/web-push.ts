@@ -5,7 +5,7 @@ import { writeHistoryEvent } from "../lib/history-helper.js";
 import type { CreateNotificationInput } from "./notificationService.js";
 import { normalizeActionUrl } from "../lib/app-routes.js";
 
-export const WEB_PUSH_TYPES = new Set(["scale.published", "scale.republished", "scale.changed", "checkin.shift_reminder", "notice.requires_ack"]);
+export const WEB_PUSH_TYPES = new Set(["scale.published", "scale.republished", "scale.changed", "checkin.shift_reminder", "notice.requires_ack", "message.new"]);
 export function validPushEndpoint(endpoint: string) {
   try {
     const url = new URL(endpoint);
@@ -22,7 +22,7 @@ export async function deliverWebPush(input: CreateNotificationInput, transport: 
   const subscriptions = await db.select().from(webPushSubscriptionsTable).where(and(eq(webPushSubscriptionsTable.userId, input.userId), eq(webPushSubscriptionsTable.active, true)));
   if (!subscriptions.length) return { delivered: 0, skipped: "no_subscription" };
   if (!webPushConfigured()) throw new Error("Web Push requer VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY e VAPID_SUBJECT");
-  const titles: Record<string, string> = { "scale.published": "Escala mudou", "scale.republished": "Escala mudou", "scale.changed": "Escala mudou", "checkin.shift_reminder": "Lembrete de check-in do turno", "notice.requires_ack": "Aviso que pede ciente" };
+  const titles: Record<string, string> = { "scale.published": "Escala mudou", "scale.republished": "Escala mudou", "scale.changed": "Escala mudou", "checkin.shift_reminder": "Lembrete de check-in do turno", "notice.requires_ack": "Aviso que pede ciente", "message.new": "Você tem uma mensagem nova" };
   const url = normalizeActionUrl(input.actionUrl, input.type);
   const payload = JSON.stringify({ title: titles[input.type], body: "Abra o My ASA para consultar.", type: input.type, url, tag: `${input.type}:${input.entityId ?? "today"}` });
   let delivered = 0;

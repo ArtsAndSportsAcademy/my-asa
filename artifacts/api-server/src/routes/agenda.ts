@@ -11,7 +11,7 @@ import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { requestLogger } from "../lib/logger.js";
 import { eventBus } from "../lib/event-bus.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
-import { notifyMany } from "../services/notificationService.js";
+import { notifyMany, sendNotification } from "../services/notificationService.js";
 import { normalizeReason } from "../lib/reason.js";
 import { hasOperationAccess } from "../lib/authorization.service.js";
 import { listAreaLocalScopes } from "../services/area-local-scope.js";
@@ -74,6 +74,23 @@ async function getParticipantDetails(eventId: string) {
     respondedAt: agendaEventParticipantsTable.respondedAt, responseNote: agendaEventParticipantsTable.responseNote })
     .from(agendaEventParticipantsTable).innerJoin(usersTable, eq(agendaEventParticipantsTable.userId, usersTable.id))
     .where(eq(agendaEventParticipantsTable.eventId, eventId)).orderBy(asc(usersTable.name));
+}
+
+// Folga vence a escala: chamar para um ensaio quem está de folga naquele dia é exceção e exige motivo escrito.
+async function pessoasEmFolga(userIds: string[], date: string): Promise<{ id: string; name: string }[]> {
+  if (!userIds.length) return [];
+  const rows = await db.select({ id: usersTable.id, name: usersTable.name }).from(folgasTable)
+    .innerJoin(usersTable, eq(folgasTable.userId, usersTable.id))
+    .where(and(inArray(folgasTable.userId, userIds), eq(folgasTable.status, "ACTIVE"), lte(folgasTable.startDate, date), gte(folgasTable.endDate, date)));
+  return [...new Map(rows.map((row) => [row.id, row] as const)).values()];
+}
+
+// Quem precisa saber que um compromisso mudou ou foi cancelado: só quem já tinha sido avisado dele.
+// Rascunho ninguém viu; proposta só quem propôs viu; confirmado ou suspenso, os participantes.
+async function quemSabiaDoEvento(event: typeof agendaEventsTable.$inferSelect, ator: string): Promise<string[]> {
+  const ids = event.status === "CONFIRMED" || event.status === "SUSPENDED" ? await getParticipantIds(event.id)
+    : event.status === "PROPOSED" ? [event.createdBy] : [];
+  return [...new Set(ids.filter((id) => id !== ator))];
 }
 
 // Substitui o conjunto de participantes de um evento (delete-all + insert).
@@ -428,7 +445,7 @@ router.post("/agenda/events/:id/respond", requireAuth, requireOrganization, asyn
     });
     if (event.createdBy !== req.user!.sub) void notifyMany([event.createdBy], {
       type: "agenda.meeting.response", title: `Resposta ao convite: ${event.title}`,
-      message: `${response === "ACCEPTED" ? "Uma pessoa aceitou" : "Uma pessoa recusou"} o convite para ${event.date}.`,
+      message: `${response === "ACCEPTED" ? "Uma pessoa aceitou" : "Uma pessoa recusou"} o convite para ${event.date}.${response === "DECLINED" && responseNote ? ` Motivo: ${responseNote}` : ""}`,
       priority: "LOW", category: "approval", entityType: "agenda_event", entityId: event.id, actionUrl: "/agenda",
     }).catch((err) => requestLogger("agenda", req.requestId, req.correlationId).warn({ err }, "Falha ao notificar resposta de convite"));
     res.json({ success: true, response });
@@ -504,6 +521,10 @@ router.post("/agenda/events", requireAuth, requireOrganization, async (req, res)
   if (type === "REHEARSAL" && people.length === 0) {
     res.status(400).json({ error: "Ensaio precisa ter pelo menos uma pessoa convocada" }); return;
   }
+  const emFolga = type === "REHEARSAL" ? await pessoasEmFolga(people, date) : [];
+  if (emFolga.length && !normalizeReason(req.body?.reason)) {
+    res.status(409).json({ error: `Há pessoas de folga nesse dia: ${emFolga.map((p) => p.name).join(", ")}. Para chamar alguém de folga, escreva o motivo.`, code: "FOLGA_EXIGE_MOTIVO", emFolga: emFolga.map((p) => p.name) }); return;
+  }
   if (people.length) {
     const memberships = await db.select({ userId: userRolesTable.userId, areaId: usersTable.areaId })
       .from(userRolesTable).innerJoin(usersTable, eq(userRolesTable.userId, usersTable.id))
@@ -540,7 +561,7 @@ router.post("/agenda/events", requireAuth, requireOrganization, async (req, res)
         category: "AGENDA", action: "created", title: "Evento de agenda criado",
         narrative: `Evento ${created.title} criado para ${created.date}.`, entityType: "agenda_event", entityId: created.id,
         actorId: userId, operationId, orgId: req.user!.organizationId, beforeState: null, afterState: created,
-        metadata: { reason: normalizeReason(req.body?.reason) },
+        metadata: { reason: normalizeReason(req.body?.reason), chamadasNaFolga: emFolga.map((p) => p.name) },
       }, tx as any);
       return created;
     });
@@ -549,10 +570,19 @@ router.post("/agenda/events", requireAuth, requireOrganization, async (req, res)
       const supervisors = await db.select({ id: areaLocalSupervisorsTable.supervisorId })
         .from(areaLocalSupervisorsTable).innerJoin(areasTable, eq(areaLocalSupervisorsTable.areaId, areasTable.id))
         .where(and(eq(areaLocalSupervisorsTable.areaId, areaId), eq(areaLocalSupervisorsTable.active, true), eq(areasTable.organizationId, req.user!.organizationId)));
-      const supervisorIds = [...new Set(supervisors.map((row) => row.id).filter((id) => id !== userId))];
+      let supervisorIds = [...new Set(supervisors.map((row) => row.id).filter((id) => id !== userId))];
+      // Área sem supervisão cadastrada: a proposta não pode ficar parada sem ninguém saber, vai para a Administração.
+      let semSupervisao = false;
+      if (!supervisorIds.length) {
+        const admins = await db.select({ id: userRolesTable.userId }).from(userRolesTable)
+          .innerJoin(usersTable, eq(userRolesTable.userId, usersTable.id))
+          .where(and(eq(userRolesTable.role, "ADMIN"), eq(userRolesTable.active, true), eq(usersTable.organizationId, req.user!.organizationId), eq(usersTable.status, "ACTIVE")));
+        supervisorIds = [...new Set(admins.map((row) => row.id).filter((id) => id !== userId))];
+        semSupervisao = true;
+      }
       if (supervisorIds.length) void notifyMany(supervisorIds, {
         type: "agenda.meeting.proposed", title: `Nova proposta de reunião: ${event!.title}`,
-        message: `Uma pessoa do elenco propôs ${event!.date} das ${event!.startTime} às ${event!.endTime}. Revise a proposta na Agenda.`,
+        message: `Uma pessoa do elenco propôs ${event!.date} das ${event!.startTime} às ${event!.endTime}. Revise a proposta na Agenda.${semSupervisao ? " A área dela não tem supervisão cadastrada, por isso o aviso veio para a Administração." : ""}`,
         priority: "NORMAL", category: "approval", entityType: "agenda_event", entityId: event!.id,
         actionUrl: "/agenda",
       }).catch((err) => requestLogger("agenda", req.requestId, req.correlationId).warn({ err }, "Falha ao notificar proposta"));
@@ -634,6 +664,14 @@ router.patch("/agenda/events/:id", requireAuth, requireOrganization, async (req,
     if (showBookId !== undefined) updates.showBookId = showBookId;
     if (groupId !== undefined) updates.groupId = groupId;
     if (visibility !== undefined) updates.visibility = visibility === "MANAGEMENT" ? "MANAGEMENT" : "OPERATION";
+    // Mudar a data de um ensaio (ou quem é convocado) para um dia de folga de alguém exige motivo, como ao criar.
+    if (event.type === "REHEARSAL" && (changedFields.includes("date") || Array.isArray(participantIds))) {
+      const convocados: string[] = Array.isArray(participantIds) ? participantIds.filter((item: unknown): item is string => typeof item === "string") : await getParticipantIds(id);
+      const emFolga = await pessoasEmFolga(convocados, date !== undefined ? date : event.date);
+      if (emFolga.length && !normalizeReason(req.body?.reason)) {
+        res.status(409).json({ error: `Há pessoas de folga nesse dia: ${emFolga.map((p) => p.name).join(", ")}. Para chamar alguém de folga, escreva o motivo.`, code: "FOLGA_EXIGE_MOTIVO", emFolga: emFolga.map((p) => p.name) }); return;
+      }
+    }
     const [updated] = await db.transaction(async (tx) => {
       const [row] = await tx.update(agendaEventsTable).set(updates as any)
         .where(eq(agendaEventsTable.id, id)).returning();
@@ -649,6 +687,28 @@ router.patch("/agenda/events/:id", requireAuth, requireOrganization, async (req,
     });
     if (changedFields.length > 0) {
       eventBus.emit("agenda.event.changed", { eventId: id, changedFields });
+    }
+    // Compromisso já confirmado que muda de dia, horário, lugar ou nome: quem foi avisado dele recebe o aviso novo.
+    const mudouParaOsOutros = changedFields.includes("title") || changedFields.includes("date")
+      || (startTime !== undefined && startTime !== event.startTime) || (endTime !== undefined && endTime !== event.endTime)
+      || (location !== undefined && location !== event.location);
+    if (mudouParaOsOutros && event.status === "CONFIRMED") {
+      const motivoDaMudanca = normalizeReason(req.body?.reason);
+      void (async () => {
+        try {
+          const ensaio = event.type === "REHEARSAL";
+          await notifyMany(await quemSabiaDoEvento(event, req.user!.sub), {
+            type: ensaio ? "agenda.rehearsal.changed" : "agenda.meeting.changed",
+            title: `${ensaio ? "Ensaio remarcado" : "Reunião remarcada"}: ${updated.title}`,
+            message: `Agora: ${updated.date}, das ${updated.startTime ?? "?"} às ${updated.endTime ?? "?"}${updated.location ? `, em ${updated.location}` : ""}.${motivoDaMudanca ? ` Motivo: ${motivoDaMudanca}` : ""}`,
+            priority: "IMPORTANT",
+            category: ensaio ? "rehearsal" : "approval",
+            entityType: "agenda_event",
+            entityId: id,
+            actionUrl: "/agenda",
+          });
+        } catch { /* non-critical */ }
+      })();
     }
     const finalParticipantIds = await getParticipantIds(id);
     res.json({ event: { ...updated, participantIds: finalParticipantIds } });
@@ -698,16 +758,19 @@ router.post("/agenda/events/:id/confirm", requireAuth, requireOrganization, asyn
           const participants = await getParticipantIds(updated.id);
           const recipients = [...new Set(participants.filter((recipientId) => recipientId !== req.user!.sub))];
           if (!recipients.length) return;
-          await notifyMany(recipients, {
+          // Quem foi chamada na própria folga fica sabendo que a folga foi desconsiderada de propósito.
+          const deFolga = new Set((updated.type === "REHEARSAL" ? await pessoasEmFolga(recipients, updated.date) : []).map((p) => p.id));
+          await Promise.all(recipients.map((recipientId) => sendNotification({
+            userId: recipientId,
             type: updated.type === "REHEARSAL" ? "agenda.rehearsal.confirmed" : "agenda.meeting.confirmed",
             title: `${updated.type === "REHEARSAL" ? "Ensaio" : "Reunião"} confirmado: ${updated.title}`,
-            message: `${updated.type === "REHEARSAL" ? "O ensaio foi confirmado" : "A reunião foi confirmada"} para ${updated.date}, das ${updated.startTime} às ${updated.endTime}.`,
+            message: `${updated.type === "REHEARSAL" ? "O ensaio foi confirmado" : "A reunião foi confirmada"} para ${updated.date}, das ${updated.startTime} às ${updated.endTime}.${deFolga.has(recipientId) ? " Você está de folga nesse dia e foi chamada de propósito." : ""}`,
             priority: "NORMAL",
             category: updated.type === "REHEARSAL" ? "rehearsal" : "approval",
             entityType: "agenda_event",
             entityId: updated.id,
             actionUrl: "/agenda",
-          });
+          })));
         } catch { /* non-critical */ }
       })();
     }
@@ -753,27 +816,21 @@ router.post("/agenda/events/:id/suspend", requireAuth, requireOrganization, asyn
       return [row] as const;
     });
     eventBus.emit("agenda.event.changed", { eventId: id, changedFields: ["status", "reason"] });
-    // Notify org members for REHEARSAL events (fire-and-forget)
-    if (updated?.type === "REHEARSAL") {
-      (async () => {
+    // Só quem já tinha sido avisado do compromisso fica sabendo que ele foi suspenso (e não a casa inteira).
+    if (updated) {
+      void (async () => {
         try {
-          const [op] = await db.select({ organizationId: operationsTable.organizationId })
-            .from(operationsTable).where(eq(operationsTable.id, updated.operationId)).limit(1);
-          if (op) {
-            const members = await db.select({ id: usersTable.id }).from(usersTable)
-              .where(eq(usersTable.organizationId, op.organizationId));
-            const memberIds = members.map((m) => m.id).filter((id) => id !== userId);
-            await notifyMany(memberIds, {
-              type: "agenda.rehearsal.suspended",
-              title: `Ensaio suspenso: ${updated.title}`,
-              message: `O ensaio de ${updated.date} foi suspenso. Motivo: ${reason}`,
-              priority: "IMPORTANT",
-              category: "rehearsal",
-              entityType: "agenda_event",
-              entityId: updated.id,
-              actionUrl: "/(tabs)/agenda",
-            });
-          }
+          const nome = updated.type === "REHEARSAL" ? "ensaio" : "reunião";
+          await notifyMany(await quemSabiaDoEvento(event, userId), {
+            type: `agenda.${nome === "ensaio" ? "rehearsal" : "meeting"}.suspended`,
+            title: `${nome === "ensaio" ? "Ensaio suspenso" : "Reunião suspensa"}: ${updated.title}`,
+            message: `${nome === "ensaio" ? "O ensaio" : "A reunião"} de ${updated.date} foi suspens${nome === "ensaio" ? "o" : "a"}. Motivo: ${reason}`,
+            priority: "IMPORTANT",
+            category: updated.type === "REHEARSAL" ? "rehearsal" : "approval",
+            entityType: "agenda_event",
+            entityId: updated.id,
+            actionUrl: "/agenda",
+          });
         } catch { /* non-critical */ }
       })();
     }
@@ -796,8 +853,8 @@ router.post("/agenda/events/:id/cancel", requireAuth, requireOrganization, async
   }
 
   const id = req.params.id as string;
-  const { reason } = req.body;
-  if (!reason) { res.status(400).json({ error: "reason é obrigatório para cancelamento" }); return; }
+  // O motivo é opcional: ajuda quem foi avisado, mas não trava o cancelamento.
+  const reason = normalizeReason(req.body?.reason);
   try {
     const event = await getEventOrFail(id, res, req.user!.organizationId);
     if (!event) return;
@@ -814,7 +871,7 @@ router.post("/agenda/events/:id/cancel", requireAuth, requireOrganization, async
       if (!row) throw new Error("Evento não encontrado");
       await writeHistoryEvent({
         category: "AGENDA", action: "cancelled", title: "Evento de agenda cancelado",
-        narrative: `Evento cancelado. Motivo: ${reason}`, entityType: "agenda_event", entityId: id,
+        narrative: `Evento cancelado.${reason ? ` Motivo: ${reason}` : ""}`, entityType: "agenda_event", entityId: id,
         actorId: userId, operationId: row.operationId, orgId: req.user!.organizationId,
         beforeState: event, afterState: row, metadata: { reason },
       }, tx as any);
@@ -825,30 +882,23 @@ router.post("/agenda/events/:id/cancel", requireAuth, requireOrganization, async
       operationId: event.operationId,
       affectedAllocationIds: [],
     });
-    // Notify org members for REHEARSAL events (fire-and-forget)
-    if (event.type === "REHEARSAL") {
-      (async () => {
-        try {
-          const [op] = await db.select({ organizationId: operationsTable.organizationId })
-            .from(operationsTable).where(eq(operationsTable.id, event.operationId)).limit(1);
-          if (op) {
-            const members = await db.select({ id: usersTable.id }).from(usersTable)
-              .where(eq(usersTable.organizationId, op.organizationId));
-            const memberIds = members.map((m) => m.id).filter((id) => id !== userId);
-            await notifyMany(memberIds, {
-              type: "agenda.rehearsal.cancelled",
-              title: `Ensaio cancelado: ${event.title}`,
-              message: `O ensaio de ${event.date} foi cancelado. Motivo: ${reason}`,
-              priority: "CRITICAL",
-              category: "rehearsal",
-              entityType: "agenda_event",
-              entityId: id,
-              actionUrl: "/(tabs)/agenda",
-            });
-          }
-        } catch { /* non-critical */ }
-      })();
-    }
+    // Só quem já tinha sido avisado do compromisso fica sabendo do cancelamento (e não a casa inteira).
+    // Ensaio e reunião: um aviso por pessoa, com o motivo quando houver.
+    void (async () => {
+      try {
+        const ensaio = event.type === "REHEARSAL";
+        await notifyMany(await quemSabiaDoEvento(event, userId), {
+          type: ensaio ? "agenda.rehearsal.cancelled" : "agenda.meeting.cancelled",
+          title: `${ensaio ? "Ensaio cancelado" : "Reunião cancelada"}: ${event.title}`,
+          message: `${ensaio ? "O ensaio" : "A reunião"} de ${event.date} foi cancelad${ensaio ? "o" : "a"}.${reason ? ` Motivo: ${reason}` : ""}`,
+          priority: ensaio ? "CRITICAL" : "IMPORTANT",
+          category: ensaio ? "rehearsal" : "approval",
+          entityType: "agenda_event",
+          entityId: id,
+          actionUrl: "/agenda",
+        });
+      } catch { /* non-critical */ }
+    })();
 
     const log = requestLogger("agenda", req.requestId, req.correlationId);
     log.info({ eventId: id, reason }, "Evento cancelado");

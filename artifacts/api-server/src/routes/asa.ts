@@ -7611,9 +7611,10 @@ router.post("/asa/actions/:proposalId/confirm", requireAuth, requireOrganization
           eq(messageThreadParticipantsTable.threadId, thread.id), eq(messageThreadParticipantsTable.userId, user.sub),
         ));
         await writeHistoryEvent({
-          category: "MESSAGE", action: "message_sent", title: "Resposta enviada", narrative: content.slice(0, 120),
+          category: "MESSAGE", action: "message_sent", title: "Resposta enviada", narrative: "Mensagem enviada.",
           entityType: "message", entityId: message.id, actorId: user.sub, actorName: sender.name,
-          orgId: user.organizationId!, afterState: message,
+          // O Registro guarda só quem, onde e quando: o texto da conversa não é de quem lê o Registro.
+          orgId: user.organizationId!, afterState: { id: message.id, threadId: thread.id, kind: message.kind },
           metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id },
         }, tx as any);
         const completedAt = new Date().toISOString();
@@ -7691,9 +7692,9 @@ router.post("/asa/actions/:proposalId/confirm", requireAuth, requireOrganization
           metadata: { contextType: "DIRECT", participantCount: 1, source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id },
         }, tx as any);
         await writeHistoryEvent({
-          category: "MESSAGE", action: "message_sent", title: "Mensagem enviada", narrative: content.slice(0, 120),
+          category: "MESSAGE", action: "message_sent", title: "Mensagem enviada", narrative: "Mensagem enviada.",
           entityType: "message", entityId: message.id, actorId: user.sub, actorName: sender.name,
-          orgId: user.organizationId!, afterState: message,
+          orgId: user.organizationId!, afterState: { id: message.id, threadId: thread.id, kind: message.kind },
           metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id },
         }, tx as any);
         const completedAt = new Date().toISOString();

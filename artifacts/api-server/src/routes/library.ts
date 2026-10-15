@@ -1,8 +1,10 @@
 import express, { Router, type IRouter } from "express";
 import { registerUndo } from "../services/undo.js";
-import { eq, and, desc, or, ilike } from "drizzle-orm";
+import { eq, and, desc, or, ilike, inArray } from "drizzle-orm";
 import { db } from "@workspace/db";
+import { notifyMany } from "../services/notificationService.js";
 import {
+  areasTable,
   libraryCategoriesTable,
   libraryDocumentsTable,
   libraryDocumentVersionsTable,
@@ -45,6 +47,55 @@ async function snapshotVersion(docId: string, userId: string, version: number, t
 async function actorAreaId(userId: string) {
   const [person] = await db.select({ areaId: usersTable.areaId }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   return person?.areaId ?? null;
+}
+
+/** Quem deveria ler o documento: a casa inteira ou a área dele (documento de local só é lido por quem gerencia, então não tem público a avisar). */
+async function publicoDoDocumento(doc: { scopeType: string; areaId: string | null }, orgId: string) {
+  if (doc.scopeType === "LOCATION") return [];
+  if (doc.scopeType === "AREA" && !doc.areaId) return [];
+  return db.select({ id: usersTable.id, name: usersTable.name, areaName: areasTable.name }).from(usersTable)
+    .leftJoin(areasTable, eq(usersTable.areaId, areasTable.id))
+    .where(and(eq(usersTable.organizationId, orgId), eq(usersTable.status, "ACTIVE"), eq(usersTable.personStatus, "ACTIVE"), doc.scopeType === "AREA" ? eq(usersTable.areaId, doc.areaId!) : undefined))
+    .orderBy(usersTable.name);
+}
+
+/** Um aviso por pessoa quando o documento é publicado ou ganha versão nova (o que pede leitura é importante). */
+async function avisarDocumento(doc: { id: string; title: string; scopeType: string; areaId: string | null; requiresConfirmation: boolean }, orgId: string, atorId: string, novaVersao: boolean) {
+  const ids = (await publicoDoDocumento(doc, orgId)).map((person) => person.id).filter((id) => id !== atorId);
+  if (!ids.length) return;
+  await notifyMany(ids, {
+    type: novaVersao ? "library.updated" : "library.published",
+    title: novaVersao ? "Documento atualizado" : "Novo documento na Biblioteca",
+    message: `${doc.title}${doc.requiresConfirmation ? (novaVersao ? " — pede uma nova leitura." : " — pede a sua leitura.") : "."}`,
+    priority: doc.requiresConfirmation ? "IMPORTANT" : "NORMAL", category: "notice",
+    entityType: "library_document", entityId: doc.id, actionUrl: `/biblioteca?document=${doc.id}`,
+  });
+}
+
+/**
+ * Quem já leu a versão atual de cada documento. A versão nova começa do zero: a confirmação vale se foi dada
+ * depois que a versão atual foi publicada (o instante do retrato da versão).
+ */
+async function leituraPorDocumento(docs: { id: string; version: number }[], userIds: string[] | null, onlyUserId?: string) {
+  const resultado = new Map<string, Map<string, { abriuEm: Date | null; confirmouEm: Date | null }>>();
+  if (!docs.length) return resultado;
+  const ids = docs.map((doc) => doc.id);
+  const retratos = await db.select({ documentId: libraryDocumentVersionsTable.documentId, version: libraryDocumentVersionsTable.version, createdAt: libraryDocumentVersionsTable.createdAt })
+    .from(libraryDocumentVersionsTable).where(inArray(libraryDocumentVersionsTable.documentId, ids));
+  const desde = new Map<string, Date>(retratos.map((row) => [`${row.documentId}:${row.version}`, row.createdAt]));
+  const views = await db.select({ documentId: libraryViewsTable.documentId, userId: libraryViewsTable.userId, viewedAt: libraryViewsTable.viewedAt, confirmedAt: libraryViewsTable.confirmedAt })
+    .from(libraryViewsTable).where(and(inArray(libraryViewsTable.documentId, ids), onlyUserId ? eq(libraryViewsTable.userId, onlyUserId) : userIds ? inArray(libraryViewsTable.userId, userIds) : undefined));
+  const versaoDe = new Map(docs.map((doc) => [doc.id, doc.version] as const));
+  for (const view of views) {
+    const inicio = desde.get(`${view.documentId}:${versaoDe.get(view.documentId)}`);
+    const porPessoa = resultado.get(view.documentId) ?? new Map();
+    resultado.set(view.documentId, porPessoa);
+    const atual = porPessoa.get(view.userId) ?? { abriuEm: null, confirmouEm: null };
+    if (!inicio || view.viewedAt >= inicio) atual.abriuEm = !atual.abriuEm || view.viewedAt > atual.abriuEm ? view.viewedAt : atual.abriuEm;
+    if (view.confirmedAt && (!inicio || view.confirmedAt >= inicio)) atual.confirmouEm = !atual.confirmouEm || view.confirmedAt > atual.confirmouEm ? view.confirmedAt : atual.confirmouEm;
+    porPessoa.set(view.userId, atual);
+  }
+  return resultado;
 }
 
 async function canManageDocumentScope(role: RoleValue | null, userId: string, doc: { scopeType: string; areaId: string | null }) {
@@ -204,7 +255,12 @@ router.get("/library/documents", requireAuth, requireOrganization, async (req, r
       .orderBy(desc(libraryDocumentsTable.updatedAt));
 
     rows = rows.filter((doc) => canReadScope(doc, isFullReader, areaIdForReader));
-    res.json({ documents: rows });
+    // "Esperando você" é por pessoa e por versão: quem já leu a versão atual deixa de ver o pedido de leitura.
+    const lidos = await leituraPorDocumento(rows, null, userId);
+    res.json({ documents: rows.map((doc) => {
+      const confirmou = Boolean(lidos.get(doc.id)?.get(userId)?.confirmouEm);
+      return { ...doc, myConfirmed: confirmou, waitingMe: doc.requiresConfirmation && !confirmou && (doc.status === "PUBLISHED" || doc.status === "UPDATED") };
+    }) });
   } catch (err) {
     console.error("[library] GET /library/documents", err);
     res.status(500).json({ error: "Erro interno" });
@@ -320,6 +376,8 @@ router.get("/library/documents/:id", requireAuth, requireOrganization, async (re
           .orderBy(desc(libraryDocumentVersionsTable.version))
       : [];
 
+    const meuDocumento = (await leituraPorDocumento([{ id: doc.id, version: doc.version }], null, userId)).get(doc.id)?.get(userId);
+    const myConfirmed = Boolean(meuDocumento?.confirmouEm);
     // Log view (fire-and-forget — does not block the response)
     db.insert(libraryViewsTable).values({ documentId: docId, userId, orgId, viewedAt: new Date() }).catch(() => {});
 
@@ -329,7 +387,9 @@ router.get("/library/documents/:id", requireAuth, requireOrganization, async (re
       .orderBy(libraryDocumentPageCitationsTable.pageNumber);
     const canManageCitations = doc.status !== "ARCHIVED" && await canManageDocumentScope(role, userId, doc);
 
-    res.json({ document: doc, versions, citations, canManageCitations });
+    // canManage: quem pode editar, trocar o PDF, publicar versão nova e ver quem leu (Administração, ou Supervisão no documento da própria área).
+    const canManage = doc.status !== "ARCHIVED" && await canManageDocumentScope(role, userId, doc);
+    res.json({ document: { ...doc, myConfirmed, waitingMe: doc.requiresConfirmation && !myConfirmed && (doc.status === "PUBLISHED" || doc.status === "UPDATED") }, versions, citations, canManageCitations, canManage, canArchive: role === "ADMIN" && doc.status !== "ARCHIVED", canSeeReaders: canManage || role === "DIR" || role === "DIRECTOR" });
   } catch (err) {
     console.error("[library] GET /library/documents/:id", err);
     res.status(500).json({ error: "Erro interno" });
@@ -468,8 +528,10 @@ router.patch("/library/documents/:id", requireAuth, requireOrganization, async (
 
     if (!doc) { res.status(404).json({ error: "Documento não encontrado" }); return; }
     if (doc.status === "ARCHIVED") { res.status(400).json({ error: "Documentos arquivados não podem ser editados" }); return; }
+    if (!await canManageDocumentScope(role, userId, doc)) { res.status(403).json({ error: "Este documento não é da sua área; só a Administração ou a Supervisão da área dele edita." }); return; }
 
     const { title, summary, body, categoryId, responsibleId, fileUrl, tags, requiresConfirmation, scopeType, areaId, locationId } = req.body;
+    if (role !== "ADMIN" && (scopeType !== undefined || areaId !== undefined || locationId !== undefined)) { res.status(403).json({ error: "Só a Administração muda para quem o documento vale." }); return; }
     const now = new Date();
 
     const prevResponsible = doc.responsibleId;
@@ -534,6 +596,7 @@ router.post("/library/documents/:id/publish", requireAuth, requireOrganization, 
     if (doc.status === "ARCHIVED") {
       res.status(400).json({ error: "Documento arquivado não pode ser publicado" }); return;
     }
+    if (!await canManageDocumentScope(role, userId, doc)) { res.status(403).json({ error: "Este documento não é da sua área; só a Administração ou a Supervisão da área dele publica." }); return; }
 
     const now = new Date();
     const [updated] = await db.transaction(async (tx) => {
@@ -551,6 +614,8 @@ router.post("/library/documents/:id/publish", requireAuth, requireOrganization, 
       return [row] as const;
     });
 
+    // Quem deve ler fica sabendo sem ter de abrir a Biblioteca. Depois da resposta: não segura a publicação.
+    void avisarDocumento(updated!, orgId, userId, false).catch((err) => console.error("[library] aviso de publicação", err));
     res.json({ document: updated });
   } catch (err) {
     console.error("[library] POST /library/documents/:id/publish", err);
@@ -575,6 +640,7 @@ router.post("/library/documents/:id/version", requireAuth, requireOrganization, 
     if (!doc) { res.status(404).json({ error: "Documento não encontrado" }); return; }
     if (doc.status === "ARCHIVED") { res.status(400).json({ error: "Documento arquivado" }); return; }
     if (doc.status === "DRAFT") { res.status(400).json({ error: "Publique o documento antes de versionar" }); return; }
+    if (!await canManageDocumentScope(role, userId, doc)) { res.status(403).json({ error: "Este documento não é da sua área; só a Administração ou a Supervisão da área dele publica versão nova." }); return; }
 
     const { title, body, summary } = req.body;
     if (!title || !body) { res.status(400).json({ error: "title e body obrigatórios" }); return; }
@@ -597,6 +663,8 @@ router.post("/library/documents/:id/version", requireAuth, requireOrganization, 
       return [row] as const;
     });
 
+    // Versão nova recomeça a leitura (quem já tinha confirmado volta a "esperando você") e o público é avisado.
+    void avisarDocumento(updated!, orgId, userId, true).catch((err) => console.error("[library] aviso de versão", err));
     res.json({ document: updated });
   } catch (err) {
     console.error("[library] POST /library/documents/:id/version", err);
@@ -658,6 +726,8 @@ router.post("/library/documents/:id/confirm", requireAuth, requireOrganization, 
     if (!doc || !(doc.status === "PUBLISHED" || doc.status === "UPDATED")) { res.status(404).json({ error: "Documento publicado não encontrado" }); return; }
     if (!canReadScope(doc, isLibraryFullReader(role), isLibraryFullReader(role) ? null : await actorAreaId(userId))) { res.status(403).json({ error: "Documento fora do seu escopo" }); return; }
     if (!doc.requiresConfirmation) { res.status(400).json({ error: "Este documento não pede confirmação" }); return; }
+    // Confirmar de novo (duplo toque, duas abas) não cria outra linha nem outra entrada no Registro.
+    if ((await leituraPorDocumento([{ id: doc.id, version: doc.version }], null, userId)).get(doc.id)?.get(userId)?.confirmouEm) { res.json({ view: null, jaConfirmado: true }); return; }
     const now = new Date();
     const [view] = await db.transaction(async (tx) => {
       const [created] = await tx.insert(libraryViewsTable).values({ documentId: doc.id, userId, orgId, viewedAt: now, confirmedAt: now }).returning();
@@ -666,6 +736,26 @@ router.post("/library/documents/:id/confirm", requireAuth, requireOrganization, 
     });
     res.json({ view });
   } catch (err) { console.error("[library] POST confirm", err); res.status(500).json({ error: "Erro interno" }); }
+});
+
+// ─── GET /library/documents/:id/leituras — quem já leu a versão atual ───────────
+// Administração (e Supervisão no documento da própria área) e Direção, só leitura. Elenco não vê o que os colegas fizeram.
+router.get("/library/documents/:id/leituras", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  try {
+    const userId = req.user!.sub, orgId = req.user!.organizationId, docId = String(req.params.id);
+    const role = await getUserRole(userId);
+    const [doc] = await db.select().from(libraryDocumentsTable).where(and(eq(libraryDocumentsTable.id, docId), eq(libraryDocumentsTable.orgId, orgId))).limit(1);
+    if (!doc) { res.status(404).json({ error: "Documento não encontrado" }); return; }
+    const podeVer = role === "DIR" || role === "DIRECTOR" || await canManageDocumentScope(role, userId, doc);
+    if (!podeVer) { res.status(403).json({ error: "Só a Administração, a Direção e a Supervisão da área do documento veem quem já leu." }); return; }
+    const publico = await publicoDoDocumento(doc, orgId);
+    const lidos = (await leituraPorDocumento([{ id: doc.id, version: doc.version }], publico.map((person) => person.id))).get(doc.id) ?? new Map();
+    const pessoas = publico.map((person) => { const leitura = lidos.get(person.id); return { id: person.id, name: person.name, areaName: person.areaName, abriu: Boolean(leitura?.abriuEm), confirmou: Boolean(leitura?.confirmouEm), confirmouEm: leitura?.confirmouEm ?? null }; });
+    res.json({ version: doc.version, requiresConfirmation: doc.requiresConfirmation, scopeType: doc.scopeType, total: pessoas.length, abriram: pessoas.filter((p) => p.abriu).length, confirmaram: pessoas.filter((p) => p.confirmou).length, pessoas });
+  } catch (err) {
+    console.error("[library] GET /library/documents/:id/leituras", err);
+    res.status(500).json({ error: "Erro interno" });
+  }
 });
 
 router.get("/library/documents/:id/versions", requireAuth, requireOrganization, async (req, res): Promise<void> => {
