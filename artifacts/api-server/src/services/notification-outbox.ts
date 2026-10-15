@@ -7,6 +7,7 @@ import { normalizeActionUrl } from "../lib/app-routes.js";
 import { pushEsperaAte } from "./regras-casa.js";
 
 export async function deliverOutboxPush(input: CreateNotificationInput) {
+  if (input.semPush) return;
   if (WEB_PUSH_TYPES.has(input.type)) await deliverWebPush(input);
   // Kept independent: Expo is legacy, never used as a Web Push subscription.
   if (!(input as CreateNotificationInput & { webOnly?: boolean }).webOnly) await sendPushToUser(input.userId, { title: input.title, body: input.message, priority: input.priority, data: { type: input.type } });

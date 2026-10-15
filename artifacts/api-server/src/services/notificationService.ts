@@ -32,6 +32,8 @@ export type NotificationCategory =
 export interface CreateNotificationInput {
   /** Internal outbox delivery flag; never supplied by a public notification route. */
   webOnly?: boolean;
+  /** Só o sino: nenhum push, nem web nem do app (quem está de folga recebe a mensagem no app, mas o celular não toca). */
+  semPush?: boolean;
   webPushType?: "notice.requires_ack";
   userId: string;
   type: string;
@@ -75,7 +77,7 @@ export async function createNotification(
     })
     .returning();
   const webType = input.webPushType ?? input.type;
-  if (WEB_PUSH_TYPES.has(webType)) {
+  if (WEB_PUSH_TYPES.has(webType) && !input.semPush) {
     const [subscription] = await tx.select({ id: webPushSubscriptionsTable.id }).from(webPushSubscriptionsTable).where(and(eq(webPushSubscriptionsTable.userId, input.userId), eq(webPushSubscriptionsTable.active, true))).limit(1);
     if (subscription) await tx.insert(notificationOutboxTable).values({ userId: input.userId, payload: { ...input, type: webType, webOnly: true }, dueAt: new Date(), notificationId: created!.id });
   }
@@ -187,6 +189,7 @@ export async function sendNotification(
   const notification = await createNotification(input);
 
   let push: PushDeliveryResult = { attempted: 0, sent: 0, failed: 0 };
+  if (input.semPush) return { notification, push };
   try {
     push = await sendPushToUser(input.userId, {
       title: input.title,

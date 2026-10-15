@@ -64,9 +64,7 @@ Acrescenta o valor `POST` ao enum `announcement_type`, as colunas `edited_at`, `
 
 ## Ainda não feito
 
-- **Mensagens** estilo WhatsApp (grupos oficiais por equipe, grupos do Elenco, reações, "visto por",
-  figurinhas da ASA). Decisões já tomadas: a Administração **não** lê conversa privada; qualquer pessoa
-  cria grupo; "visto por" vale nas conversas de duas pessoas e nos grupos; foto, PDF e áudio esperam
-  medir o armazenamento (Supabase no plano grátis).
+- **Mensagens** estilo WhatsApp: feitas em 15/10/2026, ver `docs/mensagens-grupos.md`. Foto, PDF e
+  áudio esperam medir o armazenamento (Supabase no plano grátis).
 - O Mural **não** limita quantas publicações uma pessoa faz por dia. Se virar barulho, é o primeiro
   ajuste a considerar.

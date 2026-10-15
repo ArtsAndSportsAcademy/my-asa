@@ -201,6 +201,9 @@ export const messageThreadsTable = pgTable("message_threads", {
   status: messageThreadStatusEnum("status").notNull().default("OPEN"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   closedAt: timestamp("closed_at", { withTimezone: true }),
+  /** Quem arquivou e por quê (0066). Arquivar não dá acesso ao conteúdo: ele continua só dos participantes. */
+  closedBy: uuid("closed_by").references(() => usersTable.id),
+  closedReason: text("closed_reason"),
   groupId: uuid("group_id").references(() => operationalGroupsTable.id),
 });
 
@@ -237,9 +240,20 @@ export const messagesTable = pgTable("messages", {
   contextType: messageContextTypeEnum("context_type"),
   contextId: uuid("context_id"),
   content: text("content").notNull(),
+  /** TEXT, ou STICKER (0066): figurinha da ASA, cujo conteúdo é o nome dela. */
+  kind: text("kind").notNull().default("TEXT"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   quotedMessageId: uuid("quoted_message_id"),
 });
+
+// Uma reação por pessoa em cada mensagem (0066). Não entra no Registro.
+export const messageReactionsTable = pgTable("message_reactions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  messageId: uuid("message_id").notNull().references(() => messagesTable.id),
+  userId: uuid("user_id").notNull().references(() => usersTable.id),
+  emoji: text("emoji").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [unique("message_reactions_message_user_uq").on(t.messageId, t.userId), index("message_reactions_message_idx").on(t.messageId)]).enableRLS();
 
 // ─── Zod schemas ───────────────────────────────────────────────────────────────
 

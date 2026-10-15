@@ -1,0 +1,140 @@
+/* Mensagens (15/10/2026): chat da casa. No telefone é lista → conversa em tela cheia (.conversa-aberta). */
+.msg-page{max-width:1180px;margin:0 auto;padding:20px;color:#1b1630}
+.msg-app{display:grid;grid-template-columns:340px minmax(0,1fr);height:min(740px,calc(100dvh - 190px));min-height:480px;border:1px solid #e6e1f2;border-radius:18px;overflow:hidden;background:#fff}
+.msg-app button{font-family:inherit}
+.msg-primario{min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:10px;padding:0 14px;background:#6c2bf2;color:#fff;font:700 13px Manrope,sans-serif;cursor:pointer}
+.msg-primario:disabled{opacity:.45;cursor:default}
+
+/* Lista */
+.msg-lista{display:flex;flex-direction:column;min-height:0;border-right:1px solid #eee9f6;background:#faf9fe}
+.msg-lista>header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 14px 8px}
+.msg-lista>header span{display:block;color:#6b6482;font:700 11px 'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase}
+.msg-lista>header h2{display:flex;align-items:center;gap:8px;margin:0;font:600 24px Outfit,sans-serif}
+.msg-lista>header h2 b{display:grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:#6c2bf2;color:#fff;font:700 12px Manrope,sans-serif}
+.msg-busca{display:flex;align-items:center;gap:8px;margin:0 14px;padding:0 12px;min-height:44px;border:1px solid #e6e1f2;border-radius:12px;background:#fff;color:#6b6482}
+.msg-busca input{flex:1;min-width:0;border:0;outline:0;background:transparent;font:500 14px Manrope,sans-serif;color:#1b1630}
+.msg-filtros{display:flex;gap:6px;padding:10px 14px 6px;overflow-x:auto}
+.msg-filtros button{min-height:36px;padding:0 13px;border:1px solid #e6e1f2;border-radius:999px;background:#fff;color:#6b6482;font:600 12.5px Manrope,sans-serif;white-space:nowrap;cursor:pointer}
+.msg-filtros button.on{border-color:#cbb8f7;background:#f3ebff;color:#6c2bf2}
+.msg-gestao{display:inline-flex;align-items:center;gap:7px;margin:2px 14px 6px;min-height:40px;border:0;border-radius:10px;background:transparent;color:#5b23c9;font:700 12.5px Manrope,sans-serif;cursor:pointer;text-align:left}
+.msg-itens{flex:1;min-height:0;overflow-y:auto;padding:4px 8px 10px}
+.msg-item{display:flex;align-items:center;gap:11px;width:100%;min-height:68px;padding:9px 8px;border:0;border-radius:12px;background:transparent;color:#1b1630;text-align:left;cursor:pointer}
+.msg-item:hover{background:#f3f0fb}
+.msg-item.ativa{background:#eee7fd}
+.msg-avatar{display:grid;place-items:center;width:44px;height:44px;flex:none;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#3b45d9);color:#fff;font:700 14px Manrope,sans-serif}
+.msg-avatar.grupo{background:linear-gradient(135deg,#c2508f,#6c2bf2)}
+.msg-item-texto{display:grid;gap:3px;min-width:0;flex:1}
+.msg-item-texto strong{overflow:hidden;font:600 14.5px Manrope,sans-serif;text-overflow:ellipsis;white-space:nowrap}
+.msg-item-texto small{overflow:hidden;color:#6b6482;font-size:12.5px;text-overflow:ellipsis;white-space:nowrap}
+.msg-item-lado{display:grid;justify-items:end;gap:5px;flex:none;color:#6b6482}
+.msg-item-lado small{font-size:11.5px}
+.msg-item-lado b{display:grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:#6c2bf2;color:#fff;font:700 11px Manrope,sans-serif}
+.msg-item-lado b.mudo{background:#a9a2c0}
+.msg-vazio{display:grid;gap:6px;justify-items:center;padding:28px 18px;color:#6b6482;font-size:13px;line-height:1.5;text-align:center}
+.msg-vazio strong{color:#1b1630}
+.msg-erro{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;margin:8px 14px;padding:10px 12px;border-radius:12px;background:#fdeceb;color:#a3283f;font-size:13px;line-height:1.45}
+.msg-erro button{min-height:36px;padding:0 12px;border:1px solid currentColor;border-radius:999px;background:#fff;color:inherit;font:700 12.5px Manrope,sans-serif;cursor:pointer}
+
+/* Conversa */
+.msg-conversa{display:flex;flex-direction:column;min-width:0;min-height:0;background:#f7f5fb}
+.msg-conversa>header{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #eee9f6;background:#fff}
+.msg-voltar{display:none;width:44px;height:44px;flex:none;border:0;border-radius:10px;background:transparent;color:#1b1630;cursor:pointer;place-items:center}
+.msg-titulo{display:grid;gap:2px;flex:1;min-width:0;border:0;background:transparent;text-align:left;cursor:pointer;padding:4px 6px;border-radius:10px}
+.msg-titulo:hover{background:#f6f3fd}
+.msg-titulo strong{overflow:hidden;font:600 15px Manrope,sans-serif;text-overflow:ellipsis;white-space:nowrap}
+.msg-titulo small{overflow:hidden;color:#0a6f68;font-size:12px;text-overflow:ellipsis;white-space:nowrap}
+.msg-icone{display:grid;place-items:center;width:44px;height:44px;flex:none;border:0;border-radius:10px;background:transparent;color:#6b6482;cursor:pointer}
+.msg-icone[aria-pressed=true]{background:#f3ebff;color:#6c2bf2}
+.msg-sem-conversa{display:grid;gap:8px;justify-items:center;align-content:center;height:100%;padding:24px;color:#6b6482;font-size:13px;text-align:center}
+.msg-sem-conversa img{width:72px;height:72px;object-fit:contain}
+.msg-sem-conversa strong{color:#1b1630;font-size:15px}
+.msg-arquivado{padding:9px 14px;background:#fff4e5;color:#8a4b00;font-size:12.5px;line-height:1.45;border-bottom:1px solid #f2d7bb}
+.msg-mensagens{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:14px 12px}
+.msg-mensagens>.msg-vazio{margin:auto}
+.msg-balao-linha{display:flex;flex-direction:column;gap:3px;max-width:78%}
+.msg-balao-linha.minha{align-self:flex-end;align-items:flex-end}
+.msg-balao-linha.outra{align-self:flex-start;align-items:flex-start}
+.msg-balao{display:grid;gap:3px;max-width:100%;padding:8px 11px 6px;border-radius:14px 14px 14px 4px;background:#fff;color:#2c2644;box-shadow:0 1px 2px rgba(34,20,80,.08)}
+.minha .msg-balao{border-radius:14px 14px 4px 14px;background:#6c2bf2;color:#fff}
+.msg-balao.figurinha{padding:4px;background:transparent;box-shadow:none}
+.msg-balao.enviando{opacity:.65}
+.msg-balao.falhou{outline:2px solid #e36a7e}
+.msg-balao p{margin:0;font-size:14px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.msg-remetente{color:#6c2bf2;font:700 12px Manrope,sans-serif}
+.msg-citada{display:grid;gap:1px;padding:5px 8px;border-left:3px solid #c2508f;border-radius:6px;background:rgba(108,43,242,.08);font-size:12px;line-height:1.35}
+.minha .msg-citada{background:rgba(255,255,255,.18);border-left-color:#fff}
+.msg-citada b{font-size:11.5px}
+.msg-citada span{display:-webkit-box;overflow:hidden;-webkit-line-clamp:2;-webkit-box-orient:vertical;opacity:.85}
+.msg-figurinha{display:block;width:132px;height:132px;object-fit:contain}
+.msg-meta{display:flex;align-items:center;justify-content:flex-end;gap:6px;font-size:11px;opacity:.75}
+.msg-balao.figurinha .msg-meta{color:#6b6482}
+.msg-visto{display:inline-flex;align-items:center;gap:3px;border:0;background:transparent;color:inherit;font:inherit;padding:0}
+button.msg-visto{cursor:pointer;min-height:24px;text-decoration:underline;text-underline-offset:2px}
+.msg-retentar{min-height:36px;border:0;border-radius:8px;background:#fff;color:#a3283f;font:700 12px Manrope,sans-serif;cursor:pointer}
+.msg-reacoes{display:flex;flex-wrap:wrap;gap:4px;margin-top:-2px}
+.msg-reacoes button{display:inline-flex;align-items:center;gap:3px;min-height:30px;padding:0 9px;border:1px solid #e6e1f2;border-radius:999px;background:#fff;color:#5b5473;font:600 12.5px Manrope,sans-serif;cursor:pointer}
+.msg-reacoes button.on{border-color:#c2508f;background:#fdeef6;color:#9c2f6b}
+/* As ações (reagir, responder) ficam recolhidas e abrem ao passar o mouse, ao tocar na mensagem ou ao navegar pelo teclado. */
+.msg-acoes{display:flex;gap:2px;height:0;overflow:hidden;opacity:0;transition:opacity .12s}
+.msg-balao-linha:hover .msg-acoes,.msg-balao-linha.sel .msg-acoes,.msg-acoes:focus-within{height:30px;opacity:1}
+.msg-balao{cursor:pointer}
+.msg-acoes button{display:grid;place-items:center;width:36px;height:30px;border:0;border-radius:8px;background:transparent;color:#6b6482;cursor:pointer}
+.msg-acoes button:hover{background:#ece7f8}
+.msg-picker{display:inline-flex;gap:2px;padding:3px;border:1px solid #e6e1f2;border-radius:999px;background:#fff;box-shadow:0 10px 24px -14px rgba(34,20,80,.55)}
+.msg-picker button{display:grid;place-items:center;width:42px;height:42px;border:0;border-radius:50%;background:transparent;font-size:20px;cursor:pointer}
+.msg-picker button.on{background:#fdeef6}
+
+/* Compor */
+.msg-compor{display:grid;gap:6px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));border-top:1px solid #eee9f6;background:#fff}
+.msg-compor form{display:flex;align-items:flex-end;gap:6px}
+.msg-compor textarea{flex:1;min-width:0;min-height:44px;max-height:120px;resize:none;border:1px solid #e1dbea;border-radius:14px;padding:11px 13px;background:#faf9fe;color:#1b1630;font:14px/1.4 Manrope,sans-serif;outline:0}
+.msg-compor textarea:focus{border-color:#a98af6}
+.msg-enviar{width:44px;padding:0;border-radius:50%;flex:none}
+.msg-citando{display:flex;align-items:center;gap:8px;padding:6px 10px;border-left:3px solid #c2508f;border-radius:8px;background:#fdf4fa;color:#6b4a66;font-size:12.5px}
+.msg-citando span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.msg-citando button{display:grid;place-items:center;width:36px;height:36px;border:0;background:transparent;color:inherit;cursor:pointer}
+.msg-figurinhas{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:6px;max-height:210px;overflow-y:auto;padding:6px;border:1px solid #eee9f6;border-radius:14px;background:#faf9fe}
+.msg-figurinhas button{display:grid;justify-items:center;gap:2px;min-height:84px;padding:4px;border:0;border-radius:10px;background:transparent;color:#6b6482;font:600 11px Manrope,sans-serif;cursor:pointer}
+.msg-figurinhas button:hover{background:#ece7f8}
+.msg-figurinhas img{width:56px;height:56px;object-fit:contain}
+
+/* Janelas */
+.msg-abas{display:flex;gap:6px;padding:4px;border-radius:12px;background:#f3f0fb}
+.msg-abas button{flex:1;min-height:40px;border:0;border-radius:9px;background:transparent;color:#6b6482;font:700 13px Manrope,sans-serif;cursor:pointer}
+.msg-abas button.on{background:#fff;color:#5b23c9;box-shadow:0 1px 3px rgba(34,20,80,.12)}
+.msg-renomear{display:flex;align-items:flex-end;gap:8px}
+.msg-renomear label{flex:1}
+.msg-subtitulo{margin:6px 0 0;font:600 14px Outfit,Manrope,sans-serif}
+.msg-integrantes{margin:0;padding:0;list-style:none;display:grid;gap:2px;max-height:300px;overflow-y:auto}
+.msg-integrantes li{display:flex;align-items:center;gap:10px;min-height:48px;padding:3px 4px;font-size:14px}
+.msg-integrantes li>span:nth-child(2){flex:1;min-width:0}
+.msg-integrantes small{color:#6b6482}
+.msg-integrantes .msg-avatar{width:36px;height:36px;font-size:12px}
+.msg-tirar{min-height:36px;padding:0 12px;border:1px solid #e6c3cb;border-radius:999px;background:#fff;color:#a3283f;font:700 12px Manrope,sans-serif;cursor:pointer}
+.msg-botoes{display:flex;justify-content:flex-end;gap:8px}
+.msg-botoes button{min-height:44px;padding:0 14px;border:1px solid #e1dbea;border-radius:10px;background:#fff;color:#5b5473;font:700 13px Manrope,sans-serif;cursor:pointer}
+.msg-botoes button.comm-primary{border:0;background:#6c2bf2;color:#fff}
+.msg-botoes button.comm-danger{border:0;background:#c2334d;color:#fff}
+.msg-link-perigo{align-self:flex-start;min-height:44px;border:0;background:transparent;color:#a3283f;font:700 13px Manrope,sans-serif;text-decoration:underline;cursor:pointer}
+.msg-arquivar{padding:0}
+.msg-lista-nomes{margin:0;padding:0;list-style:none;display:grid;gap:4px}
+.msg-lista-nomes li{padding:9px 11px;border-radius:9px;background:#faf8ff;font-size:14px}
+
+/* Em telas largas a bolha da ASA fica no canto de baixo, sobre o botão de enviar: o campo dá espaço para ela. */
+@media(min-width:721px){.msg-compor{padding-right:86px}}
+
+/* Telefone: lista → conversa em tela cheia */
+@media(max-width:720px){
+  .msg-page{padding:0}
+  .msg-app{grid-template-columns:1fr;height:calc(100dvh - 150px);min-height:0;border-radius:0;border-left:0;border-right:0}
+  .msg-app .msg-conversa{display:none}
+  .msg-app.conversa-aberta .msg-lista{display:none}
+  .msg-app.conversa-aberta .msg-conversa{display:flex}
+  .msg-voltar{display:grid}
+  .msg-balao-linha{max-width:88%}
+  .msg-figurinha{width:112px;height:112px}
+}
+@media(max-width:420px){
+  .msg-lista>header h2{font-size:21px}
+  .msg-picker button{width:38px;height:38px}
+}

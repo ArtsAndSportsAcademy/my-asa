@@ -5,7 +5,7 @@ import {
   historyRelationsTable,
   historyNarrativesTable,
 } from "@workspace/db/schema";
-import { eq, desc, and, gte, lte, or, isNull, inArray, ilike, like, type SQL } from "drizzle-orm";
+import { eq, desc, and, gte, lte, or, isNull, inArray, ilike, like, sql, type SQL } from "drizzle-orm";
 import { requireAuth, requireOrganization, requireRole } from "../middlewares/auth.js";
 import { semSegredos } from "../lib/history-helper.js";
 
@@ -26,13 +26,20 @@ function daOrganizacao(organizationId: string): SQL {
 }
 
 /** Segredos nunca saem, mesmo de linhas antigas gravadas antes do filtro na escrita. */
-function paraLeitura<T extends { beforeState: unknown; afterState: unknown; metadata: unknown }>(event: T): T {
-  return {
+function paraLeitura<T extends { beforeState: unknown; afterState: unknown; metadata: unknown; entityType?: string | null; narrative?: string | null }>(event: T): T {
+  const lido = {
     ...event,
     beforeState: semSegredos(event.beforeState as Record<string, unknown> | null),
     afterState: semSegredos(event.afterState as Record<string, unknown> | null),
     metadata: semSegredos(event.metadata as Record<string, unknown> | null) ?? {},
   };
+  // O texto de uma mensagem não é de quem lê o Registro (decisão de 14/10/2026: a Administração não lê conversa de
+  // ninguém). Linhas antigas guardaram o texto; ele não sai daqui — só que houve mensagem, de quem, e onde.
+  if (event.entityType === "message") {
+    const depois = lido.afterState as Record<string, unknown> | null;
+    return { ...lido, narrative: "Mensagem enviada.", beforeState: null, afterState: depois ? { id: depois.id, threadId: depois.threadId, kind: depois.kind } : null };
+  }
+  return lido;
 }
 
 // ─── GET /history ─────────────────────────────────────────────────────────────
@@ -75,7 +82,8 @@ router.get(
       if (dateTo && !Number.isNaN(Date.parse(dateTo)))     conds.push(lte(historyEventsTable.occurredAt, new Date(dateTo)));
       if (q?.trim()) {
         const termo = `%${q.trim().replace(/[%_]/g, "")}%`;
-        conds.push(or(ilike(historyEventsTable.title, termo), ilike(historyEventsTable.narrative, termo), ilike(historyEventsTable.actorName, termo))!);
+        // A busca por texto não entra nas linhas de mensagem: senão daria para achar o que alguém escreveu pelo Registro.
+        conds.push(or(ilike(historyEventsTable.title, termo), and(sql`${historyEventsTable.entityType} is distinct from 'message'`, ilike(historyEventsTable.narrative, termo)), ilike(historyEventsTable.actorName, termo))!);
       }
 
       const pageSize = Math.min(Math.max(Number(limit) || 50, 1), 200);
