@@ -48,6 +48,11 @@ app.use((err: unknown, _req: express.Request, res: express.Response, next: expre
     res.status(400).json({ error: "JSON_INVALIDO", message: "Não consegui ler o que foi enviado. Nada foi alterado." });
     return;
   }
+  // Arquivo maior que o limite (foto de perfil, PDF): o Express respondia uma página HTML "PayloadTooLargeError".
+  if ((err as { type?: string } | null)?.type === "entity.too.large") {
+    res.status(413).json({ error: "ARQUIVO_GRANDE_DEMAIS", message: "Esse arquivo é maior do que o app aceita. Escolha um menor. Nada foi alterado." });
+    return;
+  }
   next(err);
 });
 

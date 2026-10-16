@@ -105,6 +105,16 @@ async function run() {
     };
     const asJulia = tk(julia, "MEMBER"), asDeborah = tk(deborah, "SUPERVISOR_A"), asVictor = tk(victor, "SUPERVISOR_A"), asStephani = tk(stephani, "SUPERVISOR_A"), asCris = tk(cris, "DIR"), asBarbara = tk(barbara, "ADMIN");
 
+    // ── Erros da API respondem em JSON com uma frase (não a página HTML do Express) ──
+    const inexistente = await call("GET", "/isto-nao-existe", asJulia);
+    assert(inexistente.status === 404 && inexistente.body.error === "NOT_FOUND" && String(inexistente.body.message ?? "").length > 10 && !inexistente.text.includes("<html"), "rota que não existe responde 404 em JSON, não em HTML");
+    const jsonQuebrado = await fetch(`${base}/leave-requests`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${asJulia}` }, body: "{ isto nao e json" });
+    const jsonQuebradoTexto = await jsonQuebrado.text();
+    assert(jsonQuebrado.status === 400 && jsonQuebradoTexto.includes("JSON_INVALIDO") && !jsonQuebradoTexto.includes("<html"), "corpo com JSON quebrado é recusado em JSON, com frase");
+    const fotoGrande = await fetch(`${base}/users/me/photo`, { method: "PUT", headers: { "content-type": "image/png", authorization: `Bearer ${asJulia}` }, body: Buffer.alloc(2 * 1024 * 1024, 1) });
+    const fotoGrandeTexto = await fotoGrande.text();
+    assert(fotoGrande.status === 413 && fotoGrandeTexto.includes("ARQUIVO_GRANDE_DEMAIS") && !fotoGrandeTexto.includes("<html"), "foto maior que o limite responde 413 em JSON, com frase");
+
     // ── Item "Permissão checada no servidor": Elenco pedindo dado de outra pessoa → 403 ──
     assert((await call("GET", `/users/${carol.id}`, asJulia)).status === 403, "Elenco não abre a ficha de outra pessoa");
     assert((await call("PATCH", `/users/${carol.id}`, asJulia, { phone: "123" })).status === 403, "Elenco não edita outra pessoa");

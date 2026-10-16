@@ -194,7 +194,13 @@ export async function answerShift(actor: ShiftActor, input: { date: string; shif
     const plans = await visibleShiftPlans(actor, await shiftPlans(actor.organizationId, input.date));
     const plan = plans.find(p => p.userId === input.userId && p.shiftId === input.shiftId);
     if (!plan) throw new ShiftError(403, "Não há atividade publicada neste turno dentro do seu acesso.");
-    if (now < plan.opensAt || now >= plan.closesAt) throw new ShiftError(409, "O check-in está fora da janela deste turno.");
+    if (now < plan.opensAt || now >= plan.closesAt) {
+      // Diz quando abre ou quando fechou, em vez de só "fora da janela": a pessoa precisa saber se é cedo ou se já passou.
+      const hora = (instante: Date) => new Intl.DateTimeFormat("pt-BR", { timeZone: OPERATIONAL_TIME_ZONE, hour: "2-digit", minute: "2-digit" }).format(instante);
+      throw new ShiftError(409, now < plan.opensAt
+        ? `O check-in do turno ${plan.shiftName} ainda não abriu: abre às ${hora(plan.opensAt)}.`
+        : `O check-in do turno ${plan.shiftName} já fechou, às ${hora(plan.closesAt)}. Se precisar, avise a gerência.`);
+    }
     const [before] = await tx.select().from(operationalCheckInsTable).where(and(eq(operationalCheckInsTable.userId, input.userId), eq(operationalCheckInsTable.date, input.date), eq(operationalCheckInsTable.shiftId, input.shiftId)));
     if (before?.shiftState === "ARRIVED" || before?.shiftState === "ABSENT" || before?.closedAt) throw new ShiftError(409, "Este check-in já foi concluído.");
     if (input.action === "ARRIVED" && before?.shiftState !== "LATE") throw new ShiftError(409, "Não há aviso de atraso aguardando chegada.");
