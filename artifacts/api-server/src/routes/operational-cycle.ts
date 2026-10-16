@@ -14,6 +14,7 @@ import { avisarRepublicacaoFolgas, ultimoRetratoFolgas } from "../services/folga
 import { operationalDate } from "../lib/operational-date.js";
 import { administradores, diaEmQueOPrazoAbre, mesDeFolgasPublicado, operacaoDaPessoa, prazoAdminAberto, supervisoresDaArea } from "../services/folga-roteamento.js";
 import { lerConfigFolga } from "../services/folga-config.js";
+import { barreiraDeDecisao } from "../services/folga-decisao.js";
 import { protectShiftCheckIns } from "../middlewares/shift-checkin-legacy.js";
 
 const router: IRouter = Router();
@@ -89,7 +90,9 @@ router.get("/leave-requests", requireAuth, requireOrganization, async (req, res)
   const actor = req.user!, from = typeof req.query.from === "string" ? req.query.from : operationalDate(), to = typeof req.query.to === "string" ? req.query.to : from;
   const rows = await db.select({ request: leaveRequestsTable, userName: usersTable.name, fullName: usersTable.fullName, areaName: areasTable.name }).from(leaveRequestsTable).innerJoin(usersTable, eq(leaveRequestsTable.userId, usersTable.id)).leftJoin(areasTable, eq(leaveRequestsTable.areaId, areasTable.id)).where(and(eq(leaveRequestsTable.organizationId, actor.organizationId), lte(leaveRequestsTable.startDate, to), gte(leaveRequestsTable.endDate, from))).orderBy(desc(leaveRequestsTable.createdAt));
   const visible = [] as typeof rows;
-  for (const row of rows) if (await ownsPerson(actor, row.request.userId)) visible.push(row);
+  // O colega de uma troca vê o pedido enquanto a troca depende dele (ou depois de resolvida), nunca um pedido cancelado.
+  const ehColegaDaTroca = (row: (typeof rows)[number]) => row.request.peerId === actor.sub && row.request.userId !== actor.sub && !isAdmin(actor.role) && row.request.status !== "CANCELLED";
+  for (const row of rows) if ((await ownsPerson(actor, row.request.userId)) || ehColegaDaTroca(row)) visible.push(row);
   // Quem decide precisa saber, antes de aprovar, se a pessoa já tem folga marcada naqueles dias.
   const pendentes = visible.filter((row) => row.request.status === "PENDING");
   const jaMarcada = new Set<string>();
@@ -117,10 +120,18 @@ router.get("/leave-requests", requireAuth, requireOrganization, async (req, res)
     const adminPodeAgora = !comSupervisao || prazoAdminAberto(request.startDate, hoje, prazoSupervisaoDias);
     return { quem: comSupervisao ? "SUPERVISAO" : "ADMINISTRACAO", area: null, adminPodeDecidirEm: abreEm, adminPodeAgora };
   };
+  const idsDeColega = [...new Set(visible.map((row) => row.request.peerId).filter((id): id is string => Boolean(id)))];
+  const nomesDeColega = new Map<string, string>(idsDeColega.length ? (await db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(inArray(usersTable.id, idsDeColega))).map((u) => [u.id, u.name] as [string, string]) : []);
   const saida = [];
   for (const row of visible) {
     const destino = await destinoDe(row.request);
-    saida.push({ ...row.request, userName: row.userName ?? row.fullName, areaName: row.areaName, ...(jaMarcada.has(row.request.id) ? { jaTemFolga: true } : {}), ...(destino ? { destino: { ...destino, area: row.areaName } } : {}) });
+    const souSoOColega = row.request.peerId === actor.sub && !(await ownsPerson(actor, row.request.userId));
+    const troca = row.request.peerId ? {
+      colegaId: row.request.peerId, colegaNome: nomesDeColega.get(row.request.peerId) ?? null, diaDevolvido: row.request.swapReturnDate,
+      estado: row.request.peerAccepted === null ? "ESPERANDO" : row.request.peerAccepted ? "ACEITA" : "RECUSADA",
+      motivoRecusa: row.request.peerReason, souEu: row.request.peerId === actor.sub,
+    } : null;
+    saida.push({ ...row.request, ...(souSoOColega ? { reason: null } : {}), userName: row.userName ?? row.fullName, areaName: row.areaName, ...(jaMarcada.has(row.request.id) ? { jaTemFolga: true } : {}), ...(destino ? { destino: { ...destino, area: row.areaName } } : {}), ...(troca ? { troca } : {}) });
   }
   res.json({ requests: saida });
 });
@@ -227,16 +238,11 @@ router.patch("/leave-requests/:id", requireAuth, requireOrganization, async (req
   const requestId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const [request] = await db.select().from(leaveRequestsTable).where(and(eq(leaveRequestsTable.id, requestId), eq(leaveRequestsTable.organizationId, actor.organizationId))).limit(1);
   if (!request) { res.status(404).json({ error: "Not Found" }); return; }
-  if (!isAdmin(actor.role) && (!isSupervisor(actor.role) || !(await canSupervisorAccessPerson({ supervisorId: actor.sub, organizationId: actor.organizationId, personId: request.userId })))) { res.status(403).json({ error: "Forbidden" }); return; }
-  if (request.status !== "PENDING") { res.status(409).json({ error: "Conflict", message: "Este pedido já foi decidido." }); return; }
-  if (request.userId === actor.sub) { res.status(403).json({ error: "Forbidden", message: "Ninguém decide o próprio pedido de folga." }); return; }
-  // A Supervisão da área decide primeiro. A Administração só entra quando a área não tem Supervisão ou quando o prazo abriu.
-  if (isAdmin(actor.role) && (await supervisoresDaArea(db, request.areaId)).length > 0) {
-    const { prazoSupervisaoDias } = await lerConfigFolga(actor.organizationId);
-    if (!prazoAdminAberto(request.startDate, operationalDate(), prazoSupervisaoDias)) {
-      const quando = diaEmQueOPrazoAbre(request.startDate, prazoSupervisaoDias).split("-").reverse().slice(0, 2).join("/");
-      res.status(409).json({ error: "Conflict", message: `A Supervisão da área tem até ${quando} para responder; a Administração pode decidir a partir daí.` }); return;
-    }
+  const barreira = await barreiraDeDecisao(actor, request);
+  if (barreira) { res.status(barreira.status).json({ error: barreira.status === 403 ? "Forbidden" : "Conflict", message: barreira.message }); return; }
+  if (request.peerId && request.peerAccepted === null) {
+    const [colega] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, request.peerId)).limit(1);
+    res.status(409).json({ error: "Conflict", message: `Esperando a resposta de ${colega?.name ?? "o colega"} sobre a troca. Retire a proposta para decidir de outro jeito.` }); return;
   }
   let aviso = "";
   const updated = await db.transaction(async (tx) => {

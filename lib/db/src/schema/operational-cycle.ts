@@ -38,6 +38,14 @@ export const leaveRequestsTable = pgTable("leave_requests", {
   decidedBy: uuid("decided_by").references(() => usersTable.id),
   decisionReason: text("decision_reason"),
   decidedAt: timestamp("decided_at", { withTimezone: true }),
+  // Troca com colega (0067): o colega está de folga no dia pedido e fica com `swapReturnDate`, um dia de folga de quem pediu.
+  // "Esperando o colega" = peerId preenchido e peerAccepted nulo; o status continua PENDING.
+  peerId: uuid("peer_id").references(() => usersTable.id),
+  peerProposedBy: uuid("peer_proposed_by").references(() => usersTable.id),
+  peerAccepted: boolean("peer_accepted"),
+  peerRespondedAt: timestamp("peer_responded_at", { withTimezone: true }),
+  peerReason: text("peer_reason"),
+  swapReturnDate: date("swap_return_date", { mode: "string" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [

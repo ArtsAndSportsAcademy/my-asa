@@ -24,7 +24,7 @@ import { listAreaLocalScopes } from "../services/area-local-scope.js";
 
 const router: IRouter = Router();
 const MANAGER_ROLES = ["ADMIN", "SUPERVISOR_A", "SUPERVISOR_B"];
-type FolgaMutationExecutor = Pick<typeof db, "insert" | "update">;
+export type FolgaMutationExecutor = Pick<typeof db, "insert" | "update">;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -195,7 +195,7 @@ async function cancelAndSplitRange(
  * Cancel a folga record and, if it spans more than the target date,
  * create left and/or right fragments to preserve the days not being edited.
  */
-async function cancelAndSplit(
+export async function cancelAndSplit(
   f: {
     id: string;
     startDate: string;

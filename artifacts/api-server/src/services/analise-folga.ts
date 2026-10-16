@@ -9,9 +9,9 @@
  * pessoa fixa, dia da semana), trabalha nesse dia, não está de folga e não está em outro show no
  * mesmo horário. Quem pode cobrir só é mostrado: quem escolhe é a Supervisão.
  */
-import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lte, ne } from "drizzle-orm";
 import {
-  agendaEventsTable, dailyBookAssignmentsTable, dailyBookPositionsTable, dailyBooksTable, db, showBookLinesTable, showBooksTable, usersTable,
+  agendaEventsTable, dailyBookAssignmentsTable, dailyBookPositionsTable, dailyBooksTable, db, folgasTable, showBookLinesTable, showBooksTable, usersTable,
 } from "@workspace/db";
 import { montarEscalaDoDia } from "./escala-dia.js";
 import { lerConfigFolga } from "./folga-config.js";
@@ -19,7 +19,9 @@ import { lerConfigFolga } from "./folga-config.js";
 export const LIMITE_DIAS_ANALISE = 14;
 
 export type PessoaDoDia = { id: string; name: string };
-export type VagaAnalisada = { personagem: string; pessoa: string; podeCobrir: PessoaDoDia[] };
+export type VagaAnalisada = { personagem: string; pessoa: string; podeCobrir: PessoaDoDia[]; /** Quem está na lista da vaga e está de folga neste dia: só com eles existe troca. */ deFolgaNaLista: PessoaDoDia[] };
+/** Para cada colega de folga no dia pedido, os dias de folga de quem pediu que ele poderia receber em troca. */
+export type TrocaPossivel = { colegas: { id: string; name: string; dias: string[] }[] };
 export type DiaAnalisado = {
   date: string;
   deFolga: PessoaDoDia[];
@@ -105,11 +107,11 @@ async function horariosOcupados(userIds: string[], date: string, ignorarLivroDe:
   return mapa;
 }
 
-export async function analisarPedidoDeFolga(input: { organizationId: string; userId: string; startDate: string; endDate: string }): Promise<{ dias: DiaAnalisado[]; cortado: boolean }> {
+export async function analisarPedidoDeFolga(input: { organizationId: string; userId: string; startDate: string; endDate: string }): Promise<{ dias: DiaAnalisado[]; cortado: boolean; troca: TrocaPossivel | null }> {
   const { organizationId, userId } = input;
   const [pessoa] = await db.select({ name: usersTable.name, areaId: usersTable.areaId, defaultLocationId: usersTable.defaultLocationId })
     .from(usersTable).where(and(eq(usersTable.id, userId), eq(usersTable.organizationId, organizationId))).limit(1);
-  if (!pessoa) return { dias: [], cortado: false };
+  if (!pessoa) return { dias: [], cortado: false, troca: null };
   const config = await lerConfigFolga(organizationId);
   const { dias: datas, cortado } = diasDoPedido(input.startDate, input.endDate);
   const dias: DiaAnalisado[] = [];
@@ -146,7 +148,7 @@ export async function analisarPedidoDeFolga(input: { organizationId: string; use
       // nomes de quem não aparece na Escala (fora de área, por exemplo) vêm direto do cadastro
       const faltam = cobre.filter((id) => !nomes.has(id));
       if (faltam.length) for (const u of await db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(inArray(usersTable.id, faltam))) nomes.set(u.id, u.name);
-      vagasAnalisadas.push({ personagem: v.personagem, pessoa: pessoa.name, podeCobrir: cobre.map((id) => ({ id, name: nomes.get(id) ?? "—" })) });
+      vagasAnalisadas.push({ personagem: v.personagem, pessoa: pessoa.name, podeCobrir: cobre.map((id) => ({ id, name: nomes.get(id) ?? "—" })), deFolgaNaLista: lista0.filter((id) => folgam.has(id)).map((id) => ({ id, name: nomes.get(id) ?? "—" })) });
     }
 
     let resultado: DiaAnalisado["resultado"];
@@ -168,5 +170,29 @@ export async function analisarPedidoDeFolga(input: { organizationId: string; use
 
     dias.push({ date, deFolga: lista(folgam), trabalham: lista(trabalham), vagas: vagasAnalisadas, resultado, aviso, semEscala });
   }
-  return { dias, cortado };
+  const troca = input.startDate === input.endDate && dias[0] ? await trocasPossiveis(userId, input.startDate, dias[0].vagas.flatMap((v) => v.deFolgaNaLista)) : null;
+  return { dias, cortado, troca };
+}
+
+const HORIZONTE_DE_TROCA_DIAS = 120;
+/** Os dias soltos de folga (DAY_OFF) de uma pessoa a partir de uma data, em ordem. */
+async function diasDeFolga(userIds: string[], desde: string, ate: string): Promise<Map<string, Set<string>>> {
+  const rows = await db.select({ userId: folgasTable.userId, startDate: folgasTable.startDate, endDate: folgasTable.endDate }).from(folgasTable)
+    .where(and(inArray(folgasTable.userId, userIds), eq(folgasTable.status, "ACTIVE"), eq(folgasTable.type, "DAY_OFF"), lte(folgasTable.startDate, ate), gte(folgasTable.endDate, desde)));
+  const mapa = new Map<string, Set<string>>(userIds.map((id) => [id, new Set<string>()]));
+  for (const r of rows) {
+    for (let t = new Date(`${r.startDate < desde ? desde : r.startDate}T12:00:00Z`); t.toISOString().slice(0, 10) <= (r.endDate > ate ? ate : r.endDate); t.setUTCDate(t.getUTCDate() + 1)) mapa.get(r.userId)!.add(t.toISOString().slice(0, 10));
+  }
+  return mapa;
+}
+
+async function trocasPossiveis(userId: string, dataPedida: string, candidatos: PessoaDoDia[]): Promise<TrocaPossivel | null> {
+  const unicos = [...new Map(candidatos.map((c) => [c.id, c])).values()];
+  if (!unicos.length) return null;
+  const ate = new Date(`${dataPedida}T12:00:00Z`); ate.setUTCDate(ate.getUTCDate() + HORIZONTE_DE_TROCA_DIAS);
+  const limite = ate.toISOString().slice(0, 10);
+  const mapa = await diasDeFolga([userId, ...unicos.map((c) => c.id)], dataPedida, limite);
+  const dela = [...(mapa.get(userId) ?? [])].filter((d) => d !== dataPedida).sort();
+  const colegas = unicos.map((c) => ({ ...c, dias: dela.filter((d) => !(mapa.get(c.id)?.has(d))) })).filter((c) => c.dias.length > 0);
+  return colegas.length ? { colegas } : null;
 }

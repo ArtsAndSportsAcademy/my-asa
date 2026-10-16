@@ -8,11 +8,12 @@ type Dia = {
   date: string;
   deFolga: Pessoa[];
   trabalham: Pessoa[];
-  vagas: { personagem: string; pessoa: string; podeCobrir: Pessoa[] }[];
+  vagas: { personagem: string; pessoa: string; podeCobrir: Pessoa[]; deFolgaNaLista: Pessoa[] }[];
   resultado: { da: boolean; frase: string };
   aviso: string | null;
   semEscala: boolean;
 };
+type Troca = { colegas: { id: string; name: string; dias: string[] }[] };
 
 const DIAS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 const rotuloDoDia = (iso: string) => {
@@ -25,15 +26,18 @@ const nomes = (lista: Pessoa[]) => lista.map((p) => p.name).join(", ");
  * O panorama de cada dia pedido, para quem decide: quem já está de folga, quem trabalha, a vaga da
  * pessoa com quem pode cobrir, e o resultado. Só leitura; o servidor calcula na hora, então nunca
  * fica velho. Se a análise falhar, a decisão continua possível: o pedido não depende dela.
+ *
+ * Quando ninguém que trabalha pode cobrir e algum colega da lista da vaga está de folga nesse dia, a
+ * Supervisão pode propor a TROCA a ele: ele trabalha o dia pedido e fica com um dia de folga de quem pediu.
  */
-export function AnaliseDoPedido({ pedidoId, pessoa }: { pedidoId: string; pessoa: string }) {
-  const [dados, setDados] = useState<{ dias: Dia[]; cortado: boolean } | null>(null);
+export function AnaliseDoPedido({ pedidoId, pessoa, onTrocaProposta }: { pedidoId: string; pessoa: string; onTrocaProposta?: () => void }) {
+  const [dados, setDados] = useState<{ dias: Dia[]; cortado: boolean; troca: Troca | null } | null>(null);
   const [erro, setErro] = useState("");
 
   useEffect(() => {
     let vivo = true;
     setDados(null); setErro("");
-    customFetch<{ dias: Dia[]; cortado: boolean }>(`/api/leave-requests/${pedidoId}/analise`)
+    customFetch<{ dias: Dia[]; cortado: boolean; troca: Troca | null }>(`/api/leave-requests/${pedidoId}/analise`)
       .then((r) => { if (vivo) setDados(r); })
       .catch((e) => { if (vivo) setErro(mensagemDoErro(e, "Não consegui montar o panorama do dia agora. Você ainda pode decidir; o pedido continua na fila.")); });
     return () => { vivo = false; };
@@ -43,6 +47,7 @@ export function AnaliseDoPedido({ pedidoId, pessoa }: { pedidoId: string; pessoa
   if (!dados) return <p className="analise-espera" role="status">Olhando o dia…</p>;
   if (!dados.dias.length) return <p className="analise-espera">Não há dias para analisar neste pedido.</p>;
 
+  const naoDa = dados.dias.length === 1 && !dados.dias[0]!.resultado.da;
   return (
     <div className="analise" aria-label="Panorama do dia pedido">
       {dados.dias.map((dia) => (
@@ -65,6 +70,33 @@ export function AnaliseDoPedido({ pedidoId, pessoa }: { pedidoId: string; pessoa
         </section>
       ))}
       {dados.cortado && <p className="analise-aviso" role="note">Mostrando os 14 primeiros dias do pedido.</p>}
+      {naoDa && dados.troca && <ProporTroca pedidoId={pedidoId} pessoa={pessoa} dia={dados.dias[0]!.date} troca={dados.troca} onProposta={onTrocaProposta} />}
     </div>
+  );
+}
+
+function ProporTroca({ pedidoId, pessoa, dia, troca, onProposta }: { pedidoId: string; pessoa: string; dia: string; troca: Troca; onProposta?: () => void }) {
+  const [colegaId, setColegaId] = useState(troca.colegas[0]!.id);
+  const colega = troca.colegas.find((c) => c.id === colegaId) ?? troca.colegas[0]!;
+  const [devolvido, setDevolvido] = useState(colega.dias[0] ?? "");
+  const [enviando, setEnviando] = useState(false), [erro, setErro] = useState("");
+  useEffect(() => { setDevolvido(colega.dias[0] ?? ""); }, [colega.id]);
+  const propor = async () => {
+    setEnviando(true); setErro("");
+    try {
+      await customFetch(`/api/leave-requests/${pedidoId}/troca`, { method: "POST", body: JSON.stringify({ peerId: colega.id, diaDevolvido: devolvido }) });
+      onProposta?.();
+    } catch (e) { setErro(mensagemDoErro(e, "Não consegui propor a troca agora. Nada foi enviado ao colega; tente de novo.")); }
+    finally { setEnviando(false); }
+  };
+  return (
+    <section className="analise-troca" aria-label="Pedir troca a quem está de folga">
+      <h3>Pedir troca a quem está de folga</h3>
+      <p>Ninguém que trabalha em {rotuloDoDia(dia)} pode cobrir. {colega.name} já está de folga nesse dia: se aceitar, trabalha nele e fica com um dia de folga de {pessoa}. A conta de folgas dos dois no mês não muda.</p>
+      <label>Colega<select value={colega.id} onChange={(e) => setColegaId(e.target.value)}>{troca.colegas.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+      <label>Folga de {pessoa} que ele recebe<select value={devolvido} onChange={(e) => setDevolvido(e.target.value)}>{colega.dias.map((d) => <option key={d} value={d}>{rotuloDoDia(d)}</option>)}</select></label>
+      {erro && <p className="analise-erro" role="alert">{erro}</p>}
+      <button type="button" className="analise-propor" onClick={() => void propor()} disabled={enviando || !devolvido}>{enviando ? "Enviando…" : "Propor a troca"}</button>
+    </section>
   );
 }

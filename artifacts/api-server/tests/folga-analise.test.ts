@@ -126,6 +126,15 @@ async function run() {
     assert(dia1?.resultado.da === true && /Astrid/.test(dia1.resultado.frase), "resultado: dá, e a frase nomeia a vaga");
     assert(dia1?.semEscala === false, "dia com Livro gerado tem escala");
 
+    // 1b · Troca possível: a Dani (na lista da Astrid) está de folga neste dia, então pode receber uma folga da Ana.
+    const folgaDaAna = "2026-11-15";
+    await db.insert(folgasTable).values({ userId: ana.id, operationId: operation!.id, type: "DAY_OFF", startDate: folgaDaAna, endDate: folgaDaAna, status: "ACTIVE", createdBy: admin.id });
+    const comTroca = await call("GET", `/leave-requests/${pedido1}/analise`, asSup);
+    const colegaTroca = (comTroca.body.troca?.colegas as { id: string; dias: string[] }[] | undefined)?.find((c) => c.id === dani.id);
+    assert(!!colegaTroca && colegaTroca.dias.includes(folgaDaAna), "pedido de um dia: oferece a troca com quem está de folga e na lista da vaga, com os dias que ele poderia receber");
+    assert(!(comTroca.body.troca?.colegas as { id: string }[] | undefined)?.some((c) => c.id === carol.id), "quem trabalha nesse dia não aparece como troca (é cobertura)");
+    assert((await call("GET", `/leave-requests/${pedidoLongo}/analise`, asSup)).body.troca === null, "pedido de vários dias não oferece troca");
+
     // 2 · Dia sem Escala nem Livro: a tela precisa dizer, não ficar em branco.
     const a2 = await call("GET", `/leave-requests/${pedido2}/analise`, asSup);
     assert(a2.body.dias?.[0]?.semEscala === true && a2.body.dias[0].resultado.da === true && /ainda não tem Escala/.test(a2.body.dias[0].resultado.frase), "dia sem Escala: diz que falta gerar e o pedido entra");
@@ -174,6 +183,8 @@ async function run() {
       await db.delete(showBookScenesTable).where(inArray(showBookScenesTable.showBookId, showIds));
       await db.delete(showBooksTable).where(inArray(showBooksTable.id, showIds));
     }
+    await pool.query(`delete from user_notifications where user_id = any($1::uuid[])`, [ids]).catch(() => undefined);
+    await pool.query(`delete from notification_outbox where user_id = any($1::uuid[])`, [ids]).catch(() => undefined);
     await db.delete(leaveRequestsTable).where(eq(leaveRequestsTable.organizationId, org!.id));
     await db.delete(folgasTable).where(eq(folgasTable.operationId, operation!.id));
     await db.delete(areaLocalSupervisorsTable).where(eq(areaLocalSupervisorsTable.locationId, local!.id));
