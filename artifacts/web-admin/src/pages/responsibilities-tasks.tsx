@@ -74,7 +74,8 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
         customFetch<{ responsibilities: Responsibility[] }>("/api/responsibilities"),
         customFetch<{ operations?: Operation[] }>("/api/operations").catch(() => { falhou = true; return { operations: [] as Operation[] }; }),
         customFetch<{ users?: Person[] }>("/api/users").catch(() => { falhou = true; return { users: [] as Person[] }; }),
-        customFetch<{ areas?: Area[] }>("/api/areas").catch(() => { falhou = true; return { areas: [] as Area[] }; }),
+        // O Elenco não monta lote nem escolhe área: pedir a lista de áreas para ele só gerava uma recusa (403) à toa.
+        role === "mem" ? Promise.resolve({ areas: [] as Area[] }) : customFetch<{ areas?: Area[] }>("/api/areas").catch(() => { falhou = true; return { areas: [] as Area[] }; }),
       ]);
       setRefsFailed(falhou);
       const nextOperations = operationData.operations ?? [];
@@ -119,6 +120,16 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
     if (filter === "mine") return task.assigneeId === myId;
     return true;
   }).sort((a, b) => a.dueDate.localeCompare(b.dueDate)), [filter, tasks, myId]);
+  const abertas = useMemo(() => tasks.filter((task) => !["APPROVED", "COMPLETED", "CANCELLED", "EXPIRED"].includes(task.status)).length, [tasks]);
+  // A tela abre em "Hoje". Se nada vence hoje mas a pessoa tem tarefa em aberto, abre direto em "Em aberto": senão a lista parece vazia
+  // enquanto o contador da aba diz "Tarefas 1".
+  const [escolheuFiltroInicial, setEscolheuFiltroInicial] = useState(false);
+  useEffect(() => {
+    if (loading || escolheuFiltroInicial) return;
+    setEscolheuFiltroInicial(true);
+    const venceHoje = tasks.some((task) => !["APPROVED", "COMPLETED", "CANCELLED", "EXPIRED"].includes(task.status) && task.dueDate <= today());
+    if (filter === "today" && !venceHoje && abertas > 0) setFilter("open");
+  }, [loading, escolheuFiltroInicial, tasks, abertas, filter]);
 
   const scopedPeople = useMemo(() => {
     const selected = responsibilities.find((item) => item.id === selectedResponsibility);
@@ -245,7 +256,7 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
     {error && <div className="rt-error" role="alert"><AlertTriangle size={17}/>{error}<button onClick={() => void reload()}>Tentar novamente</button></div>}
     {loading ? <div className="rt-loading" aria-busy="true"><i/><i/><i/></div> : tab === "tasks" ? <>
       <div className="rt-toolbar"><div className="rt-filters" role="group" aria-label="Filtrar tarefas">{([["today", "Hoje"], ["open", "Em aberto"], ["late", "Vencidas"], ["done", "Feitas"], ...(role === "mem" ? [] : [["mine", "Minhas"]]), ["all", "Todas"]] as [string, string][]).map(([value, label]) => <button key={value} className={filter === value ? "selected" : ""} onClick={() => setFilter(value)}>{label}</button>)}</div>{canDistribute && <button className="rt-primary" onClick={() => { setSelectedResponsibility(""); setLotDialog(true); }}><CirclePlus size={16}/>Preparar lote</button>}</div>
-      <p className="rt-explainer">Uma tarefa só entra na lista quando o lote é confirmado.</p>
+      {role !== "mem" && <p className="rt-explainer">Uma tarefa só entra na lista quando o lote é confirmado.</p>}
       {visibleTasks.length ? <div className="rt-task-list">{visibleTasks.map((task) => {
         const closed = ["APPROVED", "COMPLETED", "CANCELLED", "EXPIRED"].includes(task.status);
         const overdue = !closed && task.dueDate < today();
@@ -254,7 +265,9 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
           <div className="rt-task-main"><strong>{task.title}</strong><div><span>{task.responsibilityTitle ?? "Tarefa avulsa"}</span><span>{task.assigneeName}</span><span>Origem: {task.origin === "ASA" || task.origin === "AI" ? "ASA" : "Pessoa"}</span></div></div>
           <div className="rt-task-end"><time dateTime={task.dueDate} className={overdue ? "late" : ""}>{overdue ? "Atrasada · " : "Até "}{dateLabel(task.dueDate)}</time><span className={`rt-state ${closed ? "closed" : overdue ? "late" : ""}`}>{statusLabel[task.status] ?? task.status}</span>{canDistribute && !closed && <button type="button" className="rt-task-cancel" onClick={() => { setCancelError(""); setCancelMotivo(""); setCancelTask(task); }}>Cancelar tarefa</button>}</div>
         </article>;
-      })}</div> : <div className="rt-empty"><ClipboardList size={24}/><strong>{filter === "today" ? "Nada vence hoje" : "Nenhuma tarefa neste filtro"}</strong><span>Quando uma tarefa for distribuída para você, ela aparece aqui.</span></div>}
+      })}</div> : <div className="rt-empty"><ClipboardList size={24}/><strong>{filter === "today" ? "Nada vence hoje" : "Nenhuma tarefa neste filtro"}</strong>{abertas > 0 && filter !== "open" && filter !== "all"
+        ? <><span>{abertas === 1 ? "Você tem 1 tarefa em aberto, com prazo em outro dia." : `Você tem ${abertas} tarefas em aberto, com prazo em outros dias.`}</span><button type="button" className="rt-link" onClick={() => setFilter("open")}>Ver as em aberto</button></>
+        : <span>{role === "mem" ? "Quando uma tarefa for distribuída para você, ela aparece aqui." : "Tire ou troque o filtro para ver as outras tarefas."}</span>}</div>}
     </> : <>
       <div className="rt-toolbar"><p className="rt-scope-note">Resultados permanentes pelos quais cada área responde.</p>{canDefine && <button className="rt-primary" onClick={() => setResponsibilityDialog(true)}><CirclePlus size={16}/>Nova responsabilidade</button>}</div>
       {responsibilities.length ? <div className="rt-responsibility-list">{responsibilities.map((responsibility) => <article className="rt-responsibility" key={responsibility.id}>

@@ -30,3 +30,6 @@
 .esc-rodape-pri{border:0;background:#6c2bf2;color:#fff}
 .esc-rodape button:disabled{opacity:.45;cursor:default}
 @media(max-width:720px){.esc-rodape{bottom:78px}.esc-rodape button{flex:1}}
+
+/* No computador, o botão redondo da ASA fica no canto de baixo e cobria o último botão da barra do rodapé ("Gerar o mês"). */
+@media(min-width:721px){.esc-pad{padding-right:104px!important}}

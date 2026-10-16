@@ -15,3 +15,5 @@
 .rt-task-cancel{min-height:40px;padding:0 4px;border:0;background:transparent;color:#a32740;font-size:12px;font-weight:700;cursor:pointer;justify-self:end}
 .rt-form-error{margin:0;color:#99253c;font-size:12px;line-height:1.5}
 @media(max-width:720px){.rt-assignee-list{grid-template-columns:1fr}.rt-discard>div button{flex:1}}
+
+.rt-empty .rt-link{margin-top:10px;min-height:44px;padding:8px 16px;border-radius:999px;border:1px solid #cbb8f7;background:#fff;color:#6c2bf2;font:700 13px Manrope,sans-serif;cursor:pointer}

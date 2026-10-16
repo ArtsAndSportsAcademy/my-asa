@@ -37,4 +37,18 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
 
+// Endereço da API que não existe: a resposta é JSON, não a página HTML "Cannot GET" do Express (que o app tentaria ler como dados).
+app.use("/api", (_req, res) => {
+  res.status(404).json({ error: "NOT_FOUND", message: "Esse endereço da API não existe." });
+});
+
+// Corpo enviado com JSON quebrado: recusa em JSON, com frase, em vez de uma página HTML de erro.
+app.use((err: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if ((err as { type?: string } | null)?.type === "entity.parse.failed") {
+    res.status(400).json({ error: "JSON_INVALIDO", message: "Não consegui ler o que foi enviado. Nada foi alterado." });
+    return;
+  }
+  next(err);
+});
+
 export default app;
