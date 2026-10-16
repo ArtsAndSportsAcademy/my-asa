@@ -39,8 +39,8 @@ já faz e diz o que falta para a ASA ser "a secretária que mora em cada tela".
 
 ## Fatias propostas (em ordem; cada uma independente e testável)
 
-1. **Chips por tela** e mapa de poses — só interface, sem regra nova.
-2. **Tarefa para várias pessoas** — reaproveita `TASK_CREATE` e o lote já existente.
+1. ~~**Chips por tela** e mapa de poses~~ — **feito em 16/10/2026** (`lib/asa-por-tela.ts`; pedidos prontos sempre visíveis, aviso proativo segue a frequência).
+2. ~~**Tarefa para várias pessoas**~~ — **feito em 16/10/2026**: `crie uma tarefa "título" para "Ana" e "Bia" até DD/MM/AAAA` (ou `para mim e "Bia"`), até 20 pessoas; uma prévia, uma tarefa e um Registro por pessoa, um aviso por pessoa. Se um nome falhar, nada é criado.
 3. **Folga em lote pela ASA** — a mais sensível: precisa de decisão sobre quem pode pedir (só Administração
    e Supervisão da área; Elenco só para si) e sempre com prévia listando cada pessoa e cada dia.
 4. **Recomendações da gerência** no começo do dia (cobertura, prazos, o que falta publicar).

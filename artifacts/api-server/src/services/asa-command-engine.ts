@@ -126,7 +126,10 @@ export type AsaTaskEvidenceType = typeof ASA_TASK_EVIDENCE_TYPES[number];
 export type AsaTaskDraftParse =
   | { kind: "not_action" }
   | { kind: "incomplete" }
-  | { kind: "proposal"; title: string; assigneeName: string; dueDate: string; priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"; description?: string; responsibilityTitle?: string; checklistLabels: string[]; mandatoryEvidences: Array<{ type: AsaTaskEvidenceType; description: string }> };
+  /** `assigneeNames` traz todas as pessoas citadas entre aspas (uma tarefa para cada); `includeSelf` é o "para mim". `assigneeName` é a primeira, por compatibilidade. */
+  | { kind: "proposal"; title: string; assigneeName: string; assigneeNames: string[]; includeSelf: boolean; dueDate: string; priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"; description?: string; responsibilityTitle?: string; checklistLabels: string[]; mandatoryEvidences: Array<{ type: AsaTaskEvidenceType; description: string }> };
+
+export const ASA_TASK_MAX_ASSIGNEES = 20;
 
 export type AsaTaskDueDateUpdateParse =
   | { kind: "not_action" }
@@ -692,7 +695,6 @@ export function parseAsaTaskDraftRequest(value: string): AsaTaskDraftParse {
   const responsibilityText = responsibilityMatch?.[1]?.trim();
   const checklistText = checklistMatch?.[1]?.trim();
   const evidenceText = evidenceMatch?.[1]?.trim();
-  const taskPhrases = phrases.slice(0, 2);
   const optionalPhrases = [
     descriptionText ? { text: descriptionText, index: descriptionMatch!.index } : null,
     responsibilityText ? { text: responsibilityText, index: responsibilityMatch!.index } : null,
@@ -701,13 +703,22 @@ export function parseAsaTaskDraftRequest(value: string): AsaTaskDraftParse {
   ]
     .filter((item): item is { text: string; index: number } => item !== null)
     .sort((left, right) => left.index - right.index);
-  if (optionalPhrases.some((item, index) => phrases[index + 2] !== item.text)
-    || phrases.length !== optionalPhrases.length + 2) return { kind: "incomplete" };
+  // Depois do título vêm as pessoas ("para "Ana" e "Bia"", ou "para mim e "Ana""), e só então as frases opcionais.
+  const foraDasAspas = normalizeAsaText(value.replace(/["“‘][^"”’\n]*["”’]/g, " "));
+  const includeSelf = /\bpara\s+(?:mim|eu)\b|(?:\be|,)\s+(?:para\s+)?mim\b|\bmim\s+e\b/.test(foraDasAspas);
+  const personCount = phrases.length - 1 - optionalPhrases.length;
+  if (personCount < 0 || optionalPhrases.some((item, index) => phrases[1 + personCount + index] !== item.text)) return { kind: "incomplete" };
   const dateMatch = normalized.match(/\b(?:ate|prazo)\s+(\d{1,2}\/\d{1,2}\/\d{4})\b/);
-  if (taskPhrases.length !== 2 || !/["“‘][^"”’\n]+["”’]\s+para\s+["“‘][^"”’\n]+["”’]/i.test(value) || !dateMatch) return { kind: "incomplete" };
-  const [title, assigneeName] = taskPhrases;
-  if (!title || title.length > 160 || !assigneeName || assigneeName.length > 120 || (descriptionText && descriptionText.length > 2000)
+  if (!/["“‘][^"”’\n]+["”’]\s+para\s+(?:mim\b|eu\b|["“‘])/i.test(value) || !dateMatch) return { kind: "incomplete" };
+  const title = phrases[0];
+  const assigneeNames = phrases.slice(1, 1 + personCount).map((name) => name.trim());
+  const distinctNames = new Set(assigneeNames.map(normalizeAsaText));
+  if (!title || title.length > 160 || assigneeNames.length + (includeSelf ? 1 : 0) < 1
+    || assigneeNames.length + (includeSelf ? 1 : 0) > ASA_TASK_MAX_ASSIGNEES
+    || distinctNames.size !== assigneeNames.length || assigneeNames.some((name) => !name || name.length > 120)
+    || (descriptionText && descriptionText.length > 2000)
     || (responsibilityText && responsibilityText.length > 160)) return { kind: "incomplete" };
+  const assigneeName = assigneeNames[0] ?? "mim";
   const checklistLabels = checklistText ? checklistText.split(";").map((label) => label.trim()) : [];
   if (checklistLabels.length > 12 || checklistLabels.some((label) => !label || label.length > 160)
     || new Set(checklistLabels.map(normalizeAsaText)).size !== checklistLabels.length) return { kind: "incomplete" };
@@ -738,7 +749,7 @@ export function parseAsaTaskDraftRequest(value: string): AsaTaskDraftParse {
     : /\bprioridade\s+alta\b/.test(normalized) ? "HIGH"
     : /\bprioridade\s+baixa\b/.test(normalized) ? "LOW"
     : "MEDIUM";
-  return { kind: "proposal", title, assigneeName, dueDate: `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`, priority, ...(descriptionText ? { description: descriptionText } : {}), ...(responsibilityText ? { responsibilityTitle: responsibilityText } : {}), checklistLabels, mandatoryEvidences };
+  return { kind: "proposal", title, assigneeName, assigneeNames, includeSelf, dueDate: `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`, priority, ...(descriptionText ? { description: descriptionText } : {}), ...(responsibilityText ? { responsibilityTitle: responsibilityText } : {}), checklistLabels, mandatoryEvidences };
 }
 
 export function parseAsaTaskDueDateUpdate(value: string): AsaTaskDueDateUpdateParse {

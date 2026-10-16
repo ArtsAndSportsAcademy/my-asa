@@ -168,39 +168,39 @@ assert.deepEqual(parseAsaAgendaMeetingRequest('Agende uma reunião "Revisão sem
 assert.equal(parseAsaAgendaMeetingRequest('Agende reunião "Revisão" em 31/02/2026 das 14:00 às 15:00').kind, "incomplete");
 assert.equal(parseAsaAgendaMeetingRequest('Agende reunião "Revisão" em 01/10/2026 das 15:00 às 14:00').kind, "incomplete");
 assert.deepEqual(parseAsaTaskDraftRequest('Crie uma tarefa "Separar figurinos" para "Ana Souza" até 30/09/2026 prioridade alta'), {
-  kind: "proposal", title: "Separar figurinos", assigneeName: "Ana Souza", dueDate: "2026-09-30", priority: "HIGH", checklistLabels: [], mandatoryEvidences: [],
+  kind: "proposal", title: "Separar figurinos", assigneeName: "Ana Souza", assigneeNames: ["Ana Souza"], includeSelf: false, dueDate: "2026-09-30", priority: "HIGH", checklistLabels: [], mandatoryEvidences: [],
 });
 assert.deepEqual(parseAsaTaskDraftRequest('Crie uma tarefa “Revisar estoque” para “Bia” prazo 01/10/2026'), {
-  kind: "proposal", title: "Revisar estoque", assigneeName: "Bia", dueDate: "2026-10-01", priority: "MEDIUM", checklistLabels: [], mandatoryEvidences: [],
+  kind: "proposal", title: "Revisar estoque", assigneeName: "Bia", assigneeNames: ["Bia"], includeSelf: false, dueDate: "2026-10-01", priority: "MEDIUM", checklistLabels: [], mandatoryEvidences: [],
 });
 assert.deepEqual(parseAsaTaskDraftRequest('Crie uma tarefa "Separar figurinos" para "Ana Souza" até 30/09/2026 com descrição "Separar por personagem e conferir etiquetas"'), {
-  kind: "proposal", title: "Separar figurinos", assigneeName: "Ana Souza", dueDate: "2026-09-30", priority: "MEDIUM",
+  kind: "proposal", title: "Separar figurinos", assigneeName: "Ana Souza", assigneeNames: ["Ana Souza"], includeSelf: false, dueDate: "2026-09-30", priority: "MEDIUM",
   description: "Separar por personagem e conferir etiquetas", checklistLabels: [], mandatoryEvidences: [],
 });
 assert.deepEqual(parseAsaTaskDraftRequest('Crie uma tarefa "Conferir extintores" para "Ana Souza" até 30/09/2026 vinculada à responsabilidade "Segurança do espaço"'), {
-  kind: "proposal", title: "Conferir extintores", assigneeName: "Ana Souza", dueDate: "2026-09-30", priority: "MEDIUM",
+  kind: "proposal", title: "Conferir extintores", assigneeName: "Ana Souza", assigneeNames: ["Ana Souza"], includeSelf: false, dueDate: "2026-09-30", priority: "MEDIUM",
   responsibilityTitle: "Segurança do espaço", checklistLabels: [], mandatoryEvidences: [],
 });
 assert.deepEqual(parseAsaTaskDraftRequest('Crie uma tarefa "Conferir extintores" para "Ana Souza" até 30/09/2026 com descrição "Registrar validade" vinculada à responsabilidade "Segurança do espaço" com checklist obrigatória "Conferir lacre" e evidências obrigatórias "FOTO: equipamento"'), {
-  kind: "proposal", title: "Conferir extintores", assigneeName: "Ana Souza", dueDate: "2026-09-30", priority: "MEDIUM",
+  kind: "proposal", title: "Conferir extintores", assigneeName: "Ana Souza", assigneeNames: ["Ana Souza"], includeSelf: false, dueDate: "2026-09-30", priority: "MEDIUM",
   description: "Registrar validade", responsibilityTitle: "Segurança do espaço",
   checklistLabels: ["Conferir lacre"], mandatoryEvidences: [{ type: "PHOTO", description: "equipamento" }],
 });
 assert.deepEqual(parseAsaTaskDraftRequest('Crie uma tarefa "Organizar cenário" para "Ana Souza" até 02/10/2026 com checklist obrigatória "Separar peças; conferir etiquetas"'), {
-  kind: "proposal", title: "Organizar cenário", assigneeName: "Ana Souza", dueDate: "2026-10-02", priority: "MEDIUM",
+  kind: "proposal", title: "Organizar cenário", assigneeName: "Ana Souza", assigneeNames: ["Ana Souza"], includeSelf: false, dueDate: "2026-10-02", priority: "MEDIUM",
   checklistLabels: ["Separar peças", "conferir etiquetas"], mandatoryEvidences: [],
 });
 assert.deepEqual(parseAsaTaskDraftRequest('Crie uma tarefa "Fechar relatório" para "Bia" até 03/10/2026 com evidências obrigatórias "PDF: relatório final; FOTO: página assinada"'), {
-  kind: "proposal", title: "Fechar relatório", assigneeName: "Bia", dueDate: "2026-10-03", priority: "MEDIUM", checklistLabels: [],
+  kind: "proposal", title: "Fechar relatório", assigneeName: "Bia", assigneeNames: ["Bia"], includeSelf: false, dueDate: "2026-10-03", priority: "MEDIUM", checklistLabels: [],
   mandatoryEvidences: [{ type: "PDF", description: "relatório final" }, { type: "PHOTO", description: "página assinada" }],
 });
 assert.deepEqual(parseAsaTaskDraftRequest('Crie uma tarefa "Fechar relatório" para "Bia" até 03/10/2026 com evidências obrigatórias "PDF: relatório final" com descrição "Conferir os dados antes do envio" com checklist obrigatória "Revisar totais"'), {
-  kind: "proposal", title: "Fechar relatório", assigneeName: "Bia", dueDate: "2026-10-03", priority: "MEDIUM",
+  kind: "proposal", title: "Fechar relatório", assigneeName: "Bia", assigneeNames: ["Bia"], includeSelf: false, dueDate: "2026-10-03", priority: "MEDIUM",
   description: "Conferir os dados antes do envio", checklistLabels: ["Revisar totais"],
   mandatoryEvidences: [{ type: "PDF", description: "relatório final" }],
 });
 assert.deepEqual(parseAsaTaskDraftRequest('Crie uma tarefa "Inventário" para "Bia" até 03/10/2026 com checklist "Conferir itens" e evidência obrigatória "DOCUMENTO: planilha"'), {
-  kind: "proposal", title: "Inventário", assigneeName: "Bia", dueDate: "2026-10-03", priority: "MEDIUM",
+  kind: "proposal", title: "Inventário", assigneeName: "Bia", assigneeNames: ["Bia"], includeSelf: false, dueDate: "2026-10-03", priority: "MEDIUM",
   checklistLabels: ["Conferir itens"], mandatoryEvidences: [{ type: "DOCUMENT", description: "planilha" }],
 });
 assert.equal(parseAsaTaskDraftRequest('Crie tarefa "Organizar cenário" para "Ana Souza" até 02/10/2026 com checklist "Separar; separar"').kind, "incomplete");
@@ -479,6 +479,23 @@ assert.equal(contextualManagerFolgas.kind, "command");
 if (contextualManagerFolgas.kind === "command") assert.equal(contextualManagerFolgas.command.tool, "consultar_ausencias_do_dia");
 assert.equal(formatAsaCommandReply("consultar_checkins_equipe", JSON.stringify({ date: "2026-10-16", checkIns: [], message: "Ninguém está previsto para check-in em 2026-10-16." })), "Ninguém está previsto para check-in em 16/10/2026.", "a resposta da ASA não mostra data crua");
 assert.equal(formatAsaCommandReply("consultar_folgas", JSON.stringify({ folgas: [{ startDate: "2026-10-26", endDate: "2026-10-28", type: "DAY_OFF", notes: "Pedido f123dae3-631d-4ab0-a704-2faaac843180" }, { startDate: "2026-10-29", endDate: "2026-10-29", type: "DAY_OFF", notes: "Troca do pedido 4f2855b5-6045-4512-a19d-9f259f8ea5f2" }] })), "Suas folgas registradas:\n• 26/10 a 28/10 · folga · pedido de folga\n• 29/10 · folga · troca de folga", "a lista de folgas não mostra o código do pedido");
+// Tarefa para várias pessoas de uma vez: uma tarefa para cada nome, e "para mim" inclui quem pediu.
+const varias = parseAsaTaskDraftRequest('Crie uma tarefa "Separar figurinos" para "Ana Souza" e "Bia" e "Carla Dias" até 30/09/2026 prioridade alta');
+assert.equal(varias.kind, "proposal");
+if (varias.kind === "proposal") { assert.deepEqual(varias.assigneeNames, ["Ana Souza", "Bia", "Carla Dias"]); assert.equal(varias.includeSelf, false); assert.equal(varias.assigneeName, "Ana Souza"); assert.equal(varias.priority, "HIGH"); }
+const comMim = parseAsaTaskDraftRequest('Crie uma tarefa "Montar palco" para mim e "Bia" até 01/10/2026');
+assert.equal(comMim.kind, "proposal");
+if (comMim.kind === "proposal") { assert.deepEqual(comMim.assigneeNames, ["Bia"]); assert.equal(comMim.includeSelf, true); }
+const soMim = parseAsaTaskDraftRequest('Crie uma tarefa "Montar palco" para mim até 01/10/2026');
+assert.equal(soMim.kind, "proposal");
+if (soMim.kind === "proposal") { assert.deepEqual(soMim.assigneeNames, []); assert.equal(soMim.includeSelf, true); assert.equal(soMim.assigneeName, "mim"); }
+const mimNoTitulo = parseAsaTaskDraftRequest('Crie uma tarefa "Falar com mim" para "Bia" até 01/10/2026');
+if (mimNoTitulo.kind === "proposal") assert.equal(mimNoTitulo.includeSelf, false, 'a palavra "mim" dentro do título não conta como "para mim"');
+const comDescricao = parseAsaTaskDraftRequest('Crie uma tarefa "Montar palco" para "Ana" e "Bia" até 01/10/2026 com descrição "Antes do show"');
+assert.equal(comDescricao.kind, "proposal");
+if (comDescricao.kind === "proposal") { assert.deepEqual(comDescricao.assigneeNames, ["Ana", "Bia"]); assert.equal(comDescricao.description, "Antes do show"); }
+assert.equal(parseAsaTaskDraftRequest('Crie uma tarefa "Montar palco" para "Ana" e "ana" até 01/10/2026').kind, "incomplete", "o mesmo nome duas vezes não vale");
+assert.equal(parseAsaTaskDraftRequest('Crie uma tarefa "Montar palco" até 01/10/2026').kind, "incomplete", "sem ninguém para receber, pergunta de volta");
 // Telas novas do site: "O que tenho aqui?" precisa responder também no Painel, nas Solicitações e nas Áreas.
 for (const [pagina, papel, gerente, ferramenta] of [["/painel", "ADMIN", true, "consultar_checkins_equipe"], ["/painel", "MEMBER", false, "consultar_meu_dia"], ["/solicitacoes", "MEMBER", false, "consultar_solicitacoes"], ["/areas", "ADMIN", true, "consultar_locais"]] as const) {
   const resposta = resolveAsaCommand("o que tenho aqui?", "2026-10-16", gerente, pagina, papel);

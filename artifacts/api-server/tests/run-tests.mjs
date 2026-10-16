@@ -80,7 +80,7 @@ function bundleTests(testSources, outDir) {
 
 async function main() {
   assertSafeTestDatabase();
-  const outDir = path.resolve(testsDir, ".dist");
+  const outDir = path.resolve(testsDir, process.env.MYASA_TEST_OUT || ".dist");
   await rm(outDir, { recursive: true, force: true });
   const testSources = process.env.TEST_FILE
     ? [process.env.TEST_FILE]

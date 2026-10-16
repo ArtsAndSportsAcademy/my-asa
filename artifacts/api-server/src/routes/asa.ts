@@ -6315,7 +6315,7 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
         }
       }
     } else if (taskDraft.kind === "incomplete") {
-      fullResponse = "Para preparar uma tarefa, use: crie uma tarefa \"título\" para \"nome completo\" até DD/MM/AAAA prioridade alta. A prioridade é opcional. Se precisar, acrescente: com descrição \"detalhes\", vinculada à responsabilidade \"título exato\", checklist obrigatória \"item 1; item 2\" e evidências obrigatórias \"FOTO: imagem final; PDF: relatório\". A responsabilidade precisa estar ativa na operação selecionada. A ASA mostra a prévia antes de gravar.";
+      fullResponse = "Para preparar uma tarefa, use: crie uma tarefa \"título\" para \"nome completo\" até DD/MM/AAAA prioridade alta. Para mais de uma pessoa, liste os nomes: para \"Ana Souza\" e \"Bia Lima\" (ou: para mim e \"Bia Lima\"); crio uma tarefa para cada uma. A prioridade é opcional. Se precisar, acrescente: com descrição \"detalhes\", vinculada à responsabilidade \"título exato\", checklist obrigatória \"item 1; item 2\" e evidências obrigatórias \"FOTO: imagem final; PDF: relatório\". A responsabilidade precisa estar ativa na operação selecionada. A ASA mostra a prévia antes de gravar.";
     } else if (taskDraft.kind === "proposal") {
       if (!TASK_MANAGER_ROLES.includes(user.role)) {
         fullResponse = "A criação de tarefas pela ASA está disponível para gestores autorizados. Nenhuma tarefa foi criada.";
@@ -6334,13 +6334,26 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
               eq(usersTable.organizationId, user.organizationId!),
               ne(usersTable.status, "INACTIVE"),
             ));
-          const matches = candidates.filter((candidate) => normalizeAsaText(candidate.name) === normalizeAsaText(taskDraft.assigneeName));
-          if (matches.length !== 1) {
-            fullResponse = matches.length > 1
-              ? `Encontrei mais de uma pessoa chamada ${taskDraft.assigneeName} nessa operação. Nenhuma tarefa foi criada; informe o nome completo ou escolha outra operação.`
-              : `Não encontrei ${taskDraft.assigneeName} como pessoa ativa da operação ${operation?.name ?? "selecionada"}. Nenhuma tarefa foi criada.`;
+          // Uma tarefa para cada pessoa citada; "para mim" inclui quem pediu. Se qualquer nome falhar, nada é criado.
+          const resolvidos: Array<{ id: string; name: string }> = [];
+          const problemas: string[] = [];
+          for (const nome of taskDraft.assigneeNames) {
+            const achados = candidates.filter((candidate) => normalizeAsaText(candidate.name) === normalizeAsaText(nome));
+            if (achados.length > 1) problemas.push(`encontrei mais de uma pessoa chamada ${nome} (informe o nome completo)`);
+            else if (achados.length === 0) problemas.push(`não encontrei ${nome} como pessoa ativa da operação ${operation?.name ?? "selecionada"}`);
+            else resolvidos.push(achados[0]!);
+          }
+          if (taskDraft.includeSelf) {
+            const eu = candidates.find((candidate) => candidate.id === user.sub);
+            if (eu) resolvidos.unshift(eu); else problemas.push(`você não está como pessoa ativa da operação ${operation?.name ?? "selecionada"}`);
+          }
+          const repetidas = resolvidos.filter((pessoa, indice) => resolvidos.findIndex((outra) => outra.id === pessoa.id) !== indice);
+          if (repetidas.length) problemas.push(`${repetidas[0]!.name} aparece mais de uma vez`);
+          if (problemas.length) {
+            fullResponse = `Nenhuma tarefa foi criada: ${problemas.join("; ")}.`;
           } else {
-            const assignee = matches[0]!;
+            const assignees = resolvidos;
+            const assignee = assignees[0]!;
             const responsibilityCandidates = taskDraft.responsibilityTitle ? await db.select({
               id: responsibilitiesTable.id, title: responsibilitiesTable.title,
               areaId: responsibilitiesTable.areaId, operationId: responsibilitiesTable.operationId,
@@ -6362,10 +6375,16 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
                 ? `Encontrei mais de uma responsabilidade ativa chamada “${taskDraft.responsibilityTitle}” na operação. Nada foi criado; use um título que identifique uma única responsabilidade.`
                 : `Não encontrei uma responsabilidade ativa chamada “${taskDraft.responsibilityTitle}” na operação ${operation?.name ?? "selecionada"}. Nada foi criado.`;
             }
-            const areaId = await resolveTaskAreaId(linkedResponsibility?.id, assignee.id, user.organizationId!);
-            const allowed = await canManageTasks(user.sub, user.role, operationSelection.operationId, user.organizationId!, areaId);
-            if (!fullResponse && !allowed) {
-              fullResponse = "Esta tarefa está fora da sua área de gestão. Nenhuma tarefa foi criada.";
+            // Cada pessoa tem a sua área: a Supervisão só cria para quem é da área que ela cuida.
+            const foraDaArea: string[] = [];
+            for (const pessoa of assignees) {
+              const areaDaPessoa = await resolveTaskAreaId(linkedResponsibility?.id, pessoa.id, user.organizationId!);
+              if (!(await canManageTasks(user.sub, user.role, operationSelection.operationId, user.organizationId!, areaDaPessoa))) foraDaArea.push(pessoa.name);
+            }
+            if (!fullResponse && foraDaArea.length) {
+              fullResponse = assignees.length === 1
+                ? "Esta tarefa está fora da sua área de gestão. Nenhuma tarefa foi criada."
+                : `Fora da sua área de gestão: ${foraDaArea.join(", ")}. Nenhuma tarefa foi criada; tire essas pessoas do pedido e peça de novo.`;
             } else if (!fullResponse) {
               const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
               const priorityLabel = { LOW: "baixa", MEDIUM: "média", HIGH: "alta", CRITICAL: "crítica" }[taskDraft.priority];
@@ -6383,12 +6402,14 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
                 responsibilityOperationId: linkedResponsibility?.operationId ?? null,
                 assigneeId: assignee.id,
                 assigneeName: assignee.name,
+                assignees: assignees.map((pessoa) => ({ id: pessoa.id, name: pessoa.name })),
                 dueDate: taskDraft.dueDate,
                 priority: taskDraft.priority,
                 checklistLabels: taskDraft.checklistLabels,
                 mandatoryEvidences: taskDraft.mandatoryEvidences,
                 expiresAt: expiresAt.toISOString(),
               };
+              const nomesDosResponsaveis = assignees.map((pessoa) => pessoa.name).join(", ");
               const checklistPreview = taskDraft.checklistLabels.length
                 ? `\nChecklist obrigatória:\n${taskDraft.checklistLabels.map((label) => `• ${label}`).join("\n")}`
                 : "";
@@ -6397,7 +6418,7 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
                 : "";
               const descriptionPreview = taskDraft.description ? `\nDescrição: ${taskDraft.description}` : "";
               const responsibilityPreview = linkedResponsibility ? `\nResponsabilidade: ${linkedResponsibility.title}` : "";
-              fullResponse = `Prévia da tarefa\nOperação: ${operation?.name ?? "Operação"}\nTítulo: ${taskDraft.title}\nResponsável: ${assignee.name}${responsibilityPreview}\nPrazo: ${taskDraft.dueDate.split("-").reverse().join("/")}\nPrioridade: ${priorityLabel}${descriptionPreview}${checklistPreview}${evidencePreview}\n\nNada foi gravado. Confirme pelo botão para criar a tarefa; a conclusão seguirá o fluxo de aprovação.`;
+              fullResponse = `Prévia da tarefa\nOperação: ${operation?.name ?? "Operação"}\nTítulo: ${taskDraft.title}\n${assignees.length > 1 ? `Responsáveis (${assignees.length}): ${nomesDosResponsaveis}\nSerão criadas ${assignees.length} tarefas, uma para cada pessoa.` : `Responsável: ${assignee.name}`}${responsibilityPreview}\nPrazo: ${taskDraft.dueDate.split("-").reverse().join("/")}\nPrioridade: ${priorityLabel}${descriptionPreview}${checklistPreview}${evidencePreview}\n\nNada foi gravado. Confirme pelo botão para criar a tarefa; a conclusão seguirá o fluxo de aprovação.`;
               action.previewResponse = fullResponse;
               toolsUsed.push("asa.task.preview");
               actionsExecuted.push(action);
@@ -6420,7 +6441,7 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
                   description: taskDraft.description,
                   responsibilityTitle: linkedResponsibility?.title,
                   operationName: operation?.name ?? "Operação",
-                  assigneeName: assignee.name,
+                  assigneeName: nomesDosResponsaveis,
                   dueDate: taskDraft.dueDate,
                   priority: taskDraft.priority,
                   checklistLabels: taskDraft.checklistLabels,
@@ -8518,13 +8539,22 @@ router.post("/asa/actions/:proposalId/confirm", requireAuth, requireOrganization
           || mandatoryEvidences.some((item) => !(ASA_TASK_EVIDENCE_TYPES as readonly string[]).includes(item.type)
             || !item.description || item.description.length > 180)
           || new Set(mandatoryEvidences.map((item) => `${item.type}:${normalizeAsaText(item.description)}`)).size !== mandatoryEvidences.length) return { status: "stale" as const };
-        const [assignee] = await tx.select({ id: usersTable.id, name: usersTable.name })
-          .from(usersTable)
-          .innerJoin(userRolesTable, and(eq(userRolesTable.userId, usersTable.id), eq(userRolesTable.operationId, operationId), eq(userRolesTable.active, true)))
-          .where(and(eq(usersTable.id, assigneeId), eq(usersTable.organizationId, user.organizationId!), ne(usersTable.status, "INACTIVE")))
-          .for("share")
-          .limit(1);
-        if (!assignee || assignee.name !== proposal.assigneeName) return { status: "stale" as const };
+        // Prévias antigas têm um responsável só (assigneeId); as novas trazem a lista em `assignees`.
+        const previstos: Array<{ id: string; name: string }> = Array.isArray(proposal.assignees) && proposal.assignees.length
+          ? proposal.assignees.map((item: { id?: unknown; name?: unknown }) => ({ id: String(item?.id ?? ""), name: String(item?.name ?? "") }))
+          : [{ id: assigneeId, name: String(proposal.assigneeName ?? "") }];
+        if (previstos.length > 20 || new Set(previstos.map((item) => item.id)).size !== previstos.length) return { status: "stale" as const };
+        const responsaveis: Array<{ id: string; name: string }> = [];
+        for (const previsto of previstos) {
+          const [pessoa] = await tx.select({ id: usersTable.id, name: usersTable.name })
+            .from(usersTable)
+            .innerJoin(userRolesTable, and(eq(userRolesTable.userId, usersTable.id), eq(userRolesTable.operationId, operationId), eq(userRolesTable.active, true)))
+            .where(and(eq(usersTable.id, previsto.id), eq(usersTable.organizationId, user.organizationId!), ne(usersTable.status, "INACTIVE")))
+            .for("share")
+            .limit(1);
+          if (!pessoa || pessoa.name !== previsto.name) return { status: "stale" as const };
+          responsaveis.push(pessoa);
+        }
         const responsibilityId = proposal.responsibilityId === null || proposal.responsibilityId === undefined
           ? null : String(proposal.responsibilityId);
         let linkedResponsibility: typeof responsibilitiesTable.$inferSelect | null = null;
@@ -8542,50 +8572,56 @@ router.post("/asa/actions/:proposalId/confirm", requireAuth, requireOrganization
         } else if (proposal.responsibilityTitle !== null && proposal.responsibilityTitle !== undefined) {
           return { status: "stale" as const };
         }
-        const areaId = await resolveTaskAreaId(linkedResponsibility?.id, assignee.id, user.organizationId!, tx);
-        if (!(await canManageTasks(user.sub, currentRole, operationId, user.organizationId!, areaId, tx))) return { status: "forbidden" as const };
-        const [task] = await tx.insert(tasksTable).values({
-          organizationId: user.organizationId!,
-          operationId,
-          responsibilityId: linkedResponsibility?.id ?? null,
-          title,
-          description,
-          creatorId: user.sub,
-          assigneeId: assignee.id,
-          requiresApproval: true,
-          priority: priority as "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
-          status: "CREATED",
-          dueDate,
-          mandatoryChecklist: checklistLabels.map((label) => ({ id: randomUUID(), label, completed: false })),
-          mandatoryEvidences: mandatoryEvidences.map((item) => ({ id: randomUUID(), type: item.type, description: item.description })),
-          origin: "ASA",
-        }).returning();
+        const tarefas: Array<typeof tasksTable.$inferSelect> = [];
+        for (const assignee of responsaveis) {
+          const areaId = await resolveTaskAreaId(linkedResponsibility?.id, assignee.id, user.organizationId!, tx);
+          if (!(await canManageTasks(user.sub, currentRole, operationId, user.organizationId!, areaId, tx))) return { status: "forbidden" as const };
+          const [task] = await tx.insert(tasksTable).values({
+            organizationId: user.organizationId!,
+            operationId,
+            responsibilityId: linkedResponsibility?.id ?? null,
+            title,
+            description,
+            creatorId: user.sub,
+            assigneeId: assignee.id,
+            requiresApproval: true,
+            priority: priority as "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
+            status: "CREATED",
+            dueDate,
+            mandatoryChecklist: checklistLabels.map((label) => ({ id: randomUUID(), label, completed: false })),
+            mandatoryEvidences: mandatoryEvidences.map((item) => ({ id: randomUUID(), type: item.type, description: item.description })),
+            origin: "ASA",
+          }).returning();
+          if (!task) throw new Error("Não foi possível criar a tarefa");
+          await writeHistoryEvent({
+            category: "TASK",
+            action: "task.created",
+            title: `Tarefa criada: ${task.title}`,
+            narrative: `${assignee.name} recebeu a tarefa "${task.title}" com prioridade ${priority} e prazo ${dueDate}${linkedResponsibility ? ` vinculada à responsabilidade “${linkedResponsibility.title}”` : ""}${task.description ? ` e descrição: ${task.description}` : ""}${checklistLabels.length ? ` e ${checklistLabels.length} item(ns) obrigatório(s) na checklist` : ""}${mandatoryEvidences.length ? ` e ${mandatoryEvidences.length} evidência(s) obrigatória(s)` : ""}.`,
+            entityType: "task",
+            entityId: task.id,
+            actorId: user.sub,
+            actorType: "HUMAN",
+            operationId,
+            orgId: user.organizationId!,
+            beforeState: null,
+            afterState: task,
+            metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id },
+          }, tx as any);
+        tarefas.push(task);
+        }
+        const [task] = tarefas;
         if (!task) throw new Error("Não foi possível criar a tarefa");
-        await writeHistoryEvent({
-          category: "TASK",
-          action: "task.created",
-          title: `Tarefa criada: ${task.title}`,
-          narrative: `${assignee.name} recebeu a tarefa "${task.title}" com prioridade ${priority} e prazo ${dueDate}${linkedResponsibility ? ` vinculada à responsabilidade “${linkedResponsibility.title}”` : ""}${task.description ? ` e descrição: ${task.description}` : ""}${checklistLabels.length ? ` e ${checklistLabels.length} item(ns) obrigatório(s) na checklist` : ""}${mandatoryEvidences.length ? ` e ${mandatoryEvidences.length} evidência(s) obrigatória(s)` : ""}.`,
-          entityType: "task",
-          entityId: task.id,
-          actorId: user.sub,
-          actorType: "HUMAN",
-          operationId,
-          orgId: user.organizationId!,
-          beforeState: null,
-          afterState: task,
-          metadata: { source: "ASA_CONFIRMED_PROPOSAL", proposalId: audit.id },
-        }, tx as any);
         const completedAt = new Date().toISOString();
         const updatedActions = actions.map((item) => item === proposal
-          ? { ...item, state: "CONFIRMED", confirmedAt: completedAt, resultId: task.id }
+          ? { ...item, state: "CONFIRMED", confirmedAt: completedAt, resultId: task.id, resultIds: tarefas.map((item) => item.id) }
           : item);
         await tx.update(asaAuditLogTable).set({
           actionsExecuted: updatedActions,
-          response: `Tarefa criada: ${task.title}. A conclusão deverá passar por aprovação.`,
+          response: tarefas.length > 1 ? `${tarefas.length} tarefas criadas: ${task.title} (${responsaveis.map((pessoa) => pessoa.name).join(", ")}). A conclusão de cada uma deverá passar por aprovação.` : `Tarefa criada: ${task.title}. A conclusão deverá passar por aprovação.`,
           confirmedByUser: true,
         }).where(eq(asaAuditLogTable.id, audit.id));
-        return { status: "task_created" as const, taskId: task.id, title: task.title };
+        return { status: "task_created" as const, taskId: task.id, title: task.title, dueDate, count: tarefas.length, assignees: tarefas.map((item) => ({ userId: item.assigneeId, taskId: item.id })) };
       }
 
       if (proposal.actionType === "TASK_UPDATE_DUE_DATE") {
@@ -9126,7 +9162,25 @@ router.post("/asa/actions/:proposalId/confirm", requireAuth, requireOrganization
     if (result.status === "mural_acknowledged") { res.json({ success: true, message: `Ciente registrado para “${result.title}”.` }); return; }
     if (result.status === "mural_reacted") { res.json({ success: true, message: `Reação de coração registrada em “${result.title}”.` }); return; }
     if (result.status === "mural_comment_created") { res.json({ success: true, message: `Comentário publicado em “${result.title}”.` }); return; }
-    if (result.status === "task_created") { res.json({ success: true, taskId: result.taskId, message: `Tarefa “${result.title}” criada. A conclusão deverá passar por aprovação.` }); return; }
+    if (result.status === "task_created") {
+      // Quem recebe tarefa precisa ficar sabendo sem abrir a tela: um aviso por pessoa, e nenhum para quem pediu para si mesma.
+      const prazo = result.dueDate.split("-").reverse().slice(0, 2).join("/");
+      for (const destino of result.assignees) {
+        if (destino.userId === user.sub) continue;
+        void sendNotification({
+          userId: destino.userId, type: "task.assigned", title: "Nova tarefa para você",
+          message: `${result.title} — até ${prazo}.`, priority: "NORMAL", category: "responsibility",
+          entityType: "task", entityId: destino.taskId, actionUrl: "/responsabilidades",
+        }).catch(() => undefined);
+      }
+      res.json({
+        success: true, taskId: result.taskId,
+        message: result.count > 1
+          ? `${result.count} tarefas “${result.title}” criadas, uma para cada pessoa. A conclusão de cada uma deverá passar por aprovação.`
+          : `Tarefa “${result.title}” criada. A conclusão deverá passar por aprovação.`,
+      });
+      return;
+    }
     if (result.status === "task_comment_created") { res.json({ success: true, taskId: result.taskId, message: `Comentário registrado na tarefa “${result.title}”.` }); return; }
     if (result.status === "task_evidence_link_added") { res.json({ success: true, taskId: result.taskId, message: `Link complementar anexado à tarefa “${result.title}”. Não conta como evidência obrigatória.` }); return; }
     if (result.status === "task_checklist_updated") { res.json({ success: true, taskId: result.taskId, message: `Item “${result.itemLabel}” da tarefa “${result.title}” marcado como ${result.completed ? "concluído" : "pendente"}.` }); return; }

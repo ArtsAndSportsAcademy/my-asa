@@ -1009,6 +1009,29 @@ async function run() {
       && (await history(checklistProposal.id)).length === 1,
     "Confirmed task creation saves incomplete checklist items, typed evidence requirements, and one Registry event");
 
+    // Tarefa para várias pessoas: uma prévia, uma confirmação, uma tarefa e um Registro para cada pessoa, um aviso para cada uma.
+    const loteTitle = `${tag}_tarefa_para_duas`;
+    const loteAsk = await ask(manager, `crie uma tarefa "${loteTitle}" para "${member.name}" e "${outsider.name}" até 30/09/2099 prioridade alta`);
+    check(loteAsk.proposal?.actionType === "TASK_CREATE" && loteAsk.body.includes("Responsáveis (2)") && loteAsk.body.includes("uma para cada pessoa")
+      && loteAsk.body.includes(member.name) && loteAsk.body.includes(outsider.name)
+      && (await targets("TASK_CREATE", loteTitle)).length === 0,
+    "Tarefa para duas pessoas: a prévia lista as duas e não grava nada");
+    const loteConfirm = await manager(`/asa/actions/${loteAsk.proposal!.id}/confirm`, {});
+    const loteRows = (await targets("TASK_CREATE", loteTitle)) as Array<typeof tasksTable.$inferSelect>;
+    check(loteConfirm.status === 200 && loteRows.length === 2
+      && new Set(loteRows.map((row) => row.assigneeId)).size === 2
+      && loteRows.map((row) => row.assigneeId).sort().join() === [member.id, outsider.id].sort().join()
+      && (await history(loteAsk.proposal!.id)).length === 2,
+    "Confirmar a tarefa para duas pessoas cria uma tarefa e um Registro para cada uma");
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const avisosDaTarefa = await db.select().from(userNotificationsTable).where(and(inArray(userNotificationsTable.userId, [member.id, outsider.id]), eq(userNotificationsTable.type, "task.assigned")));
+    check(avisosDaTarefa.length >= 2 && [member.id, outsider.id].every((id) => avisosDaTarefa.some((aviso) => aviso.userId === id)),
+    "Cada pessoa que recebeu a tarefa pela ASA ganha o seu aviso");
+    const loteNaoExiste = await ask(manager, `crie uma tarefa "${loteTitle}_x" para "${member.name}" e "Pessoa Que Nao Existe" até 30/09/2099`);
+    check(!loteNaoExiste.proposal && loteNaoExiste.body.includes("Nenhuma tarefa foi criada") && loteNaoExiste.body.includes("Pessoa Que Nao Existe")
+      && (await targets("TASK_CREATE", `${loteTitle}_x`)).length === 0,
+    "Se um dos nomes não existe, nada é criado e a resposta diz qual");
+
     const newResponsibilityTitle = `${tag}_responsibility_target`;
     const [targetResponsibility] = await db.insert(responsibilitiesTable).values({
       orgId: orgs[0]!.id, operationId: operation!.id, areaId: area!.id,
