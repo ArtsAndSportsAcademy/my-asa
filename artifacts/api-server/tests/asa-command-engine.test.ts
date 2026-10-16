@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { selectAsaSuggestions } from "@workspace/shared";
-import { formatAsaCapabilityReply, formatAsaCommandReply, formatAsaTaskCommentsReply, isAsaCapabilityRequest, isAsaUnrecognizedCommandResolution, normalizeAsaText, parseAsaAgendaMeetingRequest, parseAsaDirectMessageRequest, parseAsaLearningApproval, parseAsaLearningRequest, parseAsaLibrarySearchRequest, parseAsaMessageReplyRequest, parseAsaMuralAckRequest, parseAsaMuralCommentRequest, parseAsaMuralReactionRequest, parseAsaNoticeDraftRequest, parseAsaNoticeDraftUpdateRequest, parseAsaTaskAssigneeUpdate, parseAsaTaskCancellationRequest, parseAsaTaskChecklistUpdateRequest, parseAsaTaskCommentRequest, parseAsaTaskCommentsQuery, parseAsaTaskCompletionRequest, parseAsaTaskDescriptionUpdate, parseAsaTaskDraftRequest, parseAsaTaskDueDateUpdate, parseAsaTaskEvidenceLinkRequest, parseAsaTaskPriorityUpdate, parseAsaTaskRequirementsUpdate, parseAsaTaskResponsibilityUpdate, parseAsaTaskStartRequest, parseAsaTaskSubmitForApprovalRequest, parseAsaTaskTitleUpdate, parseAsaUnrecognizedReviewRequest, resolveAsaAgendaSupervisorScope, resolveAsaCommand, resolveAsaOperationSelection } from "../src/services/asa-command-engine.ts";
+import { formatAsaCapabilityReply, formatAsaCommandReply, formatAsaTaskCommentsReply, isAsaCapabilityRequest, isAsaUnrecognizedCommandResolution, normalizeAsaText, parseAsaAgendaMeetingRequest, parseAsaDirectMessageRequest, parseAsaFolgaLoteRequest, parseAsaLearningApproval, parseAsaLearningRequest, parseAsaLibrarySearchRequest, parseAsaMessageReplyRequest, parseAsaMuralAckRequest, parseAsaMuralCommentRequest, parseAsaMuralReactionRequest, parseAsaNoticeDraftRequest, parseAsaNoticeDraftUpdateRequest, parseAsaTaskAssigneeUpdate, parseAsaTaskCancellationRequest, parseAsaTaskChecklistUpdateRequest, parseAsaTaskCommentRequest, parseAsaTaskCommentsQuery, parseAsaTaskCompletionRequest, parseAsaTaskDescriptionUpdate, parseAsaFolgaLoteRequest, parseAsaTaskDraftRequest, parseAsaTaskDueDateUpdate, parseAsaTaskEvidenceLinkRequest, parseAsaTaskPriorityUpdate, parseAsaTaskRequirementsUpdate, parseAsaTaskResponsibilityUpdate, parseAsaTaskStartRequest, parseAsaTaskSubmitForApprovalRequest, parseAsaTaskTitleUpdate, parseAsaUnrecognizedReviewRequest, resolveAsaAgendaSupervisorScope, resolveAsaCommand, resolveAsaOperationSelection } from "../src/services/asa-command-engine.ts";
 import { formatAsaPreferenceValue, parseAsaModeCommand, parseAsaPreferenceCommand, parseAsaPreferencePatch } from "../src/services/asa-preferences.ts";
 import { checkInPeriodDates, summarizeCheckIns } from "../src/services/checkin-insights.ts";
 import { summarizeTasks, taskPeriodDates } from "../src/services/task-insights.ts";
@@ -496,6 +496,24 @@ assert.equal(comDescricao.kind, "proposal");
 if (comDescricao.kind === "proposal") { assert.deepEqual(comDescricao.assigneeNames, ["Ana", "Bia"]); assert.equal(comDescricao.description, "Antes do show"); }
 assert.equal(parseAsaTaskDraftRequest('Crie uma tarefa "Montar palco" para "Ana" e "ana" até 01/10/2026').kind, "incomplete", "o mesmo nome duas vezes não vale");
 assert.equal(parseAsaTaskDraftRequest('Crie uma tarefa "Montar palco" até 01/10/2026').kind, "incomplete", "sem ninguém para receber, pergunta de volta");
+// Folga em lote pela ASA: várias pessoas, vários dias; "tire" limpa; sem ano assume o próximo que vem.
+const hoje = "2026-10-16";
+const folga1 = parseAsaFolgaLoteRequest('Coloque de folga "Ana Souza" e "Bia Lima" nos dias 20/10/2026, 22/10 e 25/10/2026', hoje);
+assert.deepEqual(folga1, { kind: "proposal", tipo: "DAY_OFF", names: ["Ana Souza", "Bia Lima"], dates: ["2026-10-20", "2026-10-22", "2026-10-25"] });
+const folga2 = parseAsaFolgaLoteRequest('Coloque de recesso "Ana Souza" de 20/10 a 23/10 com motivo "Viagem da família"', hoje);
+assert.deepEqual(folga2, { kind: "proposal", tipo: "RECESSO", names: ["Ana Souza"], dates: ["2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23"], motivo: "Viagem da família" });
+const folga3 = parseAsaFolgaLoteRequest('Tire a folga de "Ana Souza" do dia 20/10/2026', hoje);
+assert.deepEqual(folga3, { kind: "proposal", tipo: null, names: ["Ana Souza"], dates: ["2026-10-20"] });
+const folga4 = parseAsaFolgaLoteRequest('Ponha "Ana" de folga no dia 05/01', hoje);
+assert.equal(folga4.kind, "proposal");
+if (folga4.kind === "proposal") assert.deepEqual(folga4.dates, ["2027-01-05"], "data sem ano que já passou vale para o ano seguinte");
+assert.equal(parseAsaFolgaLoteRequest('Coloque de folga "Ana" no dia 31/02/2026', hoje).kind, "incomplete", "data que não existe");
+assert.equal(parseAsaFolgaLoteRequest('Coloque de folga "Ana" de 25/10/2026 a 20/10/2026', hoje).kind, "incomplete", "período ao contrário");
+assert.equal(parseAsaFolgaLoteRequest('Coloque de folga "Ana" e "ana" no dia 20/10/2026', hoje).kind, "incomplete", "nome repetido");
+assert.equal(parseAsaFolgaLoteRequest('Coloque de folga "Ana"', hoje).kind, "incomplete", "sem data");
+assert.equal(parseAsaFolgaLoteRequest('Coloque de folga no dia 20/10/2026', hoje).kind, "incomplete", "sem ninguém");
+assert.equal(parseAsaFolgaLoteRequest('Marque a tarefa "Montar palco" como concluída', hoje).kind, "not_action", "tarefa não é folga");
+assert.equal(parseAsaFolgaLoteRequest('Quais são minhas folgas?', hoje).kind, "not_action", "consulta não é ação");
 // Telas novas do site: "O que tenho aqui?" precisa responder também no Painel, nas Solicitações e nas Áreas.
 for (const [pagina, papel, gerente, ferramenta] of [["/painel", "ADMIN", true, "consultar_checkins_equipe"], ["/painel", "MEMBER", false, "consultar_meu_dia"], ["/solicitacoes", "MEMBER", false, "consultar_solicitacoes"], ["/areas", "ADMIN", true, "consultar_locais"]] as const) {
   const resposta = resolveAsaCommand("o que tenho aqui?", "2026-10-16", gerente, pagina, papel);

@@ -1032,6 +1032,35 @@ async function run() {
       && (await targets("TASK_CREATE", `${loteTitle}_x`)).length === 0,
     "Se um dos nomes não existe, nada é criado e a resposta diz qual");
 
+    // Folga em lote pela ASA: uma prévia, uma confirmação, um Registro do lote; "tire" desfaz; quem não pode recebe um "não" que explica.
+    const folgaDias = ["2099-11-20", "2099-11-21"];
+    const folgaAsk = await ask(manager, `coloque de folga "${member.name}" e "${outsider.name}" nos dias 20/11/2099 e 21/11/2099`);
+    const folgasDe = async (id: string) => (await db.select().from(folgasTable).where(and(eq(folgasTable.userId, id), eq(folgasTable.operationId, operation!.id), eq(folgasTable.status, "ACTIVE"), inArray(folgasTable.startDate, folgaDias)))) as Array<typeof folgasTable.$inferSelect>;
+    check(folgaAsk.proposal?.actionType === "FOLGA_LOTE" && folgaAsk.body.includes("Pessoas (2)") && folgaAsk.body.includes("Dias (2): 20/11, 21/11")
+      && (await folgasDe(member.id)).length === 0 && (await folgasDe(outsider.id)).length === 0,
+    "Folga em lote: a prévia lista as pessoas e os dias e não grava nada");
+    const folgaConfirm = await manager(`/asa/actions/${folgaAsk.proposal!.id}/confirm`, {});
+    const lotesDaAsa = (await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.orgId, orgs[0]!.id), eq(historyEventsTable.action, "FOLGA_GRID_BULK")))).filter((row) => row.metadata?.via === "ASA");
+    check(folgaConfirm.status === 200 && (await folgasDe(member.id)).length === 2 && (await folgasDe(outsider.id)).length === 2
+      && (await folgasDe(member.id)).every((linha) => linha.type === "DAY_OFF") && lotesDaAsa.length === 1,
+    "Confirmar a folga em lote marca cada pessoa em cada dia e grava um único Registro do lote");
+    const tireAsk = await ask(manager, `tire a folga de "${member.name}" do dia 20/11/2099`);
+    check(tireAsk.proposal?.actionType === "FOLGA_LOTE" && tireAsk.body.includes("Tirar a marcação") && tireAsk.body.includes("Vai substituir"), "Tirar a folga também passa por prévia e diz o que vai mudar");
+    const tireConfirm = await manager(`/asa/actions/${tireAsk.proposal!.id}/confirm`, {});
+    check(tireConfirm.status === 200 && (await folgasDe(member.id)).map((linha) => linha.startDate).join() === "2099-11-21" && (await folgasDe(outsider.id)).length === 2,
+    "Tirar a folga limpa só o dia e a pessoa pedidos");
+    const folgaSemPermissao = await ask(mine, `coloque de folga "${outsider.name}" no dia 22/11/2099`);
+    check(!folgaSemPermissao.proposal && folgaSemPermissao.body.includes("Nada foi marcado") && folgaSemPermissao.body.includes("Pedir folga"),
+    "O Elenco recebe um não que explica onde pedir a própria folga");
+    const folgaDirecao = await ask(direction, `coloque de folga "${member.name}" no dia 22/11/2099`);
+    check(!folgaDirecao.proposal && folgaDirecao.body.includes("Direção") && folgaDirecao.body.includes("Nada foi marcado"), "A Direção só lê: recebe um não que explica");
+    const folgaOutraEquipe = await ask(sup, `coloque de folga "${outsider.name}" no dia 22/11/2099`);
+    check(!folgaOutraEquipe.proposal && folgaOutraEquipe.body.includes("Nada foi marcado") && (await folgasDe(outsider.id)).length === 2,
+    "A Supervisão não marca folga de quem é de outra equipe");
+    const folgaNomeFalso = await ask(manager, `coloque de folga "${member.name}" e "Pessoa Que Nao Existe" no dia 22/11/2099`);
+    check(!folgaNomeFalso.proposal && folgaNomeFalso.body.includes("Pessoa Que Nao Existe") && folgaNomeFalso.body.includes("Nada foi marcado"),
+    "Se um dos nomes não existe, nada é marcado e a resposta diz qual");
+
     const newResponsibilityTitle = `${tag}_responsibility_target`;
     const [targetResponsibility] = await db.insert(responsibilitiesTable).values({
       orgId: orgs[0]!.id, operationId: operation!.id, areaId: area!.id,

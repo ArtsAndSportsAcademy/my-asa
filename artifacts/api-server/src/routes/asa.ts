@@ -65,7 +65,7 @@ import { resolveScaleAllocations, computeFreeGaps } from "../services/scale-merg
 import { aggregateAsaLibraryGaps, createAsaLibraryGapAction } from "../services/asa-library-gaps.js";
 import { selectAsaLibraryCitation } from "../services/asa-library-citations.js";
 import { asaPreferenceLabel, formatAsaPreferenceValue, parseAsaPreferenceCommand, parseAsaPreferencePatch, type AsaPreferencePatch } from "../services/asa-preferences.js";
-import { ASA_TASK_EVIDENCE_TYPES, ASA_UNRECOGNIZED_COMMAND_REPLY, formatAsaCapabilityReply, formatAsaCommandReply, formatAsaTaskCommentsReply, isAsaCapabilityRequest, isAsaUnrecognizedCommandResolution, normalizeAsaText, parseAsaAgendaDraftRenameRequest, parseAsaAgendaMeetingRequest, parseAsaDirectMessageRequest, parseAsaLearningApproval, parseAsaLearningRequest, parseAsaMessageReplyRequest, parseAsaMuralAckRequest, parseAsaMuralCommentRequest, parseAsaMuralReactionRequest, parseAsaNoticeDraftRequest, parseAsaNoticeDraftUpdateRequest, parseAsaTaskAssigneeUpdate, parseAsaTaskCancellationRequest, parseAsaTaskChecklistUpdateRequest, parseAsaTaskCommentRequest, parseAsaTaskCommentsQuery, parseAsaTaskCompletionRequest, parseAsaTaskDescriptionUpdate, parseAsaTaskDraftRequest, parseAsaTaskDueDateUpdate, parseAsaTaskEvidenceLinkRequest, parseAsaTaskPriorityUpdate, parseAsaTaskRequirementsUpdate, parseAsaTaskResponsibilityUpdate, parseAsaTaskStartRequest, parseAsaTaskSubmitForApprovalRequest, parseAsaTaskTitleUpdate, parseAsaUnrecognizedReviewRequest, resolveAsaAgendaSupervisorScope, resolveAsaCommand, resolveAsaOperationSelection } from "../services/asa-command-engine.js";
+import { ASA_TASK_EVIDENCE_TYPES, ASA_UNRECOGNIZED_COMMAND_REPLY, formatAsaCapabilityReply, formatAsaCommandReply, formatAsaTaskCommentsReply, isAsaCapabilityRequest, isAsaUnrecognizedCommandResolution, normalizeAsaText, parseAsaAgendaDraftRenameRequest, parseAsaAgendaMeetingRequest, parseAsaDirectMessageRequest, parseAsaLearningApproval, parseAsaLearningRequest, parseAsaMessageReplyRequest, parseAsaMuralAckRequest, parseAsaMuralCommentRequest, parseAsaMuralReactionRequest, parseAsaNoticeDraftRequest, parseAsaNoticeDraftUpdateRequest, parseAsaTaskAssigneeUpdate, parseAsaTaskCancellationRequest, parseAsaTaskChecklistUpdateRequest, parseAsaTaskCommentRequest, parseAsaTaskCommentsQuery, parseAsaTaskCompletionRequest, parseAsaTaskDescriptionUpdate, parseAsaFolgaLoteRequest, parseAsaTaskDraftRequest, parseAsaTaskDueDateUpdate, parseAsaTaskEvidenceLinkRequest, parseAsaTaskPriorityUpdate, parseAsaTaskRequirementsUpdate, parseAsaTaskResponsibilityUpdate, parseAsaTaskStartRequest, parseAsaTaskSubmitForApprovalRequest, parseAsaTaskTitleUpdate, parseAsaUnrecognizedReviewRequest, resolveAsaAgendaSupervisorScope, resolveAsaCommand, resolveAsaOperationSelection } from "../services/asa-command-engine.js";
 import {
   GroupActionError,
   createGroupCore,
@@ -79,6 +79,9 @@ import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { eventBus } from "../lib/event-bus.js";
 import { createNotification, notifyMany, sendNotification } from "../services/notificationService.js";
 import { operationalDate, shiftOperationalDate } from "../lib/operational-date.js";
+import { aplicarFolgasEmLote, recusaDeFolgaEmLote } from "./folgas.js";
+import { analisarPedidoDeFolga } from "../services/analise-folga.js";
+import { mesDeFolgasPublicadoNoPeriodo } from "../services/folga-roteamento.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { canApproveAsaMemory, canDeleteAsaMemory, canEditAsaMemory, canReadAsaMemory } from "../services/asa-memory-policy.js";
 import { canReadLibraryScope, isLibraryFullReader, type LibraryRole } from "../services/library-access.js";
@@ -116,7 +119,7 @@ const ASA_PROPOSAL_ACTION_TYPES = new Set([
   "TASK_COMPLETE", "TASK_COMMENT_CREATE", "TASK_EVIDENCE_LINK_ADD", "TASK_CHECKLIST_UPDATE", "AGENDA_MEETING_CREATE", "AGENDA_DRAFT_RENAME", "AGENDA_DRAFT_SCHEDULE_UPDATE", "AGENDA_DRAFT_NOTES_UPDATE",
   "TASK_UPDATE_DUE_DATE", "TASK_UPDATE_ASSIGNEE", "TASK_UPDATE_PRIORITY", "TASK_UPDATE_DESCRIPTION",
   "TASK_UPDATE_TITLE", "TASK_UPDATE_REQUIREMENTS", "TASK_UPDATE_RESPONSIBILITY", "MURAL_ACK", "MURAL_REACT",
-  "MURAL_COMMENT_CREATE", "MESSAGE_DIRECT_CREATE", "MESSAGE_REPLY", "ASA_PREFERENCE_UPDATE",
+  "MURAL_COMMENT_CREATE", "MESSAGE_DIRECT_CREATE", "MESSAGE_REPLY", "ASA_PREFERENCE_UPDATE", "FOLGA_LOTE",
 ]);
 
 async function activeAsaRoleForOperation(
@@ -5371,6 +5374,7 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
     const noticeDraftUpdate = parseAsaNoticeDraftUpdateRequest(content);
     const noticeDraft = parseAsaNoticeDraftRequest(content);
     const taskDraft = parseAsaTaskDraftRequest(content);
+    const folgaLote = parseAsaFolgaLoteRequest(content, operationalDate());
     const taskDueDateUpdate = parseAsaTaskDueDateUpdate(content);
     const taskAssigneeUpdate = parseAsaTaskAssigneeUpdate(content);
     const taskPriorityUpdate = parseAsaTaskPriorityUpdate(content);
@@ -6309,6 +6313,111 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
                 operationName: operation?.name ?? "Operação",
                 recipientCount: recipientUserIds.length,
                 expiresAt: expiresAt.toISOString(),
+              };
+            }
+          }
+        }
+      }
+    } else if (folgaLote.kind === "incomplete") {
+      fullResponse = "Para marcar folga de várias pessoas, use: coloque de folga \"Ana Souza\" e \"Bia Lima\" nos dias 20/10/2026 e 22/10/2026 (ou: de 20/10/2026 a 24/10/2026). Vale também \"de recesso\". Para tirar: tire a folga de \"Ana Souza\" do dia 20/10/2026. Se o mês de folgas já estiver publicado, acrescente: com motivo \"texto\". Vou mostrar uma prévia antes de gravar.";
+    } else if (folgaLote.kind === "proposal") {
+      if (!MANAGER_ROLES.includes(user.role)) {
+        fullResponse = user.role === "DIR"
+          ? "A Direção acompanha as folgas, mas só a Administração e a Supervisão da área marcam folga. Nada foi marcado."
+          : "Folga de outras pessoas só a Administração e a Supervisão da área marcam. Para pedir a sua, use Pedir folga na tela Folgas. Nada foi marcado.";
+      } else {
+        const operationSelection = resolveAsaOperationSelection(content, accessibleOperations, context?.operationId);
+        if (operationSelection.kind !== "selected") {
+          fullResponse = operationSelection.message;
+        } else {
+          const operation = accessibleOperations.find((item) => item.id === operationSelection.operationId);
+          const candidatos = await db.selectDistinct({ id: usersTable.id, name: usersTable.name })
+            .from(userRolesTable)
+            .innerJoin(usersTable, eq(usersTable.id, userRolesTable.userId))
+            .where(and(
+              eq(userRolesTable.operationId, operationSelection.operationId),
+              eq(userRolesTable.active, true),
+              eq(usersTable.organizationId, user.organizationId!),
+              ne(usersTable.status, "INACTIVE"),
+            ));
+          const pessoas: Array<{ id: string; name: string }> = [];
+          const problemas: string[] = [];
+          for (const nome of folgaLote.names) {
+            const achados = candidatos.filter((candidato) => normalizeAsaText(candidato.name) === normalizeAsaText(nome));
+            if (achados.length > 1) problemas.push(`encontrei mais de uma pessoa chamada ${nome} (informe o nome completo)`);
+            else if (achados.length === 0) problemas.push(`não encontrei ${nome} como pessoa ativa da operação ${operation?.name ?? "selecionada"}`);
+            else pessoas.push(achados[0]!);
+          }
+          const recusa = problemas.length ? null : await recusaDeFolgaEmLote({ role: user.role, organizationId: user.organizationId!, sub: user.sub }, operationSelection.operationId, pessoas.map((pessoa) => pessoa.id));
+          const primeiroDia = folgaLote.dates[0]!;
+          const ultimoDia = folgaLote.dates[folgaLote.dates.length - 1]!;
+          const mesPublicado = problemas.length || recusa ? false : await mesDeFolgasPublicadoNoPeriodo(operationSelection.operationId, primeiroDia, ultimoDia);
+          if (problemas.length) {
+            fullResponse = `Nada foi marcado: ${problemas.join("; ")}.`;
+          } else if (recusa) {
+            fullResponse = `${recusa}. Nada foi marcado.`;
+          } else if (mesPublicado && !folgaLote.motivo) {
+            fullResponse = "Esse período está num mês de folgas já publicado. Mexer depois de publicado precisa de motivo escrito: peça de novo acrescentando com motivo \"texto\". Nada foi marcado.";
+          } else {
+            const diaCurto = (iso: string) => iso.split("-").reverse().slice(0, 2).join("/");
+            const idsDasPessoas = pessoas.map((pessoa) => pessoa.id);
+            const jaMarcadas = await db.select({ userId: folgasTable.userId, startDate: folgasTable.startDate, endDate: folgasTable.endDate, type: folgasTable.type })
+              .from(folgasTable)
+              .where(and(
+                inArray(folgasTable.userId, idsDasPessoas), eq(folgasTable.operationId, operationSelection.operationId),
+                eq(folgasTable.status, "ACTIVE"), lte(folgasTable.startDate, ultimoDia), gte(folgasTable.endDate, primeiroDia),
+              ));
+            const nomeDoTipo = (tipo: string) => tipo === "DAY_OFF" ? "folga" : tipo === "RECESSO" ? "recesso" : tipo === "AFASTAMENTO" ? "afastamento" : "ausência";
+            const substituidas: string[] = [];
+            for (const pessoa of pessoas) {
+              for (const dia of folgaLote.dates) {
+                const existente = jaMarcadas.find((linha) => linha.userId === pessoa.id && linha.startDate <= dia && linha.endDate >= dia);
+                if (existente && existente.type !== folgaLote.tipo) substituidas.push(`${pessoa.name} (${diaCurto(dia)}: já era ${nomeDoTipo(existente.type)})`);
+              }
+            }
+            // Cobertura: só avisa. Quem decide é a gerência; a análise é a mesma que a Supervisão vê no pedido.
+            const atencao: string[] = [];
+            let semAnalise = false;
+            if (folgaLote.tipo !== null) {
+              const dias = Math.round((Date.parse(`${ultimoDia}T12:00:00Z`) - Date.parse(`${primeiroDia}T12:00:00Z`)) / 86_400_000) + 1;
+              if (dias > 14) semAnalise = true;
+              else for (const pessoa of pessoas) {
+                const analise = await analisarPedidoDeFolga({ organizationId: user.organizationId!, userId: pessoa.id, startDate: primeiroDia, endDate: ultimoDia });
+                for (const dia of analise.dias) {
+                  if (folgaLote.dates.includes(dia.date) && !dia.resultado.da) atencao.push(`${pessoa.name} em ${diaCurto(dia.date)}: ${dia.resultado.frase}`);
+                }
+              }
+            }
+            const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+            const acao = folgaLote.tipo === null ? "Tirar a marcação" : `Marcar ${nomeDoTipo(folgaLote.tipo)}`;
+            const nomes = pessoas.map((pessoa) => pessoa.name).join(", ");
+            const diasTexto = folgaLote.dates.map(diaCurto).join(", ");
+            const action: Record<string, unknown> = {
+              action: "ASA_ACTION_PROPOSAL", actionType: "FOLGA_LOTE", state: "PENDING",
+              operationId: operationSelection.operationId, operationName: operation?.name ?? "Operação",
+              tipo: folgaLote.tipo, pessoas: pessoas.map((pessoa) => ({ id: pessoa.id, name: pessoa.name })),
+              dates: folgaLote.dates, motivo: folgaLote.motivo ?? null, mesPublicado, expiresAt: expiresAt.toISOString(),
+            };
+            fullResponse = `Prévia de folga em lote\nOperação: ${operation?.name ?? "Operação"}\n${acao}\nPessoas (${pessoas.length}): ${nomes}\nDias (${folgaLote.dates.length}): ${diasTexto}`
+              + (folgaLote.motivo ? `\nMotivo: ${folgaLote.motivo}` : "")
+              + (substituidas.length ? `\nVai substituir: ${substituidas.slice(0, 8).join("; ")}${substituidas.length > 8 ? ` e mais ${substituidas.length - 8}` : ""}.` : "")
+              + (atencao.length ? `\nAtenção na cobertura (só aviso; você decide):\n${atencao.slice(0, 8).map((linha) => `• ${linha}`).join("\n")}${atencao.length > 8 ? `\n• e mais ${atencao.length - 8}.` : ""}` : "")
+              + (semAnalise ? "\nO período passa de 14 dias: não conferi a cobertura dia a dia." : "")
+              + (mesPublicado ? "\nO mês já está publicado: a mudança aparece como \"mudou depois de publicar\" e a Administração é avisada de que há o que republicar." : "")
+              + "\n\nNada foi gravado. Confirme pelo botão para aplicar; dá para desfazer pedindo \"tire a folga\" dos mesmos dias.";
+            action.previewResponse = fullResponse;
+            toolsUsed.push("asa.folga_lote.preview");
+            actionsExecuted.push(action);
+            const [audit] = await db.insert(asaAuditLogTable).values({
+              userId: user.sub, conversationId: String(conversationId), organizationId: user.organizationId!,
+              question: content, response: fullResponse, toolsUsed, actionsExecuted, confirmedByUser: false,
+            }).returning({ id: asaAuditLogTable.id });
+            if (audit) {
+              proposalAuditCreated = true;
+              proposalEvent = {
+                id: audit.id, actionType: "FOLGA_LOTE", title: acao, operationName: operation?.name ?? "Operação",
+                recipientNames: pessoas.map((pessoa) => pessoa.name), tipo: folgaLote.tipo, dias: folgaLote.dates,
+                motivo: folgaLote.motivo, expiresAt: expiresAt.toISOString(),
               };
             }
           }
@@ -8512,6 +8621,47 @@ router.post("/asa/actions/:proposalId/confirm", requireAuth, requireOrganization
         return { status: "task_completed" as const, taskId: task.id, title: task.title };
       }
 
+      if (proposal.actionType === "FOLGA_LOTE") {
+        if (operation.name !== proposal.operationName) return { status: "stale" as const };
+        // Só a Administração e a Supervisão da área marcam folga de outras pessoas; a Direção só lê.
+        if (!MANAGER_ROLES.includes(currentRole)) return { status: "forbidden" as const };
+        const tipo = proposal.tipo === null || proposal.tipo === undefined ? null : String(proposal.tipo);
+        const datas = Array.isArray(proposal.dates) ? proposal.dates.map(String) : [];
+        const previstas: Array<{ id: string; name: string }> = Array.isArray(proposal.pessoas)
+          ? proposal.pessoas.map((item: { id?: unknown; name?: unknown }) => ({ id: String(item?.id ?? ""), name: String(item?.name ?? "") })) : [];
+        const motivoDoLote = typeof proposal.motivo === "string" && proposal.motivo.trim() ? proposal.motivo.trim() : null;
+        if ((tipo !== null && tipo !== "DAY_OFF" && tipo !== "RECESSO") || !previstas.length || previstas.length > 20
+          || !datas.length || datas.length > 31 || datas.some((dia) => !/^\d{4}-\d{2}-\d{2}$/.test(dia))
+          || new Set(previstas.map((item) => item.id)).size !== previstas.length) return { status: "stale" as const };
+        for (const prevista of previstas) {
+          const [pessoa] = await tx.select({ id: usersTable.id, name: usersTable.name })
+            .from(usersTable)
+            .innerJoin(userRolesTable, and(eq(userRolesTable.userId, usersTable.id), eq(userRolesTable.operationId, operationId), eq(userRolesTable.active, true)))
+            .where(and(eq(usersTable.id, prevista.id), eq(usersTable.organizationId, user.organizationId!), ne(usersTable.status, "INACTIVE")))
+            .for("share")
+            .limit(1);
+          if (!pessoa || pessoa.name !== prevista.name) return { status: "stale" as const };
+        }
+        const recusaAgora = await recusaDeFolgaEmLote({ role: currentRole, organizationId: user.organizationId!, sub: user.sub }, operationId, previstas.map((item) => item.id));
+        if (recusaAgora) return { status: "forbidden" as const };
+        // Entre a prévia e o "sim" o mês pode ter sido publicado: sem motivo escrito, a prévia perdeu a validade.
+        if (!motivoDoLote && await mesDeFolgasPublicadoNoPeriodo(operationId, [...datas].sort()[0]!, [...datas].sort()[datas.length - 1]!)) return { status: "stale" as const };
+        await aplicarFolgasEmLote(tx, {
+          user: { sub: user.sub, organizationId: user.organizationId! }, operationId,
+          pessoas: previstas.map((item) => item.id), dates: datas, type: tipo, motivo: motivoDoLote, via: "ASA",
+        });
+        const confirmadoEm = new Date().toISOString();
+        const resumo = tipo === null
+          ? `Marcação tirada de ${previstas.length} pessoa(s) em ${datas.length} dia(s).`
+          : `${tipo === "RECESSO" ? "Recesso" : "Folga"} marcado para ${previstas.length} pessoa(s) em ${datas.length} dia(s).`;
+        await tx.update(asaAuditLogTable).set({
+          actionsExecuted: actions.map((item) => item === proposal ? { ...item, state: "CONFIRMED", confirmedAt: confirmadoEm } : item),
+          response: resumo,
+          confirmedByUser: true,
+        }).where(eq(asaAuditLogTable.id, audit.id));
+        return { status: "folga_lote" as const, message: resumo };
+      }
+
       if (proposal.actionType === "TASK_CREATE") {
         if (operation.name !== proposal.operationName) return { status: "stale" as const };
         const title = String(proposal.title ?? "").trim();
@@ -9162,6 +9312,7 @@ router.post("/asa/actions/:proposalId/confirm", requireAuth, requireOrganization
     if (result.status === "mural_acknowledged") { res.json({ success: true, message: `Ciente registrado para “${result.title}”.` }); return; }
     if (result.status === "mural_reacted") { res.json({ success: true, message: `Reação de coração registrada em “${result.title}”.` }); return; }
     if (result.status === "mural_comment_created") { res.json({ success: true, message: `Comentário publicado em “${result.title}”.` }); return; }
+    if (result.status === "folga_lote") { res.json({ success: true, message: result.message }); return; }
     if (result.status === "task_created") {
       // Quem recebe tarefa precisa ficar sabendo sem abrir a tela: um aviso por pessoa, e nenhum para quem pediu para si mesma.
       const prazo = result.dueDate.split("-").reverse().slice(0, 2).join("/");

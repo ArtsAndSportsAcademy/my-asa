@@ -1611,3 +1611,58 @@ function montarRespostaDaAsa(tool: AsaCommand["tool"], rawResult: string): strin
   if (!absences.length) return typeof result.message === "string" ? result.message : "Não encontrei folgas da equipe nessa data.";
   return `Folgas registradas para ${dateLabel(result.date)}:\n${absences.map((item) => `• ${String(item.nome ?? item.userName ?? "Pessoa")}${item.type ? ` · ${statusLabel(item.type)}` : ""}`).join("\n")}`;
 }
+
+export const ASA_FOLGA_MAX_PESSOAS = 20;
+export const ASA_FOLGA_MAX_DIAS = 31;
+export type AsaFolgaLoteParse =
+  | { kind: "not_action" }
+  | { kind: "incomplete" }
+  /** `tipo` null = tirar a folga (limpar os dias). */
+  | { kind: "proposal"; tipo: "DAY_OFF" | "RECESSO" | null; names: string[]; dates: string[]; motivo?: string };
+
+/** "coloque de folga "Ana" e "Bia" nos dias 20/10, 21/10 e 25/10" · "de 20/10/2026 a 24/10/2026" · "tire a folga de "Ana" do dia 20/10". */
+export function parseAsaFolgaLoteRequest(value: string, today: string): AsaFolgaLoteParse {
+  const normalized = normalizeAsaText(value);
+  const poe = /^(coloque|colocar|ponha|por|marque|marcar|deixe|deixar)\b.*\b(folga|recesso)\b/.test(normalized);
+  const tira = /^(tire|tirar|retire|retirar|remova|remover|limpe|limpar|cancele|cancelar)\b.*\b(folga|recesso)\b/.test(normalized)
+    && !/\b(tarefa|reuniao|aviso|compromisso)\b/.test(normalized.split(/["“‘]/, 1)[0]!);
+  if (!poe && !tira) return { kind: "not_action" };
+  // "marque a tarefa/reunião..." e afins não são folga.
+  if (poe && /^(marque|marcar)\b/.test(normalized) && !/\b(de folga|folga para|recesso)\b/.test(normalized.split(/["“‘]/, 1)[0]!)) return { kind: "not_action" };
+  const motivoMatch = value.match(/\bcom\s+motivo\s*[:=]?\s*["“‘]([^"”’\n]+)["”’]/i);
+  const frases = quotedPhrases(value);
+  const motivo = motivoMatch?.[1]?.trim();
+  const names = (motivo ? frases.filter((frase, indice) => !(frase === motivo && indice === frases.length - 1)) : frases).map((nome) => nome.trim());
+  if (!names.length || names.length > ASA_FOLGA_MAX_PESSOAS || new Set(names.map(normalizeAsaText)).size !== names.length
+    || names.some((nome) => nome.length > 120) || (motivo && motivo.length > 300)) return { kind: "incomplete" };
+  const foraDasAspas = normalizeAsaText(value.replace(/["“‘][^"”’\n]*["”’]/g, " "));
+  const DATA = String.raw`(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?`;
+  const paraIso = (dia: string, mes: string, ano?: string): string | null => {
+    const hoje = new Date(`${today}T12:00:00Z`);
+    let year = ano ? Number(ano) : hoje.getUTCFullYear();
+    const quando = new Date(Date.UTC(year, Number(mes) - 1, Number(dia), 12));
+    if (quando.getUTCFullYear() !== year || quando.getUTCMonth() !== Number(mes) - 1 || quando.getUTCDate() !== Number(dia)) return null;
+    if (!ano && quando < new Date(`${today}T00:00:00Z`)) year += 1;
+    const final = new Date(Date.UTC(year, Number(mes) - 1, Number(dia), 12));
+    if (final.getUTCMonth() !== Number(mes) - 1) return null;
+    return final.toISOString().slice(0, 10);
+  };
+  const intervalo = foraDasAspas.match(new RegExp(String.raw`\bde\s+(?:dia\s+)?${DATA}\s+(?:a|ate|ao)\s+(?:dia\s+)?${DATA}`));
+  let dates: string[] = [];
+  if (intervalo) {
+    const inicio = paraIso(intervalo[1]!, intervalo[2]!, intervalo[3]);
+    const fim = paraIso(intervalo[4]!, intervalo[5]!, intervalo[6]);
+    if (!inicio || !fim || fim < inicio) return { kind: "incomplete" };
+    for (let t = new Date(`${inicio}T12:00:00Z`); t <= new Date(`${fim}T12:00:00Z`) && dates.length <= ASA_FOLGA_MAX_DIAS; t.setUTCDate(t.getUTCDate() + 1)) dates.push(t.toISOString().slice(0, 10));
+  } else {
+    for (const m of foraDasAspas.matchAll(new RegExp(DATA, "g"))) {
+      const iso = paraIso(m[1]!, m[2]!, m[3]);
+      if (!iso) return { kind: "incomplete" };
+      dates.push(iso);
+    }
+    dates = [...new Set(dates)].sort();
+  }
+  if (!dates.length || dates.length > ASA_FOLGA_MAX_DIAS) return { kind: "incomplete" };
+  const tipo = tira ? null : /\brecesso\b/.test(foraDasAspas) ? "RECESSO" : "DAY_OFF";
+  return { kind: "proposal", tipo, names, dates, ...(motivo ? { motivo } : {}) };
+}

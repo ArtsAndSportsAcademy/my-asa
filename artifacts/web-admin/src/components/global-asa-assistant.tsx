@@ -8,7 +8,7 @@ import "@/global-asa-assistant.css";
 import "@/global-asa-proposal.css";
 import "@/global-asa-assistant-operation.css";
 
-type AsaProposal = { id: string; actionType: string; title: string; recipientName?: string; recipientNames?: string[]; newTitle?: string; previousTitle?: string; content?: string; previousContent?: string; announcementContent?: string; reaction?: string; previousReaction?: string | null; description?: string; evidenceUrl?: string; evidenceDescription?: string; responsibilityTitle?: string; previousResponsibilityTitle?: string | null; newResponsibilityTitle?: string | null; previousDescription?: string | null; operationName: string; recipientCount?: number; assigneeName?: string; checklistLabels?: string[]; checklistItemLabel?: string; checklistKind?: "mandatory" | "operational"; checklistCompleted?: boolean; previousChecklistCompleted?: boolean; mandatoryEvidences?: Array<{ type: string; description: string }>; previousChecklistLabels?: string[]; previousMandatoryEvidences?: Array<{ type?: string; description?: string }>; previousAssigneeName?: string; previousStatus?: string; expectedStatus?: string; previousDate?: string; previousStartTime?: string | null; previousEndTime?: string | null; date?: string; startTime?: string; endTime?: string; previousNotes?: string | null; notes?: string | null; dueDate?: string; previousDueDate?: string; previousPriority?: string; priority?: string; previousMode?: string; mode?: string; changes?: Array<{ key: string; label: string; before: string; after: string }>; expiresAt: string; state: string };
+type AsaProposal = { id: string; actionType: string; title: string; dias?: string[]; motivo?: string | null; recipientName?: string; recipientNames?: string[]; newTitle?: string; previousTitle?: string; content?: string; previousContent?: string; announcementContent?: string; reaction?: string; previousReaction?: string | null; description?: string; evidenceUrl?: string; evidenceDescription?: string; responsibilityTitle?: string; previousResponsibilityTitle?: string | null; newResponsibilityTitle?: string | null; previousDescription?: string | null; operationName: string; recipientCount?: number; assigneeName?: string; checklistLabels?: string[]; checklistItemLabel?: string; checklistKind?: "mandatory" | "operational"; checklistCompleted?: boolean; previousChecklistCompleted?: boolean; mandatoryEvidences?: Array<{ type: string; description: string }>; previousChecklistLabels?: string[]; previousMandatoryEvidences?: Array<{ type?: string; description?: string }>; previousAssigneeName?: string; previousStatus?: string; expectedStatus?: string; previousDate?: string; previousStartTime?: string | null; previousEndTime?: string | null; date?: string; startTime?: string; endTime?: string; previousNotes?: string | null; notes?: string | null; dueDate?: string; previousDueDate?: string; previousPriority?: string; priority?: string; previousMode?: string; mode?: string; changes?: Array<{ key: string; label: string; before: string; after: string }>; expiresAt: string; state: string };
 type AsaUndo = { id: string; expiresAt: string; windowSeconds: number };
 type ChatMessage = { id: string; role: "user" | "assistant"; content: string; pending?: boolean; failed?: boolean; proposal?: AsaProposal; undo?: AsaUndo; undoState?: "UNDONE"; undoError?: string };
 type AsaSuggestionChip = { label: string; prompt: string };
@@ -22,7 +22,7 @@ function proposalTitle(actionType: string, operationName: string) {
     TASK_COMMENT_CREATE: "Comentar tarefa", TASK_EVIDENCE_LINK_ADD: "Anexar link complementar", TASK_CHECKLIST_UPDATE: "Atualizar checklist", TASK_CANCEL: "Cancelar tarefa", MURAL_ACK: "Confirmação do Mural",
     NOTICE_DRAFT_UPDATE: "Editar rascunho", AGENDA_DRAFT_RENAME: "Renomear reunião",
     AGENDA_DRAFT_SCHEDULE_UPDATE: "Alterar data e horário", AGENDA_DRAFT_NOTES_UPDATE: "Alterar observações",
-    AGENDA_MEETING_CREATE: "Reunião", TASK_CREATE: "Tarefa", TASK_START: "Iniciar tarefa",
+    AGENDA_MEETING_CREATE: "Reunião", FOLGA_LOTE: "Folga em lote", TASK_CREATE: "Tarefa", TASK_START: "Iniciar tarefa",
     TASK_READY_FOR_APPROVAL: "Enviar para aprovação", TASK_COMPLETE: "Concluir tarefa",
     TASK_UPDATE_DUE_DATE: "Alterar prazo", TASK_UPDATE_ASSIGNEE: "Alterar responsável",
     TASK_UPDATE_PRIORITY: "Alterar prioridade", TASK_UPDATE_DESCRIPTION: "Alterar descrição",
@@ -37,7 +37,7 @@ function proposalConfirmLabel(actionType: string) {
     TASK_COMMENT_CREATE: "Publicar comentário", TASK_EVIDENCE_LINK_ADD: "Anexar link", TASK_CHECKLIST_UPDATE: "Atualizar item", TASK_CANCEL: "Cancelar tarefa", MURAL_ACK: "Registrar ciente",
     NOTICE_DRAFT_UPDATE: "Atualizar rascunho", AGENDA_DRAFT_RENAME: "Renomear rascunho",
     AGENDA_DRAFT_SCHEDULE_UPDATE: "Atualizar horário", AGENDA_DRAFT_NOTES_UPDATE: "Atualizar observações",
-    AGENDA_MEETING_CREATE: "Criar reunião", TASK_CREATE: "Criar tarefa", TASK_START: "Iniciar tarefa",
+    AGENDA_MEETING_CREATE: "Criar reunião", FOLGA_LOTE: "Aplicar nas folgas", TASK_CREATE: "Criar tarefa", TASK_START: "Iniciar tarefa",
     TASK_READY_FOR_APPROVAL: "Enviar para aprovação", TASK_COMPLETE: "Concluir tarefa",
     TASK_UPDATE_DUE_DATE: "Atualizar prazo", TASK_UPDATE_ASSIGNEE: "Atualizar responsável",
     TASK_UPDATE_PRIORITY: "Atualizar prioridade", TASK_UPDATE_DESCRIPTION: "Atualizar descrição",
@@ -55,7 +55,7 @@ function proposalStateLabel(actionType: string, state: string, expectedStatus?: 
     AGENDA_DRAFT_NOTES_UPDATE: "Observações atualizadas; rascunho não confirmado",
     AGENDA_DRAFT_SCHEDULE_UPDATE: "Data e horário atualizados; rascunho não confirmado",
     AGENDA_DRAFT_RENAME: "Rascunho renomeado; não confirmado", NOTICE_DRAFT_UPDATE: "Rascunho atualizado; não publicado",
-    MURAL_ACK: "Ciente registrado", TASK_CREATE: "Tarefa criada; aprovação após a conclusão",
+    MURAL_ACK: "Ciente registrado", FOLGA_LOTE: "Folgas atualizadas; o Registro guarda o lote", TASK_CREATE: "Tarefa criada; aprovação após a conclusão",
     TASK_START: "Tarefa iniciada", TASK_READY_FOR_APPROVAL: "Enviada para aprovação",
     TASK_COMPLETE: "Tarefa concluída", TASK_UPDATE_DUE_DATE: "Prazo atualizado",
     TASK_UPDATE_ASSIGNEE: "Responsável atualizado", TASK_UPDATE_PRIORITY: "Prioridade atualizada",
@@ -648,6 +648,8 @@ export default function GlobalAsaAssistant() {
                 ? <><span>{message.proposal.title}</span><span>Observações atuais: {message.proposal.previousNotes || "nenhuma"}</span><span>Novas observações: {message.proposal.notes ?? "nenhuma (serão removidas)"}</span><span>Somente as observações serão alteradas; continua como rascunho.</span></>
                 : message.proposal.actionType === "AGENDA_MEETING_CREATE"
                 ? <span>{message.proposal.title} · {message.proposal.date ? new Date(`${message.proposal.date}T12:00:00`).toLocaleDateString("pt-BR") : "data"} · {message.proposal.startTime}–{message.proposal.endTime} · {message.proposal.expectedStatus === "PROPOSED" ? "Proposta para análise" : "Rascunho não publicado"}</span>
+                : message.proposal.actionType === "FOLGA_LOTE"
+                ? <span>{message.proposal.title} · {message.proposal.recipientNames?.length ?? 0} pessoa(s) · {message.proposal.dias?.length ?? 0} dia(s){message.proposal.motivo ? ` · motivo: ${message.proposal.motivo}` : ""}</span>
                 : message.proposal.actionType === "TASK_CREATE"
                 ? <span>{message.proposal.assigneeName} · prazo {message.proposal.dueDate ? new Date(`${message.proposal.dueDate}T12:00:00`).toLocaleDateString("pt-BR") : "não informado"} · prioridade {taskPriorityLabel(message.proposal.priority)}{message.proposal.checklistLabels?.length ? ` · checklist: ${message.proposal.checklistLabels.join("; ")}` : ""}{message.proposal.mandatoryEvidences?.length ? ` · evidências: ${message.proposal.mandatoryEvidences.map((item) => `${item.type}: ${item.description}`).join("; ")}` : ""}</span>
                 : message.proposal.actionType === "TASK_UPDATE_DUE_DATE"

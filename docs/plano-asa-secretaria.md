@@ -41,8 +41,7 @@ já faz e diz o que falta para a ASA ser "a secretária que mora em cada tela".
 
 1. ~~**Chips por tela** e mapa de poses~~ — **feito em 16/10/2026** (`lib/asa-por-tela.ts`; pedidos prontos sempre visíveis, aviso proativo segue a frequência).
 2. ~~**Tarefa para várias pessoas**~~ — **feito em 16/10/2026**: `crie uma tarefa "título" para "Ana" e "Bia" até DD/MM/AAAA` (ou `para mim e "Bia"`), até 20 pessoas; uma prévia, uma tarefa e um Registro por pessoa, um aviso por pessoa. Se um nome falhar, nada é criado.
-3. **Folga em lote pela ASA** — a mais sensível: precisa de decisão sobre quem pode pedir (só Administração
-   e Supervisão da área; Elenco só para si) e sempre com prévia listando cada pessoa e cada dia.
+3. ~~**Folga em lote pela ASA**~~ — **feito em 16/10/2026**: `coloque de folga "Ana" e "Bia" nos dias 20/10/2026 e 22/10/2026` (ou `de 20/10/2026 a 24/10/2026`, `de recesso`, `tire a folga de "Ana" do dia 20/10/2026`). Só Administração e Supervisão da área (a Direção e o Elenco recebem um não que explica). A prévia lista pessoas e dias, o que vai ser substituído e os avisos de cobertura (mesma análise do pedido de folga); mês já publicado exige `com motivo "texto"`. Aplica pela mesma função da grade (`aplicarFolgasEmLote`), com um Registro por lote marcado `via: ASA`. Desfazer = pedir `tire a folga`.
 4. **Recomendações da gerência** no começo do dia (cobertura, prazos, o que falta publicar).
 5. **Lembrar padrões da pessoa** (opt-in).
 

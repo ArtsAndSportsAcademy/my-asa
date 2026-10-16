@@ -707,6 +707,89 @@ router.post("/folgas/grid/toggle", requireAuth, requireOrganization, async (req,
 
 // ─── POST /folgas/grid/bulk — preencher múltiplas células ─────────────────────
 
+/** Recusa (texto) se quem pede não pode mexer na folga de alguma das pessoas; null se pode. Ou o lote inteiro vale, ou nada acontece. */
+export async function recusaDeFolgaEmLote(user: { role: string; organizationId: string; sub: string }, operationId: string, pessoas: string[]): Promise<string | null> {
+  for (const pessoa of pessoas) {
+    const scopeErr = await validateManagerScope(user, operationId, pessoa);
+    if (scopeErr) return scopeErr;
+    const block = await folgaEditBlock(user, pessoa);
+    if (block) return block;
+  }
+  return null;
+}
+
+/**
+ * Aplica `type` (ou limpa, se null) em cada dia de cada pessoa, num único Registro do lote, e avisa a Administração
+ * se o mês já estava publicado. Usada pela grade (/folgas/grid/bulk) e pela ASA; quem chama abre a transação.
+ */
+export async function aplicarFolgasEmLote(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  input: { user: { sub: string; organizationId: string }; operationId: string; pessoas: string[]; dates: string[]; type: string | null; motivo: string | null; via?: "ASA" },
+) {
+  const { user, operationId, pessoas, dates, type, motivo, via } = input;
+  const sortedDates = [...dates].sort();
+  const beforeState: Record<string, unknown>[] = [];
+  for (const pessoa of pessoas) {
+    for (const date of sortedDates) {
+      const existing = await tx
+        .select({
+          id: folgasTable.id,
+          startDate: folgasTable.startDate,
+          endDate: folgasTable.endDate,
+          type: folgasTable.type,
+          userId: folgasTable.userId,
+          operationId: folgasTable.operationId,
+          notes: folgasTable.notes,
+        })
+        .from(folgasTable)
+        .where(and(
+          eq(folgasTable.userId, pessoa),
+          eq(folgasTable.operationId, operationId),
+          eq(folgasTable.status, "ACTIVE"),
+          lte(folgasTable.startDate, date),
+          gte(folgasTable.endDate, date),
+        ));
+      beforeState.push({ userId: pessoa, date, activeFolgas: existing });
+
+      for (const f of existing) {
+        await cancelAndSplit(f, date, user.sub, tx as any);
+      }
+
+      if (type) {
+        await tx.insert(folgasTable).values({
+          userId: pessoa,
+          operationId,
+          type: type as any,
+          startDate: date,
+          endDate: date,
+          status: "ACTIVE",
+          origem: "MANUAL",
+          createdBy: user.sub,
+        });
+      }
+    }
+  }
+
+  // Um Registro por lote, não um por dia: quem for ler o histórico precisa ver a marcação que
+  // a pessoa fez, não trinta linhas soltas.
+  const quantas = pessoas.length === 1 ? "1 pessoa" : `${pessoas.length} pessoas`;
+  const eventId = await writeHistoryEvent({
+    category: "ABSENCE",
+    action: "FOLGA_GRID_BULK",
+    title: `Folgas em lote: ${dates.length} dia(s) ${type ?? "limpos"} · ${quantas}`,
+    narrative: `${via === "ASA" ? "A gestão pediu à ASA" : "A gestão aplicou"} ${type ?? "limpeza"} em ${dates.length} dia(s) para ${quantas}.`,
+    entityType: "folga",
+    entityId: pessoas[0]!,
+    actorId: user.sub,
+    operationId,
+    orgId: user.organizationId,
+    metadata: { dates, type: type ?? null, userIds: pessoas, motivo, ...(via ? { via } : {}) },
+    beforeState: { dates: beforeState },
+    afterState: { dates: sortedDates, type: type ?? null, userIds: pessoas },
+  }, tx as any);
+  await avisarRepublicacaoFolgas(tx, user.organizationId, operationId, sortedDates[0]!, sortedDates[sortedDates.length - 1]!, eventId);
+}
+
 router.post("/folgas/grid/bulk", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger(LOG_DOMAIN.FOLGAS, req.requestId, req.correlationId);
   const user = req.user!;
@@ -729,79 +812,13 @@ router.post("/folgas/grid/bulk", requireAuth, requireOrganization, async (req, r
     return;
   }
 
-  // Confere o acesso a todas antes de escrever qualquer coisa: ou o lote inteiro vale, ou nada
-  // acontece. Meio lote aplicado seria pior do que recusar.
-  for (const pessoa of pessoas) {
-    const scopeErr = await validateManagerScope(user, operationId, pessoa);
-    if (scopeErr) { res.status(403).json({ error: "Forbidden", message: scopeErr }); return; }
-    const block = await folgaEditBlock(user, pessoa);
-    if (block) { res.status(403).json({ error: "Forbidden", message: block }); return; }
-  }
+  const recusa = await recusaDeFolgaEmLote(user, operationId, pessoas);
+  if (recusa) { res.status(403).json({ error: "Forbidden", message: recusa }); return; }
 
   try {
-    const sortedDates = [...dates].sort();
-
+    const motivoDoLote = typeof (req.body as { motivo?: unknown }).motivo === "string" ? (req.body as { motivo: string }).motivo.trim() || null : null;
     await db.transaction(async (tx) => {
-      const beforeState: Record<string, unknown>[] = [];
-      for (const pessoa of pessoas) {
-        for (const date of sortedDates) {
-          const existing = await tx
-            .select({
-              id: folgasTable.id,
-              startDate: folgasTable.startDate,
-              endDate: folgasTable.endDate,
-              type: folgasTable.type,
-              userId: folgasTable.userId,
-              operationId: folgasTable.operationId,
-              notes: folgasTable.notes,
-            })
-            .from(folgasTable)
-            .where(and(
-              eq(folgasTable.userId, pessoa),
-              eq(folgasTable.operationId, operationId),
-              eq(folgasTable.status, "ACTIVE"),
-              lte(folgasTable.startDate, date),
-              gte(folgasTable.endDate, date),
-            ));
-          beforeState.push({ userId: pessoa, date, activeFolgas: existing });
-
-          for (const f of existing) {
-            await cancelAndSplit(f, date, user.sub, tx as any);
-          }
-
-          if (type) {
-            await tx.insert(folgasTable).values({
-              userId: pessoa,
-              operationId,
-              type: type as any,
-              startDate: date,
-              endDate: date,
-              status: "ACTIVE",
-              origem: "MANUAL",
-              createdBy: user.sub,
-            });
-          }
-        }
-      }
-
-      // Um Registro por lote, não um por dia: quem for ler o histórico precisa ver a marcação que
-      // a pessoa fez, não trinta linhas soltas.
-      const quantas = pessoas.length === 1 ? "1 pessoa" : `${pessoas.length} pessoas`;
-      const eventId = await writeHistoryEvent({
-        category: "ABSENCE",
-        action: "FOLGA_GRID_BULK",
-        title: `Folgas em lote: ${dates.length} dia(s) ${type ?? "limpos"} · ${quantas}`,
-        narrative: `A gestão aplicou ${type ?? "limpeza"} em ${dates.length} dia(s) para ${quantas}.`,
-        entityType: "folga",
-        entityId: pessoas[0]!,
-        actorId: user.sub,
-        operationId,
-        orgId: user.organizationId,
-        metadata: { dates, type: type ?? null, userIds: pessoas, motivo: typeof (req.body as { motivo?: unknown }).motivo === "string" ? (req.body as { motivo: string }).motivo.trim() || null : null },
-        beforeState: { dates: beforeState },
-        afterState: { dates: sortedDates, type: type ?? null, userIds: pessoas },
-      }, tx as any);
-      await avisarRepublicacaoFolgas(tx, user.organizationId, operationId, sortedDates[0]!, sortedDates[sortedDates.length - 1]!, eventId);
+      await aplicarFolgasEmLote(tx, { user: { sub: user.sub, organizationId: user.organizationId }, operationId, pessoas, dates, type: type ?? null, motivo: motivoDoLote });
     });
 
     log.info({ pessoas: pessoas.length, count: dates.length, type: type ?? "clear" }, "bulk de folgas aplicado");
