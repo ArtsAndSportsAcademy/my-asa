@@ -48,6 +48,7 @@ import { eq } from "drizzle-orm";
 import {
   resolveAssignmentsByRole,
   collectRotationWinners,
+  advanceRotationCountsFromWinners,
 } from "../src/services/line-resolver.js";
 import { planRoleAssignments } from "../src/routes/daily-book.js";
 import app from "../src/application.js";
@@ -212,6 +213,11 @@ async function run() {
   // Papel (e): FIXED_PERSON com uFixed (sem substituto).
   const roleFixed = await mkRole("PapelPessoaFixa", 4);
   await mkLine(roleFixed, "FIXED_PERSON", { userId: uFixed });
+
+  // Papel (z): ROTATION SEM personagem (a tela permite criar). A chave "legacy-line:<id>" não é UUID: consultar ou gravar o histórico
+  // de avanços com ela derrubava a geração do dia inteiro ("Erro inesperado ao gerar este dia").
+  const roleRotSemPersonagem = await mkRole("PapelRodizioSemPersonagem", 9);
+  const lineRotSemPersonagem = await mkLine(roleRotSemPersonagem, "ROTATION", { memberIds: [uRotA, uRotB] });
 
   // Papel (f): TITULAR_SUBSTITUTE com titular uTit e substitutos [uSub1, uSub2].
   const roleTitSub = await mkRole("PapelTitularSubstituto", 5);
@@ -490,10 +496,22 @@ async function run() {
         "(g6) 2 linhas cobertas + minimumCoverage=3 → 2×ASSIGNED + 1×OPEN",
       );
     }
+
+    // ─── (z) ROTATION sem personagem não derruba a geração nem a publicação ───────
+    console.log("(z) ROTATION sem personagem → resolve e avança sem erro");
+    {
+      const { byRole } = await resolveAssignmentsByRole(showBookId, operationId, baseDate);
+      const rr = byRole.get(roleRotSemPersonagem);
+      assert(!!rr, "(z) o papel resolve em vez de estourar no histórico de avanços");
+      eqAssert(rr!.people.length >= 1, true, "(z) escolhe alguém da fila");
+      const avancou = await advanceRotationCountsFromWinners({ [lineRotSemPersonagem]: uRotA }, baseDate);
+      eqAssert(avancou, 1, "(z) avançar o contador da linha sem personagem não estoura");
+    }
   } finally {
     // ─── Cleanup (ordem respeita FKs) ──────────────────────────────────────────────
     await clearFolgas();
     await db.delete(showBookLinesTable).where(eq(showBookLinesTable.positionId, roleDow));
+    await db.delete(showBookLinesTable).where(eq(showBookLinesTable.positionId, roleRotSemPersonagem));
     await db.delete(showBookLinesTable).where(eq(showBookLinesTable.positionId, roleRotC));
     await db.delete(showBookLinesTable).where(eq(showBookLinesTable.positionId, roleRotD));
     await db.delete(showBookLinesTable).where(eq(showBookLinesTable.positionId, roleFixed));

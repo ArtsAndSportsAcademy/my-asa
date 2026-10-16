@@ -77,3 +77,24 @@ Legenda: **Revisada** = passou pelas 16 perguntas e foi vista no navegador. **Pa
 
 O handoff de 15/10 diz que as telas `pages/admin/*`, `supervisor/*` e `membro/*` não têm rota. Era verdade para
 quase todas, mas **`/grupos` abria `admin/groups.tsx` e `supervisor/grupos.tsx`**. Isso acabou com a remoção acima.
+
+## Campanha com conteúdo completo (16/10/2026, noite)
+
+Diferente das revisões anteriores (que olhavam a tela), esta montou na empresa de teste o conteúdo inteiro e percorreu os
+fluxos pela API e pela interface, como Administração, Direção, Supervisão e Elenco.
+
+**O que foi criado:** 3 shows novos (Musical no Gelo completo, com os quatro tipos de linha; Teatro Noturno só personagens;
+Formação da Piscina simples), programações dos 3 locais (blocos por dia da semana, de todos, por área e de livro), outubro e
+novembro gerados nos 3 locais, folgas de grupo, recesso e afastamento, mapa publicado, 4 pedidos de folga do Elenco, escala
+do dia publicada, alterada e republicada, avisos e reconhecimentos no Mural, conversas, reunião e proposta na Agenda,
+responsabilidade, tarefa e lote de tarefas.
+
+**Achados e corrigidos:** (1) rodízio sem personagem derrubava a geração do dia inteiro (`71bd2b2`, com teste); (2) o Elenco com
+tarefa em aberto via "Nada vence hoje" e nenhuma tarefa (`f23fab1`); (3) o botão da ASA cobria "Gerar o mês" no computador;
+(4) a API respondia página HTML em rota inexistente e em JSON quebrado.
+
+**Ainda não percorrido com conteúdo:** Check-in por turno e ocorrências, Biblioteca (criar, publicar, versão, ler), Cadastros
+(criar pessoa, área e local pela tela), decisão de pedidos de folga pela interface (aprovar, recusar, troca, mediação), Perfil,
+e as telas de Agenda e Mensagens criando pela interface (aqui só pela API). "Gerar o mês" faz poucos dias por chamada (o
+servidor devolve `restantes` e `proximoDia`): conferir que a tela continua sozinha até fechar.
+
