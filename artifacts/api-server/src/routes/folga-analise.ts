@@ -7,13 +7,11 @@ import { Router, type IRouter } from "express";
 import { and, eq } from "drizzle-orm";
 import { db, leaveRequestsTable } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
+import { isAdmin, isDirector, isSupervisor } from "../services/folga-comum.js";
 import { canSupervisorAccessPerson } from "../services/area-local-scope.js";
 import { analisarPedidoDeFolga } from "../services/analise-folga.js";
 
 const router: IRouter = Router();
-const isAdmin = (role: string) => role === "ADMIN";
-const isDirector = (role: string) => role === "DIR" || role === "DIRECTOR";
-const isSupervisor = (role: string) => role === "SUPERVISOR_A" || role === "SUPERVISOR_B" || role === "SUP";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 router.get("/leave-requests/:id/analise", requireAuth, requireOrganization, async (req, res) => {

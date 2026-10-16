@@ -11,26 +11,13 @@ import { Router, type IRouter } from "express";
 import { and, eq, gte, lte } from "drizzle-orm";
 import { db, folgasTable, leaveRequestsTable, usersTable } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
-import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
-import { enqueueNotification } from "../services/undo.js";
 import { avisarRepublicacaoFolgas } from "../services/folgas-publicadas.js";
 import { barreiraDeDecisao } from "../services/folga-decisao.js";
+import { DATA, UUID, avisarFolga as avisar, dia, esperandoColega, esperandoPessoa, idDaRota, pedidoDaOrganizacao, registrar, type Tx } from "../services/folga-comum.js";
 import { operacaoDaPessoa, supervisoresDaArea } from "../services/folga-roteamento.js";
 import { cancelAndSplit } from "./folgas.js";
 
 const router: IRouter = Router();
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const DATA = /^\d{4}-\d{2}-\d{2}$/;
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-const dia = (iso: string) => iso.split("-").reverse().slice(0, 2).join("/");
-const idDaRota = (valor: string | string[] | undefined) => (Array.isArray(valor) ? valor[0] : valor) ?? "";
-const registrar = (tx: Tx, input: Parameters<typeof writeHistoryEvent>[0]) => writeHistoryEvent(input, tx as unknown as HistoryExecutor);
-
-async function pedidoDaOrganizacao(id: string, organizationId: string) {
-  if (!UUID.test(id)) return null;
-  const [pedido] = await db.select().from(leaveRequestsTable).where(and(eq(leaveRequestsTable.id, id), eq(leaveRequestsTable.organizationId, organizationId))).limit(1);
-  return pedido ?? null;
-}
 
 /** A folga ativa de uma pessoa que cobre o dia (do tipo folga mesmo, não recesso nem afastamento). */
 async function folgaDoDia(tx: Tx | typeof db, userId: string, date: string) {
@@ -44,10 +31,6 @@ const temFolgaNoDia = async (tx: Tx | typeof db, userId: string, date: string) =
   return Boolean(f);
 };
 
-async function avisar(tx: Tx, userId: string, chave: string, type: string, title: string, message: string, requestId: string) {
-  await enqueueNotification(tx as never, { userId, type, title, message, category: "absence", entityType: "leave_request", entityId: requestId, actionUrl: "/folgas" }, new Date(), { deduplicationKey: `folga:${requestId}:${chave}:${userId}` });
-}
-
 // ─── Propor a troca ──────────────────────────────────────────────────────────
 
 router.post("/leave-requests/:id/troca", requireAuth, requireOrganization, async (req, res) => {
@@ -59,8 +42,8 @@ router.post("/leave-requests/:id/troca", requireAuth, requireOrganization, async
   const peerId = typeof body.peerId === "string" ? body.peerId : "", devolvido = typeof body.diaDevolvido === "string" ? body.diaDevolvido : "";
   if (!UUID.test(peerId) || !DATA.test(devolvido)) { res.status(400).json({ message: "Escolha o colega e o dia de folga que ele fica." }); return; }
   if (pedido.startDate !== pedido.endDate) { res.status(400).json({ message: "A troca é de um dia por vez. Peça a troca de cada dia separadamente." }); return; }
-  if (pedido.peerId && pedido.peerAccepted === null) { res.status(409).json({ message: "Já há uma troca esperando o colega responder. Retire a proposta antes de propor outra." }); return; }
-  if (pedido.alternativeDates?.length && pedido.alternativeAccepted === null) { res.status(409).json({ message: "Há uma proposta de dias esperando a resposta de quem pediu. Retire-a antes de propor uma troca." }); return; }
+  if (esperandoColega(pedido)) { res.status(409).json({ message: "Já há uma troca esperando o colega responder. Retire a proposta antes de propor outra." }); return; }
+  if (esperandoPessoa(pedido)) { res.status(409).json({ message: "Há uma proposta de dias esperando a resposta de quem pediu. Retire-a antes de propor uma troca." }); return; }
   if (peerId === pedido.userId) { res.status(400).json({ message: "O colega precisa ser outra pessoa." }); return; }
   const [colega] = await db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable)
     .where(and(eq(usersTable.id, peerId), eq(usersTable.organizationId, ator.organizationId), eq(usersTable.status, "ACTIVE"))).limit(1);

@@ -180,11 +180,11 @@ export async function avisarPrazoDaFolgaAberto(now = new Date(), organizationId?
     if (!prazoAdminAberto(pedido.startDate, hoje, prazoSupervisaoDias)) continue;
     await db.transaction(async (tx) => {
       // Sem Supervisão na área, a Administração já foi avisada quando o pedido chegou.
-      if (!(await supervisoresDaArea(tx, pedido.areaId)).length) return;
+      if (!(await supervisoresDaArea(tx, pedido.areaId, pedido.userId)).length) return;
       for (const adminId of (await administradores(tx, pedido.organizationId)).filter((id) => id !== pedido.userId)) {
         const [ja] = await tx.select({ id: notificationOutboxTable.id }).from(notificationOutboxTable).where(eq(notificationOutboxTable.deduplicationKey, `folga:${pedido.id}:prazo:${adminId}`)).limit(1);
         if (ja) continue;
-        await enqueueNotification(tx, { userId: adminId, type: "leave.deadline_open", title: "Pedido de folga esperando decisão", message: `O pedido de folga de ${periodoLegivel(pedido.startDate, pedido.endDate)} ainda não foi respondido pela Supervisão da área. A partir de agora você pode decidir.`, category: "absence", entityType: "leave_request", entityId: pedido.id, actionUrl: "/solicitacoes" }, new Date(), { deduplicationKey: `folga:${pedido.id}:prazo:${adminId}` });
+        await enqueueNotification(tx, { userId: adminId, type: "leave.deadline_open", title: "Pedido de folga esperando decisão", message: `O pedido de folga de ${periodoLegivel(pedido.startDate, pedido.endDate)} está esperando decisão da Supervisão da área e a data está perto. A partir de agora você também pode decidir.`, category: "absence", entityType: "leave_request", entityId: pedido.id, actionUrl: "/solicitacoes" }, new Date(), { deduplicationKey: `folga:${pedido.id}:prazo:${adminId}` });
         avisados++;
       }
     });

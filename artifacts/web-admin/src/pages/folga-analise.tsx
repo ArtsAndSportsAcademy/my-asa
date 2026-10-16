@@ -71,6 +71,7 @@ export function AnaliseDoPedido({ pedidoId, pessoa, onTrocaProposta }: { pedidoI
       ))}
       {dados.cortado && <p className="analise-aviso" role="note">Mostrando os 14 primeiros dias do pedido.</p>}
       {!dados.cortado && dados.dias.length > 1 && dados.dias.some((d) => d.resultado.da) && dados.dias.some((d) => !d.resultado.da) && <ProporDias pedidoId={pedidoId} pessoa={pessoa} dias={dados.dias} onProposta={onTrocaProposta} />}
+      {dados.dias.length > 1 && dados.dias.some((d) => !d.resultado.da) && <p className="analise-aviso" role="note">A troca com um colega que está de folga é de um dia por vez. Para trocar um destes dias, peça que a pessoa faça um pedido só desse dia.</p>}
       {naoDa && dados.troca && <ProporTroca pedidoId={pedidoId} pessoa={pessoa} dia={dados.dias[0]!.date} troca={dados.troca} onProposta={onTrocaProposta} />}
     </div>
   );

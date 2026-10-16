@@ -153,7 +153,7 @@ export async function analisarPedidoDeFolga(input: { organizationId: string; use
 
     let resultado: DiaAnalisado["resultado"];
     if (folgam.has(userId)) resultado = { da: true, frase: `${pessoa.name} já está de folga nesse dia.` };
-    else if (semEscala && !vagas.length) resultado = { da: true, frase: "Este dia ainda não tem Escala; o pedido entra como prioridade." };
+    else if (semEscala && !vagas.length) resultado = { da: true, frase: "Este dia ainda não tem Escala nem Livro do Dia, então não há o que conferir: decida pelo que você sabe do dia." };
     else if (!vagas.length) resultado = { da: true, frase: `${pessoa.name} não tem vaga em show nesse dia.` };
     else if (semSubstituto.length) resultado = { da: false, frase: `Não dá: ${semSubstituto.join(", ")} não tem substituto cadastrado no Livro do Show.` };
     else if (semQuemCubra.length) resultado = { da: false, frase: `Não dá: ninguém da lista de substituições de ${semQuemCubra.join(", ")} trabalha nesse dia e está livre.` };

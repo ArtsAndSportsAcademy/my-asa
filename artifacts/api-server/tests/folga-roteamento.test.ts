@@ -42,7 +42,7 @@ async function run() {
   const [org] = await db.insert(organizationsTable).values({ name: `${tag}_org` }).returning();
   const [operation] = await db.insert(operationsTable).values({ organizationId: org!.id, name: `${tag}_op`, status: "ACTIVE" }).returning();
   const [local] = await db.insert(locationsTable).values({ organizationId: org!.id, name: `${tag}_local` }).returning();
-  const [pat, bai] = await db.insert(areasTable).values([{ organizationId: org!.id, name: `${tag}_pat` }, { organizationId: org!.id, name: `${tag}_bai` }]).returning();
+  const [pat, bai, solo] = await db.insert(areasTable).values([{ organizationId: org!.id, name: `${tag}_pat` }, { organizationId: org!.id, name: `${tag}_bai` }, { organizationId: org!.id, name: `${tag}_solo` }]).returning();
   const mk = async (key: string, areaId: string | null, role: string) => {
     const [u] = await db.insert(usersTable).values({ organizationId: org!.id, name: `${tag}_${key}`, username: `${tag}_${key}`, areaId, defaultLocationId: local!.id }).returning();
     await db.insert(userRolesTable).values({ userId: u!.id, operationId: operation!.id, role: role as never, active: true });
@@ -52,8 +52,9 @@ async function run() {
   const sup = await mk("sup", pat!.id, "SUPERVISOR_A");
   const ana = await mk("ana", pat!.id, "MEMBER");
   const bia = await mk("bia", bai!.id, "MEMBER");   // área sem Supervisão
-  const ids = [admin, sup, ana, bia].map((u) => u.id);
-  await db.insert(areaLocalSupervisorsTable).values({ areaId: pat!.id, locationId: local!.id, supervisorId: sup.id, active: true });
+  const supSolo = await mk("supsolo", solo!.id, "SUPERVISOR_A");   // única Supervisão da própria área
+  const ids = [admin, sup, ana, bia, supSolo].map((u) => u.id);
+  await db.insert(areaLocalSupervisorsTable).values([{ areaId: pat!.id, locationId: local!.id, supervisorId: sup.id, active: true }, { areaId: solo!.id, locationId: local!.id, supervisorId: supSolo.id, active: true }]);
 
   let server: ReturnType<typeof app.listen> | null = null;
   try {
@@ -68,7 +69,7 @@ async function run() {
       try { resposta = text ? JSON.parse(text) : {}; } catch { /* corpo que não é JSON */ }
       return { status: r.status, body: resposta };
     };
-    const asAdmin = tokenFor(admin, "ADMIN"), asSup = tokenFor(sup, "SUPERVISOR_A"), asAna = tokenFor(ana, "MEMBER"), asBia = tokenFor(bia, "MEMBER");
+    const asAdmin = tokenFor(admin, "ADMIN"), asSup = tokenFor(sup, "SUPERVISOR_A"), asAna = tokenFor(ana, "MEMBER"), asBia = tokenFor(bia, "MEMBER"), asSupSolo = tokenFor(supSolo, "SUPERVISOR_A");
     const pedir = (token: string, date: string, reason = "Compromisso") => call("POST", "/leave-requests", token, { startDate: date, endDate: date, reason });
     const avisosDe = async (pedidoId: string) => db.select().from(notificationOutboxTable).where(like(notificationOutboxTable.deduplicationKey, `folga:${pedidoId}:%`));
 
@@ -89,7 +90,27 @@ async function run() {
     assert(regPrio.length === 1, "entrou no Registro como prioridade, na mesma operação");
     const avPrio = await avisosDe(prioId);
     assert(avPrio.some((a) => a.userId === sup.id) && !avPrio.some((a) => a.userId === admin.id), "a Supervisão da área é avisada; a Administração não");
-    assert((await call("POST", `/folgas/${folgaCriada[0]!.id}/cancelar`, asSup, { reason: "show especial nesse dia" })).status === 200, "a gerência desfaz a folga de prioridade com motivo");
+    const listaSup = await call("GET", "/leave-requests/prioridades", asSup);
+    assert(listaSup.status === 200 && (listaSup.body.pedidos as { id: string }[]).some((p) => p.id === prioId), "a gerência vê a prioridade de qualquer mês, não só do mês aberto");
+    assert((await call("GET", "/leave-requests/prioridades", asAdmin)).status === 200, "a Administração também lê a lista");
+    assert((await call("GET", "/leave-requests/prioridades", asAna)).status === 403, "o Elenco não vê a lista das prioridades");
+    assert(!((await call("GET", "/leave-requests/prioridades", asSupSolo)).body.pedidos as { id: string }[]).some((p) => p.id === prioId), "a Supervisão de outra área não vê a prioridade");
+    assert((await call("POST", `/leave-requests/${prioId}/desfazer`, asAna, { motivo: "x" })).status === 403, "quem pediu não desfaz a própria prioridade");
+    assert((await call("POST", `/leave-requests/${prioId}/desfazer`, asSup, {})).status === 400, "desfazer sem motivo: 400");
+    assert((await call("POST", `/leave-requests/${prioId}/desfazer`, asSup, { motivo: "show especial nesse dia" })).status === 200, "a gerência desfaz a folga de prioridade com motivo");
+    const depoisDesfazer = await db.select().from(folgasTable).where(and(eq(folgasTable.userId, ana.id), eq(folgasTable.startDate, dezembro), eq(folgasTable.status, "ACTIVE")));
+    const pedidoDesfeito = (await db.select().from(leaveRequestsTable).where(eq(leaveRequestsTable.id, prioId)))[0];
+    assert(depoisDesfazer.length === 0 && pedidoDesfeito?.status === "DENIED" && /show especial/.test(pedidoDesfeito.decisionReason ?? ""), "desfeita: a folga some do mapa e o pedido guarda o motivo");
+    assert((await avisosDe(prioId)).some((a) => a.userId === ana.id && /prioridade_desfeita/.test(a.deduplicationKey ?? "")), "quem pediu é avisada de que a folga foi desfeita");
+    assert((await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, prioId), eq(historyEventsTable.action, "leave.priority_undone")))).length === 1, "desfazer entra no Registro, uma vez");
+    assert((await call("POST", `/leave-requests/${prioId}/desfazer`, asSup, { motivo: "de novo" })).status === 409, "desfazer duas vezes devolve 409");
+    assert(!((await call("GET", "/leave-requests/prioridades", asSup)).body.pedidos as { id: string }[]).some((p) => p.id === prioId), "desfeita, a prioridade sai da lista");
+
+    // 1b · A Administração também desfaz a prioridade, mesmo com Supervisão cadastrada e o prazo ainda fechado.
+    const prio2 = await pedir(asAna, "2027-03-16");
+    assert(prio2.body.entrouComoPrioridade === true, "preparo: segunda folga de prioridade");
+    const desfezAdm = await call("POST", `/leave-requests/${prio2.body.request.id}/desfazer`, asAdmin, { motivo: "Ensaio geral nesse dia" });
+    assert(desfezAdm.status === 200, "a Administração desfaz a prioridade sem esperar prazo");
 
     // 2 · Mês publicado, longe: espera a Supervisão; Administração não decide antes do prazo.
     const longeAna = await pedir(asAna, longe);
@@ -106,7 +127,9 @@ async function run() {
 
     // 3 · Prazo aberto: Administração decide.
     const pertoAna = await pedir(asAna, perto);
-    assert((await call("PATCH", `/leave-requests/${pertoAna.body.request.id}`, asAdmin, { status: "APPROVED" })).status === 200, "dentro do prazo, a Administração decide");
+    const semMotivo = await call("PATCH", `/leave-requests/${pertoAna.body.request.id}`, asAdmin, { status: "APPROVED" });
+    assert(semMotivo.status === 400 && /por que a Administração/.test(semMotivo.body.message ?? ""), "a Administração decidindo no lugar da Supervisão precisa escrever o motivo");
+    assert((await call("PATCH", `/leave-requests/${pertoAna.body.request.id}`, asAdmin, { status: "APPROVED", decisionReason: "A Supervisão não respondeu e o dia está perto." })).status === 200, "dentro do prazo e com motivo, a Administração decide");
 
     // 4 · Área sem Supervisão: a Administração decide desde o início e é avisada.
     const biaPedido = await pedir(asBia, longe);
@@ -120,6 +143,18 @@ async function run() {
     // 5 · Ninguém decide o próprio pedido.
     const supPedido = await pedir(asSup, longe, "Consulta");
     assert((await call("PATCH", `/leave-requests/${supPedido.body.request.id}`, asSup, { status: "APPROVED" })).status === 403, "a Supervisão não decide o próprio pedido");
+
+    // 5b · Quem pediu é a única Supervisão da área: a Administração decide desde o início (já é avisada).
+    const soloPedido = await pedir(asSupSolo, longe, "Consulta");
+    const soloId = soloPedido.body.request?.id as string;
+    assert((await avisosDe(soloId)).some((a) => a.userId === admin.id), "a única Supervisão pediu: a Administração é avisada");
+    assert((await call("PATCH", `/leave-requests/${soloId}`, asAdmin, { status: "APPROVED", decisionReason: "A única supervisora é quem pediu." })).status === 200, "e a Administração pode decidir sem esperar o prazo");
+
+    // 5c · Pedido que atravessa dois meses: basta um mês publicado para ele esperar a Supervisão.
+    const fimDoMesAberto = "2027-01-31", inicioDoOutro = "2027-02-01";
+    assert((await call("POST", "/folgas/grid/publicar", asAdmin, { operationId: operation!.id, year: 2027, month: 2 })).status === 200, "preparo: publicar o mapa de fevereiro de 2027");
+    const atravessa = await call("POST", "/leave-requests", asAna, { startDate: fimDoMesAberto, endDate: inicioDoOutro, reason: "Viagem" });
+    assert(atravessa.status === 201 && atravessa.body.request?.status === "PENDING" && !atravessa.body.entrouComoPrioridade, "pedido de janeiro a fevereiro, com fevereiro publicado, espera a Supervisão");
 
     // 6 · O aviso de prazo aberto sai uma vez só.
     const outro = await pedir(asAna, pertoB, "Dentista");
@@ -141,7 +176,7 @@ async function run() {
     await db.delete(historyEventsTable).where(or(eq(historyEventsTable.orgId, org!.id), inArray(historyEventsTable.actorId, ids), inArray(historyEventsTable.moId, changes.map((c) => c.id))));
     await db.delete(operationalChangesTable).where(inArray(operationalChangesTable.actorId, ids));
     await db.delete(usersTable).where(inArray(usersTable.id, ids));
-    await db.delete(areasTable).where(inArray(areasTable.id, [pat!.id, bai!.id]));
+    await db.delete(areasTable).where(inArray(areasTable.id, [pat!.id, bai!.id, solo!.id]));
     await db.delete(locationsTable).where(eq(locationsTable.id, local!.id));
     await db.delete(operationsTable).where(eq(operationsTable.id, operation!.id));
     await db.delete(organizationsTable).where(eq(organizationsTable.id, org!.id));

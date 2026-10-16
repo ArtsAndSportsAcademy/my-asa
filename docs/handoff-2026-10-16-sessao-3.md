@@ -44,6 +44,9 @@ trabalho: `codex/myasa-novo`. Nunca fazer merge na `main`. **Nada disto foi envi
   antes da publicação, Supervisão primeiro depois dela, prazo da Administração, aviso único de prazo aberto
   (`avisarPrazoDaFolgaAberto`, no ciclo de `operational-jobs.ts`).
 - **Troca** (`routes/folga-troca.ts`) e **mediação** (`routes/folga-alternativa.ts`): proposta, resposta, retirada.
+- **Desfazer a prioridade** (`routes/folga-prioridade.ts`, cartão "entraram como prioridade" em Folgas): a gerência (Administração
+  a qualquer momento; Supervisão da área) desfaz com motivo escrito uma folga que entrou como prioridade, de **qualquer mês**
+  (`GET /leave-requests/prioridades`); a pessoa é avisada com o motivo. Sem isso a frase "a gerência avisa você" não se cumpria.
 - **Regras** (`services/folga-config.ts`, `routes/folga-config.ts`, janela "Regras do pedido" em Folgas): prazo da
   Supervisão (0 a 30 dias) e limite de folgas por dia em cada área (só avisa).
 
@@ -63,6 +66,17 @@ três migrações, na ordem; (2) promover a **API**; (3) promover o **site**. O 
 - "Publicado" é o **mapa de folgas do mês** (publicação ou retrato inicial), não a Escala do dia; a análise lê o
   rascunho da Escala/Livro do Dia.
 - O colega da troca vê o pedido **sem o motivo particular** de quem pediu.
+
+## 5b. Revisão geral desta sessão (skill `code-review`, dois revisores independentes) — o que mudou por causa dela
+
+Corrigido: desfazer a prioridade (não existia); Supervisão única que pede a própria folga (a Administração era avisada e
+barrada); pedido que atravessa meses (basta um mês publicado para esperar a Supervisão); **motivo escrito obrigatório** quando a
+Administração decide no lugar da Supervisão e quando se aprova dia sem cobertura; frases enganosas (dia sem Escala, prazo
+aberto); nota de que a troca é de um dia por vez; código repetido das rotas de folga movido para `services/folga-comum.ts`;
+clique no fundo fechava duas janelas da Agenda enquanto salvavam. Fica como está de propósito: o botão "Aprovar e escolher quem
+cobre" do rascunho (o desenho final diz que quem cobre se combina fora do app); lembrete automático ao colega que não responde;
+limite de cobertura é **máximo** por área (não mínimo por função). **Não coberto por essa revisão:** os commits 4f7372e, a5acdc6 e
+61e02cb (Agenda, Tarefas, Cadastros, Painel, Biblioteca) — verificados na sessão anterior, não nesta.
 
 ## 6. O que não deu certo (não repetir)
 

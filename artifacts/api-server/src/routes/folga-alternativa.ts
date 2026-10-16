@@ -10,22 +10,13 @@ import { Router, type IRouter } from "express";
 import { and, eq } from "drizzle-orm";
 import { db, leaveRequestsTable, usersTable } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
-import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
-import { enqueueNotification } from "../services/undo.js";
 import { avisarRepublicacaoFolgas } from "../services/folgas-publicadas.js";
 import { barreiraDeDecisao } from "../services/folga-decisao.js";
+import { DATA, UUID, avisarFolga as avisar, dia, esperandoColega, esperandoPessoa, idDaRota, pedidoDaOrganizacao, registrar, type Tx } from "../services/folga-comum.js";
 import { operacaoDaPessoa, supervisoresDaArea } from "../services/folga-roteamento.js";
 import { aplicarFolgaDoPedido } from "./operational-cycle.js";
 
 const router: IRouter = Router();
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const DATA = /^\d{4}-\d{2}-\d{2}$/;
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-const dia = (iso: string) => iso.split("-").reverse().slice(0, 2).join("/");
-const idDaRota = (valor: string | string[] | undefined) => (Array.isArray(valor) ? valor[0] : valor) ?? "";
-const registrar = (tx: Tx, input: Parameters<typeof writeHistoryEvent>[0]) => writeHistoryEvent(input, tx as unknown as HistoryExecutor);
-const esperandoPessoa = (p: { alternativeDates: string[] | null; alternativeAccepted: boolean | null }) => Boolean(p.alternativeDates?.length) && p.alternativeAccepted === null;
-
 function diasDoPeriodo(inicio: string, fim: string) {
   const dias: string[] = [];
   for (let t = new Date(`${inicio}T12:00:00Z`); t <= new Date(`${fim}T12:00:00Z`) && dias.length < 400; t.setUTCDate(t.getUTCDate() + 1)) dias.push(t.toISOString().slice(0, 10));
@@ -39,15 +30,6 @@ function emTrechos(dias: string[]) {
     if (ultimo && diasDoPeriodo(ultimo.ate, d).length === 2) ultimo.ate = d; else trechos.push({ de: d, ate: d });
   }
   return trechos;
-}
-
-async function pedidoDaOrganizacao(id: string, organizationId: string) {
-  if (!UUID.test(id)) return null;
-  const [pedido] = await db.select().from(leaveRequestsTable).where(and(eq(leaveRequestsTable.id, id), eq(leaveRequestsTable.organizationId, organizationId))).limit(1);
-  return pedido ?? null;
-}
-async function avisar(tx: Tx, userId: string, chave: string, type: string, title: string, message: string, requestId: string) {
-  await enqueueNotification(tx as never, { userId, type, title, message, category: "absence", entityType: "leave_request", entityId: requestId, actionUrl: "/folgas" }, new Date(), { deduplicationKey: `folga:${requestId}:${chave}:${userId}` });
 }
 
 // ─── Propor só os dias que dão ───────────────────────────────────────────────
@@ -64,7 +46,7 @@ router.post("/leave-requests/:id/alternativa", requireAuth, requireOrganization,
   if (propostos.some((d) => !doPedido.includes(d))) { res.status(400).json({ message: "Só dá para propor dias que estão no pedido." }); return; }
   if (propostos.length === doPedido.length) { res.status(400).json({ message: "Propor todos os dias do pedido é o mesmo que aprová-lo: use Aprovar." }); return; }
   if (esperandoPessoa(pedido)) { res.status(409).json({ message: "Já há uma proposta esperando a resposta da pessoa. Retire-a antes de propor outra." }); return; }
-  if (pedido.peerId && pedido.peerAccepted === null) { res.status(409).json({ message: "Há uma troca esperando o colega responder. Retire-a antes de propor outros dias." }); return; }
+  if (esperandoColega(pedido)) { res.status(409).json({ message: "Há uma troca esperando o colega responder. Retire-a antes de propor outros dias." }); return; }
 
   const salvo = await db.transaction(async (tx) => {
     const [saved] = await tx.update(leaveRequestsTable).set({

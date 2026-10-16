@@ -31,6 +31,20 @@ export async function mesDeFolgasPublicado(operationId: string, date: string) {
   return (await ultimoRetratoFolgas(operationId, Number(date.slice(0, 4)), Number(date.slice(5, 7)))) !== null;
 }
 
+/**
+ * O mapa está publicado para um pedido que atravessa meses quando QUALQUER mês do período já foi publicado:
+ * mexer num mês publicado depende de olhar o dia, mesmo que o início caia num mês ainda aberto.
+ */
+export async function mesDeFolgasPublicadoNoPeriodo(operationId: string, inicio: string, fim: string) {
+  const visto = new Set<string>();
+  for (let t = new Date(`${inicio.slice(0, 7)}-01T12:00:00Z`); t.toISOString().slice(0, 7) <= fim.slice(0, 7) && visto.size < 4; t.setUTCMonth(t.getUTCMonth() + 1)) {
+    const mes = t.toISOString().slice(0, 7);
+    visto.add(mes);
+    if (await mesDeFolgasPublicado(operationId, `${mes}-01`)) return true;
+  }
+  return false;
+}
+
 /** A operação ativa da pessoa (a mesma que a aprovação usa para gravar a folga). */
 export async function operacaoDaPessoa(executor: Executor, userId: string, organizationId: string) {
   const [row] = await executor.select({ id: userRolesTable.operationId }).from(userRolesTable)
@@ -40,12 +54,13 @@ export async function operacaoDaPessoa(executor: Executor, userId: string, organ
 }
 
 /** Supervisão ativa da área da pessoa (a mesma regra que avisa o pedido). */
-export async function supervisoresDaArea(executor: Executor, areaId: string | null): Promise<string[]> {
+export async function supervisoresDaArea(executor: Executor, areaId: string | null, menos?: string): Promise<string[]> {
   if (!areaId) return [];
   const rows = await executor.selectDistinct({ id: areaLocalSupervisorsTable.supervisorId }).from(areaLocalSupervisorsTable)
     .innerJoin(usersTable, eq(areaLocalSupervisorsTable.supervisorId, usersTable.id))
     .where(and(eq(areaLocalSupervisorsTable.areaId, areaId), eq(areaLocalSupervisorsTable.active, true), eq(usersTable.status, "ACTIVE")));
-  return rows.map((r) => r.id);
+  // Quem pediu a própria folga não decide por si: sem outra pessoa na Supervisão, a decisão vai para a Administração.
+  return rows.map((r) => r.id).filter((id) => id !== menos);
 }
 
 export async function administradores(executor: Executor, organizationId: string): Promise<string[]> {

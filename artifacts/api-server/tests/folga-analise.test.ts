@@ -148,6 +148,11 @@ async function run() {
     const dia3: Dia | undefined = a3.body.dias?.[0];
     assert(dia3?.resultado.da === false && /substituto/.test(dia3.resultado.frase) && /Solo/.test(dia3.resultado.frase), "vaga sem substituto: não dá, e a frase cita a vaga e o substituto");
 
+    // 3a · Aprovar um dia que fica sem cobertura pede o motivo escrito (a folga só vence a escala com o porquê).
+    const semMotivoNaoDa = await call("PATCH", `/leave-requests/${pedido3}`, asSup, { status: "APPROVED" });
+    assert(semMotivoNaoDa.status === 400 && /sem cobertura/.test(semMotivoNaoDa.body.message ?? ""), "aprovar dia sem cobertura sem motivo: 400 explicando");
+    assert((await call("PATCH", `/leave-requests/${pedido3}`, asSup, { status: "APPROVED", decisionReason: "A Ana avisou que a Carla assume a Solo." })).status === 200, "com o motivo escrito, a aprovação vale");
+
     // 3b · Quem já está de folga no dia pedido: não é "não dá", é "já está de folga".
     await db.insert(folgasTable).values({ userId: ana.id, operationId: operation!.id, type: "DAY_OFF", startDate: d3, endDate: d3, status: "ACTIVE", createdBy: admin.id });
     const a3b = await call("GET", `/leave-requests/${pedido3}/analise`, asSup);

@@ -90,7 +90,7 @@ async function run() {
     assert((await call("PUT", "/folga-config", asAdmin, { limiteFolgaPorArea: { [pat!.id]: 1 } })).status === 200, "a Administração define o limite da área");
     const comLimite = await call("GET", `/leave-requests/${pedidoId}/analise`, asSup);
     assert(/limite é 1/.test(comLimite.body.dias?.[0]?.aviso ?? ""), "com limite 1 e uma colega já de folga, a análise avisa");
-    assert((await call("PATCH", `/leave-requests/${pedidoId}`, asAdmin, { status: "APPROVED" })).status === 200, "o aviso nunca trava: a decisão continua possível, e agora dentro do prazo de 5 dias");
+    assert((await call("PATCH", `/leave-requests/${pedidoId}`, asAdmin, { status: "APPROVED", decisionReason: "A Supervisão não respondeu." })).status === 200, "o aviso nunca trava: a decisão continua possível, e agora dentro do prazo de 5 dias");
     const guardado = await db.select().from(folgaConfigTable).where(eq(folgaConfigTable.organizationId, org!.id));
     assert(guardado.length === 1 && guardado[0]!.prazoSupervisaoDias === 5, "guardar o limite não desfaz o prazo salvo antes");
   } finally {

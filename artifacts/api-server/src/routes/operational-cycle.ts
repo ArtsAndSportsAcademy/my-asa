@@ -12,9 +12,11 @@ import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.j
 import { enqueueNotification } from "../services/undo.js";
 import { avisarRepublicacaoFolgas, ultimoRetratoFolgas } from "../services/folgas-publicadas.js";
 import { operationalDate } from "../lib/operational-date.js";
-import { administradores, diaEmQueOPrazoAbre, mesDeFolgasPublicado, operacaoDaPessoa, periodoLegivel, prazoAdminAberto, supervisoresDaArea } from "../services/folga-roteamento.js";
+import { administradores, diaEmQueOPrazoAbre, mesDeFolgasPublicadoNoPeriodo, operacaoDaPessoa, periodoLegivel, prazoAdminAberto, supervisoresDaArea } from "../services/folga-roteamento.js";
 import { lerConfigFolga } from "../services/folga-config.js";
 import { barreiraDeDecisao } from "../services/folga-decisao.js";
+import { MARCA_DE_PRIORIDADE } from "../services/folga-comum.js";
+import { analisarPedidoDeFolga } from "../services/analise-folga.js";
 import { protectShiftCheckIns } from "../middlewares/shift-checkin-legacy.js";
 
 const router: IRouter = Router();
@@ -106,16 +108,17 @@ router.get("/leave-requests", requireAuth, requireOrganization, async (req, res)
   }
   // Com quem está cada pedido em aberto: a Supervisão da área, ou a Administração quando a área não tem Supervisão.
   const { prazoSupervisaoDias } = await lerConfigFolga(actor.organizationId);
-  const supervisaoPorArea = new Map<string, boolean>();
-  const temSupervisao = async (areaId: string | null) => {
+  const supervisaoPorArea = new Map<string, string[]>();
+  const temSupervisao = async (areaId: string | null, quemPediu: string) => {
     if (!areaId) return false;
-    if (!supervisaoPorArea.has(areaId)) supervisaoPorArea.set(areaId, (await supervisoresDaArea(db, areaId)).length > 0);
-    return supervisaoPorArea.get(areaId)!;
+    if (!supervisaoPorArea.has(areaId)) supervisaoPorArea.set(areaId, await supervisoresDaArea(db, areaId));
+    // Quem pediu a própria folga não conta como Supervisão do próprio pedido.
+    return supervisaoPorArea.get(areaId)!.some((id) => id !== quemPediu);
   };
   const hoje = operationalDate();
   const destinoDe = async (request: (typeof visible)[number]["request"]) => {
     if (request.status !== "PENDING") return null;
-    const comSupervisao = await temSupervisao(request.areaId);
+    const comSupervisao = await temSupervisao(request.areaId, request.userId);
     const abreEm = comSupervisao ? diaEmQueOPrazoAbre(request.startDate, prazoSupervisaoDias) : null;
     const adminPodeAgora = !comSupervisao || prazoAdminAberto(request.startDate, hoje, prazoSupervisaoDias);
     return { quem: comSupervisao ? "SUPERVISAO" : "ADMINISTRACAO", area: null, adminPodeDecidirEm: abreEm, adminPodeAgora };
@@ -150,10 +153,10 @@ router.post("/leave-requests", requireAuth, requireOrganization, async (req, res
   if (!person) { res.status(404).json({ error: "Not Found" }); return; }
   const operationId = await operacaoDaPessoa(db, userId, actor.organizationId);
   // Mês de folgas ainda não publicado: o pedido da pessoa entra como prioridade. A gerência desfaz com motivo se houver algo especial.
-  const prioridade = operationId ? !(await mesDeFolgasPublicado(operationId, startDate)) : false;
+  const prioridade = operationId ? !(await mesDeFolgasPublicadoNoPeriodo(operationId, startDate, endDate)) : false;
   const request = await db.transaction(async (tx) => {
     const [created] = await tx.insert(leaveRequestsTable).values(prioridade
-      ? { organizationId: actor.organizationId, userId, areaId: person.areaId, startDate, endDate, reason, status: "APPROVED", decidedBy: actor.sub, decisionReason: "Entrou como prioridade: o mapa do mês ainda não foi publicado, então ninguém precisou decidir.", decidedAt: new Date() }
+      ? { organizationId: actor.organizationId, userId, areaId: person.areaId, startDate, endDate, reason, status: "APPROVED", decidedBy: actor.sub, decisionReason: `${MARCA_DE_PRIORIDADE}: o mapa do mês ainda não foi publicado, então ninguém precisou decidir.`, decidedAt: new Date() }
       : { organizationId: actor.organizationId, userId, areaId: person.areaId, startDate, endDate, reason }).returning();
     if (prioridade && operationId) {
       await aplicarFolgaDoPedido(tx, created!, operationId, actor.sub);
@@ -244,6 +247,18 @@ router.patch("/leave-requests/:id", requireAuth, requireOrganization, async (req
   if (!request) { res.status(404).json({ error: "Not Found" }); return; }
   const barreira = await barreiraDeDecisao(actor, request);
   if (barreira) { res.status(barreira.status).json({ error: barreira.status === 403 ? "Forbidden" : "Conflict", message: barreira.message }); return; }
+  // A folga vence a escala só com motivo escrito: decidir no lugar da Supervisão, ou aprovar dia que fica sem cobertura, pede o porquê.
+  if (!decisionReason) {
+    if (isAdmin(actor.role) && (await supervisoresDaArea(db, request.areaId, request.userId)).length > 0) {
+      res.status(400).json({ error: "Bad Request", message: "A Supervisão da área não respondeu: escreva por que a Administração está decidindo por ela." }); return;
+    }
+    if (status === "APPROVED") {
+      const analise = await analisarPedidoDeFolga({ organizationId: actor.organizationId, userId: request.userId, startDate: request.startDate, endDate: request.endDate });
+      if (analise.dias.some((d) => !d.resultado.da)) {
+        res.status(400).json({ error: "Bad Request", message: "Há dia deste pedido que fica sem cobertura. Escreva o motivo de aprovar mesmo assim: a folga só vence a escala com o porquê escrito." }); return;
+      }
+    }
+  }
   if (request.alternativeDates?.length && request.alternativeAccepted === null) {
     res.status(409).json({ error: "Conflict", message: "Esperando a resposta de quem pediu sobre a proposta de dias. Retire a proposta para decidir de outro jeito." }); return;
   }

@@ -8,13 +8,11 @@ import { Router, type IRouter } from "express";
 import { and, asc, eq } from "drizzle-orm";
 import { areasTable, db, folgaConfigTable } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
+import { isAdmin, isDirector, isSupervisor } from "../services/folga-comum.js";
 import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
 import { LIMITE_MAXIMO_POR_AREA, PRAZO_MAXIMO_DIAS, lerConfigFolga, type ConfigFolga } from "../services/folga-config.js";
 
 const router: IRouter = Router();
-const isAdmin = (role: string) => role === "ADMIN";
-const isDirector = (role: string) => role === "DIR" || role === "DIRECTOR";
-const isSupervisor = (role: string) => role === "SUPERVISOR_A" || role === "SUPERVISOR_B" || role === "SUP";
 
 async function areasDaOrganizacao(organizationId: string) {
   return db.select({ id: areasTable.id, name: areasTable.name }).from(areasTable)
