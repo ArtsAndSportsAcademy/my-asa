@@ -59,6 +59,14 @@ function inicioDoPeriodo(dias: number | null) {
 }
 function dia(iso: string) { return new Date(iso).toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", timeZone: "America/Sao_Paulo" }); }
 function hora(iso: string) { return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }); }
+const TIPOS_DE_AUSENCIA: Record<string, string> = { DAY_OFF: "folga", RECESSO: "recesso", AFASTAMENTO: "afastamento", NO_SHOW: "falta", OTHER: "outro" };
+/** O texto do Registro nasce no servidor com data crua (2026-11-02) e código em inglês (DAY_OFF): aqui vira o que a pessoa lê. */
+function legivelNoTexto(texto: string | null | undefined) {
+  if (!texto) return texto;
+  return texto
+    .replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, (_, ano, mes, d) => new Date(Number(ano), Number(mes) - 1, Number(d)).toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric" }))
+    .replace(/\b(DAY_OFF|RECESSO|AFASTAMENTO|NO_SHOW)\b/g, (c) => TIPOS_DE_AUSENCIA[c] ?? c);
+}
 function valor(v: unknown): string {
   if (v === null || v === undefined || v === "") return "—";
   if (typeof v === "boolean") return v ? "sim" : "não";
@@ -161,8 +169,8 @@ export default function RegistroPage({ role }: { role: ShellRole }) {
               <button type="button" className="rg-linha" aria-expanded={aberto === e.id} onClick={() => setAberto(aberto === e.id ? null : e.id)}>
                 <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#6b6482;width:44px;flex:none")}>{hora(e.occurredAt)}</span>
                 <span style={css("display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;text-align:left")}>
-                  <span style={css("font-size:13.5px;font-weight:700;color:#1c1440")}>{e.title || e.action}</span>
-                  <span style={css("font-size:12.5px;color:#5b5473;line-height:1.45")}>{e.narrative}</span>
+                  <span style={css("font-size:13.5px;font-weight:700;color:#1c1440")}>{legivelNoTexto(e.title) || e.action}</span>
+                  <span style={css("font-size:12.5px;color:#5b5473;line-height:1.45")}>{legivelNoTexto(e.narrative)}</span>
                   <span style={css("display:flex;gap:6px;flex-wrap:wrap;margin-top:3px")}>
                     <span className="rg-chip">{e.actorName ?? (e.actorType === "HUMAN" ? "alguém" : "o sistema")}</span>
                     <span className="rg-chip rg-chip-tipo">{TIPOS[e.entityType] ?? e.entityType}</span>
