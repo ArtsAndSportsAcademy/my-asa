@@ -215,6 +215,10 @@ export function rotationCharacterKey(line: { id: string; config: unknown; charac
   return `legacy-line:${line.id}`;
 }
 
+function ehUuid(valor: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(valor);
+}
+
 function rotationCountKey(characterId: string, userId: string): string {
   return `${characterId}::${userId}`;
 }
@@ -545,11 +549,14 @@ export async function resolveShowBookCast(
   // "fazer" hoje pesaria contra si mesmo nessa releitura, e o rodízio trocaria sozinho sem folga
   // nem mexida nenhuma. Equilíbrio por carga de trabalho já faz a mesma exclusão do próprio dia.
   const advancedToday = new Set<string>();
-  if (rotationKeys.size > 0) {
+  // O histórico de avanços só existe para vaga ligada a um personagem (chave UUID). Linha de rodízio sem personagem tem
+  // chave "legacy-line:…": consultar com ela derrubava a geração do dia inteiro ("Erro inesperado ao gerar este dia").
+  const chavesDeHistorico = Array.from(rotationKeys).filter(ehUuid);
+  if (chavesDeHistorico.length > 0) {
     const rows = await db
       .select({ characterId: rotationDailyAdvancesTable.characterId, userId: rotationDailyAdvancesTable.userId, date: rotationDailyAdvancesTable.date })
       .from(rotationDailyAdvancesTable)
-      .where(inArray(rotationDailyAdvancesTable.characterId, Array.from(rotationKeys)));
+      .where(inArray(rotationDailyAdvancesTable.characterId, chavesDeHistorico));
     const historicalTotal = new Map<string, number>();
     for (const row of rows) {
       const key = rotationCountKey(row.characterId, row.userId);
@@ -710,7 +717,8 @@ export async function advanceRotationCountsFromWinners(
       ? { ...(line.config as Record<string, unknown>) }
       : {}) as Record<string, unknown>;
     const characterId = rotationCharacterKey(line);
-    const [inserted] = await db
+    // Sem personagem (chave que não é UUID) não há linha de histórico para gravar; o contador da própria linha segue valendo.
+    const [inserted] = !ehUuid(characterId) ? [{ id: "linha-sem-personagem" }] : await db
       .insert(rotationDailyAdvancesTable)
       .values({
         characterId,
