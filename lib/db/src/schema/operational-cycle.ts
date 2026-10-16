@@ -46,6 +46,12 @@ export const leaveRequestsTable = pgTable("leave_requests", {
   peerRespondedAt: timestamp("peer_responded_at", { withTimezone: true }),
   peerReason: text("peer_reason"),
   swapReturnDate: date("swap_return_date", { mode: "string" }),
+  // Mediação (0068): a Supervisão propõe só os dias que dão. "Esperando a pessoa" = alternativeDates preenchido e alternativeAccepted nulo.
+  alternativeDates: date("alternative_dates", { mode: "string" }).array(),
+  alternativeProposedBy: uuid("alternative_proposed_by").references(() => usersTable.id),
+  alternativeAccepted: boolean("alternative_accepted"),
+  alternativeRespondedAt: timestamp("alternative_responded_at", { withTimezone: true }),
+  alternativeReason: text("alternative_reason"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [

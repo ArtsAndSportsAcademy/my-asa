@@ -99,6 +99,10 @@ async function run() {
     const asAdmin = tokenFor(admin, "ADMIN"), asSup = tokenFor(sup, "SUPERVISOR_A"), asSupBai = tokenFor(supBai, "SUPERVISOR_A");
     const asDir = tokenFor(dir, "DIR"), asAna = tokenFor(ana, "MEMBER"), asEstranha = tokenFor(estranha, "ADMIN", outraOrg!.id);
 
+    // Pedido só espera decisão quando o mapa do mês já foi publicado (senão entra como prioridade): publica os meses usados.
+    for (const [year, month] of [[2026, 11], [2026, 12]]) {
+      assert((await call("POST", "/folgas/grid/publicar", asAdmin, { operationId: operation!.id, year, month })).status === 200, `preparo: publicar o mapa de ${month}/${year}`);
+    }
     for (const [show, date] of [[showA, d1], [showB, d3]] as const) {
       const gen = await call("POST", "/daily-book/generate", asAdmin, { showBookId: show.id, date });
       assert(gen.status === 201, `preparo: gerar o Livro do Dia de ${date}`);
@@ -143,6 +147,11 @@ async function run() {
     const a3 = await call("GET", `/leave-requests/${pedido3}/analise`, asSup);
     const dia3: Dia | undefined = a3.body.dias?.[0];
     assert(dia3?.resultado.da === false && /substituto/.test(dia3.resultado.frase) && /Solo/.test(dia3.resultado.frase), "vaga sem substituto: não dá, e a frase cita a vaga e o substituto");
+
+    // 3b · Quem já está de folga no dia pedido: não é "não dá", é "já está de folga".
+    await db.insert(folgasTable).values({ userId: ana.id, operationId: operation!.id, type: "DAY_OFF", startDate: d3, endDate: d3, status: "ACTIVE", createdBy: admin.id });
+    const a3b = await call("GET", `/leave-requests/${pedido3}/analise`, asSup);
+    assert(a3b.body.dias?.[0]?.resultado.da === true && /já está de folga/.test(a3b.body.dias[0].resultado.frase), "quem já está de folga nesse dia: a análise diz isso em vez de \"não dá\"");
 
     // 4 · Pedido longo: corta em 14 dias.
     const aLongo = await call("GET", `/leave-requests/${pedidoLongo}/analise`, asSup);

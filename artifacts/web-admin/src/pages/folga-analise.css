@@ -21,3 +21,9 @@
 .analise-troca select{min-height:44px;border:1px solid #e6e1f2;border-radius:10px;padding:8px;font:13px Manrope,sans-serif;background:#fff}
 .analise-propor{min-height:44px;border:1px solid #cbb8f7;border-radius:999px;background:#f3ecfe;color:#5b23c9;font:700 12px Manrope,sans-serif;cursor:pointer}
 .analise-propor:disabled{opacity:.5;cursor:not-allowed}
+
+/* Proposta de só os dias que dão */
+.analise-dias{border:1px solid #e6e1f2;border-radius:10px;padding:8px 10px;display:grid;gap:2px;background:#fff}
+.analise-dias legend{font-size:12px;font-weight:700;color:#3d3559;padding:0 4px}
+.analise-dia-marca{display:flex;align-items:center;gap:8px;min-height:40px;font-size:13px;font-weight:500!important}
+.analise-dia-marca input{width:18px;height:18px;accent-color:#5b23c9}

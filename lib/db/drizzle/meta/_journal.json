@@ -303,6 +303,7 @@
     {"idx":64,"version":"7","when":1791770400000,"tag":"0064_livro_do_dia_vivo","breakpoints":true},
     {"idx":65,"version":"7","when":1791856800000,"tag":"0065_mural_aberto","breakpoints":true},
     {"idx":66,"version":"7","when":1791943200000,"tag":"0066_mensagens_grupos","breakpoints":true},
-    {"idx":67,"version":"7","when":1792029600000,"tag":"0067_folga_troca","breakpoints":true}
+    {"idx":67,"version":"7","when":1792029600000,"tag":"0067_folga_troca","breakpoints":true},
+    {"idx":68,"version":"7","when":1792116000000,"tag":"0068_folga_alternativa","breakpoints":true}
   ]
 }

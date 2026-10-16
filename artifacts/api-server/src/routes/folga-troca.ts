@@ -60,6 +60,7 @@ router.post("/leave-requests/:id/troca", requireAuth, requireOrganization, async
   if (!UUID.test(peerId) || !DATA.test(devolvido)) { res.status(400).json({ message: "Escolha o colega e o dia de folga que ele fica." }); return; }
   if (pedido.startDate !== pedido.endDate) { res.status(400).json({ message: "A troca é de um dia por vez. Peça a troca de cada dia separadamente." }); return; }
   if (pedido.peerId && pedido.peerAccepted === null) { res.status(409).json({ message: "Já há uma troca esperando o colega responder. Retire a proposta antes de propor outra." }); return; }
+  if (pedido.alternativeDates?.length && pedido.alternativeAccepted === null) { res.status(409).json({ message: "Há uma proposta de dias esperando a resposta de quem pediu. Retire-a antes de propor uma troca." }); return; }
   if (peerId === pedido.userId) { res.status(400).json({ message: "O colega precisa ser outra pessoa." }); return; }
   const [colega] = await db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable)
     .where(and(eq(usersTable.id, peerId), eq(usersTable.organizationId, ator.organizationId), eq(usersTable.status, "ACTIVE"))).limit(1);

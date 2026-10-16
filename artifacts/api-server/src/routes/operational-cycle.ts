@@ -131,7 +131,11 @@ router.get("/leave-requests", requireAuth, requireOrganization, async (req, res)
       estado: row.request.peerAccepted === null ? "ESPERANDO" : row.request.peerAccepted ? "ACEITA" : "RECUSADA",
       motivoRecusa: row.request.peerReason, souEu: row.request.peerId === actor.sub,
     } : null;
-    saida.push({ ...row.request, ...(souSoOColega ? { reason: null } : {}), userName: row.userName ?? row.fullName, areaName: row.areaName, ...(jaMarcada.has(row.request.id) ? { jaTemFolga: true } : {}), ...(destino ? { destino: { ...destino, area: row.areaName } } : {}), ...(troca ? { troca } : {}) });
+    const alternativa = row.request.alternativeDates?.length ? {
+      dias: row.request.alternativeDates, souEu: row.request.userId === actor.sub,
+      estado: row.request.alternativeAccepted === null ? "ESPERANDO" : row.request.alternativeAccepted ? "ACEITA" : "RECUSADA", motivoRecusa: row.request.alternativeReason,
+    } : null;
+    saida.push({ ...row.request, ...(souSoOColega ? { reason: null } : {}), userName: row.userName ?? row.fullName, areaName: row.areaName, ...(jaMarcada.has(row.request.id) ? { jaTemFolga: true } : {}), ...(destino ? { destino: { ...destino, area: row.areaName } } : {}), ...(troca ? { troca } : {}), ...(alternativa ? { alternativa } : {}) });
   }
   res.json({ requests: saida });
 });
@@ -207,7 +211,7 @@ type TxFolga = Parameters<Parameters<typeof db.transaction>[0]>[0];
  * Grava a folga de um pedido aprovado (ou entrado como prioridade). Não empilha uma segunda folga
  * por cima de dia que já tem folga: devolve a frase que avisa quem decidiu, ou "" quando nada coincidiu.
  */
-async function aplicarFolgaDoPedido(tx: TxFolga, pedido: { id: string; userId: string; startDate: string; endDate: string }, operationId: string, criadaPor: string): Promise<string> {
+export async function aplicarFolgaDoPedido(tx: TxFolga, pedido: { id: string; userId: string; startDate: string; endDate: string }, operationId: string, criadaPor: string): Promise<string> {
   let aviso = "";
   // Folga já marcada nos mesmos dias (grupo, mapa, calendário): aprovar vale, mas não empilha uma
   // segunda folga por cima — o mapa contaria dois dias de folga onde há um. Quem aprovou fica sabendo.
@@ -240,6 +244,9 @@ router.patch("/leave-requests/:id", requireAuth, requireOrganization, async (req
   if (!request) { res.status(404).json({ error: "Not Found" }); return; }
   const barreira = await barreiraDeDecisao(actor, request);
   if (barreira) { res.status(barreira.status).json({ error: barreira.status === 403 ? "Forbidden" : "Conflict", message: barreira.message }); return; }
+  if (request.alternativeDates?.length && request.alternativeAccepted === null) {
+    res.status(409).json({ error: "Conflict", message: "Esperando a resposta de quem pediu sobre a proposta de dias. Retire a proposta para decidir de outro jeito." }); return;
+  }
   if (request.peerId && request.peerAccepted === null) {
     const [colega] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, request.peerId)).limit(1);
     res.status(409).json({ error: "Conflict", message: `Esperando a resposta de ${colega?.name ?? "o colega"} sobre a troca. Retire a proposta para decidir de outro jeito.` }); return;

@@ -70,6 +70,7 @@ export function AnaliseDoPedido({ pedidoId, pessoa, onTrocaProposta }: { pedidoI
         </section>
       ))}
       {dados.cortado && <p className="analise-aviso" role="note">Mostrando os 14 primeiros dias do pedido.</p>}
+      {!dados.cortado && dados.dias.length > 1 && dados.dias.some((d) => d.resultado.da) && dados.dias.some((d) => !d.resultado.da) && <ProporDias pedidoId={pedidoId} pessoa={pessoa} dias={dados.dias} onProposta={onTrocaProposta} />}
       {naoDa && dados.troca && <ProporTroca pedidoId={pedidoId} pessoa={pessoa} dia={dados.dias[0]!.date} troca={dados.troca} onProposta={onTrocaProposta} />}
     </div>
   );
@@ -97,6 +98,38 @@ function ProporTroca({ pedidoId, pessoa, dia, troca, onProposta }: { pedidoId: s
       <label>Folga de {pessoa} que ele recebe<select value={devolvido} onChange={(e) => setDevolvido(e.target.value)}>{colega.dias.map((d) => <option key={d} value={d}>{rotuloDoDia(d)}</option>)}</select></label>
       {erro && <p className="analise-erro" role="alert">{erro}</p>}
       <button type="button" className="analise-propor" onClick={() => void propor()} disabled={enviando || !devolvido}>{enviando ? "Enviando…" : "Propor a troca"}</button>
+    </section>
+  );
+}
+
+/**
+ * Mediação: quando só parte dos dias dá, a Supervisão propõe à pessoa só os dias que dão (já marcados).
+ * A pessoa aceita ou recusa; recusando, o pedido volta para a Supervisão.
+ */
+function ProporDias({ pedidoId, pessoa, dias, onProposta }: { pedidoId: string; pessoa: string; dias: Dia[]; onProposta?: () => void }) {
+  const [marcados, setMarcados] = useState<Set<string>>(() => new Set(dias.filter((d) => d.resultado.da).map((d) => d.date)));
+  const [enviando, setEnviando] = useState(false), [erro, setErro] = useState("");
+  const alternar = (data: string) => setMarcados((atual) => { const novo = new Set(atual); if (novo.has(data)) novo.delete(data); else novo.add(data); return novo; });
+  const todos = marcados.size === dias.length;
+  const propor = async () => {
+    setEnviando(true); setErro("");
+    try {
+      await customFetch(`/api/leave-requests/${pedidoId}/alternativa`, { method: "POST", body: JSON.stringify({ dias: [...marcados].sort() }) });
+      onProposta?.();
+    } catch (e) { setErro(mensagemDoErro(e, "Não consegui enviar a proposta agora. Nada foi enviado à pessoa; tente de novo.")); }
+    finally { setEnviando(false); }
+  };
+  return (
+    <section className="analise-troca" aria-label="Propor só os dias que dão">
+      <h3>Propor só os dias que dão</h3>
+      <p>Nem todos os dias deram. Em vez de recusar, você pode propor a {pessoa} folgar só nos dias marcados. Ela aceita ou recusa; se recusar, o pedido volta para você.</p>
+      <fieldset className="analise-dias">
+        <legend>Dias da proposta</legend>
+        {dias.map((d) => <label key={d.date} className="analise-dia-marca"><input type="checkbox" checked={marcados.has(d.date)} onChange={() => alternar(d.date)} /> {rotuloDoDia(d.date)} <small>{d.resultado.da ? "dá" : "não dá"}</small></label>)}
+      </fieldset>
+      {todos && <p className="analise-aviso" role="note">Todos os dias marcados é o mesmo que aprovar o pedido inteiro. Use Aprovar.</p>}
+      {erro && <p className="analise-erro" role="alert">{erro}</p>}
+      <button type="button" className="analise-propor" onClick={() => void propor()} disabled={enviando || !marcados.size || todos}>{enviando ? "Enviando…" : "Propor só estes dias"}</button>
     </section>
   );
 }
