@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { selectAsaSuggestions } from "@workspace/shared";
-import { formatAsaCapabilityReply, formatAsaCommandReply, formatAsaTaskCommentsReply, isAsaCapabilityRequest, isAsaUnrecognizedCommandResolution, normalizeAsaText, parseAsaAgendaMeetingRequest, parseAsaDirectMessageRequest, parseAsaFolgaLoteRequest, parseAsaLearningApproval, parseAsaLearningRequest, parseAsaLibrarySearchRequest, parseAsaMessageReplyRequest, parseAsaMuralAckRequest, parseAsaMuralCommentRequest, parseAsaMuralReactionRequest, parseAsaNoticeDraftRequest, parseAsaNoticeDraftUpdateRequest, parseAsaTaskAssigneeUpdate, parseAsaTaskCancellationRequest, parseAsaTaskChecklistUpdateRequest, parseAsaTaskCommentRequest, parseAsaTaskCommentsQuery, parseAsaTaskCompletionRequest, parseAsaTaskDescriptionUpdate, parseAsaFolgaLoteRequest, parseAsaTaskDraftRequest, parseAsaTaskDueDateUpdate, parseAsaTaskEvidenceLinkRequest, parseAsaTaskPriorityUpdate, parseAsaTaskRequirementsUpdate, parseAsaTaskResponsibilityUpdate, parseAsaTaskStartRequest, parseAsaTaskSubmitForApprovalRequest, parseAsaTaskTitleUpdate, parseAsaUnrecognizedReviewRequest, resolveAsaAgendaSupervisorScope, resolveAsaCommand, resolveAsaOperationSelection } from "../src/services/asa-command-engine.ts";
+import { formatAsaCapabilityReply, formatAsaCommandReply, formatAsaTaskCommentsReply, isAsaCapabilityRequest, isAsaUnrecognizedCommandResolution, normalizeAsaText, parseAsaAgendaMeetingRequest, acharPessoaPorNome, acharPessoasNoTexto, parseAsaDirectMessageRequest, parseAsaFolgaLoteRequest, parseAsaLearningApproval, parseAsaLearningRequest, parseAsaLibrarySearchRequest, parseAsaMessageReplyRequest, parseAsaMuralAckRequest, parseAsaMuralCommentRequest, parseAsaMuralReactionRequest, parseAsaNoticeDraftRequest, parseAsaNoticeDraftUpdateRequest, parseAsaTaskAssigneeUpdate, parseAsaTaskCancellationRequest, parseAsaTaskChecklistUpdateRequest, parseAsaTaskCommentRequest, parseAsaTaskCommentsQuery, parseAsaTaskCompletionRequest, parseAsaTaskDescriptionUpdate, parseAsaFolgaLoteRequest, parseAsaTaskDraftRequest, parseAsaTaskDueDateUpdate, parseAsaTaskEvidenceLinkRequest, parseAsaTaskPriorityUpdate, parseAsaTaskRequirementsUpdate, parseAsaTaskResponsibilityUpdate, parseAsaTaskStartRequest, parseAsaTaskSubmitForApprovalRequest, parseAsaTaskTitleUpdate, parseAsaUnrecognizedReviewRequest, resolveAsaAgendaSupervisorScope, resolveAsaCommand, resolveAsaOperationSelection } from "../src/services/asa-command-engine.ts";
 import { formatAsaPreferenceValue, parseAsaModeCommand, parseAsaPreferenceCommand, parseAsaPreferencePatch } from "../src/services/asa-preferences.ts";
 import { checkInPeriodDates, summarizeCheckIns } from "../src/services/checkin-insights.ts";
 import { summarizeTasks, taskPeriodDates } from "../src/services/task-insights.ts";
@@ -495,7 +495,22 @@ const comDescricao = parseAsaTaskDraftRequest('Crie uma tarefa "Montar palco" pa
 assert.equal(comDescricao.kind, "proposal");
 if (comDescricao.kind === "proposal") { assert.deepEqual(comDescricao.assigneeNames, ["Ana", "Bia"]); assert.equal(comDescricao.description, "Antes do show"); }
 assert.equal(parseAsaTaskDraftRequest('Crie uma tarefa "Montar palco" para "Ana" e "ana" até 01/10/2026').kind, "incomplete", "o mesmo nome duas vezes não vale");
-assert.equal(parseAsaTaskDraftRequest('Crie uma tarefa "Montar palco" até 01/10/2026').kind, "incomplete", "sem ninguém para receber, pergunta de volta");
+const tarefaSemAspas = parseAsaTaskDraftRequest('Crie uma tarefa "Montar palco" para a Carol e a Julia até 01/10/2026', "2026-09-20");
+assert.equal(tarefaSemAspas.kind, "proposal", "nomes sem aspas: a ASA procura na lista de pessoas");
+if (tarefaSemAspas.kind === "proposal") { assert.deepEqual(tarefaSemAspas.assigneeNames, []); assert.ok(tarefaSemAspas.procurarNoTexto?.includes("Carol")); assert.equal(tarefaSemAspas.dueDate, "2026-10-01"); }
+// Fala solta na tarefa: verbos, prazo em palavras.
+const solta1 = parseAsaTaskDraftRequest('Preciso de uma tarefa "Separar figurinos" para a Bia até sexta', "2026-10-16");
+assert.equal(solta1.kind, "proposal");
+if (solta1.kind === "proposal") assert.equal(solta1.dueDate, "2026-10-16");
+const solta2 = parseAsaTaskDraftRequest('faz uma tarefa "Conferir som" pra mim e pra Bia prioridade alta para amanhã', "2026-10-16");
+assert.equal(solta2.kind, "proposal");
+if (solta2.kind === "proposal") { assert.equal(solta2.includeSelf, true); assert.equal(solta2.dueDate, "2026-10-17"); assert.equal(solta2.priority, "HIGH"); }
+const solta3 = parseAsaTaskDraftRequest('Passa a tarefa "Revisar roteiro" para "Ana Souza" até o dia 25 de novembro', "2026-10-16");
+assert.equal(solta3.kind, "proposal");
+if (solta3.kind === "proposal") { assert.equal(solta3.dueDate, "2026-11-25"); assert.deepEqual(solta3.assigneeNames, ["Ana Souza"]); }
+assert.equal(parseAsaTaskDraftRequest('Crie uma tarefa "Montar palco" para "Ana"', "2026-10-16").kind, "incomplete", "sem prazo, pergunta de volta");
+assert.equal(parseAsaTaskDraftRequest('Altere o prazo da tarefa "Montar palco" para 20/10/2026', "2026-10-16").kind, "not_action", "alterar prazo é outro pedido");
+assert.equal(parseAsaTaskDraftRequest('Conclua a tarefa "Montar palco"', "2026-10-16").kind, "not_action", "concluir é outro pedido");
 // Folga em lote pela ASA: várias pessoas, vários dias; "tire" limpa; sem ano assume o próximo que vem.
 const hoje = "2026-10-16";
 const folga1 = parseAsaFolgaLoteRequest('Coloque de folga "Ana Souza" e "Bia Lima" nos dias 20/10/2026, 22/10 e 25/10/2026', hoje);
@@ -511,9 +526,76 @@ assert.equal(parseAsaFolgaLoteRequest('Coloque de folga "Ana" no dia 31/02/2026'
 assert.equal(parseAsaFolgaLoteRequest('Coloque de folga "Ana" de 25/10/2026 a 20/10/2026', hoje).kind, "incomplete", "período ao contrário");
 assert.equal(parseAsaFolgaLoteRequest('Coloque de folga "Ana" e "ana" no dia 20/10/2026', hoje).kind, "incomplete", "nome repetido");
 assert.equal(parseAsaFolgaLoteRequest('Coloque de folga "Ana"', hoje).kind, "incomplete", "sem data");
-assert.equal(parseAsaFolgaLoteRequest('Coloque de folga no dia 20/10/2026', hoje).kind, "incomplete", "sem ninguém");
+const semAspas = parseAsaFolgaLoteRequest('Coloque de folga no dia 20/10/2026', hoje);
+assert.equal(semAspas.kind, "proposal", "sem aspas, quem é a ASA procura na lista de pessoas");
+if (semAspas.kind === "proposal") assert.deepEqual(semAspas.names, []);
+// Fala solta: verbos variados, datas variadas, nomes sem aspas.
+const tarefaSolta1 = parseAsaFolgaLoteRequest("põe a Carol e a Julia de folga amanhã", hoje);
+assert.equal(tarefaSolta1.kind, "proposal");
+if (tarefaSolta1.kind === "proposal") { assert.deepEqual(tarefaSolta1.dates, ["2026-10-17"]); assert.equal(tarefaSolta1.tipo, "DAY_OFF"); assert.deepEqual(tarefaSolta1.names, []); assert.ok(tarefaSolta1.procurarNoTexto?.includes("Carol")); }
+const tarefaSolta2 = parseAsaFolgaLoteRequest("Pode colocar a Ana de folga de segunda a quarta?", hoje);
+assert.equal(tarefaSolta2.kind, "proposal");
+if (tarefaSolta2.kind === "proposal") assert.deepEqual(tarefaSolta2.dates, ["2026-10-19", "2026-10-20", "2026-10-21"]);
+const tarefaSolta3 = parseAsaFolgaLoteRequest("Carol e Julia vão folgar dia 20 porque têm consulta", hoje);
+assert.equal(tarefaSolta3.kind, "proposal");
+if (tarefaSolta3.kind === "proposal") { assert.deepEqual(tarefaSolta3.dates, ["2026-10-20"]); assert.equal(tarefaSolta3.motivo, "têm consulta"); }
+const solta4 = parseAsaFolgaLoteRequest("tira a folga da Carol dia 20 de novembro", hoje);
+assert.equal(solta4.kind, "proposal");
+if (solta4.kind === "proposal") { assert.equal(solta4.tipo, null); assert.deepEqual(solta4.dates, ["2026-11-20"]); }
+const solta5 = parseAsaFolgaLoteRequest("quero a Bia de recesso do dia 20 ao 22", hoje);
+assert.equal(solta5.kind, "proposal");
+if (solta5.kind === "proposal") { assert.equal(solta5.tipo, "RECESSO"); assert.equal(solta5.dates.length, 3); }
+assert.equal(parseAsaFolgaLoteRequest("Quem está de folga hoje?", hoje).kind, "not_action", "consulta de folga continua sendo consulta");
+assert.equal(parseAsaFolgaLoteRequest("Tenho folga amanhã?", hoje).kind, "not_action");
+assert.equal(parseAsaFolgaLoteRequest("Quais são minhas folgas?", hoje).kind, "not_action");
+const semData = parseAsaFolgaLoteRequest("põe a Carol de folga", hoje);
+assert.deepEqual(semData, { kind: "incomplete", faltou: "data" });
+// Achar pessoas soltas na frase, sem aspas.
+const rosto = [
+  { id: "1", name: "Carol", fullName: "Carolina Gomes Jardim", preferredName: null },
+  { id: "2", name: "Julia", fullName: "Julia Mendes", preferredName: null },
+  { id: "3", name: "Ana", fullName: "Ana Souza", preferredName: null },
+  { id: "4", name: "Ana Paula", fullName: "Ana Paula Reis", preferredName: null },
+  { id: "5", name: "Dani R.", fullName: "Daniela Ribeiro", preferredName: null },
+];
+const naFrase = acharPessoasNoTexto(rosto, "põe a Carol e a Julia de folga amanhã");
+assert.deepEqual(naFrase.pessoas.map((p) => p.id).sort(), ["1", "2"]); assert.equal(naFrase.ambiguas.length, 0);
+const compostoPrimeiro = acharPessoasNoTexto(rosto, "coloque Ana Paula de folga");
+assert.deepEqual(compostoPrimeiro.pessoas.map((p) => p.id), ["4"], "o nome mais longo vale primeiro: Ana Paula não vira Ana");
+const duasAnas = acharPessoasNoTexto(rosto, "coloque a Ana de folga dia 20");
+assert.equal(duasAnas.ambiguas.length, 0, "'Ana' é o nome exato de uma só pessoa (Ana Souza)"); assert.deepEqual(duasAnas.pessoas.map((p) => p.id), ["3"]);
+const comInicial = acharPessoasNoTexto(rosto, "folga para dani r. no dia 20");
+assert.deepEqual(comInicial.pessoas.map((p) => p.id), ["5"], "nome curto com inicial");
+const sobrenomeSo = acharPessoasNoTexto(rosto, "coloque a Daniela de folga");
+assert.deepEqual(sobrenomeSo.pessoas.map((p) => p.id), ["5"], "primeiro nome do formal");
 assert.equal(parseAsaFolgaLoteRequest('Marque a tarefa "Montar palco" como concluída', hoje).kind, "not_action", "tarefa não é folga");
 assert.equal(parseAsaFolgaLoteRequest('Quais são minhas folgas?', hoje).kind, "not_action", "consulta não é ação");
+// Achar pessoa por primeiro nome, apelido ou nome parcial; nunca adivinhar quando há mais de uma.
+const gente = [
+  { id: "1", name: "Carol", fullName: "Carolina Gomes Jardim", preferredName: null },
+  { id: "2", name: "Julia", fullName: "Julia Mendes", preferredName: null },
+  { id: "3", name: "Ju Lima", fullName: "Juliana Lima", preferredName: "Ju" },
+  { id: "4", name: "Ana", fullName: "Ana Souza", preferredName: null },
+  { id: "5", name: "Ananda", fullName: "Ananda Reis", preferredName: null },
+];
+const achouCarolina = acharPessoaPorNome(gente, "carolina");
+assert.equal(achouCarolina.kind, "unica"); if (achouCarolina.kind === "unica") { assert.equal(achouCarolina.pessoa.id, "1"); assert.equal(achouCarolina.aproximado, true); }
+const achouNomeExato = acharPessoaPorNome(gente, "Carol");
+assert.equal(achouNomeExato.kind, "unica"); if (achouNomeExato.kind === "unica") assert.equal(achouNomeExato.aproximado, false);
+const achouAna = acharPessoaPorNome(gente, "ana");
+assert.equal(achouAna.kind, "unica", "o nome exato vale antes do parecido: Ana não vira Ananda"); if (achouAna.kind === "unica") assert.equal(achouAna.pessoa.id, "4");
+const achouJu = acharPessoaPorNome(gente, "ju");
+assert.equal(achouJu.kind, "unica", "o apelido exato (Ju) vale antes dos parecidos"); if (achouJu.kind === "unica") assert.equal(achouJu.pessoa.id, "3");
+const achouVarias = acharPessoaPorNome(gente, "juli");
+assert.equal(achouVarias.kind, "varias", "Juli pode ser Julia ou Juliana: não adivinha"); if (achouVarias.kind === "varias") assert.deepEqual(achouVarias.pessoas.map((p) => p.id).sort(), ["2", "3"]);
+assert.equal(acharPessoaPorNome(gente, "Maria").kind, "nenhuma");
+assert.equal(acharPessoaPorNome(gente, "ana s").kind, "unica", "duas palavras: cada uma começa uma palavra do nome");
+assert.equal(acharPessoaPorNome(gente, "   ").kind, "nenhuma");
+const achouSobrenome = acharPessoaPorNome(gente, "gomes");
+assert.equal(achouSobrenome.kind, "unica", "só um sobrenome também vale"); if (achouSobrenome.kind === "unica") assert.equal(achouSobrenome.pessoa.id, "1");
+const achouDoisSobrenomes = acharPessoaPorNome(gente, "Gomes Jardim");
+assert.equal(achouDoisSobrenomes.kind, "unica"); if (achouDoisSobrenomes.kind === "unica") assert.equal(achouDoisSobrenomes.pessoa.id, "1");
+assert.equal(acharPessoaPorNome(gente, "lima").kind, "unica", "Lima acha a Ju Lima (nome de exibição e formal)");
 // Telas novas do site: "O que tenho aqui?" precisa responder também no Painel, nas Solicitações e nas Áreas.
 for (const [pagina, papel, gerente, ferramenta] of [["/painel", "ADMIN", true, "consultar_checkins_equipe"], ["/painel", "MEMBER", false, "consultar_meu_dia"], ["/solicitacoes", "MEMBER", false, "consultar_solicitacoes"], ["/areas", "ADMIN", true, "consultar_locais"]] as const) {
   const resposta = resolveAsaCommand("o que tenho aqui?", "2026-10-16", gerente, pagina, papel);

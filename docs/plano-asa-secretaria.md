@@ -47,3 +47,29 @@ já faz e diz o que falta para a ASA ser "a secretária que mora em cada tela".
 
 Cada ação continua: prévia → confirmação → `writeHistoryEvent` na mesma transação → aviso a quem precisa,
 e "Dá para desfazer?" respondido antes de construir.
+
+## Mapa: o que a ASA faz hoje em cada tela e o que falta (16/10/2026)
+
+A meta dela: a ASA mora em **toda** tela e faz o que a tela oferece, a partir de uma frase simples, sempre com prévia,
+confirmação, Registro e aviso a quem precisa. Sem modelo de linguagem, "falar do seu jeito" se resolve com: leitor de datas
+(`services/asa-datas.ts`), nomes achados na lista de pessoas (`acharPessoaPorNome`, `acharPessoasNoTexto`) e verbos variados
+por ação. Cada ação nova segue o padrão das três fatias já feitas (prévia → confirmar → Registro na mesma transação → aviso).
+
+| Tela | O que a tela oferece | A ASA já faz | Falta |
+|---|---|---|---|
+| Meu Dia | ver o dia, check-in | consultar | check-in por mensagem ("cheguei") |
+| Escalas | ver, ajustar célula, atividade manual, programação, publicar | consultar | ajustar/trocar pessoa, atividade manual para várias pessoas, publicar (Administração) |
+| Shows | criar show, personagens, favoritos | consultar | criar show/personagem, favoritar |
+| Livro do Dia | gerar, ajustar vaga, publicar, executar | consultar | gerar o dia, trocar quem cobre uma vaga, publicar |
+| Check-in | check-in por turno, ocorrência | consultar | registrar check-in e ocorrência |
+| Responsabilidades | tarefas, responsabilidades | **criar tarefa (várias pessoas), editar, concluir, cancelar, comentar** | criar responsabilidade, delegar |
+| Folgas | mapa, lote, grupos, regras | **folga em lote e tirar** | aplicar grupo de folga, mudar regras (Administração) |
+| Solicitações | pedir, decidir, trocar | consultar | pedir a própria folga, aprovar/recusar com motivo, propor troca |
+| Painel | contagens do dia | consultar | — (leitura) |
+| Locais / Áreas / Pessoas | cadastros | consultar pessoas e locais | criar/editar pessoa, mudar área, desligar (com motivo) |
+| Registro | histórico | — | "o que mudou na folga da Ana?" |
+| Mural | avisos, reconhecer | **ciente, reação, comentário, rascunho de aviso** | publicar aviso, datas especiais |
+| Mensagens | conversas e grupos | **enviar e responder** | criar grupo |
+| Biblioteca | documentos, leitura | buscar, citar, pendências | marcar "li e entendi" |
+| Agenda | reuniões, ensaios | **criar reunião, ajustar rascunho** | confirmar, remarcar, cancelar compromisso |
+| Perfil | foto, silêncio, preferências | preferências da ASA | silêncio noturno, privacidade |

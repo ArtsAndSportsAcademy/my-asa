@@ -1,3 +1,4 @@
+import { lerDatasEmPortugues } from "./asa-datas.js";
 export type AsaCommand = {
   tool: "consultar_agenda" | "consultar_minhas_propostas_agenda" | "consultar_escalas" | "consultar_meu_dia" | "consultar_meu_checkin" | "consultar_checkins_equipe" | "consultar_livro_do_dia" | "consultar_livros_do_show" | "consultar_tarefas" | "consultar_tarefa_requisitos" | "consultar_tarefas_equipe" | "consultar_tempo_livre" | "consultar_notificacoes" | "consultar_avisos" | "consultar_mensagens" | "consultar_mural" | "consultar_pessoas" | "consultar_locais" | "consultar_entregas" | "consultar_relatorio_checkins" | "consultar_relatorio_tarefas" | "consultar_folgas" | "consultar_responsabilidades" | "consultar_responsabilidades_equipe" | "consultar_biblioteca" | "consultar_minhas_leituras_pendentes_biblioteca" | "consultar_estado_biblioteca" | "consultar_ausencias_do_dia" | "consultar_solicitacoes" | "consultar_atividades";
   input: Record<string, unknown>;
@@ -127,7 +128,7 @@ export type AsaTaskDraftParse =
   | { kind: "not_action" }
   | { kind: "incomplete" }
   /** `assigneeNames` traz todas as pessoas citadas entre aspas (uma tarefa para cada); `includeSelf` é o "para mim". `assigneeName` é a primeira, por compatibilidade. */
-  | { kind: "proposal"; title: string; assigneeName: string; assigneeNames: string[]; includeSelf: boolean; dueDate: string; priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"; description?: string; responsibilityTitle?: string; checklistLabels: string[]; mandatoryEvidences: Array<{ type: AsaTaskEvidenceType; description: string }> };
+  | { kind: "proposal"; title: string; assigneeName: string; assigneeNames: string[]; includeSelf: boolean; procurarNoTexto?: string; dueDate: string; priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"; description?: string; responsibilityTitle?: string; checklistLabels: string[]; mandatoryEvidences: Array<{ type: AsaTaskEvidenceType; description: string }> };
 
 export const ASA_TASK_MAX_ASSIGNEES = 20;
 
@@ -675,9 +676,13 @@ export function parseAsaMessageReplyRequest(value: string): AsaMessageReplyParse
   return { kind: "proposal", threadTitle, content };
 }
 
-export function parseAsaTaskDraftRequest(value: string): AsaTaskDraftParse {
+export function parseAsaTaskDraftRequest(value: string, today = new Date().toISOString().slice(0, 10)): AsaTaskDraftParse {
   const normalized = normalizeAsaText(value);
-  if (!/^(crie|criar|prepare|preparar)\b/.test(normalized) || !/\btarefa\b/.test(normalized)) return { kind: "not_action" };
+  // Verbos de criar variados ("cria", "faça", "monta", "passa", "delegue"...) ou a frase começando em "uma tarefa". Verbos de
+  // alterar/concluir/cancelar ficam de fora: são de outros pedidos.
+  const semPolidez = normalized.replace(POLIDEZ, "");
+  const criar = /^(crie|cria|criar|prepare|prepara|preparar|faca|faz|fazer|monte|monta|montar|abra|abre|abrir|passe|passa|passar|atribua|atribui|atribuir|delegue|delega|delegar|de|da|dar|registre|registra|registrar|lance|lanca|lancar|uma tarefa|tarefa|nova tarefa|de uma tarefa)\b/.test(semPolidez);
+  if (!criar || !/\btarefa\b/.test(normalized)) return { kind: "not_action" };
   const descriptionMatch = value.match(/\bcom\s+descri[cç][aã]o\s*[:=]?\s*["“‘]([^"”’\n]+)["”’]/i);
   const responsibilityMatch = value.match(/\bvinculad[oa]\s+(?:à|a)\s+responsabilidade\s*[:=]?\s*["“‘]([^"”’\n]+)["”’]/i);
   const checklistMatch = value.match(/\bcom\s+checklist(?:\s+obrigat[oó]ria)?\s*[:=]?\s*["“‘]([^"”’\n]+)["”’]/i);
@@ -708,12 +713,13 @@ export function parseAsaTaskDraftRequest(value: string): AsaTaskDraftParse {
   const includeSelf = /\bpara\s+(?:mim|eu)\b|(?:\be|,)\s+(?:para\s+)?mim\b|\bmim\s+e\b/.test(foraDasAspas);
   const personCount = phrases.length - 1 - optionalPhrases.length;
   if (personCount < 0 || optionalPhrases.some((item, index) => phrases[1 + personCount + index] !== item.text)) return { kind: "incomplete" };
-  const dateMatch = normalized.match(/\b(?:ate|prazo)\s+(\d{1,2}\/\d{1,2}\/\d{4})\b/);
-  if (!/["“‘][^"”’\n]+["”’]\s+para\s+(?:mim\b|eu\b|["“‘])/i.test(value) || !dateMatch) return { kind: "incomplete" };
+  // O prazo em fala solta: "até 30/09/2026", "até sexta", "para amanhã", "dia 25", "até o dia 25 de novembro".
+  const prazoLido = lerDatasEmPortugues(foraDasAspas, today);
+  if (prazoLido.kind !== "ok" || prazoLido.datas.length !== 1) return { kind: "incomplete" };
   const title = phrases[0];
   const assigneeNames = phrases.slice(1, 1 + personCount).map((name) => name.trim());
   const distinctNames = new Set(assigneeNames.map(normalizeAsaText));
-  if (!title || title.length > 160 || assigneeNames.length + (includeSelf ? 1 : 0) < 1
+  if (!title || title.length > 160
     || assigneeNames.length + (includeSelf ? 1 : 0) > ASA_TASK_MAX_ASSIGNEES
     || distinctNames.size !== assigneeNames.length || assigneeNames.some((name) => !name || name.length > 120)
     || (descriptionText && descriptionText.length > 2000)
@@ -739,17 +745,12 @@ export function parseAsaTaskDraftRequest(value: string): AsaTaskDraftParse {
   }
   if (mandatoryEvidences.length > 12
     || new Set(mandatoryEvidences.map((item) => `${item.type}:${normalizeAsaText(item.description)}`)).size !== mandatoryEvidences.length) return { kind: "incomplete" };
-  const [, dayText, monthText, yearText] = dateMatch[1]!.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)!;
-  const day = Number(dayText);
-  const month = Number(monthText);
-  const year = Number(yearText);
-  const due = new Date(Date.UTC(year, month - 1, day, 12));
-  if (due.getUTCFullYear() !== year || due.getUTCMonth() !== month - 1 || due.getUTCDate() !== day) return { kind: "incomplete" };
   const priority = /\bprioridade\s+critica\b/.test(normalized) ? "CRITICAL"
     : /\bprioridade\s+alta\b/.test(normalized) ? "HIGH"
     : /\bprioridade\s+baixa\b/.test(normalized) ? "LOW"
     : "MEDIUM";
-  return { kind: "proposal", title, assigneeName, assigneeNames, includeSelf, dueDate: `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`, priority, ...(descriptionText ? { description: descriptionText } : {}), ...(responsibilityText ? { responsibilityTitle: responsibilityText } : {}), checklistLabels, mandatoryEvidences };
+  const procurar = assigneeNames.length || includeSelf ? undefined : value.replace(/["“‘][^"”’\n]*["”’]/g, " ");
+  return { kind: "proposal", title, assigneeName, assigneeNames, includeSelf, ...(procurar ? { procurarNoTexto: procurar } : {}), dueDate: prazoLido.datas[0]!, priority, ...(descriptionText ? { description: descriptionText } : {}), ...(responsibilityText ? { responsibilityTitle: responsibilityText } : {}), checklistLabels, mandatoryEvidences };
 }
 
 export function parseAsaTaskDueDateUpdate(value: string): AsaTaskDueDateUpdateParse {
@@ -1616,53 +1617,112 @@ export const ASA_FOLGA_MAX_PESSOAS = 20;
 export const ASA_FOLGA_MAX_DIAS = 31;
 export type AsaFolgaLoteParse =
   | { kind: "not_action" }
-  | { kind: "incomplete" }
-  /** `tipo` null = tirar a folga (limpar os dias). */
-  | { kind: "proposal"; tipo: "DAY_OFF" | "RECESSO" | null; names: string[]; dates: string[]; motivo?: string };
+  /** `faltou` diz o que a pessoa precisa completar: a data, uma data que não existe, ou quem. */
+  | { kind: "incomplete"; faltou?: "data" | "data_invalida" | "pessoas" }
+  /** `tipo` null = tirar a folga. `names` vem das aspas; sem aspas fica vazio e `procurarNoTexto` leva a frase para a ASA achar os nomes na lista de pessoas. */
+  | { kind: "proposal"; tipo: "DAY_OFF" | "RECESSO" | null; names: string[]; dates: string[]; motivo?: string; procurarNoTexto?: string };
 
-/** "coloque de folga "Ana" e "Bia" nos dias 20/10, 21/10 e 25/10" · "de 20/10/2026 a 24/10/2026" · "tire a folga de "Ana" do dia 20/10". */
+const INICIO_DE_CONSULTA = /^(quem|quais|qual|quantos|quantas|tem|temos|tenho|ha|havera|existe|mostr\w*|me mostr\w*|ver|veja|como|onde|quando|minha|minhas|meus|meu)\b/;
+const POLIDEZ = /^(asa\s+|por favor\s+|favor\s+|pode\s+|poderia\s+|consegue\s+|voce pode\s+|voce poderia\s+|da pra\s+|da para\s+|gostaria de\s+|queria\s+|quero que\s+|quero\s+|preciso que\s+|preciso\s+|precisamos\s+|vamos\s+)+/;
+
+/**
+ * Pedido de folga em lote, em linguagem solta: "coloque de folga "Ana" e "Bia" nos dias 20/10 e 22/10", "põe a Carol e a Julia
+ * de folga amanhã", "Carol e Julia vão folgar de segunda a quarta", "tira a folga da Ana dia 20". Os nomes podem vir entre
+ * aspas ou soltos na frase (a ASA procura na lista de pessoas); as datas passam por `lerDatasEmPortugues`.
+ */
 export function parseAsaFolgaLoteRequest(value: string, today: string): AsaFolgaLoteParse {
   const normalized = normalizeAsaText(value);
-  const poe = /^(coloque|colocar|ponha|por|marque|marcar|deixe|deixar)\b.*\b(folga|recesso)\b/.test(normalized);
-  const tira = /^(tire|tirar|retire|retirar|remova|remover|limpe|limpar|cancele|cancelar)\b.*\b(folga|recesso)\b/.test(normalized)
-    && !/\b(tarefa|reuniao|aviso|compromisso)\b/.test(normalized.split(/["“‘]/, 1)[0]!);
-  if (!poe && !tira) return { kind: "not_action" };
-  // "marque a tarefa/reunião..." e afins não são folga.
-  if (poe && /^(marque|marcar)\b/.test(normalized) && !/\b(de folga|folga para|recesso)\b/.test(normalized.split(/["“‘]/, 1)[0]!)) return { kind: "not_action" };
-  const motivoMatch = value.match(/\bcom\s+motivo\s*[:=]?\s*["“‘]([^"”’\n]+)["”’]/i);
-  const frases = quotedPhrases(value);
-  const motivo = motivoMatch?.[1]?.trim();
-  const names = (motivo ? frases.filter((frase, indice) => !(frase === motivo && indice === frases.length - 1)) : frases).map((nome) => nome.trim());
-  if (!names.length || names.length > ASA_FOLGA_MAX_PESSOAS || new Set(names.map(normalizeAsaText)).size !== names.length
-    || names.some((nome) => nome.length > 120) || (motivo && motivo.length > 300)) return { kind: "incomplete" };
-  const foraDasAspas = normalizeAsaText(value.replace(/["“‘][^"”’\n]*["”’]/g, " "));
-  const DATA = String.raw`(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?`;
-  const paraIso = (dia: string, mes: string, ano?: string): string | null => {
-    const hoje = new Date(`${today}T12:00:00Z`);
-    let year = ano ? Number(ano) : hoje.getUTCFullYear();
-    const quando = new Date(Date.UTC(year, Number(mes) - 1, Number(dia), 12));
-    if (quando.getUTCFullYear() !== year || quando.getUTCMonth() !== Number(mes) - 1 || quando.getUTCDate() !== Number(dia)) return null;
-    if (!ano && quando < new Date(`${today}T00:00:00Z`)) year += 1;
-    const final = new Date(Date.UTC(year, Number(mes) - 1, Number(dia), 12));
-    if (final.getUTCMonth() !== Number(mes) - 1) return null;
-    return final.toISOString().slice(0, 10);
+  if (!/\b(folga|folgas|folgar|folgam|folgando|recesso)\b/.test(normalized)) return { kind: "not_action" };
+  if (/\b(tarefa|reuniao|aviso|compromisso|mensagem)\b/.test(normalized.split(/["“‘]/, 1)[0]!)) return { kind: "not_action" };
+  const semPolidez = normalized.replace(POLIDEZ, "");
+  const tira = /\b(tire|tira|tirar|retire|retira|retirar|remova|remove|remover|limpe|limpa|limpar|cancele|cancela|cancelar|desmarque|desmarca|desmarcar|apague|apaga|apagar)\b/.test(semPolidez);
+  const poe = /\b(coloque|coloca|colocar|poe|ponha|por|marque|marca|marcar|deixe|deixa|deixar|bota|bote|botar|lance|lanca|registre|registra|registrar|de folga|de recesso|folgam|folgar|folga pra|folga para|vai folgar|vao folgar)\b/.test(semPolidez);
+  if (INICIO_DE_CONSULTA.test(semPolidez) && !tira && !/\b(coloque|coloca|poe|ponha|marque|marca|deixe|deixa|bota|bote)\b/.test(semPolidez)) return { kind: "not_action" };
+  if (!tira && !poe) return { kind: "not_action" };
+
+  // O motivo: entre aspas depois de "motivo", ou o resto da frase depois de "motivo"/"porque".
+  let motivo: string | undefined;
+  let semMotivo = value;
+  const motivoAspas = value.match(/\b(?:com\s+)?motivo\s*[:=]?\s*["“‘]([^"”’\n]+)["”’]/i);
+  const motivoLivre = value.match(/\b(?:com\s+(?:o\s+)?motivo|motivo|porque|por causa d[eao])\s*[:=]?\s*([^"“‘”’\n]{3,300})$/i);
+  if (motivoAspas) { motivo = motivoAspas[1]!.trim(); semMotivo = value.slice(0, motivoAspas.index); }
+  else if (motivoLivre) { motivo = motivoLivre[1]!.trim().replace(/[.!?]+$/, ""); semMotivo = value.slice(0, motivoLivre.index); }
+  if (motivo && motivo.length > 300) return { kind: "incomplete" };
+
+  const frases = quotedPhrases(semMotivo);
+  const names = frases.map((nome) => nome.trim());
+  if (names.length > ASA_FOLGA_MAX_PESSOAS || new Set(names.map(normalizeAsaText)).size !== names.length || names.some((nome) => nome.length > 120)) return { kind: "incomplete", faltou: "pessoas" };
+  const foraDasAspas = semMotivo.replace(/["“‘][^"”’\n]*["”’]/g, " ");
+  const lido = lerDatasEmPortugues(foraDasAspas, today);
+  if (lido.kind === "nenhuma") return { kind: "incomplete", faltou: "data" };
+  if (lido.kind === "invalida") return { kind: "incomplete", faltou: "data_invalida" };
+  if (lido.datas.length > ASA_FOLGA_MAX_DIAS) return { kind: "incomplete", faltou: "data" };
+  const tipo = tira ? null : /\brecesso\b/.test(normalized) ? "RECESSO" : "DAY_OFF";
+  return { kind: "proposal", tipo, names, dates: lido.datas, ...(motivo ? { motivo } : {}), ...(names.length ? {} : { procurarNoTexto: semMotivo }) };
+}
+
+export type PessoaParaAcharPorNome = { id: string; name: string; fullName?: string | null; preferredName?: string | null };
+export type AchadoPorNome<T> =
+  | { kind: "unica"; pessoa: T; aproximado: boolean }
+  | { kind: "varias"; pessoas: T[] }
+  | { kind: "nenhuma" };
+
+/**
+ * Quem a pessoa quis dizer com o que escreveu entre aspas. Primeiro o nome igual (de exibição, apelido ou formal);
+ * se não houver, as pessoas em que cada palavra escrita começa uma palavra do nome ("carolina" acha "Carolina Gomes",
+ * "ana s" acha "Ana Souza"). Mais de uma pessoa possível nunca é adivinhada: devolve as opções para a ASA perguntar.
+ */
+export function acharPessoaPorNome<T extends PessoaParaAcharPorNome>(candidatos: T[], consulta: string): AchadoPorNome<T> {
+  const buscado = normalizeAsaText(consulta);
+  if (!buscado) return { kind: "nenhuma" };
+  const nomesDe = (pessoa: T) => [pessoa.name, pessoa.preferredName, pessoa.fullName].filter((valor): valor is string => Boolean(valor)).map(normalizeAsaText);
+  const exatos = candidatos.filter((pessoa) => nomesDe(pessoa).includes(buscado));
+  if (exatos.length === 1) return { kind: "unica", pessoa: exatos[0]!, aproximado: false };
+  if (exatos.length > 1) return { kind: "varias", pessoas: exatos };
+  const palavras = buscado.split(" ");
+  const parecidos = candidatos.filter((pessoa) => {
+    const palavrasDoNome = nomesDe(pessoa).join(" ").split(" ");
+    return palavras.every((palavra) => palavrasDoNome.some((candidata) => candidata.startsWith(palavra)));
+  });
+  if (parecidos.length === 1) return { kind: "unica", pessoa: parecidos[0]!, aproximado: true };
+  if (parecidos.length > 1) return { kind: "varias", pessoas: parecidos };
+  return { kind: "nenhuma" };
+}
+
+const PALAVRAS_QUE_NAO_SAO_NOMES = new Set(["a", "e", "o", "as", "os", "de", "da", "do", "das", "dos", "dia", "dias", "para", "pra", "com", "no", "na", "em", "hoje", "amanha", "folga", "folgas", "recesso", "tire", "tira", "ponha", "poe", "por", "coloque", "coloca", "marque", "marca", "deixe", "deixa", "asa", "favor", "pode", "mim", "eu", "vai", "vao", "ate", "ao"]);
+
+/**
+ * Acha na frase quem está sendo pedido, mesmo sem aspas: nome de exibição ("Carol"), apelido, nome formal ou só o primeiro
+ * nome. A chave mais longa vale primeiro ("Ana Souza" antes de "Ana"); uma chave que serve para duas pessoas ("Ana" com duas
+ * Anas) nunca é adivinhada: vai para `ambiguas` e a ASA pergunta.
+ */
+export function acharPessoasNoTexto<T extends PessoaParaAcharPorNome>(candidatos: T[], texto: string): { pessoas: T[]; ambiguas: Array<{ palavra: string; opcoes: T[] }> } {
+  // Nome inteiro vale mais que primeiro nome: "Ana" é a Ana, mesmo que "Ana Paula" também comece com "Ana".
+  const inteiros = new Map<string, T[]>(), primeiros = new Map<string, T[]>();
+  const registrar = (mapa: Map<string, T[]>, chave: string, pessoa: T) => {
+    if (chave.length < 2 || PALAVRAS_QUE_NAO_SAO_NOMES.has(chave)) return;
+    mapa.set(chave, [...(mapa.get(chave) ?? []).filter((outra) => outra.id !== pessoa.id), pessoa]);
   };
-  const intervalo = foraDasAspas.match(new RegExp(String.raw`\bde\s+(?:dia\s+)?${DATA}\s+(?:a|ate|ao)\s+(?:dia\s+)?${DATA}`));
-  let dates: string[] = [];
-  if (intervalo) {
-    const inicio = paraIso(intervalo[1]!, intervalo[2]!, intervalo[3]);
-    const fim = paraIso(intervalo[4]!, intervalo[5]!, intervalo[6]);
-    if (!inicio || !fim || fim < inicio) return { kind: "incomplete" };
-    for (let t = new Date(`${inicio}T12:00:00Z`); t <= new Date(`${fim}T12:00:00Z`) && dates.length <= ASA_FOLGA_MAX_DIAS; t.setUTCDate(t.getUTCDate() + 1)) dates.push(t.toISOString().slice(0, 10));
-  } else {
-    for (const m of foraDasAspas.matchAll(new RegExp(DATA, "g"))) {
-      const iso = paraIso(m[1]!, m[2]!, m[3]);
-      if (!iso) return { kind: "incomplete" };
-      dates.push(iso);
+  for (const pessoa of candidatos) {
+    for (const nome of [pessoa.name, pessoa.preferredName, pessoa.fullName]) {
+      if (!nome) continue;
+      const normal = normalizeAsaText(nome);
+      registrar(inteiros, normal, pessoa);
+      const primeira = normal.split(" ")[0];
+      if (primeira) registrar(primeiros, primeira, pessoa);
     }
-    dates = [...new Set(dates)].sort();
   }
-  if (!dates.length || dates.length > ASA_FOLGA_MAX_DIAS) return { kind: "incomplete" };
-  const tipo = tira ? null : /\brecesso\b/.test(foraDasAspas) ? "RECESSO" : "DAY_OFF";
-  return { kind: "proposal", tipo, names, dates, ...(motivo ? { motivo } : {}) };
+  let restante = ` ${normalizeAsaText(texto)} `;
+  const pessoas: T[] = [];
+  const ambiguas: Array<{ palavra: string; opcoes: T[] }> = [];
+  const chaves = [...new Set([...inteiros.keys(), ...primeiros.keys()])].sort((a, b) => b.split(" ").length - a.split(" ").length || b.length - a.length);
+  for (const chave of chaves) {
+    const trecho = ` ${chave} `;
+    if (!restante.includes(trecho)) continue;
+    const donas = inteiros.get(chave) ?? primeiros.get(chave)!;
+    restante = restante.split(trecho).join(" ");
+    if (donas.length === 1) { if (!pessoas.some((p) => p.id === donas[0]!.id)) pessoas.push(donas[0]!); }
+    else ambiguas.push({ palavra: chave, opcoes: donas });
+  }
+  return { pessoas, ambiguas };
 }

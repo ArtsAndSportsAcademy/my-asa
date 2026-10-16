@@ -65,7 +65,7 @@ import { resolveScaleAllocations, computeFreeGaps } from "../services/scale-merg
 import { aggregateAsaLibraryGaps, createAsaLibraryGapAction } from "../services/asa-library-gaps.js";
 import { selectAsaLibraryCitation } from "../services/asa-library-citations.js";
 import { asaPreferenceLabel, formatAsaPreferenceValue, parseAsaPreferenceCommand, parseAsaPreferencePatch, type AsaPreferencePatch } from "../services/asa-preferences.js";
-import { ASA_TASK_EVIDENCE_TYPES, ASA_UNRECOGNIZED_COMMAND_REPLY, formatAsaCapabilityReply, formatAsaCommandReply, formatAsaTaskCommentsReply, isAsaCapabilityRequest, isAsaUnrecognizedCommandResolution, normalizeAsaText, parseAsaAgendaDraftRenameRequest, parseAsaAgendaMeetingRequest, parseAsaDirectMessageRequest, parseAsaLearningApproval, parseAsaLearningRequest, parseAsaMessageReplyRequest, parseAsaMuralAckRequest, parseAsaMuralCommentRequest, parseAsaMuralReactionRequest, parseAsaNoticeDraftRequest, parseAsaNoticeDraftUpdateRequest, parseAsaTaskAssigneeUpdate, parseAsaTaskCancellationRequest, parseAsaTaskChecklistUpdateRequest, parseAsaTaskCommentRequest, parseAsaTaskCommentsQuery, parseAsaTaskCompletionRequest, parseAsaTaskDescriptionUpdate, parseAsaFolgaLoteRequest, parseAsaTaskDraftRequest, parseAsaTaskDueDateUpdate, parseAsaTaskEvidenceLinkRequest, parseAsaTaskPriorityUpdate, parseAsaTaskRequirementsUpdate, parseAsaTaskResponsibilityUpdate, parseAsaTaskStartRequest, parseAsaTaskSubmitForApprovalRequest, parseAsaTaskTitleUpdate, parseAsaUnrecognizedReviewRequest, resolveAsaAgendaSupervisorScope, resolveAsaCommand, resolveAsaOperationSelection } from "../services/asa-command-engine.js";
+import { ASA_TASK_EVIDENCE_TYPES, ASA_UNRECOGNIZED_COMMAND_REPLY, formatAsaCapabilityReply, formatAsaCommandReply, formatAsaTaskCommentsReply, isAsaCapabilityRequest, isAsaUnrecognizedCommandResolution, normalizeAsaText, parseAsaAgendaDraftRenameRequest, parseAsaAgendaMeetingRequest, parseAsaDirectMessageRequest, parseAsaLearningApproval, parseAsaLearningRequest, parseAsaMessageReplyRequest, parseAsaMuralAckRequest, parseAsaMuralCommentRequest, parseAsaMuralReactionRequest, parseAsaNoticeDraftRequest, parseAsaNoticeDraftUpdateRequest, parseAsaTaskAssigneeUpdate, parseAsaTaskCancellationRequest, parseAsaTaskChecklistUpdateRequest, parseAsaTaskCommentRequest, parseAsaTaskCommentsQuery, parseAsaTaskCompletionRequest, parseAsaTaskDescriptionUpdate, acharPessoaPorNome, acharPessoasNoTexto, parseAsaFolgaLoteRequest, parseAsaTaskDraftRequest, parseAsaTaskDueDateUpdate, parseAsaTaskEvidenceLinkRequest, parseAsaTaskPriorityUpdate, parseAsaTaskRequirementsUpdate, parseAsaTaskResponsibilityUpdate, parseAsaTaskStartRequest, parseAsaTaskSubmitForApprovalRequest, parseAsaTaskTitleUpdate, parseAsaUnrecognizedReviewRequest, resolveAsaAgendaSupervisorScope, resolveAsaCommand, resolveAsaOperationSelection } from "../services/asa-command-engine.js";
 import {
   GroupActionError,
   createGroupCore,
@@ -5374,7 +5374,7 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
     const directMessage = parseAsaDirectMessageRequest(content);
     const noticeDraftUpdate = parseAsaNoticeDraftUpdateRequest(content);
     const noticeDraft = parseAsaNoticeDraftRequest(content);
-    const taskDraft = parseAsaTaskDraftRequest(content);
+    const taskDraft = parseAsaTaskDraftRequest(content, operationalDate());
     const folgaLote = parseAsaFolgaLoteRequest(content, operationalDate());
     const taskDueDateUpdate = parseAsaTaskDueDateUpdate(content);
     const taskAssigneeUpdate = parseAsaTaskAssigneeUpdate(content);
@@ -6320,7 +6320,10 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
         }
       }
     } else if (folgaLote.kind === "incomplete") {
-      fullResponse = "Para marcar folga de várias pessoas, use: coloque de folga \"Ana Souza\" e \"Bia Lima\" nos dias 20/10/2026 e 22/10/2026 (ou: de 20/10/2026 a 24/10/2026). Vale também \"de recesso\". Para tirar: tire a folga de \"Ana Souza\" do dia 20/10/2026. Se o mês de folgas já estiver publicado, acrescente: com motivo \"texto\". Vou mostrar uma prévia antes de gravar.";
+      const faltouNaFolga = folgaLote.faltou === "data" ? "Faltou dizer o dia. "
+        : folgaLote.faltou === "data_invalida" ? "Não entendi uma das datas (ela existe no calendário? o período está na ordem certa?). "
+        : folgaLote.faltou === "pessoas" ? "Não entendi quem: confira os nomes (sem repetir). " : "";
+      fullResponse = `${faltouNaFolga}Posso marcar folga ou recesso de várias pessoas de uma vez. Diga quem e quando, do seu jeito: põe a Carol e a Julia de folga amanhã · coloque de folga "Ana Souza" nos dias 20, 21 e 25 · Bia de recesso de segunda a quarta · de folga do dia 20 ao 24 de novembro. Para tirar: tire a folga da Carol dia 20. Se o mês de folgas já estiver publicado, acrescente o motivo: porque ... ou com motivo "texto". Vou mostrar uma prévia antes de gravar.`;
     } else if (folgaLote.kind === "proposal") {
       if (!MANAGER_ROLES.includes(user.role)) {
         fullResponse = user.role === "DIR"
@@ -6332,7 +6335,7 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
           fullResponse = operationSelection.message;
         } else {
           const operation = accessibleOperations.find((item) => item.id === operationSelection.operationId);
-          const candidatos = await db.selectDistinct({ id: usersTable.id, name: usersTable.name })
+          const candidatos = await db.selectDistinct({ id: usersTable.id, name: usersTable.name, fullName: usersTable.fullName, preferredName: usersTable.preferredName })
             .from(userRolesTable)
             .innerJoin(usersTable, eq(usersTable.id, userRolesTable.userId))
             .where(and(
@@ -6342,12 +6345,21 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
               ne(usersTable.status, "INACTIVE"),
             ));
           const pessoas: Array<{ id: string; name: string }> = [];
+          const entendidos: string[] = [];
           const problemas: string[] = [];
+          if (!folgaLote.names.length) {
+            // Sem aspas: procura na frase quem é da lista de pessoas da operação (nome curto, primeiro nome, formal).
+            const nasFrase = acharPessoasNoTexto(candidatos, folgaLote.procurarNoTexto ?? "");
+            for (const ambigua of nasFrase.ambiguas) problemas.push(`${ambigua.palavra} pode ser ${ambigua.opcoes.slice(0, 5).map((pessoa) => pessoa.fullName || pessoa.name).join(", ")}: diga o nome completo`);
+            if (nasFrase.pessoas.length > 20) problemas.push("são pessoas demais para um pedido só (no máximo 20)");
+            else pessoas.push(...nasFrase.pessoas);
+            if (!nasFrase.pessoas.length && !nasFrase.ambiguas.length) problemas.push(`não identifiquei quem deve ficar de folga na operação ${operation?.name ?? "selecionada"}: escreva o nome (pode ser o nome curto, o primeiro nome ou um sobrenome)`);
+          }
           for (const nome of folgaLote.names) {
-            const achados = candidatos.filter((candidato) => normalizeAsaText(candidato.name) === normalizeAsaText(nome));
-            if (achados.length > 1) problemas.push(`encontrei mais de uma pessoa chamada ${nome} (informe o nome completo)`);
-            else if (achados.length === 0) problemas.push(`não encontrei ${nome} como pessoa ativa da operação ${operation?.name ?? "selecionada"}`);
-            else pessoas.push(achados[0]!);
+            const achado = acharPessoaPorNome(candidatos, nome);
+            if (achado.kind === "varias") problemas.push(`${nome} pode ser ${achado.pessoas.slice(0, 5).map((pessoa) => pessoa.fullName || pessoa.name).join(", ")}${achado.pessoas.length > 5 ? " e outras" : ""}: use o nome completo`);
+            else if (achado.kind === "nenhuma") problemas.push(`não encontrei ${nome} como pessoa ativa da operação ${operation?.name ?? "selecionada"}`);
+            else { pessoas.push(achado.pessoa); if (achado.aproximado) entendidos.push(`“${nome}” como ${achado.pessoa.fullName || achado.pessoa.name}`); }
           }
           const recusa = problemas.length ? null : await recusaDeFolgaEmLote({ role: user.role, organizationId: user.organizationId!, sub: user.sub }, operationSelection.operationId, pessoas.map((pessoa) => pessoa.id));
           const primeiroDia = folgaLote.dates[0]!;
@@ -6407,6 +6419,7 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
               dates: folgaLote.dates, motivo: folgaLote.motivo ?? null, mesPublicado, expiresAt: expiresAt.toISOString(),
             };
             fullResponse = `Prévia de folga em lote\nOperação: ${operation?.name ?? "Operação"}\n${acao}\nPessoas (${pessoas.length}): ${nomes}\nDias (${folgaLote.dates.length}): ${diasTexto}`
+              + (entendidos.length ? `\nEntendi ${entendidos.join("; ")}.` : "")
               + (folgaLote.motivo ? `\nMotivo: ${folgaLote.motivo}` : "")
               + (substituidas.length ? `\nVai substituir: ${substituidas.slice(0, 8).join("; ")}${substituidas.length > 8 ? ` e mais ${substituidas.length - 8}` : ""}.` : "")
               + (atencao.length ? `\nAtenção na cobertura (só aviso; você decide):\n${atencao.slice(0, 8).map((linha) => `• ${linha}`).join("\n")}${atencao.length > 8 ? `\n• e mais ${atencao.length - 8}.` : ""}` : "")
@@ -6442,7 +6455,7 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
           fullResponse = operationSelection.message;
         } else {
           const operation = accessibleOperations.find((item) => item.id === operationSelection.operationId);
-          const candidates = await db.selectDistinct({ id: usersTable.id, name: usersTable.name })
+          const candidates = await db.selectDistinct({ id: usersTable.id, name: usersTable.name, fullName: usersTable.fullName, preferredName: usersTable.preferredName })
             .from(userRolesTable)
             .innerJoin(usersTable, eq(usersTable.id, userRolesTable.userId))
             .where(and(
@@ -6453,12 +6466,21 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
             ));
           // Uma tarefa para cada pessoa citada; "para mim" inclui quem pediu. Se qualquer nome falhar, nada é criado.
           const resolvidos: Array<{ id: string; name: string }> = [];
+          const entendidos: string[] = [];
           const problemas: string[] = [];
+          if (!taskDraft.assigneeNames.length && !taskDraft.includeSelf) {
+            // Sem aspas nos nomes: procura na frase quem é da lista de pessoas da operação.
+            const nasFrase = acharPessoasNoTexto(candidates, taskDraft.procurarNoTexto ?? "");
+            for (const ambigua of nasFrase.ambiguas) problemas.push(`${ambigua.palavra} pode ser ${ambigua.opcoes.slice(0, 5).map((pessoa) => pessoa.fullName || pessoa.name).join(", ")}: diga o nome completo`);
+            if (nasFrase.pessoas.length > 20) problemas.push("são pessoas demais para um pedido só (no máximo 20)");
+            else resolvidos.push(...nasFrase.pessoas);
+            if (!nasFrase.pessoas.length && !nasFrase.ambiguas.length) problemas.push(`não identifiquei quem vai receber a tarefa na operação ${operation?.name ?? "selecionada"}: escreva o nome (pode ser o nome curto, o primeiro nome ou um sobrenome) ou diga "para mim"`);
+          }
           for (const nome of taskDraft.assigneeNames) {
-            const achados = candidates.filter((candidate) => normalizeAsaText(candidate.name) === normalizeAsaText(nome));
-            if (achados.length > 1) problemas.push(`encontrei mais de uma pessoa chamada ${nome} (informe o nome completo)`);
-            else if (achados.length === 0) problemas.push(`não encontrei ${nome} como pessoa ativa da operação ${operation?.name ?? "selecionada"}`);
-            else resolvidos.push(achados[0]!);
+            const achado = acharPessoaPorNome(candidates, nome);
+            if (achado.kind === "varias") problemas.push(`${nome} pode ser ${achado.pessoas.slice(0, 5).map((pessoa) => pessoa.fullName || pessoa.name).join(", ")}${achado.pessoas.length > 5 ? " e outras" : ""}: use o nome completo`);
+            else if (achado.kind === "nenhuma") problemas.push(`não encontrei ${nome} como pessoa ativa da operação ${operation?.name ?? "selecionada"}`);
+            else { resolvidos.push(achado.pessoa); if (achado.aproximado) entendidos.push(`“${nome}” como ${achado.pessoa.fullName || achado.pessoa.name}`); }
           }
           if (taskDraft.includeSelf) {
             const eu = candidates.find((candidate) => candidate.id === user.sub);
@@ -6535,7 +6557,7 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
                 : "";
               const descriptionPreview = taskDraft.description ? `\nDescrição: ${taskDraft.description}` : "";
               const responsibilityPreview = linkedResponsibility ? `\nResponsabilidade: ${linkedResponsibility.title}` : "";
-              fullResponse = `Prévia da tarefa\nOperação: ${operation?.name ?? "Operação"}\nTítulo: ${taskDraft.title}\n${assignees.length > 1 ? `Responsáveis (${assignees.length}): ${nomesDosResponsaveis}\nSerão criadas ${assignees.length} tarefas, uma para cada pessoa.` : `Responsável: ${assignee.name}`}${responsibilityPreview}\nPrazo: ${taskDraft.dueDate.split("-").reverse().join("/")}\nPrioridade: ${priorityLabel}${descriptionPreview}${checklistPreview}${evidencePreview}\n\nNada foi gravado. Confirme pelo botão para criar a tarefa; a conclusão seguirá o fluxo de aprovação.`;
+              fullResponse = `Prévia da tarefa\nOperação: ${operation?.name ?? "Operação"}\nTítulo: ${taskDraft.title}\n${assignees.length > 1 ? `Responsáveis (${assignees.length}): ${nomesDosResponsaveis}\nSerão criadas ${assignees.length} tarefas, uma para cada pessoa.` : `Responsável: ${assignee.name}`}${entendidos.length ? `\nEntendi ${entendidos.join("; ")}.` : ""}${responsibilityPreview}\nPrazo: ${taskDraft.dueDate.split("-").reverse().join("/")}\nPrioridade: ${priorityLabel}${descriptionPreview}${checklistPreview}${evidencePreview}\n\nNada foi gravado. Confirme pelo botão para criar a tarefa; a conclusão seguirá o fluxo de aprovação.`;
               action.previewResponse = fullResponse;
               toolsUsed.push("asa.task.preview");
               actionsExecuted.push(action);
