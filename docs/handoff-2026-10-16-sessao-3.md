@@ -91,6 +91,15 @@ limite de cobertura é **máximo** por área (não mínimo por função). **Não
 - **Token e senha:** o Playwright mostra o código que roda, inclusive tokens curtos de teste. Eles são do banco de
   teste e vencem em 15 minutos; a senha da empresa de teste nunca é impressa (fica num arquivo fora do repositório).
 
+## 6b. Conferência em celular simulado (16/10, depois da revisão)
+
+No navegador com tela de 375 px, toque e agente de Android (não é um telefone de verdade): **Perfil** (silêncio noturno, aniversário),
+**primeiro acesso com senha provisória** e **PDF da Biblioteca** (abre no toque numa janela nova, como PDF, sem erro). Corrigido: as
+opções do Perfil e os filtros da Biblioteca tinham 40 e 25 px de altura e passaram a 44 px. **Não dá para ver sem o aparelho:** o teclado
+real cobrindo botões, o bloqueio de pop-up do navegador do celular e o leitor de PDF do sistema. Efeito colateral no banco de teste: a
+senha da conta `teste.elenco29` foi trocada nesse teste e **não é mais a do arquivo de senhas**; para usá-la, redefina em Cadastros.
+No documento "Regras do camarim (teste)" da empresa de teste agora há um PDF pequeno anexado.
+
 ## 7. Próximos passos, em ordem
 
 1. **Perguntar à Babi** (pontos que ficaram como escolha minha acima) e a quem constrói o app: pode enviar ao GitHub e

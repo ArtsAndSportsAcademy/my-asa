@@ -49,9 +49,9 @@ Legenda: **Revisada** = passou pelas 16 perguntas e foi vista no navegador. **Pa
 
 | Tela | Situação |
 |---|---|
-| Perfil (silêncio noturno) | **Revisada em 16/10** a 375 px com a empresa de teste: o grupo de opções do aniversário passava 3 px da largura (corrigido); links de toque pequeno já têm área de 44 px. Falta só a Babi/quem constrói conferir **no telefone de verdade** |
+| Perfil (silêncio noturno) | **Revisada em 16/10** a 375 px com a empresa de teste: o grupo de opções do aniversário passava 3 px da largura (corrigido); links de toque pequeno já têm área de 44 px. Em **celular simulado** (375 px, toque, Android): silêncio noturno mostra "Ainda não vale" com Descartar e Salvar horário, descartar volta, salvar persiste depois de recarregar; opções de aniversário passaram a 44 px. Falta conferir **no telefone de verdade** (teclado real) |
 | Solicitações (aba de Folgas) | **Parcial**, junto com Folgas |
-| Login e troca de senha | **Revisado em 16/10** (login a 375 px: campos de 48 px, sem transbordo, "Usuário ou senha não conferem" só quando é isso); a troca de senha obrigatória segue sem passada própria |
+| Login e troca de senha | **Revisado em 16/10** (login a 375 px: campos de 48 px, sem transbordo, "Usuário ou senha não conferem" só quando é isso); **Troca de senha obrigatória** vista em celular simulado em 16/10 (primeiro acesso: campos de 48 px, regras se marcando, mensagens de senha fraca e de "igual à provisória", botão visível, entra no app). Falta o teclado real |
 
 ## O que falta, em ordem
 

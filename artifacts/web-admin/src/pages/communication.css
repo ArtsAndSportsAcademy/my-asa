@@ -95,3 +95,6 @@
 
 /* 16/10 (crivo 16): rodapé das janelas do Mural, das Mensagens e da Biblioteca sempre à vista. */
 .comm-modal .comm-form footer,.comm-modal .comm-modal-footer{position:sticky;bottom:0;z-index:2;margin-top:6px;padding:12px 0 4px;background:#fff;border-top:1px solid #eee9f6}
+
+/* Filtros da Biblioteca: toque de 44 px e letra legível no celular (eram 25 px de altura e letra de 10 px). */
+.comm-thread-filters button{min-height:44px;padding:0 14px;font-size:12px}

@@ -22,7 +22,7 @@ const MONO = "font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spac
 const LINK = "font-size:12px;font-weight:700;color:#6C2BF2;cursor:pointer;background:none;border:0;padding:0;font-family:inherit";
 const INPUT = "font:inherit;font-size:13px;font-weight:600;padding:10px 12px;border:1px solid #e6e1f2;border-radius:11px;background:#faf9fe;color:#1c1440;min-height:44px;width:100%;box-sizing:border-box";
 const PRIMARY = "cursor:pointer;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:700;color:#fff;background:#6C2BF2;border:0;border-radius:999px;padding:10px 18px;min-height:44px";
-const optionStyle = (on: boolean) => "cursor:pointer;font-family:Manrope,sans-serif;font-size:12px;font-weight:700;border-radius:999px;padding:8px 14px;min-height:40px;" + (on ? "background:#6C2BF2;color:#fff;border:1px solid #6C2BF2" : "background:#fff;color:#5b5473;border:1px solid #e6e1f2");
+const optionStyle = (on: boolean) => "cursor:pointer;font-family:Manrope,sans-serif;font-size:12px;font-weight:700;border-radius:999px;padding:8px 14px;min-height:44px;" + (on ? "background:#6C2BF2;color:#fff;border:1px solid #6C2BF2" : "background:#fff;color:#5b5473;border:1px solid #e6e1f2");
 
 function initials(name: string) { return name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("") || "?"; }
 function erroDe(err: unknown, fallback: string) {
