@@ -24,7 +24,7 @@ Legenda: **Revisada** = passou pelas 16 perguntas e foi vista no navegador. **Pa
 | Livro do Dia | Revisada (vivo, Hoje/Amanhã, hora e local na lista) | AGENTS.md; commit 4eea7b4 |
 | Check-in e ocorrências | Revisada (check-in por turno) | AGENTS.md |
 | Responsabilidades e tarefas | **Revisada** em 15/10 (lote, cancelar tarefa, avisos) | handoff 15/10 |
-| Folgas e solicitações | **Parcial**: primeira passada do crivo em 14/10 (commit 87698d9) e Etapas 1 e 2 (lote, Gerar o mês). Falta o Mapa do mês, "Definir folga" e a Etapa 3 | handoff 14/10 |
+| Folgas e solicitações | **Parcial**: primeira passada do crivo em 14/10 (commit 87698d9), Etapas 1 e 2 (lote, Gerar o mês) e a **Etapa 3 (16/10)**: pedido analisado, troca, mediação e regras, conferidos na empresa de teste a 375 px. Falta o Mapa do mês, "Definir folga" e os Grupos de folga com as 16 perguntas | handoffs 14/10 e 16/10 (sessão 3) |
 
 ## Gestão
 
@@ -55,9 +55,9 @@ Legenda: **Revisada** = passou pelas 16 perguntas e foi vista no navegador. **Pa
 
 ## O que falta, em ordem
 
-1. **Etapa 3 de folgas** (pedido como troca, calendário do mês, grade pessoa×dia). As respostas da Babi estão em
-   `docs/plano-folga-como-troca-e-mes-em-rascunho.md`.
-2. Depois da Etapa 3: revisar **Folgas e solicitações, Mapa do mês, "Definir folga" e Grupos de folga** com as 16 perguntas.
+1. ~~Etapa 3 de folgas~~ **Feita em 16/10** (pedido analisado, troca, mediação, regras; ver `docs/handoff-2026-10-16-sessao-3.md`). A
+   visão do mês (calendário, grade pessoa×dia) e a Etapa 4 (experimentar grupos) seguem pendentes.
+2. Agora, com a Etapa 3 pronta: revisar **Folgas e solicitações, Mapa do mês, "Definir folga" e Grupos de folga** com as 16 perguntas.
 3. Revisar com o crivo **Shows** e **Registro**, e a passada completa de **Perfil** e **Login**.
 4. **Revisão geral e completa de tudo**, no fim, com o `code-review` e com testes de tela no Playwright (desktop e 375 px).
 

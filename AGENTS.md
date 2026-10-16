@@ -170,7 +170,12 @@ Pronto e em produção: Escala do dia, Programação (com rascunho e rodapé), L
 Meu Dia, Folgas em lote e grupos de folga, Gerar o mês, **Mural aberto** (o Elenco publica, edita, remove e
 desfaz, reações, datas especiais) e **Mensagens com grupos** (privadas: a Administração não lê conversa),
 com o elenco de Snowland carregado e gerando o dia de verdade. O último handoff é
-`docs/handoff-2026-10-15-sessao-2.md` (revisão das telas, decisões da Babi e empresa de teste; os de 16 e 14/10 seguem valendo): leia antes de continuar.
+`docs/handoff-2026-10-16-sessao-3.md` (Etapa 3: pedido de folga analisado, troca, mediação e regras; os de 15, 16 e 14/10 seguem valendo): leia antes de continuar.
+
+**Feito em 16/10 (ainda local, nada enviado ao GitHub nem promovido; 3 migrações só no banco de teste, 0067 a 0069):** a
+Etapa 3 de folgas (pedido analisado pela Supervisão da área, troca com colega de folga, mediação, regras configuráveis), a
+aba Grupos antiga retirada do menu e o mapa de revisão em `docs/mapa-de-revisao.md`. **Quem roda migração e script em
+produção é quem constrói o app (não a Babi).** Ordem para promover: migrações 0067, 0068, 0069; depois a API; depois o site.
 
 Feito em 15/10 (**ainda local: nada enviado ao GitHub nem promovido**, sem migração): a revisão com o crivo em
 Agenda, Tarefas, Cadastros, Painel e Biblioteca, as decisões da Babi (Direção na Agenda e nas Tarefas, cancelar e
