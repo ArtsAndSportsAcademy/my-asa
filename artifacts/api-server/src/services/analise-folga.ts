@@ -1,0 +1,172 @@
+/**
+ * Análise do pedido de folga: o panorama de cada dia pedido para quem vai decidir.
+ *
+ * Calculada na leitura, nunca gravada (como a Escala do dia), para não envelhecer: se o dia mudou,
+ * a próxima leitura já mostra o novo. Reaproveita a Escala do dia (`montarEscalaDoDia`, que conta
+ * o rascunho) para saber quem folga e quem trabalha, e o Livro do Dia para saber a vaga da pessoa.
+ *
+ * "Pode cobrir" = está na lista do Livro do Show daquela vaga (titular, substitutos, rodízio,
+ * pessoa fixa, dia da semana), trabalha nesse dia, não está de folga e não está em outro show no
+ * mesmo horário. Quem pode cobrir só é mostrado: quem escolhe é a Supervisão.
+ */
+import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
+import {
+  agendaEventsTable, dailyBookAssignmentsTable, dailyBookPositionsTable, dailyBooksTable, db, showBookLinesTable, showBooksTable, usersTable,
+} from "@workspace/db";
+import { montarEscalaDoDia } from "./escala-dia.js";
+import { lerConfigFolga } from "./folga-config.js";
+
+export const LIMITE_DIAS_ANALISE = 14;
+
+export type PessoaDoDia = { id: string; name: string };
+export type VagaAnalisada = { personagem: string; pessoa: string; podeCobrir: PessoaDoDia[] };
+export type DiaAnalisado = {
+  date: string;
+  deFolga: PessoaDoDia[];
+  trabalham: PessoaDoDia[];
+  vagas: VagaAnalisada[];
+  resultado: { da: boolean; frase: string };
+  aviso: string | null;
+  semEscala: boolean;
+};
+
+const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const curta = (iso: string) => { const [, m, d] = iso.split("-").map(Number); return `${d} ${MESES[m! - 1]}`; };
+
+function diasDoPedido(startDate: string, endDate: string): { dias: string[]; cortado: boolean } {
+  const dias: string[] = [];
+  for (let t = new Date(`${startDate}T12:00:00Z`); t <= new Date(`${endDate}T12:00:00Z`); t.setUTCDate(t.getUTCDate() + 1)) {
+    if (dias.length === LIMITE_DIAS_ANALISE) return { dias, cortado: true };
+    dias.push(t.toISOString().slice(0, 10));
+  }
+  return { dias, cortado: false };
+}
+
+/** Quem a linha do Livro do Show aceita para a vaga, conforme o tipo (mesma leitura do motor de elenco). */
+function candidatosDaLinha(type: string, config: unknown): string[] {
+  const cfg = (config && typeof config === "object" ? config : {}) as Record<string, unknown>;
+  const ids = (v: unknown) => Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  switch (type) {
+    case "TITULAR_SUBSTITUTE": return [typeof cfg.titularId === "string" ? cfg.titularId : "", ...ids(cfg.substituteIds)].filter(Boolean);
+    case "ROTATION": return ids(cfg.memberIds);
+    case "FIXED_PERSON": return typeof cfg.userId === "string" && cfg.userId ? [cfg.userId] : [];
+    case "DAY_OF_WEEK": {
+      const porDia = (cfg.dayAssignments && typeof cfg.dayAssignments === "object" ? cfg.dayAssignments : {}) as Record<string, unknown>;
+      return Object.values(porDia).filter((x): x is string => typeof x === "string" && x.length > 0);
+    }
+    default: return [];
+  }
+}
+
+const sobrepoe = (a: { inicio: string | null; fim: string | null }, b: { inicio: string | null; fim: string | null }) => {
+  if (!a.inicio || !b.inicio) return true; // sem horário não dá para provar que não colide: trata como colisão
+  const fimA = a.fim ?? "23:59", fimB = b.fim ?? "23:59";
+  return a.inicio < fimB && b.inicio < fimA;
+};
+const hhmm = (v: string | null) => v ? v.slice(0, 5) : null;
+
+type VagaBruta = { personagem: string; sourceRoleId: string | null; dailyBookId: string; locationId: string | null; inicio: string | null; fim: string | null };
+
+async function vagasDaPessoa(userId: string, date: string): Promise<VagaBruta[]> {
+  const rows = await db.select({
+    personagem: dailyBookPositionsTable.name, sourceRoleId: dailyBookPositionsTable.sourceRoleId, dailyBookId: dailyBooksTable.id,
+    locationId: showBooksTable.locationId, inicio: agendaEventsTable.startTime, fim: agendaEventsTable.endTime,
+  }).from(dailyBookAssignmentsTable)
+    .innerJoin(dailyBookPositionsTable, eq(dailyBookAssignmentsTable.positionId, dailyBookPositionsTable.id))
+    .innerJoin(dailyBooksTable, eq(dailyBookAssignmentsTable.dailyBookId, dailyBooksTable.id))
+    .innerJoin(agendaEventsTable, eq(dailyBooksTable.agendaEventId, agendaEventsTable.id))
+    .innerJoin(showBooksTable, eq(dailyBooksTable.showBookId, showBooksTable.id))
+    .where(and(
+      eq(dailyBookAssignmentsTable.userId, userId), isNull(dailyBookAssignmentsTable.supersededAt), ne(dailyBookAssignmentsTable.status, "REMOVED"),
+      eq(dailyBookPositionsTable.isRemoved, false), isNull(dailyBookPositionsTable.supersededAt),
+      ne(dailyBooksTable.status, "CANCELLED"), eq(agendaEventsTable.date, date),
+    ))
+    .orderBy(asc(agendaEventsTable.startTime), asc(dailyBookPositionsTable.name));
+  return rows.map((r) => ({ ...r, inicio: hhmm(r.inicio), fim: hhmm(r.fim) }));
+}
+
+/** Os horários em que cada pessoa já tem vaga neste dia, para descartar quem colide com o show da vaga. */
+async function horariosOcupados(userIds: string[], date: string, ignorarLivroDe: string) {
+  if (!userIds.length) return new Map<string, { inicio: string | null; fim: string | null }[]>();
+  const rows = await db.select({ userId: dailyBookAssignmentsTable.userId, inicio: agendaEventsTable.startTime, fim: agendaEventsTable.endTime, dailyBookId: dailyBooksTable.id })
+    .from(dailyBookAssignmentsTable)
+    .innerJoin(dailyBookPositionsTable, eq(dailyBookAssignmentsTable.positionId, dailyBookPositionsTable.id))
+    .innerJoin(dailyBooksTable, eq(dailyBookAssignmentsTable.dailyBookId, dailyBooksTable.id))
+    .innerJoin(agendaEventsTable, eq(dailyBooksTable.agendaEventId, agendaEventsTable.id))
+    .where(and(
+      inArray(dailyBookAssignmentsTable.userId, userIds), isNull(dailyBookAssignmentsTable.supersededAt), ne(dailyBookAssignmentsTable.status, "REMOVED"),
+      eq(dailyBookPositionsTable.isRemoved, false), isNull(dailyBookPositionsTable.supersededAt), ne(dailyBooksTable.status, "CANCELLED"), eq(agendaEventsTable.date, date),
+    ));
+  const mapa = new Map<string, { inicio: string | null; fim: string | null }[]>();
+  for (const r of rows) {
+    if (!r.userId || r.dailyBookId === ignorarLivroDe) continue;
+    mapa.set(r.userId, [...(mapa.get(r.userId) ?? []), { inicio: hhmm(r.inicio), fim: hhmm(r.fim) }]);
+  }
+  return mapa;
+}
+
+export async function analisarPedidoDeFolga(input: { organizationId: string; userId: string; startDate: string; endDate: string }): Promise<{ dias: DiaAnalisado[]; cortado: boolean }> {
+  const { organizationId, userId } = input;
+  const [pessoa] = await db.select({ name: usersTable.name, areaId: usersTable.areaId, defaultLocationId: usersTable.defaultLocationId })
+    .from(usersTable).where(and(eq(usersTable.id, userId), eq(usersTable.organizationId, organizationId))).limit(1);
+  if (!pessoa) return { dias: [], cortado: false };
+  const config = await lerConfigFolga(organizationId);
+  const { dias: datas, cortado } = diasDoPedido(input.startDate, input.endDate);
+  const dias: DiaAnalisado[] = [];
+
+  for (const date of datas) {
+    const vagas = await vagasDaPessoa(userId, date);
+    const locais = [...new Set([...vagas.map((v) => v.locationId), pessoa.defaultLocationId].filter((id): id is string => Boolean(id)))];
+    const escalas = (await Promise.all(locais.map((l) => montarEscalaDoDia(organizationId, l, date)))).filter((e): e is NonNullable<typeof e> => Boolean(e));
+
+    const nomes = new Map<string, string>();
+    const folgam = new Set<string>(), trabalham = new Set<string>();
+    for (const e of escalas) {
+      for (const p of e.pessoas) { nomes.set(p.id, p.name); if (p.folga) folgam.add(p.id); }
+      for (const b of e.blocos) for (const id of b.pessoaIds) trabalham.add(id);
+    }
+    for (const id of folgam) trabalham.delete(id);
+    const semEscala = escalas.every((e) => e.blocos.length === 0);
+    const lista = (ids: Set<string>): PessoaDoDia[] => [...ids].map((id) => ({ id, name: nomes.get(id) ?? "—" })).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+
+    // Quem cada vaga aceita, pelas linhas do Livro do Show (a "lista de substituições").
+    const roleIds = [...new Set(vagas.map((v) => v.sourceRoleId).filter((id): id is string => Boolean(id)))];
+    const linhas = roleIds.length ? await db.select({ positionId: showBookLinesTable.positionId, type: showBookLinesTable.type, config: showBookLinesTable.config })
+      .from(showBookLinesTable).where(and(inArray(showBookLinesTable.positionId, roleIds), eq(showBookLinesTable.active, true))) : [];
+    const aceitos = new Map<string, Set<string>>();
+    for (const l of linhas) aceitos.set(l.positionId, new Set([...(aceitos.get(l.positionId) ?? []), ...candidatosDaLinha(l.type, l.config)]));
+
+    const vagasAnalisadas: VagaAnalisada[] = [];
+    const semSubstituto: string[] = [], semQuemCubra: string[] = [];
+    for (const v of vagas) {
+      const lista0 = [...(v.sourceRoleId ? aceitos.get(v.sourceRoleId) ?? [] : [])].filter((id) => id !== userId);
+      const ocupados = await horariosOcupados(lista0, date, v.dailyBookId);
+      const cobre = lista0.filter((id) => trabalham.has(id) && !folgam.has(id) && !(ocupados.get(id) ?? []).some((h) => sobrepoe(h, v))).sort();
+      if (!lista0.length) semSubstituto.push(v.personagem); else if (!cobre.length) semQuemCubra.push(v.personagem);
+      // nomes de quem não aparece na Escala (fora de área, por exemplo) vêm direto do cadastro
+      const faltam = cobre.filter((id) => !nomes.has(id));
+      if (faltam.length) for (const u of await db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(inArray(usersTable.id, faltam))) nomes.set(u.id, u.name);
+      vagasAnalisadas.push({ personagem: v.personagem, pessoa: pessoa.name, podeCobrir: cobre.map((id) => ({ id, name: nomes.get(id) ?? "—" })) });
+    }
+
+    let resultado: DiaAnalisado["resultado"];
+    if (semEscala && !vagas.length) resultado = { da: true, frase: "Este dia ainda não tem Escala; o pedido entra como prioridade." };
+    else if (!vagas.length) resultado = { da: true, frase: `${pessoa.name} não tem vaga em show nesse dia.` };
+    else if (semSubstituto.length) resultado = { da: false, frase: `Não dá: ${semSubstituto.join(", ")} não tem substituto cadastrado no Livro do Show.` };
+    else if (semQuemCubra.length) resultado = { da: false, frase: `Não dá: ninguém da lista de substituições de ${semQuemCubra.join(", ")} trabalha nesse dia e está livre.` };
+    else resultado = { da: true, frase: `Dá. ${vagas.map((v) => v.personagem).join(", ")} ${vagas.length > 1 ? "ficam cobertas" : "fica coberta"}.` };
+
+    // Aviso de cobertura da área: só avisa, nunca bloqueia.
+    let aviso: string | null = null;
+    const limite = pessoa.areaId ? config.limiteFolgaPorArea[pessoa.areaId] : undefined;
+    if (pessoa.areaId && typeof limite === "number") {
+      const daArea = escalas.flatMap((e) => e.pessoas).filter((p) => p.areaId === pessoa.areaId);
+      const jaDeFolga = new Set(daArea.filter((p) => folgam.has(p.id)).map((p) => p.id));
+      const comEla = jaDeFolga.size + (jaDeFolga.has(userId) ? 0 : 1);
+      if (comEla > limite) aviso = `Com ${pessoa.name}, ${daArea[0]?.areaName ?? "a área"} fica com ${comEla} de folga no ${curta(date)} (o limite é ${limite}).`;
+    }
+
+    dias.push({ date, deFolga: lista(folgam), trabalham: lista(trabalham), vagas: vagasAnalisadas, resultado, aviso, semEscala });
+  }
+  return { dias, cortado };
+}

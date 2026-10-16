@@ -314,7 +314,26 @@ na geração, e guardar como exceção só o que a gerência mexeu à mão — e
 
 O exemplo "5 bailarinos de folga no mesmo dia" é **só ilustração**, não é regra real nem número a usar.
 
-**Os quatro pontos que ficaram abertos, respondidos por ela em 16/10/2026:**
+**Quem decide o pedido (áudio da Administração, transcrito em 16/10/2026):**
+- **Mês ainda não publicado:** o pedido da pessoa entra como prioridade; a gerência só recusa se houver algo
+  especial naquele dia. Não passa por análise nem por aceite.
+- **Mês já publicado:** o pedido vai para a **Supervisão da área da pessoa** (Deb, Victor e Tef são quem olha os
+  shows), e **não para a Administração**. A Administração só decide **quando a Supervisão não responde**.
+  Por quê: quem sabe se o show fica coberto são eles. O trabalho que hoje consome tempo é ver quem está no dia,
+  se o show fica descoberto sem a pessoa e com quem dá para trocar (e se a pessoa toparia) — é isso que a ASA
+  deve entregar pronto.
+- **O que é "troca" e o que é só "alerta"** (áudio de 16/10/2026): **troca** é quando o colega **está de folga**
+  no dia pedido: a pessoa só ganha esse dia se o colega trabalhar nele, e os dois trocam de dia (o colega aceita
+  antes, com motivo). Quando o colega **trabalha** naquele dia, **não é troca**: é um **alerta** do tipo
+  "se a Ana não estiver, a Carol faz a Astrid". Quem assume uma vaga sem estar de folga não ganha nada em troca.
+- **A Supervisão precisa ver o panorama do dia**: todo mundo que está de folga naquele dia (não só quem pediu), o
+  que a pessoa faz nele e quem poderia cobrir. Mockups em 16/10: a primeira versão misturava "troca" e "cobrir"
+  e confundiu; a versão em três passos (quem já folga, o que a pessoa faz e quem cobre, resultado) é a base.
+- **Prazo da Supervisão: configurável.** Valor sugerido (escolha de 16/10/2026): a Administração passa a poder
+  decidir quando faltarem **3 dias** para a data pedida sem resposta da Supervisão (a ideia era "3 ou 4 dias";
+  começa em 3 e a Administração ajusta). Quem configura: a Administração.
+
+**Os quatro pontos que ficaram abertos, respondidos em 16/10/2026:**
 - (a) **Antes de a tabela ser publicada, a gerência pode mexer** sem aceite de ninguém.
 - (b) **Se o colega recusar, recusa com motivo escrito e o pedido volta para a gerência.**
 - (c) **Cobertura mínima só avisa (não trava), e o número de cada função é configurável**, porque depende
