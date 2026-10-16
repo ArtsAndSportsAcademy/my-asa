@@ -559,7 +559,7 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onRemoveManual, o
     {!dia.programacao && <div style={css("padding:16px;text-align:center;font-size:12.5px;color:#6b6482;background:#fff;border:1px dashed #ddd6ee;border-radius:12px")}>{`${dia.location.name} não tem Programação vigente para ${shortDate(dia.date)} — a grade mostra só os Livros do Dia e as entradas manuais.`}</div>}
 
     <div style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top left", width: `${10000 / zoom}%` }}>
-      {view === "pessoa" ? <div className="esc-scroll" style={css("border:1px solid #ddd6ee;border-radius:12px;overflow:auto;background:#fff;")}>
+      {view === "pessoa" ? <div className="esc-scroll" tabIndex={0} style={css("border:1px solid #ddd6ee;border-radius:12px;overflow:auto;background:#fff;")}>
         <table style={css("border-collapse:separate;border-spacing:0;width:100%;font-size:12.5px")}>
           <thead><tr>
             <th style={css("position:sticky;left:0;z-index:2;width:118px;min-width:118px;" + MONO_TH)}>Horário</th>
@@ -1028,7 +1028,7 @@ function ProgramacaoTab({ review, localId, localName, date, dia, canEdit, onChan
           style={css("border-radius:9px;padding:7px 15px;font-size:12px;cursor:pointer;font-family:Manrope,sans-serif;" + (wd === w ? "border:1px solid #2b2545;background:#2b2545;color:#fff;font-weight:700;" : "border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-weight:600;"))}>{label}</button>)}
       </div>
 
-      <div className="esc-scroll" style={css("border:1px solid #ddd6ee;border-radius:12px;overflow:auto;background:#fff;max-width:900px")}>
+      <div className="esc-scroll" tabIndex={0} style={css("border:1px solid #ddd6ee;border-radius:12px;overflow:auto;background:#fff;max-width:900px")}>
         <table style={css("border-collapse:separate;border-spacing:0;width:100%;font-size:12.5px")}>
           <thead><tr>
             <th style={css("width:132px;" + MONO_TH)}>Horário</th>
