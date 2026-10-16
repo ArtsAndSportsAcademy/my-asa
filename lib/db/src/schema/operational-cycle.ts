@@ -58,6 +58,15 @@ export const leaveRequestsTable = pgTable("leave_requests", {
   uniqueIndex("leave_requests_pending_range_uq").on(table.userId, table.startDate, table.endDate).where(eq(table.status, "PENDING")),
 ]);
 
+/** Regras do pedido de folga que a Administração ajusta (0069): uma linha por organização; sem linha, valem os padrões. */
+export const folgaConfigTable = pgTable("folga_config", {
+  organizationId: uuid("organization_id").primaryKey().references(() => organizationsTable.id),
+  prazoSupervisaoDias: integer("prazo_supervisao_dias").notNull().default(3),
+  limiteFolgaPorArea: jsonb("limite_folga_por_area").$type<Record<string, number>>().notNull().default({}),
+  updatedBy: uuid("updated_by").references(() => usersTable.id),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const dayCheckInStatusEnum = pgEnum("day_checkin_status", ["EXPECTED", "CHECKED_IN", "LATE", "ABSENT", "EXCUSED"]);
 
 /** Presença por bloco da Escala. A vaga do Livro é mantida como relação, sem apagar a convocação original. */
