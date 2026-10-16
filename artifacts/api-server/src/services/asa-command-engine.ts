@@ -937,6 +937,9 @@ export function resolveAsaCommand(text: string, today: string, isManager: boolea
         "/escalas": "minha escala desta semana",
         "/responsabilidades": "minhas tarefas pendentes",
         "/folgas": isManager ? "quem esta de folga hoje" : "minhas folgas",
+        "/solicitacoes": "minhas solicitacoes",
+        "/painel": isManager ? "check-ins da equipe hoje" : "meu dia hoje",
+        "/areas": "locais",
         "/membro/mensagens": "minhas mensagens nao lidas",
         "/mural": "mural",
         "/pessoas": "buscar pessoas",
@@ -1228,7 +1231,12 @@ function statusLabel(value: unknown): string {
   return typeof value === "string" ? labels[value] ?? value.toLocaleLowerCase("pt-BR") : "";
 }
 
+/** O resultado das consultas traz datas cruas (2026-10-16); quem lê a resposta vê 16/10/2026. */
 export function formatAsaCommandReply(tool: AsaCommand["tool"], rawResult: string): string {
+  return montarRespostaDaAsa(tool, rawResult).replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, "$3/$2/$1");
+}
+
+function montarRespostaDaAsa(tool: AsaCommand["tool"], rawResult: string): string {
   let result: Record<string, unknown>;
   try {
     result = JSON.parse(rawResult) as Record<string, unknown>;
@@ -1530,7 +1538,9 @@ export function formatAsaCommandReply(tool: AsaCommand["tool"], rawResult: strin
       const start = dateLabel(item.startDate);
       const end = dateLabel(item.endDate);
       const period = start === end ? start : `${start} a ${end}`;
-      return `• ${period}${item.type ? ` · ${statusLabel(item.type)}` : ""}${item.notes ? ` · ${String(item.notes)}` : ""}`;
+      // A observação interna guarda o código do pedido ("Pedido f123dae3-…"): a pessoa lê só de onde veio a folga.
+      const nota = String(item.notes ?? "").replace(/^Troca do pedido [0-9a-f-]{36}$/i, "troca de folga").replace(/^Pedido [0-9a-f-]{36}$/i, "pedido de folga").replace(/\s*[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, "").trim();
+      return `• ${period}${item.type ? ` · ${statusLabel(item.type)}` : ""}${nota ? ` · ${nota}` : ""}`;
     }).join("\n")}`;
   }
   if (tool === "consultar_responsabilidades") {

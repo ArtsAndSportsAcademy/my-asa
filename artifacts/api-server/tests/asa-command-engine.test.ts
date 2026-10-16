@@ -477,6 +477,14 @@ if (contextualMemberFolgas.kind === "command") assert.equal(contextualMemberFolg
 const contextualManagerFolgas = resolveAsaCommand("o que tenho aqui?", "2026-09-26", true, "/folgas", "ADMIN");
 assert.equal(contextualManagerFolgas.kind, "command");
 if (contextualManagerFolgas.kind === "command") assert.equal(contextualManagerFolgas.command.tool, "consultar_ausencias_do_dia");
+assert.equal(formatAsaCommandReply("consultar_checkins_equipe", JSON.stringify({ date: "2026-10-16", checkIns: [], message: "Ninguém está previsto para check-in em 2026-10-16." })), "Ninguém está previsto para check-in em 16/10/2026.", "a resposta da ASA não mostra data crua");
+assert.equal(formatAsaCommandReply("consultar_folgas", JSON.stringify({ folgas: [{ startDate: "2026-10-26", endDate: "2026-10-28", type: "DAY_OFF", notes: "Pedido f123dae3-631d-4ab0-a704-2faaac843180" }, { startDate: "2026-10-29", endDate: "2026-10-29", type: "DAY_OFF", notes: "Troca do pedido 4f2855b5-6045-4512-a19d-9f259f8ea5f2" }] })), "Suas folgas registradas:\n• 26/10 a 28/10 · folga · pedido de folga\n• 29/10 · folga · troca de folga", "a lista de folgas não mostra o código do pedido");
+// Telas novas do site: "O que tenho aqui?" precisa responder também no Painel, nas Solicitações e nas Áreas.
+for (const [pagina, papel, gerente, ferramenta] of [["/painel", "ADMIN", true, "consultar_checkins_equipe"], ["/painel", "MEMBER", false, "consultar_meu_dia"], ["/solicitacoes", "MEMBER", false, "consultar_solicitacoes"], ["/areas", "ADMIN", true, "consultar_locais"]] as const) {
+  const resposta = resolveAsaCommand("o que tenho aqui?", "2026-10-16", gerente, pagina, papel);
+  assert.equal(resposta.kind, "command", `${pagina} (${papel}) deve responder "o que tenho aqui?"`);
+  if (resposta.kind === "command") assert.equal(resposta.command.tool, ferramenta, `${pagina} (${papel}) consulta ${ferramenta}`);
+}
 for (const page of ["/admin/folgas", "/supervisor/folgas"] as const) {
   const result = resolveAsaCommand("o que tenho aqui?", "2026-09-26", true, page, "SUPERVISOR_A");
   assert.equal(result.kind, "command", page);

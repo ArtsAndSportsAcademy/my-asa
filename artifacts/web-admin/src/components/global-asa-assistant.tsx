@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useLocation } from "wouter";
+import { chipsDaTela, poseDaResposta, poseDeSaudacao } from "@/lib/asa-por-tela";
 import { ArrowUp, Check, CircleHelp, SlidersHorizontal, Undo2, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { getAsaPresenceState, selectAsaSuggestions, type AsaProactivityLevel, type AsaSuggestionFrequency, type AsaSuggestionMode } from "@workspace/shared";
@@ -9,7 +10,7 @@ import "@/global-asa-assistant-operation.css";
 
 type AsaProposal = { id: string; actionType: string; title: string; recipientName?: string; recipientNames?: string[]; newTitle?: string; previousTitle?: string; content?: string; previousContent?: string; announcementContent?: string; reaction?: string; previousReaction?: string | null; description?: string; evidenceUrl?: string; evidenceDescription?: string; responsibilityTitle?: string; previousResponsibilityTitle?: string | null; newResponsibilityTitle?: string | null; previousDescription?: string | null; operationName: string; recipientCount?: number; assigneeName?: string; checklistLabels?: string[]; checklistItemLabel?: string; checklistKind?: "mandatory" | "operational"; checklistCompleted?: boolean; previousChecklistCompleted?: boolean; mandatoryEvidences?: Array<{ type: string; description: string }>; previousChecklistLabels?: string[]; previousMandatoryEvidences?: Array<{ type?: string; description?: string }>; previousAssigneeName?: string; previousStatus?: string; expectedStatus?: string; previousDate?: string; previousStartTime?: string | null; previousEndTime?: string | null; date?: string; startTime?: string; endTime?: string; previousNotes?: string | null; notes?: string | null; dueDate?: string; previousDueDate?: string; previousPriority?: string; priority?: string; previousMode?: string; mode?: string; changes?: Array<{ key: string; label: string; before: string; after: string }>; expiresAt: string; state: string };
 type AsaUndo = { id: string; expiresAt: string; windowSeconds: number };
-type ChatMessage = { id: string; role: "user" | "assistant"; content: string; pending?: boolean; proposal?: AsaProposal; undo?: AsaUndo; undoState?: "UNDONE"; undoError?: string };
+type ChatMessage = { id: string; role: "user" | "assistant"; content: string; pending?: boolean; failed?: boolean; proposal?: AsaProposal; undo?: AsaUndo; undoState?: "UNDONE"; undoError?: string };
 type AsaSuggestionChip = { label: string; prompt: string };
 
 function taskPriorityLabel(priority?: string) {
@@ -158,7 +159,8 @@ function fallbackToPng(event: { currentTarget: HTMLImageElement }, pngPath: stri
 }
 
 export default function GlobalAsaAssistant() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, roles } = useAuth();
+  const gerencia = roles.some((papel) => papel.role !== "MEMBER");
   const [location, setLocation] = useLocation();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
@@ -191,7 +193,7 @@ export default function GlobalAsaAssistant() {
   }, []);
 
   const currentPage = pageNames[location] ?? "MyASA";
-  const currentSuggestions = pageSuggestions[location] ?? suggestions;
+  const currentSuggestions = chipsDaTela(location, gerencia) ?? pageSuggestions[location] ?? suggestions;
 
   useEffect(() => {
     if (!isAuthenticated || !user?.id) {
@@ -290,14 +292,16 @@ export default function GlobalAsaAssistant() {
       const previous = Number(localStorage.getItem(key));
       const lastShownAt = Number.isFinite(previous) && previous > 0 ? previous : null;
       const now = Date.now();
-      const eligible = selectAsaSuggestions(currentSuggestions, asaMode, suggestionFrequency, proactivityLevel, lastShownAt, now);
-      if (!eligible.length) {
+      // Os pedidos prontos da tela são atalhos dentro do painel aberto: aparecem sempre, menos no modo silencioso.
+      // O que obedece à frequência e ao nível é o aviso proativo (tarefas vencidas e prazos).
+      if (asaMode === "SILENT") {
         setVisibleSuggestions([]);
         return;
       }
+      const proativoLiberado = selectAsaSuggestions(["aviso"], asaMode, suggestionFrequency, proactivityLevel, lastShownAt, now).length > 0;
 
       let proactive: AsaSuggestionChip[] = [];
-      if (asaMode === "PROACTIVE") {
+      if (asaMode === "PROACTIVE" && proativoLiberado) {
         try {
           const response = await fetch("/api/asa/proactive-suggestions", { headers: { Authorization: `Bearer ${token()}` } });
           if (response.ok) {
@@ -330,13 +334,10 @@ export default function GlobalAsaAssistant() {
         }
       }
       if (cancelled) return;
-      const allSuggestions = [
-        ...proactive,
-        ...currentSuggestions.map((suggestion) => ({ label: suggestion, prompt: suggestion })),
-      ];
-      const selected = selectAsaSuggestions(allSuggestions, asaMode, suggestionFrequency, proactivityLevel, lastShownAt, now);
-      setVisibleSuggestions(selected);
-      if (selected.length > 0) localStorage.setItem(key, String(now));
+      const avisos = selectAsaSuggestions(proactive, asaMode, suggestionFrequency, proactivityLevel, lastShownAt, now);
+      const atalhos = currentSuggestions.slice(0, 3).map((suggestion) => ({ label: suggestion, prompt: suggestion }));
+      setVisibleSuggestions([...avisos, ...atalhos]);
+      if (avisos.length > 0) localStorage.setItem(key, String(now));
     }
     void loadSuggestions();
     return () => { cancelled = true; };
@@ -464,7 +465,7 @@ export default function GlobalAsaAssistant() {
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "Não consegui consultar agora.";
       setMessages((current) => !isCurrentSession() ? current : current.map((item) => item.id === assistantMessage.id
-        ? { ...item, content: item.content || "Tive um problema ao consultar. Seus dados continuam intactos.", pending: false }
+        ? { ...item, content: item.content || "Tive um problema ao consultar. Seus dados continuam intactos.", pending: false, failed: true }
         : item));
       if (isCurrentSession()) setError(message);
     } finally {
@@ -565,14 +566,14 @@ export default function GlobalAsaAssistant() {
       </div>}
       <div className="global-asa-feed" ref={feedRef} aria-live="polite">
         {messages.length === 0 && <div className="global-asa-welcome">
-          <img src="/asa/oi.webp" onError={(event) => fallbackToPng(event, "/asa/oi.png")} alt="" />
+          <img src={`/asa/${poseDeSaudacao(presenceState)}.webp`} onError={(event) => fallbackToPng(event, `/asa/${poseDeSaudacao(presenceState)}.png`)} alt="" />
           <p>Oi! Estou com você em {currentPage}.</p>
           {isAuthenticated
             ? visibleSuggestions.length > 0 && <div className="global-asa-suggestions">{visibleSuggestions.map((suggestion) => <button type="button" key={`${suggestion.label}-${suggestion.prompt}`} onClick={() => void sendMessage(suggestion.prompt)}>{suggestion.label}</button>)}</div>
             : <p className="global-asa-auth-note">Entre na sua conta para eu consultar os dados do MyASA. <a href="/login">Entrar</a></p>}
         </div>}
         {messages.map((message) => <article className={`global-asa-message ${message.role}`} key={message.id}>
-          {message.role === "assistant" && <img src={message.pending ? "/asa/consultando.webp" : "/asa/oi.webp"} onError={(event) => fallbackToPng(event, message.pending ? "/asa/consultando.png" : "/asa/oi.png")} alt="" />}
+          {message.role === "assistant" && <img src={`/asa/${poseDaResposta(message)}.webp`} onError={(event) => fallbackToPng(event, `/asa/${poseDaResposta(message)}.png`)} alt="" />}
           <div className="global-asa-message-body">
             <p>{message.content ? message.content.split(/(\/admin\/search\?document=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/gi).map((part, index) => {
               const documentId = part.match(/^\/admin\/search\?document=([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i)?.[1];
