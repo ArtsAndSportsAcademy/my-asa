@@ -88,3 +88,5 @@
 .cycle-request-acoes button:disabled{opacity:.45;cursor:not-allowed}
 .cycle-pedido-feito{background:#e3f4f1;color:#0a6f68!important;border-radius:10px;padding:8px 10px;line-height:1.45}
 .cycle-ajuda{margin:0;font-size:12px;line-height:1.45;color:#5b5473}
+
+.cycle-folga-form fieldset label.cycle-regra-liga{display:flex;align-items:center;gap:10px;min-height:44px}.cycle-folga-form .cycle-regra-liga input[type=checkbox]{width:22px;height:22px;min-height:0;flex:none}

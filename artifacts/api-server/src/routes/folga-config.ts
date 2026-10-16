@@ -10,7 +10,7 @@ import { areasTable, db, folgaConfigTable } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { isAdmin, isDirector, isSupervisor } from "../services/folga-comum.js";
 import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
-import { LIMITE_MAXIMO_POR_AREA, PRAZO_MAXIMO_DIAS, lerConfigFolga, type ConfigFolga } from "../services/folga-config.js";
+import { LEMBRETE_MAXIMO_HORAS, LIMITE_MAXIMO_POR_AREA, LIMITE_MAXIMO_TOTAL, PRAZO_MAXIMO_DIAS, lerConfigFolga, type ConfigFolga } from "../services/folga-config.js";
 
 const router: IRouter = Router();
 
@@ -31,7 +31,7 @@ router.put("/folga-config", requireAuth, requireOrganization, async (req, res) =
   const ator = req.user!, body = req.body as Record<string, unknown>;
   if (!isAdmin(ator.role)) { res.status(403).json({ error: "Forbidden", message: "Só a Administração altera as regras do pedido de folga." }); return; }
   const antes = await lerConfigFolga(ator.organizationId);
-  const depois: ConfigFolga = { prazoSupervisaoDias: antes.prazoSupervisaoDias, limiteFolgaPorArea: { ...antes.limiteFolgaPorArea } };
+  const depois: ConfigFolga = { ...antes, limiteFolgaPorArea: { ...antes.limiteFolgaPorArea } };
 
   if (body.prazoSupervisaoDias !== undefined) {
     const n = body.prazoSupervisaoDias;
@@ -57,12 +57,48 @@ router.put("/folga-config", requireAuth, requireOrganization, async (req, res) =
     depois.limiteFolgaPorArea = novo;
   }
 
+  // Limites ligáveis e desligáveis: o total da casa e o por área, cada um só avisando ou exigindo motivo.
+  const ehModo = (v: unknown): v is "REFERENCIA" | "EXIGE_MOTIVO" => v === "REFERENCIA" || v === "EXIGE_MOTIVO";
+  if (body.limiteTotalAtivo !== undefined) {
+    if (typeof body.limiteTotalAtivo !== "boolean") { res.status(400).json({ error: "Bad Request", message: "Ligar ou desligar o limite total é sim ou não." }); return; }
+    depois.limiteTotalAtivo = body.limiteTotalAtivo;
+  }
+  if (body.limiteTotal !== undefined) {
+    const n = body.limiteTotal;
+    if (n !== null && (typeof n !== "number" || !Number.isInteger(n) || n < 0 || n > LIMITE_MAXIMO_TOTAL)) {
+      res.status(400).json({ error: "Bad Request", message: `O limite total de folgas por dia é um número inteiro de pessoas, de 0 a ${LIMITE_MAXIMO_TOTAL}.` }); return;
+    }
+    depois.limiteTotal = n as number | null;
+  }
+  if (body.limiteTotalModo !== undefined) {
+    if (!ehModo(body.limiteTotalModo)) { res.status(400).json({ error: "Bad Request", message: "O limite total só avisa (referência) ou exige motivo." }); return; }
+    depois.limiteTotalModo = body.limiteTotalModo;
+  }
+  if (body.limiteAreaAtivo !== undefined) {
+    if (typeof body.limiteAreaAtivo !== "boolean") { res.status(400).json({ error: "Bad Request", message: "Ligar ou desligar o limite por área é sim ou não." }); return; }
+    depois.limiteAreaAtivo = body.limiteAreaAtivo;
+  }
+  if (body.limiteAreaModo !== undefined) {
+    if (!ehModo(body.limiteAreaModo)) { res.status(400).json({ error: "Bad Request", message: "O limite por área só avisa (referência) ou exige motivo." }); return; }
+    depois.limiteAreaModo = body.limiteAreaModo;
+  }
+  if (body.lembreteRespostaHoras !== undefined) {
+    const n = body.lembreteRespostaHoras;
+    if (typeof n !== "number" || !Number.isInteger(n) || n < 0 || n > LEMBRETE_MAXIMO_HORAS) {
+      res.status(400).json({ error: "Bad Request", message: `O lembrete de resposta é um número inteiro de horas, de 0 (sem lembrete) a ${LEMBRETE_MAXIMO_HORAS}.` }); return;
+    }
+    depois.lembreteRespostaHoras = n;
+  }
+  if (depois.limiteTotalAtivo && depois.limiteTotal === null) {
+    res.status(400).json({ error: "Bad Request", message: "Para ligar o limite total, diga quantas pessoas podem estar de folga no mesmo dia." }); return;
+  }
+
   await db.transaction(async (tx) => {
-    await tx.insert(folgaConfigTable).values({ organizationId: ator.organizationId, prazoSupervisaoDias: depois.prazoSupervisaoDias, limiteFolgaPorArea: depois.limiteFolgaPorArea, updatedBy: ator.sub, updatedAt: new Date() })
-      .onConflictDoUpdate({ target: folgaConfigTable.organizationId, set: { prazoSupervisaoDias: depois.prazoSupervisaoDias, limiteFolgaPorArea: depois.limiteFolgaPorArea, updatedBy: ator.sub, updatedAt: new Date() } });
+    await tx.insert(folgaConfigTable).values({ organizationId: ator.organizationId, prazoSupervisaoDias: depois.prazoSupervisaoDias, limiteFolgaPorArea: depois.limiteFolgaPorArea, limiteTotalAtivo: depois.limiteTotalAtivo, limiteTotal: depois.limiteTotal, limiteTotalModo: depois.limiteTotalModo, limiteAreaAtivo: depois.limiteAreaAtivo, limiteAreaModo: depois.limiteAreaModo, lembreteRespostaHoras: depois.lembreteRespostaHoras, updatedBy: ator.sub, updatedAt: new Date() })
+      .onConflictDoUpdate({ target: folgaConfigTable.organizationId, set: { prazoSupervisaoDias: depois.prazoSupervisaoDias, limiteFolgaPorArea: depois.limiteFolgaPorArea, limiteTotalAtivo: depois.limiteTotalAtivo, limiteTotal: depois.limiteTotal, limiteTotalModo: depois.limiteTotalModo, limiteAreaAtivo: depois.limiteAreaAtivo, limiteAreaModo: depois.limiteAreaModo, lembreteRespostaHoras: depois.lembreteRespostaHoras, updatedBy: ator.sub, updatedAt: new Date() } });
     await writeHistoryEvent({
       category: "ABSENCE", action: "folga.config_changed", title: "Regras do pedido de folga alteradas",
-      narrative: `Prazo da Supervisão: ${antes.prazoSupervisaoDias} → ${depois.prazoSupervisaoDias} dias. Limites por área: ${Object.keys(depois.limiteFolgaPorArea).length} definido(s).`,
+      narrative: `Prazo da Supervisão: ${antes.prazoSupervisaoDias} → ${depois.prazoSupervisaoDias} dias. Limites por área: ${Object.keys(depois.limiteFolgaPorArea).length} definido(s), ${depois.limiteAreaAtivo ? "ligados" : "desligados"}. Limite total: ${depois.limiteTotalAtivo ? `${depois.limiteTotal} pessoas por dia` : "desligado"}. Lembrete de resposta: ${depois.lembreteRespostaHoras ? `${depois.lembreteRespostaHoras} h` : "sem lembrete"}.`,
       entityType: "folga_config", entityId: ator.organizationId, actorId: ator.sub, orgId: ator.organizationId, beforeState: antes, afterState: depois,
     }, tx as unknown as HistoryExecutor);
   });

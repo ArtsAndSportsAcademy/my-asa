@@ -82,6 +82,7 @@ import { operationalDate, shiftOperationalDate } from "../lib/operational-date.j
 import { aplicarFolgasEmLote, recusaDeFolgaEmLote } from "./folgas.js";
 import { analisarPedidoDeFolga } from "../services/analise-folga.js";
 import { mesDeFolgasPublicadoNoPeriodo } from "../services/folga-roteamento.js";
+import { fraseDoLimite, limitesExcedidos } from "../services/folga-config.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { canApproveAsaMemory, canDeleteAsaMemory, canEditAsaMemory, canReadAsaMemory } from "../services/asa-memory-policy.js";
 import { canReadLibraryScope, isLibraryFullReader, type LibraryRole } from "../services/library-access.js";
@@ -6352,10 +6353,17 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
           const primeiroDia = folgaLote.dates[0]!;
           const ultimoDia = folgaLote.dates[folgaLote.dates.length - 1]!;
           const mesPublicado = problemas.length || recusa ? false : await mesDeFolgasPublicadoNoPeriodo(operationSelection.operationId, primeiroDia, ultimoDia);
+          // Limites de folga por dia (total da casa e por área): avisam; no modo "exige motivo" pedem o porquê escrito.
+          const comArea = problemas.length || recusa ? [] : await db.select({ id: usersTable.id, areaId: usersTable.areaId }).from(usersTable).where(inArray(usersTable.id, pessoas.map((pessoa) => pessoa.id)));
+          const excedidos = problemas.length || recusa || folgaLote.tipo === null ? [] : await limitesExcedidos({ organizationId: user.organizationId!, pessoas: comArea, dates: folgaLote.dates });
+          const nomesDasAreas = new Map((excedidos.length ? await db.select({ id: areasTable.id, name: areasTable.name }).from(areasTable).where(inArray(areasTable.id, [...new Set(excedidos.map((e) => e.areaId).filter((id): id is string => Boolean(id)))].concat(["00000000-0000-0000-0000-000000000000"]))) : []).map((area) => [area.id, area.name]));
+          const exigeMotivoDoLimite = excedidos.find((e) => e.modo === "EXIGE_MOTIVO");
           if (problemas.length) {
             fullResponse = `Nada foi marcado: ${problemas.join("; ")}.`;
           } else if (recusa) {
             fullResponse = `${recusa}. Nada foi marcado.`;
+          } else if (exigeMotivoDoLimite && !folgaLote.motivo) {
+            fullResponse = `${fraseDoLimite(exigeMotivoDoLimite, exigeMotivoDoLimite.areaId ? nomesDasAreas.get(exigeMotivoDoLimite.areaId) : undefined)} Esse limite foi combinado como "exige motivo": peça de novo acrescentando com motivo "texto". Nada foi marcado.`;
           } else if (mesPublicado && !folgaLote.motivo) {
             fullResponse = "Esse período está num mês de folgas já publicado. Mexer depois de publicado precisa de motivo escrito: peça de novo acrescentando com motivo \"texto\". Nada foi marcado.";
           } else {
@@ -6376,7 +6384,7 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
               }
             }
             // Cobertura: só avisa. Quem decide é a gerência; a análise é a mesma que a Supervisão vê no pedido.
-            const atencao: string[] = [];
+            const atencao: string[] = excedidos.map((e) => fraseDoLimite(e, e.areaId ? nomesDasAreas.get(e.areaId) : undefined));
             let semAnalise = false;
             if (folgaLote.tipo !== null) {
               const dias = Math.round((Date.parse(`${ultimoDia}T12:00:00Z`) - Date.parse(`${primeiroDia}T12:00:00Z`)) / 86_400_000) + 1;
@@ -8646,6 +8654,10 @@ router.post("/asa/actions/:proposalId/confirm", requireAuth, requireOrganization
         if (recusaAgora) return { status: "forbidden" as const };
         // Entre a prévia e o "sim" o mês pode ter sido publicado: sem motivo escrito, a prévia perdeu a validade.
         if (!motivoDoLote && await mesDeFolgasPublicadoNoPeriodo(operationId, [...datas].sort()[0]!, [...datas].sort()[datas.length - 1]!)) return { status: "stale" as const };
+        if (!motivoDoLote && tipo !== null) {
+          const comAreaAgora = await tx.select({ id: usersTable.id, areaId: usersTable.areaId }).from(usersTable).where(inArray(usersTable.id, previstas.map((item) => item.id)));
+          if ((await limitesExcedidos({ organizationId: user.organizationId!, pessoas: comAreaAgora, dates: datas })).some((e) => e.modo === "EXIGE_MOTIVO")) return { status: "stale" as const };
+        }
         await aplicarFolgasEmLote(tx, {
           user: { sub: user.sub, organizationId: user.organizationId! }, operationId,
           pessoas: previstas.map((item) => item.id), dates: datas, type: tipo, motivo: motivoDoLote, via: "ASA",

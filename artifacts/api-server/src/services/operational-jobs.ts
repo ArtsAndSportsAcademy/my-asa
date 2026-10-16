@@ -159,6 +159,7 @@ export async function rodarCicloOperacional(now = new Date(), organizationId?: s
   resultado.lembretes = await enqueueEscalaReminders(now, organizationId);
   await reconcileDueCheckIns(now, organizationId);
   resultado.folgas = await avisarPrazoDaFolgaAberto(now, organizationId);
+  resultado.lembretesDeFolga = await lembrarRespostasDeFolga(now, organizationId);
   // Avisos que nasceram neste ciclo (lembretes, publicação) já saem agora, sem esperar o próximo minuto.
   resultado.avisosDepois = await processNotificationOutbox();
   return resultado;
@@ -190,4 +191,42 @@ export async function avisarPrazoDaFolgaAberto(now = new Date(), organizationId?
     });
   }
   return { avisados };
+}
+
+/**
+ * Lembrete de resposta (Babi, 16/10/2026): troca de folga esperando o colega, ou proposta de dias esperando a
+ * pessoa que pediu. Depois de `lembreteRespostaHoras` sem resposta (padrão 24; 0 desliga) a pessoa que precisa
+ * responder ganha UM lembrete no sino. A chave de deduplicação garante uma vez só, mesmo que o ciclo rode a cada
+ * minuto. Quem propôs não é avisado de novo: o assunto também se resolve pessoalmente.
+ */
+export async function lembrarRespostasDeFolga(now = new Date(), organizationId?: string) {
+  const hoje = operationalDate(now);
+  const esperando = await db.select({
+    id: leaveRequestsTable.id, organizationId: leaveRequestsTable.organizationId, userId: leaveRequestsTable.userId,
+    startDate: leaveRequestsTable.startDate, endDate: leaveRequestsTable.endDate, updatedAt: leaveRequestsTable.updatedAt,
+    peerId: leaveRequestsTable.peerId, peerAccepted: leaveRequestsTable.peerAccepted,
+    alternativeDates: leaveRequestsTable.alternativeDates, alternativeAccepted: leaveRequestsTable.alternativeAccepted,
+  }).from(leaveRequestsTable).where(and(eq(leaveRequestsTable.status, "PENDING"), gte(leaveRequestsTable.endDate, hoje), ...(organizationId ? [eq(leaveRequestsTable.organizationId, organizationId)] : [])));
+  const horasPorOrganizacao = new Map<string, number>();
+  let lembrados = 0;
+  for (const pedido of esperando) {
+    const trocaEsperando = Boolean(pedido.peerId) && pedido.peerAccepted === null;
+    const diasEsperando = Boolean(pedido.alternativeDates?.length) && pedido.alternativeAccepted === null;
+    if (!trocaEsperando && !diasEsperando) continue;
+    if (!horasPorOrganizacao.has(pedido.organizationId)) horasPorOrganizacao.set(pedido.organizationId, (await lerConfigFolga(pedido.organizationId)).lembreteRespostaHoras);
+    const horas = horasPorOrganizacao.get(pedido.organizationId)!;
+    if (horas <= 0 || now.getTime() - pedido.updatedAt.getTime() < horas * 3_600_000) continue;
+    const destinoId = trocaEsperando ? pedido.peerId! : pedido.userId;
+    const chave = `folga:${pedido.id}:lembrete:${trocaEsperando ? "troca" : "dias"}:${destinoId}`;
+    await db.transaction(async (tx) => {
+      const [ja] = await tx.select({ id: notificationOutboxTable.id }).from(notificationOutboxTable).where(eq(notificationOutboxTable.deduplicationKey, chave)).limit(1);
+      if (ja) return;
+      await enqueueNotification(tx, trocaEsperando
+        ? { userId: destinoId, type: "leave.reminder", title: "Falta a sua resposta sobre a troca de folga", message: `Uma proposta de troca de folga (${periodoLegivel(pedido.startDate, pedido.endDate)}) espera a sua resposta. Aceite ou recuse com o motivo em Folgas.`, priority: "NORMAL", category: "absence", entityType: "leave_request", entityId: pedido.id, actionUrl: "/folgas" }
+        : { userId: destinoId, type: "leave.reminder", title: "Falta a sua resposta sobre os dias propostos", message: `A Supervisão propôs outros dias para o seu pedido de ${periodoLegivel(pedido.startDate, pedido.endDate)}. Aceite ou recuse com o motivo em Solicitações.`, priority: "NORMAL", category: "absence", entityType: "leave_request", entityId: pedido.id, actionUrl: "/solicitacoes" },
+      now, { deduplicationKey: chave });
+      lembrados++;
+    });
+  }
+  return { lembrados };
 }

@@ -650,11 +650,13 @@ function AplicarGrupoDialog({ grupo, mes, erro, onClose, onSubmit }: {
     </footer>
   </form></div>;
 }
-type RegrasDoPedido = { config: { prazoSupervisaoDias: number; limiteFolgaPorArea: Record<string, number> }; areas: { id: string; name: string }[] };
+type ModoDoLimite = "REFERENCIA" | "EXIGE_MOTIVO";
+type RegrasDoPedido = { config: { prazoSupervisaoDias: number; limiteFolgaPorArea: Record<string, number>; limiteAreaAtivo: boolean; limiteAreaModo: ModoDoLimite; limiteTotalAtivo: boolean; limiteTotal: number | null; limiteTotalModo: ModoDoLimite; lembreteRespostaHoras: number }; areas: { id: string; name: string }[] };
 /**
  * Regras do pedido de folga que a Administração ajusta: em quantos dias a Administração pode decidir um
- * pedido que a Supervisão não respondeu, e quantas pessoas de cada área podem folgar no mesmo dia antes
- * de a análise avisar. O limite só avisa; nunca impede a decisão.
+ * pedido que a Supervisão não respondeu, quantas pessoas podem folgar no mesmo dia (no total da casa e por área,
+ * cada limite liga e desliga) e depois de quantas horas sem resposta vem o lembrete. Cada limite só avisa
+ * (referência) ou exige motivo escrito para passar; nenhum impede a decisão.
  */
 function RegrasDoPedidoDialog({ onClose }: { onClose: () => void }) {
   useFecharComEsc(onClose);
@@ -679,8 +681,21 @@ function RegrasDoPedidoDialog({ onClose }: { onClose: () => void }) {
       if (!Number.isInteger(n) || n < 0 || n > 200) { setErro(`O limite de ${area.name} é um número inteiro de pessoas, de 0 a 200. Deixe em branco para não avisar.`); return; }
       limites[area.id] = n;
     }
+    const totalTexto = String(f.get("limite-total") ?? "").trim();
+    const limiteTotal = totalTexto === "" ? null : Number(totalTexto);
+    if (limiteTotal !== null && (!Number.isInteger(limiteTotal) || limiteTotal < 0 || limiteTotal > 2000)) { setErro("O limite total é um número inteiro de pessoas, de 0 a 2000."); return; }
+    const limiteTotalAtivo = f.get("limite-total-ativo") === "on";
+    if (limiteTotalAtivo && limiteTotal === null) { setErro("Para ligar o limite total, diga quantas pessoas podem estar de folga no mesmo dia."); return; }
+    const lembrete = Number(f.get("lembrete"));
+    if (!Number.isInteger(lembrete) || lembrete < 0 || lembrete > 168) { setErro("O lembrete é um número inteiro de horas, de 0 (sem lembrete) a 168."); return; }
     setSalvando(true); setErro("");
-    try { await customFetch("/api/folga-config", { method: "PUT", body: JSON.stringify({ prazoSupervisaoDias: prazo, limiteFolgaPorArea: limites }) }); onClose(); }
+    try {
+      await customFetch("/api/folga-config", { method: "PUT", body: JSON.stringify({
+        prazoSupervisaoDias: prazo, limiteFolgaPorArea: limites,
+        limiteTotalAtivo, limiteTotal, limiteTotalModo: String(f.get("limite-total-modo")),
+        limiteAreaAtivo: f.get("limite-area-ativo") === "on", limiteAreaModo: String(f.get("limite-area-modo")),
+        lembreteRespostaHoras: lembrete,
+      }) }); onClose(); }
     catch (e) { setErro(mensagemDoErro(e, "Não consegui salvar as regras agora. Nada foi alterado; tente de novo.")); }
     finally { setSalvando(false); }
   };
@@ -693,10 +708,23 @@ function RegrasDoPedidoDialog({ onClose }: { onClose: () => void }) {
         <small>A Supervisão da área decide primeiro. Se ela não responder, a Administração passa a poder decidir quando faltarem esses dias (corridos) ou menos para a data pedida.</small>
       </label>
       <fieldset>
-        <legend>Quantas pessoas da área podem estar de folga no mesmo dia</legend>
-        <small>Passando disso, a análise do pedido avisa. Só avisa: nunca impede a decisão. Em branco, não avisa. O número depende dos shows.</small>
+        <legend>Limite total: pessoas de folga no mesmo dia na casa toda</legend>
+        <small>Conta Snowland e Acquamotion juntos. Ligado, a análise do pedido mostra quando o dia passa do número. Desligado, não conta.</small>
+        <label className="cycle-regra-liga"><input name="limite-total-ativo" type="checkbox" defaultChecked={dados.config.limiteTotalAtivo} /> Ligar o limite total</label>
+        <label>Quantas pessoas no máximo<input name="limite-total" type="number" min={0} max={2000} step={1} defaultValue={dados.config.limiteTotal ?? ""} placeholder="ex.: 10" /></label>
+        <label>Quando passar do limite<select name="limite-total-modo" defaultValue={dados.config.limiteTotalModo}><option value="REFERENCIA">Só avisar (referência)</option><option value="EXIGE_MOTIVO">Exigir motivo escrito para aprovar</option></select></label>
+      </fieldset>
+      <fieldset>
+        <legend>Limite por área: pessoas da área de folga no mesmo dia</legend>
+        <small>Depende dos shows. Em branco, a área não tem limite. Pode ficar em referência enquanto o total é mais firme, ou o contrário.</small>
+        <label className="cycle-regra-liga"><input name="limite-area-ativo" type="checkbox" defaultChecked={dados.config.limiteAreaAtivo} /> Ligar os limites por área</label>
+        <label>Quando passar do limite<select name="limite-area-modo" defaultValue={dados.config.limiteAreaModo}><option value="REFERENCIA">Só avisar (referência)</option><option value="EXIGE_MOTIVO">Exigir motivo escrito para aprovar</option></select></label>
         {dados.areas.length ? dados.areas.map((area) => <label key={area.id}>{area.name}<input name={`limite-${area.id}`} type="number" min={0} max={200} step={1} defaultValue={dados.config.limiteFolgaPorArea[area.id] ?? ""} placeholder="sem limite" /></label>) : <p>Nenhuma área cadastrada ainda.</p>}
       </fieldset>
+      <label>Lembrar quem não respondeu depois de quantas horas
+        <input name="lembrete" type="number" min={0} max={168} step={1} defaultValue={dados.config.lembreteRespostaHoras} required />
+        <small>Vale para o colega de uma troca de folga e para quem recebeu uma proposta de outros dias. Um lembrete só, no sino. Zero desliga.</small>
+      </label>
     </>}
     {erro && <p className="cycle-erro-janela" role="alert">{erro}</p>}
     <footer><button type="button" className="cycle-secondary" onClick={onClose}>Voltar</button><button className="cycle-primary" disabled={salvando || !dados}>{salvando ? "Salvando…" : "Salvar"}</button></footer>

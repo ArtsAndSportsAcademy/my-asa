@@ -14,7 +14,7 @@ import {
   agendaEventsTable, dailyBookAssignmentsTable, dailyBookPositionsTable, dailyBooksTable, db, folgasTable, showBookLinesTable, showBooksTable, usersTable,
 } from "@workspace/db";
 import { montarEscalaDoDia } from "./escala-dia.js";
-import { lerConfigFolga } from "./folga-config.js";
+import { fraseDoLimite, lerConfigFolga, limitesExcedidos } from "./folga-config.js";
 
 export const LIMITE_DIAS_ANALISE = 14;
 
@@ -162,11 +162,17 @@ export async function analisarPedidoDeFolga(input: { organizationId: string; use
     // Aviso de cobertura da área: só avisa, nunca bloqueia.
     let aviso: string | null = null;
     const limite = pessoa.areaId ? config.limiteFolgaPorArea[pessoa.areaId] : undefined;
-    if (pessoa.areaId && typeof limite === "number") {
+    if (config.limiteAreaAtivo && pessoa.areaId && typeof limite === "number") {
       const daArea = escalas.flatMap((e) => e.pessoas).filter((p) => p.areaId === pessoa.areaId);
       const jaDeFolga = new Set(daArea.filter((p) => folgam.has(p.id)).map((p) => p.id));
       const comEla = jaDeFolga.size + (jaDeFolga.has(userId) ? 0 : 1);
       if (comEla > limite) aviso = `Com ${pessoa.name}, ${daArea[0]?.areaName ?? "a área"} fica com ${comEla} de folga no ${curta(date)} (o limite é ${limite}).`;
+    }
+
+    // Limite total de folgas por dia (a casa toda): só aparece se a Administração ligou.
+    if (config.limiteTotalAtivo && typeof config.limiteTotal === "number") {
+      const total = (await limitesExcedidos({ organizationId, pessoas: [{ id: userId, areaId: pessoa.areaId }], dates: [date], config })).find((e) => e.tipo === "TOTAL");
+      if (total) aviso = [aviso, fraseDoLimite(total)].filter(Boolean).join(" ");
     }
 
     dias.push({ date, deFolga: lista(folgam), trabalham: lista(trabalham), vagas: vagasAnalisadas, resultado, aviso, semEscala });

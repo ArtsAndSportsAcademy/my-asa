@@ -12,6 +12,7 @@ import { and, eq, inArray, or } from "drizzle-orm";
 import app from "../src/application.js";
 import { signAccessToken } from "../src/lib/jwt.service.js";
 import { operationalDate, shiftOperationalDate } from "../src/lib/operational-date.js";
+import { lembrarRespostasDeFolga } from "../src/services/operational-jobs.js";
 
 let passed = 0;
 const failures: string[] = [];
@@ -36,8 +37,8 @@ async function run() {
     return u!;
   };
   const admin = await mk("admin", null, "ADMIN"), dir = await mk("dir", null, "DIR"), sup = await mk("sup", pat!.id, "SUPERVISOR_A");
-  const ana = await mk("ana", pat!.id, "MEMBER"), bia = await mk("bia", pat!.id, "MEMBER");
-  const ids = [admin, dir, sup, ana, bia].map((u) => u.id);
+  const ana = await mk("ana", pat!.id, "MEMBER"), bia = await mk("bia", pat!.id, "MEMBER"), cris = await mk("cris", pat!.id, "MEMBER");
+  const ids = [admin, dir, sup, ana, bia, cris].map((u) => u.id);
   await db.insert(areaLocalSupervisorsTable).values({ areaId: pat!.id, locationId: local!.id, supervisorId: sup.id, active: true });
 
   let server: ReturnType<typeof app.listen> | null = null;
@@ -53,7 +54,7 @@ async function run() {
       try { resposta = text ? JSON.parse(text) : {}; } catch { /* corpo que não é JSON */ }
       return { status: r.status, body: resposta };
     };
-    const asAdmin = tokenFor(admin, "ADMIN"), asDir = tokenFor(dir, "DIR"), asSup = tokenFor(sup, "SUPERVISOR_A"), asAna = tokenFor(ana, "MEMBER");
+    const asAdmin = tokenFor(admin, "ADMIN"), asDir = tokenFor(dir, "DIR"), asSup = tokenFor(sup, "SUPERVISOR_A"), asAna = tokenFor(ana, "MEMBER"), asCris = tokenFor(cris, "MEMBER");
     const [ano, mes] = quatroDias.split("-").map(Number);
     assert((await call("POST", "/folgas/grid/publicar", asAdmin, { operationId: operation!.id, year: ano, month: mes })).status === 200, "preparo: publicar o mapa do mês");
 
@@ -93,6 +94,46 @@ async function run() {
     assert((await call("PATCH", `/leave-requests/${pedidoId}`, asAdmin, { status: "APPROVED", decisionReason: "A Supervisão não respondeu." })).status === 200, "o aviso nunca trava: a decisão continua possível, e agora dentro do prazo de 5 dias");
     const guardado = await db.select().from(folgaConfigTable).where(eq(folgaConfigTable.organizationId, org!.id));
     assert(guardado.length === 1 && guardado[0]!.prazoSupervisaoDias === 5, "guardar o limite não desfaz o prazo salvo antes");
+
+    // 5 · Limite total da casa e limite por área: cada um liga e desliga, e cada um só avisa ou exige motivo.
+    assert((await call("PUT", "/folga-config", asAdmin, { limiteTotalAtivo: true })).status === 400, "ligar o limite total sem dizer o número é recusado com uma frase");
+    for (const [corpo, quando] of [[{ limiteTotal: -1 }, "limite total negativo"], [{ limiteTotal: 2001 }, "limite total acima de 2000"], [{ limiteTotalModo: "TRAVA" }, "modo que não existe"], [{ limiteAreaAtivo: "sim" }, "liga/desliga em texto"], [{ lembreteRespostaHoras: 169 }, "lembrete acima de 168 horas"]] as const) {
+      const rr = await call("PUT", "/folga-config", asAdmin, corpo);
+      assert(rr.status === 400 && (rr.body.message ?? "").length > 10, `${quando}: 400 com frase`);
+    }
+    const ligado = await call("PUT", "/folga-config", asAdmin, { limiteTotalAtivo: true, limiteTotal: 2, limiteTotalModo: "REFERENCIA" });
+    assert(ligado.status === 200 && ligado.body.config?.limiteTotalAtivo === true && ligado.body.config?.limiteTotal === 2 && ligado.body.config?.limiteFolgaPorArea?.[pat!.id] === 1, "a Administração liga o limite total de 2 pessoas sem desfazer o limite da área");
+    const pedidoCris = await call("POST", "/leave-requests", asCris, { startDate: quatroDias, endDate: quatroDias, reason: "Consulta" });
+    const pedidoCrisId = pedidoCris.body.request.id as string;
+    const avisoTotal = await call("GET", `/leave-requests/${pedidoCrisId}/analise`, asSup);
+    assert(/limite total é 2/.test(avisoTotal.body.dias?.[0]?.aviso ?? "") && /limite é 1/.test(avisoTotal.body.dias?.[0]?.aviso ?? ""), "a análise avisa os dois limites: o total (casa toda) e o da área");
+    const modoMotivo = await call("PUT", "/folga-config", asAdmin, { limiteTotalModo: "EXIGE_MOTIVO", limiteAreaAtivo: false });
+    assert(modoMotivo.status === 200 && modoMotivo.body.config?.limiteTotalModo === "EXIGE_MOTIVO" && modoMotivo.body.config?.limiteAreaAtivo === false, "o total vai para 'exige motivo' e o da área é desligado");
+    const semAreaNoAviso = await call("GET", `/leave-requests/${pedidoCrisId}/analise`, asSup);
+    assert(/limite total é 2/.test(semAreaNoAviso.body.dias?.[0]?.aviso ?? "") && !/limite é 1/.test(semAreaNoAviso.body.dias?.[0]?.aviso ?? ""), "com o limite por área desligado, só o total aparece");
+    const semMotivo = await call("PATCH", `/leave-requests/${pedidoCrisId}`, asSup, { status: "APPROVED" });
+    assert(semMotivo.status === 400 && /exige motivo/.test(semMotivo.body.message ?? ""), "no modo 'exige motivo', aprovar passando do limite total pede o porquê escrito");
+    const comMotivo = await call("PATCH", `/leave-requests/${pedidoCrisId}`, asSup, { status: "APPROVED", decisionReason: "Consulta médica marcada; a Cris cobre outra data." });
+    assert(comMotivo.status === 200, "com o motivo escrito, a decisão passa: o limite nunca é uma trava absoluta");
+    assert((await call("PUT", "/folga-config", asAdmin, { limiteTotalAtivo: false })).status === 200, "a Administração desliga o limite total");
+    const desligado = await call("GET", `/leave-requests/${pedidoCrisId}/analise`, asSup);
+    assert(!/limite total/.test(desligado.body.dias?.[0]?.aviso ?? ""), "desligado, o limite total deixa de aparecer");
+
+    // 6 · Lembrete de resposta: uma vez, só depois do tempo combinado, só para quem precisa responder.
+    const horasAtras = (h: number) => new Date(Date.now() - h * 3_600_000);
+    const [esperandoColega] = await db.insert(leaveRequestsTable).values({ organizationId: org!.id, userId: ana.id, areaId: pat!.id, startDate: shiftOperationalDate(hoje, 20), endDate: shiftOperationalDate(hoje, 20), reason: "Troca", status: "PENDING", peerId: bia.id, peerProposedBy: sup.id, peerAccepted: null, swapReturnDate: shiftOperationalDate(hoje, 30), updatedAt: horasAtras(30) }).returning();
+    const [recemProposta] = await db.insert(leaveRequestsTable).values({ organizationId: org!.id, userId: cris.id, areaId: pat!.id, startDate: shiftOperationalDate(hoje, 21), endDate: shiftOperationalDate(hoje, 21), reason: "Troca", status: "PENDING", peerId: bia.id, peerProposedBy: sup.id, peerAccepted: null, swapReturnDate: shiftOperationalDate(hoje, 31), updatedAt: horasAtras(2) }).returning();
+    const [esperandoPessoa] = await db.insert(leaveRequestsTable).values({ organizationId: org!.id, userId: bia.id, areaId: pat!.id, startDate: shiftOperationalDate(hoje, 22), endDate: shiftOperationalDate(hoje, 23), reason: "Viagem", status: "PENDING", alternativeDates: [shiftOperationalDate(hoje, 22)], alternativeProposedBy: sup.id, alternativeAccepted: null, updatedAt: horasAtras(30) }).returning();
+    const lembretesDe = async (userId: string) => (await db.select().from(notificationOutboxTable).where(eq(notificationOutboxTable.userId, userId))).filter((linha) => (linha.payload as { type?: string }).type === "leave.reminder");
+    const primeira = await lembrarRespostasDeFolga(new Date(), org!.id);
+    assert(primeira.lembrados === 2, "depois de 24 horas sem resposta, o colega da troca e a pessoa da proposta de dias ganham um lembrete cada; a proposta de 2 horas espera");
+    assert((await lembretesDe(bia.id)).length === 2, "a Bia recebeu os dois lembretes que lhe cabem (a troca da Ana e a proposta de dias dela)");
+    assert((await lembretesDe(sup.id)).length === 0 && (await lembretesDe(ana.id)).length === 0, "quem propôs e quem pediu a troca não são lembrados");
+    assert((await lembrarRespostasDeFolga(new Date(), org!.id)).lembrados === 0, "o ciclo roda a cada minuto, mas o lembrete sai uma vez só");
+    assert((await call("PUT", "/folga-config", asAdmin, { lembreteRespostaHoras: 0 })).status === 200, "a Administração desliga o lembrete");
+    await db.update(leaveRequestsTable).set({ updatedAt: horasAtras(40) }).where(eq(leaveRequestsTable.id, recemProposta!.id));
+    assert((await lembrarRespostasDeFolga(new Date(), org!.id)).lembrados === 0, "com o lembrete desligado (0 horas), ninguém é lembrado");
+    assert(Boolean(esperandoColega && esperandoPessoa), "preparo do lembrete conferido");
   } finally {
     if (server) await new Promise<void>((resolve) => server!.close(() => resolve()));
     await pool.query(`delete from notification_outbox where user_id = any($1::uuid[])`, [ids]).catch(() => undefined);

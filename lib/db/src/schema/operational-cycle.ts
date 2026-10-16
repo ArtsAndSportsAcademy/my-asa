@@ -63,6 +63,12 @@ export const folgaConfigTable = pgTable("folga_config", {
   organizationId: uuid("organization_id").primaryKey().references(() => organizationsTable.id),
   prazoSupervisaoDias: integer("prazo_supervisao_dias").notNull().default(3),
   limiteFolgaPorArea: jsonb("limite_folga_por_area").$type<Record<string, number>>().notNull().default({}),
+  limiteTotalAtivo: boolean("limite_total_ativo").notNull().default(false),
+  limiteTotal: integer("limite_total"),
+  limiteTotalModo: text("limite_total_modo").notNull().default("REFERENCIA"),
+  limiteAreaAtivo: boolean("limite_area_ativo").notNull().default(true),
+  limiteAreaModo: text("limite_area_modo").notNull().default("REFERENCIA"),
+  lembreteRespostaHoras: integer("lembrete_resposta_horas").notNull().default(24),
   updatedBy: uuid("updated_by").references(() => usersTable.id),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

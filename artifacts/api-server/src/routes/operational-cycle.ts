@@ -13,7 +13,7 @@ import { enqueueNotification } from "../services/undo.js";
 import { avisarRepublicacaoFolgas, ultimoRetratoFolgas } from "../services/folgas-publicadas.js";
 import { operationalDate } from "../lib/operational-date.js";
 import { administradores, diaEmQueOPrazoAbre, mesDeFolgasPublicadoNoPeriodo, operacaoDaPessoa, periodoLegivel, prazoAdminAberto, supervisoresDaArea } from "../services/folga-roteamento.js";
-import { lerConfigFolga } from "../services/folga-config.js";
+import { fraseDoLimite, lerConfigFolga, limitesExcedidos } from "../services/folga-config.js";
 import { barreiraDeDecisao } from "../services/folga-decisao.js";
 import { MARCA_DE_PRIORIDADE } from "../services/folga-comum.js";
 import { analisarPedidoDeFolga } from "../services/analise-folga.js";
@@ -256,6 +256,13 @@ router.patch("/leave-requests/:id", requireAuth, requireOrganization, async (req
       const analise = await analisarPedidoDeFolga({ organizationId: actor.organizationId, userId: request.userId, startDate: request.startDate, endDate: request.endDate });
       if (analise.dias.some((d) => !d.resultado.da)) {
         res.status(400).json({ error: "Bad Request", message: "Há dia deste pedido que fica sem cobertura. Escreva o motivo de aprovar mesmo assim: a folga só vence a escala com o porquê escrito." }); return;
+      }
+      // Limite de folgas por dia no modo "exige motivo": passar do limite só com o porquê escrito.
+      const diasDoPedido: string[] = [];
+      for (let t = new Date(`${request.startDate}T12:00:00Z`); t <= new Date(`${request.endDate}T12:00:00Z`) && diasDoPedido.length < 62; t.setUTCDate(t.getUTCDate() + 1)) diasDoPedido.push(t.toISOString().slice(0, 10));
+      const passou = (await limitesExcedidos({ organizationId: actor.organizationId, pessoas: [{ id: request.userId, areaId: request.areaId }], dates: diasDoPedido })).filter((e) => e.modo === "EXIGE_MOTIVO");
+      if (passou.length) {
+        res.status(400).json({ error: "Bad Request", message: `${fraseDoLimite(passou[0]!)} Escreva o motivo de aprovar mesmo assim: o limite foi combinado como "exige motivo".` }); return;
       }
     }
   }
