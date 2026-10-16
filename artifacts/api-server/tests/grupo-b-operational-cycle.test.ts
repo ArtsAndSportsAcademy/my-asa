@@ -69,6 +69,12 @@ async function run() {
     // Folga que já passou não se pede: o servidor recusa. O pedido do dia 05 (já passado) entra direto no banco,
     // porque o que este teste quer exercitar é a decisão e o efeito dela na Escala daquele dia.
     const futuro = shiftOperationalDate(operationalDate(), 20);
+    // Pedido de folga só espera decisão quando o mapa do mês já foi publicado; antes disso ele entra como
+    // prioridade (Etapa 3). Estes pedidos testam a decisão, então os meses das datas usadas saem publicados.
+    for (const dias of [20, 21, 22, 23]) {
+      const alvo = shiftOperationalDate(operationalDate(), dias);
+      await post(adminApi, "/folgas/grid/publicar", { operationId: operation!.id, year: Number(alvo.slice(0, 4)), month: Number(alvo.slice(5, 7)) });
+    }
     const passado = await post(memberApi, "/leave-requests", { startDate: date, endDate: date, reason: "Compromisso" });
     assert(passado.status === 400 && ((await passado.json()) as { message: string }).message.includes("já passou"), "pedir folga de dia que já passou é recusado, com a frase certa");
     const ask = await post(memberApi, "/leave-requests", { startDate: futuro, endDate: futuro, reason: "Compromisso" });

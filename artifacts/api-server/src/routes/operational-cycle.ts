@@ -12,6 +12,8 @@ import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.j
 import { enqueueNotification } from "../services/undo.js";
 import { avisarRepublicacaoFolgas, ultimoRetratoFolgas } from "../services/folgas-publicadas.js";
 import { operationalDate } from "../lib/operational-date.js";
+import { administradores, diaEmQueOPrazoAbre, mesDeFolgasPublicado, operacaoDaPessoa, prazoAdminAberto, supervisoresDaArea } from "../services/folga-roteamento.js";
+import { lerConfigFolga } from "../services/folga-config.js";
 import { protectShiftCheckIns } from "../middlewares/shift-checkin-legacy.js";
 
 const router: IRouter = Router();
@@ -44,13 +46,10 @@ async function record(input: Parameters<typeof writeHistoryEvent>[0], tx: unknow
 
 /** Um pedido de folga chega à Supervisão da área e à Administração, sem duplicar destinatários. */
 async function avisarGestaoDaFolga(tx: Parameters<Parameters<typeof db.transaction>[0]>[0], organizationId: string, areaId: string | null, requesterId: string, requestId: string, title: string, message: string, event: string) {
-  const admins = await tx.selectDistinct({ id: userRolesTable.userId }).from(userRolesTable)
-    .innerJoin(usersTable, eq(userRolesTable.userId, usersTable.id))
-    .where(and(eq(usersTable.organizationId, organizationId), eq(usersTable.status, "ACTIVE"), eq(userRolesTable.active, true), eq(userRolesTable.role, "ADMIN")));
-  const supervisores = areaId ? await tx.selectDistinct({ id: areaLocalSupervisorsTable.supervisorId }).from(areaLocalSupervisorsTable)
-    .innerJoin(usersTable, eq(areaLocalSupervisorsTable.supervisorId, usersTable.id))
-    .where(and(eq(areaLocalSupervisorsTable.areaId, areaId), eq(areaLocalSupervisorsTable.active, true), eq(usersTable.status, "ACTIVE"))) : [];
-  const destinatarios = [...new Set([...admins, ...supervisores].map((row) => row.id))].filter((id) => id !== requesterId);
+  // Quem decide primeiro é a Supervisão da área; a Administração só é avisada quando a área não tem
+  // Supervisão (ou quando quem pediu é a própria Supervisão), e depois, pelo prazo aberto.
+  let destinatarios = (await supervisoresDaArea(tx, areaId)).filter((id) => id !== requesterId);
+  if (!destinatarios.length) destinatarios = (await administradores(tx, organizationId)).filter((id) => id !== requesterId);
   for (const id of destinatarios) await enqueueNotification(tx as never, {
     userId: id, type: event, title, message, category: "absence", entityType: "leave_request", entityId: requestId, actionUrl: "/solicitacoes",
   }, new Date(), { deduplicationKey: `folga:${requestId}:${event}:${id}` });
@@ -102,7 +101,28 @@ router.get("/leave-requests", requireAuth, requireOrganization, async (req, res)
     ));
     for (const row of pendentes) if (folgas.some((f) => f.userId === row.request.userId && f.startDate <= row.request.endDate && f.endDate >= row.request.startDate)) jaMarcada.add(row.request.id);
   }
-  res.json({ requests: visible.map((row) => ({ ...row.request, userName: row.userName ?? row.fullName, areaName: row.areaName, ...(jaMarcada.has(row.request.id) ? { jaTemFolga: true } : {}) })) });
+  // Com quem está cada pedido em aberto: a Supervisão da área, ou a Administração quando a área não tem Supervisão.
+  const { prazoSupervisaoDias } = await lerConfigFolga(actor.organizationId);
+  const supervisaoPorArea = new Map<string, boolean>();
+  const temSupervisao = async (areaId: string | null) => {
+    if (!areaId) return false;
+    if (!supervisaoPorArea.has(areaId)) supervisaoPorArea.set(areaId, (await supervisoresDaArea(db, areaId)).length > 0);
+    return supervisaoPorArea.get(areaId)!;
+  };
+  const hoje = operationalDate();
+  const destinoDe = async (request: (typeof visible)[number]["request"]) => {
+    if (request.status !== "PENDING") return null;
+    const comSupervisao = await temSupervisao(request.areaId);
+    const abreEm = comSupervisao ? diaEmQueOPrazoAbre(request.startDate, prazoSupervisaoDias) : null;
+    const adminPodeAgora = !comSupervisao || prazoAdminAberto(request.startDate, hoje, prazoSupervisaoDias);
+    return { quem: comSupervisao ? "SUPERVISAO" : "ADMINISTRACAO", area: null, adminPodeDecidirEm: abreEm, adminPodeAgora };
+  };
+  const saida = [];
+  for (const row of visible) {
+    const destino = await destinoDe(row.request);
+    saida.push({ ...row.request, userName: row.userName ?? row.fullName, areaName: row.areaName, ...(jaMarcada.has(row.request.id) ? { jaTemFolga: true } : {}), ...(destino ? { destino: { ...destino, area: row.areaName } } : {}) });
+  }
+  res.json({ requests: saida });
 });
 router.post("/leave-requests", requireAuth, requireOrganization, async (req, res) => {
   const actor = req.user!, body = req.body as Record<string, unknown>;
@@ -113,13 +133,25 @@ router.post("/leave-requests", requireAuth, requireOrganization, async (req, res
   if (startDate < operationalDate()) { res.status(400).json({ error: "Bad Request", message: "Escolha hoje ou uma data futura: folga que já passou não se pede." }); return; }
   const [person] = await db.select({ id: usersTable.id, areaId: usersTable.areaId }).from(usersTable).where(and(eq(usersTable.id, userId), eq(usersTable.organizationId, actor.organizationId))).limit(1);
   if (!person) { res.status(404).json({ error: "Not Found" }); return; }
+  const operationId = await operacaoDaPessoa(db, userId, actor.organizationId);
+  // Mês de folgas ainda não publicado: o pedido da pessoa entra como prioridade. A gerência desfaz com motivo se houver algo especial.
+  const prioridade = operationId ? !(await mesDeFolgasPublicado(operationId, startDate)) : false;
   const request = await db.transaction(async (tx) => {
-    const [created] = await tx.insert(leaveRequestsTable).values({ organizationId: actor.organizationId, userId, areaId: person.areaId, startDate, endDate, reason }).returning();
+    const [created] = await tx.insert(leaveRequestsTable).values(prioridade
+      ? { organizationId: actor.organizationId, userId, areaId: person.areaId, startDate, endDate, reason, status: "APPROVED", decidedBy: actor.sub, decisionReason: "Entrou como prioridade: o mapa do mês ainda não foi publicado, então ninguém precisou decidir.", decidedAt: new Date() }
+      : { organizationId: actor.organizationId, userId, areaId: person.areaId, startDate, endDate, reason }).returning();
+    if (prioridade && operationId) {
+      await aplicarFolgaDoPedido(tx, created!, operationId, actor.sub);
+      await record({ category: "ABSENCE", action: "leave.priority", title: "Folga entrou como prioridade", narrative: `Pedido de folga de ${startDate} a ${endDate}, antes de o mapa do mês ser publicado.`, entityType: "leave_request", entityId: created!.id, actorId: actor.sub, orgId: actor.organizationId, operationId, beforeState: null, afterState: created, metadata: { reason } }, tx);
+      await avisarGestaoDaFolga(tx, actor.organizationId, person.areaId, userId, created!.id, "Folga entrou como prioridade", `Um pedido de folga de ${startDate} a ${endDate} entrou como prioridade, porque o mapa do mês ainda não foi publicado. Se houver algo especial nesse dia, você pode desfazer, com motivo.`, "leave.priority");
+      await enqueueNotification(tx as never, { userId, type: "leave.priority", title: "Sua folga foi registrada", message: `Seu pedido de ${startDate} a ${endDate} entrou como prioridade. A gerência pode ajustar se houver algo especial nesse dia.`, category: "absence", entityType: "leave_request", entityId: created!.id, actionUrl: "/solicitacoes" }, new Date(), { deduplicationKey: `folga:${created!.id}:prioridade:pessoa` });
+      return created!;
+    }
     await record({ category: "ABSENCE", action: "leave.requested", title: "Folga solicitada", narrative: `Pedido de folga de ${startDate} a ${endDate}.`, entityType: "leave_request", entityId: created!.id, actorId: actor.sub, orgId: actor.organizationId, beforeState: null, afterState: created }, tx);
     await avisarGestaoDaFolga(tx, actor.organizationId, person.areaId, userId, created!.id, "Pedido de folga", `Há um pedido de folga de ${startDate} a ${endDate} para decidir.`, "leave.requested");
     return created!;
   });
-  res.status(201).json({ request });
+  res.status(201).json({ request, ...(prioridade ? { entrouComoPrioridade: true } : {}) });
 });
 
 /** Calendário de grupo: gestão registra uma folga já decidida, sem simular um pedido do Elenco. */
@@ -159,6 +191,32 @@ router.post("/leave-calendar", requireAuth, requireOrganization, async (req, res
   });
   res.status(201).json({ request: requests[0], requests });
 });
+type TxFolga = Parameters<Parameters<typeof db.transaction>[0]>[0];
+/**
+ * Grava a folga de um pedido aprovado (ou entrado como prioridade). Não empilha uma segunda folga
+ * por cima de dia que já tem folga: devolve a frase que avisa quem decidiu, ou "" quando nada coincidiu.
+ */
+async function aplicarFolgaDoPedido(tx: TxFolga, pedido: { id: string; userId: string; startDate: string; endDate: string }, operationId: string, criadaPor: string): Promise<string> {
+  let aviso = "";
+  // Folga já marcada nos mesmos dias (grupo, mapa, calendário): aprovar vale, mas não empilha uma
+  // segunda folga por cima — o mapa contaria dois dias de folga onde há um. Quem aprovou fica sabendo.
+  const existentes = await tx.select({ startDate: folgasTable.startDate, endDate: folgasTable.endDate }).from(folgasTable).where(and(
+    eq(folgasTable.userId, pedido.userId), eq(folgasTable.status, "ACTIVE"), lte(folgasTable.startDate, pedido.endDate), gte(folgasTable.endDate, pedido.startDate),
+  ));
+  const dias: string[] = [];
+  for (let t = new Date(`${pedido.startDate}T12:00:00Z`); t <= new Date(`${pedido.endDate}T12:00:00Z`) && dias.length < 400; t.setUTCDate(t.getUTCDate() + 1)) dias.push(t.toISOString().slice(0, 10));
+  const semFolga = dias.filter((d) => !existentes.some((f) => f.startDate <= d && f.endDate >= d));
+  if (existentes.length) aviso = semFolga.length ? `Aprovada. Parte desses dias já tinha folga marcada (${dias.length - semFolga.length} de ${dias.length}).` : "Aprovada. Esses dias já tinham folga marcada; nada foi duplicado.";
+  // Só os dias que ainda não tinham folga, em trechos seguidos.
+  const trechos: { de: string; ate: string }[] = [];
+  for (const d of semFolga) {
+    const ultimo = trechos[trechos.length - 1];
+    if (ultimo && dias[dias.indexOf(ultimo.ate) + 1] === d) ultimo.ate = d; else trechos.push({ de: d, ate: d });
+  }
+  for (const trecho of trechos) await tx.insert(folgasTable).values({ userId: pedido.userId, operationId, type: "DAY_OFF", startDate: trecho.de, endDate: trecho.ate, status: "ACTIVE", origem: "SOLICITACAO", createdBy: criadaPor, notes: `Pedido ${pedido.id}` });
+  return aviso;
+}
+
 /** Aprovar não exige recado (recusar exige), mas a tabela só aceita decisão com texto: este é o texto. */
 const SEM_RECADO = "Aprovada sem observação.";
 router.patch("/leave-requests/:id", requireAuth, requireOrganization, async (req, res) => {
@@ -171,28 +229,22 @@ router.patch("/leave-requests/:id", requireAuth, requireOrganization, async (req
   if (!request) { res.status(404).json({ error: "Not Found" }); return; }
   if (!isAdmin(actor.role) && (!isSupervisor(actor.role) || !(await canSupervisorAccessPerson({ supervisorId: actor.sub, organizationId: actor.organizationId, personId: request.userId })))) { res.status(403).json({ error: "Forbidden" }); return; }
   if (request.status !== "PENDING") { res.status(409).json({ error: "Conflict", message: "Este pedido já foi decidido." }); return; }
+  if (request.userId === actor.sub) { res.status(403).json({ error: "Forbidden", message: "Ninguém decide o próprio pedido de folga." }); return; }
+  // A Supervisão da área decide primeiro. A Administração só entra quando a área não tem Supervisão ou quando o prazo abriu.
+  if (isAdmin(actor.role) && (await supervisoresDaArea(db, request.areaId)).length > 0) {
+    const { prazoSupervisaoDias } = await lerConfigFolga(actor.organizationId);
+    if (!prazoAdminAberto(request.startDate, operationalDate(), prazoSupervisaoDias)) {
+      const quando = diaEmQueOPrazoAbre(request.startDate, prazoSupervisaoDias).split("-").reverse().slice(0, 2).join("/");
+      res.status(409).json({ error: "Conflict", message: `A Supervisão da área tem até ${quando} para responder; a Administração pode decidir a partir daí.` }); return;
+    }
+  }
   let aviso = "";
   const updated = await db.transaction(async (tx) => {
     const [saved] = await tx.update(leaveRequestsTable).set({ status, decidedBy: actor.sub, decisionReason: decisionReason || SEM_RECADO, decidedAt: new Date(), updatedAt: new Date() }).where(and(eq(leaveRequestsTable.id, request.id), eq(leaveRequestsTable.status, "PENDING"))).returning();
     if (!saved) return null;
     let operationId: string | undefined;
     if (status === "APPROVED") { const [operation] = await tx.select({ id: userRolesTable.operationId }).from(userRolesTable).innerJoin(operationsTable, eq(userRolesTable.operationId, operationsTable.id)).where(and(eq(userRolesTable.userId, request.userId), eq(userRolesTable.active, true), eq(operationsTable.organizationId, actor.organizationId))).limit(1); if (!operation) throw new Error("A pessoa não possui operação ativa para registrar a folga."); operationId = operation.id;
-      // Folga já marcada nos mesmos dias (grupo, mapa, calendário): aprovar vale, mas não empilha uma
-      // segunda folga por cima — o mapa contaria dois dias de folga onde há um. Quem aprovou fica sabendo.
-      const existentes = await tx.select({ startDate: folgasTable.startDate, endDate: folgasTable.endDate }).from(folgasTable).where(and(
-        eq(folgasTable.userId, request.userId), eq(folgasTable.status, "ACTIVE"), lte(folgasTable.startDate, request.endDate), gte(folgasTable.endDate, request.startDate),
-      ));
-      const dias: string[] = [];
-      for (let t = new Date(`${request.startDate}T12:00:00Z`); t <= new Date(`${request.endDate}T12:00:00Z`) && dias.length < 400; t.setUTCDate(t.getUTCDate() + 1)) dias.push(t.toISOString().slice(0, 10));
-      const semFolga = dias.filter((d) => !existentes.some((f) => f.startDate <= d && f.endDate >= d));
-      if (existentes.length) aviso = semFolga.length ? `Aprovada. Parte desses dias já tinha folga marcada (${dias.length - semFolga.length} de ${dias.length}).` : "Aprovada. Esses dias já tinham folga marcada; nada foi duplicado.";
-      // Só os dias que ainda não tinham folga, em trechos seguidos.
-      const trechos: { de: string; ate: string }[] = [];
-      for (const d of semFolga) {
-        const ultimo = trechos[trechos.length - 1];
-        if (ultimo && dias[dias.indexOf(ultimo.ate) + 1] === d) ultimo.ate = d; else trechos.push({ de: d, ate: d });
-      }
-      for (const trecho of trechos) await tx.insert(folgasTable).values({ userId: request.userId, operationId, type: "DAY_OFF", startDate: trecho.de, endDate: trecho.ate, status: "ACTIVE", origem: "SOLICITACAO", createdBy: actor.sub, notes: `Pedido ${request.id}` });
+      aviso = await aplicarFolgaDoPedido(tx, request, operationId, actor.sub);
     }
     const eventId = await writeHistoryEvent({ category: "ABSENCE", action: status === "APPROVED" ? "leave.approved" : "leave.denied", title: status === "APPROVED" ? "Folga aprovada" : "Folga negada", narrative: decisionReason || SEM_RECADO, entityType: "leave_request", entityId: request.id, actorId: actor.sub, orgId: actor.organizationId, operationId, beforeState: request, afterState: saved, metadata: decisionReason ? { reason: decisionReason } : undefined }, tx as HistoryExecutor);
     if (operationId) await avisarRepublicacaoFolgas(tx, actor.organizationId, operationId, request.startDate, request.endDate, eventId);

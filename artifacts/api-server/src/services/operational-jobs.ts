@@ -1,5 +1,5 @@
-import { and, eq, inArray, lte, ne, sql } from "drizzle-orm";
-import { db, scalesTable, scaleAllocationsTable, allocationExceptionsTable, operationsTable, agendaEventsTable, dayCheckInsTable, locationsTable, operationalCheckInsTable } from "@workspace/db";
+import { and, eq, gte, inArray, lte, ne, sql } from "drizzle-orm";
+import { db, scalesTable, scaleAllocationsTable, allocationExceptionsTable, operationsTable, agendaEventsTable, dayCheckInsTable, locationsTable, operationalCheckInsTable, leaveRequestsTable, notificationOutboxTable } from "@workspace/db";
 import { APP_ROUTES } from "../lib/app-routes.js";
 import { escalaPublicada, montarEscalaDoDia } from "./escala-dia.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
@@ -11,6 +11,8 @@ import { publishedDay } from "./published-day.js";
 import { reconcileDueCheckIns } from "./checkin-reconcile.js";
 import { regrasDaOrganizacao } from "./regras-casa.js";
 import { shiftPlans, shiftsForDate } from "./shift-checkins.js";
+import { administradores, prazoAdminAberto, supervisoresDaArea } from "./folga-roteamento.js";
+import { lerConfigFolga } from "./folga-config.js";
 
 /** A timing conflict is an alert, never a publication blocker. Empty seats / missing coverage are pending. */
 export async function autoPublishScales(organizationId?: string) {
@@ -156,8 +158,36 @@ export async function rodarCicloOperacional(now = new Date(), organizationId?: s
   await enqueueShiftReminders(now, organizationId);
   resultado.lembretes = await enqueueEscalaReminders(now, organizationId);
   await reconcileDueCheckIns(now, organizationId);
+  resultado.folgas = await avisarPrazoDaFolgaAberto(now, organizationId);
   // Avisos que nasceram neste ciclo (lembretes, publicação) já saem agora, sem esperar o próximo minuto.
   resultado.avisosDepois = await processNotificationOutbox();
   return resultado;
 }
 export async function stopOperationalScheduler() { enabled = false; if (timer) clearTimeout(timer); timer = undefined; await active; }
+
+/**
+ * Pedido de folga que a Supervisão da área não respondeu e cujo prazo da Administração abriu:
+ * a Administração recebe um aviso por pedido. A chave de deduplicação garante uma vez só, mesmo
+ * que o ciclo rode a cada minuto.
+ */
+export async function avisarPrazoDaFolgaAberto(now = new Date(), organizationId?: string) {
+  const hoje = operationalDate(now);
+  const pendentes = await db.select({ id: leaveRequestsTable.id, organizationId: leaveRequestsTable.organizationId, userId: leaveRequestsTable.userId, areaId: leaveRequestsTable.areaId, startDate: leaveRequestsTable.startDate, endDate: leaveRequestsTable.endDate })
+    .from(leaveRequestsTable).where(and(eq(leaveRequestsTable.status, "PENDING"), gte(leaveRequestsTable.startDate, hoje), ...(organizationId ? [eq(leaveRequestsTable.organizationId, organizationId)] : [])));
+  let avisados = 0;
+  for (const pedido of pendentes) {
+    const { prazoSupervisaoDias } = await lerConfigFolga(pedido.organizationId);
+    if (!prazoAdminAberto(pedido.startDate, hoje, prazoSupervisaoDias)) continue;
+    await db.transaction(async (tx) => {
+      // Sem Supervisão na área, a Administração já foi avisada quando o pedido chegou.
+      if (!(await supervisoresDaArea(tx, pedido.areaId)).length) return;
+      for (const adminId of (await administradores(tx, pedido.organizationId)).filter((id) => id !== pedido.userId)) {
+        const [ja] = await tx.select({ id: notificationOutboxTable.id }).from(notificationOutboxTable).where(eq(notificationOutboxTable.deduplicationKey, `folga:${pedido.id}:prazo:${adminId}`)).limit(1);
+        if (ja) continue;
+        await enqueueNotification(tx, { userId: adminId, type: "leave.deadline_open", title: "Pedido de folga esperando decisão", message: `O pedido de folga de ${pedido.startDate} a ${pedido.endDate} ainda não foi respondido pela Supervisão da área. A partir de agora você pode decidir.`, category: "absence", entityType: "leave_request", entityId: pedido.id, actionUrl: "/solicitacoes" }, new Date(), { deduplicationKey: `folga:${pedido.id}:prazo:${adminId}` });
+        avisados++;
+      }
+    });
+  }
+  return { avisados };
+}

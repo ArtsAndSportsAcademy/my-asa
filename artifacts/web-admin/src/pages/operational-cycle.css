@@ -82,3 +82,7 @@
 /* 16/10 (crivo 16): o rodapé da janela fica colado embaixo enquanto o formulário rola (no telefone, com o teclado aberto, o botão não some). */
 .cycle-modal footer{position:sticky;bottom:0;z-index:2;margin:4px -20px -20px;padding:12px 20px;background:#fff;border-top:1px solid #eee9f6}
 @media(max-width:720px){.cycle-modal footer{margin:4px -16px -16px;padding:12px 16px}}
+
+/* Etapa 3: com quem está o pedido de folga, em palavras */
+.cycle-destino{color:#6b6482;font-size:12px;line-height:1.4;display:block;margin-top:2px}
+.cycle-request-acoes button:disabled{opacity:.45;cursor:not-allowed}
