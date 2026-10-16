@@ -296,10 +296,27 @@ na geração, e guardar como exceção só o que a gerência mexeu à mão — e
   mexe no que quiser; o que ela mexer fica guardado como exceção do dia.
 - **A Direção entra no mapa de folgas** normalmente.
 
-## Decisões que ainda são suas
+## Respostas da Babi às três perguntas (16/10/2026)
 
-1. **Folga a mais existe?** Quando não dá para trocar, a pessoa pode ganhar um dia a mais — e aí a
-   conta do mês fica diferente para ela — ou o pedido simplesmente é negado?
-2. **Os grupos de folga** são definidos por quem, e valem por mês ou por temporada?
-3. Quando a ASA diz *"dá, trocando com a Carol"*: **a Carol precisa aceitar antes** de o pedido ir
-   para a gerência, ou a gerência decide e a Carol é avisada?
+1. **Folga a mais: não existe como dia extra; existe folga transferida.** Se a pessoa precisou vir
+   trabalhar por qualquer emergência, aquele dia de folga **é transferido para outro dia** — a conta do
+   mês dela não fica maior nem menor. (A Babi disse não ter certeza de ter entendido a pergunta; esta é a
+   leitura registrada. Confirmar na Etapa 3 se "pedido negado" ainda existe quando nem a transferência cabe.)
+2. **Grupos de folga.** Na **alta temporada** (parque aberto nas quartas/segundas) os grupos são
+   definidos **em conjunto pelos supervisores Deb, Victor e Tef**. Nos **demais meses não há grupo fixo**:
+   a folga sai por "aleatoriedade", **sempre respeitando a necessidade dos shows** (exemplo dela: não pode
+   haver 5 bailarinos de folga no mesmo dia). Ou seja: grupo vale por temporada alta; fora dela, vale a
+   regra de cobertura mínima por função, não um grupo.
+3. **Troca com colega ("dá, trocando com a Carol").** Se a tabela **já foi publicada**, **toda mudança
+   passa pelo elenco**: a Carol precisa aceitar antes de o pedido seguir, porque só ela sabe se está
+   disponível naquele dia. Ela quer também **um jeito de escrever por que a mudança é necessária**
+   (motivo escrito, visível para quem aceita).
+
+O exemplo "5 bailarinos de folga no mesmo dia" é **só ilustração**, não é regra real nem número a usar.
+
+**Os quatro pontos que ficaram abertos, respondidos por ela em 16/10/2026:**
+- (a) **Antes de a tabela ser publicada, a gerência pode mexer** sem aceite de ninguém.
+- (b) **Se o colega recusar, recusa com motivo escrito e o pedido volta para a gerência.**
+- (c) **Cobertura mínima só avisa (não trava), e o número de cada função é configurável**, porque depende
+  dos shows: os shows precisam estar cobertos primeiro. Nenhum número vem pronto.
+- (d) **Quem registra a transferência da folga por emergência é a gerência.**

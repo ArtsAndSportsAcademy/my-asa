@@ -180,6 +180,10 @@ remarcar, ensaio na folga com motivo, avisos e "quem já leu" na Biblioteca, lot
 Pendente:
 - **A próxima revisão tela a tela**, com as 16 perguntas do crivo: Folgas e Solicitações, Mapa do mês e
   Grupos de folga. A regra real de folgas está em `docs/regras-de-folgas.md` — leia antes de mexer.
+  As 3 perguntas das Etapas 3 e 4 foram respondidas em 16/10/2026 (folga chamada em emergência é
+  transferida, grupos só na alta temporada pelos supervisores, troca após publicação exige aceite do
+  colega com motivo escrito) e os 4 pontos de detalhe também; tudo em
+  `docs/plano-folga-como-troca-e-mes-em-rascunho.md`. Cobertura mínima por função só avisa e é configurável.
 - **A Babi** confere no telefone o Perfil e o PDF da Biblioteca, e roda em produção
   `lib/db/scripts/limpar-texto-de-mensagens-no-registro.sql`. Só depois do "pode enviar" dela: GitHub e
   promoção (API primeiro, site depois).
