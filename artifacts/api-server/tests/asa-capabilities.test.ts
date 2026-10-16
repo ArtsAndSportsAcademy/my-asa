@@ -199,9 +199,9 @@ assert.match(webShell, /<Suspense fallback=\{null\}><GlobalAsaAssistant \/><\/Su
 assert.match(webShell, /active\.href === "\/biblioteca" \? <LibraryPage role=\{role\}\/>/, "Biblioteca do shell deve usar a página compartilhada ativa");
 const webLibrary = readFileSync(resolve(process.cwd(), "../web-admin/src/pages/communication.tsx"), "utf8");
 assert.match(webLibrary, /const search = useSearch\(\)/, "Biblioteca web deve aceitar abertura direta de documento pela URL");
-assert.match(webLibrary, /customFetch<\{ document: LibraryDoc; citations\?: LibraryCitation\[\]; canManageCitations\?: boolean \}>\(`\/api\/library\/documents\/\$\{selectedDocumentId\}`\)/, "detalhe aberto pela ASA deve usar a rota oficial autenticada da Biblioteca e carregar citações e permissão efetiva");
+assert.match(webLibrary, /customFetch<\{ document: LibraryDoc; citations\?: LibraryCitation\[\]; canManageCitations\?: boolean[^}]* \}>\(`\/api\/library\/documents\/\$\{selectedDocumentId\}`\)/, "detalhe aberto pela ASA deve usar a rota oficial autenticada da Biblioteca e carregar citações e permissão efetiva");
 assert.match(webLibrary, /setLocation\(`\/biblioteca\$\{queryString \? `\?\$\{queryString\}` : ""\}`\)/, "fechar detalhe deve limpar só o documento da URL e preservar o contexto da tela");
-assert.match(webLibrary, /selectedDocument\.requiresConfirmation && <button className="comm-primary" onClick=\{\(\) => void confirmSelected\(\)\}>Li e entendi/, "detalhe acessado pela ASA deve manter o ciente explícito do documento");
+assert.match(webLibrary, /selectedDocument\.waitingMe\) && <button className="comm-primary" onClick=\{\(\) => void confirmSelected\(\)\}>Li e entendi/, "detalhe acessado pela ASA deve manter o ciente explícito do documento");
 assert.match(webLibrary, /selectedDocument\.id\}\/citations[\s\S]*canManageCitations && <section/, "gestão de citações deve estar disponível na Biblioteca ativa somente quando o servidor autoriza aquele documento");
 assert.match(webLibrary, /setCitations\(result\.citations\)[\s\S]*Página \{citation\.pageNumber\}[\s\S]*Trecho exato/, "Biblioteca ativa deve exibir página/trecho e permitir cadastrar as referências da ASA");
 assert.match(webLibrary, /onClick=\{\(\) => setLocation\(`\/biblioteca\?document=\$\{doc\.id\}`\)\}>Detalhes/, "pessoa gestora deve conseguir abrir o detalhe para gerir citações sem iniciar uma busca pela ASA");
@@ -247,7 +247,7 @@ assert.ok(libraryCitationsRoute, "gestão deve permitir cadastrar citações por
 assert.match(libraryCitationsRoute[1]!, /MANAGER_ROLES[\s\S]*canManageDocumentScope[\s\S]*payload\.version !== doc\.version/, "edição de citações deve respeitar papel, escopo e versão atual");
 assert.match(libraryRoutes, /body !== undefined && body !== doc\.body[\s\S]*delete\(libraryDocumentPageCitationsTable\)/, "edição do texto deve invalidar âncoras antigas");
 assert.match(libraryRoutes, /delete\(libraryDocumentPageCitationsTable\)[\s\S]*doc\.version/, "substituição do PDF deve invalidar citações da versão corrente");
-assert.match(libraryRoutes, /const canManageCitations = doc\.status !== "ARCHIVED" && await canManageDocumentScope\(role, userId, doc\)[\s\S]*canManageCitations \}\)/, "detalhe da Biblioteca deve devolver a autorização de escrita específica para o documento");
+assert.match(libraryRoutes, /const canManageCitations = doc\.status !== "ARCHIVED" && await canManageDocumentScope\(role, userId, doc\)[\s\S]*canManageCitations[^}]*\}\)/, "detalhe da Biblioteca deve devolver a autorização de escrita específica para o documento");
 const libraryCitationsMigration = readFileSync(resolve(process.cwd(), "../../lib/db/drizzle/0052_library_page_citations.sql"), "utf8");
 assert.match(libraryCitationsMigration, /document_id uuid NOT NULL REFERENCES library_documents\(id\) ON DELETE CASCADE/, "citações devem acompanhar o ciclo de vida do documento");
 assert.match(libraryCitationsMigration, /version integer NOT NULL CHECK \(version > 0\)[\s\S]*page_number integer NOT NULL CHECK \(page_number > 0\)/, "migração deve impedir versões e páginas inválidas");

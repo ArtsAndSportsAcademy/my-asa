@@ -26,6 +26,7 @@ import {
   userNotificationsTable,
 } from "@workspace/db";
 import app from "../src/application.js";
+import { processNotificationOutbox } from "../src/services/notification-outbox.js";
 import { signAccessToken } from "../src/lib/jwt.service.js";
 import { operationalDate, shiftOperationalDate } from "../src/lib/operational-date.js";
 
@@ -123,6 +124,8 @@ async function run() {
     const published = await request("/folgas/grid/publicar", { method: "POST", body: JSON.stringify({ operationId: operation!.id, year: 2026, month: 9 }) });
     const publishedBody = await published.json() as { avisados: number; publicacao: { publishedAt: string | null; changedSince: boolean } };
     assert(published.status === 200 && publishedBody.avisados === 1 && Boolean(publishedBody.publicacao.publishedAt) && !publishedBody.publicacao.changedSince, "publicar o mês avisa a equipe (sem avisar quem publicou)");
+    // O aviso sai pela fila durável: entrega a fila aqui, em vez de torcer para algum servidor de fundo ter passado antes.
+    await processNotificationOutbox();
     const [publishedNotice] = await db.select().from(userNotificationsTable).where(and(eq(userNotificationsTable.userId, person!.id), eq(userNotificationsTable.type, "folga.month_published")));
     assert(Boolean(publishedNotice) && publishedNotice!.actionUrl === "/folgas", "a pessoa recebe o aviso com o caminho para Folgas");
     assert((await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.orgId, org!.id), eq(historyEventsTable.action, "FOLGA_MONTH_PUBLISHED")))).length === 1, "publicar o mês entra no Registro");
@@ -197,6 +200,7 @@ async function run() {
     await pool.query("DELETE FROM delivery_assignments WHERE delivery_id IN (SELECT id FROM deliveries WHERE operation_id = $1)", [operation!.id]);
     await pool.query("DELETE FROM deliveries WHERE operation_id = $1", [operation!.id]);
     await pool.query("DELETE FROM folgas WHERE operation_id = $1", [operation!.id]);
+    await pool.query("DELETE FROM notification_outbox WHERE user_id = ANY($1::uuid[])", [[admin!.id, person!.id]]);
     await pool.query("DELETE FROM user_notifications WHERE user_id = ANY($1::uuid[])", [[admin!.id, person!.id]]);
     await pool.query("DELETE FROM task_evidences WHERE id = $1", [evidence!.id]);
     await pool.query("DELETE FROM tasks WHERE id = $1", [task!.id]);
@@ -214,6 +218,8 @@ async function run() {
     await pool.query("DELETE FROM show_books WHERE id = $1", [showBook!.id]);
     await pool.query("DELETE FROM show_books WHERE operation_id = $1 AND title = $2", [operation!.id, `${tag}_show_registro`]);
     await pool.query("DELETE FROM user_roles WHERE operation_id = $1", [operation!.id]);
+    await pool.query("DELETE FROM notification_outbox WHERE user_id = ANY($1::uuid[])", [[admin!.id, person!.id]]);
+    await pool.query("DELETE FROM user_notifications WHERE user_id = ANY($1::uuid[])", [[admin!.id, person!.id]]);
     await pool.query("DELETE FROM users WHERE id = ANY($1::uuid[])", [[admin!.id, person!.id]]);
     await pool.query("DELETE FROM operations WHERE id = $1", [operation!.id]);
     await pool.query("DELETE FROM organizations WHERE id = $1", [org!.id]);

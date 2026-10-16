@@ -49,6 +49,8 @@ interface AsaProposal {
   title: string;
   recipientName?: string;
   recipientNames?: string[];
+  dias?: string[];
+  motivo?: string | null;
   previousResponsibilityTitle?: string | null;
   newResponsibilityTitle?: string | null;
   newTitle?: string;
@@ -111,7 +113,7 @@ function proposalConfirmLabel(actionType: string) {
     ASA_PREFERENCE_UPDATE: "Atualizar preferências", AGENDA_DRAFT_NOTES_UPDATE: "Atualizar observações",
     AGENDA_DRAFT_SCHEDULE_UPDATE: "Atualizar horário", AGENDA_DRAFT_RENAME: "Renomear rascunho",
     NOTICE_DRAFT_UPDATE: "Atualizar rascunho", MURAL_ACK: "Registrar ciente", AGENDA_MEETING_CREATE: "Criar reunião",
-    TASK_CREATE: "Criar tarefa", TASK_START: "Iniciar tarefa", TASK_READY_FOR_APPROVAL: "Enviar para aprovação",
+    TASK_CREATE: "Criar tarefa", FOLGA_LOTE: "Aplicar nas folgas", TASK_START: "Iniciar tarefa", TASK_READY_FOR_APPROVAL: "Enviar para aprovação",
     TASK_COMPLETE: "Concluir tarefa", TASK_UPDATE_DUE_DATE: "Atualizar prazo", TASK_UPDATE_ASSIGNEE: "Atualizar responsável",
     TASK_UPDATE_PRIORITY: "Atualizar prioridade", TASK_UPDATE_DESCRIPTION: "Atualizar descrição",
     TASK_UPDATE_TITLE: "Atualizar título", TASK_UPDATE_REQUIREMENTS: "Atualizar requisitos",
@@ -128,7 +130,7 @@ function proposalStateLabel(actionType: string, state: string, expectedStatus?: 
     AGENDA_DRAFT_NOTES_UPDATE: "Observações atualizadas; rascunho não confirmado",
     AGENDA_DRAFT_SCHEDULE_UPDATE: "Data e horário atualizados; rascunho não confirmado",
     AGENDA_DRAFT_RENAME: "Rascunho renomeado; não confirmado", NOTICE_DRAFT_UPDATE: "Rascunho atualizado; não publicado",
-    ASA_PREFERENCE_UPDATE: "Preferências atualizadas", MURAL_ACK: "Ciente registrado", TASK_CREATE: "Tarefa criada; aprovação após a conclusão",
+    ASA_PREFERENCE_UPDATE: "Preferências atualizadas", MURAL_ACK: "Ciente registrado", FOLGA_LOTE: "Folgas atualizadas; o Registro guarda o lote", TASK_CREATE: "Tarefa criada; aprovação após a conclusão",
     TASK_START: "Tarefa iniciada", TASK_READY_FOR_APPROVAL: "Enviada para aprovação", TASK_COMPLETE: "Tarefa concluída",
     TASK_UPDATE_DUE_DATE: "Prazo atualizado", TASK_UPDATE_ASSIGNEE: "Responsável atualizado",
     TASK_UPDATE_PRIORITY: "Prioridade atualizada", TASK_UPDATE_DESCRIPTION: "Descrição atualizada",
@@ -553,6 +555,8 @@ function MessageBubble({
               ? `${msg.proposal.title}\nObservações atuais: ${msg.proposal.previousNotes || "nenhuma"}\nNovas observações: ${msg.proposal.notes ?? "nenhuma (serão removidas)"}\nSomente as observações mudam; continua como rascunho.`
               : msg.proposal.actionType === "AGENDA_MEETING_CREATE"
               ? `${msg.proposal.title} · ${msg.proposal.date ? new Date(`${msg.proposal.date}T12:00:00`).toLocaleDateString("pt-BR") : "data"} · ${msg.proposal.startTime}–${msg.proposal.endTime} · ${msg.proposal.expectedStatus === "PROPOSED" ? "Proposta para análise" : "Rascunho não publicado"}`
+              : msg.proposal.actionType === "FOLGA_LOTE"
+              ? `${msg.proposal.title} · ${msg.proposal.recipientNames?.length ?? 0} pessoa(s) · ${msg.proposal.dias?.length ?? 0} dia(s)${msg.proposal.motivo ? ` · motivo: ${msg.proposal.motivo}` : ""}`
               : msg.proposal.actionType === "TASK_CREATE"
               ? `${msg.proposal.operationName} · ${msg.proposal.assigneeName} · prazo ${msg.proposal.dueDate ? new Date(`${msg.proposal.dueDate}T12:00:00`).toLocaleDateString("pt-BR") : "não informado"} · prioridade ${taskPriorityLabel(msg.proposal.priority)}${msg.proposal.checklistLabels?.length ? ` · checklist: ${msg.proposal.checklistLabels.join("; ")}` : ""}${msg.proposal.mandatoryEvidences?.length ? ` · evidências: ${msg.proposal.mandatoryEvidences.map((item) => `${item.type}: ${item.description}`).join("; ")}` : ""}`
               : msg.proposal.actionType === "TASK_UPDATE_DUE_DATE"
