@@ -73,3 +73,16 @@ do pedido de folga e salvar uma vez, pedir à ASA uma folga de teste e tirar.
   refletir (a janela de Regras mostrou campos vazios por isso).
 - A bateria compartilha o banco de teste com o servidor local; testes que leem notificações logo depois de enfileirar
   precisam chamar `processNotificationOutbox()` (o aviso sai pela fila durável).
+
+## 7. Campanha de revisão com conteúdo completo (noite de 16/10/2026)
+
+Detalhes em `docs/mapa-de-revisao.md` (seção "Campanha com conteúdo completo"). Commits novos depois do handoff acima: `940e948` (ASA
+entende fala solta: nomes sem aspas, datas em palavras), `71bd2b2` + `907ecae` (rodízio sem personagem derrubava a geração do dia;
+agora com teste), `f23fab1` (tarefas do Elenco, rodapé da Escala, API em JSON), `1ade287` (check-in diz quando abre, arquivo grande
+em JSON). Defeito mais grave achado: **uma linha de rodízio sem personagem fazia "Gerar o mês/dia" falhar em todos os dias do local**
+(a tela permite criar essa linha). Nada disso foi enviado ao GitHub nem promovido.
+
+Como repetir o conteúdo: os roteiros ficaram na pasta temporária da sessão (cliente da API em `api.mjs`, `seed1` a `seed11`); eles
+fazem login com a senha da empresa de teste lida de arquivo fora do repositório e criam shows, programações, escalas, folgas, mural,
+mensagens, agenda, tarefas, biblioteca e cadastros. Quem quiser refazer num banco novo precisa reescrevê-los a partir das rotas.
+

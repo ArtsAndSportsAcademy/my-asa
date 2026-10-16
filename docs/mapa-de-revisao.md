@@ -93,8 +93,12 @@ responsabilidade, tarefa e lote de tarefas.
 tarefa em aberto via "Nada vence hoje" e nenhuma tarefa (`f23fab1`); (3) o botão da ASA cobria "Gerar o mês" no computador;
 (4) a API respondia página HTML em rota inexistente e em JSON quebrado.
 
-**Ainda não percorrido com conteúdo:** Check-in por turno e ocorrências, Biblioteca (criar, publicar, versão, ler), Cadastros
-(criar pessoa, área e local pela tela), decisão de pedidos de folga pela interface (aprovar, recusar, troca, mediação), Perfil,
-e as telas de Agenda e Mensagens criando pela interface (aqui só pela API). "Gerar o mês" faz poucos dias por chamada (o
-servidor devolve `restantes` e `proximoDia`): conferir que a tela continua sozinha até fechar.
+**Percorrido depois (mesma noite):** Check-in por turno e ocorrências, Biblioteca (criar, publicar, ciente, versão, escopo por área),
+Cadastros (área, local, pessoa: criar, editar, desativar e reabrir com motivo), Perfil (silêncio, privacidade, senha, foto) e Login
+(erros sem revelar se o usuário existe), e a decisão de pedido de folga pela tela da Supervisão (a janela espera a análise, que leva
+de 2 a 10 s no banco de teste remoto, e a aprovação fecha a janela). Achados: a mensagem de check-in fora do horário não dizia quando
+abre ou fechou; arquivo grande demais respondia uma página HTML (413). Ambos corrigidos (`1ade287`).
 
+**Decisão dela / ainda aberto:** encerrar um local não pede motivo (reabrir pede), e encerrar local derruba a geração de escalas
+dele. "Gerar o mês" faz poucos dias por chamada (o servidor devolve `restantes` e `proximoDia`): conferir que a tela continua sozinha
+até fechar. Agenda e Mensagens foram criadas só pela API; criar pela interface fica para outra rodada.
