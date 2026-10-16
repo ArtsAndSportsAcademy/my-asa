@@ -3,3 +3,6 @@
 /* Sair: mesma família visual do bloco de perfil do rodapé do menu; alvo de toque de 44px. */
 .asa-signout{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;margin-top:6px;padding:8px 12px;border:1px solid rgba(255,255,255,.14);border-radius:10px;background:transparent;color:#c3bbdf;font:600 13px Manrope,system-ui,sans-serif;cursor:pointer}
 .asa-signout:hover,.asa-signout:focus-visible{background:rgba(255,255,255,.08);color:#fff}
+
+/* iPhone: o rodapé do menu (perfil e Sair) não pode ficar atrás da barra do navegador. */
+.asa-sidebar{padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}

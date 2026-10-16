@@ -182,7 +182,7 @@ export function GerarMesDialog({ locais, localInicial, review, onClose, onGerou 
 /** A casca do diálogo (fundo, cartão, título e ×), igual para gerar e descartar. */
 function Casca({ titulo, onClose, bloqueado, children }: { titulo: string; onClose: () => void; bloqueado: boolean; children: ReactNode }) {
   return <div role="dialog" aria-modal="true" aria-label={titulo} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(28,20,64,.42)", display: "grid", placeItems: "center", padding: 12 }}>
-    <div style={{ width: "min(100%,560px)", maxHeight: "calc(100vh - 24px)", overflow: "auto", background: "#fff", borderRadius: 18, padding: 20, boxShadow: "0 20px 44px -20px rgba(28,20,64,.5)", display: "grid", gap: 14, fontFamily: "Manrope,sans-serif" }}>
+    <div style={{ width: "min(100%,560px)", maxHeight: "calc(100dvh - 24px)", overflow: "auto", background: "#fff", borderRadius: 18, padding: 20, boxShadow: "0 20px 44px -20px rgba(28,20,64,.5)", display: "grid", gap: 14, fontFamily: "Manrope,sans-serif" }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h2 style={{ margin: 0, fontFamily: "Outfit,sans-serif", fontSize: 22, fontWeight: 600 }}>{titulo}</h2>
         <button type="button" onClick={onClose} disabled={bloqueado} aria-label="Fechar" style={{ width: 44, height: 44, border: 0, background: "transparent", fontSize: 24, color: "#6b6482", cursor: bloqueado ? "default" : "pointer" }}>×</button>

@@ -100,6 +100,16 @@ real cobrindo botões, o bloqueio de pop-up do navegador do celular e o leitor d
 senha da conta `teste.elenco29` foi trocada nesse teste e **não é mais a do arquivo de senhas**; para usá-la, redefina em Cadastros.
 No documento "Regras do camarim (teste)" da empresa de teste agora há um PDF pequeno anexado.
 
+## 6c. O que o telefone de verdade mostrou (iPhone, Safari, depois da promoção)
+
+A Babi/quem constrói o app abriu o site em produção no iPhone e achou dois defeitos que o celular simulado não mostrava:
+(1) o **menu de locais da Escala** abria cortado à esquerda (ancorado em `right:0` com 206 px; no celular o botão fica à esquerda) e
+não fechava com Esc nem ao tocar fora; (2) o **menu lateral** tinha `height:100vh`, que no Safari do iPhone inclui a área atrás da barra
+do navegador, então o rodapé (perfil e **Sair**) ficava escondido. Corrigido: o menu de locais alinha à esquerda no celular e fecha com
+Esc e ao tocar fora; o menu lateral, a busca em tela cheia e as janelas (Folgas, Gerar o mês, diálogos) usam `100dvh` (a altura visível),
+com `100vh` de reserva, e o menu ganhou folga de área segura embaixo. **Lição:** conferir sempre no navegador do iPhone, não só no
+Chromium simulado, e preferir `dvh` a `vh` para qualquer coisa que preencha a tela.
+
 ## 7. Próximos passos, em ordem
 
 1. **Perguntar à Babi** (pontos que ficaram como escolha minha acima) e a quem constrói o app: pode enviar ao GitHub e

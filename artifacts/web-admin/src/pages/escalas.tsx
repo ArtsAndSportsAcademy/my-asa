@@ -174,6 +174,16 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
   const meusBlocos = minha?.escalas?.flatMap((escala) => escala.blocos) ?? minha?.blocos ?? [];
   const operationLabel = isMem ? (minha?.escalas && minha.escalas.length > 1 ? "Mais de um local" : minha?.escalas?.[0]?.location.name ?? minha?.location?.name ?? "—") : (local?.name ?? "—");
 
+  // O menu de locais fecha com Esc e ao tocar fora dele (no telefone não há outro jeito de sair sem escolher).
+  useEffect(() => {
+    if (!opMenu) return;
+    const fecharComEsc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpMenu(false); };
+    const fecharAoTocarFora = (e: PointerEvent) => { const alvo = e.target as Element | null; if (!alvo?.closest("[role=menu]") && !alvo?.closest("button[aria-haspopup=menu]")) setOpMenu(false); };
+    document.addEventListener("keydown", fecharComEsc);
+    document.addEventListener("pointerdown", fecharAoTocarFora);
+    return () => { document.removeEventListener("keydown", fecharComEsc); document.removeEventListener("pointerdown", fecharAoTocarFora); };
+  }, [opMenu]);
+
   // Cabeçalho do shell: "somente leitura" (Direção) e o seletor de local, como no quadro.
   useEffect(() => {
     onHeader?.(<div style={css("position:relative;display:flex;align-items:center;gap:12px")}>
@@ -184,7 +194,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
         <span style={css("flex:none;white-space:nowrap")}>{operationLabel}</span>
         {!isMem && locais.length > 1 && <span style={css("flex:none;color:#6b6482;font-weight:500")}>▾</span>}
       </button>
-      {opMenu && <div role="menu" style={css("position:absolute;right:0;top:44px;z-index:30;width:206px;background:#fff;border:1px solid #ddd6ee;border-radius:12px;padding:6px;box-shadow:0 22px 40px -20px rgba(40,20,90,.45);display:flex;flex-direction:column;gap:2px;")}>
+      {opMenu && <div role="menu" style={css("position:absolute;" + (window.innerWidth < 720 ? "left:0;max-width:calc(100vw - 32px);" : "right:0;") + "top:44px;z-index:30;width:206px;background:#fff;border:1px solid #ddd6ee;border-radius:12px;padding:6px;box-shadow:0 22px 40px -20px rgba(40,20,90,.45);display:flex;flex-direction:column;gap:2px;")}>
         {locais.map((l) => <button key={l.id} type="button" role="menuitem" onClick={() => { setLocalId(l.id); guardarLocal(l.id); setOpMenu(false); }}
           style={css("text-align:left;border:none;background:" + (localId === l.id ? "#f3ebff" : "none") + ";color:" + (localId === l.id ? "#6C2BF2" : "#3d3559") + ";border-radius:8px;padding:8px 10px;font-size:12px;font-weight:" + (localId === l.id ? "700" : "600") + ";cursor:pointer;font-family:Manrope,sans-serif;min-height:44px")}>{l.name}</button>)}
       </div>}
