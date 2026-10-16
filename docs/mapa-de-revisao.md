@@ -20,11 +20,11 @@ Legenda: **Revisada** = passou pelas 16 perguntas e foi vista no navegador. **Pa
 |---|---|---|
 | Agenda | **Revisada** em 15/10, a 375 px, com a empresa de teste | handoff 15/10 |
 | Escalas (Escala do dia e Programação) | Revisada (Programação com rascunho e rodapé) | AGENTS.md; commit c64e2bf |
-| Shows | **Parcial**: só a varredura de rodapé (c64e2bf, 15/10). Não há registro das 16 perguntas | git |
+| Shows | **Revisada em 16/10** (Administração e Elenco, 375 px): o Elenco recebia "não consegui carregar os shows" junto com "ainda não há shows" porque a lista de locais devolve 403 para ele (corrigido); "1 shows" virou "1 show"; o vazio do Elenco fala com quem só lê | revisão 16/10 |
 | Livro do Dia | Revisada (vivo, Hoje/Amanhã, hora e local na lista) | AGENTS.md; commit 4eea7b4 |
 | Check-in e ocorrências | Revisada (check-in por turno) | AGENTS.md |
 | Responsabilidades e tarefas | **Revisada** em 15/10 (lote, cancelar tarefa, avisos) | handoff 15/10 |
-| Folgas e solicitações | **Parcial**: primeira passada do crivo em 14/10 (commit 87698d9), Etapas 1 e 2 (lote, Gerar o mês) e a **Etapa 3 (16/10)**: pedido analisado, troca, mediação e regras, conferidos na empresa de teste a 375 px. Falta o Mapa do mês, "Definir folga" e os Grupos de folga com as 16 perguntas | handoffs 14/10 e 16/10 (sessão 3) |
+| Folgas e solicitações | **Revisada em 16/10 (Mapa do mês, Grupos de folga e "Definir folga" a 375 px como Administração e Supervisão; janelas com rodapé, Esc e sem transbordo; "Pedir folga" ganhou o botão Voltar e a frase da regra; chips e busca de "Definir folga" passaram a 44 px)**. Antes: **Parcial**: primeira passada do crivo em 14/10 (commit 87698d9), Etapas 1 e 2 (lote, Gerar o mês) e a **Etapa 3 (16/10)**: pedido analisado, troca, mediação e regras, conferidos na empresa de teste a 375 px. Falta o Mapa do mês, "Definir folga" e os Grupos de folga com as 16 perguntas | handoffs 14/10 e 16/10 (sessão 3) |
 
 ## Gestão
 
@@ -34,7 +34,7 @@ Legenda: **Revisada** = passou pelas 16 perguntas e foi vista no navegador. **Pa
 | Locais | **Revisada** em 15/10 (dentro de Cadastros; reabrir local pede motivo) | handoff 15/10 |
 | Pessoas e acessos | **Revisada** em 15/10 (dentro de Cadastros; desligar várias pessoas) | handoff 15/10 |
 | Áreas | **Revisada** em 15/10 (dentro de Cadastros; reabrir área) | handoff 15/10 |
-| Registro | **Pendente**: última mudança em 01/10; não há registro de revisão com o crivo | git |
+| Registro | **Revisada em 16/10** (375 px): sem transbordo, filtros e frases claros; as frases de pedido de folga que mostravam data crua (2027-03-15) passaram a "15/03/2027" | revisão 16/10 |
 | ~~Grupos~~ | **Removida do menu em 16/10/2026** a pedido da Babi (era a tela antiga de equipes operacionais). Ver "Os três 'grupos'" abaixo | esta sessão |
 
 ## Comunicação
@@ -49,17 +49,19 @@ Legenda: **Revisada** = passou pelas 16 perguntas e foi vista no navegador. **Pa
 
 | Tela | Situação |
 |---|---|
-| Perfil (silêncio noturno) | **Parcial**: rodapé feito, mas a Babi precisa conferir no telefone (exige login) |
+| Perfil (silêncio noturno) | **Revisada em 16/10** a 375 px com a empresa de teste: o grupo de opções do aniversário passava 3 px da largura (corrigido); links de toque pequeno já têm área de 44 px. Falta só a Babi/quem constrói conferir **no telefone de verdade** |
 | Solicitações (aba de Folgas) | **Parcial**, junto com Folgas |
-| Login e troca de senha | Corrigidos em 10/10 (mensagem de erro de servidor, sessão que não cai); sem passada completa do crivo |
+| Login e troca de senha | **Revisado em 16/10** (login a 375 px: campos de 48 px, sem transbordo, "Usuário ou senha não conferem" só quando é isso); a troca de senha obrigatória segue sem passada própria |
 
 ## O que falta, em ordem
 
 1. ~~Etapa 3 de folgas~~ **Feita em 16/10** (pedido analisado, troca, mediação, regras; ver `docs/handoff-2026-10-16-sessao-3.md`). A
    visão do mês (calendário, grade pessoa×dia) e a Etapa 4 (experimentar grupos) seguem pendentes.
-2. Agora, com a Etapa 3 pronta: revisar **Folgas e solicitações, Mapa do mês, "Definir folga" e Grupos de folga** com as 16 perguntas.
-3. Revisar com o crivo **Shows** e **Registro**, e a passada completa de **Perfil** e **Login**.
-4. **Revisão geral e completa de tudo**, no fim, com o `code-review` e com testes de tela no Playwright (desktop e 375 px).
+2. ~~Folgas (Mapa, Grupos, Definir folga), Shows, Registro, Perfil e Login com as 16 perguntas~~ **Feito em 16/10** (ver as linhas
+   acima). O que ainda não foi visto em tela: Perfil no **telefone de verdade**, a troca de senha obrigatória e o PDF da
+   Biblioteca no telefone.
+3. **Revisão geral e completa de tudo** (código das 5 mudanças desta sessão e das anteriores), com o `code-review`.
+4. Depois: visão do mês (calendário e grade pessoa×dia), Etapa 4 (experimentar grupos) e as pendências antigas do handoff.
 
 ## Os três "grupos" (não confundir)
 

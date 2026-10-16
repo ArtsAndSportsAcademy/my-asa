@@ -9,6 +9,7 @@
 import { and, eq } from "drizzle-orm";
 import { areaLocalSupervisorsTable, db, operationsTable, userRolesTable, usersTable } from "@workspace/db";
 import { ultimoRetratoFolgas } from "./folgas-publicadas.js";
+import { operationalDate } from "../lib/operational-date.js";
 
 type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -52,4 +53,10 @@ export async function administradores(executor: Executor, organizationId: string
     .innerJoin(usersTable, eq(userRolesTable.userId, usersTable.id))
     .where(and(eq(usersTable.organizationId, organizationId), eq(usersTable.status, "ACTIVE"), eq(userRolesTable.active, true), eq(userRolesTable.role, "ADMIN")));
   return rows.map((r) => r.id);
+}
+
+/** "15/03" ou "15/03 a 17/03" (com o ano quando não é o ano de hoje), para frases que as pessoas leem: avisos e Registro. */
+export function periodoLegivel(inicio: string, fim: string, hoje = operationalDate()): string {
+  const curta = (iso: string) => { const [a, m, d] = iso.split("-"); return a === hoje.slice(0, 4) ? `${d}/${m}` : `${d}/${m}/${a}`; };
+  return inicio === fim ? curta(inicio) : `${curta(inicio)} a ${curta(fim)}`;
 }

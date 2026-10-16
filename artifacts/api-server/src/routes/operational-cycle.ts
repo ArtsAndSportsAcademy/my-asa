@@ -12,7 +12,7 @@ import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.j
 import { enqueueNotification } from "../services/undo.js";
 import { avisarRepublicacaoFolgas, ultimoRetratoFolgas } from "../services/folgas-publicadas.js";
 import { operationalDate } from "../lib/operational-date.js";
-import { administradores, diaEmQueOPrazoAbre, mesDeFolgasPublicado, operacaoDaPessoa, prazoAdminAberto, supervisoresDaArea } from "../services/folga-roteamento.js";
+import { administradores, diaEmQueOPrazoAbre, mesDeFolgasPublicado, operacaoDaPessoa, periodoLegivel, prazoAdminAberto, supervisoresDaArea } from "../services/folga-roteamento.js";
 import { lerConfigFolga } from "../services/folga-config.js";
 import { barreiraDeDecisao } from "../services/folga-decisao.js";
 import { protectShiftCheckIns } from "../middlewares/shift-checkin-legacy.js";
@@ -157,13 +157,13 @@ router.post("/leave-requests", requireAuth, requireOrganization, async (req, res
       : { organizationId: actor.organizationId, userId, areaId: person.areaId, startDate, endDate, reason }).returning();
     if (prioridade && operationId) {
       await aplicarFolgaDoPedido(tx, created!, operationId, actor.sub);
-      await record({ category: "ABSENCE", action: "leave.priority", title: "Folga entrou como prioridade", narrative: `Pedido de folga de ${startDate} a ${endDate}, antes de o mapa do mês ser publicado.`, entityType: "leave_request", entityId: created!.id, actorId: actor.sub, orgId: actor.organizationId, operationId, beforeState: null, afterState: created, metadata: { reason } }, tx);
-      await avisarGestaoDaFolga(tx, actor.organizationId, person.areaId, userId, created!.id, "Folga entrou como prioridade", `Um pedido de folga de ${startDate} a ${endDate} entrou como prioridade, porque o mapa do mês ainda não foi publicado. Se houver algo especial nesse dia, você pode desfazer, com motivo.`, "leave.priority");
-      await enqueueNotification(tx as never, { userId, type: "leave.priority", title: "Sua folga foi registrada", message: `Seu pedido de ${startDate} a ${endDate} entrou como prioridade. A gerência pode ajustar se houver algo especial nesse dia.`, category: "absence", entityType: "leave_request", entityId: created!.id, actionUrl: "/solicitacoes" }, new Date(), { deduplicationKey: `folga:${created!.id}:prioridade:pessoa` });
+      await record({ category: "ABSENCE", action: "leave.priority", title: "Folga entrou como prioridade", narrative: `Pedido de folga de ${periodoLegivel(startDate, endDate)}, antes de o mapa do mês ser publicado.`, entityType: "leave_request", entityId: created!.id, actorId: actor.sub, orgId: actor.organizationId, operationId, beforeState: null, afterState: created, metadata: { reason } }, tx);
+      await avisarGestaoDaFolga(tx, actor.organizationId, person.areaId, userId, created!.id, "Folga entrou como prioridade", `Um pedido de folga de ${periodoLegivel(startDate, endDate)} entrou como prioridade, porque o mapa do mês ainda não foi publicado. Se houver algo especial nesse dia, você pode desfazer, com motivo.`, "leave.priority");
+      await enqueueNotification(tx as never, { userId, type: "leave.priority", title: "Sua folga foi registrada", message: `Seu pedido de ${periodoLegivel(startDate, endDate)} entrou como prioridade. A gerência pode ajustar se houver algo especial nesse dia.`, category: "absence", entityType: "leave_request", entityId: created!.id, actionUrl: "/solicitacoes" }, new Date(), { deduplicationKey: `folga:${created!.id}:prioridade:pessoa` });
       return created!;
     }
-    await record({ category: "ABSENCE", action: "leave.requested", title: "Folga solicitada", narrative: `Pedido de folga de ${startDate} a ${endDate}.`, entityType: "leave_request", entityId: created!.id, actorId: actor.sub, orgId: actor.organizationId, beforeState: null, afterState: created }, tx);
-    await avisarGestaoDaFolga(tx, actor.organizationId, person.areaId, userId, created!.id, "Pedido de folga", `Há um pedido de folga de ${startDate} a ${endDate} para decidir.`, "leave.requested");
+    await record({ category: "ABSENCE", action: "leave.requested", title: "Folga solicitada", narrative: `Pedido de folga de ${periodoLegivel(startDate, endDate)}.`, entityType: "leave_request", entityId: created!.id, actorId: actor.sub, orgId: actor.organizationId, beforeState: null, afterState: created }, tx);
+    await avisarGestaoDaFolga(tx, actor.organizationId, person.areaId, userId, created!.id, "Pedido de folga", `Há um pedido de folga de ${periodoLegivel(startDate, endDate)} para decidir.`, "leave.requested");
     return created!;
   });
   res.status(201).json({ request, ...(prioridade ? { entrouComoPrioridade: true } : {}) });
@@ -264,7 +264,7 @@ router.patch("/leave-requests/:id", requireAuth, requireOrganization, async (req
     if (request.userId !== actor.sub) await enqueueNotification(tx as never, {
       userId: request.userId, type: status === "APPROVED" ? "leave.approved" : "leave.denied",
       title: status === "APPROVED" ? "Folga aprovada" : "Folga recusada",
-      message: `Seu pedido de ${request.startDate} a ${request.endDate} foi ${status === "APPROVED" ? "aprovado" : "recusado"}${decisionReason ? `: ${decisionReason}` : ""}${status === "APPROVED" ? ". A folga aparece no calendário quando a Administração publicar o mês." : ""}`,
+      message: `Seu pedido de ${periodoLegivel(request.startDate, request.endDate)} foi ${status === "APPROVED" ? "aprovado" : "recusado"}${decisionReason ? `: ${decisionReason}` : ""}${status === "APPROVED" ? ". A folga aparece no calendário quando a Administração publicar o mês." : ""}`,
       category: "absence", entityType: "leave_request", entityId: request.id, actionUrl: "/solicitacoes",
     }, new Date(), { deduplicationKey: `folga:${request.id}:decisao` });
     return saved;
@@ -284,7 +284,7 @@ router.post("/leave-requests/:id/cancelar", requireAuth, requireOrganization, as
     if (before.status !== "PENDING") return { status: 409, message: "Este pedido já foi decidido e não pode ser retirado aqui." };
     const [after] = await tx.update(leaveRequestsTable).set({ status: "CANCELLED", updatedAt: new Date() }).where(eq(leaveRequestsTable.id, requestId)).returning();
     await record({ category: "ABSENCE", action: "leave.cancelled", title: "Pedido de folga retirado", narrative: "A pessoa retirou o pedido antes da decisão.", entityType: "leave_request", entityId: requestId, actorId: actor.sub, orgId: actor.organizationId, beforeState: before, afterState: after }, tx);
-    await avisarGestaoDaFolga(tx, actor.organizationId, before.areaId, actor.sub, requestId, "Pedido de folga retirado", `O pedido de ${before.startDate} a ${before.endDate} foi retirado antes da decisão.`, "leave.cancelled");
+    await avisarGestaoDaFolga(tx, actor.organizationId, before.areaId, actor.sub, requestId, "Pedido de folga retirado", `O pedido de ${periodoLegivel(before.startDate, before.endDate)} foi retirado antes da decisão.`, "leave.cancelled");
     return { status: 200, request: after };
   });
   if (result.status !== 200) { res.status(result.status).json({ message: result.message }); return; }

@@ -11,7 +11,7 @@ import { publishedDay } from "./published-day.js";
 import { reconcileDueCheckIns } from "./checkin-reconcile.js";
 import { regrasDaOrganizacao } from "./regras-casa.js";
 import { shiftPlans, shiftsForDate } from "./shift-checkins.js";
-import { administradores, prazoAdminAberto, supervisoresDaArea } from "./folga-roteamento.js";
+import { administradores, periodoLegivel, prazoAdminAberto, supervisoresDaArea } from "./folga-roteamento.js";
 import { lerConfigFolga } from "./folga-config.js";
 
 /** A timing conflict is an alert, never a publication blocker. Empty seats / missing coverage are pending. */
@@ -184,7 +184,7 @@ export async function avisarPrazoDaFolgaAberto(now = new Date(), organizationId?
       for (const adminId of (await administradores(tx, pedido.organizationId)).filter((id) => id !== pedido.userId)) {
         const [ja] = await tx.select({ id: notificationOutboxTable.id }).from(notificationOutboxTable).where(eq(notificationOutboxTable.deduplicationKey, `folga:${pedido.id}:prazo:${adminId}`)).limit(1);
         if (ja) continue;
-        await enqueueNotification(tx, { userId: adminId, type: "leave.deadline_open", title: "Pedido de folga esperando decisão", message: `O pedido de folga de ${pedido.startDate} a ${pedido.endDate} ainda não foi respondido pela Supervisão da área. A partir de agora você pode decidir.`, category: "absence", entityType: "leave_request", entityId: pedido.id, actionUrl: "/solicitacoes" }, new Date(), { deduplicationKey: `folga:${pedido.id}:prazo:${adminId}` });
+        await enqueueNotification(tx, { userId: adminId, type: "leave.deadline_open", title: "Pedido de folga esperando decisão", message: `O pedido de folga de ${periodoLegivel(pedido.startDate, pedido.endDate)} ainda não foi respondido pela Supervisão da área. A partir de agora você pode decidir.`, category: "absence", entityType: "leave_request", entityId: pedido.id, actionUrl: "/solicitacoes" }, new Date(), { deduplicationKey: `folga:${pedido.id}:prazo:${adminId}` });
         avisados++;
       }
     });

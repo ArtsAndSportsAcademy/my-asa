@@ -98,7 +98,7 @@ async function reduzirFoto(file: File): Promise<Blob> {
 }
 
 function Opcoes<T extends string>({ rotulo, valor, opcoes, onPick, disabled }: { rotulo: string; valor: T; opcoes: [T, string][]; onPick: (v: T) => void; disabled?: boolean }) {
-  return <div role="radiogroup" aria-label={rotulo} style={css("display:flex;gap:6px;flex-wrap:wrap;flex:none")}>
+  return <div role="radiogroup" aria-label={rotulo} style={css("display:flex;gap:6px;flex-wrap:wrap;flex:0 1 auto;max-width:100%")}>
     {opcoes.map(([v, label]) => <button key={v} type="button" role="radio" aria-checked={valor === v} disabled={disabled} onClick={() => valor !== v && onPick(v)} style={css(optionStyle(valor === v))}>{label}</button>)}
   </div>;
 }
