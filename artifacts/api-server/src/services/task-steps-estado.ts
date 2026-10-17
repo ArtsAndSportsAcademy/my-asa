@@ -76,6 +76,13 @@ export function aoConcluir(ordering: Ordering, steps: StepLite[], stepId: string
 /** Depois de acrescentar uma etapa: abre quem passou a ter a vez, sem mudar o que já está feito ou ativo. */
 export function aoReavaliar(ordering: Ordering, steps: StepLite[], atual: TaskStatusValue = "IN_PROGRESS"): Transicao {
   const antes = copiar(steps), statuses = copiar(steps);
+  // Uma etapa de trabalho nova que fica antes (ou, em tarefa solta, em qualquer lugar) de uma aprovação já ativa faz a
+  // aprovação voltar a esperar: aprovar antes de o trabalho novo existir contraria "a aprovação só abre depois das outras".
+  for (const step of steps) {
+    if (step.kind !== "APPROVAL" || statuses.get(step.id) !== "ACTIVE") continue;
+    const falta = steps.some((outra) => outra.kind !== "APPROVAL" && statuses.get(outra.id) !== "DONE" && statuses.get(outra.id) !== "DISPENSED" && (ordering === "FREE" || outra.position < step.position));
+    if (falta) statuses.set(step.id, "WAITING");
+  }
   return transicao(ordering, steps, statuses, antes, atual);
 }
 

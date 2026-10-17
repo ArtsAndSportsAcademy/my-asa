@@ -116,6 +116,8 @@ export default function TarefaDetalhe({ tarefaId, meuId, papel, pessoas, onMudou
         </li>;
       })}</ol>
 
+      {anexos.some((anexo) => !anexo.stepId) && <div className="rt-detail"><h3 className="rt-sec">Links da tarefa</h3>{anexos.filter((anexo) => !anexo.stepId).map((anexo) => <LinkDrive key={anexo.id} openUrl={anexo.url} descricao={anexo.description} shared={compartilhado[anexo.id]}/>)}</div>}
+
       {aberta && ativaDeAprovacao && (ativaDeAprovacao.assigneeId === meuId || adm) && trabalhoFeito.length > 0 && <button type="button" className="rt-secondary rt-danger" onClick={() => { fecharPainel(); setVoltarPara(trabalhoFeito[trabalhoFeito.length - 1]!.id); setPainel({ tipo: "ajustes" }); }}>Pedir ajustes</button>}
       {aberta && gestao && <button type="button" className="rt-secondary rt-add" onClick={() => { fecharPainel(); setPainel({ tipo: "etapa" }); }}>Adicionar etapa</button>}
 

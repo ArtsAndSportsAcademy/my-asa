@@ -284,11 +284,14 @@ router.get("/responsibilities/:id/requests", requireAuth, requireOrganization, a
     const [recebeu] = await db.select({ userId: responsibilityRequestRecipientsTable.userId }).from(responsibilityRequestRecipientsTable)
       .innerJoin(responsibilityRequestsTable, eq(responsibilityRequestsTable.id, responsibilityRequestRecipientsTable.requestId))
       .where(and(eq(responsibilityRequestsTable.responsibilityId, id), eq(responsibilityRequestRecipientsTable.userId, user.sub))).limit(1);
-    if (!recebeu && !(await mayAccessResponsibility(user, { areaId: responsabilidade.areaId, assignments }))) {
+    const cuida = await mayAccessResponsibility(user, { areaId: responsabilidade.areaId, assignments });
+    if (!recebeu && !cuida) {
       res.status(403).json({ error: "Forbidden", message: "Só quem cuida desta responsabilidade, a Administração e a Direção veem os pedidos dela." });
       return;
     }
-    res.json({ requests: await pedidosComGente(and(eq(responsibilityRequestsTable.responsibilityId, id), eq(responsibilityRequestsTable.orgId, user.organizationId))!) });
+    // Quem só recebeu algum pedido (substituta, ou quem já saiu da responsabilidade) vê os que chegaram para ela, não todos.
+    const soOsMeus = !cuida ? [inArray(responsibilityRequestsTable.id, db.select({ id: responsibilityRequestRecipientsTable.requestId }).from(responsibilityRequestRecipientsTable).where(eq(responsibilityRequestRecipientsTable.userId, user.sub)))] : [];
+    res.json({ requests: await pedidosComGente(and(eq(responsibilityRequestsTable.responsibilityId, id), eq(responsibilityRequestsTable.orgId, user.organizationId), ...soOsMeus)!) });
   } catch (err) { erroDePedido(res, err, "Erro ao listar pedidos"); }
 });
 

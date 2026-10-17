@@ -37,6 +37,8 @@ async function run() {
     const herda = await nova("Etapa sem prazo próprio", [{ title: "Fazer", assigneeId: bia.id }], { dueDate: "2026-10-21" });
     const semPrazo = await nova("Sem prazo nenhum", [{ title: "Fazer", assigneeId: bia.id }]);
     const periodo = await nova("Período", [{ title: "Fazer", assigneeId: bia.id }], { periodStart: "2026-10-18", dueDate: "2026-10-20" });
+    // Tarefa que nasceu sem etapas (lote, ASA): o lembrete vale pela pessoa e pelo prazo da própria tarefa.
+    const [semEtapas] = await db.insert(tasksTable).values({ organizationId: org!.id, operationId: operation!.id, title: "Sem etapas", creatorId: ana.id, assigneeId: bia.id, status: "CREATED", dueDate: "2026-10-20", origin: "PERSON" }).returning();
     const cancelada = await nova("Cancelada", [{ title: "Fazer", assigneeId: bia.id }], { dueDate: "2026-10-21" });
     await db.update(tasksTable).set({ status: "CANCELLED" }).where(eq(tasksTable.id, cancelada.id));
     const parada = await nova("Parada", [{ title: "Fazer", assigneeId: bia.id }]);
@@ -59,6 +61,7 @@ async function run() {
     assert((await lembretes(ana.id, atrasadaMinha.id)).length === 1, "atrasada que é da própria criadora: um aviso só, não dois");
     assert((await lembretes(bia.id, herda.id)).join() === "task.due_soon", "a etapa sem prazo próprio herda o prazo da tarefa");
     assert((await lembretes(bia.id, semPrazo.id)).length === 0, "sem prazo nenhum não há lembrete");
+    assert((await lembretes(bia.id, semEtapas.id)).join() === "task.due_today", "tarefa que nasceu sem etapas: o lembrete vale pela pessoa e pelo prazo da tarefa");
     assert((await lembretes(bia.id, periodo.id)).join() === "task.due_today", "com período, o lembrete conta do fim do período");
     assert((await lembretes(bia.id, cancelada.id)).length === 0 && (await lembretes(bia.id, dispensada.id)).length === 0, "tarefa cancelada e etapa dispensada não avisam");
     assert((await lembretes(ana.id, parada.id)).join() === "task.stalled" && (await lembretes(bia.id, parada.id)).length === 0, "parada há 3 dias ou mais avisa só quem criou");

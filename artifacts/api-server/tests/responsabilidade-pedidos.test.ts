@@ -116,6 +116,8 @@ async function run() {
     await anaApi(`/responsibility-requests/${recusavelId}/decline`, { method: "POST", body: { reason: "Estou de folga essa semana" } });
     const aindaAberto = await db.select().from(responsibilityRequestsTable).where(eq(responsibilityRequestsTable.id, recusavelId));
     assert(aindaAberto[0]?.status === "OPEN", "uma recusa não fecha o pedido: ele segue aberto para as outras");
+    const aceitaDepoisDeRecusar = await anaApi(`/responsibility-requests/${recusavelId}/accept`, { method: "POST", body: {} });
+    assert(aceitaDepoisDeRecusar.status === 409 && /recusou/i.test(aceitaDepoisDeRecusar.json?.message ?? ""), `quem já recusou não aceita sem querer (${aceitaDepoisDeRecusar.status} ${aceitaDepoisDeRecusar.json?.message})`);
     await biaApi(`/responsibility-requests/${recusavelId}/decline`, { method: "POST", body: { reason: "Sem agenda" } });
     await crisApi(`/responsibility-requests/${recusavelId}/decline`, { method: "POST", body: { reason: "Já tenho três vídeos" } });
     const fechado = await db.select().from(responsibilityRequestsTable).where(eq(responsibilityRequestsTable.id, recusavelId));

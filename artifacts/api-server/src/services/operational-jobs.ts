@@ -127,6 +127,8 @@ let enabled = false;
 let active: Promise<void> | undefined;
 let timer: ReturnType<typeof setTimeout> | undefined;
 let lastCheckInReconcileAt = 0;
+/** Lembretes de tarefa e a volta da lista fixa: de 10 em 10 minutos bastam (o aviso já é único por dia). */
+let lastTaskRemindersAt = 0;
 export function startOperationalScheduler(options: { organizationId?: string; deliver?: Parameters<typeof processNotificationOutbox>[0] } = {}) {
   if (timer) return;
   enabled = true;
@@ -141,8 +143,11 @@ export function startOperationalScheduler(options: { organizationId?: string; de
       // precisa ser conferida por minuto, nunca uma consulta por segundo.
       if (Date.now() - lastCheckInReconcileAt >= 60_000) {
         await enqueueEscalaReminders(new Date(), options.organizationId);
-        await enqueueTaskReminders(new Date(), options.organizationId);
-        await voltarRotinas(new Date(), options.organizationId);
+        if (Date.now() - lastTaskRemindersAt >= 600_000) {
+          await enqueueTaskReminders(new Date(), options.organizationId);
+          await voltarRotinas(new Date(), options.organizationId);
+          lastTaskRemindersAt = Date.now();
+        }
         await reconcileDueCheckIns(new Date(), options.organizationId);
         lastCheckInReconcileAt = Date.now();
       }
@@ -164,8 +169,11 @@ export async function rodarCicloOperacional(now = new Date(), organizationId?: s
   await reconcileDueCheckIns(now, organizationId);
   resultado.folgas = await avisarPrazoDaFolgaAberto(now, organizationId);
   resultado.lembretesDeFolga = await lembrarRespostasDeFolga(now, organizationId);
-  resultado.tarefas = await enqueueTaskReminders(now, organizationId);
-  resultado.listaFixa = await voltarRotinas(now, organizationId);
+  // Pelo agendador do Supabase (todo minuto) isto só roda nos minutos múltiplos de 10: a chave de deduplicação já garante
+  // um aviso por acontecimento, e assim o ciclo não faz escritas à toa nem atrasa o check-in.
+  const aCadaDezMinutos = now.getMinutes() % 10 === 0;
+  resultado.tarefas = aCadaDezMinutos ? await enqueueTaskReminders(now, organizationId) : { pulado: true };
+  resultado.listaFixa = aCadaDezMinutos ? await voltarRotinas(now, organizationId) : { pulado: true };
   // Avisos que nasceram neste ciclo (lembretes, publicação) já saem agora, sem esperar o próximo minuto.
   resultado.avisosDepois = await processNotificationOutbox();
   return resultado;

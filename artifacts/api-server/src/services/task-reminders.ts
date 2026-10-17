@@ -6,10 +6,9 @@
  * o da tarefa (com período, o fim do período). Sem prazo nenhum, não há lembrete. Tarefa cancelada, concluída ou com a
  * etapa dispensada nunca avisa. Antes das 8h do horário local ninguém recebe, para o lembrete não acordar ninguém.
  */
-import { and, eq, inArray, lte, notInArray } from "drizzle-orm";
-import { db, taskStepsTable, tasksTable } from "@workspace/db";
+import { and, eq, lte, notInArray, sql } from "drizzle-orm";
+import { db, notificationOutboxTable, taskStepsTable, tasksTable } from "@workspace/db";
 import { OPERATIONAL_TIME_ZONE, operationalDate } from "../lib/operational-date.js";
-import { enqueueNotification } from "./undo.js";
 
 /** Dias sem ninguém mexer para a tarefa contar como "parada". Hoje fixo; a Administração poderá configurar. */
 export const DIAS_PARADA = 3;
@@ -36,8 +35,16 @@ export async function enqueueTaskReminders(now = new Date(), organizationId?: st
   }).from(taskStepsTable).innerJoin(tasksTable, eq(tasksTable.id, taskStepsTable.taskId))
     .where(and(eq(taskStepsTable.active, true), eq(taskStepsTable.status, "ACTIVE"), notInArray(tasksTable.status, [...ENCERRADAS]), ...filtroOrg));
 
+  // Tarefa que nasceu sem etapas (lote, ASA, banco): vale a pessoa e o prazo da própria tarefa.
+  const semEtapas = await db.select({ taskId: tasksTable.id, title: tasksTable.title, assigneeId: tasksTable.assigneeId, creatorId: tasksTable.creatorId, prazoTarefa: tasksTable.dueDate })
+    .from(tasksTable).where(and(notInArray(tasksTable.status, [...ENCERRADAS]), sql`not exists (select 1 from ${taskStepsTable} s where s.task_id = ${tasksTable.id} and s.active)`, ...filtroOrg));
+  for (const tarefa of semEtapas) ativas.push({ stepId: `tarefa:${tarefa.taskId}`, taskId: tarefa.taskId, title: tarefa.title, etapa: "Fazer", assigneeId: tarefa.assigneeId, creatorId: tarefa.creatorId, prazoEtapa: null, prazoTarefa: tarefa.prazoTarefa });
+
+  // Os avisos vão para a fila de uma vez só (um insert por lote, com a chave de deduplicação): com milhares de tarefas, uma
+  // transação por aviso deixaria o ciclo lento demais.
+  const fila: (typeof notificationOutboxTable.$inferInsert)[] = [];
   const avisar = async (userId: string, type: string, title: string, message: string, taskId: string, chave: string) => {
-    await db.transaction((tx) => enqueueNotification(tx, { userId, type, title, message, priority: "NORMAL", category: "responsibility", entityType: "task", entityId: taskId, actionUrl: "/responsabilidades" }, now, { deduplicationKey: chave }));
+    fila.push({ userId, dueAt: now, deduplicationKey: chave, payload: { userId, type, title, message, priority: "NORMAL", category: "responsibility", entityType: "task", entityId: taskId, actionUrl: "/responsabilidades" } });
   };
 
   for (const etapa of ativas) {
@@ -67,5 +74,6 @@ export async function enqueueTaskReminders(now = new Date(), organizationId?: st
     await avisar(tarefa.creatorId, "task.stalled", "Tarefa parada", `${tarefa.title} está há ${dias} dias sem ninguém mexer.`, tarefa.id, `task-stalled:${tarefa.id}:${Math.floor(dias / DIAS_PARADA)}`);
     contagem.parada++;
   }
+  for (let i = 0; i < fila.length; i += 200) await db.insert(notificationOutboxTable).values(fila.slice(i, i + 200)).onConflictDoNothing();
   return contagem;
 }

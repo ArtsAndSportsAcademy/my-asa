@@ -84,8 +84,10 @@ async function motivoDe(request: ResponsibilityRequest, tx: Transaction) {
 
 export async function aceitarPedido(tx: Transaction, ator: Ator, requestId: string, entrada: { dueDate?: string | null } = {}) {
   const { request, destinatarios } = await carregarPedido(tx, ator.organizationId, requestId);
-  if (!destinatarios.some((linha) => linha.userId === ator.id)) throw new TarefaError(403, "Este pedido não foi enviado para você.");
+  const meu = destinatarios.find((linha) => linha.userId === ator.id);
+  if (!meu) throw new TarefaError(403, "Este pedido não foi enviado para você.");
   if (request.status !== "OPEN") throw new TarefaError(409, await motivoDe(request, tx));
+  if (meu.declinedAt) throw new TarefaError(409, "Você já recusou este pedido. Se mudou de ideia, peça a quem pediu para enviar de novo.");
   const [responsabilidade] = await tx.select({ title: responsibilitiesTable.title, operationId: responsibilitiesTable.operationId }).from(responsibilitiesTable).where(eq(responsibilitiesTable.id, request.responsibilityId)).limit(1);
   const operationId = responsabilidade?.operationId ?? (await tx.select({ operationId: userRolesTable.operationId }).from(userRolesTable).where(and(eq(userRolesTable.userId, ator.id), eq(userRolesTable.active, true))).limit(1))[0]?.operationId;
   if (!operationId) throw new TarefaError(400, "Não achei a operação deste pedido. Fale com a Administração.");

@@ -16,6 +16,8 @@ export function lerLinkDrive(texto: string): LinkDrive {
   let url: URL;
   try { url = new URL((texto ?? "").trim()); } catch { return { ok: false, motivo: `Isso não parece um link. ${RECUSA}` }; }
   if (url.protocol !== "https:") return { ok: false, motivo: `O link precisa começar com https://. ${RECUSA}` };
+  // Porta e usuário no endereço fariam o servidor conectar onde o endereço mandar: só o endereço limpo do Google vale.
+  if (url.port || url.username || url.password) return { ok: false, motivo: `Esse link do Drive tem porta ou usuário no endereço. ${RECUSA}` };
   const host = url.hostname;
   if (host !== "drive.google.com" && host !== "docs.google.com") return { ok: false, motivo: `Esse link não é do Google Drive. ${RECUSA}` };
   const partes = url.pathname.split("/").filter(Boolean);

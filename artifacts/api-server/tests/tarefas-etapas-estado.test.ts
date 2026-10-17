@@ -102,6 +102,11 @@ const etapa = (id: string, position: number, kind: "WORK" | "APPROVAL", status: 
   assert(solta.statuses.get("b") === "ACTIVE" && solta.novasAtivas[0] === "b" && solta.statuses.get("c") === "WAITING", "solta: uma etapa de trabalho acrescentada já nasce ativa e a aprovação continua esperando");
   const fila = aoReavaliar("SEQUENTIAL", [etapa("a", 1, "WORK", "ACTIVE"), etapa("b", 2, "WORK", "WAITING")]);
   assert(fila.novasAtivas.length === 0 && fila.statuses.get("b") === "WAITING", "fila: acrescentar uma etapa não tira a vez de quem está com ela");
+  // A etapa nova entra antes de uma aprovação que já estava na vez: a aprovação volta a esperar.
+  const aprovacaoAtiva = aoReavaliar("FREE", [etapa("a", 1, "WORK", "DONE"), etapa("b", 2, "WORK", "WAITING"), etapa("c", 3, "APPROVAL", "ACTIVE")]);
+  assert(aprovacaoAtiva.statuses.get("b") === "ACTIVE" && aprovacaoAtiva.statuses.get("c") === "WAITING" && aprovacaoAtiva.novasAtivas.join() === "b", `solta: acrescentar trabalho com a aprovação já ativa devolve a aprovação a esperar (${dizer(aprovacaoAtiva.statuses, ["a", "b", "c"])})`);
+  const filaAprovacao = aoReavaliar("SEQUENTIAL", [etapa("a", 1, "WORK", "DONE"), etapa("n", 2, "WORK", "WAITING"), etapa("c", 3, "APPROVAL", "ACTIVE")]);
+  assert(filaAprovacao.statuses.get("n") === "ACTIVE" && filaAprovacao.statuses.get("c") === "WAITING", `fila: etapa de trabalho acrescentada antes da aprovação ativa passa na frente (${dizer(filaAprovacao.statuses, ["a", "n", "c"])})`);
   const filaParada = aoReavaliar("SEQUENTIAL", [etapa("a", 1, "WORK", "DONE"), etapa("b", 2, "WORK", "WAITING")]);
   assert(filaParada.statuses.get("b") === "ACTIVE", "fila: se ninguém tinha a vez, a etapa acrescentada recebe a vez");
 }

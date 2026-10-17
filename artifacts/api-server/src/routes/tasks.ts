@@ -23,7 +23,7 @@ import { LOG_DOMAIN } from "@workspace/shared";
 import { canManageTasks, listTaskManagementAreaIds, resolveTaskAreaId } from "../services/task-access.js";
 import {
   TarefaError, adicionarEtapa, atualizarEtapa, concluirEtapa, criarTarefa, dispensarEtapa, etapasComNomes, etapasDoCorpoAntigo,
-  iniciarEtapa, pedirAjustes, reatribuirEtapa, type Ator,
+  iniciarEtapa, pedirAjustes, reatribuirEtapa, cancelarTarefa, garantirEtapas, pessoasAtivas, type Ator,
 } from "../services/task-steps.js";
 import { processNotificationOutbox } from "../services/notification-outbox.js";
 import { checarCompartilhamento, lerLinkDrive } from "../services/drive-link.js";
@@ -49,6 +49,11 @@ function entregarAvisos(log: ReturnType<typeof requestLogger>) {
   void processNotificationOutbox().catch((err) => log.warn({ err }, "Falha ao entregar os avisos da tarefa"));
 }
 
+/** Administração, Direção e a Supervisão da área da tarefa (a regra de sempre: canManageTasks), não qualquer Supervisão. */
+async function ehGestaoDaTarefa(user: NonNullable<Express.Request["user"]>, task: { operationId: string; responsibilityId: string | null; assigneeId: string }) {
+  return (await atorDa(user, task)).gestor;
+}
+
 /** Quem tem alguma etapa na tarefa participa dela (comenta, anexa), mesmo sem ter criado. */
 async function temEtapa(taskId: string, userId: string) {
   const [etapa] = await db.select({ id: taskStepsTable.id }).from(taskStepsTable).where(and(eq(taskStepsTable.taskId, taskId), eq(taskStepsTable.assigneeId, userId), eq(taskStepsTable.active, true))).limit(1);
@@ -57,6 +62,7 @@ async function temEtapa(taskId: string, userId: string) {
 
 /** A tarefa com as etapas de cada uma (nome da pessoa incluído), para a lista e o detalhe. */
 async function comEtapas<T extends { id: string }>(tasks: T[]) {
+  await garantirEtapas(tasks.map((task) => task.id));
   const etapas = await etapasComNomes(tasks.map((task) => task.id));
   return tasks.map((task) => ({ ...task, steps: etapas.get(task.id) ?? [] }));
 }
@@ -257,6 +263,7 @@ router.get("/tasks/:id", requireAuth, requireOrganization, async (req, res) => {
     }
 
     const areaId = await resolveTaskAreaId(task.responsibilityId ?? undefined, task.assigneeId, user.organizationId);
+    await garantirEtapas([id]);
     const etapas = (await etapasComNomes([id])).get(id) ?? [];
     const isInvolved =
       task.creatorId === user.sub ||
@@ -326,7 +333,7 @@ router.post("/tasks", requireAuth, requireOrganization, async (req, res) => {
     const resultado = await db.transaction((tx) => criarTarefa(tx, ator, {
       operationId: body.operationId, title: body.title, description: body.description, ordering: body.ordering,
       periodStart: body.periodStart, dueDate: body.dueDate, priority: body.priority, responsibilityId: body.responsibilityId,
-      origin: body.origin, libraryDocumentId: body.libraryDocumentId, steps,
+      origin: ["PERSON", "MANUAL"].includes(body.origin) ? body.origin : "PERSON", libraryDocumentId: body.libraryDocumentId, steps,
       mandatoryChecklist: Array.isArray(body.mandatoryChecklist) ? body.mandatoryChecklist : [], mandatoryEvidences: Array.isArray(body.mandatoryEvidences) ? body.mandatoryEvidences : [],
     }));
     entregarAvisos(log);
@@ -470,6 +477,9 @@ router.patch("/tasks/:id", requireAuth, requireOrganization, async (req, res) =>
     }
 
     const body = req.body as Record<string, any>;
+    // A pessoa da tarefa e quem aprova precisam ser pessoas ativas desta casa (senão a tarefa iria parar na tela de quem saiu ou de outra casa).
+    const novasPessoas = [body.assigneeId, body.approverId].filter((valor): valor is string => typeof valor === "string" && valor.length > 0);
+    if (novasPessoas.length) await pessoasAtivas(db, user.organizationId, novasPessoas);
 
     // Assignee without management rights can only update operationalChecklist
     if (isAssignee && !allowed && !isCreator) {
@@ -529,8 +539,7 @@ router.patch("/tasks/:id", requireAuth, requireOrganization, async (req, res) =>
 
     res.json({ task: updated });
   } catch (err) {
-    log.error({ err }, "Erro ao editar tarefa");
-    res.status(500).json({ error: "Internal Server Error" });
+    responderErro(res, log, err, "Erro ao editar tarefa");
   }
 });
 
@@ -606,6 +615,7 @@ router.post("/tasks/:id/start", requireAuth, requireOrganization, async (req, re
   const log = requestLogger(LOG_DOMAIN.TASKS, req.requestId, req.correlationId);
   const user = req.user!;
   try {
+    await garantirEtapas([String(req.params.id)]);
     const resultado = await comAtor(req, String(req.params.id), async (tx, ator) => {
       const ativas = await tx.select().from(taskStepsTable).where(and(eq(taskStepsTable.taskId, String(req.params.id)), eq(taskStepsTable.active, true), eq(taskStepsTable.status, "ACTIVE"))).orderBy(taskStepsTable.position);
       const minha = ativas.find((step) => step.assigneeId === user.sub) ?? (ator.gestor ? ativas[0] : undefined);
@@ -621,6 +631,7 @@ router.post("/tasks/:id/ready-for-approval", requireAuth, requireOrganization, a
   const log = requestLogger(LOG_DOMAIN.TASKS, req.requestId, req.correlationId);
   const user = req.user!;
   try {
+    await garantirEtapas([String(req.params.id)]);
     const resultado = await comAtor(req, String(req.params.id), async (tx, ator) => {
       const [task] = await tx.select().from(tasksTable).where(eq(tasksTable.id, String(req.params.id))).limit(1);
       const ativas = await tx.select().from(taskStepsTable).where(and(eq(taskStepsTable.taskId, String(req.params.id)), eq(taskStepsTable.active, true), eq(taskStepsTable.status, "ACTIVE"), eq(taskStepsTable.kind, "WORK"))).orderBy(taskStepsTable.position);
@@ -647,6 +658,7 @@ router.post("/tasks/:id/ready-for-approval", requireAuth, requireOrganization, a
 router.post("/tasks/:id/approve", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger(LOG_DOMAIN.TASKS, req.requestId, req.correlationId);
   try {
+    await garantirEtapas([String(req.params.id)]);
     const resultado = await comAtor(req, String(req.params.id), async (tx, ator) => {
       const [aprovacao] = await tx.select().from(taskStepsTable).where(and(eq(taskStepsTable.taskId, String(req.params.id)), eq(taskStepsTable.active, true), eq(taskStepsTable.status, "ACTIVE"), eq(taskStepsTable.kind, "APPROVAL"))).limit(1);
       if (!aprovacao) throw new TarefaError(409, "Tarefa não está pronta para aprovação");
@@ -672,69 +684,11 @@ router.post("/tasks/:id/request-changes", requireAuth, requireOrganization, asyn
 
 router.post("/tasks/:id/cancel", requireAuth, requireOrganization, async (req, res) => {
   const log = requestLogger(LOG_DOMAIN.TASKS, req.requestId, req.correlationId);
-  const user = req.user!;
-  const { id } = req.params as { id: string };
-
   try {
-    const [task] = await db.select().from(tasksTable).where(eq(tasksTable.id, id)).limit(1);
-    if (!task) { res.status(404).json({ error: "Not Found" }); return; }
-
-    const areaId = await resolveTaskAreaId(task.responsibilityId ?? undefined, task.assigneeId, user.organizationId);
-    const allowed = await canManageTasks(user.sub, user.role as RoleValue, task.operationId, user.organizationId, areaId);
-    if (!allowed && task.creatorId !== user.sub) {
-      res.status(403).json({ error: "Forbidden", message: "Só quem criou a tarefa, a Administração, a Direção e a Supervisão da área podem cancelá-la." });
-      return;
-    }
-    if (["APPROVED", "COMPLETED", "CANCELLED"].includes(task.status)) {
-      res.status(409).json({ error: "Conflict", message: "Tarefa já encerrada" }); return;
-    }
-
-    const { reason } = req.body as { reason?: string };
-
-    const [updated] = await db
-      .update(tasksTable)
-      .set({
-        status: "CANCELLED",
-        cancelledAt: new Date(),
-        cancelledById: user.sub,
-        updatedAt: new Date(),
-      })
-      .where(eq(tasksTable.id, id))
-      .returning();
-
-    const actorName = await getActorName(user.sub);
-    await writeHistoryEvent({
-      category: "TASK",
-      action: "task.cancelled",
-      title: `Tarefa cancelada: ${task.title}`,
-      narrative: `${actorName} cancelou a tarefa "${task.title}". ${typeof reason === "string" && reason.trim() ? `Motivo: ${reason.trim()}.` : "Sem motivo informado."}`,
-      entityType: "task",
-      entityId: id,
-      actorId: user.sub,
-      actorName,
-      operationId: task.operationId,
-      orgId: task.organizationId,
-    });
-
-    // Quem tinha a tarefa precisa saber que ela não vale mais (senão continua tentando fazê-la).
-    const motivo = typeof reason === "string" && reason.trim() ? reason.trim() : null;
-    // Todas as pessoas que ainda tinham etapa por fazer (com a vez ou esperando), uma vez cada; quem já terminou a sua não.
-    const pendentes = await db.select({ assigneeId: taskStepsTable.assigneeId }).from(taskStepsTable)
-      .where(and(eq(taskStepsTable.taskId, id), eq(taskStepsTable.active, true), inArray(taskStepsTable.status, ["ACTIVE", "WAITING"])));
-    for (const alvo of new Set([task.assigneeId, ...pendentes.map((etapa) => etapa.assigneeId)])) {
-      if (alvo === user.sub) continue;
-      void sendNotification({
-        userId: alvo, type: "task.cancelled", title: "Tarefa cancelada",
-        message: `${task.title} foi cancelada.${motivo ? ` Motivo: ${motivo}` : ""}`,
-        priority: "NORMAL", category: "responsibility", entityType: "task", entityId: id, actionUrl: "/responsabilidades",
-      }).catch((err) => log.warn({ err }, "Falha ao avisar o cancelamento da tarefa"));
-    }
-
-    res.json({ task: updated });
-  } catch (err) {
-    log.error({ err }, "Erro ao cancelar tarefa");
-    res.status(500).json({ error: "Internal Server Error" });
-  }
+    const resultado = await comAtor(req, String(req.params.id), (tx, ator) => cancelarTarefa(tx, ator, String(req.params.id), req.body?.reason));
+    entregarAvisos(log);
+    res.json({ task: resultado.task });
+  } catch (err) { responderErro(res, log, err, "Erro ao cancelar tarefa"); }
 });
 
 // ─── POST /tasks/check-link — o app confere o link antes de salvar ─────────────
@@ -757,13 +711,13 @@ router.post("/tasks/:id/evidences", requireAuth, requireOrganization, async (req
   const { id } = req.params as { id: string };
 
   try {
-    const [task] = await db.select().from(tasksTable).where(eq(tasksTable.id, id)).limit(1);
+    const [task] = await db.select().from(tasksTable).where(and(eq(tasksTable.id, id), eq(tasksTable.organizationId, user.organizationId))).limit(1);
     if (!task) { res.status(404).json({ error: "Not Found" }); return; }
 
     const isInvolved =
       task.assigneeId === user.sub ||
       task.creatorId === user.sub ||
-      MANAGER_ROLES.includes(user.role as RoleValue) ||
+      await ehGestaoDaTarefa(user, task) ||
       await temEtapa(id, user.sub);
     if (!isInvolved) { res.status(403).json({ error: "Forbidden", message: "Esta tarefa não é sua: você não criou e não tem etapa nela." }); return; }
 
@@ -801,6 +755,7 @@ router.post("/tasks/:id/evidences", requireAuth, requireOrganization, async (req
       })
       .returning();
 
+    await db.update(tasksTable).set({ lastActivityAt: new Date() }).where(eq(tasksTable.id, id));
     const actorName = await getActorName(user.sub);
     await writeHistoryEvent({
       category: "TASK",
@@ -851,7 +806,7 @@ router.delete(
 
       if (!evidence) { res.status(404).json({ error: "Not Found" }); return; }
 
-      const canDelete = evidence.uploaderId === user.sub || MANAGER_ROLES.includes(user.role as RoleValue);
+      const canDelete = evidence.uploaderId === user.sub || (await ehGestaoDaTarefa(user, task));
       if (!canDelete) { res.status(403).json({ error: "Forbidden" }); return; }
 
       const actorName = await getActorName(user.sub);
@@ -885,14 +840,14 @@ router.get("/tasks/:id/comments", requireAuth, requireOrganization, async (req, 
   const { id } = req.params as { id: string };
 
   try {
-    const [task] = await db.select().from(tasksTable).where(eq(tasksTable.id, id)).limit(1);
+    const [task] = await db.select().from(tasksTable).where(and(eq(tasksTable.id, id), eq(tasksTable.organizationId, user.organizationId))).limit(1);
     if (!task) { res.status(404).json({ error: "Not Found" }); return; }
 
     const isInvolved =
       task.creatorId === user.sub ||
       task.assigneeId === user.sub ||
       task.approverId === user.sub ||
-      MANAGER_ROLES.includes(user.role as RoleValue) ||
+      await ehGestaoDaTarefa(user, task) ||
       await temEtapa(id, user.sub);
     if (!isInvolved) { res.status(403).json({ error: "Forbidden", message: "Esta tarefa não é sua: você não criou e não tem etapa nela." }); return; }
 
@@ -925,14 +880,14 @@ router.post("/tasks/:id/comments", requireAuth, requireOrganization, async (req,
   const { id } = req.params as { id: string };
 
   try {
-    const [task] = await db.select().from(tasksTable).where(eq(tasksTable.id, id)).limit(1);
+    const [task] = await db.select().from(tasksTable).where(and(eq(tasksTable.id, id), eq(tasksTable.organizationId, user.organizationId))).limit(1);
     if (!task) { res.status(404).json({ error: "Not Found" }); return; }
 
     const isInvolved =
       task.creatorId === user.sub ||
       task.assigneeId === user.sub ||
       task.approverId === user.sub ||
-      MANAGER_ROLES.includes(user.role as RoleValue) ||
+      await ehGestaoDaTarefa(user, task) ||
       await temEtapa(id, user.sub);
     if (!isInvolved) { res.status(403).json({ error: "Forbidden", message: "Esta tarefa não é sua: você não criou e não tem etapa nela." }); return; }
 
@@ -946,6 +901,7 @@ router.post("/tasks/:id/comments", requireAuth, requireOrganization, async (req,
       .values({ taskId: id, authorId: user.sub, body })
       .returning();
 
+    await db.update(tasksTable).set({ lastActivityAt: new Date() }).where(eq(tasksTable.id, id));
     const actorName = await getActorName(user.sub);
     await writeHistoryEvent({
       category: "TASK",

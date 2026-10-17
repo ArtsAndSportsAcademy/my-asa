@@ -23,6 +23,9 @@ async function run() {
   const pasta = lerLinkDrive("https://drive.google.com/drive/folders/1AbC");
   assert(pasta.ok && pasta.kind === "folder" && pasta.embedUrl === null, "pasta não abre embutida: a tela mostra \"Abrir no Drive\"");
 
+  // Porta e usuário no endereço não valem: o servidor conectaria onde o endereço mandar.
+  for (const ruim of ["https://drive.google.com:8443/file/d/1AbC/view", "https://usuario:senha@drive.google.com/file/d/1AbC/view"]) assert(!lerLinkDrive(ruim).ok, `recusa porta ou usuário no endereço: ${ruim}`);
+
   // ── Recusar com frase ─────────────────────────────────────────────────────────
   for (const [texto, rotulo] of [["javascript:alert(1)", "javascript:"], ["http://drive.google.com.evil.com/file/d/1AbC/view", "endereço que só parece o Drive"], ["https://evil.com/?https://drive.google.com/file/d/1AbC/view", "Drive escondido em outro endereço"], ["texto solto", "texto solto"], ["https://drive.google.com/", "Drive sem arquivo"], ["http://drive.google.com/file/d/1AbC/view", "sem https"], ["", "vazio"]] as const) {
     const lido = lerLinkDrive(texto);

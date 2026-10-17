@@ -4,8 +4,9 @@
 -- que já têm hoje na tabela tasks (o código novo mantém esses campos em dia, então nada de status se perde).
 -- ATENÇÃO: due_date volta a ser obrigatório. Se existir tarefa sem prazo, o comando abaixo falha de propósito:
 -- dê um prazo a essas tarefas (ou cancele-as) antes de desfazer, para não inventar uma data.
-ALTER TABLE task_evidences DROP COLUMN IF EXISTS step_id;
+-- O que pode falhar vem primeiro, para o banco não ficar pela metade; o arquivo roda como um único comando (uma transação).
 ALTER TABLE tasks ALTER COLUMN due_date SET NOT NULL;
+ALTER TABLE task_evidences DROP COLUMN IF EXISTS step_id;
 ALTER TABLE tasks DROP COLUMN IF EXISTS last_activity_at;
 ALTER TABLE tasks DROP COLUMN IF EXISTS period_start;
 ALTER TABLE tasks DROP COLUMN IF EXISTS ordering;
