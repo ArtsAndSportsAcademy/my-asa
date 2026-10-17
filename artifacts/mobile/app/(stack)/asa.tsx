@@ -122,7 +122,8 @@ function proposalConfirmLabel(actionType: string) {
 }
 
 function proposalStateLabel(actionType: string, state: string, expectedStatus?: string) {
-  if (state === "PENDING") return "Prévia expirada";
+  if (state === "PENDING" || state === "EXPIRED") return "Prévia vencida (passaram 10 minutos). Peça de novo se ainda quiser.";
+  if (state === "STALE") return "Algo mudou desde a prévia. Nada foi feito; peça de novo.";
   if (state === "CANCELLED") return "Proposta cancelada";
   if (state !== "CONFIRMED") return "Proposta não está mais disponível";
   const labels: Record<string, string> = {
