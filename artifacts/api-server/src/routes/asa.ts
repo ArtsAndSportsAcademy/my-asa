@@ -8686,8 +8686,8 @@ router.post("/asa/actions/:proposalId/confirm", requireAuth, requireOrganization
         });
         const confirmadoEm = new Date().toISOString();
         const resumo = tipo === null
-          ? `Marcação tirada de ${previstas.length} pessoa(s) em ${datas.length} dia(s).`
-          : `${tipo === "RECESSO" ? "Recesso" : "Folga"} marcado para ${previstas.length} pessoa(s) em ${datas.length} dia(s).`;
+          ? `Marcação tirada de ${previstas.length === 1 ? "1 pessoa" : `${previstas.length} pessoas`} em ${datas.length === 1 ? "1 dia" : `${datas.length} dias`}.`
+          : `${tipo === "RECESSO" ? "Recesso marcado" : "Folga marcada"} para ${previstas.length === 1 ? "1 pessoa" : `${previstas.length} pessoas`} em ${datas.length === 1 ? "1 dia" : `${datas.length} dias`}.`;
         await tx.update(asaAuditLogTable).set({
           actionsExecuted: actions.map((item) => item === proposal ? { ...item, state: "CONFIRMED", confirmedAt: confirmadoEm } : item),
           response: resumo,
