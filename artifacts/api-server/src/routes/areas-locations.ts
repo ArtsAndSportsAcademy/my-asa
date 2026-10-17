@@ -138,13 +138,26 @@ router.post("/locations", requireAuth, requireOrganization, requireRole("ADMIN")
   const openTime = typeof req.body?.openTime === "string" && /^\d{2}:\d{2}$/.test(req.body.openTime) ? req.body.openTime : "08:00";
   const closeTime = typeof req.body?.closeTime === "string" && /^\d{2}:\d{2}$/.test(req.body.closeTime) ? req.body.closeTime : "22:00";
   if (!name) { res.status(400).json({ error: "name é obrigatório" }); return; }
+  // A operação dona do local é escolhida no cadastro (operationIds). Sem escolha, só dá para decidir sozinho
+  // quando existe uma única operação ativa; com duas ou mais, ligar a todas travaria a Escala do local.
+  const escolhidas: string[] | null = Array.isArray(req.body?.operationIds) && req.body.operationIds.every((id: unknown) => typeof id === "string")
+    ? [...new Set<string>(req.body.operationIds)] : null;
+  const ativasDaCasa = await db.select({ id: operationsTable.id }).from(operationsTable).where(and(eq(operationsTable.organizationId, req.user!.organizationId), eq(operationsTable.status, "ACTIVE")));
+  if (escolhidas === null && ativasDaCasa.length > 1) {
+    res.status(400).json({ error: "OPERACAO_OBRIGATORIA", message: "Escolha de qual operação é este local. A Escala e os shows dele dependem disso." }); return;
+  }
+  if (escolhidas && escolhidas.some((id) => !ativasDaCasa.some((op) => op.id === id))) {
+    res.status(400).json({ error: "OPERACAO_INVALIDA", message: "Escolha só operações ativas desta organização." }); return;
+  }
+  if (escolhidas && escolhidas.length > 1) {
+    res.status(400).json({ error: "OPERACAO_UNICA", message: "Um local pertence a uma operação só. Escolha uma." }); return;
+  }
   try {
     const location = await db.transaction(async (tx) => {
       const [created] = await tx.insert(locationsTable).values({ organizationId: req.user!.organizationId, name, type, operatingDays, openTime, closeTime, closed: false }).returning();
       if (!created) throw new Error("Local não criado");
-      // Local novo já entra nas operações ativas: a Escala do local precisa da operação dona.
-      const ativas = await tx.select({ id: operationsTable.id }).from(operationsTable).where(and(eq(operationsTable.organizationId, req.user!.organizationId), eq(operationsTable.status, "ACTIVE")));
-      if (ativas.length) await tx.insert(operationLocationsTable).values(ativas.map((op) => ({ operationId: op.id, locationId: created.id, active: true })));
+      const donas = escolhidas ?? ativasDaCasa.map((op) => op.id);
+      if (donas.length) await tx.insert(operationLocationsTable).values(donas.map((operationId) => ({ operationId, locationId: created.id, active: true })));
       await writeEntityHistory(req, { category: "OPERATIONAL_CHANGE", action: "location.created", title: "Local criado", narrative: "Local operacional criado.", entityType: "location", entityId: created.id, actorId: req.user!.sub, orgId: req.user!.organizationId, beforeState: null, afterState: created }, tx as any);
       return created;
     });

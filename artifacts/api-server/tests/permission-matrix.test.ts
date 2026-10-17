@@ -192,7 +192,10 @@ async function run() {
     assert(scopeDirectoryPerson?.status === 200 && editedDirectoryPerson?.status === 200 && deactivatedDirectoryPerson?.status === 200, "ADM atribui escopo, edita e desliga pessoa pelo cadastro");
     assert(keptDirectoryPerson?.status === "INACTIVE" && keptDirectoryPerson.personStatus === "ARCHIVED", "desligar pessoa preserva a linha como inativa no banco");
 
-    const createdDirectoryLocation = await fetch(`${base}/locations`, { method: "POST", headers: auth(adminToken), body: JSON.stringify({ name: `${tag} local de cadastro`, type: "teste" }) });
+    // Com duas operações ativas, o cadastro precisa dizer a qual o local pertence (17/10/2026).
+    const semOperacao = await fetch(`${base}/locations`, { method: "POST", headers: auth(adminToken), body: JSON.stringify({ name: `${tag} local sem operação`, type: "teste" }) });
+    assert(semOperacao.status === 400 && ((await semOperacao.json()) as { error?: string }).error === "OPERACAO_OBRIGATORIA", "Local novo com duas operações ativas exige escolher a operação");
+    const createdDirectoryLocation = await fetch(`${base}/locations`, { method: "POST", headers: auth(adminToken), body: JSON.stringify({ name: `${tag} local de cadastro`, type: "teste", operationIds: [operation!.id] }) });
     const createdDirectoryLocationPayload = await createdDirectoryLocation.json() as { location?: { id: string } };
     lifecycleLocationId = createdDirectoryLocationPayload.location?.id ?? null;
     const editedDirectoryLocation = lifecycleLocationId ? await fetch(`${base}/locations/${lifecycleLocationId}`, { method: "PATCH", headers: auth(adminToken), body: JSON.stringify({ name: `${tag} local editado` }) }) : null;
