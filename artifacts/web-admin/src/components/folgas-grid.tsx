@@ -213,7 +213,7 @@ function WeekFillMenu({ x, y, onSelect, onClose }: WeekFillMenuProps) {
       style={menuStyle}
       className="bg-white border border-border rounded-lg shadow-lg p-1.5 flex flex-col gap-0.5 min-w-[150px]"
     >
-      <p className="text-[10px] text-muted-foreground px-2 py-1 font-medium">Tipo para a semana</p>
+      <p className="text-[11px] text-muted-foreground px-2 py-1 font-medium">Tipo para a semana</p>
       {GRID_TYPES.map((t) => (
         <button
           key={t.value}
@@ -475,7 +475,7 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
       <div className="flex items-center gap-3 px-4 py-2 border-b bg-muted/20 flex-wrap">
         {GRID_TYPES.map((t) => (
           <div key={t.value} className="flex items-center gap-1.5">
-            <span className={`inline-flex items-center justify-center w-6 h-5 rounded text-[10px] font-bold ${t.bg} ${t.text}`}>
+            <span className={`inline-flex items-center justify-center w-6 h-5 rounded text-[11px] font-bold ${t.bg} ${t.text}`}>
               {t.abbr}
             </span>
             <span className="text-xs text-muted-foreground">{t.label}</span>
@@ -505,7 +505,7 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
                     } ${isToday ? "bg-blue-50 text-blue-600 font-bold" : ""}`}
                   >
                     <div className="leading-none">{d}</div>
-                    <div className="text-[9px] leading-tight opacity-70 mt-0.5">{getDayAbbr(year, month, d)}</div>
+                    <div className="text-[11px] leading-tight opacity-70 mt-0.5">{getDayAbbr(year, month, d)}</div>
                   </th>
                 );
               })}
@@ -560,7 +560,7 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
                       onMouseUp={(e) => handleCellMouseUp(e, m.userId, d)}
                     >
                       {info && (
-                        <span className={`inline-flex items-center justify-center w-7 h-5 rounded text-[10px] font-bold ${info.bg} ${info.text}`}>
+                        <span className={`inline-flex items-center justify-center w-7 h-5 rounded text-[11px] font-bold ${info.bg} ${info.text}`}>
                           {info.abbr}
                         </span>
                       )}

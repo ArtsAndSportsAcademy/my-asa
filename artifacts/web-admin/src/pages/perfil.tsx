@@ -265,7 +265,7 @@ export default function PerfilPage({ role }: { role: ShellRole }) {
           <span style={css(H2)}>Quem vê o que sobre você</span>
           <span style={css("font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#B03C7D;background:#fbeaf3;padding:4px 9px;border-radius:6px")}>Sua escolha, de ninguém mais</span>
           <span style={css("flex:1")}/>
-          {salvo && <span role="status" style={css("font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 10px;border-radius:999px;color:#0E8F86;background:#e3f4f1")}>{salvo}</span>}
+          {salvo && <span role="status" style={css("font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 10px;border-radius:999px;color:#0E8F86;background:#e3f4f1")}>{salvo}</span>}
         </div>
         <Linha label="Telefone" note="quem consegue ligar para você direto do cartão do grupo"><Opcoes rotulo="Quem vê seu telefone" valor={privacidade.tel} opcoes={NIVEIS} onPick={(v) => void preferencias({ privacidade: { tel: v } })}/></Linha>
         <Linha label="E-mail" note="aparece no cartão de quem pode ver"><Opcoes rotulo="Quem vê seu e-mail" valor={privacidade.mail} opcoes={NIVEIS} onPick={(v) => void preferencias({ privacidade: { mail: v } })}/></Linha>
@@ -282,15 +282,17 @@ export default function PerfilPage({ role }: { role: ShellRole }) {
           <span style={css("font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6b6482;background:#f0eef5;padding:4px 9px;border-radius:6px")}>Sem chave para desligar</span>
         </div>
         <span style={css("font-size:12px;line-height:1.5;color:#5b5473")}>{role === "adm" ? "É a lista que vale para a casa inteira; cada pessoa vê a mesma no perfil dela, em leitura." : "Você não desliga nada disso, e ninguém desliga por você. A casa decide o que interrompe; aqui você confere o que vai chegar."}</span>
-        {janela && <Linha label="Silêncio noturno" tag={<span style={css("font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#0E8F86;background:#e3f4f1;padding:3px 7px;border-radius:5px")}>A única coisa sua aqui</span>}
+        {janela && <Linha label="Silêncio noturno" tag={<span style={css("font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#0E8F86;background:#e3f4f1;padding:3px 7px;border-radius:5px")}>A única coisa sua aqui</span>}
           note={!janela.on ? "Desligado: tudo chega na hora que acontece, de madrugada inclusive." : `${semSilencioProprio ? "Você segue o horário da casa. " : ""}Nesse intervalo o push espera a manhã — aviso marcado como urgente e troca de última hora atravessam de qualquer forma.`}>
           <div style={css("display:flex;align-items:center;gap:7px;flex:none")}>
             <input aria-label="Silêncio começa" type="time" value={silDe} disabled={!janela.on} onChange={(e) => setSilDe(e.target.value)} style={css("width:96px;border:1px solid #e6e1f2;border-radius:9px;padding:8px 8px;font:700 12.5px 'JetBrains Mono',monospace;color:#3d3559;background:#fff;min-height:40px")}/>
             <span style={css("font-size:11.5px;color:#6b6482")}>às</span>
             <input aria-label="Silêncio termina" type="time" value={silAte} disabled={!janela.on} onChange={(e) => setSilAte(e.target.value)} style={css("width:96px;border:1px solid #e6e1f2;border-radius:9px;padding:8px 8px;font:700 12.5px 'JetBrains Mono',monospace;color:#3d3559;background:#fff;min-height:40px")}/>
             <button type="button" role="switch" aria-checked={janela.on} aria-label="Silêncio noturno ligado" onClick={() => void preferencias({ silencio: { ...janela, on: !janela.on } })}
-              style={css("cursor:pointer;flex:none;width:46px;height:27px;border-radius:999px;border:none;padding:3px;display:flex;align-items:center;" + (janela.on ? "background:#0E8F86;justify-content:flex-end;" : "background:#e0dbec;justify-content:flex-start;"))}>
-              <span style={css("display:block;width:21px;height:21px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(40,20,90,.35)")}/>
+              style={css("cursor:pointer;flex:none;width:54px;min-height:44px;background:none;border:none;padding:0;display:flex;align-items:center;justify-content:center")}>
+              <span style={css("display:flex;align-items:center;width:46px;height:27px;border-radius:999px;padding:3px;box-sizing:border-box;" + (janela.on ? "background:#0E8F86;justify-content:flex-end;" : "background:#e0dbec;justify-content:flex-start;"))}>
+                <span style={css("display:block;width:21px;height:21px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(40,20,90,.35)")}/>
+              </span>
             </button>
           </div>
         </Linha>}

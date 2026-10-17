@@ -28,7 +28,7 @@ const TONES: Record<Tom, { bg: string; fg: string }> = {
   mute: { bg: "#f0eef5", fg: "#6b6482" },
   mine: { bg: "#fbeaf3", fg: "#C2508F" },
 };
-const MONO_LABEL = "font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482";
+const MONO_LABEL = "font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b6482";
 const WEEKDAY = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
 const MONTH = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const dataLonga = (iso: string) => { const [y, m, d] = iso.split("-").map(Number); return `${WEEKDAY[new Date(y, m - 1, d).getDay()]}, ${d} de ${MONTH[m - 1]}`; };
