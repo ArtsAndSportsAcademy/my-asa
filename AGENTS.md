@@ -113,7 +113,7 @@ imagina.
 - **Branch `codex/myasa-novo`.** Nunca faça merge na `main` por conta própria.
 - Perfis: Administração publica o dia; Supervisão cuida da própria área; Direção só lê a operação
   (escala, livro, folgas), **mas interage no Mural e nas Mensagens como a Administração** (publica,
-  edita e cancela aviso, reconhece, conversa) — decisão de 14/10/2026 — **e também na Agenda e nas Tarefas** (marca, confirma, remarca e cancela compromisso; prepara lote, adiciona participante e cancela tarefa) — decisão de 15/10/2026. Biblioteca continua só leitura para a Direção (ela vê quem leu, mas não publica nem edita); Elenco vê o que é dele. Quando
+  edita e cancela aviso, reconhece, conversa) — decisão de 14/10/2026 — **e também na Agenda e nas Tarefas** (marca, confirma, remarca e cancela compromisso; prepara lote, adiciona participante e cancela tarefa) — decisão de 15/10/2026 — **e cria, vê e cobra tarefas e pedidos às responsabilidades** (decisão de 16/10/2026; o Elenco também cria tarefa para qualquer pessoa, e a Supervisão vê e cobra as da própria área). Biblioteca continua só leitura para a Direção (ela vê quem leu, mas não publica nem edita); Elenco vê o que é dele. Quando
   uma tela nova tiver exceção para a Direção, anote aqui. Folga vence a escala — só entra quem foi
   chamado de propósito, com motivo escrito.
 
@@ -176,6 +176,8 @@ com o elenco de Snowland carregado e gerando o dia de verdade. O último handoff
 Etapa 3 de folgas (pedido analisado pela Supervisão da área, troca com colega de folga, mediação, regras configuráveis), a
 aba Grupos antiga retirada do menu e o mapa de revisão em `docs/mapa-de-revisao.md`. **Quem roda migração e script em
 produção é quem constrói o app (não a Babi).** Ordem para promover: migrações 0067, 0068, 0069; depois a API; depois o site.
+
+**Feito em 17/10 (local, nada enviado; migrações 0072 e 0073 só no banco de teste):** tarefas em etapas (fila ou solta, aprovação como etapa, link do Drive, lembretes), pedidos às responsabilidades e lista fixa com repetição. Resumo e regras em `docs/tarefas-e-responsabilidades.md`. **Ordem para promover: 0072, 0073, depois a API, depois o site.** Quem roda em produção é quem constrói o app.
 
 Feito em 15/10 (**ainda local: nada enviado ao GitHub nem promovido**, sem migração): a revisão com o crivo em
 Agenda, Tarefas, Cadastros, Painel e Biblioteca, as decisões da Babi (Direção na Agenda e nas Tarefas, cancelar e
