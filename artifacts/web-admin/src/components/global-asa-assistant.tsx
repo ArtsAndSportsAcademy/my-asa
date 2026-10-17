@@ -447,7 +447,7 @@ export default function GlobalAsaAssistant() {
           const event = JSON.parse(line.slice(6)) as { content?: string; error?: string; proposal?: AsaProposal; undo?: AsaUndo };
           if (event.proposal) {
             setMessages((current) => !isCurrentSession() ? current : current.map((message) => message.id === assistantMessage.id
-              ? { ...message, proposal: event.proposal }
+              ? { ...message, proposal: { ...event.proposal!, state: event.proposal!.state ?? "PENDING" } }
               : message));
           }
           if (event.undo) {
@@ -628,7 +628,9 @@ export default function GlobalAsaAssistant() {
                 : <span className="global-asa-proposal-state">{message.proposal.state === "CONFIRMED" ? "Comentário publicado" : message.proposal.state === "CANCELLED" ? "Proposta cancelada" : "Prévia expirada ou indisponível"}</span>}
             </div>}
             {message.proposal && message.proposal.actionType !== "MESSAGE_DIRECT_CREATE" && message.proposal.actionType !== "MESSAGE_REPLY" && message.proposal.actionType !== "MURAL_REACT" && message.proposal.actionType !== "MURAL_COMMENT_CREATE" && <div className="global-asa-proposal">
-              <strong>{proposalTitle(message.proposal.actionType, message.proposal.operationName)}</strong>
+              <strong>{message.proposal.actionType === "FOLGA_LOTE" && (message.proposal.recipientNames?.length ?? 0) <= 1 && (message.proposal.dias?.length ?? 0) <= 1
+                ? `${message.proposal.title ?? "Folga"} · ${message.proposal.operationName}`
+                : proposalTitle(message.proposal.actionType, message.proposal.operationName)}</strong>
               {message.proposal.actionType === "TASK_COMMENT_CREATE"
                 ? <><span>{message.proposal.title}</span><span>Comentário:</span><span style={{ whiteSpace: "pre-wrap" }}>{message.proposal.content}</span><span>Só será publicado após confirmar.</span></>
                 : message.proposal.actionType === "TASK_CHECKLIST_UPDATE"

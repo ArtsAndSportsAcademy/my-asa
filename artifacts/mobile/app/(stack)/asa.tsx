@@ -956,7 +956,7 @@ export default function AsaScreen() {
             if (json.undo) {
               setMessages(prev => !isCurrentSession() ? prev : prev.map(m => m.id === asstId ? { ...m, undo: json.undo, undoState: undefined, undoError: undefined } : m));
             } else if (json.proposal) {
-              setMessages(prev => !isCurrentSession() ? prev : prev.map(m => m.id === asstId ? { ...m, proposal: json.proposal } : m));
+              setMessages(prev => !isCurrentSession() ? prev : prev.map(m => m.id === asstId ? { ...m, proposal: { ...json.proposal, state: json.proposal.state ?? "PENDING" } } : m));
             } else if (json.content) {
               setMessages(prev => !isCurrentSession() ? prev : prev.map(m =>
                 m.id === asstId ? { ...m, content: m.content + json.content } : m

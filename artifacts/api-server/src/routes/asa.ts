@@ -6418,7 +6418,7 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
               tipo: folgaLote.tipo, pessoas: pessoas.map((pessoa) => ({ id: pessoa.id, name: pessoa.name })),
               dates: folgaLote.dates, motivo: folgaLote.motivo ?? null, mesPublicado, expiresAt: expiresAt.toISOString(),
             };
-            fullResponse = `Prévia de folga em lote\nOperação: ${operation?.name ?? "Operação"}\n${acao}\nPessoas (${pessoas.length}): ${nomes}\nDias (${folgaLote.dates.length}): ${diasTexto}`
+            fullResponse = `${pessoas.length > 1 || folgaLote.dates.length > 1 ? "Prévia de folga em lote" : "Prévia da folga"}\nOperação: ${operation?.name ?? "Operação"}\n${acao}\nPessoas (${pessoas.length}): ${nomes}\nDias (${folgaLote.dates.length}): ${diasTexto}`
               + (entendidos.length ? `\nEntendi ${entendidos.join("; ")}.` : "")
               + (folgaLote.motivo ? `\nMotivo: ${folgaLote.motivo}` : "")
               + (substituidas.length ? `\nVai substituir: ${substituidas.slice(0, 8).join("; ")}${substituidas.length > 8 ? ` e mais ${substituidas.length - 8}` : ""}.` : "")
