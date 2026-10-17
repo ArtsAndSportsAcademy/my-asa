@@ -425,8 +425,11 @@ router.get("/panel-indicators", requireAuth, requireOrganization, async (req, re
   const scopes = isSupervisor(actor.role) ? await listAreaLocalScopes(actor.sub, actor.organizationId) : [];
   const allowedLocations = isSupervisor(actor.role) ? locations.filter((location) => scopes.some((scope) => scope.locationId === location.id)) : locations;
   let expected = 0, checkedIn = 0, late = 0, absent = 0, vacant = 0, draftScales = 0;
-  for (const location of allowedLocations) {
-    const dia = await montarEscalaDoDia(actor.organizationId, location.id, date);
+  // Montar a Escala é a parte pesada e um local não depende do outro: monta todos juntos (em série, o Painel
+  // somava o tempo de cada local). A contagem continua igual, local por local.
+  const dias = await Promise.all(allowedLocations.map((location) => montarEscalaDoDia(actor.organizationId, location.id, date)));
+  for (const [i, location] of allowedLocations.entries()) {
+    const dia = dias[i];
     if (!dia?.escala) continue;
     if (dia.escala.status === "DRAFT") draftScales++;
     const allowedAreas = isSupervisor(actor.role) ? new Set(scopes.filter((scope) => scope.locationId === location.id).map((scope) => scope.areaId)) : null;

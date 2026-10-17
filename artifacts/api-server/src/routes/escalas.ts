@@ -109,10 +109,11 @@ router.get("/escalas/minha", requireAuth, requireOrganization, async (req, res) 
     const locations = await db.select({ id: locationsTable.id }).from(locationsTable).where(and(
       eq(locationsTable.organizationId, actor.organizationId), eq(locationsTable.closed, false),
     ));
-    const escalas = [];
-    for (const location of locations) {
+    // Um local por vez somava o tempo de todos (10 s ou mais com 5 locais, na tela que o Elenco mais abre).
+    // Os locais não dependem um do outro: monta todos juntos e mantém a ordem da lista.
+    const porLocal = await Promise.all(locations.map(async (location) => {
       const aoVivo = await montarEscalaDoDia(actor.organizationId, location.id, date);
-      if (!aoVivo || !escalaPublicada(aoVivo.escala?.status)) continue;
+      if (!aoVivo || !escalaPublicada(aoVivo.escala?.status)) return null;
       // O Elenco vê a versão publicada; o que mudou depois só chega com a republicação.
       const dia = await comoPublicada(aoVivo);
       const me = dia.pessoas.find((p) => p.id === actor.sub) ?? null;
@@ -120,16 +121,17 @@ router.get("/escalas/minha", requireAuth, requireOrganization, async (req, res) 
       const retrato = operationId ? await ultimoRetratoFolgas(operationId, Number(date.slice(0, 4)), Number(date.slice(5, 7))) : null;
       const folga = retrato?.folgas?.find((item) => item.userId === actor.sub && item.startDate <= date && item.endDate >= date)?.type ?? null;
       const blocos = dia.blocos.filter((b) => b.pessoaIds.includes(actor.sub) && (!folga || me?.chamadaNaFolga?.motivo)).map(({ pessoaIds: _p, ...b }) => b);
-      if (!blocos.length && !folga) continue;
+      if (!blocos.length && !folga) return null;
       const [confirmacao] = await db.select().from(escalaConfirmacoesTable).where(and(
         eq(escalaConfirmacoesTable.scaleId, dia.escala!.id), eq(escalaConfirmacoesTable.userId, actor.sub),
       )).limit(1);
-      escalas.push({
+      return {
         location: dia.location, publishedAt: dia.escala!.publishedAt ?? null, folga,
         escalaId: dia.escala!.id, escalaVersion: dia.escala!.version,
         confirmada: confirmacao?.version === dia.escala!.version, confirmedAt: confirmacao?.confirmedAt ?? null, blocos,
-      });
-    }
+      };
+    }));
+    const escalas = porLocal.filter((e): e is NonNullable<typeof e> => e !== null);
     // `escalas` é o contrato completo: uma pessoa pode trabalhar em mais de
     // um local no mesmo dia. Os campos abaixo mantêm o cliente anterior
     // funcional enquanto ele passa a renderizar a lista completa.

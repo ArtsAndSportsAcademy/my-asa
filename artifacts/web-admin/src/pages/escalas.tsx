@@ -90,7 +90,7 @@ function toneOf(b: { rotulo: string; regra: Regra | null }): Tone {
   return T.prep;
 }
 /** Nome na célula: bloco de show leva a hora ("MUSICAL 12:30") — vocabulário da escala, não nome de show. */
-const textoDoBloco = (b: { rotulo: string; inicio: string; regra: Regra | null }) => b.regra === "livro" && !b.rotulo.includes(":") ? `${b.rotulo} ${b.inicio}` : b.rotulo;
+const textoDoBloco = (b: { rotulo: string; inicio: string; regra: Regra | null }) => b.regra === "livro" && !/\d{1,2}(:|h)\d{0,2}/i.test(b.rotulo) ? `${b.rotulo} ${b.inicio}` : b.rotulo; // "Musical 15h" já traz a hora
 const FOLGA: Record<string, { label: string; tone: Tone }> = {
   DAY_OFF: { label: "Folga", tone: T.ausente }, RECESSO: { label: "Recesso", tone: T.ferias }, NO_SHOW: { label: "No show", tone: T.ausente },
   AFASTAMENTO: { label: "Afastamento", tone: T.ferias }, RESTRICAO: { label: "Restrição", tone: T.ausente }, OUTRO: { label: "Fora", tone: T.ferias },
@@ -106,7 +106,13 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
   // "minha" (desenho 15): quem gerencia e também trabalha escalado vê a própria escala, como o elenco.
   const [tab, setTab] = useState<"escala" | "prog" | "minha">("escala");
   const showMinha = isMem || tab === "minha";
-  const [date, setDate] = useState(addDays(todayISO(), 1));
+  // Quem prepara o dia abre em amanhã; o Elenco abre em hoje (é o dia do show dele). Um atalho que já sabe
+  // o dia (ex.: "Republicar a escala de hoje", no Meu Dia) manda ?data= e a tela abre nele.
+  const [date, setDate] = useState(() => {
+    const pedida = new URLSearchParams(window.location.search).get("data");
+    if (pedida && /^\d{4}-\d{2}-\d{2}$/.test(pedida)) return pedida;
+    return isMem ? todayISO() : addDays(todayISO(), 1);
+  });
   const [cal, setCal] = useState(false);
   const [locais, setLocais] = useState<Local[]>([]);
   const [localId, setLocalId] = useState("");
@@ -790,6 +796,9 @@ function AjusteCelulaDialog({ bloco, pessoas, editableAreaIds, onClose, onAdjust
 // O último local escolhido fica guardado neste aparelho; se ele sumir da lista, volta ao primeiro.
 const LOCAL_KEY = "myasa-escalas-local";
 function lembrarLocal(list: { id: string }[]): string | undefined {
+  // Atalho que já sabe o local (?local=, vindo do Meu Dia) vence o último local aberto.
+  const pedido = new URLSearchParams(window.location.search).get("local");
+  if (pedido && list.some((l) => l.id === pedido)) return pedido;
   try { const id = localStorage.getItem(LOCAL_KEY); if (id && list.some((l) => l.id === id)) return id; } catch { /* sem armazenamento */ }
   return list[0]?.id;
 }

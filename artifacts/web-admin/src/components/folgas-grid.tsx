@@ -582,7 +582,7 @@ export function FolgasGrid({ operationId, year, month, memberFilter, groupBy = f
                 </td>
                 <td className="border-b border-l border-border px-2 py-1">
                   {editable(m.userId) && <button
-                    className="text-[10px] text-muted-foreground hover:text-foreground whitespace-nowrap px-1.5 py-0.5 rounded hover:bg-muted transition-colors"
+                    className="text-[11px] text-muted-foreground hover:text-foreground whitespace-nowrap px-2 min-h-[36px] rounded hover:bg-muted transition-colors"
                     onClick={(e) => handleFillWeekClick(e, m.userId)}
                     title="Preencher semana visível"
                   >

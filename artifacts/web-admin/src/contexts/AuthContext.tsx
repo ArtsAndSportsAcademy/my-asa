@@ -98,7 +98,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setState({ user: null, roles: [], capabilities: [], isAuthenticated: false, isLoading: false });
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        // Mesma regra da renovação: só a recusa do servidor encerra a sessão. Abrir o app no parque sem
+        // sinal (ou durante um deploy) fazia o /me falhar e jogava a pessoa no login com a credencial boa.
+        const credencialRecusada = err instanceof ApiError && (err.status === 401 || err.status === 403);
+        if (!credencialRecusada) {
+          try {
+            setState({
+              user: JSON.parse(userStr) as User,
+              roles: JSON.parse(rolesStr) as UserRole[],
+              capabilities: capabilitiesStr ? JSON.parse(capabilitiesStr) as string[] : [],
+              isAuthenticated: true,
+              isLoading: false,
+            });
+            return;
+          } catch { /* dado guardado ilegível: segue para o login */ }
+        }
         clearStorage();
         setState({ user: null, roles: [], capabilities: [], isAuthenticated: false, isLoading: false });
       });

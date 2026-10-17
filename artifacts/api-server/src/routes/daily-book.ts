@@ -93,6 +93,9 @@ async function resolveDailyBookReadContext(
   eventTitle: string;
   eventDate: string;
   showTitle: string | null;
+  /** Local do show: é ele que distingue dois Livros do mesmo dia, não a operação. */
+  locationName: string | null;
+  eventStartTime: string | null;
   /** Hora ("11:30") do Livro de uma sessão separada; nulo no Livro do dia. */
   sessionLabel: string | null;
 } | null> {
@@ -113,14 +116,17 @@ async function resolveDailyBookReadContext(
 
   let showTitle: string | null = null;
   let showResponsibleId: string | null = null;
+  let locationName: string | null = null;
   if (book.showBookId) {
     const [sb] = await db
-      .select({ title: showBooksTable.title, responsibleId: showBooksTable.responsibleId })
+      .select({ title: showBooksTable.title, responsibleId: showBooksTable.responsibleId, locationName: locationsTable.name })
       .from(showBooksTable)
+      .leftJoin(locationsTable, eq(showBooksTable.locationId, locationsTable.id))
       .where(eq(showBooksTable.id, book.showBookId))
       .limit(1);
     showTitle = sb?.title ?? null;
     showResponsibleId = sb?.responsibleId ?? null;
+    locationName = sb?.locationName ?? null;
   }
 
   const show = book.showBookId ? { id: book.showBookId, responsibleId: showResponsibleId } : null;
@@ -139,6 +145,8 @@ async function resolveDailyBookReadContext(
     eventTitle: ev.eventTitle,
     eventDate: ev.eventDate,
     showTitle,
+    locationName,
+    eventStartTime: ev.eventStartTime ?? null,
     sessionLabel: book.sessionId && ev.eventStartTime ? ev.eventStartTime.slice(0, 5) : null,
   };
 }
@@ -1865,6 +1873,8 @@ router.get("/daily-book/:id", requireAuth, requireOrganization, async (req, res)
         eventTitle: ctx.eventTitle,
         eventDate: ctx.eventDate,
         showTitle: ctx.showTitle,
+        locationName: ctx.locationName,
+        eventStartTime: ctx.eventStartTime,
         sessionLabel: ctx.sessionLabel,
         scenes: tree,
         sessionBlocks: await listSessionBlocks(id, book.showBookId, ctx.eventDate),

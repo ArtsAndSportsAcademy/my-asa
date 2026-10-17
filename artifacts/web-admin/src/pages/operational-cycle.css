@@ -90,3 +90,5 @@
 .cycle-ajuda{margin:0;font-size:12px;line-height:1.45;color:#5b5473}
 
 .cycle-folga-form fieldset label.cycle-regra-liga{display:flex;align-items:center;gap:10px;min-height:44px}.cycle-folga-form .cycle-regra-liga input[type=checkbox]{width:22px;height:22px;min-height:0;flex:none}
+/* Alvo de toque: o link solto em texto ficava com 19 px de altura no celular. */
+.cycle-inline-link{display:inline-flex;align-items:center;min-height:44px}

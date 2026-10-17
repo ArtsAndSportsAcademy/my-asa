@@ -224,7 +224,7 @@ export default function AgendaWorkspacePage({ role }: { role: Role }) {
   };
 
   return <section className="agenda-workspace">
-    <div className="ag-intro"><div><span className="ag-kicker">20 · O DIA</span><p>Escala, folgas, Livro do Dia, ensaios e reuniões na jornada de cada pessoa.</p></div><div className="ag-actions">
+    <div className="ag-intro"><div><span className="ag-kicker">Agenda · o dia</span><p>Escala, folgas, Livro do Dia, ensaios e reuniões na jornada de cada pessoa.</p></div><div className="ag-actions">
       {manager && <label className="ag-person-picker"><Users size={16}/><select aria-label="Pessoa da jornada" value={personId} onChange={(e) => setPersonId(e.target.value)}><option value="">Minha jornada</option>{people.map((p) => <option key={p.id} value={p.id}>{nameOf(p)}</option>)}</select></label>}
       <button className="ag-icon-button" onClick={() => void reload()} aria-label="Atualizar agenda" title="Atualizar agenda"><RotateCw size={17}/></button>
       <button className="ag-primary" onClick={openForm}><Plus size={17}/>{role === "mem" ? "Propor horário" : "Marcar compromisso"}</button>

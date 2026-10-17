@@ -28,6 +28,7 @@ import {
   historyEventsTable,
   locationsTable,
   operationLocationsTable,
+  operationsTable,
   programacaoBlocosTable,
   programacoesTable,
   requestsTable,
@@ -92,8 +93,12 @@ export async function findEscalaDoDia(locationId: string, date: string, executor
 
 /** Operação dona do local — a Escala (tabela `scales`) exige uma para autorização legada. */
 export async function operationForLocation(locationId: string, executor: Exec = db) {
+  // Local ligado a mais de uma operação: sem ordem, o banco devolvia qualquer uma (até operação parada), e a Escala
+  // podia nascer numa operação diferente da do Show ("Show fora do local"). Prefere a operação ativa e a ligação mais antiga.
   const [row] = await executor.select({ operationId: operationLocationsTable.operationId }).from(operationLocationsTable)
-    .where(and(eq(operationLocationsTable.locationId, locationId), eq(operationLocationsTable.active, true))).limit(1);
+    .innerJoin(operationsTable, eq(operationsTable.id, operationLocationsTable.operationId))
+    .where(and(eq(operationLocationsTable.locationId, locationId), eq(operationLocationsTable.active, true)))
+    .orderBy(sql`case when ${operationsTable.status} = 'ACTIVE' then 0 else 1 end`, asc(operationLocationsTable.createdAt)).limit(1);
   return row?.operationId ?? null;
 }
 

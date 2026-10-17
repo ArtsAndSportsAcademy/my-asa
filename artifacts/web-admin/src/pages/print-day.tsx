@@ -19,7 +19,7 @@ const WEEKDAY = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "qu
 const MONTH = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const longDate = (iso: string) => { const [y, m, d] = iso.split("-").map(Number); return `${WEEKDAY[new Date(y, m - 1, d).getDay()]}, ${d} de ${MONTH[m - 1]} de ${y}`; };
 const FOLGA: Record<string, string> = { DAY_OFF: "folga", RECESSO: "recesso", NO_SHOW: "no show", AFASTAMENTO: "afastamento", RESTRICAO: "restrição", OUTRO: "fora" };
-const texto = (b: Bloco) => b.regra === "livro" && !b.rotulo.includes(":") ? `${b.rotulo} ${b.inicio}` : b.rotulo;
+const texto = (b: Bloco) => b.regra === "livro" && !/\d{1,2}(:|h)\d{0,2}/i.test(b.rotulo) ? `${b.rotulo} ${b.inicio}` : b.rotulo; // "Musical 15h" já traz a hora
 const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
 
 export default function PrintDayPage() {

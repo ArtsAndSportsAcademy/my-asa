@@ -53,7 +53,8 @@ const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "o
 const curta = (iso: string) => { const [, m, d] = iso.split("-").map(Number); return `${d} ${MESES[m! - 1]}`; };
 const min = (hhmm: string) => { const [h, m] = hhmm.split(":").map(Number); return h! * 60 + (m ?? 0); };
 const fimDe = (b: Pick<BlocoDia, "inicio" | "fim">) => b.fim ? min(b.fim) : min(b.inicio) + 60;
-const texto = (b: Pick<BlocoDia, "rotulo" | "inicio" | "regra">) => b.regra === "livro" && !b.rotulo.includes(":") ? `${b.rotulo} ${b.inicio}` : b.rotulo;
+// A hora só entra quando o nome do bloco ainda não a traz ("Musical 15h" não vira "Musical 15h 15:00").
+const texto = (b: Pick<BlocoDia, "rotulo" | "inicio" | "regra">) => b.regra === "livro" && !/\d{1,2}(:|h)\d{0,2}/i.test(b.rotulo) ? `${b.rotulo} ${b.inicio}` : b.rotulo;
 const plural = (n: number, um: string, muitos: string) => `${n} ${n === 1 ? um : muitos}`;
 function relogio(now: Date) {
   const hhmm = new Intl.DateTimeFormat("en-GB", { timeZone: OPERATIONAL_TIME_ZONE, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(now);
@@ -169,7 +170,10 @@ async function elenco(actor: { sub: string; organizationId: string; role: string
   if (folga) saudacao = { titulo: saudar(agora, nome), texto: "Hoje é o seu dia de folga. Nenhum bloco para você — descansa.", mascote: "sonolenta", acao: { label: "Ver minha escala", href: APP_ROUTES.escalas } };
   else if (!meus.length) saudacao = { titulo: saudar(agora, nome), texto: pub ? "Você não tem nenhum bloco na escala de hoje." : "A escala de hoje ainda não foi publicada. Quando sair, seu dia aparece aqui.", mascote: "sonolenta", acao: { label: "Ver minha escala", href: APP_ROUTES.escalas } };
   else if (jaChegou) saudacao = { titulo: "Tudo certo por aqui!", texto: `Check-in feito${jaChegou.at ? ` às ${new Intl.DateTimeFormat("pt-BR", { timeZone: OPERATIONAL_TIME_ZONE, hour: "2-digit", minute: "2-digit" }).format(jaChegou.at)}` : ""}${jaChegou.status === "LATE" ? ", com atraso avisado" : ""} — bom trabalho hoje!`, mascote: "tarefa-concluida", acao: { label: "Ver minha escala", href: APP_ROUTES.escalas } };
-  else if (alvo) saudacao = { titulo: saudar(agora, nome), texto: `Você entra às ${meus[0]!.inicio} em ${texto(meus[0]!)}. Faz o check-in por aqui mesmo — leva um toque.`, mascote: "bom-dia", acao: { label: "Fazer check-in", checkIn: { scaleId: pub!.escala!.id, sourceKey: alvo.key, date: hoje } } };
+  // Depois do primeiro bloco, "você entra às 09:00" lido às 12h soa como atraso: o texto acompanha a hora.
+  else if (alvo) saudacao = { titulo: saudar(agora, nome), texto: min(meus[0]!.inicio) <= agora
+    ? `Seu dia começou às ${meus[0]!.inicio} (${texto(meus[0]!)}) e o check-in ainda não foi feito. Faz por aqui mesmo — leva um toque.`
+    : `Você entra às ${meus[0]!.inicio} em ${texto(meus[0]!)}. Faz o check-in por aqui mesmo — leva um toque.`, mascote: "bom-dia", acao: { label: "Fazer check-in", checkIn: { scaleId: pub!.escala!.id, sourceKey: alvo.key, date: hoje } } };
   else saudacao = { titulo: saudar(agora, nome), texto: "Seus blocos de hoje já terminaram.", mascote: "tarefa-concluida", acao: { label: "Ver minha escala", href: APP_ROUTES.escalas } };
 
   // Uma saudação por bloco seria enganosa quando há dois turnos no mesmo dia.
@@ -360,8 +364,11 @@ async function gestao(actor: { sub: string; organizationId: string; role: string
     ...(l.republicar.hoje && l.dia ? [{ quando: "hoje", local: l.dia.location.name }] : []),
     ...(l.republicar.amanha && l.amanha ? [{ quando: "amanhã", local: l.amanha.location.name }] : []),
   ]);
-  for (const r of republicar) pend.push({ count: 1, title: `Republicar a escala de ${r.quando} · ${r.local}`, sub: "mudou depois de publicada — quem faz só recebe quando você republicar", tone: "warn", href: APP_ROUTES.escalas });
-  for (const l of amanhaPendente) { const faltam = l.amanha!.areas.filter((a) => !a.pronta).map((a) => a.name); pend.push({ count: 1, title: `Escala de amanhã · ${l.amanha!.location.name}`, sub: faltam.length ? `falta ${faltam.join(", ")} marcar pronta` : "todas as áreas prontas · só falta publicar", tone: faltam.length ? "mute" : "warn", href: APP_ROUTES.escalas }); }
+  for (const r of republicar) pend.push({ count: 1, title: `Republicar a escala de ${r.quando} · ${r.local}`, sub: "mudou depois de publicada — quem faz só recebe quando você republicar", tone: "warn", href: `${APP_ROUTES.escalas}?data=${r.quando === "hoje" ? hoje : amanha}` });
+  // Hoje em rascunho com blocos é o mais urgente: quem faz ainda não recebeu nada, e só a Administração publica.
+  const hojePendente = porLocal.filter((l) => l.dia?.escala && l.dia.blocos.length && !l.pub);
+  for (const l of hojePendente) { const faltam = l.dia!.areas.filter((a) => !a.pronta).map((a) => a.name); pend.push({ count: 1, title: `Escala de hoje · ${l.dia!.location.name}`, sub: faltam.length ? `ainda em rascunho · falta ${faltam.join(", ")} marcar pronta` : "todas as áreas prontas · só falta publicar", tone: "warn", href: `${APP_ROUTES.escalas}?data=${hoje}&local=${l.dia!.location.id}` }); }
+  for (const l of amanhaPendente) { const faltam = l.amanha!.areas.filter((a) => !a.pronta).map((a) => a.name); pend.push({ count: 1, title: `Escala de amanhã · ${l.amanha!.location.name}`, sub: faltam.length ? `falta ${faltam.join(", ")} marcar pronta` : "todas as áreas prontas · só falta publicar", tone: faltam.length ? "mute" : "warn", href: `${APP_ROUTES.escalas}?data=${amanha}&local=${l.amanha!.location.id}` }); }
   if (respSemDono.length) pend.push({ count: respSemDono.length, title: respSemDono.length === 1 ? "Responsabilidade sem dono" : "Responsabilidades sem dono", sub: respSemDono.slice(0, 2).map((r) => r.title).join(" · "), tone: "warn", href: APP_ROUTES.responsabilidades });
   if (nFolgas) pend.push({ count: nFolgas, title: nFolgas === 1 ? "Folga a decidir" : "Folgas a decidir", sub: "na organização", tone: "warn", href: APP_ROUTES.folgas });
   const pedidos = await pedidosEsperando(actor);
@@ -369,18 +376,18 @@ async function gestao(actor: { sub: string; organizationId: string; role: string
   if (nOcorr) pend.push({ count: nOcorr, title: nOcorr === 1 ? "Ocorrência aberta" : "Ocorrências abertas", sub: "com a supervisão de cada área", tone: "warn", href: APP_ROUTES.checkIn });
   if (faltasTotal) pend.push({ count: faltasTotal, title: faltasTotal === 1 ? "Check-in em falta" : "Check-ins em falta", sub: "blocos que já começaram", tone: "warn", href: APP_ROUTES.checkIn });
 
-  const suas = amanhaPendente.filter((l) => l.amanha!.areas.every((a) => a.pronta)).length + respSemDono.length + republicar.length;
+  const suas = hojePendente.filter((l) => l.dia!.areas.every((a) => a.pronta)).length + amanhaPendente.filter((l) => l.amanha!.areas.every((a) => a.pronta)).length + respSemDono.length + republicar.length;
   const itens: LinhaDoDia[] = [];
   for (const l of porLocal) {
     if (!l.dia) continue;
     if (!l.dia.escala) { itens.push({ time: "—", title: l.dia.location.name, sub: "sem escala para hoje", tag: "sem escala", tone: "mute", href: APP_ROUTES.escalas }); continue; }
-    if (!l.pub) itens.push({ time: "—", title: l.dia.location.name, sub: "escala de hoje ainda não publicada", tag: "escala em rascunho", tone: "warn", href: APP_ROUTES.escalas });
+    if (!l.pub) itens.push({ time: "—", title: l.dia.location.name, sub: "escala de hoje ainda não publicada", tag: "escala em rascunho", tone: "warn", href: `${APP_ROUTES.escalas}?data=${hoje}&local=${l.dia.location.id}` });
     else if (l.republicar.hoje) itens.push({ time: "—", title: l.dia.location.name, sub: "a escala de hoje mudou depois de publicada", tag: "falta republicar", tone: "warn", href: APP_ROUTES.escalas });
     for (const b of l.shows) itens.push({ time: b.inicio, title: texto(b), sub: l.dia.location.name, tag: b.dailyBookStatus === "DRAFT" ? "livro em rascunho" : "publicado", tone: b.dailyBookStatus === "DRAFT" ? "warn" : "ok", href: APP_ROUTES.livroDoDia });
   }
   itens.sort((a, b) => a.time.localeCompare(b.time));
   return {
-    saudacao: { titulo: saudar(agora, nome), texto: `${comEscala.length ? plural(comEscala.length, "local com escala publicada hoje", "locais com escala publicada hoje") : locais.length ? "Nenhum local com escala publicada hoje" : "Ainda não há locais cadastrados — comece por Locais, Áreas e Pessoas"}.${suas ? ` ${suas === 1 ? "Uma coisa só você resolve" : `${suas} coisas só você resolve`}: ${[republicar.length ? `republicar a escala de ${republicar[0]!.quando}` : "", amanhaPendente.some((l) => l.amanha!.areas.every((a) => a.pronta)) ? "publicar a escala de amanhã" : "", respSemDono.length ? "dar dono a uma responsabilidade" : ""].filter(Boolean).join(" e ")}.` : pend.length ? " Nada que só você resolve — o resto da lista está com a supervisão de cada área." : " Nada esperando por você."}`, mascote: suas ? "estudando" : "bom-dia", acao: !locais.length ? { label: "Cadastrar os locais", href: "/locais" } : republicar.length ? { label: "Republicar a escala", href: APP_ROUTES.escalas } : amanhaPendente.length ? { label: "Revisar a escala de amanhã", href: APP_ROUTES.escalas } : { label: "Abrir o Painel", href: APP_ROUTES.painel } },
+    saudacao: { titulo: saudar(agora, nome), texto: `${comEscala.length ? plural(comEscala.length, "local com escala publicada hoje", "locais com escala publicada hoje") : locais.length ? "Nenhum local com escala publicada hoje" : "Ainda não há locais cadastrados — comece por Locais, Áreas e Pessoas"}.${suas ? ` ${suas === 1 ? "Uma coisa só você resolve" : `${suas} coisas só você resolve`}: ${[republicar.length ? `republicar a escala de ${republicar[0]!.quando}` : "", hojePendente.some((l) => l.dia!.areas.every((a) => a.pronta)) ? "publicar a escala de hoje" : "", amanhaPendente.some((l) => l.amanha!.areas.every((a) => a.pronta)) ? "publicar a escala de amanhã" : "", respSemDono.length ? "dar dono a uma responsabilidade" : ""].filter(Boolean).join(" e ")}.` : hojePendente.length ? " A escala de hoje ainda está em rascunho: quem faz não recebeu nada." : pend.length ? " Nada que só você resolve — o resto da lista está com a supervisão de cada área." : " Nada esperando por você."}`, mascote: suas ? "estudando" : "bom-dia", acao: !locais.length ? { label: "Cadastrar os locais", href: "/locais" } : republicar.length ? { label: "Republicar a escala", href: `${APP_ROUTES.escalas}?data=${republicar[0]!.quando === "hoje" ? hoje : amanha}` } : hojePendente.length ? { label: "Revisar a escala de hoje", href: `${APP_ROUTES.escalas}?data=${hoje}` } : amanhaPendente.length ? { label: "Revisar a escala de amanhã", href: APP_ROUTES.escalas } : { label: "Abrir o Painel", href: APP_ROUTES.painel } },
     proximo,
     linhaDoTempo: { rotulo: "Hoje, nos locais", dica: "só o que pede atenção da administração", itens: itens.slice(0, 8) },
     pendencias: { titulo: "Depende da administração", mascote: "estudando", itens: pend },

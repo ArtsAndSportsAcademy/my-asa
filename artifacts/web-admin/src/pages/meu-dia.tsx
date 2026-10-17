@@ -115,7 +115,7 @@ export default function MeuDiaPage({ role }: { role: Role }) {
               <span style={css("font-size:11px;color:#6b6482")}>{dia.proximo.rel}</span>
             </div>
             <span style={css("width:3px;align-self:stretch;border-radius:3px;background:linear-gradient(#6C2BF2,#2E3BD6)")}/>
-            <div style={css("display:flex;flex-direction:column;gap:4px;min-width:0")}>
+            <div style={css("display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 160px")}>
               <span style={css("font-family:Outfit,sans-serif;font-size:17px;font-weight:600")}>{dia.proximo.title}</span>
               <span style={css("font-size:13px;color:#6b6482")}>{dia.proximo.sub}</span>
             </div>
@@ -136,13 +136,14 @@ export default function MeuDiaPage({ role }: { role: Role }) {
               const row = <>
                 <span style={css("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#6b6482;width:46px;flex:none")}>{t.time}</span>
                 <span style={css("width:8px;height:8px;border-radius:50%;flex:none;background:" + T.fg + ";" + (t.tone === "mute" ? "opacity:.5;" : ""))}/>
-                <span style={css("display:flex;flex-wrap:wrap;align-items:baseline;column-gap:10px;flex:1;min-width:0")}>
+                <span style={css("display:flex;flex-wrap:wrap;align-items:baseline;column-gap:10px;flex:1 1 150px;min-width:0")}>
                   <span style={css("font-size:13.5px;font-weight:600;min-width:0")}>{t.title}</span>
                   <span style={css("font-size:12px;color:#6b6482")}>{t.sub}</span>
                 </span>
-                {t.tag && <span style={css("font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:" + T.bg + ";color:" + T.fg + ";font-family:'JetBrains Mono',monospace;white-space:nowrap")}>{t.tag}</span>}
+                {t.tag && <span style={css("font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:" + T.bg + ";color:" + T.fg + ";font-family:'JetBrains Mono',monospace;white-space:nowrap;margin-left:auto")}>{t.tag}</span>}
               </>;
-              const rowStyle = "display:flex;align-items:center;gap:10px;padding:8px 8px;border-radius:10px;text-decoration:none;color:inherit;" + (t.tone === "mine" ? "background:#fdf4f9;" : "");
+              // Sem quebra, a etiqueta (até 140 px) espremia o nome do local em 60 px no celular; agora ela desce para a direita.
+              const rowStyle = "display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 8px;border-radius:10px;text-decoration:none;color:inherit;" + (t.tone === "mine" ? "background:#fdf4f9;" : "");
               return t.href ? <Link key={i} href={t.href} className="md-row" style={css(rowStyle)}>{row}</Link> : <div key={i} style={css(rowStyle)}>{row}</div>;
             })}
             {!dia.linhaDoTempo.itens.length && <span style={css("font-size:13px;color:#6b6482;padding:8px")}>{dia.perfil === "mem" ? "Nada na sua escala de hoje." : "Nada pedindo atenção aqui agora."}</span>}
@@ -184,7 +185,6 @@ export default function MeuDiaPage({ role }: { role: Role }) {
             </div>)}
             {!dia.mural.length && <span style={css("font-size:12.5px;color:#6b6482")}>Nada novo no Mural.</span>}
           </div>
-          <span style={css("font-size:11px;color:#6b6482;line-height:1.4")}>Três linhas, sempre. A lista inteira mora no Mural.</span>
         </div>
       </div>
     </div>
