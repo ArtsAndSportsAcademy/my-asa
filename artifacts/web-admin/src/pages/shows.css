@@ -188,3 +188,5 @@
 .vaga-add .shows-secondary{display:inline-flex;align-items:center;gap:6px}
 .character-summary-row>span.vaga-actions{background:none;padding:0;border-radius:0}
 .character-summary-row>span.vaga-order{display:flex;flex-direction:column;gap:2px;flex-shrink:0;background:none;padding:0;border-radius:0}
+/* Formato do palco do show: rótulos por extenso quebram linha no celular; erro de gravação fica à vista. */
+.official-stage-presets{flex-wrap:wrap}.official-stage-presets button:disabled{cursor:default;opacity:.75}.official-format-error{color:#a12c2c;font-size:12px;line-height:1.4}

@@ -41,6 +41,8 @@ export const showBooksTable = pgTable("show_books", {
   // Responsável por este show (supervisor). Null = sem responsável definido → comportamento
   // legado por operação (qualquer gestor da operação opera). Aditivo e anulável (prod-safe).
   responsibleId: uuid("responsible_id").references(() => usersTable.id),
+  // Formato do palco do show inteiro (0074): L, RET, QUAD ou NONE (sem mapa). Sem ele o mapa e as formações não aparecem.
+  stageFormat: text("stage_format").$type<"L" | "RET" | "QUAD" | "NONE">().notNull().default("NONE"),
   createdBy: uuid("created_by").notNull().references(() => usersTable.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

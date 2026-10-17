@@ -264,7 +264,7 @@ As três correções desta rodada seguem sem commit.
 - **Outro dia (R2·5).** Terceiro botão ao lado de "Hoje" e "Amanhã"; abre um mês com células de 40 px e setas de 44 px, cabe
   em 375 px e fecha com Esc. Conferido no navegador: escolher 21/10 mostrou os 4 shows daquele dia.
 
-## Achado novo: o mapa do palco não aparece em dado real
+## Achado: o mapa do palco não aparecia em dado real (resolvido na seção seguinte)
 
 Ao testar a formação descobri que o painel "Formações desta cena" (e o mapa de cena, e a aba Formações do Livro, e o mapa em
 Shows) só aparecem quando o show ou a cena têm `stageFormat` diferente de "NONE". **Nenhuma tabela tem essa coluna e a API
@@ -279,3 +279,24 @@ desenho: o formato do palco é do show ou de cada cena? Quem escolhe e onde (tel
 `tsc` limpo na API e no site; build do site e `verificar-nomes-build` (nenhum nome do elenco). Testes no banco de teste:
 `daily-book-fill`, `daily-book-vivo`, `daily-book-reopen-and-diff`, `daily-book-formation-today`, `permission-matrix`,
 `escalas-dia` e o novo `daily-book-troca-por-area` passaram.
+
+
+## Mapa do palco: feito (17/10/2026, noite)
+
+Decisão: o formato do palco é **do show inteiro** e quem edita o show escolhe, no Livro oficial (tela Shows).
+
+- **Migração 0074** (`lib/db/drizzle/0074_formato_do_palco_no_show.sql`, desfazer em `rollback/0074_formato_do_palco_no_show.down.sql`,
+  registrada no `_journal.json`): coluna `show_books.stage_format` (`L`, `RET`, `QUAD` ou `NONE`), padrão `NONE`. Todo show que já
+  existe fica em "sem mapa", então nenhuma tela muda sozinha. **Aplicada só no banco de teste.** Ordem para produção:
+  **migração 0074 primeiro, depois a API, depois o site.**
+- **API:** `POST /show-books` aceita `stageFormat`; `PATCH /show-books/:id` grava (só quem edita o show; o Elenco recebe 403);
+  valor inválido responde 400 com a frase "Escolha L, retangular, quadrado ou sem mapa". O detalhe e a lista já devolvem o campo.
+- **Tela Shows → Livro oficial:** os botões do formato, que antes só mudavam a tela e não gravavam nada, agora gravam. Rótulos por
+  extenso ("Em L", "Retangular", "Quadrado", "Sem mapa"), 44 px, cabem em 375 px, desabilitados para quem não edita. Se a gravação
+  falha, o botão volta ao formato anterior e a tela diz "Não consegui salvar o formato do palco".
+- **Livro do Dia:** com o formato gravado, o mapa e o painel "Formações desta cena" aparecem em dado real (conferido na empresa
+  fictícia, com o aviso "Sai da cena hoje: Coro 2 (Igor)…" ao escolher a formação reduzida).
+- Teste novo: `show-book-formato-do-palco` (9 verificações). Também passaram `show-book-slots-groups`, `personagens-por-show` e
+  `permission-matrix`.
+- Ficou de fora de propósito: escolher o formato já na janela "Novo show". Hoje o show nasce "sem mapa" e a pessoa escolhe no
+  Livro oficial; a API já aceita o campo se quiserem a pergunta na criação.

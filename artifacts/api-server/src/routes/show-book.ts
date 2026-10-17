@@ -278,11 +278,13 @@ router.get("/show-books", requireAuth, requireOrganization, async (req, res) => 
 });
 
 router.post("/show-books", requireAuth, requireOrganization, async (req, res) => {
-  const { locationId, operationId: legacyOperationId, title, description, type, usesCharacters } = req.body;
+  const { locationId, operationId: legacyOperationId, title, description, type, usesCharacters, stageFormat } = req.body;
   if (typeof title !== "string" || !title.trim()) {
     res.status(400).json({ error: "title é obrigatório" });
     return;
   }
+  // Formato do palco do show inteiro (0074). Sem informar, o show nasce "sem mapa".
+  if (stageFormat !== undefined && !isStageFormat(stageFormat)) { res.status(400).json({ error: "Formato de palco inválido", message: "Escolha L, retangular, quadrado ou sem mapa." }); return; }
   if (!["COMPLETE", "CHARACTERS_ONLY", "SIMPLE"].includes(type ?? "COMPLETE")) {
     res.status(400).json({ error: "type deve ser COMPLETE, CHARACTERS_ONLY ou SIMPLE" });
     return;
@@ -308,7 +310,7 @@ router.post("/show-books", requireAuth, requireOrganization, async (req, res) =>
       const book = await db.transaction(async (tx) => {
         const [created] = await tx.insert(showBooksTable).values({
           operationId: legacyOperationId, locationId: null, title: title.trim(), description: description ?? null,
-          type: type ?? "COMPLETE", usesCharacters: usesCharacters === true, version: 1, status: "DRAFT", createdBy: userId,
+          type: type ?? "COMPLETE", usesCharacters: usesCharacters === true, stageFormat: stageFormat ?? "NONE", version: 1, status: "DRAFT", createdBy: userId,
         }).returning();
         await writeHistoryEvent({
           category: "OPERATIONAL_CHANGE", action: "show_book.created", title: "Show criado",
@@ -362,6 +364,7 @@ router.post("/show-books", requireAuth, requireOrganization, async (req, res) =>
           description: description ?? null,
           type: type ?? "COMPLETE",
           usesCharacters: usesCharacters === true,
+          stageFormat: stageFormat ?? "NONE",
           version: 1,
           status: "DRAFT",
           createdBy: userId,
@@ -434,8 +437,9 @@ router.get("/show-books/:id/resolve", requireAuth, requireOrganization, async (r
 
 router.patch("/show-books/:id", requireAuth, requireOrganization, async (req, res) => {
   const id = req.params.id as string;
-  const { title, description, startTime, endTime, details, reason } = req.body;
+  const { title, description, startTime, endTime, details, reason, stageFormat } = req.body;
   if (!reason) { res.status(400).json({ error: "reason é obrigatório" }); return; }
+  if (stageFormat !== undefined && !isStageFormat(stageFormat)) { res.status(400).json({ error: "Formato de palco inválido", message: "Escolha L, retangular, quadrado ou sem mapa." }); return; }
   try {
     const book = await requireShowManage(req, res);
     if (!book) return;
@@ -448,6 +452,7 @@ router.patch("/show-books/:id", requireAuth, requireOrganization, async (req, re
           startTime: "startTime" in req.body ? (startTime || null) : book.startTime,
           endTime: "endTime" in req.body ? (endTime || null) : book.endTime,
           details: details === undefined ? (book as any).details : details,
+          stageFormat: stageFormat ?? (book as any).stageFormat,
           updatedAt: new Date(),
         } as any)
         .where(eq(showBooksTable.id, id))
