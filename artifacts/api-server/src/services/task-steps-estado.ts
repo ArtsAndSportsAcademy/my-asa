@@ -73,6 +73,12 @@ export function aoConcluir(ordering: Ordering, steps: StepLite[], stepId: string
   return transicao(ordering, steps, statuses, antes, "IN_PROGRESS");
 }
 
+/** Depois de acrescentar uma etapa: abre quem passou a ter a vez, sem mudar o que já está feito ou ativo. */
+export function aoReavaliar(ordering: Ordering, steps: StepLite[], atual: TaskStatusValue = "IN_PROGRESS"): Transicao {
+  const antes = copiar(steps), statuses = copiar(steps);
+  return transicao(ordering, steps, statuses, antes, atual);
+}
+
 export function aoDispensar(ordering: Ordering, steps: StepLite[], stepId: string): Transicao {
   const alvo = steps.find((step) => step.id === stepId);
   if (!alvo || (alvo.status !== "ACTIVE" && alvo.status !== "WAITING")) throw new Error("Só se dispensa uma etapa que ainda não foi feita");

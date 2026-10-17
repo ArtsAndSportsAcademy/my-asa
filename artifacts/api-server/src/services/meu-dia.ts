@@ -28,6 +28,7 @@ import { APP_ROUTES } from "../lib/app-routes.js";
 import { comoPublicada, escalaPublicada, montarEscalaDoDia, type BlocoDia, type EscalaDia } from "./escala-dia.js";
 import { listAreaLocalScopes } from "./area-local-scope.js";
 import { canReadAnnouncement } from "./announcement-access.js";
+import { etapasAbertasDe } from "./task-steps.js";
 import { janelaDoMural } from "./mural-janela.js";
 import { aniversariosDaCasa } from "./aniversarios.js";
 import { pedidosEsperando } from "./solicitacoes.js";
@@ -89,10 +90,10 @@ async function mural(actor: { sub: string; organizationId: string; role: string 
   return out;
 }
 
-async function tarefasDe(userId: string, hoje: string) {
-  const rows = await db.select({ dueDate: tasksTable.dueDate, evid: tasksTable.mandatoryEvidences }).from(tasksTable)
-    .where(and(eq(tasksTable.assigneeId, userId), inArray(tasksTable.status, [...OPEN_TASK]), lte(tasksTable.dueDate, hoje)));
-  return { total: rows.length, atrasadas: rows.filter((r) => r.dueDate < hoje).length, comEvidencia: rows.filter((r) => Array.isArray(r.evid) && r.evid.length > 0).length };
+// A tarefa é da pessoa enquanto uma etapa dela tem a vez; vale o prazo da etapa, ou o da tarefa quando a etapa não tem.
+async function tarefasDe(userId: string, orgId: string, hoje: string) {
+  const rows = (await etapasAbertasDe(userId, orgId)).filter((r) => r.dueDate !== null && r.dueDate <= hoje);
+  return { total: rows.length, atrasadas: rows.filter((r) => r.dueDate! < hoje).length, comEvidencia: rows.filter((r) => Array.isArray(r.mandatoryEvidences) && r.mandatoryEvidences.length > 0).length };
 }
 
 type Dias = { hoje: EscalaDia | null; amanha: EscalaDia | null };
@@ -197,7 +198,7 @@ async function elenco(actor: { sub: string; organizationId: string; role: string
   });
 
   const [tarefas, folgas, pedidos] = await Promise.all([
-    tarefasDe(actor.sub, hoje),
+    tarefasDe(actor.sub, actor.organizationId, hoje),
     db.select({ startDate: leaveRequestsTable.startDate, endDate: leaveRequestsTable.endDate }).from(leaveRequestsTable).where(and(eq(leaveRequestsTable.userId, actor.sub), eq(leaveRequestsTable.status, "PENDING"))),
     pedidosEsperando(actor),
   ]);

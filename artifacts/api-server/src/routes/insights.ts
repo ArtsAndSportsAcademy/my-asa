@@ -220,7 +220,7 @@ router.get("/insights/tasks", requireAuth, requireOrganization, async (req, res)
 
     for (const t of tasks) {
       byStatus[t.status] = (byStatus[t.status] ?? 0) + 1;
-      if (ACTIVE_STATUSES.includes(t.status) && t.dueDate < todayStr) overdue++;
+      if (ACTIVE_STATUSES.includes(t.status) && t.dueDate && t.dueDate < todayStr) overdue++;
       if (DONE_STATUSES.includes(t.status) && t.completedAt && t.createdAt) {
         completionSum += (t.completedAt.getTime() - t.createdAt.getTime()) / 3600000;
         completionCount++;
@@ -294,7 +294,7 @@ router.get("/insights/workload", requireAuth, requireOrganization, async (req, r
       if (!t.assigneeId) continue;
       const entry = byAssignee.get(t.assigneeId) ?? { openTasks: 0, overdueTasks: 0, pendingRequests: 0 };
       entry.openTasks++;
-      if (t.dueDate < todayStr) entry.overdueTasks++;
+      if (t.dueDate && t.dueDate < todayStr) entry.overdueTasks++;
       byAssignee.set(t.assigneeId, entry);
     }
     for (const r of pendingReqs) {

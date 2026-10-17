@@ -8,6 +8,7 @@ import {
   aoConcluir,
   aoDispensar,
   aoPedirAjustes,
+  aoReavaliar,
   statusDaTarefa,
   statusesIniciais,
   type StepLite,
@@ -93,6 +94,16 @@ const etapa = (id: string, position: number, kind: "WORK" | "APPROVAL", status: 
 
   const solta = aoPedirAjustes([etapa("a", 1, "WORK", "DONE"), etapa("b", 2, "WORK", "DONE"), etapa("d", 3, "APPROVAL", "ACTIVE")], "d", "a", "FREE");
   assert(dizer(solta.statuses, ["a", "b", "d"]) === "ACTIVE,DONE,WAITING", `solta: só a etapa escolhida reabre, as outras continuam feitas (${dizer(solta.statuses, ["a", "b", "d"])})`);
+}
+
+// ── Reavaliar (depois de acrescentar uma etapa) ─────────────────────────────────
+{
+  const solta = aoReavaliar("FREE", [etapa("a", 1, "WORK", "ACTIVE"), etapa("b", 2, "WORK", "WAITING"), etapa("c", 3, "APPROVAL", "WAITING")]);
+  assert(solta.statuses.get("b") === "ACTIVE" && solta.novasAtivas[0] === "b" && solta.statuses.get("c") === "WAITING", "solta: uma etapa de trabalho acrescentada já nasce ativa e a aprovação continua esperando");
+  const fila = aoReavaliar("SEQUENTIAL", [etapa("a", 1, "WORK", "ACTIVE"), etapa("b", 2, "WORK", "WAITING")]);
+  assert(fila.novasAtivas.length === 0 && fila.statuses.get("b") === "WAITING", "fila: acrescentar uma etapa não tira a vez de quem está com ela");
+  const filaParada = aoReavaliar("SEQUENTIAL", [etapa("a", 1, "WORK", "DONE"), etapa("b", 2, "WORK", "WAITING")]);
+  assert(filaParada.statuses.get("b") === "ACTIVE", "fila: se ninguém tinha a vez, a etapa acrescentada recebe a vez");
 }
 
 // ── Status da tarefa ────────────────────────────────────────────────────────────

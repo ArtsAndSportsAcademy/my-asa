@@ -7,7 +7,7 @@ import { timingSafeEqual } from "node:crypto";
 import { Router, type IRouter, type Request, type Response } from "express";
 import { pool } from "@workspace/db";
 import { rodarCicloOperacional } from "../services/operational-jobs.js";
-import { sendTaskDueReminders } from "../services/taskReminderService.js";
+import { enqueueTaskReminders } from "../services/task-reminders.js";
 import { logger } from "../lib/logger.js";
 
 const router: IRouter = Router();
@@ -59,11 +59,14 @@ router.post("/internal/ciclo", async (req, res) => {
   }
 });
 
-/** Lembrete diário de tarefas (antes rodava às 8h do relógio do servidor; agora o Supabase chama às 8h de São Paulo). */
+/**
+ * Lembrete de tarefas. Os lembretes agora saem do ciclo (a cada minuto, com chave de deduplicação), então esta rota só
+ * existe para o agendador das 8h que já está configurado no Supabase continuar respondendo 200: chamar de novo não repete aviso.
+ */
 router.post("/internal/tarefas-do-dia", async (req, res) => {
   if (!chaveValida(req, res)) return;
   try {
-    res.json({ ok: true, ...(await sendTaskDueReminders()) });
+    res.json({ ok: true, ...(await enqueueTaskReminders(new Date())) });
   } catch (err) {
     log.error({ err }, "lembrete diário de tarefas falhou");
     res.status(500).json({ error: "TAREFAS_FALHOU" });
