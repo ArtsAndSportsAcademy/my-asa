@@ -3,13 +3,18 @@ import { AlertTriangle, Check, CirclePlus, ClipboardList, RotateCw, Trash2, X } 
 import { ApiError, customFetch } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useFecharComEsc } from "@/lib/fechar-com-esc";
+import TarefaNova from "@/components/tarefa-nova";
+import TarefaDetalhe from "@/components/tarefa-detalhe";
+import ResponsabilidadeDetalhe from "@/components/responsabilidade-detalhe";
+import { MeusPedidos, PedidoNovo } from "@/components/pedido-novo";
 
 type ShellRole = "adm" | "dir" | "sup" | "mem";
 type Area = { id: string; name: string };
 type Person = { id: string; name?: string; displayName?: string; areaId?: string | null; areaName?: string | null; status?: string; operationIds?: string[] };
 type Operation = { id: string; name: string };
 type Responsibility = { id: string; title: string; description?: string | null; areaId: string | null; areaName?: string | null; ownerId?: string | null; ownerName?: string | null; operationId?: string | null; active: boolean; assignments: { id: string; memberId: string; memberName: string; role: string; active: boolean }[] };
-type Task = { id: string; title: string; description?: string | null; responsibilityId?: string | null; responsibilityTitle?: string | null; areaId?: string | null; assigneeId: string; assigneeName: string; dueDate: string; status: string; origin: string; operationId: string; operationName?: string };
+type EtapaResumo = { id: string; position: number; kind: "WORK" | "APPROVAL"; title: string; assigneeId: string; assigneeName: string; status: "WAITING" | "ACTIVE" | "DONE" | "DISPENSED"; dueDate?: string | null };
+type Task = { id: string; title: string; description?: string | null; responsibilityId?: string | null; responsibilityTitle?: string | null; areaId?: string | null; assigneeId: string; assigneeName: string; dueDate: string | null; periodStart?: string | null; ordering?: "SEQUENTIAL" | "FREE"; steps?: EtapaResumo[]; status: string; origin: string; operationId: string; operationName?: string };
 // Uma linha do lote vale para quantas pessoas forem marcadas: vira uma tarefa para cada uma.
 type Draft = { key: number; title: string; assigneeIds: string[]; dueDate: string };
 const novoRascunho = (key: number): Draft => ({ key, title: "", assigneeIds: [], dueDate: today() });
@@ -20,7 +25,10 @@ const today = () => {
   const date = new Date();
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 };
-const dateLabel = (value: string) => new Date(`${value}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+const dateLabel = (value: string | null) => value ? new Date(`${value}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }) : "Sem prazo";
+// A etapa que está com a vez (a primeira ativa) e a que é minha: é o que a lista mostra e o que "Minhas" filtra.
+const etapaDaVez = (task: Task) => task.steps?.find((step) => step.status === "ACTIVE");
+const minhaEtapa = (task: Task, myId: string | null) => task.steps?.find((step) => step.status === "ACTIVE" && step.assigneeId === myId);
 const statusLabel: Record<string, string> = { CREATED: "A fazer", IN_PROGRESS: "Em andamento", READY_FOR_APPROVAL: "Aguardando", CHANGES_REQUESTED: "Ajustes", APPROVED: "Concluída", COMPLETED: "Concluída", CANCELLED: "Cancelada", EXPIRED: "Expirada" };
 
 export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole }) {
@@ -34,7 +42,7 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
   const [responsibilities, setResponsibilities] = useState<Responsibility[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
-  const [people, setPeople] = useState<Person[]>([]);
+  const [people, setPeople] = useState<Person[]>([]), [escolhas, setEscolhas] = useState<Person[]>([]);
   const [operations, setOperations] = useState<Operation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -47,6 +55,9 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
   // Cancelar tarefa: o motivo é opcional e quem tinha a tarefa recebe o aviso.
   const [cancelTask, setCancelTask] = useState<Task | null>(null), [cancelMotivo, setCancelMotivo] = useState(""), [cancelError, setCancelError] = useState("");
   const [lotDialog, setLotDialog] = useState(false);
+  // Tarefas em etapas e pedidos às responsabilidades (16/10/2026): criar, abrir a tarefa, abrir a responsabilidade, pedir algo.
+  const [novaTarefa, setNovaTarefa] = useState(false), [tarefaAberta, setTarefaAberta] = useState<string | null>(null);
+  const [respAberta, setRespAberta] = useState<Responsibility | null>(null), [pedidoDialog, setPedidoDialog] = useState<string | null>(null), [pedidosVersao, setPedidosVersao] = useState(0);
   const [responsibilityForm, setResponsibilityForm] = useState({ title: "", areaId: "", description: "" });
   const [selectedResponsibility, setSelectedResponsibility] = useState("");
   const [selectedOperation, setSelectedOperation] = useState("");
@@ -70,13 +81,16 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
     try {
       // Se alguma lista de apoio falhar, a tela abre mesmo assim, mas o lote avisa em vez de dizer "nenhuma operação".
       let falhou = false;
-      const [responsibilityData, operationData, userData, areaData] = await Promise.all([
+      const [responsibilityData, operationData, userData, areaData, escolhasData] = await Promise.all([
         customFetch<{ responsibilities: Responsibility[] }>("/api/responsibilities"),
         customFetch<{ operations?: Operation[] }>("/api/operations").catch(() => { falhou = true; return { operations: [] as Operation[] }; }),
         customFetch<{ users?: Person[] }>("/api/users").catch(() => { falhou = true; return { users: [] as Person[] }; }),
         // O Elenco não monta lote nem escolhe área: pedir a lista de áreas para ele só gerava uma recusa (403) à toa.
         role === "mem" ? Promise.resolve({ areas: [] as Area[] }) : customFetch<{ areas?: Area[] }>("/api/areas").catch(() => { falhou = true; return { areas: [] as Area[] }; }),
+        // Quem cria tarefa escolhe entre todas as pessoas ativas (só nome e área): /users devolve ao Elenco apenas os colegas da própria área.
+        customFetch<{ people?: Person[] }>("/api/tasks/assignable").catch(() => ({ people: [] as Person[] })),
       ]);
+      setEscolhas(escolhasData.people ?? []);
       setRefsFailed(falhou);
       const nextOperations = operationData.operations ?? [];
       let taskData: { tasks: Task[] };
@@ -113,13 +127,13 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
 
   const visibleTasks = useMemo(() => tasks.filter((task) => {
     const closed = ["APPROVED", "COMPLETED", "CANCELLED", "EXPIRED"].includes(task.status);
-    if (filter === "today") return !closed && task.dueDate <= today();
+    if (filter === "today") return !closed && task.dueDate !== null && task.dueDate <= today();
     if (filter === "open") return !closed;
-    if (filter === "late") return !closed && task.dueDate < today();
+    if (filter === "late") return !closed && task.dueDate !== null && task.dueDate < today();
     if (filter === "done") return ["APPROVED", "COMPLETED"].includes(task.status);
-    if (filter === "mine") return task.assigneeId === myId;
+    if (filter === "mine") return Boolean(minhaEtapa(task, myId)) || (!task.steps?.length && task.assigneeId === myId);
     return true;
-  }).sort((a, b) => a.dueDate.localeCompare(b.dueDate)), [filter, tasks, myId]);
+  }).sort((a, b) => (a.dueDate ?? "9999-12-31").localeCompare(b.dueDate ?? "9999-12-31")), [filter, tasks, myId]);
   const abertas = useMemo(() => tasks.filter((task) => !["APPROVED", "COMPLETED", "CANCELLED", "EXPIRED"].includes(task.status)).length, [tasks]);
   // A tela abre em "Hoje". Se nada vence hoje mas a pessoa tem tarefa em aberto, abre direto em "Em aberto": senão a lista parece vazia
   // enquanto o contador da aba diz "Tarefas 1".
@@ -127,7 +141,7 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
   useEffect(() => {
     if (loading || escolheuFiltroInicial) return;
     setEscolheuFiltroInicial(true);
-    const venceHoje = tasks.some((task) => !["APPROVED", "COMPLETED", "CANCELLED", "EXPIRED"].includes(task.status) && task.dueDate <= today());
+    const venceHoje = tasks.some((task) => !["APPROVED", "COMPLETED", "CANCELLED", "EXPIRED"].includes(task.status) && task.dueDate !== null && task.dueDate <= today());
     if (filter === "today" && !venceHoje && abertas > 0) setFilter("open");
   }, [loading, escolheuFiltroInicial, tasks, abertas, filter]);
 
@@ -195,14 +209,15 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
     setSaving(true);
     setNotice("");
     try {
-      if (task.status === "CREATED" || task.status === "CHANGES_REQUESTED") {
-        await customFetch(`/api/tasks/${task.id}/start`, { method: "POST", body: JSON.stringify({}) });
-      }
-      await customFetch(`/api/tasks/${task.id}/ready-for-approval`, { method: "POST", body: JSON.stringify({}) });
-      setNotice("Tarefa marcada como concluída.");
+      const etapa = minhaEtapa(task, myId);
+      if (!etapa) { setTarefaAberta(task.id); return; }
+      await customFetch(`/api/tasks/${task.id}/steps/${etapa.id}/complete`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
+      setNotice(etapa.kind === "APPROVAL" ? "Tarefa aprovada." : "Etapa concluída. Quem vem depois recebe o aviso.");
       await reload();
     } catch (cause) {
-      setNotice(cause instanceof Error ? cause.message : "Não consegui concluir a tarefa.");
+      // Checklist incompleto e as outras recusas do servidor vêm com a frase; o detalhe mostra os itens que faltam.
+      setNotice(frase(cause, "Não consegui concluir a etapa agora."));
+      if ((cause as { status?: number } | null)?.status === 422) setTarefaAberta(task.id);
     } finally { setSaving(false); }
   };
 
@@ -255,25 +270,28 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
     {notice && <div className="rt-notice" role="status">{notice}<button aria-label="Dispensar aviso" onClick={() => setNotice("")}><X size={16}/></button></div>}
     {error && <div className="rt-error" role="alert"><AlertTriangle size={17}/>{error}<button onClick={() => void reload()}>Tentar novamente</button></div>}
     {loading ? <div className="rt-loading" aria-busy="true"><i/><i/><i/></div> : tab === "tasks" ? <>
-      <div className="rt-toolbar"><div className="rt-filters" role="group" aria-label="Filtrar tarefas">{([["today", "Hoje"], ["open", "Em aberto"], ["late", "Vencidas"], ["done", "Feitas"], ...(role === "mem" ? [] : [["mine", "Minhas"]]), ["all", "Todas"]] as [string, string][]).map(([value, label]) => <button key={value} className={filter === value ? "selected" : ""} onClick={() => setFilter(value)}>{label}</button>)}</div>{canDistribute && <button className="rt-primary" onClick={() => { setSelectedResponsibility(""); setLotDialog(true); }}><CirclePlus size={16}/>Preparar lote</button>}</div>
-      {role !== "mem" && <p className="rt-explainer">Uma tarefa só entra na lista quando o lote é confirmado.</p>}
+      <div className="rt-toolbar"><div className="rt-filters" role="group" aria-label="Filtrar tarefas">{([["today", "Hoje"], ["open", "Em aberto"], ["late", "Vencidas"], ["done", "Feitas"], ...(role === "mem" ? [] : [["mine", "Minhas"]]), ["all", "Todas"]] as [string, string][]).map(([value, label]) => <button key={value} className={filter === value ? "selected" : ""} onClick={() => setFilter(value)}>{label}</button>)}</div><div className="rt-toolbar-actions">{canDistribute && <button className="rt-secondary" onClick={() => { setSelectedResponsibility(""); setLotDialog(true); }}><CirclePlus size={16}/>Preparar lote</button>}<button className="rt-primary" onClick={() => setNovaTarefa(true)}><CirclePlus size={16}/>Nova tarefa</button></div></div>
+      {role !== "mem" && canDistribute && <p className="rt-explainer">Um lote só entra na lista quando é confirmado. Uma tarefa nova entra assim que é criada.</p>}
       {visibleTasks.length ? <div className="rt-task-list">{visibleTasks.map((task) => {
         const closed = ["APPROVED", "COMPLETED", "CANCELLED", "EXPIRED"].includes(task.status);
-        const overdue = !closed && task.dueDate < today();
+        const overdue = !closed && task.dueDate !== null && task.dueDate < today();
+        const daVez = etapaDaVez(task), minha = minhaEtapa(task, myId);
         return <article className={`rt-task ${overdue ? "is-late" : ""}`} key={task.id}>
-          {role === "mem" && !closed ? <button className="rt-check" aria-label={`Concluir ${task.title}`} title="Marcar como feita" disabled={saving} onClick={() => void finishTask(task)}><Check size={17}/></button> : <span className={`rt-task-mark ${closed ? "done" : ""}`}>{closed ? <Check size={15}/> : <ClipboardList size={15}/>}</span>}
-          <div className="rt-task-main"><strong>{task.title}</strong><div><span>{task.responsibilityTitle ?? "Tarefa avulsa"}</span><span>{task.assigneeName}</span><span>Origem: {task.origin === "ASA" || task.origin === "AI" ? "ASA" : "Pessoa"}</span></div></div>
-          <div className="rt-task-end"><time dateTime={task.dueDate} className={overdue ? "late" : ""}>{overdue ? "Atrasada · " : "Até "}{dateLabel(task.dueDate)}</time><span className={`rt-state ${closed ? "closed" : overdue ? "late" : ""}`}>{statusLabel[task.status] ?? task.status}</span>{canDistribute && !closed && <button type="button" className="rt-task-cancel" onClick={() => { setCancelError(""); setCancelMotivo(""); setCancelTask(task); }}>Cancelar tarefa</button>}</div>
+          {minha && !closed ? <button className="rt-check" aria-label={`Concluir a etapa ${minha.title} de ${task.title}`} title={minha.kind === "APPROVAL" ? "Aprovar" : "Concluir a minha etapa"} disabled={saving} onClick={() => void finishTask(task)}><Check size={17}/></button> : <span className={`rt-task-mark ${closed ? "done" : ""}`}>{closed ? <Check size={15}/> : <ClipboardList size={15}/>}</span>}
+          <div className="rt-task-main"><button type="button" className="rt-task-open" onClick={() => setTarefaAberta(task.id)}><strong>{task.title}</strong></button><div><span>{task.responsibilityTitle ?? "Tarefa avulsa"}</span><span>{daVez ? `${daVez.title} · ${daVez.assigneeName}` : task.assigneeName}</span>{(task.steps?.length ?? 0) > 1 && <span>{task.steps!.filter((step) => step.status === "DONE").length} de {task.steps!.length} etapas</span>}<span>Origem: {task.origin === "ASA" || task.origin === "AI" ? "ASA" : task.origin === "REQUEST" ? "Pedido" : "Pessoa"}</span></div></div>
+          <div className="rt-task-end">{task.dueDate ? <time dateTime={task.dueDate} className={overdue ? "late" : ""}>{overdue ? "Atrasada · " : task.periodStart ? `${dateLabel(task.periodStart)} a ` : "Até "}{dateLabel(task.dueDate)}</time> : <time className="">Sem prazo</time>}<span className={`rt-state ${closed ? "closed" : overdue ? "late" : ""}`}>{statusLabel[task.status] ?? task.status}</span>{canDistribute && !closed && <button type="button" className="rt-task-cancel" onClick={() => { setCancelError(""); setCancelMotivo(""); setCancelTask(task); }}>Cancelar tarefa</button>}</div>
         </article>;
       })}</div> : <div className="rt-empty"><ClipboardList size={24}/><strong>{filter === "today" ? "Nada vence hoje" : "Nenhuma tarefa neste filtro"}</strong>{abertas > 0 && filter !== "open" && filter !== "all"
         ? <><span>{abertas === 1 ? "Você tem 1 tarefa em aberto, com prazo em outro dia." : `Você tem ${abertas} tarefas em aberto, com prazo em outros dias.`}</span><button type="button" className="rt-link" onClick={() => setFilter("open")}>Ver as em aberto</button></>
-        : <span>{role === "mem" ? "Quando uma tarefa for distribuída para você, ela aparece aqui." : "Tire ou troque o filtro para ver as outras tarefas."}</span>}</div>}
+        : <span>{role === "mem" ? "Quando uma tarefa for distribuída para você, ela aparece aqui. Você também pode criar uma." : "Tire ou troque o filtro para ver as outras tarefas."}</span>}</div>}
     </> : <>
-      <div className="rt-toolbar"><p className="rt-scope-note">Resultados permanentes pelos quais cada área responde.</p>{canDefine && <button className="rt-primary" onClick={() => setResponsibilityDialog(true)}><CirclePlus size={16}/>Nova responsabilidade</button>}</div>
+      <div className="rt-toolbar"><p className="rt-scope-note">Resultados permanentes pelos quais cada área responde. Para pedir algo a quem cuida, use “Pedir algo”.</p><div className="rt-toolbar-actions">{canDefine && <button className="rt-secondary" onClick={() => setResponsibilityDialog(true)}><CirclePlus size={16}/>Nova responsabilidade</button>}<button className="rt-primary" onClick={() => setPedidoDialog("")}><CirclePlus size={16}/>Pedir algo</button></div></div>
+      <MeusPedidos atualizar={pedidosVersao} onMudou={(mensagem) => { setNotice(mensagem); setPedidosVersao((v) => v + 1); }}/>
       {responsibilities.length ? <div className="rt-responsibility-list">{responsibilities.map((responsibility) => <article className="rt-responsibility" key={responsibility.id}>
         <div className="rt-resp-line"><span className="rt-resp-symbol" aria-hidden="true"><ClipboardList size={17}/></span><div className="rt-resp-main"><strong>{responsibility.title}</strong><span>{responsibility.areaName ?? areas.find((area) => area.id === responsibility.areaId)?.name ?? "Área não informada"}</span></div><span className="rt-active">Ativa</span></div>
         {responsibility.description && <p className="rt-resp-description">{responsibility.description}</p>}
         <div className="rt-resp-meta"><span>Responsável pela definição</span><strong>{responsibility.ownerName ?? "Não informado"}</strong><span>Participantes</span><strong>{responsibility.assignments.filter((assignment) => assignment.active).map((assignment) => assignment.memberName).join(", ") || "Ainda sem participantes"}</strong></div>
+        <button className="rt-link-button" onClick={() => setRespAberta(responsibility)}>Abrir: pedidos e lista fixa</button>
         {canDefine && <button className="rt-link-button" onClick={() => { setAssignmentError(""); setAssignmentForm({ memberIds: [], role: "SECONDARY" }); setAssignmentResponsibility(responsibility.id); }}><CirclePlus size={14}/>Adicionar participante</button>}
         {canDistribute && <button className="rt-link-button" onClick={() => { setSelectedResponsibility(responsibility.id); setLotDialog(true); }}>Preparar lote desta responsabilidade</button>}
       </article>)}</div> : <div className="rt-empty"><ClipboardList size={24}/><strong>Não há responsabilidades no seu acesso</strong><span>As definições permanentes das áreas aparecem nesta lista.</span></div>}
@@ -300,6 +318,13 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
       <p>{cancelTask.title} · {cancelTask.assigneeName} · até {dateLabel(cancelTask.dueDate)} — {cancelTask.assigneeName} recebe o aviso de que a tarefa não vale mais. Não dá para desfazer; para voltar, é preciso criar a tarefa de novo.</p>
       <form onSubmit={confirmCancelTask} className="rt-form"><label>Motivo (opcional)<textarea value={cancelMotivo} onChange={(event) => setCancelMotivo(event.target.value)} rows={3} placeholder="Quem tinha a tarefa lê este motivo"/></label>{cancelError && <p className="rt-form-error" role="alert">{cancelError}</p>}<footer><button type="button" className="rt-secondary" onClick={() => setCancelTask(null)}>Voltar</button><button className="rt-primary rt-danger-solid" disabled={saving}>{saving ? "Cancelando…" : "Cancelar tarefa"}</button></footer></form>
     </section></div>}
+
+    {novaTarefa && <TarefaNova pessoas={escolhas} operacoes={operations} responsabilidades={responsibilities.filter((item) => item.active).map((item) => ({ id: item.id, title: item.title }))}
+      onFechar={() => setNovaTarefa(false)} onCriada={(mensagem) => { setNovaTarefa(false); setTab("tasks"); setFilter("open"); setNotice(mensagem); void reload(); }}/>}
+    {tarefaAberta && <TarefaDetalhe tarefaId={tarefaAberta} meuId={myId} papel={role} pessoas={escolhas} onFechar={() => setTarefaAberta(null)} onMudou={(mensagem) => { if (mensagem) setNotice(mensagem); void reload(); }}/>}
+    {respAberta && <ResponsabilidadeDetalhe responsabilidade={respAberta} tarefas={tasks} onFechar={() => setRespAberta(null)} onPedir={() => { setPedidoDialog(respAberta.id); }}
+      onAbrirTarefa={(id) => { setRespAberta(null); setTab("tasks"); setTarefaAberta(id); }} onMudou={(mensagem) => { if (mensagem) setNotice(mensagem); void reload(); }}/>}
+    {pedidoDialog !== null && <PedidoNovo responsabilidadeInicial={pedidoDialog || undefined} onFechar={() => setPedidoDialog(null)} onEnviado={(mensagem) => { setPedidoDialog(null); setNotice(mensagem); setPedidosVersao((v) => v + 1); }}/>}
 
     {lotDialog && <div className="rt-backdrop" role="presentation" onMouseDown={() => { if (!saving && !lotDirty) closeLot(); }}><section className="rt-dialog rt-lot-dialog" role="dialog" aria-modal="true" aria-labelledby="rt-lot-title" onMouseDown={(event) => event.stopPropagation()}>
       <header><h2 id="rt-lot-title">Preparar lote</h2><button className="rt-icon-button" aria-label="Fechar" onClick={closeLot}><X size={18}/></button></header>
