@@ -33,7 +33,7 @@ const statusLabel: Record<string, string> = { CREATED: "A fazer", IN_PROGRESS: "
 
 export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole }) {
   const canDefine = role === "adm" || role === "dir";
-  // Supervisão sem a responsabilidade "Aprovação de tarefas" não distribui: o botão nem aparece (o servidor recusaria só no fim).
+  // Supervisão sem acesso à equipe não distribui: o botão nem aparece (o servidor recusaria só no fim).
   const [semAcessoEquipe, setSemAcessoEquipe] = useState(false), [lotError, setLotError] = useState("");
   const canDistribute = canDefine || (role === "sup" && !semAcessoEquipe);
   const [tab, setTab] = useState<"tasks" | "responsibilities">("tasks");
@@ -96,8 +96,8 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
       let taskData: { tasks: Task[] };
       if (role === "mem") taskData = await customFetch<{ tasks: Task[] }>("/api/tasks/my");
       else if (role === "sup") {
-        // Tarefas da equipe exigem a responsabilidade "Aprovação de tarefas" (regra do servidor: 403 sem ela).
-        // Sem ela, a Supervisão ainda vê as próprias tarefas — a tela não vira erro.
+        // A Supervisão vê e cobra as tarefas da própria área (decisão de 17/10/2026); sem área ligada a ela,
+        // o servidor recusa a lista da equipe e a tela mostra só as tarefas dela, sem virar erro.
         let withoutTeamAccess = 0;
         const team = await Promise.all(nextOperations.map((operation) => customFetch<{ tasks: Task[] }>(`/api/tasks?operationId=${encodeURIComponent(operation.id)}`).catch((cause) => {
           if (cause instanceof ApiError && cause.status === 403) { withoutTeamAccess += 1; return { tasks: [] as Task[] }; }
@@ -108,7 +108,7 @@ export default function ResponsibilitiesTasksPage({ role }: { role: ShellRole })
         for (const task of [...team.flatMap((response) => response.tasks ?? []), ...(own.tasks ?? [])]) byId.set(task.id, task);
         taskData = { tasks: [...byId.values()] };
         setSemAcessoEquipe(Boolean(withoutTeamAccess && withoutTeamAccess === nextOperations.length));
-        if (withoutTeamAccess && withoutTeamAccess === nextOperations.length) setNotice("Você vê só as suas tarefas. Para acompanhar as tarefas da equipe, a Administração precisa te dar a responsabilidade “Aprovação de tarefas”.");
+        if (withoutTeamAccess && withoutTeamAccess === nextOperations.length) setNotice("Você vê só as suas tarefas. As tarefas da equipe aparecem para quem supervisiona uma área; peça à Administração para ligar você à sua área e ao seu local.");
       } else taskData = await customFetch<{ tasks: Task[] }>("/api/tasks");
       setResponsibilities(responsibilityData.responsibilities ?? []);
       setTasks(taskData.tasks ?? []);

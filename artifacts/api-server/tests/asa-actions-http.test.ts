@@ -1414,17 +1414,15 @@ async function run() {
     await db.update(userRolesTable).set({ active: true }).where(eq(userRolesTable.id, member.membershipId));
     check(memberRoleResult.status === 409 && (await targets("TASK_CREATE", memberRoleTitle)).length === 0, "Task refuses an assignee removed from the operation");
 
-    check(!(await ask(sup, taskText(`${tag}_no_delegation`))).proposal, "Supervisor needs task delegation even inside own area");
-    const [delegation] = await db.insert(delegationsTable).values({ delegatorId: admin.id, delegateeId: supervisor.id, operationId: operation!.id, validFrom: new Date(Date.now() - 60_000), responsibilities: ["TASK_APPROVALS"] }).returning();
-    check(!(await ask(sup, taskText(`${tag}_wrong_area`, outsider.name))).proposal, "Delegated supervisor cannot prepare a task for another area");
-    for (const revoke of ["delegation", "scope", "assignee_area"] as const) {
+    // Decisão de 17/10/2026: a Supervisão cuida das tarefas da própria área sem delegação à parte.
+    check(Boolean((await ask(sup, taskText(`${tag}_no_delegation`))).proposal), "Supervisor prepares a task inside own area without delegation");
+    check(!(await ask(sup, taskText(`${tag}_wrong_area`, outsider.name))).proposal, "Supervisor cannot prepare a task for another area");
+    for (const revoke of ["scope", "assignee_area"] as const) {
       const title = `${tag}_supervisor_${revoke}`;
       const proposal = await preview("TASK_CREATE", title, sup);
-      if (revoke === "delegation") await db.update(delegationsTable).set({ revokedAt: new Date() }).where(eq(delegationsTable.id, delegation!.id));
       if (revoke === "scope") await db.update(areaLocalSupervisorsTable).set({ active: false }).where(eq(areaLocalSupervisorsTable.id, scope!.id));
       if (revoke === "assignee_area") await db.update(usersTable).set({ areaId: otherArea!.id }).where(eq(usersTable.id, member.id));
       const response = await sup(`/asa/actions/${proposal.id}/confirm`, {});
-      await db.update(delegationsTable).set({ revokedAt: null }).where(eq(delegationsTable.id, delegation!.id));
       await db.update(areaLocalSupervisorsTable).set({ active: true }).where(eq(areaLocalSupervisorsTable.id, scope!.id));
       await db.update(usersTable).set({ areaId: area!.id }).where(eq(usersTable.id, member.id));
       check(response.status === 403 && (await targets("TASK_CREATE", title)).length === 0, `Supervisor confirmation revalidates ${revoke}`);

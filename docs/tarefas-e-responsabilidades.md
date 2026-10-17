@@ -36,7 +36,7 @@ Limite conhecido: a ASA só enxerga a "pessoa da vez" (`assignee_id`); em tarefa
 | Ação | Quem pode |
 |---|---|
 | Criar tarefa | qualquer pessoa autenticada (Direção também) |
-| Ver a tarefa | quem criou, quem tem etapa nela, Administração, Direção, Supervisão da área (com "Aprovação de tarefas") |
+| Ver a tarefa | quem criou, quem tem etapa nela, Administração, Direção, Supervisão da própria área e local (desde 17/10/2026 não depende mais da responsabilidade "Aprovação de tarefas") |
 | Concluir etapa | a pessoa da etapa; Administração e Direção concluem por ela |
 | Pedir ajustes | quem aprova, Administração, Direção; o aprovador escolhe para qual etapa a tarefa volta |
 | Dispensar, passar para outra pessoa, acrescentar etapa, cancelar | quem criou, Administração, Direção, Supervisão da área; **motivo escrito** vai no Registro |

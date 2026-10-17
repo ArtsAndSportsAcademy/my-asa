@@ -383,7 +383,7 @@ router.post("/tasks/batch", requireAuth, requireOrganization, async (req, res) =
       const areaId = responsibility?.areaId ?? assignees[0]?.areaId ?? null;
       const allowed = await canManageTasks(user.sub, user.role as RoleValue, operationId, user.organizationId, areaId);
       if (!allowed) {
-        res.status(403).json({ error: "Forbidden", message: "Para distribuir tarefas, a Administração precisa te dar a responsabilidade “Aprovação de tarefas” da sua área." }); return;
+        res.status(403).json({ error: "Forbidden", message: "A Supervisão distribui tarefas só para a própria área. Confira se a área e o local estão ligados a você." }); return;
       }
       if (tasks.some((task) => (assignees.find((person) => person.id === task.assigneeId)?.areaId ?? null) !== areaId)) {
         res.status(403).json({ error: "Forbidden", message: "O lote só pode ter pessoas da sua área." }); return;

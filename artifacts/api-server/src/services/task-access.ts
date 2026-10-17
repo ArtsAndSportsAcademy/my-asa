@@ -1,6 +1,5 @@
 import { and, eq } from "drizzle-orm";
 import { db, responsibilitiesTable, usersTable } from "@workspace/db";
-import { hasActiveResponsibility } from "../lib/delegation-check.js";
 import { listAreaLocalScopes } from "./area-local-scope.js";
 
 export async function canManageTasks(
@@ -39,14 +38,17 @@ export async function resolveTaskAreaId(
   return assignee?.areaId ?? null;
 }
 
-/** Returns the supervisor's task areas, or null when TASK_APPROVALS is absent. */
+/**
+ * Áreas cujas tarefas a Supervisão vê e cobra: as que ela supervisiona (área + local). Decisão de 17/10/2026:
+ * a Supervisão acompanha as tarefas da própria área sem precisar de responsabilidade à parte. A assinatura
+ * mantém o `null` por compatibilidade com quem já tratava a ausência de acesso, mas ele não é mais devolvido.
+ */
 export async function listTaskManagementAreaIds(
   userId: string,
-  operationId: string,
+  _operationId: string,
   organizationId: string,
   executor: Pick<typeof db, "select"> = db,
 ): Promise<string[] | null> {
-  if (!(await hasActiveResponsibility(userId, operationId, "TASK_APPROVALS", executor))) return null;
   const scopes = await listAreaLocalScopes(userId, organizationId, executor);
   return [...new Set(scopes.map((scope) => scope.areaId))];
 }
