@@ -45,7 +45,7 @@
 .cycle-folga-dias{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
 .cycle-folga-dias .cycle-chip{border-radius:10px;padding:5px 0;display:grid;gap:1px;justify-items:center}
 .cycle-folga-dias b{font:700 13px 'JetBrains Mono',monospace}
-.cycle-folga-dias small{font-size:10px;color:#6b6482}
+.cycle-folga-dias small{font-size:11px;color:#6b6482}
 .cycle-folga-dias .cycle-chip.on small{color:#5b23c9}
 .cycle-folga-periodo{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px}
 .cycle-folga-previa{margin:0;padding:10px 12px;border-radius:10px;background:#f6f3fd;color:#3d3559;font-size:12px;line-height:1.45}
