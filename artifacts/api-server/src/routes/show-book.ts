@@ -1314,6 +1314,8 @@ router.post("/show-books/:id/vagas", requireAuth, requireOrganization, async (re
   } catch (err) {
     if (err instanceof VagaConflict) { res.status(409).json({ error: err.message }); return; }
     if (isUniqueViolation(err)) { res.status(409).json({ error: "Já existe uma vaga com esse nome neste show" }); return; }
+    // Identificador malformado (não é um UUID) é pedido errado, não falha do servidor.
+    if ((err as { code?: string } | null)?.code === "22P02" || (err as { cause?: { code?: string } } | null)?.cause?.code === "22P02") { res.status(404).json({ error: "NOT_FOUND", message: "Show ou personagem não encontrado." }); return; }
     requestLogger("show_book", req.requestId ?? "", req.correlationId ?? "").error({ err, showBookId: req.params.id }, "Erro ao criar vaga");
     res.status(500).json({ error: "Erro ao criar vaga" });
   }

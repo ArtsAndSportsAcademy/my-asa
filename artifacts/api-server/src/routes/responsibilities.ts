@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type RequestHandler } from "express";
 import { eq, and, inArray, or, isNull, not, desc, asc } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { db } from "@workspace/db";
@@ -390,16 +390,18 @@ router.patch("/responsibilities/:id/routines/:routineId", requireAuth, requireOr
   } catch (err) { erroDePedido(res, err, "Erro ao atualizar item da lista fixa"); }
 });
 
-for (const [caminho, acao] of [["check", marcarItem], ["uncheck", desmarcarItem], ["restore", restaurarItem]] as const) {
-  router.post(`/responsibilities/:id/routines/:routineId/${caminho}`, requireAuth, requireOrganization, async (req, res): Promise<void> => {
-    try {
-      const user = req.user!;
-      await paraMexer(user, String(req.params.id));
-      const routine = await db.transaction((tx) => acao(tx, ator(user), String(req.params.id), String(req.params.routineId)));
-      res.json({ routine });
-    } catch (err) { erroDePedido(res, err, "Erro ao mexer no item da lista fixa"); }
-  });
-}
+// Um registro por caminho, com o texto da rota escrito por extenso (a matriz de permissões lê as rotas do código-fonte).
+const mexerNoItem = (acao: typeof marcarItem): RequestHandler => async (req, res): Promise<void> => {
+  try {
+    const user = req.user!;
+    await paraMexer(user, String(req.params.id));
+    const routine = await db.transaction((tx) => acao(tx, ator(user), String(req.params.id), String(req.params.routineId)));
+    res.json({ routine });
+  } catch (err) { erroDePedido(res, err, "Erro ao mexer no item da lista fixa"); }
+};
+router.post("/responsibilities/:id/routines/:routineId/check", requireAuth, requireOrganization, mexerNoItem(marcarItem));
+router.post("/responsibilities/:id/routines/:routineId/uncheck", requireAuth, requireOrganization, mexerNoItem(desmarcarItem));
+router.post("/responsibilities/:id/routines/:routineId/restore", requireAuth, requireOrganization, mexerNoItem(restaurarItem));
 
 router.delete("/responsibilities/:id/routines/:routineId", requireAuth, requireOrganization, async (req, res): Promise<void> => {
   try {
