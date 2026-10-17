@@ -357,7 +357,7 @@ export default function AsaPage() {
       const result = await response.json() as { message?: string; error?: string };
       if (!response.ok) throw new Error(result.error ?? "Não consegui atualizar a proposta.");
       setMessages(current => current.map(message => message.proposal?.id === proposal.id
-        ? { ...message, proposal: { ...message.proposal, state: action === "confirm" ? "CONFIRMED" : "CANCELLED" }, content: `${message.content}\n\n${result.message ?? "Concluído."}` }
+        ? { ...message, proposal: { ...message.proposal, state: action === "confirm" ? "CONFIRMED" : "CANCELLED" }, content: `${message.content.replace(/^Nada foi gravado\..*\n?/m, "").trimEnd()}\n\n${result.message ?? "Concluído."}` }
         : message));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Não consegui atualizar a proposta.");
