@@ -48,7 +48,7 @@ import {
   type RotationWinners,
 } from "../services/line-resolver.js";
 import { detectDailyBookConflicts } from "../services/schedule-conflicts.js";
-import { escalaDoDiaDoLivro, escalaPublicada, marcarEscalaAlteradaPeloLivro } from "../services/escala-dia.js";
+import { escalaDoDiaDoLivro, escalaPublicada, horariosDoShowNaProgramacao, marcarEscalaAlteradaPeloLivro } from "../services/escala-dia.js";
 import { isNotSessionBlock, listSessionBlocks, syncSessionBlocks } from "../services/session-blocks.js";
 
 const router: IRouter = Router();
@@ -1762,7 +1762,7 @@ router.delete("/daily-book/:id", requireAuth, requireOrganization, requireRole("
 });
 
 router.get("/daily-book", requireAuth, requireOrganization, async (req, res) => {
-  const { agendaEventId, status, groupId, date } = req.query as Record<string, string | undefined>;
+  const { agendaEventId, status, groupId, date, incluirCancelados } = req.query as Record<string, string | undefined>;
   const actor = req.user!;
   try {
     // Escopo de organização: só livros cujo evento pertence a uma operação da org.
@@ -1771,7 +1771,9 @@ router.get("/daily-book", requireAuth, requireOrganization, async (req, res) => 
     ];
     if (agendaEventId) conditions.push(eq(dailyBooksTable.agendaEventId, agendaEventId));
     if (status) conditions.push(eq(dailyBooksTable.status, status as any));
-    else conditions.push(ne(dailyBooksTable.status, "CANCELLED"));
+    // O Livro marcado como "não ocorreu" some das listas gerais, mas a tela do dia precisa dele: é por ali que a
+    // Administração o reabre. Sem isso, depois de recarregar, o show cancelado não tinha mais como ser alcançado.
+    else if (incluirCancelados !== "1") conditions.push(ne(dailyBooksTable.status, "CANCELLED"));
     // "Os shows de hoje": filtra pela data do evento de agenda que originou o Livro.
     if (date) conditions.push(eq(agendaEventsTable.date, date));
     if (groupId) {
@@ -1878,6 +1880,8 @@ router.get("/daily-book/:id", requireAuth, requireOrganization, async (req, res)
         sessionLabel: ctx.sessionLabel,
         scenes: tree,
         sessionBlocks: await listSessionBlocks(id, book.showBookId, ctx.eventDate),
+        // Horários que a Programação do local dá a este show neste dia (a Escala lê daí); as sessões acima seguem valendo para a formação.
+        programacaoHoje: book.showBookId ? await horariosDoShowNaProgramacao(book.showBookId, ctx.eventDate) : [],
         currentSnapshot,
       },
     });

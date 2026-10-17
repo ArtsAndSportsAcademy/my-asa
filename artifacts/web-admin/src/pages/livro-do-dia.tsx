@@ -20,7 +20,7 @@ type DPosition = { id: string; name: string; minimumCoverage: number; sourceRole
 type DBlock = { id: string; name: string; order: number; sceneId: string | null; sourceBlockId: string | null; isRemoved: boolean; positions: DPosition[] };
 type DScene = { id: string; name: string; order: number; sourceSceneId: string | null; isRemoved: boolean; blocks: DBlock[] };
 type SessionBlockView = { id: string; name: string; startTime: string; endTime: string; order: number; isRemoved: boolean; stale: boolean; staleReason: string | null };
-type DailyBook = { id: string; agendaEventId: string; scaleId: string | null; showBookId: string | null; status: DailyBookStatus; version: number; operationId?: string; operationName?: string; eventTitle?: string; eventDate?: string; eventStartTime?: string | null; locationName?: string | null; showTitle?: string | null; sessionLabel?: string | null; scenes?: DScene[]; sessionBlocks?: SessionBlockView[] };
+type DailyBook = { id: string; agendaEventId: string; scaleId: string | null; showBookId: string | null; status: DailyBookStatus; version: number; operationId?: string; operationName?: string; eventTitle?: string; eventDate?: string; eventStartTime?: string | null; locationName?: string | null; showTitle?: string | null; sessionLabel?: string | null; scenes?: DScene[]; sessionBlocks?: SessionBlockView[]; programacaoHoje?: { inicio: string; fim: string | null; rotulo: string }[] };
 /** Livro de sessão separada leva a hora no nome ("Teatro de Natal · 11:30"); sem isso, duas linhas do mesmo show ficam iguais. */
 const tituloDoLivro = (b: { showTitle?: string | null; eventTitle?: string; sessionLabel?: string | null }) => `${b.showTitle ?? b.eventTitle ?? ""}${b.sessionLabel ? ` · ${b.sessionLabel}` : ""}`;
 type PatternDiffRow = { where: string; padrao: string; hoje: string; why: string };
@@ -300,7 +300,7 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
     setError(""); setLoading(true);
     try {
       if (review) { setBooks(sampleShows.map((_, index) => loadReviewBook(`sample-book-${index}`) ?? sampleDailyBookFor(index))); return; }
-      const result = await customFetch<{ dailyBooks: DailyBook[] }>(`/api/daily-book?date=${date}`);
+      const result = await customFetch<{ dailyBooks: DailyBook[] }>(`/api/daily-book?date=${date}&incluirCancelados=1`);
       // O cartão de cada show precisa da hora (sessão) e de quantos foram convocados: vêm do detalhe.
       const detailed = await Promise.all(result.dailyBooks.map((b) => customFetch<{ dailyBook: DailyBook }>(`/api/daily-book/${b.id}`).then((r) => ({ ...b, ...r.dailyBook })).catch(() => b)));
       setBooks(detailed);
@@ -347,14 +347,16 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
       return;
     }
     try {
+      let apoioFalhou = false;
       const [bookResult, diffResult, deltaResult] = await Promise.all([
         customFetch<{ dailyBook: DailyBook }>(`/api/daily-book/${id}`),
-        customFetch<{ diffs: PatternDiffRow[] }>(`/api/daily-book/${id}/pattern-diff`).catch(() => ({ diffs: [] as PatternDiffRow[] })),
-        customFetch<{ hasLiveChanges: boolean }>(`/api/daily-book/${id}/delta`).catch(() => ({ hasLiveChanges: false })),
+        customFetch<{ diffs: PatternDiffRow[] }>(`/api/daily-book/${id}/pattern-diff`).catch(() => { apoioFalhou = true; return { diffs: [] as PatternDiffRow[] }; }),
+        customFetch<{ hasLiveChanges: boolean }>(`/api/daily-book/${id}/delta`).catch(() => { apoioFalhou = true; return { hasLiveChanges: false }; }),
       ]);
       const opened = bookResult.dailyBook;
       setBook(opened); setOpenSceneId((prev) => opened.scenes?.some((s) => s.id === prev) ? prev : opened.scenes?.slice().sort((a, b) => a.order - b.order)[0]?.id ?? "");
       setDiffs(diffResult.diffs); setHasLiveChanges(deltaResult.hasLiveChanges);
+      if (apoioFalhou) setError("Abri o Livro, mas não consegui conferir se há mudanças ao vivo. Não é que não haja: atualize a página antes de publicar.");
       if (!opened.showBookId) { setSource(null); setCharactersToday([]); setFormations([]); return; }
       const [showResult, sessionsResult] = await Promise.all([
         customFetch<{ showBook: ShowBookApi }>(`/api/show-books/${opened.showBookId}`).catch(() => null),
@@ -724,7 +726,15 @@ function HojeTab(props: {
               {chamada && <span style={css("flex:none;font-size:11px;color:#6b6482;font-family:'JetBrains Mono',monospace")}>chamada {chamada}</span>}
             </div>;
           })}
-          {!sessions.length && <span style={css("font-size:11.5px;color:#6b6482")}>Nenhuma sessão deste show cai hoje.</span>}
+          {!sessions.length && (book.programacaoHoje?.length
+            ? <>
+              {book.programacaoHoje.map((h) => <div key={`${h.inicio}-${h.rotulo}`} style={css("display:flex;align-items:center;gap:12px;border-radius:12px;padding:11px 13px;min-height:44px;box-sizing:border-box;background:#faf9fe;border:1px solid #e9e4f5")}>
+                <span style={css("font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#1b1630;flex:none")}>{h.fim ? `${h.inicio} — ${h.fim}` : h.inicio}</span>
+                <span style={css("flex:1;min-width:0;font-size:13px;font-weight:600;line-height:1.25")}>{h.rotulo}</span>
+              </div>)}
+              <span style={css("font-size:11.5px;color:#6b6482;line-height:1.45;text-wrap:pretty")}>Horários vindos da Programação do local. Este show ainda não tem sessões no Livro do Show.</span>
+            </>
+            : <span style={css("font-size:11.5px;color:#6b6482;line-height:1.45;text-wrap:pretty")}>Nem o Livro do Show nem a Programação deste local marcam este show hoje.</span>)}
           <span style={css("font-size:11px;line-height:1.5;color:#6b6482;text-wrap:pretty")}>Uma formação para o dia inteiro. Se alguém falta só numa sessão, o aviso aparece nela e você ajusta à mão.</span>
         </div>
         <div className="ldd-shrink" style={css("flex:1 1 360px;min-width:300px;display:flex;flex-direction:column;gap:9px")}>
@@ -770,7 +780,7 @@ function HojeTab(props: {
           return <button key={c.id} type="button" onClick={() => props.setOpenSceneId(c.id)} aria-pressed={on}
             style={css(`display:flex;flex-direction:column;gap:3px;padding:10px 12px;border-radius:12px;border:1px solid ${on ? "#6C2BF2" : "#e6e1f2"};background:${on ? "#f6f1ff" : out ? "#fbfafd" : "#fff"};cursor:pointer;font-family:Manrope,sans-serif;opacity:${out ? ".62" : "1"};min-height:44px`)}>
             <div style={css("display:flex;align-items:baseline;gap:8px;width:100%")}>
-              <span style={css("font-family:'JetBrains Mono',monospace;font-size:10px;color:#6b6482")}>{String(i + 1).padStart(2, "0")}</span>
+              <span style={css("font-family:'JetBrains Mono',monospace;font-size:11px;color:#6b6482")}>{String(i + 1).padStart(2, "0")}</span>
               <span style={css("font-size:13.5px;font-weight:700;flex:1;text-align:left")}>{c.name}</span>
               {tag && <span style={css(`font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:${tagTone}`)}>{tag}</span>}
             </div>
@@ -788,7 +798,7 @@ function HojeTab(props: {
         {!isMem && nRem > 0 && <div style={css("border:1px solid #f0e4d4;border-radius:16px;background:#fffdf9;padding:15px 17px;display:flex;flex-direction:column;gap:9px")}>
           <div style={css("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
             <span style={css("font-family:Outfit,sans-serif;font-size:15px;font-weight:600")}>Removido hoje</span>
-            <span style={css("font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#8a6413;background:#fdf1dc;padding:2px 7px;border-radius:999px")}>{nRem}</span>
+            <span style={css("font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#8a6413;background:#fdf1dc;padding:2px 7px;border-radius:999px")}>{nRem}</span>
             <span style={css("flex:1")}/>
             <span style={css("font-size:11.5px;color:#6b6482")}>{locked ? "dia fechado — só registro" : "soft-delete: sai do dia, não do padrão"}</span>
           </div>
@@ -1087,7 +1097,7 @@ function FormacoesTab({ review, scopeLocal, currentShowId, currentFormations, ca
       </div>
       <div style={css("display:flex;flex-wrap:wrap")}>
         <div className="ldd-shrink" style={css("flex:0 1 250px;min-width:220px;border-right:1px solid #f0ecf9;padding:12px;display:flex;flex-direction:column;gap:5px")}>
-          <span style={css("font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482;padding:0 6px 4px")}>show</span>
+          <span style={css("font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482;padding:0 6px 4px")}>show</span>
           {shows.map((s) => {
             const n = cache[s.id]?.source?.scenes.length;
             return <button key={s.id} type="button" onClick={() => { setShowId(s.id); setSceneId(""); }} style={css(bibNavStyle(s.id === showId))}>
@@ -1097,7 +1107,7 @@ function FormacoesTab({ review, scopeLocal, currentShowId, currentFormations, ca
           })}
         </div>
         <div className="ldd-shrink" style={css("flex:0 1 230px;min-width:200px;border-right:1px solid #f0ecf9;padding:12px;display:flex;flex-direction:column;gap:5px")}>
-          <span style={css("font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482;padding:0 6px 4px")}>cena</span>
+          <span style={css("font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482;padding:0 6px 4px")}>cena</span>
           {visibleScenes.map((s) => <button key={s.id} type="button" onClick={() => setSceneId(s.id)} style={css(bibNavStyle(s.id === scene?.id))}>
             <span style={css("flex:1;min-width:0;font-size:13px;font-weight:600")}>{s.name}</span>
             <span style={css("flex:none;font-size:11px;color:#6b6482")}>{1 + formations.filter((f) => f.sceneId === s.id).length}</span>
@@ -1106,7 +1116,7 @@ function FormacoesTab({ review, scopeLocal, currentShowId, currentFormations, ca
         </div>
         <div className="ldd-shrink" style={css("flex:1 1 420px;min-width:360px;padding:14px 16px;background:#faf9fe;display:flex;flex-direction:column;gap:11px")}>
           <div style={css("display:flex;align-items:baseline;gap:10px;flex-wrap:wrap")}>
-            <span style={css("font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482;flex:1")}>{scene ? `${scene.name} · ${plural(list.length, "formação", "formações")}` : "formações"}</span>
+            <span style={css("font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6b6482;flex:1")}>{scene ? `${scene.name} · ${plural(list.length, "formação", "formações")}` : "formações"}</span>
             <span style={css("font-size:11.5px;color:#6b6482")}>da cheia para a menor</span>
           </div>
           {list.map((f) => <div key={f.id} style={css("background:#fff;border:1px solid #e9e4f5;border-radius:14px;padding:13px 15px;display:flex;flex-direction:column;gap:10px")}>
@@ -1116,7 +1126,7 @@ function FormacoesTab({ review, scopeLocal, currentShowId, currentFormations, ca
                 <span style={css("font-size:14px;font-weight:700;line-height:1.25")}>{f.nome}</span>
                 <span style={css("font-size:11.5px;color:#6b6482;line-height:1.4")}>{f.uso}</span>
               </span>
-              {(qtdCount.get(f.qtd) ?? 0) > 1 && <span style={css("flex:none;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 9px;border-radius:6px;background:#fdf3e4;color:#8f5409")}>{`duas para ${f.qtd}`}</span>}
+              {(qtdCount.get(f.qtd) ?? 0) > 1 && <span style={css("flex:none;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 9px;border-radius:6px;background:#fdf3e4;color:#8f5409")}>{`duas para ${f.qtd}`}</span>}
               {f.formation && canApplyToday(f.formation) && <button type="button" className="ldd-hit" disabled={saving} onClick={() => onApplyToday(f.formation!)} style={css(PRIMARY)}>Aplicar só hoje</button>}
             </div>
             {stage && api && <div style={css("width:220px;max-width:100%")}>
