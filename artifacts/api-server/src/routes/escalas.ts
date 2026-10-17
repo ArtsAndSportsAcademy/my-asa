@@ -367,7 +367,7 @@ async function ajustarUmaPessoa(
       }, tx as unknown as HistoryExecutor);
       if (regrasPassadas.length) {
         await avisarExcecaoDeRegra(tx as never, {
-          operationId, actorId: actor.sub, pessoaId: userId, pessoa: pessoa.name, onde: `${location.name} · ${bloco.rotulo} às ${bloco.inicio} de ${dataPorExtenso(date)}`,
+          operationId, actorId: actor.sub, pessoaId: userId, pessoa: pessoa.name, areaId: pessoa.areaId, onde: `${location.name} · ${bloco.rotulo} às ${bloco.inicio} de ${dataPorExtenso(date)}`,
           regras: regrasPassadas, motivo: motivo?.trim() ?? "", entityType: "scale", entityId: scale.id, dedupe: `${scale.id}:${sourceKey}`,
         });
       }

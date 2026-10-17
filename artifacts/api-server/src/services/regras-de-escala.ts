@@ -7,12 +7,13 @@
  *
  * As funções puras ficam aqui no alto; a leitura do banco, mais abaixo.
  */
-import { and, asc, eq, gte, inArray, isNull, lte, ne, or } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
+import { eligibleSessions } from "./session-blocks.js";
 import { enqueueNotification } from "./undo.js";
 import { APP_ROUTES } from "../lib/app-routes.js";
 import {
   agendaEventsTable, dailyBookAssignmentsTable, dailyBooksTable, db, escalaRegrasLocalTable, programacaoBlocosTable,
-  programacoesTable, restricoesHorarioTable, sessionsTable, showBooksTable, userRolesTable,
+  programacoesTable, restricoesHorarioTable, sessionsTable, showBooksTable, userRolesTable, areaLocalSupervisorsTable,
 } from "@workspace/db";
 
 export type RestricaoDeHorario = {
@@ -111,7 +112,7 @@ async function horariosDosLivros(livros: LivroParaHorario[], date: string): Prom
     const programacoes = locationIds.length ? await db.select().from(programacoesTable).where(and(
       inArray(programacoesTable.locationId, locationIds), eq(programacoesTable.active, true),
       lte(programacoesTable.vigenciaInicio, date), gte(programacoesTable.vigenciaFim, date),
-    )).orderBy(asc(programacoesTable.vigenciaFim), asc(programacoesTable.createdAt)) : [];
+    )).orderBy(asc(sql`${programacoesTable.vigenciaFim} - ${programacoesTable.vigenciaInicio}`), desc(programacoesTable.createdAt)) : [];
     const programacaoDoLocal = new Map<string, string>();
     for (const p of programacoes) if (!programacaoDoLocal.has(p.locationId)) programacaoDoLocal.set(p.locationId, p.id);
     const diaDaSemana = new Date(`${date}T00:00:00Z`).getUTCDay();
@@ -120,9 +121,21 @@ async function horariosDosLivros(livros: LivroParaHorario[], date: string): Prom
       eq(programacaoBlocosTable.regra, "livro"), eq(programacaoBlocosTable.active, true), inArray(programacaoBlocosTable.showBookId, showIds),
     )).orderBy(asc(programacaoBlocosTable.inicio)) : [];
     const localDoShow = new Map(shows.map((s) => [s.id, s.locationId]));
+    // Livro do dia de um show com sessão separada: a hora é a da primeira sessão que NÃO é separada; o bloco da
+    // Programação só vale se não for o de uma sessão separada (senão o Livro do dia herdaria a hora dela).
+    const comumDoShow = new Map<string, Horario>();
+    const horaDeSeparada = new Map<string, Set<string>>();
+    for (const showId of showIds) {
+      const [comum] = await eligibleSessions(showId, date, db, { separada: false });
+      if (comum) comumDoShow.set(showId, { start: hhmm(comum.startTime), end: hhmm(comum.endTime) });
+      horaDeSeparada.set(showId, new Set((await eligibleSessions(showId, date, db, { separada: true })).map((x) => hhmm(x.startTime))));
+    }
     for (const livro of semSessao) {
+      const doComum = livro.showBookId ? comumDoShow.get(livro.showBookId) : undefined;
+      if (doComum) { horarios.set(livro.id, doComum); continue; }
       const programacaoId = livro.showBookId ? programacaoDoLocal.get(localDoShow.get(livro.showBookId) ?? "") : undefined;
-      const bloco = blocos.find((b) => b.programacaoId === programacaoId && b.showBookId === livro.showBookId);
+      const separadas = livro.showBookId ? horaDeSeparada.get(livro.showBookId) : undefined;
+      const bloco = blocos.find((b) => b.programacaoId === programacaoId && b.showBookId === livro.showBookId && !separadas?.has(hhmm(b.inicio)));
       horarios.set(livro.id, bloco ? { start: hhmm(bloco.inicio), end: bloco.fim ? hhmm(bloco.fim) : null } : null);
     }
   }
@@ -201,19 +214,24 @@ export async function carregarRegrasDoDia(input: { eventId: string; userIds: str
   const [regrasDoLocal] = locationId ? await db.select().from(escalaRegrasLocalTable).where(eq(escalaRegrasLocalTable.locationId, locationId)).limit(1) : [];
   const limite = regrasDoLocal?.limiteShowsDia ?? null;
   const intervalo = regrasDoLocal?.intervaloMinimoMinutos ?? INTERVALO_COLADO_PADRAO_MINUTOS;
-  const atribuicoes = outros.length ? await db.select({ livro: dailyBookAssignmentsTable.dailyBookId, userId: dailyBookAssignmentsTable.userId }).from(dailyBookAssignmentsTable).where(and(
+  const atribuicoes = outros.length ? await db.select({ livro: dailyBookAssignmentsTable.dailyBookId, userId: dailyBookAssignmentsTable.userId, manual: dailyBookAssignmentsTable.manual }).from(dailyBookAssignmentsTable).where(and(
     inArray(dailyBookAssignmentsTable.dailyBookId, outros.map((l) => l.id)), inArray(dailyBookAssignmentsTable.userId, userIds),
     isNull(dailyBookAssignmentsTable.supersededAt), inArray(dailyBookAssignmentsTable.status, ["ASSIGNED", "AT_RISK"]),
   )) : [];
   const showsDaPessoa = new Map<string, Set<string>>();
+  const showsAutomaticos = new Map<string, Set<string>>();
   for (const a of atribuicoes) {
     if (!a.userId) continue;
     const conjunto = showsDaPessoa.get(a.userId) ?? new Set<string>();
     conjunto.add(a.livro);
     showsDaPessoa.set(a.userId, conjunto);
+    if (!a.manual) showsAutomaticos.set(a.userId, (showsAutomaticos.get(a.userId) ?? new Set<string>()).add(a.livro));
   }
   for (const [userId, shows] of showsDaPessoa) {
-    if (limite !== null && shows.size >= limite) barrar(userId, "LIMITE_DO_DIA", `já está em ${shows.size} shows hoje (limite do local: ${limite})`);
+    // O show passado à mão (exceção com motivo) não conta para o limite: senão reler os outros Livros tiraria a
+    // pessoa do que já foi gerado, justo na emergência em que a Administração a escalou além do limite.
+    const automaticos = showsAutomaticos.get(userId)?.size ?? 0;
+    if (limite !== null && automaticos >= limite) barrar(userId, "LIMITE_DO_DIA", `já está em ${automaticos} shows hoje (limite do local: ${limite})`);
     if (proprio) {
       for (const livroId of shows) {
         const outro = horarios.get(livroId);
@@ -241,17 +259,20 @@ export const codigoDaExcecao = (regras: { regra: RegraDeEscala }[]) =>
   regras[0]?.regra === "RESTRICAO_HORARIO" ? "PESSOA_COM_RESTRICAO_DE_HORARIO" : "ACIMA_DO_LIMITE_DO_DIA";
 
 /**
- * Avisa a Administração da operação (menos quem passou a regra) de que alguém foi escalado além de uma regra.
+ * Avisa a Administração da operação e a Supervisão da área da pessoa (menos quem passou a regra) de que alguém foi escalado além de uma regra.
  * Um aviso por acontecimento: a chave leva a pessoa e o dia, não a regra nem o clique.
  */
 export async function avisarExcecaoDeRegra(tx: Parameters<typeof enqueueNotification>[0], input: {
-  operationId: string; actorId: string; pessoaId: string; pessoa: string; onde: string; regras: { regra: RegraDeEscala; frase: string }[]; motivo: string;
+  operationId: string; actorId: string; pessoaId: string; pessoa: string; areaId?: string | null; onde: string; regras: { regra: RegraDeEscala; frase: string }[]; motivo: string;
   entityType: string; entityId: string; dedupe: string;
 }) {
   const admins = await tx.select({ userId: userRolesTable.userId }).from(userRolesTable).where(and(
     eq(userRolesTable.operationId, input.operationId), eq(userRolesTable.role, "ADMIN"), eq(userRolesTable.active, true),
   ));
-  for (const adminId of new Set(admins.map((a) => a.userId))) {
+  // A Supervisão da área da pessoa também precisa saber (senão descobre só olhando a tela).
+  const supervisores = input.areaId ? await tx.select({ userId: areaLocalSupervisorsTable.supervisorId }).from(areaLocalSupervisorsTable)
+    .where(and(eq(areaLocalSupervisorsTable.areaId, input.areaId), eq(areaLocalSupervisorsTable.active, true))) : [];
+  for (const adminId of new Set([...admins, ...supervisores].map((a) => a.userId))) {
     if (adminId === input.actorId) continue;
     await enqueueNotification(tx, {
       userId: adminId, type: "escala.excecao_de_regra", category: "schedule", priority: "IMPORTANT",

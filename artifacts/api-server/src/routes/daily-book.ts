@@ -796,7 +796,11 @@ export async function generateDailyBookDraftForScale(input: {
 
   // O evento do Livro de sessão separada é achado pela hora da sessão; o do Livro do dia é o evento do show
   // que não pertence a nenhuma sessão separada (senão o Livro do dia herdaria o evento de uma sessão).
-  let [event] = await db.select().from(agendaEventsTable).where(and(
+  // Se a sessão já tem Livro neste dia, o evento é o dele (a hora da sessão pode ter mudado depois da geração).
+  const [eventoDoLivroDaSessao] = session ? await db.select({ id: agendaEventsTable.id }).from(dailyBooksTable)
+    .innerJoin(agendaEventsTable, eq(dailyBooksTable.agendaEventId, agendaEventsTable.id))
+    .where(and(eq(dailyBooksTable.sessionId, session.id), eq(agendaEventsTable.date, date), ne(dailyBooksTable.status, "CANCELLED"))).limit(1) : [];
+  let [event] = await db.select().from(agendaEventsTable).where(eventoDoLivroDaSessao ? eq(agendaEventsTable.id, eventoDoLivroDaSessao.id) : and(
     eq(agendaEventsTable.showBookId, showBookId),
     eq(agendaEventsTable.date, date),
     eq(agendaEventsTable.operationId, showBook.operationId),
@@ -804,6 +808,11 @@ export async function generateDailyBookDraftForScale(input: {
       ? eq(agendaEventsTable.startTime, session.startTime)
       : sql`NOT EXISTS (SELECT 1 FROM daily_books sb WHERE sb.agenda_event_id = ${agendaEventsTable.id} AND sb.session_id IS NOT NULL)`,
   )).limit(1);
+  if (event && session && (event.startTime?.slice(0, 5) !== session.startTime.slice(0, 5) || event.endTime?.slice(0, 5) !== session.endTime.slice(0, 5))) {
+    [event] = await db.update(agendaEventsTable).set({
+      startTime: session.startTime, endTime: session.endTime, title: `${showBook.title} · ${session.startTime.slice(0, 5)}`, updatedAt: new Date(),
+    }).where(eq(agendaEventsTable.id, event.id)).returning();
+  }
   if (!event) {
     [event] = await db.insert(agendaEventsTable).values({
       operationId: showBook.operationId,
@@ -2022,7 +2031,7 @@ router.patch("/daily-book/:id/assignments/:assignmentId", requireAuth, requireOr
     const regrasPassadas = userId && eventoDoLivro && userId !== before.userId
       ? await verificarRegrasDeEscala({ eventId: book.agendaEventId, userId, date: eventoDoLivro.date, operationId: eventoDoLivro.operationId })
       : [];
-    const [pessoaDaTroca] = regrasPassadas.length ? await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, userId)).limit(1) : [];
+    const [pessoaDaTroca] = regrasPassadas.length ? await db.select({ name: usersTable.name, areaId: usersTable.areaId }).from(usersTable).where(eq(usersTable.id, userId)).limit(1) : [];
     if (regrasPassadas.length && motivoDaExcecao.length < 3) {
       res.status(409).json({ error: codigoDaExcecao(regrasPassadas), message: `${pessoaDaTroca?.name ?? "A pessoa"} ${frasesDasRegras(regrasPassadas)}. Para escalar mesmo assim, escreva o motivo.`, pessoa: pessoaDaTroca?.name ?? null });
       return;
@@ -2053,7 +2062,7 @@ router.patch("/daily-book/:id/assignments/:assignmentId", requireAuth, requireOr
           metadata: { regras: regrasPassadas.map((r) => r.regra), frases: regrasPassadas.map((r) => r.frase), motivo: motivoDaExcecao },
         }, tx as any);
         await avisarExcecaoDeRegra(tx as never, {
-          operationId: eventoDoLivro.operationId, actorId, pessoaId: userId, pessoa: pessoaDaTroca?.name ?? "A pessoa", onde: `Livro do Dia de ${eventoDoLivro.date}`,
+          operationId: eventoDoLivro.operationId, actorId, pessoaId: userId, pessoa: pessoaDaTroca?.name ?? "A pessoa", areaId: pessoaDaTroca?.areaId, onde: `Livro do Dia de ${eventoDoLivro.date}`,
           regras: regrasPassadas, motivo: motivoDaExcecao, entityType: "daily_book", entityId: id, dedupe: `${id}:${assignmentId}`,
         });
       }

@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
-import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, ne, sql } from "drizzle-orm";
 import {
+  agendaEventsTable,
   characterCastTable,
   charactersTable,
   dailyBookAssignmentsTable,
@@ -352,7 +353,7 @@ router.get("/characters/:id/resolve", requireAuth, requireOrganization, async (r
   res.json(result);
 });
 
-/** A sessão tem Livro do Dia com pessoas (ou já publicado): deixar de ser separada exige cancelar o Livro antes. */
+/** A sessão tem Livro do Dia publicado ou com ajuste à mão: deixar de ser separada exige cancelar o Livro antes. */
 class SessaoComLivroError extends Error {}
 
 router.get("/show-books/:showId/sessions", requireAuth, requireOrganization, async (req, res) => {
@@ -410,18 +411,37 @@ router.patch("/show-books/:showId/sessions/:sessionId", requireAuth, requireOrga
   const update = { separada, ...(weekdays.value !== undefined ? { weekdays: weekdays.value } : {}), startTime: req.body?.startTime ?? before.startTime, endTime: req.body?.endTime ?? before.endTime, callTime: req.body?.callTime === undefined ? before.callTime : req.body.callTime, validFrom: req.body?.validFrom === undefined ? (before as any).validFrom : req.body.validFrom || null, validTo: req.body?.validTo === undefined ? (before as any).validTo : req.body.validTo || null, active: typeof req.body?.active === "boolean" ? req.body.active : before.active, updatedAt: new Date() };
   try {
     const session = await db.transaction(async (tx) => {
-      // Deixar de ser separada: o Livro da sessão só sai de cena se ainda é rascunho e ninguém foi escalado nele.
-      if (before.separada && !separada) {
-        const livros = await tx.select({ id: dailyBooksTable.id, status: dailyBooksTable.status }).from(dailyBooksTable)
-          .where(and(eq(dailyBooksTable.sessionId, before.id), ne(dailyBooksTable.status, "CANCELLED")));
-        const comGente = livros.length ? await tx.select({ id: dailyBookAssignmentsTable.id }).from(dailyBookAssignmentsTable).where(and(
+      // Mudar "separada" mexe só nos Livros de hoje em diante: o que já passou é histórico e fica como está. Livro em
+      // rascunho e sem ajuste à mão sai de cena (cancelamento lógico, com Registro); publicado ou com ajuste à mão
+      // não se mexe sozinho — quem decide cancela o Livro antes.
+      if (before.separada !== separada) {
+        const hoje = operationalDate();
+        const doLivro = before.separada
+          ? eq(dailyBooksTable.sessionId, before.id)
+          : and(eq(dailyBooksTable.showBookId, show.id), isNull(dailyBooksTable.sessionId));
+        let livros: { id: string; status: string }[] = [];
+        let sessaoComumSobrando = true;
+        if (!separada || !before.separada) {
+          // Virando "separada", o Livro do dia só é obsoleto se não sobrou nenhuma sessão comum no show.
+          const comuns = await tx.select({ id: sessionsTable.id }).from(sessionsTable).where(and(eq(sessionsTable.showId, show.id), eq(sessionsTable.active, true), eq(sessionsTable.separada, false), ne(sessionsTable.id, before.id))).limit(1);
+          sessaoComumSobrando = !separada || comuns.length > 0;
+        }
+        if (before.separada || !sessaoComumSobrando) {
+          livros = await tx.select({ id: dailyBooksTable.id, status: dailyBooksTable.status }).from(dailyBooksTable)
+            .innerJoin(agendaEventsTable, eq(dailyBooksTable.agendaEventId, agendaEventsTable.id))
+            .where(and(doLivro, ne(dailyBooksTable.status, "CANCELLED"), gte(agendaEventsTable.date, hoje)));
+        }
+        const comAjuste = livros.length ? await tx.select({ id: dailyBookAssignmentsTable.id }).from(dailyBookAssignmentsTable).where(and(
           inArray(dailyBookAssignmentsTable.dailyBookId, livros.map((l) => l.id)), isNull(dailyBookAssignmentsTable.supersededAt),
-          ne(dailyBookAssignmentsTable.status, "REMOVED"), sql`${dailyBookAssignmentsTable.userId} IS NOT NULL`,
+          ne(dailyBookAssignmentsTable.status, "REMOVED"), eq(dailyBookAssignmentsTable.manual, true),
         )).limit(1) : [];
-        if (livros.some((l) => l.status !== "DRAFT") || comGente.length) throw new SessaoComLivroError();
-        for (const livro of livros) {
-          await tx.update(dailyBooksTable).set({ status: "CANCELLED", cancelledAt: new Date(), cancelledBy: req.user!.sub, updatedAt: new Date() }).where(eq(dailyBooksTable.id, livro.id));
-          await writeEntityHistory(req, { category: "OPERATIONAL_CHANGE", action: "daily_book.cancelled_by_session", title: "Livro da sessão cancelado", narrative: "A sessão deixou de ser separada e o Livro do Dia dela, que ainda era rascunho e sem pessoas, foi cancelado de forma lógica.", entityType: "daily_book", entityId: livro.id, actorId: req.user!.sub, orgId: req.user!.organizationId, operationId: show.operationId, beforeState: { status: livro.status }, afterState: { status: "CANCELLED" } }, tx as any);
+        const intocados = !livros.some((l) => l.status !== "DRAFT") && comAjuste.length === 0;
+        if (before.separada && !intocados) throw new SessaoComLivroError();
+        if (intocados) {
+          for (const livro of livros) {
+            await tx.update(dailyBooksTable).set({ status: "CANCELLED", cancelledAt: new Date(), cancelledBy: req.user!.sub, updatedAt: new Date() }).where(eq(dailyBooksTable.id, livro.id));
+            await writeEntityHistory(req, { category: "OPERATIONAL_CHANGE", action: "daily_book.cancelled_by_session", title: "Livro cancelado pela mudança da sessão", narrative: before.separada ? "A sessão deixou de ser separada e o Livro do Dia dela, que ainda era rascunho e sem ajuste à mão, foi cancelado de forma lógica." : "A sessão passou a ser separada e o Livro do dia do show, que ainda era rascunho e sem ajuste à mão, foi cancelado de forma lógica: cada sessão separada tem o seu.", entityType: "daily_book", entityId: livro.id, actorId: req.user!.sub, orgId: req.user!.organizationId, operationId: show.operationId, beforeState: { status: livro.status }, afterState: { status: "CANCELLED" } }, tx as any);
+          }
         }
       }
       const [next] = await tx.update(sessionsTable).set(update as any).where(eq(sessionsTable.id, before.id)).returning();
@@ -431,7 +451,7 @@ router.patch("/show-books/:showId/sessions/:sessionId", requireAuth, requireOrga
     });
     res.json({ session });
   } catch (error) {
-    if (error instanceof SessaoComLivroError) { res.status(409).json({ error: "SESSAO_COM_LIVRO", message: "Esta sessão já tem Livro do Dia com pessoas. Cancele o Livro antes de mudar se ela é separada." }); return; }
+    if (error instanceof SessaoComLivroError) { res.status(409).json({ error: "SESSAO_COM_LIVRO", message: "Esta sessão já tem Livro do Dia publicado ou com ajuste à mão. Cancele o Livro antes de mudar se ela é separada." }); return; }
     res.status(400).json({ error: "Fim da sessão deve ser posterior ao início e o horário não pode duplicar" });
   }
 });

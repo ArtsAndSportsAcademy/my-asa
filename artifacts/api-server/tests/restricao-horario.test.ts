@@ -15,6 +15,7 @@ import app from "../src/application.js";
 import { signAccessToken } from "../src/lib/jwt.service.js";
 import { gerarDiaDoLocal } from "../src/services/escala-mes.js";
 import { collectScheduleCommitments } from "../src/services/schedule-conflicts.js";
+import { carregarRegrasDoDia, horarioDoLivro } from "../src/services/regras-de-escala.js";
 import { resolveAssignmentsByRole } from "../src/services/line-resolver.js";
 
 let passed = 0;
@@ -96,6 +97,11 @@ async function run() {
   await db.insert(characterCastTable).values([{ characterId: unica!.id, personId: julia.id, order: 0 }, { characterId: titular!.id, personId: sofia.id, order: 0 }, { characterId: titular!.id, personId: esther.id, order: 1 }]);
   const unico = await criarShow("Show de vaga única", [unica!]);
   const comTitular = await criarShow("Show com titular", [titular!]);
+  // Shows só da terça: um que vira "separada" depois de gerado e outro cuja sessão separada muda de hora.
+  const virar = await criarShow("Show que vira separada");
+  const [sVirar] = await db.insert(sessionsTable).values({ showId: virar.id, startTime: "08:00", endTime: "08:30", separada: false }).returning();
+  const mudaHora = await criarShow("Show que muda de hora");
+  const [sMuda] = await db.insert(sessionsTable).values({ showId: mudaHora.id, startTime: "07:00", endTime: "07:30", separada: true }).returning();
   // Show com dois blocos na Programação e nenhuma sessão separada: os dois blocos seguem no MESMO Livro do dia.
   const duplo = await criarShow("Show duas vezes");
   await db.insert(sessionsTable).values([{ showId: duplo.id, startTime: "14:00", endTime: "14:30" }, { showId: duplo.id, startTime: "18:00", endTime: "18:30" }]);
@@ -108,6 +114,8 @@ async function run() {
     { programacaoId: prog!.id, weekday: 1, inicio: "09:00", fim: "09:30", rotulo: "MISTO MANHÃ", regra: "livro", showBookId: misto.id },
     { programacaoId: prog!.id, weekday: 1, inicio: "17:00", fim: "17:30", rotulo: "MISTO TARDE", regra: "livro", showBookId: misto.id },
     { programacaoId: prog!.id, weekday: 1, inicio: "13:00", fim: "13:30", rotulo: "SEM FILA", regra: "livro", showBookId: vazio.id },
+    { programacaoId: prog!.id, weekday: 2, inicio: "08:00", fim: "08:30", rotulo: "VIRAR", regra: "livro", showBookId: virar.id },
+    { programacaoId: prog!.id, weekday: 2, inicio: "07:00", fim: "07:30", rotulo: "MUDA HORA", regra: "livro", showBookId: mudaHora.id },
     { programacaoId: prog!.id, weekday: 1, inicio: "14:00", fim: "14:30", rotulo: "DUPLO TARDE", regra: "livro", showBookId: duplo.id },
     { programacaoId: prog!.id, weekday: 1, inicio: "18:00", fim: "18:30", rotulo: "DUPLO NOITE", regra: "livro", showBookId: duplo.id },
   ]);
@@ -157,9 +165,11 @@ async function run() {
     void mComum; void sComum; void musical;
 
     // Mudar "separada" numa sessão com Livro que já tem gente é recusado com a frase; sem gente, o rascunho sai de cena.
+    const vagaDoLivro1130 = (await db.select().from(dailyBookAssignmentsTable).where(and(eq(dailyBookAssignmentsTable.dailyBookId, porSessao.get(s1130!.id)!.id), isNull(dailyBookAssignmentsTable.supersededAt))))[0]!;
+    await db.update(dailyBookAssignmentsTable).set({ manual: true }).where(eq(dailyBookAssignmentsTable.id, vagaDoLivro1130.id));
     const comGente = await asAdmin(`/show-books/${teatro.id}/sessions/${s1130!.id}`, { method: "PATCH", body: JSON.stringify({ separada: false }) });
     const comGenteBody = (await comGente.json()) as { error?: string; message?: string };
-    assert(comGente.status === 409 && comGenteBody.error === "SESSAO_COM_LIVRO" && /Cancele o Livro/.test(comGenteBody.message ?? ""), "tirar o 'separada' de sessão com Livro com pessoas responde 409 com a frase");
+    assert(comGente.status === 409 && comGenteBody.error === "SESSAO_COM_LIVRO" && /Cancele o Livro/.test(comGenteBody.message ?? ""), "tirar o 'separada' de sessão com Livro com ajuste à mão responde 409 com a frase");
     await gerarDiaDoLocal(actor, { id: local!.id, name: local!.name }, segunda);
     const vazioLivros = await livrosDe(vazio.id);
     assert(vazioLivros.length === 1 && vazioLivros[0]!.sessionId === sVazia!.id, "show sem fila gera o Livro da sessão separada só com vagas abertas");
@@ -222,12 +232,12 @@ async function run() {
       status: "CONFIRMED", visibility: "MANAGEMENT", createdBy: admin.id,
     }).returning())[0]!;
     /** Um Livro "já gerado" de outro show, só para o motor enxergar quem já tem trabalho no dia. */
-    const livroDeApoio = async (showId: string, date: string, start: string, end: string, pessoas: string[]) => {
+    const livroDeApoio = async (showId: string, date: string, start: string, end: string, pessoas: string[], manual = false) => {
       const ev = await evento(showId, date, start, end);
       const [livro] = await db.insert(dailyBooksTable).values({ agendaEventId: ev.id, showBookId: showId, status: "DRAFT" }).returning();
       const [posicao] = await db.insert(dailyBookPositionsTable).values({ dailyBookId: livro!.id, name: `${tag}_apoio` }).returning();
-      await db.insert(dailyBookAssignmentsTable).values(pessoas.map((userId) => ({ dailyBookId: livro!.id, positionId: posicao!.id, userId, status: "ASSIGNED" as const })));
-      return livro!;
+      await db.insert(dailyBookAssignmentsTable).values(pessoas.map((userId) => ({ dailyBookId: livro!.id, positionId: posicao!.id, userId, status: "ASSIGNED" as const, manual })));
+      return { ...livro!, evento: ev };
     };
     const resolver = async (showId: string, date: string, eventId: string) => {
       const { byRole, result } = await resolveAssignmentsByRole(showId, operation!.id, date, { dedupPerScene: true, eventId });
@@ -356,6 +366,7 @@ async function run() {
     const acimaLiberado = await ajustar(asAdmin, alvoLimite!.id, "alguém ficou mal de última hora");
     assert(acimaLiberado.status === 200, "a Administração passa do limite à mão, com motivo");
     assert((await avisosDe(admin2.id, "escala.excecao_de_regra")) === 2 && (await avisosDe(admin.id, "escala.excecao_de_regra")) === 1, "passar do limite avisa as outras pessoas da Administração, não quem fez");
+    assert((await avisosDe(sup.id, "escala.excecao_de_regra")) === 1, "passar do limite avisa a Supervisão da área da pessoa, além da Administração");
     await db.delete(escalaRegrasLocalTable).where(eq(escalaRegrasLocalTable.locationId, local!.id));
 
     // Troca direta no Livro do Dia: mesma regra.
@@ -369,6 +380,56 @@ async function run() {
     assert(trocaComMotivo.status === 200, "troca direta no Livro com motivo funciona");
     const vagaDepois = (await db.select().from(dailyBookAssignmentsTable).where(eq(dailyBookAssignmentsTable.id, vaga.id)))[0]!;
     assert(vagaDepois.userId === alvoRestrito.id && vagaDepois.manual === true, "a troca vira exceção do dia (vaga manual) e o motor não a refaz sozinho");
+
+    // ---------- Passe de correções da revisão independente ----------
+    // 1) Exceção à mão acima do limite não pode tirar a pessoa dos outros Livros na releitura viva.
+    const d8 = "2026-11-30";
+    await db.insert(escalaRegrasLocalTable).values({ locationId: local!.id, limiteShowsDia: 3 });
+    const apoioA = await livroDeApoio(musical.id, d8, "09:00", "09:30", [kaua.id]);
+    await livroDeApoio(sozinho.id, d8, "12:30", "13:00", [kaua.id]);
+    await livroDeApoio(misto.id, d8, "17:30", "18:00", [kaua.id]);
+    await livroDeApoio(duplo.id, d8, "19:00", "19:30", [kaua.id], true); // o 4º show, passado à mão com motivo
+    const comExcecao = await carregarRegrasDoDia({ eventId: apoioA.evento.id, userIds: [kaua.id], date: d8, operationId: operation!.id });
+    assert(!comExcecao.bloqueios.has(kaua.id), "a vaga passada à mão (exceção) não conta para o limite de quem já está nos outros Livros: reler não tira a pessoa do que já foi gerado");
+    const semExcecao = await carregarRegrasDoDia({ eventId: (await evento(vazio.id, d8, "20:00", "20:30")).id, userIds: [kaua.id], date: d8, operationId: operation!.id });
+    assert(semExcecao.bloqueios.has(kaua.id), "com 3 shows automáticos, o próximo show da Kauã continua barrado pelo limite 3");
+    await db.delete(escalaRegrasLocalTable).where(eq(escalaRegrasLocalTable.locationId, local!.id));
+
+    // 5) Livro do dia de show misto tem a hora da sessão não separada, não a do bloco da sessão separada.
+    const livroDiaMisto = (await livrosDe(misto.id)).find((l) => l.sessionId === null)!;
+    const horaMisto = await horarioDoLivro({ id: livroDiaMisto.id, agendaEventId: livroDiaMisto.agendaEventId, showBookId: misto.id, sessionId: null }, segunda);
+    assert(horaMisto?.start === "17:00", `Livro do dia de show misto: a hora vem da sessão não separada (17:00), não do bloco da sessão separada (09:00) (veio ${JSON.stringify(horaMisto)})`);
+
+    // 3) e 4a) Gerar a terça: sessão que vira separada cancela o Livro do dia sem ajuste; sessão que muda de hora não duplica Livro.
+    const terca = "2026-10-27";
+    const geradoTerca = await gerarDiaDoLocal(actor, { id: local!.id, name: local!.name }, terca);
+    assert(geradoTerca.ok, "gerar a terça funciona");
+    const vivos = async (showId: string) => (await livrosDe(showId));
+    assert((await vivos(virar.id)).length === 1 && (await vivos(virar.id))[0]!.sessionId === null, "antes: o show tem um Livro do dia");
+    const virou = await asAdmin(`/show-books/${virar.id}/sessions/${sVirar!.id}`, { method: "PATCH", body: JSON.stringify({ separada: true }) });
+    assert(virou.status === 200, "marcar a sessão como separada funciona");
+    assert((await vivos(virar.id)).length === 0, "sem nenhuma sessão comum sobrando, o Livro do dia em rascunho e sem ajuste sai de cena (não pesa contra ninguém)");
+    await gerarDiaDoLocal(actor, { id: local!.id, name: local!.name }, terca);
+    const depoisDeVirar = await vivos(virar.id);
+    assert(depoisDeVirar.length === 1 && depoisDeVirar[0]!.sessionId === sVirar!.id, "gerar de novo cria o Livro da sessão separada, e só ele");
+
+    const antesDaHora = await vivos(mudaHora.id);
+    assert(antesDaHora.length === 1 && antesDaHora[0]!.sessionId === sMuda!.id, "antes de mudar a hora: um Livro da sessão");
+    const mudou = await asAdmin(`/show-books/${mudaHora.id}/sessions/${sMuda!.id}`, { method: "PATCH", body: JSON.stringify({ startTime: "07:15", endTime: "07:45" }) });
+    assert(mudou.status === 200, "mudar a hora da sessão funciona");
+    await gerarDiaDoLocal(actor, { id: local!.id, name: local!.name }, terca);
+    const depoisDaHora = await vivos(mudaHora.id);
+    assert(depoisDaHora.length === 1 && depoisDaHora[0]!.id === antesDaHora[0]!.id, "mudar a hora da sessão e gerar de novo não duplica o Livro da sessão");
+    assert((await eventoDe(depoisDaHora[0]!.agendaEventId)).startTime?.startsWith("07:15") === true, "o evento do Livro acompanha a hora nova da sessão");
+
+    // 2) Desfazer "separada": rascunho com rodízio e sem ajuste à mão sai de cena; Livro de dia passado fica como histórico.
+    const passado = await evento(misto.id, "2026-09-01", "09:00", "09:30");
+    await db.insert(dailyBooksTable).values({ agendaEventId: passado.id, showBookId: misto.id, sessionId: mSep!.id, status: "PUBLISHED" });
+    const desfez = await asAdmin(`/show-books/${misto.id}/sessions/${mSep!.id}`, { method: "PATCH", body: JSON.stringify({ separada: false }) });
+    assert(desfez.status === 200, "tirar o 'separada' funciona com Livro futuro em rascunho (mesmo com o rodízio já preenchido) e Livro passado publicado");
+    assert((await livrosDe(misto.id)).filter((l) => l.sessionId === mSep!.id && l.status === "DRAFT").length === 0, "o Livro futuro em rascunho sem ajuste à mão foi cancelado de forma lógica");
+    const passadoDepois = (await db.select().from(dailyBooksTable).where(eq(dailyBooksTable.agendaEventId, passado.id)))[0]!;
+    assert(passadoDepois.status === "PUBLISHED", "o Livro de dia passado fica como histórico, intocado");
   } finally {
     if (server) { server.closeAllConnections?.(); await new Promise<void>((resolve, reject) => server!.close((error) => error ? reject(error) : resolve())); }
     const ids = everyone.map((u) => u.id);
