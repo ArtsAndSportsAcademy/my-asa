@@ -5,6 +5,7 @@ import { usersTable } from "./identity.js";
 import { agendaEventsTable } from "./agenda.js";
 import { scalesTable } from "./scale.js";
 import { showBooksTable, showBookKeyframesTable } from "./showbook.js";
+import { sessionsTable } from "./block2.js";
 
 export const dailyBookStatusEnum = pgEnum("daily_book_status", [
   "DRAFT", "PUBLISHED", "REPUBLISHED", "EXECUTED", "CANCELLED",
@@ -19,6 +20,8 @@ export const dailyBooksTable = pgTable("daily_books", {
   agendaEventId: uuid("agenda_event_id").notNull().references(() => agendaEventsTable.id),
   scaleId: uuid("scale_id").references(() => scalesTable.id),
   showBookId: uuid("show_book_id").references(() => showBooksTable.id),
+  // 0071: Livro de uma sessão separada aponta para a sessão; nulo é o Livro do dia do show.
+  sessionId: uuid("session_id").references(() => sessionsTable.id),
   status: dailyBookStatusEnum("status").notNull().default("DRAFT"),
   version: integer("version").notNull().default(1),
   snapshotJson: jsonb("snapshot_json").$type<Record<string, unknown>>().default({}),

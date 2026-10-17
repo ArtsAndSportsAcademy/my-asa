@@ -32,3 +32,4 @@ export * from "./schedule-conflicts.js";
 export * from "./block7.js";
 export * from "./escalas.js";
 export * from "./operational-cycle.js";
+export * from "./restricao-horario.js";
