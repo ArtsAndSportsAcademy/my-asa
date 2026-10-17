@@ -1,4 +1,4 @@
-import { type CSSProperties, type FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
+import { type CSSProperties, type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { ApiError, customFetch } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -269,6 +269,7 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
   const [date, setDate] = useState(todayISO());
   const [books, setBooks] = useState<DailyBook[]>([]);
   const [loading, setLoading] = useState(true);
+  const [opening, setOpening] = useState(false);
   const [allBooks, setAllBooks] = useState<DailyBook[]>([]);
   const [listFilter, setListFilter] = useState<"todos" | Est>("todos");
   const [bookId, setBookId] = useState("");
@@ -296,15 +297,20 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
     setError(err instanceof ApiError && err.data && typeof err.data === "object" && typeof (err.data as { message?: unknown }).message === "string" ? (err.data as { message: string }).message : fallback);
   };
 
+  // Trocar de dia enquanto o anterior ainda carrega (no banco lento leva segundos): a resposta antiga chegava depois
+  // e colocava os shows de ontem sob o cabeçalho de hoje. Só a última chamada pode mexer na tela.
+  const cargaAtual = useRef(0);
   const load = async () => {
+    const minhaCarga = ++cargaAtual.current;
     setError(""); setLoading(true);
     try {
       if (review) { setBooks(sampleShows.map((_, index) => loadReviewBook(`sample-book-${index}`) ?? sampleDailyBookFor(index))); return; }
       const result = await customFetch<{ dailyBooks: DailyBook[] }>(`/api/daily-book?date=${date}&incluirCancelados=1`);
       // O cartão de cada show precisa da hora (sessão) e de quantos foram convocados: vêm do detalhe.
       const detailed = await Promise.all(result.dailyBooks.map((b) => customFetch<{ dailyBook: DailyBook }>(`/api/daily-book/${b.id}`).then((r) => ({ ...b, ...r.dailyBook })).catch(() => b)));
+      if (minhaCarga !== cargaAtual.current) return;
       setBooks(detailed);
-    } catch { setError("Não consegui carregar os Livros do Dia de hoje."); } finally { setLoading(false); }
+    } catch { if (minhaCarga === cargaAtual.current) setError("Não consegui carregar os Livros do Dia de hoje."); } finally { if (minhaCarga === cargaAtual.current) setLoading(false); }
   };
   useEffect(() => { void load(); }, [review, date]);
 
@@ -334,7 +340,7 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
     return true;
   }).sort((a, b) => time(a.sessionBlocks?.[0]?.startTime).localeCompare(time(b.sessionBlocks?.[0]?.startTime))), [books, isMem, supLocal, me, review]);
 
-  const open = async (id: string) => {
+  const abrirLivro = async (id: string) => {
     setError(""); setConflict(null); setBookId(id); setSceneNote(null);
     if (review) {
       const index = Number(id.replace("sample-book-", ""));
@@ -383,6 +389,13 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
       }));
       await customFetch<{ formations: Formation[] }>(`/api/formations/by-show/${opened.showBookId}`).then((r) => setFormations(r.formations)).catch(() => setFormations([]));
     } catch { setError("Não consegui abrir este Livro do Dia."); }
+  };
+  // Trocar de show: o detalhe do anterior (cenas, personagens, tipo do show) não pode ficar na tela enquanto o novo
+  // carrega — o tipo do show chega depois do livro e a tela mostrava o layout do show errado por alguns segundos.
+  // Recarregar o mesmo livro (depois de publicar, tirar cena…) continua sem piscar.
+  const open = async (id: string) => {
+    if (book && book.id !== id) setOpening(true);
+    try { await abrirLivro(id); } finally { setOpening(false); }
   };
 
   // O livro aberto é sempre um dos shows de hoje no escopo (como no desenho).
@@ -523,7 +536,7 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
       {conflict && <ConflictBanner conflict={conflict} onReload={() => { setConflict(null); void refreshOpen(); }}/>}
 
       {tab === "hoje" && <HojeTab
-        role={role} review={review} me={me} date={date} onDate={setDate} loading={loading} todayBooks={todayBooks} book={book} source={source}
+        role={role} review={review} me={me} date={date} onDate={setDate} loading={loading} opening={opening} todayBooks={todayBooks} book={book} source={source}
         diffs={diffs} hasLiveChanges={hasLiveChanges} charactersToday={charactersToday} characterNames={characterNames} formations={formations}
         canManage={canManage} saving={saving} openSceneId={openSceneId} setOpenSceneId={setOpenSceneId}
         formSel={formSel} setFormSel={setFormSel} framesOn={framesOn} setFramesOn={setFramesOn} sceneNote={sceneNote} supLocal={supLocal}
@@ -546,7 +559,7 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
 
 /* ---------- aba: os shows de hoje ---------- */
 function HojeTab(props: {
-  role: Role; review: boolean; me: string; date: string; loading: boolean; todayBooks: DailyBook[]; book: DailyBook | null; source: ShowSource | null;
+  role: Role; review: boolean; me: string; date: string; loading: boolean; opening: boolean; todayBooks: DailyBook[]; book: DailyBook | null; source: ShowSource | null;
   diffs: PatternDiffRow[]; hasLiveChanges: boolean; charactersToday: CharacterToday[]; characterNames: Map<string, string>; formations: Formation[];
   canManage: boolean; saving: boolean; openSceneId: string; setOpenSceneId: (id: string) => void;
   formSel: Record<string, string>; setFormSel: (fn: (prev: Record<string, string>) => Record<string, string>) => void;
@@ -555,7 +568,7 @@ function HojeTab(props: {
   onPick: (id: string) => void; onPublish: () => void; onRepublish: () => void; onExecute: () => void; onCancel: () => void; onReopen: () => void;
   onToggleScene: (scene: DScene) => void; onTogglePosition: (position: DPosition) => void; onSaveFormation: (scene: DScene, slots: SlotView[]) => void; onApplyToday: (formation: Formation) => void;
 }) {
-  const { role, review, me, date, loading, todayBooks, book, source, diffs, hasLiveChanges, charactersToday, characterNames, formations, canManage, saving } = props;
+  const { role, review, me, date, loading, opening, todayBooks, book, source, diffs, hasLiveChanges, charactersToday, characterNames, formations, canManage, saving } = props;
   const isMem = role === "mem", isDir = role === "dir", isAdm = role === "adm";
   const subs = useMemo(() => new Map(diffs.filter((d) => d.hoje !== "fora do dia" && d.hoje !== "em aberto" && d.padrao !== "posição do padrão").map((d) => [d.where, d.padrao])), [diffs]);
   const whyByWhere = useMemo(() => new Map(diffs.map((d) => [d.where, d.why])), [diffs]);
@@ -606,7 +619,10 @@ function HojeTab(props: {
     </div>
   </div>;
 
-  if (!book) return header;
+  // O livro da tela é de outro dia (a data acabou de mudar) ou de outro show (ainda abrindo): mostra só o cabeçalho,
+  // que já diz "carregando", em vez de um livro que não é o do dia escolhido.
+  const deOutroDia = !review && Boolean(book?.eventDate) && String(book?.eventDate).slice(0, 10) !== date;
+  if (!book || deOutroDia || opening) return header;
 
   const kind: ShowKind = source?.kind ?? "mix";
   const soPers = kind === "pers";

@@ -3,6 +3,39 @@
 Pedido: montar no banco de **teste** uma empresa inventada, com 3 locais, simular o trabalho real de cada perfil e revisar
 lógica, layout e código. Tudo abaixo foi feito no banco de teste; produção não foi tocada.
 
+> **Atualização (17/10/2026, noite): o que já está em produção.** A API e o site foram promovidos, com o banco em dia
+> (74 migrações aplicadas) e a conexão na **porta 6543**. Tudo o que está abaixo como "pede decisão" foi decidido; a
+> tabela a seguir diz o que virou código e o que ficou para as etapas de `docs/plano-etapas-pos-revisao-2026-10-17.md`.
+> O texto original das rodadas 1 e 2 fica como foi escrito na hora.
+
+| Ponto | Situação | Commit |
+|---|---|---|
+| R1·1 Local novo com duas operações ativas | **Feito:** o cadastro pergunta "De qual operação é este local?" quando há mais de uma ativa. Falta a tela para criar/ativar operação (etapa 1) | a8abd2d |
+| R1·2 "Pronta" de todas as áreas | **Feito:** só entra área com gente escalada, supervisão no local ou marca já feita; sem supervisão vira item da Administração | a1fb1d1 |
+| R1·3 Supervisão e tarefas da equipe | **Feito:** vale o AGENTS.md; a Supervisão vê e cobra as da própria área, sem responsabilidade à parte | 0557775 |
+| R1·4 Painel com dois números iguais | **Feito:** "Quem já chegou", "Faltas e atrasos", "Pessoas de folga", "Vagas sem ninguém" | ed65ece |
+| R1·5 "Nenhuma sessão hoje" | **Feito:** o Livro lê os horários da Programação | c661f01 |
+| R1·6 Lote da Escala pela metade | **Feito em parte:** confere todas as pessoas antes de gravar; a transação única é a etapa 4 | a1fb1d1 |
+| R1·7 Recusas sem frase, id malformado | **Feito** | a1fb1d1, 21a3f36 |
+| Fontes e alvos de toque no celular | **Feito** (11 px; interruptor e busca com área de toque) | f274f1e |
+| Conexões com o banco | **Feito:** porta 6543 em produção; `DB_POOL_MAX` opcional; migrações seguem na 5432 | af20d92 |
+| R2·1 Supervisão troca pessoa de outra área no Livro | **Aberto** | — |
+| R2·2 Republicar o Livro não republica a Escala | **Aberto** | — |
+| R2·3 Formação aplicada tira posições sem avisar | **Aberto** | — |
+| R2·4 Hora no cartão do Livro | Etapa 6 | — |
+| R2·5 Só hoje e amanhã no Livro do Dia | **Aberto** | — |
+| R2·6 e R2·7 Lentidão de tela e de geração | Etapas 2 e 3 | — |
+| Rodada 2: cancelado some, corrida ao trocar de dia, detalhe do show errado | **Corrigido, ainda sem commit** (só `pages/livro-do-dia.tsx` e `routes/daily-book.ts`) | — |
+
+**Conferir agora, no ar** (quem promoveu só testou no servidor de teste):
+
+1. Meu Dia e Escala abrem sem erro (confirma a conexão na porta nova).
+2. Cadastro de local, com mais de uma operação ativa: a pergunta "De qual operação é este local?" aparece.
+3. Painel: os quatro números novos.
+4. Supervisão: abre Tarefas e vê as da própria área.
+
+Se algo der erro, anote a tela e a mensagem que aparece.
+
 ## 1. A empresa fictícia
 
 **Cia. Horizonte de Espetáculos (fictícia)**, criada pelo mesmo comando de instalação de uma casa nova
@@ -125,10 +158,89 @@ Varredura automática a 375 px nas 15 telas (Supervisão): **nenhuma tela transb
 - Testes da API (banco de teste), depois das mudanças: `fase-c-meu-dia`, `escalas-dia`, `escala-mes` e
   `fase-c-escala-avisos` passaram. A bateria inteira não foi rodada. (Uma primeira rodada do `fase-c-meu-dia` caiu
   pelo limite de conexões, com a API local ligada ao mesmo tempo — ver item de conexões acima.)
-- **Nada foi commitado nem enviado.** Sem migração.
+- Sem migração. As correções da rodada 1 foram commitadas (a71d430); o que veio depois está na tabela do topo.
 
 ## 6. Como repetir
 
 Os roteiros ficaram na pasta temporária da sessão (cliente `api.mjs`, `s1-cadastros` a `s5-rotina`). A empresa
 "Cia. Horizonte de Espetáculos (fictícia)" continua no banco de teste. A operação "Parque das Águas" foi ativada direto
 no banco (a API pede um checklist que nenhuma tela preenche) para reproduzir o item 2.1.
+
+---
+
+# Rodada 2: Livros do Dia, formações e cenas (17/10/2026, tarde)
+
+Pedida depois da primeira rodada, porque a primeira só tinha olhado o Livro por cima. Montei um show **completo** ("Gala
+de Inverno", Arena de Gelo) com 3 cenas, 7 posições (um de cada tipo de linha: titular+substituto, pessoa fixa, rodízio,
+dia da semana, manual, função), quadros-chave com mapa e zonas do palco, gerei o Livro do Dia dele e mexi em tudo pela API.
+Também percorri o ciclo inteiro do Musical e do Gelo Mágico.
+
+## O que foi conferido e funciona
+
+- **Rodízio ao longo dos dias:** a fila Henrique → Caio → Beatriz gira certo nos 13 dias de outubro do Teatro, e o
+  Marinheiro, a Bailarina e a Capitã Aurora (titular) também. Dia fechado do local (segunda) é pulado.
+- **Folga:** titular de folga (Otávio, 29/10) → a Clara entra, e isso aparece no Livro **sem regenerar** (leitura ao vivo).
+  Rodízio inteiro de folga (30/10) → a vaga fica **aberta** ("—", sem inventar ninguém).
+- **Cenas e posições:** tirar cena leva os blocos e as posições junto e **volta inteira** ao restaurar; tirar e devolver
+  posição; reordenar cenas (formato `{scenes:[{id,order}]}`); sem versão → 428 com frase; versão velha → 409
+  `CONCURRENT_MODIFICATION` com o que mudou.
+- **Formações:** guardar a formação de uma cena (nome obrigatório), listar por show, aplicar noutra cena. A tela mostra
+  "Duas formações para a mesma quantidade" e deixa a pessoa decidir. Elenco e Direção são recusados.
+- **Ciclo do Livro:** publicar a Escala publica os Livros junto; executar só livro publicado; livro executado não aceita
+  troca; reabrir exige motivo e é só da Administração (Supervisão recebe 403); marcar "não ocorreu" funciona.
+- **O Elenco só vê o publicado:** depois da troca Henrique→Caio, os dois continuaram vendo a versão antiga até a
+  republicação; depois dela o Caio recebeu "Livro do Dia atualizado".
+- **Publicar sem a Escala publicada** responde com frase clara ("Publicar a escala é o que convoca as pessoas").
+- Layout do Livro a 375 px (Administração): sem transbordo, sem texto cortado.
+
+## Corrigido nesta rodada
+
+| # | Problema | Onde | Correção |
+|---|---|---|---|
+| 9 | **Livro marcado "não ocorreu" sumia da tela** depois de recarregar: a lista escondia os cancelados, e é por ela que a Administração reabre o dia. Sem como desfazer (crivo 7). | `routes/daily-book.ts`, `pages/livro-do-dia.tsx` | A tela do dia pede `incluirCancelados=1`; o cartão volta com "NÃO OCORREU". As outras listas continuam escondendo. Conferido no navegador. |
+| 10 | **Corrida ao trocar de dia:** clicar em "Amanhã" enquanto o dia anterior ainda carregava mostrava os shows de ontem sob o cabeçalho de amanhã (a resposta velha chegava depois e ganhava). | `pages/livro-do-dia.tsx` | Só a última carga mexe na tela. Conferido: o cabeçalho de amanhã fica em "carregando" e depois mostra os 4 shows certos. |
+| 11 | Ao trocar de dia ou de show, o detalhe do livro anterior ficava na tela com o layout do show errado (um show "só personagens" aparecia como "Formação + personagens" e "este show não usa personagens" ao mesmo tempo). | `pages/livro-do-dia.tsx` | Enquanto o novo carrega, só o cabeçalho; recarregar o mesmo livro (publicar, tirar cena) continua sem piscar. |
+
+## Pedem decisão
+
+1. **Supervisão troca pessoa de outra área no Livro (alto).** No Livro do Musical, a Camila (Supervisão de Patinação)
+   trocou o Henrique pelo Caio (Atores) e o servidor aceitou. A Escala recusa isso ("Supervisão ajusta somente pessoas
+   da própria área"), mas `PATCH /daily-book/:id/assignments/:id` só confere "é supervisor da operação" quando o show
+   não tem responsável (`canOperateDailyBook`, `lib/show-responsibility.ts`). É o caso "supervisão ajustando pessoa de
+   outra área" do AGENTS.md voltando por outra porta. Proposta: mesma regra da Escala (a pessoa que sai e a que entra
+   precisam ser de áreas que a Supervisão cuida naquele local), mantendo a exceção do responsável do show e do capitão
+   delegado. Mexe em permissão e em vários testes, por isso não alterei.
+2. **Republicar o Livro não republica a Escala.** Depois de republicar o Musical, o Caio recebeu "Livro do Dia
+   atualizado" e vê o Lobo do Mar no Livro, mas a **Minha escala dele continua sem o show** (e a do Henrique continua
+   com ele) até a Administração republicar a Escala também; o Henrique nem é avisado de que saiu. A tela diz "O livro é
+   publicado junto com a Escala", o que só vale na primeira publicação. Opções: republicar o Livro oferecer "republicar
+   a Escala junto"; ou avisar na própria tela do Livro que a Escala ainda está atrás.
+3. **Formação aplicada tira posições sem avisar.** Aplicar a "Abertura em V" na cena Final trouxe Coro 1, Coro 2 e
+   Solista e **tirou o Diretor de Pista** da cena (volta pelo "restaurar", mas ninguém avisa que saiu). A tela devia
+   dizer "esta formação tira: Diretor de Pista" antes de aplicar.
+4. **Hora do show no cartão.** Show sem sessão cadastrada no Livro do Show fica com "—" no lugar da hora, mesmo com o
+   horário na Programação. A tela do dia já lista "10:30 — Musical 10h30 / 15:00 — Musical 15h" na seção de sessões;
+   o cartão devia usar a mesma fonte.
+5. **Só dá para abrir Livro de hoje e de amanhã.** Quem prepara um show de quarta (como o Gala de 21/10) não alcança o
+   Livro pela tela do Livro do Dia (crivo 11); só pela Escala daquele dia. Um seletor de data resolveria.
+6. **Lentidão da tela.** No banco de teste, cada detalhe de Livro leva 8–10 s e abrir um dia com 4 shows leva de 8 a
+   35 s (a tela busca o detalhe de cada show e depois o de cada um de novo ao abrir). O código da árvore do Livro é
+   enxuto (5 consultas); o custo está na resolução ao vivo (`resolveLiveTree`) somada à latência do banco de teste.
+   Antes de mexer, medir em produção. Enquanto carrega, a tela não mostra esqueleto, só o texto "carregando os shows
+   do dia…". Sem esqueleto e sem erro por parte, o `.catch(() => b)` do detalhe também esconde falha: o cartão fica sem
+   hora e local e ninguém sabe por quê.
+7. **Gerar um Livro leva ~24 s** (`POST /daily-book/generate`) e regenerar ~22 s, no banco de teste.
+
+## Não consegui conferir
+
+- Mapa do palco e arrastar marcadores na tela (precisa de mouse/toque de verdade; só conferi os dados e as zonas pela API).
+- Livro do Dia no celular de verdade com o teclado aberto. As capturas de tela do emulador de 375 px saem cortadas na
+  direita (artefato do painel); usei medição do DOM, que não achou transbordo.
+- Alvos de toque: o "×" que tira posição tem 15×18 px visíveis; o projeto amplia a área para 48 px por pseudo-elemento
+  (`.ldd-hit`), mas com as linhas coladas as áreas se sobrepõem. Vale testar no telefone se não tira a posição vizinha.
+
+## Verificação da rodada 2
+
+`tsc` limpo (API e site). Testes no banco de teste, depois das mudanças: `daily-book-reopen-and-diff`,
+`daily-book-formation-today`, `daily-book-vivo`, `daily-book-fill` e `daily-book-session-blocks` passaram.
+As três correções desta rodada seguem sem commit.
