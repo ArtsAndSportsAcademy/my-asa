@@ -10,6 +10,7 @@ import {
   usersTable,
   operationsTable,
   responsibilitiesTable,
+  areasTable,
 } from "@workspace/db";
 import {
   requireAuth,
@@ -82,9 +83,11 @@ router.get("/tasks/my", requireAuth, requireOrganization, async (req, res) => {
 
   try {
     const { status, priority } = req.query as Record<string, string>;
-    // É minha a tarefa em que tenho a vez ou em que tenho qualquer etapa (inclusive as já feitas).
+    // É minha a tarefa que criei, ou em que tenho a vez ou qualquer etapa (inclusive as já feitas): quem pede algo
+    // precisa enxergar o andamento do que pediu, senão a tarefa se perde como antes.
     const conditions: SQL<unknown>[] = [
       or(
+        eq(tasksTable.creatorId, user.sub),
         eq(tasksTable.assigneeId, user.sub),
         sql`exists (select 1 from ${taskStepsTable} s where s.task_id = ${tasksTable.id} and s.assignee_id = ${user.sub} and s.active)`,
       )!,
@@ -212,6 +215,24 @@ router.get("/tasks", requireAuth, requireOrganization, async (req, res) => {
     res.json({ tasks: await comEtapas(tasks) });
   } catch (err) {
     log.error({ err }, "Erro ao listar tarefas");
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// ─── GET /tasks/assignable — as pessoas que dá para escolher numa tarefa ───────
+// Qualquer pessoa cria tarefa para qualquer pessoa ativa da casa, mas /users devolve ao Elenco só os colegas da própria área
+// (e sem área, ninguém). Aqui vai só o que a escolha precisa: nome e área. Nada do cadastro.
+
+router.get("/tasks/assignable", requireAuth, requireOrganization, async (req, res) => {
+  const log = requestLogger(LOG_DOMAIN.TASKS, req.requestId, req.correlationId);
+  try {
+    const pessoas = await db.select({ id: usersTable.id, name: usersTable.name, areaName: areasTable.name })
+      .from(usersTable).leftJoin(areasTable, eq(areasTable.id, usersTable.areaId))
+      .where(and(eq(usersTable.organizationId, req.user!.organizationId), eq(usersTable.status, "ACTIVE")))
+      .orderBy(usersTable.name);
+    res.json({ people: pessoas.map((pessoa) => ({ ...pessoa, displayName: pessoa.name, status: "ACTIVE" })) });
+  } catch (err) {
+    log.error({ err }, "Erro ao listar pessoas para escolher");
     res.status(500).json({ error: "Internal Server Error" });
   }
 });

@@ -53,6 +53,12 @@ async function run() {
     const etapasDe = (taskId: string) => db.select().from(taskStepsTable).where(eq(taskStepsTable.taskId, taskId)).orderBy(taskStepsTable.position);
     const estados = async (taskId: string) => (await etapasDe(taskId)).map((step) => step.status).join(",");
 
+    // ── Quem cria tarefa escolhe a pessoa numa lista só de nomes (o Elenco não recebe o cadastro dos colegas) ──
+    const escolhas = await anaApi("/tasks/assignable");
+    const nomes = (escolhas.json?.people ?? []) as { id: string }[];
+    assert(escolhas.status === 200 && nomes.some((pessoa) => pessoa.id === bia.id) && nomes.some((pessoa) => pessoa.id === eva.id) && !nomes.some((pessoa) => pessoa.id === saiu.id), `o Elenco vê todas as pessoas ativas para escolher, e não a desligada (${escolhas.status} ${nomes.length})`);
+    assert(!JSON.stringify(escolhas.json).match(/passwordHash|email|phone|cpf/i), "a lista traz só nome e área, nada do cadastro");
+
     // ── O Elenco cria tarefa de 4 etapas para colegas ───────────────────────────────
     const criada = await anaApi("/tasks", { method: "POST", body: { operationId: operation!.id, title: "Vídeo de Natal", description: "Para o TikTok", dueDate: "2026-12-30", steps: [
       { title: "Roteiro", assigneeId: bia.id, description: "Falas e cenas", checklist: ["Ideia", "Texto"] },
@@ -69,6 +75,8 @@ async function run() {
     assert(tarefa?.status === "CREATED" && tarefa?.assigneeId === bia.id && tarefa?.creatorId === ana.id && tarefa?.requiresApproval === true, `A tarefa guarda a pessoa da vez (${tarefa?.status} ${tarefa?.assigneeId === bia.id})`);
 
     await entrega();
+    const minhasDeAna = await anaApi("/tasks/my");
+    assert(minhasDeAna.status === 200 && minhasDeAna.json?.tasks?.some((task: any) => task.id === tarefaId), "Quem criou a tarefa a vê na própria lista, mesmo sem ter etapa nela");
     assert((await avisos(bia.id, "task.step_ready")).length === 1, "Quem tem a vez recebe o aviso na criação");
     assert((await avisos(cris.id, "task.step_ready")).length === 0 && (await avisos(dan.id, "task.step_ready")).length === 0, "Quem ainda espera não recebe aviso");
     assert((await avisos(ana.id, "task.step_ready")).length === 0, "Quem criou não se avisa");
