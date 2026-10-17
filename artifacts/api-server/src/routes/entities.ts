@@ -1,8 +1,10 @@
 import { Router, type IRouter } from "express";
-import { and, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import {
   characterCastTable,
   charactersTable,
+  dailyBookAssignmentsTable,
+  dailyBooksTable,
   db,
   locationsTable,
   operationsTable,
@@ -350,6 +352,9 @@ router.get("/characters/:id/resolve", requireAuth, requireOrganization, async (r
   res.json(result);
 });
 
+/** A sessão tem Livro do Dia com pessoas (ou já publicado): deixar de ser separada exige cancelar o Livro antes. */
+class SessaoComLivroError extends Error {}
+
 router.get("/show-books/:showId/sessions", requireAuth, requireOrganization, async (req, res) => {
   const show = await showInOrg(req.params.showId as string, req.user!.organizationId);
   if (!show) { res.status(403).json({ error: "Forbidden", message: "Recurso fora do escopo" }); return; }
@@ -374,15 +379,16 @@ function parseWeekdays(raw: unknown): { ok: true; value: number[] | null | undef
 
 router.post("/show-books/:showId/sessions", requireAuth, requireOrganization, async (req, res) => {
   const show = await showInOrg(req.params.showId as string, req.user!.organizationId);
-  const { startTime, endTime, callTime = null, validFrom = null, validTo = null, weekdays: rawWeekdays } = req.body ?? {};
+  const { startTime, endTime, callTime = null, validFrom = null, validTo = null, weekdays: rawWeekdays, separada = false } = req.body ?? {};
   if (!show) { res.status(403).json({ error: "Forbidden", message: "Recurso fora do escopo" }); return; }
   if (!(await canManageShowBook(req.user!, show, show.operationId))) { res.status(403).json({ error: "Forbidden" }); return; }
   if (!startTime || !endTime) { res.status(400).json({ error: "startTime e endTime são obrigatórios" }); return; }
   const weekdays = parseWeekdays(rawWeekdays);
   if (!weekdays.ok) { res.status(400).json({ error: "Dias da semana inválidos: escolha pelo menos um dia (0 = domingo, 6 = sábado)" }); return; }
+  if (typeof separada !== "boolean") { res.status(400).json({ error: "Diga se a sessão é separada: sim ou não" }); return; }
   try {
     const session = await db.transaction(async (tx) => {
-      const [created] = await tx.insert(sessionsTable).values({ showId: show.id, startTime, endTime, callTime, validFrom, validTo, weekdays: weekdays.value ?? null, active: true } as any).returning();
+      const [created] = await tx.insert(sessionsTable).values({ showId: show.id, startTime, endTime, callTime, validFrom, validTo, weekdays: weekdays.value ?? null, separada, active: true } as any).returning();
       if (!created) throw new Error("Sessão não criada");
       await writeEntityHistory(req, { category: "OPERATIONAL_CHANGE", action: "session.created", title: "Sessão criada", narrative: "Sessão do show criada.", entityType: "session", entityId: created.id, actorId: req.user!.sub, orgId: req.user!.organizationId, operationId: show.operationId, beforeState: null, afterState: created }, tx as any);
       return created;
@@ -399,16 +405,35 @@ router.patch("/show-books/:showId/sessions/:sessionId", requireAuth, requireOrga
   if (!before) { res.status(404).json({ error: "Sessão não encontrada" }); return; }
   const weekdays = parseWeekdays(req.body?.weekdays);
   if (!weekdays.ok) { res.status(400).json({ error: "Dias da semana inválidos: escolha pelo menos um dia (0 = domingo, 6 = sábado)" }); return; }
-  const update = { ...(weekdays.value !== undefined ? { weekdays: weekdays.value } : {}), startTime: req.body?.startTime ?? before.startTime, endTime: req.body?.endTime ?? before.endTime, callTime: req.body?.callTime === undefined ? before.callTime : req.body.callTime, validFrom: req.body?.validFrom === undefined ? (before as any).validFrom : req.body.validFrom || null, validTo: req.body?.validTo === undefined ? (before as any).validTo : req.body.validTo || null, active: typeof req.body?.active === "boolean" ? req.body.active : before.active, updatedAt: new Date() };
+  if (req.body?.separada !== undefined && typeof req.body.separada !== "boolean") { res.status(400).json({ error: "Diga se a sessão é separada: sim ou não" }); return; }
+  const separada: boolean = typeof req.body?.separada === "boolean" ? req.body.separada : before.separada;
+  const update = { separada, ...(weekdays.value !== undefined ? { weekdays: weekdays.value } : {}), startTime: req.body?.startTime ?? before.startTime, endTime: req.body?.endTime ?? before.endTime, callTime: req.body?.callTime === undefined ? before.callTime : req.body.callTime, validFrom: req.body?.validFrom === undefined ? (before as any).validFrom : req.body.validFrom || null, validTo: req.body?.validTo === undefined ? (before as any).validTo : req.body.validTo || null, active: typeof req.body?.active === "boolean" ? req.body.active : before.active, updatedAt: new Date() };
   try {
     const session = await db.transaction(async (tx) => {
+      // Deixar de ser separada: o Livro da sessão só sai de cena se ainda é rascunho e ninguém foi escalado nele.
+      if (before.separada && !separada) {
+        const livros = await tx.select({ id: dailyBooksTable.id, status: dailyBooksTable.status }).from(dailyBooksTable)
+          .where(and(eq(dailyBooksTable.sessionId, before.id), ne(dailyBooksTable.status, "CANCELLED")));
+        const comGente = livros.length ? await tx.select({ id: dailyBookAssignmentsTable.id }).from(dailyBookAssignmentsTable).where(and(
+          inArray(dailyBookAssignmentsTable.dailyBookId, livros.map((l) => l.id)), isNull(dailyBookAssignmentsTable.supersededAt),
+          ne(dailyBookAssignmentsTable.status, "REMOVED"), sql`${dailyBookAssignmentsTable.userId} IS NOT NULL`,
+        )).limit(1) : [];
+        if (livros.some((l) => l.status !== "DRAFT") || comGente.length) throw new SessaoComLivroError();
+        for (const livro of livros) {
+          await tx.update(dailyBooksTable).set({ status: "CANCELLED", cancelledAt: new Date(), cancelledBy: req.user!.sub, updatedAt: new Date() }).where(eq(dailyBooksTable.id, livro.id));
+          await writeEntityHistory(req, { category: "OPERATIONAL_CHANGE", action: "daily_book.cancelled_by_session", title: "Livro da sessão cancelado", narrative: "A sessão deixou de ser separada e o Livro do Dia dela, que ainda era rascunho e sem pessoas, foi cancelado de forma lógica.", entityType: "daily_book", entityId: livro.id, actorId: req.user!.sub, orgId: req.user!.organizationId, operationId: show.operationId, beforeState: { status: livro.status }, afterState: { status: "CANCELLED" } }, tx as any);
+        }
+      }
       const [next] = await tx.update(sessionsTable).set(update as any).where(eq(sessionsTable.id, before.id)).returning();
       if (!next) throw new Error("Sessão não encontrada");
       await writeEntityHistory(req, { category: "OPERATIONAL_CHANGE", action: "session.updated", title: "Sessão alterada", narrative: "Sessão do show alterada.", entityType: "session", entityId: next.id, actorId: req.user!.sub, orgId: req.user!.organizationId, operationId: show.operationId, beforeState: before, afterState: next }, tx as any);
       return next;
     });
     res.json({ session });
-  } catch { res.status(400).json({ error: "Fim da sessão deve ser posterior ao início e o horário não pode duplicar" }); }
+  } catch (error) {
+    if (error instanceof SessaoComLivroError) { res.status(409).json({ error: "SESSAO_COM_LIVRO", message: "Esta sessão já tem Livro do Dia com pessoas. Cancele o Livro antes de mudar se ela é separada." }); return; }
+    res.status(400).json({ error: "Fim da sessão deve ser posterior ao início e o horário não pode duplicar" });
+  }
 });
 
 router.delete("/show-books/:showId/sessions/:sessionId", requireAuth, requireOrganization, async (req, res) => {

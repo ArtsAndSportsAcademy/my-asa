@@ -209,6 +209,9 @@ export async function collectScheduleCommitments(personId: string, date: string)
         sql`(sessions.valid_from IS NULL OR sessions.valid_from <= ${date})`,
         sql`(sessions.valid_to IS NULL OR sessions.valid_to >= ${date})`,
         sessionRunsOn(date),
+        // Sessão separada (0071) tem Livro e pessoas próprios: quem está no Livro de uma sessão só está
+        // comprometido com ela. O Livro do dia vale para as sessões que não são separadas.
+        or(eq(sessionsTable.id, dailyBooksTable.sessionId), and(isNull(dailyBooksTable.sessionId), eq(sessionsTable.separada, false))),
         ne(dailyBookAssignmentsTable.status, "REMOVED"),
         ne(dailyBooksTable.status, "CANCELLED"),
       )),
@@ -428,6 +431,8 @@ export async function detectShowBookResolveConflicts(input: {
     db.select().from(sessionsTable).where(and(
       eq(sessionsTable.showId, input.showBookId),
       eq(sessionsTable.active, true),
+      // A prévia é do Livro do dia: sessão separada tem as pessoas dela e não vira compromisso virtual de todos.
+      eq(sessionsTable.separada, false),
       sql`(sessions.valid_from IS NULL OR sessions.valid_from <= ${input.date})`,
       sql`(sessions.valid_to IS NULL OR sessions.valid_to >= ${input.date})`,
       sessionRunsOn(input.date),

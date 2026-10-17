@@ -1,5 +1,5 @@
 import { and, asc, eq, isNull, like, not, sql } from "drizzle-orm";
-import { db, dailyBookBlocksTable, sessionsTable } from "@workspace/db";
+import { db, dailyBookBlocksTable, dailyBooksTable, sessionsTable } from "@workspace/db";
 
 /**
  * Bloco de sessão do Livro do Dia: só marca o horário. Não tem posições próprias —
@@ -42,13 +42,14 @@ export const sessionRunsOn = (date: string) =>
  * Sessões do show que valem na data: ativa, dentro da vigência e no dia da semana. Mesmo
  * critério de `schedule-conflicts.ts`. Ordenadas por horário.
  */
-export async function eligibleSessions(showBookId: string, date: string, dbLike: DbLike = db) {
+export async function eligibleSessions(showBookId: string, date: string, dbLike: DbLike = db, only: { separada?: boolean } = {}) {
   return dbLike
     .select()
     .from(sessionsTable)
     .where(and(
       eq(sessionsTable.showId, showBookId),
       eq(sessionsTable.active, true),
+      only.separada === undefined ? undefined : eq(sessionsTable.separada, only.separada),
       sql`(sessions.valid_from IS NULL OR sessions.valid_from <= ${date})`,
       sql`(sessions.valid_to IS NULL OR sessions.valid_to >= ${date})`,
       sessionRunsOn(date),
@@ -82,7 +83,11 @@ async function sessionBlockRows(dailyBookId: string, dbLike: DbLike) {
  * Idempotente: rodar de novo sem mudança não escreve nada.
  */
 export async function syncSessionBlocks(dailyBookId: string, showBookId: string, date: string, dbLike: DbLike = db) {
-  const sessions = await eligibleSessions(showBookId, date, dbLike);
+  // 0071: Livro de sessão separada É a sessão (a hora vem do evento), então não leva bloco de sessão; o Livro do dia
+  // só marca as sessões que não são separadas — as separadas têm o Livro delas.
+  const [book] = await dbLike.select({ sessionId: dailyBooksTable.sessionId }).from(dailyBooksTable).where(eq(dailyBooksTable.id, dailyBookId)).limit(1);
+  if (book?.sessionId) return { sessionIds: [] as string[], createdBlockIds: [] as string[], updatedBlockIds: [] as string[], staleBlockIds: [] as string[] };
+  const sessions = await eligibleSessions(showBookId, date, dbLike, { separada: false });
   const existing = await sessionBlockRows(dailyBookId, dbLike);
   const existingBySlot = new Map<string, (typeof existing)[number]>();
   for (const block of existing) {
@@ -130,7 +135,7 @@ export async function listSessionBlocks(dailyBookId: string, showBookId: string 
   const blocks = await sessionBlockRows(dailyBookId, dbLike);
   if (!blocks.length) return [];
   const eligibleSlots = new Set(
-    (showBookId ? await eligibleSessions(showBookId, date, dbLike) : []).map((session) => slotKey(session.startTime, session.endTime)),
+    (showBookId ? await eligibleSessions(showBookId, date, dbLike, { separada: false }) : []).map((session) => slotKey(session.startTime, session.endTime)),
   );
   return blocks
     .map((block) => {

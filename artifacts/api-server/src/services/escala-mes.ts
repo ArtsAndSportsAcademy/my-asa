@@ -17,6 +17,7 @@ import {
 import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
 import { operationalDate } from "../lib/operational-date.js";
 import { generateDailyBookDraftForScale } from "../routes/daily-book.js";
+import { eligibleSessions } from "./session-blocks.js";
 import { findEscalaDoDia, operationForLocation } from "./escala-dia.js";
 
 export type ActorMes = { sub: string; role: string; organizationId: string };
@@ -69,8 +70,18 @@ export async function gerarDiaDoLocal(actor: ActorMes, location: { id: string; n
     inArray(showBooksTable.id, showIds), eq(showBooksTable.locationId, locationId), eq(showBooksTable.operationId, operationId),
   )) : [];
   if (validShows.length !== showIds.length) return { ok: false, status: 409, error: "SHOW_FORA_DO_LOCAL", message: "A Programação referencia um Show que não pertence a este local." };
+  // Sessão separada (0071) tem Livro próprio; as demais sessões (ou show sem sessão) dividem o Livro do dia.
+  // Em ordem de hora, para a sessão das 11:30 existir antes da das 15:30: a carga do dia só enxerga Livros já gravados.
+  const alvos: { showBookId: string; sessionId: string | null; inicio: string }[] = [];
+  for (const show of validShows) {
+    const sessoes = await eligibleSessions(show.id, date);
+    const inicioDoShow = blocos.filter((b) => b.showBookId === show.id).map((b) => b.inicio).sort()[0] ?? "99:99";
+    for (const sessao of sessoes.filter((x) => x.separada)) alvos.push({ showBookId: show.id, sessionId: sessao.id, inicio: sessao.startTime });
+    if (sessoes.length === 0 || sessoes.some((x) => !x.separada)) alvos.push({ showBookId: show.id, sessionId: null, inicio: inicioDoShow });
+  }
+  alvos.sort((a, b) => a.inicio.localeCompare(b.inicio));
   const livros = [];
-  for (const show of validShows) livros.push(await generateDailyBookDraftForScale({ showBookId: show.id, date, scaleId: scale.id, actorId: actor.sub, organizationId: actor.organizationId, reason: "Geração da Escala do dia" }));
+  for (const alvo of alvos) livros.push(await generateDailyBookDraftForScale({ showBookId: alvo.showBookId, sessionId: alvo.sessionId, date, scaleId: scale.id, actorId: actor.sub, organizationId: actor.organizationId, reason: "Geração da Escala do dia" }));
   return { ok: true, scale, livros };
 }
 

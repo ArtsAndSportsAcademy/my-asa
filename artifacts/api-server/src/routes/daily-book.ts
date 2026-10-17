@@ -21,12 +21,14 @@ import {
   historyEventsTable,
   usersTable,
   formationsTable,
+  sessionsTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization, requireRole } from "../middlewares/auth.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { operationalDate } from "../lib/operational-date.js";
 import { canOperateDailyBook, canViewDailyBook, isOperationManager, type ShowResponsibilityRef } from "../lib/show-responsibility.js";
 import { eventBus } from "../lib/event-bus.js";
+import { avisarExcecaoDeRegra, codigoDaExcecao, frasesDasRegras, verificarRegrasDeEscala } from "../services/regras-de-escala.js";
 import { notifyMany } from "../services/notificationService.js";
 import {
   readBaseSnapshot,
@@ -81,7 +83,7 @@ const DEFAULT_DAY_REASON = "Ajuste operacional do dia (sem motivo informado)";
  */
 async function resolveDailyBookReadContext(
   actor: { sub: string; role: string; operationIds: string[]; organizationId?: string | null },
-  book: { agendaEventId: string; showBookId: string | null; status: string },
+  book: { agendaEventId: string; showBookId: string | null; status: string; sessionId?: string | null },
 ): Promise<{
   ok: boolean;
   /** Vê a versão AO VIVO (gestão, capitão delegado, Direção) em vez da preservada da publicação. */
@@ -91,6 +93,8 @@ async function resolveDailyBookReadContext(
   eventTitle: string;
   eventDate: string;
   showTitle: string | null;
+  /** Hora ("11:30") do Livro de uma sessão separada; nulo no Livro do dia. */
+  sessionLabel: string | null;
 } | null> {
   const [ev] = await db
     .select({
@@ -98,6 +102,7 @@ async function resolveDailyBookReadContext(
       operationName: operationsTable.name,
       eventTitle: agendaEventsTable.title,
       eventDate: agendaEventsTable.date,
+      eventStartTime: agendaEventsTable.startTime,
       organizationId: operationsTable.organizationId,
     })
     .from(agendaEventsTable)
@@ -134,6 +139,7 @@ async function resolveDailyBookReadContext(
     eventTitle: ev.eventTitle,
     eventDate: ev.eventDate,
     showTitle,
+    sessionLabel: book.sessionId && ev.eventStartTime ? ev.eventStartTime.slice(0, 5) : null,
   };
 }
 
@@ -642,7 +648,7 @@ async function liveResolutionContext(
   const allocationMap: Record<string, string | null> = {};
   allocations.forEach((a) => { if (a.positionId) allocationMap[a.positionId] = a.userId ?? null; });
   const [{ byRole }, unavailable] = await Promise.all([
-    resolveAssignmentsByRole(book.showBookId, event.operationId, event.date, { dedupPerScene: true }),
+    resolveAssignmentsByRole(book.showBookId, event.operationId, event.date, { dedupPerScene: true, eventId: book.agendaEventId }),
     getUnavailableUserIds(event.operationId, event.date),
   ]);
   return { operationId: event.operationId, date: event.date, byRole, allocationMap, unavailable };
@@ -777,23 +783,36 @@ export async function generateDailyBookDraftForScale(input: {
   actorId: string;
   organizationId: string;
   reason?: string | null;
+  /** Sessão separada (0071): o Livro é só desta sessão, com a hora dela. Sem ela, é o Livro do dia do show. */
+  sessionId?: string | null;
 }) {
-  const { showBookId, date, scaleId, actorId, organizationId, reason = null } = input;
+  const { showBookId, date, scaleId, actorId, organizationId, reason = null, sessionId = null } = input;
   const [showBook] = await db.select().from(showBooksTable).where(eq(showBooksTable.id, showBookId)).limit(1);
   if (!showBook) throw new Error("Show Book não encontrado");
+  const [session] = sessionId
+    ? await db.select().from(sessionsTable).where(and(eq(sessionsTable.id, sessionId), eq(sessionsTable.showId, showBookId))).limit(1)
+    : [];
+  if (sessionId && !session) throw new Error("Sessão não encontrada neste show");
 
+  // O evento do Livro de sessão separada é achado pela hora da sessão; o do Livro do dia é o evento do show
+  // que não pertence a nenhuma sessão separada (senão o Livro do dia herdaria o evento de uma sessão).
   let [event] = await db.select().from(agendaEventsTable).where(and(
     eq(agendaEventsTable.showBookId, showBookId),
     eq(agendaEventsTable.date, date),
     eq(agendaEventsTable.operationId, showBook.operationId),
+    session
+      ? eq(agendaEventsTable.startTime, session.startTime)
+      : sql`NOT EXISTS (SELECT 1 FROM daily_books sb WHERE sb.agenda_event_id = ${agendaEventsTable.id} AND sb.session_id IS NOT NULL)`,
   )).limit(1);
   if (!event) {
     [event] = await db.insert(agendaEventsTable).values({
       operationId: showBook.operationId,
       showBookId,
       type: "SHOW",
-      title: showBook.title,
+      title: session ? `${showBook.title} · ${session.startTime.slice(0, 5)}` : showBook.title,
       date,
+      startTime: session?.startTime ?? null,
+      endTime: session?.endTime ?? null,
       status: "CONFIRMED",
       visibility: "MANAGEMENT",
       createdBy: actorId,
@@ -805,6 +824,7 @@ export async function generateDailyBookDraftForScale(input: {
   const [existing] = await db.select().from(dailyBooksTable).where(and(
     eq(dailyBooksTable.agendaEventId, event.id),
     eq(dailyBooksTable.showBookId, showBookId),
+    sessionId ? eq(dailyBooksTable.sessionId, sessionId) : isNull(dailyBooksTable.sessionId),
     ne(dailyBooksTable.status, "CANCELLED"),
   )).limit(1);
   if (existing) {
@@ -829,7 +849,7 @@ export async function generateDailyBookDraftForScale(input: {
     .from(scaleAllocationsTable).where(and(eq(scaleAllocationsTable.scaleId, scaleId), eq(scaleAllocationsTable.agendaEventId, event.id), eq(scaleAllocationsTable.active, true)));
   const allocationMap: Record<string, string | null> = {};
   allocations.forEach((allocation) => { if (allocation.positionId) allocationMap[allocation.positionId] = allocation.userId ?? null; });
-  const { byRole, result } = await resolveAssignmentsByRole(showBookId, event.operationId, date, { dedupPerScene: true });
+  const { byRole, result } = await resolveAssignmentsByRole(showBookId, event.operationId, date, { dedupPerScene: true, eventId: event.id });
   const rotationWinners = collectRotationWinners(result);
 
   let positionsCount = 0;
@@ -838,6 +858,7 @@ export async function generateDailyBookDraftForScale(input: {
       agendaEventId: event!.id,
       scaleId,
       showBookId,
+      sessionId,
       status: "DRAFT",
       version: 1,
       snapshotJson: {} as any,
@@ -1027,7 +1048,7 @@ router.post("/daily-book/generate", requireAuth, requireOrganization, async (req
 
     // Resolve o elenco por papel pelas regras das linhas + disponibilidade na data do evento.
     // dedupPerScene: não repetir a mesma pessoa na mesma cena — puxa o próximo substituto/rodízio.
-    const { byRole, result } = await resolveAssignmentsByRole(showBookId, event.operationId, event.date, { dedupPerScene: true });
+    const { byRole, result } = await resolveAssignmentsByRole(showBookId, event.operationId, event.date, { dedupPerScene: true, eventId: event.id });
     // Persistimos o vencedor de cada linha ROTATION agora, na geração, para que a publicação
     // avance o contador exatamente para quem ficou escalado (e não re-resolva).
     const rotationWinners = collectRotationWinners(result);
@@ -1207,7 +1228,7 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
 
     // Resolve o elenco por papel pelas regras das linhas + disponibilidade na data do evento.
     // dedupPerScene: não repetir a mesma pessoa na mesma cena — puxa o próximo substituto/rodízio.
-    const { byRole, result } = await resolveAssignmentsByRole(showBookId, event.operationId, event.date, { dedupPerScene: true });
+    const { byRole, result } = await resolveAssignmentsByRole(showBookId, event.operationId, event.date, { dedupPerScene: true, eventId: event.id });
     const rotationWinners = collectRotationWinners(result);
 
     // Blocos de sessão nunca são apagados aqui: os das sessões ainda elegíveis são
@@ -1791,6 +1812,7 @@ router.get("/daily-book", requireAuth, requireOrganization, async (req, res) => 
         eventTitle: r.eventTitle,
         eventDate: r.eventDate,
         showTitle: r.showTitle,
+        sessionLabel: r.book.sessionId && r.eventStartTime ? r.eventStartTime.slice(0, 5) : null,
       }));
 
     res.json({ dailyBooks });
@@ -1834,6 +1856,7 @@ router.get("/daily-book/:id", requireAuth, requireOrganization, async (req, res)
         eventTitle: ctx.eventTitle,
         eventDate: ctx.eventDate,
         showTitle: ctx.showTitle,
+        sessionLabel: ctx.sessionLabel,
         scenes: tree,
         sessionBlocks: await listSessionBlocks(id, book.showBookId, ctx.eventDate),
         currentSnapshot,
@@ -1906,7 +1929,7 @@ async function buildPatternDiffRows(
 ) {
   const [currentTree, resolved] = await Promise.all([
     resolveLiveTree(book),
-    resolveAssignmentsByRole(showBookId, operationId, dateISO, { dedupPerScene: true }),
+    resolveAssignmentsByRole(showBookId, operationId, dateISO, { dedupPerScene: true, eventId: book.agendaEventId }),
   ]);
   const { byRole, result } = resolved;
   const noteByRole = new Map<string, string>();
@@ -1993,6 +2016,17 @@ router.patch("/daily-book/:id/assignments/:assignmentId", requireAuth, requireOr
     if (!before) { res.status(404).json({ error: "Alocação não encontrada" }); return; }
     expectedVersion = requireExpectedVersion(req, res, "o Livro do Dia");
     if (expectedVersion === null) return;
+    // Restrição de horário e limite de shows do dia são proibição; passar delas à mão pede motivo escrito.
+    const motivoDaExcecao = typeof req.body?.motivo === "string" ? req.body.motivo.trim() : "";
+    const [eventoDoLivro] = userId ? await db.select({ operationId: agendaEventsTable.operationId, date: agendaEventsTable.date }).from(agendaEventsTable).where(eq(agendaEventsTable.id, book.agendaEventId)).limit(1) : [];
+    const regrasPassadas = userId && eventoDoLivro && userId !== before.userId
+      ? await verificarRegrasDeEscala({ eventId: book.agendaEventId, userId, date: eventoDoLivro.date, operationId: eventoDoLivro.operationId })
+      : [];
+    const [pessoaDaTroca] = regrasPassadas.length ? await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, userId)).limit(1) : [];
+    if (regrasPassadas.length && motivoDaExcecao.length < 3) {
+      res.status(409).json({ error: codigoDaExcecao(regrasPassadas), message: `${pessoaDaTroca?.name ?? "A pessoa"} ${frasesDasRegras(regrasPassadas)}. Para escalar mesmo assim, escreva o motivo.`, pessoa: pessoaDaTroca?.name ?? null });
+      return;
+    }
     const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(id) };
     const updated = await mutateDailyBook(id, expectedVersion, async (tx) => {
       const [next] = await tx
@@ -2010,6 +2044,19 @@ router.patch("/daily-book/:id/assignments/:assignmentId", requireAuth, requireOr
       await writeDailyBookAudit(id, actorId, "assignment_swap",
         { version: book.version, snapshot: beforeSnapshot, assignmentId, userId: before?.userId ?? null, status: before?.status ?? null },
         { version: book.version + 1, snapshot: afterSnapshot, assignmentId, userId: userId ?? null, status: next.status }, tx);
+      if (regrasPassadas.length && eventoDoLivro) {
+        await writeHistoryEvent({
+          category: "DAILY_BOOK", action: "assignment_exception", title: "Pessoa escalada além de uma regra",
+          narrative: `${pessoaDaTroca?.name ?? "A pessoa"} foi escalada na troca direta do Livro do Dia passando da regra (${frasesDasRegras(regrasPassadas)}); motivo: ${motivoDaExcecao}.`,
+          entityType: "daily_book", entityId: id, actorId, actorType: "HUMAN", operationId: eventoDoLivro.operationId, orgId: req.user!.organizationId,
+          beforeState: null, afterState: { assignmentId, userId },
+          metadata: { regras: regrasPassadas.map((r) => r.regra), frases: regrasPassadas.map((r) => r.frase), motivo: motivoDaExcecao },
+        }, tx as any);
+        await avisarExcecaoDeRegra(tx as never, {
+          operationId: eventoDoLivro.operationId, actorId, pessoaId: userId, pessoa: pessoaDaTroca?.name ?? "A pessoa", onde: `Livro do Dia de ${eventoDoLivro.date}`,
+          regras: regrasPassadas, motivo: motivoDaExcecao, entityType: "daily_book", entityId: id, dedupe: `${id}:${assignmentId}`,
+        });
+      }
     });
     eventBus.emit("daily-book.updated", { dailyBookId: id, changeType: "assignment_swap", changedBy: actorId });
     res.json({ assignment: updated, version: book.version + 1 });

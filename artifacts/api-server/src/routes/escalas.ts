@@ -33,6 +33,7 @@ import { avisarRepublicacaoPendente, comoPublicada, convocacaoPorPessoa, escalaP
 import { ultimoRetratoFolgas } from "../services/folgas-publicadas.js";
 import { descartarMes, descartaveisDoMes, gerarDiaDoLocal, gerarMes, restaurarDescarte, resumoDoMes, validarMes } from "../services/escala-mes.js";
 import { enqueueNotification } from "../services/undo.js";
+import { avisarExcecaoDeRegra, codigoDaExcecao, frasesDasRegras, verificarRegrasDeEscala } from "../services/regras-de-escala.js";
 import { APP_ROUTES } from "../lib/app-routes.js";
 
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
@@ -324,6 +325,15 @@ async function ajustarUmaPessoa(
     let scale = await findEscalaDoDia(locationId, date);
     const operationId = scale?.operationId ?? await operationForLocation(locationId);
     if (!operationId) return { ok: false, status: 409, body: { error: "LOCAL_SEM_OPERACAO", message: "Este local ainda não está ligado a uma operação." } };
+    // Restrição de horário e limite de shows do dia são proibição; passar delas é exceção à mão e pede motivo escrito.
+    let regrasPassadas: Awaited<ReturnType<typeof verificarRegrasDeEscala>> = [];
+    if (action === "ADICIONAR" && bloco.dailyBookId) {
+      const [livro] = await db.select({ agendaEventId: dailyBooksTable.agendaEventId }).from(dailyBooksTable).where(eq(dailyBooksTable.id, bloco.dailyBookId)).limit(1);
+      if (livro) regrasPassadas = await verificarRegrasDeEscala({ eventId: livro.agendaEventId, userId, date, operationId });
+      if (regrasPassadas.length && !(motivo && motivo.trim().length >= 3)) {
+        return { ok: false, status: 409, body: { error: codigoDaExcecao(regrasPassadas), message: `${pessoa.name} ${frasesDasRegras(regrasPassadas)}. Para escalar mesmo assim, escreva o motivo.`, pessoa: pessoa.name } };
+      }
+    }
     // 09/10: bloco que vem de Livro do Dia muda o próprio Livro (vaga aberta / preenchida), para a
     // Escala e o Livro dizerem a mesma coisa. Sem vaga a mexer, o ajuste fica só na Escala.
     const viaLivro = bloco.dailyBookId ? await ajustarPessoaNoLivro({ dailyBookId: bloco.dailyBookId, userId, action, actorId: actor.sub }) : false;
@@ -351,9 +361,16 @@ async function ajustarUmaPessoa(
       scale = nextScale;
       await writeHistoryEvent({
         category: "SCALE", action: action === "ADICIONAR" ? "escala.pessoa_adicionada" : "escala.pessoa_removida", title: action === "ADICIONAR" ? "Pessoa adicionada à Escala" : "Pessoa removida da Escala",
-        narrative: `${action === "ADICIONAR" ? "Adicionou" : "Removeu"} ${pessoa.name} no bloco ${bloco.rotulo} de ${date}.${deFolga && action === "ADICIONAR" ? ` Estava de folga; chamada mesmo assim: ${motivo?.trim()}` : ""}`, entityType: "scale", entityId: scale.id, actorId: actor.sub, operationId, orgId: actor.organizationId,
+        narrative: `${action === "ADICIONAR" ? "Adicionou" : "Removeu"} ${pessoa.name} no bloco ${bloco.rotulo} de ${date}.${deFolga && action === "ADICIONAR" ? ` Estava de folga; chamada mesmo assim: ${motivo?.trim()}` : ""}${regrasPassadas.length ? ` Passou da regra (${frasesDasRegras(regrasPassadas)}); motivo: ${motivo?.trim()}` : ""}`, entityType: "scale", entityId: scale.id, actorId: actor.sub, operationId, orgId: actor.organizationId,
         beforeState: { sourceKey, pessoaId: userId, ajuste: anterior?.action ?? null }, afterState: { ajuste, noLivroDoDia: viaLivro ? bloco.dailyBookId : null },
+        ...(regrasPassadas.length ? { metadata: { regras: regrasPassadas.map((r) => r.regra), frases: regrasPassadas.map((r) => r.frase), motivo: motivo?.trim() ?? null } } : {}),
       }, tx as unknown as HistoryExecutor);
+      if (regrasPassadas.length) {
+        await avisarExcecaoDeRegra(tx as never, {
+          operationId, actorId: actor.sub, pessoaId: userId, pessoa: pessoa.name, onde: `${location.name} · ${bloco.rotulo} às ${bloco.inicio} de ${dataPorExtenso(date)}`,
+          regras: regrasPassadas, motivo: motivo?.trim() ?? "", entityType: "scale", entityId: scale.id, dedupe: `${scale.id}:${sourceKey}`,
+        });
+      }
       // Quem é chamado na folga precisa saber na hora: o aviso sai junto com o ajuste.
       if (deFolga && action === "ADICIONAR") {
         await enqueueNotification(tx as never, {

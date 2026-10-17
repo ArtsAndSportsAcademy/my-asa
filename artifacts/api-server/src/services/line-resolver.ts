@@ -1,5 +1,6 @@
 import { eq, and, inArray, lte, gte, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
+import { carregarRegrasDoDia, chaveDeEvitar } from "./regras-de-escala.js";
 import {
   showBookScenesTable,
   showBookBlocksTable,
@@ -183,6 +184,8 @@ export interface ResolveResult {
   weekday: number;
   scenes: ResolvedScene[];
   uncoveredCount: number;
+  /** Havia restrição de horário a conferir, mas o show não tem horário: a regra não foi aplicada. */
+  semHorario?: boolean;
 }
 
 function weekdayOf(dateISO: string): number {
@@ -234,7 +237,8 @@ function compareKeys(left: readonly number[], right: readonly number[]): number 
 
 /**
  * Equilíbrio do rodízio (07/10): antes da contagem do próprio personagem, vale quem está com
- * menos trabalho — supervisor por último, depois menos shows no dia, na semana e no mês.
+ * menos trabalho — supervisor por último, depois quem não está em show colado a este, depois menos shows no dia,
+ * na semana e no mês.
  */
 export type BalanceKey = (userId: string) => readonly number[];
 const NO_BALANCE: BalanceKey = () => [];
@@ -252,6 +256,8 @@ function resolveLine(
   /** Chaves (rotationCountKey) que já avançaram HOJE — descontadas de config.executionCounts, que
    *  é vitalício e sem data (ver nota mais abaixo, no uso). */
   advancedToday: ReadonlySet<string> = new Set(),
+  /** userId → por que a pessoa não pode entrar neste show (restrição de horário, limite do dia). Proibição. */
+  bloqueios: ReadonlyMap<string, string> = new Map(),
 ): ResolvedLine {
   const byBalance = (a: { id: string; idx: number; count: number }, b: { id: string; idx: number; count: number }) =>
     compareKeys([...balance(a.id), a.count, a.idx], [...balance(b.id), b.count, b.idx]);
@@ -259,9 +265,15 @@ function resolveLine(
   const person = (id: string): ResolvedPerson => ({ userId: id, name: nameOf(id) });
   // "Bloqueado" = de folga/restrição (unavailable) OU já escalado noutra posição da mesma
   // cena (excluded). Ambos fazem a escolha saltar para o próximo candidato da lista.
-  const blocked = (id: string) => unavailable.has(id) || excluded.has(id);
+  const blocked = (id: string) => unavailable.has(id) || excluded.has(id) || bloqueios.has(id);
   const blockReason = (id: string) =>
-    unavailable.has(id) ? "indisponível" : "já escalado nesta cena";
+    unavailable.has(id) ? "indisponível" : bloqueios.get(id) ?? "já escalado nesta cena";
+  /** Quando ninguém pode, a nota diz qual regra impediu cada um (só dos que a regra barrou). */
+  const porRegra = (ids: readonly string[]) => ids.filter((id) => bloqueios.has(id) && !unavailable.has(id)).map((id) => `${nameOf(id)} ${bloqueios.get(id)}`);
+  const semNinguem = (texto: string, ids: readonly string[]) => {
+    const motivos = porRegra(ids);
+    return motivos.length ? `${texto} — ${motivos.join("; ")}` : texto;
+  };
 
   switch (line.type) {
     case "FIXED_PERSON": {
@@ -315,7 +327,7 @@ function resolveLine(
         .filter((m) => !blocked(m.id))
         .sort(byBalance);
       if (available.length === 0) {
-        return { lineId: line.id, type: line.type, status: "UNCOVERED", people: [], note: "Todos do rodízio indisponíveis" };
+        return { lineId: line.id, type: line.type, status: "UNCOVERED", people: [], note: semNinguem("Todos do rodízio indisponíveis", memberIds) };
       }
       const chosen = available[0]!.id;
       return {
@@ -360,7 +372,7 @@ function resolveLine(
         }
         if (characterMode === "titular") {
           const chosen = memberIdsOverride.find((id) => !blocked(id));
-          if (!chosen) return { lineId: line.id, type: line.type, status: "UNCOVERED", people: [], note: "Titular e substitutos indisponíveis" };
+          if (!chosen) return { lineId: line.id, type: line.type, status: "UNCOVERED", people: [], note: semNinguem("Titular e substitutos indisponíveis", memberIdsOverride) };
           const titularId = memberIdsOverride[0]!;
           const note = chosen === titularId ? undefined : `Titular ${blockReason(titularId)} — usando ${nameOf(chosen)}`;
           return { lineId: line.id, type: line.type, status: "COVERED", people: [person(chosen)], note };
@@ -370,7 +382,7 @@ function resolveLine(
           .filter((m) => !blocked(m.id))
           .sort(byBalance);
         if (available.length === 0) {
-          return { lineId: line.id, type: line.type, status: "UNCOVERED", people: [], note: "Todos da fila indisponíveis" };
+          return { lineId: line.id, type: line.type, status: "UNCOVERED", people: [], note: semNinguem("Todos da fila indisponíveis", memberIdsOverride) };
         }
         const chosen = available[0]!.id;
         return { lineId: line.id, type: line.type, status: "COVERED", people: [person(chosen)], rotationAdvanceUserId: chosen };
@@ -399,8 +411,12 @@ export function workloadWindows(dateISO: string) {
  * escalada no dia, na semana e no mês — sem contar Livros cancelados nem o próprio show nesta
  * data (regenerar não pode contar a si mesmo). Supervisor vai para o fim da fila do rodízio.
  */
-async function workloadBalance(userIds: string[], operationId: string, dateISO: string, showBookId: string): Promise<BalanceKey> {
+async function workloadBalance(userIds: string[], operationId: string, dateISO: string, showBookId: string, eventId?: string, colados: ReadonlySet<string> = new Set()): Promise<BalanceKey> {
   if (userIds.length === 0) return NO_BALANCE;
+  // Com o evento do Livro em mãos, só o PRÓPRIO Livro fica de fora da conta (regenerar não conta a si mesmo);
+  // assim a outra sessão do mesmo show, no mesmo dia, pesa contra quem já fez uma. Sem ele, vale o jeito antigo:
+  // nenhum Livro do mesmo show na mesma data.
+  const foraDaConta = eventId ? sql`b.agenda_event_id <> ${eventId}::uuid` : sql`not (b.show_book_id is not distinct from ${showBookId}::uuid and e.date = ${dateISO})`;
   const { weekStart, weekEnd, monthStart, monthEnd } = workloadWindows(dateISO);
   const from = weekStart < monthStart ? weekStart : monthStart;
   const to = weekEnd > monthEnd ? weekEnd : monthEnd;
@@ -419,7 +435,7 @@ async function workloadBalance(userIds: string[], operationId: string, dateISO: 
         and b.status <> 'CANCELLED'
         and e.operation_id = ${operationId}
         and e.date between ${from} and ${to}
-        and not (b.show_book_id is not distinct from ${showBookId}::uuid and e.date = ${dateISO})
+        and ${foraDaConta}
       group by a.user_id`),
     db.select({ userId: userRolesTable.userId }).from(userRolesTable).where(and(
       inArray(userRolesTable.userId, userIds), eq(userRolesTable.operationId, operationId),
@@ -429,7 +445,7 @@ async function workloadBalance(userIds: string[], operationId: string, dateISO: 
   const rows = (Array.isArray(loads) ? loads : (loads as { rows?: unknown[] }).rows ?? []) as { userId: string; day: number | string; week: number | string; month: number | string }[];
   const byUser = new Map(rows.map((row) => [row.userId, [Number(row.day), Number(row.week), Number(row.month)]]));
   const supervisorIds = new Set(supervisors.map((row) => row.userId));
-  return (userId) => [supervisorIds.has(userId) ? 1 : 0, ...(byUser.get(userId) ?? [0, 0, 0])];
+  return (userId) => [supervisorIds.has(userId) ? 1 : 0, chaveDeEvitar(userId, { colados }), ...(byUser.get(userId) ?? [0, 0, 0])];
 }
 
 /**
@@ -440,7 +456,7 @@ export async function resolveShowBookCast(
   showBookId: string,
   operationId: string,
   dateISO: string,
-  opts: { dedupPerScene?: boolean } = {}
+  opts: { dedupPerScene?: boolean; eventId?: string } = {}
 ): Promise<ResolveResult> {
   const tree = await buildShowBookTree(showBookId);
   const weekday = weekdayOf(dateISO);
@@ -529,7 +545,10 @@ export async function resolveShowBookCast(
 
   const unavailable = await getUnavailableUserIds(operationId, dateISO);
   for (const id of nonSchedulable) unavailable.add(id);
-  const balance = await workloadBalance(Array.from(userIds), operationId, dateISO, showBookId);
+  // Restrição de horário e limite do dia são proibição; show colado é só "evitar". Sem o evento do Livro não há como
+  // saber a hora do show, então nada disso se aplica (comportamento de antes).
+  const regras = opts.eventId ? await carregarRegrasDoDia({ eventId: opts.eventId, userIds: Array.from(userIds), date: dateISO, operationId }) : null;
+  const balance = await workloadBalance(Array.from(userIds), operationId, dateISO, showBookId, opts.eventId, regras?.colados);
 
   const rotationKeys = new Set<string>();
   for (const scene of tree) {
@@ -584,7 +603,7 @@ export async function resolveShowBookCast(
       const memberIdsOverride = line.characterId
         ? castMembers.get(line.characterId) ?? []
         : undefined;
-      const resolved = resolveLine(line, weekday, unavailable, nameOf, excluded, rotationCounts, memberIdsOverride, line.characterId ? characterModes.get(line.characterId) : undefined, balance, advancedToday);
+      const resolved = resolveLine(line, weekday, unavailable, nameOf, excluded, rotationCounts, memberIdsOverride, line.characterId ? characterModes.get(line.characterId) : undefined, balance, advancedToday, regras?.bloqueios);
       if (resolved.status === "UNCOVERED") uncoveredCount += 1;
       if (excluded) {
         for (const p of resolved.people) excluded.add(p.userId);
@@ -607,7 +626,7 @@ export async function resolveShowBookCast(
     };
   });
 
-  return { date: dateISO, weekday, scenes, uncoveredCount };
+  return { date: dateISO, weekday, scenes, uncoveredCount, ...(regras?.semHorario ? { semHorario: true } : {}) };
 }
 
 // ─── Mapa por papel (para alimentar o Livro do Dia) ───────────────────────────
@@ -634,7 +653,7 @@ export async function resolveAssignmentsByRole(
   showBookId: string,
   operationId: string,
   dateISO: string,
-  opts: { dedupPerScene?: boolean } = {}
+  opts: { dedupPerScene?: boolean; eventId?: string } = {}
 ): Promise<{ byRole: Map<string, RoleResolution>; result: ResolveResult }> {
   const result = await resolveShowBookCast(showBookId, operationId, dateISO, opts);
   const byRole = new Map<string, RoleResolution>();

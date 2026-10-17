@@ -260,7 +260,7 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
 
   // Livros do Dia dos shows deste local nesta data (cancelado não convoca ninguém).
   const livros = await db.select({
-    id: dailyBooksTable.id, status: dailyBooksTable.status, showBookId: dailyBooksTable.showBookId, showTitle: showBooksTable.title,
+    id: dailyBooksTable.id, status: dailyBooksTable.status, showBookId: dailyBooksTable.showBookId, sessionId: dailyBooksTable.sessionId, showTitle: showBooksTable.title,
     startTime: agendaEventsTable.startTime, endTime: agendaEventsTable.endTime,
   }).from(dailyBooksTable)
     .innerJoin(agendaEventsTable, eq(dailyBooksTable.agendaEventId, agendaEventsTable.id))
@@ -278,7 +278,13 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
     let sinal: string | null = null;
     let livro: (typeof livros)[number] | undefined;
     if (bloco.regra === "livro") {
-      livro = livros.find((l) => l.showBookId === bloco.showBookId);
+      // Sessão separada (0071): cada sessão tem o seu Livro e o bloco escolhe o da sua hora; o show sem sessão
+      // separada naquele dia (ou sem Livro na hora do bloco) cai no Livro do dia, como sempre foi.
+      const doShow = livros.filter((l) => l.showBookId === bloco.showBookId);
+      const minutos = (hora: string | null | undefined) => { const [h, m] = (hora ?? "").split(":").map(Number); return Number.isFinite(h) && Number.isFinite(m) ? h! * 60 + m! : null; };
+      const separados = doShow.filter((l) => l.sessionId);
+      const maisPerto = [...separados].sort((x, y) => Math.abs((minutos(x.startTime) ?? 9999) - (minutos(inicio) ?? 0)) - Math.abs((minutos(y.startTime) ?? 9999) - (minutos(inicio) ?? 0)))[0];
+      livro = separados.find((l) => hhmm(l.startTime) === inicio) ?? doShow.find((l) => !l.sessionId) ?? maisPerto;
       if (livro) { cobertos.add(livro.id); pessoaIds = (elenco.get(livro.id) ?? []).filter((id) => present.has(id)); }
       else sinal = "Livro do Dia deste show ainda não gerado";
     } else if (bloco.regra === "todos") pessoaIds = [...present];
@@ -302,7 +308,7 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
     const horarios = sessoes.length ? sessoes.map((s) => ({ inicio: hhmm(s.startTime)!, fim: hhmm(s.endTime) })) : [{ inicio: hhmm(livro.startTime) ?? "00:00", fim: hhmm(livro.endTime) }];
     for (const h of horarios) {
       blocos.push({
-        ...base, key: `l:${livro.id}:${h.inicio}`, rotulo: (livro.showTitle ?? "SHOW").toLocaleUpperCase("pt-BR"), inicio: h.inicio, fim: h.fim,
+        ...base, key: `l:${livro.id}:${h.inicio}`, rotulo: `${livro.showTitle ?? "SHOW"}${livro.sessionId ? ` · ${h.inicio}` : ""}`.toLocaleUpperCase("pt-BR"), inicio: h.inicio, fim: h.fim,
         origem: "livro", regra: "livro", pessoaIds, vazio: pessoaIds.length === 0, sinal: pessoaIds.length ? null : "Livro do Dia sem ninguém escalado",
         showBookId: livro.showBookId, dailyBookId: livro.id, dailyBookStatus: livro.status,
       });
