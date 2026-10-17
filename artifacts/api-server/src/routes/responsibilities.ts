@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, inArray, or, isNull, not, desc, asc } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   responsibilitiesTable,
@@ -8,11 +9,19 @@ import {
   userRolesTable,
   operationsTable,
   areasTable,
+  responsibilityRequestRecipientsTable,
+  responsibilityRequestsTable,
+  responsibilityRoutinesTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization } from "../middlewares/auth.js";
 import { sendNotification, notifyMany } from "../services/notificationService.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { listAreaLocalScopes } from "../services/area-local-scope.js";
+import { aceitarPedido, cancelarPedido, criarPedido, recusarPedido } from "../services/responsibility-requests.js";
+import { TarefaError, type Ator } from "../services/task-steps.js";
+import { atualizarItem, criarItem, desmarcarItem, marcarItem, removerItem, restaurarItem } from "../services/responsibility-routines.js";
+import { processNotificationOutbox } from "../services/notification-outbox.js";
+import { logger } from "../lib/logger.js";
 
 const router: IRouter = Router();
 
@@ -207,6 +216,195 @@ router.get("/responsibilities", requireAuth, requireOrganization, async (req, re
     console.error(err);
     res.status(500).json({ error: "Erro ao listar responsabilidades" });
   }
+});
+
+// ─── Pedidos às responsabilidades ─────────────────────────────────────────────
+
+function ator(user: NonNullable<Express.Request["user"]>): Ator {
+  return { id: user.sub, organizationId: user.organizationId, role: user.role, gestor: DEFINITION_ROLES.includes(user.role) };
+}
+/** A frase da regra quando houve recusa por regra; erro do servidor em qualquer outro caso. */
+function erroDePedido(res: import("express").Response, err: unknown, quando: string) {
+  if (err instanceof TarefaError) {
+    res.status(err.status).json({ error: err.status === 403 ? "Forbidden" : err.status === 404 ? "Not Found" : err.status === 409 ? "Conflict" : "Bad Request", message: err.message });
+    return;
+  }
+  logger.error({ err }, quando);
+  res.status(500).json({ error: "Internal Server Error" });
+}
+
+// A lista para escolher a quem pedir: todas as pessoas veem os nomes (não os donos), para qualquer uma poder pedir.
+router.get("/responsibilities/pickable", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  try {
+    const user = req.user!;
+    const rows = await db.select({ id: responsibilitiesTable.id, title: responsibilitiesTable.title, description: responsibilitiesTable.description, areaName: areasTable.name })
+      .from(responsibilitiesTable).leftJoin(areasTable, eq(areasTable.id, responsibilitiesTable.areaId))
+      .where(and(eq(responsibilitiesTable.orgId, user.organizationId), eq(responsibilitiesTable.active, true))).orderBy(asc(responsibilitiesTable.title));
+    const comDono = new Set((rows.length ? await db.select({ id: responsibilityAssignmentsTable.responsibilityId }).from(responsibilityAssignmentsTable)
+      .where(and(inArray(responsibilityAssignmentsTable.responsibilityId, rows.map((row) => row.id)), eq(responsibilityAssignmentsTable.active, true), inArray(responsibilityAssignmentsTable.role, ["PRIMARY", "SECONDARY"]))) : []).map((row) => row.id));
+    res.json({ responsibilities: rows.map((row) => ({ ...row, semDono: !comDono.has(row.id) })) });
+  } catch (err) { erroDePedido(res, err, "Erro ao listar responsabilidades para pedir"); }
+});
+
+router.post("/responsibilities/:id/requests", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  try {
+    const user = req.user!;
+    const request = await db.transaction((tx) => criarPedido(tx, ator(user), { responsibilityId: String(req.params.id), title: req.body?.title, details: req.body?.details, dueDate: req.body?.dueDate }));
+    void processNotificationOutbox().catch((err) => logger.warn({ err }, "Falha ao entregar os avisos do pedido"));
+    res.status(201).json({ request });
+  } catch (err) { erroDePedido(res, err, "Erro ao criar pedido"); }
+});
+
+/** Pedidos de uma responsabilidade, com quem recebeu e o que cada um respondeu. */
+async function pedidosComGente(where: SQL<unknown>) {
+  const pedidos = await db.select({
+    id: responsibilityRequestsTable.id, responsibilityId: responsibilityRequestsTable.responsibilityId, responsibilityTitle: responsibilitiesTable.title,
+    requesterId: responsibilityRequestsTable.requesterId, title: responsibilityRequestsTable.title, details: responsibilityRequestsTable.details,
+    dueDate: responsibilityRequestsTable.dueDate, status: responsibilityRequestsTable.status, acceptedById: responsibilityRequestsTable.acceptedById,
+    acceptedAt: responsibilityRequestsTable.acceptedAt, taskId: responsibilityRequestsTable.taskId, semDono: responsibilityRequestsTable.semDono, createdAt: responsibilityRequestsTable.createdAt,
+  }).from(responsibilityRequestsTable).innerJoin(responsibilitiesTable, eq(responsibilitiesTable.id, responsibilityRequestsTable.responsibilityId)).where(where).orderBy(desc(responsibilityRequestsTable.createdAt)).limit(200);
+  if (!pedidos.length) return [];
+  const destinatarios = await db.select().from(responsibilityRequestRecipientsTable).where(inArray(responsibilityRequestRecipientsTable.requestId, pedidos.map((pedido) => pedido.id)));
+  const ids = [...new Set([...pedidos.flatMap((pedido) => [pedido.requesterId, pedido.acceptedById]), ...destinatarios.map((linha) => linha.userId)].filter((id): id is string => Boolean(id)))];
+  const nomes = new Map((await db.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(inArray(usersTable.id, ids))).map((pessoa) => [pessoa.id, pessoa.name]));
+  return pedidos.map((pedido) => ({
+    ...pedido, requesterName: nomes.get(pedido.requesterId) ?? null, acceptedByName: pedido.acceptedById ? nomes.get(pedido.acceptedById) ?? null : null,
+    recipients: destinatarios.filter((linha) => linha.requestId === pedido.id).map((linha) => ({ userId: linha.userId, name: nomes.get(linha.userId) ?? null, declinedAt: linha.declinedAt, declineReason: linha.declineReason })),
+  }));
+}
+
+router.get("/responsibilities/:id/requests", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  try {
+    const user = req.user!;
+    const id = String(req.params.id);
+    const [responsabilidade] = await db.select({ id: responsibilitiesTable.id, areaId: responsibilitiesTable.areaId }).from(responsibilitiesTable)
+      .where(and(eq(responsibilitiesTable.id, id), eq(responsibilitiesTable.orgId, user.organizationId))).limit(1);
+    if (!responsabilidade) { res.status(404).json({ error: "Not Found", message: "Responsabilidade não encontrada." }); return; }
+    const assignments = await db.select({ memberId: responsibilityAssignmentsTable.memberId, active: responsibilityAssignmentsTable.active }).from(responsibilityAssignmentsTable).where(eq(responsibilityAssignmentsTable.responsibilityId, id));
+    const [recebeu] = await db.select({ userId: responsibilityRequestRecipientsTable.userId }).from(responsibilityRequestRecipientsTable)
+      .innerJoin(responsibilityRequestsTable, eq(responsibilityRequestsTable.id, responsibilityRequestRecipientsTable.requestId))
+      .where(and(eq(responsibilityRequestsTable.responsibilityId, id), eq(responsibilityRequestRecipientsTable.userId, user.sub))).limit(1);
+    if (!recebeu && !(await mayAccessResponsibility(user, { areaId: responsabilidade.areaId, assignments }))) {
+      res.status(403).json({ error: "Forbidden", message: "Só quem cuida desta responsabilidade, a Administração e a Direção veem os pedidos dela." });
+      return;
+    }
+    res.json({ requests: await pedidosComGente(and(eq(responsibilityRequestsTable.responsibilityId, id), eq(responsibilityRequestsTable.orgId, user.organizationId))!) });
+  } catch (err) { erroDePedido(res, err, "Erro ao listar pedidos"); }
+});
+
+// Os pedidos que a própria pessoa fez, para acompanhar (não depende de ver a caixa da responsabilidade).
+router.get("/responsibility-requests/mine", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  try {
+    const user = req.user!;
+    res.json({ requests: await pedidosComGente(and(eq(responsibilityRequestsTable.requesterId, user.sub), eq(responsibilityRequestsTable.orgId, user.organizationId))!) });
+  } catch (err) { erroDePedido(res, err, "Erro ao listar meus pedidos"); }
+});
+
+// Os pedidos que chegaram para a pessoa e ainda esperam resposta (o que ela precisa aceitar ou recusar).
+router.get("/responsibility-requests/inbox", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  try {
+    const user = req.user!;
+    const doMeu = db.select({ id: responsibilityRequestRecipientsTable.requestId }).from(responsibilityRequestRecipientsTable).where(and(eq(responsibilityRequestRecipientsTable.userId, user.sub), isNull(responsibilityRequestRecipientsTable.declinedAt)));
+    res.json({ requests: await pedidosComGente(and(eq(responsibilityRequestsTable.orgId, user.organizationId), eq(responsibilityRequestsTable.status, "OPEN"), inArray(responsibilityRequestsTable.id, doMeu))!) });
+  } catch (err) { erroDePedido(res, err, "Erro ao listar a caixa de pedidos"); }
+});
+
+router.post("/responsibility-requests/:id/accept", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  try {
+    const user = req.user!;
+    const resultado = await db.transaction((tx) => aceitarPedido(tx, ator(user), String(req.params.id), { dueDate: req.body?.dueDate }));
+    void processNotificationOutbox().catch((err) => logger.warn({ err }, "Falha ao entregar os avisos do pedido"));
+    res.json({ request: resultado.request, task: resultado.task });
+  } catch (err) { erroDePedido(res, err, "Erro ao aceitar pedido"); }
+});
+
+router.post("/responsibility-requests/:id/decline", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  try {
+    const user = req.user!;
+    const request = await db.transaction((tx) => recusarPedido(tx, ator(user), String(req.params.id), req.body?.reason));
+    void processNotificationOutbox().catch((err) => logger.warn({ err }, "Falha ao entregar os avisos do pedido"));
+    res.json({ request });
+  } catch (err) { erroDePedido(res, err, "Erro ao recusar pedido"); }
+});
+
+router.post("/responsibility-requests/:id/cancel", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  try {
+    const user = req.user!;
+    const request = await db.transaction((tx) => cancelarPedido(tx, ator(user), String(req.params.id), req.body?.reason));
+    void processNotificationOutbox().catch((err) => logger.warn({ err }, "Falha ao entregar os avisos do pedido"));
+    res.json({ request });
+  } catch (err) { erroDePedido(res, err, "Erro ao cancelar pedido"); }
+});
+
+// ─── Lista fixa da responsabilidade ────────────────────────────────────────────
+
+/** Quem vê a lista (cuida, acompanha, Supervisão da área, Administração, Direção) e quem mexe nela (todos, menos quem só acompanha). */
+async function acessoALista(user: NonNullable<Express.Request["user"]>, responsibilityId: string) {
+  const [responsabilidade] = await db.select({ id: responsibilitiesTable.id, areaId: responsibilitiesTable.areaId }).from(responsibilitiesTable)
+    .where(and(eq(responsibilitiesTable.id, responsibilityId), eq(responsibilitiesTable.orgId, user.organizationId), eq(responsibilitiesTable.active, true))).limit(1);
+  if (!responsabilidade) throw new TarefaError(404, "Responsabilidade não encontrada.");
+  const assignments = await db.select({ memberId: responsibilityAssignmentsTable.memberId, role: responsibilityAssignmentsTable.role, active: responsibilityAssignmentsTable.active })
+    .from(responsibilityAssignmentsTable).where(eq(responsibilityAssignmentsTable.responsibilityId, responsibilityId));
+  const podeVer = await mayAccessResponsibility(user, { areaId: responsabilidade.areaId, assignments });
+  if (!podeVer) throw new TarefaError(403, "Só quem cuida desta responsabilidade, a Administração e a Direção veem a lista fixa dela.");
+  const soAcompanha = !DEFINITION_ROLES.includes(user.role) && !SUPERVISOR_ROLES.includes(user.role)
+    && !assignments.some((linha) => linha.memberId === user.sub && linha.active && linha.role !== "VIEWER");
+  return { soAcompanha };
+}
+async function paraMexer(user: NonNullable<Express.Request["user"]>, responsibilityId: string) {
+  const { soAcompanha } = await acessoALista(user, responsibilityId);
+  if (soAcompanha) throw new TarefaError(403, "Quem só acompanha esta responsabilidade vê a lista, mas não marca nem edita os itens.");
+}
+
+router.get("/responsibilities/:id/routines", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  try {
+    const user = req.user!;
+    const id = String(req.params.id);
+    await acessoALista(user, id);
+    const incluirRemovidos = req.query.removidos === "1";
+    const itens = await db.select({ item: responsibilityRoutinesTable, ownerName: usersTable.name }).from(responsibilityRoutinesTable)
+      .innerJoin(usersTable, eq(usersTable.id, responsibilityRoutinesTable.ownerId))
+      .where(and(eq(responsibilityRoutinesTable.responsibilityId, id), ...(incluirRemovidos ? [] : [eq(responsibilityRoutinesTable.active, true)]))).orderBy(asc(responsibilityRoutinesTable.createdAt));
+    res.json({ routines: itens.map((linha) => ({ ...linha.item, ownerName: linha.ownerName })) });
+  } catch (err) { erroDePedido(res, err, "Erro ao listar a lista fixa"); }
+});
+
+router.post("/responsibilities/:id/routines", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  try {
+    const user = req.user!;
+    await paraMexer(user, String(req.params.id));
+    const routine = await db.transaction((tx) => criarItem(tx, ator(user), String(req.params.id), req.body ?? {}));
+    res.status(201).json({ routine });
+  } catch (err) { erroDePedido(res, err, "Erro ao criar item da lista fixa"); }
+});
+
+router.patch("/responsibilities/:id/routines/:routineId", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  try {
+    const user = req.user!;
+    await paraMexer(user, String(req.params.id));
+    const routine = await db.transaction((tx) => atualizarItem(tx, ator(user), String(req.params.id), String(req.params.routineId), req.body ?? {}));
+    res.json({ routine });
+  } catch (err) { erroDePedido(res, err, "Erro ao atualizar item da lista fixa"); }
+});
+
+for (const [caminho, acao] of [["check", marcarItem], ["uncheck", desmarcarItem], ["restore", restaurarItem]] as const) {
+  router.post(`/responsibilities/:id/routines/:routineId/${caminho}`, requireAuth, requireOrganization, async (req, res): Promise<void> => {
+    try {
+      const user = req.user!;
+      await paraMexer(user, String(req.params.id));
+      const routine = await db.transaction((tx) => acao(tx, ator(user), String(req.params.id), String(req.params.routineId)));
+      res.json({ routine });
+    } catch (err) { erroDePedido(res, err, "Erro ao mexer no item da lista fixa"); }
+  });
+}
+
+router.delete("/responsibilities/:id/routines/:routineId", requireAuth, requireOrganization, async (req, res): Promise<void> => {
+  try {
+    const user = req.user!;
+    await paraMexer(user, String(req.params.id));
+    const routine = await db.transaction((tx) => removerItem(tx, ator(user), String(req.params.id), String(req.params.routineId), req.body?.reason));
+    res.json({ routine });
+  } catch (err) { erroDePedido(res, err, "Erro ao tirar item da lista fixa"); }
 });
 
 // ─── GET /responsibilities/:id ────────────────────────────────────────────────

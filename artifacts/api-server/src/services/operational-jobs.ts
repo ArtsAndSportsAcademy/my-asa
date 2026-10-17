@@ -13,6 +13,8 @@ import { regrasDaOrganizacao } from "./regras-casa.js";
 import { shiftPlans, shiftsForDate } from "./shift-checkins.js";
 import { administradores, periodoLegivel, prazoAdminAberto, supervisoresDaArea } from "./folga-roteamento.js";
 import { lerConfigFolga } from "./folga-config.js";
+import { enqueueTaskReminders } from "./task-reminders.js";
+import { voltarRotinas } from "./responsibility-routines.js";
 
 /** A timing conflict is an alert, never a publication blocker. Empty seats / missing coverage are pending. */
 export async function autoPublishScales(organizationId?: string) {
@@ -139,6 +141,8 @@ export function startOperationalScheduler(options: { organizationId?: string; de
       // precisa ser conferida por minuto, nunca uma consulta por segundo.
       if (Date.now() - lastCheckInReconcileAt >= 60_000) {
         await enqueueEscalaReminders(new Date(), options.organizationId);
+        await enqueueTaskReminders(new Date(), options.organizationId);
+        await voltarRotinas(new Date(), options.organizationId);
         await reconcileDueCheckIns(new Date(), options.organizationId);
         lastCheckInReconcileAt = Date.now();
       }
@@ -160,6 +164,8 @@ export async function rodarCicloOperacional(now = new Date(), organizationId?: s
   await reconcileDueCheckIns(now, organizationId);
   resultado.folgas = await avisarPrazoDaFolgaAberto(now, organizationId);
   resultado.lembretesDeFolga = await lembrarRespostasDeFolga(now, organizationId);
+  resultado.tarefas = await enqueueTaskReminders(now, organizationId);
+  resultado.listaFixa = await voltarRotinas(now, organizationId);
   // Avisos que nasceram neste ciclo (lembretes, publicação) já saem agora, sem esperar o próximo minuto.
   resultado.avisosDepois = await processNotificationOutbox();
   return resultado;
