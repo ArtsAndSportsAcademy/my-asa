@@ -1039,6 +1039,10 @@ async function run() {
     check(folgaAsk.proposal?.actionType === "FOLGA_LOTE" && folgaAsk.body.includes("Pessoas (2)") && folgaAsk.body.includes("Dias (2): 20/11, 21/11")
       && (await folgasDe(member.id)).length === 0 && (await folgasDe(outsider.id)).length === 0,
     "Folga em lote: a prévia lista as pessoas e os dias e não grava nada");
+    const folgaHistorico = await manager(`/asa/conversations/${folgaAsk.conversationId}/messages`, undefined, "GET");
+    const folgaNoHistorico = ((await folgaHistorico.json()) as { messages: Array<{ proposal?: { actionType: string; title?: string; recipientNames?: string[]; dias?: string[] } }> }).messages.find((m) => m.proposal?.actionType === "FOLGA_LOTE")?.proposal;
+    check(folgaNoHistorico?.title === "Marcar folga" && folgaNoHistorico.recipientNames?.length === 2 && folgaNoHistorico.dias?.length === 2,
+      "Ao reabrir a conversa, o cartão da folga em lote ainda traz título, pessoas e dias (não 0 pessoa(s) e 0 dia(s))");
     const folgaConfirm = await manager(`/asa/actions/${folgaAsk.proposal!.id}/confirm`, {});
     const lotesDaAsa = (await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.orgId, orgs[0]!.id), eq(historyEventsTable.action, "FOLGA_GRID_BULK")))).filter((row) => row.metadata?.via === "ASA");
     check(folgaConfirm.status === 200 && (await folgasDe(member.id)).length === 2 && (await folgasDe(outsider.id)).length === 2

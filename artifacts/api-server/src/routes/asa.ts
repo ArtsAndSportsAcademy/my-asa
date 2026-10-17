@@ -89,6 +89,7 @@ import { canReadLibraryScope, isLibraryFullReader, type LibraryRole } from "../s
 import { resolvePrimaryRole } from "../lib/authorization.service.js";
 import { canViewDailyBook, canViewShowBook } from "../lib/show-responsibility.js";
 import { canManageTasks, listTaskManagementAreaIds, resolveTaskAreaId } from "../services/task-access.js";
+import { criarTarefa, etapasDoCorpoAntigo } from "../services/task-steps.js";
 import { hasScaleAuthority } from "../services/scale-access.js";
 import { canManageCheckInsForOperation } from "../services/checkin-access.js";
 import { listAreaLocalScopes } from "../services/area-local-scope.js";
@@ -217,7 +218,7 @@ async function assembleResumoDodia(
       .where(and(eq(tasksTable.assigneeId, userId), eq(tasksTable.organizationId, organizationId)))
       .limit(50);
     const pending = tasks.filter(t => ["CREATED", "IN_PROGRESS", "CHANGES_REQUESTED"].includes(t.status));
-    const overdue = pending.filter(t => t.dueDate < today);
+    const overdue = pending.filter(t => t.dueDate !== null && t.dueDate < today);
     if (overdue.length > 0) {
       items.push({ emoji: "⚠️", text: `${overdue.length} tarefa${overdue.length !== 1 ? "s" : ""} atrasada${overdue.length !== 1 ? "s" : ""}` });
     } else if (pending.length > 0) {
@@ -725,23 +726,13 @@ async function coreCriarTarefa(
   if (!ctx.operationId) throw new Error("Operação não configurada");
   if (!p.title || !p.assigneeId || !p.dueDate) throw new Error("title, assigneeId e dueDate são obrigatórios");
   const priority = (p.priority as "LOW" | "MEDIUM" | "HIGH" | "CRITICAL") ?? "MEDIUM";
-  const [task] = await db
-    .insert(tasksTable)
-    .values({
-      organizationId: ctx.organizationId,
-      operationId: ctx.operationId,
-      title: p.title,
-      description: p.description ?? undefined,
-      creatorId: ctx.userId,
-      assigneeId: p.assigneeId,
-      priority,
-      dueDate: p.dueDate,
-      status: "CREATED",
-      origin: "AI",
-      requiresApproval: true,
-    })
-    .returning();
-  return { id: task!.id };
+  // Toda tarefa nasce com etapas (fazer e aprovar), pelo mesmo caminho da tela, e quem recebe é avisada.
+  const organizationId = ctx.organizationId, operationId = ctx.operationId;
+  const { task } = await db.transaction((tx) => criarTarefa(tx, { id: ctx.userId, organizationId, role: ctx.userRole, gestor: true }, {
+    operationId, title: p.title!, description: p.description, priority, dueDate: p.dueDate, origin: "AI",
+    steps: etapasDoCorpoAntigo({ title: p.title!, assigneeId: p.assigneeId!, requiresApproval: true, creatorId: ctx.userId, dueDate: p.dueDate }),
+  }));
+  return { id: task.id };
 }
 
 async function coreRegistrarAusencia(
@@ -4302,7 +4293,7 @@ export async function executeTool(
         status:    t.status,
         prioridade: t.priority,
         responsavel: t.assigneeName ?? "—",
-        urgencia:  t.dueDate < today ? "ATRASADA" : t.dueDate === today ? "HOJE" : "AMANHA",
+        urgencia:  t.dueDate && t.dueDate < today ? "ATRASADA" : t.dueDate === today ? "HOJE" : "AMANHA",
       }));
 
       if (tarefas.length === 0) return JSON.stringify({ total: 0, message: "Nenhuma tarefa crítica nos próximos dias. ✅", tarefas: [] });
@@ -5271,7 +5262,12 @@ router.get("/asa/conversations/:conversationId/messages", requireAuth, requireOr
       newTitle: proposal.newTitle,
       previousTitle: proposal.previousTitle,
       recipientName: proposal.recipientName,
-      recipientNames: Array.isArray(proposal.recipientNames) ? proposal.recipientNames : undefined,
+      recipientNames: Array.isArray(proposal.recipientNames) ? proposal.recipientNames
+        : proposal.actionType === "FOLGA_LOTE" && Array.isArray(proposal.pessoas) ? proposal.pessoas.map((pessoa: { name?: string }) => pessoa.name ?? "") : undefined,
+      ...(proposal.actionType === "FOLGA_LOTE" ? {
+        title: proposal.tipo === null ? "Tirar a marcação" : `Marcar ${proposal.tipo === "DAY_OFF" ? "folga" : proposal.tipo === "RECESSO" ? "recesso" : proposal.tipo === "AFASTAMENTO" ? "afastamento" : "ausência"}`,
+        tipo: proposal.tipo, dias: Array.isArray(proposal.dates) ? proposal.dates : [], motivo: proposal.motivo ?? undefined,
+      } : {}),
       description: typeof proposal.description === "string" ? proposal.description : undefined,
       responsibilityTitle: typeof proposal.responsibilityTitle === "string" ? proposal.responsibilityTitle : undefined,
       content: proposal.content,
@@ -6637,7 +6633,7 @@ router.post("/asa/chat/:conversationId/messages", requireAuth, requireOrganizati
                 assigneeId: task.assigneeId, responsibilityId: task.responsibilityId, expectedStatus: task.status,
                 expiresAt: expiresAt.toISOString(),
               };
-              fullResponse = `Prévia de alteração do prazo\nOperação: ${operation?.name ?? "Operação"}\nTarefa: ${task.title}\nPrazo atual: ${task.dueDate.split("-").reverse().join("/")}\nNovo prazo: ${taskDueDateUpdate.dueDate.split("-").reverse().join("/")}\n\nNada foi alterado. Confirme pelo botão para atualizar somente o prazo.`;
+              fullResponse = `Prévia de alteração do prazo\nOperação: ${operation?.name ?? "Operação"}\nTarefa: ${task.title}\nPrazo atual: ${task.dueDate ? task.dueDate.split("-").reverse().join("/") : "sem prazo"}\nNovo prazo: ${taskDueDateUpdate.dueDate.split("-").reverse().join("/")}\n\nNada foi alterado. Confirme pelo botão para atualizar somente o prazo.`;
               action.previewResponse = fullResponse;
               toolsUsed.push("asa.task_due_date.preview");
               actionsExecuted.push(action);
@@ -9792,7 +9788,7 @@ router.get("/asa/mural", requireAuth, requireOrganization, async (req, res): Pro
   const overdueCounts = new Map<string, { name: string; count: number }>();
   for (const t of overdueRows) {
     if (!["CREATED", "IN_PROGRESS", "CHANGES_REQUESTED"].includes(t.status)) continue;
-    if (!(t.dueDate < todayStr)) continue;
+    if (!(t.dueDate && t.dueDate < todayStr)) continue;
     const entry = overdueCounts.get(t.assigneeId) ?? { name: t.name, count: 0 };
     entry.count += 1;
     overdueCounts.set(t.assigneeId, entry);
