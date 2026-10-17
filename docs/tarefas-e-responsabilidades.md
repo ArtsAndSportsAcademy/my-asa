@@ -21,6 +21,16 @@ Decidido e desenhado com a Babi em 16/10/2026. O desenho completo está em
   O corpo antigo de `POST /tasks` (uma pessoa, uma data, aprovação opcional) vira a etapa "Fazer" (+ "Aprovar").
 - Tarefa que nasce direto no banco, sem etapas, continua valendo pela pessoa da tarefa (Meu Dia e ASA olham as duas).
 
+### A ASA e as etapas
+
+A ASA ainda confirma suas propostas escrevendo na linha de `tasks` (status, pessoa, prazo, checklist). Logo depois de cada escrita,
+`sincronizarEtapasDaTarefa(tx, antes, depois, ator)` (em `services/task-steps.ts`) faz as etapas acompanharem o que mudou, na mesma
+transação: cancelar e concluir encerram as etapas; "pronta para aprovação" entrega a etapa de trabalho e abre a aprovação (e avisa quem
+aprova); trocar a pessoa move a etapa da vez e avisa a nova; mudar o prazo acompanha as etapas que usavam o prazo antigo. Tarefa criada pela
+ASA nasce com as etapas (`preencherEtapasDe`). O checklist obrigatório de tarefa antiga existe na tarefa (a ASA confere) e na primeira etapa
+de trabalho (a tela marca): marcar de um lado marca do outro, pelo id do item. A ASA grava o próprio Registro (`semRegistro`).
+Limite conhecido: a ASA só enxerga a "pessoa da vez" (`assignee_id`); em tarefa com várias etapas soltas ela age na etapa dessa pessoa.
+
 ### Quem faz o quê
 
 | Ação | Quem pode |

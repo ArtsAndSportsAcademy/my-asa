@@ -89,7 +89,7 @@ import { canReadLibraryScope, isLibraryFullReader, type LibraryRole } from "../s
 import { resolvePrimaryRole } from "../lib/authorization.service.js";
 import { canViewDailyBook, canViewShowBook } from "../lib/show-responsibility.js";
 import { canManageTasks, listTaskManagementAreaIds, resolveTaskAreaId } from "../services/task-access.js";
-import { criarTarefa, etapasDoCorpoAntigo } from "../services/task-steps.js";
+import { criarTarefa, etapasDoCorpoAntigo, preencherEtapasDe, sincronizarEtapasDaTarefa } from "../services/task-steps.js";
 import { hasScaleAuthority } from "../services/scale-access.js";
 import { canManageCheckInsForOperation } from "../services/checkin-access.js";
 import { listAreaLocalScopes } from "../services/area-local-scope.js";
@@ -877,14 +877,17 @@ async function coreCancelarTarefa(
   if (!ctx.organizationId) throw new Error("Organização não configurada");
   const novoStatus = acao.toUpperCase() === "CONCLUIR" ? "COMPLETED" : "CANCELLED";
   const [existing] = await db
-    .select({ id: tasksTable.id, status: tasksTable.status, title: tasksTable.title })
+    .select()
     .from(tasksTable)
     .where(and(eq(tasksTable.id, taskId), eq(tasksTable.organizationId, ctx.organizationId)))
     .limit(1);
   if (!existing) throw new Error("Tarefa não encontrada");
   if (existing.status === "CANCELLED" || existing.status === "COMPLETED")
     throw new Error(`Tarefa já está no status ${existing.status}`);
-  await db.update(tasksTable).set({ status: novoStatus as typeof existing.status, updatedAt: new Date() }).where(eq(tasksTable.id, taskId));
+  await db.transaction(async (tx) => {
+    const [depois] = await tx.update(tasksTable).set({ status: novoStatus as typeof existing.status, updatedAt: new Date() }).where(eq(tasksTable.id, taskId)).returning();
+    if (depois) await sincronizarEtapasDaTarefa(tx, existing, depois, { id: ctx.userId });
+  });
   return { id: taskId, novoStatus, title: existing.title };
 }
 
@@ -4554,6 +4557,7 @@ export async function executeTool(
         origin:         "MANUAL",
       }).returning();
 
+      await db.transaction((tx) => preencherEtapasDe(tx, task));
       return JSON.stringify({
         created: true,
         id: task.id,
@@ -4785,7 +4789,11 @@ export async function executeTool(
       if (Object.keys(updates).length === 0) return JSON.stringify({ success: false, message: "Nenhum campo para alterar foi informado." });
 
       updates.updatedAt = new Date();
-      await db.update(tasksTable).set(updates).where(eq(tasksTable.id, taskId));
+      await db.transaction(async (tx) => {
+        const [antes] = await tx.select().from(tasksTable).where(eq(tasksTable.id, taskId)).for("update").limit(1);
+        const [depois] = await tx.update(tasksTable).set(updates).where(eq(tasksTable.id, taskId)).returning();
+        if (antes && depois) await sincronizarEtapasDaTarefa(tx, antes, depois, { id: ctx.userId });
+      });
       return JSON.stringify({ success: true, id: taskId, antes: before, depois: after, message: `✅ Tarefa "${existing.title}" atualizada com sucesso.` });
     }
 
@@ -8066,6 +8074,7 @@ router.post("/asa/actions/:proposalId/confirm", requireAuth, requireOrganization
           updatedAt: new Date(),
         }).where(eq(tasksTable.id, task.id)).returning();
         if (!updated) throw new Error("Não foi possível atualizar o item da checklist");
+        await sincronizarEtapasDaTarefa(tx as any, task, updated, { id: user.sub });
         const [actor] = await tx.select({ fullName: usersTable.fullName }).from(usersTable)
           .where(eq(usersTable.id, user.sub)).for("share").limit(1);
         await writeHistoryEvent({
@@ -8225,6 +8234,7 @@ router.post("/asa/actions/:proposalId/confirm", requireAuth, requireOrganization
           status: "CANCELLED", cancelledAt, cancelledById: user.sub, updatedAt: cancelledAt,
         }).where(eq(tasksTable.id, task.id)).returning();
         if (!updated) throw new Error("Não foi possível cancelar a tarefa");
+        await sincronizarEtapasDaTarefa(tx as any, task, updated, { id: user.sub });
         await writeHistoryEvent({
           category: "TASK", action: "task.cancelled", title: `Tarefa cancelada: ${task.title}`,
           narrative: `${actor?.fullName ?? "Uma pessoa gestora"} cancelou a tarefa “${task.title}”. Motivo: ${reason}`,
@@ -8452,6 +8462,7 @@ router.post("/asa/actions/:proposalId/confirm", requireAuth, requireOrganization
         const [updated] = await tx.update(tasksTable).set({ status: "IN_PROGRESS", updatedAt: new Date() })
           .where(eq(tasksTable.id, task.id)).returning();
         if (!updated) throw new Error("Não foi possível iniciar a tarefa");
+        await sincronizarEtapasDaTarefa(tx as any, task, updated, { id: user.sub });
         await writeHistoryEvent({
           category: "TASK", action: "task.started", title: `Tarefa iniciada: ${task.title}`,
           narrative: `${actor?.fullName ?? "A pessoa responsável"} iniciou a execução da tarefa “${task.title}”.`,
@@ -8540,6 +8551,7 @@ router.post("/asa/actions/:proposalId/confirm", requireAuth, requireOrganization
         const [updated] = await tx.update(tasksTable).set({ status: "READY_FOR_APPROVAL", updatedAt: new Date() })
           .where(eq(tasksTable.id, task.id)).returning();
         if (!updated) throw new Error("Não foi possível enviar a tarefa para aprovação");
+        await sincronizarEtapasDaTarefa(tx as any, task, updated, { id: user.sub });
         await writeHistoryEvent({
           category: "TASK", action: "task.ready_for_approval", title: `Tarefa pronta para aprovação: ${task.title}`,
           narrative: `${actor?.fullName ?? "A pessoa responsável"} enviou a tarefa “${task.title}” para aprovação.`,
@@ -8629,6 +8641,7 @@ router.post("/asa/actions/:proposalId/confirm", requireAuth, requireOrganization
           status: "COMPLETED", completedAt: new Date(), updatedAt: new Date(),
         }).where(eq(tasksTable.id, task.id)).returning();
         if (!updated) throw new Error("Não foi possível concluir a tarefa");
+        await sincronizarEtapasDaTarefa(tx as any, task, updated, { id: user.sub });
         await writeHistoryEvent({
           category: "TASK", action: "task.completed", title: `Tarefa concluída: ${task.title}`,
           narrative: `${actor?.fullName ?? "A pessoa responsável"} concluiu a tarefa “${task.title}”.`,
@@ -8773,6 +8786,7 @@ router.post("/asa/actions/:proposalId/confirm", requireAuth, requireOrganization
             origin: "ASA",
           }).returning();
           if (!task) throw new Error("Não foi possível criar a tarefa");
+          await preencherEtapasDe(tx as any, task);
           await writeHistoryEvent({
             category: "TASK",
             action: "task.created",
@@ -8830,6 +8844,7 @@ router.post("/asa/actions/:proposalId/confirm", requireAuth, requireOrganization
         const [updated] = await tx.update(tasksTable).set({ dueDate, updatedAt: new Date() })
           .where(eq(tasksTable.id, task.id)).returning();
         if (!updated) throw new Error("Não foi possível atualizar o prazo da tarefa");
+        await sincronizarEtapasDaTarefa(tx as any, task, updated, { id: user.sub });
         await writeHistoryEvent({
           category: "TASK", action: "task.updated", title: `Prazo atualizado: ${task.title}`,
           narrative: `Prazo da tarefa “${task.title}” alterado de ${task.dueDate} para ${updated.dueDate}.`,
@@ -8892,6 +8907,7 @@ router.post("/asa/actions/:proposalId/confirm", requireAuth, requireOrganization
         const [updated] = await tx.update(tasksTable).set({ assigneeId: assignee.id, updatedAt: new Date() })
           .where(eq(tasksTable.id, task.id)).returning();
         if (!updated) throw new Error("Não foi possível atualizar o responsável da tarefa");
+        await sincronizarEtapasDaTarefa(tx as any, task, updated, { id: user.sub });
         await writeHistoryEvent({
           category: "TASK", action: "task.updated", title: `Responsável atualizado: ${task.title}`,
           narrative: `Responsável da tarefa “${task.title}” alterado de ${String(proposal.previousAssigneeName ?? "Responsável atual")} para ${assignee.name}.`,
@@ -9096,6 +9112,7 @@ router.post("/asa/actions/:proposalId/confirm", requireAuth, requireOrganization
         const [updated] = await tx.update(tasksTable).set({ mandatoryChecklist, mandatoryEvidences, updatedAt: new Date() })
           .where(eq(tasksTable.id, task.id)).returning();
         if (!updated) throw new Error("Não foi possível atualizar os requisitos da tarefa");
+        await sincronizarEtapasDaTarefa(tx as any, task, updated, { id: user.sub });
         await writeHistoryEvent({
           category: "TASK", action: "task.updated", title: `Requisitos atualizados: ${task.title}`,
           narrative: `Checklist e evidências obrigatórias da tarefa “${task.title}” foram atualizadas.`,

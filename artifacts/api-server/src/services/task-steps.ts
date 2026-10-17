@@ -6,7 +6,7 @@
  * este serviço os mantém em dia (assignee_id é a pessoa que está com a vez).
  */
 import { randomUUID } from "node:crypto";
-import { and, asc, eq, inArray, notInArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, notInArray, sql } from "drizzle-orm";
 import { db, operationsTable, responsibilitiesTable, taskCommentsTable, taskStepsTable, tasksTable, usersTable, type Task, type TaskStep } from "@workspace/db";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { enqueueNotification, databaseNow, type Transaction } from "./undo.js";
@@ -24,7 +24,7 @@ export class TarefaError extends Error {
 }
 
 /** Quem age. `gestor` já vem resolvido pela rota (Administração, Direção, ou Supervisão da área da tarefa). */
-export type Ator = { id: string; organizationId: string; role: string; gestor: boolean };
+export type Ator = { id: string; organizationId: string; role: string; gestor: boolean; /** Quem chama já grava o próprio Registro (a ASA): o serviço não grava um segundo evento. */ semRegistro?: boolean };
 export type NovaEtapa = { kind?: StepKind; title: string; description?: string; assigneeId: string; dueDate?: string | null; checklist?: (string | { id?: string; label: string; completed?: boolean })[] };
 export type NovaTarefa = {
   operationId: string; title: string; description?: string; ordering?: Ordering; periodStart?: string | null; dueDate?: string | null;
@@ -59,12 +59,12 @@ async function carregar(tx: Transaction, organizationId: string, taskId: string)
   if (!task) throw new TarefaError(404, "Tarefa não encontrada");
   let steps = await tx.select().from(taskStepsTable).where(and(eq(taskStepsTable.taskId, taskId), eq(taskStepsTable.active, true))).orderBy(asc(taskStepsTable.position)).for("update");
   // Tarefa que nasceu sem etapas (lote, ASA, gravada direto no banco) ganha as etapas que ela já tinha ao ser mexida.
-  if (!steps.length && !(ENCERRADAS as readonly string[]).includes(task.status)) steps = await preencherEtapas(tx, task);
+  if (!steps.length && !(ENCERRADAS as readonly string[]).includes(task.status)) steps = await preencherEtapasDe(tx, task);
   return { task, steps };
 }
 
 /** As etapas que uma tarefa sem etapas já tinha: a de trabalho (e a de aprovação, se pedia), no estado em que a tarefa está. */
-async function preencherEtapas(tx: Transaction, task: Task): Promise<TaskStep[]> {
+export async function preencherEtapasDe(tx: Transaction, task: Task): Promise<TaskStep[]> {
   const entregue = task.status === "READY_FOR_APPROVAL";
   const linhas: (typeof taskStepsTable.$inferInsert)[] = [{
     taskId: task.id, position: 1, kind: "WORK", title: "Fazer", assigneeId: task.assigneeId, dueDate: task.dueDate, status: entregue ? "DONE" : "ACTIVE",
@@ -142,6 +142,7 @@ async function aplicar(tx: Transaction, ator: Ator, task: Task, steps: TaskStep[
 }
 
 async function registrar(tx: Transaction, ator: Ator, nome: string, task: Task, action: string, titulo: string, narrativa: string, metadata: Record<string, unknown> = {}, antes?: unknown, depois?: unknown) {
+  if (ator.semRegistro) return;
   await writeHistoryEvent({
     category: "TASK", action, title: titulo, narrative: narrativa, entityType: "task", entityId: task.id,
     actorId: ator.id, actorName: nome, operationId: task.operationId, orgId: task.organizationId,
@@ -344,7 +345,15 @@ export async function atualizarEtapa(tx: Transaction, ator: Ator, taskId: string
   const now = await databaseNow(tx);
   await tx.update(taskStepsTable).set(campos).where(eq(taskStepsTable.id, stepId));
   const depois = (await tx.select().from(taskStepsTable).where(and(eq(taskStepsTable.taskId, taskId), eq(taskStepsTable.active, true))).orderBy(asc(taskStepsTable.position)));
-  const [atualizada] = await tx.update(tasksTable).set({ lastActivityAt: now, updatedAt: now }).where(eq(tasksTable.id, taskId)).returning();
+  // O checklist obrigatório de tarefa antiga existe na tarefa (a ASA confere) e na primeira etapa de trabalho (a tela marca):
+  // marcar de um lado marca do outro, pelo id do item.
+  const primeiraDeTrabalho = depois.find((step) => step.kind === "WORK");
+  let espelho: Task["mandatoryChecklist"] | undefined;
+  if (campos.checklist && primeiraDeTrabalho?.id === stepId && task.mandatoryChecklist?.length) {
+    const novo = task.mandatoryChecklist.map((item) => { const feito = campos.checklist!.find((outro) => outro.id === item.id); return feito ? { ...item, completed: feito.completed } : item; });
+    if (JSON.stringify(novo) !== JSON.stringify(task.mandatoryChecklist)) espelho = novo;
+  }
+  const [atualizada] = await tx.update(tasksTable).set({ lastActivityAt: now, updatedAt: now, ...(espelho ? { mandatoryChecklist: espelho } : {}) }).where(eq(tasksTable.id, taskId)).returning();
   const nome = await nomeDe(tx, ator.id);
   await registrar(tx, ator, nome, task, "task.step_updated", `Etapa atualizada: ${etapa.title}`, `${nome} atualizou a etapa "${etapa.title}" da tarefa "${task.title}".`, { stepId, campos: Object.keys(campos) });
   return { task: atualizada!, steps: depois };
@@ -393,6 +402,67 @@ export async function cancelarTarefa(tx: Transaction, ator: Ator, taskId: string
     }, now, { deduplicationKey: `task-cancelled:${task.id}:${userId}` });
   }
   return { task: cancelada!, steps: await tx.select().from(taskStepsTable).where(and(eq(taskStepsTable.taskId, taskId), eq(taskStepsTable.active, true))).orderBy(asc(taskStepsTable.position)) };
+}
+
+/**
+ * Para quem escreve direto na linha de tasks (a ASA): depois da escrita, as etapas acompanham o que mudou (antes → depois),
+ * na mesma transação. Cancelar e concluir encerram as etapas; "pronta para aprovação" entrega a etapa de trabalho e abre a
+ * aprovação (avisando quem aprova); trocar a pessoa move a etapa da vez e avisa a nova; mudar o prazo acompanha as etapas
+ * que usavam o prazo antigo; o checklist obrigatório vale nos dois lugares. Nunca lança por falta de etapa: sem etapa, não faz nada.
+ */
+export async function sincronizarEtapasDaTarefa(tx: Transaction, antes: Task, depois: Task, quem: { id: string }): Promise<void> {
+  const steps = await tx.select().from(taskStepsTable).where(and(eq(taskStepsTable.taskId, depois.id), eq(taskStepsTable.active, true))).orderBy(asc(taskStepsTable.position));
+  if (!steps.length) return; // sem etapas: elas nascem ao criar (preencherEtapasDe) ou ao mexer (carregar)
+  const now = await databaseNow(tx);
+  const ator: Ator = { id: quem.id, organizationId: depois.organizationId, role: "ADMIN", gestor: true, semRegistro: true };
+  const pendente = (step: TaskStep) => step.status === "ACTIVE" || step.status === "WAITING";
+  const mudouStatus = antes.status !== depois.status;
+  const mudar = async (ids: string[], patch: Partial<TaskStep>) => { if (ids.length) await tx.update(taskStepsTable).set(patch).where(inArray(taskStepsTable.id, ids)); };
+  let avisarVez: string[] = [];
+
+  if (mudouStatus && (depois.status === "CANCELLED" || depois.status === "EXPIRED")) {
+    await mudar(steps.filter(pendente).map((step) => step.id), { status: "DISPENSED", dispensedReason: "Tarefa cancelada" });
+  } else if (mudouStatus && (depois.status === "COMPLETED" || depois.status === "APPROVED")) {
+    await mudar(steps.filter((step) => step.status === "ACTIVE").map((step) => step.id), { status: "DONE", doneAt: now, doneById: quem.id });
+    await mudar(steps.filter((step) => step.status === "WAITING").map((step) => step.id), { status: "DISPENSED", dispensedReason: "Tarefa concluída direto" });
+  } else if (mudouStatus && depois.status === "READY_FOR_APPROVAL") {
+    const trabalho = steps.find((step) => step.status === "ACTIVE" && step.kind === "WORK");
+    if (trabalho) {
+      const transicao = aoConcluir(depois.ordering, lite(steps), trabalho.id);
+      for (const step of steps) {
+        const novo = transicao.statuses.get(step.id);
+        if (novo && novo !== step.status) await tx.update(taskStepsTable).set({ status: novo, ...(step.id === trabalho.id ? { doneAt: now, doneById: quem.id } : {}) }).where(eq(taskStepsTable.id, step.id));
+      }
+      avisarVez = transicao.novasAtivas;
+    }
+  } else if (mudouStatus && depois.status === "IN_PROGRESS") {
+    const ativa = steps.find((step) => step.status === "ACTIVE" && step.kind === "WORK" && !step.startedAt);
+    if (ativa) await tx.update(taskStepsTable).set({ startedAt: now }).where(eq(taskStepsTable.id, ativa.id));
+  }
+
+  if (antes.assigneeId !== depois.assigneeId) {
+    const alvo = steps.find((step) => step.status === "ACTIVE" && step.kind === "WORK") ?? steps.find((step) => step.status === "WAITING" && step.kind === "WORK");
+    if (alvo && alvo.assigneeId !== depois.assigneeId) {
+      await tx.update(taskStepsTable).set({ assigneeId: depois.assigneeId }).where(eq(taskStepsTable.id, alvo.id));
+      if (alvo.status === "ACTIVE") avisarVez.push(alvo.id);
+    }
+  }
+
+  if (antes.dueDate !== depois.dueDate) {
+    const usavaOPrazoAntigo = antes.dueDate === null ? isNull(taskStepsTable.dueDate) : eq(taskStepsTable.dueDate, antes.dueDate);
+    await tx.update(taskStepsTable).set({ dueDate: depois.dueDate }).where(and(eq(taskStepsTable.taskId, depois.id), eq(taskStepsTable.active, true), inArray(taskStepsTable.status, ["ACTIVE", "WAITING"]), usavaOPrazoAntigo));
+  }
+
+  if (JSON.stringify(antes.mandatoryChecklist ?? []) !== JSON.stringify(depois.mandatoryChecklist ?? [])) {
+    const primeira = steps.find((step) => step.kind === "WORK" && step.status !== "DISPENSED");
+    if (primeira) await tx.update(taskStepsTable).set({ checklist: depois.mandatoryChecklist ?? [] }).where(eq(taskStepsTable.id, primeira.id));
+  }
+
+  if (avisarVez.length) {
+    const atuais = await tx.select().from(taskStepsTable).where(and(eq(taskStepsTable.taskId, depois.id), eq(taskStepsTable.active, true))).orderBy(asc(taskStepsTable.position));
+    await avisar(tx, ator, depois, atuais, avisarVez, "vez", now);
+  }
+  await tx.update(tasksTable).set({ lastActivityAt: now }).where(eq(tasksTable.id, depois.id));
 }
 
 // ─── Ler ──────────────────────────────────────────────────────────────────────
