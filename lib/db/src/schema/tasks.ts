@@ -7,6 +7,7 @@ import {
   pgEnum,
   boolean,
   date,
+  integer,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -76,7 +77,14 @@ export const tasksTable = pgTable("tasks", {
   requiresApproval: boolean("requires_approval").notNull().default(true),
   priority: taskPriorityEnum("priority").notNull().default("MEDIUM"),
   status: taskStatusEnum("status").notNull().default("CREATED"),
-  dueDate: date("due_date", { mode: "string" }).notNull(),
+  /** Prazo da tarefa (ou o fim do período). Nulo = tarefa sem prazo. */
+  dueDate: date("due_date", { mode: "string" }),
+  /** Início do período, quando a tarefa vale um intervalo em vez de uma data. */
+  periodStart: date("period_start", { mode: "string" }),
+  /** SEQUENTIAL = fila (a próxima etapa só abre quando a anterior termina); FREE = solta. */
+  ordering: text("ordering").$type<"SEQUENTIAL" | "FREE">().notNull().default("SEQUENTIAL"),
+  /** Última vez que alguém mexeu na tarefa ou numa etapa: decide se ela está "parada". */
+  lastActivityAt: timestamp("last_activity_at", { withTimezone: true }).notNull().defaultNow(),
   /**
    * Array of { id: string; label: string; completed: boolean }
    * Defined by the creator. Required items must all be completed before
@@ -115,6 +123,36 @@ export const tasksTable = pgTable("tasks", {
     .defaultNow(),
 });
 
+// ─── Task Steps ───────────────────────────────────────────────────────────────
+
+export const taskStepsTable = pgTable("task_steps", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  taskId: uuid("task_id")
+    .notNull()
+    .references(() => tasksTable.id, { onDelete: "cascade" }),
+  position: integer("position").notNull(),
+  /** APPROVAL é a etapa de aprovação: ela só abre depois das de trabalho. */
+  kind: text("kind").$type<"WORK" | "APPROVAL">().notNull().default("WORK"),
+  title: text("title").notNull(),
+  description: text("description"),
+  assigneeId: uuid("assignee_id")
+    .notNull()
+    .references(() => usersTable.id),
+  dueDate: date("due_date", { mode: "string" }),
+  status: text("status").$type<"WAITING" | "ACTIVE" | "DONE" | "DISPENSED">().notNull().default("WAITING"),
+  checklist: jsonb("checklist")
+    .$type<{ id: string; label: string; completed: boolean }[]>()
+    .notNull()
+    .default([]),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  doneAt: timestamp("done_at", { withTimezone: true }),
+  doneById: uuid("done_by_id").references(() => usersTable.id),
+  dispensedReason: text("dispensed_reason"),
+  /** Remoção lógica: etapa concluída nunca some; só deixa de valer a que foi tirada antes de começar. */
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ─── Task Evidences ───────────────────────────────────────────────────────────
 
 export const taskEvidencesTable = pgTable("task_evidences", {
@@ -138,6 +176,8 @@ export const taskEvidencesTable = pgTable("task_evidences", {
    * mandatory evidence requirement id from tasks.mandatoryEvidences.
    */
   mandatoryEvidenceRefId: text("mandatory_evidence_ref_id"),
+  /** Etapa a que o link pertence (opcional). */
+  stepId: uuid("step_id").references(() => taskStepsTable.id),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
@@ -182,5 +222,7 @@ export const insertTaskCommentSchema = createInsertSchema(
 
 export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type Task = typeof tasksTable.$inferSelect;
+export type TaskStep = typeof taskStepsTable.$inferSelect;
+export type InsertTaskStep = typeof taskStepsTable.$inferInsert;
 export type TaskEvidence = typeof taskEvidencesTable.$inferSelect;
 export type TaskComment = typeof taskCommentsTable.$inferSelect;
