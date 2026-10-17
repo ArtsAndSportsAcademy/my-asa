@@ -389,12 +389,20 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
   }
   blocos.sort((a, b) => a.inicio.localeCompare(b.inicio) || (a.fim ?? "").localeCompare(b.fim ?? ""));
 
+  // "Pronta" só se pede de quem tem a ver com o local neste dia (decisão de 17/10/2026): área com gente
+  // escalada em algum bloco, com supervisão neste local, ou que já foi marcada. Área sem nada aqui não
+  // trava a publicação nem aparece como "falta".
+  const areaDe = new Map(people.map((p) => [p.id, p.areaId]));
+  const comGenteEscalada = new Set(blocos.flatMap((b) => b.pessoaIds.map((id) => areaDe.get(id))).filter((id): id is string => Boolean(id)));
+  const todasAsAreas: { id: string; name: string }[] = areas;
+  const areasDoLocal = todasAsAreas.filter((a) => comGenteEscalada.has(a.id) || supervisors.some((s) => s.areaId === a.id) || prontas.some((p) => p.areaId === a.id));
+
   return {
     date,
     location,
     escala: scale ? { id: scale.id, status: scale.status, version: scale.version, publishedAt: scale.publishedAt, alteradaDesde: scale.alteradaDesde } : null,
     programacao: programacao ? { id: programacao.id, nome: programacao.nome, vigenciaInicio: programacao.vigenciaInicio, vigenciaFim: programacao.vigenciaFim } : null,
-    areas: areas.map((a) => {
+    areas: areasDoLocal.map((a) => {
       const pronta = prontas.find((p) => p.areaId === a.id);
       return { id: a.id, name: a.name, supervisores: supervisors.filter((s) => s.areaId === a.id).map((s) => ({ id: s.id, name: s.name })), pronta: pronta ? { por: pronta.markedBy, em: pronta.markedAt } : null };
     }),
@@ -408,6 +416,26 @@ export async function montarEscalaDoDia(organizationId: string, locationId: stri
     }),
     blocos,
   };
+}
+
+/**
+ * Horários em que a Programação vigente põe este show no dia (blocos "do Livro"). O Livro do Dia usa isto
+ * para dizer quando o show acontece mesmo sem sessões no Livro do Show; as sessões continuam existindo
+ * porque a formação da 1ª e da 2ª sessão pode não ser a mesma.
+ */
+export async function horariosDoShowNaProgramacao(showBookId: string, date: string): Promise<{ inicio: string; fim: string | null; rotulo: string }[]> {
+  const [show] = await db.select({ locationId: showBooksTable.locationId }).from(showBooksTable).where(eq(showBooksTable.id, showBookId)).limit(1);
+  if (!show?.locationId) return [];
+  const [programacao] = await db.select().from(programacoesTable).where(and(
+    eq(programacoesTable.locationId, show.locationId), eq(programacoesTable.active, true),
+    lte(programacoesTable.vigenciaInicio, date), gte(programacoesTable.vigenciaFim, date),
+  )).orderBy(asc(sql`${programacoesTable.vigenciaFim} - ${programacoesTable.vigenciaInicio}`), desc(programacoesTable.createdAt)).limit(1);
+  if (!programacao) return [];
+  const blocos = await db.select().from(programacaoBlocosTable).where(and(
+    eq(programacaoBlocosTable.programacaoId, programacao.id), eq(programacaoBlocosTable.weekday, weekdayOf(date)), eq(programacaoBlocosTable.active, true),
+    eq(programacaoBlocosTable.regra, "livro"), eq(programacaoBlocosTable.showBookId, showBookId),
+  )).orderBy(asc(programacaoBlocosTable.inicio), asc(programacaoBlocosTable.order));
+  return blocos.map((b) => ({ inicio: hhmm(b.inicio)!, fim: hhmm(b.fim), rotulo: b.rotulo }));
 }
 
 /**

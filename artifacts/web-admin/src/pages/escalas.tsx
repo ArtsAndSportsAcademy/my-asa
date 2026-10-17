@@ -48,7 +48,7 @@ const STATUS: Record<string, { bg: string; fg: string }> = {
 const pillBase = "border:none;border-radius:999px;padding:6px 13px;font-size:12px;cursor:pointer;font-family:Manrope,sans-serif;font-weight:600;";
 const pillOn = pillBase + "background:#fff;color:#2b2545;font-weight:700;box-shadow:0 1px 3px rgba(40,20,90,.14);";
 const pillOff = pillBase + "background:none;color:#6b6482;";
-const MONO_TH = "text-align:left;background:#f5f3fb;border-bottom:1px solid #ddd6ee;border-right:1px solid #ddd6ee;padding:9px 11px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#6b6482;font-weight:700";
+const MONO_TH = "text-align:left;background:#f5f3fb;border-bottom:1px solid #ddd6ee;border-right:1px solid #ddd6ee;padding:9px 11px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#6b6482;font-weight:700";
 const blockStyle = (tone: Tone, extra = "") => "display:flex;align-items:baseline;gap:6px;border-radius:7px;padding:6px 9px;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;background:" + tone.bg + ";color:" + tone.fg + ";border:1px solid " + tone.bd + ";" + extra;
 const btn = (kind: "primary" | "ghost") => "border-radius:999px;padding:9px 17px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:Manrope,sans-serif;" + (kind === "primary" ? "border:none;background:linear-gradient(135deg,#6C2BF2,#2E3BD6);color:#fff;" : "border:1px solid #e6e1f2;background:#fff;color:#3d3559;");
 const chipBase = "border-radius:999px;padding:5px 11px;font-size:11.5px;cursor:pointer;font-family:Manrope,sans-serif;white-space:nowrap;";
@@ -274,6 +274,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
     } catch (err) {
       if (recusaPorRegra(err)) throw err; // o diálogo mostra a regra e pede o motivo
       setError(errMsg(err, "Não consegui ajustar esta célula."));
+      setRefresh((n) => n + 1); // se parte do lote chegou a gravar, a grade volta como ficou
     } finally { setSaving(false); setBusy(""); }
   };
   const ajustarCelula = async (bloco: Bloco, pessoaId: string, action: "ADICIONAR" | "REMOVER") => {
@@ -439,7 +440,7 @@ function Calendario({ date, onPick }: { date: string; onPick: (d: string) => voi
 
 /* ---------- aba Escala: grade pessoas × horários ---------- */
 function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onRemoveManual, onEditManual, onFolgaResolvida }: { dia: Dia; canEdit: boolean; editableAreaIds: string[] | null; onAdjust: (bloco: Bloco, mudancas: { userId: string; action: "ADICIONAR" | "REMOVER" }[], motivo?: string) => Promise<void>; onRemoveManual?: (allocationIds: string[]) => Promise<void>; onEditManual?: (bloco: Bloco) => void; onFolgaResolvida?: (userId: string) => Promise<void> }) {
-  const [view, setView] = useState<"pessoa" | "atividade">("pessoa");
+  const [view, setView] = useState<"pessoa" | "atividade">(() => typeof window !== "undefined" && window.matchMedia?.("(max-width: 640px)").matches ? "atividade" : "pessoa");
   const [team, setTeam] = useState("todos");
   const [zoom, setZoom] = useState(100);
   const [ajustando, setAjustando] = useState<Bloco | null>(null);
@@ -843,11 +844,12 @@ function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, b
         actions.push(<button key={areaId} type="button" className="esc-hit" disabled={saving} onClick={() => onPronta([areaId], !area.pronta)} style={css(btn(area.pronta ? "ghost" : "primary"))}>{busy === `pronta:${areaId}` ? "Salvando…" : area.pronta ? `Desmarcar ${area.name}` : `Marcar ${area.name} como pronta`}</button>);
       }
       if (isAdm && dia.escala) actions.push(<button key="pub" type="button" className="esc-hit" disabled={saving || faltam.length > 0} title={faltam.length ? `Faltam: ${faltam.map((a) => a.name).join(", ")}` : undefined} onClick={() => onPublicar(false)}
-        style={css(faltam.length ? "border-radius:999px;padding:9px 17px;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;border:none;background:#e6e1f2;color:#6b6482;cursor:default" : btn("primary"))}>{faltam.length ? `Publicar conjunto · faltam ${faltam.length}` : busy === "publicar" ? "Publicando…" : "Publicar Escala e Livros"}</button>);
+        style={css(faltam.length ? "border-radius:999px;padding:9px 17px;font-size:12.5px;font-weight:700;font-family:Manrope,sans-serif;border:none;background:#e6e1f2;color:#6b6482;cursor:default" : btn("primary"))}>{faltam.length ? `Publicar · faltam ${faltam.length} ${faltam.length === 1 ? "área pronta" : "áreas prontas"}` : busy === "publicar" ? "Publicando…" : "Publicar Escala e Livros"}</button>);
     }
     if (tab === "escala" && isAdm && dia.escala?.alteradaDesde) actions.push(<button key="repub" type="button" className="esc-hit" disabled={saving} onClick={() => onPublicar(true)} style={css(btn("primary"))}>{busy === "publicar" ? "Republicando…" : "Republicar conjunto"}</button>);
   }
   const areas = !isMem && tab === "escala" && dia ? dia.areas : [];
+  const principais = new Set(["generate", "gerar-faltam", "todas", "pub", "repub", "confirmar", ...areasMinhas]);
   return <footer className="esc-pad" style={css("display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 20px;border-top:1px solid #ebe6f6;background:#fff")}>
     {areas.length > 0 && <div style={css("display:flex;flex-wrap:wrap;gap:6px;width:100%")}>
       {areas.map((a) => {
@@ -861,7 +863,8 @@ function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, b
     </div>}
     <span style={css("font-size:12px;color:#6b6482")}>{note}</span>
     <span style={css("flex:1")}/>
-    {actions}
+    {/* Ações de apoio primeiro, à esquerda; a ação principal (gerar, marcar pronta, publicar) sempre por último, à direita. */}
+    <div style={css("display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-left:auto")}>{[...actions].sort((a, b) => Number(principais.has(String((a as { key?: string }).key))) - Number(principais.has(String((b as { key?: string }).key))))}</div>
   </footer>;
 }
 

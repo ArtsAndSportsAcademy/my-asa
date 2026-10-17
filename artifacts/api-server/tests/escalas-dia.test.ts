@@ -244,8 +244,10 @@ async function run() {
     const loteErrado = await post(asPat, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: treinoKey, mudancas: [
       { userId: pat1.id, action: "ADICIONAR" }, { userId: bai1.id, action: "ADICIONAR" },
     ] });
-    assert(loteErrado.status === 403 && (bloco(await dia(), "TREINO GELO")?.pessoaIds ?? []).includes(pat1.id), "no lote, pessoa de outra área é recusada — o que já passou antes dela vale");
-    await post(asPat, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: treinoKey, mudancas: [{ userId: supPat.id, action: "ADICIONAR" }] });
+    // 17/10: o lote é conferido inteiro antes de gravar; um "não" na segunda pessoa não deixa a primeira entrar.
+    const corpoDoErro = (await loteErrado.json()) as { nadaFoiGravado?: boolean };
+    assert(loteErrado.status === 403 && corpoDoErro.nadaFoiGravado === true &&!(bloco(await dia(), "TREINO GELO")?.pessoaIds ?? []).includes(pat1.id), "no lote, pessoa de outra área é recusada e ninguém do lote é gravado");
+    await post(asPat, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: treinoKey, mudancas: [{ userId: supPat.id, action: "ADICIONAR" }, { userId: pat1.id, action: "ADICIONAR" }] });
 
     // ---------- Chamar alguém na folga: exceção com motivo, e a folga fica para decidir ----------
     const semMotivo = await post(asPat, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: treinoKey, userId: pat2.id, action: "ADICIONAR" });

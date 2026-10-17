@@ -288,10 +288,22 @@ router.post("/escalas/dia/ajustes", requireAuth, requireOrganization, async (req
     res.status(400).json({ error: "locationId, date, sourceKey e userId+action (ou mudancas) são obrigatórios" }); return;
   }
   try {
-    // Várias pessoas: aplica uma a uma, parando no primeiro erro, e devolve a grade uma vez só.
-    for (const m of lote.length ? lote : [{ userId: userId as string, action: action as "ADICIONAR" | "REMOVER" }]) {
-      const r = await ajustarUmaPessoa(actor, { locationId, date, sourceKey, userId: m.userId, action: m.action, motivo: typeof motivo === "string" ? motivo.trim() : null });
-      if (!r.ok) { res.status(r.status).json(r.body); return; }
+    // Várias pessoas: primeiro confere TODAS sem gravar nada (folga sem motivo, regra de horário, área alheia…),
+    // e só então aplica. Assim um "não" na terceira pessoa não deixa as duas primeiras gravadas pela metade.
+    // Se mesmo assim algo falhar na hora de gravar, a resposta traz o erro e a grade como ficou.
+    const pedidos = lote.length ? lote : [{ userId: userId as string, action: action as "ADICIONAR" | "REMOVER" }];
+    const porque = typeof motivo === "string" ? motivo.trim() : null;
+    if (pedidos.length > 1) {
+      for (const m of pedidos) {
+        const r = await ajustarUmaPessoa(actor, { locationId, date, sourceKey, userId: m.userId, action: m.action, motivo: porque, soConferir: true });
+        if (!r.ok) { res.status(r.status).json({ ...r.body, nadaFoiGravado: true }); return; }
+      }
+    }
+    for (const m of pedidos) {
+      const r = await ajustarUmaPessoa(actor, { locationId, date, sourceKey, userId: m.userId, action: m.action, motivo: porque });
+      if (!r.ok) {
+        res.status(r.status).json({ ...r.body, dia: await montarEscalaDoDia(actor.organizationId, locationId, date) }); return;
+      }
     }
     res.json({ dia: await montarEscalaDoDia(actor.organizationId, locationId, date) });
   } catch (err) { console.error(err); res.status(500).json({ error: "Erro ao ajustar a Escala" }); }
@@ -301,7 +313,7 @@ type AjusteErro = { ok: false; status: number; body: Record<string, unknown> };
 /** Uma pessoa entra ou sai de um bloco neste dia; devolve o erro em vez de responder, para o lote reaproveitar. */
 async function ajustarUmaPessoa(
   actor: Actor,
-  { locationId, date, sourceKey, userId, action, motivo }: { locationId: string; date: string; sourceKey: string; userId: string; action: "ADICIONAR" | "REMOVER"; motivo?: string | null },
+  { locationId, date, sourceKey, userId, action, motivo, soConferir }: { locationId: string; date: string; sourceKey: string; userId: string; action: "ADICIONAR" | "REMOVER"; motivo?: string | null; soConferir?: boolean },
 ): Promise<{ ok: true } | AjusteErro> {
   const location = await locationInOrg(locationId, actor.organizationId);
   if (!location) return { ok: false, status: 404, body: { error: "Local não encontrado" } };
@@ -336,6 +348,7 @@ async function ajustarUmaPessoa(
         return { ok: false, status: 409, body: { error: codigoDaExcecao(regrasPassadas), message: `${pessoa.name} ${frasesDasRegras(regrasPassadas)}. Para escalar mesmo assim, escreva o motivo.`, pessoa: pessoa.name } };
       }
     }
+    if (soConferir) return { ok: true };
     // 09/10: bloco que vem de Livro do Dia muda o próprio Livro (vaga aberta / preenchida), para a
     // Escala e o Livro dizerem a mesma coisa. Sem vaga a mexer, o ajuste fica só na Escala.
     const viaLivro = bloco.dailyBookId ? await ajustarPessoaNoLivro({ dailyBookId: bloco.dailyBookId, userId, action, actorId: actor.sub }) : false;
@@ -436,7 +449,7 @@ router.post("/escalas/:id/confirmar", requireAuth, requireOrganization, async (r
   if (!scale || !scale.locationId || !(await locationInOrg(scale.locationId, actor.organizationId))) { res.status(404).json({ error: "Escala não encontrada" }); return; }
   if (!escalaPublicada(scale.status)) { res.status(409).json({ error: "ESCALA_NAO_PUBLICADA", message: "A Escala ainda não foi publicada." }); return; }
   const dia = await montarEscalaDoDia(actor.organizationId, scale.locationId, scale.periodStart);
-  if (!dia?.blocos.some((bloco) => bloco.pessoaIds.includes(actor.sub))) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!dia?.blocos.some((bloco) => bloco.pessoaIds.includes(actor.sub))) { res.status(403).json({ error: "Forbidden", message: "Você só confirma uma escala em que está escalada." }); return; }
   try {
     await db.transaction(async (tx) => {
       const [previous] = await tx.select().from(escalaConfirmacoesTable).where(and(eq(escalaConfirmacoesTable.scaleId, scale.id), eq(escalaConfirmacoesTable.userId, actor.sub))).limit(1);
@@ -592,7 +605,7 @@ function parseBloco(body: BlocoInput, partial: boolean): { ok: true; value: Reco
   if (body.rotulo !== undefined || !partial) { if (typeof body.rotulo !== "string" || !body.rotulo.trim()) return { ok: false, error: "rotulo é obrigatório" }; out.rotulo = body.rotulo.trim(); }
   if (body.regra !== undefined || !partial) { if (!REGRAS_BLOCO.includes(body.regra as RegraBloco)) return { ok: false, error: `regra: ${REGRAS_BLOCO.join(", ")}` }; out.regra = body.regra; }
   if (body.showBookId !== undefined) out.showBookId = typeof body.showBookId === "string" ? body.showBookId : null;
-  if (out.regra === "livro" && !out.showBookId && !partial) return { ok: false, error: "regra livro precisa de showBookId" };
+  if (out.regra === "livro" && !out.showBookId && !partial) return { ok: false, error: "Escolha de qual show é este bloco do Livro." };
   if (body.areaIds !== undefined) out.areaIds = uuidList(body.areaIds);
   if (body.grupoIds !== undefined) out.grupoIds = uuidList(body.grupoIds);
   if (body.pessoaIds !== undefined) out.pessoaIds = uuidList(body.pessoaIds);
@@ -609,7 +622,7 @@ router.get("/programacoes", requireAuth, requireOrganization, async (req, res) =
   const actor = req.user! as Actor;
   const locationId = typeof req.query.locationId === "string" ? req.query.locationId : "";
   if (!locationId || !(await locationInOrg(locationId, actor.organizationId))) { res.status(404).json({ error: "Local não encontrado" }); return; }
-  if (!(await canReadLocal(actor, locationId))) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!(await canReadLocal(actor, locationId))) { res.status(403).json({ error: "Forbidden", message: "Você não vê a Programação deste local." }); return; }
   // Molde arquivado continua na resposta (active: false) para poder ser reativado ou consultado.
   const programacoes = await db.select().from(programacoesTable).where(eq(programacoesTable.locationId, locationId)).orderBy(asc(programacoesTable.vigenciaInicio));
   // Blocos tirados do molde continuam na resposta (active: false) para a tela poder devolvê-los.
@@ -649,7 +662,7 @@ router.patch("/programacoes/:id", requireAuth, requireOrganization, async (req, 
   const actor = req.user! as Actor;
   const current = await programacaoInOrg(req.params.id as string, actor.organizationId);
   if (!current) { res.status(404).json({ error: "Programação não encontrada" }); return; }
-  if (!(await canManageLocal(actor, current.locationId))) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!(await canManageLocal(actor, current.locationId))) { res.status(403).json({ error: "Forbidden", message: "Você não altera a Programação deste local." }); return; }
   const { nome, vigenciaInicio, vigenciaFim, active } = req.body ?? {};
   const next = {
     nome: typeof nome === "string" && nome.trim() ? nome.trim() : current.nome,
@@ -670,7 +683,7 @@ router.post("/programacoes/:id/blocos", requireAuth, requireOrganization, async 
   const actor = req.user! as Actor;
   const programacao = await programacaoInOrg(req.params.id as string, actor.organizationId);
   if (!programacao) { res.status(404).json({ error: "Programação não encontrada" }); return; }
-  if (!(await canManageLocal(actor, programacao.locationId))) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!(await canManageLocal(actor, programacao.locationId))) { res.status(403).json({ error: "Forbidden", message: "Você não altera a Programação deste local." }); return; }
   // A mesma atividade costuma repetir em vários dias da semana (treino de segunda a sexta):
   // `weekdays` cria um bloco por dia de uma vez; `weekday` sozinho continua valendo.
   const dias = Array.isArray((req.body as { weekdays?: unknown })?.weekdays)
@@ -700,13 +713,13 @@ router.patch("/programacoes/:id/blocos/:blocoId", requireAuth, requireOrganizati
   const actor = req.user! as Actor;
   const programacao = await programacaoInOrg(req.params.id as string, actor.organizationId);
   if (!programacao) { res.status(404).json({ error: "Programação não encontrada" }); return; }
-  if (!(await canManageLocal(actor, programacao.locationId))) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!(await canManageLocal(actor, programacao.locationId))) { res.status(403).json({ error: "Forbidden", message: "Você não altera a Programação deste local." }); return; }
   const [current] = await db.select().from(programacaoBlocosTable).where(and(eq(programacaoBlocosTable.id, req.params.blocoId as string), eq(programacaoBlocosTable.programacaoId, programacao.id))).limit(1);
   if (!current) { res.status(404).json({ error: "Bloco não encontrado" }); return; }
   const parsed = parseBloco(req.body ?? {}, true);
   if (!parsed.ok) { res.status(400).json({ error: parsed.error }); return; }
   const merged = { ...current, ...parsed.value } as typeof current;
-  if (merged.regra === "livro" && !merged.showBookId) { res.status(400).json({ error: "regra livro precisa de showBookId" }); return; }
+  if (merged.regra === "livro" && !merged.showBookId) { res.status(400).json({ error: "Escolha de qual show é este bloco do Livro." }); return; }
   if (merged.fim && merged.fim.slice(0, 5) <= merged.inicio.slice(0, 5)) { res.status(400).json({ error: "fim precisa ser depois do início" }); return; }
   const updated = await db.transaction(async (tx) => {
     const [row] = await tx.update(programacaoBlocosTable).set({ ...parsed.value, updatedAt: new Date() }).where(eq(programacaoBlocosTable.id, current.id)).returning();
