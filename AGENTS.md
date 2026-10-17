@@ -100,7 +100,10 @@ imagina.
 
 ## Regras que não se quebram
 
-- **Migração em produção é ela quem roda.** O assistente aplica migrações **só no banco de teste**.
+- **Quem autoriza é quem constrói o app** (a pessoa que conversa com o assistente), não a Babi. O "pode enviar"
+  (push, deploy, produção) é dela; a Babi só é consultada para regra de negócio que essa pessoa não sabe, e o
+  assistente não pede confirmação à Babi nem a cita como quem libera.
+- **Migração em produção é de quem constrói o app**, não do assistente. O assistente aplica migrações **só no banco de teste**.
   Ao criar uma migração, escreva também o rollback em `lib/db/drizzle/rollback/` e registre no
   `meta/_journal.json`. Avise a ordem: migração primeiro, promoção depois.
 - **Nunca commite `.env*`** (estão no `.gitignore`) e **nunca escreva senha, token ou segredo** em
@@ -166,6 +169,8 @@ só isso; não conclua que quebrou antes de esperar.
 
 ## Estado em 15/10/2026 (depois da revisão das telas)
 
+**Atualização de 17/10/2026 (revisão de ponta a ponta com empresa fictícia):** pronta só de área com gente ou supervisão no local; Supervisão vê e cobra as tarefas da própria área (sem a responsabilidade "Aprovação de tarefas"); Livro do Dia lê os horários da Programação; ajuste em lote conferido antes de gravar; cadastro de local pergunta a operação quando há mais de uma ativa; Painel com quatro números distintos; banco de produção na porta 6543 (migrações seguem na 5432; as 75 migrações, da 0000 à 0074, estão aplicadas em produção; a 0074, do formato do palco no show, foi promovida depois, com a API e o site, e o mapa e as formações já aparecem para o elenco). Os commits foram enviados à `codex/myasa-novo` (nada na `main`). O que falta está em `docs/plano-etapas-pos-revisao-2026-10-17.md`, em oito etapas com prompt pronto (a 1, cadastro de operações, é a importante).
+
 Pronto e em produção: Escala do dia, Programação (com rascunho e rodapé), Livro do Dia, check-in por turno,
 Meu Dia, Folgas em lote e grupos de folga, Gerar o mês, **Mural aberto** (o Elenco publica, edita, remove e
 desfaz, reações, datas especiais) e **Mensagens com grupos** (privadas: a Administração não lê conversa),
@@ -191,9 +196,24 @@ Pendente:
   transferida, grupos só na alta temporada pelos supervisores, troca após publicação exige aceite do
   colega com motivo escrito) e os 4 pontos de detalhe também; tudo em
   `docs/plano-folga-como-troca-e-mes-em-rascunho.md`. Cobertura mínima por função só avisa e é configurável.
-- **A Babi** confere no telefone o Perfil e o PDF da Biblioteca, e roda em produção
-  `lib/db/scripts/limpar-texto-de-mensagens-no-registro.sql`. Só depois do "pode enviar" dela: GitHub e
-  promoção (API primeiro, site depois).
+- **Quem constrói o app** confere no telefone o Perfil e o PDF da Biblioteca, e roda em produção
+  `lib/db/scripts/limpar-texto-de-mensagens-no-registro.sql`. Só depois do "pode enviar" dessa pessoa: o envio do
+  código ao GitHub (push) e a promoção (API primeiro, site depois). **Issues e rótulos do GitHub não
+  esperam por isso** (decisão de 16/10/2026): podem ser criados e usados a qualquer momento.
 - **Acquamotion** não tem as vagas de personagem dos shows (a planilha ainda está "a definir"), por
   isso os Livros do Dia de lá nascem vazios. Não é defeito.
 - **Buona e Bella** têm as filas definidas e as vagas a criar.
+
+## Agent skills
+
+### Issue tracker
+
+Issues e specs ficam no GitHub Issues de `ArtsAndSportsAcademy/my-asa`, via CLI `gh`. Criar e usar issues e rótulos não depende do "pode enviar" de quem constrói o app; push de código e promoção continuam dependendo. Ver `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Vocabulário padrão: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. Ver `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Contexto único: um `GLOSSARY.md` e um `docs/adr/` na raiz. Ver `docs/agents/domain.md`.
