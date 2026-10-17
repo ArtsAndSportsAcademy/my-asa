@@ -19,11 +19,11 @@ lógica, layout e código. Tudo abaixo foi feito no banco de teste; produção n
 | R1·7 Recusas sem frase, id malformado | **Feito** | a1fb1d1, 21a3f36 |
 | Fontes e alvos de toque no celular | **Feito** (11 px; interruptor e busca com área de toque) | f274f1e |
 | Conexões com o banco | **Feito:** porta 6543 em produção; `DB_POOL_MAX` opcional; migrações seguem na 5432 | af20d92 |
-| R2·1 Supervisão troca pessoa de outra área no Livro | **Aberto** | — |
-| R2·2 Republicar o Livro não republica a Escala | **Aberto** | — |
-| R2·3 Formação aplicada tira posições sem avisar | **Aberto** | — |
+| R2·1 Supervisão troca pessoa de outra área no Livro | **Feito** (ainda sem commit): Supervisão só troca pessoa das áreas que supervisiona naquele local, para quem sai e para quem entra; o responsável pelo show e a Administração trocam qualquer uma. O "capitão delegado" saiu do Livro do Dia | — |
+| R2·2 Republicar o Livro não republica a Escala | **Feito** (ainda sem commit): a resposta de republicar diz se a Escala ficou para trás, e `republicarEscala: true` republica as duas (só Administração). A tela do Livro não tem botão de republicar (o Livro sai junto com a Escala em Escalas), então o pedido existe na API | — |
+| R2·3 Formação aplicada tira posições sem avisar | **Feito** (ainda sem commit): aviso ao lado do botão "Aplicar só hoje", sem janela de confirmação. **Mas veja "Mapa do palco" abaixo: hoje o painel não aparece em dado real** | — |
 | R2·4 Hora no cartão do Livro | Etapa 6 | — |
-| R2·5 Só hoje e amanhã no Livro do Dia | **Aberto** | — |
+| R2·5 Só hoje e amanhã no Livro do Dia | **Feito** (ainda sem commit): botão "Outro dia" abre um calendário | — |
 | R2·6 e R2·7 Lentidão de tela e de geração | Etapas 2 e 3 | — |
 | Rodada 2: cancelado some, corrida ao trocar de dia, detalhe do show errado | **Corrigido, ainda sem commit** (só `pages/livro-do-dia.tsx` e `routes/daily-book.ts`) | — |
 
@@ -244,3 +244,38 @@ Também percorri o ciclo inteiro do Musical e do Gelo Mágico.
 `tsc` limpo (API e site). Testes no banco de teste, depois das mudanças: `daily-book-reopen-and-diff`,
 `daily-book-formation-today`, `daily-book-vivo`, `daily-book-fill` e `daily-book-session-blocks` passaram.
 As três correções desta rodada seguem sem commit.
+
+
+## Decisões da rodada 2 aplicadas (17/10/2026, noite)
+
+- **Troca de pessoa no Livro (R2·1).** `PATCH /daily-book/:id/assignments/:id` passou a conferir a área, como a Escala:
+  Supervisão só troca pessoa das áreas que supervisiona naquele local (vale para quem sai e para quem entra, com frase que diz
+  de que área a pessoa é). Responsável pelo show e Administração trocam qualquer uma. `canOperateDailyBook` não olha mais
+  delegação: sem responsável, vale a Supervisão da operação; com responsável, só ele e a Administração (e a recusa diz isso).
+  Teste novo: `daily-book-troca-por-area` (10 verificações, incluindo "delegação de DAILY_BOOK não dá acesso").
+  **O aplicativo de celular antigo** (`artifacts/mobile/app/(stack)/daily-book.tsx`) ainda mostra os botões do "capitão";
+  quem tinha só a delegação passa a receber 403. O módulo de Delegações em si não foi mexido.
+- **Republicar junto (R2·2).** `POST /daily-book/:id/republish` devolve `escala` com `pendente`/`republicada`; com
+  `republicarEscala: true` (Administração) republica também a Escala, pelo mesmo caminho da tela Escalas (mesmos avisos).
+  Se a Escala falhar, o Livro fica republicado e a resposta diz isso. Conferido: depois de pedir as duas, a Sofia (entrou) passou
+  a ver o show na Minha escala e a Yasmin (saiu) deixou de vê-lo.
+- **Formação (R2·3).** "Sai da cena hoje: Diretor de Pista (Fulana). Dá para trazer de volta depois, em 'restaurar'", ao lado do
+  botão. A conta é a do servidor (casa pelo nome do slot). Conferido na tela de amostra.
+- **Outro dia (R2·5).** Terceiro botão ao lado de "Hoje" e "Amanhã"; abre um mês com células de 40 px e setas de 44 px, cabe
+  em 375 px e fecha com Esc. Conferido no navegador: escolher 21/10 mostrou os 4 shows daquele dia.
+
+## Achado novo: o mapa do palco não aparece em dado real
+
+Ao testar a formação descobri que o painel "Formações desta cena" (e o mapa de cena, e a aba Formações do Livro, e o mapa em
+Shows) só aparecem quando o show ou a cena têm `stageFormat` diferente de "NONE". **Nenhuma tabela tem essa coluna e a API
+não devolve o campo**: só os dados de amostra (`?amostra=1`) o trazem. Em dado real, todo show cai em "sem mapa", mesmo com
+quadros-chave e zonas gravados (criei os dois na empresa fictícia). Consequência: hoje não dá, na tela, nem escolher uma
+formação para aplicar, nem ver o mapa. Ficou como está porque consertar pede **coluna nova (migração)** e uma decisão de
+desenho: o formato do palco é do show ou de cada cena? Quem escolhe e onde (tela Shows)? Sem isso, o aviso do item R2·3 só
+é visível na amostra.
+
+## Verificação (rodada 2, decisões aplicadas)
+
+`tsc` limpo na API e no site; build do site e `verificar-nomes-build` (nenhum nome do elenco). Testes no banco de teste:
+`daily-book-fill`, `daily-book-vivo`, `daily-book-reopen-and-diff`, `daily-book-formation-today`, `permission-matrix`,
+`escalas-dia` e o novo `daily-book-troca-por-area` passaram.

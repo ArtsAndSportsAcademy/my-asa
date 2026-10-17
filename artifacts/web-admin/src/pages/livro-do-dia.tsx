@@ -557,6 +557,36 @@ export default function LivroDoDiaPage({ role, canManage, onHeader }: { role: Ro
   </section>;
 }
 
+/* ---------- calendário para escolher o dia do Livro ---------- */
+function CalendarioDoLivro({ date, onPick, onClose }: { date: string; onPick: (iso: string) => void; onClose: () => void }) {
+  const { y, m } = parts(date);
+  const [cursor, setCursor] = useState({ y, m });
+  const primeiro = new Date(cursor.y, cursor.m - 1, 1).getDay();
+  const dias = new Date(cursor.y, cursor.m, 0).getDate();
+  const iso = (d: number) => `${cursor.y}-${String(cursor.m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  const mover = (delta: number) => setCursor((c) => { const n = new Date(c.y, c.m - 1 + delta, 1); return { y: n.getFullYear(), m: n.getMonth() + 1 }; });
+  // Esc fecha (no telefone, com o teclado do aparelho, o toque fora nem sempre alcança).
+  useEffect(() => { const esc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); }; document.addEventListener("keydown", esc); return () => document.removeEventListener("keydown", esc); }, [onClose]);
+  const seta = "width:44px;height:44px;border-radius:10px;border:1px solid #e6e1f2;background:#fff;color:#6b6482;font-size:16px;cursor:pointer";
+  return <div role="dialog" aria-label="Escolher o dia do Livro" style={css("align-self:flex-start;width:min(100%,332px);background:#fff;border:1px solid #ddd6ee;border-radius:14px;padding:12px;box-shadow:0 22px 40px -20px rgba(40,20,90,.35);display:flex;flex-direction:column;gap:8px")}>
+    <div style={css("display:flex;align-items:center;justify-content:space-between;gap:8px")}>
+      <button type="button" aria-label="Mês anterior" onClick={() => mover(-1)} style={css(seta)}>‹</button>
+      <span style={css("font-family:Outfit,sans-serif;font-size:15px;font-weight:600")}>{MONTH[cursor.m - 1]![0]!.toUpperCase() + MONTH[cursor.m - 1]!.slice(1)} {cursor.y}</span>
+      <button type="button" aria-label="Próximo mês" onClick={() => mover(1)} style={css(seta)}>›</button>
+    </div>
+    <div style={css("display:grid;grid-template-columns:repeat(7,1fr);gap:3px")}>
+      {["D", "S", "T", "Q", "Q", "S", "S"].map((h, i) => <span key={i} style={css("text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:#6b6482")}>{h}</span>)}
+      {Array.from({ length: primeiro }, (_, i) => <span key={`v${i}`}/>)}
+      {Array.from({ length: dias }, (_, i) => {
+        const d = iso(i + 1), sel = d === date, hoje = d === todayISO();
+        return <button key={d} type="button" aria-label={longDate(d)} aria-pressed={sel} onClick={() => onPick(d)}
+          style={css(`height:40px;border-radius:9px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:${sel || hoje ? 700 : 500};border:1px solid ${sel ? "#6C2BF2" : hoje ? "#cbb8f7" : "transparent"};background:${sel ? "#6C2BF2" : "#fff"};color:${sel ? "#fff" : "#1b1630"}`)}>{i + 1}</button>;
+      })}
+    </div>
+    <span style={css("font-size:11.5px;color:#6b6482;line-height:1.4")}>Dia sem Livro aparece vazio: o Livro nasce quando a Escala do dia é gerada.</span>
+  </div>;
+}
+
 /* ---------- aba: os shows de hoje ---------- */
 function HojeTab(props: {
   role: Role; review: boolean; me: string; date: string; loading: boolean; opening: boolean; todayBooks: DailyBook[]; book: DailyBook | null; source: ShowSource | null;
@@ -570,6 +600,7 @@ function HojeTab(props: {
 }) {
   const { role, review, me, date, loading, opening, todayBooks, book, source, diffs, hasLiveChanges, charactersToday, characterNames, formations, canManage, saving } = props;
   const isMem = role === "mem", isDir = role === "dir", isAdm = role === "adm";
+  const [calAberto, setCalAberto] = useState(false);
   const subs = useMemo(() => new Map(diffs.filter((d) => d.hoje !== "fora do dia" && d.hoje !== "em aberto" && d.padrao !== "posição do padrão").map((d) => [d.where, d.padrao])), [diffs]);
   const whyByWhere = useMemo(() => new Map(diffs.map((d) => [d.where, d.why])), [diffs]);
 
@@ -592,8 +623,12 @@ function HojeTab(props: {
       <div style={css("display:flex;gap:6px;flex:none")}>
         {([[todayISO(), "Hoje"], [amanhaISO, "Amanhã"]] as const).map(([valor, rotulo]) => <button key={valor} type="button" className="ldd-hit" aria-pressed={date === valor} onClick={() => props.onDate(valor)}
           style={css(`padding:5px 12px;border-radius:999px;border:1px solid ${date === valor ? "#6C2BF2" : "#e2ddf0"};background:${date === valor ? "#f3ecff" : "#fff"};color:${date === valor ? "#6C2BF2" : "#5b5473"};font-family:Manrope,sans-serif;font-size:12px;font-weight:${date === valor ? 700 : 500};cursor:pointer`)}>{rotulo}</button>)}
+        {/* Outro dia: a mesma ideia do Calendário da Escala. Quem prepara o show de quarta não alcançava o Livro. */}
+        {(() => { const outro = date !== todayISO() && date !== amanhaISO; return <button type="button" className="ldd-hit" aria-expanded={calAberto} aria-pressed={outro} onClick={() => setCalAberto((v) => !v)}
+          style={css(`padding:5px 12px;border-radius:999px;border:1px solid ${outro || calAberto ? "#6C2BF2" : "#e2ddf0"};background:${outro ? "#f3ecff" : "#fff"};color:${outro || calAberto ? "#6C2BF2" : "#5b5473"};font-family:Manrope,sans-serif;font-size:12px;font-weight:${outro ? 700 : 500};cursor:pointer;white-space:nowrap`)}>{outro ? `${parts(date).d} ${MON3[parts(date).m - 1]}` : "Outro dia"}</button>; })()}
       </div>
     </div>
+    {calAberto && <CalendarioDoLivro date={date} onPick={(d) => { props.onDate(d); setCalAberto(false); }} onClose={() => setCalAberto(false)}/>}
     {!loading && todayBooks.length > 0 && <div style={css("display:flex;gap:9px;flex-wrap:wrap")}>
       {todayBooks.map((b) => {
         const on = b.id === book?.id;
@@ -996,10 +1031,21 @@ function ScenePanel(props: Parameters<typeof HojeTab>[0] & { scene: DScene; slot
             </button>;
           })}
         </div>
-        {props.canEdit && selected.formation && <div style={css("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
-          <button type="button" className="ldd-hit" disabled={saving} onClick={() => props.onApplyToday(selected.formation!)} style={css(PRIMARY)}>Aplicar só hoje</button>
-          <span style={css("font-size:11.5px;line-height:1.5;color:#5b5473")}>{`${selected.name} vale só para ${longDate(props.book?.eventDate ?? props.date).toLocaleLowerCase("pt-BR")}. Quem já está num slot da formação continua nele; slot sem correspondência fica vago. O Livro do Show não muda.`}</span>
-        </div>}
+        {props.canEdit && selected.formation && (() => {
+          // O que a formação tira da cena: a posição viva cujo nome ela não tem (a mesma conta do servidor, que casa pelo
+          // nome do slot). É aviso ao lado do botão, sem janela de confirmação: tirar é reversível ("restaurar").
+          const slotsDaFormacao = new Set(selected.formation!.positions.map((p, i) => String((p as { role?: string }).role || (p as { function?: string }).function || `Posição ${i + 1}`)));
+          const saem = live.filter((x) => !slotsDaFormacao.has(x.position.name));
+          return <div style={css("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
+            <button type="button" className="ldd-hit" disabled={saving} onClick={() => props.onApplyToday(selected.formation!)} style={css(PRIMARY)}>Aplicar só hoje</button>
+            <span style={css("flex:1 1 220px;min-width:0;display:flex;flex-direction:column;gap:4px")}>
+              <span style={css("font-size:11.5px;line-height:1.5;color:#5b5473")}>{`${selected.name} vale só para ${longDate(props.book?.eventDate ?? props.date).toLocaleLowerCase("pt-BR")}. Quem já está num slot da formação continua nele; slot sem correspondência fica vago. O Livro do Show não muda.`}</span>
+              {saem.length > 0 && <span style={css("font-size:11.5px;line-height:1.5;color:#8f5409;background:#fdf3e4;border-radius:8px;padding:6px 9px")}>
+                {`Sai da cena hoje: ${saem.map((x) => x.who ? `${x.label} (${x.who})` : x.label).join(", ")}. Dá para trazer de volta depois, em "restaurar".`}
+              </span>}
+            </span>
+          </div>;
+        })()}
       </>
      {props.canEdit && adjusted && <button type="button" className="ldd-hit" disabled={saving} onClick={() => props.onSaveFormation(scene, slots)} style={css(SAVE_FORM)}>Guardar esta formação no padrão</button>}
       {note && <span style={css(NOTE_OK)}>{note}</span>}

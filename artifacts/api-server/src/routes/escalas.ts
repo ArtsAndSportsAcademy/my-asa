@@ -508,7 +508,7 @@ router.post("/escalas/dia/pronta", requireAuth, requireOrganization, async (req,
 });
 
 /** Administração publica o dia — só com todas as áreas do local prontas. */
-async function publicarOuRepublicar(req: any, res: any, republicar: boolean) {
+export async function publicarOuRepublicar(req: any, res: any, republicar: boolean) {
   const actor = req.user! as Actor;
   if (actor.role !== "ADMIN") { res.status(403).json({ error: "Forbidden", message: "Quem publica o dia é a Administração" }); return; }
   const expectedVersion = Number(req.body?.expectedVersion);
@@ -587,6 +587,13 @@ async function publicarOuRepublicar(req: any, res: any, republicar: boolean) {
   }).catch((err) => { if ((err as { conflict?: boolean }).conflict) return null; throw err; });
   if (!updated) { res.status(409).json({ error: "CONCURRENT_MODIFICATION", message: "Alguém alterou esta escala depois que você a abriu." }); return; }
   res.json({ escala: updated.escala, livrosPublicados: updated.livros.map((book) => ({ id: book.id, status: book.status, version: book.version })), dia: await montarEscalaDoDia(actor.organizationId, scale.locationId, scale.periodStart) });
+}
+/** Republica a Escala a partir de outra rota (o Livro do Dia), com a mesma regra e o mesmo aviso da tela Escalas. */
+export async function republicarEscalaPorChamada(actor: Actor, scaleId: string, expectedVersion: number) {
+  const saida: { status: number; body: unknown } = { status: 200, body: null };
+  const res = { status(c: number) { saida.status = c; return res; }, json(b: unknown) { saida.body = b; return res; } };
+  await publicarOuRepublicar({ user: actor, body: { expectedVersion }, params: { id: scaleId } }, res, true);
+  return saida;
 }
 router.post("/escalas/:id/publicar", requireAuth, requireOrganization, (req, res) => void publicarOuRepublicar(req, res, false).catch((err) => { console.error(err); res.status(500).json({ error: "Erro ao publicar a escala" }); }));
 router.post("/escalas/:id/republicar", requireAuth, requireOrganization, (req, res) => void publicarOuRepublicar(req, res, true).catch((err) => { console.error(err); res.status(500).json({ error: "Erro ao republicar a escala" }); }));

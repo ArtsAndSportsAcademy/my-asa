@@ -22,6 +22,8 @@ import {
   usersTable,
   formationsTable,
   sessionsTable,
+  areaLocalSupervisorsTable,
+  areasTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization, requireRole } from "../middlewares/auth.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
@@ -72,6 +74,40 @@ async function loadShowRef(
   return sb ? { ref: { id: sb.id, responsibleId: sb.responsibleId }, operationId: sb.operationId } : null;
 }
 
+/**
+ * Regra de área da troca de pessoa no Livro do Dia: quem não é Administração nem responsável pelo show só mexe em
+ * pessoas das áreas que supervisiona NAQUELE local. Devolve a frase da recusa, ou null quando pode.
+ */
+async function recusaDeAreaNaTroca(
+  book: { showBookId: string | null; scaleId: string | null },
+  actor: { sub: string; role: string },
+  pessoas: (string | null)[],
+): Promise<string | null> {
+  if (actor.role === "ADMIN") return null;
+  let locationId: string | null = null;
+  if (book.showBookId) {
+    const [sb] = await db.select({ responsibleId: showBooksTable.responsibleId, locationId: showBooksTable.locationId }).from(showBooksTable).where(eq(showBooksTable.id, book.showBookId)).limit(1);
+    if (sb?.responsibleId === actor.sub) return null;
+    locationId = sb?.locationId ?? null;
+  }
+  if (!locationId && book.scaleId) {
+    const [sc] = await db.select({ locationId: scalesTable.locationId }).from(scalesTable).where(eq(scalesTable.id, book.scaleId)).limit(1);
+    locationId = sc?.locationId ?? null;
+  }
+  const ids = [...new Set(pessoas.filter((id): id is string => Boolean(id)))];
+  if (!ids.length) return null;
+  const minhas = locationId
+    ? new Set((await db.select({ areaId: areaLocalSupervisorsTable.areaId }).from(areaLocalSupervisorsTable).where(and(
+        eq(areaLocalSupervisorsTable.supervisorId, actor.sub), eq(areaLocalSupervisorsTable.locationId, locationId), eq(areaLocalSupervisorsTable.active, true),
+      ))).map((r) => r.areaId))
+    : new Set<string>();
+  const linhas = await db.select({ id: usersTable.id, name: usersTable.name, areaId: usersTable.areaId, areaName: areasTable.name }).from(usersTable)
+    .leftJoin(areasTable, eq(usersTable.areaId, areasTable.id)).where(inArray(usersTable.id, ids));
+  const fora = linhas.find((p) => !p.areaId || !minhas.has(p.areaId));
+  if (!fora) return null;
+  return `Supervisão troca só pessoas das áreas que supervisiona neste local. ${fora.name} é ${fora.areaName ? `de ${fora.areaName}` : "sem área"}: peça à Administração ou a quem é responsável pelo show.`;
+}
+
 // Estilo MyASA antigo: o operador não precisa digitar "Motivo" nas ações do dia.
 // Quando nenhum motivo é informado, o sistema grava um texto padrão na auditoria/delta.
 const DEFAULT_DAY_REASON = "Ajuste operacional do dia (sem motivo informado)";
@@ -95,6 +131,7 @@ async function resolveDailyBookReadContext(
   showTitle: string | null;
   /** Local do show: é ele que distingue dois Livros do mesmo dia, não a operação. */
   locationName: string | null;
+  locationId: string | null;
   eventStartTime: string | null;
   /** Hora ("11:30") do Livro de uma sessão separada; nulo no Livro do dia. */
   sessionLabel: string | null;
@@ -117,9 +154,10 @@ async function resolveDailyBookReadContext(
   let showTitle: string | null = null;
   let showResponsibleId: string | null = null;
   let locationName: string | null = null;
+  let locationId: string | null = null;
   if (book.showBookId) {
     const [sb] = await db
-      .select({ title: showBooksTable.title, responsibleId: showBooksTable.responsibleId, locationName: locationsTable.name })
+      .select({ title: showBooksTable.title, responsibleId: showBooksTable.responsibleId, locationName: locationsTable.name, locationId: showBooksTable.locationId })
       .from(showBooksTable)
       .leftJoin(locationsTable, eq(showBooksTable.locationId, locationsTable.id))
       .where(eq(showBooksTable.id, book.showBookId))
@@ -127,6 +165,7 @@ async function resolveDailyBookReadContext(
     showTitle = sb?.title ?? null;
     showResponsibleId = sb?.responsibleId ?? null;
     locationName = sb?.locationName ?? null;
+    locationId = sb?.locationId ?? null;
   }
 
   const show = book.showBookId ? { id: book.showBookId, responsibleId: showResponsibleId } : null;
@@ -146,6 +185,7 @@ async function resolveDailyBookReadContext(
     eventDate: ev.eventDate,
     showTitle,
     locationName,
+    locationId,
     eventStartTime: ev.eventStartTime ?? null,
     sessionLabel: book.sessionId && ev.eventStartTime ? ev.eventStartTime.slice(0, 5) : null,
   };
@@ -193,7 +233,7 @@ async function requireDailyBookOperate(
     operationId = ev?.operationId ?? null;
   }
   if (!operationId || !(await canOperateDailyBook(user, operationId, show))) {
-    res.status(403).json({ error: "Forbidden", message: "Acesso restrito ao responsável do show, capitão delegado ou admin" });
+    res.status(403).json({ error: "Forbidden", message: show?.responsibleId ? "Este show tem uma pessoa responsável: só ela e a Administração mexem no Livro do Dia." : "Acesso restrito à Supervisão da operação e à Administração" });
     return false;
   }
   return true;
@@ -1199,7 +1239,7 @@ router.post("/daily-book/:id/regenerate", requireAuth, requireOrganization, asyn
         : [undefined];
       const loaded = ev?.showBookId ? await loadShowRef(ev.showBookId) : null;
       if (!ev?.operationId || !(await canOperateDailyBook(user, ev.operationId, loaded?.ref ?? null))) {
-        res.status(403).json({ error: "Forbidden", message: "Apenas o responsável por este show, um capitão delegado ou um admin podem regenerar o Livro do Dia" });
+        res.status(403).json({ error: "Forbidden", message: "Apenas o responsável por este show, a Supervisão da operação ou a Administração podem regenerar o Livro do Dia" });
         return;
       }
     }
@@ -1356,7 +1396,7 @@ router.post("/daily-book/:id/publish", requireAuth, requireOrganization, async (
         operationId = sr?.operationId ?? null;
       }
       if (!operationId || !(await canOperateDailyBook(user, operationId, show))) {
-        res.status(403).json({ error: "Forbidden", message: "Acesso restrito ao responsável do show, capitão delegado ou admin" }); return;
+        res.status(403).json({ error: "Forbidden", message: "Acesso restrito ao responsável do show, à Supervisão da operação ou à Administração" }); return;
       }
     }
     if (!["DRAFT"].includes(book.status)) {
@@ -1483,7 +1523,7 @@ router.post("/daily-book/:id/republish", requireAuth, requireOrganization, async
         operationId = sr?.operationId ?? null;
       }
       if (!operationId || !(await canOperateDailyBook(user, operationId, show))) {
-        res.status(403).json({ error: "Forbidden", message: "Acesso restrito ao responsável do show, capitão delegado ou admin" }); return;
+        res.status(403).json({ error: "Forbidden", message: "Acesso restrito ao responsável do show, à Supervisão da operação ou à Administração" }); return;
       }
     }
     if (!["PUBLISHED", "REPUBLISHED"].includes(book.status)) {
@@ -1555,7 +1595,25 @@ router.post("/daily-book/:id/republish", requireAuth, requireOrganization, async
       entityId: id,
       actionUrl: `/(tabs)/daily-book`,
     });
-    res.json({ dailyBook: updated, delta });
+    // Republicar só o Livro deixa a Escala do dia para trás: quem entrou no show recebe "Livro atualizado" e a Minha escala
+    // dele continua sem o show, e quem saiu nem é avisado. Quando a Escala tem mudança pendente, a resposta diz isso, e a
+    // Administração pode pedir `republicarEscala: true` para republicar as duas de uma vez (é o mesmo que a tela Escalas faz).
+    let escala: { pendente: boolean; republicada: boolean; escalaId?: string; escalaVersion?: number; erro?: string } | null = null;
+    if (book.scaleId) {
+      const [sc] = await db.select({ id: scalesTable.id, status: scalesTable.status, version: scalesTable.version, alteradaDesde: scalesTable.alteradaDesde }).from(scalesTable).where(eq(scalesTable.id, book.scaleId)).limit(1);
+      if (sc && ["PUBLISHED", "REPUBLISHED"].includes(sc.status) && sc.alteradaDesde) {
+        if (req.body?.republicarEscala === true && user.role === "ADMIN") {
+          const { republicarEscalaPorChamada } = await import("./escalas.js");
+          const feito = await republicarEscalaPorChamada(user as never, sc.id, sc.version);
+          escala = feito.status === 200
+            ? { pendente: false, republicada: true }
+            : { pendente: true, republicada: false, escalaId: sc.id, escalaVersion: sc.version, erro: `O Livro foi republicado, mas a Escala não: ${(feito.body as { message?: string } | null)?.message ?? "tente republicar pela tela Escalas"}.` };
+        } else {
+          escala = { pendente: true, republicada: false, escalaId: sc.id, escalaVersion: sc.version };
+        }
+      }
+    }
+    res.json({ dailyBook: updated, delta, escala });
   } catch (err) {
     if (expectedVersion !== null && await respondDailyBookMutationError(err, req, res, id, expectedVersion)) return;
     console.error(err);
@@ -1876,6 +1934,7 @@ router.get("/daily-book/:id", requireAuth, requireOrganization, async (req, res)
         eventDate: ctx.eventDate,
         showTitle: ctx.showTitle,
         locationName: ctx.locationName,
+        locationId: ctx.locationId,
         eventStartTime: ctx.eventStartTime,
         sessionLabel: ctx.sessionLabel,
         scenes: tree,
@@ -2037,6 +2096,10 @@ router.patch("/daily-book/:id/assignments/:assignmentId", requireAuth, requireOr
       .where(and(eq(dailyBookAssignmentsTable.id, assignmentId), eq(dailyBookAssignmentsTable.dailyBookId, id), isNull(dailyBookAssignmentsTable.supersededAt)))
       .limit(1);
     if (!before) { res.status(404).json({ error: "Alocação não encontrada" }); return; }
+    // Supervisão troca só pessoas das áreas que supervisiona naquele local (a mesma regra da Escala). O responsável
+    // pelo show e a Administração trocam qualquer pessoa. Vale para quem sai e para quem entra.
+    const recusaDeArea = await recusaDeAreaNaTroca(book, req.user!, [before.userId, userId ?? null]);
+    if (recusaDeArea) { res.status(403).json({ error: "Forbidden", message: recusaDeArea }); return; }
     expectedVersion = requireExpectedVersion(req, res, "o Livro do Dia");
     if (expectedVersion === null) return;
     // Restrição de horário e limite de shows do dia são proibição; passar delas à mão pede motivo escrito.

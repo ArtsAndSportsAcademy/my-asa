@@ -111,10 +111,11 @@ export async function canManageShowBook(
 
 /**
  * Quem pode GERAR/PUBLICAR o Livro do Dia de um show. Admin sempre; se o show
- * tem responsável: o próprio responsável OU um capitão a quem ELE delegou
- * DAILY_BOOK (delegação ao nível da operação ou específica deste show). Sem
- * responsável definido, mantém-se o comportamento legado por operação (gestor da
- * operação OU capitão com delegação ativa nessa operação).
+ * tem responsável, só ele; sem responsável definido, qualquer gestor DA OPERAÇÃO
+ * (papel SUPERVISOR_A/B ativo, validado na BD). A figura do "capitão delegado" saiu
+ * do Livro do Dia em 17/10/2026 (decisão da Administração): ninguém mais a usa, e
+ * dar a chave do Livro a quem não é Supervisão passava por cima da regra de área.
+ * Trocar uma PESSOA no Livro tem uma regra a mais, de área (ver o PATCH das alocações).
  */
 export async function canOperateDailyBook(
   actor: ActorLite,
@@ -123,15 +124,8 @@ export async function canOperateDailyBook(
 ): Promise<boolean> {
   if (actor.role === "DIR") return false;
   if (actor.role === "ADMIN") return true;
-  if (show?.responsibleId) {
-    if (show.responsibleId === actor.sub) return true;
-    // Só vale delegação concedida pelo próprio responsável do show.
-    return hasActiveResponsibilityForShow(actor.sub, operationId, "DAILY_BOOK", show.id, show.responsibleId);
-  }
-  // Legado (sem responsável): gestor da operação (papel SUPERVISOR_A/B ativo
-  // nessa operação exata, validado na BD) OU capitão com delegação ativa.
-  if (await isSupervisorOfOperation(actor.sub, operationId)) return true;
-  return hasActiveResponsibilityForShow(actor.sub, operationId, "DAILY_BOOK", show?.id ?? null);
+  if (show?.responsibleId) return show.responsibleId === actor.sub;
+  return isSupervisorOfOperation(actor.sub, operationId);
 }
 
 /**
@@ -141,9 +135,8 @@ export async function canOperateDailyBook(
  * - Admin vê tudo;
  * - Membro (não-gestor) vê os shows da SUA operação (qualquer estado), tal como
  *   hoje no app — o escopo de responsabilidade restringe gestores, não membros;
- * - Supervisor vê apenas os shows que pode operar (o de que é responsável, um
- *   que lhe foi delegado, ou — no legado sem responsável — qualquer show da sua
- *   operação). NÃO vê o show de que outro supervisor é responsável.
+ * - Supervisor vê apenas os shows que pode operar (o de que é responsável ou — no
+ *   legado sem responsável — qualquer show da sua operação). NÃO vê o show de que outro supervisor é responsável.
  */
 export async function canViewShowBook(
   actor: ActorLite,
@@ -164,8 +157,6 @@ export async function canViewShowBook(
  *   um show que lhe foi delegado pelo responsável, ou (legado) qualquer show SEM
  *   responsável definido na sua operação. NÃO vê os shows de outro supervisor.
  * - Membro vê apenas livros PUBLICADOS/REPUBLICADOS da SUA operação (só leitura);
- * - Capitão (MEMBER) delegado vê o livro do show que lhe foi delegado, mesmo em
- *   rascunho (via canOperateDailyBook).
  */
 export async function canViewDailyBook(
   actor: ActorLite,
@@ -178,7 +169,6 @@ export async function canViewDailyBook(
   const published = status === "PUBLISHED" || status === "REPUBLISHED";
   // Membro (não-gestor): livros publicados da sua operação.
   if (!MANAGER_ROLES.has(actor.role) && inScope && published) return true;
-  // Supervisores ficam restritos aos shows que podem operar; capitães (MEMBER)
-  // veem o show delegado mesmo em rascunho. Tudo o resto é negado.
+  // Supervisores ficam restritos aos shows que podem operar. Tudo o resto é negado.
   return canOperateDailyBook(actor, operationId, show);
 }
