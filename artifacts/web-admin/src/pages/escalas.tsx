@@ -56,6 +56,7 @@ const chipOn = chipBase + "border:1px solid #cbb8f7;background:#f6f0ff;color:#6C
 const chipOff = chipBase + "border:1px dashed #ddd6ee;background:#fff;color:#9a93b0;font-weight:600;";
 import { REVIEW_PERSON } from "@/lib/amostra";
 import { useFecharComEsc } from "@/lib/fechar-com-esc";
+import { mensagemDoErro } from "@/lib/mensagem-do-erro";
 
 /* ---------- datas ---------- */
 const WEEKDAY_LONG = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
@@ -112,6 +113,7 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
   const [opMenu, setOpMenu] = useState(false);
   // null = fechado; { bloco: null } = nova atividade; { bloco } = corrigir a atividade daquele bloco.
   const [manual, setManual] = useState<{ bloco: Bloco | null } | null>(null);
+  const [regrasAbertas, setRegrasAbertas] = useState(false);
   const [gerarMesAberto, setGerarMesAberto] = useState(false);
   const [dia, setDia] = useState<Dia | null>(null);
   const [minha, setMinha] = useState<Minha | null>(null);
@@ -263,7 +265,10 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
         await customFetch("/api/escalas/dia/ajustes", { method: "POST", body: JSON.stringify({ locationId: localId, date, sourceKey: bloco.key, mudancas, motivo }) });
       }
       setRefresh((n) => n + 1);
-    } catch (err) { setError(errMsg(err, "Não consegui ajustar esta célula.")); } finally { setSaving(false); setBusy(""); }
+    } catch (err) {
+      if (recusaPorRegra(err)) throw err; // o diálogo mostra a regra e pede o motivo
+      setError(errMsg(err, "Não consegui ajustar esta célula."));
+    } finally { setSaving(false); setBusy(""); }
   };
   const ajustarCelula = async (bloco: Bloco, pessoaId: string, action: "ADICIONAR" | "REMOVER") => {
     if (!dia || !localId) return;
@@ -391,8 +396,9 @@ export default function EscalasPage({ role, onHeader }: { role: Role; onHeader?:
     {manual && dia && <AtividadeDeHojeDialog pessoas={dia.pessoas} bloco={manual.bloco} saving={busy === "manual"} onClose={() => setManual(null)}
       onSubmit={async (v) => { const alvo = manual.bloco; if (alvo) await editarEntradaManual(alvo.allocationIds?.length ? alvo.allocationIds : [alvo.allocationId!], v); else await criarEntradaManual(v); }}/>}
 
+    {regrasAbertas && isAdm && localId && <RegrasDoLocalDialog localId={localId} localNome={locais.find((l) => l.id === localId)?.name ?? "este local"} onClose={() => setRegrasAbertas(false)}/>}
     {gerarMesAberto && isAdm && <GerarMesDialog locais={locais} localInicial={localId} review={review} onClose={() => setGerarMesAberto(false)} onGerou={() => setRefresh((n) => n + 1)}/>}
-    <Rodape role={role} tab={tab} onMinha={tab === "minha"} dia={dia} minha={minha} areasMinhas={areasMinhas} saving={saving} busy={busy} onGerar={gerarDia} onGerarMes={() => setGerarMesAberto(true)} onPronta={marcarPronta} onPublicar={publicar} onManual={() => setManual({ bloco: null })}/>
+    <Rodape role={role} tab={tab} onMinha={tab === "minha"} dia={dia} minha={minha} areasMinhas={areasMinhas} saving={saving} busy={busy} onGerar={gerarDia} onGerarMes={() => setGerarMesAberto(true)} onRegras={review ? undefined : () => setRegrasAbertas(true)} onPronta={marcarPronta} onPublicar={publicar} onManual={() => setManual({ bloco: null })}/>
   </section>;
 }
 
@@ -644,6 +650,54 @@ function EscalaGrid({ dia, canEdit, editableAreaIds, onAdjust, onRemoveManual, o
   </div>;
 }
 
+/** Restrição de horário e limite de shows do dia são proibição; passar delas à mão é exceção e pede motivo escrito. */
+const CODIGOS_DE_REGRA = ["PESSOA_COM_RESTRICAO_DE_HORARIO", "ACIMA_DO_LIMITE_DO_DIA"];
+const recusaPorRegra = (err: unknown): err is ApiError<{ error: string; message?: string }> => err instanceof ApiError && err.status === 409 && CODIGOS_DE_REGRA.includes(String((err.data as { error?: unknown } | null)?.error));
+
+/** Limite de shows por pessoa por dia e intervalo mínimo entre shows: o que o rodízio respeita neste local. */
+function RegrasDoLocalDialog({ localId, localNome, onClose }: { localId: string; localNome: string; onClose: () => void }) {
+  useFecharComEsc(onClose);
+  const [carregando, setCarregando] = useState(true);
+  const [limite, setLimite] = useState("");
+  const [intervalo, setIntervalo] = useState("20");
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+  useEffect(() => {
+    customFetch<{ limiteShowsDia: number | null; intervaloMinimoMinutos: number }>(`/api/escala-regras?locationId=${localId}`)
+      .then((r) => { setLimite(r.limiteShowsDia === null ? "" : String(r.limiteShowsDia)); setIntervalo(String(r.intervaloMinimoMinutos)); })
+      .catch((err) => setErro(mensagemDoErro(err, "Não consegui carregar as regras deste local. Feche e tente de novo.")))
+      .finally(() => setCarregando(false));
+  }, [localId]);
+  const salvar = async (e: FormEvent) => {
+    e.preventDefault();
+    setSalvando(true); setErro("");
+    try {
+      await customFetch("/api/escala-regras", { method: "PUT", body: JSON.stringify({ locationId: localId, limiteShowsDia: limite.trim() === "" ? null : Number(limite), intervaloMinimoMinutos: Number(intervalo) }) });
+      onClose();
+    } catch (err) { setErro(mensagemDoErro(err, "Não consegui salvar as regras. Nada mudou; tente de novo.")); } finally { setSalvando(false); }
+  };
+  return <div className="shows-dialog-backdrop" role="presentation"><form className="shows-dialog" role="dialog" aria-modal="true" aria-label={`Regras de escala de ${localNome}`} onSubmit={(e) => void salvar(e)}>
+    <header className="shows-dialog-header"><div><h2>Regras do local</h2><p>{localNome}</p></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18}/></button></header>
+    <div className="shows-dialog-content" style={css("display:flex;flex-direction:column;gap:14px")}>
+      {carregando ? <span style={css("font-size:12.5px;color:#6b6482")}>Carregando…</span> : <>
+        <label style={css("display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:700;color:#2b2545")}>Máximo de shows por pessoa no mesmo dia
+          <input type="number" inputMode="numeric" min={1} max={20} value={limite} onChange={(e) => setLimite(e.target.value)} placeholder="Sem limite" style={css("min-height:44px;border:1px solid #ddd6ee;border-radius:10px;padding:8px 10px;font:600 13px Manrope,sans-serif;color:#2b2545")}/>
+          <small style={css("font-weight:500;color:#6b6482;line-height:1.5")}>{limite.trim() === "" ? "Sem limite: o rodízio só prefere quem tem menos shows." : `O rodízio não escala ninguém num ${Number(limite) + 1}º show do dia. Em emergência, a Administração ou a Supervisão passa do limite à mão, com motivo.`}</small>
+        </label>
+        <label style={css("display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:700;color:#2b2545")}>Intervalo mínimo entre dois shows (minutos)
+          <input type="number" inputMode="numeric" min={0} max={240} value={intervalo} onChange={(e) => setIntervalo(e.target.value)} style={css("min-height:44px;border:1px solid #ddd6ee;border-radius:10px;padding:8px 10px;font:600 13px Manrope,sans-serif;color:#2b2545")}/>
+          <small style={css("font-weight:500;color:#6b6482;line-height:1.5")}>Dois shows mais perto que isso contam como colados: o rodízio evita a mesma pessoa nos dois, mas escala se não houver outra.</small>
+        </label>
+      </>}
+      {erro && <p role="alert" style={css("margin:0;padding:10px 12px;border-left:3px solid #c2334d;background:#fdeef1;color:#8d2438;border-radius:8px;font-size:13px;line-height:1.45")}>{erro}</p>}
+    </div>
+    <footer className="shows-dialog-footer">
+      <button type="button" onClick={onClose} className="shows-secondary">Cancelar</button>
+      <button type="submit" className="shows-primary" disabled={carregando || salvando}>{salvando ? "Salvando…" : "Salvar regras"}</button>
+    </footer>
+  </form></div>;
+}
+
 function AjusteCelulaDialog({ bloco, pessoas, editableAreaIds, onClose, onAdjust }: { bloco: Bloco; pessoas: Pessoa[]; editableAreaIds: string[] | null; onClose: () => void; onAdjust: (mudancas: { userId: string; action: "ADICIONAR" | "REMOVER" }[], motivo?: string) => Promise<void> }) {
   useFecharComEsc(onClose);
   const [busca, setBusca] = useState("");
@@ -652,7 +706,20 @@ function AjusteCelulaDialog({ bloco, pessoas, editableAreaIds, onClose, onAdjust
   const [mexidas, setMexidas] = useState<Record<string, boolean>>({});
   const entraAgora = (id: string) => mexidas[id] ?? bloco.pessoaIds.includes(id);
   const mudancas = Object.entries(mexidas).filter(([id, entra]) => entra !== bloco.pessoaIds.includes(id)).map(([userId, entra]) => ({ userId, action: entra ? "ADICIONAR" as const : "REMOVER" as const }));
-  const aplicar = async () => { setSaving(true); try { await onAdjust(mudancas); } finally { setSaving(false); } };
+  const [excecao, setExcecao] = useState<{ mensagem: string; mudancas: { userId: string; action: "ADICIONAR" | "REMOVER" }[]; motivo: string } | null>(null);
+  const aplicar = async () => {
+    setSaving(true);
+    try { await onAdjust(mudancas); } catch (err) {
+      if (recusaPorRegra(err)) setExcecao({ mensagem: err.data?.message ?? "Esta pessoa passa de uma regra da escala. Para escalar mesmo assim, escreva o motivo.", mudancas, motivo: "" }); else throw err;
+    } finally { setSaving(false); }
+  };
+  const escalarMesmoAssim = async () => {
+    if (!excecao || excecao.motivo.trim().length < 3) return;
+    setSaving(true);
+    try { await onAdjust(excecao.mudancas, excecao.motivo.trim()); } catch (err) {
+      if (recusaPorRegra(err)) setExcecao({ ...excecao, mensagem: err.data?.message ?? excecao.mensagem }); else throw err;
+    } finally { setSaving(false); }
+  };
   const confirmarChamada = async () => {
     if (!chamar || motivo.trim().length < 3) return;
     setSaving(true);
@@ -690,6 +757,17 @@ function AjusteCelulaDialog({ bloco, pessoas, editableAreaIds, onClose, onAdjust
           </div>)}
         </div>
       </details>}
+      {excecao && <div role="alert" style={css("display:flex;flex-direction:column;gap:7px;border:1px solid #f0d8b0;background:#fffaf0;border-radius:11px;padding:11px 13px")}>
+        <strong style={css("font-size:12.5px;color:#7a5a1c")}>Passar de uma regra da escala</strong>
+        <p style={css("margin:0;font-size:12px;line-height:1.5;color:#5b5473")}>{excecao.mensagem}</p>
+        <label style={css("display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:#6b6482")}>Por quê? (fica no Registro e avisa a Administração e a Supervisão)
+          <textarea rows={2} value={excecao.motivo} onChange={(e) => setExcecao({ ...excecao, motivo: e.target.value })} placeholder="Alguém ficou mal de última hora" style={css("border:1px solid #ddd6ee;border-radius:9px;padding:8px 10px;font:600 12.5px Manrope,sans-serif;color:#2b2545;resize:vertical")}/>
+        </label>
+        <div style={css("display:flex;gap:8px;justify-content:flex-end")}>
+          <button type="button" className="esc-hit" disabled={saving} onClick={() => setExcecao(null)} style={css(btn("ghost") + "padding:7px 12px")}>Cancelar</button>
+          <button type="button" className="esc-hit" disabled={saving || excecao.motivo.trim().length < 3} onClick={() => void escalarMesmoAssim()} style={css(btn("primary") + "padding:7px 12px")}>{saving ? "Salvando…" : "Escalar mesmo assim"}</button>
+        </div>
+      </div>}
       {chamar && <div style={css("display:flex;flex-direction:column;gap:7px;border:1px solid #f0d8b0;background:#fffaf0;border-radius:11px;padding:11px 13px")}>
         <strong style={css("font-size:12.5px;color:#7a5a1c")}>{`Chamar ${chamar.name} na folga`}</strong>
         <label style={css("display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:#6b6482")}>Por quê? (fica no Registro e vai no aviso para ela)
@@ -717,7 +795,7 @@ function lembrarLocal(list: { id: string }[]): string | undefined {
 }
 function guardarLocal(id: string) { try { localStorage.setItem(LOCAL_KEY, id); } catch { /* sem armazenamento */ } }
 
-function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, busy = "", onGerar, onGerarMes, onPronta, onPublicar, onManual }: { role: Role; tab: string; onMinha?: boolean; dia: Dia | null; minha: Minha | null; areasMinhas: string[]; saving: boolean; busy?: string; onManual?: () => void; onGerar: () => void; onGerarMes?: () => void; onPronta: (areaIds: string[], pronta: boolean) => void; onPublicar: (republicar: boolean) => void }) {
+function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, busy = "", onGerar, onGerarMes, onRegras, onPronta, onPublicar, onManual }: { role: Role; tab: string; onMinha?: boolean; dia: Dia | null; minha: Minha | null; areasMinhas: string[]; saving: boolean; busy?: string; onManual?: () => void; onGerar: () => void; onGerarMes?: () => void; onRegras?: () => void; onPronta: (areaIds: string[], pronta: boolean) => void; onPublicar: (republicar: boolean) => void }) {
   const isMem = role === "mem" || onMinha, isDir = role === "dir", isAdm = role === "adm";
   let note = "";
   const actions: ReactNode[] = [];
@@ -738,6 +816,7 @@ function Rodape({ role, tab, onMinha = false, dia, minha, areasMinhas, saving, b
     else if (published) note = `Publicada${dia.escala.publishedAt ? ` às ${hhmm(dia.escala.publishedAt)}` : ""} · ${dia.areas.length} ${dia.areas.length === 1 ? "área" : "áreas"} · a mesma escalação está no Livro do Dia`;
     else note = `Rascunho · ${prontas.length} de ${dia.areas.length} áreas prontas${faltam.length ? ` · falta ${faltam.map((a) => a.name).join(", ")}` : ""} · publica a Administração`;
     // O mês inteiro de uma vez, em rascunho: a Administração confere depois e publica dia a dia.
+    if (tab === "escala" && isAdm && onRegras) actions.push(<button key="regras" type="button" className="esc-hit" disabled={saving} onClick={onRegras} style={css(btn("ghost"))}>Regras do local</button>);
     if (tab === "escala" && isAdm && onGerarMes) actions.push(<button key="gerar-mes" type="button" className="esc-hit" disabled={saving} onClick={onGerarMes} style={css(btn("ghost"))}>Gerar o mês</button>);
     if (tab === "escala" && isAdm && !dia.escala) actions.push(<button key="generate" type="button" className="esc-hit" disabled={saving} onClick={onGerar} style={css(btn("primary"))}>{busy === "gerar" ? "Gerando Escala e Livros…" : "Gerar Escala e Livros"}</button>);
     // Show que entrou na Programação depois da geração fica sem Livro: dá para gerar o que falta.

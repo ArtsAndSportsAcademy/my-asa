@@ -20,7 +20,9 @@ type DPosition = { id: string; name: string; minimumCoverage: number; sourceRole
 type DBlock = { id: string; name: string; order: number; sceneId: string | null; sourceBlockId: string | null; isRemoved: boolean; positions: DPosition[] };
 type DScene = { id: string; name: string; order: number; sourceSceneId: string | null; isRemoved: boolean; blocks: DBlock[] };
 type SessionBlockView = { id: string; name: string; startTime: string; endTime: string; order: number; isRemoved: boolean; stale: boolean; staleReason: string | null };
-type DailyBook = { id: string; agendaEventId: string; scaleId: string | null; showBookId: string | null; status: DailyBookStatus; version: number; operationId?: string; operationName?: string; eventTitle?: string; eventDate?: string; eventStartTime?: string | null; locationName?: string | null; showTitle?: string | null; scenes?: DScene[]; sessionBlocks?: SessionBlockView[] };
+type DailyBook = { id: string; agendaEventId: string; scaleId: string | null; showBookId: string | null; status: DailyBookStatus; version: number; operationId?: string; operationName?: string; eventTitle?: string; eventDate?: string; eventStartTime?: string | null; locationName?: string | null; showTitle?: string | null; sessionLabel?: string | null; scenes?: DScene[]; sessionBlocks?: SessionBlockView[] };
+/** Livro de sessão separada leva a hora no nome ("Teatro de Natal · 11:30"); sem isso, duas linhas do mesmo show ficam iguais. */
+const tituloDoLivro = (b: { showTitle?: string | null; eventTitle?: string; sessionLabel?: string | null }) => `${b.showTitle ?? b.eventTitle ?? ""}${b.sessionLabel ? ` · ${b.sessionLabel}` : ""}`;
 type PatternDiffRow = { where: string; padrao: string; hoje: string; why: string };
 type Formation = { id: string; name: string; peopleCount: number; positions: Record<string, unknown>[]; showId: string | null; sceneId: string | null; sceneName?: string | null; active: boolean; timesUsed: number; lastUsedAt?: string | null; approximate?: boolean };
 type CharacterToday = { characterId: string; name: string; selectedName: string | null; why: string };
@@ -588,7 +590,7 @@ function HojeTab(props: {
             <span style={css(`font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:${on ? "#6C2BF2" : "#1b1630"}`)}>{time(b.sessionBlocks?.find((s) => !s.isRemoved)?.startTime)}</span>
             <span style={css(`font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:${EST[e].tone};background:${EST[e].tone}1f;padding:2px 7px;border-radius:999px`)}>{EST[e].label}</span>
           </div>
-          <span style={css("font-size:13px;font-weight:700;text-align:left")}>{b.showTitle ?? b.eventTitle}</span>
+          <span style={css("font-size:13px;font-weight:700;text-align:left")}>{tituloDoLivro(b)}</span>
           <span style={css("font-size:11.5px;color:#6b6482;text-align:left")}>{b.operationName}{n ? ` · ${plural(n, "convocado", "convocados")}` : ""}</span>
         </button>;
       })}
@@ -674,7 +676,7 @@ function HojeTab(props: {
       <div style={css("display:flex;align-items:flex-start;gap:14px;padding:15px 18px;flex-wrap:wrap")}>
         <div className="ldd-shrink" style={css("display:flex;flex-direction:column;gap:5px;flex:1;min-width:320px")}>
           <div style={css("display:flex;align-items:center;gap:9px;flex-wrap:wrap")}>
-            <span style={css("font-family:Outfit,sans-serif;font-size:20px;font-weight:600")}>{book.showTitle ?? book.eventTitle}</span>
+            <span style={css("font-family:Outfit,sans-serif;font-size:20px;font-weight:600")}>{tituloDoLivro(book)}</span>
             <span style={css(estadoChip(e))}>{EST[e].label}</span>
           </div>
           <span style={css("font-size:13px;color:#5b5473")}>{[longDate(book.eventDate ?? date).toLocaleLowerCase("pt-BR"), firstSession ? time(firstSession.startTime) : "", book.operationName].filter(Boolean).join(" · ")}</span>
@@ -1160,7 +1162,7 @@ function ListaTab({ isMem, books, me, review, filter, onFilter, onOpen }: { isMe
             <span style={css("font-family:'JetBrains Mono',monospace;font-size:11px;color:#6b6482")}>{time(b.sessionBlocks?.find((s) => !s.isRemoved)?.startTime) !== "—" ? time(b.sessionBlocks?.find((s) => !s.isRemoved)?.startTime) : time(b.eventStartTime)}</span>
           </div>
           <div style={css("display:flex;flex-direction:column;gap:3px;flex:1;min-width:0;text-align:left")}>
-            <span style={css("font-size:14px;font-weight:700")}>{b.showTitle ?? b.eventTitle}</span>
+            <span style={css("font-size:14px;font-weight:700")}>{tituloDoLivro(b)}</span>
             {/* O local separa os dois "Musical" do mesmo dia; a operação sozinha não dizia nada. */}
             <span style={css("font-size:12px;color:#5b5473")}>{[b.locationName ?? b.operationName, n ? plural(n, "convocado", "convocados") : ""].filter(Boolean).join(" · ")}</span>
           </div>

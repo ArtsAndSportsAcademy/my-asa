@@ -8,6 +8,7 @@ import AvisoSemConexao from "@/components/aviso-sem-conexao";
 const ShowsPage = lazy(() => import("@/pages/shows"));
 const MeuDiaPage = lazy(() => import("@/pages/meu-dia"));
 const PerfilPage = lazy(() => import("@/pages/perfil"));
+const RestricoesHorarioPage = lazy(() => import("@/pages/restricoes-horario"));
 import { useSignOut } from "@/hooks/use-sign-out";
 const RegistroPage = lazy(() => import("@/pages/registro"));
 const AniversariosFaixa = lazy(() => import("@/pages/aniversarios-faixa"));
@@ -53,6 +54,7 @@ const groups: { label: string; items: NavItem[] }[] = [
     { label: "Locais", href: "/locais", icon: MapPin, kind: "list", roles: ["adm", "dir", "sup"] },
     { label: "Pessoas e acessos", memberLabel: "Meu grupo", href: "/pessoas", icon: Users, kind: "list", roles: ["adm", "dir", "sup", "mem"] },
     { label: "Áreas", href: "/areas", icon: Users, kind: "list", roles: ["adm", "dir", "sup"] },
+    { label: "Restrições de horário", memberLabel: "Minhas restrições", tabLabel: "Restrições", href: "/restricoes-horario", icon: Clock3, kind: "list", roles: ["adm", "dir", "sup", "mem"] },
     { label: "Registro", href: "/registro", icon: Clock3, kind: "list", roles: ["adm", "dir"] },
   ] },
   { label: "Comunicação", items: [
@@ -232,6 +234,7 @@ export default function ShellFoundation() {
           : active.href === "/responsabilidades" ? <ResponsibilitiesTasksPage role={role}/>
           : active.href === "/agenda" ? <AgendaWorkspacePage role={role}/>
           : active.href === "/registro" ? <RegistroPage role={role}/>
+          : active.href === "/restricoes-horario" ? <RestricoesHorarioPage role={role}/>
           : <PageArchetype kind={active.kind} title={itemLabel(active, role)}/>}
       </Suspense>
     </main>

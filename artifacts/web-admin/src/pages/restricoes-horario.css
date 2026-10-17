@@ -1,0 +1,31 @@
+.restricoes-page{display:grid;gap:12px;align-content:start}
+.restricoes-intro{margin:0;max-width:70ch;color:var(--asa-muted);font-size:13px;line-height:1.5}
+.restricoes-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.restricoes-aviso{margin:0;padding:10px 12px;border-left:3px solid var(--asa-good);background:#e3f4f1;color:#0a5a54;border-radius:8px;font-size:13px}
+.restricoes-erro{margin:0;padding:10px 12px;border-left:3px solid var(--asa-bad);background:#fdeef1;color:#8d2438;border-radius:8px;font-size:13px;line-height:1.45}
+.restricoes-vazio{color:var(--asa-muted);line-height:1.5}
+.restricoes-lista{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.restricoes-lista>li{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.restricoes-corpo{display:grid;gap:2px;min-width:0;flex:1 1 220px}
+.restricoes-corpo strong{font-size:14px}
+.restricoes-corpo span{font-size:13px;color:var(--asa-ink)}
+.restricoes-corpo small{color:var(--asa-muted);font-size:12px}
+.restricoes-lista .shows-secondary{min-height:44px}
+.restricoes-form{display:grid;gap:14px}
+.restricoes-form fieldset{margin:0;padding:0;border:0;display:grid;gap:8px;min-width:0}
+.restricoes-form legend{padding:0;margin-bottom:6px;font:700 12px Manrope,sans-serif;color:var(--asa-ink)}
+.restricoes-form input[type=text],.restricoes-form input:not([type]),.restricoes-form input[type=time],.restricoes-form input[type=date],.restricoes-form textarea{width:100%;min-height:44px;border:1px solid var(--asa-border);border-radius:10px;padding:8px 10px;font:600 13px Manrope,sans-serif;color:var(--asa-ink);background:#fff}
+.restricoes-form small{color:var(--asa-muted);font-size:12px}
+.restricoes-pessoas{list-style:none;margin:0;padding:0;max-height:210px;overflow:auto;border:1px solid var(--asa-border);border-radius:10px}
+.restricoes-pessoas li{border-top:1px solid #f0ecf8}
+.restricoes-pessoas li:first-child{border-top:0}
+.restricoes-pessoas label{display:flex;align-items:center;gap:10px;min-height:48px;padding:6px 10px;cursor:pointer}
+.restricoes-pessoas input{width:20px;height:20px;flex:none}
+.restricoes-pessoas span{display:grid;font-size:13px;font-weight:600}
+.restricoes-nada{padding:12px;color:var(--asa-muted);font-size:12px}
+.restricoes-dias{display:flex;flex-wrap:wrap;gap:6px}
+.restricoes-dias button{min-width:48px;min-height:44px;border:1px solid var(--asa-border);border-radius:999px;background:#fff;color:var(--asa-muted);font:700 12px Manrope,sans-serif;cursor:pointer}
+.restricoes-dias button.on{background:#f3ecfe;border-color:var(--asa-purple);color:#5b23c9}
+.restricoes-linha{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.restricoes-linha label,.restricoes-motivo{display:grid;gap:4px;font-size:12px;font-weight:700;color:var(--asa-muted)}
+@media(max-width:720px){.restricoes-linha{grid-template-columns:1fr}.restricoes-page .shows-primary{min-height:48px}}
