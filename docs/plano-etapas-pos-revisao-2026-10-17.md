@@ -301,6 +301,8 @@ de teste, avisar a ordem. Não rode em produção. Não commite .env. Não envie
 
 ## Etapa 7 — Estilo, formato de erro e arremates
 
+**Feita, enviada e promovida em 18/10/2026 (sem migração; a conferência visual a 375 px e 1280 px nos quatro perfis fica para o teste final de quem constrói o app).** Três commits, um por parte. **Estilo** (`32d5a91`): cerca de 130 tokens `--asa-*` no `index.css`; 679 cores fixas trocadas em Meu Dia (35), Escala (369) e Livro do Dia (266); `operational-cycle.css` deixou de ser uma linha só. Ficaram como hex de propósito o branco puro das listras da Escala, o `#3c3559` do Livro (difere de `--asa-ink-medium` em um dígito; preservado para não mudar a aparência) e os valores de 8 dígitos da sombra do mapa de palco. **Formato de erro** (`694359c`): `{error: CODIGO, message: frase}` com `ACESSO_NEGADO`, `NAO_ENCONTRADO`, `CAMPOS_INVALIDOS`, `ERRO_INTERNO`, `ESTADO_INVALIDO` e `CONFLITO`, nas rotas da Escala e da Programação, do Livro do Dia, de Operações e de Áreas e Locais; o cliente já lia `message` primeiro. **Falha que parecia vazio** (`595fa12`): em `shows.tsx` e `operational-cycle.tsx` só o 403 esperado fica em silêncio; qualquer outra falha chega à frase "Não consegui carregar...". Passaram `escalas-dia` (91), `permission-matrix` (463) e `fase-d-seguranca` (53), tipos, build e `verificar-nomes-build.mjs`. **Não consta nos commits:** a revisão do campo `decided_by` do pedido de folga que entra como prioridade, pedida no fim da parte 3; segue em aberto até a sessão da etapa dizer a intenção.
+
 **Por quê:** Meu Dia, Escala e Livro do Dia são quase todo estilo inline com cores fixas; as rotas respondem
 erro em formatos diferentes; algumas telas transformam falha em lista vazia.
 
