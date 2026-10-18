@@ -266,6 +266,8 @@ sessão estiver em escalas.tsx, use worktree próprio. Não commite .env. Não e
 
 ## Etapa 6 — Hora do cartão do Livro do Dia pela Programação
 
+**Feita, enviada e promovida em 18/10/2026 (API e site, sem migração; a conferência no celular de verdade fica para o teste final de quem constrói o app).** A geração do Livro do Dia grava na Agenda a primeira hora que a Programação dá ao show naquele dia (no evento novo e no que estava sem hora; hora que já existe nunca é apagada). A lista devolve `horarios`: as horas da Programação, de modo que um show com 10:30 e 15:00 aparece como "10:30 · 15:00", igual à Escala; sem Programação, a hora da Agenda; sem ela, as sessões do Livro do Show. Cartão, linha da lista e cabeçalho usam a mesma regra, e show sem hora em lugar nenhum diz isso em frase, em vez de um traço mudo. Livro de sessão separada segue com a hora da própria sessão. Commit `7561f3d`.
+
 **Por quê:** o cartão do Livro mostra "—" quando o show não tem sessão no Livro do Show, porque a geração não
 grava na Agenda a hora dos blocos da Programação (e um mesmo Livro pode ter 10:30 e 15:00).
 
