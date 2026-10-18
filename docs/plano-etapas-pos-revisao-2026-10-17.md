@@ -192,6 +192,8 @@ Não rode em produção. Não commite .env. Não envie ao GitHub.
 
 ## Etapa 4 — Gravação atômica (lote da Escala e edição de pessoa)
 
+**Feita e enviada em 18/10/2026 (sem migração; ainda não promovida; a conferência em produção fica para o teste final de quem constrói o app).** O lote de `POST /escalas/dia/ajustes` é conferido inteiro e depois gravado numa transação só (o Livro do Dia, o ajuste, o Registro e os avisos dentro dela; os eventos do Livro só depois do commit). A edição de pessoa passou a ser `PUT /users/:id/cadastro`: nome, área e perfil numa transação, um evento no Registro, aviso à pessoa e "Desfazer" na tela. **Decisões da conversa:** só a Administração edita o cadastro; o e-mail **não** passa por essa rota, porque a casa usa e-mails pessoais e cada pessoa muda o seu no Perfil (a rota recusa e-mail com essa frase). Testes novos em `escalas-dia` e `fase-e-cadastro`; `permission-matrix` e `fase-d-seguranca` seguem verdes. Conferido no navegador com a empresa de teste (editar e desfazer) e a 375 px. Não há teste para uma falha no meio da gravação: a garantia vem de ser uma transação só. Commit `fb26edd`.
+
 **Por quê:** o ajuste em lote confere tudo antes de gravar, mas não é uma transação única; e a edição de pessoa
 vai em três chamadas (nome e e-mail, área, perfil). Hoje a tela só avisa o que já ficou salvo.
 
