@@ -108,6 +108,12 @@ Não commite .env, não escreva senha nem segredo. Não envie nada ao GitHub.
 
 ## Etapa 2 — Gerar o mês rápido
 
+**Feita em 18/10/2026 (local, sem migração; fechada por quem constrói o app depois do teste dela).** Gerar o mês foi de cerca de
+350 para cerca de 50 idas ao banco por dia, com o mesmo resultado; local sem operação é avisado uma vez, não falha dia a dia; a
+tela não espera para sempre por uma resposta que não vem (50 s por chamada, "Parar agora" aos 20 s, "Tentar de novo"). Os dias
+continuam nunca em paralelo, por causa do equilíbrio do rodízio. Commits `9ad6b11`, `801b9df`, `2739b84`, `00349da`, `bf14d94`.
+Como ficou e como medir: `docs/gerar-o-mes.md`. A Etapa 3 veio depois dela e não toca nenhum arquivo dela.
+
 **Por quê:** gerar o mês leva cerca de 20 s por dia por local no banco de teste; três locais levaram cerca de
 25 minutos. Em banco lento, silêncio vira clique repetido.
 
@@ -144,7 +150,7 @@ Não rode nada em produção. Não commite .env. Não envie ao GitHub.
 
 ## Etapa 3 — Laços com espera no banco (ciclo por minuto e check-in)
 
-**Feita em 18/10/2026 (local, nada enviado, sem migração).** Antes e depois no banco de teste (empresa de teste, 6 locais):
+**Feita, enviada e promovida em 18/10/2026 (sem migração; a conferência em produção fica para o teste final de quem constrói o app).** Antes e depois no banco de teste (empresa de teste, 6 locais):
 `reconcileDueCheckIns` 36 s e 167 consultas → 4–5 s e 27; `reconcileShiftCheckIns` 34 s e 160 → 3,7 s e 25; lembrete do dia
 2,8–3,7 s e 13 → 1,3–3,1 s e 7. O ganho maior veio de um laço que abria uma transação por minuto para cada turno de ontem já
 fechado; agora uma leitura só separa os fechados. Paralelo limitado a 3 (`lib/em-paralelo.ts`); dentro do local, blocos e pessoas
