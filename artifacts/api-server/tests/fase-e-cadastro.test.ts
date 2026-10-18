@@ -7,7 +7,7 @@ import http from "node:http";
 import { and, eq, inArray, or } from "drizzle-orm";
 import {
   areaLocalSupervisorsTable, areasTable, db, historyEventsTable, locationsTable, operationLocationsTable,
-  operationsTable, organizationsTable, pool, refreshTokensTable, securityAuditLogTable, userRolesTable, usersTable,
+  notificationOutboxTable, operationsTable, organizationsTable, pool, refreshTokensTable, securityAuditLogTable, userRolesTable, usersTable,
 } from "@workspace/db";
 import app from "../src/application.js";
 import { signAccessToken } from "../src/lib/jwt.service.js";
@@ -32,6 +32,7 @@ async function run() {
   await db.insert(userRolesTable).values({ userId: deb!.id, operationId: op!.id, role: "SUPERVISOR_A", active: true });
   const criados: string[] = [];
   const locaisCriados: string[] = [];
+  const areasExtras: string[] = [];
 
   let server: http.Server | null = null;
   try {
@@ -95,6 +96,38 @@ async function run() {
     assert(Boolean(registroTroca) && registroTroca!.narrative.includes("assumiu a supervisão"), "a troca entra no Registro com o motivo");
     assert((await call("PUT", `/users/${semPerfil.body.user.id}/perfil`, asBarbara, { perfil: "DIR" })).status === 200, "dar perfil a quem não tinha não exige motivo");
 
+    // ── Editar a pessoa de uma vez (18/10): tudo ou nada, um evento no Registro, um aviso ──
+    const [areaB] = await db.insert(areasTable).values({ organizationId: org!.id, name: `${tag}_Bailarinos` }).returning();
+    areasExtras.push(areaB!.id);
+    const idJulia = julia.body.user.id as string;
+    const linha = async () => (await db.select().from(usersTable).where(eq(usersTable.id, idJulia)))[0]!;
+    const eventosCadastro = async () => (await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, idJulia), eq(historyEventsTable.action, "user.cadastro_changed")))).length;
+    const negada = await call("PUT", `/users/${idJulia}/cadastro`, asDeb, { fullName: "Outro Nome", perfil: "MEM" });
+    assert(negada.status === 403 && String(negada.body.message).includes("Administração") && (await linha()).fullName === julia.body.user.fullName, "Supervisão não edita o cadastro e recebe uma frase que diz a quem pedir");
+    const antesDaEdicao = await linha();
+    const perfilInvalido = await call("PUT", `/users/${idJulia}/cadastro`, asBarbara, { fullName: `Nome Novo ${tag}`, areaId: areaB!.id, perfil: "CHEFE", reason: "teste" });
+    const aposInvalido = await linha();
+    assert(perfilInvalido.status === 400 && aposInvalido.fullName === antesDaEdicao.fullName && aposInvalido.areaId === antesDaEdicao.areaId, "perfil inválido não muda nome nem área");
+    const semMotivoDoPerfil = await call("PUT", `/users/${idJulia}/cadastro`, asBarbara, { fullName: `Nome Novo ${tag}`, areaId: areaB!.id, perfil: "MEM" });
+    const aposSemMotivo = await linha();
+    assert(semMotivoDoPerfil.status === 400 && aposSemMotivo.fullName === antesDaEdicao.fullName && aposSemMotivo.areaId === antesDaEdicao.areaId && await eventosCadastro() === 0, "trocar o perfil sem motivo não deixa nome nem área mudados");
+    const comEmail = await call("PUT", `/users/${idJulia}/cadastro`, asBarbara, { fullName: `Nome Novo ${tag}`, email: "outra@example.test" });
+    assert(comEmail.status === 400 && String(comEmail.body.message).includes("própria pessoa") && (await linha()).fullName === antesDaEdicao.fullName, "a Administração não muda e-mail: é da própria pessoa, e o nome não muda junto");
+    const eventosAntes = await eventosCadastro();
+    const edita = await call("PUT", `/users/${idJulia}/cadastro`, asBarbara, { fullName: `Nome Novo ${tag}`, areaId: areaB!.id, perfil: "MEM", reason: "voltou para o elenco, na outra área" });
+    const aposEdicao = await linha();
+    const perfisAtivos = (await db.select().from(userRolesTable).where(and(eq(userRolesTable.userId, idJulia), eq(userRolesTable.active, true)))).map((r) => r.role);
+    assert(edita.status === 200 && edita.body.mudou === true && aposEdicao.fullName === `Nome Novo ${tag}` && aposEdicao.areaId === areaB!.id && perfisAtivos.length === 2 && perfisAtivos.every((r) => r === "MEMBER"), "a edição grava nome, área e perfil juntos");
+    assert(edita.body.antes?.areaId === pat!.id && edita.body.antes?.perfil === "SUP", "a resposta traz como a pessoa estava, para a tela poder desfazer");
+    const registrosDaEdicao = await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, idJulia), eq(historyEventsTable.action, "user.cadastro_changed")));
+    assert(registrosDaEdicao.length === eventosAntes + 1 && registrosDaEdicao.some((e) => e.narrative.includes("voltou para o elenco")), "um evento só no Registro, com o motivo");
+    const avisos = (await db.select().from(notificationOutboxTable).where(eq(notificationOutboxTable.userId, idJulia))).filter((n) => (n.payload as { type?: string }).type === "user.cadastro_changed");
+    assert(avisos.length === 1, "a pessoa recebe um aviso só pela edição");
+    const igual = await call("PUT", `/users/${idJulia}/cadastro`, asBarbara, { fullName: `Nome Novo ${tag}`, areaId: areaB!.id, perfil: "MEM" });
+    assert(igual.status === 200 && igual.body.mudou === false && await eventosCadastro() === eventosAntes + 1, "salvar sem mudar nada não grava Registro nem avisa");
+    const desfaz = await call("PUT", `/users/${idJulia}/cadastro`, asBarbara, { fullName: edita.body.antes.fullName, areaId: edita.body.antes.areaId, perfil: edita.body.antes.perfil, reason: "Desfeito logo após salvar" });
+    assert(desfaz.status === 200 && (await linha()).areaId === pat!.id, "desfazer é a mesma rota com os valores de antes");
+
     // ── Local novo e supervisão por área e local ──
     // Com duas operações ativas o local precisa dizer de qual é (desde 17/10): ligar a todas travaria a Escala dele.
     assert((await call("POST", "/locations", asBarbara, { name: `${tag}_SemOperacao` })).status === 400, "com duas operações ativas, local sem operação escolhida é recusado");
@@ -114,13 +147,14 @@ async function run() {
     const todos = [barbara!.id, deb!.id, ...criados];
     await db.delete(historyEventsTable).where(or(eq(historyEventsTable.orgId, org!.id), inArray(historyEventsTable.actorId, todos)));
     await db.delete(securityAuditLogTable).where(inArray(securityAuditLogTable.actorId, todos));
+    await db.delete(notificationOutboxTable).where(inArray(notificationOutboxTable.userId, todos));
     await db.delete(refreshTokensTable).where(inArray(refreshTokensTable.userId, todos));
     await db.delete(areaLocalSupervisorsTable).where(eq(areaLocalSupervisorsTable.areaId, pat!.id));
     await db.delete(userRolesTable).where(inArray(userRolesTable.userId, todos));
     await db.delete(usersTable).where(inArray(usersTable.id, todos));
     await db.delete(operationLocationsTable).where(inArray(operationLocationsTable.operationId, [op!.id, op2!.id, pausada!.id]));
     if (locaisCriados.length) await db.delete(locationsTable).where(inArray(locationsTable.id, locaisCriados));
-    await db.delete(areasTable).where(eq(areasTable.id, pat!.id));
+    await db.delete(areasTable).where(inArray(areasTable.id, [pat!.id, ...areasExtras]));
     await db.delete(operationsTable).where(inArray(operationsTable.id, [op!.id, op2!.id, pausada!.id]));
     await db.delete(organizationsTable).where(eq(organizationsTable.id, org!.id));
   }

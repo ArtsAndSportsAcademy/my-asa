@@ -35,6 +35,7 @@ import { FRASE_LOCAL_SEM_OPERACAO, descartarMes, descartaveisDoMes, gerarDiaDoLo
 import { enqueueNotification } from "../services/undo.js";
 import { avisarExcecaoDeRegra, codigoDaExcecao, frasesDasRegras, verificarRegrasDeEscala } from "../services/regras-de-escala.js";
 import { APP_ROUTES } from "../lib/app-routes.js";
+import { VersionConflictError } from "../lib/versioning.js";
 
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const DIAS_DA_SEMANA = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
@@ -288,34 +289,52 @@ router.post("/escalas/dia/ajustes", requireAuth, requireOrganization, async (req
     || (!lote.length && (typeof userId !== "string" || !["ADICIONAR", "REMOVER"].includes(action)))) {
     res.status(400).json({ error: "locationId, date, sourceKey e userId+action (ou mudancas) são obrigatórios" }); return;
   }
+  const pedidos = lote.length ? lote : [{ userId: userId as string, action: action as "ADICIONAR" | "REMOVER" }];
+  const porque = typeof motivo === "string" ? motivo.trim() : null;
   try {
-    // Várias pessoas: primeiro confere TODAS sem gravar nada (folga sem motivo, regra de horário, área alheia…),
-    // e só então aplica. Assim um "não" na terceira pessoa não deixa as duas primeiras gravadas pela metade.
-    // Se mesmo assim algo falhar na hora de gravar, a resposta traz o erro e a grade como ficou.
-    const pedidos = lote.length ? lote : [{ userId: userId as string, action: action as "ADICIONAR" | "REMOVER" }];
-    const porque = typeof motivo === "string" ? motivo.trim() : null;
-    if (pedidos.length > 1) {
-      for (const m of pedidos) {
-        const r = await ajustarUmaPessoa(actor, { locationId, date, sourceKey, userId: m.userId, action: m.action, motivo: porque, soConferir: true });
-        if (!r.ok) { res.status(r.status).json({ ...r.body, nadaFoiGravado: true }); return; }
-      }
-    }
+    // Primeiro confere TODAS as pessoas sem gravar nada (folga sem motivo, regra de horário, área alheia…).
+    const conferidos: AjusteConferido[] = [];
     for (const m of pedidos) {
-      const r = await ajustarUmaPessoa(actor, { locationId, date, sourceKey, userId: m.userId, action: m.action, motivo: porque });
-      if (!r.ok) {
-        res.status(r.status).json({ ...r.body, dia: await montarEscalaDoDia(actor.organizationId, locationId, date) }); return;
-      }
+      const r = await conferirAjuste(actor, { locationId, date, sourceKey, userId: m.userId, action: m.action, motivo: porque });
+      if (!r.ok) { res.status(r.status).json({ ...r.body, ...(pedidos.length > 1 ? { nadaFoiGravado: true } : {}) }); return; }
+      conferidos.push(r);
     }
+    // Depois grava o lote inteiro numa transação só: se qualquer passo falhar, nada fica gravado.
+    // Os avisos do Livro do Dia só saem depois que a transação fecha.
+    const depoisDoCommit: (() => void)[] = [];
+    await db.transaction(async (tx) => {
+      const estado = { scale: await findEscalaDoDia(locationId, date) };
+      for (const c of conferidos) await gravarAjuste(actor, tx as unknown as typeof db, estado, c, depoisDoCommit);
+    });
+    for (const emitir of depoisDoCommit) { try { emitir(); } catch (err) { console.error(err); } }
     res.json({ dia: await montarEscalaDoDia(actor.organizationId, locationId, date) });
-  } catch (err) { console.error(err); res.status(500).json({ error: "Erro ao ajustar a Escala" }); }
+  } catch (err) {
+    console.error(err);
+    const conflito = err instanceof VersionConflictError;
+    res.status(conflito ? 409 : 500).json({
+      error: conflito ? "LIVRO_MUDOU" : "Erro ao ajustar a Escala",
+      message: conflito
+        ? "O Livro do Dia mudou enquanto você ajustava. Nada foi gravado; confira a grade e tente de novo."
+        : "Não foi possível gravar o ajuste. Nada foi gravado; confira a grade e tente de novo.",
+      nadaFoiGravado: true,
+      dia: await montarEscalaDoDia(actor.organizationId, locationId, date).catch(() => null),
+    });
+  }
 });
 
 type AjusteErro = { ok: false; status: number; body: Record<string, unknown> };
-/** Uma pessoa entra ou sai de um bloco neste dia; devolve o erro em vez de responder, para o lote reaproveitar. */
-async function ajustarUmaPessoa(
+type AjusteConferido = {
+  ok: true; locationId: string; date: string; sourceKey: string; userId: string; action: "ADICIONAR" | "REMOVER"; motivo?: string | null;
+  locationName: string; bloco: NonNullable<Awaited<ReturnType<typeof montarEscalaDoDia>>>["blocos"][number];
+  pessoa: { id: string; areaId: string | null; name: string }; deFolga: boolean; operationId: string;
+  regrasPassadas: Awaited<ReturnType<typeof verificarRegrasDeEscala>>;
+};
+
+/** Confere se uma pessoa pode entrar ou sair de um bloco neste dia, sem gravar nada; devolve o erro em vez de responder, para o lote reaproveitar. */
+async function conferirAjuste(
   actor: Actor,
-  { locationId, date, sourceKey, userId, action, motivo, soConferir }: { locationId: string; date: string; sourceKey: string; userId: string; action: "ADICIONAR" | "REMOVER"; motivo?: string | null; soConferir?: boolean },
-): Promise<{ ok: true } | AjusteErro> {
+  { locationId, date, sourceKey, userId, action, motivo }: { locationId: string; date: string; sourceKey: string; userId: string; action: "ADICIONAR" | "REMOVER"; motivo?: string | null },
+): Promise<AjusteConferido | AjusteErro> {
   const location = await locationInOrg(locationId, actor.organizationId);
   if (!location) return { ok: false, status: 404, body: { error: "Local não encontrado" } };
   if (!(await canManageLocal(actor, locationId))) return { ok: false, status: 403, body: { error: "Forbidden", message: "Você não ajusta a Escala deste local" } };
@@ -336,73 +355,80 @@ async function ajustarUmaPessoa(
   if (deFolga && action === "ADICIONAR" && !(motivo && motivo.trim().length >= 3)) {
     return { ok: false, status: 409, body: { error: "PESSOA_DE_FOLGA", message: `${pessoa.name} está de folga neste dia. Para chamar mesmo assim, escreva o motivo.`, pessoa: pessoa.name } };
   }
-  {
-    let scale = await findEscalaDoDia(locationId, date);
-    const operationId = scale?.operationId ?? await operationForLocation(locationId);
-    if (!operationId) return { ok: false, status: 409, body: { error: "LOCAL_SEM_OPERACAO", message: "Este local ainda não está ligado a uma operação." } };
-    // Restrição de horário e limite de shows do dia são proibição; passar delas é exceção à mão e pede motivo escrito.
-    let regrasPassadas: Awaited<ReturnType<typeof verificarRegrasDeEscala>> = [];
-    if (action === "ADICIONAR" && bloco.dailyBookId) {
-      const [livro] = await db.select({ agendaEventId: dailyBooksTable.agendaEventId }).from(dailyBooksTable).where(eq(dailyBooksTable.id, bloco.dailyBookId)).limit(1);
-      if (livro) regrasPassadas = await verificarRegrasDeEscala({ eventId: livro.agendaEventId, userId, date, operationId });
-      if (regrasPassadas.length && !(motivo && motivo.trim().length >= 3)) {
-        return { ok: false, status: 409, body: { error: codigoDaExcecao(regrasPassadas), message: `${pessoa.name} ${frasesDasRegras(regrasPassadas)}. Para escalar mesmo assim, escreva o motivo.`, pessoa: pessoa.name } };
-      }
+  const scale = await findEscalaDoDia(locationId, date);
+  const operationId = scale?.operationId ?? await operationForLocation(locationId);
+  if (!operationId) return { ok: false, status: 409, body: { error: "LOCAL_SEM_OPERACAO", message: "Este local ainda não está ligado a uma operação." } };
+  // Restrição de horário e limite de shows do dia são proibição; passar delas é exceção à mão e pede motivo escrito.
+  let regrasPassadas: Awaited<ReturnType<typeof verificarRegrasDeEscala>> = [];
+  if (action === "ADICIONAR" && bloco.dailyBookId) {
+    const [livro] = await db.select({ agendaEventId: dailyBooksTable.agendaEventId }).from(dailyBooksTable).where(eq(dailyBooksTable.id, bloco.dailyBookId)).limit(1);
+    if (livro) regrasPassadas = await verificarRegrasDeEscala({ eventId: livro.agendaEventId, userId, date, operationId });
+    if (regrasPassadas.length && !(motivo && motivo.trim().length >= 3)) {
+      return { ok: false, status: 409, body: { error: codigoDaExcecao(regrasPassadas), message: `${pessoa.name} ${frasesDasRegras(regrasPassadas)}. Para escalar mesmo assim, escreva o motivo.`, pessoa: pessoa.name } };
     }
-    if (soConferir) return { ok: true };
-    // 09/10: bloco que vem de Livro do Dia muda o próprio Livro (vaga aberta / preenchida), para a
-    // Escala e o Livro dizerem a mesma coisa. Sem vaga a mexer, o ajuste fica só na Escala.
-    const viaLivro = bloco.dailyBookId ? await ajustarPessoaNoLivro({ dailyBookId: bloco.dailyBookId, userId, action, actorId: actor.sub }) : false;
-    await db.transaction(async (tx) => {
-      if (!scale) {
-        const [created] = await tx.insert(scalesTable).values({
-          operationId, locationId, title: `Escala do dia · ${location.name} · ${date}`, periodStart: date, periodEnd: date,
-          status: "DRAFT", generatedAt: new Date(), generatedBy: actor.sub, createdBy: actor.sub,
-        }).returning();
-        scale = created!;
-        await writeHistoryEvent({ category: "SCALE", action: "escala.criada", title: "Escala do dia criada", narrative: `Escala de ${location.name} para ${date} criada.`, entityType: "scale", entityId: scale.id, actorId: actor.sub, operationId, orgId: actor.organizationId, afterState: { scale } }, tx as unknown as HistoryExecutor);
-      }
-      const [anterior] = await tx.select().from(escalaBlocoAjustesTable).where(and(
-        eq(escalaBlocoAjustesTable.scaleId, scale.id), eq(escalaBlocoAjustesTable.sourceKey, sourceKey), eq(escalaBlocoAjustesTable.userId, userId), eq(escalaBlocoAjustesTable.active, true),
-      )).limit(1);
-      if (!viaLivro && anterior?.action === action) return;
-      if (anterior) await tx.update(escalaBlocoAjustesTable).set({ active: false, endedBy: actor.sub, endedAt: new Date() }).where(eq(escalaBlocoAjustesTable.id, anterior.id));
-      const [ajuste] = viaLivro ? [null] : await tx.insert(escalaBlocoAjustesTable).values({
-        scaleId: scale.id, sourceKey, userId, action, createdBy: actor.sub,
-        motivo: motivo?.trim() || null, mesmoDeFolga: deFolga && action === "ADICIONAR",
-      }).returning();
-      const nextScale = escalaPublicada(scale.status)
-        ? (await tx.update(scalesTable).set({ alteradaDesde: scale.alteradaDesde ?? new Date(), updatedAt: new Date(), version: scale.version + 1 }).where(eq(scalesTable.id, scale.id)).returning())[0]!
-        : scale;
-      scale = nextScale;
-      await writeHistoryEvent({
-        category: "SCALE", action: action === "ADICIONAR" ? "escala.pessoa_adicionada" : "escala.pessoa_removida", title: action === "ADICIONAR" ? "Pessoa adicionada à Escala" : "Pessoa removida da Escala",
-        narrative: `${action === "ADICIONAR" ? "Adicionou" : "Removeu"} ${pessoa.name} no bloco ${bloco.rotulo} de ${date}.${deFolga && action === "ADICIONAR" ? ` Estava de folga; chamada mesmo assim: ${motivo?.trim()}` : ""}${regrasPassadas.length ? ` Passou da regra (${frasesDasRegras(regrasPassadas)}); motivo: ${motivo?.trim()}` : ""}`, entityType: "scale", entityId: scale.id, actorId: actor.sub, operationId, orgId: actor.organizationId,
-        beforeState: { sourceKey, pessoaId: userId, ajuste: anterior?.action ?? null }, afterState: { ajuste, noLivroDoDia: viaLivro ? bloco.dailyBookId : null },
-        ...(regrasPassadas.length ? { metadata: { regras: regrasPassadas.map((r) => r.regra), frases: regrasPassadas.map((r) => r.frase), motivo: motivo?.trim() ?? null } } : {}),
-      }, tx as unknown as HistoryExecutor);
-      if (regrasPassadas.length) {
-        await avisarExcecaoDeRegra(tx as never, {
-          operationId, actorId: actor.sub, pessoaId: userId, pessoa: pessoa.name, areaId: pessoa.areaId, onde: `${location.name} · ${bloco.rotulo} às ${bloco.inicio} de ${dataPorExtenso(date)}`,
-          regras: regrasPassadas, motivo: motivo?.trim() ?? "", entityType: "scale", entityId: scale.id, dedupe: `${scale.id}:${sourceKey}`,
-        });
-      }
-      // Quem é chamado na folga precisa saber na hora: o aviso sai junto com o ajuste.
-      if (deFolga && action === "ADICIONAR") {
-        await enqueueNotification(tx as never, {
-          userId, type: "escala.chamada_na_folga", category: "schedule",
-          priority: date === operationalDate() ? "CRITICAL" : "IMPORTANT",
-          title: `Você foi chamada na sua folga de ${dataPorExtenso(date)}`,
-          message: `${location.name} · ${bloco.rotulo} às ${bloco.inicio}. Motivo: ${motivo?.trim()}. Fale com a supervisão se não puder.`,
-          entityType: "scale", entityId: scale.id, actionUrl: APP_ROUTES.escalas,
-        }, new Date(), { deduplicationKey: `folga-chamada:${scale.id}:${sourceKey}:${userId}` });
-      }
-      if (escalaPublicada(scale.status)) {
-        await avisarRepublicacaoPendente(tx as unknown as Parameters<typeof avisarRepublicacaoPendente>[0], scale,
-          `${pessoa.name} ${action === "ADICIONAR" ? "entrou em" : "saiu de"} ${bloco.rotulo}`, { areaIds: [pessoa.areaId] });
-      }
+  }
+  return { ok: true, locationId, date, sourceKey, userId, action, motivo, locationName: location.name, bloco, pessoa, deFolga, operationId, regrasPassadas };
+}
+
+/**
+ * Grava um ajuste já conferido dentro da transação do lote. `estado.scale` é compartilhado entre as
+ * pessoas do lote: a Escala criada pela primeira vale para as seguintes. O Registro, os avisos e a
+ * mudança no Livro do Dia entram na mesma transação; só o evento do Livro espera o commit.
+ */
+async function gravarAjuste(
+  actor: Actor, tx: typeof db, estado: { scale: Awaited<ReturnType<typeof findEscalaDoDia>> }, c: AjusteConferido, depoisDoCommit: (() => void)[],
+): Promise<void> {
+  const { locationId, date, sourceKey, userId, action, motivo, locationName, bloco, pessoa, deFolga, operationId, regrasPassadas } = c;
+  // 09/10: bloco que vem de Livro do Dia muda o próprio Livro (vaga aberta / preenchida), para a
+  // Escala e o Livro dizerem a mesma coisa. Sem vaga a mexer, o ajuste fica só na Escala.
+  const viaLivro = bloco.dailyBookId ? await ajustarPessoaNoLivro({ dailyBookId: bloco.dailyBookId, userId, action, actorId: actor.sub }, { tx, depoisDoCommit }) : false;
+  if (!estado.scale) {
+    const [created] = await tx.insert(scalesTable).values({
+      operationId, locationId, title: `Escala do dia · ${locationName} · ${date}`, periodStart: date, periodEnd: date,
+      status: "DRAFT", generatedAt: new Date(), generatedBy: actor.sub, createdBy: actor.sub,
+    }).returning();
+    estado.scale = created!;
+    await writeHistoryEvent({ category: "SCALE", action: "escala.criada", title: "Escala do dia criada", narrative: `Escala de ${locationName} para ${date} criada.`, entityType: "scale", entityId: created!.id, actorId: actor.sub, operationId, orgId: actor.organizationId, afterState: { scale: created } }, tx as unknown as HistoryExecutor);
+  }
+  let scale = estado.scale!;
+  const [anterior] = await tx.select().from(escalaBlocoAjustesTable).where(and(
+    eq(escalaBlocoAjustesTable.scaleId, scale.id), eq(escalaBlocoAjustesTable.sourceKey, sourceKey), eq(escalaBlocoAjustesTable.userId, userId), eq(escalaBlocoAjustesTable.active, true),
+  )).limit(1);
+  if (!viaLivro && anterior?.action === action) return;
+  if (anterior) await tx.update(escalaBlocoAjustesTable).set({ active: false, endedBy: actor.sub, endedAt: new Date() }).where(eq(escalaBlocoAjustesTable.id, anterior.id));
+  const [ajuste] = viaLivro ? [null] : await tx.insert(escalaBlocoAjustesTable).values({
+    scaleId: scale.id, sourceKey, userId, action, createdBy: actor.sub,
+    motivo: motivo?.trim() || null, mesmoDeFolga: deFolga && action === "ADICIONAR",
+  }).returning();
+  if (escalaPublicada(scale.status)) {
+    scale = (await tx.update(scalesTable).set({ alteradaDesde: scale.alteradaDesde ?? new Date(), updatedAt: new Date(), version: scale.version + 1 }).where(eq(scalesTable.id, scale.id)).returning())[0]!;
+  }
+  estado.scale = scale;
+  await writeHistoryEvent({
+    category: "SCALE", action: action === "ADICIONAR" ? "escala.pessoa_adicionada" : "escala.pessoa_removida", title: action === "ADICIONAR" ? "Pessoa adicionada à Escala" : "Pessoa removida da Escala",
+    narrative: `${action === "ADICIONAR" ? "Adicionou" : "Removeu"} ${pessoa.name} no bloco ${bloco.rotulo} de ${date}.${deFolga && action === "ADICIONAR" ? ` Estava de folga; chamada mesmo assim: ${motivo?.trim()}` : ""}${regrasPassadas.length ? ` Passou da regra (${frasesDasRegras(regrasPassadas)}); motivo: ${motivo?.trim()}` : ""}`, entityType: "scale", entityId: scale.id, actorId: actor.sub, operationId, orgId: actor.organizationId,
+    beforeState: { sourceKey, pessoaId: userId, ajuste: anterior?.action ?? null }, afterState: { ajuste, noLivroDoDia: viaLivro ? bloco.dailyBookId : null },
+    ...(regrasPassadas.length ? { metadata: { regras: regrasPassadas.map((r) => r.regra), frases: regrasPassadas.map((r) => r.frase), motivo: motivo?.trim() ?? null } } : {}),
+  }, tx as unknown as HistoryExecutor);
+  if (regrasPassadas.length) {
+    await avisarExcecaoDeRegra(tx as never, {
+      operationId, actorId: actor.sub, pessoaId: userId, pessoa: pessoa.name, areaId: pessoa.areaId, onde: `${locationName} · ${bloco.rotulo} às ${bloco.inicio} de ${dataPorExtenso(date)}`,
+      regras: regrasPassadas, motivo: motivo?.trim() ?? "", entityType: "scale", entityId: scale.id, dedupe: `${scale.id}:${sourceKey}`,
     });
-    return { ok: true };
+  }
+  // Quem é chamado na folga precisa saber na hora: o aviso sai junto com o ajuste.
+  if (deFolga && action === "ADICIONAR") {
+    await enqueueNotification(tx as never, {
+      userId, type: "escala.chamada_na_folga", category: "schedule",
+      priority: date === operationalDate() ? "CRITICAL" : "IMPORTANT",
+      title: `Você foi chamada na sua folga de ${dataPorExtenso(date)}`,
+      message: `${locationName} · ${bloco.rotulo} às ${bloco.inicio}. Motivo: ${motivo?.trim()}. Fale com a supervisão se não puder.`,
+      entityType: "scale", entityId: scale.id, actionUrl: APP_ROUTES.escalas,
+    }, new Date(), { deduplicationKey: `folga-chamada:${scale.id}:${sourceKey}:${userId}` });
+  }
+  if (escalaPublicada(scale.status)) {
+    await avisarRepublicacaoPendente(tx as unknown as Parameters<typeof avisarRepublicacaoPendente>[0], scale,
+      `${pessoa.name} ${action === "ADICIONAR" ? "entrou em" : "saiu de"} ${bloco.rotulo}`, { areaIds: [pessoa.areaId] });
   }
 }
 

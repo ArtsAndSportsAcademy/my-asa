@@ -35,6 +35,7 @@ import { loadAuthorizationContext } from "../lib/authorization.service.js";
 import { normalizeReason, requireReason } from "../lib/reason.js";
 import { writeHistoryEvent } from "../lib/history-helper.js";
 import { listAreaLocalScopes } from "../services/area-local-scope.js";
+import { enqueueNotification } from "../services/undo.js";
 import { canSupervisorAccessPerson } from "../services/area-local-scope.js";
 
 const router: IRouter = Router();
@@ -469,6 +470,104 @@ router.put("/users/:id/perfil", requireAuth, requireOrganization, requireRole("A
   } catch (err) {
     if (err instanceof ErroPerfil) { res.status(err.status).json({ error: err.status === 404 ? "NOT_FOUND" : err.status === 409 ? "CONFLICT" : err.status === 403 ? "FORBIDDEN" : "BAD_REQUEST", message: err.message }); return; }
     throw err;
+  }
+});
+
+/**
+ * Edita o cadastro de uma pessoa de uma vez (nome, área e perfil; o e-mail é da própria pessoa), tudo ou nada: valida
+ * todos os campos antes de gravar e grava numa transação só, com um único evento no Registro.
+ * Substitui a sequência PATCH /users/:id + PUT operational-scope + PUT perfil da tela de Cadastros
+ * (que continuam funcionando), onde uma falha no meio deixava a pessoa meio salva.
+ * Só a Administração: Supervisão e Direção veem a pessoa, mas não mudam acesso nem área.
+ */
+router.put("/users/:id/cadastro", requireAuth, requireOrganization, async (req, res) => {
+  const id = req.params.id as string;
+  const role = req.user!.role;
+  if (role !== "ADMIN") {
+    const quem = role === "DIR" ? "A Direção só consulta o cadastro" : role === "SUPERVISOR_A" || role === "SUPERVISOR_B" ? "A Supervisão vê a equipe da própria área, mas nome, área e perfil são mudados pela Administração" : "O cadastro das pessoas é mudado pela Administração";
+    res.status(403).json({ error: "FORBIDDEN", message: `${quem}. Peça a alguém da Administração.` });
+    return;
+  }
+  const { fullName, email, areaId, perfil, reason } = req.body ?? {};
+  if (fullName !== undefined && (typeof fullName !== "string" || !fullName.trim())) { res.status(400).json({ error: "BAD_REQUEST", message: "O nome completo não pode ficar vazio." }); return; }
+  if (typeof email === "string" && email.trim()) { res.status(400).json({ error: "BAD_REQUEST", message: "O e-mail é mudado pela própria pessoa, no Perfil dela. Aqui a Administração muda nome, área e perfil." }); return; }
+  if (areaId !== undefined && areaId !== null && typeof areaId !== "string") { res.status(400).json({ error: "BAD_REQUEST", message: "A área não é válida." }); return; }
+  if (perfil !== undefined && !ehPerfil(perfil)) { res.status(400).json({ error: "BAD_REQUEST", message: "Escolha o perfil: Elenco, Supervisão, Direção ou Administração." }); return; }
+  const novoNome = typeof fullName === "string" ? fullName.trim() : undefined;
+  const novaArea = typeof areaId === "string" && areaId ? areaId : undefined;
+  const motivo = normalizeReason(reason);
+  try {
+    const resultado = await db.transaction(async (tx) => {
+      const [antes] = await tx.select().from(usersTable).where(and(eq(usersTable.id, id), eq(usersTable.organizationId, req.user!.organizationId))).for("update").limit(1);
+      if (!antes) throw new ErroPerfil(404, "Pessoa não encontrada.");
+      if (novaArea && novaArea !== antes.areaId) {
+        const [area] = await tx.select({ id: areasTable.id, active: areasTable.active }).from(areasTable).where(and(eq(areasTable.id, novaArea), eq(areasTable.organizationId, req.user!.organizationId))).limit(1);
+        if (!area?.active) throw new ErroPerfil(400, "Esta área não existe ou está desativada. Escolha outra.");
+      }
+      const areaFinal = novaArea ?? antes.areaId;
+      const campos: Record<string, unknown> = {};
+      if (novoNome !== undefined && novoNome !== antes.fullName) campos.fullName = novoNome;
+      if (novaArea !== undefined && novaArea !== antes.areaId) campos.areaId = novaArea;
+
+      let perfilAntes: Perfil | null = null, perfilDepois: Perfil | null = null;
+      if (perfil !== undefined) {
+        const ativos = await tx.select({ role: userRolesTable.role }).from(userRolesTable).where(and(eq(userRolesTable.userId, id), eq(userRolesTable.active, true)));
+        perfilAntes = ativos.map((r) => PERFIL_DO_PAPEL[r.role]).filter((p): p is Perfil => Boolean(p))
+          .sort((a, b) => ["MEM", "SUP", "DIR", "ADM"].indexOf(b) - ["MEM", "SUP", "DIR", "ADM"].indexOf(a))[0] ?? null;
+        if (perfil !== perfilAntes) {
+          if (id === req.user!.sub) throw new ErroPerfil(403, "O seu próprio perfil é trocado por outra pessoa da Administração.");
+          if (antes.status !== "ACTIVE") throw new ErroPerfil(409, "Esta pessoa não está ativa.");
+          if (perfil === "MEM" && !areaFinal) throw new ErroPerfil(400, "Defina a área antes de dar o perfil Elenco.");
+          if (perfilAntes && !motivo) throw new ErroPerfil(400, "Trocar o perfil de alguém exige motivo.");
+          if (perfil !== "ADM") {
+            const admins = await tx.select({ userId: userRolesTable.userId }).from(userRolesTable)
+              .innerJoin(usersTable, eq(userRolesTable.userId, usersTable.id))
+              .where(and(eq(usersTable.organizationId, req.user!.organizationId), eq(usersTable.status, "ACTIVE"), eq(userRolesTable.role, "ADMIN"), eq(userRolesTable.active, true)));
+            const outros = new Set(admins.map((a) => a.userId).filter((u) => u !== id));
+            if (admins.some((a) => a.userId === id) && outros.size === 0) throw new ErroPerfil(409, "Esta é a única pessoa da Administração. Dê o perfil a outra pessoa antes.");
+          }
+          perfilDepois = perfil;
+        }
+      }
+      const mudouPerfil = perfilDepois !== null;
+      if (!Object.keys(campos).length && !mudouPerfil) return { depois: antes, perfilAntes, perfilDepois: perfilAntes, mudou: false, antesCampos: null };
+
+      const [depois] = Object.keys(campos).length
+        ? await tx.update(usersTable).set({ ...campos, updatedAt: new Date() } as any).where(eq(usersTable.id, id)).returning()
+        : [antes];
+      if (mudouPerfil) await gravarPerfil(tx, id, req.user!.organizationId, perfil as Perfil);
+
+      const partes: string[] = [];
+      if (campos.fullName !== undefined) partes.push(`nome de "${antes.fullName}" para "${depois!.fullName}"`);
+      if (campos.areaId !== undefined) partes.push("área");
+      if (mudouPerfil) partes.push(perfilAntes ? `perfil de ${NOME_PERFIL[perfilAntes]} para ${NOME_PERFIL[perfil as Perfil]}` : `perfil ${NOME_PERFIL[perfil as Perfil]}`);
+      await writeHistoryEvent({
+        category: "OPERATIONAL_CHANGE", action: "user.cadastro_changed", title: "Cadastro de pessoa atualizado",
+        narrative: `${antes.fullName ?? antes.name}: mudou ${partes.join(", ")}.${motivo ? ` Motivo: ${motivo}` : ""}`,
+        entityType: "user", entityId: id, actorId: req.user!.sub, orgId: antes.organizationId,
+        beforeState: { fullName: antes.fullName, areaId: antes.areaId, perfil: perfilAntes },
+        afterState: { fullName: depois!.fullName, areaId: depois!.areaId, perfil: mudouPerfil ? perfil : perfilAntes },
+        metadata: motivo ? { reason: motivo } : undefined,
+      }, tx as any);
+
+      // Quem muda de perfil ou de área precisa saber na hora (o app dela passa a mostrar outras telas): um aviso por edição.
+      const avisarPessoa = (mudouPerfil || campos.areaId !== undefined) && id !== req.user!.sub;
+      if (avisarPessoa) {
+        const o = [mudouPerfil ? `seu perfil agora é ${NOME_PERFIL[perfil as Perfil]}` : null, campos.areaId !== undefined ? "sua área mudou" : null].filter(Boolean).join(" e ");
+        await enqueueNotification(tx as never, {
+          userId: id, type: "user.cadastro_changed", category: "system", priority: "IMPORTANT",
+          title: "Seu cadastro mudou", message: `${o[0]!.toUpperCase()}${o.slice(1)}. Se algo não parece certo, fale com a Administração.`,
+          entityType: "user", entityId: id, actionUrl: "/perfil",
+        }, new Date(), { deduplicationKey: `cadastro:${id}:${Date.now()}` });
+      }
+      return { depois: depois!, perfilAntes, perfilDepois: mudouPerfil ? (perfil as Perfil) : perfilAntes, mudou: true, antesCampos: { fullName: antes.fullName, areaId: antes.areaId, perfil: perfilAntes } };
+    });
+    if (resultado.mudou) await recordAudit({ actorId: req.user!.sub, action: "USER_UPDATED", targetResource: `user:${id}`, metadata: { change: "cadastro" } });
+    res.json({ user: adminPerson(resultado.depois), perfil: resultado.perfilDepois, mudou: resultado.mudou, antes: resultado.antesCampos });
+  } catch (err) {
+    if (err instanceof ErroPerfil) { res.status(err.status).json({ error: err.status === 404 ? "NOT_FOUND" : err.status === 409 ? "CONFLICT" : err.status === 403 ? "FORBIDDEN" : "BAD_REQUEST", message: err.message }); return; }
+    requestLogger("teams", req.requestId, req.correlationId).error({ err }, "Error updating cadastro");
+    res.status(500).json({ error: "INTERNAL_ERROR", message: "Não consegui salvar esta pessoa agora. Nada foi alterado; tente de novo." });
   }
 });
 

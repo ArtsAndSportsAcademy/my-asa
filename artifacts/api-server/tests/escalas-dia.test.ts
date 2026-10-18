@@ -176,6 +176,21 @@ async function run() {
     const repeatBody = (await repeatGen.json()) as { livros: { generated: boolean }[] };
     assert(repeatGen.status === 201 && repeatBody.livros.length === 1 && !repeatBody.livros[0]!.generated && (await db.select().from(dailyBooksTable).where(eq(dailyBooksTable.showBookId, show!.id))).length === 1, "gerar o mesmo dia de novo reutiliza o rascunho e não apaga ajustes nem duplica Livro");
 
+    // 18/10: o Livro lê a Programação. A geração grava a primeira hora na Agenda e o cartão lista as demais.
+    const [eventoDoLivro] = await db.select({ startTime: agendaEventsTable.startTime }).from(agendaEventsTable).innerJoin(dailyBooksTable, eq(dailyBooksTable.agendaEventId, agendaEventsTable.id)).where(eq(dailyBooksTable.id, bookId));
+    assert(eventoDoLivro?.startTime?.slice(0, 5) === "14:00", "gerar o dia grava na Agenda a hora do show na Programação (14:00)");
+    const listaHoras = async () => ((await (await asAdmin(`/daily-book?date=${date}`)).json()) as { dailyBooks: { id: string; horarios: string[] }[] }).dailyBooks.find((b) => b.id === bookId)?.horarios;
+    assert(JSON.stringify(await listaHoras()) === JSON.stringify(["14:00"]), "o cartão do Livro diz 14:00, como a Escala");
+    const [segundoHorario] = await db.insert(programacaoBlocosTable).values({ programacaoId: prog.id, weekday: 1, inicio: "19:00", rotulo: "SHOW PATINAÇÃO NOITE", regra: "livro", showBookId: show!.id, order: 99 }).returning();
+    assert(JSON.stringify(await listaHoras()) === JSON.stringify(["14:00", "19:00"]), "dois horários do mesmo show: o cartão lista os dois");
+    await db.update(programacaoBlocosTable).set({ active: false }).where(eq(programacaoBlocosTable.id, segundoHorario!.id));
+    // Hora que já existe na Agenda não é apagada por uma nova geração nem pela Programação.
+    await db.update(agendaEventsTable).set({ startTime: "13:45:00" }).where(and(eq(agendaEventsTable.showBookId, show!.id), eq(agendaEventsTable.date, date)));
+    await post(asAdmin, "/escalas/dia/gerar", { locationId: local!.id, date });
+    const [eventoDepois] = await db.select({ startTime: agendaEventsTable.startTime }).from(agendaEventsTable).where(and(eq(agendaEventsTable.showBookId, show!.id), eq(agendaEventsTable.date, date)));
+    assert(eventoDepois?.startTime?.slice(0, 5) === "13:45", "gerar de novo não apaga a hora que já estava na Agenda");
+    await db.update(agendaEventsTable).set({ startTime: "14:00:00" }).where(and(eq(agendaEventsTable.showBookId, show!.id), eq(agendaEventsTable.date, date)));
+
     // ---------- Ligação 1: o Livro só publica depois da Escala publicada ----------
     const readBook = async () => (await db.select().from(dailyBooksTable).where(eq(dailyBooksTable.id, bookId)).limit(1))[0]!;
     const blocked = await post(asAdmin, `/daily-book/${bookId}/publish`, { expectedVersion: (await readBook()).version });
@@ -248,6 +263,16 @@ async function run() {
     const corpoDoErro = (await loteErrado.json()) as { nadaFoiGravado?: boolean };
     assert(loteErrado.status === 403 && corpoDoErro.nadaFoiGravado === true &&!(bloco(await dia(), "TREINO GELO")?.pessoaIds ?? []).includes(pat1.id), "no lote, pessoa de outra área é recusada e ninguém do lote é gravado");
     await post(asPat, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: treinoKey, mudancas: [{ userId: supPat.id, action: "ADICIONAR" }, { userId: pat1.id, action: "ADICIONAR" }] });
+    // 18/10: a terceira pessoa é a inválida — as duas primeiras, que são válidas, não podem ficar gravadas.
+    const ajustesAntes = (await db.select().from(escalaBlocoAjustesTable).where(eq(escalaBlocoAjustesTable.scaleId, scaleId))).length;
+    const registroAntes = (await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, scaleId), inArray(historyEventsTable.action, ["escala.pessoa_adicionada", "escala.pessoa_removida"])))).length;
+    const terceiraInvalida = await post(asPat, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: treinoKey, mudancas: [
+      { userId: pat1.id, action: "REMOVER" }, { userId: supPat.id, action: "REMOVER" }, { userId: bai1.id, action: "REMOVER" },
+    ] });
+    const idsDepois = bloco(await dia(), "TREINO GELO")?.pessoaIds ?? [];
+    assert(terceiraInvalida.status === 403 && idsDepois.includes(pat1.id) && idsDepois.includes(supPat.id), "lote com a terceira pessoa inválida não tira nem a primeira nem a segunda");
+    assert((await db.select().from(escalaBlocoAjustesTable).where(eq(escalaBlocoAjustesTable.scaleId, scaleId))).length === ajustesAntes
+      && (await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, scaleId), inArray(historyEventsTable.action, ["escala.pessoa_adicionada", "escala.pessoa_removida"])))).length === registroAntes, "o lote recusado não deixa ajuste nem Registro");
 
     // ---------- Chamar alguém na folga: exceção com motivo, e a folga fica para decidir ----------
     const semMotivo = await post(asPat, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: treinoKey, userId: pat2.id, action: "ADICIONAR" });
@@ -305,6 +330,22 @@ async function run() {
     await post(asPat, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: showKey, userId: supPat.id, action: "REMOVER" });
     await post(asPat, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: showKey, userId: pat1.id, action: "ADICIONAR" });
     assert(JSON.stringify(bloco(await dia(), "SHOW PATINAÇÃO")?.pessoaIds) === JSON.stringify([pat1.id]), "desfazer as trocas devolve Julia ao show");
+
+    // 18/10: lote que mexe no Livro do Dia é uma transação só — um "não" no fim não deixa a vaga aberta pela metade.
+    const trocasAntes = async () => (await db.select().from(historyEventsTable).where(and(eq(historyEventsTable.entityId, bookId), eq(historyEventsTable.action, "assignment_swap")))).length;
+    const trocas0 = await trocasAntes();
+    const loteComPessoaFantasma = await post(asAdmin, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: showKey, mudancas: [
+      { userId: pat1.id, action: "REMOVER" }, { userId: supPat.id, action: "ADICIONAR" }, { userId: "00000000-0000-0000-0000-000000000000", action: "ADICIONAR" },
+    ] });
+    assert(loteComPessoaFantasma.status === 404 && JSON.stringify((await vivas()).map((a) => a.userId)) === JSON.stringify([pat1.id]) && await trocasAntes() === trocas0, "lote com pessoa inexistente no fim não mexe no Livro do Dia");
+    const versaoLivro = (await readBook()).version;
+    const trocaDupla = await post(asAdmin, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: showKey, mudancas: [
+      { userId: pat1.id, action: "REMOVER" }, { userId: supPat.id, action: "ADICIONAR" },
+    ] });
+    assert(trocaDupla.status === 200 && JSON.stringify((await vivas()).map((a) => a.userId)) === JSON.stringify([supPat.id]) && JSON.stringify(bloco(await dia(), "SHOW PATINAÇÃO")?.pessoaIds) === JSON.stringify([supPat.id]), "lote tira Julia e põe Deborah no Livro numa transação só");
+    assert(await trocasAntes() === trocas0 + 2 && (await readBook()).version === versaoLivro + 2, "cada troca do lote grava o seu Registro e sobe a versão do Livro uma vez");
+    await post(asAdmin, "/escalas/dia/ajustes", { locationId: local!.id, date, sourceKey: showKey, mudancas: [{ userId: supPat.id, action: "REMOVER" }, { userId: pat1.id, action: "ADICIONAR" }] });
+    assert(JSON.stringify(bloco(await dia(), "SHOW PATINAÇÃO")?.pessoaIds) === JSON.stringify([pat1.id]), "o lote contrário devolve Julia ao show");
 
     // Republicar limpa a marca.
     const v = (await db.select().from(scalesTable).where(eq(scalesTable.id, scaleId)))[0]!.version;
