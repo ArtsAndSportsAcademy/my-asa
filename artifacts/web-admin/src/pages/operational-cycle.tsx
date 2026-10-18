@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { Check, ChevronLeft, ChevronRight, CircleAlert, Clock3, Info, Plus, Settings2, UserRoundCheck } from "lucide-react";
-import { customFetch } from "@workspace/api-client-react";
+import { customFetch, ApiError } from "@workspace/api-client-react";
 import exampleData from "../../../../design_handoff_my_asa/dados-de-exemplo.json";
 import { todayISO } from "@/lib/review-escala";
 import { useFecharComEsc } from "@/lib/fechar-com-esc";
@@ -126,7 +126,7 @@ export function FolgasPage({ role }: { role: Role }) {
     Promise.all([
       customFetch<{ requests: LeaveRequest[] }>(`/api/leave-requests?from=${from}&to=${to}`),
       role === "mem" ? customFetch<{ folgas: FolgaAtiva[]; publicada: boolean; retratoInicial: boolean; precisaRepublicar: boolean }>(`/api/folgas/publicadas?year=${month.getFullYear()}&month=${month.getMonth() + 1}`) : Promise.resolve({ folgas: [] as FolgaAtiva[], publicada: false, retratoInicial: false, precisaRepublicar: false }),
-      roleCanWrite(role) ? customFetch<{ pedidos: { id: string; userName: string; areaName: string | null; startDate: string; endDate: string }[] }>("/api/leave-requests/prioridades").catch(() => ({ pedidos: [] })) : Promise.resolve({ pedidos: [] }),
+      roleCanWrite(role) ? customFetch<{ pedidos: { id: string; userName: string; areaName: string | null; startDate: string; endDate: string }[] }>("/api/leave-requests/prioridades").catch((e: unknown) => e instanceof ApiError && e.status === 403 ? ({ pedidos: [] }) : Promise.reject(e)) : Promise.resolve({ pedidos: [] }),
     ]).then(([list, folgas, prio]) => { setPrioridades(prio.pedidos); setRequests(list.requests); setFolgasAtivas(folgas.folgas); setFolgasPublicadas(folgas.publicada); setRetratoInicial(folgas.retratoInicial); setPrecisaRepublicar(folgas.precisaRepublicar); }).catch(() => setError("Não consegui carregar as folgas agora.")).finally(() => setLoading(false));
   };
   useEffect(reload, [from, to, review, role]);
