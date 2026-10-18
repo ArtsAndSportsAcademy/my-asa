@@ -1,6 +1,7 @@
 import { db } from "@workspace/db";
 import { historyEventsTable, historyRelationsTable, usersTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
+import type { LeiturasDoMes } from "../services/leituras-do-mes.js";
 
 /** Executor mínimo aceito por Drizzle e por uma transação Drizzle. */
 export type HistoryExecutor = Pick<typeof db, "insert" | "select">;
@@ -33,6 +34,11 @@ export interface WriteHistoryEventInput {
   actorId?: string;
   actorType?: "HUMAN" | "DETERMINISTIC_ENGINE" | "LLM_CONFIRMED";
   actorName?: string;
+  /**
+   * O nome formal do ator, quando quem grava muitos eventos seguidos já o leu (gerar o mês). Sem isto, é lido do banco
+   * a cada evento. `null` = o ator não tem nome formal cadastrado (vale o `actorName`).
+   */
+  nomeFormalDoAtor?: string | null;
   operationId?: string;
   groupId?: string;
   orgId?: string;
@@ -44,6 +50,12 @@ export interface WriteHistoryEventInput {
 }
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
+
+/** O nome formal do ator para o Registro, lido uma vez por geração do mês (ver `nomeFormalDoAtor` no evento). */
+export function nomeFormalDoAtor(actorId: string, leituras?: LeiturasDoMes): Promise<string | null | undefined> {
+  if (!leituras) return Promise.resolve(undefined);
+  return leituras.lembrar(`ator-nome-formal:${actorId}`, async () => (await db.select({ fullName: usersTable.fullName }).from(usersTable).where(eq(usersTable.id, actorId)).limit(1))[0]?.fullName ?? null);
+}
 
 /** Campos que nunca entram no Registro, mesmo quando a rota passa a linha inteira do banco como antes/depois. */
 const SEGREDOS = new Set(["passwordHash", "tokenHash", "refreshToken", "accessToken", "password", "newPassword", "currentPassword"]);
@@ -70,11 +82,13 @@ export async function writeHistoryEvent(
   // Registro é o documento operacional: quando há ator humano, conserva o
   // nome formal cadastrado, nunca o apelido mostrado nas telas.
   const actorName = input.actorId
-    ? (await executor
-        .select({ fullName: usersTable.fullName })
-        .from(usersTable)
-        .where(eq(usersTable.id, input.actorId))
-        .limit(1))[0]?.fullName ?? input.actorName
+    ? (input.nomeFormalDoAtor !== undefined
+      ? input.nomeFormalDoAtor
+      : (await executor
+          .select({ fullName: usersTable.fullName })
+          .from(usersTable)
+          .where(eq(usersTable.id, input.actorId))
+          .limit(1))[0]?.fullName) ?? input.actorName
     : input.actorName;
 
   const [row] = await executor

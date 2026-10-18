@@ -184,12 +184,23 @@ function addCommitment(
  * Livro do Dia; agenda, Escala e atividades juntam as outras áreas de trabalho.
  */
 export async function collectScheduleCommitments(personId: string, date: string): Promise<ScheduleCommitment[]> {
-  const commitments = new Map<string, ScheduleCommitment>();
+  return (await collectScheduleCommitmentsForPeople([personId], date)).get(personId) ?? [];
+}
+
+/**
+ * Os compromissos do dia de várias pessoas de uma vez: as mesmas cinco leituras de sempre, mas com todas as
+ * pessoas juntas, em vez de cinco idas ao banco por pessoa. Cada pessoa recebe exatamente o que receberia sozinha.
+ */
+export async function collectScheduleCommitmentsForPeople(personIds: readonly string[], date: string): Promise<Map<string, ScheduleCommitment[]>> {
+  const ids = [...new Set(personIds)];
+  const result = new Map<string, ScheduleCommitment[]>(ids.map((id) => [id, []]));
+  if (!ids.length) return result;
   const weekday = dateWeekday(date);
 
   const [sessionRows, agendaRows, scaleRows, directActivityRows, groupActivityRows] = await Promise.all([
     db
       .select({
+        personId: dailyBookAssignmentsTable.userId,
         sessionId: sessionsTable.id,
         startTime: sessionsTable.startTime,
         endTime: sessionsTable.endTime,
@@ -203,7 +214,7 @@ export async function collectScheduleCommitments(personId: string, date: string)
       .innerJoin(sessionsTable, eq(sessionsTable.showId, dailyBooksTable.showBookId))
       .leftJoin(showBooksTable, eq(sessionsTable.showId, showBooksTable.id))
       .where(and(
-        eq(dailyBookAssignmentsTable.userId, personId),
+        inArray(dailyBookAssignmentsTable.userId, ids),
         eq(agendaEventsTable.date, date),
         eq(sessionsTable.active, true),
         sql`(sessions.valid_from IS NULL OR sessions.valid_from <= ${date})`,
@@ -217,6 +228,7 @@ export async function collectScheduleCommitments(personId: string, date: string)
       )),
     db
       .select({
+        personId: agendaEventParticipantsTable.userId,
         eventId: agendaEventsTable.id,
         title: agendaEventsTable.title,
         startTime: agendaEventsTable.startTime,
@@ -227,7 +239,7 @@ export async function collectScheduleCommitments(personId: string, date: string)
       .innerJoin(agendaEventsTable, eq(agendaEventParticipantsTable.eventId, agendaEventsTable.id))
       .innerJoin(operationsTable, eq(agendaEventsTable.operationId, operationsTable.id))
       .where(and(
-        eq(agendaEventParticipantsTable.userId, personId),
+        inArray(agendaEventParticipantsTable.userId, ids),
         eq(agendaEventsTable.date, date),
         ne(agendaEventsTable.status, "CANCELLED"),
         isNotNull(agendaEventsTable.startTime),
@@ -255,12 +267,13 @@ export async function collectScheduleCommitments(personId: string, date: string)
       .innerJoin(operationsTable, eq(scalesTable.operationId, operationsTable.id))
       .leftJoin(agendaEventsTable, eq(scaleAllocationsTable.agendaEventId, agendaEventsTable.id))
       .where(and(
-        eq(scaleAllocationsTable.userId, personId),
+        inArray(scaleAllocationsTable.userId, ids),
         inArray(scaleAllocationsTable.status, ["ASSIGNED", "CONFLICT", "MANUAL_OVERRIDE"]),
         eq(scaleAllocationsTable.active, true),
       )),
     db
       .select({
+        personId: recurringActivityAssigneesTable.userId,
         scheduleId: recurringActivitySchedulesTable.id,
         specificDate: recurringActivitySchedulesTable.specificDate,
         scheduledWeekday: recurringActivitySchedulesTable.weekday,
@@ -274,11 +287,12 @@ export async function collectScheduleCommitments(personId: string, date: string)
       .innerJoin(recurringActivitySchedulesTable, eq(recurringActivitySchedulesTable.activityId, recurringActivitiesTable.id))
       .innerJoin(operationsTable, eq(recurringActivitiesTable.operationId, operationsTable.id))
       .where(and(
-        eq(recurringActivityAssigneesTable.userId, personId),
+        inArray(recurringActivityAssigneesTable.userId, ids),
         eq(recurringActivitiesTable.active, true),
       )),
     db
       .select({
+        personId: teamMembershipsTable.userId,
         scheduleId: recurringActivitySchedulesTable.id,
         specificDate: recurringActivitySchedulesTable.specificDate,
         scheduledWeekday: recurringActivitySchedulesTable.weekday,
@@ -293,15 +307,20 @@ export async function collectScheduleCommitments(personId: string, date: string)
       .innerJoin(teamMembershipsTable, eq(recurringActivityAssigneesTable.groupId, teamMembershipsTable.teamId))
       .innerJoin(operationsTable, eq(recurringActivitiesTable.operationId, operationsTable.id))
       .where(and(
-        eq(teamMembershipsTable.userId, personId),
+        inArray(teamMembershipsTable.userId, ids),
         eq(teamMembershipsTable.active, true),
         eq(recurringActivitiesTable.active, true),
       )),
   ]);
 
+  const porPessoa = new Map<string, Map<string, ScheduleCommitment>>(ids.map((id) => [id, new Map()]));
+  const doPessoa = (id: string | null) => (id ? porPessoa.get(id) : undefined);
+
   for (const row of sessionRows) {
+    const commitments = doPessoa(row.personId);
+    if (!commitments) continue;
     addCommitment(commitments, {
-      userId: personId,
+      userId: row.personId!,
       organizationId: row.organizationId,
       date,
       sourceType: "sessao",
@@ -314,8 +333,10 @@ export async function collectScheduleCommitments(personId: string, date: string)
 
   for (const row of agendaRows) {
     if (!row.startTime || !row.endTime) continue;
+    const commitments = doPessoa(row.personId);
+    if (!commitments) continue;
     addCommitment(commitments, {
-      userId: personId,
+      userId: row.personId,
       organizationId: row.organizationId,
       date,
       sourceType: "agenda",
@@ -331,8 +352,10 @@ export async function collectScheduleCommitments(personId: string, date: string)
     const startTime = row.manualStartTime ?? row.eventStartTime;
     const endTime = row.manualEndTime ?? row.eventEndTime;
     if (rowDate !== date || !startTime || !endTime) continue;
+    const commitments = doPessoa(row.userId);
+    if (!commitments) continue;
     addCommitment(commitments, {
-      userId: personId,
+      userId: row.userId!,
       organizationId: row.organizationId,
       date,
       sourceType: "escala",
@@ -346,8 +369,10 @@ export async function collectScheduleCommitments(personId: string, date: string)
   for (const row of [...directActivityRows, ...groupActivityRows]) {
     const applies = row.specificDate === date || (row.specificDate === null && row.scheduledWeekday === weekday);
     if (!applies || !row.startTime || !row.endTime) continue;
+    const commitments = doPessoa(row.personId);
+    if (!commitments) continue;
     addCommitment(commitments, {
-      userId: personId,
+      userId: row.personId!,
       organizationId: row.organizationId,
       date,
       sourceType: "atividade",
@@ -358,7 +383,10 @@ export async function collectScheduleCommitments(personId: string, date: string)
     });
   }
 
-  return [...commitments.values()].sort((a, b) => a.startMinutes - b.startMinutes || sourceKey(a).localeCompare(sourceKey(b)));
+  for (const [id, commitments] of porPessoa) {
+    result.set(id, [...commitments.values()].sort((a, b) => a.startMinutes - b.startMinutes || sourceKey(a).localeCompare(sourceKey(b))));
+  }
+  return result;
 }
 
 /**
@@ -476,14 +504,29 @@ export async function detectShowBookResolveConflicts(input: {
 }
 
 export async function detectDailyBookConflicts(dailyBookId: string, date: string): Promise<PublicScheduleConflict[]> {
-  const assignments = await db.select({ userId: dailyBookAssignmentsTable.userId })
+  return (await detectConflictsForDailyBooks([dailyBookId], date)).get(dailyBookId) ?? [];
+}
+
+/**
+ * O mesmo que detectDailyBookConflicts para vários Livros do mesmo dia: quem aparece em mais de um Livro é conferido
+ * uma vez só, e as leituras de todos vão juntas. Cada Livro recebe os conflitos das pessoas que estão nele.
+ */
+export async function detectConflictsForDailyBooks(dailyBookIds: readonly string[], date: string): Promise<Map<string, PublicScheduleConflict[]>> {
+  const livros = [...new Set(dailyBookIds)];
+  const resultado = new Map<string, PublicScheduleConflict[]>(livros.map((id) => [id, []]));
+  if (!livros.length) return resultado;
+  const assignments = await db.select({ dailyBookId: dailyBookAssignmentsTable.dailyBookId, userId: dailyBookAssignmentsTable.userId })
     .from(dailyBookAssignmentsTable)
-    .where(and(eq(dailyBookAssignmentsTable.dailyBookId, dailyBookId), ne(dailyBookAssignmentsTable.status, "REMOVED")));
-  const conflicts = new Map<string, PublicScheduleConflict>();
-  for (const userId of new Set(assignments.map((assignment) => assignment.userId).filter((id): id is string => Boolean(id)))) {
-    for (const conflict of await detectAndPersistScheduleConflicts(userId, date)) conflicts.set(conflict.id, conflict);
+    .where(and(inArray(dailyBookAssignmentsTable.dailyBookId, livros), ne(dailyBookAssignmentsTable.status, "REMOVED")));
+  const pessoasDoLivro = new Map<string, Set<string>>(livros.map((id) => [id, new Set<string>()]));
+  for (const a of assignments) if (a.userId) pessoasDoLivro.get(a.dailyBookId)?.add(a.userId);
+  const porPessoa = await detectAndPersistScheduleConflictsForPeople([...new Set(assignments.map((a) => a.userId).filter((id): id is string => Boolean(id)))], date);
+  for (const [livroId, pessoas] of pessoasDoLivro) {
+    const conflitos = new Map<string, PublicScheduleConflict>();
+    for (const userId of pessoas) for (const conflito of porPessoa.get(userId) ?? []) conflitos.set(conflito.id, conflito);
+    resultado.set(livroId, [...conflitos.values()]);
   }
-  return [...conflicts.values()];
+  return resultado;
 }
 
 function conflictWhere(conflict: DetectedScheduleConflict) {
@@ -556,140 +599,162 @@ export function serializeScheduleConflict(conflict: ScheduleConflict): PublicSch
   };
 }
 
-/**
- * Persiste o estado atual sem apagar histórico. Um par que desapareceu fica
- * resolvido; um par que reapareceu ou mudou de horário volta a aberto e perde
- * o reconhecimento anterior.
- */
 export async function detectAndPersistScheduleConflicts(personId: string, date: string): Promise<PublicScheduleConflict[]> {
-  const detected = await detectScheduleConflicts(personId, date);
+  return (await detectAndPersistScheduleConflictsForPeople([personId], date)).get(personId) ?? [];
+}
+
+/** Os conflitos detectados de várias pessoas no mesmo dia, com as mesmas leituras feitas uma vez para todas. */
+async function detectScheduleConflictsForPeople(personIds: readonly string[], date: string): Promise<Map<string, DetectedScheduleConflict[]>> {
+  const ids = [...new Set(personIds)];
+  const detectados = new Map<string, DetectedScheduleConflict[]>(ids.map((id) => [id, []]));
+  if (!ids.length) return detectados;
+  const [compromissos, pessoas] = await Promise.all([
+    collectScheduleCommitmentsForPeople(ids, date),
+    db.select({ id: usersTable.id, organizationId: usersTable.organizationId }).from(usersTable).where(inArray(usersTable.id, ids)),
+  ]);
+  for (const pessoa of pessoas) {
+    detectados.set(pessoa.id, findConflictsForCommitments(pessoa.id, pessoa.organizationId, date, compromissos.get(pessoa.id) ?? []));
+  }
+  return detectados;
+}
+
+/**
+ * Persiste o estado atual dos conflitos de várias pessoas no mesmo dia, sem apagar histórico: par novo abre,
+ * par que mudou de horário reabre (e perde o reconhecimento anterior), par que desapareceu fica resolvido.
+ * Sem nada a abrir nem a resolver, não abre transação — o caso comum ao gerar o mês.
+ */
+export async function detectAndPersistScheduleConflictsForPeople(personIds: readonly string[], date: string): Promise<Map<string, PublicScheduleConflict[]>> {
+  const ids = [...new Set(personIds)];
+  const resultado = new Map<string, PublicScheduleConflict[]>(ids.map((id) => [id, []]));
+  if (!ids.length) return resultado;
+  const detectados = await detectScheduleConflictsForPeople(ids, date);
+  if (![...detectados.values()].some((lista) => lista.length > 0)) {
+    const pendente = await db.select({ id: scheduleConflictsTable.id }).from(scheduleConflictsTable).where(and(
+      inArray(scheduleConflictsTable.userId, ids), eq(scheduleConflictsTable.date, date), ne(scheduleConflictsTable.state, "resolvido"),
+    )).limit(1);
+    if (!pendente.length) return resultado;
+  }
   return db.transaction(async (tx) => {
     const transactionDb = tx as unknown as typeof db;
-    const currentRows: ScheduleConflict[] = [];
-    const currentKeys = new Set(detected.map(pairKey));
+    const linhas = await transactionDb.select().from(scheduleConflictsTable).where(and(
+      inArray(scheduleConflictsTable.userId, ids), eq(scheduleConflictsTable.date, date),
+    ));
+    const chaveDaLinha = (row: ScheduleConflict) => [row.userId, row.date, `${row.firstSourceType}:${row.firstSourceId}`, `${row.secondSourceType}:${row.secondSourceId}`].join("|");
+    const porChave = new Map<string, ScheduleConflict>();
+    for (const row of linhas) if (!porChave.has(chaveDaLinha(row))) porChave.set(chaveDaLinha(row), row);
 
-    for (const conflict of detected) {
-      const [existing] = await transactionDb
-        .select()
-        .from(scheduleConflictsTable)
-        .where(conflictWhere(conflict))
-        .limit(1);
+    for (const personId of ids) {
+      const detected = detectados.get(personId) ?? [];
+      const currentRows: ScheduleConflict[] = [];
+      const currentKeys = new Set(detected.map(pairKey));
 
-      const changed = existing && (
-        existing.firstLabel !== conflict.first.label
-        || existing.firstStartTime !== conflict.first.startTime
-        || existing.firstEndTime !== conflict.first.endTime
-        || existing.secondLabel !== conflict.second.label
-        || existing.secondStartTime !== conflict.second.startTime
-        || existing.secondEndTime !== conflict.second.endTime
-        || existing.overlapMinutes !== conflict.overlapMinutes
-        || existing.severity !== conflict.severity
-      );
+      for (const conflict of detected) {
+        const existing = porChave.get(pairKey(conflict));
 
-      if (!existing) {
-        const [created] = await transactionDb.insert(scheduleConflictsTable).values({
-          userId: personId,
-          organizationId: conflict.organizationId,
-          date,
-          firstSourceType: conflict.first.sourceType,
-          firstSourceId: conflict.first.sourceId,
-          firstLabel: conflict.first.label,
-          firstStartTime: conflict.first.startTime,
-          firstEndTime: conflict.first.endTime,
-          secondSourceType: conflict.second.sourceType,
-          secondSourceId: conflict.second.sourceId,
-          secondLabel: conflict.second.label,
-          secondStartTime: conflict.second.startTime,
-          secondEndTime: conflict.second.endTime,
-          overlapMinutes: conflict.overlapMinutes,
-          severity: conflict.severity,
-          state: "aberto",
-        }).returning();
-        if (created) {
-          currentRows.push(created);
+        const changed = existing && (
+          existing.firstLabel !== conflict.first.label
+          || existing.firstStartTime !== conflict.first.startTime
+          || existing.firstEndTime !== conflict.first.endTime
+          || existing.secondLabel !== conflict.second.label
+          || existing.secondStartTime !== conflict.second.startTime
+          || existing.secondEndTime !== conflict.second.endTime
+          || existing.overlapMinutes !== conflict.overlapMinutes
+          || existing.severity !== conflict.severity
+        );
+
+        if (!existing) {
+          const [created] = await transactionDb.insert(scheduleConflictsTable).values({
+            userId: personId,
+            organizationId: conflict.organizationId,
+            date,
+            firstSourceType: conflict.first.sourceType,
+            firstSourceId: conflict.first.sourceId,
+            firstLabel: conflict.first.label,
+            firstStartTime: conflict.first.startTime,
+            firstEndTime: conflict.first.endTime,
+            secondSourceType: conflict.second.sourceType,
+            secondSourceId: conflict.second.sourceId,
+            secondLabel: conflict.second.label,
+            secondStartTime: conflict.second.startTime,
+            secondEndTime: conflict.second.endTime,
+            overlapMinutes: conflict.overlapMinutes,
+            severity: conflict.severity,
+            state: "aberto",
+          }).returning();
+          if (created) {
+            currentRows.push(created);
+            await writeHistoryEvent({
+              category: "OPERATIONAL_CHANGE", action: "schedule_conflict.detected",
+              title: "Conflito de horário detectado",
+              narrative: `Conflito entre ${created.firstLabel} e ${created.secondLabel} (${created.overlapMinutes} min).`,
+              entityType: "schedule_conflict", entityId: created.id, actorType: "DETERMINISTIC_ENGINE",
+              orgId: created.organizationId, beforeState: null, afterState: conflictSnapshot(created),
+              metadata: { date: created.date, severity: created.severity },
+            }, transactionDb as any);
+          }
+          continue;
+        }
+
+        const resetRecognition = Boolean(changed) || existing.state === "resolvido";
+        const [updated] = await transactionDb
+          .update(scheduleConflictsTable)
+          .set({
+            organizationId: conflict.organizationId,
+            firstLabel: conflict.first.label,
+            firstStartTime: conflict.first.startTime,
+            firstEndTime: conflict.first.endTime,
+            secondLabel: conflict.second.label,
+            secondStartTime: conflict.second.startTime,
+            secondEndTime: conflict.second.endTime,
+            overlapMinutes: conflict.overlapMinutes,
+            severity: conflict.severity,
+            state: resetRecognition ? "aberto" : existing.state,
+            acknowledgedBy: resetRecognition ? null : existing.acknowledgedBy,
+            acknowledgedAt: resetRecognition ? null : existing.acknowledgedAt,
+            acknowledgementReason: resetRecognition ? null : existing.acknowledgementReason,
+            updatedAt: new Date(),
+          })
+          .where(eq(scheduleConflictsTable.id, existing.id))
+          .returning();
+        if (updated) {
+          currentRows.push(updated);
+          if (changed) {
+            await writeHistoryEvent({
+              category: "OPERATIONAL_CHANGE", action: resetRecognition ? "schedule_conflict.reopened" : "schedule_conflict.changed",
+              title: resetRecognition ? "Reconhecimento de conflito removido" : "Conflito de horário atualizado",
+              narrative: resetRecognition
+                ? "O horário mudou; o reconhecimento anterior deixou de valer."
+                : `Conflito entre ${updated.firstLabel} e ${updated.secondLabel} atualizado.`,
+              entityType: "schedule_conflict", entityId: updated.id, actorType: "DETERMINISTIC_ENGINE",
+              orgId: updated.organizationId, beforeState: conflictSnapshot(existing), afterState: conflictSnapshot(updated),
+              metadata: { date: updated.date, severity: updated.severity },
+            }, transactionDb as any);
+          }
+        }
+      }
+
+      // O que estava aberto ou ciente e não aparece mais na detecção deixou de se sobrepor.
+      for (const conflict of linhas.filter((row) => row.userId === personId && row.state !== "resolvido")) {
+        if (currentKeys.has(chaveDaLinha(conflict))) continue;
+        const [resolved] = await transactionDb.update(scheduleConflictsTable)
+          .set({ state: "resolvido", updatedAt: new Date() })
+          .where(eq(scheduleConflictsTable.id, conflict.id)).returning();
+        if (resolved) {
           await writeHistoryEvent({
-            category: "OPERATIONAL_CHANGE", action: "schedule_conflict.detected",
-            title: "Conflito de horário detectado",
-            narrative: `Conflito entre ${created.firstLabel} e ${created.secondLabel} (${created.overlapMinutes} min).`,
-            entityType: "schedule_conflict", entityId: created.id, actorType: "DETERMINISTIC_ENGINE",
-            orgId: created.organizationId, beforeState: null, afterState: conflictSnapshot(created),
-            metadata: { date: created.date, severity: created.severity },
+            category: "OPERATIONAL_CHANGE", action: "schedule_conflict.resolved",
+            title: "Conflito de horário resolvido", narrative: "O par de horários deixou de se sobrepor.",
+            entityType: "schedule_conflict", entityId: resolved.id, actorType: "DETERMINISTIC_ENGINE",
+            orgId: resolved.organizationId, beforeState: conflictSnapshot(conflict), afterState: conflictSnapshot(resolved),
+            metadata: { date: resolved.date },
           }, transactionDb as any);
         }
-        continue;
       }
 
-      const resetRecognition = Boolean(changed) || existing.state === "resolvido";
-      const [updated] = await transactionDb
-        .update(scheduleConflictsTable)
-        .set({
-          organizationId: conflict.organizationId,
-          firstLabel: conflict.first.label,
-          firstStartTime: conflict.first.startTime,
-          firstEndTime: conflict.first.endTime,
-          secondLabel: conflict.second.label,
-          secondStartTime: conflict.second.startTime,
-          secondEndTime: conflict.second.endTime,
-          overlapMinutes: conflict.overlapMinutes,
-          severity: conflict.severity,
-          state: resetRecognition ? "aberto" : existing.state,
-          acknowledgedBy: resetRecognition ? null : existing.acknowledgedBy,
-          acknowledgedAt: resetRecognition ? null : existing.acknowledgedAt,
-          acknowledgementReason: resetRecognition ? null : existing.acknowledgementReason,
-          updatedAt: new Date(),
-        })
-        .where(eq(scheduleConflictsTable.id, existing.id))
-        .returning();
-      if (updated) {
-        currentRows.push(updated);
-        if (changed) {
-          await writeHistoryEvent({
-            category: "OPERATIONAL_CHANGE", action: resetRecognition ? "schedule_conflict.reopened" : "schedule_conflict.changed",
-            title: resetRecognition ? "Reconhecimento de conflito removido" : "Conflito de horário atualizado",
-            narrative: resetRecognition
-              ? "O horário mudou; o reconhecimento anterior deixou de valer."
-              : `Conflito entre ${updated.firstLabel} e ${updated.secondLabel} atualizado.`,
-            entityType: "schedule_conflict", entityId: updated.id, actorType: "DETERMINISTIC_ENGINE",
-            orgId: updated.organizationId, beforeState: conflictSnapshot(existing), afterState: conflictSnapshot(updated),
-            metadata: { date: updated.date, severity: updated.severity },
-          }, transactionDb as any);
-        }
-      }
+      resultado.set(personId, currentRows
+        .sort((a, b) => a.firstStartTime.localeCompare(b.firstStartTime))
+        .map(serializeScheduleConflict));
     }
-
-    const previous = await transactionDb
-      .select()
-      .from(scheduleConflictsTable)
-      .where(and(
-        eq(scheduleConflictsTable.userId, personId),
-        eq(scheduleConflictsTable.date, date),
-        ne(scheduleConflictsTable.state, "resolvido"),
-      ));
-    for (const conflict of previous) {
-      const key = [
-        conflict.userId,
-        conflict.date,
-        `${conflict.firstSourceType}:${conflict.firstSourceId}`,
-        `${conflict.secondSourceType}:${conflict.secondSourceId}`,
-      ].join("|");
-      if (currentKeys.has(key)) continue;
-      const [resolved] = await transactionDb.update(scheduleConflictsTable)
-        .set({ state: "resolvido", updatedAt: new Date() })
-        .where(eq(scheduleConflictsTable.id, conflict.id)).returning();
-      if (resolved) {
-        await writeHistoryEvent({
-          category: "OPERATIONAL_CHANGE", action: "schedule_conflict.resolved",
-          title: "Conflito de horário resolvido", narrative: "O par de horários deixou de se sobrepor.",
-          entityType: "schedule_conflict", entityId: resolved.id, actorType: "DETERMINISTIC_ENGINE",
-          orgId: resolved.organizationId, beforeState: conflictSnapshot(conflict), afterState: conflictSnapshot(resolved),
-          metadata: { date: resolved.date },
-        }, transactionDb as any);
-      }
-    }
-
-    return currentRows
-      .sort((a, b) => a.firstStartTime.localeCompare(b.firstStartTime))
-      .map(serializeScheduleConflict);
+    return resultado;
   });
 }
 

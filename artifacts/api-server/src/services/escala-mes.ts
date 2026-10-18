@@ -14,10 +14,11 @@ import {
   agendaEventsTable, dailyBookAssignmentsTable, dailyBookPositionsTable, dailyBooksTable, db, escalaBlocoAjustesTable,
   historyEventsTable, locationsTable, programacaoBlocosTable, programacoesTable, scaleAllocationsTable, scalesTable, showBooksTable,
 } from "@workspace/db";
-import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
+import { nomeFormalDoAtor, writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
 import { operationalDate } from "../lib/operational-date.js";
-import { generateDailyBookDraftForScale } from "../routes/daily-book.js";
-import { eligibleSessions } from "./session-blocks.js";
+import { conferirConflitosDosLivros, generateDailyBookDraftForScale } from "../routes/daily-book.js";
+import { eligibleSessions, eligibleSessionsDoDia } from "./session-blocks.js";
+import { janelaDoMes, lembrarOuLer, LeiturasDoMes } from "./leituras-do-mes.js";
 import { findEscalaDoDia, operationForLocation } from "./escala-dia.js";
 
 export type ActorMes = { sub: string; role: string; organizationId: string };
@@ -38,14 +39,42 @@ export type ResultadoDia =
   | { ok: true; scale: typeof scalesTable.$inferSelect; livros: Awaited<ReturnType<typeof generateDailyBookDraftForScale>>[] }
   | { ok: false; status: number; error: string; message: string };
 
+/**
+ * A Programação do dia e os blocos de Livro dela. Com as leituras do mês, as Programações do mês e seus blocos são lidos
+ * uma vez e o dia é escolhido aqui, com a mesma regra de `programacaoDoDia` (a que cobre a data, a de fim mais próximo).
+ */
+async function programacaoEBlocosDoDia(locationId: string, organizationId: string, date: string, leituras?: LeiturasDoMes) {
+  if (!leituras) {
+    const programacao = await programacaoDoDia(locationId, organizationId, date);
+    const blocos = programacao ? await db.select().from(programacaoBlocosTable).where(and(
+      eq(programacaoBlocosTable.programacaoId, programacao.id), eq(programacaoBlocosTable.weekday, weekdayOf(date)),
+      eq(programacaoBlocosTable.regra, "livro"), eq(programacaoBlocosTable.active, true),
+    )) : [];
+    return { programacao, blocos };
+  }
+  const { inicio, fim } = janelaDoMes(date);
+  const programacoes = await leituras.lembrar(`programacoes:${locationId}:${organizationId}:${inicio}`, () => db.select().from(programacoesTable).where(and(
+    eq(programacoesTable.locationId, locationId), eq(programacoesTable.active, true), eq(programacoesTable.organizationId, organizationId),
+    lte(programacoesTable.vigenciaInicio, fim), gte(programacoesTable.vigenciaFim, inicio),
+  )).orderBy(asc(programacoesTable.vigenciaFim), asc(programacoesTable.createdAt)));
+  const programacao = programacoes.find((p) => p.vigenciaInicio <= date && p.vigenciaFim >= date) ?? null;
+  if (!programacao) return { programacao, blocos: [] as (typeof programacaoBlocosTable.$inferSelect)[] };
+  const blocosDoMes = await leituras.lembrar(`programacao-blocos:${locationId}:${organizationId}:${inicio}`, () => db.select().from(programacaoBlocosTable).where(and(
+    inArray(programacaoBlocosTable.programacaoId, programacoes.map((p) => p.id)), eq(programacaoBlocosTable.regra, "livro"), eq(programacaoBlocosTable.active, true),
+  )));
+  return { programacao, blocos: blocosDoMes.filter((b) => b.programacaoId === programacao.id && b.weekday === weekdayOf(date)) };
+}
+
 /** Gera (ou completa) a Escala em rascunho de um local num dia e os Livros dos shows da Programação. */
-export async function gerarDiaDoLocal(actor: ActorMes, location: { id: string; name: string }, date: string): Promise<ResultadoDia> {
+export async function gerarDiaDoLocal(actor: ActorMes, location: { id: string; name: string }, date: string, opts: { leituras?: LeiturasDoMes } = {}): Promise<ResultadoDia> {
+  const { leituras } = opts;
   const locationId = location.id;
   let scale = await findEscalaDoDia(locationId, date);
   if (scale && scale.status !== "DRAFT") return { ok: false, status: 409, error: "ESCALA_JA_PUBLICADA", message: "O dia já foi publicado; use republicação para uma alteração posterior." };
-  const operationId = scale?.operationId ?? await operationForLocation(locationId);
+  const operationId = scale?.operationId ?? await lembrarOuLer(leituras, `operacao-do-local:${locationId}`, () => operationForLocation(locationId));
   if (!operationId) return { ok: false, status: 409, error: "LOCAL_SEM_OPERACAO", message: "Este local ainda não está ligado a uma operação." };
   if (!scale) {
+    const nomeFormal = await nomeFormalDoAtor(actor.sub, leituras);
     scale = await db.transaction(async (tx) => {
       const [created] = await tx.insert(scalesTable).values({
         operationId, locationId, title: `Escala do dia · ${location.name} · ${date}`, periodStart: date, periodEnd: date,
@@ -55,33 +84,39 @@ export async function gerarDiaDoLocal(actor: ActorMes, location: { id: string; n
         category: "SCALE", action: "escala.gerada", title: "Escala do dia gerada",
         narrative: `Escala em rascunho de ${location.name} para ${date} gerada a partir da Programação.`,
         entityType: "scale", entityId: created!.id, actorId: actor.sub, operationId, orgId: actor.organizationId,
-        beforeState: null, afterState: { scale: created },
+        beforeState: null, afterState: { scale: created }, nomeFormalDoAtor: nomeFormal,
       }, tx as unknown as HistoryExecutor);
       return created!;
     });
   }
-  const programacao = await programacaoDoDia(locationId, actor.organizationId, date);
-  const blocos = programacao ? await db.select().from(programacaoBlocosTable).where(and(
-    eq(programacaoBlocosTable.programacaoId, programacao.id), eq(programacaoBlocosTable.weekday, weekdayOf(date)),
-    eq(programacaoBlocosTable.regra, "livro"), eq(programacaoBlocosTable.active, true),
-  )) : [];
+  const { blocos } = await programacaoEBlocosDoDia(locationId, actor.organizationId, date, leituras);
   const showIds = [...new Set(blocos.map((b) => b.showBookId).filter((id): id is string => Boolean(id)))];
-  const validShows = showIds.length ? await db.select({ id: showBooksTable.id }).from(showBooksTable).where(and(
+  const validShows = showIds.length ? await lembrarOuLer(leituras, `shows-validos:${locationId}:${operationId}:${[...showIds].sort().join(",")}`, () => db.select({ id: showBooksTable.id }).from(showBooksTable).where(and(
     inArray(showBooksTable.id, showIds), eq(showBooksTable.locationId, locationId), eq(showBooksTable.operationId, operationId),
-  )) : [];
+  ))) : [];
   if (validShows.length !== showIds.length) return { ok: false, status: 409, error: "SHOW_FORA_DO_LOCAL", message: "A Programação referencia um Show que não pertence a este local." };
   // Sessão separada (0071) tem Livro próprio; as demais sessões (ou show sem sessão) dividem o Livro do dia.
   // Em ordem de hora, para a sessão das 11:30 existir antes da das 15:30: a carga do dia só enxerga Livros já gravados.
-  const alvos: { showBookId: string; sessionId: string | null; inicio: string }[] = [];
+  const alvos: { showBookId: string; sessionId: string | null; inicio: string; sessoesComuns: Awaited<ReturnType<typeof eligibleSessions>> }[] = [];
   for (const show of validShows) {
-    const sessoes = await eligibleSessions(show.id, date);
+    const sessoes = await eligibleSessionsDoDia(show.id, date, leituras);
+    const sessoesComuns = sessoes.filter((x) => !x.separada);
     const inicioDoShow = blocos.filter((b) => b.showBookId === show.id).map((b) => b.inicio).sort()[0] ?? "99:99";
-    for (const sessao of sessoes.filter((x) => x.separada)) alvos.push({ showBookId: show.id, sessionId: sessao.id, inicio: sessao.startTime });
-    if (sessoes.length === 0 || sessoes.some((x) => !x.separada)) alvos.push({ showBookId: show.id, sessionId: null, inicio: inicioDoShow });
+    for (const sessao of sessoes.filter((x) => x.separada)) alvos.push({ showBookId: show.id, sessionId: sessao.id, inicio: sessao.startTime, sessoesComuns });
+    if (sessoes.length === 0 || sessoes.some((x) => !x.separada)) alvos.push({ showBookId: show.id, sessionId: null, inicio: inicioDoShow, sessoesComuns });
   }
   alvos.sort((a, b) => a.inicio.localeCompare(b.inicio));
+  // Os Livros saem um de cada vez (cada um enxerga os anteriores na carga do dia); os conflitos de horário, que só
+  // dependem de o dia estar completo, são conferidos UMA vez para todos no fim — quem está em dois Livros é conferido uma vez.
   const livros = [];
-  for (const alvo of alvos) livros.push(await generateDailyBookDraftForScale({ showBookId: alvo.showBookId, sessionId: alvo.sessionId, date, scaleId: scale.id, actorId: actor.sub, organizationId: actor.organizationId, reason: "Geração da Escala do dia" }));
+  for (const alvo of alvos) livros.push(await generateDailyBookDraftForScale({
+    showBookId: alvo.showBookId, sessionId: alvo.sessionId, date, scaleId: scale.id, actorId: actor.sub, organizationId: actor.organizationId,
+    reason: "Geração da Escala do dia", leituras, conferirConflitos: false, sessoesComuns: alvo.sessoesComuns,
+  }));
+  if (livros.length) {
+    const conflitos = await conferirConflitosDosLivros(livros.map((l) => l.dailyBook.id), date);
+    for (const livro of livros) livro.conflicts = conflitos.get(livro.dailyBook.id)!;
+  }
   return { ok: true, scale, livros };
 }
 
@@ -277,11 +312,15 @@ export type ResultadoMes = {
  * que falta; a tela chama de novo com o `proximoDia`. A falha de um dia não derruba os outros.
  */
 export async function gerarMes(actor: ActorMes, locationId: string, year: number, month: number, opts: { orcamentoMs?: number; agora?: () => number; desde?: string | null } = {}): Promise<ResultadoMes | null> {
-  const orcamento = opts.orcamentoMs ?? 40_000;
+  // 15 s por chamada: a tela só mostra o andamento quando a chamada volta, então chamadas curtas mantêm a barra andando
+  // (e ficam longe do limite de 60 s da Vercel). Cada chamada relê o mês e as leituras estáticas, por isso não menos que isso.
+  const orcamento = opts.orcamentoMs ?? 15_000;
   const agora = opts.agora ?? Date.now;
   const inicio = agora();
   const resumo = await resumoDoMes(actor.organizationId, locationId, year, month);
   if (!resumo) return null;
+  // Leituras que não mudam durante esta chamada (o Show, o elenco, as sessões, a Programação) são feitas uma vez só.
+  const leituras = new LeiturasDoMes();
   // `desde`: a tela manda o `proximoDia` da chamada anterior, e um dia que falhou não fica para sempre na frente.
   const pendentes = resumo.dias.filter((d) => (d.estado === "a_gerar" || d.estado === "faltam_livros") && (!opts.desde || d.date >= opts.desde));
   const gerados: ResultadoMes["gerados"] = [], falhas: ResultadoMes["falhas"] = [];
@@ -291,7 +330,7 @@ export async function gerarMes(actor: ActorMes, locationId: string, year: number
     if (i > 0 && agora() - inicio >= orcamento) break;
     const dia = pendentes[i]!;
     try {
-      const r = await gerarDiaDoLocal(actor, resumo.location, dia.date);
+      const r = await gerarDiaDoLocal(actor, resumo.location, dia.date, { leituras });
       if (r.ok) gerados.push({ date: dia.date, livros: r.livros.length });
       else falhas.push({ date: dia.date, motivo: r.message });
     } catch (err) {
@@ -304,13 +343,14 @@ export async function gerarMes(actor: ActorMes, locationId: string, year: number
   const pulados = resumo.dias.filter((d) => !["a_gerar", "faltam_livros", "completo"].includes(d.estado)).map((d) => ({ date: d.date, estado: d.estado, motivo: d.motivo }));
 
   if (gerados.length || falhas.length) {
-    const operationId = await operationForLocation(locationId);
+    const operationId = await lembrarOuLer(leituras, `operacao-do-local:${locationId}`, () => operationForLocation(locationId));
     if (operationId) {
       await writeHistoryEvent({
         category: "SCALE", action: "escala.mes_gerado", title: `Mês em rascunho: ${gerados.length} dia(s) gerado(s) — ${resumo.location.name}`,
         narrative: `A Administração gerou em rascunho ${gerados.length} dia(s) de ${month}/${year} em ${resumo.location.name}${falhas.length ? `; ${falhas.length} falharam` : ""}. Nada foi publicado.`,
         entityType: "location", entityId: locationId, actorId: actor.sub, operationId, orgId: actor.organizationId,
         beforeState: null, afterState: { year, month, gerados, falhas },
+        nomeFormalDoAtor: await nomeFormalDoAtor(actor.sub, leituras),
       });
     }
   }

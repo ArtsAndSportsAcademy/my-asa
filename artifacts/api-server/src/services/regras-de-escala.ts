@@ -8,8 +8,9 @@
  * As funções puras ficam aqui no alto; a leitura do banco, mais abaixo.
  */
 import { and, asc, desc, eq, gte, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
-import { eligibleSessions } from "./session-blocks.js";
+import { eligibleSessionsDoDia } from "./session-blocks.js";
 import { enqueueNotification } from "./undo.js";
+import { janelaDoMes, lembrarOuLer, type LeiturasDoMes } from "./leituras-do-mes.js";
 import { APP_ROUTES } from "../lib/app-routes.js";
 import {
   agendaEventsTable, dailyBookAssignmentsTable, dailyBooksTable, db, escalaRegrasLocalTable, programacaoBlocosTable,
@@ -83,6 +84,43 @@ export const INTERVALO_COLADO_PADRAO_MINUTOS = 20;
 
 const hhmm = (hora: string | null | undefined) => (hora ?? "").slice(0, 5);
 
+const diasDeVigencia = (p: { vigenciaInicio: string; vigenciaFim: string }) => Math.round((Date.parse(`${p.vigenciaFim}T00:00:00Z`) - Date.parse(`${p.vigenciaInicio}T00:00:00Z`)) / 86_400_000);
+
+/**
+ * As Programações ativas que cobrem a data nos locais dados, da mais curta para a mais longa e, no empate, da mais nova.
+ * Com `leituras`, as do mês inteiro são lidas uma vez e a data é escolhida aqui (mesma ordem que o banco usava).
+ */
+async function programacoesDoDia(locationIds: string[], date: string, leituras?: LeiturasDoMes) {
+  if (!leituras) {
+    return db.select().from(programacoesTable).where(and(
+      inArray(programacoesTable.locationId, locationIds), eq(programacoesTable.active, true),
+      lte(programacoesTable.vigenciaInicio, date), gte(programacoesTable.vigenciaFim, date),
+    )).orderBy(asc(sql`${programacoesTable.vigenciaFim} - ${programacoesTable.vigenciaInicio}`), desc(programacoesTable.createdAt));
+  }
+  const { inicio, fim } = janelaDoMes(date);
+  const doMes = await leituras.lembrar(`programacoes-dos-locais:${[...locationIds].sort().join(",")}:${inicio}`, () => db.select().from(programacoesTable).where(and(
+    inArray(programacoesTable.locationId, locationIds), eq(programacoesTable.active, true),
+    lte(programacoesTable.vigenciaInicio, fim), gte(programacoesTable.vigenciaFim, inicio),
+  )));
+  return doMes
+    .filter((p) => p.vigenciaInicio <= date && p.vigenciaFim >= date)
+    .sort((a, b) => diasDeVigencia(a) - diasDeVigencia(b) || b.createdAt.getTime() - a.createdAt.getTime());
+}
+
+/** Os blocos de Livro da Programação no dia da semana, por horário; com `leituras`, os do mês inteiro vêm de uma leitura só. */
+async function blocosDeLivroDoDia(programacaoIds: string[], diaDaSemana: number, showIds: string[], leituras?: LeiturasDoMes) {
+  if (!leituras) {
+    return db.select().from(programacaoBlocosTable).where(and(
+      inArray(programacaoBlocosTable.programacaoId, programacaoIds), eq(programacaoBlocosTable.weekday, diaDaSemana),
+      eq(programacaoBlocosTable.regra, "livro"), eq(programacaoBlocosTable.active, true), inArray(programacaoBlocosTable.showBookId, showIds),
+    )).orderBy(asc(programacaoBlocosTable.inicio));
+  }
+  const todos = await leituras.lembrar(`blocos-de-livro:${[...programacaoIds].sort().join(",")}`, () => db.select().from(programacaoBlocosTable).where(and(
+    inArray(programacaoBlocosTable.programacaoId, programacaoIds), eq(programacaoBlocosTable.regra, "livro"), eq(programacaoBlocosTable.active, true),
+  )).orderBy(asc(programacaoBlocosTable.inicio)));
+  return todos.filter((b) => b.weekday === diaDaSemana && b.showBookId !== null && showIds.includes(b.showBookId));
+}
+
 type LivroParaHorario = { id: string; agendaEventId: string; showBookId: string | null; sessionId: string | null; start: string | null; end: string | null };
 export type Horario = { start: string; end: string | null };
 
@@ -91,14 +129,14 @@ export type Horario = { start: string; end: string | null };
  * usam a hora da sessão (quando há `sessionId`) ou, por último, o bloco da Programação do dia para aquele
  * show (o menor início). Sem nenhuma das três, o Livro fica sem horário (null) — nenhuma hora é inventada.
  */
-async function horariosDosLivros(livros: LivroParaHorario[], date: string): Promise<Map<string, Horario | null>> {
+async function horariosDosLivros(livros: LivroParaHorario[], date: string, leituras?: LeiturasDoMes): Promise<Map<string, Horario | null>> {
   const horarios = new Map<string, Horario | null>();
   for (const livro of livros) if (livro.start) horarios.set(livro.id, { start: hhmm(livro.start), end: livro.end ? hhmm(livro.end) : null });
   const semHora = livros.filter((livro) => !livro.start);
   if (!semHora.length) return horarios;
 
   const sessionIds = [...new Set(semHora.map((l) => l.sessionId).filter((id): id is string => Boolean(id)))];
-  const sessoes = sessionIds.length ? await db.select({ id: sessionsTable.id, startTime: sessionsTable.startTime, endTime: sessionsTable.endTime }).from(sessionsTable).where(inArray(sessionsTable.id, sessionIds)) : [];
+  const sessoes = sessionIds.length ? await lembrarOuLer(leituras, `sessoes:${[...sessionIds].sort().join(",")}`, () => db.select({ id: sessionsTable.id, startTime: sessionsTable.startTime, endTime: sessionsTable.endTime }).from(sessionsTable).where(inArray(sessionsTable.id, sessionIds))) : [];
   const sessaoPorId = new Map(sessoes.map((s) => [s.id, s]));
   const semSessao = semHora.filter((livro) => {
     const sessao = livro.sessionId ? sessaoPorId.get(livro.sessionId) : undefined;
@@ -107,28 +145,23 @@ async function horariosDosLivros(livros: LivroParaHorario[], date: string): Prom
   });
   const showIds = [...new Set(semSessao.map((l) => l.showBookId).filter((id): id is string => Boolean(id)))];
   if (showIds.length) {
-    const shows = await db.select({ id: showBooksTable.id, locationId: showBooksTable.locationId }).from(showBooksTable).where(inArray(showBooksTable.id, showIds));
+    const shows = await lembrarOuLer(leituras, `shows-local:${[...showIds].sort().join(",")}`, () => db.select({ id: showBooksTable.id, locationId: showBooksTable.locationId }).from(showBooksTable).where(inArray(showBooksTable.id, showIds)));
     const locationIds = [...new Set(shows.map((s) => s.locationId).filter((id): id is string => Boolean(id)))];
-    const programacoes = locationIds.length ? await db.select().from(programacoesTable).where(and(
-      inArray(programacoesTable.locationId, locationIds), eq(programacoesTable.active, true),
-      lte(programacoesTable.vigenciaInicio, date), gte(programacoesTable.vigenciaFim, date),
-    )).orderBy(asc(sql`${programacoesTable.vigenciaFim} - ${programacoesTable.vigenciaInicio}`), desc(programacoesTable.createdAt)) : [];
+    const programacoes = locationIds.length ? await programacoesDoDia(locationIds, date, leituras) : [];
     const programacaoDoLocal = new Map<string, string>();
     for (const p of programacoes) if (!programacaoDoLocal.has(p.locationId)) programacaoDoLocal.set(p.locationId, p.id);
     const diaDaSemana = new Date(`${date}T00:00:00Z`).getUTCDay();
-    const blocos = programacaoDoLocal.size ? await db.select().from(programacaoBlocosTable).where(and(
-      inArray(programacaoBlocosTable.programacaoId, [...programacaoDoLocal.values()]), eq(programacaoBlocosTable.weekday, diaDaSemana),
-      eq(programacaoBlocosTable.regra, "livro"), eq(programacaoBlocosTable.active, true), inArray(programacaoBlocosTable.showBookId, showIds),
-    )).orderBy(asc(programacaoBlocosTable.inicio)) : [];
+    const blocos = programacaoDoLocal.size ? await blocosDeLivroDoDia([...programacaoDoLocal.values()], diaDaSemana, showIds, leituras) : [];
     const localDoShow = new Map(shows.map((s) => [s.id, s.locationId]));
     // Livro do dia de um show com sessão separada: a hora é a da primeira sessão que NÃO é separada; o bloco da
     // Programação só vale se não for o de uma sessão separada (senão o Livro do dia herdaria a hora dela).
     const comumDoShow = new Map<string, Horario>();
     const horaDeSeparada = new Map<string, Set<string>>();
     for (const showId of showIds) {
-      const [comum] = await eligibleSessions(showId, date, db, { separada: false });
+      const todas = await eligibleSessionsDoDia(showId, date, leituras);
+      const [comum] = todas.filter((x) => !x.separada);
       if (comum) comumDoShow.set(showId, { start: hhmm(comum.startTime), end: hhmm(comum.endTime) });
-      horaDeSeparada.set(showId, new Set((await eligibleSessions(showId, date, db, { separada: true })).map((x) => hhmm(x.startTime))));
+      horaDeSeparada.set(showId, new Set(todas.filter((x) => x.separada).map((x) => hhmm(x.startTime))));
     }
     for (const livro of semSessao) {
       const doComum = livro.showBookId ? comumDoShow.get(livro.showBookId) : undefined;
@@ -152,6 +185,12 @@ export async function horarioDoLivro(book: { id: string; agendaEventId: string; 
 
 export type RegraDeEscala = "RESTRICAO_HORARIO" | "LIMITE_DO_DIA";
 
+/** O evento do Livro que está sendo gerado, quando quem chama já o tem em mãos (poupa uma leitura por Livro). */
+export type EventoConhecido = {
+  id: string; showBookId: string | null; start: string | null; end: string | null;
+  eventLocationId: string | null; showLocationId: string | null;
+};
+
 export type RegrasDoDia = {
   /** userId → por que a pessoa não pode entrar neste show ("está com restrição de horário (…)", "já está em 3 shows hoje (…)"). */
   bloqueios: Map<string, string>;
@@ -167,8 +206,8 @@ export type RegrasDoDia = {
  * O que o motor precisa saber de restrição, limite do dia e shows colados para escolher quem faz um show.
  * `eventId` é o evento do Livro que está sendo gerado, lido ou regenerado: o próprio Livro nunca conta contra a pessoa.
  */
-export async function carregarRegrasDoDia(input: { eventId: string; userIds: string[]; date: string; operationId: string }): Promise<RegrasDoDia> {
-  const { eventId, userIds, date, operationId } = input;
+export async function carregarRegrasDoDia(input: { eventId: string; userIds: string[]; date: string; operationId: string; leituras?: LeiturasDoMes; eventoConhecido?: EventoConhecido }): Promise<RegrasDoDia> {
+  const { eventId, userIds, date, operationId, leituras, eventoConhecido } = input;
   const regras: RegrasDoDia = { bloqueios: new Map(), motivos: new Map(), colados: new Set(), semHorario: false };
   const barrar = (userId: string, regra: RegraDeEscala, frase: string) => {
     const antes = regras.bloqueios.get(userId);
@@ -176,7 +215,7 @@ export async function carregarRegrasDoDia(input: { eventId: string; userIds: str
     regras.motivos.set(userId, [...(regras.motivos.get(userId) ?? []), { regra, frase }]);
   };
   if (!userIds.length) return regras;
-  const [evento] = await db.select({
+  const [evento] = eventoConhecido && eventoConhecido.id === eventId ? [eventoConhecido] : await db.select({
     id: agendaEventsTable.id, showBookId: agendaEventsTable.showBookId, start: agendaEventsTable.startTime, end: agendaEventsTable.endTime,
     eventLocationId: agendaEventsTable.locationId, showLocationId: showBooksTable.locationId,
   }).from(agendaEventsTable).leftJoin(showBooksTable, eq(showBooksTable.id, agendaEventsTable.showBookId)).where(eq(agendaEventsTable.id, eventId)).limit(1);
@@ -191,13 +230,19 @@ export async function carregarRegrasDoDia(input: { eventId: string; userIds: str
   ));
   const outros = livros.filter((livro) => livro.agendaEventId !== eventId);
   const proprioId = `evento:${eventId}`;
-  const horarios = await horariosDosLivros([...outros, { id: proprioId, agendaEventId: eventId, showBookId: evento.showBookId, sessionId: null, start: evento.start, end: evento.end }], date);
+  const horarios = await horariosDosLivros([...outros, { id: proprioId, agendaEventId: eventId, showBookId: evento.showBookId, sessionId: null, start: evento.start, end: evento.end }], date, leituras);
   const proprio = horarios.get(proprioId) ?? null;
 
-  const linhas = await db.select().from(restricoesHorarioTable).where(and(
-    inArray(restricoesHorarioTable.userId, userIds), eq(restricoesHorarioTable.status, "ACTIVE"),
-    lte(restricoesHorarioTable.periodStart, date), or(isNull(restricoesHorarioTable.periodEnd), gte(restricoesHorarioTable.periodEnd, date)),
-  ));
+  // Com as leituras do mês, a restrição de TODO o mês é lida uma vez e o dia é escolhido aqui, com as mesmas comparações do banco.
+  const linhas = leituras
+    ? (await leituras.lembrar(`restricoes-horario:${[...userIds].sort().join(",")}:${janelaDoMes(date).inicio}`, () => db.select().from(restricoesHorarioTable).where(and(
+        inArray(restricoesHorarioTable.userId, userIds), eq(restricoesHorarioTable.status, "ACTIVE"),
+        lte(restricoesHorarioTable.periodStart, janelaDoMes(date).fim), or(isNull(restricoesHorarioTable.periodEnd), gte(restricoesHorarioTable.periodEnd, janelaDoMes(date).inicio)),
+      )))).filter((r) => r.periodStart <= date && (r.periodEnd === null || r.periodEnd >= date))
+    : await db.select().from(restricoesHorarioTable).where(and(
+        inArray(restricoesHorarioTable.userId, userIds), eq(restricoesHorarioTable.status, "ACTIVE"),
+        lte(restricoesHorarioTable.periodStart, date), or(isNull(restricoesHorarioTable.periodEnd), gte(restricoesHorarioTable.periodEnd, date)),
+      ));
   const restricoes: RestricaoDeHorario[] = linhas.map((r) => ({
     userId: r.userId, diasSemana: r.diasSemana, horaInicio: r.horaInicio, horaFim: r.horaFim, periodStart: r.periodStart, periodEnd: r.periodEnd, motivo: r.motivo,
   }));
@@ -211,7 +256,7 @@ export async function carregarRegrasDoDia(input: { eventId: string; userIds: str
     if (impede) barrar(userId, "RESTRICAO_HORARIO", `está com restrição de horário (só pode das ${hhmm(impede.horaInicio)} às ${hhmm(impede.horaFim)}: ${impede.motivo})`);
   }
 
-  const [regrasDoLocal] = locationId ? await db.select().from(escalaRegrasLocalTable).where(eq(escalaRegrasLocalTable.locationId, locationId)).limit(1) : [];
+  const [regrasDoLocal] = locationId ? await lembrarOuLer(leituras, `regras-do-local:${locationId}`, () => db.select().from(escalaRegrasLocalTable).where(eq(escalaRegrasLocalTable.locationId, locationId)).limit(1)) : [];
   const limite = regrasDoLocal?.limiteShowsDia ?? null;
   const intervalo = regrasDoLocal?.intervaloMinimoMinutos ?? INTERVALO_COLADO_PADRAO_MINUTOS;
   const atribuicoes = outros.length ? await db.select({ livro: dailyBookAssignmentsTable.dailyBookId, userId: dailyBookAssignmentsTable.userId, manual: dailyBookAssignmentsTable.manual }).from(dailyBookAssignmentsTable).where(and(

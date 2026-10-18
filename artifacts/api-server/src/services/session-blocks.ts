@@ -1,5 +1,6 @@
 import { and, asc, eq, isNull, like, not, sql } from "drizzle-orm";
 import { db, dailyBookBlocksTable, dailyBooksTable, sessionsTable } from "@workspace/db";
+import { lembrarOuLer, type LeiturasDoMes } from "./leituras-do-mes.js";
 
 /**
  * Bloco de sessão do Livro do Dia: só marca o horário. Não tem posições próprias —
@@ -57,6 +58,14 @@ export async function eligibleSessions(showBookId: string, date: string, dbLike:
     .orderBy(asc(sessionsTable.startTime), asc(sessionsTable.endTime));
 }
 
+/**
+ * As sessões do show que valem na data (todas, separadas ou não), lidas uma vez por show e dia quando há `leituras`.
+ * Quem precisa só das comuns ou só das separadas filtra o resultado: a ordem (horário) é a mesma de `eligibleSessions`.
+ */
+export function eligibleSessionsDoDia(showBookId: string, date: string, leituras?: LeiturasDoMes) {
+  return lembrarOuLer(leituras, `elegiveis:${showBookId}:${date}`, () => eligibleSessions(showBookId, date));
+}
+
 export interface SessionBlockView {
   id: string;
   name: string;
@@ -82,13 +91,22 @@ async function sessionBlockRows(dailyBookId: string, dbLike: DbLike) {
  * Sem sessão elegível não faz nada — nenhum horário é inventado.
  * Idempotente: rodar de novo sem mudança não escreve nada.
  */
-export async function syncSessionBlocks(dailyBookId: string, showBookId: string, date: string, dbLike: DbLike = db) {
+export async function syncSessionBlocks(
+  dailyBookId: string, showBookId: string, date: string, dbLike: DbLike = db,
+  /**
+   * Livro que acabou de ser criado por quem já tem em mãos a sessão dele e as sessões comuns do dia: ainda não tem
+   * nenhum bloco de sessão, então não há o que reler. Sem isto, tudo é lido do banco (o caminho de sempre).
+   */
+  recemCriado?: { sessionId: string | null; sessoesComuns: Awaited<ReturnType<typeof eligibleSessions>> },
+) {
   // 0071: Livro de sessão separada É a sessão (a hora vem do evento), então não leva bloco de sessão; o Livro do dia
   // só marca as sessões que não são separadas — as separadas têm o Livro delas.
-  const [book] = await dbLike.select({ sessionId: dailyBooksTable.sessionId }).from(dailyBooksTable).where(eq(dailyBooksTable.id, dailyBookId)).limit(1);
-  if (book?.sessionId) return { sessionIds: [] as string[], createdBlockIds: [] as string[], updatedBlockIds: [] as string[], staleBlockIds: [] as string[] };
-  const sessions = await eligibleSessions(showBookId, date, dbLike, { separada: false });
-  const existing = await sessionBlockRows(dailyBookId, dbLike);
+  const sessionIdDoLivro = recemCriado
+    ? recemCriado.sessionId
+    : (await dbLike.select({ sessionId: dailyBooksTable.sessionId }).from(dailyBooksTable).where(eq(dailyBooksTable.id, dailyBookId)).limit(1))[0]?.sessionId;
+  if (sessionIdDoLivro) return { sessionIds: [] as string[], createdBlockIds: [] as string[], updatedBlockIds: [] as string[], staleBlockIds: [] as string[] };
+  const sessions = recemCriado ? recemCriado.sessoesComuns : await eligibleSessions(showBookId, date, dbLike, { separada: false });
+  const existing = recemCriado ? [] : await sessionBlockRows(dailyBookId, dbLike);
   const existingBySlot = new Map<string, (typeof existing)[number]>();
   for (const block of existing) {
     const key = slotKey(block.startTime, block.endTime);
@@ -98,6 +116,7 @@ export async function syncSessionBlocks(dailyBookId: string, showBookId: string,
   const createdBlockIds: string[] = [];
   const updatedBlockIds: string[] = [];
   const eligibleSlots = new Set<string>();
+  const aCriar: (typeof dailyBookBlocksTable.$inferInsert)[] = [];
 
   for (const [order, session] of sessions.entries()) {
     const key = slotKey(session.startTime, session.endTime);
@@ -105,7 +124,7 @@ export async function syncSessionBlocks(dailyBookId: string, showBookId: string,
     const name = blockName(session);
     const found = existingBySlot.get(key);
     if (!found) {
-      const [created] = await dbLike.insert(dailyBookBlocksTable).values({
+      aCriar.push({
         dailyBookId,
         name,
         order,
@@ -113,14 +132,19 @@ export async function syncSessionBlocks(dailyBookId: string, showBookId: string,
         endTime: hhmm(session.endTime),
         sourceBlockId: null,
         sceneId: null,
-      }).returning({ id: dailyBookBlocksTable.id });
-      if (created) createdBlockIds.push(created.id);
+      });
     } else if (found.name !== name || found.order !== order || found.isRemoved) {
       await dbLike.update(dailyBookBlocksTable)
         .set({ name, order, isRemoved: false, updatedAt: new Date() })
         .where(eq(dailyBookBlocksTable.id, found.id));
       updatedBlockIds.push(found.id);
     }
+  }
+
+  // Todos os blocos novos de uma vez só: uma ida ao banco, não uma por sessão.
+  if (aCriar.length) {
+    const criados = await dbLike.insert(dailyBookBlocksTable).values(aCriar).returning({ id: dailyBookBlocksTable.id });
+    for (const created of criados) createdBlockIds.push(created.id);
   }
 
   const staleBlockIds = existing

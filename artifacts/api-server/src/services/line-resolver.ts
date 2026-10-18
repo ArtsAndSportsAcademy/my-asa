@@ -1,6 +1,7 @@
 import { eq, and, inArray, lte, gte, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { carregarRegrasDoDia, chaveDeEvitar } from "./regras-de-escala.js";
+import { carregarRegrasDoDia, chaveDeEvitar, type EventoConhecido } from "./regras-de-escala.js";
+import { janelaDoMes, lembrarOuLer, type LeiturasDoMes } from "./leituras-do-mes.js";
 import {
   showBookScenesTable,
   showBookBlocksTable,
@@ -136,6 +137,29 @@ export async function getUnavailableUserIds(operationId: string, dateISO: string
     );
   restrictions.forEach((r) => unavailable.add(r.userId));
 
+  return unavailable;
+}
+
+/**
+ * O mesmo que `getUnavailableUserIds`, mas lendo folgas e restrições do MÊS inteiro de uma vez e escolhendo o dia aqui
+ * (mesmas comparações do banco). Sem `leituras`, é a leitura de sempre. Devolve um conjunto novo a cada chamada.
+ */
+export async function getUnavailableUserIdsComLeituras(operationId: string, dateISO: string, leituras?: LeiturasDoMes): Promise<Set<string>> {
+  if (!leituras) return getUnavailableUserIds(operationId, dateISO);
+  const { inicio, fim } = janelaDoMes(dateISO);
+  const [folgas, restrictions] = await Promise.all([
+    leituras.lembrar(`folgas-do-mes:${operationId}:${inicio}`, () => db
+      .select({ userId: folgasTable.userId, startDate: folgasTable.startDate, endDate: folgasTable.endDate })
+      .from(folgasTable)
+      .where(and(eq(folgasTable.operationId, operationId), eq(folgasTable.status, "ACTIVE"), lte(folgasTable.startDate, fim), gte(folgasTable.endDate, inicio)))),
+    leituras.lembrar(`restricoes-do-mes:${inicio}`, () => db
+      .select({ userId: restrictionsTable.userId, periodStart: restrictionsTable.periodStart, periodEnd: restrictionsTable.periodEnd })
+      .from(restrictionsTable)
+      .where(and(eq(restrictionsTable.status, "ACTIVE"), lte(restrictionsTable.periodStart, fim), gte(restrictionsTable.periodEnd, inicio)))),
+  ]);
+  const unavailable = new Set<string>();
+  for (const f of folgas) if (f.startDate <= dateISO && f.endDate >= dateISO) unavailable.add(f.userId);
+  for (const r of restrictions) if (r.periodStart <= dateISO && r.periodEnd >= dateISO) unavailable.add(r.userId);
   return unavailable;
 }
 
@@ -411,7 +435,7 @@ export function workloadWindows(dateISO: string) {
  * escalada no dia, na semana e no mês — sem contar Livros cancelados nem o próprio show nesta
  * data (regenerar não pode contar a si mesmo). Supervisor vai para o fim da fila do rodízio.
  */
-async function workloadBalance(userIds: string[], operationId: string, dateISO: string, showBookId: string, eventId?: string, colados: ReadonlySet<string> = new Set()): Promise<BalanceKey> {
+async function workloadBalance(userIds: string[], operationId: string, dateISO: string, showBookId: string, eventId?: string, colados: ReadonlySet<string> = new Set(), leituras?: LeiturasDoMes): Promise<BalanceKey> {
   if (userIds.length === 0) return NO_BALANCE;
   // Com o evento do Livro em mãos, só o PRÓPRIO Livro fica de fora da conta (regenerar não conta a si mesmo);
   // assim a outra sessão do mesmo show, no mesmo dia, pesa contra quem já fez uma. Sem ele, vale o jeito antigo:
@@ -437,10 +461,11 @@ async function workloadBalance(userIds: string[], operationId: string, dateISO: 
         and e.date between ${from} and ${to}
         and ${foraDaConta}
       group by a.user_id`),
-    db.select({ userId: userRolesTable.userId }).from(userRolesTable).where(and(
+    // Quem é supervisor não muda durante a geração; a carga (acima) muda a cada Livro gerado e é sempre lida de novo.
+    lembrarOuLer(leituras, `supervisores:${operationId}:${[...userIds].sort().join(",")}`, () => db.select({ userId: userRolesTable.userId }).from(userRolesTable).where(and(
       inArray(userRolesTable.userId, userIds), eq(userRolesTable.operationId, operationId),
       inArray(userRolesTable.role, ["SUPERVISOR_A", "SUPERVISOR_B"]), eq(userRolesTable.active, true),
-    )),
+    ))),
   ]);
   const rows = (Array.isArray(loads) ? loads : (loads as { rows?: unknown[] }).rows ?? []) as { userId: string; day: number | string; week: number | string; month: number | string }[];
   const byUser = new Map(rows.map((row) => [row.userId, [Number(row.day), Number(row.week), Number(row.month)]]));
@@ -456,99 +481,114 @@ export async function resolveShowBookCast(
   showBookId: string,
   operationId: string,
   dateISO: string,
-  opts: { dedupPerScene?: boolean; eventId?: string } = {}
+  opts: { dedupPerScene?: boolean; eventId?: string; leituras?: LeiturasDoMes; eventoConhecido?: EventoConhecido } = {}
 ): Promise<ResolveResult> {
-  const tree = await buildShowBookTree(showBookId);
+  return (await resolveShowBookCastComNomes(showBookId, operationId, dateISO, opts)).result;
+}
+
+/** O elenco resolvido e, junto, o nome de cada pessoa que o motor encontrou (o Livro do Dia reaproveita os nomes). */
+export async function resolveShowBookCastComNomes(
+  showBookId: string,
+  operationId: string,
+  dateISO: string,
+  opts: { dedupPerScene?: boolean; eventId?: string; leituras?: LeiturasDoMes; eventoConhecido?: EventoConhecido } = {}
+): Promise<{ result: ResolveResult; nomes: ReadonlyMap<string, string> }> {
+  const { leituras } = opts;
+  const tree = await lembrarOuLer(leituras, `arvore:${showBookId}`, () => buildShowBookTree(showBookId));
   const weekday = weekdayOf(dateISO);
 
-  // Nomes de todos os usuários referenciados
-  const userIds = new Set<string>();
-  const characterIds = new Set<string>();
-  for (const scene of tree) {
-    for (const block of scene.blocks) {
-      for (const pos of block.positions) {
-        for (const line of pos.lines) {
-          collectUserIdsFromConfig(line.config).forEach((id) => userIds.add(id));
-          if (typeof line.characterId === "string" && line.characterId.trim()) {
-            characterIds.add(line.characterId);
+  // O elenco do Show (quem pode entrar, a fila de cada personagem, os nomes) não muda durante a geração do mês.
+  const { userIds, castMembers, castCounts, characterModes, nameMap, nonSchedulable } = await lembrarOuLer(leituras, `elenco:${showBookId}`, async () => {
+    // Nomes de todos os usuários referenciados
+    const userIds = new Set<string>();
+    const characterIds = new Set<string>();
+    for (const scene of tree) {
+      for (const block of scene.blocks) {
+        for (const pos of block.positions) {
+          for (const line of pos.lines) {
+            collectUserIdsFromConfig(line.config).forEach((id) => userIds.add(id));
+            if (typeof line.characterId === "string" && line.characterId.trim()) {
+              characterIds.add(line.characterId);
+            }
           }
         }
       }
     }
-  }
-  const castMembers = new Map<string, string[]>();
-  const castCounts = new Map<string, number>();
-  const characterModes = new Map<string, "titular" | "rodizio">();
-  if (characterIds.size > 0) {
-    // Personagem sem ninguém na fila ainda precisa do modo e de uma fila vazia (vaga descoberta).
-    const characterRows = await db
-      .select({ id: charactersTable.id, mode: charactersTable.mode })
-      .from(charactersTable)
-      .where(and(inArray(charactersTable.id, Array.from(characterIds)), eq(charactersTable.active, true)));
-    for (const row of characterRows) {
-      characterModes.set(row.id, row.mode);
-      castMembers.set(row.id, []);
-    }
-    const castRows = await db
-      .select({
-        characterId: characterCastTable.characterId,
-        personId: characterCastTable.personId,
-        timesDone: characterCastTable.timesDone,
-      })
-      .from(characterCastTable)
-      .innerJoin(charactersTable, eq(characterCastTable.characterId, charactersTable.id))
-      .where(and(
-        inArray(characterCastTable.characterId, Array.from(characterIds)),
-        eq(characterCastTable.active, true),
-        eq(charactersTable.active, true),
-      ))
-      .orderBy(characterCastTable.characterId, characterCastTable.order, characterCastTable.id);
-    for (const row of castRows) {
-      const members = castMembers.get(row.characterId) ?? [];
-      members.push(row.personId);
-      castMembers.set(row.characterId, members);
-      castCounts.set(rotationCountKey(row.characterId, row.personId), row.timesDone);
-      userIds.add(row.personId);
-    }
-  }
-  const nameMap = new Map<string, string>();
-  // Administradores e membros especiais não fazem parte do elenco escalável; mesmo
-  // que estejam configurados numa linha, são tratados como indisponíveis (a linha
-  // salta para o próximo substituto/rodízio ou fica descoberta).
-  const nonSchedulable = new Set<string>();
-  if (userIds.size > 0) {
-    const ids = Array.from(userIds);
-    const rows = await db
-      .select({ id: usersTable.id, name: usersTable.name, specialization: usersTable.specialization })
-      .from(usersTable)
-      .where(inArray(usersTable.id, ids));
-    rows.forEach((r) => nameMap.set(r.id, r.name));
-
-    const adminRows = await db
-      .select({ userId: userRolesTable.userId })
-      .from(userRolesTable)
-      .where(and(
-        inArray(userRolesTable.userId, ids),
-        // 08/10: Direção também não entra em show (Produção entra, ex.: Lucas no Yeti).
-        inArray(userRolesTable.role, ["ADMIN", "DIR"]),
-        eq(userRolesTable.active, true),
-      ));
-    const adminSet = new Set(adminRows.map((r) => r.userId));
-    const specMap = new Map(rows.map((r) => [r.id, r.specialization]));
-    for (const id of ids) {
-      if (!isSchedulableMember({ isAdmin: adminSet.has(id), specialization: specMap.get(id) ?? null })) {
-        nonSchedulable.add(id);
+    const castMembers = new Map<string, string[]>();
+    const castCounts = new Map<string, number>();
+    const characterModes = new Map<string, "titular" | "rodizio">();
+    if (characterIds.size > 0) {
+      // Personagem sem ninguém na fila ainda precisa do modo e de uma fila vazia (vaga descoberta).
+      const characterRows = await db
+        .select({ id: charactersTable.id, mode: charactersTable.mode })
+        .from(charactersTable)
+        .where(and(inArray(charactersTable.id, Array.from(characterIds)), eq(charactersTable.active, true)));
+      for (const row of characterRows) {
+        characterModes.set(row.id, row.mode);
+        castMembers.set(row.id, []);
+      }
+      const castRows = await db
+        .select({
+          characterId: characterCastTable.characterId,
+          personId: characterCastTable.personId,
+          timesDone: characterCastTable.timesDone,
+        })
+        .from(characterCastTable)
+        .innerJoin(charactersTable, eq(characterCastTable.characterId, charactersTable.id))
+        .where(and(
+          inArray(characterCastTable.characterId, Array.from(characterIds)),
+          eq(characterCastTable.active, true),
+          eq(charactersTable.active, true),
+        ))
+        .orderBy(characterCastTable.characterId, characterCastTable.order, characterCastTable.id);
+      for (const row of castRows) {
+        const members = castMembers.get(row.characterId) ?? [];
+        members.push(row.personId);
+        castMembers.set(row.characterId, members);
+        castCounts.set(rotationCountKey(row.characterId, row.personId), row.timesDone);
+        userIds.add(row.personId);
       }
     }
-  }
+    const nameMap = new Map<string, string>();
+    // Administradores e membros especiais não fazem parte do elenco escalável; mesmo
+    // que estejam configurados numa linha, são tratados como indisponíveis (a linha
+    // salta para o próximo substituto/rodízio ou fica descoberta).
+    const nonSchedulable = new Set<string>();
+    if (userIds.size > 0) {
+      const ids = Array.from(userIds);
+      const rows = await db
+        .select({ id: usersTable.id, name: usersTable.name, specialization: usersTable.specialization })
+        .from(usersTable)
+        .where(inArray(usersTable.id, ids));
+      rows.forEach((r) => nameMap.set(r.id, r.name));
+
+      const adminRows = await db
+        .select({ userId: userRolesTable.userId })
+        .from(userRolesTable)
+        .where(and(
+          inArray(userRolesTable.userId, ids),
+          // 08/10: Direção também não entra em show (Produção entra, ex.: Lucas no Yeti).
+          inArray(userRolesTable.role, ["ADMIN", "DIR"]),
+          eq(userRolesTable.active, true),
+        ));
+      const adminSet = new Set(adminRows.map((r) => r.userId));
+      const specMap = new Map(rows.map((r) => [r.id, r.specialization]));
+      for (const id of ids) {
+        if (!isSchedulableMember({ isAdmin: adminSet.has(id), specialization: specMap.get(id) ?? null })) {
+          nonSchedulable.add(id);
+        }
+      }
+    }
+    return { userIds, castMembers, castCounts, characterModes, nameMap, nonSchedulable };
+  });
   const nameOf = (id: string) => nameMap.get(id) ?? "—";
 
-  const unavailable = await getUnavailableUserIds(operationId, dateISO);
+  const unavailable = await getUnavailableUserIdsComLeituras(operationId, dateISO, leituras);
   for (const id of nonSchedulable) unavailable.add(id);
   // Restrição de horário e limite do dia são proibição; show colado é só "evitar". Sem o evento do Livro não há como
   // saber a hora do show, então nada disso se aplica (comportamento de antes).
-  const regras = opts.eventId ? await carregarRegrasDoDia({ eventId: opts.eventId, userIds: Array.from(userIds), date: dateISO, operationId }) : null;
-  const balance = await workloadBalance(Array.from(userIds), operationId, dateISO, showBookId, opts.eventId, regras?.colados);
+  const regras = opts.eventId ? await carregarRegrasDoDia({ eventId: opts.eventId, userIds: Array.from(userIds), date: dateISO, operationId, leituras, eventoConhecido: opts.eventoConhecido }) : null;
+  const balance = await workloadBalance(Array.from(userIds), operationId, dateISO, showBookId, opts.eventId, regras?.colados, leituras);
 
   const rotationKeys = new Set<string>();
   for (const scene of tree) {
@@ -572,10 +612,10 @@ export async function resolveShowBookCast(
   // chave "legacy-line:…": consultar com ela derrubava a geração do dia inteiro ("Erro inesperado ao gerar este dia").
   const chavesDeHistorico = Array.from(rotationKeys).filter(ehUuid);
   if (chavesDeHistorico.length > 0) {
-    const rows = await db
+    const rows = await lembrarOuLer(leituras, `avancos:${showBookId}`, () => db
       .select({ characterId: rotationDailyAdvancesTable.characterId, userId: rotationDailyAdvancesTable.userId, date: rotationDailyAdvancesTable.date })
       .from(rotationDailyAdvancesTable)
-      .where(inArray(rotationDailyAdvancesTable.characterId, chavesDeHistorico));
+      .where(inArray(rotationDailyAdvancesTable.characterId, chavesDeHistorico)));
     const historicalTotal = new Map<string, number>();
     for (const row of rows) {
       const key = rotationCountKey(row.characterId, row.userId);
@@ -626,7 +666,7 @@ export async function resolveShowBookCast(
     };
   });
 
-  return { date: dateISO, weekday, scenes, uncoveredCount, ...(regras?.semHorario ? { semHorario: true } : {}) };
+  return { result: { date: dateISO, weekday, scenes, uncoveredCount, ...(regras?.semHorario ? { semHorario: true } : {}) }, nomes: nameMap };
 }
 
 // ─── Mapa por papel (para alimentar o Livro do Dia) ───────────────────────────
@@ -653,9 +693,9 @@ export async function resolveAssignmentsByRole(
   showBookId: string,
   operationId: string,
   dateISO: string,
-  opts: { dedupPerScene?: boolean; eventId?: string } = {}
-): Promise<{ byRole: Map<string, RoleResolution>; result: ResolveResult }> {
-  const result = await resolveShowBookCast(showBookId, operationId, dateISO, opts);
+  opts: { dedupPerScene?: boolean; eventId?: string; leituras?: LeiturasDoMes; eventoConhecido?: EventoConhecido } = {}
+): Promise<{ byRole: Map<string, RoleResolution>; result: ResolveResult; nomes: ReadonlyMap<string, string> }> {
+  const { result, nomes } = await resolveShowBookCastComNomes(showBookId, operationId, dateISO, opts);
   const byRole = new Map<string, RoleResolution>();
   for (const scene of result.scenes) {
     for (const block of scene.blocks) {
@@ -683,7 +723,7 @@ export async function resolveAssignmentsByRole(
       }
     }
   }
-  return { byRole, result };
+  return { byRole, result, nomes };
 }
 
 /**

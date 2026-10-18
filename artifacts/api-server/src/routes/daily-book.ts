@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Router, type IRouter } from "express";
 import { eq, and, inArray, ne, isNull, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
@@ -26,7 +27,7 @@ import {
   areasTable,
 } from "@workspace/db";
 import { requireAuth, requireOrganization, requireRole } from "../middlewares/auth.js";
-import { writeHistoryEvent } from "../lib/history-helper.js";
+import { nomeFormalDoAtor, writeHistoryEvent } from "../lib/history-helper.js";
 import { operationalDate } from "../lib/operational-date.js";
 import { canOperateDailyBook, canViewDailyBook, isOperationManager, type ShowResponsibilityRef } from "../lib/show-responsibility.js";
 import { eventBus } from "../lib/event-bus.js";
@@ -49,12 +50,33 @@ import {
   type RoleResolution,
   type RotationWinners,
 } from "../services/line-resolver.js";
-import { detectDailyBookConflicts } from "../services/schedule-conflicts.js";
+import { detectConflictsForDailyBooks, detectDailyBookConflicts, type PublicScheduleConflict } from "../services/schedule-conflicts.js";
+import { lembrarOuLer, type LeiturasDoMes } from "../services/leituras-do-mes.js";
 import { escalaDoDiaDoLivro, escalaPublicada, horariosDoShowNaProgramacao, marcarEscalaAlteradaPeloLivro } from "../services/escala-dia.js";
-import { isNotSessionBlock, listSessionBlocks, syncSessionBlocks } from "../services/session-blocks.js";
+import { eligibleSessions, isNotSessionBlock, listSessionBlocks, syncSessionBlocks } from "../services/session-blocks.js";
 
 const router: IRouter = Router();
-async function detectGeneratedDailyBookConflicts(dailyBookId: string, date: string) {
+/** O que a geração devolve sobre conflitos de horário. "adiada": quem gera vários Livros confere o dia todo no fim. */
+export type ConflitosDaGeracao = {
+  conflicts: PublicScheduleConflict[];
+  conflictDetection: { status: "complete" } | { status: "unavailable"; message: string } | { status: "adiada" };
+};
+const CONFLITOS_INDISPONIVEL = { status: "unavailable" as const, message: "Livro salvo. A verificação de horários está indisponível; consulte os conflitos novamente." };
+
+/** Confere, de uma vez só, os conflitos de todos os Livros do dia; um erro aqui nunca desfaz o que foi gerado. */
+export async function conferirConflitosDosLivros(dailyBookIds: string[], date: string): Promise<Map<string, ConflitosDaGeracao>> {
+  const resultado = new Map<string, ConflitosDaGeracao>();
+  try {
+    const porLivro = await detectConflictsForDailyBooks(dailyBookIds, date);
+    for (const id of dailyBookIds) resultado.set(id, { conflicts: porLivro.get(id) ?? [], conflictDetection: { status: "complete" } });
+  } catch (error) {
+    console.warn("detector de conflitos indisponível após gerar Livro do Dia", error);
+    for (const id of dailyBookIds) resultado.set(id, { conflicts: [], conflictDetection: CONFLITOS_INDISPONIVEL });
+  }
+  return resultado;
+}
+
+async function detectGeneratedDailyBookConflicts(dailyBookId: string, date: string): Promise<ConflitosDaGeracao> {
   try {
     return { conflicts: await detectDailyBookConflicts(dailyBookId, date), conflictDetection: { status: "complete" as const } };
   } catch (error) {
@@ -291,6 +313,20 @@ async function buildDailyBookTree(dailyBookId: string, dbLike: typeof db = db) {
     });
   }
 
+  return montarArvoreDoLivro({ scenes, blocks, positions, assignments, nameByUserId });
+}
+
+/**
+ * A árvore cena → bloco → posição → vaga a partir das linhas já lidas (ou recém-gravadas). Pura: não toca no banco,
+ * então a geração monta o retrato do Livro com o que acabou de gravar, sem reler tudo.
+ */
+function montarArvoreDoLivro<
+  S extends { id: string },
+  B extends { id: string; sceneId: string | null },
+  P extends { id: string; blockId: string | null },
+  A extends { positionId: string; userId: string | null },
+>(input: { scenes: S[]; blocks: B[]; positions: P[]; assignments: A[]; nameByUserId: Record<string, string> }) {
+  const { scenes, blocks, positions, assignments, nameByUserId } = input;
   const assignmentsWithNames = assignments.map((a) => ({
     ...a,
     userName: a.userId ? nameByUserId[a.userId] ?? null : null,
@@ -339,18 +375,30 @@ async function mutateDailyBook<T>(
     result: T,
   ) => Promise<void>,
 ): Promise<T> {
-  return db.transaction(async (tx) => {
-    const [claimedBook] = await tx
-      .update(dailyBooksTable)
-      .set({ version: expectedVersion + 1, updatedAt: new Date() })
-      .where(and(eq(dailyBooksTable.id, dailyBookId), eq(dailyBooksTable.version, expectedVersion)))
-      .returning();
-    if (!claimedBook) throw new VersionConflictError("Livro do Dia");
-    const typedTx = tx as unknown as typeof db;
-    const result = await mutate(typedTx, claimedBook);
-    if (afterMutate) await afterMutate(typedTx, claimedBook, result);
-    return result;
-  });
+  return db.transaction((tx) => mutateDailyBookEm(tx as unknown as typeof db, dailyBookId, expectedVersion, mutate, afterMutate));
+}
+
+/** O mesmo que `mutateDailyBook`, mas dentro de uma transação que já existe (a de quem chamou). */
+async function mutateDailyBookEm<T>(
+  tx: typeof db,
+  dailyBookId: string,
+  expectedVersion: number,
+  mutate: (tx: typeof db, claimedBook: typeof dailyBooksTable.$inferSelect) => Promise<T>,
+  afterMutate?: (
+    tx: typeof db,
+    claimedBook: typeof dailyBooksTable.$inferSelect,
+    result: T,
+  ) => Promise<void>,
+): Promise<T> {
+  const [claimedBook] = await tx
+    .update(dailyBooksTable)
+    .set({ version: expectedVersion + 1, updatedAt: new Date() })
+    .where(and(eq(dailyBooksTable.id, dailyBookId), eq(dailyBooksTable.version, expectedVersion)))
+    .returning();
+  if (!claimedBook) throw new VersionConflictError("Livro do Dia");
+  const result = await mutate(tx, claimedBook);
+  if (afterMutate) await afterMutate(tx, claimedBook, result);
+  return result;
 }
 
 async function respondDailyBookVersionConflict(
@@ -633,6 +681,26 @@ function buildSceneOccupancyFromResolver(
 // Papéis resolvidos por linhas já vêm sem duplicatas na cena (o resolver puxou o próximo
 // substituto/rodízio). Para papéis legados/manuais não há cadeia: aqui deduplicamos contra a
 // ocupação da cena — a 2ª ocorrência da pessoa vira OPEN (vazio).
+function planAssignmentsForRole(
+  roleId: string,
+  byRole: Map<string, RoleResolution>,
+  allocationMap: Record<string, string | null>,
+  sceneKey: string | null,
+  assignedByScene: Map<string, Set<string>>,
+  minimumCoverage: number = 1,
+): PlannedAssignment[] {
+  const rr = byRole.get(roleId);
+  const fromResolver = !!(rr && rr.hasLines && rr.people.length > 0);
+  const planned = planRoleAssignments(rr, roleId, allocationMap, minimumCoverage);
+  let finalPlanned = planned;
+  if (sceneKey && !fromResolver) {
+    let set = assignedByScene.get(sceneKey);
+    if (!set) { set = new Set<string>(); assignedByScene.set(sceneKey, set); }
+    finalPlanned = dedupAssignmentsForScene(planned, set);
+  }
+  return finalPlanned;
+}
+
 async function createAssignmentsForRole(
   dailyBookId: string,
   positionId: string,
@@ -645,15 +713,7 @@ async function createAssignmentsForRole(
   dailySceneId: string | null = sceneKey,
   dbLike: typeof db = db
 ) {
-  const rr = byRole.get(roleId);
-  const fromResolver = !!(rr && rr.hasLines && rr.people.length > 0);
-  const planned = planRoleAssignments(rr, roleId, allocationMap, minimumCoverage);
-  let finalPlanned = planned;
-  if (sceneKey && !fromResolver) {
-    let set = assignedByScene.get(sceneKey);
-    if (!set) { set = new Set<string>(); assignedByScene.set(sceneKey, set); }
-    finalPlanned = dedupAssignmentsForScene(planned, set);
-  }
+  const finalPlanned = planAssignmentsForRole(roleId, byRole, allocationMap, sceneKey, assignedByScene, minimumCoverage);
   for (const a of finalPlanned) {
     await dbLike.insert(dailyBookAssignmentsTable).values({
       dailyBookId,
@@ -833,12 +893,22 @@ export async function generateDailyBookDraftForScale(input: {
   reason?: string | null;
   /** Sessão separada (0071): o Livro é só desta sessão, com a hora dela. Sem ela, é o Livro do dia do show. */
   sessionId?: string | null;
+  /**
+   * Gerar o mês: leituras que não mudam durante a geração (o Show, o elenco, as sessões, as regras do local)
+   * são feitas uma vez só e reaproveitadas pelos Livros seguintes. O resultado é o mesmo.
+   */
+  leituras?: LeiturasDoMes;
+  /** Falso quando quem chama confere os conflitos de todos os Livros do dia de uma vez (`conferirConflitosDosLivros`). */
+  conferirConflitos?: boolean;
+  /** As sessões do show que não são separadas e valem na data, se quem chama já as leu. */
+  sessoesComuns?: Awaited<ReturnType<typeof eligibleSessions>>;
 }) {
-  const { showBookId, date, scaleId, actorId, organizationId, reason = null, sessionId = null } = input;
-  const [showBook] = await db.select().from(showBooksTable).where(eq(showBooksTable.id, showBookId)).limit(1);
+  const { showBookId, date, scaleId, actorId, organizationId, reason = null, sessionId = null, leituras, conferirConflitos = true, sessoesComuns } = input;
+  const conflitosAdiados = (): ConflitosDaGeracao => ({ conflicts: [], conflictDetection: { status: "adiada" } });
+  const [showBook] = await lembrarOuLer(leituras, `show:${showBookId}`, () => db.select().from(showBooksTable).where(eq(showBooksTable.id, showBookId)).limit(1));
   if (!showBook) throw new Error("Show Book não encontrado");
   const [session] = sessionId
-    ? await db.select().from(sessionsTable).where(and(eq(sessionsTable.id, sessionId), eq(sessionsTable.showId, showBookId))).limit(1)
+    ? await lembrarOuLer(leituras, `sessao:${showBookId}:${sessionId}`, () => db.select().from(sessionsTable).where(and(eq(sessionsTable.id, sessionId), eq(sessionsTable.showId, showBookId))).limit(1))
     : [];
   if (sessionId && !session) throw new Error("Sessão não encontrada neste show");
 
@@ -861,6 +931,8 @@ export async function generateDailyBookDraftForScale(input: {
       startTime: session.startTime, endTime: session.endTime, title: `${showBook.title} · ${session.startTime.slice(0, 5)}`, updatedAt: new Date(),
     }).where(eq(agendaEventsTable.id, event.id)).returning();
   }
+  // Evento recém-criado aqui: ainda não tem Livro nem alocação, não há o que procurar.
+  let eventoNovo = false;
   if (!event) {
     [event] = await db.insert(agendaEventsTable).values({
       operationId: showBook.operationId,
@@ -874,11 +946,12 @@ export async function generateDailyBookDraftForScale(input: {
       visibility: "MANAGEMENT",
       createdBy: actorId,
     }).returning();
+    eventoNovo = true;
   }
   if (!event) throw new Error("Não foi possível preparar o evento interno do Livro do Dia");
 
   // Livro cancelado (apagado) fica no histórico, mas não impede gerar o dia de novo.
-  const [existing] = await db.select().from(dailyBooksTable).where(and(
+  const [existing] = eventoNovo ? [] : await db.select().from(dailyBooksTable).where(and(
     eq(dailyBooksTable.agendaEventId, event.id),
     eq(dailyBooksTable.showBookId, showBookId),
     sessionId ? eq(dailyBooksTable.sessionId, sessionId) : isNull(dailyBooksTable.sessionId),
@@ -891,27 +964,41 @@ export async function generateDailyBookDraftForScale(input: {
     const dailyBook = existing.scaleId
       ? existing
       : (await db.update(dailyBooksTable).set({ scaleId, updatedAt: new Date() }).where(eq(dailyBooksTable.id, existing.id)).returning())[0]!;
-    return { dailyBook, generated: false, conflicts: await detectGeneratedDailyBookConflicts(dailyBook.id, date) };
+    return { dailyBook, generated: false, conflicts: conferirConflitos ? await detectGeneratedDailyBookConflicts(dailyBook.id, date) : conflitosAdiados() };
   }
 
-  const [scenes, blocks, roles, initialKeyframes] = await Promise.all([
-    db.select().from(showBookScenesTable).where(and(eq(showBookScenesTable.showBookId, showBookId), eq(showBookScenesTable.active, true))).orderBy(showBookScenesTable.order),
-    db.select().from(showBookBlocksTable).where(and(eq(showBookBlocksTable.showBookId, showBookId), eq(showBookBlocksTable.active, true))).orderBy(showBookBlocksTable.order),
-    db.select().from(showBookRolesTable).where(and(eq(showBookRolesTable.showBookId, showBookId), eq(showBookRolesTable.active, true))).orderBy(showBookRolesTable.order, showBookRolesTable.id),
-    db.select({ id: showBookKeyframesTable.id, sceneId: showBookKeyframesTable.sceneId, markerPositions: showBookKeyframesTable.markerPositions })
-      .from(showBookKeyframesTable).where(and(eq(showBookKeyframesTable.type, "inicial"), eq(showBookKeyframesTable.active, true))),
+  const [{ scenes, blocks, roles }, initialKeyframes] = await Promise.all([
+    lembrarOuLer(leituras, `geracao:${showBookId}`, async () => {
+      const [scenes, blocks, roles] = await Promise.all([
+        db.select().from(showBookScenesTable).where(and(eq(showBookScenesTable.showBookId, showBookId), eq(showBookScenesTable.active, true))).orderBy(showBookScenesTable.order),
+        db.select().from(showBookBlocksTable).where(and(eq(showBookBlocksTable.showBookId, showBookId), eq(showBookBlocksTable.active, true))).orderBy(showBookBlocksTable.order),
+        db.select().from(showBookRolesTable).where(and(eq(showBookRolesTable.showBookId, showBookId), eq(showBookRolesTable.active, true))).orderBy(showBookRolesTable.order, showBookRolesTable.id),
+      ]);
+      return { scenes, blocks, roles };
+    }),
+    lembrarOuLer(leituras, "quadros-iniciais", () => db.select({ id: showBookKeyframesTable.id, sceneId: showBookKeyframesTable.sceneId, markerPositions: showBookKeyframesTable.markerPositions })
+      .from(showBookKeyframesTable).where(and(eq(showBookKeyframesTable.type, "inicial"), eq(showBookKeyframesTable.active, true)))),
   ]);
   const initialKeyframeByScene = new Map(initialKeyframes.map((frame) => [frame.sceneId, frame]));
-  const allocations = await db.select({ positionId: scaleAllocationsTable.positionId, userId: scaleAllocationsTable.userId })
+  const allocations = eventoNovo ? [] : await db.select({ positionId: scaleAllocationsTable.positionId, userId: scaleAllocationsTable.userId })
     .from(scaleAllocationsTable).where(and(eq(scaleAllocationsTable.scaleId, scaleId), eq(scaleAllocationsTable.agendaEventId, event.id), eq(scaleAllocationsTable.active, true)));
   const allocationMap: Record<string, string | null> = {};
   allocations.forEach((allocation) => { if (allocation.positionId) allocationMap[allocation.positionId] = allocation.userId ?? null; });
-  const { byRole, result } = await resolveAssignmentsByRole(showBookId, event.operationId, date, { dedupPerScene: true, eventId: event.id });
+  // O evento e o local do Show já estão em mãos: o motor das regras do dia não precisa relê-los.
+  const eventoConhecido = { id: event.id, showBookId: event.showBookId, start: event.startTime, end: event.endTime, eventLocationId: event.locationId, showLocationId: showBook.locationId };
+  const { byRole, result, nomes } = await resolveAssignmentsByRole(showBookId, event.operationId, date, { dedupPerScene: true, eventId: event.id, leituras, eventoConhecido });
   const rotationWinners = collectRotationWinners(result);
+  const sessoesDoLivro = sessoesComuns ?? (session ? [] : await eligibleSessions(showBookId, date, db, { separada: false }));
+  const nomeFormal = await nomeFormalDoAtor(actorId, leituras);
 
+  // Tudo o que o Livro leva é gravado em poucas instruções (uma por tabela, não uma por linha), com os ids já
+  // definidos aqui — assim a árvore do retrato (snapshot) se monta com o que acabou de ser gravado, sem reler.
   let positionsCount = 0;
   const dailyBook = await db.transaction(async (tx) => {
-    const [created] = await tx.insert(dailyBooksTable).values({
+    const typedTx = tx as unknown as typeof db;
+    const bookId = randomUUID();
+    await typedTx.insert(dailyBooksTable).values({
+      id: bookId,
       agendaEventId: event!.id,
       scaleId,
       showBookId,
@@ -921,48 +1008,75 @@ export async function generateDailyBookDraftForScale(input: {
       snapshotJson: {} as any,
       generatedAt: new Date(),
       generatedBy: actorId,
-    }).returning();
-    if (!created) throw new Error("Não foi possível criar o Livro do Dia");
+    });
     const sceneIdMap: Record<string, string> = {};
-    for (const scene of scenes) {
-      const [copy] = await tx.insert(dailyBookScenesTable).values({ dailyBookId: created.id, name: scene.name, order: scene.order, sourceSceneId: scene.id, sourceKeyframeId: initialKeyframeByScene.get(scene.id)?.id ?? null }).returning();
-      sceneIdMap[scene.id] = copy!.id;
-    }
+    const scenesToInsert = scenes.map((scene) => {
+      const id = randomUUID();
+      sceneIdMap[scene.id] = id;
+      return { id, dailyBookId: bookId, name: scene.name, order: scene.order, sourceSceneId: scene.id, sourceKeyframeId: initialKeyframeByScene.get(scene.id)?.id ?? null };
+    });
+    const sceneRows = scenesToInsert.length ? await typedTx.insert(dailyBookScenesTable).values(scenesToInsert).returning() : [];
     const blockIdMap: Record<string, string> = {};
-    for (const block of blocks) {
-      const [copy] = await tx.insert(dailyBookBlocksTable).values({
-        dailyBookId: created.id, name: block.name, order: block.order, startTime: block.startTime, endTime: block.endTime,
+    const blocksToInsert = blocks.map((block) => {
+      const id = randomUUID();
+      blockIdMap[block.id] = id;
+      return {
+        id, dailyBookId: bookId, name: block.name, order: block.order, startTime: block.startTime, endTime: block.endTime,
         sourceBlockId: block.id, sceneId: block.sceneId ? sceneIdMap[block.sceneId] ?? null : null,
-      }).returning();
-      blockIdMap[block.id] = copy!.id;
-    }
-    const sessionSync = await syncSessionBlocks(created.id, showBookId, date, tx as unknown as typeof db);
+      };
+    });
+    const blockRows = blocksToInsert.length ? await typedTx.insert(dailyBookBlocksTable).values(blocksToInsert).returning() : [];
+    const sessionSync = await syncSessionBlocks(bookId, showBookId, date, typedTx, { sessionId, sessoesComuns: sessoesDoLivro });
     const sceneByBlock: Record<string, string | null> = {};
     blocks.forEach((block) => { sceneByBlock[block.id] = block.sceneId ?? null; });
     const assignedByScene = buildSceneOccupancyFromResolver(roles, sceneByBlock, byRole);
+    const positionsToInsert: (typeof dailyBookPositionsTable.$inferInsert)[] = [];
+    const assignmentsToInsert: (typeof dailyBookAssignmentsTable.$inferInsert)[] = [];
     for (const role of roles) {
-      const [position] = await tx.insert(dailyBookPositionsTable).values({
-        dailyBookId: created.id, name: role.name, minimumCoverage: role.minimumCoverage,
+      const positionId = randomUUID();
+      positionsToInsert.push({
+        id: positionId, dailyBookId: bookId, name: role.name, minimumCoverage: role.minimumCoverage,
         sourceRoleId: role.id, blockId: role.blockId ? blockIdMap[role.blockId] ?? null : null,
-      }).returning();
+      });
       positionsCount++;
       const sourceSceneId = role.blockId ? sceneByBlock[role.blockId] ?? null : null;
-      await createAssignmentsForRole(created.id, position!.id, role.id, byRole, allocationMap, sourceSceneId, assignedByScene, role.minimumCoverage, sourceSceneId ? sceneIdMap[sourceSceneId] ?? null : null, tx as unknown as typeof db);
+      for (const a of planAssignmentsForRole(role.id, byRole, allocationMap, sourceSceneId, assignedByScene, role.minimumCoverage)) {
+        assignmentsToInsert.push({ dailyBookId: bookId, positionId, sceneId: sourceSceneId ? sceneIdMap[sourceSceneId] ?? null : null, userId: a.userId, status: a.status });
+      }
     }
-    const fullTree = await buildDailyBookTree(created.id, tx as unknown as typeof db);
-    const [updated] = await tx.update(dailyBooksTable).set({ snapshotJson: { scenes: fullTree, rotationWinners } as any }).where(eq(dailyBooksTable.id, created.id)).returning();
+    const positionRows = positionsToInsert.length ? await typedTx.insert(dailyBookPositionsTable).values(positionsToInsert).returning() : [];
+    const assignmentRows: (typeof dailyBookAssignmentsTable.$inferSelect)[] = [];
+    // Em pedaços, para não estourar o limite de parâmetros de uma instrução do PostgreSQL.
+    for (let i = 0; i < assignmentsToInsert.length; i += 1000) {
+      assignmentRows.push(...await typedTx.insert(dailyBookAssignmentsTable).values(assignmentsToInsert.slice(i, i + 1000)).returning());
+    }
+
+    // O retrato é a mesma árvore que a leitura monta do banco (ver `buildDailyBookTree`), com as linhas na mesma ordem.
+    const faltamNomes = [...new Set(assignmentRows.map((a) => a.userId).filter((id): id is string => Boolean(id) && !nomes.has(id!)))];
+    const nameByUserId: Record<string, string> = Object.fromEntries(nomes);
+    if (faltamNomes.length) for (const u of await typedTx.select({ id: usersTable.id, name: usersTable.name }).from(usersTable).where(inArray(usersTable.id, faltamNomes))) nameByUserId[u.id] = u.name;
+    const fullTree = montarArvoreDoLivro({
+      scenes: [...sceneRows].sort((a, b) => a.order - b.order).map(liveRow),
+      blocks: [...blockRows].sort((a, b) => a.order - b.order).map(liveRow),
+      positions: positionRows.map(liveRow),
+      assignments: [...assignmentRows].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)).map(liveRow),
+      nameByUserId,
+    });
+    const [updated] = await typedTx.update(dailyBooksTable).set({ snapshotJson: { scenes: fullTree, rotationWinners } as any }).where(eq(dailyBooksTable.id, bookId)).returning();
+    if (!updated) throw new Error("Não foi possível criar o Livro do Dia");
     await writeHistoryEvent({
       category: "DAILY_BOOK", action: "generated", title: "Livro do Dia gerado",
       narrative: `O Livro do Dia foi gerado para ${date} a partir da Escala em rascunho.`,
-      entityType: "daily_book", entityId: created.id, actorId, actorType: "HUMAN", operationId: event!.operationId, orgId: organizationId,
+      entityType: "daily_book", entityId: bookId, actorId, actorType: "HUMAN", operationId: event!.operationId, orgId: organizationId,
       beforeState: null, afterState: updated,
       metadata: { agendaEventId: event!.id, showBookId, scaleId, reason, sessionIds: sessionSync.sessionIds, sessionBlockIds: sessionSync.createdBlockIds },
+      nomeFormalDoAtor: nomeFormal,
     }, tx as any);
-    return updated!;
+    return updated;
   });
   eventBus.emit("daily-book.created", { dailyBookId: dailyBook.id, agendaEventId: event.id, scaleId, version: 1 });
   eventBus.emit("daily-book.generated", { dailyBookId: dailyBook.id, agendaEventId: event.id, version: 1, scenesCount: scenes.length, positionsCount });
-  return { dailyBook, generated: true, conflicts: await detectGeneratedDailyBookConflicts(dailyBook.id, date) };
+  return { dailyBook, generated: true, conflicts: conferirConflitos ? await detectGeneratedDailyBookConflicts(dailyBook.id, date) : conflitosAdiados() };
 }
 
 router.post("/daily-book/generate", requireAuth, requireOrganization, async (req, res) => {
@@ -2158,28 +2272,37 @@ router.patch("/daily-book/:id/assignments/:assignmentId", requireAuth, requireOr
  * primeira vaga aberta. Devolve false quando não há o que mudar no Livro (ex.: colocar alguém sem
  * vaga aberta, ou tirar quem só estava na Escala) — aí o ajuste fica só na Escala, como antes.
  */
-export async function ajustarPessoaNoLivro(input: { dailyBookId: string; userId: string; action: "ADICIONAR" | "REMOVER"; actorId: string }): Promise<boolean> {
-  const [book] = await db.select().from(dailyBooksTable).where(eq(dailyBooksTable.id, input.dailyBookId)).limit(1);
+export async function ajustarPessoaNoLivro(
+  input: { dailyBookId: string; userId: string; action: "ADICIONAR" | "REMOVER"; actorId: string },
+  /**
+   * Quando o ajuste faz parte de um lote, a transação do lote vem aqui: tudo é lido e gravado nela,
+   * e os eventos (`eventBus`) não saem na hora — vão para `depoisDoCommit`, para quem chamou
+   * emitir só depois de gravar. Sem isto, o ajuste abre a própria transação e emite no fim.
+   */
+  dentro?: { tx: typeof db; depoisDoCommit: (() => void)[] },
+): Promise<boolean> {
+  const exec = dentro?.tx ?? db;
+  const [book] = await exec.select().from(dailyBooksTable).where(eq(dailyBooksTable.id, input.dailyBookId)).limit(1);
   if (!book || book.status === "EXECUTED" || book.status === "CANCELLED") return false;
   const vivas = and(
     eq(dailyBookAssignmentsTable.dailyBookId, book.id), isNull(dailyBookAssignmentsTable.supersededAt),
     ne(dailyBookAssignmentsTable.status, "REMOVED"), eq(dailyBookPositionsTable.isRemoved, false), isNull(dailyBookPositionsTable.supersededAt),
   );
-  const daPessoa = await db.select({ id: dailyBookAssignmentsTable.id }).from(dailyBookAssignmentsTable)
+  const daPessoa = await exec.select({ id: dailyBookAssignmentsTable.id }).from(dailyBookAssignmentsTable)
     .innerJoin(dailyBookPositionsTable, eq(dailyBookAssignmentsTable.positionId, dailyBookPositionsTable.id))
     .where(and(vivas, eq(dailyBookAssignmentsTable.userId, input.userId)));
   let alvo: { id: string }[];
   if (input.action === "REMOVER") alvo = daPessoa;
   else {
     if (daPessoa.length) return true; // já está no Livro: nada a mudar
-    alvo = await db.select({ id: dailyBookAssignmentsTable.id }).from(dailyBookAssignmentsTable)
+    alvo = await exec.select({ id: dailyBookAssignmentsTable.id }).from(dailyBookAssignmentsTable)
       .innerJoin(dailyBookPositionsTable, eq(dailyBookAssignmentsTable.positionId, dailyBookPositionsTable.id))
       .where(and(vivas, isNull(dailyBookAssignmentsTable.userId)))
       .orderBy(dailyBookPositionsTable.createdAt, dailyBookPositionsTable.id).limit(1);
   }
   if (!alvo.length) return false;
-  const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(book.id) };
-  await mutateDailyBook(book.id, book.version, async (tx) => {
+  const beforeSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(book.id, exec) };
+  const aplicar = async (tx: typeof db) => {
     for (const a of alvo) {
       // Ajuste pela Escala é mexida à mão: a vaga vira exceção do dia e para de ser recalculada
       // sozinha (o Livro do Dia vivo só recalcula o que a gerência não tocou).
@@ -2188,13 +2311,21 @@ export async function ajustarPessoaNoLivro(input: { dailyBookId: string; userId:
         .where(eq(dailyBookAssignmentsTable.id, a.id));
     }
     return alvo;
-  }, async (tx) => {
+  };
+  const auditar = async (tx: typeof db) => {
     const afterSnapshot: VersionedSnapshot = { scenes: await buildDailyBookTree(book.id, tx) };
     await writeDailyBookAudit(book.id, input.actorId, "assignment_swap",
       { version: book.version, snapshot: beforeSnapshot, userId: input.userId, origem: "ajuste na Escala" },
       { version: book.version + 1, snapshot: afterSnapshot, userId: input.userId, action: input.action, assignmentIds: alvo.map((a) => a.id) }, tx);
-  });
-  eventBus.emit("daily-book.updated", { dailyBookId: book.id, changeType: "assignment_swap", changedBy: input.actorId });
+  };
+  const avisar = () => eventBus.emit("daily-book.updated", { dailyBookId: book.id, changeType: "assignment_swap", changedBy: input.actorId });
+  if (dentro) {
+    await mutateDailyBookEm(dentro.tx, book.id, book.version, aplicar, auditar);
+    dentro.depoisDoCommit.push(avisar);
+  } else {
+    await mutateDailyBook(book.id, book.version, aplicar, auditar);
+    avisar();
+  }
   return true;
 }
 
