@@ -144,6 +144,14 @@ Não rode nada em produção. Não commite .env. Não envie ao GitHub.
 
 ## Etapa 3 — Laços com espera no banco (ciclo por minuto e check-in)
 
+**Feita em 18/10/2026 (local, nada enviado, sem migração).** Antes e depois no banco de teste (empresa de teste, 6 locais):
+`reconcileDueCheckIns` 36 s e 167 consultas → 4–5 s e 27; `reconcileShiftCheckIns` 34 s e 160 → 3,7 s e 25; lembrete do dia
+2,8–3,7 s e 13 → 1,3–3,1 s e 7. O ganho maior veio de um laço que abria uma transação por minuto para cada turno de ontem já
+fechado; agora uma leitura só separa os fechados. Paralelo limitado a 3 (`lib/em-paralelo.ts`); dentro do local, blocos e pessoas
+seguem em fila para o Registro sair na mesma ordem. `autoPublishScales` e os avisos de folga ficaram em série de propósito. A
+trava do ciclo não mudou. Teste novo: `ciclo-paralelo.test.ts` (igualdade, fechamento único e aviso único com dois ciclos juntos).
+Medição repetível: `scripts/medir-laços-do-ciclo.ts`. Para rodar testes quando o pooler compartilhado estiver cheio, use `DB_POOL_MAX=4`.
+
 **Por quê:** são 135 laços com leitura ou escrita dentro; os que montam a Escala inteira por local estão em
 `checkin-reconcile.ts`, `operational-jobs.ts` (ciclo por minuto) e `shift-checkins.ts`. A "Minha escala" já foi
 corrigida (4–5 s em vez de 10–12 s com 5 locais) e serve de modelo.

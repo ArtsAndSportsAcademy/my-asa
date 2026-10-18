@@ -10,6 +10,7 @@ import {
 } from "@workspace/db";
 import { writeHistoryEvent, type HistoryExecutor } from "../lib/history-helper.js";
 import { operationalDate, OPERATIONAL_TIME_ZONE } from "../lib/operational-date.js";
+import { emParalelo, lembrarPorChave } from "../lib/em-paralelo.js";
 import { montarEscalaDoDia } from "./escala-dia.js";
 import { shiftsForDate, reconcileShiftCheckIns } from "./shift-checkins.js";
 
@@ -37,15 +38,23 @@ export async function reconcileDueCheckIns(now = new Date(), organizationId?: st
   const nowMinutes = clockMinutes(now);
   const locations = await db.select({ id: locationsTable.id, organizationId: locationsTable.organizationId }).from(locationsTable)
     .where(and(eq(locationsTable.closed, false), organizationId ? eq(locationsTable.organizationId, organizationId) : undefined));
-  let marked = 0;
-  for (const location of locations) {
-    if ((await shiftsForDate(location.organizationId, date)).length) continue;
+  // Cada local tem a própria escala, o próprio Livro e os próprios check-ins: um não espera o outro. Poucos por vez,
+  // porque o pooler é compartilhado. Dentro do local, blocos e pessoas seguem em fila (a ordem do Registro não muda).
+  const temTurno = lembrarPorChave((orgId: string) => shiftsForDate(orgId, date));
+  const porLocal = await emParalelo(locations, async (location) => {
+    if ((await temTurno(location.organizationId)).length) return 0;
     const day = await montarEscalaDoDia(location.organizationId, location.id, date);
-    if (!day?.escala) continue;
-    for (const block of day.blocos.filter((item) => item.dailyBookId)) {
-      const [hour, minute] = block.inicio.split(":").map(Number);
-      if (!Number.isFinite(hour) || !Number.isFinite(minute) || nowMinutes < hour * 60 + minute - 15) continue;
-      const existing = await db.select().from(dayCheckInsTable).where(and(eq(dayCheckInsTable.scaleId, day.escala.id), eq(dayCheckInsTable.sourceKey, block.key)));
+    if (!day?.escala) return 0;
+    const blocosDoLimite = day.blocos.filter((item) => item.dailyBookId && (() => {
+      const [hour, minute] = item.inicio.split(":").map(Number);
+      return Number.isFinite(hour) && Number.isFinite(minute) && nowMinutes >= hour! * 60 + minute! - 15;
+    })());
+    if (!blocosDoLimite.length) return 0;
+    // Uma leitura por escala, não uma por bloco: o que já está gravado de um bloco não muda por causa de outro.
+    const jaGravados = await db.select().from(dayCheckInsTable).where(eq(dayCheckInsTable.scaleId, day.escala.id));
+    let marcadosNoLocal = 0;
+    for (const block of blocosDoLimite) {
+      const existing = jaGravados.filter((row) => row.sourceKey === block.key);
       for (const userId of block.pessoaIds.filter((id) => !existing.some((row) => row.userId === id && (row.status === "CHECKED_IN" || row.status === "LATE")))) {
         const saved = await db.transaction(async (tx) => {
           const [created] = await tx.insert(dayCheckInsTable).values({ scaleId: day.escala!.id, sourceKey: block.key, userId, status: "ABSENT", reason: "Sem check-in até o horário limite" }).onConflictDoNothing().returning();
@@ -54,9 +63,11 @@ export async function reconcileDueCheckIns(now = new Date(), organizationId?: st
           await writeHistoryEvent({ category: "CHECK_IN", action: "checkin.deadline_missed", title: "Check-in não realizado", narrative: `Sem check-in até o limite do bloco ${block.rotulo}.`, entityType: "day_checkin", entityId: created.id, actorType: "DETERMINISTIC_ENGINE", orgId: location.organizationId, beforeState: null, afterState: created, metadata: { reason: created.reason } }, tx as unknown as HistoryExecutor);
           return created;
         });
-        if (saved) marked++;
+        if (saved) marcadosNoLocal++;
       }
     }
-  }
+    return marcadosNoLocal;
+  });
+  const marked = porLocal.reduce((soma, n) => soma + n, 0);
   return { marked, date, shiftsClosed: shifts.closed };
 }

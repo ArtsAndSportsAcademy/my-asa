@@ -7,6 +7,7 @@ import { operationalDate, OPERATIONAL_TIME_ZONE } from "../lib/operational-date.
 import { enqueueNotification, databaseNow } from "./undo.js";
 import { processNotificationOutbox } from "./notification-outbox.js";
 import { eventBus } from "../lib/event-bus.js";
+import { emParalelo, lembrarPorChave } from "../lib/em-paralelo.js";
 import { publishedDay } from "./published-day.js";
 import { reconcileDueCheckIns } from "./checkin-reconcile.js";
 import { regrasDaOrganizacao } from "./regras-casa.js";
@@ -45,21 +46,22 @@ export async function enqueueShiftReminders(now = new Date(), organizationId?: s
   const date = operationalDate(now);
   const clock = new Intl.DateTimeFormat("en-GB", { timeZone: OPERATIONAL_TIME_ZONE, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(now);
   const rows = new Map<string, Awaited<ReturnType<typeof publishedDay>>[number]["entries"][number]>();
-  for (const scope of await publishedDay(date, organizationId)) {
-    if ((await shiftsForDate(scope.organizationId, date)).length) continue;
-    for (const entry of scope.entries) rows.set(entry.id, entry);
-  }
-  let enqueued = 0;
-  for (const entry of rows.values()) {
+  const escopos = await publishedDay(date, organizationId);
+  const comTurno = await emParalelo(escopos, async (scope) => (await shiftsForDate(scope.organizationId, date)).length > 0);
+  escopos.forEach((scope, i) => { if (!comTurno[i]) for (const entry of scope.entries) rows.set(entry.id, entry); });
+  const devidos = [...rows.values()].filter((entry) => {
     const start = entry.startTime?.slice(0, 5);
-    if (!entry.personId || entry.status === "OPEN" || !start || start > clock) continue;
+    if (!entry.personId || entry.status === "OPEN" || !start || start > clock) return false;
     // Only within the current shift interval; a restart must not send yesterday's or completed shifts.
     const end = entry.endTime?.slice(0, 5);
-    if (end && clock >= end) continue;
-    await db.transaction(tx => enqueueNotification(tx, { userId: entry.personId!, type: "checkin.shift_reminder", title: "Check-in do turno", message: "Seu turno começou. Registre o check-in no My ASA.", category: "schedule", entityType: "scale_entry", entityId: entry.id, actionUrl: APP_ROUTES.checkIn }, now, { deduplicationKey: `shift-checkin:${entry.id}:${date}:${start}` }));
-    enqueued++;
-  }
-  return { enqueued };
+    return !(end && clock >= end);
+  });
+  // Cada aviso é uma transação curta com chave própria (um por entrada, por dia e por horário): não dependem um do outro.
+  await emParalelo(devidos, (entry) => {
+    const start = entry.startTime!.slice(0, 5);
+    return db.transaction(tx => enqueueNotification(tx, { userId: entry.personId!, type: "checkin.shift_reminder", title: "Check-in do turno", message: "Seu turno começou. Registre o check-in no My ASA.", category: "schedule", entityType: "scale_entry", entityId: entry.id, actionUrl: APP_ROUTES.checkIn }, now, { deduplicationKey: `shift-checkin:${entry.id}:${date}:${start}` }));
+  });
+  return { enqueued: devidos.length };
 }
 
 /** Minutos do relógio no fuso da operação. */
@@ -79,47 +81,49 @@ export async function enqueueEscalaReminders(now = new Date(), organizationId?: 
   const clock = clockMinutes(now);
   const locations = await db.select({ id: locationsTable.id, organizationId: locationsTable.organizationId }).from(locationsTable)
     .where(and(eq(locationsTable.closed, false), organizationId ? eq(locationsTable.organizationId, organizationId) : undefined));
-  let enqueued = 0;
-  const antecedencia = new Map<string, number>();
-  for (const location of locations) {
-    if ((await shiftsForDate(location.organizationId, date)).length) continue;
+  // Os locais não dependem um do outro: monta poucos por vez (o pooler é compartilhado). Por organização, a pergunta
+  // "tem turno?" e a antecedência do lembrete são lidas uma vez só, mesmo com vários locais montando ao mesmo tempo.
+  const temTurno = lembrarPorChave((orgId: string) => shiftsForDate(orgId, date));
+  const antecedencia = lembrarPorChave(async (orgId: string) => (await regrasDaOrganizacao(orgId)).lembreteCheckinMin);
+  const porLocal = await emParalelo(locations, async (location) => {
+    if ((await temTurno(location.organizationId)).length) return 0;
     // A Administração define a antecedência do lembrete nas regras da casa (15, 30 ou 60 min).
-    if (!antecedencia.has(location.organizationId)) antecedencia.set(location.organizationId, (await regrasDaOrganizacao(location.organizationId)).lembreteCheckinMin);
-    const antes = antecedencia.get(location.organizationId)!;
+    const antes = await antecedencia(location.organizationId);
     const day = await montarEscalaDoDia(location.organizationId, location.id, date);
-    if (!day?.escala || !escalaPublicada(day.escala.status)) continue;
+    if (!day?.escala || !escalaPublicada(day.escala.status)) return 0;
     const primeiro = new Map<string, { inicio: string; fim: string | null; rotulo: string }>();
     for (const bloco of [...day.blocos].sort((a, b) => a.inicio.localeCompare(b.inicio))) for (const pessoa of bloco.pessoaIds) if (!primeiro.has(pessoa)) primeiro.set(pessoa, bloco);
     const feitos = new Set((await db.select({ userId: dayCheckInsTable.userId }).from(dayCheckInsTable)
       .where(and(eq(dayCheckInsTable.scaleId, day.escala.id), inArray(dayCheckInsTable.status, ["CHECKED_IN", "LATE"])))).map((row) => row.userId));
-    for (const [pessoa, bloco] of primeiro) {
+    const devidos = [...primeiro].filter(([pessoa, bloco]) => {
       const inicio = toMinutes(bloco.inicio);
       const fim = bloco.fim ? toMinutes(bloco.fim) : inicio + 60;
-      if (feitos.has(pessoa) || clock < inicio - antes || clock >= fim) continue;
-      await db.transaction((tx) => enqueueNotification(tx, {
-        userId: pessoa, type: "checkin.shift_reminder", category: "schedule", title: "Check-in do dia",
-        message: `Seu dia em ${day.location.name} começa às ${bloco.inicio} (${bloco.rotulo}). Registre o check-in no My ASA.`,
-        entityType: "scale", entityId: day.escala!.id, actionUrl: APP_ROUTES.checkIn,
-      }, now, { deduplicationKey: `escala-checkin:${day.escala!.id}:${date}:${pessoa}` }));
-      enqueued++;
-    }
-  }
-  for (const orgId of new Set(locations.map(location => location.organizationId))) {
-    if (!(await shiftsForDate(orgId, date)).length) continue;
-    const before = (await regrasDaOrganizacao(orgId)).lembreteCheckinMin;
+      return !(feitos.has(pessoa) || clock < inicio - antes || clock >= fim);
+    });
+    // Um aviso por pessoa por dia (a chave garante): repetir a tentativa no minuto seguinte não duplica.
+    await emParalelo(devidos, ([pessoa, bloco]) => db.transaction((tx) => enqueueNotification(tx, {
+      userId: pessoa, type: "checkin.shift_reminder", category: "schedule", title: "Check-in do dia",
+      message: `Seu dia em ${day.location.name} começa às ${bloco.inicio} (${bloco.rotulo}). Registre o check-in no My ASA.`,
+      entityType: "scale", entityId: day.escala!.id, actionUrl: APP_ROUTES.checkIn,
+    }, now, { deduplicationKey: `escala-checkin:${day.escala!.id}:${date}:${pessoa}` })));
+    return devidos.length;
+  });
+  let enqueued = porLocal.reduce((soma, n) => soma + n, 0);
+  const porOrganizacao = await emParalelo([...new Set(locations.map(location => location.organizationId))], async (orgId) => {
+    if (!(await temTurno(orgId)).length) return 0;
+    const before = await antecedencia(orgId);
     const plans = await shiftPlans(orgId, date);
     const answered = await db.select({ userId: operationalCheckInsTable.userId, shiftId: operationalCheckInsTable.shiftId }).from(operationalCheckInsTable)
       .where(and(eq(operationalCheckInsTable.orgId, orgId), eq(operationalCheckInsTable.date, date)));
-    for (const plan of plans) {
-      if (now.getTime() < plan.firstActivityAt.getTime() - before * 60_000 || now.getTime() > plan.firstActivityAt.getTime() + 15 * 60_000 || answered.some(row => row.userId === plan.userId && row.shiftId === plan.shiftId)) continue;
-      await db.transaction(tx => enqueueNotification(tx, {
-        userId: plan.userId, type: "checkin.shift_reminder", category: "schedule", title: `Check-in do turno ${plan.shiftName}`,
-        message: `Sua primeira atividade começa às ${new Intl.DateTimeFormat("pt-BR", { timeZone: OPERATIONAL_TIME_ZONE, hour: "2-digit", minute: "2-digit" }).format(plan.firstActivityAt)}. Registre o check-in do turno no My ASA.`,
-        entityType: "shift", entityId: plan.shiftId, actionUrl: APP_ROUTES.checkIn,
-      }, now, { deduplicationKey: `turno-checkin:${plan.shiftId}:${date}:${plan.userId}` }));
-      enqueued++;
-    }
-  }
+    const devidos = plans.filter((plan) => !(now.getTime() < plan.firstActivityAt.getTime() - before * 60_000 || now.getTime() > plan.firstActivityAt.getTime() + 15 * 60_000 || answered.some(row => row.userId === plan.userId && row.shiftId === plan.shiftId)));
+    await emParalelo(devidos, (plan) => db.transaction(tx => enqueueNotification(tx, {
+      userId: plan.userId, type: "checkin.shift_reminder", category: "schedule", title: `Check-in do turno ${plan.shiftName}`,
+      message: `Sua primeira atividade começa às ${new Intl.DateTimeFormat("pt-BR", { timeZone: OPERATIONAL_TIME_ZONE, hour: "2-digit", minute: "2-digit" }).format(plan.firstActivityAt)}. Registre o check-in do turno no My ASA.`,
+      entityType: "shift", entityId: plan.shiftId, actionUrl: APP_ROUTES.checkIn,
+    }, now, { deduplicationKey: `turno-checkin:${plan.shiftId}:${date}:${plan.userId}` })));
+    return devidos.length;
+  });
+  enqueued += porOrganizacao.reduce((soma, n) => soma + n, 0);
   return { enqueued, date };
 }
 let running = false;

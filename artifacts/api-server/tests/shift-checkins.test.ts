@@ -51,7 +51,7 @@ async function run() {
     assert.equal((await visibleShiftPlans(actor(outsider), plans)).length, 1);
     assert.equal((await visibleShiftPlans(actor(sup, "SUPERVISOR_A"), plans)).some(p => p.userId === outsider!.id), false);
     const request = (p: typeof worker, shiftId = workerDay.shiftId) => ({ date, shiftId, userId: p!.id, action: "READY" as const });
-    await assert.rejects(answerShift(actor(worker), request(worker), shiftInstant(date, 479)), /janela/);
+    await assert.rejects(answerShift(actor(worker), request(worker), shiftInstant(date, 479)), /ainda não abriu/);
     await assert.rejects(answerShift(actor(worker), request(outsider), shiftInstant(date, 600)), /somente/);
     await assert.rejects(answerShift(actor(sup, "SUPERVISOR_A"), request(outsider), shiftInstant(date, 600)), /acesso/);
     await assert.rejects(answerShift(actor(director, "DIR"), request(worker), shiftInstant(date, 600)), /leitura/);
@@ -85,7 +85,7 @@ async function run() {
     assert.equal(rows.find(r => r.userId === silent!.id)!.shiftState, "NO_RESPONSE");
     assert.equal(rows.find(r => r.userId === silent!.id)!.status, "EXPECTED", "sem resposta não vira falta");
     assert.equal(rows.find(r => r.userId === late!.id)!.shiftState, "LATE_UNCONFIRMED");
-    await assert.rejects(answerShift(actor(late), { ...request(late), action: "ARRIVED" }, shiftInstant(date, 1431)), /janela/);
+    await assert.rejects(answerShift(actor(late), { ...request(late), action: "ARRIVED" }, shiftInstant(date, 1431)), /já fechou/);
     await db.update(scalesTable).set({ status: "DRAFT" }).where(eq(scalesTable.id, scales[0]!.id));
     const draftPlans = await shiftPlans(org!.id, date);
     assert.equal(draftPlans.length, 1, "rascunho não convoca; permanece apenas segundo local publicado");

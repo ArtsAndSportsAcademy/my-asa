@@ -1,3 +1,4 @@
+import { emParalelo } from "../lib/em-paralelo.js";
 import { and, asc, eq, gte, inArray, isNotNull, isNull, lte, or } from "drizzle-orm";
 import { db, shiftsTable, organizationsTable, operationsTable, scalesTable, locationsTable, usersTable, operationalCheckInsTable, dayCheckInsTable, dailyBookAssignmentsTable, dailyBookCheckInVacanciesTable, areaLocalSupervisorsTable, dailyBooksTable, showBooksTable, type ShiftActivitySnapshot } from "@workspace/db";
 import { operationalDate, shiftOperationalDate, OPERATIONAL_TIME_ZONE } from "../lib/operational-date.js";
@@ -61,34 +62,41 @@ export async function shiftPlans(orgId: string, date: string): Promise<ShiftPlan
   const shifts = await shiftsForDate(orgId, date);
   if (!shifts.length) return [];
   const plans = new Map<string, Omit<ShiftPlan, "opensAt" | "firstActivityAt" | "closesAt" | "extended">>();
-  for (const activityDate of [date, shiftOperationalDate(date, 1)]) {
-    const places = await db.selectDistinct({ id: locationsTable.id }).from(scalesTable)
-      .innerJoin(locationsTable, eq(scalesTable.locationId, locationsTable.id))
-      .where(and(eq(locationsTable.organizationId, orgId), eq(locationsTable.closed, false), inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"]), lte(scalesTable.periodStart, activityDate), gte(scalesTable.periodEnd, activityDate)));
-    for (const place of places) {
-      const aoVivo = await montarEscalaDoDia(orgId, place.id, activityDate, { publishedOnly: true });
-      if (!aoVivo?.escala || !escalaPublicada(aoVivo.escala.status)) continue;
-      // Quem faz check-in é quem está na versão publicada: troca feita depois só vale quando a Administração republica.
-      const day = await comoPublicada(aoVivo);
-      const escalaId = aoVivo.escala.id;
-      const [scale] = await db.select({ operationId: scalesTable.operationId, threshold: operationsTable.lateThresholdMinutes }).from(scalesTable).innerJoin(operationsTable, eq(scalesTable.operationId, operationsTable.id)).where(and(eq(scalesTable.id, escalaId), eq(operationsTable.organizationId, orgId)));
-      if (!scale) continue;
-      for (const block of day.blocos) {
-        const assignment = assignActivityToShift(shifts, block.inicio.slice(0, 5));
-        const occurrenceDate = shiftOperationalDate(activityDate, assignment.startDayOffset);
-        if (occurrenceDate !== date) continue;
-        const shift = shifts[assignment.shiftIndex]!;
-        for (const userId of block.pessoaIds) {
-          const person = day.pessoas.find(p => p.id === userId);
-          if (!person) continue;
-          const key = `${userId}:${shift.id}`;
-          let plan = plans.get(key);
-          if (!plan) {
-            plan = { shiftId: shift.id, shiftName: shift.name, startTime: shift.startTime, endTime: shift.endTime, date, userId, userName: person.name, areaId: person.areaId, operationId: scale.operationId, lateThresholdMinutes: scale.threshold, activities: [] };
-            plans.set(key, plan);
-          }
-          plan.activities.push({ key: block.key, scaleId: escalaId, locationId: place.id, locationName: day.location.name, label: block.rotulo, date: activityDate, startTime: block.inicio.slice(0, 5), endTime: block.fim?.slice(0, 5) ?? null, dailyBookId: block.dailyBookId });
+  // Montar o dia de cada local é só leitura e um não depende do outro: lê (dia × local) poucos por vez e depois junta
+  // na ordem de sempre (hoje primeiro, depois o dia seguinte; locais na ordem da consulta), para o plano sair idêntico.
+  const datas = [date, shiftOperationalDate(date, 1)];
+  const locaisPorData = await Promise.all(datas.map((activityDate) => db.selectDistinct({ id: locationsTable.id }).from(scalesTable)
+    .innerJoin(locationsTable, eq(scalesTable.locationId, locationsTable.id))
+    .where(and(eq(locationsTable.organizationId, orgId), eq(locationsTable.closed, false), inArray(scalesTable.status, ["PUBLISHED", "REPUBLISHED"]), lte(scalesTable.periodStart, activityDate), gte(scalesTable.periodEnd, activityDate)))));
+  const pares = datas.flatMap((activityDate, i) => locaisPorData[i]!.map((place) => ({ activityDate, place })));
+  const lidos = await emParalelo(pares, async ({ activityDate, place }) => {
+    const aoVivo = await montarEscalaDoDia(orgId, place.id, activityDate, { publishedOnly: true });
+    if (!aoVivo?.escala || !escalaPublicada(aoVivo.escala.status)) return null;
+    // Quem faz check-in é quem está na versão publicada: troca feita depois só vale quando a Administração republica.
+    const day = await comoPublicada(aoVivo);
+    const escalaId = aoVivo.escala.id;
+    const [scale] = await db.select({ operationId: scalesTable.operationId, threshold: operationsTable.lateThresholdMinutes }).from(scalesTable).innerJoin(operationsTable, eq(scalesTable.operationId, operationsTable.id)).where(and(eq(scalesTable.id, escalaId), eq(operationsTable.organizationId, orgId)));
+    return scale ? { day, escalaId, scale } : null;
+  });
+  for (const [i, { activityDate, place }] of pares.entries()) {
+    const lido = lidos[i];
+    if (!lido) continue;
+    const { day, escalaId, scale } = lido;
+    for (const block of day.blocos) {
+      const assignment = assignActivityToShift(shifts, block.inicio.slice(0, 5));
+      const occurrenceDate = shiftOperationalDate(activityDate, assignment.startDayOffset);
+      if (occurrenceDate !== date) continue;
+      const shift = shifts[assignment.shiftIndex]!;
+      for (const userId of block.pessoaIds) {
+        const person = day.pessoas.find(p => p.id === userId);
+        if (!person) continue;
+        const key = `${userId}:${shift.id}`;
+        let plan = plans.get(key);
+        if (!plan) {
+          plan = { shiftId: shift.id, shiftName: shift.name, startTime: shift.startTime, endTime: shift.endTime, date, userId, userName: person.name, areaId: person.areaId, operationId: scale.operationId, lateThresholdMinutes: scale.threshold, activities: [] };
+          plans.set(key, plan);
         }
+        plan.activities.push({ key: block.key, scaleId: escalaId, locationId: place.id, locationName: day.location.name, label: block.rotulo, date: activityDate, startTime: block.inicio.slice(0, 5), endTime: block.fim?.slice(0, 5) ?? null, dailyBookId: block.dailyBookId });
       }
     }
   }
@@ -219,37 +227,44 @@ export async function answerShift(actor: ShiftActor, input: { date: string; shif
 /** Fecha sem resposta e atraso sem chegada, sem convertê-los em falta. */
 export async function reconcileShiftCheckIns(now = new Date(), organizationId?: string) {
   const orgs = await db.select({ id: organizationsTable.id }).from(organizationsTable).where(organizationId ? eq(organizationsTable.id, organizationId) : undefined);
-  let closed = 0;
-  for (const org of orgs) {
+  // Casas diferentes não dependem uma da outra. Dentro da casa, cada fechamento trava só a linha da própria pessoa,
+  // então pessoas diferentes fecham juntas (poucas por vez) e a mesma pessoa espera a sua vez na trava.
+  const fechadosPorCasa = await emParalelo(orgs, async (org) => {
     // O aviso de atraso já gravado deve fechar mesmo se a escala publicada
     // for retirada depois do aviso; não depende da convocação ao vivo.
     const pending = await db.select().from(operationalCheckInsTable).where(and(eq(operationalCheckInsTable.orgId, org.id), isNotNull(operationalCheckInsTable.shiftId), isNull(operationalCheckInsTable.closedAt), lte(operationalCheckInsTable.closesAt, now)));
-    for (const record of pending) {
-      await db.transaction(async tx => {
-        await tx.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, record.userId)).for("update");
-        const [before] = await tx.select().from(operationalCheckInsTable).where(eq(operationalCheckInsTable.id, record.id));
-        if (!before || before.closedAt || !before.closesAt || before.closesAt > now) return;
-        const state = displayedShiftState(before, before.closesAt, now);
-        const [saved] = await tx.update(operationalCheckInsTable).set({ shiftState: state, closedAt: now, updatedAt: now }).where(eq(operationalCheckInsTable.id, before.id)).returning();
-        await writeHistoryEvent({ category: "CHECK_IN", action: "checkin.shift_closed", title: "Turno encerrado", narrative: `${state}.`, entityType: "check_in", entityId: before.id, actorType: "DETERMINISTIC_ENGINE", orgId: org.id, beforeState: before, afterState: saved! }, tx);
-        closed++;
-      });
-    }
-    for (const date of [shiftOperationalDate(operationalDate(now), -1), operationalDate(now)]) {
-      for (const plan of await shiftPlans(org.id, date)) {
-        if (now < plan.closesAt) continue;
-        await db.transaction(async tx => {
-          await tx.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, plan.userId)).for("update");
-          const [before] = await tx.select().from(operationalCheckInsTable).where(and(eq(operationalCheckInsTable.userId, plan.userId), eq(operationalCheckInsTable.date, date), eq(operationalCheckInsTable.shiftId, plan.shiftId)));
-          if (before?.closedAt) return;
-          const state = displayedShiftState(before, plan.closesAt, now);
-          const values = { orgId: org.id, operationId: plan.operationId, userId: plan.userId, date, shiftId: plan.shiftId, shiftState: state, status: before?.status ?? "EXPECTED" as const, closedAt: now, opensAt: plan.opensAt, firstActivityAt: plan.firstActivityAt, closesAt: plan.closesAt, activities: plan.activities, updatedAt: now };
-          const [saved] = await tx.insert(operationalCheckInsTable).values(values).onConflictDoUpdate({ target: [operationalCheckInsTable.userId, operationalCheckInsTable.date, operationalCheckInsTable.shiftId], set: values }).returning();
-          await writeHistoryEvent({ category: "CHECK_IN", action: "checkin.shift_closed", title: "Turno encerrado", narrative: `${plan.shiftName}: ${state}.`, entityType: "check_in", entityId: saved!.id, actorType: "DETERMINISTIC_ENGINE", orgId: org.id, beforeState: before ?? null, afterState: saved! }, tx);
-          closed++;
-        });
-      }
-    }
-  }
+    const fechadosAvisos = await emParalelo(pending, (record) => db.transaction(async tx => {
+      await tx.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, record.userId)).for("update");
+      const [before] = await tx.select().from(operationalCheckInsTable).where(eq(operationalCheckInsTable.id, record.id));
+      if (!before || before.closedAt || !before.closesAt || before.closesAt > now) return 0;
+      const state = displayedShiftState(before, before.closesAt, now);
+      const [saved] = await tx.update(operationalCheckInsTable).set({ shiftState: state, closedAt: now, updatedAt: now }).where(eq(operationalCheckInsTable.id, before.id)).returning();
+      await writeHistoryEvent({ category: "CHECK_IN", action: "checkin.shift_closed", title: "Turno encerrado", narrative: `${state}.`, entityType: "check_in", entityId: before.id, actorType: "DETERMINISTIC_ENGINE", orgId: org.id, beforeState: before, afterState: saved! }, tx);
+      return 1;
+    }));
+    const datas = [shiftOperationalDate(operationalDate(now), -1), operationalDate(now)];
+    // Uma data por vez: cada shiftPlans já abre até 3 conexões; as duas juntas dobrariam o que o pooler aguenta.
+    const planosPorData: Awaited<ReturnType<typeof shiftPlans>>[] = [];
+    for (const date of datas) planosPorData.push(await shiftPlans(org.id, date));
+    const vencidos = datas.flatMap((date, i) => planosPorData[i]!.filter((plan) => now >= plan.closesAt).map((plan) => ({ date, plan })));
+    // O turno de ontem já fechado voltava a cada minuto e abria uma transação só para descobrir isso. Uma leitura única
+    // dos já fechados evita a viagem; a conferência dentro da transação continua valendo para quem fechar no meio.
+    const jaFechados = vencidos.length
+      ? new Set((await db.select({ userId: operationalCheckInsTable.userId, date: operationalCheckInsTable.date, shiftId: operationalCheckInsTable.shiftId }).from(operationalCheckInsTable)
+        .where(and(eq(operationalCheckInsTable.orgId, org.id), inArray(operationalCheckInsTable.date, datas), isNotNull(operationalCheckInsTable.closedAt)))).map((row) => `${row.userId}:${row.date}:${row.shiftId}`))
+      : new Set<string>();
+    const fechadosPlanos = await emParalelo(vencidos.filter(({ date, plan }) => !jaFechados.has(`${plan.userId}:${date}:${plan.shiftId}`)), ({ date, plan }) => db.transaction(async tx => {
+      await tx.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, plan.userId)).for("update");
+      const [before] = await tx.select().from(operationalCheckInsTable).where(and(eq(operationalCheckInsTable.userId, plan.userId), eq(operationalCheckInsTable.date, date), eq(operationalCheckInsTable.shiftId, plan.shiftId)));
+      if (before?.closedAt) return 0;
+      const state = displayedShiftState(before, plan.closesAt, now);
+      const values = { orgId: org.id, operationId: plan.operationId, userId: plan.userId, date, shiftId: plan.shiftId, shiftState: state, status: before?.status ?? "EXPECTED" as const, closedAt: now, opensAt: plan.opensAt, firstActivityAt: plan.firstActivityAt, closesAt: plan.closesAt, activities: plan.activities, updatedAt: now };
+      const [saved] = await tx.insert(operationalCheckInsTable).values(values).onConflictDoUpdate({ target: [operationalCheckInsTable.userId, operationalCheckInsTable.date, operationalCheckInsTable.shiftId], set: values }).returning();
+      await writeHistoryEvent({ category: "CHECK_IN", action: "checkin.shift_closed", title: "Turno encerrado", narrative: `${plan.shiftName}: ${state}.`, entityType: "check_in", entityId: saved!.id, actorType: "DETERMINISTIC_ENGINE", orgId: org.id, beforeState: before ?? null, afterState: saved! }, tx);
+      return 1;
+    }));
+    return [...fechadosAvisos, ...fechadosPlanos].reduce<number>((soma, n) => soma + n, 0);
+  });
+  const closed = fechadosPorCasa.reduce((soma, n) => soma + n, 0);
   return { closed };
 }
